@@ -24,6 +24,9 @@ function* launchApplication(action) {
         return {
           file: key,
           tags: d.description,
+          profile: d.profile,
+          metadata: d.metadata,
+          summary: d.summary,
           plots: d.plots.map((e) => {
             return {
               ...e,
@@ -31,7 +34,7 @@ function* launchApplication(action) {
               path: `data/${key}/${e.source}`,
             };
           }),
-          reference: d.reference,
+          reference: `${d.profile.firstName} ${d.profile.lastName}`,
         };
       })
       .sort((a, b) => d3.ascending(a.file, b.file));

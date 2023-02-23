@@ -1,5 +1,87 @@
 {
-  "DEMO": {
+  "ONC22-35": {
+    "profile": {
+      "firstNane": "John",
+      "lastName": "Powell",
+      "gender": "male",
+      "birthdate": "1955-06-03",
+      "avatar": "avatar.png",
+      "address": "123 Main Street, Albany, NY 12345",
+      "phone": "(518) 555-0123",
+      "ssn": "123-45-6789"
+    },
+    "summary": [
+      {
+        "gene": "TP53",
+        "role": "TSG",
+        "type": "hetdel, loh, missense",
+        "tier": 1,
+        "source": "jabba_rds, annotated_bcf"
+      },
+      {
+        "gene": "KMT2D",
+        "role": "TSG",
+        "type": "loss, loh, splice",
+        "tier": 2,
+        "source": "jabba_rds, annotated_bcf"
+      },
+      {
+        "gene": "NCOR1",
+        "role": "TSG",
+        "type": "homdel",
+        "tier": 2,
+        "source": "jabba_rds"
+      },
+      {
+        "gene": "CHEK2",
+        "role": "TSG",
+        "type": "hetdel, loh, promoter",
+        "tier": 2,
+        "source": "jabba_rds, annotated_bcf"
+      },
+      {
+        "gene": "SPEN",
+        "role": "TSG",
+        "type": "loss, loh, promoter",
+        "tier": null,
+        "source": "jabba_rds, annotated_bcf"
+      },
+      {
+        "gene": "MAP2K4",
+        "role": "TSG",
+        "type": "homdel",
+        "tier": null,
+        "source": "jabba_rds"
+      },
+      {
+        "gene": "ARID1B",
+        "role": "TSG",
+        "type": "homdel",
+        "tier": null,
+        "source": "jabba_rds"
+      },
+      {
+        "gene": "PMS2",
+        "role": "TSG",
+        "type": "homdel",
+        "tier": null,
+        "source": "jabba_rds"
+      },
+      {
+        "gene": "SFRP4",
+        "role": "TSG",
+        "type": "missense",
+        "tier": null,
+        "source": "annotated_bcf"
+      },
+      {
+        "gene": "MAP3K1",
+        "role": "TSG",
+        "type": "hetdel, loh, promoter",
+        "tier": null,
+        "source": "jabba_rds, annotated_bcf"
+      }
+    ],
     "description": [
       "tumor_type=ESAD",
       "dataset=ESAD-UK",

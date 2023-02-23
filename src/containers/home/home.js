@@ -7,6 +7,7 @@ import { ScrollToHOC } from "react-scroll-to";
 import { Row, Col, Skeleton, Affix } from "antd";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
+import SummaryTable from "../../components/summaryTable";
 
 class Home extends Component {
   render() {
@@ -22,7 +23,9 @@ class Home extends Component {
           </Affix>
           <div className="ant-home-content-container">
             <Row className="ant-panel-container ant-home-legend-container">
-              <Col className="gutter-row" span={24}></Col>
+              <Col className="gutter-row" span={24}>
+                <SummaryTable />
+              </Col>
             </Row>
           </div>
         </Skeleton>

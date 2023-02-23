@@ -10,10 +10,15 @@ import {
   Menu,
   Dropdown,
   PageHeader,
+  Row,
+  Avatar,
 } from "antd";
+import moment from "moment";
 import { AiOutlineDownload, AiOutlineDown } from "react-icons/ai";
+import { FaHome, FaPhoneAlt, FaIdCard } from "react-icons/fa";
 import { downloadCanvasAsPng } from "../../helpers/utility";
 import html2canvas from "html2canvas";
+import avatarPlaceholder from "../../assets/images/avatar.png";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
@@ -39,73 +44,101 @@ class HeaderPanel extends Component {
 
   render() {
     const { t, selectedFiles } = this.props;
-    let tags = [...new Set(selectedFiles.map((d) => d.tags).flat())];
-    let title = selectedFiles.map((d) => d.file).join(", ");
-
+    if (selectedFiles.length < 1) return null;
+    const { profile, file, metadata } = selectedFiles[0];
+    const { firstName, lastName, avatar, birthdate, address, phone, ssn } =
+      profile;
+    const { purity, ploidy, junctionBurden } = metadata;
     return (
       <Wrapper>
-        <PageHeader
-          className="site-page-header"
-          title={title}
-          subTitle={
-            selectedFiles.length > 0 && (
-              <Space>
-                {}
-                <Dropdown
-                  menu={
-                    <Menu>
-                      {tags.map((d, i) => (
-                        <Menu.Item className="no-click-item" key={d}>
-                          {d}
-                        </Menu.Item>
-                      ))}
-                    </Menu>
-                  }
-                >
-                  <a
-                    className="ant-dropdown-link"
-                    onClick={(e) => e.preventDefault()}
-                    href="/#"
-                  >
-                    <Space>
-                      <span className="aligned-center" style={{}}>
-                        <span>
-                          <b>{tags.length}</b>{" "}
-                          {t("containers.home.category", {
-                            count: tags.length,
-                          })}
-                        </span>
-                        &nbsp;
-                        <AiOutlineDown />
+        <PageHeader className="site-page-header" title={file} extra={""}>
+          <div className="ant-pro-page-container-detail">
+            <div className="ant-pro-page-container-main">
+              <div className="ant-pro-page-container-row">
+                <div className="ant-pro-page-container-content">
+                  <div className="page-header-content">
+                    <div className="avatar-content">
+                      <span className="ant-avatar ant-avatar-lg ant-avatar-circle ant-avatar-image">
+                        <img
+                          alt={`${firstName} ${lastName}`}
+                          title={`${firstName} ${lastName}`}
+                          src={
+                            avatar
+                              ? `data/${file}/${avatar}`
+                              : avatarPlaceholder
+                          }
+                        />
                       </span>
-                    </Space>
-                  </a>
-                </Dropdown>
-              </Space>
-            )
-          }
-          extra={
-            <Space>
-              {selectedFiles.length > 0 && (
-                <Tooltip title={t("components.download-as-png-tooltip")}>
-                  <Button
-                    type="text"
-                    shape="circle"
-                    icon={<AiOutlineDownload />}
-                    size="small"
-                    onClick={() => this.onDownloadButtonClicked()}
-                  />
-                </Tooltip>
-              )}
-            </Space>
-          }
-        ></PageHeader>
+                    </div>
+                    <div className="content-patient">
+                      <div className="content-patient-title">
+                        <Space align="center" size="middle">
+                          <span className="content-patient-title">
+                            {firstName} {lastName}
+                          </span>
+                          <span className="ant-page-header-heading-sub-title">
+                            {moment().diff(birthdate, "years")}
+                          </span>
+                        </Space>
+                      </div>
+                      <div>
+                        <Space align="baseline">
+                          <FaHome />
+                          {address}
+                          <FaPhoneAlt />
+                          {phone}
+                          <FaIdCard />
+                          {ssn}
+                        </Space>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="ant-pro-page-container-extraContent">
+                  <div className="extra-content">
+                    <div className="stat-item">
+                      <div className="ant-statistic">
+                        <div className="ant-statistic-title">
+                          {t("metadata.junction-burden")}
+                        </div>
+                        <div className="ant-statistic-content">
+                          <span className="ant-statistic-content-value">
+                            <span className="ant-statistic-content-value-int">
+                              {junctionBurden}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="ant-statistic">
+                        <div className="ant-statistic-title">
+                          {t("metadata.purity-ploidy-title")}
+                        </div>
+                        <div className="ant-statistic-content">
+                          <span className="ant-statistic-content-value">
+                            <span className="ant-statistic-content-value-int">
+                              {purity}
+                            </span>
+                          </span>
+                          <span className="ant-statistic-content-suffix">
+                            / {ploidy}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </PageHeader>
       </Wrapper>
     );
   }
 }
 HeaderPanel.propTypes = {
-  selectedFiles: PropTypes.array,
+  selectedCase: PropTypes.object,
 };
 HeaderPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
