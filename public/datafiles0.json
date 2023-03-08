@@ -1,7 +1,7 @@
 {
   "ONC22-35": {
     "profile": {
-      "firstNane": "John",
+      "firstName": "John",
       "lastName": "Powell",
       "gender": "male",
       "birthdate": "1955-06-03",
@@ -10,18 +10,27 @@
       "phone": "(518) 555-0123",
       "ssn": "123-45-6789"
     },
+    "metadata": {
+      "pair": "ONC22-35",
+      "coverageVariance": 0.1896,
+      "snvCount": 19630,
+      "svCount": 435350,
+      "lohFraction": 0.5499,
+      "purity": 0.4,
+      "ploidy": 2.43
+    },
     "summary": [
       {
         "gene": "TP53",
         "role": "TSG",
-        "type": "hetdel, loh, missense",
+        "type": "hetdel,loh,missense",
         "tier": 1,
         "source": "jabba_rds, annotated_bcf"
       },
       {
         "gene": "KMT2D",
         "role": "TSG",
-        "type": "loss, loh, splice",
+        "type": "loss,loh,splice",
         "tier": 2,
         "source": "jabba_rds, annotated_bcf"
       },
@@ -35,14 +44,14 @@
       {
         "gene": "CHEK2",
         "role": "TSG",
-        "type": "hetdel, loh, promoter",
+        "type": "hetdel,loh,promoter",
         "tier": 2,
         "source": "jabba_rds, annotated_bcf"
       },
       {
         "gene": "SPEN",
         "role": "TSG",
-        "type": "loss, loh, promoter",
+        "type": "loss,loh,promoter",
         "tier": null,
         "source": "jabba_rds, annotated_bcf"
       },
@@ -77,7 +86,7 @@
       {
         "gene": "MAP3K1",
         "role": "TSG",
-        "type": "hetdel, loh, promoter",
+        "type": "hetdel,loh,promoter",
         "tier": null,
         "source": "jabba_rds, annotated_bcf"
       }
@@ -93,80 +102,6 @@
       "KRAS amp",
       "MUTYH germline pathogenic",
       "CDKN2A homdel"
-    ],
-    "reference": "hg19",
-    "plots": [
-      {
-        "sample": null,
-        "type": "phylogeny",
-        "source": "phylogeny.newick",
-        "title": "Phylogenetic Information for DEMO",
-        "visible": true
-      },
-      {
-        "sample": null,
-        "type": "anatomy",
-        "source": "anatomy.json",
-        "title": "Anatomy for DEMO",
-        "visible": true,
-        "figure": "figure.svg"
-      },
-      {
-        "sample": "7K",
-        "type": "genome",
-        "source": "genome1.json",
-        "title": "Tumor sample 7K",
-        "visible": true
-      },
-      {
-        "sample": "7K",
-        "type": "walk",
-        "source": "walks.json",
-        "title": "Walks for sample 7K",
-        "visible": true
-      },
-      {
-        "sample": "7E",
-        "type": "genome",
-        "source": "genome.json",
-        "title": "Tumor sample 7E",
-        "visible": true
-      },
-      {
-        "sample": "7E",
-        "type": "barplot",
-        "source": "rpkm.arrow",
-        "title": "RPKM Probability Distribution 7E",
-        "visible": false
-      },
-      {
-        "sample": "7E",
-        "type": "scatterplot",
-        "source": "coverage.arrow",
-        "title": "Coverage Distribution 7E",
-        "visible": false
-      },
-      {
-        "sample": "7G",
-        "type": "genome",
-        "source": "genome2.json",
-        "title": "Tumor sample 7G",
-        "visible": true
-      },
-      {
-        "sample": "7G",
-        "type": "scatterplot",
-        "source": "coverage2.arrow",
-        "title": "Coverage Distribution 7G",
-        "visible": false
-      },
-      {
-        "sample": "7L",
-        "type": "bigwig",
-        "server": "http://higlass.io",
-        "uuid": "AOR9BgKaS4WPX7esuBM4sQ",
-        "visible": true
-      }
     ]
   }
 }

@@ -27,14 +27,15 @@ function* launchApplication(action) {
           profile: d.profile,
           metadata: d.metadata,
           summary: d.summary,
-          plots: d.plots.map((e) => {
+          reference: `${d.profile.firstName} ${d.profile.lastName}`,
+          plots: ["coverageVariance", "snvCount", "svCount", "lohFraction", "purity", "ploidy"].map((e) => {
             return {
-              ...e,
-              title: `${key} ${e.title}`,
-              path: `data/${key}/${e.source}`,
+              id: e,
+              title: e,
+              type: "histogram",
+              path: `data/${key}/${e}.json`,
             };
           }),
-          reference: `${d.profile.firstName} ${d.profile.lastName}`,
         };
       })
       .sort((a, b) => d3.ascending(a.file, b.file));
@@ -87,12 +88,28 @@ function* launchApplication(action) {
       (action.files || file || []).includes(d.file)
     );
 
+    let plots = [...selectedFiles.map((d) => d.plots).flat()];
+    yield axios
+      .all(plots.map((d) => axios.get(d.path)))
+      .then(
+        axios.spread((...responses) => {
+          responses.forEach(
+            (d, i) => (plots[i].data = d.data.map((d) => d.value))
+          );
+        })
+      )
+      .catch((errors) => {
+        console.log("got errors on loading dependencies", errors);
+      });
+
     let properties = {
       datafiles: files,
       filteredFiles,
       filteredTags,
       tags,
       selectedFiles,
+      selectedFile: selectedFiles[0],
+      plots,
     };
     yield put({ type: actions.LAUNCH_APP_SUCCESS, properties });
   } else {

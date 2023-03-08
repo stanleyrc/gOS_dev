@@ -6,7 +6,9 @@ const initState = {
   filteredTags: [],
   filteredFiles: [],
   selectedFiles: [],
+  selectedFile: null,
   files: [],
+  plots: [],
 };
 
 export default function appReducer(state = initState, action) {

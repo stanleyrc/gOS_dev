@@ -13,6 +13,7 @@ import {
   Row,
   Avatar,
 } from "antd";
+import * as d3 from "d3";
 import moment from "moment";
 import { AiOutlineDownload, AiOutlineDown } from "react-icons/ai";
 import { FaHome, FaPhoneAlt, FaIdCard } from "react-icons/fa";
@@ -48,7 +49,7 @@ class HeaderPanel extends Component {
     const { profile, file, metadata } = selectedFiles[0];
     const { firstName, lastName, avatar, birthdate, address, phone, ssn } =
       profile;
-    const { purity, ploidy, junctionBurden } = metadata;
+    const { purity, ploidy } = metadata;
     return (
       <Wrapper>
         <PageHeader className="site-page-header" title={file} extra={""}>
@@ -96,20 +97,30 @@ class HeaderPanel extends Component {
                 </div>
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
-                    <div className="stat-item">
-                      <div className="ant-statistic">
-                        <div className="ant-statistic-title">
-                          {t("metadata.junction-burden")}
-                        </div>
-                        <div className="ant-statistic-content">
-                          <span className="ant-statistic-content-value">
-                            <span className="ant-statistic-content-value-int">
-                              {junctionBurden}
+                    {[
+                      "coverageVariance",
+                      "snvCount",
+                      "svCount",
+                      "lohFraction",
+                    ].map((d) => (
+                      <div className="stat-item">
+                        <div className="ant-statistic">
+                          <div className="ant-statistic-title">
+                            {t(`metadata.${d}.short`)}
+                          </div>
+                          <div className="ant-statistic-content">
+                            <span className="ant-statistic-content-value">
+                              <span className="ant-statistic-content-value-int">
+                                {Number.isInteger(metadata[d])
+                                  ? d3.format(",")(metadata[d])
+                                  : d3.format(".2%")(metadata[d])}
+                              </span>
                             </span>
-                          </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
+
                     <div className="stat-item">
                       <div className="ant-statistic">
                         <div className="ant-statistic-title">
@@ -118,11 +129,11 @@ class HeaderPanel extends Component {
                         <div className="ant-statistic-content">
                           <span className="ant-statistic-content-value">
                             <span className="ant-statistic-content-value-int">
-                              {purity}
+                              {d3.format(".2f")(purity)}
                             </span>
                           </span>
                           <span className="ant-statistic-content-suffix">
-                            / {ploidy}
+                            / {d3.format(".2f")(ploidy)}
                           </span>
                         </div>
                       </div>
