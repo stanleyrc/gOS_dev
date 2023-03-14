@@ -28,12 +28,19 @@ function* launchApplication(action) {
           metadata: d.metadata,
           summary: d.summary,
           reference: `${d.profile.firstName} ${d.profile.lastName}`,
-          plots: ["coverageVariance", "snvCount", "svCount", "lohFraction", "purity", "ploidy"].map((e) => {
+          plots: [
+            "coverageVariance",
+            "snvCount",
+            "svCount",
+            "lohFraction",
+            "purity",
+            "ploidy",
+          ].map((e) => {
             return {
               id: e,
               title: e,
               type: "histogram",
-              path: `data/${key}/${e}.json`,
+              path: `common/${e}.json`,
             };
           }),
         };
@@ -94,7 +101,7 @@ function* launchApplication(action) {
       .then(
         axios.spread((...responses) => {
           responses.forEach(
-            (d, i) => (plots[i].data = d.data.map((d) => d.value))
+            (d, i) => (plots[i].data = d.data.map((d) => +d.value))
           );
         })
       )
