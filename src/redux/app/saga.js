@@ -1,6 +1,7 @@
 import { all, takeEvery, put } from "redux-saga/effects";
 import axios from "axios";
 import * as d3 from "d3";
+import { legendColors } from "../../helpers/utility";
 import actions from "./actions";
 
 function* launchApplication(action) {
@@ -39,6 +40,7 @@ function* launchApplication(action) {
             return {
               id: e,
               title: e,
+              markValue: d.metadata[e],
               type: "histogram",
               path: `common/${e}.json`,
             };
@@ -95,14 +97,31 @@ function* launchApplication(action) {
       (action.files || file || []).includes(d.file)
     );
 
+    let url = new URL(decodeURI(document.location));
+
+    url.searchParams.set("file", selectedFiles.map((d) => d.file).join(","));
+    window.history.replaceState(
+      unescape(url.toString()),
+      "Case Report",
+      unescape(url.toString())
+    );
+
     let plots = [...selectedFiles.map((d) => d.plots).flat()];
     yield axios
       .all(plots.map((d) => axios.get(d.path)))
       .then(
         axios.spread((...responses) => {
-          responses.forEach(
-            (d, i) => (plots[i].data = d.data.map((d) => +d.value))
-          );
+          responses.forEach((d, i) => {
+            plots[i].data = d.data.map((d) => +d.value);
+            plots[i].mean = d3.mean(plots[i].data);
+            plots[i].sigma = d3.deviation(plots[i].data);
+            plots[i].colorMarker =
+              plots[i].markValue < plots[i].mean - 2 * plots[i].sigma
+                ? legendColors()[0]
+                : plots[i].markValue > plots[i].mean + 2 * plots[i].sigma
+                ? legendColors()[2]
+                : legendColors()[1];
+          });
         })
       )
       .catch((errors) => {

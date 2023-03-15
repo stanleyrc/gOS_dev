@@ -2,22 +2,11 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import {
-  Space,
-  Button,
-  Tooltip,
-  message,
-  Menu,
-  Dropdown,
-  PageHeader,
-  Row,
-  Avatar,
-} from "antd";
+import { Space, message, PageHeader, Tag } from "antd";
 import * as d3 from "d3";
 import moment from "moment";
-import { AiOutlineDownload, AiOutlineDown } from "react-icons/ai";
 import { FaHome, FaPhoneAlt, FaIdCard } from "react-icons/fa";
-import { downloadCanvasAsPng } from "../../helpers/utility";
+import { downloadCanvasAsPng, legendColors } from "../../helpers/utility";
 import html2canvas from "html2canvas";
 import avatarPlaceholder from "../../assets/images/avatar.png";
 import Wrapper from "./index.style";
@@ -46,13 +35,23 @@ class HeaderPanel extends Component {
   render() {
     const { t, selectedFiles } = this.props;
     if (selectedFiles.length < 1) return null;
-    const { profile, file, metadata } = selectedFiles[0];
+    const { profile, file, metadata, plots } = selectedFiles[0];
     const { firstName, lastName, avatar, birthdate, address, phone, ssn } =
       profile;
     const { purity, ploidy } = metadata;
     return (
       <Wrapper>
-        <PageHeader className="site-page-header" title={file} extra={""}>
+        <PageHeader
+          className="site-page-header"
+          title={file}
+          extra={
+            <Space size={[0, 4]} wrap>
+              <Tag color={legendColors()[0]}>{`x < μ - 2σ`}</Tag>
+              <Tag color={legendColors()[1]}>|x - μ| &le; 2σ</Tag>
+              <Tag color={legendColors()[2]}>{`x > μ + 2σ`}</Tag>
+            </Space>
+          }
+        >
           <div className="ant-pro-page-container-detail">
             <div className="ant-pro-page-container-main">
               <div className="ant-pro-page-container-row">
@@ -110,7 +109,13 @@ class HeaderPanel extends Component {
                           </div>
                           <div className="ant-statistic-content">
                             <span className="ant-statistic-content-value">
-                              <span className="ant-statistic-content-value-int">
+                              <span
+                                className="ant-statistic-content-value-int"
+                                style={{
+                                  color: plots.find((e) => e.id === d)
+                                    .colorMarker,
+                                }}
+                              >
                                 {Number.isInteger(metadata[d])
                                   ? d3.format(",")(metadata[d])
                                   : d3.format(".2%")(metadata[d])}
@@ -128,11 +133,23 @@ class HeaderPanel extends Component {
                         </div>
                         <div className="ant-statistic-content">
                           <span className="ant-statistic-content-value">
-                            <span className="ant-statistic-content-value-int">
+                            <span
+                              className="ant-statistic-content-value-int"
+                              style={{
+                                color: plots.find((e) => e.id === "purity")
+                                  .colorMarker,
+                              }}
+                            >
                               {d3.format(".2f")(purity)}
                             </span>
                           </span>
-                          <span className="ant-statistic-content-suffix">
+                          <span
+                            className="ant-statistic-content-suffix"
+                            style={{
+                              color: plots.find((e) => e.id === "ploidy")
+                                .colorMarker,
+                            }}
+                          >
                             / {d3.format(".2f")(ploidy)}
                           </span>
                         </div>
@@ -156,6 +173,7 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   tags: state.App.tags,
   selectedFiles: state.App.selectedFiles,
+  plots: state.App.plots,
 });
 export default connect(
   mapStateToProps,

@@ -22,6 +22,7 @@ class PopulationTab extends Component {
               title: t(`metadata.${d.id}.full`),
               visible: d.data,
               markValue: selectedFile.metadata[d.id],
+              colorMarker: d.colorMarker,
               loading,
             }}
           />
@@ -30,16 +31,14 @@ class PopulationTab extends Component {
       return plotComponent;
     });
 
-    const pairs = plotRows.reduce((acc, cur, idx) => {
-      if (idx % 2 === 0) {
-        acc.push([cur, plotRows[idx + 1]]);
-      }
-      return acc;
-    }, []);
+    const tuples = Array.from(
+      { length: Math.ceil(plotRows.length / 3) },
+      (_, i) => plotRows.slice(i * 3, i * 3 + 3)
+    );
 
     return (
       <Wrapper>
-        {pairs.map((pair, index) => (
+        {tuples.map((pair, index) => (
           <Row
             key={index}
             id={`row-${index}}`}

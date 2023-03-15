@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import * as d3 from "d3";
+import { legendColors } from "../../helpers/utility";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
@@ -26,7 +27,7 @@ class HistogramPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, height, data, markValue } = this.props;
+    const { width, height, data, markValue, colorMarker } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
@@ -34,7 +35,7 @@ class HistogramPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let extent = [d3.quantile(data, 0 / 100), d3.quantile(data, 99 / 100)];
+    let extent = [d3.min(data), d3.max([d3.max(data), markValue])];
     // Create a scale for the x-axis
     const xScale = d3
       .scaleLinear()
@@ -63,8 +64,6 @@ class HistogramPlot extends Component {
       .range([panelHeight, 0])
       .nice();
 
-    const colorScale = d3.scaleSequential(d3.interpolateReds).domain(extent);
-
     return {
       width,
       height,
@@ -74,8 +73,7 @@ class HistogramPlot extends Component {
       yScale,
       bins,
       markValue,
-      colorScale,
-      data,
+      colorMarker,
     };
   }
 
@@ -97,7 +95,11 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".y-axis-container");
 
-    let yAxis = d3.axisLeft(yScale).tickSize(6).tickFormat(d3.format("~s"));
+    let yAxis = d3
+      .axisLeft(yScale)
+      .tickSize(6)
+      .ticks(6)
+      .tickFormat(d3.format("~s"));
     yAxisContainer.call(yAxis);
   }
 
@@ -111,10 +113,9 @@ class HistogramPlot extends Component {
       yScale,
       bins,
       markValue,
-      data,
-      colorScale,
+      colorMarker,
     } = this.getPlotConfiguration();
-    let id = Math.random();
+
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
@@ -132,34 +133,14 @@ class HistogramPlot extends Component {
             <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
               <rect x={0} y={0} width={panelWidth} height={panelHeight} />
             </clipPath>
-            <linearGradient id={`area-gradient-${id}`}>
-              {d3.range(0, 101, 10).map((d, i) => (
-                <stop
-                  offset={`${d}%`}
-                  stopColor={colorScale(d3.quantile(data, d / 100))}
-                ></stop>
-              ))}
-            </linearGradient>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
               <g clipPath="url(#1cuttOffViewPane)">
                 <path
                   transform={`translate(${[0, 0]})`}
-                  fill={`url(#area-gradient-${id})`}
-                  stroke="steelblue"
-                  strokeWidth="0"
-                  d={d3
-                    .area()
-                    .x((d) => xScale((d.x0 + d.x1) / 2))
-                    .y1((d) => yScale(d.length))
-                    .y0(yScale(0))
-                    .curve(d3.curveBasis)(bins)}
-                />
-                <path
-                  transform={`translate(${[0, 0]})`}
                   fill="none"
-                  stroke="steelblue"
+                  stroke="gray"
                   strokeWidth="2"
                   d={d3
                     .line()
@@ -168,11 +149,11 @@ class HistogramPlot extends Component {
                     .curve(d3.curveBasis)(bins)}
                 />
                 <g transform={`translate(${[xScale(markValue), 0]})`}>
-                  <line y2={panelHeight} stroke="#ff7f0e" strokeWidth={2} />
+                  <line y2={panelHeight} stroke="red" strokeWidth={2} />
                   <text
                     textAnchor={"middle"}
                     dy="-3"
-                    fill="currentColor"
+                    fill={colorMarker}
                     className="marker"
                   >
                     {markValue}

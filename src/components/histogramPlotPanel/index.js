@@ -3,12 +3,15 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
-import * as d3 from "d3";
+import { Card, Space, Tooltip, Button, message, Row, Col, Tag } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { TbChartHistogram } from "react-icons/tb";
-import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
+import {
+  downloadCanvasAsPng,
+  transitionStyle,
+  legendColors,
+} from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import HistogramPlot from "../histogramPlot";
@@ -41,6 +44,7 @@ class HistogramPlotPanel extends Component {
       loading,
       data,
       markValue,
+      colorMarker,
       title,
       inViewport,
       renderOutsideViewPort,
@@ -58,12 +62,6 @@ class HistogramPlotPanel extends Component {
                 <TbChartHistogram />
               </span>
               <span className="ant-pro-menu-item-title">{title}</span>
-              <span>
-                <b>{d3.format(",")(data.length)}</b>{" "}
-                {t("components.histogram-panel.datapoint", {
-                  count: data.length,
-                })}
-              </span>
             </Space>
           }
           extra={
@@ -98,6 +96,7 @@ class HistogramPlotPanel extends Component {
                               height,
                               data,
                               markValue,
+                              colorMarker,
                             }}
                           />
                         </Col>

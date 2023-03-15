@@ -15,7 +15,7 @@
     "junction-burden": "Junction burden",
     "coverageVariance": {
       "short": "Coverage Variance",
-      "full": "Drycleaned Coverage Variance (IQR) by Tumor Type"
+      "full": "Drycleaned Coverage Variance (IQR)"
     },
     "snvCount": {
       "short": "SNV Count",

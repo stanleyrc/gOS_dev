@@ -24,11 +24,11 @@ class Home extends Component {
           </Affix>
           <div className="ant-home-content-container">
             <PopulationTab {...{ loading, selectedFile, plots }} />
-            <Row className="ant-panel-container ant-home-plot-container">
+            {/* <Row className="ant-panel-container ant-home-plot-container">
               <Col className="gutter-row" span={24}>
                 <SummaryTable />
               </Col>
-            </Row>
+            </Row> */}
           </div>
         </Skeleton>
       </HomeWrapper>

@@ -6,6 +6,13 @@ export function transitionStyle(inViewport) {
   }
 }
 
+export function legendColors() {
+  // first color for x < μ - 2σ
+  // second color for |x - μ| < 2σ
+  // third color for x > μ + 2σ
+  return ["#377eb8", "#4daf4a", "#e41a1c"];
+}
+
 export function downloadCanvasAsPng(canvas, filename) {
   /// create an "off-screen" anchor tag
   var lnk = document.createElement("a"),
