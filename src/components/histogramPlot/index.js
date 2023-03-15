@@ -33,18 +33,17 @@ class HistogramPlot extends Component {
 
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
+
+    let extent = [d3.quantile(data, 0 / 100), d3.quantile(data, 99 / 100)];
     // Create a scale for the x-axis
     const xScale = d3
       .scaleLinear()
-      .domain(d3.extent(data))
+      .domain(extent)
       .range([0, panelWidth])
       .nice();
 
     const n = data.length;
-    const x = d3
-      .scaleLinear()
-      .domain([d3.min(data), d3.max(data)])
-      .range([0, width]);
+    const x = d3.scaleLinear().domain(extent).range([0, panelWidth]);
     const bins = d3
       .bin()
       .domain(x.domain())
@@ -64,6 +63,8 @@ class HistogramPlot extends Component {
       .range([panelHeight, 0])
       .nice();
 
+    const colorScale = d3.scaleSequential(d3.interpolateReds).domain(extent);
+
     return {
       width,
       height,
@@ -73,6 +74,8 @@ class HistogramPlot extends Component {
       yScale,
       bins,
       markValue,
+      colorScale,
+      data,
     };
   }
 
@@ -108,8 +111,10 @@ class HistogramPlot extends Component {
       yScale,
       bins,
       markValue,
+      data,
+      colorScale,
     } = this.getPlotConfiguration();
-
+    let id = Math.random();
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
@@ -127,16 +132,13 @@ class HistogramPlot extends Component {
             <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
               <rect x={0} y={0} width={panelWidth} height={panelHeight} />
             </clipPath>
-            <linearGradient
-              id="area-gradient"
-              gradientUnits="userSpaceOnUse"
-              x1="0"
-              y1={panelHeight}
-              x2="0"
-              y2="0"
-            >
-              <stop offset="0%" stopColor="white"></stop>
-              <stop offset="100%" stopColor="rgba(70, 130, 180, 0.33)"></stop>
+            <linearGradient id={`area-gradient-${id}`}>
+              {d3.range(0, 101, 10).map((d, i) => (
+                <stop
+                  offset={`${d}%`}
+                  stopColor={colorScale(d3.quantile(data, d / 100))}
+                ></stop>
+              ))}
             </linearGradient>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
@@ -144,7 +146,7 @@ class HistogramPlot extends Component {
               <g clipPath="url(#1cuttOffViewPane)">
                 <path
                   transform={`translate(${[0, 0]})`}
-                  fill="url(#area-gradient)"
+                  fill={`url(#area-gradient-${id})`}
                   stroke="steelblue"
                   strokeWidth="0"
                   d={d3
