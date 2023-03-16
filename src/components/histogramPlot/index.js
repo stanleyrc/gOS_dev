@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import * as d3 from "d3";
-import { legendColors } from "../../helpers/utility";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
@@ -35,7 +34,10 @@ class HistogramPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let extent = [d3.min(data), d3.max([d3.max(data), markValue])];
+    let extent = [
+      d3.min([d3.min(data), markValue]),
+      d3.max([d3.mean(data) + 3 * d3.deviation(data), markValue]),
+    ];
     // Create a scale for the x-axis
     const xScale = d3
       .scaleLinear()
@@ -84,7 +86,8 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const axisX = d3.axisBottom(xScale).tickSize(6);
+    const axisX = d3.axisBottom(xScale).tickSize(6).tickFormat(d3.format("~s"));
+
     xAxisContainer.call(axisX);
   }
 
@@ -95,11 +98,7 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".y-axis-container");
 
-    let yAxis = d3
-      .axisLeft(yScale)
-      .tickSize(6)
-      .ticks(6)
-      .tickFormat(d3.format("~s"));
+    let yAxis = d3.axisLeft(yScale).tickSize(6).tickFormat(d3.format("~s"));
     yAxisContainer.call(yAxis);
   }
 
@@ -139,13 +138,14 @@ class HistogramPlot extends Component {
               <g clipPath="url(#1cuttOffViewPane)">
                 <path
                   transform={`translate(${[0, 0]})`}
-                  fill="none"
-                  stroke="gray"
-                  strokeWidth="2"
+                  fill="#999999"
+                  stroke="lightgray"
+                  strokeWidth="0.5"
                   d={d3
-                    .line()
+                    .area()
                     .x((d) => xScale((d.x0 + d.x1) / 2))
-                    .y((d) => yScale(d.length))
+                    .y1((d) => yScale(d.length))
+                    .y0(yScale(0))
                     .curve(d3.curveBasis)(bins)}
                 />
                 <g transform={`translate(${[xScale(markValue), 0]})`}>

@@ -46,9 +46,9 @@ class HeaderPanel extends Component {
           title={file}
           extra={
             <Space size={[0, 4]} wrap>
-              <Tag color={legendColors()[0]}>{`x < μ - 2σ`}</Tag>
-              <Tag color={legendColors()[1]}>|x - μ| &le; 2σ</Tag>
-              <Tag color={legendColors()[2]}>{`x > μ + 2σ`}</Tag>
+              <Tag color={legendColors()[0]}>{`x < μ - 1σ`}</Tag>
+              <Tag color={legendColors()[1]}>|x - μ| &le; 1σ</Tag>
+              <Tag color={legendColors()[2]}>{`x > μ + 1σ`}</Tag>
             </Space>
           }
         >
