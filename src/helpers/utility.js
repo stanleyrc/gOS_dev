@@ -10,7 +10,7 @@ export function legendColors() {
   // first color for x < μ - 2σ
   // second color for |x - μ| < 2σ
   // third color for x > μ + 2σ
-  return ["#377eb8", "#4daf4a", "#e41a1c"];
+  return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
 export function downloadCanvasAsPng(canvas, filename) {

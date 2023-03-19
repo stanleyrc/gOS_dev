@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { legendColors } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -15,18 +16,47 @@ const margins = {
 class HistogramPlot extends Component {
   plotContainer = null;
 
+  constructor(props) {
+    super(props);
+
+    this.zoom = d3
+      .zoom()
+      .scaleExtent([1, 38])
+      .translateExtent([
+        [0, 0],
+        [
+          this.props.width - 2 * margins.gapX,
+          this.props.height - 3 * margins.gapY,
+        ],
+      ])
+      .extent([
+        [0, 0],
+        [
+          this.props.width - 2 * margins.gapX,
+          this.props.height - 3 * margins.gapY,
+        ],
+      ])
+      .on("zoom", (e) => this.zoomed(e));
+    this.state = {
+      zoomTransform: d3.zoomIdentity,
+    };
+  }
+
   componentDidMount() {
     this.renderYAxis();
     this.renderXAxis();
+    d3.select(this.zoomContainer).call(this.zoom);
   }
 
   componentDidUpdate() {
     this.renderYAxis();
     this.renderXAxis();
+    d3.select(this.zoomContainer).call(this.zoom);
   }
 
   getPlotConfiguration() {
-    const { width, height, data, markValue, colorMarker } = this.props;
+    const { width, height, data, markValue, colorMarker, mean, sigma } =
+      this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
@@ -38,12 +68,10 @@ class HistogramPlot extends Component {
       d3.min([d3.min(data), markValue]),
       d3.max([d3.mean(data) + 3 * d3.deviation(data), markValue]),
     ];
-    // Create a scale for the x-axis
-    const xScale = d3
-      .scaleLinear()
-      .domain(extent)
-      .range([0, panelWidth])
-      .nice();
+
+    const xScale = this.state.zoomTransform.rescaleX(
+      d3.scaleLinear().domain(extent).range([0, panelWidth]).nice()
+    );
 
     const n = data.length;
     const x = d3.scaleLinear().domain(extent).range([0, panelWidth]);
@@ -76,11 +104,13 @@ class HistogramPlot extends Component {
       bins,
       markValue,
       colorMarker,
+      mean,
+      sigma,
     };
   }
 
   renderXAxis() {
-    const { xScale } = this.getPlotConfiguration();
+    const { xScale, mean, sigma } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -89,6 +119,22 @@ class HistogramPlot extends Component {
     const axisX = d3.axisBottom(xScale).tickSize(6).tickFormat(d3.format("~s"));
 
     xAxisContainer.call(axisX);
+
+    xAxisContainer.selectAll("text").style("fill", (x) => {
+      return x < mean - sigma
+        ? legendColors()[0]
+        : x > mean + sigma
+        ? legendColors()[2]
+        : legendColors()[1];
+    });
+
+    xAxisContainer.selectAll("line").style("stroke", (x) => {
+      return x < mean - sigma
+        ? legendColors()[0]
+        : x > mean + sigma
+        ? legendColors()[2]
+        : legendColors()[1];
+    });
   }
 
   renderYAxis() {
@@ -102,6 +148,10 @@ class HistogramPlot extends Component {
     yAxisContainer.call(yAxis);
   }
 
+  zoomed(currentEvent) {
+    this.setState({ zoomTransform: currentEvent.transform });
+  }
+
   render() {
     const {
       width,
@@ -113,6 +163,8 @@ class HistogramPlot extends Component {
       bins,
       markValue,
       colorMarker,
+      mean,
+      sigma,
     } = this.getPlotConfiguration();
 
     return (
@@ -130,12 +182,17 @@ class HistogramPlot extends Component {
         >
           <defs>
             <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
-              <rect x={0} y={0} width={panelWidth} height={panelHeight} />
+              <rect
+                x={0}
+                y={-panelHeight}
+                width={panelWidth}
+                height={2 * panelHeight}
+              />
             </clipPath>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <g clipPath="url(#1cuttOffViewPane)">
+              <g clipPath="url(#cuttOffViewPane)">
                 <path
                   transform={`translate(${[0, 0]})`}
                   fill="#999999"
@@ -148,6 +205,7 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(bins)}
                 />
+
                 <g transform={`translate(${[xScale(markValue), 0]})`}>
                   <line y2={panelHeight} stroke="red" strokeWidth={2} />
                   <text
@@ -169,7 +227,31 @@ class HistogramPlot extends Component {
                 className="axis--x x-axis-container"
                 transform={`translate(${[margins.gap, panelHeight]})`}
               ></g>
+              <g
+                clipPath="url(#cuttOffViewPane)"
+                className="axis-conditional-container"
+                transform={`translate(${[margins.gap, panelHeight]})`}
+              >
+                <line
+                  x2={xScale(mean - sigma)}
+                  stroke={legendColors()[0]}
+                  strokeWidth="2"
+                />
+                <line
+                  x1={xScale(mean - sigma)}
+                  x2={xScale(mean + sigma)}
+                  stroke={legendColors()[1]}
+                  strokeWidth="2"
+                />
+                <line
+                  x1={xScale(mean + sigma)}
+                  x2={panelWidth}
+                  stroke={legendColors()[2]}
+                  strokeWidth="2"
+                />
+              </g>
               <rect
+                ref={(elem) => (this.zoomContainer = elem)}
                 className="zoom-background"
                 id={`panel-rect`}
                 x={0.5}

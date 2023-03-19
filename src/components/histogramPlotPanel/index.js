@@ -43,6 +43,8 @@ class HistogramPlotPanel extends Component {
       t,
       loading,
       data,
+      mean,
+      sigma,
       markValue,
       colorMarker,
       title,
@@ -95,6 +97,8 @@ class HistogramPlotPanel extends Component {
                               width,
                               height,
                               data,
+                              mean,
+                              sigma,
                               markValue,
                               colorMarker,
                             }}
