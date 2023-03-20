@@ -196,6 +196,7 @@ class HistogramPlot extends Component {
                 <path
                   transform={`translate(${[0, 0]})`}
                   fill="#999999"
+                  fillOpacity={0.5}
                   stroke="lightgray"
                   strokeWidth="0.5"
                   d={d3
@@ -207,7 +208,7 @@ class HistogramPlot extends Component {
                 />
 
                 <g transform={`translate(${[xScale(markValue), 0]})`}>
-                  <line y2={panelHeight} stroke="red" strokeWidth={2} />
+                  <line y2={panelHeight} stroke="red" strokeWidth={3} />
                   <text
                     textAnchor={"middle"}
                     dy="-3"
