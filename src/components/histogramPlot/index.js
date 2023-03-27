@@ -66,7 +66,7 @@ class HistogramPlot extends Component {
 
     let extent = [
       d3.min([d3.min(data), markValue]),
-      d3.max([d3.mean(data) + 3 * d3.deviation(data), markValue]),
+      d3.max([d3.max(data), markValue]),
     ];
 
     const xScale = this.state.zoomTransform.rescaleX(
@@ -116,7 +116,12 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const axisX = d3.axisBottom(xScale).tickSize(6).tickFormat(d3.format("~s"));
+    const axisX = d3
+      .axisBottom(xScale)
+      .tickSize(6)
+      .tickFormat(
+        xScale.domain()[1] < 100 ? d3.format(".2f") : d3.format("~s")
+      );
 
     xAxisContainer.call(axisX);
 
@@ -206,7 +211,6 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(bins)}
                 />
-
                 <g transform={`translate(${[xScale(markValue), 0]})`}>
                   <line y2={panelHeight} stroke="red" strokeWidth={3} />
                   <text

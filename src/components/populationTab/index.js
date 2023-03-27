@@ -5,6 +5,7 @@ import { Row, Col } from "antd";
 import HistogramPlotPanel from "../../components/histogramPlotPanel";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
+import RidgelinePlotPanel from "../ridgelinePlotPanel";
 
 const {} = appActions;
 
@@ -40,6 +41,23 @@ class PopulationTab extends Component {
 
     return (
       <Wrapper>
+        <Row
+          key={0}
+          id={`row-${0}}`}
+          className="ant-panel-container ant-home-plot-container"
+          gutter={16}
+        >
+          <Col className="gutter-row" span={8}>
+            {
+              <RidgelinePlotPanel
+                {...{
+                  plots: plots.filter((d) => d.type === "histogram"),
+                  markers: selectedFile.metadata,
+                }}
+              />
+            }
+          </Col>
+        </Row>
         {tuples.map((pair, index) => (
           <Row
             key={index}

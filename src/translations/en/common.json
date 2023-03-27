@@ -49,6 +49,12 @@
       "datapoint": "datapoint",
       "datapoint_plural": "datapoints",
       "title": "Histogram Chart"
+    },
+    "ridgeline-panel": {
+      "header": "Ridgeline Chart",
+      "distribution": "distribution",
+      "distribution_plural": "distributions",
+      "title": "Ridgeline Chart"
     }
   }
 }

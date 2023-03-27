@@ -2,25 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import {
-  Space,
-  Button,
-  Tooltip,
-  message,
-  Menu,
-  Dropdown,
-  PageHeader,
-  Row,
-  Avatar,
-  Tag,
-  Table,
-} from "antd";
-import moment from "moment";
-import { AiOutlineDownload, AiOutlineDown } from "react-icons/ai";
-import { FaHome, FaPhoneAlt, FaIdCard } from "react-icons/fa";
-import { downloadCanvasAsPng } from "../../helpers/utility";
-import html2canvas from "html2canvas";
-import avatarPlaceholder from "../../assets/images/avatar.png";
+import { Tag, Table } from "antd";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
