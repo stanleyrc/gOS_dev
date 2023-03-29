@@ -4,11 +4,14 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import { Row, Col, Skeleton, Affix } from "antd";
+import { Tabs, Row, Col, Skeleton, Affix } from "antd";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import SummaryTable from "../../components/summaryTable";
 import PopulationTab from "../../components/populationTab";
+import SummaryTab from "../../components/summaryTab";
+
+const { TabPane } = Tabs;
 
 class Home extends Component {
   render() {
@@ -23,12 +26,21 @@ class Home extends Component {
             </div>
           </Affix>
           <div className="ant-home-content-container">
-            <PopulationTab {...{ loading, selectedFile, plots }} />
-            {/* <Row className="ant-panel-container ant-home-plot-container">
-              <Col className="gutter-row" span={24}>
-                <SummaryTable />
-              </Col>
-            </Row> */}
+            <Tabs defaultActiveKey="1">
+              <Tabs.TabPane tab={t("components.tabs.tab1")} key="1">
+                <SummaryTab {...{ loading, selectedFile, plots }} />
+              </Tabs.TabPane>
+              <Tabs.TabPane tab={t("components.tabs.tab2")} key="2">
+                <PopulationTab {...{ loading, selectedFile, plots }} />
+              </Tabs.TabPane>
+              <Tabs.TabPane tab={t("components.tabs.tab3")} key="3">
+                <Row className="ant-panel-container ant-home-plot-container">
+                  <Col className="gutter-row" span={24}>
+                    <SummaryTable />
+                  </Col>
+                </Row>
+              </Tabs.TabPane>
+            </Tabs>
           </div>
         </Skeleton>
       </HomeWrapper>

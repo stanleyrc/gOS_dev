@@ -43,6 +43,11 @@
     "home": {}
   },
   "components": {
+    "tabs": {
+      "tab1": "Overall",
+      "tab2": "Population KPIs",
+      "tab3": "Summary Table"
+    },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
       "header": "Histogram Chart",
