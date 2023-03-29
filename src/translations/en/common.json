@@ -11,6 +11,11 @@
     "no-sample-selected": "Select a case report to get started!"
   },
   "metadata": {
+    "tags": {
+      "tag1": "lower 25%",
+      "tag2": "mid 50%",
+      "tag3": "top 25%"
+    },
     "purity-ploidy-title": "Purity/ploidy",
     "junction-burden": "Junction burden",
     "coverageVariance": {
