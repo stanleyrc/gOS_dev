@@ -55,7 +55,7 @@ class HistogramPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, height, data, markValue, colorMarker, mean, sigma } =
+    const { width, height, data, markValue, colorMarker, q1, q3, q99 } =
       this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -69,12 +69,17 @@ class HistogramPlot extends Component {
       d3.max([d3.max(data), markValue]),
     ];
 
+    let extentToQ99 = [
+      d3.min([d3.min(data), markValue]),
+      d3.max([q99, markValue]),
+    ];
+
     const xScale = this.state.zoomTransform.rescaleX(
-      d3.scaleLinear().domain(extent).range([0, panelWidth]).nice()
+      d3.scaleLinear().domain(extentToQ99).range([0, panelWidth]).nice()
     );
 
     const n = data.length;
-    const x = d3.scaleLinear().domain(extent).range([0, panelWidth]);
+    const x = d3.scaleLinear().domain(extent).range([0, panelWidth]).nice();
     const bins = d3
       .bin()
       .domain(x.domain())
@@ -104,13 +109,13 @@ class HistogramPlot extends Component {
       bins,
       markValue,
       colorMarker,
-      mean,
-      sigma,
+      q1,
+      q3,
     };
   }
 
   renderXAxis() {
-    const { xScale, mean, sigma } = this.getPlotConfiguration();
+    const { xScale, q1, q3 } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -126,17 +131,17 @@ class HistogramPlot extends Component {
     xAxisContainer.call(axisX);
 
     xAxisContainer.selectAll("text").style("fill", (x) => {
-      return x < mean - sigma
+      return x < q1
         ? legendColors()[0]
-        : x > mean + sigma
+        : x > q3
         ? legendColors()[2]
         : legendColors()[1];
     });
 
     xAxisContainer.selectAll("line").style("stroke", (x) => {
-      return x < mean - sigma
+      return x < q1
         ? legendColors()[0]
-        : x > mean + sigma
+        : x > q3
         ? legendColors()[2]
         : legendColors()[1];
     });
@@ -149,7 +154,11 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".y-axis-container");
 
-    let yAxis = d3.axisLeft(yScale).tickSize(6).tickFormat(d3.format("~s"));
+    let yAxis = d3
+      .axisLeft(yScale)
+      .ticks(6, "~s")
+      .tickSize(3)
+      .tickFormat(d3.format("~s"));
     yAxisContainer.call(yAxis);
   }
 
@@ -168,8 +177,8 @@ class HistogramPlot extends Component {
       bins,
       markValue,
       colorMarker,
-      mean,
-      sigma,
+      q1,
+      q3,
     } = this.getPlotConfiguration();
 
     return (
@@ -199,11 +208,22 @@ class HistogramPlot extends Component {
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
               <g clipPath="url(#cuttOffViewPane)">
                 <path
-                  transform={`translate(${[0, 0]})`}
-                  fill="#999999"
-                  fillOpacity={0.5}
+                  fill="#CCC"
+                  fillOpacity={1}
                   stroke="lightgray"
-                  strokeWidth="0.5"
+                  strokeWidth="0"
+                  d={d3
+                    .area()
+                    .x((d) => xScale((d.x0 + d.x1) / 2))
+                    .y1((d) => yScale(d.length))
+                    .y0(yScale(0))
+                    .curve(d3.curveBasis)(bins)}
+                />
+                <path
+                  fill="#999999"
+                  fillOpacity={0}
+                  stroke="gray"
+                  strokeWidth="0.33"
                   d={d3
                     .area()
                     .x((d) => xScale((d.x0 + d.x1) / 2))
@@ -238,18 +258,18 @@ class HistogramPlot extends Component {
                 transform={`translate(${[margins.gap, panelHeight]})`}
               >
                 <line
-                  x2={xScale(mean - sigma)}
+                  x2={xScale(q1)}
                   stroke={legendColors()[0]}
                   strokeWidth="2"
                 />
                 <line
-                  x1={xScale(mean - sigma)}
-                  x2={xScale(mean + sigma)}
+                  x1={xScale(q1)}
+                  x2={xScale(q3)}
                   stroke={legendColors()[1]}
                   strokeWidth="2"
                 />
                 <line
-                  x1={xScale(mean + sigma)}
+                  x1={xScale(q3)}
                   x2={panelWidth}
                   stroke={legendColors()[2]}
                   strokeWidth="2"

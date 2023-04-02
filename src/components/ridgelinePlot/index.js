@@ -195,7 +195,7 @@ class Ridgeline extends Component {
                     fill="#999999"
                     fillOpacity={1}
                     stroke="gray"
-                    strokeWidth="0.8"
+                    strokeWidth="0.33"
                     d={d3
                       .area()
                       .x((d) => hist.scaleX((d.x0 + d.x1) / 2))

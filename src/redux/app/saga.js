@@ -112,21 +112,18 @@ function* launchApplication(action) {
       .then(
         axios.spread((...responses) => {
           responses.forEach((d, i) => {
-            // let cutoff = d3.quantile(
-            //   d.data.map((d) => +d.value),
-            //   0.99
-            // );
             let cutoff = Infinity;
             plots[i].data = d.data
               .map((d) => +d.value)
               .filter((d) => d < cutoff)
               .sort((a, b) => d3.ascending(a, b));
-            plots[i].mean = d3.mean(plots[i].data);
-            plots[i].sigma = d3.deviation(plots[i].data);
+            plots[i].q1 = d3.quantile(plots[i].data, 0.25);
+            plots[i].q3 = d3.quantile(plots[i].data, 0.75);
+            plots[i].q99 = d3.quantile(plots[i].data, 0.99);
             plots[i].colorMarker =
-              plots[i].markValue < d3.quantile(plots[i].data, 0.25)
+              plots[i].markValue < plots[i].q1
                 ? legendColors()[0]
-                : plots[i].markValue > d3.quantile(plots[i].data, 0.75)
+                : plots[i].markValue > plots[i].q3
                 ? legendColors()[2]
                 : legendColors()[1];
           });

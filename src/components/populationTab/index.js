@@ -19,8 +19,9 @@ class PopulationTab extends Component {
           <HistogramPlotPanel
             {...{
               data: d.data,
-              mean: d.mean,
-              sigma: d.sigma,
+              q1: d.q1,
+              q3: d.q3,
+              q99: d.q99,
               title: t(`metadata.${d.id}.full`),
               visible: d.data,
               markValue: selectedFile.metadata[d.id],

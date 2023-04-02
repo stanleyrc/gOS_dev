@@ -5,6 +5,7 @@ import { Row, Col } from "antd";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 import RidgelinePlotPanel from "../ridgelinePlotPanel";
+import ViolinPlotPanel from "../violinPlotPanel";
 
 const {} = appActions;
 
@@ -22,6 +23,24 @@ class SummaryTab extends Component {
         >
           <Col className="gutter-row" span={8}>
             {
+              <ViolinPlotPanel
+                {...{
+                  title: t("components.violin-panel.header"),
+                  plots: plots.filter((d) => d.type === "histogram"),
+                  markers: selectedFile.metadata,
+                }}
+              />
+            }
+          </Col>
+        </Row>
+        {/* <Row
+          key={1}
+          id={`row-${1}}`}
+          className="ant-panel-container ant-home-plot-container"
+          gutter={16}
+        >
+          <Col className="gutter-row" span={8}>
+            {
               <RidgelinePlotPanel
                 {...{
                   plots: plots.filter((d) => d.type === "histogram"),
@@ -30,7 +49,7 @@ class SummaryTab extends Component {
               />
             }
           </Col>
-        </Row>
+        </Row> */}
       </Wrapper>
     );
   }

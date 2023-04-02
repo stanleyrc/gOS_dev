@@ -35,11 +35,11 @@
       "full": "LOH Fraction"
     },
     "purity": {
-      "short": "purity",
+      "short": "Purity",
       "full": "Purity"
     },
     "ploidy": {
-      "short": "ploidy",
+      "short": "Ploidy",
       "full": "Ploidy"
     },
     "pair": "Pair"
@@ -65,6 +65,12 @@
       "distribution": "distribution",
       "distribution_plural": "distributions",
       "title": "Ridgeline Chart"
+    },
+    "violin-panel": {
+      "header": "Population Distribution Violin Chart",
+      "distribution": "distribution",
+      "distribution_plural": "distributions",
+      "title": "Violin Chart"
     }
   }
 }

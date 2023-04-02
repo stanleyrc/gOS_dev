@@ -5,7 +5,7 @@ import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
 import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
 import { withTranslation } from "react-i18next";
-import { GiMountains } from "react-icons/gi";
+import { TbChartAreaLineFilled } from "react-icons/tb";
 import { AiOutlineDownload } from "react-icons/ai";
 import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
@@ -54,7 +54,7 @@ class RidgelinePlotPanel extends Component {
           title={
             <Space>
               <span role="img" className="anticon anticon-dashboard">
-                <GiMountains />
+                <TbChartAreaLineFilled />
               </span>
               <span className="ant-pro-menu-item-title">
                 {title || t("components.ridgeline-panel.title")}
