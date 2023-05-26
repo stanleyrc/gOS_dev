@@ -91,6 +91,191 @@
         "source": "jabba_rds, annotated_bcf"
       }
     ],
+    "filteredEvents": [
+      {
+        "gene": "AFDN",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "myeloid/lymphoid or mixed-lineage leukemia (trithorax homolog, Drosophila); translocated to, 4 (AF6)",
+        "Genome.Location": "6:167827635-167970232",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, fusion"
+      },
+      {
+        "gene": "ARID1B",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "AT rich interactive domain 1B",
+        "Genome.Location": "6:156777374-157210779",
+        "Tier": 1,
+        "Role.in.Cancer": "TSG"
+      },
+      {
+        "gene": "CARD11",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "caspase recruitment domain family, member 11",
+        "Genome.Location": "7:2906141-3043945",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene"
+      },
+      {
+        "gene": "CRLF2",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "cytokine receptor-like factor 2",
+        "Genome.Location": "X:1190490-1212750",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, fusion"
+      },
+      {
+        "gene": "EZR",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "ezrin",
+        "Genome.Location": "6:158765748-158819412",
+        "Tier": 1,
+        "Role.in.Cancer": "fusion"
+      },
+      {
+        "gene": "FCGR2B",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "Fc fragment of IgG, low affinity IIb, receptor for (CD32)",
+        "Genome.Location": "1:161663161-161678654",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, fusion"
+      },
+      {
+        "gene": "FGFR1OP",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "FGFR1 oncogene partner (FOP)",
+        "Genome.Location": "6:166999182-167052713",
+        "Tier": 1,
+        "Role.in.Cancer": "fusion"
+      },
+      {
+        "gene": "GAS7",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "growth arrest-specific 7",
+        "Genome.Location": "17:9913850-10198551",
+        "Tier": 1,
+        "Role.in.Cancer": "fusion"
+      },
+      {
+        "gene": "MAP2K4",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "mitogen-activated protein kinase kinase 4",
+        "Genome.Location": "17:12020834-12143830",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, TSG"
+      },
+      {
+        "gene": "MLLT6",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "myeloid/lymphoid or mixed-lineage leukemia (trithorax homolog, Drosophila); translocated to, 6 (AF17)",
+        "Genome.Location": "17:38705542-38729803",
+        "Tier": 1,
+        "Role.in.Cancer": "fusion"
+      },
+      {
+        "gene": "MN1",
+        "id": "ONC22-35",
+        "type": "missense",
+        "variant.g": "22:28193621-28193621 C>T",
+        "Name": "MN1 proto-oncogene, transcriptional regulator",
+        "Genome.Location": "22:27748277-27801498",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, fusion"
+      },
+      {
+        "gene": "NCOR1",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "nuclear receptor corepressor 1",
+        "Genome.Location": "17:16029157-16215549",
+        "Tier": 1,
+        "Role.in.Cancer": "TSG"
+      },
+      {
+        "gene": "P2RY8",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "purinergic receptor P2Y, G-protein coupled, 8",
+        "Genome.Location": "X:1462572-1537107",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, fusion"
+      },
+      {
+        "gene": "PMS2",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "PMS2 postmeiotic segregation increased 2 (S. cerevisiae)",
+        "Genome.Location": "7:5973239-6009125",
+        "Tier": 1,
+        "Role.in.Cancer": "TSG"
+      },
+      {
+        "gene": "QKI",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "QKI, KH domain containing, RNA binding ",
+        "Genome.Location": "6:163414643-163578596",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, TSG"
+      },
+      {
+        "gene": "RAC1",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "ras-related C3 botulinum toxin substrate 1 (rho family, small GTP binding protein Rac1)",
+        "Genome.Location": "7:6374539-6402520",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene"
+      },
+      {
+        "gene": "SUZ12",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "suppressor of zeste 12 homolog (Drosophila)",
+        "Genome.Location": "17:31937018-32001045",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, TSG, fusion"
+      },
+      {
+        "gene": "TAF15",
+        "id": "ONC22-35",
+        "type": "homdel",
+        "Name": "TAF15 RNA polymerase II, TATA box binding protein (TBP)-associated factor, 68kDa",
+        "Genome.Location": "17:35809455-35847242",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, fusion"
+      },
+      {
+        "gene": "TP53",
+        "id": "ONC22-35",
+        "type": "missense",
+        "variant.g": "17:7578190-7578190 T>C",
+        "Name": "tumor protein p53",
+        "Genome.Location": "17:7668402-7687538",
+        "Tier": 1,
+        "Role.in.Cancer": "oncogene, TSG, fusion"
+      },
+      {
+        "gene": "ZNRF3",
+        "id": "ONC22-35",
+        "type": "missense",
+        "variant.g": "22:29445404-29445404 C>G",
+        "Name": "zinc and ring finger 3",
+        "Genome.Location": "22:28883592-29057487",
+        "Tier": 2,
+        "Role.in.Cancer": "TSG"
+      }
+    ],
     "description": [
       "tumor_type=ESAD",
       "dataset=ESAD-UK",

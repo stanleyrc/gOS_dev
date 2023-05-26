@@ -1,8 +1,23 @@
 import { all, takeEvery, put } from "redux-saga/effects";
 import axios from "axios";
 import * as d3 from "d3";
-import { legendColors } from "../../helpers/utility";
+import {
+  legendColors,
+  updateChromoBins,
+  domainsToLocation,
+  locationToDomains,
+} from "../../helpers/utility";
 import actions from "./actions";
+
+const PLOT_TYPES = {
+  coverageVariance: "histogram",
+  snvCount: "histogram",
+  svCount: "histogram",
+  lohFraction: "histogram",
+  purity: "histogram",
+  ploidy: "histogram",
+  jabba: "genome",
+};
 
 function* launchApplication(action) {
   const { responseSettings, responseDatafiles } = yield axios
@@ -28,20 +43,14 @@ function* launchApplication(action) {
           profile: d.profile,
           metadata: d.metadata,
           summary: d.summary,
+          filteredEvents: d.filteredEvents,
           reference: `${d.profile.firstName} ${d.profile.lastName}`,
-          plots: [
-            "coverageVariance",
-            "snvCount",
-            "svCount",
-            "lohFraction",
-            "purity",
-            "ploidy",
-          ].map((e) => {
+          plots: Object.keys(PLOT_TYPES).map((e) => {
             return {
               id: e,
               title: e,
               markValue: d.metadata[e],
-              type: "histogram",
+              type: PLOT_TYPES[e],
               path: `common/${e}.json`,
             };
           }),
@@ -97,8 +106,26 @@ function* launchApplication(action) {
       (action.files || file || []).includes(d.file)
     );
 
-    let url = new URL(decodeURI(document.location));
+    // if all selected files are have the same reference
+    let selectedCoordinate = "hg19";
 
+    let { genomeLength, chromoBins } = updateChromoBins(
+      settings.coordinates.sets[selectedCoordinate]
+    );
+
+    let defaultDomain = [1, genomeLength];
+    let defaultChromosome = chromoBins[Object.keys(chromoBins)[0]];
+    
+    let domains = [];
+    try {
+      domains = locationToDomains(chromoBins, searchParams.get("location"));
+    } catch (error) {
+      domains = [[+defaultChromosome.startPlace, +defaultChromosome.endPlace]];
+    }
+    console.log(domains);
+
+    let url = new URL(decodeURI(document.location));
+    url.searchParams.set("location", domainsToLocation(chromoBins, domains));
     url.searchParams.set("file", selectedFiles.map((d) => d.file).join(","));
     window.history.replaceState(
       unescape(url.toString()),
@@ -108,7 +135,11 @@ function* launchApplication(action) {
 
     let plots = [...selectedFiles.map((d) => d.plots).flat()];
     yield axios
-      .all(plots.map((d) => axios.get(d.path)))
+      .all(
+        plots
+          .filter((e) => e.type === "histogram")
+          .map((d) => axios.get(d.path))
+      )
       .then(
         axios.spread((...responses) => {
           responses.forEach((d, i) => {
@@ -133,6 +164,25 @@ function* launchApplication(action) {
         console.log("got errors on loading dependencies", errors);
       });
 
+    yield axios
+      .all(
+        plots
+          .filter((d, i) => ["genome"].includes(d.type))
+          .map((d) => axios.get(d.path))
+      )
+      .then(
+        axios.spread((...responses) => {
+          responses.forEach(
+            (d, i) =>
+              (plots.filter((d, i) => ["genome"].includes(d.type))[i].data =
+                d.data)
+          );
+        })
+      )
+      .catch((errors) => {
+        console.log("got errors on loading dependencies", errors);
+      });
+
     let properties = {
       datafiles: files,
       filteredFiles,
@@ -141,6 +191,11 @@ function* launchApplication(action) {
       selectedFiles,
       selectedFile: selectedFiles[0],
       plots,
+      genomeLength,
+      selectedCoordinate,
+      domains,
+      chromoBins,
+      defaultDomain,
     };
     yield put({ type: actions.LAUNCH_APP_SUCCESS, properties });
   } else {

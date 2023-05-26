@@ -33,23 +33,6 @@ class SummaryTab extends Component {
             }
           </Col>
         </Row>
-        {/* <Row
-          key={1}
-          id={`row-${1}}`}
-          className="ant-panel-container ant-home-plot-container"
-          gutter={16}
-        >
-          <Col className="gutter-row" span={8}>
-            {
-              <RidgelinePlotPanel
-                {...{
-                  plots: plots.filter((d) => d.type === "histogram"),
-                  markers: selectedFile.metadata,
-                }}
-              />
-            }
-          </Col>
-        </Row> */}
       </Wrapper>
     );
   }
