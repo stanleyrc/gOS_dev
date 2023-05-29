@@ -15,6 +15,10 @@ export function legendColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
+export function roleColorMap() {
+  return { oncogene: "geekblue", fusion: "green", TSG: "volcano" };
+}
+
 export function downloadCanvasAsPng(canvas, filename) {
   /// create an "off-screen" anchor tag
   var lnk = document.createElement("a"),

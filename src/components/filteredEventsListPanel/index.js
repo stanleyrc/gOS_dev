@@ -2,45 +2,46 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Tag, Table, Card, Space, Descriptions, Typography } from "antd";
+import { Tag, Card, Space, Descriptions, Typography } from "antd";
+import { roleColorMap } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
 const { Text } = Typography;
-const {} = appActions;
-
-const roleColorMap = { oncogene: "geekblue", fusion: "green", TSG: "volcano" };
+const { Item } = Descriptions;
+const { updateSelectedFilteredEvent } = appActions;
 
 class FilteredEventsListPanel extends Component {
-  state = { activeTabKey2: "" };
-
-  onTab2Change = (key) => {
-    this.setState({ activeTabKey2: key });
+  handleTabChange = (key) => {
+    const { selectedFiles, updateSelectedFilteredEvent } = this.props;
+    const { filteredEvents } = selectedFiles[0];
+    updateSelectedFilteredEvent(filteredEvents.find((e) => e.gene === key));
   };
 
   render() {
-    const { t, selectedFiles } = this.props;
+    const { t, selectedFiles, selectedFilteredEvent } = this.props;
     if (selectedFiles.length < 1) return null;
 
     const { filteredEvents } = selectedFiles[0];
 
-    const tabListNoTitle = filteredEvents.map((d) => {
+    const tabList = filteredEvents.map((d) => {
       return { key: d.gene, tab: d.gene };
     });
-    let currentKey = this.state.activeTabKey2 || tabListNoTitle[0]?.key;
+    let currentKey = selectedFilteredEvent.gene || filteredEvents[0]?.key;
     let currentEvent = filteredEvents.find((e) => e.gene === currentKey);
-    let { gene, Tier, type, Name, id } = currentEvent;
+    let { gene, tier, type, name, role, chromosome, startPoint, endPoint } =
+      currentEvent;
     return (
       <Wrapper>
         <Card
           style={{
             width: "100%",
           }}
-          tabList={tabListNoTitle}
+          tabList={tabList}
           activeTabKey={currentKey}
           tabBarExtraContent={<></>}
           onTabChange={(key) => {
-            this.onTab2Change(key);
+            this.handleTabChange(key);
           }}
         >
           <Descriptions
@@ -48,22 +49,26 @@ class FilteredEventsListPanel extends Component {
             title={
               <Space>
                 {gene}
-                <Text type="secondary">{Name}</Text>
+                <Text type="secondary">{name}</Text>
               </Space>
             }
           >
-            <Descriptions.Item label="Type">{type}</Descriptions.Item>
-            <Descriptions.Item label="RoleInCancer">
-              {currentEvent["Role.in.Cancer"].split(",").map((tag) => (
-                <Tag color={roleColorMap[tag]} key={tag}>
+            <Item label={t("components.filtered-events-panel.type")}>
+              {type}
+            </Item>
+            <Item label={t("components.filtered-events-panel.role")}>
+              {role?.split(",").map((tag) => (
+                <Tag color={roleColorMap()[tag]} key={tag}>
                   {tag}
                 </Tag>
               ))}
-            </Descriptions.Item>
-            <Descriptions.Item label="Tier">{Tier}</Descriptions.Item>
-            <Descriptions.Item label="Location">
-              {currentEvent["Genome.Location"]}
-            </Descriptions.Item>
+            </Item>
+            <Item label={t("components.filtered-events-panel.tier")}>
+              {tier}
+            </Item>
+            <Item label={t("components.filtered-events-panel.location")}>
+              {chromosome}:{startPoint}-{endPoint}
+            </Item>
           </Descriptions>
         </Card>
       </Wrapper>
@@ -74,9 +79,13 @@ FilteredEventsListPanel.propTypes = {
   selectedCase: PropTypes.object,
 };
 FilteredEventsListPanel.defaultProps = {};
-const mapDispatchToProps = (dispatch) => ({});
+const mapDispatchToProps = (dispatch) => ({
+  updateSelectedFilteredEvent: (filteredEvent) =>
+    dispatch(updateSelectedFilteredEvent(filteredEvent)),
+});
 const mapStateToProps = (state) => ({
   selectedFiles: state.App.selectedFiles,
+  selectedFilteredEvent: state.App.selectedFilteredEvent,
 });
 export default connect(
   mapStateToProps,

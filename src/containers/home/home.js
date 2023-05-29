@@ -41,6 +41,8 @@ class Home extends Component {
                   <Col className="gutter-row" span={24}>
                     <FilteredEventsList />
                   </Col>
+                </Row>
+                <Row className="ant-panel-container ant-home-plot-container">
                   {plots
                     .filter((d) => d.type === "genome")
                     .map((d, index) => (

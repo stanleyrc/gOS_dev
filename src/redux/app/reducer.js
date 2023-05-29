@@ -1,5 +1,5 @@
 import actions from "./actions";
-import { domainsToLocation } from "../../helpers/utility";
+import { domainsToLocation, locationToDomains } from "../../helpers/utility";
 
 const initState = {
   datafiles: [],
@@ -17,6 +17,7 @@ const initState = {
   domains: [],
   chromoBins: {},
   hoveredLocation: null,
+  selectedFilteredEvent: null,
 };
 
 export default function appReducer(state = initState, action) {
@@ -45,7 +46,7 @@ export default function appReducer(state = initState, action) {
       );
       window.history.replaceState(
         unescape(url0.toString()),
-        "Pan Genome Viewer",
+        "Case Report",
         unescape(url0.toString())
       );
       return { ...state, domains: doms };
@@ -54,6 +55,29 @@ export default function appReducer(state = initState, action) {
         ...state,
         hoveredLocation: action.hoveredLocation,
         hoveredLocationPanelIndex: action.hoveredLocationPanelIndex,
+        loading: false,
+      };
+    case actions.FILTERED_EVENT_UPDATED:
+      let loc = `${action.filteredEvent.chromosome}:${action.filteredEvent.startPoint}-${action.filteredEvent.chromosome}:${action.filteredEvent.endPoint}`;
+      let domsGene = locationToDomains(state.chromoBins, loc);
+      // eliminate domains that are smaller than 10 bases wide
+      if (domsGene.length > 1) {
+        domsGene = domsGene.filter((d) => d[1] - d[0] > 10);
+      }
+      let urlGene = new URL(decodeURI(document.location));
+      urlGene.searchParams.set(
+        "location",
+        domainsToLocation(state.chromoBins, domsGene)
+      );
+      window.history.replaceState(
+        unescape(urlGene.toString()),
+        "Case Report",
+        unescape(urlGene.toString())
+      );
+      return {
+        ...state,
+        selectedFilteredEvent: action.filteredEvent,
+        domains: domsGene,
         loading: false,
       };
     default:

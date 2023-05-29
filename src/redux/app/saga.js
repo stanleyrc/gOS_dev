@@ -106,6 +106,8 @@ function* launchApplication(action) {
       (action.files || file || []).includes(d.file)
     );
 
+    let selectedFilteredEvent = selectedFiles[0]?.filteredEvents[0];
+
     // if all selected files are have the same reference
     let selectedCoordinate = "hg19";
 
@@ -115,14 +117,13 @@ function* launchApplication(action) {
 
     let defaultDomain = [1, genomeLength];
     let defaultChromosome = chromoBins[Object.keys(chromoBins)[0]];
-    
+
     let domains = [];
     try {
       domains = locationToDomains(chromoBins, searchParams.get("location"));
     } catch (error) {
       domains = [[+defaultChromosome.startPlace, +defaultChromosome.endPlace]];
     }
-    console.log(domains);
 
     let url = new URL(decodeURI(document.location));
     url.searchParams.set("location", domainsToLocation(chromoBins, domains));
@@ -196,6 +197,7 @@ function* launchApplication(action) {
       domains,
       chromoBins,
       defaultDomain,
+      selectedFilteredEvent,
     };
     yield put({ type: actions.LAUNCH_APP_SUCCESS, properties });
   } else {

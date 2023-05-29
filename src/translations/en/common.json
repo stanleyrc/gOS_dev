@@ -71,6 +71,12 @@
       "distribution": "distribution",
       "distribution_plural": "distributions",
       "title": "Violin Chart"
+    },
+    "filtered-events-panel": {
+      "tier": "Tier",
+      "role": "Role in Cancer",
+      "location": "Location",
+      "type": "Type"
     }
   }
 }

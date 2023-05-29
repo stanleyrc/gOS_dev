@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import ContainerDimensions from "react-container-dimensions";
@@ -15,17 +14,13 @@ import {
 } from "antd";
 import * as d3 from "d3";
 import { GiDna2 } from "react-icons/gi";
-import {
-  AiOutlineDownload,
-  AiOutlineDown,
-  AiOutlineRight,
-  AiOutlineClose,
-} from "react-icons/ai";
+import { AiOutlineDownload } from "react-icons/ai";
 import {
   downloadCanvasAsPng,
   transitionStyle,
   merge,
   cluster,
+  domainsToLocation,
 } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
@@ -36,7 +31,6 @@ import appActions from "../../redux/app/actions";
 
 const { updateDomains } = appActions;
 
-const { Option } = Select;
 const { Text } = Typography;
 
 const margins = {
@@ -46,54 +40,6 @@ const margins = {
 
 class GenomePanel extends Component {
   container = null;
-
-  constructor(props) {
-    super(props);
-    const { chromoBins, genome } = this.props;
-    let intervals = [];
-    let intervalBins = {};
-    genome.intervals
-      .filter((d) => chromoBins[`${d.chromosome}`])
-      .forEach((d, i) => {
-        let interval = new Interval(d);
-        interval.startPlace =
-          chromoBins[`${interval.chromosome}`].startPlace + interval.startPoint;
-        interval.endPlace =
-          chromoBins[`${interval.chromosome}`].startPlace + interval.endPoint;
-        interval.color = d3
-          .rgb(chromoBins[`${interval.chromosome}`].color)
-          .toString();
-        interval.stroke = d3
-          .rgb(chromoBins[`${interval.chromosome}`].color)
-          .darker()
-          .toString();
-        intervalBins[d.iid] = interval;
-        intervals.push(interval);
-      });
-    let frameConnections = genome.connections
-      .filter(
-        (d) =>
-          (!d.source || intervalBins[Math.abs(+d.source)]) &&
-          (!d.sink || intervalBins[Math.abs(+d.sink)])
-      )
-      .map((d, i) => {
-        let connection = new Connection(d);
-        connection.pinpoint(intervalBins);
-        //connection.yScale = this.yScale;
-        connection.arc = d3
-          .arc()
-          .innerRadius(0)
-          .outerRadius(margins.bar / 2)
-          .startAngle(0)
-          .endAngle((e, j) => e * Math.PI);
-        return connection;
-      });
-    this.state = {
-      activeAnnotation: null,
-      intervals,
-      connections: frameConnections,
-    };
-  }
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -109,37 +55,6 @@ class GenomePanel extends Component {
       });
   };
 
-  onAnnotationSelectChange = (value) => {
-    this.setState({ activeAnnotation: value }, () => {
-      if (value !== undefined) {
-        let clusters = this.changeAnnotationHandler(value);
-        this.props.updateDomains(clusters);
-      }
-    });
-  };
-
-  changeAnnotationHandler(value) {
-    let annotatedIntervals = this.state.intervals
-      .filter((d) => d.annotationArray.includes(value))
-      .map((d, i) => {
-        return { startPlace: d.startPlace, endPlace: d.endPlace };
-      });
-    let annotatedConnections = this.state.connections
-      .filter((d) => d.source && d.sink && d.annotationArray.includes(value))
-      .map((d, i) => [
-        { startPlace: d.source.place - 1e3, endPlace: d.source.place + 1e3 },
-        { startPlace: d.sink.place - 1e3, endPlace: d.sink.place + 1e3 },
-      ])
-      .flat();
-    let annotated = annotatedIntervals.concat(annotatedConnections);
-    annotated = [...new Set(annotated)].sort((a, b) =>
-      d3.ascending(a.startPlace, b.startPlace)
-    );
-    annotated = merge(annotated);
-
-    return cluster(annotated, this.props.genomeLength);
-  }
-
   render() {
     const {
       t,
@@ -148,18 +63,11 @@ class GenomePanel extends Component {
       inViewport,
       renderOutsideViewPort,
       visible,
-      toggleVisibility,
-      index,
       zoomedByCmd,
+      chromoBins,
+      domains,
     } = this.props;
-    let { activeAnnotation } = this.state;
     if (Object.keys(genome).length < 1) return null;
-    let intervalAnnotations = genome.intervals
-      .map((d) => new Interval(d).annotationArray)
-      .flat();
-    let annotationValues = [...new Set(intervalAnnotations)].sort((a, b) =>
-      d3.ascending(a, b)
-    );
     return (
       <Wrapper visible={visible}>
         <Card
@@ -171,27 +79,7 @@ class GenomePanel extends Component {
                 <GiDna2 />
               </span>
               <span className="ant-pro-menu-item-title">{title}</span>
-              <span>
-                <b>{d3.format(",")(genome.intervals.length)}</b>{" "}
-                {t("components.genome-panel.interval", {
-                  count: genome.intervals.length,
-                })}
-              </span>
-              <span>
-                <Select
-                  allowClear
-                  onChange={(value) => this.onAnnotationSelectChange(value)}
-                  style={{ width: 200 }}
-                  placeholder={t(
-                    "components.genome-panel.select-annotation-placeholder"
-                  )}
-                  optionFilterProp="children"
-                >
-                  {annotationValues.map((d) => (
-                    <Option value={d}>{d}</Option>
-                  ))}
-                </Select>
-              </span>
+              <span>{domainsToLocation(chromoBins, domains)}</span>
             </Space>
           }
           extra={
@@ -226,7 +114,6 @@ class GenomePanel extends Component {
                           width: width - 2 * margins.padding,
                           height,
                           genome,
-                          annotation: activeAnnotation,
                         }}
                       />
                     )
@@ -250,6 +137,7 @@ const mapStateToProps = (state) => ({
   genomeLength: state.App.genomeLength,
   zoomedByCmd: state.App.zoomedByCmd,
   domains: state.App.domains,
+  chromoBins: state.App.chromoBins,
 });
 export default connect(
   mapStateToProps,
