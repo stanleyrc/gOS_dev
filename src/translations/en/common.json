@@ -76,7 +76,14 @@
       "tier": "Tier",
       "role": "Role in Cancer",
       "location": "Location",
-      "type": "Type"
+      "type": "Type",
+      "select-type": {
+        "placeholder": "select the types to filter on ..."
+      },
+      "sorting": {
+        "ascending": "Name in asceding order",
+        "descending": "Name in descending order"
+      }
     }
   }
 }

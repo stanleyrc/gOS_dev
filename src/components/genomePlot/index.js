@@ -324,7 +324,8 @@ class GenomePlot extends Component {
         .attr(
           "transform",
           `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation),
+            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+              -1000,
             0,
           ]})`
         );
