@@ -16,7 +16,6 @@ const PLOT_TYPES = {
   lohFraction: "histogram",
   purity: "histogram",
   ploidy: "histogram",
-  jabba: "genome",
 };
 
 function* launchApplication(action) {
@@ -37,6 +36,21 @@ function* launchApplication(action) {
     let files = Object.keys(datafiles)
       .map((key, i) => {
         let d = datafiles[key];
+        let plots = Object.keys(PLOT_TYPES).map((e) => {
+          return {
+            id: e,
+            title: e,
+            markValue: d.metadata[e],
+            type: PLOT_TYPES[e],
+            path: `common/${e}.json`,
+          };
+        });
+        plots.push({
+          id: "jabba",
+          title: `${key} Genome Graph`,
+          type: "genome",
+          path: `data/${key}/jabba.json`,
+        });
         return {
           file: key,
           tags: d.description,
@@ -45,18 +59,11 @@ function* launchApplication(action) {
           summary: d.summary,
           filteredEvents: d.filteredEvents,
           reference: `${d.profile.firstName} ${d.profile.lastName}`,
-          plots: Object.keys(PLOT_TYPES).map((e) => {
-            return {
-              id: e,
-              title: e,
-              markValue: d.metadata[e],
-              type: PLOT_TYPES[e],
-              path: `common/${e}.json`,
-            };
-          }),
+          plots: plots,
         };
       })
       .sort((a, b) => d3.ascending(a.file, b.file));
+
     let tagsAll = files.map((d) => d.tags).flat();
     let tags = [
       ...d3.rollup(
