@@ -10,27 +10,25 @@ const {} = appActions;
 
 class PopulationTab extends Component {
   render() {
-    const { t, loading, selectedFile, plots } = this.props;
-    if (!selectedFile) return null;
+    const { t, loading, metadata, plots } = this.props;
+
     let plotRows = plots.map((d, index) => {
-      let plotComponent = null;
-      if (d.type === "histogram") {
-        plotComponent = (
-          <HistogramPlotPanel
-            {...{
-              data: d.data,
-              q1: d.q1,
-              q3: d.q3,
-              q99: d.q99,
-              title: t(`metadata.${d.id}.full`),
-              visible: d.data,
-              markValue: selectedFile.metadata[d.id],
-              colorMarker: d.colorMarker,
-              loading,
-            }}
-          />
-        );
-      }
+      let plotComponent = (
+        <HistogramPlotPanel
+          {...{
+            data: d.data,
+            q1: d.q1,
+            q3: d.q3,
+            q99: d.q99,
+            title: t(`metadata.${d.id}.full`),
+            visible: d.data,
+            markValue: metadata[d.id],
+            colorMarker: d.colorMarker,
+            loading,
+          }}
+        />
+      );
+
       return plotComponent;
     });
 

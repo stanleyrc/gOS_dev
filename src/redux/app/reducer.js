@@ -1,15 +1,11 @@
 import actions from "./actions";
-import { domainsToLocation, locationToDomains } from "../../helpers/utility";
+import {
+  domainsToLocation,
+  locationToDomains,
+  reportAttributesMap,
+} from "../../helpers/utility";
 
 const initState = {
-  datafiles: [],
-  selectedTags: [],
-  filteredTags: [],
-  filteredFiles: [],
-  selectedFiles: [],
-  selectedFile: null,
-  files: [],
-  plots: [],
   loading: false,
   genomeLength: 0,
   maxGenomeLength: 4294967296,
@@ -18,10 +14,51 @@ const initState = {
   chromoBins: {},
   hoveredLocation: null,
   selectedFilteredEvent: null,
+  reports: [],
+  report: null,
+  populationMetrics: [],
 };
 
 export default function appReducer(state = initState, action) {
   switch (action.type) {
+    case actions.BOOT_APP:
+      return {
+        ...state,
+        loading: true,
+      };
+    case actions.BOOT_APP_SUCCESS:
+      return {
+        ...state,
+        ...action.properties,
+        loading: false,
+      };
+    case actions.SELECT_REPORT:
+      let url = new URL(decodeURI(document.location));
+      if (action.report) {
+        url.searchParams.set("report", action.report);
+        window.history.replaceState(
+          unescape(url.toString()),
+          "Case Report",
+          unescape(url.toString())
+        );
+      }
+      let reportMetadata = {};
+      Object.values(reportAttributesMap()).forEach((key) => {
+        reportMetadata[key] = null;
+      });
+      return {
+        ...state,
+        report: action.report,
+        metadata: reportMetadata,
+        filteredEvent: [],
+        loading: true,
+      };
+    case actions.REPORT_SELECTED:
+      return {
+        ...state,
+        ...action.properties,
+        loading: false,
+      };
     case actions.LAUNCH_APP:
       return {
         ...state,

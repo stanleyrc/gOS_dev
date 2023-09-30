@@ -18,8 +18,8 @@ class Home extends Component {
   togglePlotVisibility = (checked, index, deleted = false) => {};
 
   render() {
-    const { t, loading, selectedFile, plots, chromoBins } = this.props;
-    if (!selectedFile) return null;
+    const { t, loading, metadata, plots, chromoBins, report } = this.props;
+    if (!report) return null;
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
@@ -31,10 +31,10 @@ class Home extends Component {
           <div className="ant-home-content-container">
             <Tabs defaultActiveKey="1">
               <TabPane tab={t("components.tabs.tab1")} key="1">
-                <SummaryTab {...{ loading, selectedFile, plots }} />
+                <SummaryTab {...{ loading, metadata, plots }} />
               </TabPane>
               <TabPane tab={t("components.tabs.tab2")} key="2">
-                <PopulationTab {...{ loading, selectedFile, plots }} />
+                <PopulationTab {...{ loading, metadata, plots }} />
               </TabPane>
               <TabPane tab={t("components.tabs.tab3")} key="3">
                 <Row className="ant-panel-container ant-home-plot-container">
@@ -77,6 +77,10 @@ const mapStateToProps = (state) => ({
   plots: state.App.plots,
   selectedFile: state.App.selectedFile,
   chromoBins: state.App.chromoBins,
+
+  report: state.App.report,
+  metadata: state.App.metadata,
+  plots: state.App.populationMetrics,
 });
 export default connect(
   mapStateToProps,

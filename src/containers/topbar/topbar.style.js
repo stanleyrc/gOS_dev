@@ -45,10 +45,7 @@ const TopbarWrapper = styled.div`
               vertical-align: top;
             }
           }
-          .tags-select {
-            min-width: 500px;
-          }
-          .files-select {
+          .reports-select {
             min-width: 300px;
           }
         }

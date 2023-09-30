@@ -4,15 +4,14 @@ import { connect } from "react-redux";
 import { Row, Col } from "antd";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
-import RidgelinePlotPanel from "../ridgelinePlotPanel";
 import ViolinPlotPanel from "../violinPlotPanel";
 
 const {} = appActions;
 
 class SummaryTab extends Component {
   render() {
-    const { t, loading, selectedFile, plots } = this.props;
-    if (!selectedFile) return null;
+    const { t, loading, metadata, plots } = this.props;
+
     return (
       <Wrapper>
         <Row
@@ -27,7 +26,7 @@ class SummaryTab extends Component {
                 {...{
                   title: t("components.violin-panel.header"),
                   plots: plots.filter((d) => d.type === "histogram"),
-                  markers: selectedFile.metadata,
+                  markers: metadata,
                 }}
               />
             }

@@ -6,9 +6,10 @@
     "undefined": "Undefined"
   },
   "topbar": {
-    "browse-title-with-reference": "Listing <strong>{{count}}</strong> out of <strong>{{total}}</strong> case reports",
-    "browse-sample": "Browse case reports",
-    "no-sample-selected": "Select a case report to get started!"
+    "report": "<strong>{{count}}></strong> case report in total",
+    "report_plural": "<strong>{{count}}</strong> case reports in total",
+    "browse-case-reports": "Browse Case Reports",
+    "no-case-report-selected": "Select a Case Report to get started!"
   },
   "metadata": {
     "tags": {
@@ -73,6 +74,8 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "gene": "Gene",
+      "name": "Name",
       "tier": "Tier",
       "role": "Role in Cancer",
       "location": "Location",

@@ -389,3 +389,51 @@ export function magnitude(n) {
   let order = Math.floor(Math.log(n) / Math.LN10 + 0.000000001); // because float math sucks like that
   return Math.pow(10, order);
 }
+
+export function plotTypes() {
+  return {
+    coverageVariance: "histogram",
+    snvCount: "histogram",
+    svCount: "histogram",
+    lohFraction: "histogram",
+    purity: "histogram",
+    ploidy: "histogram",
+  };
+}
+
+export function reportAttributesMap() {
+  return {
+    pair: "pair",
+    tumor_type_final: "tumor",
+    dlrs: "coverageVariance",
+    "snv.count": "snvCount",
+    "sv.count": "svCount",
+    loh_fraction: "lohFraction",
+    purity: "purity",
+    ploidy: "ploidy",
+  };
+}
+
+export function transformFilteredEventAttributes(filteredEvents) {
+  return filteredEvents
+    .map((event) => {
+      const regex = /^(\w+):(\d+)-(\d+)$/;
+      const match = regex.exec(event["Genome.Location"]);
+      const chromosome = match[1];
+      const startPoint = parseInt(match[2], 10);
+      const endPoint = parseInt(match[3], 10);
+      return {
+        gene: event.gene,
+        type: event.type,
+        name: event.Name,
+        tier: event.Tier,
+        role: event["Role.in.Cancer"],
+        chromosome: chromosome,
+        startPoint: startPoint,
+        endPoint: endPoint,
+        location: event["Genome.Location"],
+        id: event.id,
+      };
+    })
+    .sort((a, b) => d3.ascending(a.gene, b.gene));
+}

@@ -1,157 +1,105 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Tag, Card, Space, Descriptions, Typography, Select } from "antd";
-import * as d3 from "d3";
+import { Tag, Table } from "antd";
 import { roleColorMap } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
-const { Text } = Typography;
-const { Item } = Descriptions;
 const { updateSelectedFilteredEvent } = appActions;
 
-const ORDER = ["ascending", "descending"];
-
 class FilteredEventsListPanel extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      order: ORDER[0],
-      types: [],
-    };
-  }
-
-  handleTabChange = (key) => {
-    const { selectedFiles, updateSelectedFilteredEvent } = this.props;
-    const { filteredEvents } = selectedFiles[0];
-    updateSelectedFilteredEvent(filteredEvents.find((e) => e.gene === key));
-  };
-
-  handleSortTypeChange = (key) => {
-    this.setState({ order: key });
-  };
-
-  handleFilterGeneTypeChange = (key) => {
-    this.setState({ types: key });
-  };
-
   render() {
-    const { t, selectedFiles, selectedFilteredEvent } = this.props;
-    const { order, types } = this.state;
-    if (selectedFiles.length < 1) return null;
+    const { t, report, filteredEvents } = this.props;
+    if (!report) return null;
 
-    const { filteredEvents } = selectedFiles[0];
-
-    const tabList = filteredEvents
-      .filter((d) => types.length < 1 || types.includes(d.type))
-      .sort((a, b) => d3[order](a.gene, b.gene))
-      .map((d) => {
-        return { key: d.gene, tab: d.gene };
-      });
-    let currentKey = selectedFilteredEvent.gene || filteredEvents[0]?.key;
-    let currentEvent = filteredEvents.find((e) => e.gene === currentKey);
-    let { gene, tier, type, name, role, chromosome, startPoint, endPoint } =
-      currentEvent;
+    const columns = [
+      {
+        title: t("components.filtered-events-panel.gene"),
+        dataIndex: "gene",
+        key: "gene",
+      },
+      {
+        title: t("components.filtered-events-panel.name"),
+        dataIndex: "name",
+        key: "name",
+      },
+      {
+        title: t("components.filtered-events-panel.type"),
+        dataIndex: "type",
+        key: "type",
+        filters: [...new Set(filteredEvents.map((d) => d.type))].map((d) => {
+          return {
+            text: d,
+            value: d,
+          };
+        }),
+        filterMultiple: false,
+        onFilter: (value, record) => record.type.indexOf(value) === 0,
+      },
+      {
+        title: t("components.filtered-events-panel.role"),
+        dataIndex: "role",
+        key: "role",
+        render: (role) => (
+          <>
+            {role?.split(",").map((tag) => (
+              <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
+                {tag.trim()}
+              </Tag>
+            ))}
+          </>
+        ),
+        filters: [
+          ...new Set(filteredEvents.map((d) => d.role.split(",")).flat()),
+        ].map((d) => {
+          return {
+            text: d,
+            value: d,
+          };
+        }),
+        onFilter: (value, record) => record.role.indexOf(value) === 0,
+      },
+      {
+        title: t("components.filtered-events-panel.tier"),
+        dataIndex: "tier",
+        key: "tier",
+        sorter: (a, b) => a.tier - b.tier,
+        filters: [...new Set(filteredEvents.map((d) => d.tier))].map((d) => {
+          return {
+            text: d,
+            value: d,
+          };
+        }),
+        filterMultiple: false,
+        onFilter: (value, record) => record.tier === value,
+      },
+      {
+        title: t("components.filtered-events-panel.location"),
+        dataIndex: "location",
+        key: "location",
+      },
+    ];
     return (
       <Wrapper>
-        <Card
-          style={{
-            width: "100%",
-          }}
-          title={
-            <Select
-              placeholder={t(
-                "components.filtered-events-panel.select-type.placeholder"
-              )}
-              mode="multiple"
-              allowClear={true}
-              bordered={false}
-              showArrow
-              style={{
-                width: "30%",
-              }}
-              onChange={(key) => {
-                this.handleFilterGeneTypeChange(key);
-              }}
-              options={[
-                ...new Set(
-                  filteredEvents
-                    .map((d) => d.type)
-                    .flat()
-                    .map((d) => d.trim())
-                    .sort((a, b) => d3.ascending(a, b))
-                ),
-              ].map((tag) => {
-                return { value: tag };
-              })}
-            />
-          }
-          extra={
-            <Select
-              defaultValue={ORDER[0]}
-              style={{ width: 220 }}
-              bordered={false}
-              onChange={(key) => {
-                this.handleSortTypeChange(key);
-              }}
-              options={ORDER.map((d) => {
-                return {
-                  value: d,
-                  label: t(`components.filtered-events-panel.sorting.${d}`),
-                };
-              })}
-            />
-          }
-          tabList={tabList}
-          activeTabKey={currentKey}
-          tabBarExtraContent={<></>}
-          onTabChange={(key) => {
-            this.handleTabChange(key);
-          }}
-        >
-          <Descriptions
-            column={4}
-            title={
-              <Space>
-                {gene}
-                <Text type="secondary">{name}</Text>
-              </Space>
-            }
-          >
-            <Item label={t("components.filtered-events-panel.type")}>
-              {type}
-            </Item>
-            <Item label={t("components.filtered-events-panel.role")}>
-              {role?.split(",").map((tag) => (
-                <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
-                  {tag.trim()}
-                </Tag>
-              ))}
-            </Item>
-            <Item label={t("components.filtered-events-panel.tier")}>
-              {tier}
-            </Item>
-            <Item label={t("components.filtered-events-panel.location")}>
-              {chromosome}:{startPoint}-{endPoint}
-            </Item>
-          </Descriptions>
-        </Card>
+        <Table
+          columns={columns}
+          dataSource={filteredEvents}
+          pagination={{ pageSize: 50 }}
+        />
       </Wrapper>
     );
   }
 }
-FilteredEventsListPanel.propTypes = {
-  selectedCase: PropTypes.object,
-};
+FilteredEventsListPanel.propTypes = {};
 FilteredEventsListPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   updateSelectedFilteredEvent: (filteredEvent) =>
     dispatch(updateSelectedFilteredEvent(filteredEvent)),
 });
 const mapStateToProps = (state) => ({
-  selectedFiles: state.App.selectedFiles,
+  report: state.App.report,
+  filteredEvents: state.App.filteredEvents,
   selectedFilteredEvent: state.App.selectedFilteredEvent,
 });
 export default connect(

@@ -2,13 +2,14 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Space, message, PageHeader, Tag } from "antd";
+import { Space, message, PageHeader, Tag, Avatar } from "antd";
 import * as d3 from "d3";
-import moment from "moment";
-import { FaHome, FaPhoneAlt, FaIdCard } from "react-icons/fa";
-import { downloadCanvasAsPng, legendColors } from "../../helpers/utility";
+import {
+  downloadCanvasAsPng,
+  legendColors,
+  plotTypes,
+} from "../../helpers/utility";
 import html2canvas from "html2canvas";
-import avatarPlaceholder from "../../assets/images/avatar.png";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
@@ -33,17 +34,27 @@ class HeaderPanel extends Component {
   };
 
   render() {
-    const { t, selectedFiles } = this.props;
-    if (selectedFiles.length < 1) return null;
-    const { profile, file, metadata, plots } = selectedFiles[0];
-    const { firstName, lastName, avatar, birthdate, address, phone, ssn } =
-      profile;
-    const { purity, ploidy } = metadata;
+    const { t, report, metadata, plots } = this.props;
+    if (!report) return null;
+    const { tumor, purity, ploidy, pair } = metadata;
+
+    let colorMarkers = {};
+    Object.keys(plotTypes()).forEach((d) => {
+      let plot = plots.find((e) => e.id === d);
+      let markValue = metadata[d];
+      colorMarkers[d] =
+        markValue < plot.q1
+          ? legendColors()[0]
+          : markValue > plot.q3
+          ? legendColors()[2]
+          : legendColors()[1];
+    });
+
     return (
       <Wrapper>
         <PageHeader
           className="site-page-header"
-          title={file}
+          title={pair}
           extra={
             <Space size={[0, 4]} wrap>
               <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>
@@ -57,40 +68,16 @@ class HeaderPanel extends Component {
               <div className="ant-pro-page-container-row">
                 <div className="ant-pro-page-container-content">
                   <div className="page-header-content">
-                    <div className="avatar-content">
-                      <span className="ant-avatar ant-avatar-lg ant-avatar-circle ant-avatar-image">
-                        <img
-                          alt={`${firstName} ${lastName}`}
-                          title={`${firstName} ${lastName}`}
-                          src={
-                            avatar
-                              ? `data/${file}/${avatar}`
-                              : avatarPlaceholder
-                          }
-                        />
-                      </span>
-                    </div>
-                    <div className="content-patient">
-                      <div className="content-patient-title">
-                        <Space align="center" size="middle">
-                          <span className="content-patient-title">
-                            {firstName} {lastName}
-                          </span>
-                          <span className="ant-page-header-heading-sub-title">
-                            {moment().diff(birthdate, "years")}
-                          </span>
-                        </Space>
-                      </div>
-                      <div>
-                        <Space align="baseline">
-                          <FaHome />
-                          {address}
-                          <FaPhoneAlt />
-                          {phone}
-                          <FaIdCard />
-                          {ssn}
-                        </Space>
-                      </div>
+                    <div className="avatar-content0">
+                      <Avatar
+                        size="large"
+                        style={{
+                          backgroundColor: "#fde3cf",
+                          color: "#f56a00",
+                        }}
+                      >
+                        {tumor}
+                      </Avatar>
                     </div>
                   </div>
                 </div>
@@ -112,8 +99,7 @@ class HeaderPanel extends Component {
                               <span
                                 className="ant-statistic-content-value-int"
                                 style={{
-                                  color: plots.find((e) => e.id === d)
-                                    .colorMarker,
+                                  color: colorMarkers[d],
                                 }}
                               >
                                 {Number.isInteger(metadata[d])
@@ -136,8 +122,7 @@ class HeaderPanel extends Component {
                             <span
                               className="ant-statistic-content-value-int"
                               style={{
-                                color: plots.find((e) => e.id === "purity")
-                                  .colorMarker,
+                                color: colorMarkers["purity"],
                               }}
                             >
                               {d3.format(".2f")(purity)}
@@ -146,8 +131,7 @@ class HeaderPanel extends Component {
                           <span
                             className="ant-statistic-content-suffix"
                             style={{
-                              color: plots.find((e) => e.id === "ploidy")
-                                .colorMarker,
+                              color: colorMarkers["ploidy"],
                             }}
                           >
                             / {d3.format(".2f")(ploidy)}
@@ -171,9 +155,9 @@ HeaderPanel.propTypes = {
 HeaderPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  tags: state.App.tags,
-  selectedFiles: state.App.selectedFiles,
-  plots: state.App.plots,
+  report: state.App.report,
+  metadata: state.App.metadata,
+  plots: state.App.populationMetrics,
 });
 export default connect(
   mapStateToProps,

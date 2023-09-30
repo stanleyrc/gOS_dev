@@ -1,4 +1,4 @@
-import { all, takeEvery, put } from "redux-saga/effects";
+import { all, takeEvery, put, call } from "redux-saga/effects";
 import axios from "axios";
 import * as d3 from "d3";
 import {
@@ -6,6 +6,9 @@ import {
   updateChromoBins,
   domainsToLocation,
   locationToDomains,
+  reportAttributesMap,
+  transformFilteredEventAttributes,
+  plotTypes,
 } from "../../helpers/utility";
 import actions from "./actions";
 
@@ -17,6 +20,87 @@ const PLOT_TYPES = {
   purity: "histogram",
   ploidy: "histogram",
 };
+
+function* bootApplication(action) {
+  // get the list of all folders within the public/data folder
+  let responseReports = yield call(axios.get, "data");
+
+  // get the settings within the public folder
+  let responseSettings = yield call(axios.get, "settings.json");
+
+  const responses = yield all(
+    Object.keys(PLOT_TYPES).map((e) => call(axios.get, `common/${e}.json`))
+  );
+
+  // Extract the data from the responses and store it in an object
+  const populationMetrics = Object.keys(plotTypes()).map((d, i) => {
+    let plot = {};
+    let cutoff = Infinity;
+    plot.id = d;
+    plot.type = plotTypes()[d];
+    plot.data = responses[i].data
+      .map((d) => +d.value)
+      .filter((d) => d < cutoff)
+      .sort((a, b) => d3.ascending(a, b));
+    plot.q1 = d3.quantile(plot.data, 0.25);
+    plot.q3 = d3.quantile(plot.data, 0.75);
+    plot.q99 = d3.quantile(plot.data, 0.99);
+    return plot;
+  });
+
+  let properties = {
+    reports: responseReports.data.sort(),
+    settings: responseSettings.data,
+    populationMetrics,
+  };
+
+  yield put({
+    type: actions.BOOT_APP_SUCCESS,
+    properties,
+  });
+}
+
+function* followUpBootApplication(action) {
+  let searchParams = new URL(decodeURI(document.location)).searchParams;
+  let report = searchParams.get("report");
+
+  yield put({
+    type: actions.SELECT_REPORT,
+    report,
+  });
+}
+
+function* selectReport(action) {
+  let { report } = action;
+  let properties = { metadata: {}, filteredEvents: [] };
+  Object.keys(reportAttributesMap()).forEach((key) => {
+    properties.metadata[reportAttributesMap()[key]] = null;
+  });
+  if (report) {
+    let responseReportMetadata = yield call(
+      axios.get,
+      `data/${action.report}/metadata.json`
+    );
+
+    let metadata = responseReportMetadata.data[0];
+
+    let responseReportFilteredEvents = yield call(
+      axios.get,
+      `data/${action.report}/filtered.events.json`
+    );
+
+    properties.filteredEvents = transformFilteredEventAttributes(
+      responseReportFilteredEvents.data
+    );
+    Object.keys(responseReportMetadata.data[0]).forEach((key) => {
+      properties.metadata[reportAttributesMap()[key]] = metadata[key];
+    });
+  }
+  yield put({
+    type: actions.REPORT_SELECTED,
+    properties,
+  });
+}
 
 function* launchApplication(action) {
   const { responseSettings, responseDatafiles } = yield axios
@@ -213,7 +297,10 @@ function* launchApplication(action) {
 }
 
 function* actionWatcher() {
-  yield takeEvery(actions.LAUNCH_APP, launchApplication);
+  yield takeEvery(actions.BOOT_APP, bootApplication);
+  yield takeEvery(actions.BOOT_APP_SUCCESS, followUpBootApplication);
+  yield takeEvery(actions.SELECT_REPORT, selectReport);
+  //yield takeEvery(actions.LAUNCH_APP, launchApplication);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);
