@@ -47,12 +47,14 @@ class HistogramPlotPanel extends Component {
       q3,
       q99,
       markValue,
+      markValueText,
       colorMarker,
       title,
       inViewport,
       renderOutsideViewPort,
       visible,
     } = this.props;
+
     return (
       <Wrapper visible={visible}>
         <Card
@@ -102,6 +104,7 @@ class HistogramPlotPanel extends Component {
                               q3,
                               q99,
                               markValue,
+                              markValueText,
                               colorMarker,
                             }}
                           />

@@ -55,8 +55,17 @@ class HistogramPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, height, data, markValue, colorMarker, q1, q3, q99 } =
-      this.props;
+    const {
+      width,
+      height,
+      data,
+      markValue,
+      colorMarker,
+      markValueText,
+      q1,
+      q3,
+      q99,
+    } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
@@ -109,6 +118,7 @@ class HistogramPlot extends Component {
       bins,
       markValue,
       colorMarker,
+      markValueText,
       q1,
       q3,
     };
@@ -176,6 +186,7 @@ class HistogramPlot extends Component {
       yScale,
       bins,
       markValue,
+      markValueText,
       colorMarker,
       q1,
       q3,
@@ -239,7 +250,7 @@ class HistogramPlot extends Component {
                     fill={colorMarker}
                     className="marker"
                   >
-                    {markValue}
+                    {markValueText}
                   </text>
                 </g>
               </g>

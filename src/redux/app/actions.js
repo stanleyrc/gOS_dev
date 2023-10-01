@@ -5,6 +5,8 @@ const actions = {
   SELECT_REPORT: "SELECT_REPORT",
   REPORT_SELECTED: "REPORT_SELECTED",
 
+  RESET_REPORT: "RESET_REPORT",
+
   LAUNCH_APP: "LAUNCH_APP",
   LAUNCH_APP_SUCCESS: "LAUNCH_APP_SUCCESS",
   LAUNCH_APP_FAILED: "LAUNCH_APP_FAILED",
@@ -17,6 +19,13 @@ const actions = {
   selectReport: (report) => ({
     type: actions.SELECT_REPORT,
     report,
+  }),
+  resetReport: () => ({
+    type: actions.RESET_REPORT,
+  }),
+  updateSelectedFilteredEvent: (filteredEvent) => ({
+    type: actions.FILTERED_EVENT_UPDATED,
+    filteredEvent,
   }),
   launchApp: (files, selectedTags) => ({
     type: actions.LAUNCH_APP,
@@ -31,10 +40,6 @@ const actions = {
     type: actions.HOVERED_LOCATION_UPDATED,
     hoveredLocation,
     hoveredLocationPanelIndex,
-  }),
-  updateSelectedFilteredEvent: (filteredEvent) => ({
-    type: actions.FILTERED_EVENT_UPDATED,
-    filteredEvent,
   }),
 };
 

@@ -31,6 +31,7 @@ const TopbarWrapper = styled.div`
             min-width: 165px;
             height: 100%;
             overflow: hidden;
+            cursor: pointer;
             img {
               display: inline-block;
               height: 32px;

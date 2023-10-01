@@ -10,7 +10,7 @@ const {} = appActions;
 
 class SummaryTab extends Component {
   render() {
-    const { t, loading, metadata, plots } = this.props;
+    const { t, metadata, plots, tumorPlots } = this.props;
 
     return (
       <Wrapper>
@@ -20,12 +20,25 @@ class SummaryTab extends Component {
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
-          <Col className="gutter-row" span={8}>
+          <Col className="gutter-row" span={12}>
             {
               <ViolinPlotPanel
                 {...{
-                  title: t("components.violin-panel.header"),
-                  plots: plots.filter((d) => d.type === "histogram"),
+                  title: t("components.violin-panel.header.total"),
+                  plots: plots,
+                  markers: metadata,
+                }}
+              />
+            }
+          </Col>
+          <Col className="gutter-row" span={12}>
+            {
+              <ViolinPlotPanel
+                {...{
+                  title: t("components.violin-panel.header.tumor", {
+                    tumor: metadata.tumor,
+                  }),
+                  plots: tumorPlots,
                   markers: metadata,
                 }}
               />
@@ -39,7 +52,11 @@ class SummaryTab extends Component {
 SummaryTab.propTypes = {};
 SummaryTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
-const mapStateToProps = (state) => ({});
+const mapStateToProps = (state) => ({
+  metadata: state.App.metadata,
+  plots: state.App.populationMetrics,
+  tumorPlots: state.App.tumorPopulationMetrics,
+});
 export default connect(
   mapStateToProps,
   mapDispatchToProps

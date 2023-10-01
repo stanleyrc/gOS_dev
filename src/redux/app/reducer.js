@@ -16,10 +16,12 @@ const initState = {
   selectedFilteredEvent: null,
   reports: [],
   report: null,
+  populations: [],
   populationMetrics: [],
 };
 
 export default function appReducer(state = initState, action) {
+  let url = null;
   switch (action.type) {
     case actions.BOOT_APP:
       return {
@@ -33,7 +35,7 @@ export default function appReducer(state = initState, action) {
         loading: false,
       };
     case actions.SELECT_REPORT:
-      let url = new URL(decodeURI(document.location));
+      url = new URL(decodeURI(document.location));
       if (action.report) {
         url.searchParams.set("report", action.report);
         window.history.replaceState(
@@ -52,6 +54,25 @@ export default function appReducer(state = initState, action) {
         metadata: reportMetadata,
         filteredEvent: [],
         loading: true,
+      };
+    case actions.RESET_REPORT:
+      url = new URL(decodeURI(document.location));
+
+      // Remove the query parameter
+      url.searchParams.delete("report");
+
+      // Update the URL in the browser's history
+      window.history.replaceState(
+        null,
+        "Case Report",
+        unescape(url.toString())
+      );
+      return {
+        ...state,
+        metadata: {},
+        report: null,
+        filteredEvent: [],
+        loading: false,
       };
     case actions.REPORT_SELECTED:
       return {

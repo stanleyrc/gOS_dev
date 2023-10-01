@@ -12,11 +12,12 @@ import appActions from "../../redux/app/actions";
 const { Header } = Layout;
 const { Option } = Select;
 
-const { selectReport } = appActions;
+const { selectReport, resetReport } = appActions;
 
 class Topbar extends Component {
   render() {
-    const { t, loading, report, reports, selectReport } = this.props;
+    const { t, loading, report, reports, selectReport, resetReport } =
+      this.props;
     return (
       <TopbarWrapper>
         <Header className="ant-pro-top-menu">
@@ -24,7 +25,11 @@ class Topbar extends Component {
             <div className="ant-pro-top-nav-header-main ">
               <div className="ant-pro-top-nav-header-main-left">
                 <Space>
-                  <div className="ant-pro-top-nav-header-logo" id="logo">
+                  <div
+                    className="ant-pro-top-nav-header-logo"
+                    id="logo"
+                    onClick={(e) => resetReport()}
+                  >
                     <img src={logo} alt="logo" />
                     <h1>{siteConfig.siteName}</h1>
                   </div>
@@ -50,6 +55,7 @@ class Topbar extends Component {
                     onChange={(report) => {
                       selectReport(report);
                     }}
+                    onClear={(e) => resetReport()}
                   >
                     {reports.map((d) => (
                       <Option key={d} value={d} />
@@ -107,6 +113,7 @@ Topbar.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({
   selectReport: (report) => dispatch(selectReport(report)),
+  resetReport: () => dispatch(resetReport()),
 });
 const mapStateToProps = (state) => ({
   loading: state.App.loading,

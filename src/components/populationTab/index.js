@@ -23,6 +23,7 @@ class PopulationTab extends Component {
             title: t(`metadata.${d.id}.full`),
             visible: d.data,
             markValue: metadata[d.id],
+            markValueText: d.markValueText,
             colorMarker: d.colorMarker,
             loading,
           }}

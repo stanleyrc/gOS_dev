@@ -56,9 +56,7 @@ class ViolinPlotPanel extends Component {
               <span role="img" className="anticon anticon-dashboard">
                 <TbChartCandleFilled />
               </span>
-              <span className="ant-pro-menu-item-title">
-                {title || t("components.violin-panel.title")}
-              </span>
+              <span className="ant-pro-menu-item-title">{title}</span>
             </Space>
           }
           extra={

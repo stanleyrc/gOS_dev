@@ -1,4 +1,4 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import * as d3 from "d3";
 import {
@@ -9,7 +9,9 @@ import {
   reportAttributesMap,
   transformFilteredEventAttributes,
   plotTypes,
+  getPopulationMetrics,
 } from "../../helpers/utility";
+import { getCurrentState } from "./selectors";
 import actions from "./actions";
 
 const PLOT_TYPES = {
@@ -32,6 +34,11 @@ function* bootApplication(action) {
     Object.keys(PLOT_TYPES).map((e) => call(axios.get, `common/${e}.json`))
   );
 
+  let populations = {};
+  Object.keys(plotTypes()).forEach((d, i) => {
+    populations[d] = responses[i].data;
+  });
+
   // Extract the data from the responses and store it in an object
   const populationMetrics = Object.keys(plotTypes()).map((d, i) => {
     let plot = {};
@@ -52,6 +59,7 @@ function* bootApplication(action) {
     reports: responseReports.data.sort(),
     settings: responseSettings.data,
     populationMetrics,
+    populations,
   };
 
   yield put({
@@ -71,6 +79,7 @@ function* followUpBootApplication(action) {
 }
 
 function* selectReport(action) {
+  const currentState = yield select(getCurrentState);
   let { report } = action;
   let properties = { metadata: {}, filteredEvents: [] };
   Object.keys(reportAttributesMap()).forEach((key) => {
@@ -95,6 +104,17 @@ function* selectReport(action) {
     Object.keys(responseReportMetadata.data[0]).forEach((key) => {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
     });
+
+    properties.populationMetrics = getPopulationMetrics(
+      currentState.App.populations,
+      properties.metadata
+    );
+
+    properties.tumorPopulationMetrics = getPopulationMetrics(
+      currentState.App.populations,
+      properties.metadata,
+      properties.metadata.tumor
+    );
   }
   yield put({
     type: actions.REPORT_SELECTED,

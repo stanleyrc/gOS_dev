@@ -392,12 +392,28 @@ export function magnitude(n) {
 
 export function plotTypes() {
   return {
-    coverageVariance: "histogram",
-    snvCount: "histogram",
-    svCount: "histogram",
-    lohFraction: "histogram",
-    purity: "histogram",
-    ploidy: "histogram",
+    coverageVariance: {
+      plotType: "histogram",
+      tumor_type: "tumor_type_final_mod",
+      format: ".2%",
+    },
+    snvCount: {
+      plotType: "histogram",
+      tumor_type: "tumor_type_final_mod",
+      format: ",",
+    },
+    svCount: {
+      plotType: "histogram",
+      tumor_type: "tumor_type_final_mod",
+      format: ",",
+    },
+    lohFraction: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2%",
+    },
+    purity: { plotType: "histogram", tumor_type: "tumor_type", format: ".2f" },
+    ploidy: { plotType: "histogram", tumor_type: "tumor_type", format: ".2f" },
   };
 }
 
@@ -436,4 +452,40 @@ export function transformFilteredEventAttributes(filteredEvents) {
       };
     })
     .sort((a, b) => d3.ascending(a.gene, b.gene));
+}
+
+export function getPopulationMetrics(
+  populations,
+  metadata,
+  tumour_type = null
+) {
+  // Extract the data from the responses and store it in an object
+  return Object.keys(plotTypes()).map((d, i) => {
+    let plot = {};
+    let cutoff = Infinity;
+    plot.id = d;
+    plot.type = plotTypes()[d].plotType;
+    plot.data = populations[d]
+      .filter((e) =>
+        tumour_type
+          ? !e[plotTypes()[d].tumor_type] ||
+            e[plotTypes()[d].tumor_type] === tumour_type
+          : true
+      )
+      .map((e) => +e.value)
+      .filter((e) => e < cutoff)
+      .sort((a, b) => d3.ascending(a, b));
+    plot.q1 = d3.quantile(plot.data, 0.25);
+    plot.q3 = d3.quantile(plot.data, 0.75);
+    plot.q99 = d3.quantile(plot.data, 0.99);
+    plot.markValue = metadata[d];
+    plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
+    plot.colorMarker =
+      plot.markValue < plot.q1
+        ? legendColors()[0]
+        : plot.markValue > plot.q3
+        ? legendColors()[2]
+        : legendColors()[1];
+    return plot;
+  });
 }

@@ -4,66 +4,107 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import { Tabs, Row, Col, Skeleton, Affix } from "antd";
+import { Tabs, Row, Col, Skeleton, Affix, Button } from "antd";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
 import SummaryTab from "../../components/summaryTab";
 import FilteredEventsList from "../../components/filteredEventsListPanel";
 import GenomePanel from "../../components/genomePanel";
+import appActions from "../../redux/app/actions";
 
 const { TabPane } = Tabs;
+
+const { selectReport } = appActions;
 
 class Home extends Component {
   togglePlotVisibility = (checked, index, deleted = false) => {};
 
   render() {
-    const { t, loading, metadata, plots, chromoBins, report } = this.props;
-    if (!report) return null;
+    const {
+      t,
+      loading,
+      metadata,
+      plots,
+      tumorPlots,
+      chromoBins,
+      report,
+      reports,
+      selectReport,
+    } = this.props;
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
-          <Affix offsetTop={0}>
-            <div className="ant-home-header-container">
-              <HeaderPanel />
+          {report && (
+            <Affix offsetTop={0}>
+              <div className="ant-home-header-container">
+                <HeaderPanel />
+              </div>
+            </Affix>
+          )}
+          {report && (
+            <div className="ant-home-content-container">
+              <Tabs defaultActiveKey="1">
+                <TabPane tab={t("components.tabs.tab1")} key="1">
+                  <SummaryTab />
+                </TabPane>
+                <TabPane tab={t("components.tabs.tab2")} key="2">
+                  <PopulationTab {...{ loading, metadata, plots }} />
+                </TabPane>
+                <TabPane
+                  tab={t("components.tabs.tab3", { tumor: metadata.tumor })}
+                  key="3"
+                >
+                  <PopulationTab
+                    {...{ loading, metadata, plots: tumorPlots }}
+                  />
+                </TabPane>
+                <TabPane tab={t("components.tabs.tab4")} key="4">
+                  <Row className="ant-panel-container ant-home-plot-container">
+                    <Col className="gutter-row" span={24}>
+                      <FilteredEventsList />
+                    </Col>
+                  </Row>
+                  <Row className="ant-panel-container ant-home-plot-container">
+                    {plots
+                      .filter((d) => d.type === "genome")
+                      .map((d, index) => (
+                        <Col className="gutter-row" span={24}>
+                          <GenomePanel
+                            {...{
+                              loading,
+                              genome: d.data,
+                              title: d.title,
+                              chromoBins: chromoBins,
+                              visible: true,
+                              index,
+                              toggleVisibility: this.togglePlotVisibility,
+                            }}
+                          />
+                        </Col>
+                      ))}
+                  </Row>
+                </TabPane>
+              </Tabs>
             </div>
-          </Affix>
-          <div className="ant-home-content-container">
-            <Tabs defaultActiveKey="1">
-              <TabPane tab={t("components.tabs.tab1")} key="1">
-                <SummaryTab {...{ loading, metadata, plots }} />
-              </TabPane>
-              <TabPane tab={t("components.tabs.tab2")} key="2">
-                <PopulationTab {...{ loading, metadata, plots }} />
-              </TabPane>
-              <TabPane tab={t("components.tabs.tab3")} key="3">
-                <Row className="ant-panel-container ant-home-plot-container">
-                  <Col className="gutter-row" span={24}>
-                    <FilteredEventsList />
+          )}
+          {!report && (
+            <div className="ant-panel-list-container">
+              <Row gutter={[16, 16]}>
+                {reports.map((d) => (
+                  <Col className="gutter-row" span={2}>
+                    <Button
+                      block
+                      type="default"
+                      onClick={(e) => selectReport(d)}
+                    >
+                      {d}
+                    </Button>
                   </Col>
-                </Row>
-                <Row className="ant-panel-container ant-home-plot-container">
-                  {plots
-                    .filter((d) => d.type === "genome")
-                    .map((d, index) => (
-                      <Col className="gutter-row" span={24}>
-                        <GenomePanel
-                          {...{
-                            loading,
-                            genome: d.data,
-                            title: d.title,
-                            chromoBins: chromoBins,
-                            visible: true,
-                            index,
-                            toggleVisibility: this.togglePlotVisibility,
-                          }}
-                        />
-                      </Col>
-                    ))}
-                </Row>
-              </TabPane>
-            </Tabs>
-          </div>
+                ))}
+              </Row>
+            </div>
+          )}
         </Skeleton>
       </HomeWrapper>
     );
@@ -71,16 +112,16 @@ class Home extends Component {
 }
 Home.propTypes = {};
 Home.defaultProps = {};
-const mapDispatchToProps = (dispatch) => ({});
+const mapDispatchToProps = (dispatch) => ({
+  selectReport: (report) => dispatch(selectReport(report)),
+});
 const mapStateToProps = (state) => ({
   loading: state.App.loading,
-  plots: state.App.plots,
-  selectedFile: state.App.selectedFile,
-  chromoBins: state.App.chromoBins,
-
   report: state.App.report,
+  reports: state.App.reports,
   metadata: state.App.metadata,
   plots: state.App.populationMetrics,
+  tumorPlots: state.App.tumorPopulationMetrics,
 });
 export default connect(
   mapStateToProps,

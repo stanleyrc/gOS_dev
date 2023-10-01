@@ -15,6 +15,9 @@ const HomeWrapper = styled.div`
     margin-top: 24px;
     margin-botton: 24px;
   }
+  .ant-panel-list-container {
+    margin: 24px;
+  }
 `;
 
 export default HomeWrapper;

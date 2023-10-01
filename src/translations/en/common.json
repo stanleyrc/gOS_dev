@@ -51,8 +51,9 @@
   "components": {
     "tabs": {
       "tab1": "Overall",
-      "tab2": "Population KPIs",
-      "tab3": "Filtered Events"
+      "tab2": "Population KPIs for all Tumor Types",
+      "tab3": "Population KPIs for Tumor Type {{tumor}}",
+      "tab4": "Filtered Events"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
@@ -68,7 +69,10 @@
       "title": "Ridgeline Chart"
     },
     "violin-panel": {
-      "header": "Population Distribution Violin Chart",
+      "header": {
+        "total": "Population Distribution Violin Chart - All Tumor Types",
+        "tumor": "Population Distribution Violin Chart - Tumor Type {{tumor}}"
+      },
       "distribution": "distribution",
       "distribution_plural": "distributions",
       "title": "Violin Chart"
