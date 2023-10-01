@@ -27,6 +27,26 @@ function* bootApplication(action) {
   // get the list of all folders within the public/data folder
   let responseReports = yield call(axios.get, "data");
 
+  let folders = [];
+  if (Array.isArray(responseReports.data)) {
+    folders = responseReports.data.sort();
+  } else {
+    // Create a DOM element to parse the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(responseReports.data, "text/html");
+
+    // Find all anchor tags within the table
+    const anchorTags = doc.querySelectorAll("table a");
+
+    // Extract folder names from the anchor tags
+    folders = Array.from(anchorTags)
+      .map((a) => a.textContent.trim())
+      .filter((text) => text.endsWith("/"))
+      .map((text) => text.slice(0, -1));
+  }
+
+  console.log("here", folders, responseReports.data);
+
   // get the settings within the public folder
   let responseSettings = yield call(axios.get, "settings.json");
 
@@ -56,7 +76,7 @@ function* bootApplication(action) {
   });
 
   let properties = {
-    reports: responseReports.data.sort(),
+    reports: folders,
     settings: responseSettings.data,
     populationMetrics,
     populations,
