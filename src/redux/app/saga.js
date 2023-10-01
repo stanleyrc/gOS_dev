@@ -45,8 +45,6 @@ function* bootApplication(action) {
       .map((text) => text.slice(0, -1));
   }
 
-  console.log("here", folders, responseReports.data);
-
   // get the settings within the public folder
   let responseSettings = yield call(axios.get, "settings.json");
 
