@@ -32,7 +32,6 @@ class FilteredEventsListPanel extends Component {
     } = this.props;
     if (!report) return null;
 
-    const { gene, name, type, role, tier, location } = selectedFilteredEvent;
     const { open } = this.state;
     const columns = [
       {
@@ -117,16 +116,16 @@ class FilteredEventsListPanel extends Component {
           <Modal
             title={
               <Space>
-                {gene}
-                {name}
-                {type}
-                {role?.split(",").map((tag) => (
+                {selectedFilteredEvent.gene}
+                {selectedFilteredEvent.name}
+                {selectedFilteredEvent.type}
+                {selectedFilteredEvent.role?.split(",").map((tag) => (
                   <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
                     {tag.trim()}
                   </Tag>
                 ))}
-                {tier}
-                {location}
+                {selectedFilteredEvent.tier}
+                {selectedFilteredEvent.location}
               </Space>
             }
             centered
