@@ -73,11 +73,41 @@ function* bootApplication(action) {
     return plot;
   });
 
+  // if all selected files are have the same reference
+  let selectedCoordinate = "hg19";
+  let searchParams = new URL(decodeURI(document.location)).searchParams;
+
+  let { genomeLength, chromoBins } = updateChromoBins(
+    responseSettings.data.coordinates.sets[selectedCoordinate]
+  );
+
+  let defaultDomain = [1, genomeLength];
+  let defaultChromosome = chromoBins[Object.keys(chromoBins)[0]];
+
+  let domains = [];
+  try {
+    domains = locationToDomains(chromoBins, searchParams.get("location"));
+  } catch (error) {
+    domains = [[1, genomeLength]];
+  }
+
+  let url = new URL(decodeURI(document.location));
+  url.searchParams.set("location", domainsToLocation(chromoBins, domains));
+  window.history.replaceState(
+    unescape(url.toString()),
+    "Case Report",
+    unescape(url.toString())
+  );
+
   let properties = {
     reports: folders,
     settings: responseSettings.data,
     populationMetrics,
     populations,
+    domains,
+    chromoBins,
+    defaultDomain,
+    genomeLength,
   };
 
   yield put({
@@ -133,6 +163,13 @@ function* selectReport(action) {
       properties.metadata,
       properties.metadata.tumor
     );
+
+    let responseGenomeData = yield call(
+      axios.get,
+      `data/${action.report}/complex.json`
+    );
+
+    properties.genome = responseGenomeData.data;
   }
   yield put({
     type: actions.REPORT_SELECTED,

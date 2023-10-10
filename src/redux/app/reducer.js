@@ -12,6 +12,15 @@ const initState = {
   zoomedByCmd: false,
   domains: [],
   chromoBins: {},
+
+  genome: {
+    connections: [],
+    intervals: [],
+    settings: {
+      description: "",
+      y_axis: { title: "copy number", visible: true },
+    },
+  },
   hoveredLocation: null,
   selectedFilteredEvent: null,
   reports: [],

@@ -1,18 +1,39 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Tag, Table } from "antd";
+import { Tag, Table, Button, Modal, Space } from "antd";
 import { roleColorMap } from "../../helpers/utility";
+import GenomePanel from "../genomePanel";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
 const { updateSelectedFilteredEvent } = appActions;
 
 class FilteredEventsListPanel extends Component {
+  state = {
+    open: false,
+  };
+
+  handleGenePanelClick = (event) => {
+    this.setState({ open: true }, () =>
+      this.props.updateSelectedFilteredEvent(event)
+    );
+  };
+
   render() {
-    const { t, report, filteredEvents } = this.props;
+    const {
+      t,
+      report,
+      filteredEvents,
+      loading,
+      genome,
+      chromoBins,
+      selectedFilteredEvent,
+    } = this.props;
     if (!report) return null;
 
+    const { gene, name, type, role, tier, location } = selectedFilteredEvent;
+    const { open } = this.state;
     const columns = [
       {
         title: t("components.filtered-events-panel.gene"),
@@ -78,6 +99,11 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.location"),
         dataIndex: "location",
         key: "location",
+        render: (_, record) => (
+          <Button type="link" onClick={() => this.handleGenePanelClick(record)}>
+            {record.location}
+          </Button>
+        ),
       },
     ];
     return (
@@ -87,6 +113,40 @@ class FilteredEventsListPanel extends Component {
           dataSource={filteredEvents}
           pagination={{ pageSize: 50 }}
         />
+        {selectedFilteredEvent && (
+          <Modal
+            title={
+              <Space>
+                {gene}
+                {name}
+                {type}
+                {role?.split(",").map((tag) => (
+                  <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
+                    {tag.trim()}
+                  </Tag>
+                ))}
+                {tier}
+                {location}
+              </Space>
+            }
+            centered
+            open={open}
+            onOk={() => this.setState({ open: false })}
+            onCancel={() => this.setState({ open: false })}
+            width={1200}
+          >
+            <GenomePanel
+              {...{
+                loading,
+                genome,
+                title: t("components.filtered-events-panel.genome-plot"),
+                chromoBins,
+                visible: true,
+                index: 0,
+              }}
+            />
+          </Modal>
+        )}
       </Wrapper>
     );
   }
@@ -101,6 +161,9 @@ const mapStateToProps = (state) => ({
   report: state.App.report,
   filteredEvents: state.App.filteredEvents,
   selectedFilteredEvent: state.App.selectedFilteredEvent,
+  loading: state.App.loading,
+  genome: state.App.genome,
+  chromoBins: state.App.chromoBins,
 });
 export default connect(
   mapStateToProps,

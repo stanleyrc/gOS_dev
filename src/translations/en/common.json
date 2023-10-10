@@ -78,6 +78,7 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "genome-plot": "Genome Plot",
       "gene": "Gene",
       "name": "Name",
       "tier": "Tier",
