@@ -12,7 +12,6 @@ const initState = {
   zoomedByCmd: false,
   domains: [],
   chromoBins: {},
-
   genome: {
     connections: [],
     intervals: [],
@@ -27,6 +26,7 @@ const initState = {
   report: null,
   populations: [],
   populationMetrics: [],
+  variantQC: [],
 };
 
 export default function appReducer(state = initState, action) {
@@ -89,17 +89,6 @@ export default function appReducer(state = initState, action) {
         ...action.properties,
         loading: false,
       };
-    case actions.LAUNCH_APP:
-      return {
-        ...state,
-        loading: true,
-        files: action.files,
-        selectedTags: action.selectedTags,
-      };
-    case actions.LAUNCH_APP_SUCCESS:
-      return { ...state, ...action.properties, loading: false };
-    case actions.LAUNCH_APP_FAILED:
-      return { ...state, missingDataFiles: true, loading: false };
     case actions.DOMAINS_UPDATED:
       let doms = action.domains;
       // eliminate domains that are smaller than 10 bases wide

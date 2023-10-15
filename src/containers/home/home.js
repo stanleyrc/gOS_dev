@@ -10,7 +10,7 @@ import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
 import SummaryTab from "../../components/summaryTab";
 import FilteredEventsList from "../../components/filteredEventsListPanel";
-import GenomePanel from "../../components/genomePanel";
+import VariantQcTab from "../../components/variantQcTab";
 import appActions from "../../redux/app/actions";
 
 const { TabPane } = Tabs;
@@ -18,8 +18,6 @@ const { TabPane } = Tabs;
 const { selectReport } = appActions;
 
 class Home extends Component {
-  togglePlotVisibility = (checked, index, deleted = false) => {};
-
   render() {
     const {
       t,
@@ -27,11 +25,12 @@ class Home extends Component {
       metadata,
       plots,
       tumorPlots,
-      chromoBins,
       report,
       reports,
       selectReport,
+      variantQC,
     } = this.props;
+
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
@@ -65,24 +64,12 @@ class Home extends Component {
                       <FilteredEventsList />
                     </Col>
                   </Row>
+                </TabPane>
+                <TabPane tab={t("components.tabs.tab5")} key="5">
                   <Row className="ant-panel-container ant-home-plot-container">
-                    {plots
-                      .filter((d) => d.type === "genome")
-                      .map((d, index) => (
-                        <Col className="gutter-row" span={24}>
-                          <GenomePanel
-                            {...{
-                              loading,
-                              genome: d.data,
-                              title: d.title,
-                              chromoBins: chromoBins,
-                              visible: true,
-                              index,
-                              toggleVisibility: this.togglePlotVisibility,
-                            }}
-                          />
-                        </Col>
-                      ))}
+                    <Col className="gutter-row" span={24}>
+                      <VariantQcTab variants={variantQC} />
+                    </Col>
                   </Row>
                 </TabPane>
               </Tabs>
@@ -122,6 +109,7 @@ const mapStateToProps = (state) => ({
   metadata: state.App.metadata,
   plots: state.App.populationMetrics,
   tumorPlots: state.App.tumorPopulationMetrics,
+  variantQC: state.App.variantQC,
 });
 export default connect(
   mapStateToProps,

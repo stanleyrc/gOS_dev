@@ -53,7 +53,8 @@
       "tab1": "Overall",
       "tab2": "Population KPIs for all Tumor Types",
       "tab3": "Population KPIs for Tumor Type {{tumor}}",
-      "tab4": "Filtered Events"
+      "tab4": "Filtered Events",
+      "tab5": "Variant QC"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
@@ -92,6 +93,11 @@
         "ascending": "Name in asceding order",
         "descending": "Name in descending order"
       }
+    },
+    "variantQc-panel": {
+      "title": "Somatic EVS vs Tumor VAF density plot",
+      "x-title": "Somatic EVS",
+      "y-title": "Tumor VAF"
     }
   }
 }
