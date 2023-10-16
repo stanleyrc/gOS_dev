@@ -17,12 +17,23 @@ const Wrapper = styled.div`
     user-select: none;
   }
 
+  .x-axis-title {
+    font: 12px sans-serif;
+    pointer-events: none;
+    user-select: none;
+  }
+
   .axis--y g.tick line {
     stroke: #777;
   }
 
   .axis--y .domain {
     stroke: #777;
+    display: none;
+  }
+  .axis--x .domain {
+    stroke: #777;
+    display: none;
   }
   .marker {
     font-size: 12px;

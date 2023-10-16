@@ -39,6 +39,9 @@ class DensityPlot extends Component {
       xFormat,
       yFormat,
       radius,
+      xTitle,
+      yTitle,
+      t,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -63,16 +66,15 @@ class DensityPlot extends Component {
     const bins = hexbinGenerator(dataPoints);
 
     // Create the color scale.
-    const color = d3
-      .scaleSequential(d3.interpolateBuPu)
-      .domain([0, d3.max(bins, (d) => d.length) / 2]);
-
-    let legend = Legend(
-      d3.scaleSequential(color.domain(), d3.interpolateBuPu),
-      {
-        title: "Count",
-      }
+    const color = d3.scaleQuantize(
+      [0, d3.max(bins, (d) => d.length)],
+      d3.schemePurples[5]
     );
+
+    let legend = Legend(color, {
+      title: t("general.count"),
+      tickFormat: ".0f",
+    });
 
     return {
       width,
@@ -87,6 +89,8 @@ class DensityPlot extends Component {
       bins,
       hexbinGenerator,
       legend,
+      xTitle,
+      yTitle,
     };
   }
 
@@ -123,6 +127,8 @@ class DensityPlot extends Component {
       bins,
       hexbinGenerator,
       legend,
+      xTitle,
+      yTitle,
     } = this.getPlotConfiguration();
 
     console.log(legend);
@@ -158,6 +164,8 @@ class DensityPlot extends Component {
                       transform={`translate(${bin.x},${bin.y})`}
                       d={hexbinGenerator.hexagon()}
                       fill={color(bin.length)}
+                      stroke="#FFF"
+                      strokeWidth={0.33}
                     ></path>
                   ))}
                 </g>
@@ -165,11 +173,32 @@ class DensityPlot extends Component {
                   className="axis--y y-axis-container"
                   transform={`translate(${[margins.gap, 0]})`}
                 ></g>
+                <g clipPath="" className="axis--y-text" transform={``}>
+                  <text
+                    className="x-axis-title"
+                    transform={`rotate(-90)`}
+                    x={-height / 2}
+                    y={-2 * margins.gapY}
+                    textAnchor="middle"
+                  >
+                    {yTitle}
+                  </text>
+                </g>
                 <g
                   clipPath=""
                   className="axis--x x-axis-container"
                   transform={`translate(${[margins.gap, panelHeight]})`}
                 ></g>
+                <g
+                  clipPath=""
+                  className="axis--x-text"
+                  transform={`translate(${[
+                    panelWidth / 2,
+                    panelHeight + 2.5 * margins.gapY,
+                  ]})`}
+                >
+                  <text className="x-axis-title">{xTitle}</text>
+                </g>
               </g>
             </g>
           </svg>
@@ -185,7 +214,7 @@ DensityPlot.propTypes = {
 };
 DensityPlot.defaultProps = {
   data: [],
-  radius: 2,
+  radius: 3.33,
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

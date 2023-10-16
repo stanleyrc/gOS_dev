@@ -3,7 +3,8 @@
     "error": "Oops! Operation failed with error: {{error}}",
     "page-not-found": "Sorry, the page you visited does not exist.",
     "back-to-home": "Back Home",
-    "undefined": "Undefined"
+    "undefined": "Undefined",
+    "count": "Count"
   },
   "topbar": {
     "report": "<strong>{{count}}></strong> case report in total",
@@ -96,8 +97,8 @@
     },
     "variantQc-panel": {
       "title": "Somatic EVS vs Tumor VAF density plot",
-      "x-title": "Somatic EVS",
-      "y-title": "Tumor VAF"
+      "y-title": "Somatic EVS",
+      "x-title": "Tumor VAF"
     }
   }
 }
