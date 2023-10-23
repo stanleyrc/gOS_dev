@@ -17,10 +17,15 @@ const Wrapper = styled.div`
     user-select: none;
   }
 
+  .y-axis-title {
+    font-weight: bold;
+  }
+
   .x-axis-title {
     font: 12px sans-serif;
     pointer-events: none;
     user-select: none;
+    font-weight: bold;
   }
 
   .axis--y g.tick line {

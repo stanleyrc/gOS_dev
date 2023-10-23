@@ -42,13 +42,14 @@ class DensityPlot extends Component {
       xTitle,
       yTitle,
       t,
+      plotType,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
 
     let panelWidth = stageWidth;
-    let panelHeight = stageHeight - 50;
+    let panelHeight = stageHeight - 150;
 
     let xScale = d3.scaleLinear().domain(xRange).range([0, panelWidth]).nice();
     let yScale = d3.scaleLinear().domain(yRange).range([panelHeight, 0]).nice();
@@ -65,15 +66,29 @@ class DensityPlot extends Component {
 
     const bins = hexbinGenerator(dataPoints);
 
+    // Compute the density contours.
+    const contours = d3
+      .contourDensity()
+      .x((d) => xScale(d[xVariable]))
+      .y((d) => yScale(d[yVariable]))
+      .size([width, height])(dataPoints);
+
     // Create the color scale.
-    const color = d3.scaleQuantize(
-      [0, d3.max(bins, (d) => d.length)],
-      d3.schemePurples[5]
-    );
+    const color =
+      plotType === "hexbinplot"
+        ? d3.scaleQuantize(
+            [0, d3.max(bins, (d) => d.length)],
+            d3.schemePurples[5]
+          )
+        : d3
+            .scaleSequential(d3.interpolatePurples)
+            .domain(d3.extent(contours, (d) => d.value))
+            .nice();
 
     let legend = Legend(color, {
-      title: t("general.count"),
-      tickFormat: ".0f",
+      title:
+        plotType === "hexbinplot" ? t("general.count") : t("general.density"),
+      tickFormat: plotType === "hexbinplot" ? ".0f" : "0.2f",
     });
 
     return {
@@ -91,6 +106,11 @@ class DensityPlot extends Component {
       legend,
       xTitle,
       yTitle,
+      dataPoints,
+      xVariable,
+      yVariable,
+      contours,
+      plotType,
     };
   }
 
@@ -129,16 +149,25 @@ class DensityPlot extends Component {
       legend,
       xTitle,
       yTitle,
+      xScale,
+      yScale,
+      dataPoints,
+      xVariable,
+      yVariable,
+      contours,
+      plotType,
     } = this.getPlotConfiguration();
 
-    console.log(legend);
     const svgString = new XMLSerializer().serializeToString(legend);
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
           style={{ width: panelWidth, height: 50, marginLeft: 34 }}
-          dangerouslySetInnerHTML={{ __html: svgString }}
+          dangerouslySetInnerHTML={{
+            __html: plotType !== "scatterplot" ? svgString : "",
+          }}
         />
+
         <div
           className="histogram-plot"
           style={{ width: width, height: height }}
@@ -156,24 +185,47 @@ class DensityPlot extends Component {
                   <rect
                     width={panelWidth}
                     height={panelHeight}
-                    fill="whitesmoke"
-                    opacity={0.33}
+                    fill={plotType === "scatterplot" ? "whitesmoke" : "white"}
+                    opacity={plotType === "scatterplot" ? 0.33 : 1}
                   />
-                  {bins.map((bin) => (
-                    <path
-                      transform={`translate(${bin.x},${bin.y})`}
-                      d={hexbinGenerator.hexagon()}
-                      fill={color(bin.length)}
-                      stroke="#FFF"
-                      strokeWidth={0.33}
-                    ></path>
-                  ))}
+                  {plotType === "hexbinplot" &&
+                    bins.map((bin) => (
+                      <path
+                        transform={`translate(${bin.x},${bin.y})`}
+                        d={hexbinGenerator.hexagon()}
+                        fill={color(bin.length)}
+                        stroke="#FFF"
+                        strokeWidth={0.33}
+                      ></path>
+                    ))}
+                  {plotType === "contourplot" && (
+                    <g stroke-linejoin="round">
+                      {contours.map((d, i) => (
+                        <path
+                          d={d3.geoPath()(d)}
+                          strokeWidth={i % 5 ? 0.25 : 1}
+                          stroke={d3.rgb(color(d.value)).darker(0.3)}
+                          fill={color(d.value)}
+                        />
+                      ))}
+                    </g>
+                  )}
+                  {plotType === "scatterplot" &&
+                    dataPoints.map((d, i) => (
+                      <circle
+                        cx={xScale(d[xVariable])}
+                        cy={yScale(d[yVariable])}
+                        r={1.618}
+                        opacity={0.5}
+                        fill={d3.schemePurples[5][4]}
+                      ></circle>
+                    ))}
                 </g>
                 <g
                   className="axis--y y-axis-container"
                   transform={`translate(${[margins.gap, 0]})`}
                 ></g>
-                <g clipPath="" className="axis--y-text" transform={``}>
+                <g className="axis--y-text" transform={``}>
                   <text
                     className="x-axis-title"
                     transform={`rotate(-90)`}
@@ -185,16 +237,14 @@ class DensityPlot extends Component {
                   </text>
                 </g>
                 <g
-                  clipPath=""
                   className="axis--x x-axis-container"
                   transform={`translate(${[margins.gap, panelHeight]})`}
                 ></g>
                 <g
-                  clipPath=""
                   className="axis--x-text"
                   transform={`translate(${[
                     panelWidth / 2,
-                    panelHeight + 2.5 * margins.gapY,
+                    panelHeight + 3.5 * margins.gapY,
                   ]})`}
                 >
                   <text className="x-axis-title">{xTitle}</text>

@@ -390,6 +390,10 @@ export function magnitude(n) {
   return Math.pow(10, order);
 }
 
+export function densityPlotTypes() {
+  return ["hexbinplot", "contourplot", "scatterplot"];
+}
+
 export function plotTypes() {
   return {
     coverageVariance: {

@@ -4,7 +4,8 @@
     "page-not-found": "Sorry, the page you visited does not exist.",
     "back-to-home": "Back Home",
     "undefined": "Undefined",
-    "count": "Count"
+    "count": "Count",
+    "density": "Density"
   },
   "topbar": {
     "report": "<strong>{{count}}></strong> case report in total",
@@ -98,7 +99,11 @@
     "variantQc-panel": {
       "title": "Somatic EVS vs Tumor VAF density plot",
       "y-title": "Somatic EVS",
-      "x-title": "Tumor VAF"
+      "x-title": "Tumor VAF",
+      "plot-label": "Show as:",
+      "scatterplot": "Scatter Plot",
+      "contourplot": "Contour Plot",
+      "hexbinplot": "Hexagonal Binning"
     }
   }
 }

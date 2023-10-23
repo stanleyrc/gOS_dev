@@ -3,11 +3,15 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
+import { Card, Space, Tooltip, Button, message, Row, Col, Select } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { GiBubbles } from "react-icons/gi";
-import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
+import {
+  downloadCanvasAsPng,
+  transitionStyle,
+  densityPlotTypes,
+} from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import DensityPlot from "../densityPlot";
@@ -19,6 +23,8 @@ const margins = {
 
 class DensityPlotPanel extends Component {
   container = null;
+
+  state = { plotType: densityPlotTypes()[0] };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -32,6 +38,10 @@ class DensityPlotPanel extends Component {
       .catch((error) => {
         message.error(this.props.t("general.error", { error }));
       });
+  };
+
+  handlePlotTypeSelectionChange = (plotType) => {
+    this.setState({ plotType });
   };
 
   render() {
@@ -53,6 +63,7 @@ class DensityPlotPanel extends Component {
       visible,
     } = this.props;
 
+    const { plotType } = this.state;
     return (
       <Wrapper visible={visible}>
         <Card
@@ -69,6 +80,21 @@ class DensityPlotPanel extends Component {
           }
           extra={
             <Space>
+              <span>{t(`components.variantQc-panel.plot-label`)}</span>
+              <Select
+                defaultValue={densityPlotTypes()[0]}
+                style={{
+                  width: 180,
+                }}
+                onChange={this.handlePlotTypeSelectionChange}
+                bordered={false}
+                options={densityPlotTypes().map((d) => {
+                  return {
+                    value: d,
+                    label: t(`components.variantQc-panel.${d}`),
+                  };
+                })}
+              />
               <Tooltip title={t("components.download-as-png-tooltip")}>
                 <Button
                   type="default"
@@ -106,6 +132,7 @@ class DensityPlotPanel extends Component {
                               yFormat,
                               xRange,
                               yRange,
+                              plotType,
                             }}
                           />
                         </Col>
