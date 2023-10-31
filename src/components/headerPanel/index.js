@@ -36,7 +36,7 @@ class HeaderPanel extends Component {
   render() {
     const { t, report, metadata, plots } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair } = metadata;
+    const { tumor, purity, ploidy, pair, sex, disease } = metadata;
 
     let colorMarkers = {};
     Object.keys(plotTypes()).forEach((d) => {
@@ -55,6 +55,7 @@ class HeaderPanel extends Component {
         <PageHeader
           className="site-page-header"
           title={pair}
+          subTitle={sex}
           extra={
             <Space size={[0, 4]} wrap>
               <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>
@@ -69,15 +70,18 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-content">
                   <div className="page-header-content">
                     <div className="avatar-content0">
-                      <Avatar
-                        size="large"
-                        style={{
-                          backgroundColor: "#fde3cf",
-                          color: "#f56a00",
-                        }}
-                      >
-                        {tumor}
-                      </Avatar>
+                      <Space>
+                        <Avatar
+                          size="large"
+                          style={{
+                            backgroundColor: "#fde3cf",
+                            color: "#f56a00",
+                          }}
+                        >
+                          {tumor}
+                        </Avatar>
+                        {disease}
+                      </Space>
                     </div>
                   </div>
                 </div>

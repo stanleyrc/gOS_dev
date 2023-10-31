@@ -391,7 +391,7 @@ export function magnitude(n) {
 }
 
 export function densityPlotTypes() {
-  return ["hexbinplot", "contourplot", "scatterplot"];
+  return ["contourplot", "scatterplot"];
 }
 
 export function plotTypes() {
@@ -431,6 +431,8 @@ export function reportAttributesMap() {
     loh_fraction: "lohFraction",
     purity: "purity",
     ploidy: "ploidy",
+    disease: "disease",
+    inferred_sex: "sex",
   };
 }
 

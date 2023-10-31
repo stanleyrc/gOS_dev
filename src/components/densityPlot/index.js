@@ -1,10 +1,9 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import * as d3 from "d3";
-import { hexbin } from "d3-hexbin";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { Legend } from "../../helpers/utility";
+import { Legend, measureText } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -12,10 +11,22 @@ const margins = {
   gapX: 34,
   gapY: 12,
   yTicksCount: 10,
+  tooltipGap: 5,
 };
 
 class DensityPlot extends Component {
   plotContainer = null;
+
+  state = {
+    tooltip: {
+      id: -1,
+      visible: false,
+      shapeId: -1,
+      x: -1000,
+      y: -1000,
+      text: [],
+    },
+  };
 
   componentDidMount() {
     this.renderYAxis();
@@ -38,7 +49,6 @@ class DensityPlot extends Component {
       yVariable,
       xFormat,
       yFormat,
-      radius,
       xTitle,
       yTitle,
       t,
@@ -54,18 +64,6 @@ class DensityPlot extends Component {
     let xScale = d3.scaleLinear().domain(xRange).range([0, panelWidth]).nice();
     let yScale = d3.scaleLinear().domain(yRange).range([panelHeight, 0]).nice();
 
-    // Bin the data.
-    const hexbinGenerator = hexbin()
-      .x((d) => xScale(d[xVariable]))
-      .y((d) => yScale(d[yVariable]))
-      .radius((radius * panelWidth) / 928)
-      .extent([
-        [0, 0],
-        [panelWidth, panelHeight],
-      ]);
-
-    const bins = hexbinGenerator(dataPoints);
-
     // Compute the density contours.
     const contours = d3
       .contourDensity()
@@ -74,21 +72,14 @@ class DensityPlot extends Component {
       .size([width, height])(dataPoints);
 
     // Create the color scale.
-    const color =
-      plotType === "hexbinplot"
-        ? d3.scaleQuantize(
-            [0, d3.max(bins, (d) => d.length)],
-            d3.schemePurples[5]
-          )
-        : d3
-            .scaleSequential(d3.interpolatePurples)
-            .domain(d3.extent(contours, (d) => d.value))
-            .nice();
+    const color = d3
+      .scaleSequential(d3.interpolatePurples)
+      .domain(d3.extent(contours, (d) => d.value))
+      .nice();
 
     let legend = Legend(color, {
-      title:
-        plotType === "hexbinplot" ? t("general.count") : t("general.density"),
-      tickFormat: plotType === "hexbinplot" ? ".0f" : "0.2f",
+      title: t("general.density"),
+      tickFormat: "0.2f",
     });
 
     return {
@@ -101,8 +92,6 @@ class DensityPlot extends Component {
       xFormat,
       yFormat,
       color,
-      bins,
-      hexbinGenerator,
       legend,
       xTitle,
       yTitle,
@@ -137,6 +126,36 @@ class DensityPlot extends Component {
     yAxisContainer.call(yAxis);
   }
 
+  handleMouseEnter = (d, i) => {
+    const { t } = this.props;
+    const { xScale, yScale, xVariable, yVariable } =
+      this.getPlotConfiguration();
+    this.setState({
+      tooltip: {
+        id: i,
+        visible: true,
+        x: xScale(d[xVariable]) + margins.tooltipGap,
+        y: yScale(d[yVariable]) - margins.tooltipGap,
+        text: Object.keys(d).map((e) => {
+          return { label: t(`metadata.${e}`), value: d[e] };
+        }),
+      },
+    });
+  };
+
+  handleMouseOut = (d) => {
+    this.setState({
+      tooltip: {
+        id: -1,
+        visible: false,
+        shapeId: -1,
+        x: -1000,
+        y: -1000,
+        text: [],
+      },
+    });
+  };
+
   render() {
     const {
       width,
@@ -144,8 +163,6 @@ class DensityPlot extends Component {
       panelWidth,
       panelHeight,
       color,
-      bins,
-      hexbinGenerator,
       legend,
       xTitle,
       yTitle,
@@ -157,6 +174,9 @@ class DensityPlot extends Component {
       contours,
       plotType,
     } = this.getPlotConfiguration();
+
+    const { tooltip } = this.state;
+    const { visible, id } = tooltip;
 
     const svgString = new XMLSerializer().serializeToString(legend);
     return (
@@ -188,16 +208,6 @@ class DensityPlot extends Component {
                     fill={plotType === "scatterplot" ? "whitesmoke" : "white"}
                     opacity={plotType === "scatterplot" ? 0.33 : 1}
                   />
-                  {plotType === "hexbinplot" &&
-                    bins.map((bin) => (
-                      <path
-                        transform={`translate(${bin.x},${bin.y})`}
-                        d={hexbinGenerator.hexagon()}
-                        fill={color(bin.length)}
-                        stroke="#FFF"
-                        strokeWidth={0.33}
-                      ></path>
-                    ))}
                   {plotType === "contourplot" && (
                     <g stroke-linejoin="round">
                       {contours.map((d, i) => (
@@ -215,10 +225,14 @@ class DensityPlot extends Component {
                       <circle
                         cx={xScale(d[xVariable])}
                         cy={yScale(d[yVariable])}
-                        r={1.618}
-                        opacity={0.5}
+                        r={visible && id === i ? 5 : 1.618}
+                        opacity={visible && id === i ? 1 : 0.5}
                         fill={d3.schemePurples[5][4]}
-                      ></circle>
+                        stroke={visible && id === i ? "#FFF" : "transparent"}
+                        strokeWidth={visible && id === i ? 3 : 0}
+                        onMouseEnter={(e) => this.handleMouseEnter(d, i)}
+                        onMouseOut={(e) => this.handleMouseOut(d)}
+                      />
                     ))}
                 </g>
                 <g
@@ -250,6 +264,34 @@ class DensityPlot extends Component {
                   <text className="x-axis-title">{xTitle}</text>
                 </g>
               </g>
+              {tooltip.visible && (
+                <g
+                  className="tooltip"
+                  transform={`translate(${[tooltip.x, tooltip.y]})`}
+                  pointerEvents="none"
+                >
+                  <rect
+                    x="0"
+                    y="0"
+                    width={d3.max(
+                      tooltip.text,
+                      (d) => measureText(`${d.label}: ${d.value}`, 12) + 30
+                    )}
+                    height={tooltip.text.length * 16 + 12}
+                    rx="5"
+                    ry="5"
+                    fill="rgb(97, 97, 97)"
+                    fillOpacity="0.97"
+                  />
+                  <text x="10" y="28" fontSize="12" fill="#FFF">
+                    {tooltip.text.map((d, i) => (
+                      <tspan key={i} x={10} y={18 + i * 16}>
+                        <tspan fontWeight="bold">{d.label}</tspan>: {d.value}
+                      </tspan>
+                    ))}
+                  </text>
+                </g>
+              )}
             </g>
           </svg>
         </div>

@@ -45,7 +45,16 @@
       "short": "Ploidy",
       "full": "Ploidy"
     },
-    "pair": "Pair"
+    "pair": "Pair",
+    "ALT": "Alt",
+    "CHROM": "Chromosome",
+    "MQ": "MQ",
+    "N_DP": "N Dp",
+    "POS": "Position",
+    "REF": "Ref",
+    "T_DP": "T DP",
+    "VAF_T": "Tumor VAF",
+    "somatic_EVS": "Somatic EVS"
   },
   "containers": {
     "home": {}
