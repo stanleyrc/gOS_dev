@@ -46,13 +46,13 @@
       "full": "Ploidy"
     },
     "pair": "Pair",
-    "ALT": "Alt",
+    "ALT": "Alternate Allele",
     "CHROM": "Chromosome",
-    "MQ": "MQ",
-    "N_DP": "N Dp",
+    "MQ": "Mapping Quality",
+    "N_DP": "Normal Depth",
     "POS": "Position",
-    "REF": "Ref",
-    "T_DP": "T DP",
+    "REF": "Reference Allele",
+    "T_DP": "Tumor Depth",
     "VAF_T": "Tumor VAF",
     "somatic_EVS": "Somatic EVS"
   },
