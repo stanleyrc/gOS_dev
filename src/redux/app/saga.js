@@ -174,6 +174,17 @@ function* selectReport(action) {
       `data/${action.report}/complex.json`
     );
 
+    let responsePPFit = yield call(
+      axios.get,
+      `data/${action.report}/ppfit.png`,
+      {
+        responseType: "blob",
+      }
+    );
+
+    // Extract the blob data into the ppFit image attribute
+    properties.ppFitImage = responsePPFit.data;
+
     properties.genome = responseGenomeData.data;
   }
   yield put({

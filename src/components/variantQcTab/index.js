@@ -7,14 +7,14 @@ import Wrapper from "./index.style";
 
 class VariantQcTab extends Component {
   render() {
-    const { t, variants } = this.props;
+    const { t, variants, imageBlob } = this.props;
     return (
       <Wrapper>
         <Row
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
-          <Col className="gutter-row" span={24}>
+          <Col className="gutter-row" span={12}>
             <DensityPlotPanel
               dataPoints={variants}
               xTitle={t("components.variantQc-panel.x-title")}
@@ -27,6 +27,15 @@ class VariantQcTab extends Component {
               yRange={[0, 22]}
               title={t("components.variantQc-panel.title")}
             />
+          </Col>
+          <Col className="gutter-row" span={12}>
+            {imageBlob && (
+              <img
+                src={URL.createObjectURL(imageBlob)}
+                alt="ppFit"
+                height={722}
+              />
+            )}{" "}
           </Col>
         </Row>
       </Wrapper>

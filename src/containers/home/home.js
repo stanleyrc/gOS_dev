@@ -29,6 +29,7 @@ class Home extends Component {
       reports,
       selectReport,
       variantQC,
+      ppFitImage,
     } = this.props;
 
     return (
@@ -68,7 +69,10 @@ class Home extends Component {
                 <TabPane tab={t("components.tabs.tab5")} key="5">
                   <Row className="ant-panel-container ant-home-plot-container">
                     <Col className="gutter-row" span={24}>
-                      <VariantQcTab variants={variantQC} />
+                      <VariantQcTab
+                        variants={variantQC}
+                        imageBlob={ppFitImage}
+                      />
                     </Col>
                   </Row>
                 </TabPane>
@@ -110,6 +114,7 @@ const mapStateToProps = (state) => ({
   plots: state.App.populationMetrics,
   tumorPlots: state.App.tumorPopulationMetrics,
   variantQC: state.App.variantQC,
+  ppFitImage: state.App.ppFitImage,
 });
 export default connect(
   mapStateToProps,
