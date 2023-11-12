@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { Legend, measureText } from "../../helpers/utility";
+import { ckmeans } from "simple-statistics";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -53,6 +54,12 @@ class DensityPlot extends Component {
       yTitle,
       t,
       plotType,
+      colorVariable,
+      thresholdBreaks,
+      colorScheme,
+      colorSchemeSeq,
+      contourBandwidth,
+      contourThresholdCount,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -69,18 +76,35 @@ class DensityPlot extends Component {
       .contourDensity()
       .x((d) => xScale(d[xVariable]))
       .y((d) => yScale(d[yVariable]))
+      .thresholds(contourThresholdCount)
+      .bandwidth(contourBandwidth)
       .size([width, height])(dataPoints);
 
-    // Create the color scale.
-    const color = d3
-      .scaleSequential(d3.interpolatePurples)
-      .domain(d3.extent(contours, (d) => d.value))
-      .nice();
+    let legend, color;
 
-    let legend = Legend(color, {
-      title: t("general.density"),
-      tickFormat: "0.2f",
-    });
+    if (plotType === "scatterplot") {
+      let ckmeansThresholds = ckmeans(
+        dataPoints.map((d) => d[colorVariable]),
+        thresholdBreaks
+      ).map((v) => v.pop());
+      color = d3
+        .scaleThreshold()
+        .domain(ckmeansThresholds.slice(0, thresholdBreaks - 1))
+        .range(colorScheme[thresholdBreaks]);
+      legend = Legend(color, {
+        title: t(`metadata.${colorVariable}`),
+        tickFormat: "0.0f",
+      });
+    } else {
+      color = d3
+        .scaleSequential(colorSchemeSeq)
+        .domain(d3.extent(contours, (d) => d.value))
+        .nice();
+      legend = Legend(color, {
+        title: t("general.density"),
+        tickFormat: "0.2f",
+      });
+    }
 
     return {
       width,
@@ -184,7 +208,7 @@ class DensityPlot extends Component {
         <div
           style={{ width: panelWidth, height: 50, marginLeft: 34 }}
           dangerouslySetInnerHTML={{
-            __html: plotType !== "scatterplot" ? svgString : "",
+            __html: svgString,
           }}
         />
 
@@ -202,12 +226,7 @@ class DensityPlot extends Component {
             <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
               <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
                 <g clipPath="url(#cuttOffViewPane)">
-                  <rect
-                    width={panelWidth}
-                    height={panelHeight}
-                    fill={plotType === "scatterplot" ? "whitesmoke" : "white"}
-                    opacity={plotType === "scatterplot" ? 0.33 : 1}
-                  />
+                  <rect width={panelWidth} height={panelHeight} fill="#FFF" />
                   {plotType === "contourplot" && (
                     <g stroke-linejoin="round">
                       {contours.map((d, i) => (
@@ -226,8 +245,8 @@ class DensityPlot extends Component {
                         cx={xScale(d[xVariable])}
                         cy={yScale(d[yVariable])}
                         r={visible && id === i ? 5 : 1.618}
-                        opacity={visible && id === i ? 1 : 0.5}
-                        fill={d3.schemePurples[5][4]}
+                        opacity={visible && id === i ? 1 : 1}
+                        fill={color(d.T_DP)}
                         stroke={visible && id === i ? "#FFF" : "transparent"}
                         strokeWidth={visible && id === i ? 3 : 0}
                         onMouseEnter={(e) => this.handleMouseEnter(d, i)}
@@ -307,6 +326,11 @@ DensityPlot.propTypes = {
 DensityPlot.defaultProps = {
   data: [],
   radius: 3.33,
+  thresholdBreaks: 3,
+  colorScheme: d3.schemePurples,
+  colorSchemeSeq: d3.interpolatePurples,
+  contourBandwidth: 10,
+  contourThresholdCount: 1000,
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

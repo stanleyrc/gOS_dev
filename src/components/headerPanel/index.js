@@ -132,13 +132,16 @@ class HeaderPanel extends Component {
                               {d3.format(".2f")(purity)}
                             </span>
                           </span>
-                          <span
-                            className="ant-statistic-content-suffix"
-                            style={{
-                              color: colorMarkers["ploidy"],
-                            }}
-                          >
-                            / {d3.format(".2f")(ploidy)}
+                          <span className="ant-statistic-content-suffix">
+                            {" "}
+                            /{" "}
+                            <span
+                              style={{
+                                color: colorMarkers["ploidy"],
+                              }}
+                            >
+                              {d3.format(".2f")(ploidy)}
+                            </span>
                           </span>
                         </div>
                       </div>

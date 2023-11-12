@@ -26,6 +26,7 @@ class VariantQcTab extends Component {
               yFormat=".0f"
               yRange={[0, 22]}
               title={t("components.variantQc-panel.title")}
+              colorVariable="T_DP"
             />
           </Col>
           <Col className="gutter-row" span={12}>

@@ -3,7 +3,17 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Tooltip, Button, message, Row, Col, Select } from "antd";
+import {
+  Card,
+  Space,
+  Tooltip,
+  Button,
+  message,
+  Row,
+  Col,
+  Select,
+  Segmented,
+} from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { GiBubbles } from "react-icons/gi";
@@ -61,6 +71,7 @@ class DensityPlotPanel extends Component {
       inViewport,
       renderOutsideViewPort,
       visible,
+      colorVariable,
     } = this.props;
 
     const { plotType } = this.state;
@@ -81,19 +92,15 @@ class DensityPlotPanel extends Component {
           extra={
             <Space>
               <span>{t(`components.variantQc-panel.plot-label`)}</span>
-              <Select
-                defaultValue={densityPlotTypes()[0]}
-                style={{
-                  width: 180,
-                }}
-                onChange={this.handlePlotTypeSelectionChange}
-                bordered={false}
+              <Segmented
                 options={densityPlotTypes().map((d) => {
                   return {
                     value: d,
                     label: t(`components.variantQc-panel.${d}`),
                   };
                 })}
+                value={plotType}
+                onChange={this.handlePlotTypeSelectionChange}
               />
               <Tooltip title={t("components.download-as-png-tooltip")}>
                 <Button
@@ -133,6 +140,7 @@ class DensityPlotPanel extends Component {
                               xRange,
                               yRange,
                               plotType,
+                              colorVariable,
                             }}
                           />
                         </Col>
