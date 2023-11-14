@@ -107,13 +107,17 @@
     },
     "variantQc-panel": {
       "title": "Somatic EVS vs Tumor VAF density plot",
-      "y-title": "Somatic EVS",
-      "x-title": "Tumor VAF",
+      "y-title": "↑ Somatic EVS",
+      "x-title": "Tumor VAF →",
       "plot-label": "Show as:",
       "scatterplot": "Scatter Plot",
       "contourplot": "Contour Plot",
       "hexbinplot": "Hexagonal Binning",
-      "binplot": "Bin Plot"
+      "binplot": {
+        "title": "Geometric Mean Frequency Histogram",
+        "x-title": "Segment Intensity →",
+        "y-title": "↑ Frequency"
+      }
     }
   }
 }

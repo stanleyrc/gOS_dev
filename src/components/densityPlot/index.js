@@ -10,9 +10,10 @@ import Wrapper from "./index.style";
 const margins = {
   gap: 0,
   gapX: 34,
-  gapY: 12,
+  gapY: 24,
   yTicksCount: 10,
   tooltipGap: 5,
+  gapLegend: 50,
 };
 
 class DensityPlot extends Component {
@@ -66,7 +67,7 @@ class DensityPlot extends Component {
     let stageHeight = height - 3 * margins.gapY;
 
     let panelWidth = stageWidth;
-    let panelHeight = stageHeight - 150;
+    let panelHeight = stageHeight - margins.gapLegend;
 
     let xScale = d3.scaleLinear().domain(xRange).range([0, panelWidth]).nice();
     let yScale = d3.scaleLinear().domain(yRange).range([panelHeight, 0]).nice();
@@ -206,7 +207,11 @@ class DensityPlot extends Component {
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
-          style={{ width: panelWidth, height: 50, marginLeft: 34 }}
+          style={{
+            width: panelWidth,
+            height: margins.gapLegend,
+            marginLeft: margins.gapX,
+          }}
           dangerouslySetInnerHTML={{
             __html: svgString,
           }}
@@ -258,13 +263,12 @@ class DensityPlot extends Component {
                   className="axis--y y-axis-container"
                   transform={`translate(${[margins.gap, 0]})`}
                 ></g>
-                <g className="axis--y-text" transform={``}>
+                <g className="axis--y-text">
                   <text
                     className="x-axis-title"
-                    transform={`rotate(-90)`}
-                    x={-height / 2}
-                    y={-2 * margins.gapY}
-                    textAnchor="middle"
+                    x={-margins.gapX}
+                    y={-0.5 * margins.gapY}
+                    textAnchor="start"
                   >
                     {yTitle}
                   </text>
@@ -273,14 +277,15 @@ class DensityPlot extends Component {
                   className="axis--x x-axis-container"
                   transform={`translate(${[margins.gap, panelHeight]})`}
                 ></g>
-                <g
-                  className="axis--x-text"
-                  transform={`translate(${[
-                    panelWidth / 2,
-                    panelHeight + 3.5 * margins.gapY,
-                  ]})`}
-                >
-                  <text className="x-axis-title">{xTitle}</text>
+                <g className="axis--x-text">
+                  <text
+                    x={panelWidth}
+                    y={panelHeight + 1.5 * margins.gapY}
+                    className="x-axis-title"
+                    textAnchor="end"
+                  >
+                    {xTitle}
+                  </text>
                 </g>
               </g>
               {tooltip.visible && (
@@ -327,8 +332,8 @@ DensityPlot.defaultProps = {
   data: [],
   radius: 3.33,
   thresholdBreaks: 3,
-  colorScheme: d3.schemePurples,
-  colorSchemeSeq: d3.interpolatePurples,
+  colorScheme: d3.schemeBlues,
+  colorSchemeSeq: d3.interpolateBlues,
   contourBandwidth: 10,
   contourThresholdCount: 1000,
 };

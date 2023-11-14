@@ -9,7 +9,7 @@ import Wrapper from "./index.style";
 const margins = {
   gap: 0,
   gapX: 34,
-  gapY: 12,
+  gapY: 24,
   yTicksCount: 10,
 };
 
@@ -27,7 +27,7 @@ class BinPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, height, data } = this.props;
+    const { width, height, data, xTitle, yTitle } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
@@ -43,11 +43,11 @@ class BinPlot extends Component {
       .range([0, panelWidth])
       .nice();
 
-    const n = data.length;
     const x = d3.scaleLinear().domain(extent).range([0, panelWidth]).nice();
-    const bins = d3.bin().domain(x.domain()).thresholds(d3.thresholdScott)(
-      data
-    );
+    const bins = d3
+      .bin()
+      .domain(x.domain())
+      .thresholds(d3.thresholdFreedmanDiaconis)(data);
 
     // Create a scale for the y-axis
     const yScale = d3
@@ -64,6 +64,8 @@ class BinPlot extends Component {
       xScale,
       yScale,
       bins,
+      xTitle,
+      yTitle,
     };
   }
 
@@ -104,8 +106,17 @@ class BinPlot extends Component {
   }
 
   render() {
-    const { width, height, panelWidth, panelHeight, xScale, yScale, bins } =
-      this.getPlotConfiguration();
+    const {
+      width,
+      height,
+      panelWidth,
+      panelHeight,
+      xScale,
+      yScale,
+      bins,
+      xTitle,
+      yTitle,
+    } = this.getPlotConfiguration();
 
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
@@ -135,7 +146,7 @@ class BinPlot extends Component {
               <g clipPath="url(#cuttOffViewPane)">
                 {bins.map((d) => (
                   <rect
-                    fill="#40007E"
+                    fill="steelblue"
                     x={xScale(d.x0) + 1}
                     width={xScale(d.x1) - xScale(d.x0) - 1}
                     y={yScale(d.length)}
@@ -146,12 +157,32 @@ class BinPlot extends Component {
               <g
                 className="axis--y y-axis-container"
                 transform={`translate(${[margins.gap, 0]})`}
-              ></g>
+              >
+                <text
+                  className="y-axis-title"
+                  x={-margins.gapX}
+                  y={-0.5 * margins.gapY}
+                  fill="currentColor"
+                  textAnchor="start"
+                >
+                  {yTitle}
+                </text>
+              </g>
               <g
                 clipPath=""
                 className="axis--x x-axis-container"
                 transform={`translate(${[margins.gap, panelHeight]})`}
-              ></g>
+              >
+                <text
+                  className="x-axis-title"
+                  x={panelWidth}
+                  y={1.5 * margins.gapY}
+                  fill="currentColor"
+                  textAnchor="end"
+                >
+                  {xTitle}
+                </text>
+              </g>
             </g>
           </g>
         </svg>

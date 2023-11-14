@@ -73,7 +73,9 @@ class Home extends Component {
                       <VariantQcTab
                         variants={variantQC}
                         imageBlob={ppFitImage}
-                        fits={ppfit.filter((d) => d.mean).map((d) => d.mean)}
+                        fits={ppfit
+                          .filter((d) => d["geom.mean"])
+                          .map((d) => d["geom.mean"])}
                       />
                     </Col>
                   </Row>

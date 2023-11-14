@@ -9,23 +9,18 @@ const Wrapper = styled.div`
   svg.plot-container {
     user-select: none;
   }
-  .axis text,
-  .y-axis-title {
+  .axis text {
     font: 12px sans-serif;
     fill: steelblue;
     pointer-events: none;
     user-select: none;
   }
 
+  .x-axis-title,
   .y-axis-title {
-    font-weight: bold;
-  }
-
-  .x-axis-title {
     font: 12px sans-serif;
     pointer-events: none;
     user-select: none;
-    font-weight: bold;
   }
 
   .axis--y g.tick line {

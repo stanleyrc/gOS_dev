@@ -11,10 +11,16 @@ const Wrapper = styled.div`
     top: 0px;
     user-select: none;
   }
-  .axis text,
-  .y-axis-title {
+  .axis text {
     font: 12px sans-serif;
     fill: steelblue;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .x-axis-title,
+  .y-axis-title {
+    font: 12px sans-serif;
     pointer-events: none;
     user-select: none;
   }

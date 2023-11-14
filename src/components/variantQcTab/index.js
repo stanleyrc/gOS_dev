@@ -30,7 +30,7 @@ class VariantQcTab extends Component {
               colorVariable="T_DP"
             />
           </Col>
-          <Col className="gutter-row" span={8}>
+          <Col className="gutter-row" span={10}>
             {imageBlob && (
               <img
                 src={URL.createObjectURL(imageBlob)}
@@ -39,11 +39,13 @@ class VariantQcTab extends Component {
               />
             )}
           </Col>
-          <Col className="gutter-row" span={8}>
+          <Col className="gutter-row" span={6}>
             <BinPlotPanel
               {...{
                 data: fits,
-                title: t(`components.variantQc-panel.binplot`),
+                title: t(`components.variantQc-panel.binplot.title`),
+                xTitle: t(`components.variantQc-panel.binplot.x-title`),
+                yTitle: t(`components.variantQc-panel.binplot.y-title`),
               }}
             />
           </Col>

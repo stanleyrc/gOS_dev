@@ -6,7 +6,7 @@ import handleViewport from "react-in-viewport";
 import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
-import { TbChartHistogram } from "react-icons/tb";
+import { GiHistogram } from "react-icons/gi";
 import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
@@ -43,6 +43,8 @@ class BinPlotPanel extends Component {
       inViewport,
       renderOutsideViewPort,
       visible,
+      xTitle,
+      yTitle,
     } = this.props;
 
     return (
@@ -54,7 +56,7 @@ class BinPlotPanel extends Component {
           title={
             <Space>
               <span role="img" className="anticon anticon-dashboard">
-                <TbChartHistogram />
+                <GiHistogram />
               </span>
               <span className="ant-pro-menu-item-title">{title}</span>
             </Space>
@@ -90,6 +92,8 @@ class BinPlotPanel extends Component {
                               width,
                               height,
                               data,
+                              xTitle,
+                              yTitle,
                             }}
                           />
                         </Col>
