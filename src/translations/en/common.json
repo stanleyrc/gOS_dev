@@ -112,7 +112,8 @@
       "plot-label": "Show as:",
       "scatterplot": "Scatter Plot",
       "contourplot": "Contour Plot",
-      "hexbinplot": "Hexagonal Binning"
+      "hexbinplot": "Hexagonal Binning",
+      "binplot": "Bin Plot"
     }
   }
 }

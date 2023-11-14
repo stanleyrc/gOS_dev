@@ -4,17 +4,18 @@ import { connect } from "react-redux";
 import { Row, Col } from "antd";
 import DensityPlotPanel from "../../components/densityPlotPanel";
 import Wrapper from "./index.style";
+import BinPlotPanel from "../binPlotPanel";
 
 class VariantQcTab extends Component {
   render() {
-    const { t, variants, imageBlob } = this.props;
+    const { t, variants, fits, imageBlob } = this.props;
     return (
       <Wrapper>
         <Row
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
-          <Col className="gutter-row" span={12}>
+          <Col className="gutter-row" span={8}>
             <DensityPlotPanel
               dataPoints={variants}
               xTitle={t("components.variantQc-panel.x-title")}
@@ -29,14 +30,22 @@ class VariantQcTab extends Component {
               colorVariable="T_DP"
             />
           </Col>
-          <Col className="gutter-row" span={12}>
+          <Col className="gutter-row" span={8}>
             {imageBlob && (
               <img
                 src={URL.createObjectURL(imageBlob)}
                 alt="ppFit"
                 height={722}
               />
-            )}{" "}
+            )}
+          </Col>
+          <Col className="gutter-row" span={8}>
+            <BinPlotPanel
+              {...{
+                data: fits,
+                title: t(`components.variantQc-panel.binplot`),
+              }}
+            />
           </Col>
         </Row>
       </Wrapper>

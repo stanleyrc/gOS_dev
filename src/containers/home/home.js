@@ -30,6 +30,7 @@ class Home extends Component {
       selectReport,
       variantQC,
       ppFitImage,
+      ppfit,
     } = this.props;
 
     return (
@@ -72,6 +73,7 @@ class Home extends Component {
                       <VariantQcTab
                         variants={variantQC}
                         imageBlob={ppFitImage}
+                        fits={ppfit.filter((d) => d.mean).map((d) => d.mean)}
                       />
                     </Col>
                   </Row>
@@ -115,6 +117,7 @@ const mapStateToProps = (state) => ({
   tumorPlots: state.App.tumorPopulationMetrics,
   variantQC: state.App.variantQC,
   ppFitImage: state.App.ppFitImage,
+  ppfit: state.App.ppfit,
 });
 export default connect(
   mapStateToProps,

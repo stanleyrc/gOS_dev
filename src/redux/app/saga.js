@@ -145,7 +145,7 @@ function* selectReport(action) {
     );
 
     properties.filteredEvents = transformFilteredEventAttributes(
-      responseReportFilteredEvents.data
+      responseReportFilteredEvents.data  || []
     );
     Object.keys(responseReportMetadata.data[0]).forEach((key) => {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
@@ -167,12 +167,14 @@ function* selectReport(action) {
       `data/${action.report}/strelka.qc.json`
     );
 
-    properties.variantQC = responseVartiantQC.data;
+    properties.variantQC = responseVartiantQC.data || [];
 
     let responseGenomeData = yield call(
       axios.get,
       `data/${action.report}/complex.json`
     );
+
+    properties.genome = responseGenomeData.data || [];
 
     let responsePPFit = yield call(
       axios.get,
@@ -185,7 +187,13 @@ function* selectReport(action) {
     // Extract the blob data into the ppFit image attribute
     properties.ppFitImage = responsePPFit.data;
 
-    properties.genome = responseGenomeData.data;
+    let responsePPfitData = yield call(
+      axios.get,
+      `data/${action.report}/ppfit.json`
+    );
+
+    properties.ppfit = responsePPfitData.data || [];
+
   }
   yield put({
     type: actions.REPORT_SELECTED,
