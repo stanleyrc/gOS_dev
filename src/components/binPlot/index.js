@@ -44,10 +44,9 @@ class BinPlot extends Component {
       .nice();
 
     const x = d3.scaleLinear().domain(extent).range([0, panelWidth]).nice();
-    const bins = d3
-      .bin()
-      .domain(x.domain())
-      .thresholds(d3.thresholdFreedmanDiaconis)(data);
+    const bins = d3.bin().domain(x.domain()).thresholds(d3.thresholdScott)(
+      data
+    );
 
     // Create a scale for the y-axis
     const yScale = d3
@@ -144,15 +143,18 @@ class BinPlot extends Component {
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
               <g clipPath="url(#cuttOffViewPane)">
-                {bins.map((d) => (
-                  <rect
-                    fill="steelblue"
-                    x={xScale(d.x0) + 1}
-                    width={xScale(d.x1) - xScale(d.x0) - 1}
-                    y={yScale(d.length)}
-                    height={yScale(0) - yScale(d.length)}
-                  ></rect>
-                ))}
+                {bins.map(
+                  (d) =>
+                    xScale(d.x1) - xScale(d.x0) - 1 > 0 && (
+                      <rect
+                        fill="steelblue"
+                        x={xScale(d.x0) + 1}
+                        width={xScale(d.x1) - xScale(d.x0) - 1}
+                        y={yScale(d.length)}
+                        height={yScale(0) - yScale(d.length)}
+                      ></rect>
+                    )
+                )}
               </g>
               <g
                 className="axis--y y-axis-container"
