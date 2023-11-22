@@ -15,7 +15,7 @@ class VariantQcTab extends Component {
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
-          <Col className="gutter-row" span={8}>
+          <Col className="gutter-row" span={12}>
             <DensityPlotPanel
               dataPoints={variants}
               xTitle={t("components.variantQc-panel.x-title")}
@@ -30,16 +30,7 @@ class VariantQcTab extends Component {
               colorVariable="T_DP"
             />
           </Col>
-          <Col className="gutter-row" span={10}>
-            {imageBlob && (
-              <img
-                src={URL.createObjectURL(imageBlob)}
-                alt="ppFit"
-                height={722}
-              />
-            )}
-          </Col>
-          <Col className="gutter-row" span={6}>
+          <Col className="gutter-row" span={12}>
             <BinPlotPanel
               {...{
                 data: fits,
@@ -48,6 +39,20 @@ class VariantQcTab extends Component {
                 yTitle: t(`components.variantQc-panel.binplot.y-title`),
               }}
             />
+          </Col>
+        </Row>
+        <Row
+          className="ant-panel-container ant-home-plot-container"
+          gutter={16}
+        >
+          <Col className="gutter-row" span={12}>
+            {imageBlob && (
+              <img
+                src={URL.createObjectURL(imageBlob)}
+                alt="ppFit"
+                height={722}
+              />
+            )}
           </Col>
         </Row>
       </Wrapper>

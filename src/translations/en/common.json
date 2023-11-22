@@ -54,7 +54,13 @@
     "REF": "Reference Allele",
     "T_DP": "Tumor Depth",
     "VAF_T": "Tumor VAF",
-    "somatic_EVS": "Somatic EVS"
+    "somatic_EVS": "Somatic EVS",
+    "aggregate-ppfit": {
+      "mean": "Mean",
+      "seqnames": "Chromosome",
+      "width": "Total Width",
+      "count": "Total Count"
+    }
   },
   "containers": {
     "home": {}
@@ -114,7 +120,7 @@
       "contourplot": "Contour Plot",
       "hexbinplot": "Hexagonal Binning",
       "binplot": {
-        "title": "Geometric Mean Frequency Histogram",
+        "title": "Mean Frequency Histogram",
         "x-title": "Segment Intensity →",
         "y-title": "↑ Frequency"
       }

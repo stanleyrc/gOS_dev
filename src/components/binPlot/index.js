@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { legendColors } from "../../helpers/utility";
+import { measureText } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -11,10 +11,22 @@ const margins = {
   gapX: 34,
   gapY: 24,
   yTicksCount: 10,
+  tooltipGap: 5,
 };
 
 class BinPlot extends Component {
   plotContainer = null;
+
+  state = {
+    tooltip: {
+      id: -1,
+      visible: false,
+      shapeId: -1,
+      x: -1000,
+      y: -1000,
+      text: [],
+    },
+  };
 
   componentDidMount() {
     this.renderYAxis();
@@ -27,7 +39,7 @@ class BinPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, height, data, xTitle, yTitle } = this.props;
+    const { width, height, data, xTitle, yTitle, chromoBins } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
@@ -35,23 +47,56 @@ class BinPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let extent = [d3.min([d3.min(data)]), d3.max([d3.max(data)])];
-
-    const xScale = d3
-      .scaleLinear()
-      .domain(extent)
-      .range([0, panelWidth])
-      .nice();
-
-    const x = d3.scaleLinear().domain(extent).range([0, panelWidth]).nice();
-    const bins = d3.bin().domain(x.domain()).thresholds(d3.thresholdScott)(
-      data
+    let filteredData0 = data.filter((d) => d["mean"]);
+    let nestedData0 = d3.group(
+      filteredData0,
+      (d) => +d3.format(".2f")(d["mean"]),
+      (d) => d.seqnames
     );
 
-    // Create a scale for the y-axis
-    const yScale = d3
+    let dats = [];
+    // Calculate cumulative sum for each group
+    nestedData0.forEach((group0, xVal) => {
+      group0.forEach((group, seqnames) => {
+        dats.push({
+          mean: xVal,
+          seqnames: seqnames,
+          count: Array.from(group.values()).flat().length,
+          width: d3.sum(Array.from(group.values()).flat(), (e) => e.width),
+        });
+      });
+    });
+
+    let filteredData = dats;
+    let nestedData = d3.group(
+      filteredData,
+      (d) => d.mean,
+      (d) => d.seqnames
+    );
+
+    let extent = d3.extent(Array.from(nestedData.keys()));
+    let xVals = Array.from(nestedData.keys()).sort((a, b) =>
+      d3.ascending(a, b)
+    ); // d3.range(extent[0], extent[1], 0.1);
+
+    // Calculate cumulative sum for each group
+    nestedData.forEach((group0, xVal) => {
+      group0.forEach((group, seqnames) => {
+        group.forEach((d, i) => {
+          d.cumulativeWidth =
+            i === 0 ? d.width : d.width + group[i - 1].cumulativeWidth;
+        });
+      });
+    });
+
+    const xScale = d3
+      .scaleBand(xVals, [0, panelWidth])
+      .round(true)
+      .padding(0.2);
+
+    let yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(bins, (d) => d.length)])
+      .domain([0, d3.max(filteredData, (d) => d.cumulativeWidth)])
       .range([panelHeight, 0])
       .nice();
 
@@ -62,9 +107,10 @@ class BinPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      bins,
       xTitle,
       yTitle,
+      data: filteredData,
+      chromoBins,
     };
   }
 
@@ -78,8 +124,10 @@ class BinPlot extends Component {
     const axisX = d3
       .axisBottom(xScale)
       .tickSize(6)
-      .tickFormat(
-        xScale.domain()[1] < 100 ? d3.format(".2f") : d3.format("~s")
+      .tickValues(
+        xScale.domain().filter(function (d, i) {
+          return !(i % 20);
+        })
       );
 
     xAxisContainer.call(axisX);
@@ -100,9 +148,36 @@ class BinPlot extends Component {
     yAxisContainer.call(yAxis);
   }
 
-  zoomed(currentEvent) {
-    this.setState({ zoomTransform: currentEvent.transform });
-  }
+  handleMouseEnter = (d, i) => {
+    console.log("got", d);
+    const { t } = this.props;
+    const { xScale, yScale, xVariable, yVariable } =
+      this.getPlotConfiguration();
+    this.setState({
+      tooltip: {
+        id: i,
+        visible: true,
+        x: xScale(d.mean) + margins.tooltipGap,
+        y: yScale(d.cumulativeWidth) - margins.tooltipGap,
+        text: ["mean", "seqnames", "count", "width"].map((e) => {
+          return { label: t(`metadata.aggregate-ppfit.${e}`), value: d[e] };
+        }),
+      },
+    });
+  };
+
+  handleMouseOut = (d) => {
+    this.setState({
+      tooltip: {
+        id: -1,
+        visible: false,
+        shapeId: -1,
+        x: -1000,
+        y: -1000,
+        text: [],
+      },
+    });
+  };
 
   render() {
     const {
@@ -112,10 +187,14 @@ class BinPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      bins,
+      data,
       xTitle,
       yTitle,
+      chromoBins,
     } = this.getPlotConfiguration();
+
+    const { tooltip } = this.state;
+    const { visible, id } = tooltip;
 
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
@@ -143,18 +222,17 @@ class BinPlot extends Component {
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
               <g clipPath="url(#cuttOffViewPane)">
-                {bins.map(
-                  (d) =>
-                    xScale(d.x1) - xScale(d.x0) - 1 > 0 && (
-                      <rect
-                        fill="steelblue"
-                        x={xScale(d.x0) + 1}
-                        width={xScale(d.x1) - xScale(d.x0) - 1}
-                        y={yScale(d.length)}
-                        height={yScale(0) - yScale(d.length)}
-                      ></rect>
-                    )
-                )}
+                {data.map((d, i) => (
+                  <rect
+                    fill={chromoBins[d.seqnames].color}
+                    x={xScale(d.mean)}
+                    width={xScale.bandwidth()}
+                    y={yScale(d.cumulativeWidth)}
+                    height={yScale(0) - yScale(d.width)}
+                    onMouseEnter={(e) => this.handleMouseEnter(d, i)}
+                    onMouseOut={(e) => this.handleMouseOut(d)}
+                  />
+                ))}
               </g>
               <g
                 className="axis--y y-axis-container"
@@ -186,6 +264,34 @@ class BinPlot extends Component {
                 </text>
               </g>
             </g>
+            {tooltip.visible && (
+              <g
+                className="tooltip"
+                transform={`translate(${[tooltip.x, tooltip.y]})`}
+                pointerEvents="none"
+              >
+                <rect
+                  x="0"
+                  y="0"
+                  width={d3.max(
+                    tooltip.text,
+                    (d) => measureText(`${d.label}: ${d.value}`, 12) + 30
+                  )}
+                  height={tooltip.text.length * 16 + 12}
+                  rx="5"
+                  ry="5"
+                  fill="rgb(97, 97, 97)"
+                  fillOpacity="0.97"
+                />
+                <text x="10" y="28" fontSize="12" fill="#FFF">
+                  {tooltip.text.map((d, i) => (
+                    <tspan key={i} x={10} y={18 + i * 16}>
+                      <tspan fontWeight="bold">{d.label}</tspan>: {d.value}
+                    </tspan>
+                  ))}
+                </text>
+              </g>
+            )}
           </g>
         </svg>
       </Wrapper>
@@ -202,7 +308,9 @@ BinPlot.defaultProps = {
   data: [],
 };
 const mapDispatchToProps = () => ({});
-const mapStateToProps = () => ({});
+const mapStateToProps = (state) => ({
+  chromoBins: state.App.chromoBins,
+});
 export default connect(
   mapStateToProps,
   mapDispatchToProps

@@ -288,7 +288,7 @@ class DensityPlot extends Component {
                   </text>
                 </g>
               </g>
-              {tooltip.visible && (
+              {visible && (
                 <g
                   className="tooltip"
                   transform={`translate(${[tooltip.x, tooltip.y]})`}
