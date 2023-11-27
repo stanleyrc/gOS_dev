@@ -23,26 +23,10 @@ const PLOT_TYPES = {
 };
 
 function* bootApplication(action) {
-  // get the list of all folders within the public/data folder
-  let responseReports = yield call(axios.get, "data");
+  // get the list of all cases from the public/datafiles.json
+  let responseReports = yield call(axios.get, "datafiles.json");
 
-  let folders = [];
-  if (Array.isArray(responseReports.data)) {
-    folders = responseReports.data.sort();
-  } else {
-    // Create a DOM element to parse the HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(responseReports.data, "text/html");
-
-    // Find all anchor tags within the table
-    const anchorTags = doc.querySelectorAll("table a");
-
-    // Extract folder names from the anchor tags
-    folders = Array.from(anchorTags)
-      .map((a) => a.textContent.trim())
-      .filter((text) => text.endsWith("/"))
-      .map((text) => text.slice(0, -1));
-  }
+  let datafiles = responseReports.data;
 
   // get the settings within the public folder
   let responseSettings = yield call(axios.get, "settings.json");
@@ -98,7 +82,7 @@ function* bootApplication(action) {
   );
 
   let properties = {
-    reports: folders,
+    reports: datafiles,
     settings: responseSettings.data,
     populationMetrics,
     populations,
@@ -145,7 +129,7 @@ function* selectReport(action) {
     );
 
     properties.filteredEvents = transformFilteredEventAttributes(
-      responseReportFilteredEvents.data  || []
+      responseReportFilteredEvents.data || []
     );
     Object.keys(responseReportMetadata.data[0]).forEach((key) => {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
@@ -193,7 +177,6 @@ function* selectReport(action) {
     );
 
     properties.ppfit = responsePPfitData.data || [];
-
   }
   yield put({
     type: actions.REPORT_SELECTED,

@@ -36,7 +36,8 @@ class HeaderPanel extends Component {
   render() {
     const { t, report, metadata, plots } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair, sex, disease } = metadata;
+    const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
+      metadata;
 
     let colorMarkers = {};
     Object.keys(plotTypes()).forEach((d) => {
@@ -81,6 +82,7 @@ class HeaderPanel extends Component {
                           {tumor}
                         </Avatar>
                         {disease}
+                        {primary_site}
                       </Space>
                     </div>
                   </div>

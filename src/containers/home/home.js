@@ -4,7 +4,19 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import { Tabs, Row, Col, Skeleton, Affix, Button } from "antd";
+import * as d3 from "d3";
+import {
+  Tabs,
+  Row,
+  Col,
+  Skeleton,
+  Affix,
+  Avatar,
+  Card,
+  Divider,
+  Space,
+  Statistic,
+} from "antd";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
@@ -14,6 +26,7 @@ import VariantQcTab from "../../components/variantQcTab";
 import appActions from "../../redux/app/actions";
 
 const { TabPane } = Tabs;
+const { Meta } = Card;
 
 const { selectReport } = appActions;
 
@@ -85,14 +98,51 @@ class Home extends Component {
             <div className="ant-panel-list-container">
               <Row gutter={[16, 16]}>
                 {reports.map((d) => (
-                  <Col className="gutter-row" span={2}>
-                    <Button
-                      block
-                      type="default"
-                      onClick={(e) => selectReport(d)}
+                  <Col className="gutter-row" span={4}>
+                    <Card
+                      onClick={(e) => selectReport(d.pair)}
+                      hoverable
+                      title={<b>{d.pair}</b>}
+                      bordered={false}
+                      extra={
+                        <Avatar
+                          style={{
+                            backgroundColor: "#fde3cf",
+                            color: "#f56a00",
+                          }}
+                        >
+                          {d.tumor_type_final}
+                        </Avatar>
+                      }
+                      actions={[
+                        <Statistic
+                          className="stats"
+                          title={t(`metadata.svCount.short`)}
+                          value={d3.format(",")(d["sv.count"])}
+                        />,
+                        <Statistic
+                          className="stats"
+                          title={t(`metadata.lohFraction.short`)}
+                          value={d3.format(".2%")(d.loh_fraction)}
+                        />,
+                        <Statistic
+                          className="stats"
+                          title={t("metadata.purity-ploidy-title")}
+                          value={d3.format(".2f")(d.purity)}
+                          suffix={`/ ${d3.format(".2f")(d.ploidy)}`}
+                        />,
+                      ]}
                     >
-                      {d}
-                    </Button>
+                      <Meta
+                        title={d.disease}
+                        description={
+                          <Space split={<Divider type="vertical" />}>
+                            {d.inferred_sex}
+                            {d.primary_site}
+                          </Space>
+                        }
+                      />
+                    </Card>
                   </Col>
                 ))}
               </Row>

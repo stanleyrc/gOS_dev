@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { Layout, Space, Spin, Select } from "antd";
+import { Layout, Space, Spin, Select, Avatar } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
 import { siteConfig } from "../../settings";
@@ -45,12 +45,12 @@ class Topbar extends Component {
                     optionFilterProp="children"
                     placeholder={t("topbar.browse-case-reports")}
                     filterOption={(input, option) =>
-                      option.key.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      option.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
                     filterSort={(optionA, optionB) =>
-                      optionA.key
+                      optionA.label
                         .toLowerCase()
-                        .localeCompare(optionB.key.toLowerCase())
+                        .localeCompare(optionB.label.toLowerCase())
                     }
                     onChange={(report) => {
                       selectReport(report);
@@ -58,7 +58,23 @@ class Topbar extends Component {
                     onClear={(e) => resetReport()}
                   >
                     {reports.map((d) => (
-                      <Option key={d} value={d} />
+                      <Option key={d.pair} value={d.pair} label={d.pair}>
+                        <div className="demo-option-label-item">
+                          <Space>
+                            <Avatar
+                              size="small"
+                              style={{
+                                backgroundColor: "#fde3cf",
+                                color: "#f56a00",
+                              }}
+                            >
+                              {d.tumor_type_final}
+                            </Avatar>
+                            {d.pair}
+                            {d.inferred_sex}
+                          </Space>
+                        </div>
+                      </Option>
                     ))}
                   </Select>
                   {loading ? (

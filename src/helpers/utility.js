@@ -433,6 +433,7 @@ export function reportAttributesMap() {
     ploidy: "ploidy",
     disease: "disease",
     inferred_sex: "sex",
+    primary_site: "primary_site"
   };
 }
 

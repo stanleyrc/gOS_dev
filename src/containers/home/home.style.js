@@ -18,6 +18,10 @@ const HomeWrapper = styled.div`
   .ant-panel-list-container {
     margin: 24px;
   }
+  .stats .ant-statistic-content-value,
+  .stats .ant-statistic-content-suffix {
+    font-size: 16px;
+  }
 `;
 
 export default HomeWrapper;
