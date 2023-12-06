@@ -8,7 +8,7 @@ import BinPlotPanel from "../binPlotPanel";
 
 class VariantQcTab extends Component {
   render() {
-    const { t, variants, fits, imageBlob } = this.props;
+    const { t, variants, fits, imageBlob, chromoBins } = this.props;
     return (
       <Wrapper>
         <Row
@@ -19,7 +19,7 @@ class VariantQcTab extends Component {
             <DensityPlotPanel
               dataPoints={variants}
               xTitle={t("components.variantQc-panel.x-title")}
-              xVariable="VAF_T"
+              xVariable="tumor_VAF"
               xRange={[0, 1]}
               xFormat=".0%"
               yTitle={t("components.variantQc-panel.y-title")}
@@ -27,7 +27,7 @@ class VariantQcTab extends Component {
               yFormat=".0f"
               yRange={[0, 22]}
               title={t("components.variantQc-panel.title")}
-              colorVariable="T_DP"
+              colorVariable="tumor_depth"
             />
           </Col>
           <Col className="gutter-row" span={12}>
@@ -37,6 +37,7 @@ class VariantQcTab extends Component {
                 title: t(`components.variantQc-panel.binplot.title`),
                 xTitle: t(`components.variantQc-panel.binplot.x-title`),
                 yTitle: t(`components.variantQc-panel.binplot.y-title`),
+                chromoBins,
               }}
             />
           </Col>

@@ -57,7 +57,7 @@
     "somatic_EVS": "Somatic EVS",
     "aggregate-ppfit": {
       "mean": "Mean",
-      "seqnames": "Chromosome",
+      "chromosome": "Seqnames",
       "width": "Total Width",
       "count": "Total Count"
     }
@@ -119,10 +119,12 @@
       "scatterplot": "Scatter Plot",
       "contourplot": "Contour Plot",
       "hexbinplot": "Hexagonal Binning",
+      "genome-plot": "Genome Plot",
+      "modal-title": "<strong>{{count}}</strong> sequences on chromosome <strong>{{chromosome}}</strong>, having <strong>{{width}}</strong> bases total width and <strong>{{mean}}</strong> mean value",
       "binplot": {
-        "title": "Mean Frequency Histogram",
-        "x-title": "Segment Intensity →",
-        "y-title": "↑ Frequency"
+        "title": "Total Width over Segment Mean value Histogram",
+        "x-title": "Segment Intensity Mean Value →",
+        "y-title": "↑ Cummulative Width"
       }
     }
   }

@@ -4,7 +4,7 @@ const Wrapper = styled.div`
   .ant-wrapper {
     background: white;
     padding: 0px;
-    height: 400px;
+    height: ${(props) => props.height}px;
   }
   .ant-card-body {
     display: ${(props) => (props.visible ? "block" : "none")};

@@ -9,24 +9,18 @@ import {
   Button,
   Tooltip,
   message,
-  Select,
   Typography,
 } from "antd";
-import * as d3 from "d3";
 import { GiDna2 } from "react-icons/gi";
 import { AiOutlineDownload } from "react-icons/ai";
 import {
   downloadCanvasAsPng,
   transitionStyle,
-  merge,
-  cluster,
   domainsToLocation,
 } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import GenomePlot from "../genomePlot";
-import Interval from "../genomePlot/interval";
-import Connection from "../genomePlot/connection";
 import appActions from "../../redux/app/actions";
 
 const { updateDomains } = appActions;
@@ -66,10 +60,11 @@ class GenomePanel extends Component {
       zoomedByCmd,
       chromoBins,
       domains,
+      height,
     } = this.props;
     if (Object.keys(genome).length < 1) return null;
     return (
-      <Wrapper visible={visible}>
+      <Wrapper visible={visible} height={height}>
         <Card
           style={transitionStyle(inViewport || renderOutsideViewPort)}
           size="small"
@@ -128,7 +123,9 @@ class GenomePanel extends Component {
   }
 }
 GenomePanel.propTypes = {};
-GenomePanel.defaultProps = {};
+GenomePanel.defaultProps = {
+  height: 400,
+};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });

@@ -44,6 +44,7 @@ class Home extends Component {
       variantQC,
       ppFitImage,
       ppfit,
+      chromoBins,
     } = this.props;
 
     return (
@@ -87,6 +88,7 @@ class Home extends Component {
                         variants={variantQC}
                         imageBlob={ppFitImage}
                         fits={ppfit}
+                        chromoBins={chromoBins}
                       />
                     </Col>
                   </Row>
@@ -168,6 +170,7 @@ const mapStateToProps = (state) => ({
   variantQC: state.App.variantQC,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
+  chromoBins: state.App.chromoBins,
 });
 export default connect(
   mapStateToProps,

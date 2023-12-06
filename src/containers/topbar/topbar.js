@@ -45,7 +45,7 @@ class Topbar extends Component {
                     optionFilterProp="children"
                     placeholder={t("topbar.browse-case-reports")}
                     filterOption={(input, option) =>
-                      option.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
                     filterSort={(optionA, optionB) =>
                       optionA.label

@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { measureText } from "../../helpers/utility";
+import { measureText, segmentAttributes } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -18,6 +18,7 @@ class BinPlot extends Component {
   plotContainer = null;
 
   state = {
+    segmentId: null,
     tooltip: {
       id: -1,
       visible: false,
@@ -39,7 +40,8 @@ class BinPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, height, data, xTitle, yTitle, chromoBins } = this.props;
+    const { width, height, data, xTitle, yTitle, chromoBins, selectSegment } =
+      this.props;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
@@ -47,22 +49,27 @@ class BinPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let filteredData0 = data.filter((d) => d["mean"]);
+    let filteredData0 = data.filter((d) => d.metadata.mean);
     let nestedData0 = d3.group(
       filteredData0,
-      (d) => +d3.format(".2f")(d["mean"]),
-      (d) => d.seqnames
+      (d) => +d3.format(".2f")(d.metadata.mean),
+      (d) => d.chromosome
     );
 
     let dats = [];
     // Calculate cumulative sum for each group
     nestedData0.forEach((group0, xVal) => {
-      group0.forEach((group, seqnames) => {
+      group0.forEach((group, chromosome) => {
         dats.push({
+          id: `${xVal}-${chromosome}`,
           mean: xVal,
-          seqnames: seqnames,
+          chromosome: chromosome,
           count: Array.from(group.values()).flat().length,
-          width: d3.sum(Array.from(group.values()).flat(), (e) => e.width),
+          width: d3.sum(
+            Array.from(group.values()).flat(),
+            (e) => e.metadata.width
+          ),
+          iids: Array.from(group.values()).flat(),
         });
       });
     });
@@ -71,7 +78,7 @@ class BinPlot extends Component {
     let nestedData = d3.group(
       filteredData,
       (d) => d.mean,
-      (d) => d.seqnames
+      (d) => d.chromosome
     );
 
     let extent = d3.extent(Array.from(nestedData.keys()));
@@ -81,7 +88,7 @@ class BinPlot extends Component {
 
     // Calculate cumulative sum for each group
     nestedData.forEach((group0, xVal) => {
-      group0.forEach((group, seqnames) => {
+      group0.forEach((group, chromosome) => {
         group.forEach((d, i) => {
           d.cumulativeWidth =
             i === 0 ? d.width : d.width + group[i - 1].cumulativeWidth;
@@ -111,6 +118,7 @@ class BinPlot extends Component {
       yTitle,
       data: filteredData,
       chromoBins,
+      selectSegment,
     };
   }
 
@@ -149,17 +157,20 @@ class BinPlot extends Component {
   }
 
   handleMouseEnter = (d, i) => {
-    console.log("got", d);
     const { t } = this.props;
-    const { xScale, yScale, xVariable, yVariable } =
-      this.getPlotConfiguration();
+    const { xScale, yScale, height } = this.getPlotConfiguration();
+    let diffY = d3.min([
+      0,
+      height - yScale(d.cumulativeWidth) - segmentAttributes().length * 16 - 40,
+    ]);
     this.setState({
+      segmentId: d.id,
       tooltip: {
         id: i,
         visible: true,
         x: xScale(d.mean) + margins.tooltipGap,
-        y: yScale(d.cumulativeWidth) - margins.tooltipGap,
-        text: ["mean", "seqnames", "count", "width"].map((e) => {
+        y: yScale(d.cumulativeWidth) + diffY,
+        text: segmentAttributes().map((e) => {
           return { label: t(`metadata.aggregate-ppfit.${e}`), value: d[e] };
         }),
       },
@@ -168,6 +179,7 @@ class BinPlot extends Component {
 
   handleMouseOut = (d) => {
     this.setState({
+      segmentId: null,
       tooltip: {
         id: -1,
         visible: false,
@@ -191,9 +203,10 @@ class BinPlot extends Component {
       xTitle,
       yTitle,
       chromoBins,
+      selectSegment,
     } = this.getPlotConfiguration();
 
-    const { tooltip } = this.state;
+    const { tooltip, segmentId } = this.state;
     const { visible, id } = tooltip;
 
     return (
@@ -224,13 +237,15 @@ class BinPlot extends Component {
               <g clipPath="url(#cuttOffViewPane)">
                 {data.map((d, i) => (
                   <rect
-                    fill={chromoBins[d.seqnames].color}
+                    fill={chromoBins[d.chromosome]?.color}
                     x={xScale(d.mean)}
                     width={xScale.bandwidth()}
                     y={yScale(d.cumulativeWidth)}
                     height={yScale(0) - yScale(d.width)}
                     onMouseEnter={(e) => this.handleMouseEnter(d, i)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
+                    onClick={(e) => selectSegment(d)}
+                    opacity={!segmentId || d.id === segmentId ? 1 : 0.13}
                   />
                 ))}
               </g>

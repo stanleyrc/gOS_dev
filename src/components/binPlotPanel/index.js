@@ -3,14 +3,23 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
+import { Card, Space, Tooltip, Button, message, Row, Col, Modal } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { GiHistogram } from "react-icons/gi";
-import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
+import GenomePanel from "../genomePanel";
+import {
+  downloadCanvasAsPng,
+  transitionStyle,
+  locationToDomains,
+} from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
+import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
+import appActions from "../../redux/app/actions";
+
+const { updateDomains } = appActions;
 
 const margins = {
   padding: 0,
@@ -19,6 +28,11 @@ const margins = {
 
 class BinPlotPanel extends Component {
   container = null;
+
+  state = {
+    segment: null,
+    open: false,
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -34,6 +48,16 @@ class BinPlotPanel extends Component {
       });
   };
 
+  handleSelectSegment = (segment) => {
+    const { chromoBins, updateDomains } = this.props;
+    let location = `${segment.chromosome}:${d3.min(
+      segment.iids,
+      (d) => d.startPoint
+    )}-${segment.chromosome}:${d3.max(segment.iids, (d) => d.endPoint)}`;
+    let domains = locationToDomains(chromoBins, location);
+    this.setState({ segment, open: true }, () => updateDomains(domains));
+  };
+
   render() {
     const {
       t,
@@ -45,8 +69,10 @@ class BinPlotPanel extends Component {
       visible,
       xTitle,
       yTitle,
+      chromoBins,
     } = this.props;
 
+    const { segment, open } = this.state;
     return (
       <Wrapper visible={visible}>
         <Card
@@ -91,11 +117,50 @@ class BinPlotPanel extends Component {
                             {...{
                               width,
                               height,
-                              data,
+                              data: data.intervals,
                               xTitle,
                               yTitle,
+                              selectSegment: (e) => this.handleSelectSegment(e),
                             }}
                           />
+                          {segment && (
+                            <Modal
+                              title={
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: t(
+                                      "components.variantQc-panel.modal-title",
+                                      {
+                                        chromosome: segment.chromosome,
+                                        count: segment.count,
+                                        width: d3.format(",")(segment.width),
+                                        mean: segment.mean,
+                                      }
+                                    ),
+                                  }}
+                                />
+                              }
+                              centered
+                              open={open}
+                              onOk={() => this.setState({ open: false })}
+                              onCancel={() => this.setState({ open: false })}
+                              width={1200}
+                            >
+                              <GenomePanel
+                                {...{
+                                  loading,
+                                  genome: data,
+                                  title: t(
+                                    "components.variantQc-panel.genome-plot"
+                                  ),
+                                  chromoBins,
+                                  visible: true,
+                                  index: 0,
+                                  height: 700,
+                                }}
+                              />
+                            </Modal>
+                          )}
                         </Col>
                       </Row>
                     )
@@ -113,10 +178,12 @@ BinPlotPanel.propTypes = {
   data: PropTypes.array,
 };
 BinPlotPanel.defaultProps = {
-  data: [],
+  data: { intervals: [], connections: [] },
   visible: true,
 };
-const mapDispatchToProps = () => ({});
+const mapDispatchToProps = (dispatch) => ({
+  updateDomains: (domains) => dispatch(updateDomains(domains)),
+});
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
 });

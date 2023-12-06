@@ -9,6 +9,7 @@ import {
   transformFilteredEventAttributes,
   plotTypes,
   getPopulationMetrics,
+  sequencesToGenome,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
@@ -176,7 +177,13 @@ function* selectReport(action) {
       `data/${action.report}/ppfit.json`
     );
 
-    properties.ppfit = responsePPfitData.data || [];
+    properties.ppfit = responsePPfitData.data
+      ? sequencesToGenome(responsePPfitData.data)
+      : {
+          settings: {},
+          intervals: [],
+          connections: [],
+        };
   }
   yield put({
     type: actions.REPORT_SELECTED,

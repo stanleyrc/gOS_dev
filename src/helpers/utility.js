@@ -426,22 +426,26 @@ export function reportAttributesMap() {
     pair: "pair",
     tumor_type_final: "tumor",
     dlrs: "coverageVariance",
-    "snv.count": "snvCount",
-    "sv.count": "svCount",
+    snv_count: "snvCount",
+    sv_count: "svCount",
     loh_fraction: "lohFraction",
     purity: "purity",
     ploidy: "ploidy",
     disease: "disease",
     inferred_sex: "sex",
-    primary_site: "primary_site"
+    primary_site: "primary_site",
   };
+}
+
+export function segmentAttributes() {
+  return ["mean", "chromosome", "count", "width"];
 }
 
 export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
       const regex = /^(\w+):(\d+)-(\d+)$/;
-      const match = regex.exec(event["Genome.Location"]);
+      const match = regex.exec(event.Genome_Location);
       const chromosome = match[1];
       const startPoint = parseInt(match[2], 10);
       const endPoint = parseInt(match[3], 10);
@@ -450,15 +454,35 @@ export function transformFilteredEventAttributes(filteredEvents) {
         type: event.type,
         name: event.Name,
         tier: event.Tier,
-        role: event["Role.in.Cancer"],
+        role: event.Role_in_Cancer,
         chromosome: chromosome,
         startPoint: startPoint,
         endPoint: endPoint,
-        location: event["Genome.Location"],
+        location: event.Genome_Location,
         id: event.id,
       };
     })
     .sort((a, b) => d3.ascending(a.gene, b.gene));
+}
+
+export function sequencesToGenome(ppfit) {
+  return {
+    settings: {},
+    intervals: ppfit.map((d, i) => {
+      return {
+        iid: i,
+        chromosome: d.chromosome,
+        startPoint: d.startPoint,
+        endPoint: d.endPoint,
+        y: d.cn || d.ncn,
+        type: "interval",
+        strand: d.strand,
+        title: d.tile_id,
+        metadata: d,
+      };
+    }),
+    connections: [],
+  };
 }
 
 export function getPopulationMetrics(

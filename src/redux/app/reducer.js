@@ -28,7 +28,7 @@ const initState = {
   populationMetrics: [],
   variantQC: [],
   ppFitImage: null,
-  ppfit: [],
+  ppfit: { settings: {}, intervals: [], connections: [] },
 };
 
 export default function appReducer(state = initState, action) {
