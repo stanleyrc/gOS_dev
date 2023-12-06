@@ -120,7 +120,7 @@ class Home extends Component {
                         <Statistic
                           className="stats"
                           title={t(`metadata.svCount.short`)}
-                          value={d3.format(",")(d["sv.count"])}
+                          value={d3.format(",")(d.sv_count)}
                         />,
                         <Statistic
                           className="stats"
