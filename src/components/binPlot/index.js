@@ -11,7 +11,7 @@ const margins = {
   gapX: 34,
   gapY: 24,
   yTicksCount: 10,
-  tooltipGap: 5,
+  tooltipGap: 10,
 };
 
 class BinPlot extends Component {
@@ -49,52 +49,33 @@ class BinPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let filteredData0 = data.filter((d) => d.metadata.mean);
-    let nestedData0 = d3.group(
-      filteredData0,
-      (d) => +d3.format(".2f")(d.metadata.mean),
-      (d) => d.chromosome
+    let filteredData = data.filter((d) => d.metadata.mean).slice(0, 1000);
+
+    let series = d3.groups(
+      filteredData,
+      (d) => +d3.format(".2f")(d.metadata.mean)
     );
 
-    let dats = [];
-    // Calculate cumulative sum for each group
-    nestedData0.forEach((group0, xVal) => {
-      group0.forEach((group, chromosome) => {
-        dats.push({
-          id: `${xVal}-${chromosome}`,
-          mean: xVal,
-          chromosome: chromosome,
-          count: Array.from(group.values()).flat().length,
-          width: d3.sum(
-            Array.from(group.values()).flat(),
-            (e) => e.metadata.width
-          ),
-          iids: Array.from(group.values()).flat(),
-        });
+    series.forEach((d, i) => {
+      let values = d[1];
+      let acc = 0;
+      values.forEach((e, j) => {
+        e.xPos = d[0];
+        e.pos = acc;
+        e.cumulativeWidth = e.pos + e.metadata.width;
+        e.width = e.metadata.width;
+        e.mean = d[0];
+        acc = e.cumulativeWidth;
       });
     });
 
-    let filteredData = dats;
-    let nestedData = d3.group(
-      filteredData,
-      (d) => d.mean,
-      (d) => d.chromosome
-    );
+    series = series.map((d) => d[1]).flat();
+    console.log(series);
 
-    let extent = d3.extent(Array.from(nestedData.keys()));
-    let xVals = Array.from(nestedData.keys()).sort((a, b) =>
+    let extent = d3.extent(series, (d) => d.xPos);
+    let xVals = [...new Set(series.map((d) => d.xPos))].sort((a, b) =>
       d3.ascending(a, b)
     ); // d3.range(extent[0], extent[1], 0.1);
-
-    // Calculate cumulative sum for each group
-    nestedData.forEach((group0, xVal) => {
-      group0.forEach((group, chromosome) => {
-        group.forEach((d, i) => {
-          d.cumulativeWidth =
-            i === 0 ? d.width : d.width + group[i - 1].cumulativeWidth;
-        });
-      });
-    });
 
     const xScale = d3
       .scaleBand(xVals, [0, panelWidth])
@@ -103,7 +84,7 @@ class BinPlot extends Component {
 
     let yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(filteredData, (d) => d.cumulativeWidth)])
+      .domain([0, d3.max(series, (d) => d.cumulativeWidth)])
       .range([panelHeight, 0])
       .nice();
 
@@ -116,7 +97,7 @@ class BinPlot extends Component {
       yScale,
       xTitle,
       yTitle,
-      data: filteredData,
+      series,
       chromoBins,
       selectSegment,
     };
@@ -160,15 +141,15 @@ class BinPlot extends Component {
     const { t } = this.props;
     const { xScale, yScale, height } = this.getPlotConfiguration();
     let diffY = d3.min([
-      0,
+      10,
       height - yScale(d.cumulativeWidth) - segmentAttributes().length * 16 - 40,
     ]);
     this.setState({
-      segmentId: d.id,
+      segmentId: d.iid,
       tooltip: {
         id: i,
         visible: true,
-        x: xScale(d.mean) + margins.tooltipGap,
+        x: xScale(d.xPos) + margins.tooltipGap,
         y: yScale(d.cumulativeWidth) + diffY,
         text: segmentAttributes().map((e) => {
           return { label: t(`metadata.aggregate-ppfit.${e}`), value: d[e] };
@@ -199,7 +180,7 @@ class BinPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      data,
+      series,
       xTitle,
       yTitle,
       chromoBins,
@@ -235,17 +216,19 @@ class BinPlot extends Component {
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
               <g clipPath="url(#cuttOffViewPane)">
-                {data.map((d, i) => (
+                {series.map((d, i) => (
                   <rect
                     fill={chromoBins[d.chromosome]?.color}
-                    x={xScale(d.mean)}
+                    x={xScale(d.xPos)}
                     width={xScale.bandwidth()}
                     y={yScale(d.cumulativeWidth)}
-                    height={yScale(0) - yScale(d.width)}
+                    height={yScale(0) - yScale(d.metadata.width)}
                     onMouseEnter={(e) => this.handleMouseEnter(d, i)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
                     onClick={(e) => selectSegment(d)}
-                    opacity={!segmentId || d.id === segmentId ? 1 : 0.13}
+                    stroke="#FFF"
+                    strokeWidth={0.25}
+                    opacity={!segmentId || d.iid === segmentId ? 1 : 0.13}
                   />
                 ))}
               </g>

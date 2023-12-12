@@ -50,10 +50,7 @@ class BinPlotPanel extends Component {
 
   handleSelectSegment = (segment) => {
     const { chromoBins, updateDomains } = this.props;
-    let location = `${segment.chromosome}:${d3.min(
-      segment.iids,
-      (d) => d.startPoint
-    )}-${segment.chromosome}:${d3.max(segment.iids, (d) => d.endPoint)}`;
+    let location = `${segment.chromosome}:${segment.startPoint}-${segment.chromosome}:${segment.endPoint}`;
     let domains = locationToDomains(chromoBins, location);
     this.setState({ segment, open: true }, () => updateDomains(domains));
   };

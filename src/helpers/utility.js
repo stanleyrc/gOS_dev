@@ -438,7 +438,7 @@ export function reportAttributesMap() {
 }
 
 export function segmentAttributes() {
-  return ["mean", "chromosome", "count", "width"];
+  return ["mean", "chromosome", "width"];
 }
 
 export function transformFilteredEventAttributes(filteredEvents) {
@@ -468,19 +468,21 @@ export function transformFilteredEventAttributes(filteredEvents) {
 export function sequencesToGenome(ppfit) {
   return {
     settings: {},
-    intervals: ppfit.map((d, i) => {
-      return {
-        iid: i,
-        chromosome: d.chromosome,
-        startPoint: d.startPoint,
-        endPoint: d.endPoint,
-        y: d.cn || d.ncn,
-        type: "interval",
-        strand: d.strand,
-        title: d.tile_id,
-        metadata: d,
-      };
-    }),
+    intervals: ppfit
+      .filter((d) => !d.bad)
+      .map((d, i) => {
+        return {
+          iid: i,
+          chromosome: d.chromosome,
+          startPoint: d.startPoint,
+          endPoint: d.endPoint,
+          y: d.cn,
+          type: "interval",
+          strand: d.strand,
+          title: d.tile_id,
+          metadata: d,
+        };
+      }),
     connections: [],
   };
 }

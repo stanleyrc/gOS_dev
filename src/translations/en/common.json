@@ -57,8 +57,8 @@
     "somatic_EVS": "Somatic EVS",
     "aggregate-ppfit": {
       "mean": "Mean",
-      "chromosome": "Seqnames",
-      "width": "Total Width",
+      "chromosome": "Chromosome",
+      "width": "Width",
       "count": "Total Count"
     }
   },
