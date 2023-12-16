@@ -46,20 +46,24 @@
       "full": "Ploidy"
     },
     "pair": "Pair",
-    "ALT": "Alternate Allele",
-    "CHROM": "Chromosome",
-    "MQ": "Mapping Quality",
-    "N_DP": "Normal Depth",
-    "POS": "Position",
-    "REF": "Reference Allele",
-    "T_DP": "Tumor Depth",
-    "VAF_T": "Tumor VAF",
+    "alternate": "Alternate Allele",
+    "chromosome": "Chromosome",
+    "mapping_quality": "Mapping Quality",
+    "normal_depth": "Normal Depth",
+    "position": "Position",
+    "reference": "Reference Allele",
+    "tumor_depth": "Tumor Depth",
+    "tumor_VAF": "Tumor VAF",
     "somatic_EVS": "Somatic EVS",
     "aggregate-ppfit": {
       "mean": "Mean",
       "chromosome": "Chromosome",
       "width": "Width",
-      "count": "Total Count"
+      "count": "Total Count",
+      "y": "Copy Number",
+      "startPoint": "Start Point",
+      "endPoint": "End Point",
+      "iid": "id"
     }
   },
   "containers": {
@@ -71,7 +75,8 @@
       "tab2": "Population KPIs for all Tumor Types",
       "tab3": "Population KPIs for Tumor Type {{tumor}}",
       "tab4": "Filtered Events",
-      "tab5": "Variant QC"
+      "tab5": "Variant QC",
+      "tab6": "Segment Width Plot"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
@@ -117,10 +122,11 @@
       "x-title": "Tumor VAF →",
       "plot-label": "Show as:",
       "scatterplot": "Scatter Plot",
-      "contourplot": "Contour Plot",
-      "hexbinplot": "Hexagonal Binning",
+      "contourplot": "Contour Plot"
+    },
+    "binQc-panel": {
       "genome-plot": "Genome Plot",
-      "modal-title": "<strong>{{count}}</strong> sequences on chromosome <strong>{{chromosome}}</strong>, having <strong>{{width}}</strong> bases total width and <strong>{{mean}}</strong> mean value",
+      "modal-title": "Showing sequence <strong>{{iid}}</strong> on chromosome <strong>{{chromosome}}</strong>, having <strong>{{width}}</strong> bases and mean value <strong>{{mean}}</strong>",
       "binplot": {
         "title": "Total Width over Segment Mean value Histogram",
         "x-title": "Segment Intensity Mean Value →",

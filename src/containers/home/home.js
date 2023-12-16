@@ -24,6 +24,7 @@ import SummaryTab from "../../components/summaryTab";
 import FilteredEventsList from "../../components/filteredEventsListPanel";
 import VariantQcTab from "../../components/variantQcTab";
 import appActions from "../../redux/app/actions";
+import BinQCTab from "../../components/binQCTab";
 
 const { TabPane } = Tabs;
 const { Meta } = Card;
@@ -84,8 +85,14 @@ class Home extends Component {
                 <TabPane tab={t("components.tabs.tab5")} key="5">
                   <Row className="ant-panel-container ant-home-plot-container">
                     <Col className="gutter-row" span={24}>
-                      <VariantQcTab
-                        variants={variantQC}
+                      <VariantQcTab variants={variantQC} />
+                    </Col>
+                  </Row>
+                </TabPane>
+                <TabPane tab={t("components.tabs.tab6")} key="6">
+                  <Row className="ant-panel-container ant-home-plot-container">
+                    <Col className="gutter-row" span={24}>
+                      <BinQCTab
                         imageBlob={ppFitImage}
                         fits={ppfit}
                         chromoBins={chromoBins}

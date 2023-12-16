@@ -125,6 +125,7 @@ class DensityPlot extends Component {
       yVariable,
       contours,
       plotType,
+      colorVariable,
     };
   }
 
@@ -198,11 +199,11 @@ class DensityPlot extends Component {
       yVariable,
       contours,
       plotType,
+      colorVariable,
     } = this.getPlotConfiguration();
 
     const { tooltip } = this.state;
     const { visible, id } = tooltip;
-
     const svgString = new XMLSerializer().serializeToString(legend);
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
@@ -251,7 +252,7 @@ class DensityPlot extends Component {
                         cy={yScale(d[yVariable])}
                         r={visible && id === i ? 5 : 1.618}
                         opacity={visible && id === i ? 1 : 1}
-                        fill={color(d.T_DP)}
+                        fill={color(d[colorVariable])}
                         stroke={visible && id === i ? "#FFF" : "transparent"}
                         strokeWidth={visible && id === i ? 3 : 0}
                         onMouseEnter={(e) => this.handleMouseEnter(d, i)}

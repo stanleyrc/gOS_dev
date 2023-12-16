@@ -438,7 +438,15 @@ export function reportAttributesMap() {
 }
 
 export function segmentAttributes() {
-  return ["mean", "chromosome", "width"];
+  return {
+    iid: "",
+    mean: ".2f",
+    y: ",",
+    chromosome: "",
+    width: ",",
+    startPoint: ",",
+    endPoint: ",",
+  };
 }
 
 export function transformFilteredEventAttributes(filteredEvents) {

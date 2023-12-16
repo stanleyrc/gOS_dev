@@ -4,18 +4,17 @@ import { connect } from "react-redux";
 import { Row, Col } from "antd";
 import DensityPlotPanel from "../../components/densityPlotPanel";
 import Wrapper from "./index.style";
-import BinPlotPanel from "../binPlotPanel";
 
 class VariantQcTab extends Component {
   render() {
-    const { t, variants, fits, imageBlob, chromoBins } = this.props;
+    const { t, variants } = this.props;
     return (
       <Wrapper>
         <Row
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
-          <Col className="gutter-row" span={12}>
+          <Col className="gutter-row" span={24}>
             <DensityPlotPanel
               dataPoints={variants}
               xTitle={t("components.variantQc-panel.x-title")}
@@ -29,31 +28,6 @@ class VariantQcTab extends Component {
               title={t("components.variantQc-panel.title")}
               colorVariable="tumor_depth"
             />
-          </Col>
-          <Col className="gutter-row" span={12}>
-            <BinPlotPanel
-              {...{
-                data: fits,
-                title: t(`components.variantQc-panel.binplot.title`),
-                xTitle: t(`components.variantQc-panel.binplot.x-title`),
-                yTitle: t(`components.variantQc-panel.binplot.y-title`),
-                chromoBins,
-              }}
-            />
-          </Col>
-        </Row>
-        <Row
-          className="ant-panel-container ant-home-plot-container"
-          gutter={16}
-        >
-          <Col className="gutter-row" span={12}>
-            {imageBlob && (
-              <img
-                src={URL.createObjectURL(imageBlob)}
-                alt="ppFit"
-                height={722}
-              />
-            )}
           </Col>
         </Row>
       </Wrapper>

@@ -52,6 +52,10 @@ class BinPlotPanel extends Component {
     const { chromoBins, updateDomains } = this.props;
     let location = `${segment.chromosome}:${segment.startPoint}-${segment.chromosome}:${segment.endPoint}`;
     let domains = locationToDomains(chromoBins, location);
+    domains = domains.map((d) => [
+      Math.floor((19 * d[0] - d[1]) / 18),
+      Math.floor((19 * d[1] - d[0]) / 18),
+    ]);
     this.setState({ segment, open: true }, () => updateDomains(domains));
   };
 
@@ -126,10 +130,10 @@ class BinPlotPanel extends Component {
                                 <span
                                   dangerouslySetInnerHTML={{
                                     __html: t(
-                                      "components.variantQc-panel.modal-title",
+                                      "components.binQc-panel.modal-title",
                                       {
+                                        iid: segment.iid,
                                         chromosome: segment.chromosome,
-                                        count: segment.count,
                                         width: d3.format(",")(segment.width),
                                         mean: segment.mean,
                                       }
@@ -148,7 +152,7 @@ class BinPlotPanel extends Component {
                                   loading,
                                   genome: data,
                                   title: t(
-                                    "components.variantQc-panel.genome-plot"
+                                    "components.binQc-panel.genome-plot"
                                   ),
                                   chromoBins,
                                   visible: true,

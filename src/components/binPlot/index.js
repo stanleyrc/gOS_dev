@@ -12,6 +12,7 @@ const margins = {
   gapY: 24,
   yTicksCount: 10,
   tooltipGap: 10,
+  minBarHeight: 5,
 };
 
 class BinPlot extends Component {
@@ -43,13 +44,15 @@ class BinPlot extends Component {
     const { width, height, data, xTitle, yTitle, chromoBins, selectSegment } =
       this.props;
 
+    const { minBarHeight } = margins;
+
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
 
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let filteredData = data.filter((d) => d.metadata.mean).slice(0, 1000);
+    let filteredData = data.filter((d) => d.metadata.mean);
 
     let series = d3.groups(
       filteredData,
@@ -59,28 +62,63 @@ class BinPlot extends Component {
     series.forEach((d, i) => {
       let values = d[1];
       let acc = 0;
+      values
+        .sort((a, b) =>
+          d3.ascending(
+            Object.keys(chromoBins).indexOf(a.chromosome),
+            Object.keys(chromoBins).indexOf(b.chromosome)
+          )
+        )
+        .forEach((e, j) => {
+          e.xPos = d[0];
+          e.pos = acc;
+          e.cumulativeWidth = e.pos + e.metadata.width;
+          e.width = e.metadata.width;
+          e.mean = d[0];
+          acc = e.cumulativeWidth;
+        });
+    });
+
+    let maxWidth = d3.max(
+      series.map((d) => d3.sum(d[1], (e) => e.metadata.width))
+    );
+    let maxInstance = series.find(
+      (d) => d3.sum(d[1], (e) => e.metadata.width) === maxWidth
+    );
+
+    let smallest = maxInstance[1].filter(
+      (d) => (d.metadata.width * panelHeight) / maxWidth < minBarHeight
+    );
+    let remainderWidth = maxWidth - d3.sum(smallest, (d) => d.metadata.width);
+
+    let coefficient =
+      (panelHeight - smallest.length * minBarHeight) / remainderWidth;
+
+    series.forEach((d, i) => {
+      let values = d[1];
+      let acc = panelHeight;
       values.forEach((e, j) => {
-        e.xPos = d[0];
-        e.pos = acc;
-        e.cumulativeWidth = e.pos + e.metadata.width;
-        e.width = e.metadata.width;
-        e.mean = d[0];
-        acc = e.cumulativeWidth;
+        e.posPixels = acc;
+        e.widthPixels = d3.max([coefficient * e.metadata.width, minBarHeight]);
+        e.cumulativeWidthPixels = e.posPixels - e.widthPixels;
+        acc = e.cumulativeWidthPixels;
       });
     });
 
     series = series.map((d) => d[1]).flat();
-    console.log(series);
 
-    let extent = d3.extent(series, (d) => d.xPos);
     let xVals = [...new Set(series.map((d) => d.xPos))].sort((a, b) =>
       d3.ascending(a, b)
-    ); // d3.range(extent[0], extent[1], 0.1);
+    );
 
     const xScale = d3
-      .scaleBand(xVals, [0, panelWidth])
-      .round(true)
-      .padding(0.2);
+      .scaleBand()
+      .domain(xVals)
+      .range([0, panelWidth])
+      .paddingInner(0.33)
+      .paddingOuter(0)
+      .align(0.5)
+      .round(true);
 
     let yScale = d3
       .scaleLinear()
@@ -115,7 +153,7 @@ class BinPlot extends Component {
       .tickSize(6)
       .tickValues(
         xScale.domain().filter(function (d, i) {
-          return !(i % 20);
+          return !(i % 2);
         })
       );
 
@@ -131,7 +169,7 @@ class BinPlot extends Component {
 
     let yAxis = d3
       .axisLeft(yScale)
-      .ticks(6, "~s")
+      .ticks(10)
       .tickSize(3)
       .tickFormat(d3.format("~s"));
     yAxisContainer.call(yAxis);
@@ -139,10 +177,13 @@ class BinPlot extends Component {
 
   handleMouseEnter = (d, i) => {
     const { t } = this.props;
-    const { xScale, yScale, height } = this.getPlotConfiguration();
+    const { xScale, height } = this.getPlotConfiguration();
     let diffY = d3.min([
       10,
-      height - yScale(d.cumulativeWidth) - segmentAttributes().length * 16 - 40,
+      height -
+        d.cumulativeWidthPixels -
+        Object.keys(segmentAttributes()).length * 16 -
+        40,
     ]);
     this.setState({
       segmentId: d.iid,
@@ -150,9 +191,12 @@ class BinPlot extends Component {
         id: i,
         visible: true,
         x: xScale(d.xPos) + margins.tooltipGap,
-        y: yScale(d.cumulativeWidth) + diffY,
-        text: segmentAttributes().map((e) => {
-          return { label: t(`metadata.aggregate-ppfit.${e}`), value: d[e] };
+        y: d.cumulativeWidthPixels + diffY,
+        text: Object.keys(segmentAttributes()).map((e) => {
+          return {
+            label: t(`metadata.aggregate-ppfit.${e}`),
+            value: d3.format(segmentAttributes()[e])(d[e]),
+          };
         }),
       },
     });
@@ -179,7 +223,6 @@ class BinPlot extends Component {
       panelWidth,
       panelHeight,
       xScale,
-      yScale,
       series,
       xTitle,
       yTitle,
@@ -221,13 +264,14 @@ class BinPlot extends Component {
                     fill={chromoBins[d.chromosome]?.color}
                     x={xScale(d.xPos)}
                     width={xScale.bandwidth()}
-                    y={yScale(d.cumulativeWidth)}
-                    height={yScale(0) - yScale(d.metadata.width)}
+                    y={d.cumulativeWidthPixels}
+                    height={d.widthPixels}
                     onMouseEnter={(e) => this.handleMouseEnter(d, i)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
                     onClick={(e) => selectSegment(d)}
                     stroke="#FFF"
-                    strokeWidth={0.25}
+                    strokeWidth={0.5}
+                    rx={1}
                     opacity={!segmentId || d.iid === segmentId ? 1 : 0.13}
                   />
                 ))}
