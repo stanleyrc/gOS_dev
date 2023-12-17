@@ -645,7 +645,7 @@ class GenomePlot extends Component {
                 rx="5"
                 ry="5"
                 fill="rgb(97, 97, 97)"
-                fillOpacity="0.97"
+                fillOpacity="0.67"
               />
               <text x="10" y="28" fontSize="12" fill="#FFF">
                 {tooltip.text.map((d, i) => (

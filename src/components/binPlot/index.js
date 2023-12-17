@@ -205,7 +205,7 @@ class BinPlot extends Component {
 
   handleMouseEnter = (d, i) => {
     const { t } = this.props;
-    const { xScale, height, width } = this.getPlotConfiguration();
+    const { xScale, panelHeight, width } = this.getPlotConfiguration();
     let text = Object.keys(segmentAttributes()).map((e) => {
       return {
         label: t(`metadata.aggregate-ppfit.${e}`),
@@ -217,14 +217,13 @@ class BinPlot extends Component {
       (d) => measureText(`${d.label}: ${d.value}`, 12) + 30
     );
     let diffY = d3.min([
-      10,
-      height -
+      5,
+      panelHeight -
         d.cumulativeWidthPixels -
-        Object.keys(segmentAttributes()).length * 16 -
-        40,
+        Object.keys(segmentAttributes()).length * 16,
     ]);
     let diffX = d3.min([
-      0,
+      5,
       width - xScale(d.xPos) - margins.tooltipGap - maxTextWidth - 40,
     ]);
     this.setState({
@@ -371,7 +370,7 @@ class BinPlot extends Component {
                   rx="5"
                   ry="5"
                   fill="rgb(97, 97, 97)"
-                  fillOpacity="0.97"
+                  fillOpacity="0.67"
                 />
                 <text x="10" y="28" fontSize="12" fill="#FFF">
                   {tooltip.text.map((d, i) => (
