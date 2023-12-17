@@ -119,7 +119,7 @@ class BinPlotPanel extends Component {
                           <BinPlot
                             {...{
                               width,
-                              height,
+                              height: 600,
                               data: data.intervals,
                               xTitle,
                               yTitle,
