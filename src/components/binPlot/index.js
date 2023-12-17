@@ -183,7 +183,7 @@ class BinPlot extends Component {
     const axisX = d3
       .axisBottom(xScale)
       .tickValues(separators)
-      .tickFormat(d3.format(".3f"));
+      .tickFormat(d3.format(".1f"));
 
     xAxisContainer.call(axisX);
   }
