@@ -71,6 +71,8 @@ class BinPlotPanel extends Component {
       xTitle,
       yTitle,
       chromoBins,
+      slope,
+      intercept,
     } = this.props;
 
     const { segment, open } = this.state;
@@ -122,6 +124,8 @@ class BinPlotPanel extends Component {
                               xTitle,
                               yTitle,
                               selectSegment: (e) => this.handleSelectSegment(e),
+                              slope,
+                              intercept,
                             }}
                           />
                           {segment && (

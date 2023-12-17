@@ -47,7 +47,7 @@ class Home extends Component {
       ppfit,
       chromoBins,
     } = this.props;
-
+    const { beta, gamma } = metadata;
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
@@ -76,29 +76,19 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab4")} key="4">
-                  <Row className="ant-panel-container ant-home-plot-container">
-                    <Col className="gutter-row" span={24}>
-                      <FilteredEventsList />
-                    </Col>
-                  </Row>
+                  <FilteredEventsList />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab5")} key="5">
-                  <Row className="ant-panel-container ant-home-plot-container">
-                    <Col className="gutter-row" span={24}>
-                      <VariantQcTab variants={variantQC} />
-                    </Col>
-                  </Row>
+                  <VariantQcTab variants={variantQC} />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab6")} key="6">
-                  <Row className="ant-panel-container ant-home-plot-container">
-                    <Col className="gutter-row" span={24}>
-                      <BinQCTab
-                        imageBlob={ppFitImage}
-                        fits={ppfit}
-                        chromoBins={chromoBins}
-                      />
-                    </Col>
-                  </Row>
+                  <BinQCTab
+                    imageBlob={ppFitImage}
+                    fits={ppfit}
+                    chromoBins={chromoBins}
+                    slope={1 / beta}
+                    intercept={gamma / beta}
+                  />
                 </TabPane>
               </Tabs>
             </div>

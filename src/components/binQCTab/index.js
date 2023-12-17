@@ -7,7 +7,7 @@ import BinPlotPanel from "../binPlotPanel";
 
 class BinQcTab extends Component {
   render() {
-    const { t, fits, imageBlob, chromoBins } = this.props;
+    const { t, fits, imageBlob, chromoBins, slope, intercept } = this.props;
     return (
       <Wrapper>
         <Row
@@ -22,6 +22,8 @@ class BinQcTab extends Component {
                 xTitle: t(`components.binQc-panel.binplot.x-title`),
                 yTitle: t(`components.binQc-panel.binplot.y-title`),
                 chromoBins,
+                slope,
+                intercept,
               }}
             />
           </Col>

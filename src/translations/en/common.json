@@ -76,7 +76,7 @@
       "tab3": "Population KPIs for Tumor Type {{tumor}}",
       "tab4": "Filtered Events",
       "tab5": "Variant QC",
-      "tab6": "Segment Width Plot"
+      "tab6": "Segment Width Distribution"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {

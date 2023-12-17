@@ -434,13 +434,15 @@ export function reportAttributesMap() {
     disease: "disease",
     inferred_sex: "sex",
     primary_site: "primary_site",
+    beta: "beta",
+    gamma: "gamma",
   };
 }
 
 export function segmentAttributes() {
   return {
     iid: "",
-    mean: ".2f",
+    mean: ".4f",
     y: ",",
     chromosome: "",
     width: ",",

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Tag, Table, Button, Modal, Space } from "antd";
+import { Tag, Table, Button, Modal, Space, Row, Col } from "antd";
 import { roleColorMap } from "../../helpers/utility";
 import GenomePanel from "../genomePanel";
 import Wrapper from "./index.style";
@@ -107,45 +107,49 @@ class FilteredEventsListPanel extends Component {
     ];
     return (
       <Wrapper>
-        <Table
-          columns={columns}
-          dataSource={filteredEvents}
-          pagination={{ pageSize: 50 }}
-        />
-        {selectedFilteredEvent && (
-          <Modal
-            title={
-              <Space>
-                {selectedFilteredEvent.gene}
-                {selectedFilteredEvent.name}
-                {selectedFilteredEvent.type}
-                {selectedFilteredEvent.role?.split(",").map((tag) => (
-                  <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
-                    {tag.trim()}
-                  </Tag>
-                ))}
-                {selectedFilteredEvent.tier}
-                {selectedFilteredEvent.location}
-              </Space>
-            }
-            centered
-            open={open}
-            onOk={() => this.setState({ open: false })}
-            onCancel={() => this.setState({ open: false })}
-            width={1200}
-          >
-            <GenomePanel
-              {...{
-                loading,
-                genome,
-                title: t("components.filtered-events-panel.genome-plot"),
-                chromoBins,
-                visible: true,
-                index: 0,
-              }}
+        <Row className="ant-panel-container ant-home-plot-container">
+          <Col className="gutter-row" span={24}>
+            <Table
+              columns={columns}
+              dataSource={filteredEvents}
+              pagination={{ pageSize: 50 }}
             />
-          </Modal>
-        )}
+            {selectedFilteredEvent && (
+              <Modal
+                title={
+                  <Space>
+                    {selectedFilteredEvent.gene}
+                    {selectedFilteredEvent.name}
+                    {selectedFilteredEvent.type}
+                    {selectedFilteredEvent.role?.split(",").map((tag) => (
+                      <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
+                        {tag.trim()}
+                      </Tag>
+                    ))}
+                    {selectedFilteredEvent.tier}
+                    {selectedFilteredEvent.location}
+                  </Space>
+                }
+                centered
+                open={open}
+                onOk={() => this.setState({ open: false })}
+                onCancel={() => this.setState({ open: false })}
+                width={1200}
+              >
+                <GenomePanel
+                  {...{
+                    loading,
+                    genome,
+                    title: t("components.filtered-events-panel.genome-plot"),
+                    chromoBins,
+                    visible: true,
+                    index: 0,
+                  }}
+                />
+              </Modal>
+            )}
+          </Col>
+        </Row>
       </Wrapper>
     );
   }

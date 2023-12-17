@@ -246,19 +246,23 @@ class DensityPlot extends Component {
                     </g>
                   )}
                   {plotType === "scatterplot" &&
-                    dataPoints.map((d, i) => (
-                      <circle
-                        cx={xScale(d[xVariable])}
-                        cy={yScale(d[yVariable])}
-                        r={visible && id === i ? 5 : 1.618}
-                        opacity={visible && id === i ? 1 : 1}
-                        fill={color(d[colorVariable])}
-                        stroke={visible && id === i ? "#FFF" : "transparent"}
-                        strokeWidth={visible && id === i ? 3 : 0}
-                        onMouseEnter={(e) => this.handleMouseEnter(d, i)}
-                        onMouseOut={(e) => this.handleMouseOut(d)}
-                      />
-                    ))}
+                    dataPoints
+                      .sort((a, b) =>
+                        d3.ascending(a[colorVariable], b[colorVariable])
+                      )
+                      .map((d, i) => (
+                        <circle
+                          cx={xScale(d[xVariable])}
+                          cy={yScale(d[yVariable])}
+                          r={visible && id === i ? 5 : 1.618}
+                          opacity={visible && id === i ? 1 : 1}
+                          fill={color(d[colorVariable])}
+                          stroke={visible && id === i ? "#FFF" : "transparent"}
+                          strokeWidth={visible && id === i ? 3 : 0}
+                          onMouseEnter={(e) => this.handleMouseEnter(d, i)}
+                          onMouseOut={(e) => this.handleMouseOut(d)}
+                        />
+                      ))}
                 </g>
                 <g
                   className="axis--y y-axis-container"
