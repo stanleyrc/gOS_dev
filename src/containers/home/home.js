@@ -47,6 +47,7 @@ class Home extends Component {
       ppfit,
       chromoBins,
     } = this.props;
+    if (!metadata) return null;
     const { beta, gamma } = metadata;
     return (
       <HomeWrapper>
