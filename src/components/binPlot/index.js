@@ -64,7 +64,7 @@ class BinPlot extends Component {
 
     let filteredData = data.filter((d) => d.metadata.mean);
 
-    let extent = d3.extent(filteredData, (d) => d.metadata.mean);
+    let extent = [0, d3.max(filteredData, (d) => d.metadata.mean)];
 
     let maxSeparatorsCount = Math.ceil((extent[1] - intercept) / slope);
 
@@ -180,10 +180,7 @@ class BinPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const axisX = d3
-      .axisBottom(xScale)
-      .tickValues(separators)
-      .tickFormat(d3.format(".1f"));
+    const axisX = d3.axisBottom(xScale);
 
     xAxisContainer.call(axisX);
   }
@@ -315,12 +312,23 @@ class BinPlot extends Component {
               </g>
               <g>
                 {separators.map((d) => (
-                  <line
-                    transform={`translate(${[xScale(d), 0]})`}
-                    y2={panelHeight}
-                    stroke="#FFD6D6"
-                    stroke-dasharray="4 1"
-                  />
+                  <g>
+                    <line
+                      transform={`translate(${[xScale(d), 0]})`}
+                      y2={panelHeight}
+                      stroke="#FFD6D6"
+                      stroke-dasharray="4 1"
+                    />
+                    <text
+                      transform={`translate(${[xScale(d), 0]})`}
+                      textAnchor="middle"
+                      fill={d3.rgb("#FFD6D6").darker()}
+                      dy="-5"
+                      fontSize="10"
+                    >
+                      {d3.format(".3f")(d)}
+                    </text>
+                  </g>
                 ))}
               </g>
               <g
