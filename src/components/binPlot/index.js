@@ -311,7 +311,7 @@ class BinPlot extends Component {
                 ))}
               </g>
               <g>
-                {separators.map((d) => (
+                {separators.map((d, i) => (
                   <g>
                     <line
                       transform={`translate(${[xScale(d), 0]})`}
@@ -325,6 +325,9 @@ class BinPlot extends Component {
                       fill={d3.rgb("#FFD6D6").darker()}
                       dy="-5"
                       fontSize="10"
+                      opacity={
+                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
+                      }
                     >
                       {d3.format(".3f")(d)}
                     </text>
