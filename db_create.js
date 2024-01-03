@@ -33,11 +33,11 @@ db.run(createTableQuery, (err) => {
 
   // Create indexes after the table is created
   const createIndexesQuery = `
-    CREATE INDEX idx_pair ON cases(pair);
-    CREATE INDEX idx_tumor_type_final ON cases(tumor_type_final);
-    CREATE INDEX idx_disease ON cases(disease);
-    CREATE INDEX idx_primary_site ON cases(primary_site);
-    CREATE INDEX idx_inferred_sex ON cases(inferred_sex);
+    CREATE INDEX idx_pair ON case_reports(pair);
+    CREATE INDEX idx_tumor_type_final ON case_reports(tumor_type_final);
+    CREATE INDEX idx_disease ON case_reports(disease);
+    CREATE INDEX idx_primary_site ON case_reports(primary_site);
+    CREATE INDEX idx_inferred_sex ON case_reports(inferred_sex);
   `;
 
   // Run the query to create indexes
