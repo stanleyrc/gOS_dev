@@ -12,12 +12,20 @@ import appActions from "../../redux/app/actions";
 const { Header } = Layout;
 const { Option } = Select;
 
-const { selectReport, resetReport } = appActions;
+const { selectReport, resetReport, searchReports } = appActions;
 
 class Topbar extends Component {
   render() {
-    const { t, loading, report, reports, selectReport, resetReport } =
-      this.props;
+    const {
+      t,
+      loading,
+      reports,
+      totalReports,
+      selectReport,
+      resetReport,
+      searchReports,
+      searchFilters,
+    } = this.props;
     return (
       <TopbarWrapper>
         <Header className="ant-pro-top-menu">
@@ -35,7 +43,7 @@ class Topbar extends Component {
                   </div>
                   <Select
                     showSearch={true}
-                    value={report}
+                    value={searchFilters.texts}
                     className="reports-select"
                     allowClear={true}
                     loading={loading}
@@ -44,15 +52,11 @@ class Topbar extends Component {
                     dropdownMatchSelectWidth={false}
                     optionFilterProp="children"
                     placeholder={t("topbar.browse-case-reports")}
-                    filterOption={(input, option) =>
-                      option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                    }
-                    filterSort={(optionA, optionB) =>
-                      optionA.label
-                        .toLowerCase()
-                        .localeCompare(optionB.label.toLowerCase())
-                    }
-                    onChange={(report) => {
+                    onSearch={(texts) => searchReports({ texts })}
+                    filterOption={false}
+                    filterSort={false}
+                    notFoundContent={null}
+                    onSelect={(report) => {
                       selectReport(report);
                     }}
                     onClear={(e) => resetReport()}
@@ -89,7 +93,7 @@ class Topbar extends Component {
                         <span
                           dangerouslySetInnerHTML={{
                             __html: t("topbar.report", {
-                              count: reports.length,
+                              count: totalReports,
                             }),
                           }}
                         />
@@ -130,11 +134,15 @@ Topbar.defaultProps = {
 const mapDispatchToProps = (dispatch) => ({
   selectReport: (report) => dispatch(selectReport(report)),
   resetReport: () => dispatch(resetReport()),
+  searchReports: (texts) => dispatch(searchReports(texts)),
 });
 const mapStateToProps = (state) => ({
   loading: state.App.loading,
   report: state.App.report,
   reports: state.App.reports,
+  totalReports: state.App.totalReports,
+  searchText: state.App.searchText,
+  searchFilters: state.App.searchFilters,
 });
 export default connect(
   mapStateToProps,

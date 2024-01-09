@@ -22,6 +22,9 @@ const HomeWrapper = styled.div`
   .stats .ant-statistic-content-suffix {
     font-size: 16px;
   }
+  .case-report-card .ant-card-body {
+    min-height: 95px;
+  }
 `;
 
 export default HomeWrapper;

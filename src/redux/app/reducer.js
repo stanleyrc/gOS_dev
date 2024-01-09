@@ -23,7 +23,10 @@ const initState = {
   hoveredLocation: null,
   selectedFilteredEvent: null,
   reports: [],
+  totalReports: 0,
   report: null,
+  reportsFilters: [],
+  searchFilters: {},
   populations: [],
   populationMetrics: [],
   variantQC: [],
@@ -63,6 +66,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         report: action.report,
         metadata: reportMetadata,
+        searchFilters: { texts: null },
         filteredEvent: [],
         loading: true,
       };
@@ -82,6 +86,9 @@ export default function appReducer(state = initState, action) {
         ...state,
         metadata: {},
         report: null,
+        reports: [],
+        totalReports: 0,
+        searchFilters: {},
         filteredEvent: [],
         loading: false,
       };
@@ -89,6 +96,20 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         ...action.properties,
+        loading: false,
+      };
+    case actions.SEARCH_REPORTS:
+      return {
+        ...state,
+        searchFilters: action.searchFilters,
+        report: null,
+        loading: false,
+      };
+    case actions.REPORTS_FETCHED:
+      return {
+        ...state,
+        reports: action.reports,
+        totalReports: action.totalReports,
         loading: false,
       };
     case actions.DOMAINS_UPDATED:

@@ -10,6 +10,7 @@ import {
   plotTypes,
   getPopulationMetrics,
   sequencesToGenome,
+  reportFilters,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
@@ -24,10 +25,24 @@ const PLOT_TYPES = {
 };
 
 function* bootApplication(action) {
-  // get the list of all cases from the public/datafiles.json
-  let responseReports = yield call(axios.get, "datafiles.json");
+  let reportsFilters = [];
 
-  let datafiles = responseReports.data;
+  yield axios
+    .all(
+      reportFilters().map((filter) =>
+        axios.get(`/api/case_reports_filters`, { params: { filter } })
+      )
+    )
+    .then(
+      axios.spread((...responses) => {
+        responses.forEach((d, i) => {
+          reportsFilters.push(d.data);
+        });
+      })
+    )
+    .catch((errors) => {
+      console.log("got errors on loading dependencies", errors);
+    });
 
   // get the settings within the public folder
   let responseSettings = yield call(axios.get, "settings.json");
@@ -83,7 +98,7 @@ function* bootApplication(action) {
   );
 
   let properties = {
-    reports: datafiles,
+    reportsFilters,
     settings: responseSettings.data,
     populationMetrics,
     populations,
@@ -96,6 +111,17 @@ function* bootApplication(action) {
   yield put({
     type: actions.BOOT_APP_SUCCESS,
     properties,
+  });
+}
+
+function* searchReports({ searchFilters }) {
+  const json = yield axios
+    .get(`/api/case_reports`, { params: { ...searchFilters } })
+    .then((response) => response);
+  yield put({
+    type: actions.REPORTS_FETCHED,
+    reports: json.data.records,
+    totalReports: json.data.total,
   });
 }
 
@@ -195,6 +221,9 @@ function* actionWatcher() {
   yield takeEvery(actions.BOOT_APP, bootApplication);
   yield takeEvery(actions.BOOT_APP_SUCCESS, followUpBootApplication);
   yield takeEvery(actions.SELECT_REPORT, selectReport);
+  yield takeEvery(actions.SEARCH_REPORTS, searchReports);
+  yield takeEvery(actions.RESET_REPORT, searchReports);
+  yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

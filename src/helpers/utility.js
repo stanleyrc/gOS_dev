@@ -439,6 +439,22 @@ export function reportAttributesMap() {
   };
 }
 
+export function reportFilters() {
+  return [
+    "pair",
+    "tumor_type_final",
+    "disease",
+    "primary_site",
+    "inferred_sex",
+  ];
+}
+
+export function snakeCaseToHumanReadable(str) {
+  return str
+    ? str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "";
+}
+
 export function segmentAttributes() {
   return {
     iid: "",

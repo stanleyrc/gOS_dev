@@ -1,22 +1,10 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import * as d3 from "d3";
-import {
-  Tabs,
-  Row,
-  Col,
-  Skeleton,
-  Affix,
-  Avatar,
-  Card,
-  Divider,
-  Space,
-  Statistic,
-} from "antd";
+import { Tabs, Skeleton, Affix, Card } from "antd";
+import { reportFilters } from "../../helpers/utility";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
@@ -25,11 +13,12 @@ import FilteredEventsList from "../../components/filteredEventsListPanel";
 import VariantQcTab from "../../components/variantQcTab";
 import appActions from "../../redux/app/actions";
 import BinQCTab from "../../components/binQCTab";
+import ListView from "../listView";
 
 const { TabPane } = Tabs;
 const { Meta } = Card;
 
-const { selectReport } = appActions;
+const { selectReport, searchReports } = appActions;
 
 class Home extends Component {
   render() {
@@ -41,11 +30,15 @@ class Home extends Component {
       tumorPlots,
       report,
       reports,
+      totalReports,
       selectReport,
       variantQC,
       ppFitImage,
       ppfit,
       chromoBins,
+      reportsFilters,
+      searchReports,
+      searchFilters,
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
@@ -95,58 +88,14 @@ class Home extends Component {
             </div>
           )}
           {!report && (
-            <div className="ant-panel-list-container">
-              <Row gutter={[16, 16]}>
-                {reports.map((d) => (
-                  <Col className="gutter-row" span={4}>
-                    <Card
-                      onClick={(e) => selectReport(d.pair)}
-                      hoverable
-                      title={<b>{d.pair}</b>}
-                      bordered={false}
-                      extra={
-                        <Avatar
-                          style={{
-                            backgroundColor: "#fde3cf",
-                            color: "#f56a00",
-                          }}
-                        >
-                          {d.tumor_type_final}
-                        </Avatar>
-                      }
-                      actions={[
-                        <Statistic
-                          className="stats"
-                          title={t(`metadata.svCount.short`)}
-                          value={d3.format(",")(d.sv_count)}
-                        />,
-                        <Statistic
-                          className="stats"
-                          title={t(`metadata.lohFraction.short`)}
-                          value={d3.format(".2%")(d.loh_fraction)}
-                        />,
-                        <Statistic
-                          className="stats"
-                          title={t("metadata.purity-ploidy-title")}
-                          value={d3.format(".2f")(d.purity)}
-                          suffix={`/ ${d3.format(".2f")(d.ploidy)}`}
-                        />,
-                      ]}
-                    >
-                      <Meta
-                        title={d.disease}
-                        description={
-                          <Space split={<Divider type="vertical" />}>
-                            {d.inferred_sex}
-                            {d.primary_site}
-                          </Space>
-                        }
-                      />
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            </div>
+            <ListView
+              records={reports}
+              handleCardClick={selectReport}
+              filters={reportsFilters}
+              onSearch={searchReports}
+              searchFilters={searchFilters}
+              totalRecords={totalReports}
+            />
           )}
         </Skeleton>
       </HomeWrapper>
@@ -157,11 +106,15 @@ Home.propTypes = {};
 Home.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   selectReport: (report) => dispatch(selectReport(report)),
+  searchReports: (filters) => dispatch(searchReports(filters)),
 });
 const mapStateToProps = (state) => ({
   loading: state.App.loading,
   report: state.App.report,
   reports: state.App.reports,
+  reportsFilters: state.App.reportsFilters,
+  searchFilters: state.App.searchFilters,
+  totalReports: state.App.totalReports,
   metadata: state.App.metadata,
   plots: state.App.populationMetrics,
   tumorPlots: state.App.tumorPopulationMetrics,

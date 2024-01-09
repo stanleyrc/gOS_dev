@@ -8,7 +8,7 @@
     "density": "Density"
   },
   "topbar": {
-    "report": "<strong>{{count}}></strong> case report in total",
+    "report": "<strong>{{count}}</strong> case report in total",
     "report_plural": "<strong>{{count}}</strong> case reports in total",
     "browse-case-reports": "Browse Case Reports",
     "no-case-report-selected": "Select a Case Report to get started!"
@@ -67,7 +67,20 @@
     }
   },
   "containers": {
-    "home": {}
+    "home": {},
+    "list-view": {
+      "filters": {
+        "placeholder": "select the types to filter on ...",
+        "empty": "(empty)",
+        "pair": "Pair",
+        "disease": "Disease",
+        "tumor_type_final": "Tumor Type",
+        "primary_site": "Primary Site",
+        "inferred_sex": "Inferred Sex",
+        "submit": "Submit",
+        "reset": "Reset"
+      }
+    }
   },
   "components": {
     "tabs": {

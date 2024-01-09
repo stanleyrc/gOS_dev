@@ -2,6 +2,9 @@ const actions = {
   BOOT_APP: "BOOT_APP",
   BOOT_APP_SUCCESS: "BOOT_APP_SUCCESS",
 
+  SEARCH_REPORTS: "SEARCH_REPORTS",
+  REPORTS_FETCHED: "REPORTS_FETCHED",
+
   SELECT_REPORT: "SELECT_REPORT",
   REPORT_SELECTED: "REPORT_SELECTED",
 
@@ -16,6 +19,10 @@ const actions = {
   bootApp: () => ({
     type: actions.BOOT_APP,
   }),
+  searchReports: (searchFilters) => ({
+    type: actions.SEARCH_REPORTS,
+    searchFilters,
+  }),
   selectReport: (report) => ({
     type: actions.SELECT_REPORT,
     report,
@@ -26,11 +33,6 @@ const actions = {
   updateSelectedFilteredEvent: (filteredEvent) => ({
     type: actions.FILTERED_EVENT_UPDATED,
     filteredEvent,
-  }),
-  launchApp: (files, selectedTags) => ({
-    type: actions.LAUNCH_APP,
-    files,
-    selectedTags,
   }),
   updateDomains: (domains) => ({
     type: actions.DOMAINS_UPDATED,
