@@ -14,6 +14,7 @@ import {
   Button,
   Empty,
   Pagination,
+  Typography,
 } from "antd";
 import * as d3 from "d3";
 import { snakeCaseToHumanReadable } from "../../helpers/utility";
@@ -21,16 +22,16 @@ import Wrapper from "./index.style";
 
 const { Meta } = Card;
 const { Option } = Select;
+const { Text } = Typography;
 
 class ListView extends Component {
   formRef = React.createRef();
 
-  onFinish = (values) => {
-    this.props.onSearch(values);
-  };
-
   onValuesChange = (values) => {
-    this.props.onSearch(this.formRef.current.getFieldsValue());
+    this.props.onSearch({
+      ...this.props.searchFilters,
+      ...this.formRef.current.getFieldsValue(),
+    });
   };
 
   onReset = () => {
@@ -42,13 +43,16 @@ class ListView extends Component {
       },
       {}
     );
-    this.props.onSearch(emptySearchValues);
+    this.props.onSearch({ ...emptySearchValues, ...{ page: 1, per_page: 10 } });
   };
 
-  onPageChanged = (page) => {
-    console.log(page);
-    let searchFilters = this.formRef.current.getFieldsValue();
-    searchFilters.page = page;
+  onPageChanged = (page, per_page) => {
+    let fieldValues = this.formRef.current.getFieldsValue();
+    let searchFilters = {
+      ...this.props.searchFilters,
+      ...fieldValues,
+      ...{ page: page, per_page: per_page },
+    };
     this.props.onSearch(searchFilters);
   };
 
@@ -71,7 +75,7 @@ class ListView extends Component {
                 <Form
                   layout="inline"
                   ref={this.formRef}
-                  onFinish={this.onFinish}
+                  onFinish={this.onValuesChange}
                   onValuesChange={this.onValuesChange}
                   initialValues={searchFilters}
                 >
@@ -91,7 +95,7 @@ class ListView extends Component {
                         )}
                         mode="multiple"
                         allowClear
-                        style={{ width: 210 }}
+                        style={{ width: 200 }}
                         maxTagCount="responsive"
                         maxTagTextLength={5}
                       >
@@ -118,23 +122,33 @@ class ListView extends Component {
                 </Form>
               </Card>
             </Col>
-            <Col className="gutter-row" span={24}>
-              <Pagination
-                total={totalRecords}
-                showTotal={(total, range) =>
-                  `${range[0]}-${range[1]} of ${total} items`
-                }
-                defaultCurrent={1}
-                onChange={this.onPageChanged}
-              />
-            </Col>
+            {records.length > 0 && (
+              <Col className="gutter-row" span={24}>
+                <Pagination
+                  showSizeChanger
+                  total={totalRecords}
+                  showTotal={(total, range) =>
+                    `${range[0]}-${range[1]} of ${total} items`
+                  }
+                  defaultCurrent={1}
+                  current={searchFilters.page || 1}
+                  pageSize={searchFilters.per_page || 10}
+                  onChange={this.onPageChanged}
+                />
+              </Col>
+            )}
             {records.map((d) => (
               <Col className="gutter-row" span={4}>
                 <Card
                   className="case-report-card"
                   onClick={(e) => handleCardClick(d.pair)}
                   hoverable
-                  title={<b>{d.pair}</b>}
+                  title={
+                    <Space>
+                      <b>{d.pair}</b>
+                      <Text type="secondary">{d.inferred_sex}</Text>
+                    </Space>
+                  }
                   bordered={false}
                   extra={
                     <Avatar
@@ -168,17 +182,29 @@ class ListView extends Component {
                   <Meta
                     title={d.disease}
                     description={
-                      <Space split={<Divider type="vertical" />}>
-                        {d.inferred_sex}
-                        {d.primary_site
-                          ? snakeCaseToHumanReadable(d.primary_site)
-                          : t("containers.list-view.filters.empty")}
-                      </Space>
+                      d.primary_site
+                        ? snakeCaseToHumanReadable(d.primary_site)
+                        : t("containers.list-view.filters.empty")
                     }
                   />
                 </Card>
               </Col>
             ))}
+            {records.length > 0 && (
+              <Col className="gutter-row" span={24}>
+                <Pagination
+                  showSizeChanger
+                  total={totalRecords}
+                  showTotal={(total, range) =>
+                    `${range[0]}-${range[1]} of ${total} items`
+                  }
+                  defaultCurrent={1}
+                  current={searchFilters.page || 1}
+                  pageSize={searchFilters.per_page || 10}
+                  onChange={this.onPageChanged}
+                />
+              </Col>
+            )}
             {records.length < 1 && (
               <Col className="gutter-row" span={24}>
                 <Card>
@@ -193,7 +219,9 @@ class ListView extends Component {
   }
 }
 ListView.propTypes = {};
-ListView.defaultProps = {};
+ListView.defaultProps = {
+  searchFilters: { per_page: 10, page: 1 },
+};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});
 export default connect(

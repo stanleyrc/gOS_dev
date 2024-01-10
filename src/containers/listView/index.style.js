@@ -23,7 +23,7 @@ const Wrapper = styled.div`
     font-size: 16px;
   }
   .case-report-card .ant-card-body {
-    min-height: 95px;
+    min-height: 120px;
   }
 `;
 

@@ -26,7 +26,7 @@ const initState = {
   totalReports: 0,
   report: null,
   reportsFilters: [],
-  searchFilters: {},
+  searchFilters: { page: 1, per_page: 10 },
   populations: [],
   populationMetrics: [],
   variantQC: [],
