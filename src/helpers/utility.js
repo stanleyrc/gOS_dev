@@ -1,4 +1,9 @@
+import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
+
+export async function loadArrowTable(file) {
+  return await tableFromIPC(fetch(file));
+}
 
 export function transitionStyle(inViewport) {
   if (inViewport) {

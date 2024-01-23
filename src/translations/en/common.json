@@ -139,12 +139,17 @@
     },
     "binQc-panel": {
       "genome-plot": "Genome Plot",
+      "coverage-plot": "Coverage Plot",
       "modal-title": "Showing sequence <strong>{{iid}}</strong> on chromosome <strong>{{chromosome}}</strong>, having <strong>{{width}}</strong> bases and mean value <strong>{{mean}}</strong>",
       "binplot": {
         "title": "Total Width over Segment Mean value Histogram",
         "x-title": "Segment Intensity Mean Value →",
         "y-title": "↑ Cummulative Width"
       }
+    },
+    "coverage-panel": {
+      "datapoint": "datapoint",
+      "datapoint_plural": "datapoints"
     }
   }
 }

@@ -59,7 +59,9 @@ class PopulationTab extends Component {
   }
 }
 PopulationTab.propTypes = {};
-PopulationTab.defaultProps = {};
+PopulationTab.defaultProps = {
+  plots: [],
+};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});
 export default connect(

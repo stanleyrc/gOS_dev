@@ -11,7 +11,6 @@ const {} = appActions;
 class SummaryTab extends Component {
   render() {
     const { t, metadata, plots, tumorPlots } = this.props;
-
     return (
       <Wrapper>
         <Row
@@ -50,7 +49,9 @@ class SummaryTab extends Component {
   }
 }
 SummaryTab.propTypes = {};
-SummaryTab.defaultProps = {};
+SummaryTab.defaultProps = {
+  plots: [],
+};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   metadata: state.App.metadata,

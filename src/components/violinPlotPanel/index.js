@@ -114,6 +114,7 @@ ViolinPlotPanel.propTypes = {
 ViolinPlotPanel.defaultProps = {
   data: [],
   visible: true,
+  plots: [],
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({

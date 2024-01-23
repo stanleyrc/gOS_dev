@@ -33,6 +33,7 @@ const initState = {
   variantQC: [],
   ppFitImage: null,
   ppfit: { settings: {}, intervals: [], connections: [] },
+  coverageData: null,
 };
 
 export default function appReducer(state = initState, action) {

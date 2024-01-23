@@ -17,6 +17,7 @@ import * as htmlToImage from "html-to-image";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
+import ScatterPlotPanel from "../scatterPlotPanel";
 import appActions from "../../redux/app/actions";
 
 const { updateDomains } = appActions;
@@ -64,6 +65,7 @@ class BinPlotPanel extends Component {
       t,
       loading,
       data,
+      coverageData,
       title,
       inViewport,
       renderOutsideViewPort,
@@ -151,19 +153,42 @@ class BinPlotPanel extends Component {
                               onCancel={() => this.setState({ open: false })}
                               width={1200}
                             >
-                              <GenomePanel
-                                {...{
-                                  loading,
-                                  genome: data,
-                                  title: t(
-                                    "components.binQc-panel.genome-plot"
-                                  ),
-                                  chromoBins,
-                                  visible: true,
-                                  index: 0,
-                                  height: 700,
-                                }}
-                              />
+                              <Row
+                                className="ant-panel-container ant-home-plot-container"
+                                gutter={16}
+                              >
+                                <Col className="gutter-row" span={24}>
+                                  <GenomePanel
+                                    {...{
+                                      loading,
+                                      genome: data,
+                                      title: t(
+                                        "components.binQc-panel.genome-plot"
+                                      ),
+                                      chromoBins,
+                                      visible: true,
+                                      index: 0,
+                                      height: 350,
+                                    }}
+                                  />
+                                </Col>
+                                {coverageData && (
+                                  <Col className="gutter-row" span={24}>
+                                    <ScatterPlotPanel
+                                      {...{
+                                        data: coverageData,
+                                        title: t(
+                                          "components.binQc-panel.coverage-plot"
+                                        ),
+                                        chromoBins,
+                                        visible: true,
+                                        loading,
+                                        height: 350,
+                                      }}
+                                    />
+                                  </Col>
+                                )}
+                              </Row>
                             </Modal>
                           )}
                         </Col>

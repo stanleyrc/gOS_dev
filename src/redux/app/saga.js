@@ -13,6 +13,7 @@ import {
   reportFilters,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
+import { loadArrowTable } from "../../helpers/utility";
 import actions from "./actions";
 
 const PLOT_TYPES = {
@@ -23,6 +24,15 @@ const PLOT_TYPES = {
   purity: "histogram",
   ploidy: "histogram",
 };
+
+function* fetchArrowData(plot) {
+  yield loadArrowTable(plot.path)
+    .then((results) => (plot.data = results))
+    .catch((error) => {
+      console.log(plot.path, error);
+      plot.data = null;
+    });
+}
 
 function* bootApplication(action) {
   // get the list of all cases from the public/datafiles.json
@@ -269,6 +279,13 @@ function* selectReport(action) {
           intervals: [],
           connections: [],
         };
+
+    let coveragePlot = {
+      path: `data/${action.report}/coverage.arrow`,
+      data: null,
+    };
+    yield call(fetchArrowData, coveragePlot);
+    properties.coverageData = coveragePlot.data;
   }
   yield put({
     type: actions.REPORT_SELECTED,

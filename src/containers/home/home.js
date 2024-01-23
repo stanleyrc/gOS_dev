@@ -39,6 +39,7 @@ class Home extends Component {
       reportsFilters,
       searchReports,
       searchFilters,
+      coverageData,
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
@@ -79,6 +80,7 @@ class Home extends Component {
                   <BinQCTab
                     imageBlob={ppFitImage}
                     fits={ppfit}
+                    coverageData={coverageData}
                     chromoBins={chromoBins}
                     slope={1 / beta}
                     intercept={gamma / beta}
@@ -122,6 +124,7 @@ const mapStateToProps = (state) => ({
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,
+  coverageData: state.App.coverageData,
 });
 export default connect(
   mapStateToProps,
