@@ -25,24 +25,43 @@ const PLOT_TYPES = {
 };
 
 function* bootApplication(action) {
+  // get the list of all cases from the public/datafiles.json
+  let responseReports = yield call(axios.get, "datafiles.json");
+
+  let datafiles = responseReports.data;
+
   let reportsFilters = [];
 
-  yield axios
-    .all(
-      reportFilters().map((filter) =>
-        axios.get(`/api/case_reports_filters`, { params: { filter } })
-      )
-    )
-    .then(
-      axios.spread((...responses) => {
-        responses.forEach((d, i) => {
-          reportsFilters.push(d.data);
-        });
-      })
-    )
-    .catch((errors) => {
-      console.log("got errors on loading dependencies", errors);
+  // yield axios
+  //   .all(
+  //     reportFilters().map((filter) =>
+  //       axios.get(`/api/case_reports_filters`, { params: { filter } })
+  //     )
+  //   )
+  //   .then(
+  //     axios.spread((...responses) => {
+  //       responses.forEach((d, i) => {
+  //         reportsFilters.push(d.data);
+  //       });
+  //     })
+  //   )
+  //   .catch((errors) => {
+  //     console.log("got errors on loading dependencies", errors);
+  //   });
+
+  // Iterate through each filter
+  reportFilters().forEach((filter) => {
+    // Extract distinct values for the current filter
+    var distinctValues = [
+      ...new Set(datafiles.map((record) => record[filter])),
+    ].sort((a, b) => d3.ascending(a, b));
+
+    // Add the filter information to the reportsFilters array
+    reportsFilters.push({
+      filter: filter,
+      records: [...distinctValues],
     });
+  });
 
   // get the settings within the public folder
   let responseSettings = yield call(axios.get, "settings.json");
@@ -98,6 +117,7 @@ function* bootApplication(action) {
   );
 
   let properties = {
+    datafiles,
     reportsFilters,
     settings: responseSettings.data,
     populationMetrics,
@@ -115,14 +135,53 @@ function* bootApplication(action) {
 }
 
 function* searchReports({ searchFilters }) {
-  const json = yield axios
-    .get(`/api/case_reports`, { params: { ...searchFilters } })
-    .then((response) => response);
+  const currentState = yield select(getCurrentState);
+  let { datafiles } = currentState.App;
+
+  let records = datafiles.sort((a, b) => d3.ascending(a.pair, b.pair));
+  let page = searchFilters?.page || 1;
+  let perPage = searchFilters?.per_page || 10;
+  let actualSearchFilters = Object.fromEntries(
+    Object.entries(searchFilters || {}).filter(
+      ([key, value]) =>
+        key !== "page" &&
+        key !== "per_page" &&
+        value !== null &&
+        value !== undefined &&
+        !(Array.isArray(value) && value.length === 0)
+    )
+  );
+
+  Object.keys(actualSearchFilters).forEach((key) => {
+    if (key === "texts") {
+      records = records.filter((record) =>
+        reportFilters()
+          .map((attr) => record[attr] || "")
+          .join(",")
+          .toLowerCase()
+          .includes(actualSearchFilters[key].toLowerCase())
+      );
+    } else {
+      records = records.filter((d) =>
+        actualSearchFilters[key].includes(d[key])
+      );
+    }
+  });
+
   yield put({
     type: actions.REPORTS_FETCHED,
-    reports: json.data.records,
-    totalReports: json.data.total,
+    reports: records.slice((page - 1) * perPage, page * perPage),
+    totalReports: records.length,
   });
+
+  // const json = yield axios
+  //   .get(`/api/case_reports`, { params: { ...searchFilters } })
+  //   .then((response) => response);
+  // yield put({
+  //   type: actions.REPORTS_FETCHED,
+  //   reports: json.data.records,
+  //   totalReports: json.data.total,
+  // });
 }
 
 function* followUpBootApplication(action) {

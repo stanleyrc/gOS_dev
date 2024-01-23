@@ -31,6 +31,8 @@ class ListView extends Component {
     this.props.onSearch({
       ...this.props.searchFilters,
       ...this.formRef.current.getFieldsValue(),
+      page: 1,
+      per_page: 10,
     });
   };
 

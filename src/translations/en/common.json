@@ -70,7 +70,7 @@
     "home": {},
     "list-view": {
       "filters": {
-        "placeholder": "select the types to filter on ...",
+        "placeholder": "select one or many",
         "empty": "(empty)",
         "pair": "Pair",
         "disease": "Disease",
@@ -122,7 +122,7 @@
       "location": "Location",
       "type": "Type",
       "select-type": {
-        "placeholder": "select types to filter on"
+        "placeholder": "select one or many"
       },
       "sorting": {
         "ascending": "Name in asceding order",

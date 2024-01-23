@@ -22,6 +22,7 @@ const initState = {
   },
   hoveredLocation: null,
   selectedFilteredEvent: null,
+  datafiles: [],
   reports: [],
   totalReports: 0,
   report: null,
