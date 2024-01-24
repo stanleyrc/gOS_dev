@@ -292,6 +292,30 @@ class BinPlot extends Component {
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
+              <g>
+                {separators.map((d, i) => (
+                  <g>
+                    <line
+                      transform={`translate(${[xScale(d), 0]})`}
+                      y2={panelHeight - 2}
+                      stroke="#FFD6D6"
+                      strokeDasharray="4 1"
+                    />
+                    <text
+                      transform={`translate(${[xScale(d), 0]})`}
+                      textAnchor="middle"
+                      fill={d3.rgb("#FFD6D6").darker()}
+                      dy="-3"
+                      fontSize="10"
+                      opacity={
+                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
+                      }
+                    >
+                      {d3.format(".3f")(d)}
+                    </text>
+                  </g>
+                ))}
+              </g>
               <g clipPath="url(#cuttOffViewPane)">
                 {series.map((d, i) => (
                   <rect
@@ -308,30 +332,6 @@ class BinPlot extends Component {
                     rx={1}
                     opacity={!segmentId || d.iid === segmentId ? 1 : 0.13}
                   />
-                ))}
-              </g>
-              <g>
-                {separators.map((d, i) => (
-                  <g>
-                    <line
-                      transform={`translate(${[xScale(d), 0]})`}
-                      y2={panelHeight}
-                      stroke="#FFD6D6"
-                      stroke-dasharray="4 1"
-                    />
-                    <text
-                      transform={`translate(${[xScale(d), 0]})`}
-                      textAnchor="middle"
-                      fill={d3.rgb("#FFD6D6").darker()}
-                      dy="-5"
-                      fontSize="10"
-                      opacity={
-                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
-                      }
-                    >
-                      {d3.format(".3f")(d)}
-                    </text>
-                  </g>
                 ))}
               </g>
               <g

@@ -67,6 +67,7 @@ class ScatterPlotPanel extends Component {
       visible,
       zoomedByCmd,
       height,
+      width,
     } = this.props;
     return (
       <Wrapper visible={visible} height={height}>
@@ -119,37 +120,27 @@ class ScatterPlotPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
             >
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    (inViewport || renderOutsideViewPort) && (
-                      <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col flex={1}>
-                          {data ? (
-                            <ScatterPlot
-                              {...{
-                                width,
-                                height,
-                                data,
-                                domains,
-                              }}
-                            />
-                          ) : (
-                            <Alert
-                              message={t("general.invalid-arrow-file")}
-                              description={t(
-                                "general.invalid-arrow-file-detail"
-                              )}
-                              type="error"
-                              showIcon
-                            />
-                          )}
-                        </Col>
-                      </Row>
-                    )
-                  );
-                }}
-              </ContainerDimensions>
+              <Row style={{ width, height }} gutter={[margins.gap, 0]}>
+                <Col flex={1}>
+                  {data ? (
+                    <ScatterPlot
+                      {...{
+                        width,
+                        height,
+                        data,
+                        domains,
+                      }}
+                    />
+                  ) : (
+                    <Alert
+                      message={t("general.invalid-arrow-file")}
+                      description={t("general.invalid-arrow-file-detail")}
+                      type="error"
+                      showIcon
+                    />
+                  )}
+                </Col>
+              </Row>
             </div>
           )}
         </Card>

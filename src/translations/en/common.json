@@ -150,6 +150,11 @@
     "coverage-panel": {
       "datapoint": "datapoint",
       "datapoint_plural": "datapoints"
+    },
+    "genes-panel": {
+      "header": "Genes",
+      "gene": "record",
+      "gene_plural": "records"
     }
   }
 }

@@ -84,7 +84,9 @@ class ScatterPlot extends Component {
             .translate(-s[0], 0)
         );
     });
+
     this.updateStage();
+    this.regl.poll();
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -152,7 +154,10 @@ class ScatterPlot extends Component {
             )
         );
     }
-    if (prevProps.width !== this.props.width) {
+    if (
+      prevProps?.width !== this.props.width ||
+      prevProps?.height !== this.props.height
+    ) {
       this.componentWillUnmount();
       this.componentDidMount();
     } else {
@@ -308,7 +313,7 @@ class ScatterPlot extends Component {
       });
     });
     return (
-      <Wrapper className="ant-wrapper" margins={margins}>
+      <Wrapper className="ant-wrapper" margins={margins} height={height}>
         <div
           className="scatterplot"
           style={{ width: stageWidth, height: stageHeight }}

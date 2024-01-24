@@ -32,6 +32,7 @@ const initState = {
   populationMetrics: [],
   variantQC: [],
   ppFitImage: null,
+  genesData: null,
   ppfit: { settings: {}, intervals: [], connections: [] },
   coverageData: null,
 };

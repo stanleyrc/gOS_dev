@@ -126,8 +126,16 @@ function* bootApplication(action) {
     unescape(url.toString())
   );
 
+  let genesPlot = {
+    path: `genes/${selectedCoordinate}.arrow`,
+    data: null,
+  };
+  yield call(fetchArrowData, genesPlot);
+  let genesData = genesPlot.data;
+
   let properties = {
     datafiles,
+    genesData,
     reportsFilters,
     settings: responseSettings.data,
     populationMetrics,

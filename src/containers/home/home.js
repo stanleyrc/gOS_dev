@@ -40,6 +40,7 @@ class Home extends Component {
       searchReports,
       searchFilters,
       coverageData,
+      genesData,
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
@@ -81,6 +82,7 @@ class Home extends Component {
                     imageBlob={ppFitImage}
                     fits={ppfit}
                     coverageData={coverageData}
+                    genesData={genesData}
                     chromoBins={chromoBins}
                     slope={1 / beta}
                     intercept={gamma / beta}
@@ -125,6 +127,7 @@ const mapStateToProps = (state) => ({
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,
   coverageData: state.App.coverageData,
+  genesData: state.App.genesData,
 });
 export default connect(
   mapStateToProps,

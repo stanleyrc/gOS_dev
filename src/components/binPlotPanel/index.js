@@ -18,6 +18,7 @@ import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
 import ScatterPlotPanel from "../scatterPlotPanel";
+import GenesPanel from "../genesPanel";
 import appActions from "../../redux/app/actions";
 
 const { updateDomains } = appActions;
@@ -66,6 +67,7 @@ class BinPlotPanel extends Component {
       loading,
       data,
       coverageData,
+      genesData,
       title,
       inViewport,
       renderOutsideViewPort,
@@ -133,30 +135,48 @@ class BinPlotPanel extends Component {
                           {segment && (
                             <Modal
                               title={
-                                <span
-                                  dangerouslySetInnerHTML={{
-                                    __html: t(
-                                      "components.binQc-panel.modal-title",
-                                      {
-                                        iid: segment.iid,
-                                        chromosome: segment.chromosome,
-                                        width: d3.format(",")(segment.width),
-                                        mean: segment.mean,
-                                      }
-                                    ),
-                                  }}
-                                />
+                                segment && (
+                                  <span
+                                    dangerouslySetInnerHTML={{
+                                      __html: t(
+                                        "components.binQc-panel.modal-title",
+                                        {
+                                          iid: segment.iid,
+                                          chromosome: segment.chromosome,
+                                          width: d3.format(",")(segment.width),
+                                          mean: segment.mean,
+                                        }
+                                      ),
+                                    }}
+                                  />
+                                )
                               }
                               centered
                               open={open}
                               onOk={() => this.setState({ open: false })}
                               onCancel={() => this.setState({ open: false })}
                               width={1200}
+                              footer={null}
                             >
                               <Row
                                 className="ant-panel-container ant-home-plot-container"
                                 gutter={16}
                               >
+                                {
+                                  <Col className="gutter-row" span={24}>
+                                    {
+                                      <GenesPanel
+                                        {...{
+                                          genes: genesData,
+                                          chromoBins,
+                                          visible: true,
+                                          height: 140,
+                                          width: 1152,
+                                        }}
+                                      />
+                                    }
+                                  </Col>
+                                }
                                 <Col className="gutter-row" span={24}>
                                   <GenomePanel
                                     {...{
@@ -168,7 +188,7 @@ class BinPlotPanel extends Component {
                                       chromoBins,
                                       visible: true,
                                       index: 0,
-                                      height: 350,
+                                      height: 280,
                                     }}
                                   />
                                 </Col>
@@ -183,7 +203,8 @@ class BinPlotPanel extends Component {
                                         chromoBins,
                                         visible: true,
                                         loading,
-                                        height: 350,
+                                        height: 280,
+                                        width: 1152,
                                       }}
                                     />
                                   </Col>

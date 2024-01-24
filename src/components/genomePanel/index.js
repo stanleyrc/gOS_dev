@@ -3,14 +3,7 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import {
-  Card,
-  Space,
-  Button,
-  Tooltip,
-  message,
-  Typography,
-} from "antd";
+import { Card, Space, Button, Tooltip, message, Typography } from "antd";
 import { GiDna2 } from "react-icons/gi";
 import { AiOutlineDownload } from "react-icons/ai";
 import {
