@@ -30,7 +30,7 @@ class FilteredEventsListPanel extends Component {
       chromoBins,
       selectedFilteredEvent,
     } = this.props;
-    if (!report && !filteredEvents) return null;
+    if (!report || !filteredEvents) return null;
 
     const { open } = this.state;
     const columns = [

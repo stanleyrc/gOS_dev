@@ -340,7 +340,8 @@ class GenomePlot extends Component {
         .attr(
           "transform",
           `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation),
+            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+              -10000,
             0,
           ]})`
         );
@@ -611,9 +612,9 @@ class GenomePlot extends Component {
                           panel.xScale(d.startPlace),
                           panel.yScale(d.y) - 0.5 * margins.bar,
                         ]})`}
-                        width={
+                        width={Math.abs(
                           panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
-                        }
+                        )}
                         height={margins.bar}
                         style={{
                           fill: d.color,
