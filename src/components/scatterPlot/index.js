@@ -44,7 +44,7 @@ class ScatterPlot extends Component {
         antialias: true,
         depth: false,
         stencil: false,
-        preserveDrawingBuffer: true,
+        preserveDrawingBuffer: false,
       },
     });
 
@@ -86,7 +86,6 @@ class ScatterPlot extends Component {
     });
 
     this.updateStage();
-    this.regl.poll();
   }
 
   componentDidUpdate(prevProps, prevState) {

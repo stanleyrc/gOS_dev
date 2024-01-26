@@ -67,3 +67,5 @@ public/data/*
 !public/data/DEMO
 public/genes/*
 compile_datafiles.js
+connect.sh
+

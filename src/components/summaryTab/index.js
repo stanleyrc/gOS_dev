@@ -5,6 +5,7 @@ import { Row, Col } from "antd";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 import ViolinPlotPanel from "../violinPlotPanel";
+import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
 
 const {} = appActions;
 
@@ -44,6 +45,7 @@ class SummaryTab extends Component {
             }
           </Col>
         </Row>
+        <FilteredEventsListPanel />
       </Wrapper>
     );
   }

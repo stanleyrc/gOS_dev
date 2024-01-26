@@ -35,6 +35,7 @@ const initState = {
   genesData: null,
   ppfit: { settings: {}, intervals: [], connections: [] },
   coverageData: null,
+  renderOutsideViewPort: true,
 };
 
 export default function appReducer(state = initState, action) {

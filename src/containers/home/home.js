@@ -9,7 +9,7 @@ import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
 import SummaryTab from "../../components/summaryTab";
-import FilteredEventsList from "../../components/filteredEventsListPanel";
+
 import VariantQcTab from "../../components/variantQcTab";
 import appActions from "../../redux/app/actions";
 import BinQCTab from "../../components/binQCTab";
@@ -72,12 +72,9 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab4")} key="4">
-                  <FilteredEventsList />
-                </TabPane>
-                <TabPane tab={t("components.tabs.tab5")} key="5">
                   <VariantQcTab variants={variantQC} />
                 </TabPane>
-                <TabPane tab={t("components.tabs.tab6")} key="6">
+                <TabPane tab={t("components.tabs.tab5")} key="5">
                   <BinQCTab
                     imageBlob={ppFitImage}
                     fits={ppfit}

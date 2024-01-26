@@ -7,7 +7,6 @@ import { Card, Space, Tooltip, Button, message, Row, Col, Modal } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { GiHistogram } from "react-icons/gi";
-import GenomePanel from "../genomePanel";
 import {
   downloadCanvasAsPng,
   transitionStyle,
@@ -17,8 +16,7 @@ import * as htmlToImage from "html-to-image";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
-import ScatterPlotPanel from "../scatterPlotPanel";
-import GenesPanel from "../genesPanel";
+import SegmentModal from "../segmentModal";
 import appActions from "../../redux/app/actions";
 
 const { updateDomains } = appActions;
@@ -58,7 +56,17 @@ class BinPlotPanel extends Component {
       Math.floor((19 * d[0] - d[1]) / 18),
       Math.floor((19 * d[1] - d[0]) / 18),
     ]);
-    this.setState({ segment, open: true }, () => updateDomains(domains));
+    this.setState({ segment, domains, open: true }, () =>
+      updateDomains(domains)
+    );
+  };
+
+  handleModalOKClicked = () => {
+    this.setState({ open: false });
+  };
+
+  handleModalCancelClicked = () => {
+    this.setState({ open: false });
   };
 
   render() {
@@ -114,6 +122,26 @@ class BinPlotPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
             >
+              <SegmentModal
+                {...{
+                  loading,
+                  genomeData: data,
+                  coverageData,
+                  genesData,
+                  chromoBins,
+                  modalTitle: t("components.binQc-panel.modal-title", {
+                    iid: segment?.iid,
+                    chromosome: segment?.chromosome,
+                    width: d3.format(",")(segment?.width),
+                    mean: segment?.mean,
+                  }),
+                  genomePlotTitle: t("components.binQc-panel.genome-plot"),
+                  coveragePlotTitle: t("components.binQc-panel.genome-plot"),
+                  handleOkClicked: this.handleModalOKClicked,
+                  handleCancelClicked: this.handleModalCancelClicked,
+                  open,
+                }}
+              />
               <ContainerDimensions>
                 {({ width, height }) => {
                   return (
@@ -132,86 +160,6 @@ class BinPlotPanel extends Component {
                               intercept,
                             }}
                           />
-                          {segment && (
-                            <Modal
-                              title={
-                                segment && (
-                                  <span
-                                    dangerouslySetInnerHTML={{
-                                      __html: t(
-                                        "components.binQc-panel.modal-title",
-                                        {
-                                          iid: segment.iid,
-                                          chromosome: segment.chromosome,
-                                          width: d3.format(",")(segment.width),
-                                          mean: segment.mean,
-                                        }
-                                      ),
-                                    }}
-                                  />
-                                )
-                              }
-                              centered
-                              open={open}
-                              onOk={() => this.setState({ open: false })}
-                              onCancel={() => this.setState({ open: false })}
-                              width={1200}
-                              footer={null}
-                            >
-                              <Row
-                                className="ant-panel-container ant-home-plot-container"
-                                gutter={16}
-                              >
-                                {
-                                  <Col className="gutter-row" span={24}>
-                                    {
-                                      <GenesPanel
-                                        {...{
-                                          genes: genesData,
-                                          chromoBins,
-                                          visible: true,
-                                          height: 140,
-                                          width: 1152,
-                                        }}
-                                      />
-                                    }
-                                  </Col>
-                                }
-                                <Col className="gutter-row" span={24}>
-                                  <GenomePanel
-                                    {...{
-                                      loading,
-                                      genome: data,
-                                      title: t(
-                                        "components.binQc-panel.genome-plot"
-                                      ),
-                                      chromoBins,
-                                      visible: true,
-                                      index: 0,
-                                      height: 280,
-                                    }}
-                                  />
-                                </Col>
-                                {coverageData && (
-                                  <Col className="gutter-row" span={24}>
-                                    <ScatterPlotPanel
-                                      {...{
-                                        data: coverageData,
-                                        title: t(
-                                          "components.binQc-panel.coverage-plot"
-                                        ),
-                                        chromoBins,
-                                        visible: true,
-                                        loading,
-                                        height: 280,
-                                        width: 1152,
-                                      }}
-                                    />
-                                  </Col>
-                                )}
-                              </Row>
-                            </Modal>
-                          )}
                         </Col>
                       </Row>
                     )

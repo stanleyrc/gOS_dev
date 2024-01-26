@@ -69,6 +69,7 @@ class ScatterPlotPanel extends Component {
       height,
       width,
     } = this.props;
+    if (!data) return null;
     return (
       <Wrapper visible={visible} height={height}>
         <Card
