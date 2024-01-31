@@ -13,7 +13,7 @@ import appActions from "../../redux/app/actions";
 
 const { updateDomains, updateHoveredLocation } = appActions;
 
-class SegmentPanel extends Component {
+class TracksModal extends Component {
   render() {
     const {
       loading,
@@ -35,13 +35,7 @@ class SegmentPanel extends Component {
     return (
       <Wrapper visible={open}>
         <Modal
-          title={
-            <span
-              dangerouslySetInnerHTML={{
-                __html: modalTitle,
-              }}
-            />
-          }
+          title={modalTitle}
           centered
           open={open}
           onOk={handleOkClicked}
@@ -99,10 +93,10 @@ class SegmentPanel extends Component {
     );
   }
 }
-SegmentPanel.propTypes = {
+TracksModal.propTypes = {
   data: PropTypes.array,
 };
-SegmentPanel.defaultProps = {
+TracksModal.defaultProps = {
   genomeData: { intervals: [], connections: [] },
   width: 1200,
 };
@@ -120,6 +114,6 @@ export default connect(
   mapDispatchToProps
 )(
   withTranslation("common")(
-    handleViewport(SegmentPanel, { rootMargin: "-1.0px" })
+    handleViewport(TracksModal, { rootMargin: "-1.0px" })
   )
 );

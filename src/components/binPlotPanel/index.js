@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Tooltip, Button, message, Row, Col, Modal } from "antd";
+import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { GiHistogram } from "react-icons/gi";
@@ -16,7 +16,7 @@ import * as htmlToImage from "html-to-image";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
-import SegmentModal from "../segmentModal";
+import TracksModal from "../tracksModal";
 import appActions from "../../redux/app/actions";
 
 const { updateDomains } = appActions;
@@ -122,19 +122,25 @@ class BinPlotPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
             >
-              <SegmentModal
+              <TracksModal
                 {...{
                   loading,
                   genomeData: data,
                   coverageData,
                   genesData,
                   chromoBins,
-                  modalTitle: t("components.binQc-panel.modal-title", {
-                    iid: segment?.iid,
-                    chromosome: segment?.chromosome,
-                    width: d3.format(",")(segment?.width),
-                    mean: segment?.mean,
-                  }),
+                  modalTitle: (
+                    <span
+                      dangerouslySetInnerHTML={{
+                        __html: t("components.binQc-panel.modal-title", {
+                          iid: segment?.iid,
+                          chromosome: segment?.chromosome,
+                          width: d3.format(",")(segment?.width),
+                          mean: segment?.mean,
+                        }),
+                      }}
+                    />
+                  ),
                   genomePlotTitle: t("components.binQc-panel.genome-plot"),
                   coveragePlotTitle: t("components.binQc-panel.genome-plot"),
                   handleOkClicked: this.handleModalOKClicked,

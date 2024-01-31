@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Tag, Table, Button, Modal, Space, Row, Col } from "antd";
+import { Tag, Table, Button, Space, Row, Col } from "antd";
 import { roleColorMap } from "../../helpers/utility";
-import GenomePanel from "../genomePanel";
+import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
@@ -29,6 +29,8 @@ class FilteredEventsListPanel extends Component {
       genome,
       chromoBins,
       selectedFilteredEvent,
+      coverageData,
+      genesData,
     } = this.props;
     if (!report || !filteredEvents) return null;
 
@@ -115,38 +117,37 @@ class FilteredEventsListPanel extends Component {
               pagination={{ pageSize: 50 }}
             />
             {selectedFilteredEvent && (
-              <Modal
-                title={
-                  <Space>
-                    {selectedFilteredEvent.gene}
-                    {selectedFilteredEvent.name}
-                    {selectedFilteredEvent.type}
-                    {selectedFilteredEvent.role?.split(",").map((tag) => (
-                      <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
-                        {tag.trim()}
-                      </Tag>
-                    ))}
-                    {selectedFilteredEvent.tier}
-                    {selectedFilteredEvent.location}
-                  </Space>
-                }
-                centered
-                open={open}
-                onOk={() => this.setState({ open: false })}
-                onCancel={() => this.setState({ open: false })}
-                width={1200}
-              >
-                <GenomePanel
-                  {...{
-                    loading,
-                    genome,
-                    title: t("components.filtered-events-panel.genome-plot"),
-                    chromoBins,
-                    visible: true,
-                    index: 0,
-                  }}
-                />
-              </Modal>
+              <TracksModal
+                {...{
+                  loading,
+                  genomeData: genome,
+                  coverageData,
+                  genesData,
+                  chromoBins,
+                  modalTitle: (
+                    <Space>
+                      {selectedFilteredEvent.gene}
+                      {selectedFilteredEvent.name}
+                      {selectedFilteredEvent.type}
+                      {selectedFilteredEvent.role?.split(",").map((tag) => (
+                        <Tag
+                          color={roleColorMap()[tag.trim()]}
+                          key={tag.trim()}
+                        >
+                          {tag.trim()}
+                        </Tag>
+                      ))}
+                      {selectedFilteredEvent.tier}
+                      {selectedFilteredEvent.location}
+                    </Space>
+                  ),
+                  genomePlotTitle: t("components.binQc-panel.genome-plot"),
+                  coveragePlotTitle: t("components.binQc-panel.genome-plot"),
+                  handleOkClicked: () => this.setState({ open: false }),
+                  handleCancelClicked: () => this.setState({ open: false }),
+                  open,
+                }}
+              />
             )}
           </Col>
         </Row>
@@ -167,6 +168,8 @@ const mapStateToProps = (state) => ({
   loading: state.App.loading,
   genome: state.App.genome,
   chromoBins: state.App.chromoBins,
+  coverageData: state.App.coverageData,
+  genesData: state.App.genesData,
 });
 export default connect(
   mapStateToProps,
