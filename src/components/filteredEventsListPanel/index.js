@@ -27,6 +27,7 @@ class FilteredEventsListPanel extends Component {
       filteredEvents,
       loading,
       genome,
+      mutations,
       chromoBins,
       selectedFilteredEvent,
       coverageData,
@@ -121,6 +122,7 @@ class FilteredEventsListPanel extends Component {
                 {...{
                   loading,
                   genomeData: genome,
+                  mutationsData: mutations,
                   coverageData,
                   genesData,
                   chromoBins,
@@ -141,8 +143,11 @@ class FilteredEventsListPanel extends Component {
                       {selectedFilteredEvent.location}
                     </Space>
                   ),
-                  genomePlotTitle: t("components.binQc-panel.genome-plot"),
-                  coveragePlotTitle: t("components.binQc-panel.genome-plot"),
+                  genomePlotTitle: t("components.tracks-modal.genome-plot"),
+                  coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
+                  mutationsPlotTitle: t(
+                    "components.tracks-modal.mutations-plot"
+                  ),
                   handleOkClicked: () => this.setState({ open: false }),
                   handleCancelClicked: () => this.setState({ open: false }),
                   open,
@@ -167,6 +172,7 @@ const mapStateToProps = (state) => ({
   selectedFilteredEvent: state.App.selectedFilteredEvent,
   loading: state.App.loading,
   genome: state.App.genome,
+  mutations: state.App.mutations,
   chromoBins: state.App.chromoBins,
   coverageData: state.App.coverageData,
   genesData: state.App.genesData,

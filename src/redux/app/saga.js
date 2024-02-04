@@ -263,7 +263,20 @@ function* selectReport(action) {
       `data/${action.report}/complex.json`
     );
 
-    properties.genome = responseGenomeData.data || [];
+    properties.genome = responseGenomeData.data || {
+      intervals: [],
+      connections: [],
+    };
+
+    let responseMutationsData = yield call(
+      axios.get,
+      `data/${action.report}/mutations.json`
+    );
+
+    properties.mutations = responseMutationsData.data || {
+      intervals: [],
+      connections: [],
+    };
 
     let responsePPFit = yield call(
       axios.get,

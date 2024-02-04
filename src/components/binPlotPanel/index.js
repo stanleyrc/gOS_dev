@@ -141,8 +141,8 @@ class BinPlotPanel extends Component {
                       }}
                     />
                   ),
-                  genomePlotTitle: t("components.binQc-panel.genome-plot"),
-                  coveragePlotTitle: t("components.binQc-panel.genome-plot"),
+                  genomePlotTitle: t("components.tracks-modal.genome-plot"),
+                  coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
                   handleOkClicked: this.handleModalOKClicked,
                   handleCancelClicked: this.handleModalCancelClicked,
                   open,

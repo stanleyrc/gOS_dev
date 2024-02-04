@@ -18,6 +18,7 @@ class TracksModal extends Component {
     const {
       loading,
       genomeData,
+      mutationsData,
       coverageData,
       genesData,
       inViewport,
@@ -25,6 +26,7 @@ class TracksModal extends Component {
       chromoBins,
       modalTitle,
       genomePlotTitle,
+      mutationsPlotTitle,
       coveragePlotTitle,
       handleOkClicked,
       handleCancelClicked,
@@ -69,11 +71,10 @@ class TracksModal extends Component {
                   chromoBins,
                   visible: true,
                   index: 0,
-                  height: 280,
+                  height: 180,
                 }}
               />
             </Col>
-
             <Col className="gutter-row" span={24}>
               <ScatterPlotPanel
                 {...{
@@ -82,11 +83,26 @@ class TracksModal extends Component {
                   chromoBins,
                   visible: true,
                   loading,
-                  height: 280,
+                  height: 140,
                   width: 1152,
                 }}
               />
             </Col>
+            {mutationsData && (
+              <Col className="gutter-row" span={24}>
+                <GenomePanel
+                  {...{
+                    loading,
+                    genome: mutationsData,
+                    title: mutationsPlotTitle,
+                    chromoBins,
+                    visible: true,
+                    index: 0,
+                    height: 180,
+                  }}
+                />
+              </Col>
+            )}
           </Row>
         </Modal>
       </Wrapper>
