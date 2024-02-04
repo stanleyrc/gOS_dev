@@ -28,7 +28,6 @@ class ViolinPlot extends Component {
 
   getPlotConfiguration() {
     const { t, width, height, plots, markers } = this.props;
-
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
 
@@ -44,17 +43,23 @@ class ViolinPlot extends Component {
       let markValue = markers[plot.id];
 
       let extent = [
-        d3.min([...plot.data, markValue]),
-        d3.max([...plot.data, markValue]),
+        d3.min([...plot.data, markValue, 0]),
+        d3.max([...plot.data, markValue, 0]),
       ];
 
       let extentToQ99 = [
-        d3.min([...plot.data, markValue]),
-        d3.max([plot.q99, markValue]),
+        d3.min([...plot.data, markValue, 0]),
+        d3.max([plot.q99, markValue, 0]),
       ];
 
-      const scaleY = d3
-        .scaleLinear()
+      let plotScale = d3.scaleLinear();
+      if (plot.scaleX === "log") {
+        plotScale = d3.scaleLog();
+        extent[0] = d3.max([extent[0], 0.1, markValue]);
+        extentToQ99[0] = d3.max([extentToQ99[0], 0.1, markValue]);
+      }
+
+      const scaleY = plotScale
         .domain(extentToQ99)
         .range([panelHeight, 0])
         .nice();
@@ -129,14 +134,9 @@ class ViolinPlot extends Component {
         (d, i) => `translate(${[xScale(d.plot.id) + xScale.step() / 2, 0]})`
       )
       .each(function (d, i) {
-        d3.select(this).call(
-          d3
-            .axisLeft(d.scaleY)
-            .tickSize(3)
-            .tickFormat(
-              d.scaleY.domain()[1] < 100 ? d3.format(".2f") : d3.format("~s")
-            )
-        );
+        let yAxis = d3.axisLeft(d.scaleY).tickSize(3);
+
+        d3.select(this).call(yAxis);
 
         d3.select(this)
           .selectAll("text")
@@ -146,6 +146,14 @@ class ViolinPlot extends Component {
               : x > d.plot.q3
               ? legendColors()[2]
               : legendColors()[1];
+          })
+          .text(function (e) {
+            let tickText = d3.select(this).text();
+            if (d.plot.scaleX === "log") {
+              tickText =
+                tickText === "" ? "" : d3.format("~s")(+d3.select(this).text());
+            }
+            return tickText;
           });
 
         d3.select(this)
@@ -157,6 +165,15 @@ class ViolinPlot extends Component {
               ? legendColors()[2]
               : legendColors()[1];
           });
+
+        if (d.plot.scaleX === "log") {
+          d3.select(this)
+            .selectAll(".tick > text")
+            .attr("transform", "rotate(-45)")
+            .attr("dy", "-4")
+            .attr("dx", "7")
+            .style("text-anchor", "end");
+        }
       });
   }
 

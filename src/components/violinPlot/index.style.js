@@ -24,7 +24,10 @@ const Wrapper = styled.div`
   }
 
   .x-axis-container g.tick text {
-    font-size: 11px;
+    font-size: 12px;
+  }
+  .axis--y g.tick text {
+    font-size: 9px;
   }
   .axis--y g.tick line {
     stroke: #777;

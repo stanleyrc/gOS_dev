@@ -65,6 +65,7 @@ class HistogramPlot extends Component {
       q1,
       q3,
       q99,
+      scaleX,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -83,8 +84,15 @@ class HistogramPlot extends Component {
       d3.max([q99, markValue]),
     ];
 
+    let plotScale = d3.scaleLinear();
+    if (scaleX === "log") {
+      plotScale = d3.scaleLog();
+      extent[0] = d3.max([extent[0], 0.1, markValue]);
+      extentToQ99[0] = d3.max([extentToQ99[0], 0.1, markValue]);
+    }
+
     const xScale = this.state.zoomTransform.rescaleX(
-      d3.scaleLinear().domain(extentToQ99).range([0, panelWidth]).nice()
+      plotScale.domain(extentToQ99).range([0, panelWidth]).nice()
     );
 
     const n = data.length;
@@ -121,11 +129,12 @@ class HistogramPlot extends Component {
       markValueText,
       q1,
       q3,
+      scaleX,
     };
   }
 
   renderXAxis() {
-    const { xScale, q1, q3 } = this.getPlotConfiguration();
+    const { xScale, q1, q3, scaleX } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -133,10 +142,8 @@ class HistogramPlot extends Component {
 
     const axisX = d3
       .axisBottom(xScale)
-      .tickSize(6)
-      .tickFormat(
-        xScale.domain()[1] < 100 ? d3.format(".2f") : d3.format("~s")
-      );
+      .tickSize(4)
+      .tickFormat(scaleX === "log" ? d3.format("~s") : d3.format(".2f"));
 
     xAxisContainer.call(axisX);
 
@@ -155,6 +162,14 @@ class HistogramPlot extends Component {
         ? legendColors()[2]
         : legendColors()[1];
     });
+
+    if (scaleX === "log") {
+      xAxisContainer
+        .selectAll(".tick > text")
+        .attr("transform", "rotate(45)")
+        .attr("dy", "5")
+        .style("text-anchor", "start");
+    }
   }
 
   renderYAxis() {
@@ -164,11 +179,7 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".y-axis-container");
 
-    let yAxis = d3
-      .axisLeft(yScale)
-      .ticks(6, "~s")
-      .tickSize(3)
-      .tickFormat(d3.format("~s"));
+    let yAxis = d3.axisLeft(yScale).tickFormat(d3.format("~s"));
     yAxisContainer.call(yAxis);
   }
 
@@ -191,7 +202,7 @@ class HistogramPlot extends Component {
       q1,
       q3,
     } = this.getPlotConfiguration();
-
+    let clipId = `cuttOffViewPane-${Math.random()}`;
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
@@ -206,7 +217,7 @@ class HistogramPlot extends Component {
           ref={(elem) => (this.plotContainer = elem)}
         >
           <defs>
-            <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
+            <clipPath key="cuttOffViewPane" id={clipId}>
               <rect
                 x={0}
                 y={-panelHeight}
@@ -217,7 +228,7 @@ class HistogramPlot extends Component {
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <g clipPath="url(#cuttOffViewPane)">
+              <g clipPath={`url(#${clipId})`}>
                 <path
                   fill="#CCC"
                   fillOpacity={1}
@@ -259,12 +270,12 @@ class HistogramPlot extends Component {
                 transform={`translate(${[margins.gap, 0]})`}
               ></g>
               <g
-                clipPath=""
+                clipPath={`url(#${clipId})`}
                 className="axis--x x-axis-container"
                 transform={`translate(${[margins.gap, panelHeight]})`}
               ></g>
               <g
-                clipPath="url(#cuttOffViewPane)"
+                clipPath={`url(#${clipId})`}
                 className="axis-conditional-container"
                 transform={`translate(${[margins.gap, panelHeight]})`}
               >

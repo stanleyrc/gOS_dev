@@ -91,6 +91,7 @@ function* bootApplication(action) {
     let cutoff = Infinity;
     plot.id = d;
     plot.type = plotTypes()[d];
+    plot.scaleX = plotTypes()[d].scaleX;
     plot.data = responses[i].data
       .map((d) => +d.value)
       .filter((d) => d < cutoff)

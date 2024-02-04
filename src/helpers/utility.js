@@ -405,24 +405,38 @@ export function plotTypes() {
       plotType: "histogram",
       tumor_type: "tumor_type_final_mod",
       format: ".2%",
+      scaleX: "linear",
     },
     snvCount: {
       plotType: "histogram",
       tumor_type: "tumor_type_final_mod",
       format: ",",
+      scaleX: "log",
     },
     svCount: {
       plotType: "histogram",
       tumor_type: "tumor_type_final_mod",
       format: ",",
+      scaleX: "log",
     },
     lohFraction: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ".2%",
+      scaleX: "linear",
     },
-    purity: { plotType: "histogram", tumor_type: "tumor_type", format: ".2f" },
-    ploidy: { plotType: "histogram", tumor_type: "tumor_type", format: ".2f" },
+    purity: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2f",
+      scaleX: "linear",
+    },
+    ploidy: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2f",
+      scaleX: "linear",
+    },
   };
 }
 
@@ -529,6 +543,7 @@ export function getPopulationMetrics(
     let cutoff = Infinity;
     plot.id = d;
     plot.type = plotTypes()[d].plotType;
+    plot.scaleX = plotTypes()[d].scaleX;
     plot.data = populations[d]
       .filter((e) =>
         tumour_type
