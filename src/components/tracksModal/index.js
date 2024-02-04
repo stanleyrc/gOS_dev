@@ -83,7 +83,7 @@ class TracksModal extends Component {
                   chromoBins,
                   visible: true,
                   loading,
-                  height: 140,
+                  height: 180,
                   width: 1152,
                 }}
               />
