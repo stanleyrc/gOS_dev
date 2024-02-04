@@ -268,15 +268,19 @@ function* selectReport(action) {
       connections: [],
     };
 
-    let responseMutationsData = yield call(
-      axios.get,
-      `data/${action.report}/mutations.json`
-    );
+    try {
+      let responseMutationsData = yield call(
+        axios.get,
+        `data/${action.report}/mutations.json`
+      );
 
-    properties.mutations = responseMutationsData.data || {
-      intervals: [],
-      connections: [],
-    };
+      properties.mutations = responseMutationsData.data || {
+        intervals: [],
+        connections: [],
+      };
+    } catch (err) {
+      console.log(err);
+    }
 
     let responsePPFit = yield call(
       axios.get,

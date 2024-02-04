@@ -20,14 +20,7 @@ const initState = {
       y_axis: { title: "copy number", visible: true },
     },
   },
-  mutations: {
-    connections: [],
-    intervals: [],
-    settings: {
-      description: "",
-      y_axis: { title: "copy number", visible: true },
-    },
-  },
+  mutations: null,
   hoveredLocation: null,
   selectedFilteredEvent: null,
   datafiles: [],
