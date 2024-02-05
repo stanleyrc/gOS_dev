@@ -17,13 +17,13 @@ class ViolinPlot extends Component {
   plotContainer = null;
 
   componentDidMount() {
-    this.renderYAxis();
     this.renderXAxis();
+    this.renderYAxis();
   }
 
   componentDidUpdate() {
-    this.renderYAxis();
     this.renderXAxis();
+    this.renderYAxis();
   }
 
   getPlotConfiguration() {
@@ -55,7 +55,7 @@ class ViolinPlot extends Component {
       let plotScale = d3.scaleLinear();
       if (plot.scaleX === "log") {
         plotScale = d3.scaleLog();
-        extentToQ99[0] = d3.max([extentToQ99[0], 1]);
+        extentToQ99[0] = d3.max([extentToQ99[0], markValue, 1]);
       }
 
       const scaleY = plotScale
@@ -149,8 +149,7 @@ class ViolinPlot extends Component {
           .text(function (e) {
             let tickText = d3.select(this).text();
             if (d.plot.scaleX === "log") {
-              tickText =
-                tickText === "" ? "" : d3.format("~s")(+d3.select(this).text());
+              tickText = tickText === "" ? "" : d3.format("~s")(e);
             }
             return tickText;
           });
@@ -174,6 +173,48 @@ class ViolinPlot extends Component {
             .style("text-anchor", "end");
         }
       });
+
+    yAxisContainer.each(function (d, i) {
+      let yAxis = d3.axisLeft(d.scaleY).tickSize(3);
+
+      d3.select(this).call(yAxis);
+
+      d3.select(this)
+        .selectAll("text")
+        .style("fill", (x) => {
+          return x < d.plot.q1
+            ? legendColors()[0]
+            : x > d.plot.q3
+            ? legendColors()[2]
+            : legendColors()[1];
+        })
+        .text(function (e) {
+          let tickText = d3.select(this).text();
+          if (d.plot.scaleX === "log") {
+            tickText = tickText === "" ? "" : d3.format("~s")(e);
+          }
+          return tickText;
+        });
+
+      d3.select(this)
+        .selectAll("line")
+        .style("stroke", (x) => {
+          return x < d.plot.q1
+            ? legendColors()[0]
+            : x > d.plot.q3
+            ? legendColors()[2]
+            : legendColors()[1];
+        });
+
+      if (d.plot.scaleX === "log") {
+        d3.select(this)
+          .selectAll(".tick > text")
+          .attr("transform", "rotate(-45)")
+          .attr("dy", "-4")
+          .attr("dx", "7")
+          .style("text-anchor", "end");
+      }
+    });
   }
 
   render() {

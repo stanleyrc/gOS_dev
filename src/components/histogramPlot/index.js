@@ -87,7 +87,7 @@ class HistogramPlot extends Component {
     let plotScale = d3.scaleLinear();
     if (scaleX === "log") {
       plotScale = d3.scaleLog();
-      extentToQ99[0] = d3.max([extentToQ99[0], 1]);
+      extentToQ99[0] = d3.max([extentToQ99[0], markValue, 1]);
     }
 
     const xScale = this.state.zoomTransform.rescaleX(
