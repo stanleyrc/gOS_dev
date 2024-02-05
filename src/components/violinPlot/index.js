@@ -146,15 +146,15 @@ class ViolinPlot extends Component {
               : x > d.plot.q3
               ? legendColors()[2]
               : legendColors()[1];
-          })
-          .text(function (e) {
-            let tickText = d3.select(this).text();
-            if (d.plot.scaleX === "log") {
-              tickText =
-                tickText === "" ? "" : d3.format("~s")(+d3.select(this).text());
-            }
-            return tickText;
           });
+        // .text(function (e) {
+        //   let tickText = d3.select(this).text();
+        //   if (d.plot.scaleX === "log") {
+        //     tickText =
+        //       tickText === "" ? "" : d3.format("~s")(+d3.select(this).text());
+        //   }
+        //   return tickText;
+        // });
 
         d3.select(this)
           .selectAll("line")
@@ -166,14 +166,14 @@ class ViolinPlot extends Component {
               : legendColors()[1];
           });
 
-        if (d.plot.scaleX === "log") {
-          d3.select(this)
-            .selectAll(".tick > text")
-            .attr("transform", "rotate(-45)")
-            .attr("dy", "-4")
-            .attr("dx", "7")
-            .style("text-anchor", "end");
-        }
+        // if (d.plot.scaleX === "log") {
+        //   d3.select(this)
+        //     .selectAll(".tick > text")
+        //     .attr("transform", "rotate(-45)")
+        //     .attr("dy", "-4")
+        //     .attr("dx", "7")
+        //     .style("text-anchor", "end");
+        // }
       });
   }
 
