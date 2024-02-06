@@ -116,6 +116,7 @@
       "genome-plot": "Genome Plot",
       "gene": "Gene",
       "name": "Name",
+      "variant": "Variant",
       "tier": "Tier",
       "role": "Role in Cancer",
       "location": "Location",

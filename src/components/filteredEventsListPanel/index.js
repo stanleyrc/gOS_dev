@@ -48,6 +48,19 @@ class FilteredEventsListPanel extends Component {
         key: "name",
       },
       {
+        title: t("components.filtered-events-panel.variant"),
+        dataIndex: "variant",
+        key: "variant",
+        filters: [...new Set(filteredEvents.map((d) => d.variant))].map((d) => {
+          return {
+            text: d,
+            value: d,
+          };
+        }),
+        filterMultiple: false,
+        onFilter: (value, record) => record.variant.indexOf(value) === 0,
+      },
+      {
         title: t("components.filtered-events-panel.type"),
         dataIndex: "type",
         key: "type",

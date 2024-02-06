@@ -505,6 +505,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         endPoint: endPoint,
         location: event.Genome_Location,
         id: event.id,
+        variant: event.Variant,
       };
     })
     .sort((a, b) => d3.ascending(a.gene, b.gene));
