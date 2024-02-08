@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import ContainerDimensions from "react-container-dimensions";
@@ -12,7 +11,6 @@ import {
   message,
   Row,
   Col,
-  Select,
   Typography,
 } from "antd";
 import * as d3 from "d3";
@@ -85,7 +83,7 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, genes, height, width, domains } = this.props;
+    const { t, genes, domains } = this.props;
     if (!genes) return null;
     return (
       <Wrapper>
@@ -121,18 +119,26 @@ class GenesPanel extends Component {
                 className="ant-wrapper"
                 ref={(elem) => (this.container = elem)}
               >
-                <Row style={{ width, height }} gutter={[margins.gap, 0]}>
-                  <Col flex={1}>
-                    <GenesPlot
-                      {...{
-                        width,
-                        height,
-                        domains,
-                        genes,
-                      }}
-                    />
-                  </Col>
-                </Row>
+                <ContainerDimensions>
+                  {({ width, height }) => {
+                    return (
+                      <Row style={{ width }} gutter={[margins.gap, 0]}>
+                        <Col flex={1}>
+                          {width && height && (
+                            <GenesPlot
+                              {...{
+                                width,
+                                height,
+                                domains,
+                                genes,
+                              }}
+                            />
+                          )}
+                        </Col>
+                      </Row>
+                    );
+                  }}
+                </ContainerDimensions>
               </div>
             }
           </Card>
@@ -149,7 +155,6 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   chromoBins: state.App.chromoBins,
   domains: state.App.domains,
-  chromoBins: state.App.chromoBins,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   genomeLength: state.App.genomeLength,
   genesList: state.App.genes,

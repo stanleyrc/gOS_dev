@@ -67,7 +67,6 @@ class ScatterPlotPanel extends Component {
       visible,
       zoomedByCmd,
       height,
-      width,
     } = this.props;
     if (!data) return null;
     return (
@@ -121,27 +120,40 @@ class ScatterPlotPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
             >
-              <Row style={{ width, height }} gutter={[margins.gap, 0]}>
-                <Col flex={1}>
-                  {data ? (
-                    <ScatterPlot
-                      {...{
-                        width,
-                        height,
-                        data,
-                        domains,
-                      }}
-                    />
-                  ) : (
-                    <Alert
-                      message={t("general.invalid-arrow-file")}
-                      description={t("general.invalid-arrow-file-detail")}
-                      type="error"
-                      showIcon
-                    />
-                  )}
-                </Col>
-              </Row>
+              <ContainerDimensions>
+                {({ width, height }) => {
+                  return (
+                    (inViewport || renderOutsideViewPort) && (
+                      <Row style={{ width }} gutter={[margins.gap, 0]}>
+                        <Col flex={1}>
+                          {data ? (
+                            width &&
+                            height && (
+                              <ScatterPlot
+                                {...{
+                                  width,
+                                  height,
+                                  data,
+                                  domains,
+                                }}
+                              />
+                            )
+                          ) : (
+                            <Alert
+                              message={t("general.invalid-arrow-file")}
+                              description={t(
+                                "general.invalid-arrow-file-detail"
+                              )}
+                              type="error"
+                              showIcon
+                            />
+                          )}
+                        </Col>
+                      </Row>
+                    )
+                  );
+                }}
+              </ContainerDimensions>
             </div>
           )}
         </Card>

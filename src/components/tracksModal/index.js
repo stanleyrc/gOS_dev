@@ -31,6 +31,7 @@ class TracksModal extends Component {
       handleOkClicked,
       handleCancelClicked,
       width,
+      height,
       open,
     } = this.props;
     if (!open) return null;
@@ -57,8 +58,7 @@ class TracksModal extends Component {
                   genes: genesData,
                   chromoBins,
                   visible: true,
-                  height: 140,
-                  width: 1152,
+                  height,
                 }}
               />
             </Col>
@@ -71,7 +71,7 @@ class TracksModal extends Component {
                   chromoBins,
                   visible: true,
                   index: 0,
-                  height: 180,
+                  height,
                 }}
               />
             </Col>
@@ -83,8 +83,7 @@ class TracksModal extends Component {
                   chromoBins,
                   visible: true,
                   loading,
-                  height: 180,
-                  width: 1152,
+                  height,
                 }}
               />
             </Col>
@@ -98,7 +97,7 @@ class TracksModal extends Component {
                     chromoBins,
                     visible: true,
                     index: 0,
-                    height: 180,
+                    height,
                   }}
                 />
               </Col>
@@ -115,6 +114,7 @@ TracksModal.propTypes = {
 TracksModal.defaultProps = {
   genomeData: { intervals: [], connections: [] },
   width: 1200,
+  height: 180,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
