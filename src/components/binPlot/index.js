@@ -12,8 +12,8 @@ const margins = {
   gapY: 24,
   yTicksCount: 10,
   tooltipGap: 10,
-  minBarHeight: 5,
-  minBarWidth: 15,
+  minBarHeight: 2,
+  minBarWidth: 2,
 };
 
 class BinPlot extends Component {
