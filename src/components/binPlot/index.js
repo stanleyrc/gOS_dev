@@ -13,7 +13,7 @@ const margins = {
   yTicksCount: 10,
   tooltipGap: 10,
   minBarHeight: 2,
-  minBarWidth: 2,
+  minBarWidth: 4,
 };
 
 class BinPlot extends Component {
