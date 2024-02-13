@@ -98,6 +98,7 @@ class TracksModal extends Component {
                     visible: true,
                     index: 0,
                     height,
+                    mutationsPlot: true,
                   }}
                 />
               </Col>

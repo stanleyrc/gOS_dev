@@ -507,7 +507,8 @@ class GenomePlot extends Component {
   };
 
   render() {
-    const { width, height, selectedConnectionIds, annotation } = this.props;
+    const { width, height, selectedConnectionIds, annotation, mutationsPlot } =
+      this.props;
     const { stageWidth, stageHeight, tooltip } = this.state;
 
     this.updatePanels();
@@ -596,7 +597,30 @@ class GenomePlot extends Component {
                 </g>
                 <g clipPath={`url(#cuttOffViewPane-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
-                    return (
+                    return mutationsPlot ? (
+                      <circle
+                        id={d.primaryKey}
+                        type="interval"
+                        key={i}
+                        className={`shape ${
+                          d.primaryKey === tooltip.shapeId && "highlighted"
+                        } ${
+                          annotation &&
+                          d.annotationArray.includes(annotation) &&
+                          "annotated"
+                        }`}
+                        transform={`translate(${[
+                          panel.xScale((d.startPlace + d.endPlace) / 2),
+                          panel.yScale(d.y) - 0.5 * margins.bar,
+                        ]})`}
+                        r={margins.bar / 3}
+                        style={{
+                          fill: d.fill || d.color,
+                          stroke: d.stroke,
+                          strokeWidth: 1,
+                        }}
+                      />
+                    ) : (
                       <rect
                         id={d.primaryKey}
                         type="interval"
@@ -612,9 +636,9 @@ class GenomePlot extends Component {
                           panel.xScale(d.startPlace),
                           panel.yScale(d.y) - 0.5 * margins.bar,
                         ]})`}
-                        width={Math.abs(
+                        width={
                           panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
-                        )}
+                        }
                         height={margins.bar}
                         style={{
                           fill: d.fill || d.color,
@@ -710,6 +734,7 @@ GenomePlot.defaultProps = {
   defaultDomain: [],
   commonYScale: false,
   selectedConnectionIds: [],
+  mutationsPlot: false,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

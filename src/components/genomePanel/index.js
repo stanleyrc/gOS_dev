@@ -54,6 +54,7 @@ class GenomePanel extends Component {
       chromoBins,
       domains,
       height,
+      mutationsPlot,
     } = this.props;
     if (Object.keys(genome).length < 1) return null;
     return (
@@ -102,6 +103,7 @@ class GenomePanel extends Component {
                           width: width - 2 * margins.padding,
                           height,
                           genome,
+                          mutationsPlot,
                         }}
                       />
                     )
@@ -118,6 +120,7 @@ class GenomePanel extends Component {
 GenomePanel.propTypes = {};
 GenomePanel.defaultProps = {
   height: 400,
+  mutationsPlot: false,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
