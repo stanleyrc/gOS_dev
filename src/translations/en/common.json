@@ -144,7 +144,7 @@
       "binplot": {
         "title": "Total Width over Segment Mean value Histogram",
         "x-title": "Segment Intensity Mean Value →",
-        "y-title": "↑ Cummulative Width"
+        "y-title": "↑ Cumulative Width"
       }
     },
     "coverage-panel": {
