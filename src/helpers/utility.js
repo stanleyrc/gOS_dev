@@ -515,7 +515,8 @@ export function sequencesToGenome(ppfit) {
   return {
     settings: {},
     intervals: ppfit
-      .filter((d) => !d.bad && d.endPoint - d.startPoint < 10000)
+      .filter((d) => !d.bad)
+      .filter((d) => d.endPoint - d.startPoint >= 10000)
       .map((d, i) => {
         return {
           iid: i,
