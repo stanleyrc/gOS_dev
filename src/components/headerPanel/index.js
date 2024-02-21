@@ -108,9 +108,7 @@ class HeaderPanel extends Component {
                                   color: colorMarkers[d],
                                 }}
                               >
-                                {Number.isInteger(metadata[d])
-                                  ? d3.format(",")(metadata[d])
-                                  : d3.format(".2%")(metadata[d])}
+                                {d3.format(plotTypes()[d].format)(+metadata[d])}
                               </span>
                             </span>
                           </div>
@@ -131,18 +129,20 @@ class HeaderPanel extends Component {
                                 color: colorMarkers["purity"],
                               }}
                             >
-                              {d3.format(".2f")(purity)}
+                              {d3.format(plotTypes()["purity"].format)(+purity)}
                             </span>
                           </span>
                           <span className="ant-statistic-content-suffix">
                             {" "}
-                            /{" "}
+                            <span className="purity-ploidy-separator">
+                              /
+                            </span>{" "}
                             <span
                               style={{
                                 color: colorMarkers["ploidy"],
                               }}
                             >
-                              {d3.format(".2f")(ploidy)}
+                              {d3.format(plotTypes()["ploidy"].format)(+ploidy)}
                             </span>
                           </span>
                         </div>

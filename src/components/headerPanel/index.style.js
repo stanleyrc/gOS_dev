@@ -83,6 +83,9 @@ const Wrapper = styled.div`
       background-color: #f0f0f0;
       content: "";
     }
+    .purity-ploidy-separator {
+      color: rgba(0, 0, 0, 0.45);
+    }
   }
 `;
 

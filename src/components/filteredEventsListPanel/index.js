@@ -100,7 +100,7 @@ class FilteredEventsListPanel extends Component {
             value: d,
           };
         }),
-        onFilter: (value, record) => record.role.indexOf(value) === 0,
+        onFilter: (value, record) => record.role.includes(value),
       },
       {
         title: t("components.filtered-events-panel.tier"),
