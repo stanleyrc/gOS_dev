@@ -88,7 +88,12 @@ class FilteredEventsListPanel extends Component {
           </>
         ),
         filters: [
-          ...new Set(filteredEvents.map((d) => d.role.split(",")).flat()),
+          ...new Set(
+            filteredEvents
+              .map((d) => d.role.split(","))
+              .flat()
+              .map((d) => d.trim())
+          ),
         ].map((d) => {
           return {
             text: d,
