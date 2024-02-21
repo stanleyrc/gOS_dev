@@ -5,9 +5,6 @@ const actions = {
   LOAD_GENES: "LOAD_GENES",
   GENES_LOADED: "GENES_LOADED",
 
-  LOAD_COMMONS: "LOAD_COMMONS",
-  COMMONS_LOADED: "COMMONS_LOADED",
-
   SEARCH_REPORTS: "SEARCH_REPORTS",
   REPORTS_FETCHED: "REPORTS_FETCHED",
 
@@ -38,9 +35,6 @@ const actions = {
   }),
   loadGenes: () => ({
     type: actions.LOAD_GENES,
-  }),
-  loadCommons: () => ({
-    type: actions.LOAD_COMMONS,
   }),
   updateSelectedFilteredEvent: (filteredEvent) => ({
     type: actions.FILTERED_EVENT_UPDATED,

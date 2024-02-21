@@ -32,6 +32,7 @@ class FilteredEventsListPanel extends Component {
       selectedFilteredEvent,
       coverageData,
       genesData,
+      allelicData,
     } = this.props;
     if (!report || !filteredEvents) return null;
 
@@ -139,6 +140,7 @@ class FilteredEventsListPanel extends Component {
                   coverageData,
                   genesData,
                   chromoBins,
+                  allelicData,
                   modalTitle: (
                     <Space>
                       {selectedFilteredEvent.gene}
@@ -161,6 +163,7 @@ class FilteredEventsListPanel extends Component {
                   mutationsPlotTitle: t(
                     "components.tracks-modal.mutations-plot"
                   ),
+                  allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
                   handleOkClicked: () => this.setState({ open: false }),
                   handleCancelClicked: () => this.setState({ open: false }),
                   open,
@@ -186,6 +189,7 @@ const mapStateToProps = (state) => ({
   loading: state.App.loading,
   genome: state.App.genome,
   mutations: state.App.mutations,
+  allelicData: state.App.allelic,
   chromoBins: state.App.chromoBins,
   coverageData: state.App.coverageData,
   genesData: state.App.genesData,

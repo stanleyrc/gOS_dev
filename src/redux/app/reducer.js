@@ -35,6 +35,7 @@ const initState = {
   ppFitImage: null,
   genesData: null,
   ppfit: { settings: {}, intervals: [], connections: [] },
+  allelic: null,
   coverageData: null,
   renderOutsideViewPort: true,
 };
@@ -58,15 +59,6 @@ export default function appReducer(state = initState, action) {
         ...state,
       };
     case actions.GENES_LOADED:
-      return {
-        ...state,
-        ...action.properties,
-      };
-    case actions.LOAD_COMMONS:
-      return {
-        ...state,
-      };
-    case actions.COMMONS_LOADED:
       return {
         ...state,
         ...action.properties,

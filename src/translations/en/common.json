@@ -159,7 +159,8 @@
     "tracks-modal": {
       "genome-plot": "Genome Plot",
       "coverage-plot": "Coverage Plot",
-      "mutations-plot": "Mutations Plot"
+      "mutations-plot": "Mutations Plot",
+      "allelic-plot": "Allelic Plot"
     }
   }
 }

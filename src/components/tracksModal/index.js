@@ -21,6 +21,7 @@ class TracksModal extends Component {
       mutationsData,
       coverageData,
       genesData,
+      allelicData,
       inViewport,
       renderOutsideViewPort,
       chromoBins,
@@ -28,6 +29,7 @@ class TracksModal extends Component {
       genomePlotTitle,
       mutationsPlotTitle,
       coveragePlotTitle,
+      allelicPlotTitle,
       handleOkClicked,
       handleCancelClicked,
       width,
@@ -87,6 +89,21 @@ class TracksModal extends Component {
                 }}
               />
             </Col>
+            {allelicData && (
+              <Col className="gutter-row" span={24}>
+                <GenomePanel
+                  {...{
+                    loading,
+                    genome: allelicData,
+                    title: allelicPlotTitle,
+                    chromoBins,
+                    visible: true,
+                    index: 0,
+                    height,
+                  }}
+                />
+              </Col>
+            )}
             {mutationsData && (
               <Col className="gutter-row" span={24}>
                 <GenomePanel
