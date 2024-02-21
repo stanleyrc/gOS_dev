@@ -5,4 +5,6 @@ import appActions from "./app/actions";
 export default () =>
   new Promise(() => {
     store.dispatch(appActions.bootApp());
+    store.dispatch(appActions.loadGenes());
+    store.dispatch(appActions.loadCommons());
   });

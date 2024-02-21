@@ -76,32 +76,6 @@ function* bootApplication(action) {
   // get the settings within the public folder
   let responseSettings = yield call(axios.get, "settings.json");
 
-  const responses = yield all(
-    Object.keys(PLOT_TYPES).map((e) => call(axios.get, `common/${e}.json`))
-  );
-
-  let populations = {};
-  Object.keys(plotTypes()).forEach((d, i) => {
-    populations[d] = responses[i].data;
-  });
-
-  // Extract the data from the responses and store it in an object
-  const populationMetrics = Object.keys(plotTypes()).map((d, i) => {
-    let plot = {};
-    let cutoff = Infinity;
-    plot.id = d;
-    plot.type = plotTypes()[d];
-    plot.scaleX = plotTypes()[d].scaleX;
-    plot.data = responses[i].data
-      .map((d) => +d.value)
-      .filter((d) => d < cutoff)
-      .sort((a, b) => d3.ascending(a, b));
-    plot.q1 = d3.quantile(plot.data, 0.25);
-    plot.q3 = d3.quantile(plot.data, 0.75);
-    plot.q99 = d3.quantile(plot.data, 0.99);
-    return plot;
-  });
-
   // if all selected files are have the same reference
   let selectedCoordinate = "hg19";
   let searchParams = new URL(decodeURI(document.location)).searchParams;
@@ -127,20 +101,10 @@ function* bootApplication(action) {
     unescape(url.toString())
   );
 
-  let genesPlot = {
-    path: `genes/${selectedCoordinate}.arrow`,
-    data: null,
-  };
-  yield call(fetchArrowData, genesPlot);
-  let genesData = genesPlot.data;
-
   let properties = {
     datafiles,
-    genesData,
     reportsFilters,
     settings: responseSettings.data,
-    populationMetrics,
-    populations,
     domains,
     chromoBins,
     defaultDomain,
@@ -319,8 +283,67 @@ function* selectReport(action) {
   });
 }
 
+function* loadGenes(action) {
+  let selectedCoordinate = "hg19";
+  let genesPlot = {
+    path: `genes/${selectedCoordinate}.arrow`,
+    data: null,
+  };
+  yield call(fetchArrowData, genesPlot);
+  let genesData = genesPlot.data;
+
+  let properties = {
+    genesData,
+  };
+
+  yield put({
+    type: actions.GENES_LOADED,
+    properties,
+  });
+}
+
+function* loadCommons(action) {
+  const responses = yield all(
+    Object.keys(PLOT_TYPES).map((e) => call(axios.get, `common/${e}.json`))
+  );
+
+  let populations = {};
+  Object.keys(plotTypes()).forEach((d, i) => {
+    populations[d] = responses[i].data;
+  });
+
+  // Extract the data from the responses and store it in an object
+  const populationMetrics = Object.keys(plotTypes()).map((d, i) => {
+    let plot = {};
+    let cutoff = Infinity;
+    plot.id = d;
+    plot.type = plotTypes()[d];
+    plot.scaleX = plotTypes()[d].scaleX;
+    plot.data = responses[i].data
+      .map((d) => +d.value)
+      .filter((d) => d < cutoff)
+      .sort((a, b) => d3.ascending(a, b));
+    plot.q1 = d3.quantile(plot.data, 0.25);
+    plot.q3 = d3.quantile(plot.data, 0.75);
+    plot.q99 = d3.quantile(plot.data, 0.99);
+    return plot;
+  });
+
+  let properties = {
+    populationMetrics,
+    populations,
+  };
+
+  yield put({
+    type: actions.COMMONS_LOADED,
+    properties,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.BOOT_APP, bootApplication);
+  yield takeEvery(actions.LOAD_GENES, loadGenes);
+  yield takeEvery(actions.LOAD_COMMONS, loadCommons);
   yield takeEvery(actions.BOOT_APP_SUCCESS, followUpBootApplication);
   yield takeEvery(actions.SELECT_REPORT, selectReport);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);

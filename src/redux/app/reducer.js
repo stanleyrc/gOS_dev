@@ -53,6 +53,24 @@ export default function appReducer(state = initState, action) {
         ...action.properties,
         loading: false,
       };
+    case actions.LOAD_GENES:
+      return {
+        ...state,
+      };
+    case actions.GENES_LOADED:
+      return {
+        ...state,
+        ...action.properties,
+      };
+    case actions.LOAD_COMMONS:
+      return {
+        ...state,
+      };
+    case actions.COMMONS_LOADED:
+      return {
+        ...state,
+        ...action.properties,
+      };
     case actions.SELECT_REPORT:
       url = new URL(decodeURI(document.location));
       if (action.report) {
