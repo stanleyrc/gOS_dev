@@ -419,6 +419,12 @@ export function plotTypes() {
       format: ",",
       scaleX: "log",
     },
+    tmb: {
+      plotType: "histogram",
+      tumor_type: "tumor_type_final",
+      format: ",",
+      scaleX: "log",
+    },
     lohFraction: {
       plotType: "histogram",
       tumor_type: "tumor_type",
@@ -447,6 +453,7 @@ export function reportAttributesMap() {
     dlrs: "coverageVariance",
     snv_count: "snvCount",
     sv_count: "svCount",
+    tmb: "tmb",
     loh_fraction: "lohFraction",
     purity: "purity",
     ploidy: "ploidy",

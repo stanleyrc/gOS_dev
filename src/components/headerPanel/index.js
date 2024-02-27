@@ -93,6 +93,7 @@ class HeaderPanel extends Component {
                       "coverageVariance",
                       "snvCount",
                       "svCount",
+                      "tmb",
                       "lohFraction",
                     ].map((d) => (
                       <div className="stat-item">

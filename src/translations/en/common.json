@@ -33,6 +33,10 @@
       "short": "SV Count",
       "full": "SV Count"
     },
+    "tmb": {
+      "short": "TMB",
+      "full": "Tumor Mutational Burden (TMB)"
+    },
     "lohFraction": {
       "short": "LOH Fraction",
       "full": "LOH Fraction"
