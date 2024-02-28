@@ -164,7 +164,9 @@
       "genome-plot": "Genome Plot",
       "coverage-plot": "Coverage Plot",
       "mutations-plot": "Mutations Plot",
-      "allelic-plot": "Allelic Plot"
+      "allelic-plot": "Allelic Plot",
+      "coverage-y-axis-title": "↑ Foreground cn",
+      "coverage-y-axis2-title": "↑ Absolute cn"
     }
   }
 }

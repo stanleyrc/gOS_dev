@@ -67,6 +67,9 @@ class ScatterPlotPanel extends Component {
       visible,
       zoomedByCmd,
       height,
+      scaleY2,
+      yAxisTitle,
+      yAxis2Title,
     } = this.props;
     if (!data) return null;
     return (
@@ -135,6 +138,9 @@ class ScatterPlotPanel extends Component {
                                   height,
                                   data,
                                   domains,
+                                  scaleY2,
+                                  yAxisTitle,
+                                  yAxis2Title,
                                 }}
                               />
                             )
@@ -162,7 +168,9 @@ class ScatterPlotPanel extends Component {
   }
 }
 ScatterPlotPanel.propTypes = {};
-ScatterPlotPanel.defaultProps = {};
+ScatterPlotPanel.defaultProps = {
+  scaleY2: { show: false, slope: 1, intercept: 0 },
+};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   domains: state.App.domains,

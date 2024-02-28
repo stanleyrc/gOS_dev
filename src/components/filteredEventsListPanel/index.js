@@ -165,6 +165,12 @@ class FilteredEventsListPanel extends Component {
                   ),
                   genomePlotTitle: t("components.tracks-modal.genome-plot"),
                   coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
+                  coverageYAxisTitle: t(
+                    "components.tracks-modal.coverage-y-axis-title"
+                  ),
+                  coverageYAxis2Title: t(
+                    "components.tracks-modal.coverage-y-axis2-title"
+                  ),
                   mutationsPlotTitle: t(
                     "components.tracks-modal.mutations-plot"
                   ),

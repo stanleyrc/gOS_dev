@@ -26,6 +26,10 @@ const Wrapper = styled.div`
     font-size: 10px;
     user-select: none;
   }
+  .y-axis-title {
+    font-size: 10px;
+    fill: #333;
+  }
 `;
 
 export default Wrapper;

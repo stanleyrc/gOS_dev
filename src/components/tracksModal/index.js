@@ -20,6 +20,9 @@ class TracksModal extends Component {
       genomeData,
       mutationsData,
       coverageData,
+      coverageYAxisTitle,
+      coverageYAxis2Title,
+      metadata,
       genesData,
       allelicData,
       inViewport,
@@ -37,6 +40,7 @@ class TracksModal extends Component {
       open,
     } = this.props;
     if (!open) return null;
+    const { beta, gamma } = metadata;
     return (
       <Wrapper visible={open}>
         <Modal
@@ -82,10 +86,13 @@ class TracksModal extends Component {
                 {...{
                   data: coverageData,
                   title: coveragePlotTitle,
+                  scaleY2: { show: true, slope: beta, intercept: -gamma },
                   chromoBins,
                   visible: true,
                   loading,
                   height,
+                  yAxisTitle: coverageYAxisTitle,
+                  yAxis2Title: coverageYAxis2Title,
                 }}
               />
             </Col>
@@ -142,6 +149,7 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   domains: state.App.domains,
+  metadata: state.App.metadata,
 });
 export default connect(
   mapStateToProps,

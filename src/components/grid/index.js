@@ -11,12 +11,14 @@ class Grid extends Component {
 
   componentDidMount() {
     this.renderYAxis();
+    this.renderYAxis2();
     this.renderXAxis();
     this.renderSeparators();
   }
 
   componentDidUpdate() {
     this.renderYAxis();
+    this.renderYAxis2();
     this.renderXAxis();
     this.renderSeparators();
   }
@@ -29,6 +31,28 @@ class Grid extends Component {
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
     let yAxis = d3.axisLeft(scaleY).tickSize(-axisWidth);
     yAxisContainer.call(yAxis);
+  }
+
+  renderYAxis2() {
+    let { scaleY2, scaleY } = this.props;
+    if (!scaleY2.show) {
+      return;
+    }
+    const { slope, intercept } = scaleY2;
+    const domain2 = [
+      scaleY.domain()[0] * slope + intercept,
+      scaleY.domain()[1] * slope + intercept,
+    ];
+    let yScale2 = d3.scaleLinear().domain(domain2).range(scaleY.range());
+    let yAxis2Container = d3
+      .select(this.container)
+      .select(".y-axis2-container");
+
+    let yAxis2 = d3
+      .axisRight(yScale2)
+      .tickValues(scaleY.ticks().map((d) => +d * slope + intercept))
+      .tickFormat(d3.format("+.1f"));
+    yAxis2Container.call(yAxis2);
   }
 
   renderXAxis() {
@@ -276,7 +300,7 @@ class Grid extends Component {
   }
 
   render() {
-    const { showY, axisWidth, axisHeight, gap } = this.props;
+    const { showY, scaleY2, axisWidth, axisHeight, gap } = this.props;
     return (
       <Wrapper
         className="axis axis-container"
@@ -296,6 +320,12 @@ class Grid extends Component {
           <g
             className="axis--y y-axis-container"
             transform={`translate(${[gap, 0]})`}
+          ></g>
+        )}
+        {showY && scaleY2.show && (
+          <g
+            className="axis--y y-axis2-container"
+            transform={`translate(${[gap + axisWidth - 10, 0]})`}
           ></g>
         )}
         <g
@@ -324,6 +354,7 @@ Grid.defaultProps = {
   gap: 0,
   fontSize: 10,
   showY: true,
+  scaleY2: { show: false, slope: 1, intercept: 0 },
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({

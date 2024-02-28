@@ -7,6 +7,7 @@ import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
+import { foreground2AbsoluteCN } from "../../helpers/utility";
 
 const { updateDomains, updateHoveredLocation } = appActions;
 
@@ -253,7 +254,16 @@ class ScatterPlot extends Component {
   };
 
   render() {
-    const { width, height, domains, chromoBins, defaultDomain } = this.props;
+    const {
+      width,
+      height,
+      domains,
+      chromoBins,
+      defaultDomain,
+      scaleY2,
+      yAxisTitle,
+      yAxis2Title,
+    } = this.props;
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
     let panelWidth =
@@ -299,11 +309,11 @@ class ScatterPlot extends Component {
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
       let yTicks = yScale.ticks(margins.yTicksCount);
       yTicks[yTicks.length - 1] = yScale.domain()[1];
+
       this.panels.push({
         index,
         xScale,
         yScale,
-        yTicks,
         zoom,
         panelWidth,
         panelHeight,
@@ -324,6 +334,19 @@ class ScatterPlot extends Component {
           className="plot-container"
           ref={(elem) => (this.plotContainer = elem)}
         >
+          <text
+            className="y-axis-title"
+            transform={`translate(${[0, margins.gapY / 3]})`}
+          >
+            {yAxisTitle}
+          </text>
+          <text
+            className="y-axis-title"
+            transform={`translate(${[width, margins.gapY / 3]})`}
+            textAnchor="end"
+          >
+            {yAxis2Title}
+          </text>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             {this.panels.map((panel, i) => (
               <g
@@ -335,6 +358,7 @@ class ScatterPlot extends Component {
                   gap={0}
                   scaleX={panel.xScale}
                   scaleY={panel.yScale}
+                  scaleY2={scaleY2}
                   axisWidth={panelWidth}
                   axisHeight={panelHeight}
                   chromoBins={chromoBins}
@@ -382,7 +406,9 @@ ScatterPlot.propTypes = {
   data: PropTypes.object,
   chromoBins: PropTypes.object,
 };
-ScatterPlot.defaultProps = {};
+ScatterPlot.defaultProps = {
+  scaleY2: { show: false, slope: 1, intercept: 0 },
+};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
   updateHoveredLocation: (hoveredLocation, panelIndex) =>

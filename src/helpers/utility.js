@@ -475,6 +475,10 @@ export function reportFilters() {
   ];
 }
 
+export function foreground2AbsoluteCN(foreground, beta, gamma) {
+  return foreground * beta - gamma;
+}
+
 export function snakeCaseToHumanReadable(str) {
   return str
     ? str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
