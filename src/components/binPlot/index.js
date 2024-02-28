@@ -174,7 +174,7 @@ class BinPlot extends Component {
   }
 
   renderXAxis() {
-    const { xScale, separators } = this.getPlotConfiguration();
+    const { xScale } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -202,6 +202,7 @@ class BinPlot extends Component {
 
   handleMouseEnter = (d, i) => {
     const { t } = this.props;
+    
     const { xScale, panelHeight, width } = this.getPlotConfiguration();
     let text = Object.keys(segmentAttributes()).map((e) => {
       return {

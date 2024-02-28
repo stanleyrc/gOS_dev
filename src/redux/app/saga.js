@@ -302,7 +302,7 @@ function* selectReport(action) {
 
     let responsePPfitData = yield call(
       axios.get,
-      `data/${action.report}/ppfit2.json`
+      `data/${action.report}/ppfit.json`
     );
 
     properties.ppfit = responsePPfitData.data

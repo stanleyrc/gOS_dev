@@ -494,6 +494,17 @@ export function segmentAttributes() {
     width: ",",
     startPoint: ",",
     endPoint: ",",
+    raw_var: ".4f",
+    nbins: ",",
+    nbins_tot: ",",
+    nbins_nafrac: ".4f",
+    wbins_nafrac: ".4f",
+    max_na: ".4f",
+    loess_var: ".4f",
+    tau_sq_post: ".4f",
+    post_var: ".4f",
+    var: ".4f",
+    sd: ".4f",
   };
 }
 
@@ -524,24 +535,26 @@ export function transformFilteredEventAttributes(filteredEvents) {
 
 export function sequencesToGenome(ppfit) {
   return {
-    settings: {},
-    intervals: ppfit
-      .filter((d) => !d.bad)
+    settings: ppfit.settings,
+    intervals: ppfit.intervals
+      .filter((d) => !d.metadata.bad)
       .filter((d) => d.endPoint - d.startPoint >= 10000)
       .map((d, i) => {
         return {
-          iid: i,
+          iid: d.iid,
           chromosome: d.chromosome,
           startPoint: d.startPoint,
           endPoint: d.endPoint,
-          y: d.cn,
+          y: d.y,
+          cn: d.y,
           type: "interval",
           strand: d.strand,
-          title: d.tile_id,
-          metadata: d,
+          title: d.title,
+          ...d.metadata,
+          metadata: { ...d.metadata, width: d.endPoint - d.startPoint },
         };
       }),
-    connections: [],
+    connections: ppfit.connections,
   };
 }
 

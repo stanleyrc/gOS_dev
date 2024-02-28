@@ -67,7 +67,19 @@
       "y": "Copy Number",
       "startPoint": "Start Point",
       "endPoint": "End Point",
-      "iid": "id"
+      "iid": "id",
+      "raw_mean": "Raw mean",
+      "raw_var": "Raw var",
+      "nbins": "Nbins",
+      "nbins_tot": "Total nbins",
+      "nbins_nafrac": "Nbins nafrac",
+      "wbins_nafrac": "Wbins nafrac",
+      "max_na": "Max na",
+      "loess_var": "Loess var",
+      "tau_sq_post": "Tau sq post",
+      "post_var": "Post var",
+      "var": "Variance",
+      "sd": "Standard Deviation"
     }
   },
   "containers": {
