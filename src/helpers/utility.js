@@ -403,25 +403,25 @@ export function plotTypes() {
   return {
     coverageVariance: {
       plotType: "histogram",
-      tumor_type: "tumor_type_final_mod",
+      tumor_type: "tumor_type",
       format: ".2%",
       scaleX: "linear",
     },
     snvCount: {
       plotType: "histogram",
-      tumor_type: "tumor_type_final_mod",
+      tumor_type: "tumor_type",
       format: ",",
       scaleX: "log",
     },
     svCount: {
       plotType: "histogram",
-      tumor_type: "tumor_type_final_mod",
+      tumor_type: "tumor_type",
       format: ",",
       scaleX: "log",
     },
     tmb: {
       plotType: "histogram",
-      tumor_type: "tumor_type_final",
+      tumor_type: "tumor_type",
       format: ",",
       scaleX: "log",
     },
@@ -449,7 +449,7 @@ export function plotTypes() {
 export function reportAttributesMap() {
   return {
     pair: "pair",
-    tumor_type_final: "tumor",
+    tumor_type: "tumor",
     dlrs: "coverageVariance",
     snv_count: "snvCount",
     sv_count: "svCount",
@@ -466,13 +466,7 @@ export function reportAttributesMap() {
 }
 
 export function reportFilters() {
-  return [
-    "pair",
-    "tumor_type_final",
-    "disease",
-    "primary_site",
-    "inferred_sex",
-  ];
+  return ["pair", "tumor_type", "disease", "primary_site", "inferred_sex"];
 }
 
 export function foreground2AbsoluteCN(foreground, beta, gamma) {

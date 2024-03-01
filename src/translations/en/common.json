@@ -90,7 +90,7 @@
         "empty": "(empty)",
         "pair": "Pair",
         "disease": "Disease",
-        "tumor_type_final": "Tumor Type",
+        "tumor_type": "Tumor Type",
         "primary_site": "Primary Site",
         "inferred_sex": "Inferred Sex",
         "submit": "Submit",

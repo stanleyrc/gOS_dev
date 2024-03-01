@@ -38,7 +38,7 @@ const initState = {
   allelic: null,
   metadata: {
     pair: null,
-    tumor_type_final: null,
+    tumor_type: null,
     disease: null,
     primary_site: null,
     inferred_sex: null,
