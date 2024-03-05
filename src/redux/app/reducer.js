@@ -7,6 +7,7 @@ import {
 
 const initState = {
   loading: false,
+  tab: 1,
   genomeLength: 0,
   maxGenomeLength: 4294967296,
   zoomedByCmd: false,
@@ -109,13 +110,13 @@ export default function appReducer(state = initState, action) {
 
       // Remove the query parameter
       url.searchParams.delete("report");
-
       // Update the URL in the browser's history
       window.history.replaceState(
         null,
         "Case Report",
         unescape(url.toString())
       );
+
       return {
         ...state,
         metadata: {},
@@ -146,6 +147,16 @@ export default function appReducer(state = initState, action) {
         totalReports: action.totalReports,
         loading: false,
       };
+    case actions.TAB_SELECTED:
+      let tab = action.tab;
+      let urlTab = new URL(decodeURI(document.location));
+      urlTab.searchParams.set("tab", tab);
+      window.history.replaceState(
+        unescape(urlTab.toString()),
+        "Case Report",
+        unescape(urlTab.toString())
+      );
+      return { ...state, tab: tab };
     case actions.DOMAINS_UPDATED:
       let doms = action.domains;
       // eliminate domains that are smaller than 10 bases wide

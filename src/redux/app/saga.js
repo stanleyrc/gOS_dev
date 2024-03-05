@@ -127,6 +127,7 @@ function* bootApplication(action) {
     "Case Report",
     unescape(url.toString())
   );
+  let tab = searchParams.get("tab") || 1;
 
   let properties = {
     datafiles,
@@ -138,6 +139,7 @@ function* bootApplication(action) {
     chromoBins,
     defaultDomain,
     genomeLength,
+    tab,
   };
 
   yield put({

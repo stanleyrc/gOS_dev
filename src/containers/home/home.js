@@ -18,9 +18,15 @@ import ListView from "../listView";
 const { TabPane } = Tabs;
 const { Meta } = Card;
 
-const { selectReport, searchReports } = appActions;
+const { selectReport, searchReports, selectTab } = appActions;
 
 class Home extends Component {
+  handleTabChanged = (tab) => {
+    console.log(tab);
+    const { selectTab } = this.props;
+    selectTab(tab);
+  };
+
   render() {
     const {
       t,
@@ -41,6 +47,7 @@ class Home extends Component {
       searchFilters,
       coverageData,
       genesData,
+      tab,
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
@@ -56,7 +63,11 @@ class Home extends Component {
           )}
           {report && (
             <div className="ant-home-content-container">
-              <Tabs defaultActiveKey="1">
+              <Tabs
+                defaultActiveKey="1"
+                activeKey={tab.toString()}
+                onChange={(tab) => this.handleTabChanged(tab)}
+              >
                 <TabPane tab={t("components.tabs.tab1")} key="1">
                   <SummaryTab />
                 </TabPane>
@@ -108,6 +119,7 @@ Home.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   selectReport: (report) => dispatch(selectReport(report)),
   searchReports: (filters) => dispatch(searchReports(filters)),
+  selectTab: (tab) => dispatch(selectTab(tab)),
 });
 const mapStateToProps = (state) => ({
   loading: state.App.loading,
@@ -125,6 +137,7 @@ const mapStateToProps = (state) => ({
   chromoBins: state.App.chromoBins,
   coverageData: state.App.coverageData,
   genesData: state.App.genesData,
+  tab: state.App.tab,
 });
 export default connect(
   mapStateToProps,

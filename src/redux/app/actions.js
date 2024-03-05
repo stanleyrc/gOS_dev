@@ -13,6 +13,8 @@ const actions = {
 
   RESET_REPORT: "RESET_REPORT",
 
+  TAB_SELECTED: "TAB_SELECTED",
+
   LAUNCH_APP: "LAUNCH_APP",
   LAUNCH_APP_SUCCESS: "LAUNCH_APP_SUCCESS",
   LAUNCH_APP_FAILED: "LAUNCH_APP_FAILED",
@@ -29,6 +31,10 @@ const actions = {
   selectReport: (report) => ({
     type: actions.SELECT_REPORT,
     report,
+  }),
+  selectTab: (tab) => ({
+    type: actions.TAB_SELECTED,
+    tab,
   }),
   resetReport: () => ({
     type: actions.RESET_REPORT,
