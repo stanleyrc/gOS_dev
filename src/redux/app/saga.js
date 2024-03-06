@@ -231,6 +231,13 @@ function* selectReport(action) {
     properties.filteredEvents = transformFilteredEventAttributes(
       responseReportFilteredEvents.data || []
     );
+
+    properties.selectedFilteredEvent = properties.filteredEvents.find(
+      (e) =>
+        e.gene ===
+        new URL(decodeURI(document.location)).searchParams.get("gene")
+    );
+
     Object.keys(responseReportMetadata.data[0]).forEach((key) => {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
     });
@@ -347,11 +354,22 @@ function* loadGenes(action) {
   });
 }
 
+function* loadFilteredEvent(action) {
+  const currentState = yield select(getCurrentState);
+  const { selectedFilteredEvent } = currentState.App;
+
+  yield put({
+    type: actions.FILTERED_EVENT_UPDATED,
+    filteredEvent: selectedFilteredEvent,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.BOOT_APP, bootApplication);
   yield takeEvery(actions.LOAD_GENES, loadGenes);
   yield takeEvery(actions.BOOT_APP_SUCCESS, followUpBootApplication);
   yield takeEvery(actions.SELECT_REPORT, selectReport);
+  yield takeEvery(actions.REPORT_SELECTED, loadFilteredEvent);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
   yield takeEvery(actions.RESET_REPORT, searchReports);
   yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);

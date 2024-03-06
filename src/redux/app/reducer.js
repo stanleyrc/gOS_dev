@@ -4,6 +4,7 @@ import {
   locationToDomains,
   reportAttributesMap,
 } from "../../helpers/utility";
+import { act } from "react-dom/test-utils";
 
 const initState = {
   loading: false,
@@ -110,6 +111,8 @@ export default function appReducer(state = initState, action) {
 
       // Remove the query parameter
       url.searchParams.delete("report");
+      url.searchParams.delete("tab");
+      url.searchParams.delete("gene");
       // Update the URL in the browser's history
       window.history.replaceState(
         null,
@@ -120,6 +123,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         metadata: {},
+        tab: 1,
         report: null,
         reports: [],
         totalReports: 0,
@@ -182,28 +186,45 @@ export default function appReducer(state = initState, action) {
         loading: false,
       };
     case actions.FILTERED_EVENT_UPDATED:
-      let loc = `${action.filteredEvent.chromosome}:${action.filteredEvent.startPoint}-${action.filteredEvent.chromosome}:${action.filteredEvent.endPoint}`;
-      let domsGene = locationToDomains(state.chromoBins, loc);
-      // eliminate domains that are smaller than 10 bases wide
-      if (domsGene.length > 1) {
-        domsGene = domsGene.filter((d) => d[1] - d[0] > 10);
-      }
       let urlGene = new URL(decodeURI(document.location));
-      urlGene.searchParams.set(
-        "location",
-        domainsToLocation(state.chromoBins, domsGene)
-      );
-      window.history.replaceState(
-        unescape(urlGene.toString()),
-        "Case Report",
-        unescape(urlGene.toString())
-      );
-      return {
-        ...state,
-        selectedFilteredEvent: action.filteredEvent,
-        domains: domsGene,
-        loading: false,
-      };
+      if (action.filteredEvent) {
+        let loc = `${action.filteredEvent.chromosome}:${action.filteredEvent.startPoint}-${action.filteredEvent.chromosome}:${action.filteredEvent.endPoint}`;
+        let domsGene = locationToDomains(state.chromoBins, loc);
+        // eliminate domains that are smaller than 10 bases wide
+        if (domsGene.length > 1) {
+          domsGene = domsGene.filter((d) => d[1] - d[0] > 10);
+        }
+        urlGene.searchParams.set("gene", action.filteredEvent.gene);
+        urlGene.searchParams.set(
+          "location",
+          domainsToLocation(state.chromoBins, domsGene)
+        );
+        window.history.replaceState(
+          unescape(urlGene.toString()),
+          "Case Report",
+          unescape(urlGene.toString())
+        );
+        return {
+          ...state,
+          selectedFilteredEvent: action.filteredEvent,
+          domains: domsGene,
+          loading: false,
+        };
+      } else {
+        // Remove the query parameter
+        urlGene.searchParams.delete("gene");
+        // Update the URL in the browser's history
+        window.history.replaceState(
+          null,
+          "Case Report",
+          unescape(urlGene.toString())
+        );
+        return {
+          ...state,
+          selectedFilteredEvent: action.filteredEvent,
+          loading: false,
+        };
+      }
     default:
       return state;
   }

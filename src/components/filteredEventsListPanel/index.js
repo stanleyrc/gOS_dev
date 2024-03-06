@@ -10,16 +10,6 @@ import appActions from "../../redux/app/actions";
 const { updateSelectedFilteredEvent } = appActions;
 
 class FilteredEventsListPanel extends Component {
-  state = {
-    open: false,
-  };
-
-  handleGenePanelClick = (event) => {
-    this.setState({ open: true }, () =>
-      this.props.updateSelectedFilteredEvent(event)
-    );
-  };
-
   render() {
     const {
       t,
@@ -33,10 +23,12 @@ class FilteredEventsListPanel extends Component {
       coverageData,
       genesData,
       allelicData,
+      updateSelectedFilteredEvent,
     } = this.props;
     if (!report || !filteredEvents) return null;
 
-    const { open } = this.state;
+    //const { open } = this.state;
+    let open = selectedFilteredEvent?.id;
     const columns = [
       {
         title: t("components.filtered-events-panel.gene"),
@@ -121,7 +113,10 @@ class FilteredEventsListPanel extends Component {
         dataIndex: "location",
         key: "location",
         render: (_, record) => (
-          <Button type="link" onClick={() => this.handleGenePanelClick(record)}>
+          <Button
+            type="link"
+            onClick={() => updateSelectedFilteredEvent(record)}
+          >
             {record.location}
           </Button>
         ),
@@ -175,8 +170,8 @@ class FilteredEventsListPanel extends Component {
                     "components.tracks-modal.mutations-plot"
                   ),
                   allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
-                  handleOkClicked: () => this.setState({ open: false }),
-                  handleCancelClicked: () => this.setState({ open: false }),
+                  handleOkClicked: () => updateSelectedFilteredEvent(null),
+                  handleCancelClicked: () => updateSelectedFilteredEvent(null),
                   open,
                 }}
               />
