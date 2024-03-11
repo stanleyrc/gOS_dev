@@ -328,6 +328,13 @@ function* selectReport(action) {
     };
     yield call(fetchArrowData, coveragePlot);
     properties.coverageData = coveragePlot.data;
+
+    let hetsnpsPlot = {
+      path: `data/${action.report}/hetsnps.arrow`,
+      data: null,
+    };
+    yield call(fetchArrowData, hetsnpsPlot);
+    properties.hetsnpsData = hetsnpsPlot.data;
   }
   yield put({
     type: actions.REPORT_SELECTED,

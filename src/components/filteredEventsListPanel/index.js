@@ -21,6 +21,7 @@ class FilteredEventsListPanel extends Component {
       chromoBins,
       selectedFilteredEvent,
       coverageData,
+      hetsnpsData,
       genesData,
       allelicData,
       updateSelectedFilteredEvent,
@@ -138,6 +139,7 @@ class FilteredEventsListPanel extends Component {
                   genomeData: genome,
                   mutationsData: mutations,
                   coverageData,
+                  hetsnpsData,
                   genesData,
                   chromoBins,
                   allelicData,
@@ -166,6 +168,7 @@ class FilteredEventsListPanel extends Component {
                   coverageYAxis2Title: t(
                     "components.tracks-modal.coverage-y-axis2-title"
                   ),
+                  hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
                   mutationsPlotTitle: t(
                     "components.tracks-modal.mutations-plot"
                   ),
@@ -198,6 +201,7 @@ const mapStateToProps = (state) => ({
   allelicData: state.App.allelic,
   chromoBins: state.App.chromoBins,
   coverageData: state.App.coverageData,
+  hetsnpsData: state.App.hetsnpsData,
   genesData: state.App.genesData,
 });
 export default connect(

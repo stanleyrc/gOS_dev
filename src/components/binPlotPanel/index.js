@@ -75,6 +75,7 @@ class BinPlotPanel extends Component {
       loading,
       data,
       coverageData,
+      hetsnpsData,
       genesData,
       title,
       inViewport,
@@ -131,6 +132,7 @@ class BinPlotPanel extends Component {
                   loading,
                   genomeData: data,
                   coverageData,
+                  hetsnpsData,
                   genesData,
                   chromoBins,
                   modalTitle: (
@@ -153,6 +155,7 @@ class BinPlotPanel extends Component {
                   coverageYAxis2Title: t(
                     "components.tracks-modal.coverage-y-axis2-title"
                   ),
+                  hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
                   handleOkClicked: this.handleModalOKClicked,
                   handleCancelClicked: this.handleModalCancelClicked,
                   open,

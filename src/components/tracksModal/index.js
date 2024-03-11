@@ -20,6 +20,7 @@ class TracksModal extends Component {
       genomeData,
       mutationsData,
       coverageData,
+      hetsnpsData,
       coverageYAxisTitle,
       coverageYAxis2Title,
       metadata,
@@ -32,6 +33,7 @@ class TracksModal extends Component {
       genomePlotTitle,
       mutationsPlotTitle,
       coveragePlotTitle,
+      hetsnpPlotTitle,
       allelicPlotTitle,
       handleOkClicked,
       handleCancelClicked,
@@ -93,6 +95,18 @@ class TracksModal extends Component {
                   height,
                   yAxisTitle: coverageYAxisTitle,
                   yAxis2Title: coverageYAxis2Title,
+                }}
+              />
+            </Col>
+            <Col className="gutter-row" span={24}>
+              <ScatterPlotPanel
+                {...{
+                  data: hetsnpsData,
+                  title: hetsnpPlotTitle,
+                  chromoBins,
+                  visible: true,
+                  loading,
+                  height,
                 }}
               />
             </Col>

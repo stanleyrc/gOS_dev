@@ -46,6 +46,7 @@ class Home extends Component {
       searchReports,
       searchFilters,
       coverageData,
+      hetsnpsData,
       genesData,
       tab,
     } = this.props;
@@ -90,6 +91,7 @@ class Home extends Component {
                     imageBlob={ppFitImage}
                     fits={ppfit}
                     coverageData={coverageData}
+                    hetsnpsData={hetsnpsData}
                     genesData={genesData}
                     chromoBins={chromoBins}
                     slope={1 / beta}
@@ -136,6 +138,7 @@ const mapStateToProps = (state) => ({
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,
   coverageData: state.App.coverageData,
+  hetsnpsData: state.App.hetsnpsData,
   genesData: state.App.genesData,
   tab: state.App.tab,
 });

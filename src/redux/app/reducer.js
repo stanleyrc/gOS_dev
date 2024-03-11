@@ -58,6 +58,7 @@ const initState = {
     tmb: 0,
   },
   coverageData: null,
+  hetsnpsData: null,
   renderOutsideViewPort: true,
 };
 

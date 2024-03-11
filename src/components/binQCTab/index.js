@@ -11,6 +11,7 @@ class BinQcTab extends Component {
       t,
       fits,
       coverageData,
+      hetsnpsData,
       genesData,
       imageBlob,
       chromoBins,
@@ -28,6 +29,7 @@ class BinQcTab extends Component {
               {...{
                 data: fits,
                 coverageData,
+                hetsnpsData,
                 genesData,
                 title: t(`components.binQc-panel.binplot.title`),
                 xTitle: t(`components.binQc-panel.binplot.x-title`),

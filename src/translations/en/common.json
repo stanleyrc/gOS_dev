@@ -175,6 +175,7 @@
     "tracks-modal": {
       "genome-plot": "Genome Plot",
       "coverage-plot": "Coverage Plot",
+      "hetsnp-plot": "HET SNPS Plot",
       "mutations-plot": "Mutations Plot",
       "allelic-plot": "Allelic Plot",
       "coverage-y-axis-title": "↑ Foreground",
