@@ -527,6 +527,15 @@ export function transformFilteredEventAttributes(filteredEvents) {
     .sort((a, b) => d3.ascending(a.gene, b.gene));
 }
 
+export function kde(kernel, thresholds, data) {
+  return thresholds.map((t) => [t, d3.mean(data, (d) => kernel(t - d))]);
+}
+
+export function epanechnikov(bandwidth) {
+  return (x) =>
+    Math.abs((x /= bandwidth)) <= 1 ? (0.75 * (1 - x * x)) / bandwidth : 0;
+}
+
 export function sequencesToGenome(ppfit) {
   return {
     settings: ppfit.settings,
@@ -574,6 +583,10 @@ export function getPopulationMetrics(
       .map((e) => +e.value)
       .filter((e) => e < cutoff)
       .sort((a, b) => d3.ascending(a, b));
+    plot.bandwidth = Math.pow(
+      (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
+      0.2
+    );
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
     plot.q99 = d3.quantile(plot.data, 0.99);

@@ -22,7 +22,6 @@ const { selectReport, searchReports, selectTab } = appActions;
 
 class Home extends Component {
   handleTabChanged = (tab) => {
-    console.log(tab);
     const { selectTab } = this.props;
     selectTab(tab);
   };

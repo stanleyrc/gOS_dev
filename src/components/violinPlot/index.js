@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { legendColors } from "../../helpers/utility";
+import { legendColors, kde, epanechnikov } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -40,6 +40,13 @@ class ViolinPlot extends Component {
       .range([0, panelWidth]);
 
     let histograms = plots.map((plot) => {
+      let thresholds = d3.ticks(...d3.nice(...d3.extent(plot.data), 10), 140);
+      let density = kde(
+        epanechnikov(plot.bandwidth),
+        thresholds,
+        plot.data
+      ).filter((d) => d[0] > 0);
+
       let markValue = markers[plot.id];
 
       let extent = [
@@ -63,27 +70,27 @@ class ViolinPlot extends Component {
         .range([panelHeight, 0])
         .nice();
 
-      const n = plot.data.length;
-      const y = d3.scaleLinear().domain(extent).range([panelHeight, 0]).nice();
-      const bins = d3
-        .bin()
-        .domain(y.domain())
-        .thresholds(
-          y.ticks(
-            Math.ceil(
-              (Math.pow(n, 1 / 3) * (d3.max(plot.data) - d3.min(plot.data))) /
-                (3.5 * d3.deviation(plot.data))
-            )
-          )
-        )(plot.data);
+      // const n = plot.data.length;
+      // const y = d3.scaleLinear().domain(extent).range([panelHeight, 0]).nice();
+      // const bins = d3
+      //   .bin()
+      //   .domain(y.domain())
+      //   .thresholds(
+      //     y.ticks(
+      //       Math.ceil(
+      //         (Math.pow(n, 1 / 3) * (d3.max(plot.data) - d3.min(plot.data))) /
+      //           (3.5 * d3.deviation(plot.data))
+      //       )
+      //     )
+      //   )(plot.data);
 
       // Create a scale for the y-axis
       const scaleX = d3
         .scaleLinear()
-        .domain([0, d3.max(bins, (d) => d.length)])
+        .domain([0, d3.max(density, (d) => d[1])])
         .range([xScale.step(), 25])
         .nice();
-      return { t, plot, scaleX, scaleY, bins };
+      return { t, plot, scaleX, scaleY, density };
     });
 
     return {
@@ -278,10 +285,10 @@ class ViolinPlot extends Component {
                       strokeWidth="0"
                       d={d3
                         .area()
-                        .y((d) => hist.scaleY((d.x0 + d.x1) / 2))
-                        .x0((d) => -hist.scaleX(d.length))
+                        .y((d) => hist.scaleY(d[0]))
+                        .x0((d) => -hist.scaleX(d[1]))
                         .x1(-hist.scaleX(0))
-                        .curve(d3.curveBasis)(hist.bins)}
+                        .curve(d3.curveBasis)(hist.density)}
                     />
                     <path
                       fill="#999999"
@@ -290,10 +297,10 @@ class ViolinPlot extends Component {
                       strokeWidth="0.33"
                       d={d3
                         .area()
-                        .y((d) => hist.scaleY((d.x0 + d.x1) / 2))
-                        .x0((d) => -hist.scaleX(d.length))
+                        .y((d) => hist.scaleY(d[0]))
+                        .x0((d) => -hist.scaleX(d[1]))
                         .x1(-hist.scaleX(0))
-                        .curve(d3.curveBasis)(hist.bins)}
+                        .curve(d3.curveBasis)(hist.density)}
                     />
                     <g
                       transform={`translate(${[

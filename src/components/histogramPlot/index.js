@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { legendColors } from "../../helpers/utility";
+import { legendColors, kde, epanechnikov } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -66,6 +66,7 @@ class HistogramPlot extends Component {
       q3,
       q99,
       scaleX,
+      bandwidth,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -74,10 +75,11 @@ class HistogramPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let extent = [
-      d3.min([d3.min(data), markValue]),
-      d3.max([d3.max(data), markValue]),
-    ];
+    let thresholds = d3.ticks(...d3.nice(...d3.extent(data), 10), 140);
+    let density = kde(epanechnikov(bandwidth), thresholds, data);
+    if (scaleX === "log") {
+      density[0][0] = 0.1;
+    }
 
     let extentToQ99 = [
       d3.min([d3.min(data), markValue]),
@@ -94,24 +96,10 @@ class HistogramPlot extends Component {
       plotScale.domain(extentToQ99).range([0, panelWidth]).nice()
     );
 
-    const n = data.length;
-    const x = d3.scaleLinear().domain(extent).range([0, panelWidth]).nice();
-    const bins = d3
-      .bin()
-      .domain(x.domain())
-      .thresholds(
-        x.ticks(
-          Math.ceil(
-            (Math.pow(n, 1 / 3) * (d3.max(data) - d3.min(data))) /
-              (3.5 * d3.deviation(data))
-          )
-        )
-      )(data);
-
     // Create a scale for the y-axis
     const yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(bins, (d) => d.length)])
+      .domain([0, d3.max(density, (d) => d[1])])
       .range([panelHeight, 0])
       .nice();
 
@@ -122,13 +110,13 @@ class HistogramPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      bins,
       markValue,
       colorMarker,
       markValueText,
       q1,
       q3,
       scaleX,
+      density,
     };
   }
 
@@ -194,13 +182,14 @@ class HistogramPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      bins,
       markValue,
       markValueText,
       colorMarker,
       q1,
       q3,
+      density,
     } = this.getPlotConfiguration();
+
     let clipId = `cuttOffViewPane-${Math.random()}`;
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
@@ -235,10 +224,10 @@ class HistogramPlot extends Component {
                   strokeWidth="0"
                   d={d3
                     .area()
-                    .x((d) => xScale((d.x0 + d.x1) / 2))
-                    .y1((d) => yScale(d.length))
+                    .x((d) => xScale(d[0]))
+                    .y1((d) => yScale(d[1]))
                     .y0(yScale(0))
-                    .curve(d3.curveBasis)(bins)}
+                    .curve(d3.curveBasis)(density)}
                 />
                 <path
                   fill="#999999"
@@ -247,10 +236,10 @@ class HistogramPlot extends Component {
                   strokeWidth="0.33"
                   d={d3
                     .area()
-                    .x((d) => xScale((d.x0 + d.x1) / 2))
-                    .y1((d) => yScale(d.length))
+                    .x((d) => xScale(d[0]))
+                    .y1((d) => yScale(d[1]))
                     .y0(yScale(0))
-                    .curve(d3.curveBasis)(bins)}
+                    .curve(d3.curveBasis)(density)}
                 />
                 <g transform={`translate(${[xScale(markValue), 0]})`}>
                   <line y2={panelHeight} stroke="red" strokeWidth={3} />
