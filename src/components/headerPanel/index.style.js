@@ -86,6 +86,11 @@ const Wrapper = styled.div`
     .purity-ploidy-separator {
       color: rgba(0, 0, 0, 0.45);
     }
+    .ant-statistic-title,
+    .ant-statistic-content-value-int,
+    .ant-statistic-content-suffix {
+      cursor: default;
+    }
   }
 `;
 

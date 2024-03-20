@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Space, message, PageHeader, Tag, Avatar } from "antd";
+import { Space, message, PageHeader, Tag, Avatar, Tooltip } from "antd";
 import * as d3 from "d3";
 import {
   downloadCanvasAsPng,
@@ -50,7 +50,36 @@ class HeaderPanel extends Component {
           ? legendColors()[2]
           : legendColors()[1];
     });
-
+    const tooltips = {
+      svCount: (
+        <span>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: t("metadata.junction_count", {
+                count: +metadata.junction_count,
+              }),
+            }}
+          />
+          <br />
+          <span
+            dangerouslySetInnerHTML={{
+              __html: t("metadata.loose_count", {
+                count: +metadata.loose_count,
+              }),
+            }}
+          />
+        </span>
+      ),
+      snvCount: (
+        <span
+          dangerouslySetInnerHTML={{
+            __html: t("metadata.snv_count_normal_vaf_greater0", {
+              count: +metadata.snv_count_normal_vaf_greater0,
+            }),
+          }}
+        />
+      ),
+    };
     return (
       <Wrapper>
         <PageHeader
@@ -96,25 +125,29 @@ class HeaderPanel extends Component {
                       "tmb",
                       "lohFraction",
                     ].map((d) => (
-                      <div className="stat-item">
-                        <div className="ant-statistic">
-                          <div className="ant-statistic-title">
-                            {t(`metadata.${d}.short`)}
-                          </div>
-                          <div className="ant-statistic-content">
-                            <span className="ant-statistic-content-value">
-                              <span
-                                className="ant-statistic-content-value-int"
-                                style={{
-                                  color: colorMarkers[d],
-                                }}
-                              >
-                                {d3.format(plotTypes()[d].format)(+metadata[d])}
+                      <Tooltip title={tooltips[d]}>
+                        <div className="stat-item">
+                          <div className="ant-statistic">
+                            <div className="ant-statistic-title">
+                              {t(`metadata.${d}.short`)}
+                            </div>
+                            <div className="ant-statistic-content">
+                              <span className="ant-statistic-content-value">
+                                <span
+                                  className="ant-statistic-content-value-int"
+                                  style={{
+                                    color: colorMarkers[d],
+                                  }}
+                                >
+                                  {d3.format(plotTypes()[d].format)(
+                                    +metadata[d]
+                                  )}
+                                </span>
                               </span>
-                            </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </Tooltip>
                     ))}
 
                     <div className="stat-item">

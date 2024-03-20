@@ -462,6 +462,9 @@ export function reportAttributesMap() {
     primary_site: "primary_site",
     beta: "beta",
     gamma: "gamma",
+    loose_count: "loose_count",
+    junction_count: "junction_count",
+    snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
   };
 }
 

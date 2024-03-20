@@ -49,6 +49,12 @@
       "short": "Ploidy",
       "full": "Ploidy"
     },
+    "junction_count": "<strong>{{count}}</strong> junction",
+    "junction_count_plural": "<strong>{{count}}</strong> junctions",
+    "loose_count": "<strong>{{count}}</strong> loose end",
+    "loose_count_plural": "<strong>{{count}}</strong> loose ends",
+    "snv_count_normal_vaf_greater0": "<strong>{{count}}</strong> SNV with positive normal VAF",
+    "snv_count_normal_vaf_greater0_plural": "<strong>{{count}}</strong> SNVs with positive normal VAF",
     "pair": "Pair",
     "alternate": "Alternate Allele",
     "chromosome": "Chromosome",
