@@ -91,6 +91,11 @@ const Wrapper = styled.div`
     .ant-statistic-content-suffix {
       cursor: default;
     }
+    .has-tooltip {
+      text-decoration: underline dashed;
+      text-underline-position: under;
+      text-decoration-color: #d2d2d2;
+    }
   }
 `;
 

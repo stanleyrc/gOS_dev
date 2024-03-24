@@ -41,48 +41,23 @@ class ViolinPlot extends Component {
 
     let histograms = plots.map((plot) => {
       let thresholds = d3.ticks(...d3.nice(...d3.extent(plot.data), 10), 140);
-      let density = kde(
-        epanechnikov(plot.bandwidth),
-        thresholds,
-        plot.data
-      ).filter((d) => d[0] > 0);
+      let density = kde(epanechnikov(plot.bandwidth), thresholds, plot.data);
 
       let markValue = markers[plot.id];
 
       let extent = [
-        d3.min([...plot.data, markValue]),
-        d3.max([...plot.data, markValue]),
-      ];
-
-      let extentToQ99 = [
-        d3.min([...plot.data, markValue]),
-        d3.max([plot.q99, markValue]),
+        d3.min([plot.range[0], markValue]),
+        d3.max([plot.range[1], markValue]),
       ];
 
       let plotScale = d3.scaleLinear();
       if (plot.scaleX === "log") {
         plotScale = d3.scaleLog();
-        extentToQ99[0] = d3.max([extentToQ99[0], markValue, 1]);
+        density[0][0] = 0.1;
+        extent[0] = d3.max([extent[0], markValue, 1]);
       }
 
-      const scaleY = plotScale
-        .domain(extentToQ99)
-        .range([panelHeight, 0])
-        .nice();
-
-      // const n = plot.data.length;
-      // const y = d3.scaleLinear().domain(extent).range([panelHeight, 0]).nice();
-      // const bins = d3
-      //   .bin()
-      //   .domain(y.domain())
-      //   .thresholds(
-      //     y.ticks(
-      //       Math.ceil(
-      //         (Math.pow(n, 1 / 3) * (d3.max(plot.data) - d3.min(plot.data))) /
-      //           (3.5 * d3.deviation(plot.data))
-      //       )
-      //     )
-      //   )(plot.data);
+      const scaleY = plotScale.domain(extent).range([panelHeight, 0]).nice();
 
       // Create a scale for the y-axis
       const scaleX = d3

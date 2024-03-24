@@ -43,13 +43,15 @@ class HistogramPlot extends Component {
   }
 
   componentDidMount() {
-    this.renderYAxis();
+    const { showAxisY } = this.props;
+    showAxisY && this.renderYAxis();
     this.renderXAxis();
     d3.select(this.zoomContainer).call(this.zoom);
   }
 
   componentDidUpdate() {
-    this.renderYAxis();
+    const { showAxisY } = this.props;
+    showAxisY && this.renderYAxis();
     this.renderXAxis();
     d3.select(this.zoomContainer).call(this.zoom);
   }
@@ -216,8 +218,9 @@ class HistogramPlot extends Component {
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <g clipPath={`url(#${clipId})`}>
+              <g>
                 <path
+                  clipPath={`url(#${clipId})`}
                   fill="#CCC"
                   fillOpacity={1}
                   stroke="lightgray"
@@ -230,6 +233,7 @@ class HistogramPlot extends Component {
                     .curve(d3.curveBasis)(density)}
                 />
                 <path
+                  clipPath={`url(#${clipId})`}
                   fill="#999999"
                   fillOpacity={0}
                   stroke="gray"
@@ -242,7 +246,12 @@ class HistogramPlot extends Component {
                     .curve(d3.curveBasis)(density)}
                 />
                 <g transform={`translate(${[xScale(markValue), 0]})`}>
-                  <line y2={panelHeight} stroke="red" strokeWidth={3} />
+                  <line
+                    y2={panelHeight}
+                    stroke="red"
+                    strokeWidth={3}
+                    clipPath={`url(#${clipId})`}
+                  />
                   <text
                     textAnchor={"middle"}
                     dy="-3"
@@ -258,7 +267,6 @@ class HistogramPlot extends Component {
                 transform={`translate(${[margins.gap, 0]})`}
               ></g>
               <g
-                clipPath={`url(#${clipId})`}
                 className="axis--x x-axis-container"
                 transform={`translate(${[margins.gap, panelHeight]})`}
               ></g>
@@ -316,6 +324,7 @@ HistogramPlot.propTypes = {
 };
 HistogramPlot.defaultProps = {
   data: [],
+  showAxisY: false,
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

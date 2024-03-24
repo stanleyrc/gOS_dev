@@ -593,6 +593,10 @@ export function getPopulationMetrics(
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
     plot.q99 = d3.quantile(plot.data, 0.99);
+    plot.range = [
+      d3.max([d3.min(populations[d].map((e) => +e.value)), 0.01]),
+      plot.q99,
+    ];
     plot.markValue = metadata[d];
     plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
     plot.colorMarker =

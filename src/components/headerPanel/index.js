@@ -128,7 +128,11 @@ class HeaderPanel extends Component {
                       <Tooltip title={tooltips[d]}>
                         <div className="stat-item">
                           <div className="ant-statistic">
-                            <div className="ant-statistic-title">
+                            <div
+                              className={`ant-statistic-title ${
+                                tooltips[d] ? "has-tooltip" : ''
+                              }`}
+                            >
                               {t(`metadata.${d}.short`)}
                             </div>
                             <div className="ant-statistic-content">
