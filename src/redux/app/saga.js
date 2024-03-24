@@ -13,7 +13,7 @@ import {
   reportFilters,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
-import { loadArrowTable } from "../../helpers/utility";
+import { loadArrowTable, allelicToGenome } from "../../helpers/utility";
 import actions from "./actions";
 
 const PLOT_TYPES = {
@@ -290,11 +290,13 @@ function* selectReport(action) {
         axios.get,
         `data/${action.report}/allelic.json`
       );
-
-      properties.allelic = responseAllelicData.data || {
-        intervals: [],
-        connections: [],
-      };
+      properties.allelic = allelicToGenome(
+        responseAllelicData.data || {
+          intervals: [],
+          connections: [],
+        }
+      );
+      console.log("here", properties.allelic);
     } catch (err) {
       console.log(err);
     }

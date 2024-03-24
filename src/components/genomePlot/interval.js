@@ -13,6 +13,7 @@ class Interval {
     this.annotation = inter.annotation;
     this.metadata = inter.metadata || {};
     this.fill = this.metadata.color;
+    this.overlapping = inter.overlapping;
     this.annotationArray = inter.annotation ? inter.annotation.split("|") : [];
     this.intervalLength = this.endPoint - this.startPoint;
     this.y = inter.y;

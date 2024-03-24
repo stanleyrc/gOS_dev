@@ -546,6 +546,18 @@ class GenomePlot extends Component {
               <rect fill="#A020F0" x="0" y="0" width="40" height="80" />
               <rect fill="#79b321" x="40" y="0" width="40" height="80" />
             </pattern>
+            <pattern
+              id="diagonalHatch"
+              patternUnits="userSpaceOnUse"
+              width="4"
+              height="4"
+            >
+              <path
+                d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2"
+                stroke="currentColor"
+                strokeWidth="1"
+              ></path>
+            </pattern>
           </defs>
           <g transform={`translate(${[margins.gap, margins.gap]})`}>
             {this.panels.map((panel, i) => (
@@ -641,7 +653,9 @@ class GenomePlot extends Component {
                         }
                         height={margins.bar}
                         style={{
-                          fill: d.fill || d.color,
+                          fill: d.overlapping
+                            ? "url(#diagonalHatch)"
+                            : d.fill || d.color,
                           stroke: d.stroke,
                           strokeWidth: 1,
                         }}

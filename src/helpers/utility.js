@@ -564,6 +564,30 @@ export function sequencesToGenome(ppfit) {
   };
 }
 
+export function allelicToGenome(allelic) {
+  allelic.intervals.forEach((interval1, i) => {
+    allelic.intervals.forEach((interval2, j) => {
+      if (
+        i !== j &&
+        interval1.chromosome === interval2.chromosome &&
+        interval1.startPoint === interval2.startPoint &&
+        interval1.y === interval2.y &&
+        interval1.endPoint === interval2.endPoint
+      ) {
+        interval1.overlapping = true;
+        interval2.overlapping = true;
+        interval1.metadata.overlaps_with = interval2.iid;
+        interval2.metadata.overlaps_with = interval2.iid;
+      }
+    });
+  });
+  return {
+    settings: allelic.settings,
+    intervals: allelic.intervals,
+    connections: allelic.connections,
+  };
+}
+
 export function getPopulationMetrics(
   populations,
   metadata,
