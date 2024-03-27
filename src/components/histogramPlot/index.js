@@ -67,6 +67,7 @@ class HistogramPlot extends Component {
       q1,
       q3,
       q99,
+      range,
       scaleX,
       bandwidth,
     } = this.props;
@@ -84,8 +85,8 @@ class HistogramPlot extends Component {
     }
 
     let extentToQ99 = [
-      d3.min([d3.min(data), markValue]),
-      d3.max([q99, markValue]),
+      d3.min([range[0], markValue]),
+      d3.max([range[1], markValue]),
     ];
 
     let plotScale = d3.scaleLinear();

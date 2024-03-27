@@ -16,7 +16,6 @@ import BinQCTab from "../../components/binQCTab";
 import ListView from "../listView";
 
 const { TabPane } = Tabs;
-const { Meta } = Card;
 
 const { selectReport, searchReports, selectTab } = appActions;
 

@@ -7,7 +7,8 @@ const Wrapper = styled.div`
     min-height: 400px;
   }
   .shape.highlighted {
-    fill: white !important;
+    stroke: #ff7f0e !important;
+    stroke-width: 1.5 !important;
   }
   path.connection.highlighted {
     stroke-width: 3 !important;

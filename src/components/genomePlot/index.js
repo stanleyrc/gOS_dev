@@ -547,16 +547,57 @@ class GenomePlot extends Component {
               <rect fill="#79b321" x="40" y="0" width="40" height="80" />
             </pattern>
             <pattern
-              id="diagonalHatch"
+              id="diagonalHatch0"
               patternUnits="userSpaceOnUse"
               width="4"
               height="4"
             >
+              <rect fill="#D62728" x="0" y="0" width="4" height="4" />
               <path
                 d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2"
-                stroke="currentColor"
-                strokeWidth="1"
+                stroke="#1F77B4"
+                strokeWidth="1.5"
               ></path>
+            </pattern>
+            <pattern
+              id="diagonalHatch"
+              patternUnits="userSpaceOnUse"
+              width="20"
+              height="20"
+              patternTransform="rotate(45)"
+            >
+              <line
+                x1="0"
+                y="0"
+                x2="0"
+                y2="20"
+                stroke="#FFF"
+                stroke-width="5"
+              />
+              <line
+                x1="5"
+                y="0"
+                x2="5"
+                y2="20"
+                stroke="#1F77B4"
+                stroke-width="5"
+              />
+              <line
+                x1="10"
+                y="0"
+                x2="10"
+                y2="20"
+                stroke="#FFF"
+                stroke-width="5"
+              />
+              <line
+                x1="15"
+                y="0"
+                x2="15"
+                y2="20"
+                stroke="#D62728"
+                stroke-width="5"
+              />
             </pattern>
           </defs>
           <g transform={`translate(${[margins.gap, margins.gap]})`}>

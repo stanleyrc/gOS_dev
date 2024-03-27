@@ -600,6 +600,7 @@ export function getPopulationMetrics(
     plot.id = d;
     plot.type = plotTypes()[d].plotType;
     plot.scaleX = plotTypes()[d].scaleX;
+    plot.allData = populations[d].map((e) => +e.value);
     plot.data = populations[d]
       .filter((e) =>
         tumour_type
@@ -618,8 +619,8 @@ export function getPopulationMetrics(
     plot.q3 = d3.quantile(plot.data, 0.75);
     plot.q99 = d3.quantile(plot.data, 0.99);
     plot.range = [
-      d3.max([d3.min(populations[d].map((e) => +e.value)), 0.01]),
-      plot.q99,
+      d3.max([d3.min(plot.allData), 0.01]),
+      d3.quantile(plot.allData, 0.99),
     ];
     plot.markValue = metadata[d];
     plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
