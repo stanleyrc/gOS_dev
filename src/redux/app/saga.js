@@ -224,21 +224,6 @@ function* selectReport(action) {
 
     let metadata = responseReportMetadata.data[0];
 
-    let responseReportFilteredEvents = yield call(
-      axios.get,
-      `data/${action.report}/filtered.events.json`
-    );
-
-    properties.filteredEvents = transformFilteredEventAttributes(
-      responseReportFilteredEvents.data || []
-    );
-
-    properties.selectedFilteredEvent = properties.filteredEvents.find(
-      (e) =>
-        e.gene ===
-        new URL(decodeURI(document.location)).searchParams.get("gene")
-    );
-
     Object.keys(responseReportMetadata.data[0]).forEach((key) => {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
     });
@@ -275,6 +260,32 @@ function* loadGenes(action) {
 
   yield put({
     type: actions.GENES_LOADED,
+    properties,
+  });
+}
+
+function* loadFilteredEventsData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {};
+
+  let responseReportFilteredEvents = yield call(
+    axios.get,
+    `data/${report}/filtered.events.json`
+  );
+
+  properties.filteredEvents = transformFilteredEventAttributes(
+    responseReportFilteredEvents.data || []
+  );
+
+  properties.selectedFilteredEvent = properties.filteredEvents.find(
+    (e) =>
+      e.gene === new URL(decodeURI(document.location)).searchParams.get("gene")
+  );
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
     properties,
   });
 }
@@ -468,6 +479,7 @@ function* actionWatcher() {
   yield takeEvery(actions.LOAD_GENES, loadGenes);
   yield takeEvery(actions.BOOT_APP_SUCCESS, followUpBootApplication);
   yield takeEvery(actions.SELECT_REPORT, selectReport);
+  yield takeEvery(actions.REPORT_SELECTED, loadFilteredEventsData);
   yield takeEvery(actions.REPORT_SELECTED, loadFilteredEvent);
   yield takeEvery(actions.REPORT_SELECTED, loadCoverageData);
   yield takeEvery(actions.REPORT_SELECTED, loadHetSnpsData);
