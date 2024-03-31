@@ -88,7 +88,6 @@ class BinPlotPanel extends Component {
       intercept,
     } = this.props;
 
-    console.log(data);
     if (data.intervals.length < 1) {
       return null;
     }

@@ -204,7 +204,7 @@ function* followUpBootApplication(action) {
   let report = searchParams.get("report");
 
   yield put({
-    type: actions.SELECT_REPORT,
+    type: report ? actions.SELECT_REPORT : actions.RESET_REPORT,
     report,
   });
 }
@@ -253,91 +253,6 @@ function* selectReport(action) {
       properties.metadata,
       properties.metadata.tumor
     );
-
-    let responseVartiantQC = yield call(
-      axios.get,
-      `data/${action.report}/strelka.qc.json`
-    );
-
-    properties.variantQC = responseVartiantQC.data || [];
-
-    let responseGenomeData = yield call(
-      axios.get,
-      `data/${action.report}/complex.json`
-    );
-
-    properties.genome = responseGenomeData.data || {
-      intervals: [],
-      connections: [],
-    };
-
-    try {
-      let responseMutationsData = yield call(
-        axios.get,
-        `data/${action.report}/mutations.json`
-      );
-
-      properties.mutations = responseMutationsData.data || {
-        intervals: [],
-        connections: [],
-      };
-    } catch (err) {
-      console.log(err);
-    }
-
-    try {
-      let responseAllelicData = yield call(
-        axios.get,
-        `data/${action.report}/allelic.json`
-      );
-      properties.allelic = allelicToGenome(
-        responseAllelicData.data || {
-          intervals: [],
-          connections: [],
-        }
-      );
-      console.log("here", properties.allelic);
-    } catch (err) {
-      console.log(err);
-    }
-
-    let responsePPFit = yield call(
-      axios.get,
-      `data/${action.report}/ppfit.png`,
-      {
-        responseType: "blob",
-      }
-    );
-
-    // Extract the blob data into the ppFit image attribute
-    properties.ppFitImage = responsePPFit.data;
-
-    let responsePPfitData = yield call(
-      axios.get,
-      `data/${action.report}/ppfit.json`
-    );
-
-    properties.ppfit = responsePPfitData.data
-      ? sequencesToGenome(responsePPfitData.data)
-      : {
-          settings: {},
-          intervals: [],
-          connections: [],
-        };
-
-    let coveragePlot = {
-      path: `data/${action.report}/coverage.arrow`,
-      data: null,
-    };
-    yield call(fetchArrowData, coveragePlot);
-    properties.coverageData = coveragePlot.data;
-
-    let hetsnpsPlot = {
-      path: `data/${action.report}/hetsnps.arrow`,
-      data: null,
-    };
-    yield call(fetchArrowData, hetsnpsPlot);
-    properties.hetsnpsData = hetsnpsPlot.data;
   }
   yield put({
     type: actions.REPORT_SELECTED,
@@ -374,12 +289,194 @@ function* loadFilteredEvent(action) {
   });
 }
 
+function* loadCoverageData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+  let coveragePlot = {
+    path: `data/${report}/coverage.arrow`,
+    data: null,
+  };
+  yield call(fetchArrowData, coveragePlot);
+  let properties = { coverageData: coveragePlot.data };
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadHetSnpsData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let hetsnpsPlot = {
+    path: `data/${report}/hetsnps.arrow`,
+    data: null,
+  };
+  yield call(fetchArrowData, hetsnpsPlot);
+
+  let properties = { hetsnpsData: hetsnpsPlot.data };
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadPPFitData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let responsePPfitData = yield call(axios.get, `data/${report}/ppfit.json`);
+
+  let properties = {
+    ppfit: responsePPfitData.data
+      ? sequencesToGenome(responsePPfitData.data)
+      : {
+          settings: {},
+          intervals: [],
+          connections: [],
+        },
+  };
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadPPFitImageData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let responsePPFit = yield call(axios.get, `data/${report}/ppfit.png`, {
+    responseType: "blob",
+  });
+
+  let properties = {
+    ppFitImage: responsePPFit.data,
+  };
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadAllelicData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {
+    allelic: {
+      intervals: [],
+      connections: [],
+    },
+  };
+  try {
+    let responseAllelicData = yield call(
+      axios.get,
+      `data/${report}/allelic.json`
+    );
+    properties.allelic = allelicToGenome(
+      responseAllelicData.data || {
+        intervals: [],
+        connections: [],
+      }
+    );
+  } catch (err) {
+    console.log(err);
+  }
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadMutationsData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {
+    mutations: {
+      intervals: [],
+      connections: [],
+    },
+  };
+  try {
+    let responseMutationsData = yield call(
+      axios.get,
+      `data/${report}/mutations.json`
+    );
+
+    properties.mutations = responseMutationsData.data || {
+      intervals: [],
+      connections: [],
+    };
+  } catch (err) {
+    console.log(err);
+  }
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadGenomeData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {
+    genome: {
+      intervals: [],
+      connections: [],
+    },
+  };
+  let responseGenomeData = yield call(axios.get, `data/${report}/complex.json`);
+
+  properties.genome = responseGenomeData.data || {
+    intervals: [],
+    connections: [],
+  };
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
+function* loadVariantQcData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {
+    variantQC: [],
+  };
+  let responseVartiantQC = yield call(
+    axios.get,
+    `data/${report}/strelka.qc.json`
+  );
+
+  properties.variantQC = responseVartiantQC.data || [];
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.BOOT_APP, bootApplication);
   yield takeEvery(actions.LOAD_GENES, loadGenes);
   yield takeEvery(actions.BOOT_APP_SUCCESS, followUpBootApplication);
   yield takeEvery(actions.SELECT_REPORT, selectReport);
   yield takeEvery(actions.REPORT_SELECTED, loadFilteredEvent);
+  yield takeEvery(actions.REPORT_SELECTED, loadCoverageData);
+  yield takeEvery(actions.REPORT_SELECTED, loadHetSnpsData);
+  yield takeEvery(actions.REPORT_SELECTED, loadPPFitData);
+  yield takeEvery(actions.REPORT_SELECTED, loadPPFitImageData);
+  yield takeEvery(actions.REPORT_SELECTED, loadAllelicData);
+  yield takeEvery(actions.REPORT_SELECTED, loadMutationsData);
+  yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
+  yield takeEvery(actions.REPORT_SELECTED, loadVariantQcData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
   yield takeEvery(actions.RESET_REPORT, searchReports);
   yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);

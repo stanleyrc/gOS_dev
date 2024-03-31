@@ -4,7 +4,6 @@ import {
   locationToDomains,
   reportAttributesMap,
 } from "../../helpers/utility";
-import { act } from "react-dom/test-utils";
 
 const initState = {
   loading: false,
@@ -138,6 +137,12 @@ export default function appReducer(state = initState, action) {
         ...action.properties,
         loading: false,
       };
+    case actions.REPORT_DATA_LOADED:
+      return {
+        ...state,
+        ...action.properties,
+        loading: false,
+      };
     case actions.SEARCH_REPORTS:
       return {
         ...state,
@@ -188,14 +193,15 @@ export default function appReducer(state = initState, action) {
       };
     case actions.FILTERED_EVENT_UPDATED:
       let urlGene = new URL(decodeURI(document.location));
-      if (action.filteredEvent) {
-        let loc = `${action.filteredEvent.chromosome}:${action.filteredEvent.startPoint}-${action.filteredEvent.chromosome}:${action.filteredEvent.endPoint}`;
+      let selectedFilteredEvent = action.filteredEvent;
+      if (selectedFilteredEvent) {
+        let loc = `${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.startPoint}-${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.endPoint}`;
         let domsGene = locationToDomains(state.chromoBins, loc);
         // eliminate domains that are smaller than 10 bases wide
         if (domsGene.length > 1) {
           domsGene = domsGene.filter((d) => d[1] - d[0] > 10);
         }
-        urlGene.searchParams.set("gene", action.filteredEvent.gene);
+        urlGene.searchParams.set("gene", selectedFilteredEvent.gene);
         urlGene.searchParams.set(
           "location",
           domainsToLocation(state.chromoBins, domsGene)
@@ -207,7 +213,7 @@ export default function appReducer(state = initState, action) {
         );
         return {
           ...state,
-          selectedFilteredEvent: action.filteredEvent,
+          selectedFilteredEvent,
           domains: domsGene,
           loading: false,
         };
@@ -222,7 +228,8 @@ export default function appReducer(state = initState, action) {
         );
         return {
           ...state,
-          selectedFilteredEvent: action.filteredEvent,
+          ...action.properties,
+          selectedFilteredEvent: null,
           loading: false,
         };
       }
