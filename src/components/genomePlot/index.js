@@ -566,7 +566,7 @@ class GenomePlot extends Component {
                 y="0"
                 x2="5"
                 y2="20"
-                stroke="#0000FF80"
+                stroke="#7F7FFF"
                 stroke-width="10"
               />
               <line
@@ -574,7 +574,7 @@ class GenomePlot extends Component {
                 y="0"
                 x2="15"
                 y2="20"
-                stroke="#FF000080"
+                stroke="#FF938D"
                 stroke-width="10"
               />
             </pattern>
