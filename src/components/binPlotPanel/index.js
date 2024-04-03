@@ -147,6 +147,9 @@ class BinPlotPanel extends Component {
                     />
                   ),
                   genomePlotTitle: t("components.tracks-modal.genome-plot"),
+                  genomePlotYAxisTitle: t(
+                    "components.tracks-modal.genome-y-axis-title"
+                  ),
                   coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
                   coverageYAxisTitle: t(
                     "components.tracks-modal.coverage-y-axis-title"
@@ -155,6 +158,9 @@ class BinPlotPanel extends Component {
                     "components.tracks-modal.coverage-y-axis2-title"
                   ),
                   hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
+                  hetsnpPlotYAxisTitle: t(
+                    "components.tracks-modal.hetsnp-plot-y-axis-title"
+                  ),
                   handleOkClicked: this.handleModalOKClicked,
                   handleCancelClicked: this.handleModalCancelClicked,
                   open,

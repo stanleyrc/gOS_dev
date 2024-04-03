@@ -21,6 +21,7 @@ const { updateDomains, selectPhylogenyNodes, updateHoveredLocation } =
 const margins = {
   gap: 24,
   bar: 10,
+  gapY: 24,
   yTicksCount: 10,
 };
 
@@ -507,8 +508,15 @@ class GenomePlot extends Component {
   };
 
   render() {
-    const { width, height, selectedConnectionIds, annotation, mutationsPlot } =
-      this.props;
+    const {
+      width,
+      height,
+      selectedConnectionIds,
+      annotation,
+      mutationsPlot,
+      yAxisTitle,
+      yAxis2Title,
+    } = this.props;
     const { stageWidth, stageHeight, tooltip } = this.state;
 
     this.updatePanels();
@@ -547,19 +555,6 @@ class GenomePlot extends Component {
               <rect fill="#79b321" x="40" y="0" width="40" height="80" />
             </pattern>
             <pattern
-              id="diagonalHatch0"
-              patternUnits="userSpaceOnUse"
-              width="4"
-              height="4"
-            >
-              <rect fill="#D62728" x="0" y="0" width="4" height="4" />
-              <path
-                d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2"
-                stroke="#1F77B4"
-                strokeWidth="1.5"
-              ></path>
-            </pattern>
-            <pattern
               id="diagonalHatch"
               patternUnits="userSpaceOnUse"
               width="20"
@@ -567,39 +562,36 @@ class GenomePlot extends Component {
               patternTransform="rotate(45)"
             >
               <line
-                x1="0"
-                y="0"
-                x2="0"
-                y2="20"
-                stroke="#FFF"
-                stroke-width="5"
-              />
-              <line
                 x1="5"
                 y="0"
                 x2="5"
                 y2="20"
-                stroke="#1F77B4"
-                stroke-width="5"
-              />
-              <line
-                x1="10"
-                y="0"
-                x2="10"
-                y2="20"
-                stroke="#FFF"
-                stroke-width="5"
+                stroke="#0000FF80"
+                stroke-width="10"
               />
               <line
                 x1="15"
                 y="0"
                 x2="15"
                 y2="20"
-                stroke="#D62728"
-                stroke-width="5"
+                stroke="#FF000080"
+                stroke-width="10"
               />
             </pattern>
           </defs>
+          <text
+            className="y-axis-title"
+            transform={`translate(${[0, margins.gapY / 3]})`}
+          >
+            {yAxisTitle}
+          </text>
+          <text
+            className="y-axis-title"
+            transform={`translate(${[width, margins.gapY / 3]})`}
+            textAnchor="end"
+          >
+            {yAxis2Title}
+          </text>
           <g transform={`translate(${[margins.gap, margins.gap]})`}>
             {this.panels.map((panel, i) => (
               <g
@@ -790,6 +782,8 @@ GenomePlot.defaultProps = {
   commonYScale: false,
   selectedConnectionIds: [],
   mutationsPlot: false,
+  yAxisTitle: "",
+  yAxis2Title: "",
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

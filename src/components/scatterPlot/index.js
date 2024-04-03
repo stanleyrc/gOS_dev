@@ -7,7 +7,6 @@ import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
-import { foreground2AbsoluteCN } from "../../helpers/utility";
 
 const { updateDomains, updateHoveredLocation } = appActions;
 

@@ -46,6 +46,10 @@ const Wrapper = styled.div`
   g.tick text {
     user-select: none;
   }
+  .y-axis-title {
+    font-size: 10px;
+    fill: #333;
+  }
 `;
 
 export default Wrapper;

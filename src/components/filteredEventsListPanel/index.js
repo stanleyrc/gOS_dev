@@ -161,6 +161,9 @@ class FilteredEventsListPanel extends Component {
                     </Space>
                   ),
                   genomePlotTitle: t("components.tracks-modal.genome-plot"),
+                  genomePlotYAxisTitle: t(
+                    "components.tracks-modal.genome-y-axis-title"
+                  ),
                   coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
                   coverageYAxisTitle: t(
                     "components.tracks-modal.coverage-y-axis-title"
@@ -169,10 +172,19 @@ class FilteredEventsListPanel extends Component {
                     "components.tracks-modal.coverage-y-axis2-title"
                   ),
                   hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
+                  hetsnpPlotYAxisTitle: t(
+                    "components.tracks-modal.hetsnp-plot-y-axis-title"
+                  ),
                   mutationsPlotTitle: t(
                     "components.tracks-modal.mutations-plot"
                   ),
+                  mutationsPlotYAxisTitle: t(
+                    "components.tracks-modal.mutations-plot-y-axis-title"
+                  ),
                   allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
+                  allelicPlotYAxisTitle: t(
+                    "components.tracks-modal.allelic-plot-y-axis-title"
+                  ),
                   handleOkClicked: () => updateSelectedFilteredEvent(null),
                   handleCancelClicked: () => updateSelectedFilteredEvent(null),
                   open,

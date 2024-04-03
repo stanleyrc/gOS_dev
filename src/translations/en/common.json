@@ -179,13 +179,17 @@
       "gene_plural": "records"
     },
     "tracks-modal": {
-      "genome-plot": "Genome Plot",
-      "coverage-plot": "Coverage Plot",
-      "hetsnp-plot": "HET SNPS Plot",
-      "mutations-plot": "Mutations Plot",
-      "allelic-plot": "Allelic Plot",
+      "genome-plot": "Total CN Graph",
+      "genome-y-axis-title": "↑ CN",
+      "coverage-plot": "Denoised Coverage",
+      "hetsnp-plot": "Heterozygous SNPs",
+      "hetsnp-plot-y-axis-title": "↑ Raw Count",
+      "mutations-plot": "Mutations Multiplicity",
+      "mutations-plot-y-axis-title": "↑ Est. Copies",
+      "allelic-plot": "Allelic CN Graph",
+      "allelic-plot-y-axis-title": "↑ CN",
       "coverage-y-axis-title": "↑ Foreground",
-      "coverage-y-axis2-title": "Absolute CN ↑"
+      "coverage-y-axis2-title": "Est. Absolute CN ↑"
     }
   }
 }

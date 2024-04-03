@@ -47,6 +47,7 @@ class GenomePanel extends Component {
       t,
       genome,
       title,
+      yAxisTitle,
       inViewport,
       renderOutsideViewPort,
       visible,
@@ -104,6 +105,7 @@ class GenomePanel extends Component {
                           height,
                           genome,
                           mutationsPlot,
+                          yAxisTitle,
                         }}
                       />
                     )
