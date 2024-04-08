@@ -8,7 +8,6 @@ import {
   Statistic,
   Avatar,
   Space,
-  Divider,
   Select,
   Form,
   Button,
@@ -143,7 +142,7 @@ class ListView extends Component {
               <Col className="gutter-row" span={4}>
                 <Card
                   className="case-report-card"
-                  onClick={(e) => handleCardClick(d.pair)}
+                  onClick={(e) => handleCardClick(e, d.pair)}
                   hoverable
                   title={
                     <Space>

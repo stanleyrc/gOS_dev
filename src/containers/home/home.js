@@ -16,6 +16,7 @@ import BinQCTab from "../../components/binQCTab";
 import ListView from "../listView";
 
 const { TabPane } = Tabs;
+const { Meta } = Card;
 
 const { selectReport, searchReports, selectTab } = appActions;
 
@@ -23,6 +24,19 @@ class Home extends Component {
   handleTabChanged = (tab) => {
     const { selectTab } = this.props;
     selectTab(tab);
+  };
+
+  handleCardClick = (event, report) => {
+    event.stopPropagation();
+    // In case cmd buttom is clicked
+    if (event.metaKey) {
+      let url = new URL(decodeURI(document.location));
+      url.searchParams.set("report", report);
+      const newWindow = window.open(url, "_blank", "noopener,noreferrer");
+      if (newWindow) newWindow.opener = null;
+    } else {
+      this.props.selectReport(report);
+    }
   };
 
   render() {
@@ -35,7 +49,6 @@ class Home extends Component {
       report,
       reports,
       totalReports,
-      selectReport,
       variantQC,
       ppFitImage,
       ppfit,
@@ -102,7 +115,7 @@ class Home extends Component {
           {!report && (
             <ListView
               records={reports}
-              handleCardClick={selectReport}
+              handleCardClick={this.handleCardClick}
               filters={reportsFilters}
               onSearch={searchReports}
               searchFilters={searchFilters}
