@@ -2,10 +2,12 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
-import { Row, Col, Modal } from "antd";
+import { Row, Col, Modal, message, Tooltip, Space, Button } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
-import { transitionStyle } from "../../helpers/utility";
+import { AiOutlineDownload } from "react-icons/ai";
+import * as htmlToImage from "html-to-image";
+import { transitionStyle, downloadCanvasAsPng } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import GenesPanel from "../genesPanel";
@@ -14,8 +16,25 @@ import appActions from "../../redux/app/actions";
 const { updateDomains, updateHoveredLocation } = appActions;
 
 class TracksModal extends Component {
+  container = null;
+
+  onDownloadButtonClicked = () => {
+    htmlToImage
+      .toCanvas(this.container, { pixelRatio: 2 })
+      .then((canvas) => {
+        downloadCanvasAsPng(
+          canvas,
+          `${this.props.modalTitleText.replace(/\s+/g, "_").toLowerCase()}.png`
+        );
+      })
+      .catch((error) => {
+        message.error(this.props.t("general.error", { error }));
+      });
+  };
+
   render() {
     const {
+      t,
       loading,
       genomeData,
       mutationsData,
@@ -145,7 +164,18 @@ class TracksModal extends Component {
       <Wrapper visible={open}>
         {viewType === "modal" ? (
           <Modal
-            title={modalTitle}
+            title={
+              <Space>
+                {modalTitle}
+                <Button
+                  type="default"
+                  shape="circle"
+                  icon={<AiOutlineDownload />}
+                  size="small"
+                  onClick={() => this.onDownloadButtonClicked()}
+                />
+              </Space>
+            }
             centered
             open={open}
             onOk={handleOkClicked}
@@ -154,7 +184,7 @@ class TracksModal extends Component {
             footer={null}
             forceRender={true}
           >
-            {content}
+            <div ref={(elem) => (this.container = elem)}>{content}</div>
           </Modal>
         ) : (
           <div style={{ height: `${height}px; width: ${width}px` }}>

@@ -143,6 +143,7 @@ class FilteredEventsListPanel extends Component {
                   genesData,
                   chromoBins,
                   allelicData,
+                  modalTitleText: selectedFilteredEvent.gene,
                   modalTitle: (
                     <Space>
                       {selectedFilteredEvent.gene}

@@ -134,6 +134,7 @@ class BinPlotPanel extends Component {
                   hetsnpsData,
                   genesData,
                   chromoBins,
+                  modalTitleText: `sequence-${segment?.iid}`,
                   modalTitle: (
                     <span
                       dangerouslySetInnerHTML={{
