@@ -579,7 +579,7 @@ class GenesPlot extends Component {
               </g>
             ))}
           </g>
-          {tooltip.visible && (
+          {tooltip.visible && tooltipScale && (
             <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
               <g
                 transform={`translate(${[

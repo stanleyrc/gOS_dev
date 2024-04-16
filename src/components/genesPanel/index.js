@@ -12,6 +12,7 @@ import {
   Row,
   Col,
   Typography,
+  Select,
 } from "antd";
 import * as d3 from "d3";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -46,7 +47,8 @@ class GenesPanel extends Component {
       .then((canvas) => {
         downloadCanvasAsPng(
           canvas,
-          `${this.props.title
+          `${this.props
+            .t("components.genes-panel.header")
             .replace(/\s+/g, "_")
             .toLowerCase()}_${domainsToLocation(
             this.props.chromoBins,
@@ -83,7 +85,7 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, genes, domains } = this.props;
+    const { t, genes, domains, genesOptionsList } = this.props;
     if (!genes) return null;
     return (
       <Wrapper>
@@ -102,6 +104,26 @@ class GenesPanel extends Component {
             }
             extra={
               <Space>
+                <Select
+                  allowClear
+                  showSearch
+                  mode="multiple"
+                  style={{ width: 300 }}
+                  placeholder={t("components.genes-panel.locator")}
+                  onChange={this.handleGenesLocatorChange}
+                  options={genesOptionsList}
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.label.toLowerCase() ?? "").includes(
+                      input.toLowerCase()
+                    )
+                  }
+                  filterSort={(optionA, optionB) =>
+                    (optionA?.label ?? "")
+                      .toLowerCase()
+                      .localeCompare((optionB?.label ?? "").toLowerCase())
+                  }
+                />
                 <Tooltip title={t("components.download-as-png-tooltip")}>
                   <Button
                     type="default"

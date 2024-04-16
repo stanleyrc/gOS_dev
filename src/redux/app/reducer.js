@@ -35,6 +35,7 @@ const initState = {
   variantQC: [],
   ppFitImage: null,
   genesData: null,
+  genesOptionsList: [],
   ppfit: { settings: {}, intervals: [], connections: [] },
   allelic: null,
   metadata: {
@@ -160,13 +161,18 @@ export default function appReducer(state = initState, action) {
     case actions.TAB_SELECTED:
       let tab = action.tab;
       let urlTab = new URL(decodeURI(document.location));
+      let genomeDomains = [[1, state.genomeLength]];
       urlTab.searchParams.set("tab", tab);
+      urlTab.searchParams.set(
+        "location",
+        domainsToLocation(state.chromoBins, genomeDomains)
+      );
       window.history.replaceState(
         unescape(urlTab.toString()),
         "Case Report",
         unescape(urlTab.toString())
       );
-      return { ...state, tab: tab };
+      return { ...state, tab: tab, domains: genomeDomains };
     case actions.DOMAINS_UPDATED:
       let doms = action.domains;
       // eliminate domains that are smaller than 10 bases wide

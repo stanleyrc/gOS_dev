@@ -44,113 +44,123 @@ class TracksModal extends Component {
       width,
       height,
       open,
+      viewType,
     } = this.props;
     if (!open) return null;
     const { beta, gamma } = metadata;
+    let content = (
+      <Row
+        style={transitionStyle(inViewport || renderOutsideViewPort)}
+        className="ant-panel-container ant-home-plot-container"
+        gutter={[16, 24]}
+      >
+        <Col className="gutter-row" span={24}>
+          <GenesPanel
+            {...{
+              genes: genesData,
+              chromoBins,
+              visible: true,
+              height,
+            }}
+          />
+        </Col>
+        <Col className="gutter-row" span={24}>
+          <GenomePanel
+            {...{
+              loading,
+              genome: genomeData,
+              title: genomePlotTitle,
+              yAxisTitle: genomePlotYAxisTitle,
+              chromoBins,
+              visible: true,
+              index: 0,
+              height,
+            }}
+          />
+        </Col>
+        <Col className="gutter-row" span={24}>
+          <ScatterPlotPanel
+            {...{
+              data: coverageData,
+              title: coveragePlotTitle,
+              scaleY2: { show: true, slope: beta, intercept: -gamma },
+              chromoBins,
+              visible: true,
+              loading,
+              height,
+              yAxisTitle: coverageYAxisTitle,
+              yAxis2Title: coverageYAxis2Title,
+            }}
+          />
+        </Col>
+        <Col className="gutter-row" span={24}>
+          <ScatterPlotPanel
+            {...{
+              data: hetsnpsData,
+              title: hetsnpPlotTitle,
+              chromoBins,
+              visible: true,
+              loading,
+              height,
+              yAxisTitle: hetsnpPlotYAxisTitle,
+            }}
+          />
+        </Col>
+        {allelicData && (
+          <Col className="gutter-row" span={24}>
+            <GenomePanel
+              {...{
+                loading,
+                genome: allelicData,
+                title: allelicPlotTitle,
+                yAxisTitle: allelicPlotYAxisTitle,
+                chromoBins,
+                visible: true,
+                index: 0,
+                height,
+              }}
+            />
+          </Col>
+        )}
+        {mutationsData && (
+          <Col className="gutter-row" span={24}>
+            <GenomePanel
+              {...{
+                loading,
+                genome: mutationsData,
+                title: mutationsPlotTitle,
+                yAxisTitle: mutationsPlotYAxisTitle,
+                chromoBins,
+                visible: true,
+                index: 0,
+                height,
+                mutationsPlot: true,
+              }}
+            />
+          </Col>
+        )}
+      </Row>
+    );
     return (
       <Wrapper visible={open}>
-        <Modal
-          title={modalTitle}
-          centered
-          open={open}
-          onOk={handleOkClicked}
-          onCancel={handleCancelClicked}
-          width={width}
-          footer={null}
-          forceRender={true}
-        >
-          <Row
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
-            className="ant-panel-container ant-home-plot-container"
-            gutter={16}
+        {viewType === "modal" ? (
+          <Modal
+            title={modalTitle}
+            centered
+            open={open}
+            onOk={handleOkClicked}
+            onCancel={handleCancelClicked}
+            width={width}
+            footer={null}
+            forceRender={true}
           >
-            <Col className="gutter-row" span={24}>
-              <GenesPanel
-                {...{
-                  genes: genesData,
-                  chromoBins,
-                  visible: true,
-                  height,
-                }}
-              />
-            </Col>
-            <Col className="gutter-row" span={24}>
-              <GenomePanel
-                {...{
-                  loading,
-                  genome: genomeData,
-                  title: genomePlotTitle,
-                  yAxisTitle: genomePlotYAxisTitle,
-                  chromoBins,
-                  visible: true,
-                  index: 0,
-                  height,
-                }}
-              />
-            </Col>
-            <Col className="gutter-row" span={24}>
-              <ScatterPlotPanel
-                {...{
-                  data: coverageData,
-                  title: coveragePlotTitle,
-                  scaleY2: { show: true, slope: beta, intercept: -gamma },
-                  chromoBins,
-                  visible: true,
-                  loading,
-                  height,
-                  yAxisTitle: coverageYAxisTitle,
-                  yAxis2Title: coverageYAxis2Title,
-                }}
-              />
-            </Col>
-            <Col className="gutter-row" span={24}>
-              <ScatterPlotPanel
-                {...{
-                  data: hetsnpsData,
-                  title: hetsnpPlotTitle,
-                  chromoBins,
-                  visible: true,
-                  loading,
-                  height,
-                  yAxisTitle: hetsnpPlotYAxisTitle,
-                }}
-              />
-            </Col>
-            {allelicData && (
-              <Col className="gutter-row" span={24}>
-                <GenomePanel
-                  {...{
-                    loading,
-                    genome: allelicData,
-                    title: allelicPlotTitle,
-                    yAxisTitle: allelicPlotYAxisTitle,
-                    chromoBins,
-                    visible: true,
-                    index: 0,
-                    height,
-                  }}
-                />
-              </Col>
-            )}
-            {mutationsData && (
-              <Col className="gutter-row" span={24}>
-                <GenomePanel
-                  {...{
-                    loading,
-                    genome: mutationsData,
-                    title: mutationsPlotTitle,
-                    yAxisTitle: mutationsPlotYAxisTitle,
-                    chromoBins,
-                    visible: true,
-                    index: 0,
-                    height,
-                    mutationsPlot: true,
-                  }}
-                />
-              </Col>
-            )}
-          </Row>
-        </Modal>
+            {content}
+          </Modal>
+        ) : (
+          <div style={{ height: `${height}px; width: ${width}px` }}>
+            {content}
+          </div>
+        )}
       </Wrapper>
     );
   }
@@ -162,6 +172,7 @@ TracksModal.defaultProps = {
   genomeData: { intervals: [], connections: [] },
   width: 1200,
   height: 180,
+  viewType: "modal",
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

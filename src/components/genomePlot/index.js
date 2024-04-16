@@ -520,6 +520,7 @@ class GenomePlot extends Component {
     const { stageWidth, stageHeight, tooltip } = this.state;
 
     this.updatePanels();
+    let randID = Math.random();
     return (
       <Wrapper className="ant-wrapper">
         <svg
@@ -529,13 +530,16 @@ class GenomePlot extends Component {
           ref={(elem) => (this.container = elem)}
         >
           <defs>
-            <clipPath key={`cuttOffViewPane`} id={`cuttOffViewPane`}>
+            <clipPath
+              key={`cuttOffViewPane-${randID}`}
+              id={`cuttOffViewPane-${randID}`}
+            >
               <rect x={0} y={0} width={stageWidth} height={stageHeight} />
             </clipPath>
             {this.panels.map((panel, i) => (
               <clipPath
-                key={`cuttOffViewPane-${panel.index}`}
-                id={`cuttOffViewPane-${panel.index}`}
+                key={`cuttOffViewPane-${randID}-${panel.index}`}
+                id={`cuttOffViewPane-${randID}-${panel.index}`}
               >
                 <rect
                   x={0}
@@ -546,7 +550,7 @@ class GenomePlot extends Component {
               </clipPath>
             ))}
             <pattern
-              id="crossgrad"
+              id={`crossgrad-${randID}`}
               width="80"
               height="80"
               patternUnits="userSpaceOnUse"
@@ -555,7 +559,7 @@ class GenomePlot extends Component {
               <rect fill="#79b321" x="40" y="0" width="40" height="80" />
             </pattern>
             <pattern
-              id="diagonalHatch"
+              id={`diagonalHatch-${randID}`}
               patternUnits="userSpaceOnUse"
               width="20"
               height="20"
@@ -640,7 +644,7 @@ class GenomePlot extends Component {
                     </>
                   }
                 </g>
-                <g clipPath={`url(#cuttOffViewPane-${panel.index})`}>
+                <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
                     return mutationsPlot ? (
                       <circle
@@ -687,7 +691,7 @@ class GenomePlot extends Component {
                         height={margins.bar}
                         style={{
                           fill: d.overlapping
-                            ? "url(#diagonalHatch)"
+                            ? `url(#diagonalHatch-${randID})`
                             : d.fill || d.color,
                           stroke: d.stroke,
                           strokeWidth: 1,

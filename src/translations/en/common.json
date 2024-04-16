@@ -107,10 +107,11 @@
   "components": {
     "tabs": {
       "tab1": "Overall",
-      "tab2": "Population KPIs for all Tumor Types",
-      "tab3": "Population KPIs for Tumor Type {{tumor}}",
-      "tab4": "Variant QC",
-      "tab5": "Segment Width Distribution"
+      "tab2": "Pan Genome View",
+      "tab3": "Population KPIs for all Tumor Types",
+      "tab4": "Population KPIs for Tumor Type {{tumor}}",
+      "tab5": "Variant QC",
+      "tab6": "Segment Width Distribution"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
@@ -176,7 +177,8 @@
     "genes-panel": {
       "header": "Genes",
       "gene": "record",
-      "gene_plural": "records"
+      "gene_plural": "records",
+      "locator": "Type in the genes you wish to locate"
     },
     "tracks-modal": {
       "genome-plot": "Total CN Graph",

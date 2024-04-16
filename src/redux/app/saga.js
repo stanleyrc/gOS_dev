@@ -254,8 +254,25 @@ function* loadGenes(action) {
   yield call(fetchArrowData, genesPlot);
   let genesData = genesPlot.data;
 
+  let genesPlotData = genesData;
+  let geneTypesIndexes = genesPlotData
+    .getChild("type")
+    .toArray()
+    .map((d, i) => (d === "gene" ? i : undefined))
+    .filter((x) => x);
+  let geneTitlesList = genesPlotData.getChild("title").toArray();
+  let genesOptionsList = geneTypesIndexes
+    .map((d, i) => {
+      return {
+        label: geneTitlesList[d],
+        value: d,
+      };
+    })
+    .sort((a, b) => d3.ascending(a.label.toLowerCase(), b.label.toLowerCase()));
+
   let properties = {
     genesData,
+    genesOptionsList,
   };
 
   yield put({

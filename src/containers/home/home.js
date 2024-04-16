@@ -14,6 +14,7 @@ import VariantQcTab from "../../components/variantQcTab";
 import appActions from "../../redux/app/actions";
 import BinQCTab from "../../components/binQCTab";
 import ListView from "../listView";
+import TracksTab from "../../components/tracksTab";
 
 const { TabPane } = Tabs;
 const { Meta } = Card;
@@ -84,20 +85,23 @@ class Home extends Component {
                   <SummaryTab />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab2")} key="2">
+                  <TracksTab />
+                </TabPane>
+                <TabPane tab={t("components.tabs.tab3")} key="3">
                   <PopulationTab {...{ loading, metadata, plots }} />
                 </TabPane>
                 <TabPane
-                  tab={t("components.tabs.tab3", { tumor: metadata.tumor })}
-                  key="3"
+                  tab={t("components.tabs.tab4", { tumor: metadata.tumor })}
+                  key="4"
                 >
                   <PopulationTab
                     {...{ loading, metadata, plots: tumorPlots }}
                   />
                 </TabPane>
-                <TabPane tab={t("components.tabs.tab4")} key="4">
+                <TabPane tab={t("components.tabs.tab5")} key="5">
                   <VariantQcTab variants={variantQC} />
                 </TabPane>
-                <TabPane tab={t("components.tabs.tab5")} key="5">
+                <TabPane tab={t("components.tabs.tab6")} key="6">
                   <BinQCTab
                     imageBlob={ppFitImage}
                     fits={ppfit}
