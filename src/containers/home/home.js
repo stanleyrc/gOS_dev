@@ -61,6 +61,8 @@ class Home extends Component {
       hetsnpsData,
       genesData,
       tab,
+      signaturePlots,
+      signatureTumorPlots,
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
@@ -113,6 +115,19 @@ class Home extends Component {
                     intercept={gamma / beta}
                   />
                 </TabPane>
+                <TabPane tab={t("components.tabs.tab7")} key="7">
+                  <PopulationTab
+                    {...{ loading, metadata, plots: signaturePlots }}
+                  />
+                </TabPane>
+                <TabPane
+                  tab={t("components.tabs.tab8", { tumor: metadata.tumor })}
+                  key="8"
+                >
+                  <PopulationTab
+                    {...{ loading, metadata, plots: signatureTumorPlots }}
+                  />
+                </TabPane>
               </Tabs>
             </div>
           )}
@@ -148,6 +163,8 @@ const mapStateToProps = (state) => ({
   metadata: state.App.metadata,
   plots: state.App.populationMetrics,
   tumorPlots: state.App.tumorPopulationMetrics,
+  signaturePlots: state.App.signatureMetrics,
+  signatureTumorPlots: state.App.tumorSignatureMetrics,
   variantQC: state.App.variantQC,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,

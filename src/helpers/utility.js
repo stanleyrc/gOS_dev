@@ -590,7 +590,7 @@ export function allelicToGenome(allelic) {
 
 export function getPopulationMetrics(
   populations,
-  metadata,
+  metadata = {},
   tumour_type = null
 ) {
   // Extract the data from the responses and store it in an object
@@ -622,14 +622,61 @@ export function getPopulationMetrics(
       d3.max([d3.min(plot.allData), 0.01]),
       d3.quantile(plot.allData, 0.99),
     ];
-    plot.markValue = metadata[d];
-    plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
-    plot.colorMarker =
-      plot.markValue < plot.q1
-        ? legendColors()[0]
-        : plot.markValue > plot.q3
-        ? legendColors()[2]
-        : legendColors()[1];
+    if (metadata[d]) {
+      plot.markValue = metadata[d];
+      plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
+      plot.colorMarker =
+        plot.markValue < plot.q1
+          ? legendColors()[0]
+          : plot.markValue > plot.q3
+          ? legendColors()[2]
+          : legendColors()[1];
+    }
+    return plot;
+  });
+}
+
+export function getSignatureMetrics(
+  populations,
+  metadata = {},
+  tumour_type = null
+) {
+  // Extract the data from the responses and store it in an object
+  return Object.keys(populations).map((d, i) => {
+    let plot = {};
+    let cutoff = Infinity;
+    plot.id = d;
+    plot.type = "histogram";
+    plot.scaleX = "linear";
+    plot.allData = populations[d].map((e) => +e.value);
+    plot.data = populations[d]
+      .filter((e) =>
+        tumour_type ? !e.tumor_type || e.tumor_type === tumour_type : true
+      )
+      .map((d) => +d.value)
+      .filter((d) => d < cutoff)
+      .sort((a, b) => d3.ascending(a, b));
+    plot.bandwidth = Math.pow(
+      (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
+      0.13
+    );
+    plot.q1 = d3.quantile(plot.data, 0.25);
+    plot.q3 = d3.quantile(plot.data, 0.75);
+    plot.q99 = d3.quantile(plot.data, 0.99);
+    plot.range = [
+      d3.max([d3.min(plot.allData), 0.01]),
+      d3.quantile(plot.allData, 0.99),
+    ];
+    if (metadata[d]) {
+      plot.markValue = metadata[d];
+      plot.markValueText = d3.format(".2f")(metadata[d]);
+      plot.colorMarker =
+        plot.markValue < plot.q1
+          ? legendColors()[0]
+          : plot.markValue > plot.q3
+          ? legendColors()[2]
+          : legendColors()[1];
+    }
     return plot;
   });
 }

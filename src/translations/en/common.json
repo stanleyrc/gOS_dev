@@ -49,6 +49,282 @@
       "short": "Ploidy",
       "full": "Ploidy"
     },
+    "SBS1": {
+      "short": "SBS1",
+      "full": "SBS1 - Proposed Aetiology: Spontaneous deamination of 5-methylcytosine (clock-like signature)"
+    },
+    "SBS2": {
+      "short": "SBS2",
+      "full": "SBS2 - Proposed Aetiology: Activity of APOBEC family of cytidine deaminases"
+    },
+    "SBS3": {
+      "short": "SBS3",
+      "full": "SBS3 - Proposed Aetiology: Defective homologous recombination DNA damage repair"
+    },
+    "SBS4": {
+      "short": "SBS4",
+      "full": "SBS4 - Proposed Aetiology: Tobacco smoking"
+    },
+    "SBS5": {
+      "short": "SBS5",
+      "full": "SBS5 - Proposed Aetiology: Unknown (clock-like signature)"
+    },
+    "SBS6": {
+      "short": "SBS6",
+      "full": "SBS6 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "SBS7a": {
+      "short": "SBS7a",
+      "full": "SBS7a - Proposed Aetiology: Ultraviolet light exposure"
+    },
+    "SBS7b": {
+      "short": "SBS7b",
+      "full": "SBS7b - Proposed Aetiology: Ultraviolet light exposure"
+    },
+    "SBS7c": {
+      "short": "SBS7c",
+      "full": "SBS7c - Proposed Aetiology: Ultraviolet light exposure"
+    },
+    "SBS7d": {
+      "short": "SBS7d",
+      "full": "SBS7d - Proposed Aetiology: Ultraviolet light exposure"
+    },
+    "SBS8": {
+      "short": "SBS8",
+      "full": "SBS8 - Proposed Aetiology: Unknown"
+    },
+    "SBS9": {
+      "short": "SBS9",
+      "full": "SBS9 - Proposed Aetiology: Polimerase eta somatic hypermutation activity"
+    },
+    "SBS10a": {
+      "short": "SBS10a",
+      "full": "SBS10a - Proposed Aetiology: Polymerase epsilon exonuclease domain mutations"
+    },
+    "SBS10b": {
+      "short": "SBS10b",
+      "full": "SBS10b - Proposed Aetiology: Polymerase epsilon exonuclease domain mutations"
+    },
+    "SBS10c": {
+      "short": "SBS10c",
+      "full": "SBS10c - Proposed Aetiology: Defective POLD1 proofreading"
+    },
+    "SBS10d": {
+      "short": "SBS10d",
+      "full": "SBS10d - Proposed Aetiology: Defective POLD1 proofreading"
+    },
+    "SBS11": {
+      "short": "SBS11",
+      "full": "SBS11 - Proposed Aetiology: Temozolomide treatment"
+    },
+    "SBS12": {
+      "short": "SBS12",
+      "full": "SBS12 - Proposed Aetiology: Unknown"
+    },
+    "SBS13": {
+      "short": "SBS13",
+      "full": "SBS13 - Proposed Aetiology: Activity of APOBEC family of cytidine deaminases"
+    },
+    "SBS14": {
+      "short": "SBS14",
+      "full": "SBS14 - Proposed Aetiology: Concurrent polymerase epsilon mutation and defective DNA mismatch repair"
+    },
+    "SBS15": {
+      "short": "SBS15",
+      "full": "SBS15 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "SBS16": {
+      "short": "SBS16",
+      "full": "SBS16 - Proposed Aetiology: Unknown"
+    },
+    "SBS17": {
+      "short": "SBS17",
+      "full": "SBS17 - Proposed Aetiology: Unknown"
+    },
+    "SBS17a": {
+      "short": "SBS17a",
+      "full": "SBS17a - Proposed Aetiology: Unknown"
+    },
+    "SBS17b": {
+      "short": "SBS17b",
+      "full": "SBS17b - Proposed Aetiology: Unknown"
+    },
+    "SBS18": {
+      "short": "SBS18",
+      "full": "SBS18 - Proposed Aetiology: Damage by reactive oxygen species"
+    },
+    "SBS19": {
+      "short": "SBS19",
+      "full": "SBS19 - Proposed Aetiology: Unknown"
+    },
+    "SBS20": {
+      "short": "SBS20",
+      "full": "SBS20 - Proposed Aetiology: Concurrent POLD1 mutations and defective DNA mismatch repair"
+    },
+    "SBS21": {
+      "short": "SBS21",
+      "full": "SBS21 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "SBS22": {
+      "short": "SBS22",
+      "full": "SBS22 - Proposed Aetiology: Aristolochic acid exposure"
+    },
+    "SBS22a": {
+      "short": "SBS22a",
+      "full": "SBS22a - Proposed Aetiology: Aristolochic acid exposure"
+    },
+    "SBS22b": {
+      "short": "SBS22b",
+      "full": "SBS22b - Proposed Aetiology: Aristolochic acid exposure"
+    },
+    "SBS23": {
+      "short": "SBS23",
+      "full": "SBS23 - Proposed Aetiology: Unknown"
+    },
+    "SBS24": {
+      "short": "SBS24",
+      "full": "SBS24 - Proposed Aetiology: Aflatoxin exposure"
+    },
+    "SBS25": {
+      "short": "SBS25",
+      "full": "SBS25 - Proposed Aetiology: Chemotherapy treatment"
+    },
+    "SBS26": {
+      "short": "SBS26",
+      "full": "SBS26 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "SBS28": {
+      "short": "SBS28",
+      "full": "SBS28 - Proposed Aetiology: Unknown"
+    },
+    "SBS29": {
+      "short": "SBS29",
+      "full": "SBS29 - Proposed Aetiology: Tobacco chewing"
+    },
+    "SBS30": {
+      "short": "SBS30",
+      "full": "SBS30 - Proposed Aetiology: Defective DNA base excision repair due to NTHL1 mutations"
+    },
+    "SBS31": {
+      "short": "SBS31",
+      "full": "SBS31 - Proposed Aetiology: Platinum chemotherapy treatment"
+    },
+    "SBS32": {
+      "short": "SBS32",
+      "full": "SBS32 - Proposed Aetiology: Azathioprine treatment"
+    },
+    "SBS33": {
+      "short": "SBS33",
+      "full": "SBS33 - Proposed Aetiology: Unknown"
+    },
+    "SBS34": {
+      "short": "SBS34",
+      "full": "SBS34 - Proposed Aetiology: Unknown"
+    },
+    "SBS35": {
+      "short": "SBS35",
+      "full": "SBS35 - Proposed Aetiology: Platinum chemotherapy treatment"
+    },
+    "SBS36": {
+      "short": "SBS36",
+      "full": "SBS36 - Proposed Aetiology: Defective DNA base excision repair due to MUTYH mutations"
+    },
+    "SBS37": {
+      "short": "SBS37",
+      "full": "SBS37 - Proposed Aetiology: Unknown"
+    },
+    "SBS38": {
+      "short": "SBS38",
+      "full": "SBS38 - Proposed Aetiology: Indirect effect of ultraviolet light"
+    },
+    "SBS39": {
+      "short": "SBS39",
+      "full": "SBS39 - Proposed Aetiology: Unknown"
+    },
+    "SBS40a": {
+      "short": "SBS40a",
+      "full": "SBS40a - Proposed Aetiology: Unknown"
+    },
+    "SBS40b": {
+      "short": "SBS40b",
+      "full": "SBS40b - Proposed Aetiology: Unknown"
+    },
+    "SBS40c": {
+      "short": "SBS40c",
+      "full": "SBS40c - Proposed Aetiology: Unknown"
+    },
+    "SBS41": {
+      "short": "SBS41",
+      "full": "SBS41 - Proposed Aetiology: Unknown"
+    },
+    "SBS42": {
+      "short": "SBS42",
+      "full": "SBS42 - Proposed Aetiology: Haloalkane exposure"
+    },
+    "SBS44": {
+      "short": "SBS44",
+      "full": "SBS44 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "SBS84": {
+      "short": "SBS84",
+      "full": "SBS84 - Proposed Aetiology: Activity of activation-induced cytidine deaminase (AID)"
+    },
+    "SBS85": {
+      "short": "SBS85",
+      "full": "SBS85 - Proposed Aetiology: Indirect effects of activation-induced cytidine deaminase (AID)"
+    },
+    "SBS86": {
+      "short": "SBS86",
+      "full": "SBS86 - Proposed Aetiology: Unknown chemotherapy treatment"
+    },
+    "SBS87": {
+      "short": "SBS87",
+      "full": "SBS87 - Proposed Aetiology: Thiopurine chemotherapy treatment"
+    },
+    "SBS88": {
+      "short": "SBS88",
+      "full": "SBS88 - Proposed Aetiology: Colibactin exposure (E.coli bacteria carrying pks pathogenicity island)"
+    },
+    "SBS89": {
+      "short": "SBS89",
+      "full": "SBS89 - Proposed Aetiology: Unknown"
+    },
+    "SBS90": {
+      "short": "SBS90",
+      "full": "SBS90 - Proposed Aetiology: Duocarmycin exposure"
+    },
+    "SBS91": {
+      "short": "SBS91",
+      "full": "SBS91 - Proposed Aetiology: Unknown"
+    },
+    "SBS92": {
+      "short": "SBS92",
+      "full": "SBS92 - Proposed Aetiology: Tobacco smoking"
+    },
+    "SBS93": {
+      "short": "SBS93",
+      "full": "SBS93 - Proposed Aetiology: Unknown"
+    },
+    "SBS94": {
+      "short": "SBS94",
+      "full": "SBS94 - Proposed Aetiology: Unknown"
+    },
+    "SBS96": {
+      "short": "SBS96",
+      "full": "SBS96 - Proposed Aetiology: Unknown"
+    },
+    "SBS97": {
+      "short": "SBS97",
+      "full": "SBS97 - Proposed Aetiology: Unknown"
+    },
+    "SBS98": {
+      "short": "SBS98",
+      "full": "SBS98 - Proposed Aetiology: Unknown"
+    },
+    "SBS99": {
+      "short": "SBS99",
+      "full": "SBS99 - Proposed Aetiology: Melphalan exposure"
+    },
     "junction_count": "<strong>{{count}}</strong> junction",
     "junction_count_plural": "<strong>{{count}}</strong> junctions",
     "loose_count": "<strong>{{count}}</strong> loose end",
@@ -111,7 +387,9 @@
       "tab3": "Population KPIs for all Tumor Types",
       "tab4": "Population KPIs for Tumor Type {{tumor}}",
       "tab5": "Variant QC",
-      "tab6": "Segment Width Distribution"
+      "tab6": "Segment Width Distribution",
+      "tab7": "SBS Signatures",
+      "tab8": "SBS Signatures for Tumor Type {{tumor}}"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {

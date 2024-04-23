@@ -30,8 +30,9 @@ const initState = {
   report: null,
   reportsFilters: [],
   searchFilters: { page: 1, per_page: 10 },
-  populations: [],
+  populations: {},
   populationMetrics: [],
+  tumorPopulationMetrics: [],
   variantQC: [],
   ppFitImage: null,
   genesData: null,
@@ -60,6 +61,7 @@ const initState = {
   coverageData: null,
   hetsnpsData: null,
   renderOutsideViewPort: true,
+  signatures: {},
 };
 
 export default function appReducer(state = initState, action) {
@@ -81,6 +83,11 @@ export default function appReducer(state = initState, action) {
         ...state,
       };
     case actions.GENES_LOADED:
+      return {
+        ...state,
+        ...action.properties,
+      };
+    case actions.SIGNATURES_LOADED:
       return {
         ...state,
         ...action.properties,

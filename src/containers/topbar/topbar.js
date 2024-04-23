@@ -72,7 +72,7 @@ class Topbar extends Component {
                                 color: "#f56a00",
                               }}
                             >
-                              {d.tumor_type_final}
+                              {d.tumor_type}
                             </Avatar>
                             {d.pair}
                             {d.inferred_sex}

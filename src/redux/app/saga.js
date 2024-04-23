@@ -9,6 +9,7 @@ import {
   transformFilteredEventAttributes,
   plotTypes,
   getPopulationMetrics,
+  getSignatureMetrics,
   sequencesToGenome,
   reportFilters,
 } from "../../helpers/utility";
@@ -87,22 +88,26 @@ function* bootApplication(action) {
   });
 
   // Extract the data from the responses and store it in an object
-  const populationMetrics = Object.keys(plotTypes()).map((d, i) => {
-    let plot = {};
-    let cutoff = Infinity;
-    plot.id = d;
-    plot.type = plotTypes()[d];
-    plot.scaleX = plotTypes()[d].scaleX;
-    plot.data = responses[i].data
-      .map((d) => +d.value)
-      .filter((d) => d < cutoff)
-      .sort((a, b) => d3.ascending(a, b));
-    plot.q1 = d3.quantile(plot.data, 0.25);
-    plot.q3 = d3.quantile(plot.data, 0.75);
-    plot.q99 = d3.quantile(plot.data, 0.99);
-    plot.range = [d3.max([d3.min(plot.data), 0.01]), plot.q99];
-    return plot;
-  });
+  const populationMetrics = getPopulationMetrics(populations);
+
+  let signatures = {};
+  yield axios
+    .all(
+      Array.from(
+        { length: responseSettings.data.signaturesCount },
+        (_, i) => i + 1
+      ).map((e) => axios.get(`common/signatures/persigjson/SBS${e}.json`))
+    )
+    .then(
+      axios.spread((...responses) => {
+        responses.forEach((d, i) => (signatures[`SBS${i + 1}`] = d.data));
+      })
+    )
+    .catch((errors) => {
+      console.log("got errors on loading signatures", errors);
+    });
+
+  let signatureMetrics = getSignatureMetrics(signatures);
 
   // if all selected files are have the same reference
   let selectedCoordinate = "hg19";
@@ -135,6 +140,8 @@ function* bootApplication(action) {
     reportsFilters,
     populationMetrics,
     populations,
+    signatures,
+    signatureMetrics,
     settings: responseSettings.data,
     domains,
     chromoBins,
@@ -235,6 +242,17 @@ function* selectReport(action) {
 
     properties.tumorPopulationMetrics = getPopulationMetrics(
       currentState.App.populations,
+      properties.metadata,
+      properties.metadata.tumor
+    );
+
+    properties.signatureMetrics = getSignatureMetrics(
+      currentState.App.signatures,
+      properties.metadata
+    );
+
+    properties.tumorSignatureMetrics = getSignatureMetrics(
+      currentState.App.signatures,
       properties.metadata,
       properties.metadata.tumor
     );
