@@ -658,7 +658,7 @@ export function getSignatureMetrics(
       .sort((a, b) => d3.ascending(a, b));
     plot.bandwidth = Math.pow(
       (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
-      0.13
+      0.2
     );
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
@@ -669,7 +669,7 @@ export function getSignatureMetrics(
     ];
     if (metadata[d]) {
       plot.markValue = metadata[d];
-      plot.markValueText = d3.format(".2f")(metadata[d]);
+      plot.markValueText = d3.format(".3f")(metadata[d]);
       plot.colorMarker =
         plot.markValue < plot.q1
           ? legendColors()[0]

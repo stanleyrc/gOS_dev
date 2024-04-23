@@ -73,6 +73,10 @@
       "short": "SBS6",
       "full": "SBS6 - Proposed Aetiology: Defective DNA mismatch repair"
     },
+    "SBS7": {
+      "short": "SBS7",
+      "full": "SBS7 - Proposed Aetiology: Ultraviolet light exposure"
+    },
     "SBS7a": {
       "short": "SBS7a",
       "full": "SBS7a - Proposed Aetiology: Ultraviolet light exposure"
@@ -96,6 +100,10 @@
     "SBS9": {
       "short": "SBS9",
       "full": "SBS9 - Proposed Aetiology: Polimerase eta somatic hypermutation activity"
+    },
+    "SBS10": {
+      "short": "SBS10",
+      "full": "SBS10 - Proposed Aetiology: Polymerase epsilon exonuclease domain mutations"
     },
     "SBS10a": {
       "short": "SBS10a",
@@ -192,6 +200,10 @@
     "SBS26": {
       "short": "SBS26",
       "full": "SBS26 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "SBS27": {
+      "short": "SBS27",
+      "full": "SBS27 - Proposed Aetiology: Unknown"
     },
     "SBS28": {
       "short": "SBS28",
