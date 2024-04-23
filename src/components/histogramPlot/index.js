@@ -133,7 +133,7 @@ class HistogramPlot extends Component {
     const axisX = d3
       .axisBottom(xScale)
       .tickSize(4)
-      .tickFormat(scaleX === "log" ? d3.format("~s") : d3.format(".2f"));
+      .tickFormat(scaleX === "log" ? d3.format("~s") : d3.format(".3f"));
 
     xAxisContainer.call(axisX);
 

@@ -658,7 +658,7 @@ export function getSignatureMetrics(
       .sort((a, b) => d3.ascending(a, b));
     plot.bandwidth = Math.pow(
       (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
-      0.2
+      0.15
     );
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
