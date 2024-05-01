@@ -525,7 +525,6 @@ function* loadSageQcData(action) {
     return d;
   });
 
-  console.log(properties.sageQC);
   yield put({
     type: actions.REPORT_DATA_LOADED,
     properties,
