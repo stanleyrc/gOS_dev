@@ -378,7 +378,12 @@
     "tumor_Average_calculated_Base_Quality": "Tumor Average Calculated Base Quality",
     "normal_alt_counts": "Normal ALT Count",
     "tumor_alt_counts": "Tumor ALT Count",
-    "normal_VAF": "Normal VAF"
+    "normal_VAF": "Normal VAF",
+    "distribution": {
+      "x0": "From",
+      "x1": "To",
+      "length": "Count"
+    }
   },
   "containers": {
     "home": {},

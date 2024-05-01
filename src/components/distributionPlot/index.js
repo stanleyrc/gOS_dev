@@ -124,7 +124,7 @@ class DistributionPlot extends Component {
         yDistribution.bins[yDistribution.bins.length - 1].x1,
       ]),
     ]);
-    
+
     return {
       width,
       height,
@@ -203,10 +203,50 @@ class DistributionPlot extends Component {
     });
   };
 
+  handleXDistributionMouseEnter = (d, i) => {
+    const { t } = this.props;
+    const { xScale, xDistribution } = this.getPlotConfiguration();
+    this.setState({
+      tooltip: {
+        id: i,
+        visible: true,
+        x: xScale((d.x0 + d.x1) / 2) + margins.tooltipGap,
+        y: xDistribution.y(0) - margins.tooltipGap,
+        text: ["x0", "x1", "length"].map((e) => {
+          return { label: t(`metadata.distribution.${e}`), value: d[e] };
+        }),
+      },
+    });
+  };
+
+  handleYDistributionMouseEnter = (d, i) => {
+    const { t } = this.props;
+    const { yScale, yDistribution, panelWidth } = this.getPlotConfiguration();
+    this.setState({
+      tooltip: {
+        id: i,
+        visible: true,
+        x:
+          yDistribution.y(0) +
+          margins.tooltipGap +
+          panelWidth +
+          margins.gapDistribution,
+        y:
+          yScale((d.x0 + d.x1) / 2) -
+          margins.tooltipGap +
+          margins.gapDistribution +
+          margins.xDistributionHeight,
+        text: ["x0", "x1", "length"].map((e) => {
+          return { label: t(`metadata.distribution.${e}`), value: d[e] };
+        }),
+      },
+    });
+  };
+
   handleMouseOut = (d) => {
     this.setState({
       tooltip: {
-        id: -1,
+        id: null,
         visible: false,
         shapeId: -1,
         x: -1000,
@@ -326,16 +366,20 @@ class DistributionPlot extends Component {
                 </g>
               </g>
               <g className="x-distribution-container">
-                {xDistribution.bins.map((d) => (
+                {xDistribution.bins.map((d, i) => (
                   <rect
                     x={xScale(d.x0) + 1}
                     y={xDistribution.y(d.length)}
                     width={xScale(d.x1) - xScale(d.x0) - 1}
                     height={xDistribution.y(0) - xDistribution.y(d.length)}
-                    fill="steelblue"
+                    fill={visible && id === i ? "#ff7f0e" : "steelblue"}
                     dx1={d.x1}
                     dx0={d.x0}
                     dLength={d.length}
+                    onMouseEnter={(e) =>
+                      this.handleXDistributionMouseEnter(d, i)
+                    }
+                    onMouseOut={(e) => this.handleMouseOut(d)}
                   />
                 ))}
                 <line
@@ -354,16 +398,20 @@ class DistributionPlot extends Component {
                   margins.gapDistribution + margins.xDistributionHeight,
                 ]})`}
               >
-                {yDistribution.bins.map((d) => (
+                {yDistribution.bins.map((d, i) => (
                   <rect
                     y={yScale(d.x1) + 1}
                     x={yDistribution.y(0)}
                     height={yScale(d.x0) - yScale(d.x1) - 1}
                     width={yDistribution.y(d.length)}
-                    fill="steelblue"
+                    fill={visible && id === i ? "#ff7f0e" : "steelblue"}
                     dx1={d.x1}
                     dx0={d.x0}
                     dLength={d.length}
+                    onMouseEnter={(e) =>
+                      this.handleYDistributionMouseEnter(d, i)
+                    }
+                    onMouseOut={(e) => this.handleMouseOut(d)}
                   />
                 ))}
                 <line

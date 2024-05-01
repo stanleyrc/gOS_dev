@@ -520,6 +520,12 @@ function* loadSageQcData(action) {
 
   properties.sageQC = responseSageQC.data || [];
 
+  properties.sageQC.forEach((d, i) => {
+    d.id = i + 1;
+    return d;
+  });
+
+  console.log(properties.sageQC);
   yield put({
     type: actions.REPORT_DATA_LOADED,
     properties,
