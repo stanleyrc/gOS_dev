@@ -9,8 +9,7 @@ import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
 import SummaryTab from "../../components/summaryTab";
-
-import VariantQcTab from "../../components/variantQcTab";
+import QcTab from "../../components/qcTab";
 import appActions from "../../redux/app/actions";
 import BinQCTab from "../../components/binQCTab";
 import ListView from "../listView";
@@ -51,6 +50,7 @@ class Home extends Component {
       reports,
       totalReports,
       variantQC,
+      sageQC,
       ppFitImage,
       ppfit,
       chromoBins,
@@ -101,7 +101,7 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab5")} key="5">
-                  <VariantQcTab variants={variantQC} />
+                  <QcTab variants={variantQC} sages={sageQC} />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab6")} key="6">
                   <BinQCTab
@@ -166,6 +166,7 @@ const mapStateToProps = (state) => ({
   signaturePlots: state.App.signatureMetrics,
   signatureTumorPlots: state.App.tumorSignatureMetrics,
   variantQC: state.App.variantQC,
+  sageQC: state.App.sageQC,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,

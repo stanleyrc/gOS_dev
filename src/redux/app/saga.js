@@ -509,6 +509,23 @@ function* loadVariantQcData(action) {
   });
 }
 
+function* loadSageQcData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {
+    sageQC: [],
+  };
+  let responseSageQC = yield call(axios.get, `data/${report}/sage.qc.json`);
+
+  properties.sageQC = responseSageQC.data || [];
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.BOOT_APP, bootApplication);
   yield takeEvery(actions.LOAD_GENES, loadGenes);
@@ -524,6 +541,7 @@ function* actionWatcher() {
   yield takeEvery(actions.REPORT_SELECTED, loadMutationsData);
   yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
   yield takeEvery(actions.REPORT_SELECTED, loadVariantQcData);
+  yield takeEvery(actions.REPORT_SELECTED, loadSageQcData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
   yield takeEvery(actions.RESET_REPORT, searchReports);
   yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);

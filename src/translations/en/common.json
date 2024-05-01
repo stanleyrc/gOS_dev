@@ -374,7 +374,11 @@
       "post_var": "Post var",
       "var": "Variance",
       "sd": "Standard Deviation"
-    }
+    },
+    "tumor_Average_calculated_Base_Quality": "Tumor Average Calculated Base Quality",
+    "normal_alt_counts": "Normal ALT Count",
+    "tumor_alt_counts": "Tumor ALT Count",
+    "normal_VAF": "Normal VAF"
   },
   "containers": {
     "home": {},
@@ -449,6 +453,13 @@
       "plot-label": "Show as:",
       "scatterplot": "Scatter Plot",
       "contourplot": "Contour Plot"
+    },
+    "sageQc-panel": {
+      "title": "Variant Allele Frequency vs ALT Read Depth distribution plot",
+      "y-title": "↑ Alternative Read Count",
+      "x-title": "Variant Allele Frequency →",
+      "plot-label": "Show as:",
+      "scatterplot": "Scatter Plot"
     },
     "binQc-panel": {
       "genome-plot": "Genome Plot",
