@@ -465,6 +465,7 @@ export function reportAttributesMap() {
     loose_count: "loose_count",
     junction_count: "junction_count",
     snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
+    signatures: "signatures",
   };
 }
 
@@ -638,7 +639,7 @@ export function getPopulationMetrics(
 
 export function getSignatureMetrics(
   populations,
-  metadata = {},
+  metadata = { signatures: {} },
   tumour_type = null
 ) {
   // Extract the data from the responses and store it in an object
@@ -667,9 +668,9 @@ export function getSignatureMetrics(
       d3.max([d3.min(plot.allData), 0.01]),
       d3.quantile(plot.allData, 0.99),
     ];
-    if (metadata[d]) {
-      plot.markValue = metadata[d];
-      plot.markValueText = d3.format(".3f")(metadata[d]);
+    if (Object.keys(metadata?.signatures).includes(d)) {
+      plot.markValue = metadata?.signatures[d];
+      plot.markValueText = d3.format(".4f")(metadata?.signatures[d]);
       plot.colorMarker =
         plot.markValue < plot.q1
           ? legendColors()[0]

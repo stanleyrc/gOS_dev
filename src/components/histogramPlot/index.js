@@ -246,8 +246,11 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(density)}
                 />
-                {markValue && (
-                  <g transform={`translate(${[xScale(markValue), 0]})`}>
+                {markValue >= 0 && (
+                  <g
+                    className="marker"
+                    transform={`translate(${[xScale(markValue), 0]})`}
+                  >
                     <line
                       y2={panelHeight}
                       stroke="red"

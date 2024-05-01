@@ -25,7 +25,7 @@ class PopulationTab extends Component {
             bandwidth: d.bandwidth,
             title: t(`metadata.${d.id}.full`),
             visible: d.data,
-            markValue: metadata[d.id],
+            markValue: d.markValue,
             markValueText: d.markValueText,
             colorMarker: d.colorMarker,
             loading,
