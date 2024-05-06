@@ -682,6 +682,24 @@ export function getSignatureMetrics(
   });
 }
 
+// Function to calculate optimum number of bins using Doane's rule
+export function calculateOptimalBins(data) {
+  const n = data.length;
+
+  // Calculate skewness
+  const mean = data.reduce((acc, val) => acc + val, 0) / n;
+  const variance =
+    data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / n;
+  const stdDev = Math.sqrt(variance);
+  const skewness =
+    data.reduce((acc, val) => acc + Math.pow((val - mean) / stdDev, 3), 0) / n;
+
+  // Calculate bins using Doane's rule
+  const k = 1 + Math.log2(n) + Math.log2(1 + Math.abs(skewness));
+
+  return Math.ceil(k);
+}
+
 export function Legend(
   color,
   {

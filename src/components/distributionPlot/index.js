@@ -3,8 +3,11 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { Legend, measureText } from "../../helpers/utility";
-import { ckmeans } from "simple-statistics";
+import {
+  Legend,
+  measureText,
+  calculateOptimalBins,
+} from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -29,6 +32,8 @@ class DistributionPlot extends Component {
       shapeId: -1,
       x: -1000,
       y: -1000,
+      xSelectionRange: [-1, -1],
+      ySelectionRange: [-1, -1],
       text: [],
     },
   };
@@ -49,7 +54,6 @@ class DistributionPlot extends Component {
       height,
       dataPoints,
       xRange,
-      yRange,
       xVariable,
       yVariable,
       xFormat,
@@ -58,8 +62,9 @@ class DistributionPlot extends Component {
       yTitle,
       t,
       colorVariable,
-      thresholdBreaks,
-      colorScheme,
+      colorDomain,
+      colorSchemeSeq,
+      yDomainRange,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -82,14 +87,8 @@ class DistributionPlot extends Component {
 
     let legend, color;
 
-    let ckmeansThresholds = ckmeans(
-      dataPoints.map((d) => d[colorVariable]),
-      thresholdBreaks
-    ).map((v) => v.pop());
-    color = d3
-      .scaleThreshold()
-      .domain(ckmeansThresholds.slice(0, thresholdBreaks - 1))
-      .range(colorScheme[thresholdBreaks]);
+    color = d3.scaleSequential(colorSchemeSeq).domain(colorDomain).nice();
+
     legend = Legend(color, {
       title: t(`metadata.${colorVariable}`),
       tickFormat: "0.0f",
@@ -99,14 +98,14 @@ class DistributionPlot extends Component {
       dataPoints,
       xVariable,
       [margins.xDistributionHeight, 0],
-      50
+      calculateOptimalBins(dataPoints.map((d) => d[xVariable]))
     );
 
     let yDistribution = this.calculateBins(
       dataPoints,
       yVariable,
       [0, margins.yDistributionWidth],
-      40
+      calculateOptimalBins(dataPoints.map((d) => d[yVariable]))
     );
 
     xScale.domain([
@@ -124,6 +123,9 @@ class DistributionPlot extends Component {
         yDistribution.bins[yDistribution.bins.length - 1].x1,
       ]),
     ]);
+
+    yScale.domain(yDomainRange);
+    yScale.clamp(true);
 
     return {
       width,
@@ -210,6 +212,7 @@ class DistributionPlot extends Component {
       tooltip: {
         id: i,
         visible: true,
+        xSelectionRange: [d.x0, d.x1],
         x: xScale((d.x0 + d.x1) / 2) + margins.tooltipGap,
         y: xDistribution.y(0) - margins.tooltipGap,
         text: ["x0", "x1", "length"].map((e) => {
@@ -226,6 +229,7 @@ class DistributionPlot extends Component {
       tooltip: {
         id: i,
         visible: true,
+        ySelectionRange: [d.x0, d.x1],
         x:
           yDistribution.y(0) +
           margins.tooltipGap +
@@ -252,6 +256,8 @@ class DistributionPlot extends Component {
         x: -1000,
         y: -1000,
         text: [],
+        xSelectionRange: [-1, -1],
+        ySelectionRange: [-1, -1],
       },
     });
   };
@@ -277,7 +283,7 @@ class DistributionPlot extends Component {
     } = this.getPlotConfiguration();
 
     const { tooltip } = this.state;
-    const { visible, id } = tooltip;
+    const { visible, id, xSelectionRange, ySelectionRange } = tooltip;
     const svgString = new XMLSerializer().serializeToString(legend);
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
@@ -324,14 +330,31 @@ class DistributionPlot extends Component {
                     )
                     .map((d, i) => (
                       <circle
+                        className={
+                          (xSelectionRange &&
+                            d[xVariable] < xSelectionRange[1] &&
+                            d[xVariable] >= xSelectionRange[0]) ||
+                          (ySelectionRange &&
+                            d[yVariable] < ySelectionRange[1] &&
+                            d[yVariable] >= ySelectionRange[0])
+                            ? "highlighted"
+                            : ""
+                        }
+                        id={`circle${i}`}
                         cx={xScale(d[xVariable])}
                         cy={yScale(d[yVariable])}
-                        r={visible && id === i ? 5 : 1.618}
-                        opacity={visible && id === i ? 1 : 1}
+                        r={visible && id === `circle${i}` ? 5 : 1.618}
+                        opacity={visible && id === `circle${i}` ? 1 : 1}
                         fill={color(d[colorVariable])}
-                        stroke={visible && id === i ? "#FFF" : "transparent"}
-                        strokeWidth={visible && id === i ? 3 : 0}
-                        onMouseEnter={(e) => this.handleMouseEnter(d, i)}
+                        stroke={
+                          visible && id === `circle${i}`
+                            ? "#ff7f0e"
+                            : "transparent"
+                        }
+                        strokeWidth={visible && id === `circle${i}` ? 3 : 0}
+                        onMouseEnter={(e) =>
+                          this.handleMouseEnter(d, `circle${i}`)
+                        }
                         onMouseOut={(e) => this.handleMouseOut(d)}
                       />
                     ))}
@@ -368,16 +391,21 @@ class DistributionPlot extends Component {
               <g className="x-distribution-container">
                 {xDistribution.bins.map((d, i) => (
                   <rect
+                    id={`xdistribution${i}`}
                     x={xScale(d.x0) + 1}
                     y={xDistribution.y(d.length)}
                     width={xScale(d.x1) - xScale(d.x0) - 1}
                     height={xDistribution.y(0) - xDistribution.y(d.length)}
-                    fill={visible && id === i ? "#ff7f0e" : "steelblue"}
+                    fill={
+                      visible && id === `xdistribution${i}`
+                        ? "#ff7f0e"
+                        : "steelblue"
+                    }
                     dx1={d.x1}
                     dx0={d.x0}
                     dLength={d.length}
                     onMouseEnter={(e) =>
-                      this.handleXDistributionMouseEnter(d, i)
+                      this.handleXDistributionMouseEnter(d, `xdistribution${i}`)
                     }
                     onMouseOut={(e) => this.handleMouseOut(d)}
                   />
@@ -400,16 +428,21 @@ class DistributionPlot extends Component {
               >
                 {yDistribution.bins.map((d, i) => (
                   <rect
+                    id={`ydistribution${i}`}
                     y={yScale(d.x1) + 1}
                     x={yDistribution.y(0)}
                     height={yScale(d.x0) - yScale(d.x1) - 1}
                     width={yDistribution.y(d.length)}
-                    fill={visible && id === i ? "#ff7f0e" : "steelblue"}
+                    fill={
+                      visible && id === `ydistribution${i}`
+                        ? "#ff7f0e"
+                        : "steelblue"
+                    }
                     dx1={d.x1}
                     dx0={d.x0}
                     dLength={d.length}
                     onMouseEnter={(e) =>
-                      this.handleYDistributionMouseEnter(d, i)
+                      this.handleYDistributionMouseEnter(d, `ydistribution${i}`)
                     }
                     onMouseOut={(e) => this.handleMouseOut(d)}
                   />
@@ -466,11 +499,9 @@ DistributionPlot.propTypes = {
 DistributionPlot.defaultProps = {
   data: [],
   radius: 3.33,
-  thresholdBreaks: 5,
-  colorScheme: d3.schemeRdPu,
-  colorSchemeSeq: d3.interpolatePlasma,
-  contourBandwidth: 10,
-  contourThresholdCount: 1000,
+  yDomainRange: [0, 50],
+  colorDomain: [0, 40],
+  colorSchemeSeq: d3.interpolateYlGnBu,
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

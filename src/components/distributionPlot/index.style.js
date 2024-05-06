@@ -39,6 +39,12 @@ const Wrapper = styled.div`
     font-size: 12px;
     font-weight: bold;
   }
+
+  .highlighted {
+    stroke: #ff7f0e !important;
+    stroke-width: 2.5px;
+    fill: #ff7f0e !important;
+  }
 `;
 
 export default Wrapper;
