@@ -664,10 +664,7 @@ export function getSignatureMetrics(
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
     plot.q99 = d3.quantile(plot.data, 0.99);
-    plot.range = [
-      d3.max([d3.min(plot.allData), 0.01]),
-      d3.quantile(plot.allData, 0.99),
-    ];
+    plot.range = [0, 1];
     if (Object.keys(metadata?.signatures).includes(d)) {
       plot.markValue = metadata?.signatures[d];
       plot.markValueText = d3.format(".4f")(metadata?.signatures[d]);

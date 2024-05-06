@@ -417,7 +417,8 @@
       "header": "Histogram Chart",
       "datapoint": "datapoint",
       "datapoint_plural": "datapoints",
-      "title": "Histogram Chart"
+      "title": "Histogram Chart",
+      "hide-zero-values-plot": "Hide charts where the indicator value is zero"
     },
     "ridgeline-panel": {
       "header": "Ridgeline Chart",
