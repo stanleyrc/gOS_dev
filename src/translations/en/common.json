@@ -14,6 +14,7 @@
     "no-case-report-selected": "Select a Case Report to get started!"
   },
   "metadata": {
+    "id": "id",
     "tags": {
       "tag1": "lower 25%",
       "tag2": "mid 50%",
@@ -351,7 +352,8 @@
     "position": "Position",
     "reference": "Reference Allele",
     "tumor_depth": "Tumor Depth",
-    "tumor_VAF": "Tumor VAF",
+    "tumor_vaf": "Tumor VAF",
+    "tumor_abq": "Tumor ABQ",
     "somatic_EVS": "Somatic EVS",
     "aggregate-ppfit": {
       "mean": "Mean",
@@ -378,7 +380,7 @@
     "tumor_Average_calculated_Base_Quality": "Tumor Average Calculated Base Quality",
     "normal_alt_counts": "Normal ALT Count",
     "tumor_alt_counts": "Tumor ALT Count",
-    "normal_VAF": "Normal VAF",
+    "normal_vaf": "Normal VAF",
     "distribution": {
       "x0": "From",
       "x1": "To",
