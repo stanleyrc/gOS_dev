@@ -643,40 +643,42 @@ export function getSignatureMetrics(
   tumour_type = null
 ) {
   // Extract the data from the responses and store it in an object
-  return Object.keys(populations).map((d, i) => {
-    let plot = {};
-    let cutoff = Infinity;
-    plot.id = d;
-    plot.type = "histogram";
-    plot.scaleX = "linear";
-    plot.allData = populations[d].map((e) => +e.value);
-    plot.data = populations[d]
-      .filter((e) =>
-        tumour_type ? !e.tumor_type || e.tumor_type === tumour_type : true
-      )
-      .map((d) => +d.value)
-      .filter((d) => d < cutoff)
-      .sort((a, b) => d3.ascending(a, b));
-    plot.bandwidth = Math.pow(
-      (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
-      0.15
-    );
-    plot.q1 = d3.quantile(plot.data, 0.25);
-    plot.q3 = d3.quantile(plot.data, 0.75);
-    plot.q99 = d3.quantile(plot.data, 0.99);
-    plot.range = [0, 1];
-    if (Object.keys(metadata?.signatures).includes(d)) {
-      plot.markValue = metadata?.signatures[d];
-      plot.markValueText = d3.format(".4f")(metadata?.signatures[d]);
-      plot.colorMarker =
-        plot.markValue < plot.q1
-          ? legendColors()[0]
-          : plot.markValue > plot.q3
-          ? legendColors()[2]
-          : legendColors()[1];
-    }
-    return plot;
-  });
+  return Object.keys(populations)
+    .map((d, i) => {
+      let plot = {};
+      let cutoff = Infinity;
+      plot.id = d;
+      plot.type = "histogram";
+      plot.scaleX = "linear";
+      plot.allData = populations[d].map((e) => +e.value);
+      plot.data = populations[d]
+        .filter((e) =>
+          tumour_type ? !e.tumor_type || e.tumor_type === tumour_type : true
+        )
+        .map((d) => +d.value)
+        .filter((d) => d < cutoff)
+        .sort((a, b) => d3.ascending(a, b));
+      plot.bandwidth = Math.pow(
+        (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
+        0.15
+      );
+      plot.q1 = d3.quantile(plot.data, 0.25);
+      plot.q3 = d3.quantile(plot.data, 0.75);
+      plot.q99 = d3.quantile(plot.data, 0.99);
+      plot.range = [0, 1];
+      if (Object.keys(metadata?.signatures).includes(d)) {
+        plot.markValue = metadata?.signatures[d];
+        plot.markValueText = d3.format(".4f")(metadata?.signatures[d]);
+        plot.colorMarker =
+          plot.markValue < plot.q1
+            ? legendColors()[0]
+            : plot.markValue > plot.q3
+            ? legendColors()[2]
+            : legendColors()[1];
+      }
+      return plot;
+    })
+    .sort((a, b) => d3.descending(a.markValue, b.markValue));
 }
 
 // Function to calculate optimum number of bins using Doane's rule

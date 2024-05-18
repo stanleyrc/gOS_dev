@@ -407,20 +407,21 @@
     "tabs": {
       "tab1": "Overall",
       "tab2": "Pan Genome View",
-      "tab3": "Population KPIs for all Tumor Types",
-      "tab4": "Population KPIs for Tumor Type {{tumor}}",
-      "tab5": "Variant QC",
-      "tab6": "Segment Width Distribution",
-      "tab7": "SBS Signatures",
-      "tab8": "SBS Signatures for Tumor Type {{tumor}}"
+      "tab3": "Population KPIs",
+      "tab4": "Variant QC",
+      "tab5": "Segment Width Distribution",
+      "tab6": "SBS Signatures"
+    },
+    "segmented-filter": {
+      "total": "All Tumor Types",
+      "tumor": "Tumor Type {{tumor}}"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
       "header": "Histogram Chart",
       "datapoint": "datapoint",
       "datapoint_plural": "datapoints",
-      "title": "Histogram Chart",
-      "hide-zero-values-plot": "Hide charts where the indicator value is zero"
+      "title": "Histogram Chart"
     },
     "ridgeline-panel": {
       "header": "Ridgeline Chart",

@@ -9,44 +9,34 @@ import appActions from "../../redux/app/actions";
 const {} = appActions;
 
 class PopulationTab extends Component {
-  state = {
-    hideZeros: true,
-  };
-
-  onChange = (hideZeros) => {
-    console.log(`switch to ${hideZeros}`);
-    this.setState({ hideZeros });
-  };
-
   render() {
-    const { t, loading, plots } = this.props;
-    const { hideZeros } = this.state;
+    const { t, loading, plots, visible } = this.props;
 
-    let plotRows = plots
-      .filter((d) => !hideZeros || d.markValue > 0)
-      .map((d, index) => {
-        let plotComponent = (
-          <HistogramPlotPanel
-            {...{
-              data: d.data,
-              q1: d.q1,
-              q3: d.q3,
-              q99: d.q99,
-              scaleX: d.scaleX,
-              range: d.range,
-              bandwidth: d.bandwidth,
-              title: t(`metadata.${d.id}.full`),
-              visible: d.data,
-              markValue: d.markValue,
-              markValueText: d.markValueText,
-              colorMarker: d.colorMarker,
-              loading,
-            }}
-          />
-        );
+    if (!visible) return null;
 
-        return plotComponent;
-      });
+    let plotRows = plots.map((d, index) => {
+      let plotComponent = (
+        <HistogramPlotPanel
+          {...{
+            data: d.data,
+            q1: d.q1,
+            q3: d.q3,
+            q99: d.q99,
+            scaleX: d.scaleX,
+            range: d.range,
+            bandwidth: d.bandwidth,
+            title: t(`metadata.${d.id}.full`),
+            visible: d.data,
+            markValue: d.markValue,
+            markValueText: d.markValueText,
+            colorMarker: d.colorMarker,
+            loading,
+          }}
+        />
+      );
+
+      return plotComponent;
+    });
 
     const tuples = Array.from(
       { length: Math.ceil(plotRows.length / 3) },
@@ -55,10 +45,6 @@ class PopulationTab extends Component {
 
     return (
       <Wrapper>
-        <Space>
-          <Switch defaultChecked onChange={this.onChange} />{" "}
-          {t("components.histogram-panel.hide-zero-values-plot")}
-        </Space>
         {tuples.map((pair, index) => (
           <Row
             key={index}
@@ -80,6 +66,7 @@ class PopulationTab extends Component {
 PopulationTab.propTypes = {};
 PopulationTab.defaultProps = {
   plots: [],
+  visible: true,
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});

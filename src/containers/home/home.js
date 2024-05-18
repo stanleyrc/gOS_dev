@@ -3,7 +3,7 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import { Tabs, Skeleton, Affix, Card } from "antd";
+import { Tabs, Skeleton, Affix, Card, Segmented } from "antd";
 import { reportFilters } from "../../helpers/utility";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
@@ -21,6 +21,11 @@ const { Meta } = Card;
 const { selectReport, searchReports, selectTab } = appActions;
 
 class Home extends Component {
+  state = {
+    populationKPIMode: "total",
+    signatureKPIMode: "total",
+  };
+
   handleTabChanged = (tab) => {
     const { selectTab } = this.props;
     selectTab(tab);
@@ -37,6 +42,14 @@ class Home extends Component {
     } else {
       this.props.selectReport(report);
     }
+  };
+
+  handlePopulationKPIsSegmentedChange = (populationKPIMode) => {
+    this.setState({ populationKPIMode });
+  };
+
+  handleSignatureKPIsSegmentedChange = (signatureKPIMode) => {
+    this.setState({ signatureKPIMode });
   };
 
   render() {
@@ -66,6 +79,7 @@ class Home extends Component {
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
+    const { populationKPIMode, signatureKPIMode } = this.state;
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
@@ -90,20 +104,44 @@ class Home extends Component {
                   <TracksTab />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab3")} key="3">
-                  <PopulationTab {...{ loading, metadata, plots }} />
-                </TabPane>
-                <TabPane
-                  tab={t("components.tabs.tab4", { tumor: metadata.tumor })}
-                  key="4"
-                >
+                  <Segmented
+                    options={[
+                      {
+                        label: t("components.segmented-filter.total"),
+                        value: "total",
+                      },
+                      {
+                        label: t("components.segmented-filter.tumor", {
+                          tumor: metadata.tumor,
+                        }),
+                        value: "byTumor",
+                      },
+                    ]}
+                    onChange={(d) =>
+                      this.handlePopulationKPIsSegmentedChange(d)
+                    }
+                  />
                   <PopulationTab
-                    {...{ loading, metadata, plots: tumorPlots }}
+                    {...{
+                      loading,
+                      metadata,
+                      plots,
+                      visible: populationKPIMode === "total",
+                    }}
+                  />
+                  <PopulationTab
+                    {...{
+                      loading,
+                      metadata,
+                      plots: tumorPlots,
+                      visible: populationKPIMode === "byTumor",
+                    }}
                   />
                 </TabPane>
-                <TabPane tab={t("components.tabs.tab5")} key="5">
+                <TabPane tab={t("components.tabs.tab4")} key="4">
                   <QcTab variants={variantQC} sages={sageQC} />
                 </TabPane>
-                <TabPane tab={t("components.tabs.tab6")} key="6">
+                <TabPane tab={t("components.tabs.tab5")} key="5">
                   <BinQCTab
                     imageBlob={ppFitImage}
                     fits={ppfit}
@@ -115,17 +153,37 @@ class Home extends Component {
                     intercept={gamma / beta}
                   />
                 </TabPane>
-                <TabPane tab={t("components.tabs.tab7")} key="7">
-                  <PopulationTab
-                    {...{ loading, metadata, plots: signaturePlots }}
+                <TabPane tab={t("components.tabs.tab6")} key="6">
+                  <Segmented
+                    options={[
+                      {
+                        label: t("components.segmented-filter.total"),
+                        value: "total",
+                      },
+                      {
+                        label: t("components.segmented-filter.tumor", {
+                          tumor: metadata.tumor,
+                        }),
+                        value: "byTumor",
+                      },
+                    ]}
+                    onChange={(d) => this.handleSignatureKPIsSegmentedChange(d)}
                   />
-                </TabPane>
-                <TabPane
-                  tab={t("components.tabs.tab8", { tumor: metadata.tumor })}
-                  key="8"
-                >
                   <PopulationTab
-                    {...{ loading, metadata, plots: signatureTumorPlots }}
+                    {...{
+                      loading,
+                      metadata,
+                      plots: signaturePlots,
+                      visible: signatureKPIMode === "total",
+                    }}
+                  />
+                  <PopulationTab
+                    {...{
+                      loading,
+                      metadata,
+                      plots: signatureTumorPlots,
+                      visible: signatureKPIMode === "byTumor",
+                    }}
                   />
                 </TabPane>
               </Tabs>

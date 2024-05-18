@@ -19,11 +19,11 @@ class QcTab extends Component {
             <DensityPlotPanel
               dataPoints={variants}
               xTitle={t("components.variantQc-panel.x-title")}
-              xVariable="tumor_vaf"
+              xVariable="tumor_VAF"
               xRange={[0, 1]}
               xFormat=".0%"
               yTitle={t("components.variantQc-panel.y-title")}
-              yVariable="somatic_evs"
+              yVariable="somatic_EVS"
               yFormat=".0f"
               yRange={[0, 22]}
               title={t("components.variantQc-panel.title")}
@@ -47,7 +47,7 @@ class QcTab extends Component {
               yFormat=".0f"
               yRange={[0, 40]}
               title={t("components.sageQc-panel.title")}
-              colorVariable="tumor_Average_calculated_Base_Quality"
+              colorVariable="tumor_abq"
             />
           </Col>
         </Row>
