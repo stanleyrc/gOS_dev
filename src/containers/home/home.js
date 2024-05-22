@@ -3,7 +3,7 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import { Tabs, Skeleton, Affix, Card, Segmented } from "antd";
+import { Tabs, Skeleton, Affix, Card, Segmented, Space } from "antd";
 import { reportFilters } from "../../helpers/utility";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
@@ -14,6 +14,7 @@ import appActions from "../../redux/app/actions";
 import BinQCTab from "../../components/binQCTab";
 import ListView from "../listView";
 import TracksTab from "../../components/tracksTab";
+import BarPlotPanel from "../../components/barPlotPanel";
 
 const { TabPane } = Tabs;
 const { Meta } = Card;
@@ -64,6 +65,8 @@ class Home extends Component {
       totalReports,
       variantQC,
       sageQC,
+      mutationCatalog,
+      mutationsColorPalette,
       ppFitImage,
       ppfit,
       chromoBins,
@@ -154,6 +157,20 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab6")} key="6">
+                  <BarPlotPanel
+                    dataPoints={mutationCatalog}
+                    title={t("components.mutation-catalog-panel.title")}
+                    legendTitle={t("metadata.mutation-type")}
+                    xTitle={""}
+                    xVariable={"tnc"}
+                    xFormat={null}
+                    yTitle={t("components.mutation-catalog-panel.y-title")}
+                    yVariable={"mutations"}
+                    yFormat={"~s"}
+                    colorVariable={"variant"}
+                    colorPalette={mutationsColorPalette}
+                  />
+                  <br />
                   <Segmented
                     options={[
                       {
@@ -219,12 +236,14 @@ const mapStateToProps = (state) => ({
   searchFilters: state.App.searchFilters,
   totalReports: state.App.totalReports,
   metadata: state.App.metadata,
+  mutationsColorPalette: state.App.settings?.mutationsColorPalette,
   plots: state.App.populationMetrics,
   tumorPlots: state.App.tumorPopulationMetrics,
   signaturePlots: state.App.signatureMetrics,
   signatureTumorPlots: state.App.tumorSignatureMetrics,
   variantQC: state.App.variantQC,
   sageQC: state.App.sageQC,
+  mutationCatalog: state.App.mutationCatalog,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,

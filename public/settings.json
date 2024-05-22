@@ -618,5 +618,17 @@
       ]
     }
   },
-  "signaturesCount": 30
+  "signaturesCount": 30,
+  "mutationsColorPalette": {
+    "C>A": "#00BFFE",
+    "C>G": "#000000",
+    "C>T": "#CE2626",
+    "T>A": "#BFBFBF",
+    "T>C": "#9ACD34",
+    "T>G": "#EEB4B3",
+    "Del-MH": "#BA56D4",
+    "Del-MS": "#A020EF",
+    "Del-Other": "#7B378C",
+    "Insertion": "#5E468A"
+  }
 }

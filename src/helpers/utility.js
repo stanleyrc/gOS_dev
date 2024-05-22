@@ -840,7 +840,8 @@ export function Legend(
     x = d3
       .scaleBand()
       .domain(color.domain())
-      .rangeRound([marginLeft, width - marginRight]);
+      .rangeRound([marginLeft, width - marginRight])
+      .padding(0.1);
 
     svg
       .append("g")

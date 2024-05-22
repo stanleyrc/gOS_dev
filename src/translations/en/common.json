@@ -15,6 +15,10 @@
   },
   "metadata": {
     "id": "id",
+    "mutation-type": "Mutation Type",
+    "variant": "Variant",
+    "tnc": "TNC",
+    "mutations": "Mutations",
     "tags": {
       "tag1": "lower 25%",
       "tag2": "mid 50%",
@@ -479,6 +483,11 @@
         "x-title": "Segment Intensity Mean Value →",
         "y-title": "↑ Cumulative Width"
       }
+    },
+    "mutation-catalog-panel": {
+      "title": "Mutation Catalog",
+      "y-title": "↑ Number of Mutations",
+      "x-title": "TNC →"
     },
     "coverage-panel": {
       "datapoint": "datapoint",

@@ -35,6 +35,7 @@ const initState = {
   tumorPopulationMetrics: [],
   variantQC: [],
   sageQC: [],
+  mutationCatalog: [],
   ppFitImage: null,
   genesData: null,
   genesOptionsList: [],

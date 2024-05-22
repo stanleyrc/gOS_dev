@@ -531,6 +531,38 @@ function* loadSageQcData(action) {
   });
 }
 
+function* loadMutationCatalogData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report } = currentState.App;
+
+  let properties = {
+    mutationCatalog: [],
+  };
+
+  try {
+    let responseMutationCatalog = yield call(
+      axios.get,
+      `data/${report}/mutation_catalog.json`
+    );
+    let data = responseMutationCatalog.data.data || [];
+    data.forEach((d, i) => {
+      d.variant = (d.tnc.match(/\[(.*?)\]/) || [])[1];
+    });
+
+    properties.mutationCatalog = data.sort((a, b) =>
+      d3.ascending(a.variant, b.variant)
+    );
+  } catch (err) {
+    console.log(err);
+    properties.mutationCatalog = [];
+  }
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.BOOT_APP, bootApplication);
   yield takeEvery(actions.LOAD_GENES, loadGenes);
@@ -547,6 +579,7 @@ function* actionWatcher() {
   yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
   yield takeEvery(actions.REPORT_SELECTED, loadVariantQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadSageQcData);
+  yield takeEvery(actions.REPORT_SELECTED, loadMutationCatalogData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
   yield takeEvery(actions.RESET_REPORT, searchReports);
   yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);
