@@ -246,27 +246,24 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(density)}
                 />
-                {markValue >= 0 && (
-                  <g
-                    className="marker"
-                    transform={`translate(${[xScale(markValue), 0]})`}
-                  >
-                    <line
-                      y2={panelHeight}
-                      stroke="red"
-                      strokeWidth={3}
-                      clipPath={`url(#${clipId})`}
-                    />
-                    <text
-                      textAnchor={"middle"}
-                      dy="-3"
-                      fill={colorMarker}
+                {markValue >= 0 &&
+                  xScale(markValue) >= 0 &&
+                  xScale(markValue) <= panelWidth && (
+                    <g
                       className="marker"
+                      transform={`translate(${[xScale(markValue), 0]})`}
                     >
-                      {markValueText}
-                    </text>
-                  </g>
-                )}
+                      <line y2={panelHeight} stroke="red" strokeWidth={3} />
+                      <text
+                        textAnchor={"middle"}
+                        dy="-3"
+                        fill={colorMarker}
+                        className="marker"
+                      >
+                        {markValueText}
+                      </text>
+                    </g>
+                  )}
               </g>
               <g
                 className="axis--y y-axis-container"
