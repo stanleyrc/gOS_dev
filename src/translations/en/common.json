@@ -357,7 +357,7 @@
     "reference": "Reference Allele",
     "tumor_depth": "Tumor Depth",
     "tumor_vaf": "Tumor VAF",
-    "tumor_abq": "Tumor ABQ",
+    "tumor_abq": "Tumor Average Base Quality (ABQ)",
     "somatic_EVS": "Somatic EVS",
     "aggregate-ppfit": {
       "mean": "Mean",
