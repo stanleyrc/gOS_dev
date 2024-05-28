@@ -473,6 +473,13 @@ export function reportFilters() {
   return ["pair", "tumor_type", "disease", "primary_site", "inferred_sex"];
 }
 
+export function mutationFilterTypes() {
+  return {
+    base: ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"],
+    del: ["Del-MH", "Del-MS", "Del-Other", "Insertion"],
+  };
+}
+
 export function foreground2AbsoluteCN(foreground, beta, gamma) {
   return foreground * beta - gamma;
 }

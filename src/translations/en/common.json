@@ -487,7 +487,11 @@
     "mutation-catalog-panel": {
       "title": "Mutation Catalog",
       "y-title": "↑ Number of Mutations",
-      "x-title": "TNC →"
+      "x-title": "TNC →",
+      "segmented-filter": {
+        "base": "Base mutations",
+        "del": "Deletion/Insertion"
+      }
     },
     "coverage-panel": {
       "datapoint": "datapoint",

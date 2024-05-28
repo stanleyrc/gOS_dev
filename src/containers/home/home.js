@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
 import { Tabs, Skeleton, Affix, Card, Segmented, Space } from "antd";
-import { reportFilters } from "../../helpers/utility";
+import { reportFilters, mutationFilterTypes } from "../../helpers/utility";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
@@ -25,6 +25,7 @@ class Home extends Component {
   state = {
     populationKPIMode: "total",
     signatureKPIMode: "total",
+    mutationFilter: "base",
   };
 
   handleTabChanged = (tab) => {
@@ -51,6 +52,10 @@ class Home extends Component {
 
   handleSignatureKPIsSegmentedChange = (signatureKPIMode) => {
     this.setState({ signatureKPIMode });
+  };
+
+  handleMutationCatalogSegmentedChange = (mutationFilter) => {
+    this.setState({ mutationFilter });
   };
 
   render() {
@@ -82,7 +87,16 @@ class Home extends Component {
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
-    const { populationKPIMode, signatureKPIMode } = this.state;
+    const { populationKPIMode, signatureKPIMode, mutationFilter } = this.state;
+    let colorPalette = Object.fromEntries(
+      mutationFilterTypes()[mutationFilter].map((key) => [
+        key,
+        mutationsColorPalette[key],
+      ])
+    );
+    let catalog = mutationCatalog.filter(
+      (d) => d.variantType === mutationFilter
+    );
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
@@ -159,7 +173,7 @@ class Home extends Component {
                 <TabPane tab={t("components.tabs.tab6")} key="6">
                   <Affix offsetTop={210}>
                     <BarPlotPanel
-                      dataPoints={mutationCatalog}
+                      dataPoints={catalog}
                       title={t("components.mutation-catalog-panel.title")}
                       legendTitle={t("metadata.mutation-type")}
                       xTitle={""}
@@ -169,7 +183,24 @@ class Home extends Component {
                       yVariable={"mutations"}
                       yFormat={"~s"}
                       colorVariable={"variant"}
-                      colorPalette={mutationsColorPalette}
+                      colorPalette={colorPalette}
+                      segmentedOptions={[
+                        {
+                          label: t(
+                            "components.mutation-catalog-panel.segmented-filter.base"
+                          ),
+                          value: "base",
+                        },
+                        {
+                          label: t(
+                            "components.mutation-catalog-panel.segmented-filter.del"
+                          ),
+                          value: "del",
+                        },
+                      ]}
+                      handleSegmentedChange={
+                        this.handleMutationCatalogSegmentedChange
+                      }
                     />
                   </Affix>
                   <br />

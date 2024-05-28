@@ -547,6 +547,7 @@ function* loadMutationCatalogData(action) {
     let data = responseMutationCatalog.data.data || [];
     data.forEach((d, i) => {
       d.variant = (d.tnc.match(/\[(.*?)\]/) || [])[1];
+      d.variantType = d.variant ? "base" : "del";
     });
 
     properties.mutationCatalog = data.sort((a, b) =>

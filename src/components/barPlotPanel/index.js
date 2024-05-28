@@ -63,6 +63,8 @@ class BarPlotPanel extends Component {
       renderOutsideViewPort,
       visible,
       colorPalette,
+      segmentedOptions,
+      handleSegmentedChange,
     } = this.props;
     if (!colorVariable) {
       return null;
@@ -83,6 +85,10 @@ class BarPlotPanel extends Component {
           }
           extra={
             <Space>
+              <Segmented
+                options={segmentedOptions}
+                onChange={(d) => handleSegmentedChange(d)}
+              />
               <Tooltip title={t("components.download-as-png-tooltip")}>
                 <Button
                   type="default"
