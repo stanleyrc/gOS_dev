@@ -157,19 +157,21 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab6")} key="6">
-                  <BarPlotPanel
-                    dataPoints={mutationCatalog}
-                    title={t("components.mutation-catalog-panel.title")}
-                    legendTitle={t("metadata.mutation-type")}
-                    xTitle={""}
-                    xVariable={"tnc"}
-                    xFormat={null}
-                    yTitle={t("components.mutation-catalog-panel.y-title")}
-                    yVariable={"mutations"}
-                    yFormat={"~s"}
-                    colorVariable={"variant"}
-                    colorPalette={mutationsColorPalette}
-                  />
+                  <Affix offsetTop={210}>
+                    <BarPlotPanel
+                      dataPoints={mutationCatalog}
+                      title={t("components.mutation-catalog-panel.title")}
+                      legendTitle={t("metadata.mutation-type")}
+                      xTitle={""}
+                      xVariable={"tnc"}
+                      xFormat={null}
+                      yTitle={t("components.mutation-catalog-panel.y-title")}
+                      yVariable={"mutations"}
+                      yFormat={"~s"}
+                      colorVariable={"variant"}
+                      colorPalette={mutationsColorPalette}
+                    />
+                  </Affix>
                   <br />
                   <Segmented
                     options={[
