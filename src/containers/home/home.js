@@ -89,7 +89,7 @@ class Home extends Component {
     const { beta, gamma } = metadata;
     const { populationKPIMode, signatureKPIMode, mutationFilter } = this.state;
     let colorPalette = Object.fromEntries(
-      mutationFilterTypes()[mutationFilter].map((key) => [
+      (mutationFilterTypes()[mutationFilter] || []).map((key) => [
         key,
         mutationsColorPalette[key],
       ])
