@@ -88,12 +88,14 @@ class Home extends Component {
     if (!metadata) return null;
     const { beta, gamma } = metadata;
     const { populationKPIMode, signatureKPIMode, mutationFilter } = this.state;
-    let colorPalette = Object.fromEntries(
-      (mutationFilterTypes()[mutationFilter] || []).map((key) => [
-        key,
-        mutationsColorPalette[key],
-      ])
-    );
+    let colorPalette = mutationsColorPalette
+      ? Object.fromEntries(
+          (mutationFilterTypes()[mutationFilter] || []).map((key) => [
+            key,
+            mutationsColorPalette[key],
+          ])
+        )
+      : {};
     let catalog = mutationCatalog.filter(
       (d) => d.variantType === mutationFilter
     );
