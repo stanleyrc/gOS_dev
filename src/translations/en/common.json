@@ -414,7 +414,7 @@
       "tab3": "Population KPIs",
       "tab4": "Variant QC",
       "tab5": "Segment Width Distribution",
-      "tab6": "SBS Signatures"
+      "tab6": "Signatures"
     },
     "segmented-filter": {
       "total": "All Tumor Types",
