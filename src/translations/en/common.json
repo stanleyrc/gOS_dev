@@ -342,6 +342,98 @@
       "short": "SBS99",
       "full": "SBS99 - Proposed Aetiology: Melphalan exposure"
     },
+    "ID1": {
+      "short": "ID1",
+      "full": "ID1 - Proposed Aetiology: Slippage during DNA replication of the replicated DNA strand"
+    },
+    "ID2": {
+      "short": "ID2",
+      "full": "ID2 - Proposed Aetiology: Slippage during DNA replication of the replicated DNA strand"
+    },
+    "ID3": {
+      "short": "ID3",
+      "full": "ID3 - Proposed Aetiology: Tobacco smoking"
+    },
+    "ID4": {
+      "short": "ID4",
+      "full": "ID4 - Proposed Aetiology: Unknown"
+    },
+    "ID5": {
+      "short": "ID5",
+      "full": "ID5 - Proposed Aetiology: Unknown"
+    },
+    "ID6": {
+      "short": "ID6",
+      "full": "ID6 - Proposed Aetiology: Defective homologous recombination DNA damage repair"
+    },
+    "ID7": {
+      "short": "ID7",
+      "full": "ID7 - Proposed Aetiology: Defective DNA mismatch repair"
+    },
+    "ID8": {
+      "short": "ID8",
+      "full": "ID8 - Proposed Aetiology: Repair of DNA double strand breaks by NHEJ or mutations in TOP2A"
+    },
+    "ID9": {
+      "short": "ID9",
+      "full": "ID9 - Proposed Aetiology: Unknown"
+    },
+    "ID10": {
+      "short": "ID10",
+      "full": "ID10 - Proposed Aetiology: Unknown"
+    },
+    "ID11": {
+      "short": "ID11",
+      "full": "ID11 - Proposed Aetiology: Unknown"
+    },
+    "ID12": {
+      "short": "ID12",
+      "full": "ID12 - Proposed Aetiology: Unknown"
+    },
+    "ID13": {
+      "short": "ID13",
+      "full": "ID13 - Proposed Aetiology: Ultraviolet light exposure"
+    },
+    "ID14": {
+      "short": "ID14",
+      "full": "ID14 - Proposed Aetiology: Unknown"
+    },
+    "ID15": {
+      "short": "ID15",
+      "full": "ID15 - Proposed Aetiology: Unknown"
+    },
+    "ID16": {
+      "short": "ID16",
+      "full": "ID16 - Proposed Aetiology: Unknown"
+    },
+    "ID17": {
+      "short": "ID17",
+      "full": "ID17 - Proposed Aetiology: Mutations in topoisomerase TOP2A"
+    },
+    "ID18": {
+      "short": "ID18",
+      "full": "ID18 - Proposed Aetiology: Colibactin exposure (E.coli bacteria carrying pks pathogenicity island)"
+    },
+    "ID19": {
+      "short": "ID19",
+      "full": "ID19 - Proposed Aetiology: Unknown"
+    },
+    "ID20": {
+      "short": "ID20",
+      "full": "ID20 - Proposed Aetiology: Unknown"
+    },
+    "ID21": {
+      "short": "ID21",
+      "full": "ID21 - Proposed Aetiology: Unknown"
+    },
+    "ID22": {
+      "short": "ID22",
+      "full": "ID22 - Proposed Aetiology: Unknown"
+    },
+    "ID23": {
+      "short": "ID23",
+      "full": "ID23 - Proposed Aetiology: Aristolochic acid exposure"
+    },
     "junction_count": "<strong>{{count}}</strong> junction",
     "junction_count_plural": "<strong>{{count}}</strong> junctions",
     "loose_count": "<strong>{{count}}</strong> loose end",
@@ -489,8 +581,8 @@
       "y-title": "↑ Number of Mutations",
       "x-title": "TNC →",
       "segmented-filter": {
-        "base": "Base mutations",
-        "del": "Deletion/Insertion"
+        "sbs": "Base mutations",
+        "insertionDeletion": "Insertion/Deletion"
       }
     },
     "coverage-panel": {

@@ -91,16 +91,24 @@ function* bootApplication(action) {
   const populationMetrics = getPopulationMetrics(populations);
 
   let signatures = {};
+
+  let signaturesList = [];
+  Object.keys(responseSettings.data.signaturesList).forEach((type) => {
+    responseSettings.data.signaturesList[type].forEach((d) => {
+      signaturesList.push({
+        type: type,
+        name: d,
+        path: `common/signatures/${type}/${d}.json`,
+      });
+    });
+  });
   yield axios
-    .all(
-      Array.from(
-        { length: responseSettings.data.signaturesCount },
-        (_, i) => i + 1
-      ).map((e) => axios.get(`common/signatures/persigjson/SBS${e}.json`))
-    )
+    .all(signaturesList.map((e) => axios.get(e.path)))
     .then(
       axios.spread((...responses) => {
-        responses.forEach((d, i) => (signatures[`SBS${i + 1}`] = d.data));
+        responses.forEach(
+          (d, i) => (signatures[signaturesList[i].name] = d.data)
+        );
       })
     )
     .catch((errors) => {
@@ -234,6 +242,14 @@ function* selectReport(action) {
     Object.keys(responseReportMetadata.data[0]).forEach((key) => {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
     });
+
+    Object.keys(properties.metadata?.deletionInsertion).map((d) => {
+      properties.metadata.signatures[d] =
+        properties.metadata?.deletionInsertion[d];
+    });
+
+    // Optionally, remove the deletionInsertion property if no longer needed
+    delete properties.metadata.deletionInsertion;
 
     properties.populationMetrics = getPopulationMetrics(
       currentState.App.populations,
@@ -547,7 +563,7 @@ function* loadMutationCatalogData(action) {
     let data = responseMutationCatalog.data.data || [];
     data.forEach((d, i) => {
       d.variant = (d.tnc.match(/\[(.*?)\]/) || [])[1];
-      d.variantType = d.variant ? "base" : "del";
+      d.variantType = d.variant ? "sbs" : "insertionDeletion";
     });
 
     properties.mutationCatalog = data.sort((a, b) =>

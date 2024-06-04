@@ -466,6 +466,7 @@ export function reportAttributesMap() {
     junction_count: "junction_count",
     snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
     signatures: "signatures",
+    deletionInsertion: "deletionInsertion",
   };
 }
 
@@ -475,8 +476,8 @@ export function reportFilters() {
 
 export function mutationFilterTypes() {
   return {
-    base: ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"],
-    del: ["Del-MH", "Del-MS", "Del-Other", "Insertion"],
+    sbs: ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"],
+    insertionDeletion: ["Del-MH", "Del-MS", "Del-Other", "Insertion"],
   };
 }
 

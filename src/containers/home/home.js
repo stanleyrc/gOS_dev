@@ -25,7 +25,7 @@ class Home extends Component {
   state = {
     populationKPIMode: "total",
     signatureKPIMode: "total",
-    mutationFilter: "base",
+    mutationFilter: "sbs",
   };
 
   handleTabChanged = (tab) => {
@@ -72,6 +72,7 @@ class Home extends Component {
       sageQC,
       mutationCatalog,
       mutationsColorPalette,
+      signaturesList,
       ppFitImage,
       ppfit,
       chromoBins,
@@ -186,20 +187,16 @@ class Home extends Component {
                       yFormat={"~s"}
                       colorVariable={"variant"}
                       colorPalette={colorPalette}
-                      segmentedOptions={[
-                        {
-                          label: t(
-                            "components.mutation-catalog-panel.segmented-filter.base"
-                          ),
-                          value: "base",
-                        },
-                        {
-                          label: t(
-                            "components.mutation-catalog-panel.segmented-filter.del"
-                          ),
-                          value: "del",
-                        },
-                      ]}
+                      segmentedOptions={Object.keys(mutationFilterTypes()).map(
+                        (d) => {
+                          return {
+                            label: t(
+                              `components.mutation-catalog-panel.segmented-filter.${d}`
+                            ),
+                            value: d,
+                          };
+                        }
+                      )}
                       handleSegmentedChange={
                         this.handleMutationCatalogSegmentedChange
                       }
@@ -225,7 +222,9 @@ class Home extends Component {
                     {...{
                       loading,
                       metadata,
-                      plots: signaturePlots,
+                      plots: signaturePlots?.filter((d) =>
+                        signaturesList[mutationFilter].includes(d.id)
+                      ),
                       visible: signatureKPIMode === "total",
                     }}
                   />
@@ -233,7 +232,9 @@ class Home extends Component {
                     {...{
                       loading,
                       metadata,
-                      plots: signatureTumorPlots,
+                      plots: signatureTumorPlots?.filter((d) =>
+                        signaturesList[mutationFilter].includes(d.id)
+                      ),
                       visible: signatureKPIMode === "byTumor",
                     }}
                   />
@@ -272,6 +273,7 @@ const mapStateToProps = (state) => ({
   totalReports: state.App.totalReports,
   metadata: state.App.metadata,
   mutationsColorPalette: state.App.settings?.mutationsColorPalette,
+  signaturesList: state.App.settings?.signaturesList,
   plots: state.App.populationMetrics,
   tumorPlots: state.App.tumorPopulationMetrics,
   signaturePlots: state.App.signatureMetrics,
