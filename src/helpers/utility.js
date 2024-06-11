@@ -658,9 +658,7 @@ export function getSignatureMetrics(
       plot.id = d;
       plot.type = "histogram";
       plot.scaleX = "linear";
-      console.log(d, populations[d]);
       plot.allData = populations[d].map((e) => +e.value);
-      console.log(d, populations[d]);
       plot.data = populations[d]
         .filter((e) =>
           tumour_type ? !e.tumor_type || e.tumor_type === tumour_type : true
