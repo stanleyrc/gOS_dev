@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import common_en from "./translations/en/common.json";
+import signatures_en from "./translations/en/signatures.json";
 
 i18n.use(initReactI18next).init({
   fallbackLng: "en",
@@ -8,6 +9,7 @@ i18n.use(initReactI18next).init({
   resources: {
     en: {
       common: common_en, // 'common' is our custom namespace
+      signatures: signatures_en, // 'signatures' is our signatures namespace
     },
   },
   interpolation: {

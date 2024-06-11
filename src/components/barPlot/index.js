@@ -113,7 +113,7 @@ class BarPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const axisX = d3.axisBottom(xScale).tickSizeOuter(0);
+    const axisX = d3.axisBottom(xScale).tickSize(3);
 
     if (xFormat) {
       axisX.tickFormat(d3.format(xFormat));
@@ -122,10 +122,10 @@ class BarPlot extends Component {
     xAxisContainer
       .call(axisX)
       .selectAll("text")
-      .attr("y", 0)
-      .attr("x", -49)
+      .attr("y", 8)
+      .attr("x", -39)
       .attr("dy", ".35em")
-      .attr("transform", "rotate(-90)")
+      .attr("transform", "rotate(-45)")
       .style("text-anchor", "start");
   }
 

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col, Switch, Space } from "antd";
+import { Row, Col } from "antd";
 import HistogramPlotPanel from "../../components/histogramPlotPanel";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
@@ -10,7 +10,7 @@ const {} = appActions;
 
 class PopulationTab extends Component {
   render() {
-    const { t, loading, plots, visible } = this.props;
+    const { t, loading, plots, visible, scope } = this.props;
 
     if (!visible) return null;
 
@@ -25,7 +25,7 @@ class PopulationTab extends Component {
             scaleX: d.scaleX,
             range: d.range,
             bandwidth: d.bandwidth,
-            title: t(`metadata.${d.id}.full`),
+            title: t(`metadata.${d.id}.full`, { ns: scope }),
             visible: d.data,
             markValue: d.markValue,
             markValueText: d.markValueText,
@@ -73,4 +73,4 @@ const mapStateToProps = (state) => ({});
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withTranslation("common")(PopulationTab));
+)(withTranslation(["common", "signatures"])(PopulationTab));

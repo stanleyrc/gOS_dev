@@ -147,6 +147,7 @@ class Home extends Component {
                       metadata,
                       plots,
                       visible: populationKPIMode === "total",
+                      scope: "common",
                     }}
                   />
                   <PopulationTab
@@ -155,6 +156,7 @@ class Home extends Component {
                       metadata,
                       plots: tumorPlots,
                       visible: populationKPIMode === "byTumor",
+                      scope: "common",
                     }}
                   />
                 </TabPane>
@@ -226,6 +228,7 @@ class Home extends Component {
                         signaturesList[mutationFilter].includes(d.id)
                       ),
                       visible: signatureKPIMode === "total",
+                      scope: "signatures",
                     }}
                   />
                   <PopulationTab
@@ -236,6 +239,7 @@ class Home extends Component {
                         signaturesList[mutationFilter].includes(d.id)
                       ),
                       visible: signatureKPIMode === "byTumor",
+                      scope: "signatures",
                     }}
                   />
                 </TabPane>
