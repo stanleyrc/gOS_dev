@@ -14,7 +14,10 @@ export function transitionStyle(inViewport) {
 }
 
 export function legendColors() {
-  return { A: "#00C801", T: "#FF0000", C: "#0000C8", G: "#D27104" };
+  // first color for x < μ - 2σ
+  // second color for |x - μ| < 2σ
+  // third color for x > μ + 2σ
+  return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
 export function nucleotideColors() {
