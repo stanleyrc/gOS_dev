@@ -17,12 +17,19 @@ const Wrapper = styled.div`
   }
 
   .x-axis-title,
-  .y-axis-title {
+  .y-axis-title,
+  .variant-legend {
     font: 12px sans-serif;
     pointer-events: none;
     user-select: none;
   }
 
+  .variant-legend {
+    font: 12px sans-serif;
+    pointer-events: none;
+    user-select: none;
+    font-weight: 500;
+  }
   .axis--y g.tick line {
     stroke: #777;
   }

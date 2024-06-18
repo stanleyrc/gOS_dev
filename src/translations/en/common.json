@@ -19,6 +19,7 @@
     "variant": "Variant",
     "tnc": "TNC",
     "mutations": "Mutations",
+    "nucleotides": "Nucleotides",
     "tags": {
       "tag1": "lower 25%",
       "tag2": "mid 50%",

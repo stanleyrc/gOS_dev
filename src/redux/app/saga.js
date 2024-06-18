@@ -12,6 +12,7 @@ import {
   getSignatureMetrics,
   sequencesToGenome,
   reportFilters,
+  nucleotideMutationText,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import { loadArrowTable, allelicToGenome } from "../../helpers/utility";
@@ -564,6 +565,7 @@ function* loadMutationCatalogData(action) {
     data.forEach((d, i) => {
       d.variant = (d.tnc.match(/\[(.*?)\]/) || [])[1];
       d.variantType = d.variant ? "sbs" : "insertionDeletion";
+      d.nucleotides = nucleotideMutationText(d.tnc);
     });
 
     properties.mutationCatalog = data.sort((a, b) =>

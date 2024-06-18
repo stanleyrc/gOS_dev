@@ -14,10 +14,18 @@ export function transitionStyle(inViewport) {
 }
 
 export function legendColors() {
-  // first color for x < μ - 2σ
-  // second color for |x - μ| < 2σ
-  // third color for x > μ + 2σ
+  return { A: "#00C801", T: "#FF0000", C: "#0000C8", G: "#D27104" };
+}
+
+export function nucleotideColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
+}
+
+export function nucleotideMutationText(nucleotideMutation) {
+  // Regular expression to match the nucleotide and mutation parts
+  const regex = /\[[^\]]*\]/g;
+
+  return nucleotideMutation.replace(regex, "").split("").join(".");
 }
 
 export function roleColorMap() {
@@ -468,6 +476,10 @@ export function reportAttributesMap() {
     signatures: "signatures",
     deletionInsertion: "deletionInsertion",
   };
+}
+
+export function mutationCatalogMetadata() {
+  return ["id", "tnc", "mutations", "variant", "nucleotides"];
 }
 
 export function reportFilters() {

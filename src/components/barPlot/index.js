@@ -3,7 +3,12 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { Legend, measureText } from "../../helpers/utility";
+import {
+  Legend,
+  measureText,
+  nucleotideMutationText,
+  mutationCatalogMetadata,
+} from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -118,14 +123,17 @@ class BarPlot extends Component {
     if (xFormat) {
       axisX.tickFormat(d3.format(xFormat));
     }
+    axisX.tickFormat(function (d, i) {
+      return nucleotideMutationText(d);
+    });
 
     xAxisContainer
       .call(axisX)
       .selectAll("text")
-      .attr("y", 8)
-      .attr("x", -39)
+      .attr("y", 0)
+      .attr("x", -23)
       .attr("dy", ".35em")
-      .attr("transform", "rotate(-45)")
+      .attr("transform", "rotate(-90)")
       .style("text-anchor", "start");
   }
 
@@ -150,7 +158,7 @@ class BarPlot extends Component {
         visible: true,
         x: xScale(d[xVariable]) + margins.tooltipGap,
         y: yScale(d[yVariable]) - margins.tooltipGap,
-        text: Object.keys(d).map((e) => {
+        text: mutationCatalogMetadata().map((e) => {
           return { label: t(`metadata.${e}`), value: d[e] };
         }),
       },
@@ -191,6 +199,18 @@ class BarPlot extends Component {
     const { tooltip } = this.state;
     const { visible, id } = tooltip;
     const svgString = new XMLSerializer().serializeToString(legend);
+
+    let variantLegendPositions = d3
+      .groups(dataPoints, (d) => d.variant)
+      .map((d) => {
+        return {
+          key: d[0],
+          pos: xScale(d[1][0][xVariable]) + xScale.bandwidth() / 2,
+          distance:
+            xScale(d[1][d[1].length - 1][xVariable]) -
+            xScale(d[1][0][xVariable]),
+        };
+      });
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
@@ -266,6 +286,35 @@ class BarPlot extends Component {
                     onMouseEnter={(e) => this.handleMouseEnter(d)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
                   />
+                ))}
+              </g>
+              <g>
+                {variantLegendPositions.map((d) => (
+                  <g
+                    transform={`translate(${[
+                      d.pos,
+                      panelHeight + 1.5 * margins.gapY,
+                    ]})`}
+                  >
+                    <polyline
+                      points={`${[0, 0]} ${[0, 5]} ${[d.distance, 5]} ${[
+                        d.distance,
+                        0,
+                      ]}`}
+                      fill="none"
+                      stroke="black"
+                    />
+                    <text
+                      textAnchor="middle"
+                      x={d.distance / 2}
+                      className="variant-legend"
+                      fill={color(d.key)}
+                      stroke={d3.rgb(color(d.key)).darker()}
+                      strokeWidth={0.3}
+                    >
+                      {d.key}
+                    </text>
+                  </g>
                 ))}
               </g>
               {visible && (
