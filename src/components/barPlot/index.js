@@ -6,7 +6,6 @@ import { withTranslation } from "react-i18next";
 import {
   Legend,
   measureText,
-  nucleotideMutationText,
   mutationCatalogMetadata,
 } from "../../helpers/utility";
 import Wrapper from "./index.style";
@@ -58,6 +57,7 @@ class BarPlot extends Component {
       yTitle,
       colorVariable,
       colorPalette,
+      legendTitles,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -81,12 +81,12 @@ class BarPlot extends Component {
     let legend, color;
 
     color = d3.scaleOrdinal(
-      Object.keys(colorPalette),
+      Object.keys(colorPalette).map((d) => legendTitles[d]),
       Object.values(colorPalette)
     );
 
     legend = Legend(color, {
-      width: Object.keys(colorPalette).length * 66,
+      width: Object.keys(colorPalette).length * 86,
       title: legendTitle,
       tickFormat: "0.0f",
     });
@@ -108,11 +108,12 @@ class BarPlot extends Component {
       xVariable,
       yVariable,
       colorVariable,
+      legendTitles,
     };
   }
 
   renderXAxis() {
-    const { xScale, xFormat } = this.getPlotConfiguration();
+    const { xScale, xFormat, dataPoints } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -124,7 +125,7 @@ class BarPlot extends Component {
       axisX.tickFormat(d3.format(xFormat));
     }
     axisX.tickFormat(function (d, i) {
-      return nucleotideMutationText(d);
+      return dataPoints[i].label;
     });
 
     xAxisContainer
@@ -194,6 +195,7 @@ class BarPlot extends Component {
       xVariable,
       yVariable,
       colorVariable,
+      legendTitles,
     } = this.getPlotConfiguration();
 
     const { tooltip } = this.state;
@@ -201,10 +203,10 @@ class BarPlot extends Component {
     const svgString = new XMLSerializer().serializeToString(legend);
 
     let variantLegendPositions = d3
-      .groups(dataPoints, (d) => d.variant)
+      .groups(dataPoints, (d) => d.mutationType)
       .map((d) => {
         return {
-          key: d[0],
+          key: legendTitles[d[0]],
           pos: xScale(d[1][0][xVariable]) + xScale.bandwidth() / 2,
           distance:
             xScale(d[1][d[1].length - 1][xVariable]) -
@@ -296,14 +298,16 @@ class BarPlot extends Component {
                       panelHeight + 1.5 * margins.gapY,
                     ]})`}
                   >
-                    <polyline
-                      points={`${[0, 0]} ${[0, 5]} ${[d.distance, 5]} ${[
-                        d.distance,
-                        0,
-                      ]}`}
-                      fill="none"
-                      stroke="black"
-                    />
+                    {d.distance > 0 && (
+                      <polyline
+                        points={`${[0, 0]} ${[0, 5]} ${[d.distance, 5]} ${[
+                          d.distance,
+                          0,
+                        ]}`}
+                        fill="none"
+                        stroke="black"
+                      />
+                    )}
                     <text
                       textAnchor="middle"
                       x={d.distance / 2}

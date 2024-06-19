@@ -63,6 +63,7 @@ class BarPlotPanel extends Component {
       renderOutsideViewPort,
       visible,
       colorPalette,
+      legendTitles,
       segmentedOptions,
       handleSegmentedChange,
     } = this.props;
@@ -129,6 +130,7 @@ class BarPlotPanel extends Component {
                               yRange,
                               colorVariable,
                               colorPalette,
+                              legendTitles,
                             }}
                           />
                         </Col>

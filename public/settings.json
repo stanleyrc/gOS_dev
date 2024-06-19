@@ -727,9 +727,13 @@
     "T>A": "#BFBFBF",
     "T>C": "#9ACD34",
     "T>G": "#EEB4B3",
-    "Del-MH": "#BA56D4",
-    "Del-MS": "#A020EF",
-    "Del-Other": "#7B378C",
-    "Insertion": "#5E468A"
+    "1DelC": "#FDBE6D",
+    "1DelT": "#FC7F03",
+    "1InsC": "#ACDB88",
+    "1InsT": "#38A02E",
+    "longDel": "#BE1819",
+    "longIns": "#1A65AC",
+    "delMH": "#614099",
+    "delComplex": "#E3E1EB"
   }
 }

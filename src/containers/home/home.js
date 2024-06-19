@@ -97,6 +97,14 @@ class Home extends Component {
           ])
         )
       : {};
+    let legendPaletteTitles = mutationsColorPalette
+      ? Object.fromEntries(
+          (mutationFilterTypes()[mutationFilter] || []).map((key) => [
+            key,
+            t(`metadata.mutation-catalog-titles.${key}`),
+          ])
+        )
+      : {};
     let catalog = mutationCatalog.filter(
       (d) => d.variantType === mutationFilter
     );
@@ -182,13 +190,14 @@ class Home extends Component {
                       title={t("components.mutation-catalog-panel.title")}
                       legendTitle={t("metadata.mutation-type")}
                       xTitle={""}
-                      xVariable={"tnc"}
+                      xVariable={"type"}
                       xFormat={null}
                       yTitle={t("components.mutation-catalog-panel.y-title")}
                       yVariable={"mutations"}
                       yFormat={"~s"}
-                      colorVariable={"variant"}
+                      colorVariable={"mutationType"}
                       colorPalette={colorPalette}
+                      legendTitles={legendPaletteTitles}
                       segmentedOptions={Object.keys(mutationFilterTypes()).map(
                         (d) => {
                           return {

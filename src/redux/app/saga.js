@@ -13,6 +13,7 @@ import {
   sequencesToGenome,
   reportFilters,
   nucleotideMutationText,
+  deletionInsertionMutationVariant,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import { loadArrowTable, allelicToGenome } from "../../helpers/utility";
@@ -556,25 +557,46 @@ function* loadMutationCatalogData(action) {
     mutationCatalog: [],
   };
 
-  try {
-    let responseMutationCatalog = yield call(
-      axios.get,
-      `data/${report}/mutation_catalog.json`
-    );
-    let data = responseMutationCatalog.data.data || [];
-    data.forEach((d, i) => {
-      d.variant = (d.tnc.match(/\[(.*?)\]/) || [])[1];
-      d.variantType = d.variant ? "sbs" : "insertionDeletion";
-      d.nucleotides = nucleotideMutationText(d.tnc);
+  yield axios
+    .all(
+      ["", "id_"].map((e) =>
+        axios.get(`data/${report}/${e}mutation_catalog.json`)
+      )
+    )
+    .then(
+      axios.spread((...responses) => {
+        responses.forEach((d, i) => {
+          if (i < 1) {
+            let data = d.data.data || [];
+            data.forEach((d, i) => {
+              d.type = d.tnc;
+              d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
+              d.variantType = "sbs";
+              d.label = nucleotideMutationText(d.tnc);
+              properties.mutationCatalog.push(d);
+            });
+          } else {
+            let data = d.data.data || [];
+            data.forEach((d, i) => {
+              let { variant, label } = deletionInsertionMutationVariant(
+                d.insdel
+              );
+              d.type = d.insdel;
+              d.mutationType = variant;
+              d.variantType = "insertionDeletion";
+              d.label = label;
+              properties.mutationCatalog.push(d);
+            });
+          }
+        });
+        properties.mutationCatalog = properties.mutationCatalog.sort((a, b) =>
+          d3.ascending(a.mutationType, b.mutationType)
+        );
+      })
+    )
+    .catch((errors) => {
+      console.log("got errors on loading mutation catalogs", errors);
     });
-
-    properties.mutationCatalog = data.sort((a, b) =>
-      d3.ascending(a.variant, b.variant)
-    );
-  } catch (err) {
-    console.log(err);
-    properties.mutationCatalog = [];
-  }
 
   yield put({
     type: actions.REPORT_DATA_LOADED,

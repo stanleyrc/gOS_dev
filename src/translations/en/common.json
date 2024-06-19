@@ -15,7 +15,10 @@
   },
   "metadata": {
     "id": "id",
+    "type": "Type",
+    "label": "label",
     "mutation-type": "Mutation Type",
+    "mutationType": "Mutation Type",
     "variant": "Variant",
     "tnc": "TNC",
     "mutations": "Mutations",
@@ -102,6 +105,22 @@
       "x0": "From",
       "x1": "To",
       "length": "Count"
+    },
+    "mutation-catalog-titles": {
+      "C>A": "C > A",
+      "C>G": "C > G",
+      "C>T": "C > T",
+      "T>A": "T > A",
+      "T>C": "T > C",
+      "T>G": "T > G",
+      "1DelC": "1bp Deletion C",
+      "1DelT": "1bp Deletion T",
+      "1InsC": "1bp Insertion C",
+      "1InsT": "1bp Insertion T",
+      "longDel": ">1bp Deletion",
+      "longIns": ">1bp Insertion",
+      "delMH": "Microhomology",
+      "delComplex": "Complex"
     }
   },
   "containers": {

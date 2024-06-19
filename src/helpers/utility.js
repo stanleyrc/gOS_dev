@@ -24,6 +24,28 @@ export function nucleotideColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
+export function deletionInsertionMutationVariant(input) {
+  if (input.includes("1:Del:C")) {
+    return { variant: "1DelC", label: input.slice(-1) };
+  } else if (input.includes("1:Del:T")) {
+    return { variant: "1DelT", label: input.slice(-1) };
+  } else if (input.includes("1:Ins:C")) {
+    return { variant: "1InsC", label: input.slice(-1) };
+  } else if (input.includes("1:Ins:T")) {
+    return { variant: "1InsT", label: input.slice(-1) };
+  } else if (input.includes("long_Del")) {
+    return { variant: "longDel", label: "5+" };
+  } else if (input.includes("long_Ins")) {
+    return { variant: "longIns", label: "5+" };
+  } else if (input.includes("MH")) {
+    return { variant: "delMH", label: "5+" };
+  } else if (input.includes("complex")) {
+    return { variant: "delComplex", label: "5+" };
+  } else {
+    return { variant: "NA", label: "NA" };
+  }
+}
+
 export function nucleotideMutationText(nucleotideMutation) {
   // Regular expression to match the nucleotide and mutation parts
   const regex = /\[[^\]]*\]/g;
@@ -482,7 +504,7 @@ export function reportAttributesMap() {
 }
 
 export function mutationCatalogMetadata() {
-  return ["id", "tnc", "mutations", "variant", "nucleotides"];
+  return ["id", "type", "mutations", "mutationType", "label"];
 }
 
 export function reportFilters() {
@@ -492,7 +514,16 @@ export function reportFilters() {
 export function mutationFilterTypes() {
   return {
     sbs: ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"],
-    insertionDeletion: ["Del-MH", "Del-MS", "Del-Other", "Insertion"],
+    insertionDeletion: [
+      "1DelC",
+      "1DelT",
+      "1InsC",
+      "1InsT",
+      "longDel",
+      "longIns",
+      "delMH",
+      "delComplex",
+    ],
   };
 }
 
