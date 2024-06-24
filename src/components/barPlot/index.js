@@ -78,14 +78,19 @@ class BarPlot extends Component {
       .range([panelHeight, 0])
       .nice();
 
-    let legend, color;
+    let legend, color, colorLegendTitles;
 
     color = d3.scaleOrdinal(
+      Object.keys(colorPalette),
+      Object.values(colorPalette)
+    );
+
+    colorLegendTitles = d3.scaleOrdinal(
       Object.keys(colorPalette).map((d) => legendTitles[d]),
       Object.values(colorPalette)
     );
 
-    legend = Legend(color, {
+    legend = Legend(colorLegendTitles, {
       width: Object.keys(colorPalette).length * 86,
       title: legendTitle,
       tickFormat: "0.0f",
@@ -109,6 +114,7 @@ class BarPlot extends Component {
       yVariable,
       colorVariable,
       legendTitles,
+      colorLegendTitles,
     };
   }
 
@@ -196,6 +202,7 @@ class BarPlot extends Component {
       yVariable,
       colorVariable,
       legendTitles,
+      colorLegendTitles,
     } = this.getPlotConfiguration();
 
     const { tooltip } = this.state;
@@ -285,6 +292,9 @@ class BarPlot extends Component {
                         ? "#ff7f0e"
                         : color(d[colorVariable])
                     }
+                    dataKey={d.mutationType}
+                    dataColorKey={d[colorVariable]}
+                    dataFillKey={color(d[colorVariable])}
                     onMouseEnter={(e) => this.handleMouseEnter(d)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
                   />
@@ -312,8 +322,8 @@ class BarPlot extends Component {
                       textAnchor="middle"
                       x={d.distance / 2}
                       className="variant-legend"
-                      fill={color(d.key)}
-                      stroke={d3.rgb(color(d.key)).darker()}
+                      fill={colorLegendTitles(d.key)}
+                      stroke={d3.rgb(colorLegendTitles(d.key)).darker()}
                       strokeWidth={0.3}
                     >
                       {d.key}
