@@ -325,6 +325,7 @@ class BarPlot extends Component {
                       fill={colorLegendTitles(d.key)}
                       stroke={d3.rgb(colorLegendTitles(d.key)).darker()}
                       strokeWidth={0.3}
+                      transform={`rotate(${d.distance > 0 ? 0 : -45})`}
                     >
                       {d.key}
                     </text>

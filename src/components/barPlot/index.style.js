@@ -25,7 +25,7 @@ const Wrapper = styled.div`
   }
 
   .variant-legend {
-    font: 12px sans-serif;
+    font: 10px sans-serif;
     pointer-events: none;
     user-select: none;
     font-weight: 500;
