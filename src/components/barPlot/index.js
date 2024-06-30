@@ -137,11 +137,11 @@ class BarPlot extends Component {
     xAxisContainer
       .call(axisX)
       .selectAll("text")
-      .attr("y", 0)
-      .attr("x", -23)
+      .attr("y", 10)
+      .attr("x", -10)
       .attr("dy", ".35em")
-      .attr("transform", "rotate(-90)")
-      .style("text-anchor", "start");
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "middle");
   }
 
   renderYAxis() {
