@@ -25,6 +25,7 @@ class Home extends Component {
   state = {
     populationKPIMode: "total",
     signatureKPIMode: "total",
+    signatureFractionMode: "fraction",
     mutationFilter: "sbs",
   };
 
@@ -50,8 +51,12 @@ class Home extends Component {
     this.setState({ populationKPIMode });
   };
 
-  handleSignatureKPIsSegmentedChange = (signatureKPIMode) => {
+  handleSignatureKPIsTumourSegmentedChange = (signatureKPIMode) => {
     this.setState({ signatureKPIMode });
+  };
+
+  handleSignatureKPIsFractionSegmentedChange = (signatureFractionMode) => {
+    this.setState({ signatureFractionMode });
   };
 
   handleMutationCatalogSegmentedChange = (mutationFilter) => {
@@ -88,7 +93,12 @@ class Home extends Component {
     } = this.props;
     if (!metadata) return null;
     const { beta, gamma } = metadata;
-    const { populationKPIMode, signatureKPIMode, mutationFilter } = this.state;
+    const {
+      populationKPIMode,
+      signatureKPIMode,
+      signatureFractionMode,
+      mutationFilter,
+    } = this.state;
     let colorPalette = mutationsColorPalette
       ? Object.fromEntries(
           (mutationFilterTypes()[mutationFilter] || []).map((key) => [
@@ -108,6 +118,7 @@ class Home extends Component {
     let catalog = mutationCatalog.filter(
       (d) => d.variantType === mutationFilter
     );
+
     return (
       <HomeWrapper>
         <Skeleton active loading={loading}>
@@ -214,28 +225,47 @@ class Home extends Component {
                     />
                   </Affix>
                   <br />
-                  <Segmented
-                    options={[
-                      {
-                        label: t("components.segmented-filter.total"),
-                        value: "total",
-                      },
-                      {
-                        label: t("components.segmented-filter.tumor", {
-                          tumor: metadata.tumor,
-                        }),
-                        value: "byTumor",
-                      },
-                    ]}
-                    onChange={(d) => this.handleSignatureKPIsSegmentedChange(d)}
-                  />
+                  <Space>
+                    <Segmented
+                      options={[
+                        {
+                          label: t("components.segmented-filter.total"),
+                          value: "total",
+                        },
+                        {
+                          label: t("components.segmented-filter.tumor", {
+                            tumor: metadata.tumor,
+                          }),
+                          value: "byTumor",
+                        },
+                      ]}
+                      onChange={(d) =>
+                        this.handleSignatureKPIsTumourSegmentedChange(d)
+                      }
+                    />
+                    <Segmented
+                      options={[
+                        {
+                          label: t("components.segmented-filter.fraction"),
+                          value: "fraction",
+                        },
+                        {
+                          label: t("components.segmented-filter.count"),
+                          value: "count",
+                        },
+                      ]}
+                      onChange={(d) =>
+                        this.handleSignatureKPIsFractionSegmentedChange(d)
+                      }
+                    />
+                  </Space>
+
                   <PopulationTab
                     {...{
                       loading,
                       metadata,
-                      plots: signaturePlots?.filter((d) =>
-                        signaturesList[mutationFilter].includes(d.id)
-                      ),
+                      plots:
+                        signaturePlots[mutationFilter][signatureFractionMode],
                       visible: signatureKPIMode === "total",
                       scope: "signatures",
                     }}
@@ -244,9 +274,10 @@ class Home extends Component {
                     {...{
                       loading,
                       metadata,
-                      plots: signatureTumorPlots?.filter((d) =>
-                        signaturesList[mutationFilter].includes(d.id)
-                      ),
+                      plots:
+                        signatureTumorPlots[mutationFilter][
+                          signatureFractionMode
+                        ],
                       visible: signatureKPIMode === "byTumor",
                       scope: "signatures",
                     }}

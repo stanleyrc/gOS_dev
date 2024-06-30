@@ -439,42 +439,49 @@ export function plotTypes() {
       tumor_type: "tumor_type",
       format: ".2%",
       scaleX: "linear",
+      scaleXFormat: "0.2f",
     },
     snvCount: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ",",
       scaleX: "log",
+      scaleXFormat: "~s",
     },
     svCount: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ",",
       scaleX: "log",
+      scaleXFormat: "~s",
     },
     tmb: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ",",
       scaleX: "log",
+      scaleXFormat: "~s",
     },
     lohFraction: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ".2%",
       scaleX: "linear",
+      scaleXFormat: "0.2f",
     },
     purity: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ".2f",
       scaleX: "linear",
+      scaleXFormat: "0.2f",
     },
     ploidy: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ".2f",
       scaleX: "linear",
+      scaleXFormat: "0.2f",
     },
   };
 }
@@ -500,6 +507,10 @@ export function reportAttributesMap() {
     snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
     signatures: "signatures",
     deletionInsertion: "deletionInsertion",
+    sigprofiler_indel_fraction: "sigprofiler_indel_fraction",
+    sigprofiler_indel_count: "sigprofiler_indel_count",
+    sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
+    sigprofiler_sbs_count: "sigprofiler_sbs_count",
   };
 }
 
@@ -514,7 +525,7 @@ export function reportFilters() {
 export function mutationFilterTypes() {
   return {
     sbs: ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"],
-    insertionDeletion: [
+    indel: [
       "1DelC",
       "1DelT",
       "1InsC",
@@ -677,6 +688,7 @@ export function getPopulationMetrics(
       d3.max([d3.min(plot.allData), 0.01]),
       d3.quantile(plot.allData, 0.99),
     ];
+    plot.format = plotTypes()[d].scaleXFormat;
     if (metadata[d]) {
       plot.markValue = metadata[d];
       plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
@@ -693,21 +705,28 @@ export function getPopulationMetrics(
 
 export function getSignatureMetrics(
   populations,
-  metadata = { signatures: {} },
-  tumour_type = null
+  props = {
+    range: null,
+    markData: {},
+    tumorType: null,
+    format: "0.4f",
+    scaleX: "linear",
+    type: "histogram",
+  }
 ) {
+  const { range, markData, tumorType, type, format, scaleX } = props;
   // Extract the data from the responses and store it in an object
   return Object.keys(populations)
     .map((d, i) => {
       let plot = {};
       let cutoff = Infinity;
       plot.id = d;
-      plot.type = "histogram";
-      plot.scaleX = "linear";
+      plot.type = type;
+      plot.scaleX = scaleX;
       plot.allData = populations[d].map((e) => +e.value);
       plot.data = populations[d]
         .filter((e) =>
-          tumour_type ? !e.tumor_type || e.tumor_type === tumour_type : true
+          tumorType ? !e.tumor_type || e.tumor_type === tumorType : true
         )
         .map((d) => +d.value)
         .filter((d) => d < cutoff)
@@ -719,10 +738,16 @@ export function getSignatureMetrics(
       plot.q1 = d3.quantile(plot.data, 0.25);
       plot.q3 = d3.quantile(plot.data, 0.75);
       plot.q99 = d3.quantile(plot.data, 0.99);
-      plot.range = [0, 1];
-      if (Object.keys(metadata?.signatures).includes(d)) {
-        plot.markValue = metadata?.signatures[d];
-        plot.markValueText = d3.format(".4f")(metadata?.signatures[d]);
+      let minValue = scaleX === "log" ? 1 : 0;
+      let maxValue = d3.max([
+        plot.allData.find((e) => e > 0),
+        d3.quantile(plot.data, 0.8),
+      ]);
+      plot.range = range ? range : [minValue, maxValue];
+      plot.format = format;
+      if (Object.keys(markData).includes(d)) {
+        plot.markValue = +markData[d];
+        plot.markValueText = d3.format(format)(markData[d]);
         plot.colorMarker =
           plot.markValue < plot.q1
             ? legendColors()[0]

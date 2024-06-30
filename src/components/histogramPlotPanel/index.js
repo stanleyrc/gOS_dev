@@ -48,6 +48,7 @@ class HistogramPlotPanel extends Component {
       markValue,
       markValueText,
       colorMarker,
+      format,
       title,
       inViewport,
       renderOutsideViewPort,
@@ -108,6 +109,7 @@ class HistogramPlotPanel extends Component {
                               markValue,
                               markValueText,
                               colorMarker,
+                              format
                             }}
                           />
                         </Col>

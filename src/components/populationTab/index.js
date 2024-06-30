@@ -30,6 +30,7 @@ class PopulationTab extends Component {
             markValue: d.markValue,
             markValueText: d.markValueText,
             colorMarker: d.colorMarker,
+            format: d.format,
             loading,
           }}
         />

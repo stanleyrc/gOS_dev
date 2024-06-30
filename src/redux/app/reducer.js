@@ -64,7 +64,18 @@ const initState = {
   coverageData: null,
   hetsnpsData: null,
   renderOutsideViewPort: true,
-  signatures: {},
+  signatures: {
+    indel: { count: [], fraction: [] },
+    sbs: { count: [], fraction: [] },
+  },
+  signatureMetrics: {
+    indel: { count: [], fraction: [] },
+    sbs: { count: [], fraction: [] },
+  },
+  tumorSignatureMetrics: {
+    indel: { count: [], fraction: [] },
+    sbs: { count: [], fraction: [] },
+  },
 };
 
 export default function appReducer(state = initState, action) {

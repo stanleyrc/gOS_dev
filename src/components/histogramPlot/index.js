@@ -66,10 +66,10 @@ class HistogramPlot extends Component {
       markValueText,
       q1,
       q3,
-      q99,
       range,
       scaleX,
       bandwidth,
+      format,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -120,11 +120,12 @@ class HistogramPlot extends Component {
       q3,
       scaleX,
       density,
+      format,
     };
   }
 
   renderXAxis() {
-    const { xScale, q1, q3, scaleX } = this.getPlotConfiguration();
+    const { xScale, q1, q3, scaleX, format } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -133,7 +134,7 @@ class HistogramPlot extends Component {
     const axisX = d3
       .axisBottom(xScale)
       .tickSize(4)
-      .tickFormat(scaleX === "log" ? d3.format("~s") : d3.format(".3f"));
+      .tickFormat(d3.format(format));
 
     xAxisContainer.call(axisX);
 
@@ -328,6 +329,7 @@ HistogramPlot.propTypes = {
 HistogramPlot.defaultProps = {
   data: [],
   showAxisY: false,
+  format: "0.3f",
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

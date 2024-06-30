@@ -150,7 +150,9 @@
     },
     "segmented-filter": {
       "total": "All Tumor Types",
-      "tumor": "Tumor Type {{tumor}}"
+      "tumor": "Tumor Type {{tumor}}",
+      "fraction": "By Fraction",
+      "count": "By Count"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {
@@ -222,7 +224,7 @@
       "x-title": "TNC →",
       "segmented-filter": {
         "sbs": "Base mutations",
-        "insertionDeletion": "Insertion/Deletion"
+        "indel": "Insertion/Deletion"
       }
     },
     "coverage-panel": {

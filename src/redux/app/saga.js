@@ -10,6 +10,7 @@ import {
   plotTypes,
   getPopulationMetrics,
   getSignatureMetrics,
+  assignMarkOnSignatureMetrics,
   sequencesToGenome,
   reportFilters,
   nucleotideMutationText,
@@ -95,12 +96,17 @@ function* bootApplication(action) {
   let signatures = {};
 
   let signaturesList = [];
-  Object.keys(responseSettings.data.signaturesList).forEach((type) => {
-    responseSettings.data.signaturesList[type].forEach((d) => {
-      signaturesList.push({
-        type: type,
-        name: d,
-        path: `common/signatures/${type}/${d}.json`,
+  responseSettings.data.signaturesList.types.forEach((type) => {
+    signatures[type] = {};
+    responseSettings.data.signaturesList.modes.forEach((mode) => {
+      signatures[type][mode] = {};
+      responseSettings.data.signaturesList.datafiles[type].forEach((d) => {
+        signaturesList.push({
+          type: type,
+          mode: mode,
+          name: d,
+          path: `common/signatures/${responseSettings.data.signaturesList.folder}_${type}_${mode}/${d}.json`,
+        });
       });
     });
   });
@@ -109,7 +115,10 @@ function* bootApplication(action) {
     .then(
       axios.spread((...responses) => {
         responses.forEach(
-          (d, i) => (signatures[signaturesList[i].name] = d.data)
+          (d, i) =>
+            (signatures[signaturesList[i].type][signaturesList[i].mode][
+              signaturesList[i].name
+            ] = d.data)
         );
       })
     )
@@ -117,7 +126,15 @@ function* bootApplication(action) {
       console.log("got errors on loading signatures", errors);
     });
 
-  let signatureMetrics = getSignatureMetrics(signatures);
+  let signatureMetrics = {};
+  responseSettings.data.signaturesList.types.forEach((type) => {
+    signatureMetrics[type] = {};
+    responseSettings.data.signaturesList.modes.forEach((mode) => {
+      signatureMetrics[type][mode] = getSignatureMetrics(
+        signatures[type][mode]
+      );
+    });
+  });
 
   // if all selected files are have the same reference
   let selectedCoordinate = "hg19";
@@ -229,7 +246,12 @@ function* followUpBootApplication(action) {
 function* selectReport(action) {
   const currentState = yield select(getCurrentState);
   let { report } = action;
-  let properties = { metadata: {}, filteredEvents: [] };
+  let properties = {
+    metadata: {},
+    filteredEvents: [],
+    signatureMetrics: [],
+    tumorSignatureMetrics: [],
+  };
   Object.keys(reportAttributesMap()).forEach((key) => {
     properties.metadata[reportAttributesMap()[key]] = null;
   });
@@ -264,17 +286,39 @@ function* selectReport(action) {
       properties.metadata.tumor
     );
 
-    properties.signatureMetrics = getSignatureMetrics(
-      currentState.App.signatures,
-      properties.metadata
-    );
+    Object.keys(currentState.App.signatures).forEach((type) => {
+      properties.signatureMetrics[type] = {};
+      Object.keys(currentState.App.signatures[type]).forEach((mode) => {
+        properties.signatureMetrics[type][mode] = getSignatureMetrics(
+          currentState.App.signatures[type][mode],
+          {
+            markData: properties.metadata[`sigprofiler_${type}_${mode}`],
+            format: mode === "fraction" ? ".4f" : ",",
+            range: mode === "fraction" ? [0, 1] : null,
+            scaleX: "linear",
+            type: "histogram",
+          }
+        );
+      });
+    });
 
-    properties.tumorSignatureMetrics = getSignatureMetrics(
-      currentState.App.signatures,
-      properties.metadata,
-      properties.metadata.tumor
-    );
+    Object.keys(currentState.App.signatures).forEach((type) => {
+      properties.tumorSignatureMetrics[type] = {};
+      Object.keys(currentState.App.signatures[type]).forEach((mode) => {
+        properties.tumorSignatureMetrics[type][mode] = getSignatureMetrics(
+          currentState.App.signatures[type][mode],
+          {
+            markData: properties.metadata[`sigprofiler_${type}_${mode}`],
+            tumorType: properties.metadata.tumor,
+            format: mode === "fraction" ? ".4f" : ",",
+            range: mode === "fraction" ? [0, 1] : null,
+          }
+        );
+      });
+    });
   }
+
+  console.log(properties.signatureMetrics);
   yield put({
     type: actions.REPORT_SELECTED,
     properties,
@@ -583,7 +627,7 @@ function* loadMutationCatalogData(action) {
               );
               d.type = d.insdel;
               d.mutationType = variant;
-              d.variantType = "insertionDeletion";
+              d.variantType = "indel";
               d.label = label;
               properties.mutationCatalog.push(d);
             });
