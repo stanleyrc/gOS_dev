@@ -318,7 +318,6 @@ function* selectReport(action) {
     });
   }
 
-  console.log(properties.signatureMetrics);
   yield put({
     type: actions.REPORT_SELECTED,
     properties,
