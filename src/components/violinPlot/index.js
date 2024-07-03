@@ -51,7 +51,7 @@ class ViolinPlot extends Component {
       ];
 
       let plotScale = d3.scaleLinear();
-      if (plot.scaleX === "log") {
+      if (plot.scaleX === "log" && density.length > 0) {
         plotScale = d3.scaleLog();
         density[0][0] = 0.1;
         extent[0] = d3.max([extent[0], markValue, 1]);

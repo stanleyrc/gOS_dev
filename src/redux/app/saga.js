@@ -278,6 +278,7 @@ function* selectReport(action) {
       properties.metadata.tumor
     );
 
+    console.log(properties);
     Object.keys(currentState.App.signatures).forEach((type) => {
       properties.signatureMetrics[type] = {};
       Object.keys(currentState.App.signatures[type]).forEach((mode) => {

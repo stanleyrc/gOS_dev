@@ -669,10 +669,7 @@ export function getPopulationMetrics(
     plot.allData = populations[d].map((e) => +e.value);
     plot.data = populations[d]
       .filter((e) =>
-        tumour_type
-          ? !e[plotTypes()[d].tumor_type] ||
-            e[plotTypes()[d].tumor_type] === tumour_type
-          : true
+        tumour_type ? e[plotTypes()[d].tumor_type] === tumour_type : true
       )
       .map((e) => +e.value)
       .filter((e) => e < cutoff)
