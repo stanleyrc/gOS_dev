@@ -267,14 +267,6 @@ function* selectReport(action) {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
     });
 
-    Object.keys(properties.metadata?.deletionInsertion).map((d) => {
-      properties.metadata.signatures[d] =
-        properties.metadata?.deletionInsertion[d];
-    });
-
-    // Optionally, remove the deletionInsertion property if no longer needed
-    delete properties.metadata.deletionInsertion;
-
     properties.populationMetrics = getPopulationMetrics(
       currentState.App.populations,
       properties.metadata
