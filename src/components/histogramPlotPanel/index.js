@@ -3,7 +3,16 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
+import {
+  Card,
+  Space,
+  Tooltip,
+  Button,
+  message,
+  Row,
+  Col,
+  Typography,
+} from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { TbChartHistogram } from "react-icons/tb";
@@ -11,6 +20,8 @@ import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import HistogramPlot from "../histogramPlot";
+
+const { Text } = Typography;
 
 const margins = {
   padding: 0,
@@ -66,7 +77,26 @@ class HistogramPlotPanel extends Component {
               <span role="img" className="anticon anticon-dashboard">
                 <TbChartHistogram />
               </span>
-              <span className="ant-pro-menu-item-title">{title}</span>
+              <span className="ant-pro-menu-item-title">
+                <Text
+                  style={
+                    true
+                      ? {
+                          width: 500,
+                        }
+                      : undefined
+                  }
+                  ellipsis={
+                    true
+                      ? {
+                          tooltip: title,
+                        }
+                      : false
+                  }
+                >
+                  {title}
+                </Text>
+              </span>
             </Space>
           }
           extra={
@@ -109,7 +139,7 @@ class HistogramPlotPanel extends Component {
                               markValue,
                               markValueText,
                               colorMarker,
-                              format
+                              format,
                             }}
                           />
                         </Col>
