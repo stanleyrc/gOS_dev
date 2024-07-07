@@ -194,8 +194,8 @@
       }
     },
     "variantQc-panel": {
-      "title": "Somatic EVS vs Tumor VAF density plot",
-      "y-title": "↑ Somatic EVS",
+      "title": "Tumor ABQ vs Tumor VAF density plot",
+      "y-title": "↑ Tumor ABQ",
       "x-title": "Tumor VAF →",
       "plot-label": "Show as:",
       "scatterplot": "Scatter Plot",

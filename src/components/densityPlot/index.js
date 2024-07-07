@@ -340,7 +340,7 @@ DensityPlot.defaultProps = {
   colorScheme: d3.schemeBlues,
   colorSchemeSeq: d3.interpolateBlues,
   contourBandwidth: 10,
-  contourThresholdCount: 1000,
+  contourThresholdCount: 500,
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

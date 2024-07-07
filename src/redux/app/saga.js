@@ -278,7 +278,6 @@ function* selectReport(action) {
       properties.metadata.tumor
     );
 
-    console.log(properties);
     Object.keys(currentState.App.signatures).forEach((type) => {
       properties.signatureMetrics[type] = {};
       Object.keys(currentState.App.signatures[type]).forEach((mode) => {
@@ -543,26 +542,6 @@ function* loadGenomeData(action) {
   });
 }
 
-function* loadVariantQcData(action) {
-  const currentState = yield select(getCurrentState);
-  const { report } = currentState.App;
-
-  let properties = {
-    variantQC: [],
-  };
-  let responseVartiantQC = yield call(
-    axios.get,
-    `data/${report}/strelka.qc.json`
-  );
-
-  properties.variantQC = responseVartiantQC.data || [];
-
-  yield put({
-    type: actions.REPORT_DATA_LOADED,
-    properties,
-  });
-}
-
 function* loadSageQcData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
@@ -654,7 +633,6 @@ function* actionWatcher() {
   yield takeEvery(actions.REPORT_SELECTED, loadAllelicData);
   yield takeEvery(actions.REPORT_SELECTED, loadMutationsData);
   yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
-  yield takeEvery(actions.REPORT_SELECTED, loadVariantQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadSageQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadMutationCatalogData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
