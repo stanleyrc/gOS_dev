@@ -10,7 +10,6 @@ import {
   plotTypes,
   getPopulationMetrics,
   getSignatureMetrics,
-  assignMarkOnSignatureMetrics,
   sequencesToGenome,
   reportFilters,
   nucleotideMutationText,
@@ -358,19 +357,24 @@ function* loadFilteredEventsData(action) {
 
   let properties = {};
 
-  let responseReportFilteredEvents = yield call(
-    axios.get,
-    `data/${report}/filtered.events.json`
-  );
+  try {
+    let responseReportFilteredEvents = yield call(
+      axios.get,
+      `data/${report}/filtered.events.json`
+    );
 
-  properties.filteredEvents = transformFilteredEventAttributes(
-    responseReportFilteredEvents.data || []
-  );
+    properties.filteredEvents = transformFilteredEventAttributes(
+      responseReportFilteredEvents.data || []
+    );
 
-  properties.selectedFilteredEvent = properties.filteredEvents.find(
-    (e) =>
-      e.gene === new URL(decodeURI(document.location)).searchParams.get("gene")
-  );
+    properties.selectedFilteredEvent = properties.filteredEvents.find(
+      (e) =>
+        e.gene ===
+        new URL(decodeURI(document.location)).searchParams.get("gene")
+    );
+  } catch (err) {
+    console.log(err);
+  }
 
   yield put({
     type: actions.REPORT_DATA_LOADED,
@@ -391,12 +395,19 @@ function* loadFilteredEvent(action) {
 function* loadCoverageData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
-  let coveragePlot = {
-    path: `data/${report}/coverage.arrow`,
-    data: null,
-  };
-  yield call(fetchArrowData, coveragePlot);
-  let properties = { coverageData: coveragePlot.data };
+
+  let properties = { coverageData: null };
+  try {
+    let coveragePlot = {
+      path: `data/${report}/coverage.arrow`,
+      data: null,
+    };
+    yield call(fetchArrowData, coveragePlot);
+    properties = { coverageData: coveragePlot.data };
+  } catch (err) {
+    console.log(err);
+  }
+
   yield put({
     type: actions.REPORT_DATA_LOADED,
     properties,
@@ -407,13 +418,20 @@ function* loadHetSnpsData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
 
-  let hetsnpsPlot = {
-    path: `data/${report}/hetsnps.arrow`,
-    data: null,
-  };
-  yield call(fetchArrowData, hetsnpsPlot);
+  let properties = { hetsnpsData: null };
 
-  let properties = { hetsnpsData: hetsnpsPlot.data };
+  try {
+    let hetsnpsPlot = {
+      path: `data/${report}/hetsnps.arrow`,
+      data: null,
+    };
+    yield call(fetchArrowData, hetsnpsPlot);
+
+    properties = { hetsnpsData: hetsnpsPlot.data };
+  } catch (err) {
+    console.log(err);
+  }
+
   yield put({
     type: actions.REPORT_DATA_LOADED,
     properties,
@@ -424,17 +442,30 @@ function* loadPPFitData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
 
-  let responsePPfitData = yield call(axios.get, `data/${report}/ppfit.json`);
-
   let properties = {
-    ppfit: responsePPfitData.data
-      ? sequencesToGenome(responsePPfitData.data)
-      : {
-          settings: {},
-          intervals: [],
-          connections: [],
-        },
+    ppfit: {
+      settings: {},
+      intervals: [],
+      connections: [],
+    },
   };
+
+  try {
+    let responsePPfitData = yield call(axios.get, `data/${report}/ppfit.json`);
+
+    properties = {
+      ppfit: responsePPfitData.data
+        ? sequencesToGenome(responsePPfitData.data)
+        : {
+            settings: {},
+            intervals: [],
+            connections: [],
+          },
+    };
+  } catch (err) {
+    console.log(err);
+  }
+
   yield put({
     type: actions.REPORT_DATA_LOADED,
     properties,
@@ -445,13 +476,22 @@ function* loadPPFitImageData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
 
-  let responsePPFit = yield call(axios.get, `data/${report}/ppfit.png`, {
-    responseType: "blob",
-  });
-
   let properties = {
-    ppFitImage: responsePPFit.data,
+    ppFitImage: null,
   };
+
+  try {
+    let responsePPFit = yield call(axios.get, `data/${report}/ppfit.png`, {
+      responseType: "blob",
+    });
+
+    properties = {
+      ppFitImage: responsePPFit.data,
+    };
+  } catch (err) {
+    console.log(err);
+  }
+
   yield put({
     type: actions.REPORT_DATA_LOADED,
     properties,
@@ -529,12 +569,20 @@ function* loadGenomeData(action) {
       connections: [],
     },
   };
-  let responseGenomeData = yield call(axios.get, `data/${report}/complex.json`);
 
-  properties.genome = responseGenomeData.data || {
-    intervals: [],
-    connections: [],
-  };
+  try {
+    let responseGenomeData = yield call(
+      axios.get,
+      `data/${report}/complex.json`
+    );
+
+    properties.genome = responseGenomeData.data || {
+      intervals: [],
+      connections: [],
+    };
+  } catch (err) {
+    console.log(err);
+  }
 
   yield put({
     type: actions.REPORT_DATA_LOADED,
@@ -549,14 +597,19 @@ function* loadSageQcData(action) {
   let properties = {
     sageQC: [],
   };
-  let responseSageQC = yield call(axios.get, `data/${report}/sage.qc.json`);
 
-  properties.sageQC = responseSageQC.data || [];
+  try {
+    let responseSageQC = yield call(axios.get, `data/${report}/sage.qc.json`);
 
-  properties.sageQC.forEach((d, i) => {
-    d.id = i + 1;
-    return d;
-  });
+    properties.sageQC = responseSageQC.data || [];
+
+    properties.sageQC.forEach((d, i) => {
+      d.id = i + 1;
+      return d;
+    });
+  } catch (err) {
+    console.log(err);
+  }
 
   yield put({
     type: actions.REPORT_DATA_LOADED,
@@ -572,46 +625,50 @@ function* loadMutationCatalogData(action) {
     mutationCatalog: [],
   };
 
-  yield axios
-    .all(
-      ["", "id_"].map((e) =>
-        axios.get(`data/${report}/${e}mutation_catalog.json`)
+  try {
+    yield axios
+      .all(
+        ["", "id_"].map((e) =>
+          axios.get(`data/${report}/${e}mutation_catalog.json`)
+        )
       )
-    )
-    .then(
-      axios.spread((...responses) => {
-        responses.forEach((d, i) => {
-          if (i < 1) {
-            let data = d.data.data || [];
-            data.forEach((d, i) => {
-              d.type = d.tnc;
-              d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
-              d.variantType = "sbs";
-              d.label = nucleotideMutationText(d.tnc);
-              properties.mutationCatalog.push(d);
-            });
-          } else {
-            let data = d.data.data || [];
-            data.forEach((d, i) => {
-              let { variant, label } = deletionInsertionMutationVariant(
-                d.insdel
-              );
-              d.type = d.insdel;
-              d.mutationType = variant;
-              d.variantType = "indel";
-              d.label = label;
-              properties.mutationCatalog.push(d);
-            });
-          }
-        });
-        properties.mutationCatalog = properties.mutationCatalog.sort((a, b) =>
-          d3.ascending(a.mutationType, b.mutationType)
-        );
-      })
-    )
-    .catch((errors) => {
-      console.log("got errors on loading mutation catalogs", errors);
-    });
+      .then(
+        axios.spread((...responses) => {
+          responses.forEach((d, i) => {
+            if (i < 1) {
+              let data = d.data.data || [];
+              data.forEach((d, i) => {
+                d.type = d.tnc;
+                d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
+                d.variantType = "sbs";
+                d.label = nucleotideMutationText(d.tnc);
+                properties.mutationCatalog.push(d);
+              });
+            } else {
+              let data = d.data.data || [];
+              data.forEach((d, i) => {
+                let { variant, label } = deletionInsertionMutationVariant(
+                  d.insdel
+                );
+                d.type = d.insdel;
+                d.mutationType = variant;
+                d.variantType = "indel";
+                d.label = label;
+                properties.mutationCatalog.push(d);
+              });
+            }
+          });
+          properties.mutationCatalog = properties.mutationCatalog.sort((a, b) =>
+            d3.ascending(a.mutationType, b.mutationType)
+          );
+        })
+      )
+      .catch((errors) => {
+        console.log("got errors on loading mutation catalogs", errors);
+      });
+  } catch (err) {
+    console.log(err);
+  }
 
   yield put({
     type: actions.REPORT_DATA_LOADED,
