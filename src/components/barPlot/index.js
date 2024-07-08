@@ -34,11 +34,13 @@ class BarPlot extends Component {
   };
 
   componentDidMount() {
+    this.getPlotConfiguration();
     this.renderYAxis();
     this.renderXAxis();
   }
 
   componentDidUpdate() {
+    this.getPlotConfiguration();
     this.renderYAxis();
     this.renderXAxis();
   }
@@ -65,6 +67,10 @@ class BarPlot extends Component {
 
     let panelWidth = stageWidth;
     let panelHeight = stageHeight - margins.gapLegend;
+
+    let rectangleBars = dataPoints.sort((a, b) =>
+      d3.ascending(legendTitles[a.mutationType], legendTitles[b.mutationType])
+    );
 
     let xScale = d3
       .scaleBand()
@@ -114,6 +120,7 @@ class BarPlot extends Component {
       xTitle,
       yTitle,
       dataPoints,
+      rectangleBars,
       xVariable,
       yVariable,
       colorVariable,
@@ -202,6 +209,7 @@ class BarPlot extends Component {
       xScale,
       yScale,
       dataPoints,
+      rectangleBars,
       xVariable,
       yVariable,
       colorVariable,
@@ -284,32 +292,25 @@ class BarPlot extends Component {
                 </g>
               </g>
               <g className="x-distribution-container">
-                {dataPoints
-                  .sort((a, b) =>
-                    d3.ascending(
-                      legendTitles[a.mutationType],
-                      legendTitles[b.mutationType]
-                    )
-                  )
-                  .map((d, i) => (
-                    <rect
-                      id={`bar-${d.id}`}
-                      x={xScale(d[xVariable])}
-                      y={yScale(d[yVariable])}
-                      width={xScale.bandwidth()}
-                      height={yScale(0) - yScale(d[yVariable])}
-                      fill={
-                        visible && id === d.id
-                          ? "#ff7f0e"
-                          : color(d[colorVariable])
-                      }
-                      dataKey={d.mutationType}
-                      dataColorKey={d[colorVariable]}
-                      dataFillKey={color(d[colorVariable])}
-                      onMouseEnter={(e) => this.handleMouseEnter(d)}
-                      onMouseOut={(e) => this.handleMouseOut(d)}
-                    />
-                  ))}
+                {rectangleBars.map((d, i) => (
+                  <rect
+                    id={`bar-${d.id}`}
+                    x={xScale(d[xVariable])}
+                    y={yScale(d[yVariable])}
+                    width={xScale.bandwidth()}
+                    height={yScale(0) - yScale(d[yVariable])}
+                    fill={
+                      visible && id === d.id
+                        ? "#ff7f0e"
+                        : color(d[colorVariable])
+                    }
+                    dataKey={d.mutationType}
+                    dataColorKey={d[colorVariable]}
+                    dataFillKey={color(d[colorVariable])}
+                    onMouseEnter={(e) => this.handleMouseEnter(d)}
+                    onMouseOut={(e) => this.handleMouseOut(d)}
+                  />
+                ))}
               </g>
               <g>
                 {variantLegendPositions.map((d) => (
