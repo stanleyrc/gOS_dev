@@ -80,7 +80,7 @@ class HistogramPlot extends Component {
 
     let thresholds = d3.ticks(...d3.nice(...d3.extent(data), 10), 140);
     let density = kde(epanechnikov(bandwidth), thresholds, data);
-    if (scaleX === "log") {
+    if (scaleX === "log" && density.length > 0) {
       density[0][0] = 0.1;
     }
 

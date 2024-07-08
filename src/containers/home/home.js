@@ -73,11 +73,9 @@ class Home extends Component {
       report,
       reports,
       totalReports,
-      variantQC,
       sageQC,
       mutationCatalog,
       mutationsColorPalette,
-      signaturesList,
       ppFitImage,
       ppfit,
       chromoBins,
@@ -180,7 +178,7 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab4")} key="4">
-                  <QcTab variants={variantQC} sages={sageQC} />
+                  <QcTab dataPoints={sageQC} />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab5")} key="5">
                   <BinQCTab
@@ -322,7 +320,6 @@ const mapStateToProps = (state) => ({
   tumorPlots: state.App.tumorPopulationMetrics,
   signaturePlots: state.App.signatureMetrics,
   signatureTumorPlots: state.App.tumorSignatureMetrics,
-  variantQC: state.App.variantQC,
   sageQC: state.App.sageQC,
   mutationCatalog: state.App.mutationCatalog,
   ppFitImage: state.App.ppFitImage,

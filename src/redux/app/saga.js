@@ -267,14 +267,6 @@ function* selectReport(action) {
       properties.metadata[reportAttributesMap()[key]] = metadata[key];
     });
 
-    Object.keys(properties.metadata?.deletionInsertion).map((d) => {
-      properties.metadata.signatures[d] =
-        properties.metadata?.deletionInsertion[d];
-    });
-
-    // Optionally, remove the deletionInsertion property if no longer needed
-    delete properties.metadata.deletionInsertion;
-
     properties.populationMetrics = getPopulationMetrics(
       currentState.App.populations,
       properties.metadata
@@ -318,7 +310,6 @@ function* selectReport(action) {
     });
   }
 
-  console.log(properties.signatureMetrics);
   yield put({
     type: actions.REPORT_SELECTED,
     properties,
@@ -551,26 +542,6 @@ function* loadGenomeData(action) {
   });
 }
 
-function* loadVariantQcData(action) {
-  const currentState = yield select(getCurrentState);
-  const { report } = currentState.App;
-
-  let properties = {
-    variantQC: [],
-  };
-  let responseVartiantQC = yield call(
-    axios.get,
-    `data/${report}/strelka.qc.json`
-  );
-
-  properties.variantQC = responseVartiantQC.data || [];
-
-  yield put({
-    type: actions.REPORT_DATA_LOADED,
-    properties,
-  });
-}
-
 function* loadSageQcData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
@@ -662,7 +633,6 @@ function* actionWatcher() {
   yield takeEvery(actions.REPORT_SELECTED, loadAllelicData);
   yield takeEvery(actions.REPORT_SELECTED, loadMutationsData);
   yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
-  yield takeEvery(actions.REPORT_SELECTED, loadVariantQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadSageQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadMutationCatalogData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);

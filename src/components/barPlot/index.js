@@ -81,12 +81,16 @@ class BarPlot extends Component {
     let legend, color, colorLegendTitles;
 
     color = d3.scaleOrdinal(
-      Object.keys(colorPalette),
+      Object.keys(colorPalette)
+        .map((d) => legendTitles[d])
+        .sort((a, b) => d3.ascending(a, b)),
       Object.values(colorPalette)
     );
 
     colorLegendTitles = d3.scaleOrdinal(
-      Object.keys(colorPalette).map((d) => legendTitles[d]),
+      Object.keys(colorPalette)
+        .map((d) => legendTitles[d])
+        .sort((a, b) => d3.ascending(a, b)),
       Object.values(colorPalette)
     );
 
@@ -280,25 +284,32 @@ class BarPlot extends Component {
                 </g>
               </g>
               <g className="x-distribution-container">
-                {dataPoints.map((d, i) => (
-                  <rect
-                    id={`bar-${d.id}`}
-                    x={xScale(d[xVariable])}
-                    y={yScale(d[yVariable])}
-                    width={xScale.bandwidth()}
-                    height={yScale(0) - yScale(d[yVariable])}
-                    fill={
-                      visible && id === d.id
-                        ? "#ff7f0e"
-                        : color(d[colorVariable])
-                    }
-                    dataKey={d.mutationType}
-                    dataColorKey={d[colorVariable]}
-                    dataFillKey={color(d[colorVariable])}
-                    onMouseEnter={(e) => this.handleMouseEnter(d)}
-                    onMouseOut={(e) => this.handleMouseOut(d)}
-                  />
-                ))}
+                {dataPoints
+                  .sort((a, b) =>
+                    d3.ascending(
+                      legendTitles[a.mutationType],
+                      legendTitles[b.mutationType]
+                    )
+                  )
+                  .map((d, i) => (
+                    <rect
+                      id={`bar-${d.id}`}
+                      x={xScale(d[xVariable])}
+                      y={yScale(d[yVariable])}
+                      width={xScale.bandwidth()}
+                      height={yScale(0) - yScale(d[yVariable])}
+                      fill={
+                        visible && id === d.id
+                          ? "#ff7f0e"
+                          : color(d[colorVariable])
+                      }
+                      dataKey={d.mutationType}
+                      dataColorKey={d[colorVariable]}
+                      dataFillKey={color(d[colorVariable])}
+                      onMouseEnter={(e) => this.handleMouseEnter(d)}
+                      onMouseOut={(e) => this.handleMouseOut(d)}
+                    />
+                  ))}
               </g>
               <g>
                 {variantLegendPositions.map((d) => (

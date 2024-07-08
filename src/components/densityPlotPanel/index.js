@@ -11,7 +11,6 @@ import {
   message,
   Row,
   Col,
-  Select,
   Segmented,
 } from "antd";
 import { withTranslation } from "react-i18next";

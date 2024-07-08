@@ -33,7 +33,6 @@ const initState = {
   populations: {},
   populationMetrics: [],
   tumorPopulationMetrics: [],
-  variantQC: [],
   sageQC: [],
   mutationCatalog: [],
   mutationsColorPalette: null,

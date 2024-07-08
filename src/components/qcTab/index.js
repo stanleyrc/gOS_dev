@@ -8,7 +8,7 @@ import Wrapper from "./index.style";
 
 class QcTab extends Component {
   render() {
-    const { t, variants, sages } = this.props;
+    const { t, dataPoints } = this.props;
     return (
       <Wrapper>
         <Row
@@ -17,15 +17,15 @@ class QcTab extends Component {
         >
           <Col className="gutter-row" span={24}>
             <DensityPlotPanel
-              dataPoints={variants}
+              dataPoints={dataPoints}
               xTitle={t("components.variantQc-panel.x-title")}
-              xVariable="tumor_VAF"
+              xVariable="tumor_vaf"
               xRange={[0, 1]}
               xFormat=".0%"
               yTitle={t("components.variantQc-panel.y-title")}
-              yVariable="somatic_EVS"
+              yVariable="tumor_abq"
               yFormat=".0f"
-              yRange={[0, 22]}
+              yRange={[0, 50]}
               title={t("components.variantQc-panel.title")}
               colorVariable="tumor_depth"
             />
@@ -37,7 +37,7 @@ class QcTab extends Component {
         >
           <Col className="gutter-row" span={24}>
             <DistributionPlotPanel
-              dataPoints={sages}
+              dataPoints={dataPoints}
               xTitle={t("components.sageQc-panel.x-title")}
               xVariable="tumor_vaf"
               xRange={[0, 1]}
@@ -57,8 +57,7 @@ class QcTab extends Component {
 }
 QcTab.propTypes = {};
 QcTab.defaultProps = {
-  variants: [],
-  sages: [],
+  dataPoints: [],
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});
