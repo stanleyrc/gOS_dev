@@ -66,6 +66,7 @@ class BarPlotPanel extends Component {
       legendTitles,
       segmentedOptions,
       handleSegmentedChange,
+      segmentedValue,
     } = this.props;
     if (!colorVariable) {
       return null;
@@ -89,6 +90,7 @@ class BarPlotPanel extends Component {
               <Segmented
                 options={segmentedOptions}
                 onChange={(d) => handleSegmentedChange(d)}
+                value={segmentedValue}
               />
               <Tooltip title={t("components.download-as-png-tooltip")}>
                 <Button

@@ -217,6 +217,7 @@ class Home extends Component {
                           };
                         }
                       )}
+                      segmentedValue={mutationFilter}
                       handleSegmentedChange={
                         this.handleMutationCatalogSegmentedChange
                       }
