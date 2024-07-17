@@ -26,13 +26,13 @@ export function nucleotideColors() {
 
 export function deletionInsertionMutationVariant(input) {
   if (input.includes("1:Del:C")) {
-    return { variant: "1DelC", label: input.slice(-1) };
+    return { variant: "1DelC", label: ` ${input.slice(-1)}` };
   } else if (input.includes("1:Del:T")) {
-    return { variant: "1DelT", label: input.slice(-1) };
+    return { variant: "1DelT", label: ` ${input.slice(-1)}` };
   } else if (input.includes("1:Ins:C")) {
-    return { variant: "1InsC", label: input.slice(-1) };
+    return { variant: "1InsC", label: ` ${input.slice(-1)}` };
   } else if (input.includes("1:Ins:T")) {
-    return { variant: "1InsT", label: input.slice(-1) };
+    return { variant: "1InsT", label: ` ${input.slice(-1)}` };
   } else if (input.includes("long_Del")) {
     return { variant: "longDel", label: "5+" };
   } else if (input.includes("long_Ins")) {
@@ -50,7 +50,10 @@ export function nucleotideMutationText(nucleotideMutation) {
   // Regular expression to match the nucleotide and mutation parts
   const regex = /\[[^\]]*\]/g;
 
-  return nucleotideMutation.replace(regex, "").split("").join(".");
+  return nucleotideMutation
+    .replace(regex, "")
+    .split("")
+    .join(nucleotideMutation.substring(2, 3));
 }
 
 export function roleColorMap() {
