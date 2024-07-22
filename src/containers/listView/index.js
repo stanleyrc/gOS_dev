@@ -139,7 +139,7 @@ class ListView extends Component {
               </Col>
             )}
             {records.map((d) => (
-              <Col className="gutter-row" span={4}>
+              <Col className="gutter-row" span={6}>
                 <Card
                   className="case-report-card"
                   onClick={(e) => handleCardClick(e, d.pair)}
@@ -166,6 +166,11 @@ class ListView extends Component {
                       className="stats"
                       title={t(`metadata.svCount.short`)}
                       value={d3.format(",")(d.sv_count)}
+                    />,
+                    <Statistic
+                      className="stats"
+                      title={t(`metadata.tmb.short`)}
+                      value={d3.format(",")(d.tmb)}
                     />,
                     <Statistic
                       className="stats"
