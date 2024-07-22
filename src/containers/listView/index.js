@@ -139,7 +139,7 @@ class ListView extends Component {
               </Col>
             )}
             {records.map((d) => (
-              <Col className="gutter-row" span={6}>
+              <Col className="gutter-row" span={5}>
                 <Card
                   className="case-report-card"
                   onClick={(e) => handleCardClick(e, d.pair)}
