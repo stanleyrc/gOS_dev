@@ -25,7 +25,7 @@ class Home extends Component {
   state = {
     populationKPIMode: "total",
     signatureKPIMode: "total",
-    signatureFractionMode: "fraction",
+    signatureFractionMode: "count",
     mutationFilter: "sbs",
   };
 
@@ -241,6 +241,7 @@ class Home extends Component {
                       onChange={(d) =>
                         this.handleSignatureKPIsTumourSegmentedChange(d)
                       }
+                      value={signatureKPIMode}
                     />
                     <Segmented
                       options={[
@@ -256,6 +257,7 @@ class Home extends Component {
                       onChange={(d) =>
                         this.handleSignatureKPIsFractionSegmentedChange(d)
                       }
+                      value={signatureFractionMode}
                     />
                   </Space>
 

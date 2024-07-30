@@ -130,7 +130,8 @@ class BarPlot extends Component {
   }
 
   renderXAxis() {
-    const { xScale, xFormat, dataPoints } = this.getPlotConfiguration();
+    const { xScale, xFormat, dataPoints, colorLegendTitles } =
+      this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -148,11 +149,48 @@ class BarPlot extends Component {
     xAxisContainer
       .call(axisX)
       .selectAll("text")
-      .attr("y", 10)
-      .attr("x", -10)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(-45)")
-      .style("text-anchor", "middle");
+      .attr("y", -4)
+      .attr("x", 0)
+      .attr("dx", "-3.2em")
+      .attr("transform", "rotate(-90)")
+      .style("text-anchor", "middle")
+      .call(function (text) {
+        text.each(function (d, i) {
+          var text = d3.select(this),
+            words = text.text().split("").reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 0.8, // ems
+            dx = parseFloat(text.attr("dx")),
+            tspan = text
+              .text(null)
+              .append("tspan")
+              .attr("x", 0)
+              .attr("dx", dx + "em");
+          let index = 0;
+          while ((word = words.pop())) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            line.pop();
+            tspan.text(line.join(" "));
+            line = [word];
+            tspan = text
+              .append("tspan")
+              .attr(
+                "fill",
+                index === 1
+                  ? colorLegendTitles(dataPoints[i].mutationType)
+                  : "gray"
+              )
+              .attr("font-weight", index === 1 ? "bold" : "normal")
+              .attr("x", 0)
+              .attr("dx", ++lineNumber * lineHeight + dx + "em")
+              .text(word);
+            index += 1;
+          }
+        });
+      });
   }
 
   renderYAxis() {
@@ -317,7 +355,7 @@ class BarPlot extends Component {
                   <g
                     transform={`translate(${[
                       d.pos,
-                      panelHeight + 1.5 * margins.gapY,
+                      panelHeight + 1.66 * margins.gapY,
                     ]})`}
                   >
                     {d.distance > 0 && (
@@ -361,7 +399,7 @@ class BarPlot extends Component {
                     rx="5"
                     ry="5"
                     fill="rgb(97, 97, 97)"
-                    fillOpacity="0.97"
+                    fillOpacity="0.67"
                   />
                   <text x="10" y="28" fontSize="12" fill="#FFF">
                     {tooltip.text.map((d, i) => (
