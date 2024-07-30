@@ -617,6 +617,104 @@ function* loadSageQcData(action) {
   });
 }
 
+function* loadSignatureDecomposedCatalogData(action) {
+  const currentState = yield select(getCurrentState);
+  const { report, metadata } = currentState.App;
+  const { sigprofiler_sbs_count, sigprofiler_indel_count } = metadata;
+
+  let properties = {
+    decomposedCatalog: [],
+  };
+
+  try {
+    yield axios
+      .all(
+        ["sbs", "id"].map((e) =>
+          axios.get(`data/${report}/${e}_decomposed_prob.json`)
+        )
+      )
+      .then(
+        axios.spread((...responses) => {
+          responses.forEach((d, i) => {
+            let data = d.data || [];
+            if (i < 1) {
+              Object.entries(sigprofiler_sbs_count).forEach(
+                ([signature, value]) => {
+                  if (value > 0) {
+                    properties.decomposedCatalog.push({
+                      id: signature,
+                      variantType: "sbs",
+                      catalog: data
+                        .filter((e) => e.signature === signature)
+                        .map((d, i) => {
+                          let entry = {
+                            id: i,
+                            signature: d.signature,
+                            probability: d.p,
+                            mutations: Math.round(d.p * value),
+                            type: d.tnc,
+                            mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
+                            variantType: "sbs",
+                            label: nucleotideMutationText(d.tnc),
+                          };
+                          return entry;
+                        })
+                        .sort((a, b) =>
+                          d3.ascending(a.mutationType, b.mutationType)
+                        ),
+                    });
+                  }
+                }
+              );
+            } else {
+              Object.entries(sigprofiler_indel_count).forEach(
+                ([signature, value]) => {
+                  if (value > 0) {
+                    properties.decomposedCatalog.push({
+                      id: signature,
+                      variantType: "indel",
+                      catalog: data
+                        .filter((e) => e.signature === signature)
+                        .map((d, i) => {
+                          let { variant, label } =
+                            deletionInsertionMutationVariant(d.insdel);
+                          let entry = {
+                            id: i,
+                            variant,
+                            label,
+                            signature: d.signature,
+                            probability: d.p,
+                            mutations: Math.round(d.p * value),
+                            type: d.insdel,
+                            mutationType: variant,
+                            variantType: "indel",
+                          };
+                          return entry;
+                        })
+                        .sort((a, b) =>
+                          d3.ascending(a.mutationType, b.mutationType)
+                        ),
+                    });
+                  }
+                }
+              );
+            }
+          });
+        })
+      )
+      .catch((errors) => {
+        console.log("got errors on loading mutation catalogs", errors);
+      });
+  } catch (err) {
+    console.log(err);
+  }
+
+  yield put({
+    type: actions.REPORT_DATA_LOADED,
+    properties,
+  });
+}
+
 function* loadMutationCatalogData(action) {
   const currentState = yield select(getCurrentState);
   const { report } = currentState.App;
@@ -692,6 +790,7 @@ function* actionWatcher() {
   yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
   yield takeEvery(actions.REPORT_SELECTED, loadSageQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadMutationCatalogData);
+  yield takeEvery(actions.REPORT_SELECTED, loadSignatureDecomposedCatalogData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
   yield takeEvery(actions.RESET_REPORT, searchReports);
   yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);

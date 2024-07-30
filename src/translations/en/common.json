@@ -152,7 +152,9 @@
       "total": "All Tumor Types",
       "tumor": "Tumor Type {{tumor}}",
       "fraction": "By Fraction",
-      "count": "By Count"
+      "count": "By Count",
+      "population-mode": "Population",
+      "decomposed-mode": "Decomposed"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {

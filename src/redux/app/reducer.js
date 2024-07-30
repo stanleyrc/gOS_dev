@@ -36,6 +36,7 @@ const initState = {
   sageQC: [],
   mutationCatalog: [],
   mutationsColorPalette: null,
+  decomposedCatalog: [],
   ppFitImage: null,
   genesData: null,
   genesOptionsList: [],

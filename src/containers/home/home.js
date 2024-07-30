@@ -26,6 +26,7 @@ class Home extends Component {
     populationKPIMode: "total",
     signatureKPIMode: "total",
     signatureFractionMode: "count",
+    signatureDistributionMode: "population",
     mutationFilter: "sbs",
   };
 
@@ -59,6 +60,12 @@ class Home extends Component {
     this.setState({ signatureFractionMode });
   };
 
+  handleSignatureDistributionModeSegmentedChange = (
+    signatureDistributionMode
+  ) => {
+    this.setState({ signatureDistributionMode });
+  };
+
   handleMutationCatalogSegmentedChange = (mutationFilter) => {
     this.setState({ mutationFilter });
   };
@@ -75,6 +82,7 @@ class Home extends Component {
       totalReports,
       sageQC,
       mutationCatalog,
+      decomposedCatalog,
       mutationsColorPalette,
       ppFitImage,
       ppfit,
@@ -95,6 +103,7 @@ class Home extends Component {
       populationKPIMode,
       signatureKPIMode,
       signatureFractionMode,
+      signatureDistributionMode,
       mutationFilter,
     } = this.state;
     let colorPalette = mutationsColorPalette
@@ -259,30 +268,115 @@ class Home extends Component {
                       }
                       value={signatureFractionMode}
                     />
+                    <Segmented
+                      options={[
+                        {
+                          label: t(
+                            "components.segmented-filter.population-mode"
+                          ),
+                          value: "population",
+                        },
+                        {
+                          label: t(
+                            "components.segmented-filter.decomposed-mode"
+                          ),
+                          value: "decomposed",
+                        },
+                      ]}
+                      onChange={(d) =>
+                        this.handleSignatureDistributionModeSegmentedChange(d)
+                      }
+                      value={signatureDistributionMode}
+                    />
                   </Space>
 
-                  <PopulationTab
-                    {...{
-                      loading,
-                      metadata,
-                      plots:
-                        signaturePlots[mutationFilter][signatureFractionMode],
-                      visible: signatureKPIMode === "total",
-                      scope: "signatures",
-                    }}
-                  />
-                  <PopulationTab
-                    {...{
-                      loading,
-                      metadata,
-                      plots:
-                        signatureTumorPlots[mutationFilter][
-                          signatureFractionMode
-                        ],
-                      visible: signatureKPIMode === "byTumor",
-                      scope: "signatures",
-                    }}
-                  />
+                  {signatureDistributionMode === "decomposed" && (
+                    <Space
+                      direction="vertical"
+                      size="middle"
+                      style={{
+                        display: "flex",
+                      }}
+                    >
+                      <br />
+                      {decomposedCatalog
+                        .filter((d) => d.variantType === mutationFilter)
+                        .map((d, i) => (
+                          <BarPlotPanel
+                            dataPoints={d.catalog}
+                            title={
+                              <Space>
+                                <span>{d.id}</span>
+                                <span>
+                                  {t("components.mutation-catalog-panel.title")}
+                                </span>
+                              </Space>
+                            }
+                            legendTitle={t("metadata.mutation-type")}
+                            xTitle={""}
+                            xVariable={"type"}
+                            xFormat={null}
+                            yTitle={t(
+                              "components.mutation-catalog-panel.y-title"
+                            )}
+                            yVariable={"mutations"}
+                            yFormat={"~s"}
+                            colorVariable={"mutationType"}
+                            colorPalette={colorPalette}
+                            legendTitles={legendPaletteTitles}
+                            segmentedOptions={Object.keys(
+                              mutationFilterTypes()
+                            ).map((d) => {
+                              return {
+                                label: t(
+                                  `components.mutation-catalog-panel.segmented-filter.${d}`
+                                ),
+                                value: d,
+                              };
+                            })}
+                            segmentedValue={mutationFilter}
+                            handleSegmentedChange={
+                              this.handleMutationCatalogSegmentedChange
+                            }
+                          />
+                        ))}
+                    </Space>
+                  )}
+
+                  {signatureDistributionMode === "population" && (
+                    <Space
+                      direction="vertical"
+                      size="middle"
+                      style={{
+                        display: "flex",
+                      }}
+                    >
+                      <PopulationTab
+                        {...{
+                          loading,
+                          metadata,
+                          plots:
+                            signaturePlots[mutationFilter][
+                              signatureFractionMode
+                            ],
+                          visible: signatureKPIMode === "total",
+                          scope: "signatures",
+                        }}
+                      />
+                      <PopulationTab
+                        {...{
+                          loading,
+                          metadata,
+                          plots:
+                            signatureTumorPlots[mutationFilter][
+                              signatureFractionMode
+                            ],
+                          visible: signatureKPIMode === "byTumor",
+                          scope: "signatures",
+                        }}
+                      />
+                    </Space>
+                  )}
                 </TabPane>
               </Tabs>
             </div>
@@ -325,6 +419,7 @@ const mapStateToProps = (state) => ({
   signatureTumorPlots: state.App.tumorSignatureMetrics,
   sageQC: state.App.sageQC,
   mutationCatalog: state.App.mutationCatalog,
+  decomposedCatalog: state.App.decomposedCatalog,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,
