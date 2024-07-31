@@ -311,10 +311,10 @@ class Home extends Component {
                             }
                             title={
                               <Space>
-                                <span>{d.id}</span>
                                 <span>
                                   {t("components.mutation-catalog-panel.title")}
                                 </span>
+                                <span>{d.id}</span>
                               </Space>
                             }
                             legendTitle={t("metadata.mutation-type")}

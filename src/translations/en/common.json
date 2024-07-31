@@ -23,6 +23,8 @@
     "tnc": "TNC",
     "mutations": "Mutations",
     "nucleotides": "Nucleotides",
+    "count": "Count",
+    "probability": "Probability",
     "tags": {
       "tag1": "lower 25%",
       "tag2": "mid 50%",
