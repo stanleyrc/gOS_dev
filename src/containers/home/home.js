@@ -83,6 +83,7 @@ class Home extends Component {
       sageQC,
       mutationCatalog,
       decomposedCatalog,
+      referenceCatalog,
       mutationsColorPalette,
       ppFitImage,
       ppfit,
@@ -304,6 +305,10 @@ class Home extends Component {
                         .map((d, i) => (
                           <BarPlotPanel
                             dataPoints={d.catalog}
+                            referenceDataPoints={
+                              referenceCatalog.find((e) => e.id === d.id)
+                                .catalog
+                            }
                             title={
                               <Space>
                                 <span>{d.id}</span>
@@ -420,6 +425,7 @@ const mapStateToProps = (state) => ({
   sageQC: state.App.sageQC,
   mutationCatalog: state.App.mutationCatalog,
   decomposedCatalog: state.App.decomposedCatalog,
+  referenceCatalog: state.App.referenceCatalog,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,
