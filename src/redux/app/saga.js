@@ -691,6 +691,7 @@ function* loadSignatureDecomposedCatalogData(action) {
                           };
                           return entry;
                         })
+                        .filter((e) => e.variant)
                         .sort((a, b) =>
                           d3.ascending(a.mutationType, b.mutationType)
                         ),
@@ -752,7 +753,9 @@ function* loadMutationCatalogData(action) {
                 d.mutationType = variant;
                 d.variantType = "indel";
                 d.label = label;
-                properties.mutationCatalog.push(d);
+                if (variant) {
+                  properties.mutationCatalog.push(d);
+                }
               });
             }
           });

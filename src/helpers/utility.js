@@ -42,7 +42,7 @@ export function deletionInsertionMutationVariant(input) {
   } else if (input.includes("complex")) {
     return { variant: "delComplex", label: "5+" };
   } else {
-    return { variant: "NA", label: "NA" };
+    return { variant: null, label: null };
   }
 }
 
