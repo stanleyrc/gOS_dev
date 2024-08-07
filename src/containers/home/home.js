@@ -5,6 +5,7 @@ import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
 import { Tabs, Skeleton, Affix, Card, Segmented, Space } from "antd";
 import { reportFilters, mutationFilterTypes } from "../../helpers/utility";
+import * as d3 from "d3";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
@@ -302,6 +303,12 @@ class Home extends Component {
                       <br />
                       {decomposedCatalog
                         .filter((d) => d.variantType === mutationFilter)
+                        .sort((a, b) =>
+                          d3.descending(
+                            d3.sum(a.catalog, (d) => d.mutations),
+                            d3.sum(b.catalog, (d) => d.mutations)
+                          )
+                        )
                         .map((d, i) => (
                           <BarPlotPanel
                             dataPoints={d.catalog}
@@ -315,6 +322,16 @@ class Home extends Component {
                                   {t("components.mutation-catalog-panel.title")}
                                 </span>
                                 <span>{d.id}</span>
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: t(`general.mutation`, {
+                                      count: d3.sum(
+                                        d.catalog,
+                                        (d) => d.mutations
+                                      ),
+                                    }),
+                                  }}
+                                />
                               </Space>
                             }
                             legendTitle={t("metadata.mutation-type")}

@@ -725,6 +725,7 @@ function* loadMutationCatalogData(action) {
                     properties.decomposedCatalog.push({
                       id: signature,
                       variantType: "sbs",
+                      count: value,
                       catalog: data
                         .filter((e) => e.signature === signature)
                         .map((d, i) => {
@@ -733,7 +734,7 @@ function* loadMutationCatalogData(action) {
                               (k) => k.variantType === "sbs" && k.type === d.tnc
                             )?.mutations || 0;
                           let entry = {
-                            id: i,
+                            id: `sbs-${signature}-${i}`,
                             signature: d.signature,
                             probability: d.p,
                             mutations: Math.round(d.p * mutationGlobalValue),
@@ -758,6 +759,7 @@ function* loadMutationCatalogData(action) {
                     properties.decomposedCatalog.push({
                       id: signature,
                       variantType: "indel",
+                      count: value,
                       catalog: data
                         .filter((e) => e.signature === signature)
                         .map((d, i) => {
@@ -769,7 +771,7 @@ function* loadMutationCatalogData(action) {
                                 k.variantType === "indel" && k.type === d.insdel
                             )?.mutations || 0;
                           let entry = {
-                            id: i,
+                            id: `indel-${signature}-${i}`,
                             variant,
                             label,
                             signature: d.signature,
@@ -806,17 +808,14 @@ function* loadMutationCatalogData(action) {
       properties.referenceCatalog.push({
         id: signature,
         variantType: "sbs",
+        count: value,
         catalog: signaturesReference.sbs[signature]
           .map((d, i) => {
-            let mutationGlobalValue = properties.mutationCatalog.find(
-              (k) => k.variantType === "sbs" && k.type === d.tnc
-            )?.mutations;
             let entry = {
-              id: i,
+              id: `sbs-${signature}-ref-${i}`,
               signature,
               probability: d.value,
-              count: value,
-              mutations: Math.round(d.value * mutationGlobalValue),
+              mutations: Math.round(d.value * value),
               type: d.tnc,
               mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
               variantType: "sbs",
@@ -835,20 +834,17 @@ function* loadMutationCatalogData(action) {
       properties.referenceCatalog.push({
         id: signature,
         variantType: "indel",
+        count: value,
         catalog: signaturesReference.indel[signature]
           .map((d, i) => {
             let { variant, label } = deletionInsertionMutationVariant(d.tnc);
-            let mutationGlobalValue =
-              properties.mutationCatalog.find(
-                (k) => k.variantType === "indel" && k.type === d.insdel
-              )?.mutations || 0;
             let entry = {
-              id: i,
+              id: `indel-${signature}-ref-${i}`,
               variant,
               label,
               signature,
               probability: d.value,
-              mutations: Math.round(d.value * mutationGlobalValue),
+              mutations: Math.round(d.value * value),
               type: d.tnc,
               mutationType: variant,
               variantType: "indel",

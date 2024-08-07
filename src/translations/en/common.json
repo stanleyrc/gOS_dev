@@ -5,7 +5,9 @@
     "back-to-home": "Back Home",
     "undefined": "Undefined",
     "count": "Count",
-    "density": "Density"
+    "density": "Density",
+    "mutation": "<strong>{{count}}</strong>mutation in total",
+    "mutation_plural": "<strong>{{count}}</strong> mutations in total"
   },
   "topbar": {
     "report": "<strong>{{count}}</strong> case report in total",

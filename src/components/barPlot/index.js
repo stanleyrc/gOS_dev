@@ -85,7 +85,10 @@ class BarPlot extends Component {
 
     let yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(dataPoints, (d) => d[yVariable])])
+      .domain([
+        0,
+        d3.max([...dataPoints, ...referenceDataPoints], (d) => d[yVariable]),
+      ])
       .range([panelHeight, 0])
       .nice();
 
