@@ -219,7 +219,7 @@ class BarPlot extends Component {
         id: d.id,
         visible: true,
         x: xScale(d[xVariable]) + margins.tooltipGap,
-        y: yScale(d[yVariable]) - margins.tooltipGap,
+        y: yScale(0) - mutationCatalogMetadata().length * 20,
         text: mutationCatalogMetadata().map((e) => {
           return { label: t(`metadata.${e}`), value: d[e] };
         }),

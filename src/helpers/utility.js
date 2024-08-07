@@ -518,15 +518,7 @@ export function reportAttributesMap() {
 }
 
 export function mutationCatalogMetadata() {
-  return [
-    "id",
-    "type",
-    "mutations",
-    "mutationType",
-    "label",
-    "count",
-    "probability",
-  ];
+  return ["id", "type", "mutations", "mutationType", "label", "probability"];
 }
 
 export function reportFilters() {

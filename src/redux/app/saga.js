@@ -647,15 +647,65 @@ function* loadSageQcData(action) {
   });
 }
 
-function* loadSignatureDecomposedCatalogData(action) {
+function* loadMutationCatalogData(action) {
   const currentState = yield select(getCurrentState);
   const { report, metadata, signaturesReference } = currentState.App;
   const { sigprofiler_sbs_count, sigprofiler_indel_count } = metadata;
 
   let properties = {
+    mutationCatalog: [],
     decomposedCatalog: [],
     referenceCatalog: [],
   };
+
+  try {
+    yield axios
+      .all(
+        ["", "id_"].map((e) =>
+          axios.get(`data/${report}/${e}mutation_catalog.json`)
+        )
+      )
+      .then(
+        axios.spread((...responses) => {
+          responses.forEach((d, i) => {
+            if (i < 1) {
+              let data = d.data.data || [];
+              data.forEach((d, i) => {
+                d.type = d.tnc;
+                d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
+                d.variantType = "sbs";
+                d.label = nucleotideMutationText(d.tnc);
+                d.probability = 1.0;
+                properties.mutationCatalog.push(d);
+              });
+            } else {
+              let data = d.data.data || [];
+              data.forEach((d, i) => {
+                let { variant, label } = deletionInsertionMutationVariant(
+                  d.insdel
+                );
+                d.type = d.insdel;
+                d.mutationType = variant;
+                d.variantType = "indel";
+                d.label = label;
+                d.probability = 1.0;
+                if (variant) {
+                  properties.mutationCatalog.push(d);
+                }
+              });
+            }
+          });
+          properties.mutationCatalog = properties.mutationCatalog.sort((a, b) =>
+            d3.ascending(a.mutationType, b.mutationType)
+          );
+        })
+      )
+      .catch((errors) => {
+        console.log("got errors on loading mutation catalogs", errors);
+      });
+  } catch (err) {
+    console.log(err);
+  }
 
   try {
     yield axios
@@ -678,12 +728,15 @@ function* loadSignatureDecomposedCatalogData(action) {
                       catalog: data
                         .filter((e) => e.signature === signature)
                         .map((d, i) => {
+                          let mutationGlobalValue =
+                            properties.mutationCatalog.find(
+                              (k) => k.variantType === "sbs" && k.type === d.tnc
+                            )?.mutations || 0;
                           let entry = {
                             id: i,
                             signature: d.signature,
                             probability: d.p,
-                            count: value,
-                            mutations: Math.round(d.p * value),
+                            mutations: Math.round(d.p * mutationGlobalValue),
                             type: d.tnc,
                             mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
                             variantType: "sbs",
@@ -710,14 +763,18 @@ function* loadSignatureDecomposedCatalogData(action) {
                         .map((d, i) => {
                           let { variant, label } =
                             deletionInsertionMutationVariant(d.insdel);
+                          let mutationGlobalValue =
+                            properties.mutationCatalog.find(
+                              (k) =>
+                                k.variantType === "indel" && k.type === d.insdel
+                            )?.mutations || 0;
                           let entry = {
                             id: i,
                             variant,
                             label,
                             signature: d.signature,
                             probability: d.p,
-                            count: value,
-                            mutations: Math.round(d.p * value),
+                            mutations: Math.round(d.p * mutationGlobalValue),
                             type: d.insdel,
                             mutationType: variant,
                             variantType: "indel",
@@ -751,12 +808,15 @@ function* loadSignatureDecomposedCatalogData(action) {
         variantType: "sbs",
         catalog: signaturesReference.sbs[signature]
           .map((d, i) => {
+            let mutationGlobalValue = properties.mutationCatalog.find(
+              (k) => k.variantType === "sbs" && k.type === d.tnc
+            )?.mutations;
             let entry = {
               id: i,
               signature,
               probability: d.value,
               count: value,
-              mutations: Math.round(d.value * value),
+              mutations: Math.round(d.value * mutationGlobalValue),
               type: d.tnc,
               mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
               variantType: "sbs",
@@ -778,14 +838,17 @@ function* loadSignatureDecomposedCatalogData(action) {
         catalog: signaturesReference.indel[signature]
           .map((d, i) => {
             let { variant, label } = deletionInsertionMutationVariant(d.tnc);
+            let mutationGlobalValue =
+              properties.mutationCatalog.find(
+                (k) => k.variantType === "indel" && k.type === d.insdel
+              )?.mutations || 0;
             let entry = {
               id: i,
               variant,
               label,
               signature,
               probability: d.value,
-              count: value,
-              mutations: Math.round(d.value * value),
+              mutations: Math.round(d.value * mutationGlobalValue),
               type: d.tnc,
               mutationType: variant,
               variantType: "indel",
@@ -797,67 +860,6 @@ function* loadSignatureDecomposedCatalogData(action) {
       });
     }
   });
-
-  yield put({
-    type: actions.REPORT_DATA_LOADED,
-    properties,
-  });
-}
-
-function* loadMutationCatalogData(action) {
-  const currentState = yield select(getCurrentState);
-  const { report } = currentState.App;
-
-  let properties = {
-    mutationCatalog: [],
-  };
-
-  try {
-    yield axios
-      .all(
-        ["", "id_"].map((e) =>
-          axios.get(`data/${report}/${e}mutation_catalog.json`)
-        )
-      )
-      .then(
-        axios.spread((...responses) => {
-          responses.forEach((d, i) => {
-            if (i < 1) {
-              let data = d.data.data || [];
-              data.forEach((d, i) => {
-                d.type = d.tnc;
-                d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
-                d.variantType = "sbs";
-                d.label = nucleotideMutationText(d.tnc);
-                properties.mutationCatalog.push(d);
-              });
-            } else {
-              let data = d.data.data || [];
-              data.forEach((d, i) => {
-                let { variant, label } = deletionInsertionMutationVariant(
-                  d.insdel
-                );
-                d.type = d.insdel;
-                d.mutationType = variant;
-                d.variantType = "indel";
-                d.label = label;
-                if (variant) {
-                  properties.mutationCatalog.push(d);
-                }
-              });
-            }
-          });
-          properties.mutationCatalog = properties.mutationCatalog.sort((a, b) =>
-            d3.ascending(a.mutationType, b.mutationType)
-          );
-        })
-      )
-      .catch((errors) => {
-        console.log("got errors on loading mutation catalogs", errors);
-      });
-  } catch (err) {
-    console.log(err);
-  }
 
   yield put({
     type: actions.REPORT_DATA_LOADED,
@@ -881,7 +883,6 @@ function* actionWatcher() {
   yield takeEvery(actions.REPORT_SELECTED, loadGenomeData);
   yield takeEvery(actions.REPORT_SELECTED, loadSageQcData);
   yield takeEvery(actions.REPORT_SELECTED, loadMutationCatalogData);
-  yield takeEvery(actions.REPORT_SELECTED, loadSignatureDecomposedCatalogData);
   yield takeEvery(actions.SEARCH_REPORTS, searchReports);
   yield takeEvery(actions.RESET_REPORT, searchReports);
   yield takeEvery(actions.BOOT_APP_SUCCESS, searchReports);
