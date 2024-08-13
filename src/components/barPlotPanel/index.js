@@ -48,6 +48,7 @@ class BarPlotPanel extends Component {
       t,
       loading,
       dataPoints,
+      referenceDataPoints,
       legendTitle,
       xTitle,
       xVariable,
@@ -121,6 +122,7 @@ class BarPlotPanel extends Component {
                               width,
                               height,
                               dataPoints,
+                              referenceDataPoints,
                               legendTitle,
                               xTitle,
                               xVariable,
@@ -151,6 +153,7 @@ class BarPlotPanel extends Component {
 BarPlotPanel.propTypes = {};
 BarPlotPanel.defaultProps = {
   visible: true,
+  referenceDataPoints: [],
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({

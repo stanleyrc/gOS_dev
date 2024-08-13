@@ -135,6 +135,35 @@ function* bootApplication(action) {
     });
   });
 
+  let signaturesReference = {};
+  let signaturesReferenceWeightsList = [];
+  responseSettings.data.signaturesList.types.forEach((type) => {
+    signaturesReference[type] = {};
+
+    responseSettings.data.signaturesList.datafiles[type].forEach((d) => {
+      signaturesReferenceWeightsList.push({
+        type: type,
+        name: d,
+        path: `common/signatures/${type}_signature_weights/${d}.json`,
+      });
+    });
+  });
+  yield axios
+    .all(signaturesReferenceWeightsList.map((e) => axios.get(e.path)))
+    .then(
+      axios.spread((...responses) => {
+        responses.forEach(
+          (d, i) =>
+            (signaturesReference[signaturesReferenceWeightsList[i].type][
+              signaturesReferenceWeightsList[i].name
+            ] = d.data)
+        );
+      })
+    )
+    .catch((errors) => {
+      console.log("got errors on loading signatures", errors);
+    });
+
   // if all selected files are have the same reference
   let selectedCoordinate = "hg19";
   let searchParams = new URL(decodeURI(document.location)).searchParams;
@@ -167,6 +196,7 @@ function* bootApplication(action) {
     populationMetrics,
     populations,
     signatures,
+    signaturesReference,
     signatureMetrics,
     settings: responseSettings.data,
     domains,
@@ -619,10 +649,13 @@ function* loadSageQcData(action) {
 
 function* loadMutationCatalogData(action) {
   const currentState = yield select(getCurrentState);
-  const { report } = currentState.App;
+  const { report, metadata, signaturesReference } = currentState.App;
+  const { sigprofiler_sbs_count, sigprofiler_indel_count } = metadata;
 
   let properties = {
     mutationCatalog: [],
+    decomposedCatalog: [],
+    referenceCatalog: [],
   };
 
   try {
@@ -642,6 +675,7 @@ function* loadMutationCatalogData(action) {
                 d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
                 d.variantType = "sbs";
                 d.label = nucleotideMutationText(d.tnc);
+                d.probability = 1.0;
                 properties.mutationCatalog.push(d);
               });
             } else {
@@ -654,7 +688,10 @@ function* loadMutationCatalogData(action) {
                 d.mutationType = variant;
                 d.variantType = "indel";
                 d.label = label;
-                properties.mutationCatalog.push(d);
+                d.probability = 1.0;
+                if (variant) {
+                  properties.mutationCatalog.push(d);
+                }
               });
             }
           });
@@ -669,6 +706,156 @@ function* loadMutationCatalogData(action) {
   } catch (err) {
     console.log(err);
   }
+
+  try {
+    yield axios
+      .all(
+        ["sbs", "id"].map((e) =>
+          axios.get(`data/${report}/${e}_decomposed_prob.json`)
+        )
+      )
+      .then(
+        axios.spread((...responses) => {
+          responses.forEach((d, i) => {
+            let data = d.data || [];
+            if (i < 1) {
+              Object.entries(sigprofiler_sbs_count).forEach(
+                ([signature, value]) => {
+                  if (value > 0) {
+                    properties.decomposedCatalog.push({
+                      id: signature,
+                      variantType: "sbs",
+                      count: value,
+                      catalog: data
+                        .filter((e) => e.signature === signature)
+                        .map((d, i) => {
+                          let mutationGlobalValue =
+                            properties.mutationCatalog.find(
+                              (k) => k.variantType === "sbs" && k.type === d.tnc
+                            )?.mutations || 0;
+                          let entry = {
+                            id: `sbs-${signature}-${i}`,
+                            signature: d.signature,
+                            probability: d.p,
+                            mutations: Math.round(d.p * mutationGlobalValue),
+                            type: d.tnc,
+                            mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
+                            variantType: "sbs",
+                            label: nucleotideMutationText(d.tnc),
+                          };
+                          return entry;
+                        })
+                        .sort((a, b) =>
+                          d3.ascending(a.mutationType, b.mutationType)
+                        ),
+                    });
+                  }
+                }
+              );
+            } else {
+              Object.entries(sigprofiler_indel_count).forEach(
+                ([signature, value]) => {
+                  if (value > 0) {
+                    properties.decomposedCatalog.push({
+                      id: signature,
+                      variantType: "indel",
+                      count: value,
+                      catalog: data
+                        .filter((e) => e.signature === signature)
+                        .map((d, i) => {
+                          let { variant, label } =
+                            deletionInsertionMutationVariant(d.insdel);
+                          let mutationGlobalValue =
+                            properties.mutationCatalog.find(
+                              (k) =>
+                                k.variantType === "indel" && k.type === d.insdel
+                            )?.mutations || 0;
+                          let entry = {
+                            id: `indel-${signature}-${i}`,
+                            variant,
+                            label,
+                            signature: d.signature,
+                            probability: d.p,
+                            mutations: Math.round(d.p * mutationGlobalValue),
+                            type: d.insdel,
+                            mutationType: variant,
+                            variantType: "indel",
+                          };
+                          return entry;
+                        })
+                        .filter((e) => e.variant)
+                        .sort((a, b) =>
+                          d3.ascending(a.mutationType, b.mutationType)
+                        ),
+                    });
+                  }
+                }
+              );
+            }
+          });
+        })
+      )
+      .catch((errors) => {
+        console.log("got errors on loading mutation catalogs", errors);
+      });
+  } catch (err) {
+    console.log(err);
+  }
+
+  // mutation catalog for reference weights for sbs
+  Object.entries(sigprofiler_sbs_count).forEach(([signature, value]) => {
+    if (value > 0) {
+      properties.referenceCatalog.push({
+        id: signature,
+        variantType: "sbs",
+        count: value,
+        catalog: signaturesReference.sbs[signature]
+          .map((d, i) => {
+            let entry = {
+              id: `sbs-${signature}-ref-${i}`,
+              signature,
+              probability: d.value,
+              mutations: Math.round(d.value * value),
+              type: d.tnc,
+              mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
+              variantType: "sbs",
+              label: nucleotideMutationText(d.tnc),
+            };
+            return entry;
+          })
+          .sort((a, b) => d3.ascending(a.mutationType, b.mutationType)),
+      });
+    }
+  });
+
+  // mutation catalog for reference weights for indels
+  Object.entries(sigprofiler_indel_count).forEach(([signature, value]) => {
+    if (value > 0) {
+      properties.referenceCatalog.push({
+        id: signature,
+        variantType: "indel",
+        count: value,
+        catalog: signaturesReference.indel[signature]
+          .map((d, i) => {
+            let { variant, label } = deletionInsertionMutationVariant(d.tnc);
+            let entry = {
+              id: `indel-${signature}-ref-${i}`,
+              variant,
+              label,
+              signature,
+              probability: d.value,
+              mutations: Math.round(d.value * value),
+              type: d.tnc,
+              mutationType: variant,
+              variantType: "indel",
+            };
+            return entry;
+          })
+          .filter((e) => e.variant)
+          .sort((a, b) => d3.ascending(a.mutationType, b.mutationType)),
+      });
+    }
+  });
 
   yield put({
     type: actions.REPORT_DATA_LOADED,

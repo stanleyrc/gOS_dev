@@ -50,6 +50,7 @@ class BarPlot extends Component {
       width,
       height,
       dataPoints,
+      referenceDataPoints,
       legendTitle,
       xVariable,
       yVariable,
@@ -72,6 +73,10 @@ class BarPlot extends Component {
       d3.ascending(legendTitles[a.mutationType], legendTitles[b.mutationType])
     );
 
+    let rectangleBarsReference = referenceDataPoints.sort((a, b) =>
+      d3.ascending(legendTitles[a.mutationType], legendTitles[b.mutationType])
+    );
+
     let xScale = d3
       .scaleBand()
       .domain(dataPoints.map((d) => d[xVariable]))
@@ -80,7 +85,10 @@ class BarPlot extends Component {
 
     let yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(dataPoints, (d) => d[yVariable])])
+      .domain([
+        0,
+        d3.max([...dataPoints, ...referenceDataPoints], (d) => d[yVariable]),
+      ])
       .range([panelHeight, 0])
       .nice();
 
@@ -121,6 +129,7 @@ class BarPlot extends Component {
       yTitle,
       dataPoints,
       rectangleBars,
+      rectangleBarsReference,
       xVariable,
       yVariable,
       colorVariable,
@@ -213,7 +222,7 @@ class BarPlot extends Component {
         id: d.id,
         visible: true,
         x: xScale(d[xVariable]) + margins.tooltipGap,
-        y: yScale(d[yVariable]) - margins.tooltipGap,
+        y: yScale(0) - mutationCatalogMetadata().length * 20,
         text: mutationCatalogMetadata().map((e) => {
           return { label: t(`metadata.${e}`), value: d[e] };
         }),
@@ -248,6 +257,7 @@ class BarPlot extends Component {
       yScale,
       dataPoints,
       rectangleBars,
+      rectangleBarsReference,
       xVariable,
       yVariable,
       colorVariable,
@@ -350,6 +360,25 @@ class BarPlot extends Component {
                   />
                 ))}
               </g>
+              <g className="x-distribution-reference-container">
+                {rectangleBarsReference.map((d, i) => (
+                  <rect
+                    id={`bar-reference-${d.id}`}
+                    x={xScale(d[xVariable]) + xScale.bandwidth() / 4}
+                    y={yScale(d[yVariable])}
+                    width={xScale.bandwidth() / 2}
+                    height={yScale(0) - yScale(d[yVariable])}
+                    fill={visible && id === d.id ? "#ff7f0e" : "#EDEDED"}
+                    stroke={d3.rgb(color(d[colorVariable])).darker()}
+                    strokeWidth={1}
+                    dataKey={d.mutationType}
+                    dataColorKey={d[colorVariable]}
+                    dataFillKey={color(d[colorVariable])}
+                    onMouseEnter={(e) => this.handleMouseEnter(d)}
+                    onMouseOut={(e) => this.handleMouseOut(d)}
+                  />
+                ))}
+              </g>
               <g>
                 {variantLegendPositions.map((d) => (
                   <g
@@ -420,10 +449,11 @@ class BarPlot extends Component {
 BarPlot.propTypes = {
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
-  data: PropTypes.array,
+  dataPoints: PropTypes.array,
 };
 BarPlot.defaultProps = {
-  data: [],
+  dataPoints: [],
+  referenceDataPoints: [],
   radius: 3.33,
   yDomainRange: [0, 50],
   colorDomain: [0, 40],

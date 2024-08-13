@@ -5,7 +5,9 @@
     "back-to-home": "Back Home",
     "undefined": "Undefined",
     "count": "Count",
-    "density": "Density"
+    "density": "Density",
+    "mutation": "<strong>{{count}}</strong>mutation in total",
+    "mutation_plural": "<strong>{{count}}</strong> mutations in total"
   },
   "topbar": {
     "report": "<strong>{{count}}</strong> case report in total",
@@ -23,6 +25,8 @@
     "tnc": "TNC",
     "mutations": "Mutations",
     "nucleotides": "Nucleotides",
+    "count": "Count",
+    "probability": "Probability",
     "tags": {
       "tag1": "lower 25%",
       "tag2": "mid 50%",
@@ -152,7 +156,9 @@
       "total": "All Tumor Types",
       "tumor": "Tumor Type {{tumor}}",
       "fraction": "By Fraction",
-      "count": "By Count"
+      "count": "By Count",
+      "population-mode": "Population",
+      "decomposed-mode": "Decomposed"
     },
     "download-as-png-tooltip": "Download as PNG",
     "histogram-panel": {

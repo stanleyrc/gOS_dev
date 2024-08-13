@@ -36,6 +36,8 @@ const initState = {
   sageQC: [],
   mutationCatalog: [],
   mutationsColorPalette: null,
+  decomposedCatalog: [],
+  referenceCatalog: [],
   ppFitImage: null,
   genesData: null,
   genesOptionsList: [],
@@ -75,6 +77,7 @@ const initState = {
     indel: { count: [], fraction: [] },
     sbs: { count: [], fraction: [] },
   },
+  signaturesReference: { indel: {}, sbs: {} },
 };
 
 export default function appReducer(state = initState, action) {

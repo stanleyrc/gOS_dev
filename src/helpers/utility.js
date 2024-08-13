@@ -42,7 +42,7 @@ export function deletionInsertionMutationVariant(input) {
   } else if (input.includes("complex")) {
     return { variant: "delComplex", label: "5+" };
   } else {
-    return { variant: "NA", label: "NA" };
+    return { variant: null, label: null };
   }
 }
 
@@ -518,7 +518,7 @@ export function reportAttributesMap() {
 }
 
 export function mutationCatalogMetadata() {
-  return ["id", "type", "mutations", "mutationType", "label"];
+  return ["id", "type", "mutations", "mutationType", "label", "probability"];
 }
 
 export function reportFilters() {

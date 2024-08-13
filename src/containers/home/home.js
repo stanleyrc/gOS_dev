@@ -5,6 +5,7 @@ import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
 import { Tabs, Skeleton, Affix, Card, Segmented, Space } from "antd";
 import { reportFilters, mutationFilterTypes } from "../../helpers/utility";
+import * as d3 from "d3";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
 import PopulationTab from "../../components/populationTab";
@@ -26,6 +27,7 @@ class Home extends Component {
     populationKPIMode: "total",
     signatureKPIMode: "total",
     signatureFractionMode: "count",
+    signatureDistributionMode: "population",
     mutationFilter: "sbs",
   };
 
@@ -59,6 +61,12 @@ class Home extends Component {
     this.setState({ signatureFractionMode });
   };
 
+  handleSignatureDistributionModeSegmentedChange = (
+    signatureDistributionMode
+  ) => {
+    this.setState({ signatureDistributionMode });
+  };
+
   handleMutationCatalogSegmentedChange = (mutationFilter) => {
     this.setState({ mutationFilter });
   };
@@ -75,6 +83,8 @@ class Home extends Component {
       totalReports,
       sageQC,
       mutationCatalog,
+      decomposedCatalog,
+      referenceCatalog,
       mutationsColorPalette,
       ppFitImage,
       ppfit,
@@ -95,6 +105,7 @@ class Home extends Component {
       populationKPIMode,
       signatureKPIMode,
       signatureFractionMode,
+      signatureDistributionMode,
       mutationFilter,
     } = this.state;
     let colorPalette = mutationsColorPalette
@@ -259,30 +270,135 @@ class Home extends Component {
                       }
                       value={signatureFractionMode}
                     />
+                    <Segmented
+                      options={[
+                        {
+                          label: t(
+                            "components.segmented-filter.population-mode"
+                          ),
+                          value: "population",
+                        },
+                        {
+                          label: t(
+                            "components.segmented-filter.decomposed-mode"
+                          ),
+                          value: "decomposed",
+                        },
+                      ]}
+                      onChange={(d) =>
+                        this.handleSignatureDistributionModeSegmentedChange(d)
+                      }
+                      value={signatureDistributionMode}
+                    />
                   </Space>
 
-                  <PopulationTab
-                    {...{
-                      loading,
-                      metadata,
-                      plots:
-                        signaturePlots[mutationFilter][signatureFractionMode],
-                      visible: signatureKPIMode === "total",
-                      scope: "signatures",
-                    }}
-                  />
-                  <PopulationTab
-                    {...{
-                      loading,
-                      metadata,
-                      plots:
-                        signatureTumorPlots[mutationFilter][
-                          signatureFractionMode
-                        ],
-                      visible: signatureKPIMode === "byTumor",
-                      scope: "signatures",
-                    }}
-                  />
+                  {signatureDistributionMode === "decomposed" && (
+                    <Space
+                      direction="vertical"
+                      size="middle"
+                      style={{
+                        display: "flex",
+                      }}
+                    >
+                      <br />
+                      {decomposedCatalog
+                        .filter((d) => d.variantType === mutationFilter)
+                        .sort((a, b) =>
+                          d3.descending(
+                            d3.sum(a.catalog, (d) => d.mutations),
+                            d3.sum(b.catalog, (d) => d.mutations)
+                          )
+                        )
+                        .map((d, i) => (
+                          <BarPlotPanel
+                            dataPoints={d.catalog}
+                            referenceDataPoints={
+                              referenceCatalog.find((e) => e.id === d.id)
+                                .catalog
+                            }
+                            title={
+                              <Space>
+                                <span>
+                                  {t("components.mutation-catalog-panel.title")}
+                                </span>
+                                <span>{d.id}</span>
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: t(`general.mutation`, {
+                                      count: d3.sum(
+                                        d.catalog,
+                                        (d) => d.mutations
+                                      ),
+                                    }),
+                                  }}
+                                />
+                              </Space>
+                            }
+                            legendTitle={t("metadata.mutation-type")}
+                            xTitle={""}
+                            xVariable={"type"}
+                            xFormat={null}
+                            yTitle={t(
+                              "components.mutation-catalog-panel.y-title"
+                            )}
+                            yVariable={"mutations"}
+                            yFormat={"~s"}
+                            colorVariable={"mutationType"}
+                            colorPalette={colorPalette}
+                            legendTitles={legendPaletteTitles}
+                            segmentedOptions={Object.keys(
+                              mutationFilterTypes()
+                            ).map((d) => {
+                              return {
+                                label: t(
+                                  `components.mutation-catalog-panel.segmented-filter.${d}`
+                                ),
+                                value: d,
+                              };
+                            })}
+                            segmentedValue={mutationFilter}
+                            handleSegmentedChange={
+                              this.handleMutationCatalogSegmentedChange
+                            }
+                          />
+                        ))}
+                    </Space>
+                  )}
+
+                  {signatureDistributionMode === "population" && (
+                    <Space
+                      direction="vertical"
+                      size="middle"
+                      style={{
+                        display: "flex",
+                      }}
+                    >
+                      <PopulationTab
+                        {...{
+                          loading,
+                          metadata,
+                          plots:
+                            signaturePlots[mutationFilter][
+                              signatureFractionMode
+                            ],
+                          visible: signatureKPIMode === "total",
+                          scope: "signatures",
+                        }}
+                      />
+                      <PopulationTab
+                        {...{
+                          loading,
+                          metadata,
+                          plots:
+                            signatureTumorPlots[mutationFilter][
+                              signatureFractionMode
+                            ],
+                          visible: signatureKPIMode === "byTumor",
+                          scope: "signatures",
+                        }}
+                      />
+                    </Space>
+                  )}
                 </TabPane>
               </Tabs>
             </div>
@@ -325,6 +441,8 @@ const mapStateToProps = (state) => ({
   signatureTumorPlots: state.App.tumorSignatureMetrics,
   sageQC: state.App.sageQC,
   mutationCatalog: state.App.mutationCatalog,
+  decomposedCatalog: state.App.decomposedCatalog,
+  referenceCatalog: state.App.referenceCatalog,
   ppFitImage: state.App.ppFitImage,
   ppfit: state.App.ppfit,
   chromoBins: state.App.chromoBins,
