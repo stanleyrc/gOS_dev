@@ -68,7 +68,7 @@ class Interval {
       const filter = annotations.find((item) => item.key === "Filter")?.value;
       const variant = annotations.find((item) => item.key === "Variant")?.value;
       const protein_variant = annotations.find((item) => item.key === "Protein_variant")?.value;
-      const gene_variant = annotations.find((item) => item.key === "Gene_variant")?.value;
+      const gene_variant = annotations.find((item) => item.key === "Genomic_variant")?.value;
       const alt_count = annotations.find((item) => item.key === "Alt_count")?.value;
       const ref_count = annotations.find((item) => item.key === "Ref_count")?.value;
       const total_count = ref_count && alt_count ? parseInt(ref_count) + parseInt(alt_count) : null;

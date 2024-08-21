@@ -19,7 +19,27 @@ const margins = {
 class BinPlot extends Component {
   plotContainer = null;
 
+  zoom = d3
+    .zoom()
+    .scaleExtent([1, Infinity])
+    .translateExtent([
+      [0, 0],
+      [
+        this.props.width - 2 * margins.gapX,
+        this.props.height - 3 * margins.gapY,
+      ],
+    ])
+    .extent([
+      [0, 0],
+      [
+        this.props.width - 2 * margins.gapX,
+        this.props.height - 3 * margins.gapY,
+      ],
+    ])
+    .on("zoom", (event) => this.zooming(event));
+
   state = {
+    currentTransform: d3.zoomIdentity,
     segmentId: null,
     tooltip: {
       id: -1,
@@ -32,13 +52,11 @@ class BinPlot extends Component {
   };
 
   componentDidMount() {
-    this.renderYAxis();
-    this.renderXAxis();
+    this.renderZoom();
   }
 
   componentDidUpdate() {
-    this.renderYAxis();
-    this.renderXAxis();
+    this.renderZoom();
   }
 
   getPlotConfiguration() {
@@ -173,9 +191,11 @@ class BinPlot extends Component {
     };
   }
 
-  renderXAxis() {
-    const { xScale } = this.getPlotConfiguration();
+  zooming(currentEvent) {
+    this.setState({ currentTransform: currentEvent.transform });
+  }
 
+  renderXAxis(xScale) {
     let xAxisContainer = d3
       .select(this.plotContainer)
       .select(".x-axis-container");
@@ -185,9 +205,14 @@ class BinPlot extends Component {
     xAxisContainer.call(axisX);
   }
 
-  renderYAxis() {
-    const { yScale } = this.getPlotConfiguration();
+  renderZoom() {
+    d3.select(this.plotContainer)
+      .select(`#panel-rect`)
+      .attr("preserveAspectRatio", "xMinYMin meet")
+      .call(this.zoom);
+  }
 
+  renderYAxis(yScale) {
     let yAxisContainer = d3
       .select(this.plotContainer)
       .select(".y-axis-container");
@@ -200,10 +225,11 @@ class BinPlot extends Component {
     yAxisContainer.call(yAxis);
   }
 
-  handleMouseEnter = (d, i) => {
+  handleMouseMove = (e, d, i) => {
     const { t } = this.props;
-    
-    const { xScale, panelHeight, width } = this.getPlotConfiguration();
+
+    const { panelHeight, width } = this.getPlotConfiguration();
+
     let text = Object.keys(segmentAttributes()).map((e) => {
       return {
         label: t(`metadata.aggregate-ppfit.${e}`),
@@ -217,26 +243,30 @@ class BinPlot extends Component {
     let diffY = d3.min([
       5,
       panelHeight -
-        d.cumulativeWidthPixels -
+        e.nativeEvent.offsetY -
         Object.keys(segmentAttributes()).length * 16,
     ]);
     let diffX = d3.min([
       5,
-      width - xScale(d.xPos) - margins.tooltipGap - maxTextWidth - 40,
+      width -
+        e.nativeEvent.offsetX -
+        margins.gapX -
+        margins.tooltipGap -
+        maxTextWidth,
     ]);
     this.setState({
       segmentId: d.iid,
       tooltip: {
         id: i,
         visible: true,
-        x: xScale(d.xPos) + margins.tooltipGap + diffX,
-        y: d.cumulativeWidthPixels + diffY,
+        x: e.nativeEvent.offsetX - margins.gapX + margins.tooltipGap + diffX,
+        y: e.nativeEvent.offsetY - margins.gapY + diffY,
         text: text,
       },
     });
   };
 
-  handleMouseOut = (d) => {
+  handleMouseOut = (e, d) => {
     this.setState({
       segmentId: null,
       tooltip: {
@@ -251,7 +281,7 @@ class BinPlot extends Component {
   };
 
   render() {
-    const {
+    let {
       width,
       panelWidth,
       panelHeight,
@@ -259,12 +289,20 @@ class BinPlot extends Component {
       series,
       xTitle,
       yTitle,
+      yScale,
       chromoBins,
       selectSegment,
       separators,
     } = this.getPlotConfiguration();
 
-    const { tooltip, segmentId } = this.state;
+    const { tooltip, segmentId, currentTransform } = this.state;
+
+    xScale = currentTransform.rescaleX(xScale);
+
+    yScale = currentTransform.rescaleX(yScale);
+
+    this.renderYAxis(yScale);
+    this.renderXAxis(xScale);
 
     let height = panelHeight + 3 * margins.gapY;
 
@@ -283,17 +321,37 @@ class BinPlot extends Component {
         >
           <defs>
             <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
+              <rect x={0} y={0} width={panelWidth} height={panelHeight} />
+            </clipPath>
+            <clipPath
+              key="cuttOffViewPaneSeparators"
+              id="cuttOffViewPaneSeparators"
+            >
               <rect
-                x={0}
-                y={-panelHeight}
-                width={panelWidth}
-                height={2 * panelHeight}
+                x={-margins.gapX}
+                y={-margins.gapY}
+                width={panelWidth + margins.gapX}
+                height={panelHeight + margins.gapY}
               />
             </clipPath>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <g>
+              <rect
+                className="zoom-background"
+                id={`panel-rect`}
+                x={0.5}
+                width={panelWidth}
+                height={panelHeight}
+                style={{
+                  stroke: "steelblue",
+                  fill: "transparent",
+                  strokeWidth: 1,
+                  opacity: 0.375,
+                  pointerEvents: "all",
+                }}
+              />
+              <g clipPath="url(#cuttOffViewPaneSeparators)">
                 {separators.map((d, i) => (
                   <g>
                     <line
@@ -323,10 +381,13 @@ class BinPlot extends Component {
                     fill={chromoBins[d.chromosome]?.color}
                     x={xScale(d.xPos)}
                     width={xScale(d.xPosTo) - xScale(d.xPos)}
-                    y={d.cumulativeWidthPixels}
-                    height={d.widthPixels}
-                    onMouseEnter={(e) => this.handleMouseEnter(d, i)}
-                    onMouseOut={(e) => this.handleMouseOut(d)}
+                    y={
+                      currentTransform.k * d.cumulativeWidthPixels +
+                      currentTransform.y
+                    }
+                    height={currentTransform.k * d.widthPixels}
+                    onMouseMove={(e) => this.handleMouseMove(e, d, i)}
+                    onMouseOut={(e) => this.handleMouseOut(e, d)}
                     onClick={(e) => selectSegment(d)}
                     stroke="#FFF"
                     strokeWidth={0.5}
