@@ -577,11 +577,20 @@ export function segmentAttributes() {
 export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
-      const regex = /^(\w+):(\d+)-(\d+)$/;
-      const match = regex.exec(event.Genome_Location);
-      const chromosome = match[1];
-      const startPoint = parseInt(match[2], 10);
-      const endPoint = parseInt(match[3], 10);
+      const regex = /^(\w+):(\d+)-(\d+).*/;
+      let match = regex.exec(event.Genome_Location);
+      let chromosome = match[1];
+      let startPoint = match[2];
+      let endPoint = match[3];
+      let location = `${chromosome}:${startPoint}-${endPoint}`;
+      if (event.vartype == "SNV") {
+        match = regex.exec(event.Variant_g);
+        chromosome = match[1];
+        // the 500bp buffer ensures that the variant is visible in the plot
+        startPoint = parseInt(match[2]) - 500;
+        endPoint = parseInt(match[3]) + 500;
+        location = event.Variant_g;
+      } 
       return {
         gene: event.gene,
         type: event.type,
@@ -591,7 +600,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         chromosome: chromosome,
         startPoint: startPoint,
         endPoint: endPoint,
-        location: event.Genome_Location,
+        location: location,
         id: event.id,
         variant: event.Variant,
       };
