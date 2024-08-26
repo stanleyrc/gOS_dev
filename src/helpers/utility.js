@@ -584,11 +584,18 @@ export function transformFilteredEventAttributes(filteredEvents) {
       let endPoint = match[3];
       let location = `${chromosome}:${startPoint}-${endPoint}`;
       if (event.vartype == "SNV") {
-        match = regex.exec(event.Variant_g);
-        chromosome = match[1];
-        // the 500bp buffer ensures that the variant is visible in the plot
-        startPoint = parseInt(match[2]) - 500;
-        endPoint = parseInt(match[3]) + 500;
+        // center the SNV in the plot while encapsulating its gene in the
+        // window
+        const snvMatch = regex.exec(event.Variant_g);
+        const snvStartPoint = parseInt(snvMatch[2]);
+        const snvEndPoint = parseInt(snvMatch[3]);
+        const geneStartPoint = parseInt(startPoint);
+        const geneEndPoint = parseInt(endPoint);
+
+        let padding = snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint ? snvStartPoint - geneStartPoint : geneEndPoint - snvEndPoint;
+        padding += 1000;
+        startPoint = parseInt(snvStartPoint - padding); 
+        endPoint = parseInt(snvEndPoint + padding); 
         location = event.Variant_g;
       } 
       return {
