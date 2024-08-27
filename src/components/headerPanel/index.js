@@ -80,7 +80,11 @@ class HeaderPanel extends Component {
       "qrpmin",
       "del",
       "dup",
-      "simple"
+      "simple",
+      "DEL-like",
+      "DUP-like",
+      "INV-like",
+      "TRA-like",
     ];
 
     const tooltips = {
