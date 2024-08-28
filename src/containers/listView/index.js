@@ -169,6 +169,11 @@ class ListView extends Component {
                     />,
                     <Statistic
                       className="stats"
+                      title={t(`metadata.hrdScore.short`)}
+                      value={d3.format(",")(d.hrd_score)}
+                    />,
+                    <Statistic
+                      className="stats"
                       title={t(`metadata.tmb.short`)}
                       value={d3.format(",")(d.tmb)}
                     />,
