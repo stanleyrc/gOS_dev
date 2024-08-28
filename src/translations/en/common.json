@@ -46,6 +46,10 @@
       "short": "SV Count",
       "full": "SV Count"
     },
+    "hrdScore": {
+      "short": "HRD",
+      "full": "Homologous Recombination Deficiency (HRD)"
+    },
     "tmb": {
       "short": "TMB",
       "full": "Tumor Mutational Burden (TMB)"
@@ -68,6 +72,18 @@
     "loose_count_plural": "<strong>{{count}}</strong> loose ends",
     "snv_count_normal_vaf_greater0": "<strong>{{count}}</strong> SNV with positive normal VAF",
     "snv_count_normal_vaf_greater0_plural": "<strong>{{count}}</strong> SNVs with positive normal VAF",
+    "dels_mh": "<strong>{{count}}</strong> deletion with microhomology",
+    "dels_mh_plural": "<strong>{{count}}</strong> deletions with microhomology",
+    "rs3": "<strong>{{count}}</strong> RS3",
+    "rs3_plural": "<strong>{{count}}</strong> RS3",
+    "rs5": "<strong>{{count}}</strong> RS5",
+    "rs5_plural": "<strong>{{count}}</strong> RS5",
+    "sbs3": "<strong>{{count}}</strong> SBS3",
+    "sbs3_plural": "<strong>{{count}}</strong> SBS3",
+    "sbs8": "<strong>{{count}}</strong> SBS8",
+    "sbs8_plural": "<strong>{{count}}</strong> SBS8",
+    "del_rep": "<strong>{{count}}</strong> deletion with repeat",
+    "del_rep_plural": "<strong>{{count}}</strong> deletions with repeat",
     "pair": "Pair",
     "alternate": "Alternate Allele",
     "chromosome": "Chromosome",

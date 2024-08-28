@@ -79,6 +79,8 @@ class HeaderPanel extends Component {
           }}
         />
       ),
+      hrdetect: (
+      )
     };
     return (
       <Wrapper>

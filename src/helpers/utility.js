@@ -496,6 +496,7 @@ export function reportAttributesMap() {
     dlrs: "coverageVariance",
     snv_count: "snvCount",
     sv_count: "svCount",
+    hrdetect: "hrdetect",
     tmb: "tmb",
     loh_fraction: "lohFraction",
     purity: "purity",
