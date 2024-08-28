@@ -508,6 +508,7 @@ export function reportAttributesMap() {
     gamma: "gamma",
     loose_count: "loose_count",
     junction_count: "junction_count",
+    sv_types_count: "sv_types_count",
     snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
     signatures: "signatures",
     deletionInsertion: "deletionInsertion",

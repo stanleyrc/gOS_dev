@@ -5,11 +5,16 @@ scripts/flow/*/.flowconfig
 deploy.sh
 *~
 *.pyc
+*.swp
+*.nvimlog
+*.old
+*.backup
 .grunt
 _SpecRunner.html
 __benchmarks__
 build/
 build2/
+build_backup/
 remote-repo/
 coverage/
 .module-cache

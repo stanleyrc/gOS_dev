@@ -50,37 +50,64 @@ class HeaderPanel extends Component {
           ? legendColors()[2]
           : legendColors()[1];
     });
-    const tooltips = {
-      svCount: (
-        <span>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: t("metadata.junction_count", {
-                count: +metadata.junction_count,
-              }),
-            }}
-          />
-          <br />
-          <span
-            dangerouslySetInnerHTML={{
-              __html: t("metadata.loose_count", {
-                count: +metadata.loose_count,
-              }),
-            }}
-          />
-        </span>
-      ),
-      snvCount: (
+        
+
+    const createTooltip = (translationKey, valueKey) => {
+      const value = valueKey.split('.').reduce((acc, key) => acc?.[key], metadata);
+      return value !== undefined ? (
         <span
           dangerouslySetInnerHTML={{
-            __html: t("metadata.snv_count_normal_vaf_greater0", {
-              count: +metadata.snv_count_normal_vaf_greater0,
+            __html: t(translationKey, {
+              count: +value,
             }),
           }}
         />
+      ) : null;
+    };
+
+    const svCountFields = [
+      "tyfonas",
+      "dm",
+      "bfb",
+      "cpxdm",
+      "chromothripsis",
+      "chromoplexy",
+      "tic",
+      "rigma",
+      "pyrgo",
+      "qrppos",
+      "qrpmix",
+      "qrpmin",
+      "del",
+      "dup",
+      "simple",
+      "DEL-like",
+      "DUP-like",
+      "INV-like",
+      "TRA-like",
+    ];
+
+    const tooltips = {
+      svCount: (
+        <span>
+          {createTooltip("metadata.junction_count", "junction_count")}
+          <br />
+          {createTooltip("metadata.loose_count", "loose_count")}
+          <br />
+          {svCountFields.map((field, index) => {
+            const tooltip = createTooltip(`metadata.${field}_count`, `sv_types_count.${field}`);
+            return tooltip ? (
+              <span key={field}>
+                {tooltip}
+                {index < svCountFields.length - 1 && <br />}
+              </span>
+            ) : null;
+          })}
+        </span>
       ),
       hrdetect: (
       )
+      snvCount: createTooltip("metadata.snv_count_normal_vaf_greater0", "snv_count_normal_vaf_greater0"),
     };
     return (
       <Wrapper>
