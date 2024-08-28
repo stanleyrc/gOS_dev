@@ -23,6 +23,7 @@ const PLOT_TYPES = {
   coverageVariance: "histogram",
   snvCount: "histogram",
   svCount: "histogram",
+  hrdScore: "histogram",
   tmb: "histogram",
   lohFraction: "histogram",
   purity: "histogram",

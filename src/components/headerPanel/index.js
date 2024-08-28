@@ -75,9 +75,6 @@ class HeaderPanel extends Component {
       "tic",
       "rigma",
       "pyrgo",
-      "qrppos",
-      "qrpmix",
-      "qrpmin",
       "del",
       "dup",
       "simple",
@@ -86,6 +83,18 @@ class HeaderPanel extends Component {
       "INV-like",
       "TRA-like",
     ];
+
+    const hrdFields = [
+      "dels_mh",
+      "del_rep",
+      "rs3",
+      "rs5",
+      "sbs3",
+      "sbs8",
+      "qrppos",
+      "qrpmin",
+      "qrpmix",
+    ]
 
     const tooltips = {
       svCount: (
@@ -105,8 +114,19 @@ class HeaderPanel extends Component {
           })}
         </span>
       ),
-      hrdetect: (
-      )
+      hrdScore: (
+        <span>
+          {hrdFields.map((field, index) => {
+            const tooltip = createTooltip(`metadata.${field}`, `hrd.${field}`);
+            return tooltip ? (
+              <span key={field}>
+                {tooltip}
+                {index < hrdFields.length - 1 && <br />}
+              </span>
+            ) : null;
+          })}
+        </span>
+      ),
       snvCount: createTooltip("metadata.snv_count_normal_vaf_greater0", "snv_count_normal_vaf_greater0"),
     };
     return (
@@ -151,6 +171,7 @@ class HeaderPanel extends Component {
                       "coverageVariance",
                       "snvCount",
                       "svCount",
+                      "hrdScore",
                       "tmb",
                       "lohFraction",
                     ].map((d) => (
