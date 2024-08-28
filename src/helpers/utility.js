@@ -475,7 +475,7 @@ export function plotTypes() {
     lohFraction: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2%",
+      format: ".3",
       scaleX: "linear",
       scaleXFormat: "0.2f",
     },
