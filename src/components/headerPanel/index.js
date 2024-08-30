@@ -52,13 +52,13 @@ class HeaderPanel extends Component {
     });
         
 
-    const createTooltip = (translationKey, valueKey) => {
+    const createTooltip = (translationKey, valueKey, formatString="20") => {
       const value = valueKey.split('.').reduce((acc, key) => acc?.[key], metadata);
       return value !== undefined ? (
         <span
           dangerouslySetInnerHTML={{
             __html: t(translationKey, {
-              count: +value,
+              count: d3.format(formatString)(value),
             }),
           }}
         />
@@ -106,7 +106,7 @@ class HeaderPanel extends Component {
       coverage: (
         <span>
           {coverageQCFields.map((field, index) => {
-            const tooltip = createTooltip(`metadata.${field}`, `coverage_qc.${field}`);
+            const tooltip = createTooltip(`metadata.${field}`, `coverage_qc.${field}`, ".0%");
             return tooltip ? (
               <span key={field}>
                 {tooltip}
