@@ -437,12 +437,12 @@ export function densityPlotTypes() {
 
 export function plotTypes() {
   return {
-    coverageVariance: {
+    coverage: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2%",
+      format: ",",
       scaleX: "linear",
-      scaleXFormat: "0.2f",
+      scaleXFormat: "~s",
     },
     snvCount: {
       plotType: "histogram",
@@ -500,7 +500,7 @@ export function reportAttributesMap() {
   return {
     pair: "pair",
     tumor_type: "tumor",
-    dlrs: "coverageVariance",
+    coverage: "coverage",
     snv_count: "snvCount",
     sv_count: "svCount",
     hrd_score: "hrdScore",
@@ -517,6 +517,7 @@ export function reportAttributesMap() {
     junction_count: "junction_count",
     sv_types_count: "sv_types_count",
     hrd: "hrd",
+    coverage_qc: "coverage_qc",
     snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
     signatures: "signatures",
     deletionInsertion: "deletionInsertion",
