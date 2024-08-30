@@ -34,9 +34,9 @@
     },
     "purity-ploidy-title": "Purity/ploidy",
     "junction-burden": "Junction burden",
-    "coverageVariance": {
-      "short": "Coverage Variance",
-      "full": "Drycleaned Coverage Variance (IQR)"
+    "coverage": {
+      "short": "Coverage",
+      "full": "Denoised Coverage"
     },
     "snvCount": {
       "short": "SNV Count",
@@ -122,6 +122,12 @@
     "qrpmix_plural": "<strong>{{count}}</strong> QRP Mixed",
     "qrpmin": "<strong>{{count}}</strong> QRP Negative",
     "qrpmin_plural": "<strong>{{count}}</strong> QRP Negatives",
+    "dup_rate": "<strong>{{count}}</strong> Duplication Rate",
+    "dup_rate_plural": "<strong>{{count}}</strong> Duplication Rate",
+    "opt_dup_rate": "<strong>{{count}}</strong> Optical Duplication Rate",
+    "opt_dup_rate_plural": "<strong>{{count}}</strong> Optical Duplication Rate",
+    "coverage_variance": "<strong>{{count}}</strong> Coverage Variance",
+    "coverage_variance_plural": "<strong>{{count}}</strong> Coverage Variance",
     "pair": "Pair",
     "alternate": "Alternate Allele",
     "chromosome": "Chromosome",

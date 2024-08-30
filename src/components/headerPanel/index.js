@@ -96,7 +96,26 @@ class HeaderPanel extends Component {
       "qrpmix",
     ]
 
+    const coverageQCFields = [
+      "dup_rate",
+      "opt_dup_rate",
+      "coverage_variance",
+    ]
+
     const tooltips = {
+      coverage: (
+        <span>
+          {coverageQCFields.map((field, index) => {
+            const tooltip = createTooltip(`metadata.${field}`, `coverage_qc.${field}`);
+            return tooltip ? (
+              <span key={field}>
+                {tooltip}
+                {index < coverageQCFields.length - 1 && <br />}
+              </span>
+            ) : null;
+          })}
+        </span>
+      ),
       svCount: (
         <span>
           {createTooltip("metadata.junction_count", "junction_count")}
@@ -168,7 +187,7 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
                     {[
-                      "coverageVariance",
+                      "coverage",
                       "snvCount",
                       "svCount",
                       "hrdScore",
@@ -196,6 +215,7 @@ class HeaderPanel extends Component {
                                   {d3.format(plotTypes()[d].format)(
                                     +metadata[d]
                                   )}
+                                  {d === "coverage" ? "X" : ""}
                                 </span>
                               </span>
                             </div>
