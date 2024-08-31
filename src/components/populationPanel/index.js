@@ -2,13 +2,13 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { Row, Col } from "antd";
-import HistogramPlotPanel from "../../components/histogramPlotPanel";
+import HistogramPlotPanel from "../histogramPlotPanel";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
 
 const {} = appActions;
 
-class PopulationTab extends Component {
+class PopulationPanel extends Component {
   render() {
     const { t, loading, plots, visible, scope } = this.props;
 
@@ -54,7 +54,11 @@ class PopulationTab extends Component {
             gutter={16}
           >
             {pair.map((plotComponent, i) => (
-              <Col className="gutter-row" span={Math.floor(24 / pair.length)}>
+              <Col
+                key={i}
+                className="gutter-row"
+                span={Math.floor(24 / pair.length)}
+              >
                 {plotComponent}
               </Col>
             ))}
@@ -64,8 +68,8 @@ class PopulationTab extends Component {
     );
   }
 }
-PopulationTab.propTypes = {};
-PopulationTab.defaultProps = {
+PopulationPanel.propTypes = {};
+PopulationPanel.defaultProps = {
   plots: [],
   visible: true,
 };
@@ -74,4 +78,4 @@ const mapStateToProps = (state) => ({});
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withTranslation(["common", "signatures"])(PopulationTab));
+)(withTranslation(["common", "signatures"])(PopulationPanel));

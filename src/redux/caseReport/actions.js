@@ -1,0 +1,12 @@
+const actions = {
+  SELECT_CASE_REPORT_REQUEST: "SELECT_CASE_REPORT_REQUEST",
+  SELECT_CASE_REPORT_SUCCESS: "SELECT_CASE_REPORT_SUCCESS",
+  SELECT_CASE_REPORT_FAILED: "SELECT_CASE_REPORT_FAILED",
+
+  selectCaseReport: (id) => ({
+    type: actions.SELECT_CASE_REPORT_REQUEST,
+    id,
+  }),
+};
+
+export default actions;

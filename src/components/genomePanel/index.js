@@ -14,9 +14,6 @@ import {
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import GenomePlot from "../genomePlot";
-import appActions from "../../redux/app/actions";
-
-const { updateDomains } = appActions;
 
 const { Text } = Typography;
 
@@ -57,7 +54,7 @@ class GenomePanel extends Component {
       height,
       mutationsPlot,
     } = this.props;
-    if (Object.keys(genome).length < 1) return null;
+    if (!genome || Object.keys(genome).length < 1) return null;
     return (
       <Wrapper visible={visible} height={height}>
         <Card
@@ -90,7 +87,7 @@ class GenomePanel extends Component {
             </Space>
           }
         >
-          {visible && (
+          {visible && genome && (
             <div
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
@@ -124,15 +121,13 @@ GenomePanel.defaultProps = {
   height: 400,
   mutationsPlot: false,
 };
-const mapDispatchToProps = (dispatch) => ({
-  updateDomains: (domains) => dispatch(updateDomains(domains)),
-});
+const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
-  genomeLength: state.App.genomeLength,
+  genomeLength: state.Settings.genomeLength,
   zoomedByCmd: state.App.zoomedByCmd,
-  domains: state.App.domains,
-  chromoBins: state.App.chromoBins,
+  domains: state.Settings.domains,
+  chromoBins: state.Settings.chromoBins,
 });
 export default connect(
   mapStateToProps,

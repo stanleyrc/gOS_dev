@@ -299,7 +299,7 @@ class BinPlot extends Component {
 
     xScale = currentTransform.rescaleX(xScale);
 
-    yScale = currentTransform.rescaleX(yScale);
+    yScale = currentTransform.rescaleY(yScale);
 
     this.renderYAxis(yScale);
     this.renderXAxis(xScale);
@@ -353,7 +353,7 @@ class BinPlot extends Component {
               />
               <g clipPath="url(#cuttOffViewPaneSeparators)">
                 {separators.map((d, i) => (
-                  <g>
+                  <g key={i}>
                     <line
                       transform={`translate(${[xScale(d), 0]})`}
                       y2={panelHeight - 2}
@@ -378,6 +378,7 @@ class BinPlot extends Component {
               <g clipPath="url(#cuttOffViewPane)">
                 {series.map((d, i) => (
                   <rect
+                    key={i}
                     fill={chromoBins[d.chromosome]?.color}
                     x={xScale(d.xPos)}
                     width={xScale(d.xPosTo) - xScale(d.xPos)}
@@ -471,7 +472,7 @@ BinPlot.defaultProps = {
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({
-  chromoBins: state.App.chromoBins,
+  chromoBins: state.Settings.chromoBins,
 });
 export default connect(
   mapStateToProps,

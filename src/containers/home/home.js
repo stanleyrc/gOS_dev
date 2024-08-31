@@ -8,14 +8,15 @@ import { reportFilters, mutationFilterTypes } from "../../helpers/utility";
 import * as d3 from "d3";
 import HomeWrapper from "./home.style";
 import HeaderPanel from "../../components/headerPanel";
-import PopulationTab from "../../components/populationTab";
-import SummaryTab from "../../components/summaryTab";
-import QcTab from "../../components/qcTab";
+import PopulationTab from "../../components/populationPanel";
+import SummaryTab from "../../tabs/summaryTab";
+import QcTab from "../../tabs/sageQcTab";
 import appActions from "../../redux/app/actions";
-import BinQCTab from "../../components/binQCTab";
+import BinQCTab from "../../tabs/binQCTab";
 import ListView from "../listView";
-import TracksTab from "../../components/tracksTab";
+import TracksTab from "../../tabs/tracksTab";
 import BarPlotPanel from "../../components/barPlotPanel";
+import PopulationPanel from "../../components/populationPanel";
 
 const { TabPane } = Tabs;
 const { Meta } = Card;
@@ -169,7 +170,7 @@ class Home extends Component {
                       this.handlePopulationKPIsSegmentedChange(d)
                     }
                   />
-                  <PopulationTab
+                  <PopulationPanel
                     {...{
                       loading,
                       metadata,
@@ -178,7 +179,7 @@ class Home extends Component {
                       scope: "common",
                     }}
                   />
-                  <PopulationTab
+                  <PopulationPanel
                     {...{
                       loading,
                       metadata,

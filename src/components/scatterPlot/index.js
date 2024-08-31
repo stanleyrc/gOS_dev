@@ -7,8 +7,10 @@ import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
 import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
 
-const { updateDomains, updateHoveredLocation } = appActions;
+const { updateHoveredLocation } = appActions;
+const { updateDomains } = settingsActions;
 
 const margins = {
   gapX: 24,
@@ -414,8 +416,8 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
 });
 const mapStateToProps = (state) => ({
-  chromoBins: state.App.chromoBins,
-  defaultDomain: state.App.defaultDomain,
+  chromoBins: state.Settings.chromoBins,
+  defaultDomain: state.Settings.defaultDomain,
   hoveredLocation: state.App.hoveredLocation,
   hoveredLocationPanelIndex: state.App.hoveredLocationPanelIndex,
   zoomedByCmd: state.App.zoomedByCmd,
