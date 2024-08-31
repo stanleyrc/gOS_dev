@@ -18,8 +18,8 @@ const PublicRoutes = ({ criticalError }) => {
     <Route>
       <Switch>
         {/* <Route exact path="/" component={Home} /> */}
-        <Route exact path="/" component={LandingPage} />
-        <Route exact path="/:id" component={DetailPage} />
+        <Route path="/" component={LandingPage} />
+        <Route path="/:id" component={DetailPage} />
         <Route component={Error} />
       </Switch>
     </Route>
