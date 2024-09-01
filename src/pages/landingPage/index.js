@@ -7,21 +7,24 @@ import { Skeleton } from "antd";
 import Wrapper from "./index.style";
 import ListView from "../../containers/listView";
 import caseReportsActions from "../../redux/caseReports/actions";
+import settingsActions from "../../redux/settings/actions";
 
 const { searchCaseReports } = caseReportsActions;
+const { updateCaseReport } = settingsActions;
 
 class LandingPage extends Component {
   handleCardClick = (event, report) => {
+    const { updateCaseReport } = this.props;
     event.stopPropagation();
     if (event.metaKey) {
       const newWindow = window.open(
-        `/${report}`,
+        `/?report=${report}`,
         "_blank",
         "noopener,noreferrer"
       );
       if (newWindow) newWindow.opener = null;
     } else {
-      this.props.history.push(`/${report}`);
+      updateCaseReport(report);
     }
   };
 
@@ -54,6 +57,7 @@ LandingPage.propTypes = {};
 LandingPage.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   searchCaseReports: (filters) => dispatch(searchCaseReports(filters)),
+  updateCaseReport: (report) => dispatch(updateCaseReport(report)),
 });
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,

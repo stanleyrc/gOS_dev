@@ -4,8 +4,7 @@ import { connect } from "react-redux";
 import Home from "./containers/home/home";
 import CriticalError from "./pages/errorPage/CriticalError";
 import Error from "./pages/errorPage/Error";
-import LandingPage from "./pages/landingPage";
-import DetailPage from "./pages/detailPage";
+import HomePage from "./pages/homePage";
 
 const PublicRoutes = ({ criticalError }) => {
   return criticalError ? (
@@ -18,8 +17,7 @@ const PublicRoutes = ({ criticalError }) => {
     <Route>
       <Switch>
         {/* <Route exact path="/" component={Home} /> */}
-        <Route path="/" component={LandingPage} />
-        <Route path="/:id" component={DetailPage} />
+        <Route path="/" component={HomePage} />
         <Route component={Error} />
       </Switch>
     </Route>

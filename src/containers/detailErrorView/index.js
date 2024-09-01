@@ -5,12 +5,14 @@ import { connect } from "react-redux";
 import { Result, Typography, Button, Space } from "antd";
 import { CloseCircleOutlined } from "@ant-design/icons";
 import Wrapper from "./index.style";
+import settingsActions from "../../redux/settings/actions";
 
+const { updateCaseReport } = settingsActions;
 const { Paragraph, Text } = Typography;
 
 class DetailErrorView extends Component {
   render() {
-    const { t, id, error } = this.props;
+    const { t, id, error, updateCaseReport } = this.props;
     return (
       <Wrapper>
         <Result
@@ -28,7 +30,7 @@ class DetailErrorView extends Component {
               type="link"
               key="home"
               onClick={() => {
-                this.props.history.push(`/`);
+                updateCaseReport();
               }}
             >
               {t("containers.detail-error-view.button")}
@@ -55,7 +57,9 @@ class DetailErrorView extends Component {
 }
 DetailErrorView.propTypes = {};
 DetailErrorView.defaultProps = {};
-const mapDispatchToProps = (dispatch) => ({});
+const mapDispatchToProps = (dispatch) => ({
+  updateCaseReport: (report) => dispatch(updateCaseReport(report)),
+});
 const mapStateToProps = (state) => ({
   id: state.CaseReport.id,
   error: state.CaseReport.error,

@@ -5,6 +5,7 @@ const initState = {
   loading: false,
   data: {},
   selectedCoordinate: "hg19",
+  report: null,
   tab: 1,
   chromoBins: {},
   domains: [],
@@ -14,6 +15,7 @@ const initState = {
 };
 
 export default function appReducer(state = initState, action) {
+  let url0 = new URL(decodeURI(document.location));
   switch (action.type) {
     case actions.FETCH_SETTINGS_DATA_REQUEST:
       return {
@@ -45,7 +47,7 @@ export default function appReducer(state = initState, action) {
       if (doms.length > 1) {
         doms = doms.filter((d) => d[1] - d[0] > 10);
       }
-      let url0 = new URL(decodeURI(document.location));
+      url0 = new URL(decodeURI(document.location));
       url0.searchParams.set(
         "location",
         domainsToLocation(state.chromoBins, doms)
@@ -57,7 +59,36 @@ export default function appReducer(state = initState, action) {
       );
       return { ...state, domains: doms };
     case actions.UPDATE_TAB:
-      return { ...state, tab: action.tab };
+      let tab = action.tab;
+      let urlTab = new URL(decodeURI(document.location));
+      let genomeDomains = [[1, state.genomeLength]];
+      urlTab.searchParams.set("tab", tab);
+      urlTab.searchParams.set(
+        "location",
+        domainsToLocation(state.chromoBins, genomeDomains)
+      );
+      window.history.replaceState(
+        unescape(urlTab.toString()),
+        "Case Report",
+        unescape(urlTab.toString())
+      );
+      return { ...state, tab: tab, domains: genomeDomains };
+    case actions.UPDATE_CASE_REPORT:
+      let report = action.report;
+      url0 = new URL(decodeURI(document.location));
+      if (report) {
+        url0.searchParams.set("report", report);
+      } else {
+        url0.searchParams.delete("report");
+        url0.searchParams.delete("tab");
+        url0.searchParams.delete("location");
+      }
+      window.history.replaceState(
+        unescape(url0.toString()),
+        "Case Report",
+        unescape(url0.toString())
+      );
+      return { ...state, report: action.report };
     default:
       return state;
   }

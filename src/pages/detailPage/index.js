@@ -7,15 +7,8 @@ import { Skeleton } from "antd";
 import Wrapper from "./index.style";
 import DetailView from "../../containers/detailView";
 import DetailErrorView from "../../containers/detailErrorView";
-import caseReportActions from "../../redux/caseReport/actions";
-
-const { selectCaseReport } = caseReportActions;
 
 class DetailPage extends Component {
-  componentDidMount() {
-    this.props.selectCaseReport(this.props.match.params.id);
-  }
-
   render() {
     const { loading, error } = this.props;
     return (
@@ -29,9 +22,7 @@ class DetailPage extends Component {
 }
 DetailPage.propTypes = {};
 DetailPage.defaultProps = {};
-const mapDispatchToProps = (dispatch) => ({
-  selectCaseReport: (id) => dispatch(selectCaseReport(id)),
-});
+const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   loading: state.CaseReport.loading,
   metadata: state.CaseReport.metadata,

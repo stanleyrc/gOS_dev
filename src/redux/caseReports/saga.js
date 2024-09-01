@@ -4,6 +4,7 @@ import axios from "axios";
 import * as d3 from "d3";
 import { reportFilters } from "../../helpers/utility";
 import actions from "./actions";
+import settingsActions from "../settings/actions";
 
 function* fetchCaseReports() {
   try {
@@ -83,10 +84,18 @@ function* searchReports({ searchFilters }) {
   });
 }
 
+function* searchCaseReportsFollowUp(action) {
+  yield put({
+    type: settingsActions.UPDATE_CASE_REPORT,
+    report: null,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_CASE_REPORTS_REQUEST, fetchCaseReports);
   yield takeEvery(actions.SEARCH_CASE_REPORTS, searchReports);
   yield takeEvery(actions.FETCH_CASE_REPORTS_SUCCESS, searchReports);
+  yield takeEvery(actions.SEARCH_CASE_REPORTS, searchCaseReportsFollowUp);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

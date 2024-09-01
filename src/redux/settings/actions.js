@@ -7,6 +7,8 @@ const actions = {
 
   UPDATE_TAB: "UPDATE_TAB",
 
+  UPDATE_CASE_REPORT: "UPDATE_CASE_REPORT",
+
   fetchSettingsData: () => ({
     type: actions.FETCH_SETTINGS_DATA_REQUEST,
   }),
@@ -19,6 +21,11 @@ const actions = {
   updateTab: (tab) => ({
     type: actions.UPDATE_TAB,
     tab,
+  }),
+
+  updateCaseReport: (report) => ({
+    type: actions.UPDATE_CASE_REPORT,
+    report,
   }),
 };
 

@@ -12,11 +12,11 @@ import HeaderPanel from "../../components/headerPanel";
 import SummaryTab from "../../tabs/summaryTab";
 import TracksTab from "../../tabs/tracksTab";
 import Wrapper from "./index.style";
-import settingsActions from "../../redux/settings/actions";
 import PopulationTab from "../../tabs/populationTab";
 import SageQcTab from "../../tabs/sageQcTab";
 import BinQCTab from "../../tabs/binQCTab";
 import SignaturesTab from "../../tabs/signaturesTab";
+import settingsActions from "../../redux/settings/actions";
 
 const { TabPane } = Tabs;
 
@@ -32,29 +32,13 @@ class DetailView extends Component {
       defaultDomain,
       chromoBins,
     } = this.props;
-    let tab = new URLSearchParams(location.search).get("tab") || 1;
     let domainString = new URLSearchParams(location.search).get("location");
-    updateTab(tab);
-
-    if (defaultDomain) {
-      let domains = domainString
-        ? locationToDomains(chromoBins, domainString)
-        : [defaultDomain];
-      domainString = domainsToLocation(chromoBins, domains);
-      updateDomains(domains);
-    }
-    history.replace({
-      search: replaceSearchParams(location, {
-        tab,
-        location: domainString,
-      }),
-    });
+    updateTab(new URLSearchParams(location.search).get("tab") || 1);
   }
 
   handleTabChanged = (tab) => {
-    const { updateTab, history, location } = this.props;
+    const { updateTab } = this.props;
     updateTab(tab);
-    history.replace({ search: replaceSearchParams(location, { tab }) });
   };
 
   render() {

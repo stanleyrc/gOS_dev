@@ -10,12 +10,14 @@ import { siteConfig } from "../../settings";
 import logo from "../../assets/images/logo.png";
 import caseReportActions from "../../redux/caseReport/actions";
 import caseReportsActions from "../../redux/caseReports/actions";
+import settingsActions from "../../redux/settings/actions";
 
 const { Header } = Layout;
 const { Option } = Select;
 
 const { fetchCaseReports, searchCaseReports } = caseReportsActions;
 const { selectCaseReport } = caseReportActions;
+const { updateCaseReport } = settingsActions;
 
 class Topbar extends Component {
   componentDidMount() {
@@ -43,7 +45,7 @@ class Topbar extends Component {
                   <div
                     className="ant-pro-top-nav-header-logo"
                     id="logo"
-                    onClick={() => this.props.history.push(`/`)}
+                    onClick={() => searchCaseReports({ texts: "" })}
                   >
                     <img src={logo} alt="logo" />
                     <h1>{siteConfig.siteName}</h1>
@@ -138,6 +140,7 @@ const mapDispatchToProps = (dispatch) => ({
   fetchCaseReports: () => dispatch(fetchCaseReports()),
   selectCaseReport: (report) => dispatch(selectCaseReport(report)),
   searchCaseReports: (texts) => dispatch(searchCaseReports(texts)),
+  updateCaseReport: (report) => dispatch(updateCaseReport(report)),
 });
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,

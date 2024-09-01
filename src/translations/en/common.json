@@ -1,6 +1,9 @@
 {
   "pages": {
     "error": {
+      "missing-error": {
+        "back-to-home": "Back Home"
+      },
       "critical-error": {
         "title": "Critical Error",
         "subtitle": "The application could not be launched due to certain required files missing.",

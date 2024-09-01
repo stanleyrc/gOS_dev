@@ -2,6 +2,8 @@ import { all, takeEvery, put, call } from "redux-saga/effects";
 import axios from "axios";
 import { updateChromoBins } from "../../helpers/utility";
 import actions from "./actions";
+import caseReportActions from "../caseReport/actions";
+import caseReportsActions from "../caseReports/actions";
 
 function* fetchSettingsData(action) {
   try {
@@ -30,8 +32,18 @@ function* fetchSettingsData(action) {
   }
 }
 
+function* updateCaseReportFollowUp(action) {
+  if (action.report) {
+    yield put({
+      type: caseReportActions.SELECT_CASE_REPORT_REQUEST,
+      id: action.report,
+    });
+  }
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_SETTINGS_DATA_REQUEST, fetchSettingsData);
+  yield takeEvery(actions.UPDATE_CASE_REPORT, updateCaseReportFollowUp);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);
