@@ -33,7 +33,7 @@ class DetailView extends Component {
       chromoBins,
     } = this.props;
     let domainString = new URLSearchParams(location.search).get("location");
-    updateTab(new URLSearchParams(location.search).get("tab"));
+    updateTab(new URLSearchParams(location.search).get("tab") || 1);
     let domains = domainString
       ? locationToDomains(chromoBins, domainString)
       : [defaultDomain];
