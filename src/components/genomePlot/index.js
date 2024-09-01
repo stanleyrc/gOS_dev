@@ -258,6 +258,7 @@ class GenomePlot extends Component {
 
   shouldComponentUpdate(nextProps, nextState) {
     return (
+      nextProps.genome.toString() !== this.props.genome.toString() ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextState.tooltip.shapeId !== this.state.tooltip.shapeId ||
       nextProps.selectedConnectionIds.toString() !==
