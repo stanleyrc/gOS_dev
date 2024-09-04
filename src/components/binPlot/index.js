@@ -320,19 +320,16 @@ class BinPlot extends Component {
           ref={(elem) => (this.plotContainer = elem)}
         >
           <defs>
-            <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
-              <rect x={0} y={0} width={panelWidth} height={panelHeight} />
-            </clipPath>
-            <clipPath
-              key="cuttOffViewPaneSeparators"
-              id="cuttOffViewPaneSeparators"
-            >
+            <clipPath key="cuttOffViewPane1" id="cuttOffViewPane1">
               <rect
                 x={-margins.gapX}
                 y={-margins.gapY}
                 width={panelWidth + margins.gapX}
                 height={panelHeight + margins.gapY}
               />
+            </clipPath>
+            <clipPath key="cuttOffViewPane2" id="cuttOffViewPane2">
+              <rect x={0} y={0} width={panelWidth} height={panelHeight} />
             </clipPath>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
@@ -351,7 +348,7 @@ class BinPlot extends Component {
                   pointerEvents: "all",
                 }}
               />
-              <g clipPath="url(#cuttOffViewPaneSeparators)">
+              <g clipPath="url(#cuttOffViewPane1)">
                 {separators.map((d, i) => (
                   <g key={i}>
                     <line
@@ -375,7 +372,7 @@ class BinPlot extends Component {
                   </g>
                 ))}
               </g>
-              <g clipPath="url(#cuttOffViewPane)">
+              <g clipPath="url(#cuttOffViewPane2)">
                 {series.map((d, i) => (
                   <rect
                     key={i}
