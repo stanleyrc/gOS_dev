@@ -58,7 +58,7 @@ class HeaderPanel extends Component {
         <span
           dangerouslySetInnerHTML={{
             __html: t(translationKey, {
-              count: d3.format(formatString)(value),
+              count: typeof value === 'string' ? value : d3.format(formatString)(value),
             }),
           }}
         />
@@ -97,16 +97,27 @@ class HeaderPanel extends Component {
     ]
 
     const coverageQCFields = [
-      "dup_rate",
-      "opt_dup_rate",
+      "%_reads_mapped",
+      "%_gc",
+      "≥_30x",
+      "≥_50x",
+      "insert_size",
+      "%_mapq_0_reads",
       "coverage_variance",
     ]
 
     const tooltips = {
-      coverage: (
+      tumor_median_coverage: (
         <span>
+          {createTooltip("metadata.m_reads_mapped", "coverage_qc.m_reads_mapped")}
+          <br />
+          {createTooltip("metadata.m_reads", "coverage_qc.m_reads")}
+          <br />
+          {createTooltip("metadata.percent_duplication", "coverage_qc.percent_duplication", ".2%")}
+          {createTooltip("metadata.percent_optical_dups_of_dups", "coverage_qc.percent_optical_dups_of_dups", ".2%")}
+          <br />
           {coverageQCFields.map((field, index) => {
-            const tooltip = createTooltip(`metadata.${field}`, `coverage_qc.${field}`, ".0%");
+            const tooltip = createTooltip(`metadata.${field}`, `coverage_qc.${field}`, ".1%");
             return tooltip ? (
               <span key={field}>
                 {tooltip}
@@ -187,7 +198,7 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
                     {[
-                      "coverage",
+                      "tumor_median_coverage",
                       "snvCount",
                       "svCount",
                       "hrdScore",
@@ -212,10 +223,10 @@ class HeaderPanel extends Component {
                                     color: colorMarkers[d],
                                   }}
                                 >
-                                  {d3.format(plotTypes()[d].format)(
-                                    +metadata[d]
-                                  )}
-                                  {d === "coverage" ? "X" : ""}
+                                  { 
+                                      d === "tumor_median_coverage" ? `${metadata["tumor_median_coverage"]} / ${metadata["normal_median_coverage"]}` :
+                                      d3.format(plotTypes()[d].format)( +metadata[d])
+                                    }
                                 </span>
                               </span>
                             </div>

@@ -437,7 +437,7 @@ export function densityPlotTypes() {
 
 export function plotTypes() {
   return {
-    coverage: {
+    tumor_median_coverage: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ",",
@@ -500,7 +500,8 @@ export function reportAttributesMap() {
   return {
     pair: "pair",
     tumor_type: "tumor",
-    coverage: "coverage",
+    tumor_median_coverage: "tumor_median_coverage",
+    normal_median_coverage: "normal_median_coverage",
     snv_count: "snvCount",
     sv_count: "svCount",
     hrd_score: "hrdScore",

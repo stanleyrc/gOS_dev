@@ -6,11 +6,14 @@ const outputFolderPath = "./public";
 
 const allCases = [];
 
-function updateAllCases() {
+function updateAllCases(ignoreCases = []) {
   allCases.length = 0;
 
   // Read each case folder
   fs.readdirSync(dataFolderPath).forEach((caseFolder) => {
+    if (ignoreCases.includes(caseFolder)) {
+      return;
+    }
     const caseFolderPath = path.join(dataFolderPath, caseFolder);
     const metadataPath = path.join(caseFolderPath, "metadata.json");
 
@@ -41,4 +44,4 @@ function updateAllCases() {
 }
 
 // Initial update
-updateAllCases();
+updateAllCases(ignoreCases = ["DEMO", "0124"]);
