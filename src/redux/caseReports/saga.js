@@ -46,7 +46,9 @@ function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
   let { datafiles } = currentState.CaseReports;
 
-  let records = datafiles.sort((a, b) => d3.ascending(a.pair, b.pair));
+  let records = datafiles
+    .filter((d) => d.visible !== false)
+    .sort((a, b) => d3.ascending(a.pair, b.pair));
 
   let page = searchFilters?.page || 1;
   let perPage = searchFilters?.per_page || 10;
