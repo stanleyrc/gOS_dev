@@ -224,7 +224,22 @@ export default function appReducer(state = initState, action) {
       let urlGene = new URL(decodeURI(document.location));
       let selectedFilteredEvent = action.filteredEvent;
       if (selectedFilteredEvent) {
-        let loc = `${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.startPoint}-${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.endPoint}`;
+        let loc = '';
+
+        if (Array.isArray(selectedFilteredEvent.chromosome) &&
+          Array.isArray(selectedFilteredEvent.startPoint) &&
+          Array.isArray(selectedFilteredEvent.endPoint)) {
+
+          for (let i = 0; i < selectedFilteredEvent.chromosome.length; i++) {
+            if (i > 0) {
+              loc += '|';
+            }
+            loc += `${selectedFilteredEvent.chromosome[i]}:${selectedFilteredEvent.startPoint[i]}-${selectedFilteredEvent.chromosome[i]}:${selectedFilteredEvent.endPoint[i]}`;
+          }
+        } else {
+          loc = `${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.startPoint}-${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.endPoint}`;
+        }
+
         let domsGene = locationToDomains(state.chromoBins, loc);
         // eliminate domains that are smaller than 10 bases wide
         if (domsGene.length > 1) {

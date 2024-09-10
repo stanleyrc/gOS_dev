@@ -590,6 +590,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
       const regex = /^(\w+):(\d+)-(\d+).*/;
+      let gene = event.gene
       let match = regex.exec(event.Genome_Location);
       let chromosome = match[1];
       let startPoint = match[2];
@@ -609,9 +610,15 @@ export function transformFilteredEventAttributes(filteredEvents) {
         startPoint = parseInt(snvStartPoint - padding); 
         endPoint = parseInt(snvEndPoint + padding); 
         location = event.Variant_g;
-      } 
+      } else if (event.vartype == "fusion") { 
+        gene = event.fusion_genes
+        location = event.fusion_genes
+        chromosome = event.fusion_gene_coords.split(",").map((d) => d.split(":")[0]);
+        startPoint = event.fusion_gene_coords.split(",").map((d) => d.split(":")[1].split("-")[0]);
+        endPoint = event.fusion_gene_coords.split(",").map((d) => d.split(":")[1].split("-")[1]);
+      }
       return {
-        gene: event.gene,
+        gene: gene,
         type: event.type,
         name: event.Name,
         tier: event.Tier,
