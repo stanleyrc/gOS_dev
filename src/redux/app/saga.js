@@ -275,7 +275,7 @@ function* followUpBootApplication(action) {
 
 function* selectReport(action) {
   const currentState = yield select(getCurrentState);
-  let { report } = action;
+  let { id } = action;
   let properties = {
     metadata: {},
     filteredEvents: [],
@@ -285,65 +285,73 @@ function* selectReport(action) {
   Object.keys(reportAttributesMap()).forEach((key) => {
     properties.metadata[reportAttributesMap()[key]] = null;
   });
-  if (report) {
-    let responseReportMetadata = yield call(
-      axios.get,
-      `data/${action.report}/metadata.json`
-    );
 
-    let metadata = responseReportMetadata.data[0];
+  try {
+    if (id) {
+      let responseReportMetadata = yield call(
+        axios.get,
+        `data/${action.id}/metadata.json`
+      );
 
-    Object.keys(responseReportMetadata.data[0]).forEach((key) => {
-      properties.metadata[reportAttributesMap()[key]] = metadata[key];
-    });
+      let metadata = responseReportMetadata.data[0];
 
-    properties.populationMetrics = getPopulationMetrics(
-      currentState.App.populations,
-      properties.metadata
-    );
-
-    properties.tumorPopulationMetrics = getPopulationMetrics(
-      currentState.App.populations,
-      properties.metadata,
-      properties.metadata.tumor
-    );
-
-    Object.keys(currentState.App.signatures).forEach((type) => {
-      properties.signatureMetrics[type] = {};
-      Object.keys(currentState.App.signatures[type]).forEach((mode) => {
-        properties.signatureMetrics[type][mode] = getSignatureMetrics(
-          currentState.App.signatures[type][mode],
-          {
-            markData: properties.metadata[`sigprofiler_${type}_${mode}`],
-            format: mode === "fraction" ? ".4f" : ",",
-            range: mode === "fraction" ? [0, 1] : null,
-            scaleX: "linear",
-            type: "histogram",
-          }
-        );
+      Object.keys(responseReportMetadata.data[0]).forEach((key) => {
+        properties.metadata[reportAttributesMap()[key]] = metadata[key];
       });
-    });
 
-    Object.keys(currentState.App.signatures).forEach((type) => {
-      properties.tumorSignatureMetrics[type] = {};
-      Object.keys(currentState.App.signatures[type]).forEach((mode) => {
-        properties.tumorSignatureMetrics[type][mode] = getSignatureMetrics(
-          currentState.App.signatures[type][mode],
-          {
-            markData: properties.metadata[`sigprofiler_${type}_${mode}`],
-            tumorType: properties.metadata.tumor,
-            format: mode === "fraction" ? ".4f" : ",",
-            range: mode === "fraction" ? [0, 1] : null,
-          }
-        );
+      properties.populationMetrics = getPopulationMetrics(
+        currentState.App.populations,
+        properties.metadata
+      );
+
+      properties.tumorPopulationMetrics = getPopulationMetrics(
+        currentState.App.populations,
+        properties.metadata,
+        properties.metadata.tumor
+      );
+
+      Object.keys(currentState.App.signatures).forEach((type) => {
+        properties.signatureMetrics[type] = {};
+        Object.keys(currentState.App.signatures[type]).forEach((mode) => {
+          properties.signatureMetrics[type][mode] = getSignatureMetrics(
+            currentState.App.signatures[type][mode],
+            {
+              markData: properties.metadata[`sigprofiler_${type}_${mode}`],
+              format: mode === "fraction" ? ".4f" : ",",
+              range: mode === "fraction" ? [0, 1] : null,
+              scaleX: "linear",
+              type: "histogram",
+            }
+          );
+        });
       });
-    });
-  }
 
-  yield put({
-    type: actions.REPORT_SELECTED,
-    properties,
-  });
+      Object.keys(currentState.App.signatures).forEach((type) => {
+        properties.tumorSignatureMetrics[type] = {};
+        Object.keys(currentState.App.signatures[type]).forEach((mode) => {
+          properties.tumorSignatureMetrics[type][mode] = getSignatureMetrics(
+            currentState.App.signatures[type][mode],
+            {
+              markData: properties.metadata[`sigprofiler_${type}_${mode}`],
+              tumorType: properties.metadata.tumor,
+              format: mode === "fraction" ? ".4f" : ",",
+              range: mode === "fraction" ? [0, 1] : null,
+            }
+          );
+        });
+      });
+    }
+    yield put({
+      type: actions.REPORT_SELECTED,
+      properties,
+    });
+  } catch (err) {
+    console.log(err);
+    yield put({
+      type: actions.SELECT_REPORT_FAILED,
+      properties,
+    });
+  } 
 }
 
 function* loadGenes(action) {

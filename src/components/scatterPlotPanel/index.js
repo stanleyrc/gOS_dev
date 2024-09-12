@@ -173,8 +173,8 @@ ScatterPlotPanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  domains: state.App.domains,
-  chromoBins: state.App.chromoBins,
+  domains: state.Settings.domains,
+  chromoBins: state.Settings.chromoBins,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   zoomedByCmd: state.App.zoomedByCmd,
 });

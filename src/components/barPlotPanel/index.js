@@ -12,6 +12,7 @@ import {
   Row,
   Col,
   Segmented,
+  Skeleton,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -74,78 +75,80 @@ class BarPlotPanel extends Component {
     }
     return (
       <Wrapper visible={visible}>
-        <Card
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
-          loading={loading}
-          size="small"
-          title={
-            <Space>
-              <span role="img" className="anticon anticon-dashboard">
-                <FaRegChartBar />
-              </span>
-              <span className="ant-pro-menu-item-title">{title}</span>
-            </Space>
-          }
-          extra={
-            <Space>
-              <Segmented
-                options={segmentedOptions}
-                onChange={(d) => handleSegmentedChange(d)}
-                value={segmentedValue}
-              />
-              <Tooltip title={t("components.download-as-png-tooltip")}>
-                <Button
-                  type="default"
-                  shape="circle"
-                  disabled={!visible}
-                  icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
-                  size="small"
-                  onClick={() => this.onDownloadButtonClicked()}
+        <Skeleton active loading={loading}>
+          <Card
+            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            loading={loading}
+            size="small"
+            title={
+              <Space>
+                <span role="img" className="anticon anticon-dashboard">
+                  <FaRegChartBar />
+                </span>
+                <span className="ant-pro-menu-item-title">{title}</span>
+              </Space>
+            }
+            extra={
+              <Space>
+                <Segmented
+                  options={segmentedOptions}
+                  onChange={(d) => handleSegmentedChange(d)}
+                  value={segmentedValue}
                 />
-              </Tooltip>
-            </Space>
-          }
-        >
-          {visible && (
-            <div
-              className="ant-wrapper"
-              ref={(elem) => (this.container = elem)}
-            >
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    (inViewport || renderOutsideViewPort) && (
-                      <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col flex={1}>
-                          <BarPlot
-                            {...{
-                              width,
-                              height,
-                              dataPoints,
-                              referenceDataPoints,
-                              legendTitle,
-                              xTitle,
-                              xVariable,
-                              xFormat,
-                              yTitle,
-                              yVariable,
-                              yFormat,
-                              xRange,
-                              yRange,
-                              colorVariable,
-                              colorPalette,
-                              legendTitles,
-                            }}
-                          />
-                        </Col>
-                      </Row>
-                    )
-                  );
-                }}
-              </ContainerDimensions>
-            </div>
-          )}
-        </Card>
+                <Tooltip title={t("components.download-as-png-tooltip")}>
+                  <Button
+                    type="default"
+                    shape="circle"
+                    disabled={!visible}
+                    icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
+                    size="small"
+                    onClick={() => this.onDownloadButtonClicked()}
+                  />
+                </Tooltip>
+              </Space>
+            }
+          >
+            {visible && (
+              <div
+                className="ant-wrapper"
+                ref={(elem) => (this.container = elem)}
+              >
+                <ContainerDimensions>
+                  {({ width, height }) => {
+                    return (
+                      (inViewport || renderOutsideViewPort) && (
+                        <Row style={{ width }} gutter={[margins.gap, 0]}>
+                          <Col flex={1}>
+                            <BarPlot
+                              {...{
+                                width,
+                                height,
+                                dataPoints,
+                                referenceDataPoints,
+                                legendTitle,
+                                xTitle,
+                                xVariable,
+                                xFormat,
+                                yTitle,
+                                yVariable,
+                                yFormat,
+                                xRange,
+                                yRange,
+                                colorVariable,
+                                colorPalette,
+                                legendTitles,
+                              }}
+                            />
+                          </Col>
+                        </Row>
+                      )
+                    );
+                  }}
+                </ContainerDimensions>
+              </div>
+            )}
+          </Card>
+        </Skeleton>
       </Wrapper>
     );
   }

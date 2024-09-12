@@ -330,6 +330,7 @@ class DistributionPlot extends Component {
                     )
                     .map((d, i) => (
                       <circle
+                        key={`circle${i}`}
                         className={
                           (xSelectionRange &&
                             d[xVariable] < xSelectionRange[1] &&
@@ -391,6 +392,7 @@ class DistributionPlot extends Component {
               <g className="x-distribution-container">
                 {xDistribution.bins.map((d, i) => (
                   <rect
+                    key={`xdistribution${i}`}
                     id={`xdistribution${i}`}
                     x={xScale(d.x0) + 1}
                     y={xDistribution.y(d.length)}
@@ -401,9 +403,6 @@ class DistributionPlot extends Component {
                         ? "#ff7f0e"
                         : "steelblue"
                     }
-                    dx1={d.x1}
-                    dx0={d.x0}
-                    dLength={d.length}
                     onMouseEnter={(e) =>
                       this.handleXDistributionMouseEnter(d, `xdistribution${i}`)
                     }
@@ -428,6 +427,7 @@ class DistributionPlot extends Component {
               >
                 {yDistribution.bins.map((d, i) => (
                   <rect
+                    key={`ydistribution${i}`}
                     id={`ydistribution${i}`}
                     y={yScale(d.x1) + 1}
                     x={yDistribution.y(0)}
@@ -438,9 +438,6 @@ class DistributionPlot extends Component {
                         ? "#ff7f0e"
                         : "steelblue"
                     }
-                    dx1={d.x1}
-                    dx0={d.x0}
-                    dLength={d.length}
                     onMouseEnter={(e) =>
                       this.handleYDistributionMouseEnter(d, `ydistribution${i}`)
                     }

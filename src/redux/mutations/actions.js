@@ -1,0 +1,12 @@
+const actions = {
+  FETCH_MUTATIONS_DATA_REQUEST: "FETCH_MUTATIONS_DATA_REQUEST",
+  FETCH_MUTATIONS_DATA_SUCCESS: "FETCH_MUTATIONS_DATA_SUCCESS",
+  FETCH_MUTATIONS_DATA_FAILED: "FETCH_MUTATIONS_DATA_FAILED",
+
+  fetchMutationsData: (pair) => ({
+    type: actions.FETCH_MUTATIONS_DATA_REQUEST,
+    pair,
+  }),
+};
+
+export default actions;

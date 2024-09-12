@@ -3,17 +3,7 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
-import {
-  Card,
-  Space,
-  Tooltip,
-  Button,
-  message,
-  Row,
-  Col,
-  Typography,
-  Select,
-} from "antd";
+import { Card, Space, Tooltip, Button, message, Row, Col, Select } from "antd";
 import * as d3 from "d3";
 import { AiOutlineDownload } from "react-icons/ai";
 import {
@@ -26,11 +16,9 @@ import * as htmlToImage from "html-to-image";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import Wrapper from "./index.style";
 import GenesPlot from "../genesPlot";
-import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
 
-const { updateDomains } = appActions;
-
-const { Text } = Typography;
+const { updateDomains } = settingsActions;
 
 const margins = {
   padding: 0,
@@ -85,12 +73,14 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, genes, domains, genesOptionsList } = this.props;
-    if (!genes) return null;
+    const { t, visible, genes, loading, domains, genesOptionsList } =
+      this.props;
+    if (!genes || !visible) return null;
     return (
       <Wrapper>
         {
           <Card
+            loading={loading}
             size="small"
             title={
               <Space>
@@ -146,7 +136,7 @@ class GenesPanel extends Component {
                     return (
                       <Row style={{ width }} gutter={[margins.gap, 0]}>
                         <Col flex={1}>
-                          {width && height && (
+                          {width && height && genes && (
                             <GenesPlot
                               {...{
                                 width,
@@ -175,12 +165,15 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
-  chromoBins: state.App.chromoBins,
-  domains: state.App.domains,
+  domains: state.Settings.domains,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
-  genomeLength: state.App.genomeLength,
-  genesList: state.App.genes,
-  genesOptionsList: state.App.genesOptionsList,
+
+  chromoBins: state.Settings.chromoBins,
+  genomeLength: state.Settings.genomeLength,
+  selectedCoordinate: state.Settings.selectedCoordinate,
+
+  loading: state.Genes.loading,
+  genesOptionsList: state.Genes.optionsList,
 });
 export default connect(
   mapStateToProps,

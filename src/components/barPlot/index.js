@@ -342,6 +342,7 @@ class BarPlot extends Component {
               <g className="x-distribution-container">
                 {rectangleBars.map((d, i) => (
                   <rect
+                    key={`bar-${d.id}`}
                     id={`bar-${d.id}`}
                     x={xScale(d[xVariable])}
                     y={yScale(d[yVariable])}
@@ -363,6 +364,7 @@ class BarPlot extends Component {
               <g className="x-distribution-reference-container">
                 {rectangleBarsReference.map((d, i) => (
                   <rect
+                    key={`bar-reference-${d.id}`}
                     id={`bar-reference-${d.id}`}
                     x={xScale(d[xVariable]) + xScale.bandwidth() / 4}
                     y={yScale(d[yVariable])}

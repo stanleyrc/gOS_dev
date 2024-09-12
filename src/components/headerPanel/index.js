@@ -11,9 +11,6 @@ import {
 } from "../../helpers/utility";
 import html2canvas from "html2canvas";
 import Wrapper from "./index.style";
-import appActions from "../../redux/app/actions";
-
-const {} = appActions;
 
 class HeaderPanel extends Component {
   onDownloadButtonClicked = () => {
@@ -44,9 +41,9 @@ class HeaderPanel extends Component {
       let plot = plots.find((e) => e.id === d);
       let markValue = metadata[d];
       colorMarkers[d] =
-        markValue < plot.q1
+        markValue < plot?.q1
           ? legendColors()[0]
-          : markValue > plot.q3
+          : markValue > plot?.q3
           ? legendColors()[2]
           : legendColors()[1];
     });
@@ -205,12 +202,12 @@ class HeaderPanel extends Component {
                       "tmb",
                       "lohFraction",
                     ].map((d) => (
-                      <Tooltip title={tooltips[d]}>
+                      <Tooltip key={`metadata.${d}.short`} title={tooltips[d]}>
                         <div className="stat-item">
                           <div className="ant-statistic">
                             <div
                               className={`ant-statistic-title ${
-                                tooltips[d] ? "has-tooltip" : ''
+                                tooltips[d] ? "has-tooltip" : ""
                               }`}
                             >
                               {t(`metadata.${d}.short`)}
@@ -283,8 +280,8 @@ HeaderPanel.propTypes = {
 HeaderPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  report: state.App.report,
-  metadata: state.App.metadata,
+  report: state.CaseReport.id,
+  metadata: state.CaseReport.metadata,
   plots: state.App.populationMetrics,
 });
 export default connect(

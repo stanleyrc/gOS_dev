@@ -234,9 +234,10 @@ class DensityPlot extends Component {
                 <g clipPath="url(#cuttOffViewPane)">
                   <rect width={panelWidth} height={panelHeight} fill="#FFF" />
                   {plotType === "contourplot" && (
-                    <g stroke-linejoin="round">
+                    <g strokeLinejoin="round">
                       {contours.map((d, i) => (
                         <path
+                          key={i}
                           d={d3.geoPath()(d)}
                           strokeWidth={i % 5 ? 0.25 : 1}
                           stroke={d3.rgb(color(d.value)).darker(0.3)}
@@ -252,6 +253,7 @@ class DensityPlot extends Component {
                       )
                       .map((d, i) => (
                         <circle
+                          key={i}
                           cx={xScale(d[xVariable])}
                           cy={yScale(d[yVariable])}
                           r={visible && id === i ? 5 : 1.618}

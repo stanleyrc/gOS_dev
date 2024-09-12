@@ -1,4 +1,19 @@
 {
+  "pages": {
+    "error": {
+      "missing-error": {
+        "back-to-home": "Back Home"
+      },
+      "critical-error": {
+        "title": "Critical Error",
+        "subtitle": "The application could not be launched due to certain required files missing.",
+        "missing-file": {
+          "settings": "Loading the settings.json file expected in <strong>/settings.json</strong> failed",
+          "datafiles": "Loading the datafiles.json file expected in <strong>/datafiles.json</strong> failed"
+        }
+      }
+    }
+  },
   "general": {
     "error": "Oops! Operation failed with error: {{error}}",
     "page-not-found": "Sorry, the page you visited does not exist.",
@@ -212,6 +227,24 @@
         "submit": "Submit",
         "reset": "Reset"
       }
+    },
+    "detail-view": {
+      "tabs": {
+        "tab1": "Overall",
+        "tab2": "Pan Genome View",
+        "tab3": "Population KPIs",
+        "tab4": "Variant QC",
+        "tab5": "Segment Width Distribution",
+        "tab6": "Signatures"
+      }
+    },
+    "detail-error-view": {
+      "title": "Loading the Case Report <strong>{{id}}</strong> Failed",
+      "subtitle": "Fetching the metadata for this specific case report was unsuccessful",
+      "button": "Back to the Case Reports Overview page",
+      "explanation": {
+        "title": "The request has failed with the following error:"
+      }
     }
   },
   "components": {
@@ -254,6 +287,7 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "header": "Filtered Events",
       "genome-plot": "Genome Plot",
       "gene": "Gene",
       "name": "Name",
@@ -268,6 +302,13 @@
       "sorting": {
         "ascending": "Name in asceding order",
         "descending": "Name in descending order"
+      },
+      "error": {
+        "title": "Loading the Filtered Events for Case Report <strong>{{id}}</strong> Failed",
+        "subtitle": "Fetching the filtered.events.json file for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The request has failed with the following error:"
+        }
       }
     },
     "variantQc-panel": {
@@ -326,6 +367,18 @@
       "allelic-plot-y-axis-title": "↑ CN",
       "coverage-y-axis-title": "↑ Foreground",
       "coverage-y-axis2-title": "Est. Absolute CN ↑"
+    }
+  },
+  "tabs": {
+    "sageQc": {
+      "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
+      "error": {
+        "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
+        "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The request has failed with the following error:"
+        }
+      }
     }
   }
 }

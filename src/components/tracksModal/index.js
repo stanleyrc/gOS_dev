@@ -13,7 +13,7 @@ import ScatterPlotPanel from "../scatterPlotPanel";
 import GenesPanel from "../genesPanel";
 import appActions from "../../redux/app/actions";
 
-const { updateDomains, updateHoveredLocation } = appActions;
+const { updateHoveredLocation } = appActions;
 
 class TracksModal extends Component {
   container = null;
@@ -67,6 +67,7 @@ class TracksModal extends Component {
     } = this.props;
     if (!open) return null;
     const { beta, gamma } = metadata;
+
     let content = (
       <Row
         style={transitionStyle(inViewport || renderOutsideViewPort)}
@@ -205,14 +206,14 @@ TracksModal.defaultProps = {
   viewType: "modal",
 };
 const mapDispatchToProps = (dispatch) => ({
-  updateDomains: (domains) => dispatch(updateDomains(domains)),
   updateHoveredLocation: (hoveredLocation, panelIndex) =>
     dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
 });
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
-  domains: state.App.domains,
-  metadata: state.App.metadata,
+  domains: state.Settings.domains,
+  metadata: state.CaseReport.metadata,
+  chromoBins: state.Settings.chromoBins,
 });
 export default connect(
   mapStateToProps,
