@@ -11,6 +11,9 @@ function updateAllCases(fracRandomInvisible = null) {
 
   // Read each case folder
   fs.readdirSync(dataFolderPath).forEach((caseFolder) => {
+    if (ignoreCases.includes(caseFolder)) {
+      return;
+    }
     const caseFolderPath = path.join(dataFolderPath, caseFolder);
     const metadataPath = path.join(caseFolderPath, "metadata.json");
 
@@ -57,8 +60,10 @@ function updateAllCases(fracRandomInvisible = null) {
   );
 }
 
+updateAllCases();
+
 // randomly set 10% of the cases to invisible
-updateAllCases(0.1);
+// updateAllCases(0.1);
 
 function generateMockMaskFile(datafilesPath, fracPairsToInclude) {
   const datafilesContent = fs.readFileSync(datafilesPath, "utf8");
@@ -89,8 +94,8 @@ function generateMockMaskFile(datafilesPath, fracPairsToInclude) {
 }
 
 // Example usage:
-const datafilesPath = path.join(outputFolderPath, "datafiles.json");
-const fracPairsToInclude = 0.2; // 20% of pairs to include in the mask file
-const mockMaskFile = generateMockMaskFile(datafilesPath, fracPairsToInclude);
-const mockMaskFilePath = path.join(outputFolderPath, "mock_mask.json");
-fs.writeFileSync(mockMaskFilePath, JSON.stringify(mockMaskFile, null, 2));
+// const datafilesPath = path.join(outputFolderPath, "datafiles.json");
+// const fracPairsToInclude = 0.2; // 20% of pairs to include in the mask file
+// const mockMaskFile = generateMockMaskFile(datafilesPath, fracPairsToInclude);
+// const mockMaskFilePath = path.join(outputFolderPath, "mock_mask.json");
+// fs.writeFileSync(mockMaskFilePath, JSON.stringify(mockMaskFile, null, 2));

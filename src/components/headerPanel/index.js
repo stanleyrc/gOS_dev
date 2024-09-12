@@ -47,35 +47,114 @@ class HeaderPanel extends Component {
           ? legendColors()[2]
           : legendColors()[1];
     });
-    const tooltips = {
-      svCount: (
-        <span>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: t("metadata.junction_count", {
-                count: +metadata.junction_count,
-              }),
-            }}
-          />
-          <br />
-          <span
-            dangerouslySetInnerHTML={{
-              __html: t("metadata.loose_count", {
-                count: +metadata.loose_count,
-              }),
-            }}
-          />
-        </span>
-      ),
-      snvCount: (
+        
+
+    const createTooltip = (translationKey, valueKey, formatString="20") => {
+      const value = valueKey.split('.').reduce((acc, key) => acc?.[key], metadata);
+      return value !== undefined ? (
         <span
           dangerouslySetInnerHTML={{
-            __html: t("metadata.snv_count_normal_vaf_greater0", {
-              count: +metadata.snv_count_normal_vaf_greater0,
+            __html: t(translationKey, {
+              count: typeof value === 'string' ? value : d3.format(formatString)(value),
             }),
           }}
         />
+      ) : null;
+    };
+
+    const svCountFields = [
+      "tyfonas",
+      "dm",
+      "bfb",
+      "cpxdm",
+      "chromothripsis",
+      "chromoplexy",
+      "tic",
+      "rigma",
+      "pyrgo",
+      "del",
+      "dup",
+      "simple",
+      "DEL-like",
+      "DUP-like",
+      "INV-like",
+      "TRA-like",
+    ];
+
+    const hrdFields = [
+      "dels_mh",
+      "del_rep",
+      "rs3",
+      "rs5",
+      "sbs3",
+      "sbs8",
+      "qrppos",
+      "qrpmin",
+      "qrpmix",
+    ]
+
+    const coverageQCFields = [
+      "%_reads_mapped",
+      "%_gc",
+      "≥_30x",
+      "≥_50x",
+      "insert_size",
+      "%_mapq_0_reads",
+      "coverage_variance",
+    ]
+
+    const tooltips = {
+      tumor_median_coverage: (
+        <span>
+          {createTooltip("metadata.m_reads_mapped", "coverage_qc.m_reads_mapped")}
+          <br />
+          {createTooltip("metadata.m_reads", "coverage_qc.m_reads")}
+          <br />
+          {createTooltip("metadata.percent_duplication", "coverage_qc.percent_duplication", ".2%")}
+          {createTooltip("metadata.percent_optical_dups_of_dups", "coverage_qc.percent_optical_dups_of_dups", ".2%")}
+          <br />
+          {coverageQCFields.map((field, index) => {
+            const tooltip = createTooltip(`metadata.${field}`, `coverage_qc.${field}`, ".1%");
+            return tooltip ? (
+              <span key={field}>
+                {tooltip}
+                {index < coverageQCFields.length - 1 && <br />}
+              </span>
+            ) : null;
+          })}
+        </span>
       ),
+      svCount: (
+        <span>
+          {createTooltip("metadata.junction_count", "junction_count")}
+          <br />
+          {createTooltip("metadata.loose_count", "loose_count")}
+          <br />
+          {svCountFields.map((field, index) => {
+            const tooltip = createTooltip(`metadata.${field}_count`, `sv_types_count.${field}`);
+            return tooltip ? (
+              <span key={field}>
+                {tooltip}
+                {index < svCountFields.length - 1 && <br />}
+              </span>
+            ) : null;
+          })}
+        </span>
+      ),
+      hrdScore: (
+        <span>
+          {hrdFields.map((field, index) => {
+            const tooltip = createTooltip(`metadata.${field}`, `hrd.${field}`);
+            return tooltip ? (
+              <span key={field}>
+                {tooltip}
+                {index < hrdFields.length - 1 && <br />}
+              </span>
+            ) : null;
+          })}
+        </span>
+      ),
+      snvCount: createTooltip("metadata.snv_count_normal_vaf_greater0", "snv_count_normal_vaf_greater0"),
     };
     return (
       <Wrapper>
@@ -116,9 +195,10 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
                     {[
-                      "coverageVariance",
+                      "tumor_median_coverage",
                       "snvCount",
                       "svCount",
+                      "hrdScore",
                       "tmb",
                       "lohFraction",
                     ].map((d) => (
@@ -140,9 +220,10 @@ class HeaderPanel extends Component {
                                     color: colorMarkers[d],
                                   }}
                                 >
-                                  {d3.format(plotTypes()[d].format)(
-                                    +metadata[d]
-                                  )}
+                                  { 
+                                      d === "tumor_median_coverage" ? `${metadata["tumor_median_coverage"]} / ${metadata["normal_median_coverage"]}` :
+                                      d3.format(plotTypes()[d].format)( +metadata[d])
+                                    }
                                 </span>
                               </span>
                             </div>

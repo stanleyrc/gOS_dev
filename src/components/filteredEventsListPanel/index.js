@@ -39,6 +39,14 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.gene"),
         dataIndex: "gene",
         key: "gene",
+        filters: [...new Set(filteredEvents.map((d) => d.gene))].map((d) => {
+          return {
+            text: d,
+            value: d,
+          };
+        }),
+        filterMultiple: false,
+        onFilter: (value, record) => record.gene.indexOf(value) === 0,
       },
       {
         title: t("components.filtered-events-panel.name"),

@@ -445,12 +445,12 @@ export function densityPlotTypes() {
 
 export function plotTypes() {
   return {
-    coverageVariance: {
+    tumor_median_coverage: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2%",
+      format: ",",
       scaleX: "linear",
-      scaleXFormat: "0.2f",
+      scaleXFormat: "~s",
     },
     snvCount: {
       plotType: "histogram",
@@ -466,6 +466,13 @@ export function plotTypes() {
       scaleX: "log",
       scaleXFormat: "~s",
     },
+    hrdScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2f",
+      scaleX: "linear",
+      scaleXFormat: "0.5f",
+    },
     tmb: {
       plotType: "histogram",
       tumor_type: "tumor_type",
@@ -476,7 +483,7 @@ export function plotTypes() {
     lohFraction: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2%",
+      format: ".3",
       scaleX: "linear",
       scaleXFormat: "0.2f",
     },
@@ -501,9 +508,11 @@ export function reportAttributesMap() {
   return {
     pair: "pair",
     tumor_type: "tumor",
-    dlrs: "coverageVariance",
+    tumor_median_coverage: "tumor_median_coverage",
+    normal_median_coverage: "normal_median_coverage",
     snv_count: "snvCount",
     sv_count: "svCount",
+    hrd_score: "hrdScore",
     tmb: "tmb",
     loh_fraction: "lohFraction",
     purity: "purity",
@@ -515,6 +524,9 @@ export function reportAttributesMap() {
     gamma: "gamma",
     loose_count: "loose_count",
     junction_count: "junction_count",
+    sv_types_count: "sv_types_count",
+    hrd: "hrd",
+    coverage_qc: "coverage_qc",
     snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
     signatures: "signatures",
     deletionInsertion: "deletionInsertion",
@@ -591,13 +603,36 @@ export function segmentAttributes() {
 export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
-      const regex = /^(\w+):(\d+)-(\d+)$/;
-      const match = regex.exec(event.Genome_Location);
-      const chromosome = match[1];
-      const startPoint = parseInt(match[2], 10);
-      const endPoint = parseInt(match[3], 10);
+      const regex = /^(\w+):(\d+)-(\d+).*/;
+      let gene = event.gene
+      let match = regex.exec(event.Genome_Location);
+      let chromosome = match[1];
+      let startPoint = match[2];
+      let endPoint = match[3];
+      let location = `${chromosome}:${startPoint}-${endPoint}`;
+      if (event.vartype == "SNV") {
+        // center the SNV in the plot while encapsulating its gene in the
+        // window
+        const snvMatch = regex.exec(event.Variant_g);
+        const snvStartPoint = parseInt(snvMatch[2]);
+        const snvEndPoint = parseInt(snvMatch[3]);
+        const geneStartPoint = parseInt(startPoint);
+        const geneEndPoint = parseInt(endPoint);
+
+        let padding = snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint ? snvStartPoint - geneStartPoint : geneEndPoint - snvEndPoint;
+        padding += 1000;
+        startPoint = parseInt(snvStartPoint - padding); 
+        endPoint = parseInt(snvEndPoint + padding); 
+        location = event.Variant_g;
+      } else if (event.vartype == "fusion") { 
+        gene = event.fusion_genes
+        location = event.fusion_genes
+        chromosome = event.fusion_gene_coords.split(",").map((d) => d.split(":")[0]);
+        startPoint = event.fusion_gene_coords.split(",").map((d) => d.split(":")[1].split("-")[0]);
+        endPoint = event.fusion_gene_coords.split(",").map((d) => d.split(":")[1].split("-")[1]);
+      }
       return {
-        gene: event.gene,
+        gene: gene,
         type: event.type,
         name: event.Name,
         tier: event.Tier,
@@ -605,7 +640,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         chromosome: chromosome,
         startPoint: startPoint,
         endPoint: endPoint,
-        location: event.Genome_Location,
+        location: location,
         id: event.id,
         variant: event.Variant,
       };

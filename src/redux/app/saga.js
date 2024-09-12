@@ -20,9 +20,10 @@ import { loadArrowTable, allelicToGenome } from "../../helpers/utility";
 import actions from "./actions";
 
 const PLOT_TYPES = {
-  coverageVariance: "histogram",
+  coverage: "histogram",
   snvCount: "histogram",
   svCount: "histogram",
+  hrdScore: "histogram",
   tmb: "histogram",
   lohFraction: "histogram",
   purity: "histogram",

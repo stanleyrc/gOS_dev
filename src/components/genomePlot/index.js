@@ -124,7 +124,10 @@ class GenomePlot extends Component {
         ])
         .on("zoom", (event) => this.zooming(event, index))
         .on("end", (event) => this.zoomEnded(event, index));
-      let yDomain = [0, d3.max(filteredIntervals, (d) => d.y) + 1];
+      let intervalMin = d3.min(filteredIntervals, (d) => d.y);
+      let intervalMax = d3.max(filteredIntervals, (d) => d.y);
+      let offsetPerc = 0.5;
+      let yDomain = [intervalMin - (intervalMin * offsetPerc), intervalMax + (intervalMax * offsetPerc)];
       let yScale = d3
         .scaleLinear()
         .domain(yDomain)
@@ -662,7 +665,7 @@ class GenomePlot extends Component {
                         }`}
                         transform={`translate(${[
                           panel.xScale((d.startPlace + d.endPlace) / 2),
-                          panel.yScale(d.y) - 0.5 * margins.bar,
+                          panel.yScale(d.y), 
                         ]})`}
                         r={margins.bar / 3}
                         style={{

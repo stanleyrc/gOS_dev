@@ -175,7 +175,7 @@ class ListView extends Component {
                     <Statistic
                       className="stats"
                       title={t(`metadata.lohFraction.short`)}
-                      value={d3.format(".2%")(d.loh_fraction)}
+                      value={d3.format(".3")(d.loh_fraction)}
                     />,
                     <Statistic
                       className="stats"
