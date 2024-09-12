@@ -6,9 +6,9 @@ import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
 import { humanize, measureText } from "../../helpers/utility";
 import Plot from "./plot";
-import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
 
-const { updateDomains } = appActions;
+const { updateDomains } = settingsActions;
 
 const margins = {
   gapX: 24,
@@ -346,7 +346,7 @@ class GenesPlot extends Component {
   render() {
     const { width, height, genes, defaultDomain, domains } = this.props;
     const { tooltip } = this.state;
-
+    console.log(genes, domains);
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
 
@@ -647,7 +647,7 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
-  defaultDomain: state.App.defaultDomain,
+  defaultDomain: state.Settings.defaultDomain,
   zoomedByCmd: state.App.zoomedByCmd,
 });
 export default connect(

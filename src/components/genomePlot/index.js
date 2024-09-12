@@ -14,9 +14,10 @@ import {
 } from "../../helpers/utility";
 import Grid from "../grid/index";
 import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
 
-const { updateDomains, selectPhylogenyNodes, updateHoveredLocation } =
-  appActions;
+const { selectPhylogenyNodes, updateHoveredLocation } = appActions;
+const { updateDomains } = settingsActions;
 
 const margins = {
   gap: 24,
@@ -257,6 +258,7 @@ class GenomePlot extends Component {
 
   shouldComponentUpdate(nextProps, nextState) {
     return (
+      nextProps.genome.toString() !== this.props.genome.toString() ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextState.tooltip.shapeId !== this.state.tooltip.shapeId ||
       nextProps.selectedConnectionIds.toString() !==
@@ -796,9 +798,9 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
 });
 const mapStateToProps = (state) => ({
-  chromoBins: state.App.chromoBins,
-  defaultDomain: state.App.defaultDomain,
-  domains: state.App.domains,
+  chromoBins: state.Settings.chromoBins,
+  defaultDomain: state.Settings.defaultDomain,
+  domains: state.Settings.domains,
   zoomedByCmd: state.App.zoomedByCmd,
   selectedConnectionIds: state.App.selectedConnectionIds,
   connectionsAssociations: state.App.connectionsAssociations,

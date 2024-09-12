@@ -12,6 +12,7 @@ const actions = {
 
   SELECT_REPORT: "SELECT_REPORT",
   REPORT_SELECTED: "REPORT_SELECTED",
+  SELECT_REPORT_FAILED: "SELECT_REPORT_FAILED",
 
   RESET_REPORT: "RESET_REPORT",
 
@@ -32,9 +33,9 @@ const actions = {
     type: actions.SEARCH_REPORTS,
     searchFilters,
   }),
-  selectReport: (report) => ({
+  selectReport: (id) => ({
     type: actions.SELECT_REPORT,
-    report,
+    id,
   }),
   selectTab: (tab) => ({
     type: actions.TAB_SELECTED,

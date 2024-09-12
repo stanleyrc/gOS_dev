@@ -1,12 +1,8 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col } from "antd";
 import Wrapper from "./index.style";
-import appActions from "../../redux/app/actions";
-import TracksModal from "../tracksModal";
-
-const {} = appActions;
+import TracksModal from "../../components/tracksModal";
 
 class TracksTab extends Component {
   render() {
@@ -22,6 +18,7 @@ class TracksTab extends Component {
       allelicData,
       updateSelectedFilteredEvent,
     } = this.props;
+
     return (
       <Wrapper>
         <TracksModal
@@ -69,22 +66,17 @@ class TracksTab extends Component {
   }
 }
 TracksTab.propTypes = {};
-TracksTab.defaultProps = {
-  plots: [],
-};
+TracksTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  report: state.App.report,
-  filteredEvents: state.App.filteredEvents,
-  selectedFilteredEvent: state.App.selectedFilteredEvent,
-  loading: state.App.loading,
-  genome: state.App.genome,
-  mutations: state.App.mutations,
-  allelicData: state.App.allelic,
-  chromoBins: state.App.chromoBins,
-  coverageData: state.App.coverageData,
-  hetsnpsData: state.App.hetsnpsData,
-  genesData: state.App.genesData,
+  loading: state.Genome.loading,
+  genome: state.Genome.data,
+  mutations: state.Mutations.data,
+  allelicData: state.Allelic.data,
+  chromoBins: state.Settings.chromoBins,
+  coverageData: state.GenomeCoverage.data,
+  hetsnpsData: state.Hetsnps.data,
+  genesData: state.Genes.data,
 });
 export default connect(
   mapStateToProps,

@@ -1,0 +1,19 @@
+const actions = {
+  FETCH_CASE_REPORTS_REQUEST: "FETCH_CASE_REPORTS_REQUEST",
+  FETCH_CASE_REPORTS_SUCCESS: "SELECT_CASE_REPORTS_SUCCESS",
+  FETCH_CASE_REPORTS_FAILED: "SELECT_CASE_REPORTS_FAILED",
+  RESET_CASES_REPORTS: "RESET_CASE_REPORTS",
+
+  SEARCH_CASE_REPORTS: "SEARCH_CASE_REPORTS",
+  CASE_REPORTS_MATCHED: "CASE_REPORTS_MATCHED",
+
+  fetchCaseReports: () => ({
+    type: actions.FETCH_CASE_REPORTS_REQUEST,
+  }),
+  searchCaseReports: (searchFilters) => ({
+    type: actions.SEARCH_CASE_REPORTS,
+    searchFilters,
+  }),
+};
+
+export default actions;

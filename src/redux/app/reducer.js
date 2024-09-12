@@ -109,22 +109,14 @@ export default function appReducer(state = initState, action) {
         ...action.properties,
       };
     case actions.SELECT_REPORT:
-      url = new URL(decodeURI(document.location));
-      if (action.report) {
-        url.searchParams.set("report", action.report);
-        window.history.replaceState(
-          unescape(url.toString()),
-          "Case Report",
-          unescape(url.toString())
-        );
-      }
+      console.log(action);
       let reportMetadata = {};
       Object.values(reportAttributesMap()).forEach((key) => {
         reportMetadata[key] = null;
       });
       return {
         ...state,
-        report: action.report,
+        report: action.id,
         metadata: reportMetadata,
         searchFilters: { texts: null },
         filteredEvent: [],
@@ -156,6 +148,12 @@ export default function appReducer(state = initState, action) {
         loading: false,
       };
     case actions.REPORT_SELECTED:
+      return {
+        ...state,
+        ...action.properties,
+        loading: false,
+      };
+    case actions.SELECT_REPORT_FAILED:
       return {
         ...state,
         ...action.properties,

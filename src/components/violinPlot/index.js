@@ -245,8 +245,9 @@ class ViolinPlot extends Component {
                 transform={`translate(${[margins.gap, panelHeight]})`}
               ></g>
               <g clipPath="url(#cuttOffViewPane)">
-                {histograms.map((hist) => (
+                {histograms.map((hist, i) => (
                   <g
+                    key={`hist-${hist.plot.id}-${i}`}
                     clipPath="url(#cuttOffViewPane0)"
                     transform={`translate(${[
                       xScale(hist.plot.id) + 1.5 * xScale.step(),

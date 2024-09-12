@@ -1,6 +1,14 @@
 import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 
+export function replaceSearchParams(location, params = {}) {
+  let searchParams = new URLSearchParams(location.search);
+  Object.keys(params).forEach((param) => {
+    searchParams.set(param, params[param].toString());
+  });
+  return decodeURIComponent(searchParams.toString());
+}
+
 export async function loadArrowTable(file) {
   return await tableFromIPC(fetch(file));
 }
@@ -539,6 +547,12 @@ export function mutationFilterTypes() {
       "delComplex",
     ],
   };
+}
+
+export function flip(data) {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [value, key])
+  );
 }
 
 export function foreground2AbsoluteCN(foreground, beta, gamma) {

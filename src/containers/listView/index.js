@@ -78,10 +78,10 @@ class ListView extends Component {
                   ref={this.formRef}
                   onFinish={this.onValuesChange}
                   onValuesChange={this.onValuesChange}
-                  initialValues={searchFilters}
                 >
                   {filters.map((d) => (
                     <Form.Item
+                      key={`containers.list-view.filters.${d.filter}`}
                       name={d.filter}
                       label={t(`containers.list-view.filters.${d.filter}`)}
                       rules={[
@@ -100,8 +100,8 @@ class ListView extends Component {
                         maxTagCount="responsive"
                         maxTagTextLength={5}
                       >
-                        {d.records.map((e) => (
-                          <Option value={e}>
+                        {d.records.map((e, i) => (
+                          <Option key={i} value={e}>
                             {e
                               ? snakeCaseToHumanReadable(e)
                               : t("containers.list-view.filters.empty")}
@@ -139,7 +139,7 @@ class ListView extends Component {
               </Col>
             )}
             {records.map((d) => (
-              <Col className="gutter-row" span={6}>
+              <Col key={d.pair} className="gutter-row" span={6}>
                 <Card
                   className="case-report-card"
                   onClick={(e) => handleCardClick(e, d.pair)}

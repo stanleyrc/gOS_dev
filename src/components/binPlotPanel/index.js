@@ -17,9 +17,9 @@ import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
 import TracksModal from "../tracksModal";
-import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
 
-const { updateDomains } = appActions;
+const { updateDomains } = settingsActions;
 
 const margins = {
   padding: 0,
@@ -77,18 +77,17 @@ class BinPlotPanel extends Component {
       coverageData,
       hetsnpsData,
       genesData,
-      title,
       inViewport,
       renderOutsideViewPort,
       visible,
-      xTitle,
-      yTitle,
       chromoBins,
-      slope,
-      intercept,
+      ppfit,
+      metadata,
     } = this.props;
 
-    if (data.intervals.length < 1) {
+    const { beta, gamma } = metadata;
+
+    if (!metadata.pair || ppfit.intervals.length < 1) {
       return null;
     }
     const { segment, open } = this.state;
@@ -103,7 +102,9 @@ class BinPlotPanel extends Component {
               <span role="img" className="anticon anticon-dashboard">
                 <GiHistogram />
               </span>
-              <span className="ant-pro-menu-item-title">{title}</span>
+              <span className="ant-pro-menu-item-title">
+                {t(`components.binQc-panel.binplot.title`)}
+              </span>
             </Space>
           }
           extra={
@@ -129,7 +130,7 @@ class BinPlotPanel extends Component {
               <TracksModal
                 {...{
                   loading,
-                  genomeData: data,
+                  genomeData: ppfit,
                   coverageData,
                   hetsnpsData,
                   genesData,
@@ -177,12 +178,16 @@ class BinPlotPanel extends Component {
                             {...{
                               width,
                               height: 600,
-                              data: data.intervals,
-                              xTitle,
-                              yTitle,
+                              data: ppfit.intervals,
+                              xTitle: t(
+                                `components.binQc-panel.binplot.x-title`
+                              ),
+                              yTitle: t(
+                                `components.binQc-panel.binplot.y-title`
+                              ),
                               selectSegment: (e) => this.handleSelectSegment(e),
-                              slope,
-                              intercept,
+                              slope: 1 / beta,
+                              intercept: gamma / beta,
                             }}
                           />
                         </Col>
@@ -198,11 +203,8 @@ class BinPlotPanel extends Component {
     );
   }
 }
-BinPlotPanel.propTypes = {
-  data: PropTypes.array,
-};
+BinPlotPanel.propTypes = {};
 BinPlotPanel.defaultProps = {
-  data: { intervals: [], connections: [] },
   visible: true,
 };
 const mapDispatchToProps = (dispatch) => ({
@@ -210,6 +212,12 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
+  metadata: state.CaseReport.metadata,
+  ppfit: state.Ppfit.data,
+  chromoBins: state.Settings.chromoBins,
+  coverageData: state.GenomeCoverage.data,
+  hetsnpsData: state.Hetsnps.data,
+  genesData: state.Genes.data,
 });
 export default connect(
   mapStateToProps,
