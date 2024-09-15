@@ -80,6 +80,7 @@ export default function appReducer(state = initState, action) {
         url0.searchParams.set("report", report);
       } else {
         url0.searchParams.delete("report");
+        url0.searchParams.delete("gene");
         url0.searchParams.delete("tab");
         url0.searchParams.delete("location");
       }

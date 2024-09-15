@@ -21,7 +21,6 @@ class FilteredEventsListPanel extends Component {
       selectedFilteredEvent,
       loading,
       error,
-
       genome,
       mutations,
       chromoBins,

@@ -3,7 +3,6 @@ import axios from "axios";
 import { updateChromoBins } from "../../helpers/utility";
 import actions from "./actions";
 import caseReportActions from "../caseReport/actions";
-import caseReportsActions from "../caseReports/actions";
 
 function* fetchSettingsData(action) {
   try {

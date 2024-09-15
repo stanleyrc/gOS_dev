@@ -8,7 +8,6 @@ import {
 import * as d3 from "d3";
 import actions from "./actions";
 import caseReportActions from "../caseReport/actions";
-import caseReportsActions from "../caseReports/actions";
 
 function* fetchData(action) {
   try {
@@ -338,7 +337,7 @@ function* fetchData(action) {
       mutationCatalog,
       decomposedCatalog,
       referenceCatalog,
-      signaturesReference
+      signaturesReference,
     });
   } catch (error) {
     yield put({

@@ -382,8 +382,6 @@ class GenesPlot extends Component {
                 key={d.iid}
                 x={xPos}
                 y={yPos}
-                endPos={xPos + textLength}
-                strand={this.genesStrand[i]}
                 dy={-10}
                 fontFamily="Arial"
                 fontSize={10}
