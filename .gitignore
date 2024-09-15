@@ -68,8 +68,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 public/datafiles.json
-public/data/*
-!public/data/DEMO
+public/data
 public/genes/*
 public/common/*
 connect.sh

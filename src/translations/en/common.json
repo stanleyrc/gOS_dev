@@ -22,7 +22,8 @@
     "count": "Count",
     "density": "Density",
     "mutation": "<strong>{{count}}</strong>mutation in total",
-    "mutation_plural": "<strong>{{count}}</strong> mutations in total"
+    "mutation_plural": "<strong>{{count}}</strong> mutations in total",
+    "not-applicable": "NA"
   },
   "topbar": {
     "report": "<strong>{{count}}</strong> case report in total",
