@@ -24,17 +24,20 @@ class Grid extends Component {
   }
 
   renderYAxis() {
-    let { scaleY, axisWidth } = this.props;
+    let { scaleY, axisWidth, gapLeft } = this.props;
     if (!scaleY) {
       return;
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
-    let yAxis = d3.axisLeft(scaleY).tickSize(-axisWidth);
+    let yAxis = d3
+      .axisRight(scaleY)
+      .tickSizeInner(axisWidth)
+      .tickPadding(-axisWidth - gapLeft);
     yAxisContainer.call(yAxis);
   }
 
   renderYAxis2() {
-    let { scaleY2, scaleY } = this.props;
+    let { scaleY2, scaleY, gapRight } = this.props;
     if (!scaleY2.show) {
       return;
     }
@@ -49,9 +52,9 @@ class Grid extends Component {
       .select(".y-axis2-container");
 
     let yAxis2 = d3
-      .axisRight(yScale2)
+      .axisLeft(yScale2)
       .tickValues(scaleY.ticks().map((d) => +d * slope + intercept))
-      .tickFormat(d3.format("+.1f"));
+      .tickPadding(-gapRight);
     yAxis2Container.call(yAxis2);
   }
 
@@ -352,6 +355,8 @@ Grid.propTypes = {
 };
 Grid.defaultProps = {
   gap: 0,
+  gapLeft: 24,
+  gapRight: 30,
   fontSize: 10,
   showY: true,
   scaleY2: { show: false, slope: 1, intercept: 0 },

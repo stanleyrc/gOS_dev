@@ -567,10 +567,6 @@ export function flip(data) {
   );
 }
 
-export function foreground2AbsoluteCN(foreground, beta, gamma) {
-  return foreground * beta - gamma;
-}
-
 export function snakeCaseToHumanReadable(str) {
   return str
     ? str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
@@ -604,7 +600,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
       const regex = /^(\w+):(\d+)-(\d+).*/;
-      let gene = event.gene
+      let gene = event.gene;
       let match = regex.exec(event.Genome_Location);
       let chromosome = match[1];
       let startPoint = match[2];
@@ -619,17 +615,26 @@ export function transformFilteredEventAttributes(filteredEvents) {
         const geneStartPoint = parseInt(startPoint);
         const geneEndPoint = parseInt(endPoint);
 
-        let padding = snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint ? snvStartPoint - geneStartPoint : geneEndPoint - snvEndPoint;
+        let padding =
+          snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint
+            ? snvStartPoint - geneStartPoint
+            : geneEndPoint - snvEndPoint;
         padding += 1000;
-        startPoint = parseInt(snvStartPoint - padding); 
-        endPoint = parseInt(snvEndPoint + padding); 
+        startPoint = parseInt(snvStartPoint - padding);
+        endPoint = parseInt(snvEndPoint + padding);
         location = event.Variant_g;
-      } else if (event.vartype == "fusion") { 
-        gene = event.fusion_genes
-        location = event.fusion_genes
-        chromosome = event.fusion_gene_coords.split(",").map((d) => d.split(":")[0]);
-        startPoint = event.fusion_gene_coords.split(",").map((d) => d.split(":")[1].split("-")[0]);
-        endPoint = event.fusion_gene_coords.split(",").map((d) => d.split(":")[1].split("-")[1]);
+      } else if (event.vartype == "fusion") {
+        gene = event.fusion_genes;
+        location = event.fusion_genes;
+        chromosome = event.fusion_gene_coords
+          .split(",")
+          .map((d) => d.split(":")[0]);
+        startPoint = event.fusion_gene_coords
+          .split(",")
+          .map((d) => d.split(":")[1].split("-")[0]);
+        endPoint = event.fusion_gene_coords
+          .split(",")
+          .map((d) => d.split(":")[1].split("-")[1]);
       }
       return {
         gene: gene,
