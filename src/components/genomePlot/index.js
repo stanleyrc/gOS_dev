@@ -127,7 +127,10 @@ class GenomePlot extends Component {
       let intervalMin = d3.min(filteredIntervals, (d) => d.y);
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
       let offsetPerc = 0.5;
-      let yDomain = [intervalMin - (intervalMin * offsetPerc), intervalMax + (intervalMax * offsetPerc)];
+      let yDomain = [
+        intervalMin - intervalMin * offsetPerc,
+        intervalMax + intervalMax * offsetPerc,
+      ];
       let yScale = d3
         .scaleLinear()
         .domain(yDomain)
@@ -521,6 +524,7 @@ class GenomePlot extends Component {
       mutationsPlot,
       yAxisTitle,
       yAxis2Title,
+      chromoBins,
     } = this.props;
     const { stageWidth, stageHeight, tooltip } = this.state;
 
@@ -632,6 +636,7 @@ class GenomePlot extends Component {
                         scaleY={panel.yScale}
                         axisWidth={panel.panelWidth}
                         axisHeight={panel.panelHeight}
+                        chromoBins={chromoBins}
                       />
                       <line
                         className="hovered-location-line hidden"
@@ -665,7 +670,7 @@ class GenomePlot extends Component {
                         }`}
                         transform={`translate(${[
                           panel.xScale((d.startPlace + d.endPlace) / 2),
-                          panel.yScale(d.y), 
+                          panel.yScale(d.y),
                         ]})`}
                         r={margins.bar / 3}
                         style={{

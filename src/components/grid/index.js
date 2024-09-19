@@ -24,20 +24,30 @@ class Grid extends Component {
   }
 
   renderYAxis() {
-    let { scaleY, axisWidth, gapLeft } = this.props;
+    let { scaleY, axisWidth, gapLeft, flipAxesY } = this.props;
     if (!scaleY) {
       return;
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
-    let yAxis = d3
-      .axisRight(scaleY)
-      .tickSizeInner(axisWidth)
-      .tickPadding(-axisWidth - gapLeft);
+
+    let yAxis = flipAxesY
+      ? d3
+          .axisLeft(scaleY)
+          .ticks(8)
+          .tickSizeInner(-axisWidth)
+          .tickPadding(-axisWidth - 0.8 * gapLeft)
+      : d3
+          .axisRight(scaleY)
+          .ticks(8)
+          .tickSizeInner(axisWidth)
+          .tickPadding(-axisWidth - gapLeft);
+
     yAxisContainer.call(yAxis);
   }
 
   renderYAxis2() {
-    let { scaleY2, scaleY, gapRight } = this.props;
+    let { scaleY2, scaleY, gapRight, flipAxesY, axisWidth, gapLeft } =
+      this.props;
     if (!scaleY2.show) {
       return;
     }
@@ -51,15 +61,26 @@ class Grid extends Component {
       .select(this.container)
       .select(".y-axis2-container");
 
-    let yAxis2 = d3
-      .axisLeft(yScale2)
-      .tickValues(scaleY.ticks().map((d) => +d * slope + intercept))
-      .tickPadding(-gapRight);
+    let yAxis2 = flipAxesY
+      ? d3
+          .axisRight(yScale2)
+          .tickValues(scaleY.ticks(8).map((d) => +d * slope + intercept))
+          .tickPadding(-axisWidth - 0.8 * gapLeft)
+      : d3
+          .axisLeft(yScale2)
+          .tickValues(scaleY.ticks(8).map((d) => +d * slope + intercept))
+          .tickPadding(-gapRight);
+
     yAxis2Container.call(yAxis2);
   }
 
   renderXAxis() {
-    let { scaleX, axisWidth, fontSize, axisHeight, chromoBins } = this.props;
+    let { scaleX, axisWidth, fontSize, axisHeight, chromoBins, updateDomains } =
+      this.props;
+
+    if (!chromoBins) {
+      return null;
+    }
 
     let data = Object.keys(chromoBins).filter(
       (d) =>
@@ -125,6 +146,8 @@ class Grid extends Component {
 
         d3.select(this).call(axisX);
 
+        d3.select(this).select("text.label-chromosome").remove();
+
         d3.select(this)
           .append("text")
           .attr("class", "label-chromosome")
@@ -137,6 +160,8 @@ class Grid extends Component {
           .attr("fill", chromo.color)
           .text((e, j) => chromo.chromosome);
 
+        d3.select(this).select("circle.circle-chromosome").remove();
+
         d3.select(this)
           .append("circle")
           .attr("class", "circle-chromosome")
@@ -146,12 +171,21 @@ class Grid extends Component {
               `translate(${[rangeWidth / 2, -axisHeight + 1.3 * fontSize]})`
           )
           .attr("stroke", chromo.color)
-          .attr("r", fontSize);
+          .attr("r", fontSize)
+          .on("mouseover", function () {
+            d3.select(this).style("stroke-width", 2);
+          })
+          .on("mouseout", function () {
+            d3.select(this).style("stroke-width", 1);
+          });
 
         d3.select(this)
           .selectAll(".tick > text")
           .attr("transform", "rotate(45)")
           .style("text-anchor", "start");
+
+        d3.select(this).select("text.label-magnitude").remove();
+
         d3.select(this)
           .append("text")
           .attr("class", "label-magnitude")
@@ -162,6 +196,9 @@ class Grid extends Component {
               `translate(${[rangeWidth / 2, -axisHeight - 1 * fontSize]})`
           )
           .text((e, j) => d3.format(".1s")(magnitudeText));
+
+        d3.select(this).select("polyline.line-magnitude").remove();
+
         d3.select(this)
           .append("polyline")
           .attr("class", "line-magnitude")
@@ -229,6 +266,7 @@ class Grid extends Component {
           .selectAll(".tick > text")
           .attr("transform", "rotate(45)")
           .style("text-anchor", "start");
+
         d3.select(this)
           .select("text.label-chromosome")
           .attr(
@@ -236,13 +274,26 @@ class Grid extends Component {
             (e, j) =>
               `translate(${[rangeWidth / 2, -axisHeight + 1.3 * fontSize]})`
           );
+
         d3.select(this)
           .select("circle.circle-chromosome")
           .attr(
             "transform",
             (e, j) =>
               `translate(${[rangeWidth / 2, -axisHeight + 1.3 * fontSize]})`
-          );
+          )
+          .on("mouseover", function () {
+            d3.select(this).style("stroke-width", 2);
+          })
+          .on("mouseout", function () {
+            d3.select(this).style("stroke-width", 1);
+          })
+          .on("click", () => {
+            updateDomains([
+              [chromoBins[d].startPlace + 1e1, chromoBins[d].endPlace - 1e1],
+            ]);
+          });
+
         d3.select(this)
           .select("text.label-magnitude")
           .attr(
@@ -269,7 +320,9 @@ class Grid extends Component {
 
   renderSeparators() {
     let { scaleX, axisWidth, axisHeight, chromoBins } = this.props;
-
+    if (!chromoBins) {
+      return null;
+    }
     let data = Object.keys(chromoBins).filter(
       (d) =>
         scaleX(chromoBins[d].startPlace) <= axisWidth &&
@@ -332,7 +385,6 @@ class Grid extends Component {
           ></g>
         )}
         <g
-          clipPath=""
           className="axis--x x-axis-container"
           transform={`translate(${[gap, axisHeight]})`}
         ></g>
@@ -356,15 +408,14 @@ Grid.propTypes = {
 Grid.defaultProps = {
   gap: 0,
   gapLeft: 24,
-  gapRight: 30,
+  gapRight: 35,
   fontSize: 10,
+  flipAxesY: false,
   showY: true,
   scaleY2: { show: false, slope: 1, intercept: 0 },
 };
 const mapDispatchToProps = (dispatch) => ({});
-const mapStateToProps = (state) => ({
-  chromoBins: state.App.chromoBins,
-});
+const mapStateToProps = (state) => ({});
 export default connect(
   mapStateToProps,
   mapDispatchToProps

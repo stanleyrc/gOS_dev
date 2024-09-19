@@ -70,6 +70,7 @@ class ScatterPlotPanel extends Component {
       scaleY2,
       yAxisTitle,
       yAxis2Title,
+      flipAxesY,
     } = this.props;
     if (!data) return null;
     return (
@@ -141,6 +142,7 @@ class ScatterPlotPanel extends Component {
                                   scaleY2,
                                   yAxisTitle,
                                   yAxis2Title,
+                                  flipAxesY,
                                 }}
                               />
                             )
@@ -170,6 +172,7 @@ class ScatterPlotPanel extends Component {
 ScatterPlotPanel.propTypes = {};
 ScatterPlotPanel.defaultProps = {
   scaleY2: { show: false, slope: 1, intercept: 0 },
+  flipAxesY: false,
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({

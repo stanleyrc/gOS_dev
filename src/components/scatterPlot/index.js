@@ -264,7 +264,9 @@ class ScatterPlot extends Component {
       scaleY2,
       yAxisTitle,
       yAxis2Title,
+      flipAxesY,
     } = this.props;
+
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
     let panelWidth =
@@ -339,14 +341,14 @@ class ScatterPlot extends Component {
             className="y-axis-title"
             transform={`translate(${[0, margins.gapY / 3]})`}
           >
-            {yAxisTitle}
+            {flipAxesY ? yAxis2Title : yAxisTitle}
           </text>
           <text
             className="y-axis-title"
             transform={`translate(${[width, margins.gapY / 3]})`}
             textAnchor="end"
           >
-            {yAxis2Title}
+            {flipAxesY ? yAxisTitle : yAxis2Title}
           </text>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             {this.panels.map((panel, i) => (
@@ -363,6 +365,7 @@ class ScatterPlot extends Component {
                   axisWidth={panelWidth}
                   axisHeight={panelHeight}
                   chromoBins={chromoBins}
+                  flipAxesY={flipAxesY}
                 />
                 <line
                   className="hovered-location-line hidden"
@@ -409,6 +412,7 @@ ScatterPlot.propTypes = {
 };
 ScatterPlot.defaultProps = {
   scaleY2: { show: false, slope: 1, intercept: 0 },
+  flipAxesY: false,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

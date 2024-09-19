@@ -110,6 +110,7 @@ class TracksModal extends Component {
               height,
               yAxisTitle: coverageYAxisTitle,
               yAxis2Title: coverageYAxis2Title,
+              flipAxesY: true,
             }}
           />
         </Col>
@@ -123,6 +124,7 @@ class TracksModal extends Component {
               loading,
               height,
               yAxisTitle: hetsnpPlotYAxisTitle,
+              flipAxesY: true,
             }}
           />
         </Col>
