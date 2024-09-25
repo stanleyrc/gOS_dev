@@ -27,7 +27,6 @@ class DetailView extends Component {
     const {
       updateTab,
       updateDomains,
-      history,
       location,
       defaultDomain,
       chromoBins,

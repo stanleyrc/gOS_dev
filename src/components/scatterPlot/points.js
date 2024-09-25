@@ -211,16 +211,20 @@ class Points {
   }
 
   render() {
-    this.regl.cache = {};
+    try {
+      this.regl.cache = {};
 
-    this.regl.clear({
-      color: [0, 0, 0, 0.0],
-      stencil: true,
-      depth: false,
-    });
+      this.regl.clear({
+        color: [0, 0, 0, 0.0],
+        stencil: true,
+        depth: false,
+      });
 
-    this.regl.poll();
-    this.draw(this.dataBufferList);
+      this.regl.poll();
+      this.draw(this.dataBufferList);
+    } catch (err) {
+      console.log(`Scatterplot webgl failed with error: ${err}`);
+    }
   }
 }
 

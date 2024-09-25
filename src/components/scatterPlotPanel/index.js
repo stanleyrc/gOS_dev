@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import ContainerDimensions from "react-container-dimensions";
+import { Resizable } from "react-resizable";
+import { ResizableBox } from "react-resizable";
 import handleViewport from "react-in-viewport";
 import {
   Card,
@@ -30,11 +32,55 @@ const { Text } = Typography;
 
 const margins = {
   padding: 0,
-  gap: 0,
+  gap: 27,
+  maxHeight: 500,
 };
 
 class ScatterPlotPanel extends Component {
-  container = null;
+  constructor(props) {
+    super(props);
+    this.container = null;
+    this.state = {
+      parentWidth: 0,
+      width: 0,
+      height: this.props.height,
+    };
+  }
+
+  componentDidMount() {
+    this.updateWidth();
+    window.addEventListener("resize", this.updateWidth);
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    // Check if the parent width has changed after the update
+    if (prevState.parentWidth !== this.state.parentWidth) {
+      this.updateWidth();
+    }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.updateWidth);
+  }
+
+  updateWidth = () => {
+    if (this.container) {
+      this.setState({
+        parentWidth: this.container.getBoundingClientRect().width,
+      });
+    }
+  };
+
+  // On top layout
+  onFirstBoxResize = (event, { element, size, handle }) => {
+    this.setState({
+      width: size.width,
+      height: d3.min([
+        d3.max([size.height, this.props.height]),
+        margins.maxHeight,
+      ]),
+    });
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -66,15 +112,19 @@ class ScatterPlotPanel extends Component {
       renderOutsideViewPort,
       visible,
       zoomedByCmd,
-      height,
       scaleY2,
       yAxisTitle,
       yAxis2Title,
       flipAxesY,
     } = this.props;
+    const { parentWidth, height } = this.state;
+    let { gap } = margins;
     if (!data) return null;
+    let w = parentWidth;
+    let h = height;
+
     return (
-      <Wrapper visible={visible} height={height}>
+      <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
         <Card
           style={transitionStyle(inViewport || renderOutsideViewPort)}
           loading={loading}
@@ -119,50 +169,51 @@ class ScatterPlotPanel extends Component {
             </Space>
           }
         >
-          {visible && (
-            <div
-              className="ant-wrapper"
-              ref={(elem) => (this.container = elem)}
+          {visible && w > 0 && (
+            <Resizable
+              className="box"
+              height={this.state.height}
+              width={w - gap}
+              onResize={this.onFirstBoxResize}
+              resizeHandles={["sw", "se", "s"]}
+              draggableOpts={{ grid: [25, 25] }}
             >
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    (inViewport || renderOutsideViewPort) && (
-                      <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col flex={1}>
-                          {data ? (
-                            width &&
-                            height && (
-                              <ScatterPlot
-                                {...{
-                                  width,
-                                  height,
-                                  data,
-                                  domains,
-                                  scaleY2,
-                                  yAxisTitle,
-                                  yAxis2Title,
-                                  flipAxesY,
-                                }}
-                              />
-                            )
-                          ) : (
-                            <Alert
-                              message={t("general.invalid-arrow-file")}
-                              description={t(
-                                "general.invalid-arrow-file-detail"
-                              )}
-                              type="error"
-                              showIcon
-                            />
-                          )}
-                        </Col>
-                      </Row>
-                    )
-                  );
+              <div
+                className="ant-wrapper"
+                style={{
+                  width: w - gap + "px",
+                  height: this.state.height + "px",
                 }}
-              </ContainerDimensions>
-            </div>
+              >
+                {(inViewport || renderOutsideViewPort) && (
+                  <Row>
+                    <Col flex={1}>
+                      {data ? (
+                        <ScatterPlot
+                          {...{
+                            width: w - gap,
+                            height: h,
+                            data,
+                            domains,
+                            scaleY2,
+                            yAxisTitle,
+                            yAxis2Title,
+                            flipAxesY,
+                          }}
+                        />
+                      ) : (
+                        <Alert
+                          message={t("general.invalid-arrow-file")}
+                          description={t("general.invalid-arrow-file-detail")}
+                          type="error"
+                          showIcon
+                        />
+                      )}
+                    </Col>
+                  </Row>
+                )}
+              </div>
+            </Resizable>
           )}
         </Card>
       </Wrapper>
