@@ -124,7 +124,7 @@ class ScatterPlot extends Component {
             .translate(-s[0], 0)
         );
     });
-    if (this.panels[hoveredLocationPanelIndex]) {
+    if (this.panels[hoveredLocationPanelIndex] && hoveredLocation) {
       d3.select(this.plotContainer)
         .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
         .classed("hidden", !hoveredLocation)

@@ -320,6 +320,7 @@ class Grid extends Component {
 
   renderSeparators() {
     let { scaleX, axisWidth, axisHeight, chromoBins } = this.props;
+
     if (!chromoBins) {
       return null;
     }
@@ -352,18 +353,23 @@ class Grid extends Component {
       (d) => `translate(${[scaleX(chromoBins[d].startPlace), 0]})`
     );
 
+    separatorsContainer
+      .selectAll("g.chromo-separator line")
+      .attr("y2", axisHeight);
+
     separatorsContainer.exit().remove();
   }
 
   render() {
     const { showY, scaleY2, axisWidth, axisHeight, gap } = this.props;
+    let randId = `cutt-off-clip-${Math.random()}`;
     return (
       <Wrapper
         className="axis axis-container"
         ref={(elem) => (this.container = elem)}
       >
         <defs>
-          <clipPath id="cutt-off-clip">
+          <clipPath id={randId}>
             <rect
               x={0}
               y={-3 * axisHeight}
@@ -389,7 +395,7 @@ class Grid extends Component {
           transform={`translate(${[gap, axisHeight]})`}
         ></g>
         <g
-          clipPath="url(#cutt-off-clip)"
+          clipPath={`url(#${randId})`}
           className="separators-container"
           transform={`translate(${[gap, 0]})`}
         ></g>

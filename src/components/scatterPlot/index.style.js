@@ -4,7 +4,7 @@ const Wrapper = styled.div`
   .ant-wrapper {
     background: white;
     padding: 0px;
-    min-height: ${(props) => props.height}px !important;
+    height: ${(props) => props.height}px !important;
   }
   div.scatterplot canvas {
     margin: ${(props) => props.margins.gapY}px
