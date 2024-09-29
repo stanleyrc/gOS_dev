@@ -120,11 +120,15 @@ class GenesPlot extends Component {
   }
 
   componentWillUnmount() {
-    if (this.regl) {
-      this.regl.destroy();
-      this.regl._gl.clear(this.regl._gl.COLOR_BUFFER_BIT);
-      this.regl._gl.clear(this.regl._gl.DEPTH_BUFFER_BIT);
-      this.regl._gl.clear(this.regl._gl.STENCIL_BUFFER_BIT);
+    try {
+      if (this.regl) {
+        this.regl.destroy();
+        this.regl._gl.clear(this.regl._gl.COLOR_BUFFER_BIT);
+        this.regl._gl.clear(this.regl._gl.DEPTH_BUFFER_BIT);
+        this.regl._gl.clear(this.regl._gl.STENCIL_BUFFER_BIT);
+      }
+    } catch (err) {
+      console.log(`Genes plot webgl failed with error: ${err}`);
     }
   }
 

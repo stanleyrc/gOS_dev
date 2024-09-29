@@ -41,7 +41,7 @@ class ScatterPlotPanel extends Component {
     super(props);
     this.container = null;
     this.state = {
-      parentWidth: 0,
+      parentWidth: null,
       width: 0,
       height: this.props.height,
     };
@@ -120,7 +120,7 @@ class ScatterPlotPanel extends Component {
     const { parentWidth, height } = this.state;
     let { gap } = margins;
     if (!data) return null;
-    let w = parentWidth;
+    let w = parentWidth || this.container?.getBoundingClientRect().width;
     let h = height;
 
     return (
