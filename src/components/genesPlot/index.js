@@ -108,14 +108,20 @@ class GenesPlot extends Component {
         );
     });
 
-    if (
-      prevProps.width !== this.props.width ||
-      prevProps.height !== this.props.height
-    ) {
-      this.componentWillUnmount();
-      this.componentDidMount();
-    } else {
-      this.plot.rescaleX(domains);
+    try {
+      if (
+        prevProps.width !== this.props.width ||
+        prevProps.height !== this.props.height
+      ) {
+        this.componentWillUnmount();
+        this.componentDidMount();
+      } else {
+        this.plot.rescaleX(domains);
+      }
+    } catch (err) {
+      console.log(
+        `Genes plot webgl failed in componentDidUpdate with error: ${err}`
+      );
     }
   }
 
