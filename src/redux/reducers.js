@@ -13,6 +13,8 @@ import Hetsnps from "./hetsnps/reducer";
 import Mutations from "./mutations/reducer";
 import Allelic from "./allelic/reducer";
 import SignatureStatistics from "./signatureStatistics/reducer";
+import Biomarkers from "./biomarkers/reducer";
+import CuratedGenes from "./curatedGenes/reducer";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
@@ -30,5 +32,7 @@ export default {
   Hetsnps,
   Mutations,
   Allelic,
-  SignatureStatistics
+  SignatureStatistics,
+  Biomarkers,
+  CuratedGenes,
 };

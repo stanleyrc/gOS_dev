@@ -1,0 +1,11 @@
+const actions = {
+  FETCH_BIOMARKERS_REQUEST: "FETCH_BIOMARKERS_REQUEST",
+  FETCH_BIOMARKERS_SUCCESS: "FETCH_BIOMARKERS_SUCCESS",
+  FETCH_BIOMARKERS_FAILED: "FETCH_BIOMARKERS_FAILED",
+
+  fetchBiomarkers: () => ({
+    type: actions.FETCH_BIOMARKERS_REQUEST,
+  }),
+};
+
+export default actions;

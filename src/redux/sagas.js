@@ -14,6 +14,8 @@ import HetsnpsSagas from "./hetsnps/saga";
 import MutationsSagas from "./mutations/saga";
 import AllelicSagas from "./allelic/saga";
 import signatureStatisticsSagas from "./signatureStatistics/saga";
+import biomarkersSagas from "./biomarkers/saga";
+import curatedGenesSagas from "./curatedGenes/saga";
 
 export default function* rootSaga(getState) {
   yield all([
@@ -32,5 +34,7 @@ export default function* rootSaga(getState) {
     MutationsSagas(),
     AllelicSagas(),
     signatureStatisticsSagas(),
+    biomarkersSagas(),
+    curatedGenesSagas(),
   ]);
 }
