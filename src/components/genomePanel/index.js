@@ -2,6 +2,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import ContainerDimensions from "react-container-dimensions";
+import { Resizable } from "react-resizable";
+import * as d3 from "d3";
 import handleViewport from "react-in-viewport";
 import { Card, Space, Button, Tooltip, message, Typography } from "antd";
 import { GiDna2 } from "react-icons/gi";
@@ -20,10 +22,55 @@ const { Text } = Typography;
 const margins = {
   padding: 0,
   annotations: { minDistance: 10000000, padding: 1000, maxClusters: 6 },
+  gap: 27,
+  maxHeight: 500,
 };
 
 class GenomePanel extends Component {
-  container = null;
+  constructor(props) {
+    super(props);
+    this.container = null;
+    this.state = {
+      parentWidth: null,
+      width: 0,
+      height: this.props.height,
+    };
+  }
+
+  componentDidMount() {
+    this.updateWidth();
+    window.addEventListener("resize", this.updateWidth);
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    // Check if the parent width has changed after the update
+    if (prevState.parentWidth !== this.state.parentWidth) {
+      this.updateWidth();
+    }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.updateWidth);
+  }
+
+  updateWidth = () => {
+    if (this.container) {
+      this.setState({
+        parentWidth: this.container.getBoundingClientRect().width,
+      });
+    }
+  };
+
+  // On top layout
+  onFirstBoxResize = (event, { element, size, handle }) => {
+    this.setState({
+      width: size.width,
+      height: d3.min([
+        d3.max([size.height, this.props.height]),
+        margins.maxHeight,
+      ]),
+    });
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -51,12 +98,15 @@ class GenomePanel extends Component {
       zoomedByCmd,
       chromoBins,
       domains,
-      height,
       mutationsPlot,
     } = this.props;
+    const { parentWidth, height } = this.state;
+    let { gap } = margins;
     if (!genome || Object.keys(genome).length < 1) return null;
+    let w = parentWidth || this.container?.getBoundingClientRect().width;
+    let h = height;
     return (
-      <Wrapper visible={visible} height={height}>
+      <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
         <Card
           style={transitionStyle(inViewport || renderOutsideViewPort)}
           size="small"
@@ -87,29 +137,35 @@ class GenomePanel extends Component {
             </Space>
           }
         >
-          {visible && genome && (
-            <div
-              className="ant-wrapper"
-              ref={(elem) => (this.container = elem)}
+          {visible && w > 0 && genome && (
+            <Resizable
+              className="box"
+              height={this.state.height}
+              width={w - gap}
+              onResize={this.onFirstBoxResize}
+              resizeHandles={["sw", "se", "s"]}
+              draggableOpts={{ grid: [25, 25] }}
             >
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    (inViewport || renderOutsideViewPort) && (
-                      <GenomePlot
-                        {...{
-                          width: width - 2 * margins.padding,
-                          height,
-                          genome,
-                          mutationsPlot,
-                          yAxisTitle,
-                        }}
-                      />
-                    )
-                  );
+              <div
+                className="ant-wrapper"
+                style={{
+                  width: w - gap + "px",
+                  height: this.state.height + "px",
                 }}
-              </ContainerDimensions>
-            </div>
+              >
+                {(inViewport || renderOutsideViewPort) && (
+                  <GenomePlot
+                    {...{
+                      width: w - 2 * margins.padding,
+                      height,
+                      genome,
+                      mutationsPlot,
+                      yAxisTitle,
+                    }}
+                  />
+                )}
+              </div>
+            </Resizable>
           )}
         </Card>
       </Wrapper>

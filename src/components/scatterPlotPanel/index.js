@@ -1,8 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import ContainerDimensions from "react-container-dimensions";
 import { Resizable } from "react-resizable";
-import { ResizableBox } from "react-resizable";
 import handleViewport from "react-in-viewport";
 import {
   Card,
