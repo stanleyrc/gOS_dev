@@ -56,6 +56,8 @@ class ScatterPlot extends Component {
 
     this.regl.on("restore", () => {
       console.log("webgl context restored");
+      this.points = new Points(this.regl, margins.gapX, 0);
+      this.updateStage();
     });
 
     this.points = new Points(this.regl, margins.gapX, 0);
@@ -304,7 +306,8 @@ class ScatterPlot extends Component {
         .domain(defaultDomain)
         .range([0, panelWidth]);
 
-      let yExtent = [0, d3.quantile(matched, 0.99)];
+      //let yExtent = [0, d3.quantile(matched, 0.99)];
+      let yExtent = [0, d3.max(matched)];
 
       let yScale = d3
         .scaleLinear()
