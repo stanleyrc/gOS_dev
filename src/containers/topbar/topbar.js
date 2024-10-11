@@ -8,30 +8,23 @@ import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
 import { siteConfig } from "../../settings";
 import logo from "../../assets/images/logo.png";
-import caseReportActions from "../../redux/caseReport/actions";
 import caseReportsActions from "../../redux/caseReports/actions";
 import settingsActions from "../../redux/settings/actions";
 
 const { Header } = Layout;
 const { Option } = Select;
 
-const { fetchCaseReports, searchCaseReports } = caseReportsActions;
-const { selectCaseReport } = caseReportActions;
+const { searchCaseReports } = caseReportsActions;
 const { updateCaseReport } = settingsActions;
 
 class Topbar extends Component {
-  componentDidMount() {
-    const { fetchCaseReports } = this.props;
-    fetchCaseReports();
-  }
-
   render() {
     const {
       t,
       loading,
       reports,
       totalReports,
-      selectCaseReport,
+      updateCaseReport,
       searchCaseReports,
       searchFilters,
     } = this.props;
@@ -66,7 +59,7 @@ class Topbar extends Component {
                     filterSort={false}
                     notFoundContent={null}
                     onSelect={(report) => {
-                      selectCaseReport(report);
+                      updateCaseReport(report);
                     }}
                     onClear={(e) => searchCaseReports({ texts: "" })}
                   >
@@ -137,10 +130,8 @@ class Topbar extends Component {
 Topbar.propTypes = {};
 Topbar.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
-  fetchCaseReports: () => dispatch(fetchCaseReports()),
-  selectCaseReport: (report) => dispatch(selectCaseReport(report)),
-  searchCaseReports: (texts) => dispatch(searchCaseReports(texts)),
   updateCaseReport: (report) => dispatch(updateCaseReport(report)),
+  searchCaseReports: (texts) => dispatch(searchCaseReports(texts)),
 });
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,

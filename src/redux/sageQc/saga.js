@@ -1,13 +1,14 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import actions from "./actions";
-import caseReportActions from "../caseReport/actions";
+import { getCurrentState } from "./selectors";
 
 function* fetchSageQc(action) {
-  let { pair } = action;
-
   try {
-    let responseSageQC = yield call(axios.get, `data/${pair}/sage.qc.json`);
+    const currentState = yield select(getCurrentState);
+    const { id } = currentState.CaseReport;
+
+    let responseSageQC = yield call(axios.get, `data/${id}/sage.qc.json`);
 
     let records = responseSageQC.data;
 
@@ -30,7 +31,6 @@ function* fetchSageQc(action) {
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_SAGEQC_REQUEST, fetchSageQc);
-  yield takeEvery(caseReportActions.SELECT_CASE_REPORT_SUCCESS, fetchSageQc);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

@@ -2,13 +2,6 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
-  general: [],
-  tumor: [],
-
-  signatures: {
-    indel: { count: [], fraction: [] },
-    sbs: { count: [], fraction: [] },
-  },
   signatureMetrics: {
     indel: { count: [], fraction: [] },
     sbs: { count: [], fraction: [] },
@@ -17,7 +10,6 @@ const initState = {
     indel: { count: [], fraction: [] },
     sbs: { count: [], fraction: [] },
   },
-  signaturesReference: { indel: {}, sbs: {} },
   mutationCatalog: [],
   decomposedCatalog: [],
   referenceCatalog: [],
@@ -36,10 +28,8 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_SIGNATURE_STATISTICS_SUCCESS:
       return {
         ...state,
-        signatures: action.signatures,
         signatureMetrics: action.signatureMetrics,
         tumorSignatureMetrics: action.tumorSignatureMetrics,
-        signaturesReference: action.signaturesReference,
         mutationCatalog: action.mutationCatalog,
         decomposedCatalog: action.decomposedCatalog,
         referenceCatalog: action.referenceCatalog,

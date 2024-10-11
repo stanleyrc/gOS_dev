@@ -210,6 +210,7 @@ class ViolinPlot extends Component {
       markers,
     } = this.getPlotConfiguration();
 
+    let cutOffid = `cuttOffViewPane-${Math.random()}`;
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
@@ -224,7 +225,7 @@ class ViolinPlot extends Component {
           ref={(elem) => (this.plotContainer = elem)}
         >
           <defs>
-            <clipPath key="cuttOffViewPane" id="cuttOffViewPane">
+            <clipPath key="cuttOffViewPane" id={cutOffid}>
               <rect
                 x={0}
                 y={0}
@@ -244,11 +245,10 @@ class ViolinPlot extends Component {
                 className="axis--x x-axis-container"
                 transform={`translate(${[margins.gap, panelHeight]})`}
               ></g>
-              <g clipPath="url(#cuttOffViewPane)">
+              <g clipPath={`url(#${cutOffid})`}>
                 {histograms.map((hist, i) => (
                   <g
                     key={`hist-${hist.plot.id}-${i}`}
-                    clipPath="url(#cuttOffViewPane0)"
                     transform={`translate(${[
                       xScale(hist.plot.id) + 1.5 * xScale.step(),
                       0,

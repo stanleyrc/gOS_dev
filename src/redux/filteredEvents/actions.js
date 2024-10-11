@@ -6,9 +6,8 @@ const actions = {
   SELECT_FILTERED_EVENT: "SELECT_FILTERED_EVENT",
   FILTERED_EVENT_SELECTED: "FILTERED_EVENT_SELECTED",
 
-  fetchFilteredEvents: (pair) => ({
+  fetchFilteredEvents: () => ({
     type: actions.FETCH_FILTERED_EVENTS_REQUEST,
-    pair,
   }),
   selectFilteredEvent: (filteredEvent) => ({
     type: actions.SELECT_FILTERED_EVENT,

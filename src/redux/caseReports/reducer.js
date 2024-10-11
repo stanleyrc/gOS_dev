@@ -3,6 +3,7 @@ import actions from "./actions";
 const initState = {
   loading: false,
   datafiles: [],
+  populations: {},
   reportsFilters: [],
   searchFilters: { page: 1, per_page: 10, texts: "" },
   reports: [],
@@ -17,6 +18,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         error: null,
         datafiles: [],
+        populations: {},
         reportsFilters: {},
         loading: true,
       };
@@ -24,9 +26,10 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         datafiles: action.datafiles,
-        reportsFilters: action.reportsFilters,
         populations: action.populations,
-        allPopulationMetrics: action.allPopulationMetrics,
+        reportsFilters: action.reportsFilters,
+        reports: action.reports,
+        totalReports: action.totalReports,
         loading: false,
       };
     case actions.FETCH_CASE_REPORTS_FAILED:
@@ -38,7 +41,11 @@ export default function appReducer(state = initState, action) {
     case actions.SEARCH_CASE_REPORTS:
       return {
         ...state,
-        searchFilters: action.searchFilters,
+        searchFilters: action.searchFilters || {
+          page: 1,
+          per_page: 10,
+          texts: "",
+        },
         loading: true,
       };
     case actions.CASE_REPORTS_MATCHED:

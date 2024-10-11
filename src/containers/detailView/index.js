@@ -3,11 +3,6 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { Skeleton, Affix, Tabs } from "antd";
-import {
-  replaceSearchParams,
-  locationToDomains,
-  domainsToLocation,
-} from "../../helpers/utility";
 import HeaderPanel from "../../components/headerPanel";
 import SummaryTab from "../../tabs/summaryTab";
 import TracksTab from "../../tabs/tracksTab";
@@ -23,23 +18,6 @@ const { TabPane } = Tabs;
 const { updateTab, updateDomains } = settingsActions;
 
 class DetailView extends Component {
-  componentDidMount() {
-    const {
-      updateTab,
-      updateDomains,
-      location,
-      defaultDomain,
-      chromoBins,
-    } = this.props;
-    let domainString = new URLSearchParams(location.search).get("location");
-    updateTab(new URLSearchParams(location.search).get("tab") || 1);
-    let domains = domainString
-      ? locationToDomains(chromoBins, domainString)
-      : [defaultDomain];
-    domainString = domainsToLocation(chromoBins, domains);
-    updateDomains(domains);
-  }
-
   handleTabChanged = (tab) => {
     const { updateTab } = this.props;
     updateTab(tab);

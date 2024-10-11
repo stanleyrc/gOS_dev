@@ -13,6 +13,7 @@ import Hetsnps from "./hetsnps/reducer";
 import Mutations from "./mutations/reducer";
 import Allelic from "./allelic/reducer";
 import SignatureStatistics from "./signatureStatistics/reducer";
+import SignatureProfiles from "./signatureProfiles/reducer";
 import Biomarkers from "./biomarkers/reducer";
 import CuratedGenes from "./curatedGenes/reducer";
 
@@ -33,6 +34,7 @@ export default {
   Mutations,
   Allelic,
   SignatureStatistics,
+  SignatureProfiles,
   Biomarkers,
   CuratedGenes,
 };

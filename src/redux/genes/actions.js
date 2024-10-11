@@ -3,9 +3,8 @@ const actions = {
   FETCH_GENES_DATA_SUCCESS: "FETCH_GENES_DATA_SUCCESS",
   FETCH_GENES_DATA_FAILED: "FETCH_GENES_DATA_FAILED",
 
-  fetchGenesData: (reference) => ({
+  fetchGenesData: () => ({
     type: actions.FETCH_GENES_DATA_REQUEST,
-    reference,
   }),
 };
 

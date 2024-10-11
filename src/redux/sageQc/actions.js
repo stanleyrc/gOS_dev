@@ -3,9 +3,8 @@ const actions = {
   FETCH_SAGEQC_SUCCESS: "FETCH_SAGEQC_SUCCESS",
   FETCH_SAGEQC_FAILED: "FETCH_SAGEQC_FAILED",
 
-  fetchSageQc: (pair) => ({
+  fetchSageQc: () => ({
     type: actions.FETCH_SAGEQC_REQUEST,
-    pair,
   }),
 };
 

@@ -13,7 +13,6 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: null,
-        pair: action.pair,
         general: [],
         tumor: [],
         loading: true,
@@ -28,6 +27,8 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_POPULATION_STATISTICS_FAILED:
       return {
         ...state,
+        general: [],
+        tumor: [],
         error: action.error,
         loading: false,
       };

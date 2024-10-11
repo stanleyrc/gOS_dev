@@ -17,6 +17,17 @@ const initState = {
 export default function appReducer(state = initState, action) {
   let url0 = new URL(decodeURI(document.location));
   switch (action.type) {
+    case actions.LAUNCH_APPLICATION:
+      url0 = new URL(decodeURI(document.location));
+      return {
+        ...state,
+        error: null,
+        report: new URL(decodeURI(document.location)).searchParams.get(
+          "report"
+        ),
+        tab: new URL(decodeURI(document.location)).searchParams.get("tab") || 1,
+        loading: true,
+      };
     case actions.FETCH_SETTINGS_DATA_REQUEST:
       return {
         ...state,

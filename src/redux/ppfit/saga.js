@@ -1,14 +1,15 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import { sequencesToGenome } from "../../helpers/utility";
 import actions from "./actions";
-import caseReportActions from "../caseReport/actions";
+import { getCurrentState } from "./selectors";
 
 function* fetchPpfitData(action) {
-  let { pair } = action;
-
   try {
-    let responseData = yield call(axios.get, `data/${pair}/ppfit.json`);
+    const currentState = yield select(getCurrentState);
+    const { id } = currentState.CaseReport;
+    
+    let responseData = yield call(axios.get, `data/${id}/ppfit.json`);
 
     let data = responseData.data
       ? sequencesToGenome(responseData.data)
@@ -32,7 +33,6 @@ function* fetchPpfitData(action) {
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_PPFIT_DATA_REQUEST, fetchPpfitData);
-  yield takeEvery(caseReportActions.SELECT_CASE_REPORT_SUCCESS, fetchPpfitData);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

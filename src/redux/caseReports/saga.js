@@ -2,7 +2,13 @@ import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import { getCurrentState } from "./selectors";
 import axios from "axios";
 import * as d3 from "d3";
-import { reportFilters } from "../../helpers/utility";
+import {
+  plotTypes,
+  reportFilters,
+  flip,
+  reportAttributesMap,
+  defaultSearchFilters,
+} from "../../helpers/utility";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
 
@@ -29,10 +35,30 @@ function* fetchCaseReports() {
       });
     });
 
+    let populations = {};
+    let flippedMap = flip(reportAttributesMap());
+    Object.keys(plotTypes()).forEach((d, i) => {
+      populations[d] = datafiles.map((e) => {
+        return {
+          pair: e.pair,
+          value: e[flippedMap[d]],
+          tumor_type: e.tumor_type,
+        };
+      });
+    });
+
+    let { page, per_page } = defaultSearchFilters();
+    let records = datafiles
+      .filter((d) => d.visible !== false)
+      .sort((a, b) => d3.ascending(a.pair, b.pair));
+
     yield put({
       type: actions.FETCH_CASE_REPORTS_SUCCESS,
       datafiles,
+      populations,
       reportsFilters,
+      reports: records.slice((page - 1) * per_page, page * per_page),
+      totalReports: records.length,
     });
   } catch (error) {
     yield put({
@@ -50,8 +76,8 @@ function* searchReports({ searchFilters }) {
     .filter((d) => d.visible !== false)
     .sort((a, b) => d3.ascending(a.pair, b.pair));
 
-  let page = searchFilters?.page || 1;
-  let perPage = searchFilters?.per_page || 10;
+  let page = searchFilters?.page || defaultSearchFilters().page;
+  let perPage = searchFilters?.per_page || defaultSearchFilters().per_page;
   let actualSearchFilters = Object.fromEntries(
     Object.entries(searchFilters || {}).filter(
       ([key, value]) =>
@@ -86,7 +112,7 @@ function* searchReports({ searchFilters }) {
   });
 }
 
-function* searchCaseReportsFollowUp(action) {
+function* followUpCaseReportsMatched(action) {
   yield put({
     type: settingsActions.UPDATE_CASE_REPORT,
     report: null,
@@ -96,8 +122,7 @@ function* searchCaseReportsFollowUp(action) {
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_CASE_REPORTS_REQUEST, fetchCaseReports);
   yield takeEvery(actions.SEARCH_CASE_REPORTS, searchReports);
-  yield takeEvery(actions.FETCH_CASE_REPORTS_SUCCESS, searchReports);
-  yield takeEvery(actions.SEARCH_CASE_REPORTS, searchCaseReportsFollowUp);
+  yield takeEvery(actions.CASE_REPORTS_MATCHED, followUpCaseReportsMatched);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

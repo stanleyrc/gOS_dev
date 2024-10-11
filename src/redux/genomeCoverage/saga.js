@@ -1,7 +1,7 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import { loadArrowTable } from "../../helpers/utility";
 import actions from "./actions";
-import caseReportActions from "../caseReport/actions";
+import { getCurrentState } from "./selectors";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path)
@@ -13,11 +13,12 @@ function* fetchArrowData(plot) {
 }
 
 function* fetchCoverageData(action) {
-  let { pair } = action;
-
   try {
+    const currentState = yield select(getCurrentState);
+    const { id } = currentState.CaseReport;
+
     let coveragePlot = {
-      path: `data/${pair}/coverage.arrow`,
+      path: `data/${id}/coverage.arrow`,
       data: null,
     };
     yield call(fetchArrowData, coveragePlot);
@@ -36,10 +37,6 @@ function* fetchCoverageData(action) {
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_COVERAGE_DATA_REQUEST, fetchCoverageData);
-  yield takeEvery(
-    caseReportActions.SELECT_CASE_REPORT_SUCCESS,
-    fetchCoverageData
-  );
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

@@ -1,101 +1,34 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, select, take } from "redux-saga/effects";
 import axios from "axios";
 import {
   getSignatureMetrics,
   nucleotideMutationText,
   deletionInsertionMutationVariant,
 } from "../../helpers/utility";
+import { getCurrentState } from "./selectors";
 import * as d3 from "d3";
 import actions from "./actions";
 import caseReportActions from "../caseReport/actions";
+import signatureProfilesActions from "../signatureProfiles/actions";
 
 function* fetchData(action) {
   try {
-    const { pair, metadata } = action;
+    const currentState = yield select(getCurrentState);
+    let { signatures, signaturesReference } = currentState.SignatureProfiles;
+    const { id, metadata } = currentState.CaseReport;
     const { sigprofiler_sbs_count, sigprofiler_indel_count } = metadata;
 
-    // get the settings within the public folder
-    let responseSettings = yield call(axios.get, "settings.json");
-    let settings = responseSettings.data;
-    let responseDatafiles = yield call(axios.get, "datafiles.json");
-    let datafiles = responseDatafiles.data;
-
-    let signatures = {};
-    let signatureMetrics = [];
-    let tumorSignatureMetrics = [];
+    let signatureMetrics = {
+      indel: { count: [], fraction: [] },
+      sbs: { count: [], fraction: [] },
+    };
+    let tumorSignatureMetrics = {
+      indel: { count: [], fraction: [] },
+      sbs: { count: [], fraction: [] },
+    };
     let mutationCatalog = [];
     let decomposedCatalog = [];
     let referenceCatalog = [];
-
-    let signaturesList = [];
-    settings.signaturesList.types.forEach((type) => {
-      signatures[type] = {};
-      settings.signaturesList.modes.forEach((mode) => {
-        signatures[type][mode] = {};
-        settings.signaturesList.datafiles[type].forEach((name) => {
-          signatures[type][mode][name] = [];
-          signaturesList.push({
-            type: type,
-            mode: mode,
-            name: name,
-          });
-        });
-      });
-    });
-
-    signaturesList.forEach((sig) => {
-      let { type, mode } = sig;
-      datafiles.forEach((record, i) => {
-        Object.keys(record[`sigprofiler_${type}_${mode}`] || []).forEach(
-          (name) => {
-            signatures[type][mode][name].push({
-              pair: record.pair,
-              tumor_type: record.tumor_type,
-              value: record[`sigprofiler_${type}_${mode}`][name],
-              sig: name,
-            });
-          }
-        );
-      });
-    });
-
-    responseSettings.data.signaturesList.types.forEach((type) => {
-      signatureMetrics[type] = {};
-      responseSettings.data.signaturesList.modes.forEach((mode) => {
-        signatureMetrics[type][mode] = getSignatureMetrics(
-          signatures[type][mode]
-        );
-      });
-    });
-
-    let signaturesReference = {};
-    let signaturesReferenceWeightsList = [];
-    responseSettings.data.signaturesList.types.forEach((type) => {
-      signaturesReference[type] = {};
-
-      responseSettings.data.signaturesList.datafiles[type].forEach((d) => {
-        signaturesReferenceWeightsList.push({
-          type: type,
-          name: d,
-          path: `common/signatures/${type}_signature_weights/${d}.json`,
-        });
-      });
-    });
-    yield axios
-      .all(signaturesReferenceWeightsList.map((e) => axios.get(e.path)))
-      .then(
-        axios.spread((...responses) => {
-          responses.forEach(
-            (d, i) =>
-              (signaturesReference[signaturesReferenceWeightsList[i].type][
-                signaturesReferenceWeightsList[i].name
-              ] = d.data)
-          );
-        })
-      )
-      .catch((errors) => {
-        console.log("got errors on loading signatures", errors);
-      });
 
     Object.keys(signatures).forEach((type) => {
       signatureMetrics[type] = {};
@@ -132,7 +65,7 @@ function* fetchData(action) {
       yield axios
         .all(
           ["", "id_"].map((e) =>
-            axios.get(`data/${pair}/${e}mutation_catalog.json`)
+            axios.get(`data/${id}/${e}mutation_catalog.json`)
           )
         )
         .then(
@@ -181,7 +114,7 @@ function* fetchData(action) {
       yield axios
         .all(
           ["sbs", "id"].map((e) =>
-            axios.get(`data/${pair}/${e}_decomposed_prob.json`)
+            axios.get(`data/${id}/${e}_decomposed_prob.json`)
           )
         )
         .then(
@@ -331,13 +264,11 @@ function* fetchData(action) {
 
     yield put({
       type: actions.FETCH_SIGNATURE_STATISTICS_SUCCESS,
-      signatures,
       signatureMetrics,
       tumorSignatureMetrics,
       mutationCatalog,
       decomposedCatalog,
       referenceCatalog,
-      signaturesReference,
     });
   } catch (error) {
     yield put({
@@ -347,10 +278,20 @@ function* fetchData(action) {
   }
 }
 
+function* watchForMultipleActions() {
+  yield all([
+    take(signatureProfilesActions.FETCH_SIGNATURE_PROFILES_SUCCESS),
+    take(caseReportActions.FETCH_CASE_REPORT_SUCCESS),
+  ]);
+
+  yield put({
+    type: actions.FETCH_SIGNATURE_STATISTICS_REQUEST,
+  });
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_SIGNATURE_STATISTICS_REQUEST, fetchData);
-  yield takeEvery(caseReportActions.SELECT_CASE_REPORT_SUCCESS, fetchData);
 }
 export default function* rootSaga() {
-  yield all([actionWatcher()]);
+  yield all([actionWatcher(), watchForMultipleActions()]);
 }

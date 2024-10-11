@@ -13,9 +13,8 @@ function* fetchArrowData(plot) {
 }
 
 function* fetchGenesData(action) {
-  let { reference } = action;
-
   try {
+    let reference = "hg19";
     let genesPlot = {
       path: `genes/${reference}.arrow`,
       data: null,

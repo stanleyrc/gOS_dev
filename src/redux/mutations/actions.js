@@ -5,7 +5,6 @@ const actions = {
 
   fetchMutationsData: (pair) => ({
     type: actions.FETCH_MUTATIONS_DATA_REQUEST,
-    pair,
   }),
 };
 

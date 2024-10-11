@@ -3,9 +3,8 @@ const actions = {
   FETCH_COVERAGE_DATA_SUCCESS: "FETCH_COVERAGE_DATA_SUCCESS",
   FETCH_COVERAGE_DATA_FAILED: "FETCH_COVERAGE_DATA_FAILED",
 
-  fetchCoverageData: (reference) => ({
+  fetchCoverageData: () => ({
     type: actions.FETCH_COVERAGE_DATA_REQUEST,
-    reference,
   }),
 };
 

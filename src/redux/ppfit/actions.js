@@ -3,9 +3,8 @@ const actions = {
   FETCH_PPFIT_DATA_SUCCESS: "FETCH_PPFIT_DATA_SUCCESS",
   FETCH_PPFIT_DATA_FAILED: "FETCH_PPFIT_DATA_FAILED",
 
-  fetchPpfitData: (pair) => ({
+  fetchPpfitData: () => ({
     type: actions.FETCH_PPFIT_DATA_REQUEST,
-    pair,
   }),
 };
 

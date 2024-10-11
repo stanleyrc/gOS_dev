@@ -6,16 +6,16 @@ import {
   locationToDomains,
 } from "../../helpers/utility";
 import actions from "./actions";
-import caseReportActions from "../caseReport/actions";
 import settingsActions from "../settings/actions";
 
 function* fetchFilteredEvents(action) {
-  let { pair } = action;
-
   try {
+    const currentState = yield select(getCurrentState);
+    const { id } = currentState.CaseReport;
+
     let responseReportFilteredEvents = yield call(
       axios.get,
-      `data/${pair}/filtered.events.json`
+      `data/${id}/filtered.events.json`
     );
 
     let filteredEvents = transformFilteredEventAttributes(
@@ -98,10 +98,6 @@ function* selectFilteredEvent(action) {
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_FILTERED_EVENTS_REQUEST, fetchFilteredEvents);
-  yield takeEvery(
-    caseReportActions.SELECT_CASE_REPORT_SUCCESS,
-    fetchFilteredEvents
-  );
   yield takeEvery(actions.SELECT_FILTERED_EVENT, selectFilteredEvent);
 }
 export default function* rootSaga() {

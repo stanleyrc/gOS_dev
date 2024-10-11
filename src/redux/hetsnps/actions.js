@@ -3,9 +3,8 @@ const actions = {
   FETCH_HETSNPS_DATA_SUCCESS: "FETCH_HETSNPS_DATA_SUCCESS",
   FETCH_HETSNPS_DATA_FAILED: "FETCH_HETSNPS_DATA_FAILED",
 
-  fetchHetsnpsData: (reference) => ({
+  fetchHetsnpsData: () => ({
     type: actions.FETCH_HETSNPS_DATA_REQUEST,
-    reference,
   }),
 };
 

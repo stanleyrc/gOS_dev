@@ -9,7 +9,7 @@ const initState = {
 
 export default function appReducer(state = initState, action) {
   switch (action.type) {
-    case actions.SELECT_CASE_REPORT_REQUEST:
+    case actions.FETCH_CASE_REPORT_REQUEST:
       return {
         ...state,
         id: action.id,
@@ -17,15 +17,18 @@ export default function appReducer(state = initState, action) {
         metadata: {},
         loading: true,
       };
-    case actions.SELECT_CASE_REPORT_SUCCESS:
+    case actions.FETCH_CASE_REPORT_SUCCESS:
       return {
         ...state,
         metadata: action.metadata,
+        id: action.id,
         loading: false,
       };
-    case actions.SELECT_CASE_REPORT_FAILED:
+    case actions.FETCH_CASE_REPORT_FAILED:
       return {
         ...state,
+        id: null,
+        metadata: {},
         error: action.error,
         loading: false,
       };

@@ -24,6 +24,7 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_COVERAGE_DATA_FAILED:
       return {
         ...state,
+        data: null,
         error: action.error,
         loading: false,
       };

@@ -3,9 +3,8 @@ const actions = {
   FETCH_SIGNATURE_STATISTICS_SUCCESS: "SELECT_SIGNATURE_STATISTICS_SUCCESS",
   FETCH_SIGNATURE_STATISTICS_FAILED: "SELECT_SIGNATURE_STATISTICS_FAILED",
 
-  fetchSignatureStatistics: (pair) => ({
+  fetchSignatureStatistics: () => ({
     type: actions.FETCH_SIGNATURE_STATISTICS_REQUEST,
-    pair,
   }),
 };
 

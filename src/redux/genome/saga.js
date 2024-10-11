@@ -1,13 +1,14 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import actions from "./actions";
-import caseReportActions from "../caseReport/actions";
+import { getCurrentState } from "./selectors";
 
 function* fetchData(action) {
-  let { pair } = action;
-
   try {
-    let responseGenomeData = yield call(axios.get, `data/${pair}/complex.json`);
+    const currentState = yield select(getCurrentState);
+    const { id } = currentState.CaseReport;
+
+    let responseGenomeData = yield call(axios.get, `data/${id}/complex.json`);
 
     let data = responseGenomeData.data || {
       settings: {},
@@ -28,7 +29,6 @@ function* fetchData(action) {
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_GENOME_DATA_REQUEST, fetchData);
-  yield takeEvery(caseReportActions.SELECT_CASE_REPORT_SUCCESS, fetchData);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

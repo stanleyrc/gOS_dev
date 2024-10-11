@@ -21,6 +21,10 @@ export function transitionStyle(inViewport) {
   }
 }
 
+export function defaultSearchFilters() {
+  return { page: 1, per_page: 10, texts: "" };
+}
+
 export function legendColors() {
   // first color for x < μ - 2σ
   // second color for |x - μ| < 2σ

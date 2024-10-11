@@ -12,7 +12,6 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_FILTERED_EVENTS_REQUEST:
       return {
         ...state,
-        pair: action.pair,
         error: null,
         filteredEvents: [],
         loading: true,
@@ -27,6 +26,8 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_FILTERED_EVENTS_FAILED:
       return {
         ...state,
+        filteredEvents: [],
+        selectedFilteredEvent: null,
         error: action.error,
         loading: false,
       };

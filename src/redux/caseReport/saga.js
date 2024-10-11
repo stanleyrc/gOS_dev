@@ -1,15 +1,27 @@
-import { all, takeEvery, put, call } from "redux-saga/effects";
+import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import { reportAttributesMap } from "../../helpers/utility";
 import actions from "./actions";
+import { getCurrentState } from "./selectors";
+import allelicActions from "../allelic/actions";
+import filteredEventsActions from "../filteredEvents/actions";
+import genomeActions from "../genome/actions";
+import genomeCoverageActions from "../genomeCoverage/actions";
+import hetsnpsActions from "../hetsnps/actions";
+import mutationsActions from "../mutations/actions";
+import populationStatisticsActions from "../populationStatistics/actions";
+import ppfitActions from "../ppfit/actions";
+import sageQcActions from "../sageQc/actions";
+import signatureStatisticsActions from "../signatureStatistics/actions";
 
-function* selectCaseReport(action) {
-  let { id } = action;
-
+function* fetchCaseReport(action) {
   try {
+    const currentState = yield select(getCurrentState);
+    let { report } = currentState.Settings;
+
     let responseReportMetadata = yield call(
       axios.get,
-      `data/${id}/metadata.json`
+      `data/${report}/metadata.json`
     );
 
     let metadata = {};
@@ -20,20 +32,41 @@ function* selectCaseReport(action) {
     });
 
     yield put({
-      type: actions.SELECT_CASE_REPORT_SUCCESS,
+      type: actions.FETCH_CASE_REPORT_SUCCESS,
       metadata,
-      pair: metadata.pair,
+      id: metadata.pair,
     });
   } catch (error) {
     yield put({
-      type: actions.SELECT_CASE_REPORT_FAILED,
+      type: actions.FETCH_CASE_REPORT_FAILED,
       error,
     });
   }
 }
 
+function* followUpFetchCaseReportSuccess(action) {
+  const actionTypes = [
+    allelicActions.FETCH_ALLELIC_DATA_REQUEST,
+    filteredEventsActions.FETCH_FILTERED_EVENTS_REQUEST,
+    genomeActions.FETCH_GENOME_DATA_REQUEST,
+    genomeCoverageActions.FETCH_COVERAGE_DATA_REQUEST,
+    hetsnpsActions.FETCH_HETSNPS_DATA_REQUEST,
+    mutationsActions.FETCH_MUTATIONS_DATA_REQUEST,
+    populationStatisticsActions.FETCH_POPULATION_STATISTICS_REQUEST,
+    ppfitActions.FETCH_PPFIT_DATA_REQUEST,
+    sageQcActions.FETCH_SAGEQC_REQUEST,
+    signatureStatisticsActions.FETCH_SIGNATURE_STATISTICS_REQUEST,
+  ];
+
+  yield all(actionTypes.map((type) => put({ type })));
+}
+
 function* actionWatcher() {
-  yield takeEvery(actions.SELECT_CASE_REPORT_REQUEST, selectCaseReport);
+  yield takeEvery(actions.FETCH_CASE_REPORT_REQUEST, fetchCaseReport);
+  yield takeEvery(
+    actions.FETCH_CASE_REPORT_SUCCESS,
+    followUpFetchCaseReportSuccess
+  );
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

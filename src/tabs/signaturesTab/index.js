@@ -71,6 +71,7 @@ class SignaturesTab extends Component {
     let catalog = mutationCatalog.filter(
       (d) => d.variantType === mutationFilter
     );
+
     return (
       <Wrapper>
         <Skeleton active loading={loading}>

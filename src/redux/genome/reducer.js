@@ -32,6 +32,11 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_GENOME_DATA_FAILED:
       return {
         ...state,
+        data: {
+          settings: {},
+          intervals: [],
+          connections: [],
+        },
         error: action.error,
         loading: false,
       };
