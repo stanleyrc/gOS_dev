@@ -273,19 +273,6 @@ export function k_combinations(set, k) {
   return combs;
 }
 
-export function extractNumericValue(value) {
-  // If the value is a number, return it directly
-  if (typeof value === "number") {
-    return value;
-  }
-
-  // Extract numeric part from string, including decimal points
-  const numericValue = value.match(/[\d.]+/);
-
-  // If a numeric part is found, return it as a float, else return null
-  return numericValue ? parseFloat(numericValue[0]) : null;
-}
-
 export function assessQuality(metadata) {
   let assessment = {
     level: 0,
@@ -331,7 +318,7 @@ export function assessQuality(metadata) {
       threshold: 300,
       comparison: "<=",
       label: "median_insert_size_less_or_equal_300",
-      format: ".0f",
+      format: "d",
     },
     {
       level: 1,
@@ -344,7 +331,7 @@ export function assessQuality(metadata) {
   ];
 
   clauses.forEach((clause) => {
-    let evaluationString = `extractNumericValue(${clause.variable}) ${clause.comparison} ${clause.threshold}`;
+    let evaluationString = `${clause.variable} ${clause.comparison} ${clause.threshold}`;
     if (eval(evaluationString)) {
       assessment.level = d3.max([assessment.level, clause.level]);
       assessment.clauses.push(clause);

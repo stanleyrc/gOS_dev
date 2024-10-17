@@ -116,13 +116,13 @@ class HeaderPanel extends Component {
     ];
 
     const coverageQCFields = [
-      "percent_reads_mapped",
-      "percent_gc",
-      "greater_than_or_equal_to_30x",
-      "greater_than_or_equal_to_50x",
-      "insert_size",
-      "percent_mapq_0_reads",
-      "coverage_variance",
+      { variable: "percent_reads_mapped", format: ".1%" },
+      { variable: "percent_gc", format: ".1%" },
+      { variable: "greater_than_or_equal_to_30x", format: ".1%" },
+      { variable: "greater_than_or_equal_to_50x", format: ".1%" },
+      { variable: "insert_size", format: "d" },
+      { variable: "percent_mapq_0_reads", format: ".1%" },
+      { variable: "coverage_variance", format: ".1%" },
     ];
 
     const tooltips = {
@@ -148,9 +148,9 @@ class HeaderPanel extends Component {
           <br />
           {coverageQCFields.map((field, index) => {
             const tooltip = createTooltip(
-              `metadata.${field}`,
-              `coverage_qc.${field}`,
-              ".1%"
+              `metadata.${field.variable}`,
+              `coverage_qc.${field.variable}`,
+              field.format
             );
             return tooltip ? (
               <span key={field}>
