@@ -332,9 +332,13 @@ export function assessQuality(metadata) {
 
   clauses.forEach((clause) => {
     let evaluationString = `${clause.variable} ${clause.comparison} ${clause.threshold}`;
-    if (eval(evaluationString)) {
-      assessment.level = d3.max([assessment.level, clause.level]);
-      assessment.clauses.push(clause);
+    try {
+      if (eval(evaluationString)) {
+        assessment.level = d3.max([assessment.level, clause.level]);
+        assessment.clauses.push(clause);
+      }
+    } catch (error) {
+      console.log(error);
     }
   });
 
