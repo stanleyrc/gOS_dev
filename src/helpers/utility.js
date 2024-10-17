@@ -641,6 +641,17 @@ export function mutationFilterTypes() {
   };
 }
 
+export function coverageQCFields() {
+  return [
+    { variable: "percent_reads_mapped", format: ".1%" },
+    { variable: "percent_gc", format: ".1%" },
+    { variable: "greater_than_or_equal_to_30x", format: ".1%" },
+    { variable: "greater_than_or_equal_to_50x", format: ".1%" },
+    { variable: "insert_size", format: "d" },
+    { variable: "percent_mapq_0_reads", format: ".1%" },
+    { variable: "coverage_variance", format: ".1%" },
+  ];
+}
 export function flip(data) {
   return Object.fromEntries(
     Object.entries(data).map(([key, value]) => [value, key])

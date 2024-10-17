@@ -18,6 +18,7 @@ import {
   legendColors,
   qualityStatusTagClasses,
   qualityStatusTypographyClasses,
+  coverageQCFields,
   plotTypes,
 } from "../../helpers/utility";
 import {
@@ -115,16 +116,6 @@ class HeaderPanel extends Component {
       "qrpmix",
     ];
 
-    const coverageQCFields = [
-      { variable: "percent_reads_mapped", format: ".1%" },
-      { variable: "percent_gc", format: ".1%" },
-      { variable: "greater_than_or_equal_to_30x", format: ".1%" },
-      { variable: "greater_than_or_equal_to_50x", format: ".1%" },
-      { variable: "insert_size", format: "d" },
-      { variable: "percent_mapq_0_reads", format: ".1%" },
-      { variable: "coverage_variance", format: ".1%" },
-    ];
-
     const tooltips = {
       tumor_median_coverage: (
         <span>
@@ -146,7 +137,7 @@ class HeaderPanel extends Component {
             ".2%"
           )}
           <br />
-          {coverageQCFields.map((field, index) => {
+          {coverageQCFields().map((field, index) => {
             const tooltip = createTooltip(
               `metadata.${field.variable}`,
               `coverage_qc.${field.variable}`,
@@ -155,7 +146,7 @@ class HeaderPanel extends Component {
             return tooltip ? (
               <span key={field}>
                 {tooltip}
-                {index < coverageQCFields.length - 1 && <br />}
+                {index < coverageQCFields().length - 1 && <br />}
               </span>
             ) : null;
           })}
@@ -316,11 +307,13 @@ class HeaderPanel extends Component {
                                 >
                                   {d === "tumor_median_coverage"
                                     ? `${
-                                        metadata["tumor_median_coverage"] ||
-                                        t("general.not-applicable")
+                                        metadata["tumor_median_coverage"]
+                                          ? `${metadata["tumor_median_coverage"]}X`
+                                          : t("general.not-applicable")
                                       } / ${
-                                        metadata["normal_median_coverage"] ||
-                                        t("general.not-applicable")
+                                        metadata["normal_median_coverage"]
+                                          ? `${metadata["normal_median_coverage"]}X`
+                                          : t("general.not-applicable")
                                       }`
                                     : metadata[d]
                                     ? d3.format(plotTypes()[d].format)(
