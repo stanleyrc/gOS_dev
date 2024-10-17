@@ -1,6 +1,6 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
-import { reportAttributesMap } from "../../helpers/utility";
+import { reportAttributesMap, assessQuality } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import allelicActions from "../allelic/actions";
@@ -31,9 +31,12 @@ function* fetchCaseReport(action) {
       metadata[reportAttributesMap()[key]] = reportMetadata[key];
     });
 
+    let qualityStatus = assessQuality(metadata);
+
     yield put({
       type: actions.FETCH_CASE_REPORT_SUCCESS,
       metadata,
+      qualityStatus,
       id: metadata.pair,
     });
   } catch (error) {

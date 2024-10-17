@@ -32,6 +32,14 @@ export function legendColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
+export function qualityStatusTagClasses() {
+  return { 0: "success", 1: "warning", 2: "error" };
+}
+
+export function qualityStatusTypographyClasses() {
+  return { 0: "success", 1: "warning", 2: "danger" };
+}
+
 export function nucleotideColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
@@ -263,6 +271,87 @@ export function k_combinations(set, k) {
     }
   }
   return combs;
+}
+
+export function extractNumericValue(value) {
+  // If the value is a number, return it directly
+  if (typeof value === "number") {
+    return value;
+  }
+
+  // Extract numeric part from string, including decimal points
+  const numericValue = value.match(/[\d.]+/);
+
+  // If a numeric part is found, return it as a float, else return null
+  return numericValue ? parseFloat(numericValue[0]) : null;
+}
+
+export function assessQuality(metadata) {
+  let assessment = {
+    level: 0,
+    clauses: [],
+  };
+  let clauses = [
+    {
+      level: 2,
+      variable: "metadata.tumor_median_coverage",
+      threshold: 80,
+      comparison: "<",
+      label: "tumor_coverage_less_than_80x",
+      format: ".1f",
+    },
+    {
+      level: 2,
+      variable: "metadata.normal_median_coverage",
+      threshold: 20,
+      comparison: "<",
+      label: "normal_coverage_less_than_20x",
+      format: ".1f",
+    },
+    {
+      level: 2,
+      variable: `metadata.coverage_qc.percent_reads_mapped`,
+      threshold: 0.99,
+      comparison: "<",
+      label: "mapped_reads_per_total_reads_less_than_99_percentage",
+      format: ".1%",
+    },
+    {
+      level: 2,
+      variable: "metadata.coverage_qc.greater_than_or_equal_to_30x",
+      threshold: 0.95,
+      comparison: "<",
+      label:
+        "genome_coverage_at_least_30x_pct_30x_picard_is_less_than_95_percentage",
+      format: ".1%",
+    },
+    {
+      level: 1,
+      variable: "metadata.coverage_qc.insert_size",
+      threshold: 300,
+      comparison: "<=",
+      label: "median_insert_size_less_or_equal_300",
+      format: ".0f",
+    },
+    {
+      level: 1,
+      variable: "metadata.coverage_qc.percent_duplication",
+      threshold: 0.2,
+      comparison: ">=",
+      label: "optical_pcr_dups_greater_or_equal_20_percentage",
+      format: ".1%",
+    },
+  ];
+
+  clauses.forEach((clause) => {
+    let evaluationString = `extractNumericValue(${clause.variable}) ${clause.comparison} ${clause.threshold}`;
+    if (eval(evaluationString)) {
+      assessment.level = d3.max([assessment.level, clause.level]);
+      assessment.clauses.push(clause);
+    }
+  });
+
+  return assessment;
 }
 
 export function merge(intervals) {

@@ -2,15 +2,33 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Space, message, PageHeader, Tag, Avatar, Tooltip } from "antd";
+import {
+  Space,
+  message,
+  PageHeader,
+  Tag,
+  Avatar,
+  Tooltip,
+  Popover,
+  Typography,
+} from "antd";
 import * as d3 from "d3";
 import {
   downloadCanvasAsPng,
   legendColors,
+  qualityStatusTagClasses,
+  qualityStatusTypographyClasses,
   plotTypes,
 } from "../../helpers/utility";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import html2canvas from "html2canvas";
 import Wrapper from "./index.style";
+
+const { Text } = Typography;
 
 class HeaderPanel extends Component {
   onDownloadButtonClicked = () => {
@@ -31,7 +49,7 @@ class HeaderPanel extends Component {
   };
 
   render() {
-    const { t, report, metadata, plots } = this.props;
+    const { t, report, metadata, plots, qualityStatus } = this.props;
     if (!report) return null;
     const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
       metadata;
@@ -98,12 +116,12 @@ class HeaderPanel extends Component {
     ];
 
     const coverageQCFields = [
-      "%_reads_mapped",
-      "%_gc",
-      "≥_30x",
-      "≥_50x",
+      "percent_reads_mapped",
+      "percent_gc",
+      "greater_than_or_equal_to_30x",
+      "greater_than_or_equal_to_50x",
       "insert_size",
-      "%_mapq_0_reads",
+      "percent_mapq_0_reads",
       "coverage_variance",
     ];
 
@@ -181,12 +199,63 @@ class HeaderPanel extends Component {
         "snv_count_normal_vaf_greater0"
       ),
     };
+    const qualityStatusIcons = {
+      0: <CheckCircleOutlined />,
+      1: <ExclamationCircleOutlined />,
+      2: <CloseCircleOutlined />,
+    };
     return (
       <Wrapper>
         <PageHeader
           className="site-page-header"
           title={pair}
-          subTitle={sex}
+          subTitle={
+            <Space>
+              {sex}
+              <Popover
+                placement="bottomLeft"
+                title={
+                  <Space>
+                    <Text>{t(`quality-status.title`)}:</Text>
+                    <Text
+                      type={
+                        qualityStatusTypographyClasses()[qualityStatus.level]
+                      }
+                    >
+                      <strong>
+                        {t(
+                          `quality-status.level.${qualityStatus.level}.adjective`
+                        )}
+                      </strong>
+                    </Text>
+                  </Space>
+                }
+                content={
+                  <Space direction="vertical">
+                    {qualityStatus.clauses.map((d) => (
+                      <Text type={qualityStatusTypographyClasses()[d.level]}>
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: t(`quality-status.assessment.${d.label}`, {
+                              value: d3.format(d.format)(eval(d.variable)),
+                            }),
+                          }}
+                        />
+                      </Text>
+                    ))}
+                  </Space>
+                }
+                trigger="hover"
+              >
+                <Tag
+                  icon={qualityStatusIcons[qualityStatus.level]}
+                  color={qualityStatusTagClasses()[qualityStatus.level]}
+                >
+                  {t(`quality-status.level.${qualityStatus.level}.noun`)}
+                </Tag>
+              </Popover>
+            </Space>
+          }
           extra={
             <Space size={[0, 4]} wrap>
               <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>
@@ -315,6 +384,7 @@ HeaderPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,
+  qualityStatus: state.CaseReport.qualityStatus,
   metadata: state.CaseReport.metadata,
   plots: state.App.populationMetrics,
 });
