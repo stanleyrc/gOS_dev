@@ -25,6 +25,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import html2canvas from "html2canvas";
 import Wrapper from "./index.style";
@@ -194,6 +195,7 @@ class HeaderPanel extends Component {
       0: <CheckCircleOutlined />,
       1: <ExclamationCircleOutlined />,
       2: <CloseCircleOutlined />,
+      3: <QuestionCircleOutlined />,
     };
     return (
       <Wrapper>
@@ -203,48 +205,53 @@ class HeaderPanel extends Component {
           subTitle={
             <Space>
               {sex}
-              <Popover
-                placement="bottomLeft"
-                title={
-                  <Space>
-                    <Text>{t(`quality-status.title`)}:</Text>
-                    <Text
-                      type={
-                        qualityStatusTypographyClasses()[qualityStatus.level]
-                      }
-                    >
-                      <strong>
-                        {t(
-                          `quality-status.level.${qualityStatus.level}.adjective`
-                        )}
-                      </strong>
-                    </Text>
-                  </Space>
-                }
-                content={
-                  <Space direction="vertical">
-                    {qualityStatus.clauses.map((d) => (
-                      <Text type={qualityStatusTypographyClasses()[d.level]}>
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: t(`quality-status.assessment.${d.label}`, {
-                              value: d3.format(d.format)(eval(d.variable)),
-                            }),
-                          }}
-                        />
+              {qualityStatus.level > 0 && (
+                <Popover
+                  placement="bottomLeft"
+                  title={
+                    <Space>
+                      <Text>{t(`quality-status.title`)}:</Text>
+                      <Text
+                        type={
+                          qualityStatusTypographyClasses()[qualityStatus.level]
+                        }
+                      >
+                        <strong>
+                          {t(
+                            `quality-status.level.${qualityStatus.level}.adjective`
+                          )}
+                        </strong>
                       </Text>
-                    ))}
-                  </Space>
-                }
-                trigger="hover"
-              >
-                <Tag
-                  icon={qualityStatusIcons[qualityStatus.level]}
-                  color={qualityStatusTagClasses()[qualityStatus.level]}
+                    </Space>
+                  }
+                  content={
+                    <Space direction="vertical">
+                      {qualityStatus.clauses.map((d) => (
+                        <Text type={qualityStatusTypographyClasses()[d.level]}>
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: t(
+                                `quality-status.assessment.${d.label}`,
+                                {
+                                  value: d3.format(d.format)(eval(d.variable)),
+                                }
+                              ),
+                            }}
+                          />
+                        </Text>
+                      ))}
+                    </Space>
+                  }
+                  trigger="hover"
                 >
-                  {t(`quality-status.level.${qualityStatus.level}.noun`)}
-                </Tag>
-              </Popover>
+                  <Tag
+                    icon={qualityStatusIcons[qualityStatus.level]}
+                    color={qualityStatusTagClasses()[qualityStatus.level]}
+                  >
+                    {t(`quality-status.level.${qualityStatus.level}.noun`)}
+                  </Tag>
+                </Popover>
+              )}
             </Space>
           }
           extra={

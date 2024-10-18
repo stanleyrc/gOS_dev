@@ -280,6 +280,14 @@ export function assessQuality(metadata) {
   };
   let clauses = [
     {
+      level: 3,
+      variable: "!metadata.coverage_qc",
+      threshold: "",
+      comparison: "",
+      label: "missing_qc_metrics",
+      format: "",
+    },
+    {
       level: 2,
       variable: "metadata.tumor_median_coverage",
       threshold: 80,

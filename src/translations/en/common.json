@@ -28,11 +28,16 @@
   "quality-status": {
     "title": "Quality Status of this case",
     "level": {
+      "3": {
+        "noun": "NA Quality Status",
+        "adjective": "Not Available"
+      },
       "2": { "noun": "Poor Quality", "adjective": "Poor" },
       "1": { "noun": "Medium Quality", "adjective": "Medium" },
       "0": { "noun": "Good Quality", "adjective": "Good" }
     },
     "assessment": {
+      "missing_qc_metrics": "",
       "tumor_coverage_less_than_80x": "Tumor bam has low coverage: <strong>{{value}}X</strong>",
       "normal_coverage_less_than_20x": "Normal bam has low coverage: <strong>{{value}}X</strong>",
       "mapped_reads_per_total_reads_less_than_99_percentage": "High percentage of reads not mapping to hg19: <strong>{{value}}</strong>",
