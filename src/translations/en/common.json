@@ -37,7 +37,7 @@
       "0": { "noun": "Good Quality", "adjective": "Good" }
     },
     "assessment": {
-      "missing_qc_metrics": "",
+      "missing_qc_metrics": "<strong>No metrics found</strong> in this case report to assess the Quality Status",
       "tumor_coverage_less_than_80x": "Tumor bam has low coverage: <strong>{{value}}X</strong>",
       "normal_coverage_less_than_20x": "Normal bam has low coverage: <strong>{{value}}X</strong>",
       "mapped_reads_per_total_reads_less_than_99_percentage": "High percentage of reads not mapping to hg19: <strong>{{value}}</strong>",
