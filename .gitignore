@@ -65,12 +65,14 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 .prettierrc
 
 *.rb
-public/datafiles*
+public/datafiles.json
+public/datasets.json
+public/data*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 public/data
 public/genes/*
-public/common/*
+public/common*
 connect.sh
 nyuconnect.sh

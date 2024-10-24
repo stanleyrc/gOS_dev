@@ -10,9 +10,10 @@ const { Paragraph, Text } = Typography;
 
 class CriticalError extends Component {
   render() {
-    const { t, settingsError, datafilesError } = this.props;
+    const { t, datasetsError, settingsError, datafilesError, dataset } =
+      this.props;
 
-    const renderSummary = (error, type) => {
+    const renderSummary = (error, type, value) => {
       if (!error) return null;
       return (
         <>
@@ -22,7 +23,8 @@ class CriticalError extends Component {
                 <span
                   dangerouslySetInnerHTML={{
                     __html: t(
-                      `pages.error.critical-error.missing-file.${type}`
+                      `pages.error.critical-error.missing-file.${type}`,
+                      { value }
                     ),
                   }}
                 />
@@ -49,9 +51,15 @@ class CriticalError extends Component {
             >
               <div className="desc">
                 <Space direction="vertical">
+                  {renderSummary(datasetsError, "datasets")}
+                  {datasetsError && settingsError && <Divider />}
                   {renderSummary(settingsError, "settings")}
                   {datafilesError && settingsError && <Divider />}
-                  {renderSummary(datafilesError, "datafiles")}
+                  {renderSummary(
+                    datafilesError,
+                    "datafiles",
+                    dataset.datafilesPath
+                  )}
                 </Space>
               </div>
             </Result>
@@ -66,8 +74,10 @@ CriticalError.propTypes = {};
 CriticalError.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
+  datasetsError: state.Datasets.error,
   settingsError: state.Settings.error,
   datafilesError: state.CaseReports.error,
+  dataset: state.Settings.dataset,
 });
 export default connect(
   mapStateToProps,

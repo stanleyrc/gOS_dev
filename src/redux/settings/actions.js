@@ -5,6 +5,8 @@ const actions = {
   FETCH_SETTINGS_DATA_SUCCESS: "FETCH_SETTINGS_DATA_SUCCESS",
   FETCH_SETTINGS_DATA_FAILED: "FETCH_SETTINGS_DATA_FAILED",
 
+  UPDATE_DATASET: "UPDATE_DATASET",
+
   UPDATE_DOMAINS: "UPDATE_DOMAINS",
 
   UPDATE_TAB: "UPDATE_TAB",
@@ -31,6 +33,12 @@ const actions = {
 
   updateCaseReport: (report) => ({
     type: actions.UPDATE_CASE_REPORT,
+    report,
+  }),
+
+  updateDataset: (dataset, report) => ({
+    type: actions.UPDATE_DATASET,
+    dataset,
     report,
   }),
 };

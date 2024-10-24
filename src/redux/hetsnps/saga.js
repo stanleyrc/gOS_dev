@@ -15,10 +15,11 @@ function* fetchArrowData(plot) {
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let hetsnpsPlot = {
-      path: `data/${id}/hetsnps.arrow`,
+      path: `${dataset.dataPath}${id}/hetsnps.arrow`,
       data: null,
     };
 

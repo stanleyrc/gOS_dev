@@ -14,8 +14,10 @@ import settingsActions from "../settings/actions";
 
 function* fetchCaseReports() {
   try {
+    const currentState = yield select(getCurrentState);
+    let { dataset } = currentState.Settings;
     // get the list of all cases from the public/datafiles.json
-    let responseReports = yield call(axios.get, "datafiles.json");
+    let responseReports = yield call(axios.get, dataset.datafilesPath);
 
     let datafiles = responseReports.data;
 

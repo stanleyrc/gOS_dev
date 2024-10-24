@@ -6,9 +6,13 @@ import { getCurrentState } from "./selectors";
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
-    let responseGenomeData = yield call(axios.get, `data/${id}/complex.json`);
+    let responseGenomeData = yield call(
+      axios.get,
+      `${dataset.dataPath}${id}/complex.json`
+    );
 
     let data = responseGenomeData.data || {
       settings: {},

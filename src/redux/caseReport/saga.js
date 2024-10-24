@@ -17,11 +17,11 @@ import signatureStatisticsActions from "../signatureStatistics/actions";
 function* fetchCaseReport(action) {
   try {
     const currentState = yield select(getCurrentState);
-    let { report } = currentState.Settings;
+    let { report, dataset } = currentState.Settings;
 
     let responseReportMetadata = yield call(
       axios.get,
-      `data/${report}/metadata.json`
+      `${dataset.dataPath}${report}/metadata.json`
     );
 
     let metadata = {};

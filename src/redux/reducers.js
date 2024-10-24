@@ -1,4 +1,5 @@
 import App from "./app/reducer";
+import Datasets from "./datasets/reducer";
 import CaseReports from "./caseReports/reducer";
 import CaseReport from "./caseReport/reducer";
 import PopulationStatistics from "./populationStatistics/reducer";
@@ -20,6 +21,7 @@ import CuratedGenes from "./curatedGenes/reducer";
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
   App,
+  Datasets,
   CaseReports,
   CaseReport,
   PopulationStatistics,

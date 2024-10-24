@@ -7,9 +7,13 @@ import { getCurrentState } from "./selectors";
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
-    let responseAllelicData = yield call(axios.get, `data/${id}/allelic.json`);
+    let responseAllelicData = yield call(
+      axios.get,
+      `${dataset.dataPath}${id}/allelic.json`
+    );
     let data = allelicToGenome(
       responseAllelicData.data || {
         settings: {},

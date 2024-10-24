@@ -1,13 +1,19 @@
-import { all, takeEvery, put } from "redux-saga/effects";
+import { all, takeEvery, put, select } from "redux-saga/effects";
 import * as d3 from "d3";
+import { getCurrentState } from "./selectors";
 import actions from "./actions";
 
 function* fetchBiomarkersData(action) {
   try {
+    const currentState = yield select(getCurrentState);
+    let { dataset } = currentState.Settings;
     let data = [];
-    d3.tsv("common/oncokb_biomarker_drug_associations.tsv", (d) => {
-      data.push(d);
-    });
+    d3.tsv(
+      `${dataset.commonPath}oncokb_biomarker_drug_associations.tsv`,
+      (d) => {
+        data.push(d);
+      }
+    );
 
     yield put({
       type: actions.FETCH_BIOMARKERS_SUCCESS,

@@ -1,11 +1,14 @@
-import { all, takeEvery, put } from "redux-saga/effects";
+import { all, takeEvery, put, select } from "redux-saga/effects";
 import * as d3 from "d3";
+import { getCurrentState } from "./selectors";
 import actions from "./actions";
 
 function* fetchCuratedGenesData(action) {
   try {
+    const currentState = yield select(getCurrentState);
+    let { dataset } = currentState.Settings;
     let data = [];
-    d3.tsv("common/all_curated_genes.tsv", (d) => {
+    d3.tsv(`${dataset.common}all_curated_genes.tsv`, (d) => {
       data.push(d);
     });
 

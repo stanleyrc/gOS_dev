@@ -6,9 +6,13 @@ import { getCurrentState } from "./selectors";
 function* fetchSageQc(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
-    let responseSageQC = yield call(axios.get, `data/${id}/sage.qc.json`);
+    let responseSageQC = yield call(
+      axios.get,
+      `${dataset.dataPath}${id}/sage.qc.json`
+    );
 
     let records = responseSageQC.data;
 

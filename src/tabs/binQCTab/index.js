@@ -7,7 +7,7 @@ import BinPlotPanel from "../../components/binPlotPanel";
 
 class BinQcTab extends Component {
   render() {
-    const { metadata } = this.props;
+    const { metadata, dataset } = this.props;
 
     return (
       <Wrapper>
@@ -25,7 +25,10 @@ class BinQcTab extends Component {
           gutter={16}
         >
           <Col className="gutter-row" span={12}>
-            <Image height={722} src={`data/${metadata.pair}/ppfit.png`} />
+            <Image
+              height={722}
+              src={`${dataset.dataPath}${metadata.pair}/ppfit.png`}
+            />
           </Col>
         </Row>
       </Wrapper>
@@ -37,6 +40,7 @@ BinQcTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   metadata: state.CaseReport.metadata,
+  dataset: state.Settings.dataset,
 });
 export default connect(
   mapStateToProps,

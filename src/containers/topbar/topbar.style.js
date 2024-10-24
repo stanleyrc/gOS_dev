@@ -49,6 +49,9 @@ const TopbarWrapper = styled.div`
           .reports-select {
             min-width: 300px;
           }
+          .datasets-select {
+            min-width: 200px;
+          }
         }
         .ant-pro-top-nav-header-menu {
           min-width: 0px;

@@ -1,0 +1,11 @@
+const actions = {
+  FETCH_DATASETS_REQUEST: "FETCH_DATASETS_REQUEST",
+  FETCH_DATASETS_SUCCESS: "FETCH_DATASETS_SUCCESS",
+  FETCH_DATASETS_FAILED: "FETCH_DATASETS_FAILED",
+
+  fetchDatasets: () => ({
+    type: actions.FETCH_DATASETS_REQUEST,
+  }),
+};
+
+export default actions;

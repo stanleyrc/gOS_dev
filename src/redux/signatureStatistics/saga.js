@@ -15,6 +15,7 @@ function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
     let { signatures, signaturesReference } = currentState.SignatureProfiles;
+    const { dataset } = currentState.Settings;
     const { id, metadata } = currentState.CaseReport;
     const { sigprofiler_sbs_count, sigprofiler_indel_count } = metadata;
 
@@ -65,7 +66,7 @@ function* fetchData(action) {
       yield axios
         .all(
           ["", "id_"].map((e) =>
-            axios.get(`data/${id}/${e}mutation_catalog.json`)
+            axios.get(`${dataset.dataPath}${id}/${e}mutation_catalog.json`)
           )
         )
         .then(
@@ -114,7 +115,7 @@ function* fetchData(action) {
       yield axios
         .all(
           ["sbs", "id"].map((e) =>
-            axios.get(`data/${id}/${e}_decomposed_prob.json`)
+            axios.get(`${dataset.dataPath}${id}/${e}_decomposed_prob.json`)
           )
         )
         .then(

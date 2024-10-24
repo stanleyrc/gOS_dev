@@ -6,11 +6,12 @@ import { getCurrentState } from "./selectors";
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let responseMutationsData = yield call(
       axios.get,
-      `data/${id}/mutations.json`
+      `${dataset.dataPath}${id}/mutations.json`
     );
 
     let data = responseMutationsData.data || {

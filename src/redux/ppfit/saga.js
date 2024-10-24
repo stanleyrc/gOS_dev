@@ -7,9 +7,13 @@ import { getCurrentState } from "./selectors";
 function* fetchPpfitData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
-    
-    let responseData = yield call(axios.get, `data/${id}/ppfit.json`);
+
+    let responseData = yield call(
+      axios.get,
+      `${dataset.dataPath}${id}/ppfit.json`
+    );
 
     let data = responseData.data
       ? sequencesToGenome(responseData.data)

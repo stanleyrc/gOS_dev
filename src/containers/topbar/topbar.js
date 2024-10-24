@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { withTranslation } from "react-i18next";
-import { Layout, Space, Spin, Select, Avatar } from "antd";
+import { Layout, Space, Spin, Select, Avatar, Typography } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
 import { siteConfig } from "../../settings";
@@ -15,7 +15,7 @@ const { Header } = Layout;
 const { Option } = Select;
 
 const { searchCaseReports } = caseReportsActions;
-const { updateCaseReport } = settingsActions;
+const { updateCaseReport, updateDataset } = settingsActions;
 
 class Topbar extends Component {
   render() {
@@ -25,8 +25,12 @@ class Topbar extends Component {
       reports,
       totalReports,
       updateCaseReport,
+      updateDataset,
       searchCaseReports,
       searchFilters,
+      datasets,
+      dataset,
+      loadingDatasets,
     } = this.props;
     return (
       <TopbarWrapper>
@@ -43,6 +47,21 @@ class Topbar extends Component {
                     <img src={logo} alt="logo" />
                     <h1>{siteConfig.siteName}</h1>
                   </div>
+                  <Select
+                    className="datasets-select"
+                    loading={loadingDatasets}
+                    value={dataset.id}
+                    bordered={false}
+                    onSelect={(datasetId) => {
+                      updateDataset(datasets.find((d) => d.id === datasetId));
+                    }}
+                  >
+                    {datasets.map((d) => (
+                      <Option key={d.id} value={d.id}>
+                        {d.title}
+                      </Option>
+                    ))}
+                  </Select>
                   <Select
                     showSearch={true}
                     value={searchFilters.texts}
@@ -107,7 +126,7 @@ class Topbar extends Component {
               <div className="ant-pro-top-nav-header-menu"></div>
               <div className="ant-pro-top-nav-header-main-right">
                 <div className="ant-pro-top-nav-header-main-right-container">
-                  <Space align="center">
+                  <Space>
                     <div className="ant-pro-loader-container">
                       {loading && (
                         <Spin
@@ -131,10 +150,14 @@ Topbar.propTypes = {};
 Topbar.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   updateCaseReport: (report) => dispatch(updateCaseReport(report)),
+  updateDataset: (dataset) => dispatch(updateDataset(dataset)),
   searchCaseReports: (texts) => dispatch(searchCaseReports(texts)),
 });
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,
+  loadingDatasets: state.Datasets.loading,
+  dataset: state.Settings.dataset,
+  datasets: state.Datasets.records,
   report: state.CaseReports.report,
   reports: state.CaseReports.reports,
   totalReports: state.CaseReports.totalReports,

@@ -15,10 +15,11 @@ function* fetchArrowData(plot) {
 function* fetchCoverageData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let coveragePlot = {
-      path: `data/${id}/coverage.arrow`,
+      path: `${dataset.dataPath}${id}/coverage.arrow`,
       data: null,
     };
     yield call(fetchArrowData, coveragePlot);

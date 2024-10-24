@@ -9,7 +9,7 @@ import caseReportsActions from "../caseReports/actions";
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
-    let { data: settings } = currentState.Settings;
+    let { data: settings, dataset } = currentState.Settings;
     let { datafiles } = currentState.CaseReports;
 
     let signatures = {};
@@ -65,7 +65,7 @@ function* fetchData(action) {
         signaturesReferenceWeightsList.push({
           type: type,
           name: d,
-          path: `common/signatures/${type}_signature_weights/${d}.json`,
+          path: `${dataset.commonPath}signatures/${type}_signature_weights/${d}.json`,
         });
       });
     });

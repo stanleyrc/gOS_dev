@@ -6,6 +6,13 @@ const initState = {
   data: {},
   selectedCoordinate: "hg19",
   report: null,
+  dataset: {
+    id: "demo",
+    title: "Demo Dataset",
+    datafilesPath: "datafiles.json",
+    commonPath: "common/",
+    dataPath: "data/",
+  },
   tab: 1,
   chromoBins: {},
   domains: [],
@@ -101,6 +108,29 @@ export default function appReducer(state = initState, action) {
         unescape(url0.toString())
       );
       return { ...state, report: action.report };
+    case actions.UPDATE_DATASET:
+      let dataset = action.dataset;
+      let rep = action.report;
+      url0 = new URL(decodeURI(document.location));
+      if (dataset) {
+        url0.searchParams.set("dataset", dataset.id);
+      } else {
+        url0.searchParams.delete("dataset");
+      }
+      if (rep) {
+        url0.searchParams.set("report", rep);
+      } else {
+        url0.searchParams.delete("report");
+      }
+      url0.searchParams.delete("gene");
+      url0.searchParams.delete("tab");
+      url0.searchParams.delete("location");
+      window.history.replaceState(
+        unescape(url0.toString()),
+        "Case Report",
+        unescape(url0.toString())
+      );
+      return { ...state, dataset: action.dataset, report: rep, tab: 1 };
     default:
       return state;
   }

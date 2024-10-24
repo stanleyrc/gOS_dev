@@ -11,11 +11,12 @@ import settingsActions from "../settings/actions";
 function* fetchFilteredEvents(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { dataset } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let responseReportFilteredEvents = yield call(
       axios.get,
-      `data/${id}/filtered.events.json`
+      `${dataset.dataPath}${id}/filtered.events.json`
     );
 
     let filteredEvents = transformFilteredEventAttributes(

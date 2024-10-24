@@ -8,8 +8,9 @@
         "title": "Critical Error",
         "subtitle": "The application could not be launched due to certain required files missing.",
         "missing-file": {
-          "settings": "Loading the settings.json file expected in <strong>/settings.json</strong> failed",
-          "datafiles": "Loading the datafiles.json file expected in <strong>/datafiles.json</strong> failed"
+          "datasets": "Loading the datasets file expected in <strong>/datasets.json</strong> failed",
+          "settings": "Loading the settings file expected in <strong>/settings.json</strong> failed",
+          "datafiles": "Loading the datafiles expected in <strong>{{value}}</strong> failed"
         }
       }
     }
