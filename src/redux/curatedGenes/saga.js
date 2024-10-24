@@ -8,7 +8,7 @@ function* fetchCuratedGenesData(action) {
     const currentState = yield select(getCurrentState);
     let { dataset } = currentState.Settings;
     let data = [];
-    d3.tsv(`${dataset.common}all_curated_genes.tsv`, (d) => {
+    d3.tsv(`${dataset.commonPath}all_curated_genes.tsv`, (d) => {
       data.push(d);
     });
 
