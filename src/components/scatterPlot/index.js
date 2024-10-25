@@ -309,12 +309,7 @@ class ScatterPlot extends Component {
       //let yExtent = [0, d3.quantile(matched, 0.99)];
       let yExtent = [0, d3.max(matched)];
 
-      let yScale = d3
-        .scaleLinear()
-        .domain(yExtent)
-        .range([panelHeight, 0])
-        .clamp(true)
-        .nice();
+      let yScale = d3.scaleLinear().domain(yExtent).range([panelHeight, 0]);
 
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
       let yTicks = yScale.ticks(margins.yTicksCount);

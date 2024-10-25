@@ -123,14 +123,13 @@ export default function appReducer(state = initState, action) {
         url0.searchParams.delete("report");
       }
       url0.searchParams.delete("gene");
-      url0.searchParams.delete("tab");
       url0.searchParams.delete("location");
       window.history.replaceState(
         unescape(url0.toString()),
         "Case Report",
         unescape(url0.toString())
       );
-      return { ...state, dataset: action.dataset, report: rep, tab: 1 };
+      return { ...state, dataset: action.dataset, report: rep };
     default:
       return state;
   }

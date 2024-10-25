@@ -66,7 +66,7 @@ class TracksModal extends Component {
       viewType,
     } = this.props;
     if (!open) return null;
-    const { beta, gamma } = metadata;
+    const { cov_slope, cov_intercept, hets_slope, hets_intercept } = metadata;
 
     let content = (
       <Row
@@ -103,7 +103,11 @@ class TracksModal extends Component {
             {...{
               data: coverageData,
               title: coveragePlotTitle,
-              scaleY2: { show: true, slope: beta, intercept: -gamma },
+              scaleY2: {
+                show: cov_slope && cov_intercept,
+                slope: cov_slope,
+                intercept: cov_intercept,
+              },
               chromoBins,
               visible: true,
               loading,
@@ -119,6 +123,11 @@ class TracksModal extends Component {
             {...{
               data: hetsnpsData,
               title: hetsnpPlotTitle,
+              scaleY2: {
+                show: hets_slope && hets_intercept,
+                slope: hets_slope,
+                intercept: hets_intercept,
+              },
               chromoBins,
               visible: true,
               loading,
