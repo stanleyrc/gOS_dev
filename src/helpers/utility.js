@@ -531,7 +531,6 @@ export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
-  roundToTen = true,
   usePercentile = true
 ) {
   return domains.map(([start, end]) => {
@@ -549,22 +548,18 @@ export function findMaxInRanges(
     const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
     const valuesInRangeSlice = dataPointsY.slice(left, sliceEnd);
 
-    // Floor the values if they are floating point
-    const flooredValues = valuesInRangeSlice.map((value) => Math.floor(value));
-
     // Calculate either max or 99th percentile
     let resultValue;
-    if (usePercentile && flooredValues.length > 0) {
-      flooredValues.sort((a, b) => a - b); // Sort values to calculate the percentile
-      const index = Math.floor(0.99 * flooredValues.length);
-      resultValue = flooredValues[index];
+    if (usePercentile && valuesInRangeSlice.length > 0) {
+      valuesInRangeSlice.sort((a, b) => a - b); // Sort values to calculate the percentile
+      const index = Math.floor(0.999 * valuesInRangeSlice.length);
+      resultValue = valuesInRangeSlice[index];
     } else {
       resultValue =
-        flooredValues.length > 0 ? d3.max(flooredValues) : -Infinity;
+        valuesInRangeSlice.length > 0 ? d3.max(valuesInRangeSlice) : -Infinity;
     }
 
-    // Conditionally round up to the nearest multiple of 10
-    return roundToTen ? Math.ceil(resultValue / 10) * 10 : resultValue;
+    return resultValue;
   });
 }
 
