@@ -398,6 +398,7 @@
       "coverage-plot": "Denoised Coverage",
       "hetsnp-plot": "Heterozygous SNPs",
       "hetsnp-plot-y-axis-title": "↑ Count",
+      "hetsnp-plot-y-axis2-title": "Est. CN ↑",
       "mutations-plot": "Mutations Multiplicity",
       "mutations-plot-y-axis-title": "↑ Est. Copies",
       "allelic-plot": "Allelic CN Graph",

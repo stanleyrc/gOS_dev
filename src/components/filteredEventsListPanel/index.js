@@ -201,6 +201,9 @@ class FilteredEventsListPanel extends Component {
                       hetsnpPlotYAxisTitle: t(
                         "components.tracks-modal.hetsnp-plot-y-axis-title"
                       ),
+                      hetsnpPlotYAxis2Title: t(
+                        "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                      ),
                       mutationsPlotTitle: t(
                         "components.tracks-modal.mutations-plot"
                       ),

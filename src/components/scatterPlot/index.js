@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { findMaxInRanges } from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
@@ -15,7 +16,6 @@ const { updateDomains } = settingsActions;
 const margins = {
   gapX: 24,
   gapY: 24,
-  yTicksCount: 10,
 };
 
 class ScatterPlot extends Component {
@@ -26,6 +26,7 @@ class ScatterPlot extends Component {
   dataPointsY = null;
   maxDataPointsY = null;
   zoom = null;
+  maxYValues = null;
 
   constructor(props) {
     super(props);
@@ -164,7 +165,7 @@ class ScatterPlot extends Component {
       this.componentWillUnmount();
       this.componentDidMount();
     } else {
-      this.points.rescaleXY(domains);
+      this.updateStage();
     }
   }
 
@@ -192,7 +193,8 @@ class ScatterPlot extends Component {
       this.dataPointsX,
       this.dataPointsY,
       this.dataPointsColor,
-      domains
+      domains,
+      this.maxYValues
     );
     this.points.render();
   }
@@ -279,13 +281,13 @@ class ScatterPlot extends Component {
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.panels = [];
+    this.maxYValues = findMaxInRanges(
+      domains,
+      this.dataPointsX,
+      this.dataPointsY
+    );
+
     domains.forEach((xDomain, index) => {
-      let matched = [];
-      this.dataPointsX.forEach((d, i) => {
-        if (d >= xDomain[0] && d <= xDomain[1]) {
-          matched.push(this.dataPointsY[i]);
-        }
-      });
       let offset = index * (panelWidth + margins.gapX);
       let zoom = d3
         .zoom()
@@ -306,14 +308,11 @@ class ScatterPlot extends Component {
         .domain(defaultDomain)
         .range([0, panelWidth]);
 
-      //let yExtent = [0, d3.quantile(matched, 0.99)];
-      let yExtent = [0, d3.max(matched)];
+      let yExtent = [0, this.maxYValues[index]];
 
       let yScale = d3.scaleLinear().domain(yExtent).range([panelHeight, 0]);
 
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
-      let yTicks = yScale.ticks(margins.yTicksCount);
-      yTicks[yTicks.length - 1] = yScale.domain()[1];
 
       this.panels.push({
         index,

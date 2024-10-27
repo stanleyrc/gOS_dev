@@ -56,6 +56,7 @@ class TracksModal extends Component {
       coveragePlotTitle,
       hetsnpPlotTitle,
       hetsnpPlotYAxisTitle,
+      hetsnpPlotYAxis2Title,
       allelicPlotTitle,
       allelicPlotYAxisTitle,
       handleOkClicked,
@@ -133,6 +134,7 @@ class TracksModal extends Component {
               loading,
               height,
               yAxisTitle: hetsnpPlotYAxisTitle,
+              yAxis2Title: coverageYAxis2Title,
               flipAxesY: true,
             }}
           />

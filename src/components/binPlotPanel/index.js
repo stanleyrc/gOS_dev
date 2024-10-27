@@ -163,6 +163,9 @@ class BinPlotPanel extends Component {
                   hetsnpPlotYAxisTitle: t(
                     "components.tracks-modal.hetsnp-plot-y-axis-title"
                   ),
+                  hetsnpPlotYAxis2Title: t(
+                    "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                  ),
                   handleOkClicked: this.handleModalOKClicked,
                   handleCancelClicked: this.handleModalCancelClicked,
                   open,

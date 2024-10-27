@@ -526,6 +526,48 @@ export function cluster(
   ]);
 }
 
+// returns the maxium Y value within the domains array as applied to the dataPointsX
+export function findMaxInRanges(
+  domains,
+  dataPointsX,
+  dataPointsY,
+  roundToHundred = true,
+  usePercentile = true
+) {
+  return domains.map(([start, end]) => {
+    let left = 0,
+      right = dataPointsX.length - 1;
+
+    // Binary search for the first element >= start
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      if (dataPointsX[mid] < start) left = mid + 1;
+      else right = mid - 1;
+    }
+
+    // Collect values within the specified range using slice
+    const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
+    const valuesInRangeSlice = dataPointsY.slice(left, sliceEnd);
+
+    // Floor the values if they are floating point
+    const flooredValues = valuesInRangeSlice.map((value) => Math.floor(value));
+
+    // Calculate either max or 99th percentile
+    let resultValue;
+    if (usePercentile && flooredValues.length > 0) {
+      flooredValues.sort((a, b) => a - b); // Sort values to calculate the percentile
+      const index = Math.floor(0.99 * flooredValues.length);
+      resultValue = flooredValues[index];
+    } else {
+      resultValue =
+        flooredValues.length > 0 ? d3.max(flooredValues) : -Infinity;
+    }
+
+    // Conditionally round up to the nearest multiple of 100
+    return roundToHundred ? Math.ceil(resultValue / 100) * 100 : resultValue;
+  });
+}
+
 export function magnitude(n) {
   let order = Math.floor(Math.log(n) / Math.LN10 + 0.000000001); // because float math sucks like that
   return Math.pow(10, order);

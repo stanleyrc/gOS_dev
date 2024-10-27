@@ -55,11 +55,11 @@ class Points {
           float vecY = position.y + posY;
           
           vPos = vec2(vecX,vecY);
-
+       
           vec2 v = normalizeCoords(vec2(vecX + offsetX,vecY - offsetY));
-
-          //v.y = clamp(v.y, -1.0, 0.95); 
-
+          
+          v.y = clamp(v.y, -1.0, 1.0); 
+          
           gl_PointSize = pointSize;
           gl_Position = vec4(v, 0, 1);
           float red = floor(color / 65536.0);
@@ -126,10 +126,18 @@ class Points {
     this.draw = regl(common);
   }
 
-  load(width, height, dataPointsX, dataPointsY, dataPointsColor, domains) {
+  load(
+    width,
+    height,
+    dataPointsX,
+    dataPointsY,
+    dataPointsColor,
+    domains,
+    maxYValues
+  ) {
     this.dataPointsX = dataPointsX;
     this.dataPointsY = dataPointsY;
-    this.maxDataPointsY = d3.max(dataPointsY);
+    //this.maxDataPointsY = d3.max(dataPointsY);
     this.dataX = this.regl.buffer(dataPointsX);
     this.dataY = this.regl.buffer(dataPointsY);
     this.color = this.regl.buffer(dataPointsColor);
@@ -141,26 +149,12 @@ class Points {
     this.instances = dataPointsX.length;
 
     this.dataBufferList = domains.map((domainX, i) => {
-      let matched = [];
-      dataPointsX.forEach((d, i) => {
-        if (d >= domainX[0] && d <= domainX[1]) {
-          matched.push(dataPointsY[i]);
-        }
-      });
-
-      let points = [
-        ...new Set(matched.map((e, j) => Math.round(e * 10) / 10)),
-      ].sort((a, b) => d3.descending(a, b));
-      let domainY = [
-        0,
-        points[Math.floor(0.1 * points.length)] || this.maxDataPointsY,
-      ];
       return {
         dataX: this.dataX,
         dataY: this.dataY,
         color: this.color,
         domainX,
-        domainY,
+        domainY: [0, maxYValues[i]],
         instances: this.instances,
         width,
         height,
@@ -171,43 +165,6 @@ class Points {
         offsetY: this.offsetY,
       };
     });
-  }
-
-  rescaleXY(domains) {
-    let windowWidth =
-      (this.width - (domains.length - 1) * this.gap) / domains.length;
-    this.dataBufferList = domains.map((domainX, i) => {
-      let matched = [];
-      this.dataPointsX.forEach((d, i) => {
-        if (d >= domainX[0] && d <= domainX[1]) {
-          matched.push(this.dataPointsY[i]);
-        }
-      });
-
-      let points = [
-        ...new Set(matched.map((e, j) => Math.round(e * 10) / 10)),
-      ].sort((a, b) => d3.descending(a, b));
-      let domainY = [
-        0,
-        points[Math.floor(0.1 * points.length)] || this.maxDataPointsY,
-      ];
-      return {
-        dataX: this.dataX,
-        dataY: this.dataY,
-        color: this.color,
-        domainX,
-        domainY,
-        instances: this.instances,
-        width: this.width,
-        height: this.height,
-        windowWidth,
-        windowHeight: this.height,
-        pointSize: this.pointSize,
-        offsetX: (this.gap + windowWidth) * i,
-        offsetY: this.offsetY,
-      };
-    });
-    this.render(this.dataBufferList);
   }
 
   render() {
