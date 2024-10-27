@@ -531,7 +531,7 @@ export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
-  roundToHundred = true,
+  roundToTen = true,
   usePercentile = true
 ) {
   return domains.map(([start, end]) => {
@@ -563,8 +563,8 @@ export function findMaxInRanges(
         flooredValues.length > 0 ? d3.max(flooredValues) : -Infinity;
     }
 
-    // Conditionally round up to the nearest multiple of 100
-    return roundToHundred ? Math.ceil(resultValue / 100) * 100 : resultValue;
+    // Conditionally round up to the nearest multiple of 10
+    return roundToTen ? Math.ceil(resultValue / 10) * 10 : resultValue;
   });
 }
 
