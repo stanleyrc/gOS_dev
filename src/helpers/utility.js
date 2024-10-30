@@ -1,5 +1,7 @@
 import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
+import Connection from "./connection";
+import Interval from "./interval";
 
 export function replaceSearchParams(location, params = {}) {
   let searchParams = new URLSearchParams(location.search);
@@ -21,8 +23,61 @@ export function transitionStyle(inViewport) {
   }
 }
 
+export function dataToGenome(data, chromoBins) {
+  let genome = {
+    settings: data.settings,
+    intervals: [],
+    connections: [],
+    intervalBins: {},
+    frameConnections: [],
+  };
+  genome.intervalBins = {};
+  data.intervals.forEach((d, i) => {
+    let interval = new Interval(d);
+    interval.startPlace =
+      chromoBins[`${interval.chromosome}`].startPlace + interval.startPoint;
+    interval.endPlace =
+      chromoBins[`${interval.chromosome}`].startPlace + interval.endPoint;
+    interval.color = d3
+      .rgb(chromoBins[`${interval.chromosome}`].color)
+      .toString();
+    interval.stroke = d3
+      .rgb(chromoBins[`${interval.chromosome}`].color)
+      .darker()
+      .toString();
+    genome.intervalBins[d.iid] = interval;
+    genome.intervals.push(interval);
+  });
+  data.frameConnections = [];
+  data.connections.forEach((d, i) => {
+    let connection = new Connection(d);
+    if (connection.isValid(genome.intervalBins)) {
+      connection.pinpoint(genome.intervalBins);
+      connection.arc = d3
+        .arc()
+        .innerRadius(0)
+        .outerRadius(plotMargins().bar / 2)
+        .startAngle(0)
+        .endAngle((e, j) => e * Math.PI);
+      genome.frameConnections.push(connection);
+    }
+    genome.connections.push(connection);
+  });
+
+  return genome;
+}
+
 export function defaultSearchFilters() {
   return { page: 1, per_page: 10, texts: "" };
+}
+
+export function plotMargins() {
+  return {
+    gap: 24,
+    bar: 10,
+    gapY: 24,
+    yTicksCount: 10,
+  };
 }
 
 export function legendColors() {

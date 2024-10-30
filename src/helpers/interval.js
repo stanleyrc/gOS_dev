@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { humanize, guid } from "../../helpers/utility";
+import { humanize, guid } from "./utility";
 
 class Interval {
   constructor(inter) {
@@ -53,7 +53,7 @@ class Interval {
 
   get tooltipContent() {
     let attributes = [
-      { label: "Locus", value: this.location},
+      { label: "Locus", value: this.location },
       { label: "CN", value: this.y },
     ];
     if (this.annotation) {
@@ -67,15 +67,35 @@ class Interval {
       const gene = annotations.find((item) => item.key === "Gene")?.value;
       const filter = annotations.find((item) => item.key === "Filter")?.value;
       const variant = annotations.find((item) => item.key === "Variant")?.value;
-      const protein_variant = annotations.find((item) => item.key === "Protein_variant")?.value;
-      const gene_variant = annotations.find((item) => item.key === "Genomic_variant")?.value;
-      const alt_count = annotations.find((item) => item.key === "Alt_count")?.value;
-      const ref_count = annotations.find((item) => item.key === "Ref_count")?.value;
-      const total_count = ref_count && alt_count ? parseInt(ref_count) + parseInt(alt_count) : null;
-      const vaf = Number(annotations.find((item) => item.key === "VAF")?.value).toFixed(3);
-      const normal_alt_count = annotations.find((item) => item.key === "Normal_alt_count")?.value;
-      const normal_ref_count = annotations.find((item) => item.key === "Normal_ref_count")?.value;
-      const normal_total_count = normal_ref_count && normal_alt_count ? parseInt(normal_ref_count) + parseInt(normal_alt_count) : null;
+      const protein_variant = annotations.find(
+        (item) => item.key === "Protein_variant"
+      )?.value;
+      const gene_variant = annotations.find(
+        (item) => item.key === "Genomic_variant"
+      )?.value;
+      const alt_count = annotations.find(
+        (item) => item.key === "Alt_count"
+      )?.value;
+      const ref_count = annotations.find(
+        (item) => item.key === "Ref_count"
+      )?.value;
+      const total_count =
+        ref_count && alt_count
+          ? parseInt(ref_count) + parseInt(alt_count)
+          : null;
+      const vaf = Number(
+        annotations.find((item) => item.key === "VAF")?.value
+      ).toFixed(3);
+      const normal_alt_count = annotations.find(
+        (item) => item.key === "Normal_alt_count"
+      )?.value;
+      const normal_ref_count = annotations.find(
+        (item) => item.key === "Normal_ref_count"
+      )?.value;
+      const normal_total_count =
+        normal_ref_count && normal_alt_count
+          ? parseInt(normal_ref_count) + parseInt(normal_alt_count)
+          : null;
 
       if (gene) {
         attributes.push({ label: "Gene", value: gene });
@@ -84,13 +104,22 @@ class Interval {
         attributes.push({ label: "Filter", value: filter });
       }
       if (variant || protein_variant || gene_variant) {
-        attributes.push({ label: "Variant", value: `${variant}, ${protein_variant}, ${gene_variant}` });
+        attributes.push({
+          label: "Variant",
+          value: `${variant}, ${protein_variant}, ${gene_variant}`,
+        });
       }
       if (ref_count && alt_count && total_count && vaf) {
-        attributes.push({ label: "Tumor ALT | REF | TOTAL | VAF", value: `${alt_count} | ${ref_count} | ${total_count} | ${vaf}` });
+        attributes.push({
+          label: "Tumor ALT | REF | TOTAL | VAF",
+          value: `${alt_count} | ${ref_count} | ${total_count} | ${vaf}`,
+        });
       }
       if (normal_alt_count && normal_ref_count && normal_total_count) {
-        attributes.push({ label: "Normal ALT | REF | TOTAL", value: `${normal_alt_count} | ${normal_ref_count} | ${normal_total_count}` });
+        attributes.push({
+          label: "Normal ALT | REF | TOTAL",
+          value: `${normal_alt_count} | ${normal_ref_count} | ${normal_total_count}`,
+        });
       }
     }
     if (this.strand) {
@@ -100,7 +129,10 @@ class Interval {
       attributes.push({ label: "Sequence", value: this.sequence });
     }
     if (this.intervalLength > 1) {
-      attributes.push({ label: "Length", value: d3.format(',')(this.intervalLength) });
+      attributes.push({
+        label: "Length",
+        value: d3.format(",")(this.intervalLength),
+      });
     }
     Object.keys(this.metadata).forEach((key) => {
       attributes.push({ label: humanize(key), value: this.metadata[key] });
@@ -108,7 +140,7 @@ class Interval {
     return attributes;
   }
 
-  get toString() {
+  toString() {
     return `identifier: ${this.identifier},
     iid: ${this.iid},
     chromosome: ${this.chromosome},

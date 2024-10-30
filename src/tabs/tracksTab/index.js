@@ -9,12 +9,18 @@ class TracksTab extends Component {
     const {
       t,
       loading,
+      genomeLoading,
       genome,
+      mutationsLoading,
       mutations,
       chromoBins,
+      coverageDataLoading,
       coverageData,
+      hetsnpsDataLoading,
       hetsnpsData,
+      genesDataLoading,
       genesData,
+      allelicDataLoading,
       allelicData,
       updateSelectedFilteredEvent,
     } = this.props;
@@ -24,12 +30,18 @@ class TracksTab extends Component {
         <TracksModal
           {...{
             loading,
+            genomeDataLoading: genomeLoading,
             genomeData: genome,
+            mutationsDataLoading: mutationsLoading,
             mutationsData: mutations,
+            coverageDataLoading,
             coverageData,
+            hetsnpsDataLoading,
             hetsnpsData,
+            genesDataLoading,
             genesData,
             chromoBins,
+            allelicDataLoading,
             allelicData,
             modalTitle: "",
             genomePlotTitle: t("components.tracks-modal.genome-plot"),
@@ -73,12 +85,18 @@ TracksTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   loading: state.Genome.loading,
+  genomeLoading: state.Genome.loading,
   genome: state.Genome.data,
+  mutationsLoading: state.Mutations.loading,
   mutations: state.Mutations.data,
+  allelicDataLoading: state.Allelic.loading,
   allelicData: state.Allelic.data,
   chromoBins: state.Settings.chromoBins,
+  coverageDataLoading: state.GenomeCoverage.loading,
   coverageData: state.GenomeCoverage.data,
+  hetsnpsDataLoading: state.Hetsnps.loading,
   hetsnpsData: state.Hetsnps.data,
+  genesDataLoading: state.Genes.loading,
   genesData: state.Genes.data,
 });
 export default connect(

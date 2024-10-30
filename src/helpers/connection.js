@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { guid, humanize } from "../../helpers/utility";
+import { guid, humanize } from "./utility";
 
 const connectionsStyleMap = {
   ALT: {
@@ -340,7 +340,7 @@ class Connection {
     return attributes;
   }
 
-  get toString() {
+  toString() {
     return `identifier: ${this.identifier},
       cid: ${this.cid},
       source: ${this.source},

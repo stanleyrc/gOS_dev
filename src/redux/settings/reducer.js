@@ -26,30 +26,48 @@ export default function appReducer(state = initState, action) {
   switch (action.type) {
     case actions.LAUNCH_APPLICATION:
       url0 = new URL(decodeURI(document.location));
+      let tab0 =
+        new URL(decodeURI(document.location)).searchParams.get("tab") || 1;
+      url0.searchParams.set("tab", tab0);
+      window.history.replaceState(
+        unescape(url0.toString()),
+        "Case Report",
+        unescape(url0.toString())
+      );
       return {
         ...state,
         error: null,
         report: new URL(decodeURI(document.location)).searchParams.get(
           "report"
         ),
-        tab: new URL(decodeURI(document.location)).searchParams.get("tab") || 1,
+        tab: tab0,
         loading: true,
       };
     case actions.FETCH_SETTINGS_DATA_REQUEST:
       return {
         ...state,
         error: null,
-        domains: [],
         data: {},
         loading: true,
       };
     case actions.FETCH_SETTINGS_DATA_SUCCESS:
+      let url = new URL(decodeURI(document.location));
+      url.searchParams.set(
+        "location",
+        domainsToLocation(action.chromoBins, action.domains)
+      );
+      window.history.replaceState(
+        unescape(url.toString()),
+        "Case Report",
+        unescape(url.toString())
+      );
       return {
         ...state,
         data: action.data,
         selectedCoordinate: action.selectedCoordinate,
         chromoBins: action.chromoBins,
         defaultDomain: action.defaultDomain,
+        domains: action.domains,
         genomeLength: action.genomeLength,
         loading: false,
       };
@@ -79,18 +97,13 @@ export default function appReducer(state = initState, action) {
     case actions.UPDATE_TAB:
       let tab = action.tab;
       let urlTab = new URL(decodeURI(document.location));
-      let genomeDomains = [[1, state.genomeLength]];
       urlTab.searchParams.set("tab", tab);
-      urlTab.searchParams.set(
-        "location",
-        domainsToLocation(state.chromoBins, genomeDomains)
-      );
       window.history.replaceState(
         unescape(urlTab.toString()),
         "Case Report",
         unescape(urlTab.toString())
       );
-      return { ...state, tab: tab, domains: genomeDomains };
+      return { ...state, tab: tab };
     case actions.UPDATE_CASE_REPORT:
       let report = action.report;
       url0 = new URL(decodeURI(document.location));
@@ -100,7 +113,6 @@ export default function appReducer(state = initState, action) {
         url0.searchParams.delete("report");
         url0.searchParams.delete("gene");
         url0.searchParams.delete("tab");
-        url0.searchParams.delete("location");
       }
       window.history.replaceState(
         unescape(url0.toString()),
@@ -122,14 +134,18 @@ export default function appReducer(state = initState, action) {
       } else {
         url0.searchParams.delete("report");
       }
+      // if all selected files are have the same reference
       url0.searchParams.delete("gene");
-      url0.searchParams.delete("location");
       window.history.replaceState(
         unescape(url0.toString()),
         "Case Report",
         unescape(url0.toString())
       );
-      return { ...state, dataset: action.dataset, report: rep };
+      return {
+        ...state,
+        dataset: action.dataset,
+        report: rep,
+      };
     default:
       return state;
   }

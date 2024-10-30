@@ -73,14 +73,17 @@ class BinPlotPanel extends Component {
     const {
       t,
       loading,
-      data,
+      coverageDataLoading,
       coverageData,
+      hetsnpsDataLoading,
       hetsnpsData,
+      genesDataLoading,
       genesData,
       inViewport,
       renderOutsideViewPort,
       visible,
       chromoBins,
+      ppfitLoading,
       ppfit,
       metadata,
     } = this.props;
@@ -130,9 +133,13 @@ class BinPlotPanel extends Component {
               <TracksModal
                 {...{
                   loading,
+                  genomeDataLoading: ppfitLoading,
                   genomeData: ppfit,
+                  coverageDataLoading,
                   coverageData,
+                  hetsnpsDataLoading,
                   hetsnpsData,
+                  genesDataLoading,
                   genesData,
                   chromoBins,
                   modalTitleText: `sequence-${segment?.iid}`,
@@ -216,10 +223,14 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   metadata: state.CaseReport.metadata,
+  ppfitLoading: state.Ppfit.loading,
   ppfit: state.Ppfit.data,
   chromoBins: state.Settings.chromoBins,
+  coverageDataLoading: state.GenomeCoverage.loading,
   coverageData: state.GenomeCoverage.data,
+  hetsnpsDataLoading: state.Hetsnps.loading,
   hetsnpsData: state.Hetsnps.data,
+  genesDataLoading: state.Genes.loading,
   genesData: state.Genes.data,
 });
 export default connect(

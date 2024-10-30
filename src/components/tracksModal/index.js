@@ -35,15 +35,20 @@ class TracksModal extends Component {
   render() {
     const {
       t,
-      loading,
+      genomeDataLoading,
       genomeData,
+      mutationsDataLoading,
       mutationsData,
+      coverageDataLoading,
       coverageData,
+      hetsnpsDataLoading,
       hetsnpsData,
       coverageYAxisTitle,
       coverageYAxis2Title,
       metadata,
+      genesDataLoading,
       genesData,
+      allelicDataLoading,
       allelicData,
       inViewport,
       renderOutsideViewPort,
@@ -78,6 +83,7 @@ class TracksModal extends Component {
         <Col className="gutter-row" span={24}>
           <GenesPanel
             {...{
+              loading: genesDataLoading,
               genes: genesData,
               chromoBins,
               visible: true,
@@ -88,7 +94,7 @@ class TracksModal extends Component {
         <Col className="gutter-row" span={24}>
           <GenomePanel
             {...{
-              loading,
+              loading: genomeDataLoading,
               genome: genomeData,
               title: genomePlotTitle,
               yAxisTitle: genomePlotYAxisTitle,
@@ -102,6 +108,7 @@ class TracksModal extends Component {
         <Col className="gutter-row" span={24}>
           <ScatterPlotPanel
             {...{
+              loading: coverageDataLoading,
               data: coverageData,
               title: coveragePlotTitle,
               scaleY2: {
@@ -111,7 +118,6 @@ class TracksModal extends Component {
               },
               chromoBins,
               visible: true,
-              loading,
               height,
               yAxisTitle: coverageYAxisTitle,
               yAxis2Title: coverageYAxis2Title,
@@ -122,6 +128,7 @@ class TracksModal extends Component {
         <Col className="gutter-row" span={24}>
           <ScatterPlotPanel
             {...{
+              loading: hetsnpsDataLoading,
               data: hetsnpsData,
               title: hetsnpPlotTitle,
               scaleY2: {
@@ -131,10 +138,9 @@ class TracksModal extends Component {
               },
               chromoBins,
               visible: true,
-              loading,
               height,
               yAxisTitle: hetsnpPlotYAxisTitle,
-              yAxis2Title: coverageYAxis2Title,
+              yAxis2Title: hetsnpPlotYAxis2Title,
               flipAxesY: true,
             }}
           />
@@ -143,7 +149,7 @@ class TracksModal extends Component {
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
-                loading,
+                loading: allelicDataLoading,
                 genome: allelicData,
                 title: allelicPlotTitle,
                 yAxisTitle: allelicPlotYAxisTitle,
@@ -159,7 +165,7 @@ class TracksModal extends Component {
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
-                loading,
+                loading: mutationsDataLoading,
                 genome: mutationsData,
                 title: mutationsPlotTitle,
                 yAxisTitle: mutationsPlotYAxisTitle,
@@ -213,7 +219,6 @@ TracksModal.propTypes = {
   data: PropTypes.array,
 };
 TracksModal.defaultProps = {
-  genomeData: { intervals: [], connections: [] },
   width: 1200,
   height: 180,
   viewType: "modal",

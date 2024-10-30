@@ -1,12 +1,13 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import actions from "./actions";
+import { dataToGenome } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
-    const { dataset } = currentState.Settings;
+    const { dataset, chromoBins } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let responseGenomeData = yield call(
@@ -18,10 +19,13 @@ function* fetchData(action) {
       settings: {},
       intervals: [],
       connections: [],
+      intervalBins: {},
+      frameConnections: [],
     };
+
     yield put({
       type: actions.FETCH_GENOME_DATA_SUCCESS,
-      data,
+      data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
     yield put({

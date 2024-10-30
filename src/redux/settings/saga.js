@@ -1,6 +1,10 @@
 import { all, takeLatest, put, call, select } from "redux-saga/effects";
 import axios from "axios";
-import { updateChromoBins } from "../../helpers/utility";
+import {
+  updateChromoBins,
+  locationToDomains,
+  domainsToLocation,
+} from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import datasetsActions from "../datasets/actions";
@@ -30,12 +34,22 @@ function* fetchSettingsData(action) {
       responseData.data.coordinates.sets[selectedCoordinate]
     );
 
+    let searchParams = new URL(decodeURI(document.location)).searchParams;
+
+    let domains = [];
+    try {
+      domains = locationToDomains(chromoBins, searchParams.get("location"));
+    } catch (error) {
+      domains = [[1, genomeLength]];
+    }
+
     yield put({
       type: actions.FETCH_SETTINGS_DATA_SUCCESS,
       data: responseData.data,
       selectedCoordinate,
       chromoBins,
       defaultDomain: [1, genomeLength],
+      domains,
       genomeLength,
     });
   } catch (error) {

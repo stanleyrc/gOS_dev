@@ -23,16 +23,15 @@ function* fetchGenesData(action) {
     let genesData = genesPlot.data;
 
     let genesPlotData = genesData;
-    let geneTypesIndexes = genesPlotData
-      .getChild("type")
-      .toArray()
+    let geneTypes = genesData.getChild("type").toArray();
+    let geneTypesIndexes = geneTypes
       .map((d, i) => (d === "gene" ? i : undefined))
       .filter((x) => x);
-    let geneTitlesList = genesPlotData.getChild("title").toArray();
+    let geneTitles = genesPlotData.getChild("title").toArray();
     let genesOptionsList = geneTypesIndexes
       .map((d, i) => {
         return {
-          label: geneTitlesList[d],
+          label: geneTitles[d],
           value: d,
         };
       })
@@ -44,6 +43,14 @@ function* fetchGenesData(action) {
       type: actions.FETCH_GENES_DATA_SUCCESS,
       data: genesData,
       optionsList: genesOptionsList,
+      geneTypes,
+      geneTitles,
+      genesStartPoint: genesData.getChild("startPlace").toArray(),
+      genesEndPoint: genesData.getChild("endPlace").toArray(),
+      genesY: genesData.getChild("y").toArray(),
+      genesColor: genesData.getChild("color").toArray(),
+      genesStrand: genesData.getChild("strand").toArray(),
+      genesWeight: genesData.getChild("weight").toArray(),
     });
   } catch (error) {
     yield put({

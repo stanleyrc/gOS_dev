@@ -1,5 +1,3 @@
-import * as d3 from "d3";
-
 class Points {
   constructor(regl, gapX, gapY) {
     this.pointSize = 10;
@@ -137,7 +135,6 @@ class Points {
   ) {
     this.dataPointsX = dataPointsX;
     this.dataPointsY = dataPointsY;
-    //this.maxDataPointsY = d3.max(dataPointsY);
     this.dataX = this.regl.buffer(dataPointsX);
     this.dataY = this.regl.buffer(dataPointsY);
     this.color = this.regl.buffer(dataPointsColor);

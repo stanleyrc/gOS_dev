@@ -1,13 +1,13 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
-import { sequencesToGenome } from "../../helpers/utility";
+import { sequencesToGenome, dataToGenome } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 
 function* fetchPpfitData(action) {
   try {
     const currentState = yield select(getCurrentState);
-    const { dataset } = currentState.Settings;
+    const { dataset, chromoBins } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let responseData = yield call(
@@ -25,7 +25,7 @@ function* fetchPpfitData(action) {
 
     yield put({
       type: actions.FETCH_PPFIT_DATA_SUCCESS,
-      data,
+      data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
     yield put({

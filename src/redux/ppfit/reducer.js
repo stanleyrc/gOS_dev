@@ -6,6 +6,8 @@ const initState = {
     settings: {},
     intervals: [],
     connections: [],
+    intervalBins: {},
+    frameConnections: [],
   },
   error: null,
 };
@@ -20,6 +22,8 @@ export default function appReducer(state = initState, action) {
           settings: {},
           intervals: [],
           connections: [],
+          intervalBins: {},
+          frameConnections: [],
         },
         loading: true,
       };
@@ -33,6 +37,13 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: action.error,
+        data: {
+          settings: {},
+          intervals: [],
+          connections: [],
+          intervalBins: {},
+          frameConnections: [],
+        },
         loading: false,
       };
     default:

@@ -1,13 +1,14 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
 import { allelicToGenome } from "../../helpers/utility";
+import { dataToGenome } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 
 function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
-    const { dataset } = currentState.Settings;
+    const { dataset, chromoBins } = currentState.Settings;
     const { id } = currentState.CaseReport;
 
     let responseAllelicData = yield call(
@@ -19,11 +20,14 @@ function* fetchData(action) {
         settings: {},
         intervals: [],
         connections: [],
+        intervalBins: {},
+        frameConnections: [],
       }
     );
+
     yield put({
       type: actions.FETCH_ALLELIC_DATA_SUCCESS,
-      data,
+      data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
     yield put({

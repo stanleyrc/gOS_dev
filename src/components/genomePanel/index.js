@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import ContainerDimensions from "react-container-dimensions";
 import { Resizable } from "react-resizable";
 import * as d3 from "d3";
 import handleViewport from "react-in-viewport";
@@ -89,6 +88,7 @@ class GenomePanel extends Component {
   render() {
     const {
       t,
+      loading,
       genome,
       title,
       yAxisTitle,
@@ -104,10 +104,10 @@ class GenomePanel extends Component {
     let { gap } = margins;
     if (!genome || Object.keys(genome).length < 1) return null;
     let w = parentWidth || this.container?.getBoundingClientRect().width;
-    let h = height;
     return (
       <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
         <Card
+          loading={loading}
           style={transitionStyle(inViewport || renderOutsideViewPort)}
           size="small"
           title={
@@ -156,7 +156,7 @@ class GenomePanel extends Component {
                 {(inViewport || renderOutsideViewPort) && (
                   <GenomePlot
                     {...{
-                      width: w - 2 * margins.padding,
+                      width: w - gap - 2 * margins.padding,
                       height,
                       genome,
                       mutationsPlot,

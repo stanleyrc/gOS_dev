@@ -75,7 +75,7 @@ class GenesPanel extends Component {
   render() {
     const { t, visible, genes, loading, domains, genesOptionsList } =
       this.props;
-    if (!genes || !visible) return null;
+    if (!visible) return null;
     return (
       <Wrapper>
         {
@@ -167,11 +167,9 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
-
   chromoBins: state.Settings.chromoBins,
   genomeLength: state.Settings.genomeLength,
   selectedCoordinate: state.Settings.selectedCoordinate,
-
   loading: state.Genes.loading,
   genesOptionsList: state.Genes.optionsList,
 });

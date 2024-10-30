@@ -4,8 +4,7 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
-import Connection from "./connection";
-import Interval from "./interval";
+import Connection from "../../helpers/connection";
 import {
   measureText,
   guid,
@@ -32,47 +31,9 @@ class GenomePlot extends Component {
     this.zoom = null;
     this.container = null;
     this.grid = null;
-    const { defaultDomain, chromoBins, genome } = this.props;
-
     let currentTransform = null;
-    let intervals = [];
-    let intervalBins = {};
-    genome.intervals.forEach((d, i) => {
-      let interval = new Interval(d);
-      interval.startPlace =
-        chromoBins[`${interval.chromosome}`].startPlace + interval.startPoint;
-      interval.endPlace =
-        chromoBins[`${interval.chromosome}`].startPlace + interval.endPoint;
-      interval.color = d3
-        .rgb(chromoBins[`${interval.chromosome}`].color)
-        .toString();
-      interval.stroke = d3
-        .rgb(chromoBins[`${interval.chromosome}`].color)
-        .darker()
-        .toString();
-      intervalBins[d.iid] = interval;
-      intervals.push(interval);
-    });
-    let frameConnections = [];
-    genome.connections.forEach((d, i) => {
-      let connection = new Connection(d);
-      if (connection.isValid(intervalBins)) {
-        connection.pinpoint(intervalBins);
-        connection.arc = d3
-          .arc()
-          .innerRadius(0)
-          .outerRadius(margins.bar / 2)
-          .startAngle(0)
-          .endAngle((e, j) => e * Math.PI);
-        frameConnections.push(connection);
-      }
-    });
     this.state = {
-      intervals,
-      defaultDomain,
       currentTransform,
-      intervalBins,
-      frameConnections,
       showGrid: true,
       tooltip: {
         visible: false,
@@ -85,8 +46,9 @@ class GenomePlot extends Component {
   }
 
   updatePanels() {
-    const { intervals, defaultDomain, frameConnections } = this.state;
-    let { domains, width, height, commonYScale } = this.props;
+    let { domains, width, height, commonYScale, defaultDomain, genome } =
+      this.props;
+    const { intervals, frameConnections } = genome;
     let stageWidth = width - 2 * margins.gap;
     let stageHeight = height - 3 * margins.gap;
     let panelWidth =
@@ -429,8 +391,8 @@ class GenomePlot extends Component {
   }
 
   handleMouseMove = (e) => {
-    const { width, height } = this.props;
-    const { intervals } = this.state;
+    const { width, height, genome } = this.props;
+    const { intervals } = genome;
     let primaryKey = d3.select(e.target) && d3.select(e.target).attr("id");
     let shapeClass = d3.select(e.target) && d3.select(e.target).attr("class");
     let shapeType = d3.select(e.target) && d3.select(e.target).attr("type");
@@ -580,7 +542,7 @@ class GenomePlot extends Component {
                 x2="5"
                 y2="20"
                 stroke="#7F7FFF"
-                stroke-width="10"
+                strokeWidth="10"
               />
               <line
                 x1="15"
@@ -588,7 +550,7 @@ class GenomePlot extends Component {
                 x2="15"
                 y2="20"
                 stroke="#FF938D"
-                stroke-width="10"
+                strokeWidth="10"
               />
             </pattern>
           </defs>

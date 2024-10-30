@@ -20,27 +20,10 @@ const margins = {
 class GenesPlot extends Component {
   regl = null;
   container = null;
-  genesY = null;
   domainY = [-3, 3];
-  geneTypes = null;
-  geneTitles = null;
-  genesStartPoint = null;
-  genesEndPoint = null;
-  genesColor = null;
-  genesStrand = null;
-  genesWeight = null;
 
   constructor(props) {
     super(props);
-    let { genes } = this.props;
-    this.geneTypes = genes.getChild("type").toArray();
-    this.geneTitles = genes.getChild("title").toArray();
-    this.genesStartPoint = genes.getChild("startPlace").toArray();
-    this.genesEndPoint = genes.getChild("endPlace").toArray();
-    this.genesY = genes.getChild("y").toArray();
-    this.genesColor = genes.getChild("color").toArray();
-    this.genesStrand = genes.getChild("strand").toArray();
-    this.genesWeight = genes.getChild("weight").toArray();
 
     this.state = {
       tooltip: {
@@ -63,7 +46,7 @@ class GenesPlot extends Component {
         antialias: true,
         depth: false,
         stencil: false,
-        preserveDrawingBuffer: true,
+        preserveDrawingBuffer: false,
       },
     });
 
@@ -73,6 +56,8 @@ class GenesPlot extends Component {
 
     this.regl.on("restore", () => {
       console.log("webgl context restored");
+      this.plot = new Plot(this.regl, margins.gapX, 0);
+      this.updateStage();
     });
 
     this.plot = new Plot(this.regl, margins.gapX, 0);
@@ -139,7 +124,8 @@ class GenesPlot extends Component {
   }
 
   updateStage() {
-    let { domains, width, height, zoomedByCmd } = this.props;
+    let { domains, width, height, zoomedByCmd, genesData } = this.props;
+    let { genesStartPoint, genesEndPoint, genesY, genesColor } = genesData;
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
 
@@ -172,10 +158,10 @@ class GenesPlot extends Component {
     this.plot.load(
       stageWidth,
       stageHeight,
-      this.genesStartPoint,
-      this.genesEndPoint,
-      this.genesY,
-      this.genesColor,
+      genesStartPoint,
+      genesEndPoint,
+      genesY,
+      genesColor,
       domains
     );
     this.plot.render();
@@ -354,7 +340,16 @@ class GenesPlot extends Component {
   }
 
   render() {
-    const { width, height, genes, defaultDomain, domains } = this.props;
+    const { width, height, genes, defaultDomain, domains, genesData } =
+      this.props;
+    let {
+      geneTypes,
+      geneTitles,
+      genesStartPoint,
+      genesY,
+      genesStrand,
+      genesWeight,
+    } = genesData;
     const { tooltip } = this.state;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -377,26 +372,30 @@ class GenesPlot extends Component {
       let startPosNext = { "+": -1, "-": -1 };
       for (let i = 0; i < genes.numRows; i++) {
         if (
-          this.genesStartPoint[i] <= xDomain[1] &&
-          this.genesStartPoint[i] >= xDomain[0] &&
-          this.geneTypes[i] === "gene"
+          genesStartPoint[i] <= xDomain[1] &&
+          genesStartPoint[i] >= xDomain[0] &&
+          geneTypes[i] === "gene"
         ) {
-          let isGene = this.geneTypes[i] === "gene";
-          let xPos = xScale(this.genesStartPoint[i]);
-          let textLength = measureText(this.geneTitles[i], 10);
-          let yPos = yScale(this.genesY[i]);
+          let isGene = geneTypes[i] === "gene";
+          let xPos = xScale(genesStartPoint[i]);
+          let textLength = measureText(geneTitles[i], 10);
+          let yPos = yScale(genesY[i]);
+
           if (isGene && xPos > 0 && xPos < stageWidth) {
             let d = genes.get(i).toJSON();
+
             let textBlock = (
               <text
                 key={d.iid}
                 x={xPos}
                 y={yPos}
+                endPos={xPos + textLength}
+                strand={genesStrand[i]}
                 dy={-10}
                 fontFamily="Arial"
                 fontSize={10}
                 textAnchor="start"
-                className={this.genesWeight[i] > 1 ? "weighted" : ""}
+                className={genesWeight[i] > 1 ? "weighted" : ""}
                 clipPath="url(#clipping)"
                 style={{ cursor: "pointer" }}
                 onClick={(e) => {
@@ -414,8 +413,8 @@ class GenesPlot extends Component {
               </text>
             );
             startPosNext[d.strand] = xPos + textLength;
-            this.genesStrand[i] === "+" && positiveStrandTexts.push(textBlock);
-            this.genesStrand[i] === "-" && negativeStrandTexts.push(textBlock);
+            genesStrand[i] === "+" && positiveStrandTexts.push(textBlock);
+            genesStrand[i] === "-" && negativeStrandTexts.push(textBlock);
           }
         }
       }
@@ -426,6 +425,7 @@ class GenesPlot extends Component {
       let pTexts = [];
       let sPos = -1;
       let previousTextType = null;
+
       positiveStrandTexts.forEach((d, i) => {
         if (
           d.props.className === "weighted" &&
@@ -655,6 +655,7 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
+  genesData: state.Genes,
   defaultDomain: state.Settings.defaultDomain,
   zoomedByCmd: state.App.zoomedByCmd,
 });
