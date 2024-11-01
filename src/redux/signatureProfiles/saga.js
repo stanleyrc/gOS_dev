@@ -36,12 +36,14 @@ function* fetchData(action) {
       datafiles.forEach((record, i) => {
         Object.keys(record[`sigprofiler_${type}_${mode}`] || []).forEach(
           (name) => {
-            signatures[type][mode][name].push({
-              pair: record.pair,
-              tumor_type: record.tumor_type,
-              value: record[`sigprofiler_${type}_${mode}`][name],
-              sig: name,
-            });
+            if (signatures[type][mode][name]) {
+              signatures[type][mode][name].push({
+                pair: record.pair,
+                tumor_type: record.tumor_type,
+                value: record[`sigprofiler_${type}_${mode}`][name],
+                sig: name,
+              });
+            }
           }
         );
       });
@@ -92,6 +94,7 @@ function* fetchData(action) {
       signaturesReference,
     });
   } catch (error) {
+    console.log(error);
     yield put({
       type: actions.FETCH_SIGNATURE_PROFILES_FAILED,
       error,

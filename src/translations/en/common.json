@@ -374,12 +374,20 @@
       }
     },
     "mutation-catalog-panel": {
+      "header": "Signatures",
       "title": "Mutation Catalog",
       "y-title": "↑ Number of Mutations",
       "x-title": "TNC →",
       "segmented-filter": {
         "sbs": "Base mutations",
         "indel": "Insertion/Deletion"
+      },
+      "error": {
+        "title": "Loading the Signatures Tab for Case Report <strong>{{id}}</strong> Failed",
+        "subtitle": "Calculating the mutations and signatures for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The operation  has failed with the following error:"
+        }
       }
     },
     "coverage-panel": {

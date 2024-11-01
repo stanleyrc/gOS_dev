@@ -12,6 +12,7 @@ import caseReportActions from "../caseReport/actions";
 import signatureProfilesActions from "../signatureProfiles/actions";
 
 function* fetchData(action) {
+  let errors = [];
   try {
     const currentState = yield select(getCurrentState);
     let { signatures, signaturesReference } = currentState.SignatureProfiles;
@@ -104,11 +105,15 @@ function* fetchData(action) {
             );
           })
         )
-        .catch((errors) => {
-          console.log("got errors on loading mutation catalogs", errors);
+        .catch((err) => {
+          console.log("got errors on loading mutation catalogs", err);
+          errors.push(
+            `got errors on loading mutation_catalog.json or id_mutation_catalog.json: ${err}`
+          );
         });
     } catch (err) {
       console.log(err);
+      errors.push(err);
     }
 
     try {
@@ -201,16 +206,20 @@ function* fetchData(action) {
             });
           })
         )
-        .catch((errors) => {
-          console.log("got errors on loading mutation catalogs", errors);
+        .catch((err) => {
+          console.log("got errors on loading mutation catalogs", err);
+          errors.push(
+            `got errors on loading sbs_decomposed_prob.json or id_decomposed_prob.json: ${err}`
+          );
         });
     } catch (err) {
       console.log(err);
+      errors.push(err);
     }
 
     // mutation catalog for reference weights for sbs
     Object.entries(sigprofiler_sbs_count).forEach(([signature, value]) => {
-      if (value > 0) {
+      if (signaturesReference.sbs[signature] && value > 0) {
         referenceCatalog.push({
           id: signature,
           variantType: "sbs",
@@ -236,7 +245,7 @@ function* fetchData(action) {
 
     // mutation catalog for reference weights for indels
     Object.entries(sigprofiler_indel_count).forEach(([signature, value]) => {
-      if (value > 0) {
+      if (signaturesReference.indel[signature] && value > 0) {
         referenceCatalog.push({
           id: signature,
           variantType: "indel",
@@ -263,14 +272,21 @@ function* fetchData(action) {
       }
     });
 
-    yield put({
-      type: actions.FETCH_SIGNATURE_STATISTICS_SUCCESS,
-      signatureMetrics,
-      tumorSignatureMetrics,
-      mutationCatalog,
-      decomposedCatalog,
-      referenceCatalog,
-    });
+    if (errors.length < 1) {
+      yield put({
+        type: actions.FETCH_SIGNATURE_STATISTICS_SUCCESS,
+        signatureMetrics,
+        tumorSignatureMetrics,
+        mutationCatalog,
+        decomposedCatalog,
+        referenceCatalog,
+      });
+    } else {
+      yield put({
+        type: actions.FETCH_SIGNATURE_STATISTICS_FAILED,
+        error: errors.join(","),
+      });
+    }
   } catch (error) {
     yield put({
       type: actions.FETCH_SIGNATURE_STATISTICS_FAILED,
