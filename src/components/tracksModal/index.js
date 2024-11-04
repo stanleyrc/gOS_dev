@@ -35,21 +35,15 @@ class TracksModal extends Component {
   render() {
     const {
       t,
-      genomeDataLoading,
-      genomeData,
-      mutationsDataLoading,
-      mutationsData,
-      coverageDataLoading,
-      coverageData,
-      hetsnpsDataLoading,
-      hetsnpsData,
+      genome,
+      mutations,
+      genomeCoverage,
+      hetsnps,
       coverageYAxisTitle,
       coverageYAxis2Title,
       metadata,
-      genesDataLoading,
-      genesData,
-      allelicDataLoading,
-      allelicData,
+      genes,
+      allelic,
       inViewport,
       renderOutsideViewPort,
       chromoBins,
@@ -73,84 +67,147 @@ class TracksModal extends Component {
     } = this.props;
     if (!open) return null;
     const { cov_slope, cov_intercept, hets_slope, hets_intercept } = metadata;
-
     let content = (
       <Row
         style={transitionStyle(inViewport || renderOutsideViewPort)}
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
-        <Col className="gutter-row" span={24}>
-          <GenesPanel
-            {...{
-              loading: genesDataLoading,
-              genes: genesData,
-              chromoBins,
-              visible: true,
-              height,
-            }}
-          />
-        </Col>
-        <Col className="gutter-row" span={24}>
-          <GenomePanel
-            {...{
-              loading: genomeDataLoading,
-              genome: genomeData,
-              title: genomePlotTitle,
-              yAxisTitle: genomePlotYAxisTitle,
-              chromoBins,
-              visible: true,
-              index: 0,
-              height,
-            }}
-          />
-        </Col>
-        <Col className="gutter-row" span={24}>
-          <ScatterPlotPanel
-            {...{
-              loading: coverageDataLoading,
-              data: coverageData,
-              title: coveragePlotTitle,
-              scaleY2: {
-                show: cov_slope && cov_intercept,
-                slope: cov_slope,
-                intercept: cov_intercept,
-              },
-              chromoBins,
-              visible: true,
-              height,
-              yAxisTitle: coverageYAxisTitle,
-              yAxis2Title: coverageYAxis2Title,
-              flipAxesY: true,
-            }}
-          />
-        </Col>
-        <Col className="gutter-row" span={24}>
-          <ScatterPlotPanel
-            {...{
-              loading: hetsnpsDataLoading,
-              data: hetsnpsData,
-              title: hetsnpPlotTitle,
-              scaleY2: {
-                show: hets_slope && hets_intercept,
-                slope: hets_slope,
-                intercept: hets_intercept,
-              },
-              chromoBins,
-              visible: true,
-              height,
-              yAxisTitle: hetsnpPlotYAxisTitle,
-              yAxis2Title: hetsnpPlotYAxis2Title,
-              flipAxesY: true,
-            }}
-          />
-        </Col>
-        {allelicData && (
+        {genes && (
+          <Col className="gutter-row" span={24}>
+            <GenesPanel
+              {...{
+                loading: genes.loading,
+                genes: genes.data,
+                error: genes.error,
+                filename: genes.filename,
+                chromoBins,
+                visible: true,
+                height,
+              }}
+            />
+          </Col>
+        )}
+        {genome && (
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
-                loading: allelicDataLoading,
-                genome: allelicData,
+                loading: genome.loading,
+                genome: genome.data,
+                error: genome.error,
+                filename: genome.filename,
+                title: genomePlotTitle,
+                yAxisTitle: genomePlotYAxisTitle,
+                chromoBins,
+                visible: true,
+                index: 0,
+                height,
+              }}
+            />
+          </Col>
+        )}
+        {genomeCoverage && (
+          <Col className="gutter-row" span={24}>
+            <ScatterPlotPanel
+              {...{
+                loading: genomeCoverage.loading,
+                data: genomeCoverage.data,
+                error: genomeCoverage.error,
+                filename: genomeCoverage.filename,
+                title: coveragePlotTitle,
+                notification: {
+                  status: !cov_slope || !cov_intercept ? "warning" : null,
+                  heading:
+                    !cov_slope || !cov_intercept
+                      ? t(`components.tracks-modal.missing-counts-axis`)
+                      : null,
+                  messages: [
+                    ...(!cov_slope
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "cov_slope",
+                          }),
+                        ]
+                      : []),
+                    ...(!cov_intercept
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "cov_intercept",
+                          }),
+                        ]
+                      : []),
+                  ],
+                },
+                scaleY2: {
+                  show: cov_slope && cov_intercept,
+                  slope: cov_slope,
+                  intercept: cov_intercept,
+                },
+                chromoBins,
+                visible: true,
+                height,
+                yAxisTitle: coverageYAxisTitle,
+                yAxis2Title: coverageYAxis2Title,
+                flipAxesY: true,
+              }}
+            />
+          </Col>
+        )}
+        {hetsnps && (
+          <Col className="gutter-row" span={24}>
+            <ScatterPlotPanel
+              {...{
+                loading: hetsnps.loading,
+                data: hetsnps.data,
+                error: hetsnps.error,
+                filename: hetsnps.filename,
+                title: hetsnpPlotTitle,
+                notification: {
+                  status: !hets_slope || !hets_intercept ? "warning" : null,
+                  heading:
+                    !cov_slope || !hets_intercept
+                      ? t(`components.tracks-modal.missing-counts-axis`)
+                      : null,
+                  messages: [
+                    ...(!hets_slope
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "hets_slope",
+                          }),
+                        ]
+                      : []),
+                    ...(!hets_intercept
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "hets_intercept",
+                          }),
+                        ]
+                      : []),
+                  ],
+                },
+                scaleY2: {
+                  show: hets_slope && hets_intercept,
+                  slope: hets_slope,
+                  intercept: hets_intercept,
+                },
+                chromoBins,
+                visible: true,
+                height,
+                yAxisTitle: hetsnpPlotYAxisTitle,
+                yAxis2Title: hetsnpPlotYAxis2Title,
+                flipAxesY: true,
+              }}
+            />
+          </Col>
+        )}
+        {allelic && (
+          <Col className="gutter-row" span={24}>
+            <GenomePanel
+              {...{
+                loading: allelic.loading,
+                genome: allelic.data,
+                error: allelic.error,
+                filename: allelic.filename,
                 title: allelicPlotTitle,
                 yAxisTitle: allelicPlotYAxisTitle,
                 chromoBins,
@@ -161,12 +218,14 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {mutationsData && (
+        {mutations && (
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
-                loading: mutationsDataLoading,
-                genome: mutationsData,
+                loading: mutations.loading,
+                genome: mutations.data,
+                error: mutations.error,
+                filename: mutations.filename,
                 title: mutationsPlotTitle,
                 yAxisTitle: mutationsPlotYAxisTitle,
                 chromoBins,

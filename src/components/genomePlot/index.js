@@ -489,7 +489,6 @@ class GenomePlot extends Component {
       chromoBins,
     } = this.props;
     const { stageWidth, stageHeight, tooltip } = this.state;
-
     this.updatePanels();
     let randID = Math.random();
     return (

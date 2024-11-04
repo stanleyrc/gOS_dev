@@ -12,12 +12,15 @@ import {
   Col,
   Alert,
   Typography,
+  Popover,
+  Tag,
 } from "antd";
 import * as d3 from "d3";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDotChart } from "react-icons/ai";
 import Wrapper from "./index.style";
 import { AiOutlineDownload } from "react-icons/ai";
+import { WarningOutlined } from "@ant-design/icons";
 import {
   downloadCanvasAsPng,
   transitionStyle,
@@ -114,10 +117,11 @@ class ScatterPlotPanel extends Component {
       yAxisTitle,
       yAxis2Title,
       flipAxesY,
+      notification,
     } = this.props;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
-    if (!data) return null;
+    //if (!data) return null;
     let w = parentWidth || this.container?.getBoundingClientRect().width;
     let h = height;
 
@@ -144,6 +148,34 @@ class ScatterPlotPanel extends Component {
                     </span>
                   ) : (
                     <Text type="danger">{t("general.invalid-arrow-file")}</Text>
+                  )}
+                  {notification.status && (
+                    <Popover
+                      placement="bottomLeft"
+                      title={
+                        <Space>
+                          <Text>{notification.heading}</Text>
+                        </Space>
+                      }
+                      content={
+                        <Space direction="vertical">
+                          {notification.messages.map((d) => (
+                            <Text>
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: d,
+                                }}
+                              />
+                            </Text>
+                          ))}
+                        </Space>
+                      }
+                      trigger="hover"
+                    >
+                      <Text type="warning">
+                        <WarningOutlined />
+                      </Text>
+                    </Popover>
                   )}
                 </Space>
               </span>
@@ -220,6 +252,7 @@ class ScatterPlotPanel extends Component {
 }
 ScatterPlotPanel.propTypes = {};
 ScatterPlotPanel.defaultProps = {
+  notification: { status: null, heading: null, messages: [] },
   scaleY2: { show: false, slope: 1, intercept: 0 },
   flipAxesY: false,
 };

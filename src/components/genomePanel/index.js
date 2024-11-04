@@ -7,12 +7,14 @@ import handleViewport from "react-in-viewport";
 import { Card, Space, Button, Tooltip, message, Typography } from "antd";
 import { GiDna2 } from "react-icons/gi";
 import { AiOutlineDownload } from "react-icons/ai";
+import { CgArrowsBreakeH } from "react-icons/cg";
 import {
   downloadCanvasAsPng,
   transitionStyle,
   domainsToLocation,
 } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
+import ErrorPanel from "../errorPanel";
 import Wrapper from "./index.style";
 import GenomePlot from "../genomePlot";
 
@@ -88,8 +90,10 @@ class GenomePanel extends Component {
   render() {
     const {
       t,
+      error,
       loading,
       genome,
+      filename,
       title,
       yAxisTitle,
       inViewport,
@@ -102,80 +106,104 @@ class GenomePanel extends Component {
     } = this.props;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
-    if (!genome || Object.keys(genome).length < 1) return null;
+
     let w = parentWidth || this.container?.getBoundingClientRect().width;
+
     return (
       <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
-        <Card
-          loading={loading}
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
-          size="small"
-          title={
-            <Space>
-              <span role="img" className="anticon anticon-dashboard">
-                <GiDna2 />
-              </span>
-              <span className="ant-pro-menu-item-title">{title}</span>
-              <span>{domainsToLocation(chromoBins, domains)}</span>
-            </Space>
-          }
-          extra={
-            <Space>
-              {zoomedByCmd && (
-                <Text type="secondary">{t("components.zoom-help")}</Text>
-              )}
-              <Tooltip title={t("components.download-as-png-tooltip")}>
-                <Button
-                  type="default"
-                  shape="circle"
-                  disabled={!visible}
-                  icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
-                  size="small"
-                  onClick={() => this.onDownloadButtonClicked()}
-                />
-              </Tooltip>
-            </Space>
-          }
-        >
-          {visible && w > 0 && genome && (
-            <Resizable
-              className="box"
-              height={this.state.height}
-              width={w - gap}
-              onResize={this.onFirstBoxResize}
-              resizeHandles={["sw", "se", "s"]}
-              draggableOpts={{ grid: [25, 25] }}
-            >
-              <div
-                className="ant-wrapper"
-                style={{
-                  width: w - gap + "px",
-                  height: this.state.height + "px",
-                }}
-              >
-                {(inViewport || renderOutsideViewPort) && (
-                  <GenomePlot
-                    {...{
-                      width: w - gap - 2 * margins.padding,
-                      height,
-                      genome,
-                      mutationsPlot,
-                      yAxisTitle,
-                    }}
-                  />
+        {error ? (
+          <ErrorPanel
+            avatar={<CgArrowsBreakeH />}
+            header={
+              <Space>
+                <span role="img" className="anticon anticon-dashboard">
+                  <GiDna2 />
+                </span>
+                <span className="ant-pro-menu-item-title">{title}</span>
+                <span>{domainsToLocation(chromoBins, domains)}</span>
+              </Space>
+            }
+            title={t("components.genome-panel.error.title")}
+            subtitle={t("components.genome-panel.error.subtitle", { filename })}
+            explanationTitle={t(
+              "components.genome-panel.error.explanation.title"
+            )}
+            explanationDescription={error.stack}
+          />
+        ) : (
+          <Card
+            loading={loading}
+            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            size="small"
+            title={
+              <Space>
+                <span role="img" className="anticon anticon-dashboard">
+                  <GiDna2 />
+                </span>
+                <span className="ant-pro-menu-item-title">{title}</span>
+                <span>{domainsToLocation(chromoBins, domains)}</span>
+              </Space>
+            }
+            extra={
+              <Space>
+                {zoomedByCmd && (
+                  <Text type="secondary">{t("components.zoom-help")}</Text>
                 )}
-              </div>
-            </Resizable>
-          )}
-        </Card>
+                <Tooltip title={t("components.download-as-png-tooltip")}>
+                  <Button
+                    type="default"
+                    shape="circle"
+                    disabled={!visible}
+                    icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
+                    size="small"
+                    onClick={() => this.onDownloadButtonClicked()}
+                  />
+                </Tooltip>
+              </Space>
+            }
+          >
+            {visible && w > 0 && (
+              <Resizable
+                className="box"
+                height={this.state.height}
+                width={w - gap}
+                onResize={this.onFirstBoxResize}
+                resizeHandles={["sw", "se", "s"]}
+                draggableOpts={{ grid: [25, 25] }}
+              >
+                <div
+                  className="ant-wrapper"
+                  style={{
+                    width: w - gap + "px",
+                    height: this.state.height + "px",
+                  }}
+                >
+                  {(inViewport || renderOutsideViewPort) && (
+                    <GenomePlot
+                      {...{
+                        width: w - gap - 2 * margins.padding,
+                        height,
+                        genome,
+                        mutationsPlot,
+                        yAxisTitle,
+                      }}
+                    />
+                  )}
+                </div>
+              </Resizable>
+            )}
+          </Card>
+        )}
       </Wrapper>
     );
   }
 }
 GenomePanel.propTypes = {};
 GenomePanel.defaultProps = {
+  error: false,
   height: 400,
   mutationsPlot: false,
+  visible: true,
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({

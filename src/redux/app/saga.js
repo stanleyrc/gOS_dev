@@ -681,7 +681,7 @@ function* loadMutationCatalogData(action) {
               let data = d.data.data || [];
               data.forEach((d, i) => {
                 d.type = d.tnc;
-                d.mutationType = (d.tnc.match(/\[(.*?)\]/) || [])[1];
+                d.mutationType = (d.tnc?.match(/\[(.*?)\]/) || [])[1];
                 d.variantType = "sbs";
                 d.label = nucleotideMutationText(d.tnc);
                 d.probability = 1.0;
@@ -748,7 +748,7 @@ function* loadMutationCatalogData(action) {
                             probability: d.p,
                             mutations: Math.round(d.p * mutationGlobalValue),
                             type: d.tnc,
-                            mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
+                            mutationType: (d.tnc?.match(/\[(.*?)\]/) || [])[1],
                             variantType: "sbs",
                             label: nucleotideMutationText(d.tnc),
                           };
@@ -826,7 +826,7 @@ function* loadMutationCatalogData(action) {
               probability: d.value,
               mutations: Math.round(d.value * value),
               type: d.tnc,
-              mutationType: (d.tnc.match(/\[(.*?)\]/) || [])[1],
+              mutationType: (d.tnc?.match(/\[(.*?)\]/) || [])[1],
               variantType: "sbs",
               label: nucleotideMutationText(d.tnc),
             };

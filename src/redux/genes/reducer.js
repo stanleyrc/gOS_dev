@@ -2,6 +2,7 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  filename: "genes/hg19.arrow",
   data: null,
   optionsList: [],
   geneTypes: [],

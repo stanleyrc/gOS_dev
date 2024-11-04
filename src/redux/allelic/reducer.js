@@ -2,6 +2,7 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  filename: "allelic.json",
   data: {
     settings: {},
     intervals: [],

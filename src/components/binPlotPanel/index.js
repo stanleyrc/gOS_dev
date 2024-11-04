@@ -73,24 +73,20 @@ class BinPlotPanel extends Component {
     const {
       t,
       loading,
-      coverageDataLoading,
-      coverageData,
-      hetsnpsDataLoading,
-      hetsnpsData,
-      genesDataLoading,
-      genesData,
+      genomeCoverage,
+      hetsnps,
+      genes,
       inViewport,
       renderOutsideViewPort,
       visible,
       chromoBins,
-      ppfitLoading,
       ppfit,
       metadata,
     } = this.props;
 
     const { beta, gamma } = metadata;
 
-    if (!metadata.pair || ppfit.intervals.length < 1) {
+    if (!metadata.pair || ppfit.data.intervals.length < 1) {
       return null;
     }
     const { segment, open } = this.state;
@@ -133,14 +129,10 @@ class BinPlotPanel extends Component {
               <TracksModal
                 {...{
                   loading,
-                  genomeDataLoading: ppfitLoading,
-                  genomeData: ppfit,
-                  coverageDataLoading,
-                  coverageData,
-                  hetsnpsDataLoading,
-                  hetsnpsData,
-                  genesDataLoading,
-                  genesData,
+                  genome: ppfit,
+                  genomeCoverage,
+                  hetsnps,
+                  genes,
                   chromoBins,
                   modalTitleText: `sequence-${segment?.iid}`,
                   modalTitle: (
@@ -188,7 +180,7 @@ class BinPlotPanel extends Component {
                             {...{
                               width,
                               height: 600,
-                              data: ppfit.intervals,
+                              data: ppfit.data.intervals,
                               xTitle: t(
                                 `components.binQc-panel.binplot.x-title`
                               ),
@@ -223,15 +215,11 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   metadata: state.CaseReport.metadata,
-  ppfitLoading: state.Ppfit.loading,
-  ppfit: state.Ppfit.data,
+  ppfit: state.Ppfit,
   chromoBins: state.Settings.chromoBins,
-  coverageDataLoading: state.GenomeCoverage.loading,
-  coverageData: state.GenomeCoverage.data,
-  hetsnpsDataLoading: state.Hetsnps.loading,
-  hetsnpsData: state.Hetsnps.data,
-  genesDataLoading: state.Genes.loading,
-  genesData: state.Genes.data,
+  genomeCoverage: state.GenomeCoverage,
+  hetsnps: state.Hetsnps,
+  genes: state.Genes,
 });
 export default connect(
   mapStateToProps,

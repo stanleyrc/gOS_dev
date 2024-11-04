@@ -24,7 +24,11 @@
     "density": "Density",
     "mutation": "<strong>{{count}}</strong>mutation in total",
     "mutation_plural": "<strong>{{count}}</strong> mutations in total",
-    "not-applicable": "NA"
+    "not-applicable": "NA",
+    "attributes-missing": {
+      "title": "Missing data",
+      "description": "Attribute <strong>{{attribute}}</strong> is not present"
+    }
   },
   "quality-status": {
     "title": "Quality Status of this case",
@@ -373,6 +377,15 @@
         "y-title": "↑ Cumulative Width"
       }
     },
+    "genome-panel": {
+      "error": {
+        "title": "Loading the genomic data failed",
+        "subtitle": "Fetching the {{filename}} file for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The request has failed with the following error:"
+        }
+      }
+    },
     "mutation-catalog-panel": {
       "header": "Signatures",
       "title": "Mutation Catalog",
@@ -412,7 +425,8 @@
       "allelic-plot": "Allelic CN Graph",
       "allelic-plot-y-axis-title": "↑ CN",
       "coverage-y-axis-title": "↑ Base Coverage",
-      "coverage-y-axis2-title": "Est. CN ↑"
+      "coverage-y-axis2-title": "Est. CN ↑",
+      "missing-counts-axis": "Counts Axis is not available due to missing attributes."
     }
   },
   "tabs": {

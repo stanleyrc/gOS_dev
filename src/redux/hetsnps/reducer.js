@@ -2,6 +2,7 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  filename: "hetsnps.arrow",
   data: null,
   error: null,
 };

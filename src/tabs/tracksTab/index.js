@@ -8,20 +8,13 @@ class TracksTab extends Component {
   render() {
     const {
       t,
-      loading,
-      genomeLoading,
       genome,
-      mutationsLoading,
       mutations,
       chromoBins,
-      coverageDataLoading,
-      coverageData,
-      hetsnpsDataLoading,
-      hetsnpsData,
-      genesDataLoading,
-      genesData,
-      allelicDataLoading,
-      allelicData,
+      genomeCoverage,
+      hetsnps,
+      genes,
+      allelic,
       updateSelectedFilteredEvent,
     } = this.props;
 
@@ -29,20 +22,14 @@ class TracksTab extends Component {
       <Wrapper>
         <TracksModal
           {...{
-            loading,
-            genomeDataLoading: genomeLoading,
-            genomeData: genome,
-            mutationsDataLoading: mutationsLoading,
-            mutationsData: mutations,
-            coverageDataLoading,
-            coverageData,
-            hetsnpsDataLoading,
-            hetsnpsData,
-            genesDataLoading,
-            genesData,
+            loading: genome.loading,
+            genome,
+            mutations,
+            genomeCoverage,
+            hetsnps,
+            genes,
             chromoBins,
-            allelicDataLoading,
-            allelicData,
+            allelic,
             modalTitle: "",
             genomePlotTitle: t("components.tracks-modal.genome-plot"),
             genomePlotYAxisTitle: t(
@@ -84,20 +71,13 @@ TracksTab.propTypes = {};
 TracksTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  loading: state.Genome.loading,
-  genomeLoading: state.Genome.loading,
-  genome: state.Genome.data,
-  mutationsLoading: state.Mutations.loading,
-  mutations: state.Mutations.data,
-  allelicDataLoading: state.Allelic.loading,
-  allelicData: state.Allelic.data,
+  genome: state.Genome,
+  mutations: state.Mutations,
+  allelic: state.Allelic,
   chromoBins: state.Settings.chromoBins,
-  coverageDataLoading: state.GenomeCoverage.loading,
-  coverageData: state.GenomeCoverage.data,
-  hetsnpsDataLoading: state.Hetsnps.loading,
-  hetsnpsData: state.Hetsnps.data,
-  genesDataLoading: state.Genes.loading,
-  genesData: state.Genes.data,
+  genomeCoverage: state.GenomeCoverage,
+  hetsnps: state.Hetsnps,
+  genes: state.Genes,
 });
 export default connect(
   mapStateToProps,
