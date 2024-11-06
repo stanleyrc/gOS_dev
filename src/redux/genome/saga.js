@@ -3,16 +3,17 @@ import axios from "axios";
 import actions from "./actions";
 import { dataToGenome } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
+import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchData(action) {
+  const currentState = yield select(getCurrentState);
+  const { dataset, chromoBins } = currentState.Settings;
+  const { id } = currentState.CaseReport;
   try {
-    const currentState = yield select(getCurrentState);
-    const { dataset, chromoBins } = currentState.Settings;
-    const { id } = currentState.CaseReport;
-
     let responseGenomeData = yield call(
       axios.get,
-      `${dataset.dataPath}${id}/complex.json`
+      `${dataset.dataPath}${id}/complex.json`,
+      { cancelToken: getCancelToken() }
     );
 
     let data = responseGenomeData.data || {
@@ -28,10 +29,17 @@ function* fetchData(action) {
       data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
-    yield put({
-      type: actions.FETCH_GENOME_DATA_FAILED,
-      error,
-    });
+    if (axios.isCancel(error)) {
+      console.log(
+        `fetch ${dataset.dataPath}${id}/complex.json request canceled`,
+        error.message
+      );
+    } else {
+      yield put({
+        type: actions.FETCH_GENOME_DATA_FAILED,
+        error,
+      });
+    }
   }
 }
 

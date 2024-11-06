@@ -405,7 +405,14 @@
     },
     "coverage-panel": {
       "datapoint": "datapoint",
-      "datapoint_plural": "datapoints"
+      "datapoint_plural": "datapoints",
+      "error": {
+        "title": "Loading the arrow data for this scatterplot failed",
+        "subtitle": "Fetching the {{filename}} file for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The request has failed with the following error:"
+        }
+      }
     },
     "genes-panel": {
       "header": "Genes",

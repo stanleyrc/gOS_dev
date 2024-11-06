@@ -3,16 +3,17 @@ import axios from "axios";
 import { sequencesToGenome, dataToGenome } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
+import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchPpfitData(action) {
+  const currentState = yield select(getCurrentState);
+  const { dataset, chromoBins } = currentState.Settings;
+  const { id } = currentState.CaseReport;
   try {
-    const currentState = yield select(getCurrentState);
-    const { dataset, chromoBins } = currentState.Settings;
-    const { id } = currentState.CaseReport;
-
     let responseData = yield call(
       axios.get,
-      `${dataset.dataPath}${id}/ppfit.json`
+      `${dataset.dataPath}${id}/ppfit.json`,
+      { cancelToken: getCancelToken() }
     );
 
     let data = responseData.data
@@ -28,10 +29,17 @@ function* fetchPpfitData(action) {
       data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
-    yield put({
-      type: actions.FETCH_PPFIT_DATA_FAILED,
-      error,
-    });
+    if (axios.isCancel(error)) {
+      console.log(
+        `fetch ${dataset.dataPath}${id}/ppfit.json request canceled`,
+        error.message
+      );
+    } else {
+      yield put({
+        type: actions.FETCH_PPFIT_DATA_FAILED,
+        error,
+      });
+    }
   }
 }
 

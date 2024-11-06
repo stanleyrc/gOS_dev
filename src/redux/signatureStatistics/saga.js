@@ -10,6 +10,7 @@ import * as d3 from "d3";
 import actions from "./actions";
 import caseReportActions from "../caseReport/actions";
 import signatureProfilesActions from "../signatureProfiles/actions";
+import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchData(action) {
   let errors = [];
@@ -68,7 +69,8 @@ function* fetchData(action) {
         .all(
           ["", "id_"].map((e) =>
             axios.get(`${dataset.dataPath}${id}/${e}mutation_catalog.json`)
-          )
+          ),
+          { cancelToken: getCancelToken() }
         )
         .then(
           axios.spread((...responses) => {
@@ -106,10 +108,17 @@ function* fetchData(action) {
           })
         )
         .catch((err) => {
-          console.log("got errors on loading mutation catalogs", err);
-          errors.push(
-            `got errors on loading mutation_catalog.json or id_mutation_catalog.json: ${err}`
-          );
+          if (axios.isCancel(err)) {
+            console.log(
+              `fetch mutation_catalog.json or id_mutation_catalog.json request canceled`,
+              err.message
+            );
+          } else {
+            console.log("got errors on loading mutation catalogs", err);
+            errors.push(
+              `got errors on loading mutation_catalog.json or id_mutation_catalog.json: ${err}`
+            );
+          }
         });
     } catch (err) {
       console.log(err);
@@ -121,7 +130,8 @@ function* fetchData(action) {
         .all(
           ["sbs", "id"].map((e) =>
             axios.get(`${dataset.dataPath}${id}/${e}_decomposed_prob.json`)
-          )
+          ),
+          { cancelToken: getCancelToken() }
         )
         .then(
           axios.spread((...responses) => {
@@ -208,10 +218,17 @@ function* fetchData(action) {
           })
         )
         .catch((err) => {
-          console.log("got errors on loading mutation catalogs", err);
-          errors.push(
-            `got errors on loading sbs_decomposed_prob.json or id_decomposed_prob.json: ${err}`
-          );
+          if (axios.isCancel(err)) {
+            console.log(
+              `fetch sbs_decomposed_prob.json or id_decomposed_prob.json request canceled`,
+              err.message
+            );
+          } else {
+            console.log("got errors on loading mutation catalogs", err);
+            errors.push(
+              `got errors on loading sbs_decomposed_prob.json or id_decomposed_prob.json: ${err}`
+            );
+          }
         });
     } catch (err) {
       console.log(err);

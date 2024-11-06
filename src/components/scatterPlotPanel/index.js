@@ -10,16 +10,14 @@ import {
   message,
   Row,
   Col,
-  Alert,
   Typography,
   Popover,
-  Tag,
 } from "antd";
 import * as d3 from "d3";
 import { withTranslation } from "react-i18next";
-import { AiOutlineDotChart } from "react-icons/ai";
 import Wrapper from "./index.style";
-import { AiOutlineDownload } from "react-icons/ai";
+import { AiOutlineDownload, AiOutlineDotChart } from "react-icons/ai";
+import { CgArrowsBreakeH } from "react-icons/cg";
 import { WarningOutlined } from "@ant-design/icons";
 import {
   downloadCanvasAsPng,
@@ -28,6 +26,7 @@ import {
 } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import ScatterPlot from "../scatterPlot";
+import ErrorPanel from "../errorPanel";
 
 const { Text } = Typography;
 
@@ -107,6 +106,8 @@ class ScatterPlotPanel extends Component {
       t,
       loading,
       data,
+      error,
+      filename,
       title,
       domains,
       inViewport,
@@ -124,101 +125,119 @@ class ScatterPlotPanel extends Component {
     //if (!data) return null;
     let w = parentWidth || this.container?.getBoundingClientRect().width;
     let h = height;
-
+    console.log("here", loading, data);
     return (
       <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
-        <Card
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
-          loading={loading}
-          size="small"
-          title={
-            <Space>
-              <span role="img" className="anticon anticon-dashboard">
-                <AiOutlineDotChart />
-              </span>
-              <span className="ant-pro-menu-item-title">
-                <Space>
-                  {title}
-                  {data ? (
-                    <span>
-                      <b>{d3.format(",")(data.numRows)}</b>{" "}
-                      {t("components.coverage-panel.datapoint", {
-                        count: data.numRows,
-                      })}
-                    </span>
-                  ) : (
-                    <Text type="danger">{t("general.invalid-arrow-file")}</Text>
-                  )}
-                  {notification.status && (
-                    <Popover
-                      placement="bottomLeft"
-                      title={
-                        <Space>
-                          <Text>{notification.heading}</Text>
-                        </Space>
-                      }
-                      content={
-                        <Space direction="vertical">
-                          {notification.messages.map((d) => (
-                            <Text>
-                              <span
-                                dangerouslySetInnerHTML={{
-                                  __html: d,
-                                }}
-                              />
-                            </Text>
-                          ))}
-                        </Space>
-                      }
-                      trigger="hover"
-                    >
-                      <Text type="warning">
-                        <WarningOutlined />
-                      </Text>
-                    </Popover>
-                  )}
-                </Space>
-              </span>
-            </Space>
-          }
-          extra={
-            <Space>
-              {zoomedByCmd && (
-                <Text type="secondary">{t("components.zoom-help")}</Text>
-              )}
-              <Tooltip title={t("components.download-as-png-tooltip")}>
-                <Button
-                  type="default"
-                  shape="circle"
-                  disabled={!visible}
-                  icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
-                  size="small"
-                  onClick={() => this.onDownloadButtonClicked()}
-                />
-              </Tooltip>
-            </Space>
-          }
-        >
-          {visible && w > 0 && (
-            <Resizable
-              className="box"
-              height={this.state.height}
-              width={w - gap}
-              onResize={this.onFirstBoxResize}
-              resizeHandles={["sw", "se", "s"]}
-              draggableOpts={{ grid: [25, 25] }}
-            >
-              <div
-                className="ant-wrapper"
-                style={{
-                  width: w - gap + "px",
-                  height: this.state.height + "px",
-                }}
+        {error ? (
+          <ErrorPanel
+            avatar={<CgArrowsBreakeH />}
+            header={
+              <Space>
+                <span role="img" className="anticon anticon-dashboard">
+                  <AiOutlineDotChart />
+                </span>
+                <span className="ant-pro-menu-item-title">{title}</span>
+              </Space>
+            }
+            title={t("components.coverage-panel.error.title")}
+            subtitle={t("components.coverage-panel.error.subtitle", {
+              filename,
+            })}
+            explanationTitle={t(
+              "components.coverage-panel.error.explanation.title"
+            )}
+            explanationDescription={error.stack}
+          />
+        ) : (
+          <Card
+            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            loading={loading}
+            size="small"
+            title={
+              <Space>
+                <span role="img" className="anticon anticon-dashboard">
+                  <AiOutlineDotChart />
+                </span>
+                <span className="ant-pro-menu-item-title">
+                  <Space>
+                    {title}
+                    {data && (
+                      <span>
+                        <b>{d3.format(",")(data.numRows)}</b>{" "}
+                        {t("components.coverage-panel.datapoint", {
+                          count: data.numRows,
+                        })}
+                      </span>
+                    )}
+                    {notification.status && (
+                      <Popover
+                        placement="bottomLeft"
+                        title={
+                          <Space>
+                            <Text>{notification.heading}</Text>
+                          </Space>
+                        }
+                        content={
+                          <Space direction="vertical">
+                            {notification.messages.map((d) => (
+                              <Text>
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: d,
+                                  }}
+                                />
+                              </Text>
+                            ))}
+                          </Space>
+                        }
+                        trigger="hover"
+                      >
+                        <Text type="warning">
+                          <WarningOutlined />
+                        </Text>
+                      </Popover>
+                    )}
+                  </Space>
+                </span>
+              </Space>
+            }
+            extra={
+              <Space>
+                {zoomedByCmd && (
+                  <Text type="secondary">{t("components.zoom-help")}</Text>
+                )}
+                <Tooltip title={t("components.download-as-png-tooltip")}>
+                  <Button
+                    type="default"
+                    shape="circle"
+                    disabled={!visible}
+                    icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
+                    size="small"
+                    onClick={() => this.onDownloadButtonClicked()}
+                  />
+                </Tooltip>
+              </Space>
+            }
+          >
+            {visible && w > 0 && (
+              <Resizable
+                className="box"
+                height={this.state.height}
+                width={w - gap}
+                onResize={this.onFirstBoxResize}
+                resizeHandles={["sw", "se", "s"]}
+                draggableOpts={{ grid: [25, 25] }}
               >
-                {(inViewport || renderOutsideViewPort) && (
-                  <Row>
-                    <Col flex={1}>
-                      {data ? (
+                <div
+                  className="ant-wrapper"
+                  style={{
+                    width: w - gap + "px",
+                    height: this.state.height + "px",
+                  }}
+                >
+                  {(inViewport || renderOutsideViewPort) && (
+                    <Row>
+                      <Col flex={1}>
                         <ScatterPlot
                           {...{
                             width: w - gap,
@@ -231,21 +250,14 @@ class ScatterPlotPanel extends Component {
                             flipAxesY,
                           }}
                         />
-                      ) : (
-                        <Alert
-                          message={t("general.invalid-arrow-file")}
-                          description={t("general.invalid-arrow-file-detail")}
-                          type="error"
-                          showIcon
-                        />
-                      )}
-                    </Col>
-                  </Row>
-                )}
-              </div>
-            </Resizable>
-          )}
-        </Card>
+                      </Col>
+                    </Row>
+                  )}
+                </div>
+              </Resizable>
+            )}
+          </Card>
+        )}
       </Wrapper>
     );
   }

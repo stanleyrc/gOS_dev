@@ -1,18 +1,14 @@
-import { all, takeLatest, put, call, select } from "redux-saga/effects";
+import { all, takeLatest, put, call } from "redux-saga/effects";
 import axios from "axios";
-import {
-  updateChromoBins,
-  locationToDomains,
-  domainsToLocation,
-} from "../../helpers/utility";
+import { updateChromoBins, locationToDomains } from "../../helpers/utility";
 import actions from "./actions";
-import { getCurrentState } from "./selectors";
 import datasetsActions from "../datasets/actions";
 import caseReportsActions from "../caseReports/actions";
 import caseReportActions from "../caseReport/actions";
 import genesActions from "../genes/actions";
 import biomarkersActions from "../biomarkers/actions";
 import curatedGenesActions from "../curatedGenes/actions";
+import { cancelAllRequests } from "../../helpers/cancelToken";
 
 function* launchApplication(action) {
   let actionTypes = [
@@ -61,6 +57,7 @@ function* fetchSettingsData(action) {
 }
 
 function* updateCaseReportFollowUp(action) {
+  cancelAllRequests();
   yield put({
     type: caseReportActions.FETCH_CASE_REPORT_REQUEST,
   });
@@ -74,6 +71,7 @@ function* updateDatasetFollowUp(action) {
   ];
   yield all(actionTypes.map((type) => put({ type })));
   if (action.report) {
+    cancelAllRequests();
     yield put({
       type: caseReportActions.FETCH_CASE_REPORT_REQUEST,
       report: action.report,

@@ -13,15 +13,16 @@ import populationStatisticsActions from "../populationStatistics/actions";
 import ppfitActions from "../ppfit/actions";
 import sageQcActions from "../sageQc/actions";
 import signatureStatisticsActions from "../signatureStatistics/actions";
+import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReport(action) {
+  const currentState = yield select(getCurrentState);
+  let { report, dataset } = currentState.Settings;
   try {
-    const currentState = yield select(getCurrentState);
-    let { report, dataset } = currentState.Settings;
-
     let responseReportMetadata = yield call(
       axios.get,
-      `${dataset.dataPath}${report}/metadata.json`
+      `${dataset.dataPath}${report}/metadata.json`,
+      { cancelToken: getCancelToken() }
     );
 
     let metadata = {};
@@ -40,10 +41,17 @@ function* fetchCaseReport(action) {
       id: metadata.pair,
     });
   } catch (error) {
-    yield put({
-      type: actions.FETCH_CASE_REPORT_FAILED,
-      error,
-    });
+    if (axios.isCancel(error)) {
+      console.log(
+        `fetch ${dataset.dataPath}${report}/metadata.json request canceled`,
+        error.message
+      );
+    } else {
+      yield put({
+        type: actions.FETCH_CASE_REPORT_FAILED,
+        error,
+      });
+    }
   }
 }
 

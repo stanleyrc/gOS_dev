@@ -1,4 +1,5 @@
 import { tableFromIPC } from "apache-arrow";
+import axios from "axios";
 import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
@@ -11,8 +12,24 @@ export function replaceSearchParams(location, params = {}) {
   return decodeURIComponent(searchParams.toString());
 }
 
-export async function loadArrowTable(file) {
-  return await tableFromIPC(fetch(file));
+export async function loadArrowTable(file, cancelToken) {
+  try {
+    // Fetch the file with Axios and the provided cancel token
+    const response = await axios.get(file, {
+      responseType: "arraybuffer", // Ensure the response is in binary format
+      cancelToken: cancelToken, // Pass the cancel token here
+    });
+
+    // Convert the Axios response data to an Arrow table
+    return await tableFromIPC(response.data);
+  } catch (error) {
+    if (axios.isCancel(error)) {
+      console.log(`Request canceled for ${file}`, error.message);
+    } else {
+      console.error(`Failed to load Arrow table for file ${file}:`, error);
+    }
+    throw error; // Re-throw error so calling code can handle it
+  }
 }
 
 export function transitionStyle(inViewport) {
@@ -768,7 +785,10 @@ export function flip(data) {
 
 export function snakeCaseToHumanReadable(str) {
   return str
-    ? str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    ? str
+        .toString()
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
     : "";
 }
 

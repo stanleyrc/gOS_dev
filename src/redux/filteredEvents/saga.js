@@ -7,16 +7,17 @@ import {
 } from "../../helpers/utility";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
+import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchFilteredEvents(action) {
+  const currentState = yield select(getCurrentState);
+  const { dataset } = currentState.Settings;
+  const { id } = currentState.CaseReport;
   try {
-    const currentState = yield select(getCurrentState);
-    const { dataset } = currentState.Settings;
-    const { id } = currentState.CaseReport;
-
     let responseReportFilteredEvents = yield call(
       axios.get,
-      `${dataset.dataPath}${id}/filtered.events.json`
+      `${dataset.dataPath}${id}/filtered.events.json`,
+      { cancelToken: getCancelToken() }
     );
 
     let filteredEvents = transformFilteredEventAttributes(
@@ -35,10 +36,17 @@ function* fetchFilteredEvents(action) {
       selectedFilteredEvent,
     });
   } catch (error) {
-    yield put({
-      type: actions.FETCH_FILTERED_EVENTS_FAILED,
-      error,
-    });
+    if (axios.isCancel(error)) {
+      console.log(
+        `fetch ${dataset.dataPath}${id}/filtered.events.json request canceled`,
+        error.message
+      );
+    } else {
+      yield put({
+        type: actions.FETCH_FILTERED_EVENTS_FAILED,
+        error,
+      });
+    }
   }
 }
 
