@@ -2,9 +2,10 @@ import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import { loadArrowTable } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
+import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchArrowData(plot) {
-  yield loadArrowTable(plot.path)
+  yield loadArrowTable(plot.path, getCancelToken())
     .then((results) => (plot.data = results))
     .catch((error) => {
       console.log(plot.path, error);

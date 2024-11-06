@@ -13,9 +13,10 @@ import populationStatisticsActions from "../populationStatistics/actions";
 import ppfitActions from "../ppfit/actions";
 import sageQcActions from "../sageQc/actions";
 import signatureStatisticsActions from "../signatureStatistics/actions";
-import { getCancelToken } from "../../helpers/cancelToken";
+import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReport(action) {
+  cancelAllRequests();
   const currentState = yield select(getCurrentState);
   let { report, dataset } = currentState.Settings;
   try {

@@ -125,7 +125,6 @@ class ScatterPlotPanel extends Component {
     //if (!data) return null;
     let w = parentWidth || this.container?.getBoundingClientRect().width;
     let h = height;
-    console.log("here", loading, data);
     return (
       <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
         {error ? (
