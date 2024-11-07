@@ -9,9 +9,10 @@ const actions = {
   fetchFilteredEvents: () => ({
     type: actions.FETCH_FILTERED_EVENTS_REQUEST,
   }),
-  selectFilteredEvent: (filteredEvent) => ({
+  selectFilteredEvent: (filteredEvent, viewMode = "tracks") => ({
     type: actions.SELECT_FILTERED_EVENT,
     filteredEvent,
+    viewMode,
   }),
 };
 

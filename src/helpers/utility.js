@@ -818,42 +818,56 @@ export function segmentAttributes() {
 export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
-      const regex = /^(\w+):(\d+)-(\d+).*/;
       let gene = event.gene;
-      let match = regex.exec(event.Genome_Location);
-      let chromosome = match[1];
-      let startPoint = match[2];
-      let endPoint = match[3];
-      let location = `${chromosome}:${startPoint}-${endPoint}`;
-      if (event.vartype == "SNV") {
-        // center the SNV in the plot while encapsulating its gene in the
-        // window
-        const snvMatch = regex.exec(event.Variant_g);
-        const snvStartPoint = parseInt(snvMatch[2]);
-        const snvEndPoint = parseInt(snvMatch[3]);
-        const geneStartPoint = parseInt(startPoint);
-        const geneEndPoint = parseInt(endPoint);
+      let location = null;
+      let chromosome = null;
+      let startPoint = null;
+      let endPoint = null;
+      if (event.Genome_Location) {
+        const regex = /^(\w+):(\d+)-(\d+).*/;
+        let match = regex.exec(event.Genome_Location);
+        chromosome = match[1];
+        startPoint = match[2];
+        endPoint = match[3];
+        location = `${chromosome}:${startPoint}-${endPoint}`;
+        if (event.vartype === "SNV") {
+          // center the SNV in the plot while encapsulating its gene in the
+          // window
+          try {
+            const snvMatch = regex.exec(event.Variant_g);
+            const snvStartPoint = parseInt(snvMatch[2]);
+            const snvEndPoint = parseInt(snvMatch[3]);
+            const geneStartPoint = parseInt(startPoint);
+            const geneEndPoint = parseInt(endPoint);
 
-        let padding =
-          snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint
-            ? snvStartPoint - geneStartPoint
-            : geneEndPoint - snvEndPoint;
-        padding += 1000;
-        startPoint = parseInt(snvStartPoint - padding);
-        endPoint = parseInt(snvEndPoint + padding);
-        location = event.Variant_g;
-      } else if (event.vartype == "fusion") {
-        gene = event.fusion_genes;
-        location = event.fusion_genes;
-        chromosome = event.fusion_gene_coords
-          .split(",")
-          .map((d) => d.split(":")[0]);
-        startPoint = event.fusion_gene_coords
-          .split(",")
-          .map((d) => d.split(":")[1].split("-")[0]);
-        endPoint = event.fusion_gene_coords
-          .split(",")
-          .map((d) => d.split(":")[1].split("-")[1]);
+            let padding =
+              snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint
+                ? snvStartPoint - geneStartPoint
+                : geneEndPoint - snvEndPoint;
+            padding += 1000;
+            startPoint = parseInt(snvStartPoint - padding);
+            endPoint = parseInt(snvEndPoint + padding);
+            location = event.Variant_g;
+          } catch (error) {
+            console.log(error);
+          }
+        } else if (event.vartype === "fusion") {
+          gene = event.fusion_genes;
+          try {
+            location = event.fusion_genes;
+            chromosome = event.fusion_gene_coords
+              .split(",")
+              .map((d) => d.split(":")[0]);
+            startPoint = event.fusion_gene_coords
+              .split(",")
+              .map((d) => d.split(":")[1].split("-")[0]);
+            endPoint = event.fusion_gene_coords
+              .split(",")
+              .map((d) => d.split(":")[1].split("-")[1]);
+          } catch (error) {
+            console.log(error);
+          }
+        }
       }
       return {
         gene: gene,
@@ -867,9 +881,14 @@ export function transformFilteredEventAttributes(filteredEvents) {
         location: location,
         id: event.id,
         variant: event.Variant,
+        dosage: event.dosage,
+        prognoses: event.prognoses,
+        diagnoses: event.diagnoses,
+        therapeutics: event.therapeutics,
+        resistances: event.resistances,
       };
     })
-    .sort((a, b) => d3.ascending(a.gene, b.gene));
+    .sort((a, b) => d3.ascending(a.tier, b.tier));
 }
 
 export function kde(kernel, thresholds, data) {

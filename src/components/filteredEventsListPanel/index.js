@@ -2,13 +2,15 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { withRouter } from "react-router-dom";
 import { connect } from "react-redux";
-import { Tag, Table, Button, Space, Row, Col, Skeleton } from "antd";
+import { Tag, Table, Button, Space, Row, Col, Skeleton, Tooltip } from "antd";
 import { roleColorMap } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
+import FilteredEventModal from "../filteredEventModal";
 
 const { selectFilteredEvent } = filteredEventsActions;
 
@@ -19,6 +21,7 @@ class FilteredEventsListPanel extends Component {
       id,
       filteredEvents,
       selectedFilteredEvent,
+      viewMode,
       loading,
       error,
       genome,
@@ -33,6 +36,7 @@ class FilteredEventsListPanel extends Component {
 
     //const { open } = this.state;
     let open = selectedFilteredEvent?.id;
+
     const columns = [
       {
         title: t("components.filtered-events-panel.gene"),
@@ -46,11 +50,30 @@ class FilteredEventsListPanel extends Component {
         }),
         filterMultiple: false,
         onFilter: (value, record) => record.gene.indexOf(value) === 0,
+        render: (_, record) =>
+          record.gene ? (
+            <Button
+              type="link"
+              onClick={() => selectFilteredEvent(record, "detail")}
+            >
+              {record.gene}
+            </Button>
+          ) : (
+            t("components.filtered-events-panel.unavailable", {
+              value: "gene",
+            })
+          ),
       },
       {
-        title: t("components.filtered-events-panel.name"),
-        dataIndex: "name",
-        key: "name",
+        title: t("components.filtered-events-panel.dosage"),
+        dataIndex: "dosage",
+        key: "dosage",
+        render: (value) =>
+          value
+            ? value
+            : t("components.filtered-events-panel.unavailable", {
+                value: "dosage",
+              }),
       },
       {
         title: t("components.filtered-events-panel.variant"),
@@ -79,35 +102,24 @@ class FilteredEventsListPanel extends Component {
         onFilter: (value, record) => record.type.indexOf(value) === 0,
       },
       {
-        title: t("components.filtered-events-panel.role"),
-        dataIndex: "role",
-        key: "role",
-        render: (role) => (
-          <>
-            {role?.split(",").map((tag) => (
-              <Tag color={roleColorMap()[tag.trim()]} key={tag.trim()}>
-                {tag.trim()}
-              </Tag>
-            ))}
-          </>
+        title: (
+          <Space>
+            {t("components.filtered-events-panel.tier")}
+            <Tooltip
+              title={
+                <Space direction="vertical">
+                  {[1, 2, 3].map((d) => (
+                    <Space>
+                      {d}:{t(`components.filtered-events-panel.tier-info.${d}`)}
+                    </Space>
+                  ))}
+                </Space>
+              }
+            >
+              <InfoCircleOutlined />
+            </Tooltip>
+          </Space>
         ),
-        filters: [
-          ...new Set(
-            filteredEvents
-              .map((d) => d.role.split(","))
-              .flat()
-              .map((d) => d.trim())
-          ),
-        ].map((d) => {
-          return {
-            text: d,
-            value: d,
-          };
-        }),
-        onFilter: (value, record) => record.role.includes(value),
-      },
-      {
-        title: t("components.filtered-events-panel.tier"),
         dataIndex: "tier",
         key: "tier",
         sorter: (a, b) => a.tier - b.tier,
@@ -119,16 +131,41 @@ class FilteredEventsListPanel extends Component {
         }),
         filterMultiple: false,
         onFilter: (value, record) => record.tier === value,
+        render: (_, record) =>
+          record.tier ? (
+            <Tooltip
+              title={t(
+                `components.filtered-events-panel.tier-info.${record.tier}`
+              )}
+            >
+              <Button
+                type="link"
+                onClick={() => selectFilteredEvent(record, "detail")}
+              >
+                {record.tier}
+              </Button>
+            </Tooltip>
+          ) : (
+            t("components.filtered-events-panel.unavailable", { value: "tier" })
+          ),
       },
       {
         title: t("components.filtered-events-panel.location"),
         dataIndex: "location",
         key: "location",
-        render: (_, record) => (
-          <Button type="link" onClick={() => selectFilteredEvent(record)}>
-            {record.location}
-          </Button>
-        ),
+        render: (_, record) =>
+          record.location ? (
+            <Button
+              type="link"
+              onClick={() => selectFilteredEvent(record, "tracks")}
+            >
+              {record.location}
+            </Button>
+          ) : (
+            t("components.filtered-events-panel.unavailable", {
+              value: "location",
+            })
+          ),
       },
     ];
     return (
@@ -155,7 +192,7 @@ class FilteredEventsListPanel extends Component {
                   dataSource={filteredEvents}
                   pagination={{ pageSize: 50 }}
                 />
-                {selectedFilteredEvent && (
+                {selectedFilteredEvent && viewMode === "tracks" && (
                   <TracksModal
                     {...{
                       loading,
@@ -222,6 +259,16 @@ class FilteredEventsListPanel extends Component {
                     }}
                   />
                 )}
+                {selectedFilteredEvent && viewMode === "detail" && (
+                  <FilteredEventModal
+                    {...{
+                      record: selectedFilteredEvent,
+                      handleOkClicked: () => selectFilteredEvent(null),
+                      handleCancelClicked: () => selectFilteredEvent(null),
+                      open,
+                    }}
+                  />
+                )}
               </Skeleton>
             )}
           </Col>
@@ -233,13 +280,14 @@ class FilteredEventsListPanel extends Component {
 FilteredEventsListPanel.propTypes = {};
 FilteredEventsListPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
-  selectFilteredEvent: (filteredEvent) =>
-    dispatch(selectFilteredEvent(filteredEvent)),
+  selectFilteredEvent: (filteredEvent, viewMode) =>
+    dispatch(selectFilteredEvent(filteredEvent, viewMode)),
 });
 const mapStateToProps = (state) => ({
   loading: state.FilteredEvents.loading,
   filteredEvents: state.FilteredEvents.filteredEvents,
   selectedFilteredEvent: state.FilteredEvents.selectedFilteredEvent,
+  viewMode: state.FilteredEvents.viewMode,
   error: state.FilteredEvents.error,
   id: state.CaseReport.id,
   report: state.CaseReport.metadata,

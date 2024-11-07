@@ -4,6 +4,7 @@ const initState = {
   loading: false,
   filteredEvents: [],
   selectedFilteredEvent: null,
+  viewMode: "tracks",
   error: null,
 };
 
@@ -35,6 +36,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         selectedFilteredEvent: action.filteredEvent,
+        viewMode: action.viewMode,
         loading: false,
       };
     default:

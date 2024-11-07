@@ -36,6 +36,7 @@ function* fetchFilteredEvents(action) {
       selectedFilteredEvent,
     });
   } catch (error) {
+    console.log(error);
     if (axios.isCancel(error)) {
       console.log(
         `fetch ${dataset.dataPath}${id}/filtered.events.json request canceled`,
@@ -73,7 +74,6 @@ function* selectFilteredEvent(action) {
     } else {
       loc = `${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.startPoint}-${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.endPoint}`;
     }
-
     let domsGene = locationToDomains(chromoBins, loc);
     // eliminate domains that are smaller than 10 bases wide
     if (domsGene.length > 1) {

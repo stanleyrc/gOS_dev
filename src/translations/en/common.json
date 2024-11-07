@@ -328,15 +328,27 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "info": "Filtered Event Info",
       "header": "Filtered Events",
       "genome-plot": "Genome Plot",
       "gene": "Gene",
       "name": "Name",
+      "dosage": "Dosage",
+      "therapeutics": "Therapeutics",
+      "resistances": "Resistances",
+      "diagnoses": "Diagnoses",
+      "prognoses": "Prognoses",
       "variant": "Variant",
       "tier": "Tier",
       "role": "Role in Cancer",
       "location": "Location",
       "type": "Type",
+      "unavailable": "No {{value}} available",
+      "tier-info": {
+        "1": "Clinically Actionable",
+        "2": "Clinically Significant",
+        "3": "Variant of Unknown Significance (VUS)"
+      },
       "select-type": {
         "placeholder": "select one or many"
       },

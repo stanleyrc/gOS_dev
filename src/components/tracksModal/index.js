@@ -116,20 +116,23 @@ class TracksModal extends Component {
                 filename: genomeCoverage.filename,
                 title: coveragePlotTitle,
                 notification: {
-                  status: !cov_slope || !cov_intercept ? "warning" : null,
+                  status:
+                    cov_slope == null || cov_intercept == null
+                      ? "warning"
+                      : null,
                   heading:
-                    !cov_slope || !cov_intercept
+                    cov_slope == null || cov_intercept == null
                       ? t(`components.tracks-modal.missing-counts-axis`)
                       : null,
                   messages: [
-                    ...(!cov_slope
+                    ...(cov_slope == null
                       ? [
                           t(`general.attributes-missing.description`, {
                             attribute: "cov_slope",
                           }),
                         ]
                       : []),
-                    ...(!cov_intercept
+                    ...(cov_intercept == null
                       ? [
                           t(`general.attributes-missing.description`, {
                             attribute: "cov_intercept",
@@ -139,9 +142,9 @@ class TracksModal extends Component {
                   ],
                 },
                 scaleY2: {
-                  show: cov_slope && cov_intercept,
-                  slope: cov_slope,
-                  intercept: cov_intercept,
+                  show: cov_slope != null && cov_intercept != null,
+                  slope: +cov_slope,
+                  intercept: +cov_intercept,
                 },
                 chromoBins,
                 visible: true,
@@ -163,20 +166,23 @@ class TracksModal extends Component {
                 filename: hetsnps.filename,
                 title: hetsnpPlotTitle,
                 notification: {
-                  status: !hets_slope || !hets_intercept ? "warning" : null,
+                  status:
+                    hets_slope == null || hets_intercept == null
+                      ? "warning"
+                      : null,
                   heading:
-                    !cov_slope || !hets_intercept
+                    hets_slope == null || hets_intercept == null
                       ? t(`components.tracks-modal.missing-counts-axis`)
                       : null,
                   messages: [
-                    ...(!hets_slope
+                    ...(hets_slope == null
                       ? [
                           t(`general.attributes-missing.description`, {
                             attribute: "hets_slope",
                           }),
                         ]
                       : []),
-                    ...(!hets_intercept
+                    ...(hets_intercept == null
                       ? [
                           t(`general.attributes-missing.description`, {
                             attribute: "hets_intercept",
@@ -186,9 +192,9 @@ class TracksModal extends Component {
                   ],
                 },
                 scaleY2: {
-                  show: hets_slope && hets_intercept,
-                  slope: hets_slope,
-                  intercept: hets_intercept,
+                  show: hets_slope != null && hets_intercept != null,
+                  slope: +hets_slope,
+                  intercept: +hets_intercept,
                 },
                 chromoBins,
                 visible: true,
