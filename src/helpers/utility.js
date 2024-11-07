@@ -888,7 +888,14 @@ export function transformFilteredEventAttributes(filteredEvents) {
         resistances: event.resistances,
       };
     })
-    .sort((a, b) => d3.ascending(a.tier, b.tier));
+    .sort((a, b) => {
+      // If `tier` is null or undefined, place that item at the end
+      if (a.tier == null) return 1;
+      if (b.tier == null) return -1;
+
+      // Otherwise, sort by tier in ascending order
+      return a.tier - b.tier;
+    });
 }
 
 export function kde(kernel, thresholds, data) {

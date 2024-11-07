@@ -60,12 +60,13 @@ class HeaderPanel extends Component {
     Object.keys(plotTypes()).forEach((d) => {
       let plot = plots.find((e) => e.id === d);
       let markValue = metadata[d];
-      colorMarkers[d] =
-        markValue < plot?.q1
+      colorMarkers[d] = markValue
+        ? markValue < plot?.q1
           ? legendColors()[0]
           : markValue > plot?.q3
           ? legendColors()[2]
-          : legendColors()[1];
+          : legendColors()[1]
+        : "gray";
     });
 
     const createTooltip = (translationKey, valueKey, formatString = "20") => {
@@ -117,7 +118,7 @@ class HeaderPanel extends Component {
       "qrpmix",
     ];
 
-    const tooltips = {
+    let tooltips = {
       tumor_median_coverage: (
         <span>
           {createTooltip(
@@ -175,15 +176,24 @@ class HeaderPanel extends Component {
       ),
       hrdScore: (
         <span>
-          {hrdFields.map((field, index) => {
-            const tooltip = createTooltip(`metadata.${field}`, `hrd.${field}`);
-            return tooltip ? (
-              <span key={field}>
-                {tooltip}
-                {index < hrdFields.length - 1 && <br />}
-              </span>
-            ) : null;
-          })}
+          {hrdFields
+            .filter((field, index) =>
+              `hrd.${field}`
+                .split(".")
+                .reduce((acc, key) => acc?.[key], metadata)
+            )
+            .map((field, index) => {
+              const tooltip = createTooltip(
+                `metadata.${field}`,
+                `hrd.${field}`
+              );
+              return tooltip ? (
+                <span key={field}>
+                  {tooltip}
+                  {index < hrdFields.length - 1 && <br />}
+                </span>
+              ) : null;
+            })}
         </span>
       ),
       snvCount: createTooltip(
@@ -197,6 +207,19 @@ class HeaderPanel extends Component {
       2: <CloseCircleOutlined />,
       3: <QuestionCircleOutlined />,
     };
+
+    tooltips = Object.entries(tooltips)
+      .filter(
+        ([key, value]) =>
+          value.props.children
+            ?.flat()
+            .filter((item) => item !== null && item.type !== "br").length > 0
+      )
+      .reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+
     return (
       <Wrapper>
         <PageHeader
