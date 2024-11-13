@@ -493,7 +493,7 @@ class GenomePlot extends Component {
     const { stageWidth, stageHeight, tooltip } = this.state;
     this.updatePanels();
     let randID = Math.random();
-    console.log(this.panels);
+
     return (
       <Wrapper className="ant-wrapper">
         <svg
