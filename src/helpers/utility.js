@@ -97,6 +97,19 @@ export function plotMargins() {
   };
 }
 
+export function tierColor(tier) {
+  switch (tier) {
+    case 1:
+      return "#30A02C";
+    case 2:
+      return "#2177B3";
+    case 3:
+      return "#974DA3";
+    default:
+      return "#424242";
+  }
+}
+
 export function legendColors() {
   // first color for x < μ - 2σ
   // second color for |x - μ| < 2σ

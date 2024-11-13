@@ -2,8 +2,18 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { withRouter } from "react-router-dom";
 import { connect } from "react-redux";
-import { Tag, Table, Button, Space, Row, Col, Skeleton, Tooltip } from "antd";
-import { roleColorMap } from "../../helpers/utility";
+import {
+  Tag,
+  Table,
+  Button,
+  Space,
+  Row,
+  Col,
+  Skeleton,
+  Tooltip,
+  Avatar,
+} from "antd";
+import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
@@ -65,17 +75,6 @@ class FilteredEventsListPanel extends Component {
           ),
       },
       {
-        title: t("components.filtered-events-panel.dosage"),
-        dataIndex: "dosage",
-        key: "dosage",
-        render: (value) =>
-          value
-            ? value
-            : t("components.filtered-events-panel.unavailable", {
-                value: "dosage",
-              }),
-      },
-      {
         title: t("components.filtered-events-panel.variant"),
         dataIndex: "variant",
         key: "variant",
@@ -110,7 +109,16 @@ class FilteredEventsListPanel extends Component {
                 <Space direction="vertical">
                   {[1, 2, 3].map((d) => (
                     <Space>
-                      {d}:{t(`components.filtered-events-panel.tier-info.${d}`)}
+                      <Avatar
+                        size="small"
+                        style={{
+                          color: "#FFF",
+                          backgroundColor: tierColor(+d),
+                        }}
+                      >
+                        {d}
+                      </Avatar>
+                      {t(`components.filtered-events-panel.tier-info.${d}`)}
                     </Space>
                   ))}
                 </Space>
@@ -142,12 +150,31 @@ class FilteredEventsListPanel extends Component {
                 type="link"
                 onClick={() => selectFilteredEvent(record, "detail")}
               >
-                {record.tier}
+                <Avatar
+                  size="small"
+                  style={{
+                    color: "#FFF",
+                    backgroundColor: tierColor(+record.tier),
+                  }}
+                >
+                  {record.tier}
+                </Avatar>
               </Button>
             </Tooltip>
           ) : (
             t("components.filtered-events-panel.unavailable", { value: "tier" })
           ),
+      },
+      {
+        title: t("components.filtered-events-panel.dosage"),
+        dataIndex: "dosage",
+        key: "dosage",
+        render: (value) =>
+          value
+            ? value
+            : t("components.filtered-events-panel.unavailable", {
+                value: "dosage",
+              }),
       },
       {
         title: t("components.filtered-events-panel.location"),
@@ -191,6 +218,7 @@ class FilteredEventsListPanel extends Component {
                   columns={columns}
                   dataSource={filteredEvents}
                   pagination={{ pageSize: 50 }}
+                  showSorterTooltip={false}
                 />
                 {selectedFilteredEvent && viewMode === "tracks" && (
                   <TracksModal

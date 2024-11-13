@@ -11,10 +11,11 @@ import {
   Button,
   Descriptions,
   Tag,
+  Avatar,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
-import { roleColorMap } from "../../helpers/utility";
+import { roleColorMap, tierColor } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import { downloadCanvasAsPng } from "../../helpers/utility";
 import Wrapper from "./index.style";
@@ -81,18 +82,19 @@ class FilteredEventModal extends Component {
                 {gene}
               </a>
             </Item>
-            <Item label={t("components.filtered-events-panel.dosage")}>
-              {dosage
-                ? dosage
-                : t("components.filtered-events-panel.unavailable", {
-                    value: "dosage",
-                  })}
-            </Item>
             <Item label={t("components.filtered-events-panel.tier")}>
               {tier ? (
                 <Space>
-                  {tier} (
-                  {t(`components.filtered-events-panel.tier-info.${tier}`)})
+                  <Avatar
+                    size="small"
+                    style={{
+                      color: "#FFF",
+                      backgroundColor: tierColor(+tier),
+                    }}
+                  >
+                    {tier}
+                  </Avatar>
+                  {t(`components.filtered-events-panel.tier-info.${tier}`)}
                 </Space>
               ) : (
                 t("components.filtered-events-panel.unavailable", {
@@ -114,14 +116,14 @@ class FilteredEventModal extends Component {
                     value: "resistances",
                   })}
             </Item>
-            <Item label={t("components.filtered-events-panel.resistances")}>
+            <Item label={t("components.filtered-events-panel.diagnoses")}>
               {diagnoses
                 ? diagnoses
                 : t("components.filtered-events-panel.unavailable", {
                     value: "diagnoses",
                   })}
             </Item>
-            <Item label={t("components.filtered-events-panel.resistances")}>
+            <Item label={t("components.filtered-events-panel.prognoses")}>
               {prognoses
                 ? prognoses
                 : t("components.filtered-events-panel.unavailable", {
