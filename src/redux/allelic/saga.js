@@ -31,6 +31,7 @@ function* fetchData(action) {
       data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
+    console.log(error);
     if (axios.isCancel(error)) {
       console.log(
         `fetch ${dataset.dataPath}${id}/allelic.json request canceled`,

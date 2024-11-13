@@ -21,6 +21,7 @@ function* fetchData(action) {
       data: dataToGenome(responseMutationsData.data, chromoBins),
     });
   } catch (error) {
+    console.log(error);
     if (axios.isCancel(error)) {
       console.log(
         `fetch ${dataset.dataPath}${id}/mutations.json request canceled`,

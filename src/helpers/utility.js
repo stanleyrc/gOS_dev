@@ -51,19 +51,21 @@ export function dataToGenome(data, chromoBins) {
   genome.intervalBins = {};
   data.intervals.forEach((d, i) => {
     let interval = new Interval(d);
-    interval.startPlace =
-      chromoBins[`${interval.chromosome}`].startPlace + interval.startPoint;
-    interval.endPlace =
-      chromoBins[`${interval.chromosome}`].startPlace + interval.endPoint;
-    interval.color = d3
-      .rgb(chromoBins[`${interval.chromosome}`].color)
-      .toString();
-    interval.stroke = d3
-      .rgb(chromoBins[`${interval.chromosome}`].color)
-      .darker()
-      .toString();
-    genome.intervalBins[d.iid] = interval;
-    genome.intervals.push(interval);
+    if (chromoBins[`${interval.chromosome}`]) {
+      interval.startPlace =
+        chromoBins[`${interval.chromosome}`].startPlace + interval.startPoint;
+      interval.endPlace =
+        chromoBins[`${interval.chromosome}`].startPlace + interval.endPoint;
+      interval.color = d3
+        .rgb(chromoBins[`${interval.chromosome}`].color)
+        .toString();
+      interval.stroke = d3
+        .rgb(chromoBins[`${interval.chromosome}`].color)
+        .darker()
+        .toString();
+      genome.intervalBins[d.iid] = interval;
+      genome.intervals.push(interval);
+    }
   });
   data.frameConnections = [];
   data.connections.forEach((d, i) => {
