@@ -62,9 +62,9 @@ class Interval {
         return { key: key.trim(), value: value.trim() };
       });
       const oncogenicity = annotations.find(
-        (item) => item.key === "Oncogenicity"
+        (item) => item?.key === "Oncogenicity"
       )?.value;
-      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      const effect = annotations.find((item) => item?.key === "Effect")?.value;
       if (oncogenicity) {
         value = d3.symbol(d3.symbolAsterisk, 100);
       }
@@ -146,20 +146,20 @@ class Interval {
         });
       }
       const oncogenicity = annotations.find(
-        (item) => item.key === "Oncogenicity"
+        (item) => item?.key === "Oncogenicity"
       )?.value;
       attributes.push({
         label: "OncoKB Oncogenicity",
         value: oncogenicity || "NA",
       });
 
-      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      const effect = annotations.find((item) => item?.key === "Effect")?.value;
       attributes.push({
         label: "OncoKB Predicted Effect",
         value: effect || "NA",
       });
 
-      const level = annotations.find((item) => item.key === "Level")?.value;
+      const level = annotations.find((item) => item?.key === "Level")?.value;
       attributes.push({
         label: "OncoKB Therapeutic Level",
         value: level || "NA",
@@ -194,9 +194,9 @@ class Interval {
         return { key: key.trim(), value: value.trim() };
       });
       const oncogenicity = annotations.find(
-        (item) => item.key === "Oncogenicity"
+        (item) => item?.key === "Oncogenicity"
       )?.value;
-      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      const effect = annotations.find((item) => item?.key === "Effect")?.value;
       if (oncogenicity) {
         value = 1;
       }
