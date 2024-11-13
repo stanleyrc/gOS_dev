@@ -111,7 +111,9 @@ class GenomePlot extends Component {
         yTicks,
         panelGenomeScale,
         offset,
-        intervals: filteredIntervals,
+        intervals: filteredIntervals.sort((a, b) =>
+          d3.ascending(a.weight, b.weight)
+        ),
         domainWidth,
         range,
         scale,
@@ -491,6 +493,7 @@ class GenomePlot extends Component {
     const { stageWidth, stageHeight, tooltip } = this.state;
     this.updatePanels();
     let randID = Math.random();
+    console.log(this.panels);
     return (
       <Wrapper className="ant-wrapper">
         <svg
@@ -618,8 +621,9 @@ class GenomePlot extends Component {
                 <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
                     return mutationsPlot ? (
-                      <circle
+                      <path
                         id={d.primaryKey}
+                        d={d.mutationSymbol}
                         type="interval"
                         key={i}
                         className={`shape ${
@@ -633,7 +637,6 @@ class GenomePlot extends Component {
                           panel.xScale((d.startPlace + d.endPlace) / 2),
                           panel.yScale(d.y),
                         ]})`}
-                        r={margins.bar / 3}
                         style={{
                           fill: d.fill || d.color,
                           stroke: d.stroke,

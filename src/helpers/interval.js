@@ -51,6 +51,30 @@ class Interval {
     return `${this.chromosome}: ${this.startPoint} - ${this.endPoint}`;
   }
 
+  get mutationSymbol() {
+    let value = d3.symbol(d3.symbolCircle, 10);
+    if (this.annotation) {
+      const annotations = this.annotation.split(";").map((item) => {
+        if (!item.includes(":")) {
+          return null;
+        }
+        const [key, value] = item.split(":");
+        return { key: key.trim(), value: value.trim() };
+      });
+      const oncogenicity = annotations.find(
+        (item) => item.key === "Oncogenicity"
+      )?.value;
+      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      if (oncogenicity) {
+        value = d3.symbol(d3.symbolAsterisk, 100);
+      }
+      if (effect) {
+        value = d3.symbol(d3.symbolStar, 100);
+      }
+    }
+    return value();
+  }
+
   get tooltipContent() {
     let attributes = [
       { label: "Locus", value: this.location },
@@ -83,9 +107,9 @@ class Interval {
         ref_count && alt_count
           ? parseInt(ref_count) + parseInt(alt_count)
           : null;
-      const vaf = Number(
-        annotations.find((item) => item.key === "VAF")?.value
-      ).toFixed(3);
+      const vaf = d3.format(".3f")(
+        +annotations.find((item) => item.key === "VAF")?.value
+      );
       const normal_alt_count = annotations.find(
         (item) => item.key === "Normal_alt_count"
       )?.value;
@@ -121,6 +145,25 @@ class Interval {
           value: `${normal_alt_count} | ${normal_ref_count} | ${normal_total_count}`,
         });
       }
+      const oncogenicity = annotations.find(
+        (item) => item.key === "Oncogenicity"
+      )?.value;
+      attributes.push({
+        label: "OncoKB Oncogenicity",
+        value: oncogenicity || "NA",
+      });
+
+      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      attributes.push({
+        label: "OncoKB Predicted Effect",
+        value: effect || "NA",
+      });
+
+      const level = annotations.find((item) => item.key === "Level")?.value;
+      attributes.push({
+        label: "OncoKB Therapeutic Level",
+        value: level || "NA",
+      });
     }
     if (this.strand) {
       attributes.push({ label: "Strand", value: this.strand });
@@ -138,6 +181,30 @@ class Interval {
       attributes.push({ label: humanize(key), value: this.metadata[key] });
     });
     return attributes;
+  }
+
+  get weight() {
+    let value = 0;
+    if (this.annotation) {
+      const annotations = this.annotation.split(";").map((item) => {
+        if (!item.includes(":")) {
+          return null;
+        }
+        const [key, value] = item.split(":");
+        return { key: key.trim(), value: value.trim() };
+      });
+      const oncogenicity = annotations.find(
+        (item) => item.key === "Oncogenicity"
+      )?.value;
+      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      if (oncogenicity) {
+        value = 1;
+      }
+      if (effect) {
+        value = 2;
+      }
+    }
+    return value;
   }
 
   toString() {
