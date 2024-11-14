@@ -13,7 +13,20 @@ function* fetchData(action) {
     let responseMutationsData = yield call(
       axios.get,
       `${dataset.dataPath}${id}/mutations.json`,
-      { cancelToken: getCancelToken() }
+      {
+        cancelToken: getCancelToken(),
+        onDownloadProgress: (progressEvent) => {
+          const progress = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(
+            `${dataset.dataPath}${id}/mutations.json`,
+            progress,
+            progressEvent.loaded,
+            progressEvent.total
+          ); // Update your state with the progress percentage
+        },
+      }
     );
 
     yield put({
