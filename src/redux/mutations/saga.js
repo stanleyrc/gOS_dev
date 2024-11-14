@@ -14,7 +14,7 @@ function* fetchData(action) {
     const updateProgress = (progress) => {
       action.asyncDispatch({
         type: actions.FETCH_MUTATIONS_DATA_REQUEST_LOADING,
-        loadingPercent: progress,
+        loadingPercentage: progress,
       });
     };
 

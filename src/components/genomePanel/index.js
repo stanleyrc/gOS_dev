@@ -171,12 +171,10 @@ class GenomePanel extends Component {
               </Space>
             }
           >
-            {loading && !loadingPercentage && (
-              <Skeleton loading={loading} active />
-            )}
-
-            {loading && loadingPercentage >= 0 && (
+            {loading && loadingPercentage > 0 ? (
               <Progress percent={loadingPercentage} />
+            ) : (
+              <Skeleton loading={loading} active />
             )}
 
             {!loading && visible && w > 0 && (
