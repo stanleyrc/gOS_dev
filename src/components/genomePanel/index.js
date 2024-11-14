@@ -4,7 +4,16 @@ import { withTranslation } from "react-i18next";
 import { Resizable } from "react-resizable";
 import * as d3 from "d3";
 import handleViewport from "react-in-viewport";
-import { Card, Space, Button, Tooltip, message, Typography } from "antd";
+import {
+  Card,
+  Space,
+  Button,
+  Tooltip,
+  message,
+  Typography,
+  Progress,
+  Skeleton,
+} from "antd";
 import { GiDna2 } from "react-icons/gi";
 import { AiOutlineDownload } from "react-icons/ai";
 import { CgArrowsBreakeH } from "react-icons/cg";
@@ -92,6 +101,7 @@ class GenomePanel extends Component {
       t,
       error,
       loading,
+      loadingPercentage,
       genome,
       filename,
       title,
@@ -132,7 +142,6 @@ class GenomePanel extends Component {
           />
         ) : (
           <Card
-            loading={loading}
             style={transitionStyle(inViewport || renderOutsideViewPort)}
             size="small"
             title={
@@ -162,7 +171,15 @@ class GenomePanel extends Component {
               </Space>
             }
           >
-            {visible && w > 0 && (
+            {loading && !loadingPercentage && (
+              <Skeleton loading={loading} active />
+            )}
+
+            {loading && loadingPercentage >= 0 && (
+              <Progress percent={loadingPercentage} />
+            )}
+
+            {!loading && visible && w > 0 && (
               <Resizable
                 className="box"
                 height={this.state.height}

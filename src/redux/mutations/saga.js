@@ -7,24 +7,27 @@ import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
+  const { filename } = currentState.Mutations;
   const { dataset, chromoBins } = currentState.Settings;
   const { id } = currentState.CaseReport;
   try {
+    const updateProgress = (progress) => {
+      action.asyncDispatch({
+        type: actions.FETCH_MUTATIONS_DATA_REQUEST_LOADING,
+        loadingPercent: progress,
+      });
+    };
+
     let responseMutationsData = yield call(
       axios.get,
-      `${dataset.dataPath}${id}/mutations.json`,
+      `${dataset.dataPath}${id}/${filename}`,
       {
         cancelToken: getCancelToken(),
         onDownloadProgress: (progressEvent) => {
           const progress = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
           );
-          console.log(
-            `${dataset.dataPath}${id}/mutations.json`,
-            progress,
-            progressEvent.loaded,
-            progressEvent.total
-          ); // Update your state with the progress percentage
+          updateProgress(progress); // Call the update function to dispatch progress action
         },
       }
     );

@@ -229,6 +229,7 @@ class TracksModal extends Component {
             <GenomePanel
               {...{
                 loading: mutations.loading,
+                loadingPercentage: mutations.loadingPercentage,
                 genome: mutations.data,
                 error: mutations.error,
                 filename: mutations.filename,
