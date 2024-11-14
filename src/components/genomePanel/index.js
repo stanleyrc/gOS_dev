@@ -118,7 +118,7 @@ class GenomePanel extends Component {
     let { gap } = margins;
 
     let w = parentWidth || this.container?.getBoundingClientRect().width;
-
+    console.log(title, loading, loadingPercentage);
     return (
       <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
         {error ? (
