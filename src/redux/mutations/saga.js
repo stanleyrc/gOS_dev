@@ -5,19 +5,29 @@ import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 
+// Helper function to trigger progress events
+const createProgressEvent = (progress) => {
+  const event = new CustomEvent("progressUpdate", { detail: progress });
+  window.dispatchEvent(event);
+};
+
+// Saga to handle fetch and progress update
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
   const { filename } = currentState.Mutations;
   const { dataset, chromoBins } = currentState.Settings;
   const { id } = currentState.CaseReport;
-  try {
-    const updateProgress = (progress) => {
-      action.asyncDispatch({
-        type: actions.FETCH_MUTATIONS_DATA_REQUEST_LOADING,
-        loadingPercentage: progress,
-      });
-    };
 
+  // Listen for progress updates and dispatch them to Redux
+  const handleProgressUpdate = (event) => {
+    put({
+      type: actions.FETCH_MUTATIONS_DATA_REQUEST_LOADING,
+      loadingPercentage: event.detail,
+    });
+  };
+  window.addEventListener("progressUpdate", handleProgressUpdate);
+
+  try {
     let responseMutationsData = yield call(
       axios.get,
       `${dataset.dataPath}${id}/${filename}`,
@@ -27,7 +37,7 @@ function* fetchData(action) {
           const progress = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
           );
-          updateProgress(progress); // Call the update function to dispatch progress action
+          createProgressEvent(progress); // Trigger the custom event
         },
       }
     );
@@ -49,12 +59,16 @@ function* fetchData(action) {
         error,
       });
     }
+  } finally {
+    // Clean up the event listener
+    window.removeEventListener("progressUpdate", handleProgressUpdate);
   }
 }
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_MUTATIONS_DATA_REQUEST, fetchData);
 }
+
 export default function* rootSaga() {
   yield all([actionWatcher()]);
 }
