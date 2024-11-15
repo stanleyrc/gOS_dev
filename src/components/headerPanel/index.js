@@ -211,7 +211,7 @@ class HeaderPanel extends Component {
     tooltips = Object.entries(tooltips)
       .filter(
         ([key, value]) =>
-          value.props.children
+          value?.props?.children
             ?.flat()
             .filter((item) => item !== null && item.type !== "br").length > 0
       )

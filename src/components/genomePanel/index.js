@@ -118,7 +118,7 @@ class GenomePanel extends Component {
     let { gap } = margins;
 
     let w = parentWidth || this.container?.getBoundingClientRect().width;
-    console.log(title, loading, loadingPercentage);
+
     return (
       <Wrapper visible={visible} ref={(elem) => (this.container = elem)}>
         {error ? (
@@ -171,41 +171,44 @@ class GenomePanel extends Component {
               </Space>
             }
           >
-            {loading && loadingPercentage > 0 ? (
-              <Progress percent={loadingPercentage} />
+            {loading ? (
+              loadingPercentage ? (
+                <Progress percent={loadingPercentage} />
+              ) : (
+                <Skeleton loading={loading} active />
+              )
             ) : (
-              <Skeleton loading={loading} active />
-            )}
-
-            {!loading && visible && w > 0 && (
-              <Resizable
-                className="box"
-                height={this.state.height}
-                width={w - gap}
-                onResize={this.onFirstBoxResize}
-                resizeHandles={["sw", "se", "s"]}
-                draggableOpts={{ grid: [25, 25] }}
-              >
-                <div
-                  className="ant-wrapper"
-                  style={{
-                    width: w - gap + "px",
-                    height: this.state.height + "px",
-                  }}
+              visible &&
+              w > 0 && (
+                <Resizable
+                  className="box"
+                  height={this.state.height}
+                  width={w - gap}
+                  onResize={this.onFirstBoxResize}
+                  resizeHandles={["sw", "se", "s"]}
+                  draggableOpts={{ grid: [25, 25] }}
                 >
-                  {(inViewport || renderOutsideViewPort) && (
-                    <GenomePlot
-                      {...{
-                        width: w - gap - 2 * margins.padding,
-                        height,
-                        genome,
-                        mutationsPlot,
-                        yAxisTitle,
-                      }}
-                    />
-                  )}
-                </div>
-              </Resizable>
+                  <div
+                    className="ant-wrapper"
+                    style={{
+                      width: w - gap + "px",
+                      height: this.state.height + "px",
+                    }}
+                  >
+                    {(inViewport || renderOutsideViewPort) && (
+                      <GenomePlot
+                        {...{
+                          width: w - gap - 2 * margins.padding,
+                          height,
+                          genome,
+                          mutationsPlot,
+                          yAxisTitle,
+                        }}
+                      />
+                    )}
+                  </div>
+                </Resizable>
+              )
             )}
           </Card>
         )}
