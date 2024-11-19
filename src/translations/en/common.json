@@ -419,6 +419,14 @@
         "title": "Total Width over Segment Mean value Histogram",
         "x-title": "Segment Intensity Mean Value →",
         "y-title": "↑ Cumulative Width"
+      },
+      "missing_beta_gamma": "Expected to find numerical values for beta and gamma in the metadata.json, but found <strong>beta = {{beta}}</strong> and <strong>gamma = {{gamma}}</strong>",
+      "error": {
+        "title": "Rendering the Segment Mean value Histogram for Case Report <strong>{{id}}</strong> failed",
+        "subtitle": "Certain critical attributes where not found.",
+        "explanation": {
+          "title": "The request has failed with the following error:"
+        }
       }
     },
     "genome-panel": {

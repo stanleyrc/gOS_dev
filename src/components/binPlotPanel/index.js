@@ -11,12 +11,15 @@ import {
   downloadCanvasAsPng,
   transitionStyle,
   locationToDomains,
+  isNumeric,
 } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
 import TracksModal from "../tracksModal";
+import { CgArrowsBreakeH } from "react-icons/cg";
+import ErrorPanel from "../../components/errorPanel";
 import settingsActions from "../../redux/settings/actions";
 
 const { updateDomains } = settingsActions;
@@ -73,6 +76,7 @@ class BinPlotPanel extends Component {
     const {
       t,
       loading,
+      id,
       genomeCoverage,
       hetsnps,
       genes,
@@ -92,115 +96,142 @@ class BinPlotPanel extends Component {
     const { segment, open } = this.state;
     return (
       <Wrapper visible={visible}>
-        <Card
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
-          loading={loading}
-          size="small"
-          title={
-            <Space>
-              <span role="img" className="anticon anticon-dashboard">
-                <GiHistogram />
-              </span>
-              <span className="ant-pro-menu-item-title">
-                {t(`components.binQc-panel.binplot.title`)}
-              </span>
-            </Space>
-          }
-          extra={
-            <Space>
-              <Tooltip title={t("components.download-as-png-tooltip")}>
-                <Button
-                  type="default"
-                  shape="circle"
-                  disabled={!visible}
-                  icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
-                  size="small"
-                  onClick={() => this.onDownloadButtonClicked()}
-                />
-              </Tooltip>
-            </Space>
-          }
-        >
-          {visible && (
-            <div
-              className="ant-wrapper"
-              ref={(elem) => (this.container = elem)}
-            >
-              <TracksModal
-                {...{
-                  loading,
-                  genome: ppfit,
-                  genomeCoverage,
-                  hetsnps,
-                  genes,
-                  chromoBins,
-                  modalTitleText: `sequence-${segment?.iid}`,
-                  modalTitle: (
-                    <span
-                      dangerouslySetInnerHTML={{
-                        __html: t("components.binQc-panel.modal-title", {
-                          iid: segment?.iid,
-                          chromosome: segment?.chromosome,
-                          width: d3.format(",")(segment?.width),
-                          mean: segment?.mean,
-                        }),
-                      }}
-                    />
-                  ),
-                  genomePlotTitle: t("components.tracks-modal.genome-plot"),
-                  genomePlotYAxisTitle: t(
-                    "components.tracks-modal.genome-y-axis-title"
-                  ),
-                  coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
-                  coverageYAxisTitle: t(
-                    "components.tracks-modal.coverage-y-axis-title"
-                  ),
-                  coverageYAxis2Title: t(
-                    "components.tracks-modal.coverage-y-axis2-title"
-                  ),
-                  hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
-                  hetsnpPlotYAxisTitle: t(
-                    "components.tracks-modal.hetsnp-plot-y-axis-title"
-                  ),
-                  hetsnpPlotYAxis2Title: t(
-                    "components.tracks-modal.hetsnp-plot-y-axis2-title"
-                  ),
-                  handleOkClicked: this.handleModalOKClicked,
-                  handleCancelClicked: this.handleModalCancelClicked,
-                  open,
+        {!isNumeric(beta) || !isNumeric(gamma) ? (
+          <ErrorPanel
+            avatar={<CgArrowsBreakeH />}
+            header={t(`components.binQc-panel.binplot.title`)}
+            title={t("components.binQc-panel.error.title", {
+              id,
+            })}
+            subtitle={t("components.binQc-panel.error.subtitle")}
+            explanationTitle={t(
+              "components.binQc-panel.error.explanation.title"
+            )}
+            explanationDescription={
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: t("components.binQc-panel.missing_beta_gamma", {
+                    beta: beta || "null",
+                    gamma: gamma || "null",
+                  }),
                 }}
               />
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    (inViewport || renderOutsideViewPort) && (
-                      <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col flex={1}>
-                          <BinPlot
-                            {...{
-                              width,
-                              height: 600,
-                              data: ppfit.data.intervals,
-                              xTitle: t(
-                                `components.binQc-panel.binplot.x-title`
-                              ),
-                              yTitle: t(
-                                `components.binQc-panel.binplot.y-title`
-                              ),
-                              selectSegment: (e) => this.handleSelectSegment(e),
-                              slope: 1 / beta,
-                              intercept: gamma / beta,
-                            }}
-                          />
-                        </Col>
-                      </Row>
-                    )
-                  );
-                }}
-              </ContainerDimensions>
-            </div>
-          )}
-        </Card>
+            }
+          />
+        ) : (
+          <Card
+            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            loading={loading}
+            size="small"
+            title={
+              <Space>
+                <span role="img" className="anticon anticon-dashboard">
+                  <GiHistogram />
+                </span>
+                <span className="ant-pro-menu-item-title">
+                  {t(`components.binQc-panel.binplot.title`)}
+                </span>
+              </Space>
+            }
+            extra={
+              <Space>
+                <Tooltip title={t("components.download-as-png-tooltip")}>
+                  <Button
+                    type="default"
+                    shape="circle"
+                    disabled={!visible}
+                    icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
+                    size="small"
+                    onClick={() => this.onDownloadButtonClicked()}
+                  />
+                </Tooltip>
+              </Space>
+            }
+          >
+            {visible && (
+              <div
+                className="ant-wrapper"
+                ref={(elem) => (this.container = elem)}
+              >
+                <TracksModal
+                  {...{
+                    loading,
+                    genome: ppfit,
+                    genomeCoverage,
+                    hetsnps,
+                    genes,
+                    chromoBins,
+                    modalTitleText: `sequence-${segment?.iid}`,
+                    modalTitle: (
+                      <span
+                        dangerouslySetInnerHTML={{
+                          __html: t("components.binQc-panel.modal-title", {
+                            iid: segment?.iid,
+                            chromosome: segment?.chromosome,
+                            width: d3.format(",")(segment?.width),
+                            mean: segment?.mean,
+                          }),
+                        }}
+                      />
+                    ),
+                    genomePlotTitle: t("components.tracks-modal.genome-plot"),
+                    genomePlotYAxisTitle: t(
+                      "components.tracks-modal.genome-y-axis-title"
+                    ),
+                    coveragePlotTitle: t(
+                      "components.tracks-modal.coverage-plot"
+                    ),
+                    coverageYAxisTitle: t(
+                      "components.tracks-modal.coverage-y-axis-title"
+                    ),
+                    coverageYAxis2Title: t(
+                      "components.tracks-modal.coverage-y-axis2-title"
+                    ),
+                    hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
+                    hetsnpPlotYAxisTitle: t(
+                      "components.tracks-modal.hetsnp-plot-y-axis-title"
+                    ),
+                    hetsnpPlotYAxis2Title: t(
+                      "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                    ),
+                    handleOkClicked: this.handleModalOKClicked,
+                    handleCancelClicked: this.handleModalCancelClicked,
+                    open,
+                  }}
+                />
+                <ContainerDimensions>
+                  {({ width, height }) => {
+                    return (
+                      (inViewport || renderOutsideViewPort) && (
+                        <Row style={{ width }} gutter={[margins.gap, 0]}>
+                          <Col flex={1}>
+                            <BinPlot
+                              {...{
+                                width,
+                                height: 600,
+                                data: ppfit.data.intervals,
+                                xTitle: t(
+                                  `components.binQc-panel.binplot.x-title`
+                                ),
+                                yTitle: t(
+                                  `components.binQc-panel.binplot.y-title`
+                                ),
+                                selectSegment: (e) =>
+                                  this.handleSelectSegment(e),
+                                slope: 1 / beta,
+                                intercept: gamma / beta,
+                              }}
+                            />
+                          </Col>
+                        </Row>
+                      )
+                    );
+                  }}
+                </ContainerDimensions>
+              </div>
+            )}
+          </Card>
+        )}
       </Wrapper>
     );
   }
@@ -215,6 +246,7 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   metadata: state.CaseReport.metadata,
+  id: state.CaseReport.id,
   ppfit: state.Ppfit,
   chromoBins: state.Settings.chromoBins,
   genomeCoverage: state.GenomeCoverage,

@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { Row, Col, Image } from "antd";
+import { placeholderImage } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import BinPlotPanel from "../../components/binPlotPanel";
 
@@ -28,6 +29,7 @@ class BinQcTab extends Component {
             <Image
               height={722}
               src={`${dataset.dataPath}${metadata.pair}/ppfit.png`}
+              fallback={placeholderImage()}
             />
           </Col>
         </Row>
