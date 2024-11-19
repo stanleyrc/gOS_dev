@@ -460,7 +460,7 @@ class BarPlot extends Component {
                         panelHeight + 1.66 * margins.gapY,
                       ]})`}
                     >
-                      {d.distance > 0 && (
+                      {d.distance > 0 && d.subtitle.length > 0 && (
                         <polyline
                           class="legendPolyline"
                           points={`${[0, 0]} ${[0, 5]} ${[d.distance, 5]} ${[

@@ -266,8 +266,8 @@
       "delComplex": "Complex"
     },
     "mutation-catalog-headers": {
-      "Cmutation": "C Mutation",
-      "Tmutation": "T Mutation",
+      "Cmutation": "",
+      "Tmutation": "",
       "1Del": "1 bp Deletion",
       "1Ins": "1 bp Insertion",
       "longDel": ">1bp Deletion at Repeats (Deletion Length)",
@@ -276,8 +276,8 @@
       "delComplex": "Complex"
     },
     "mutation-catalog-subtitles": {
-      "Cmutation": "C Mutation",
-      "Tmutation": "T Mutation",
+      "Cmutation": "",
+      "Tmutation": "",
       "1Del": "Homopolymer Length",
       "1Ins": "Homopolymer Length",
       "longDel": "Number of Repeat Units",
