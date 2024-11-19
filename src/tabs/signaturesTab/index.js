@@ -203,7 +203,8 @@ class SignaturesTab extends Component {
                         loading={loading}
                         dataPoints={d.catalog}
                         referenceDataPoints={
-                          referenceCatalog.find((e) => e.id === d.id).catalog
+                          referenceCatalog.find((e) => e.id === d.id)
+                            ?.catalog || []
                         }
                         title={
                           <Space>
@@ -227,6 +228,8 @@ class SignaturesTab extends Component {
                         yTitle={t("components.mutation-catalog-panel.y-title")}
                         yVariable={"mutations"}
                         yFormat={"~s"}
+                        legend={legend}
+                        xAxisRotation={mutationFilter === "sbs" ? -90 : 0}
                         colorVariable={"mutationType"}
                         segmentedOptions={Object.keys(
                           mutationFilterTypes()

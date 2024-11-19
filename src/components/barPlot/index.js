@@ -295,8 +295,8 @@ class BarPlot extends Component {
       .groups(dataPoints, (d) => d.group)
       .map((d) => {
         return {
-          key: legend.find((e) => e.group === d[0]).header,
-          subtitle: legend.find((e) => e.group === d[0]).subtitle,
+          key: legend.find((e) => e.group === d[0])?.header,
+          subtitle: legend.find((e) => e.group === d[0])?.subtitle,
           pos: xScale(d[1][0][xVariable]) + (0 * xScale.bandwidth()) / 2,
           distance:
             xScale(d[1][d[1].length - 1][xVariable]) -
