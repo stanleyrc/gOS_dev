@@ -5,7 +5,11 @@ import { Skeleton, Affix, Segmented, Space } from "antd";
 import * as d3 from "d3";
 import BarPlotPanel from "../../components/barPlotPanel";
 import PopulationPanel from "../../components/populationPanel";
-import { mutationFilterTypes } from "../../helpers/utility";
+import {
+  mutationFilterTypes,
+  mutationsColorPalette,
+  mutationsGroups,
+} from "../../helpers/utility";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import ErrorPanel from "../../components/errorPanel";
 import Wrapper from "./index.style";
@@ -42,7 +46,6 @@ class SignaturesTab extends Component {
       id,
       loading,
       metadata,
-      mutationsColorPalette,
       mutationCatalog,
       decomposedCatalog,
       referenceCatalog,
@@ -56,22 +59,22 @@ class SignaturesTab extends Component {
       signatureDistributionMode,
       mutationFilter,
     } = this.state;
-    let colorPalette = mutationsColorPalette
-      ? Object.fromEntries(
-          (mutationFilterTypes()[mutationFilter] || []).map((key) => [
-            key,
-            mutationsColorPalette[key],
-          ])
-        )
-      : {};
-    let legendPaletteTitles = mutationsColorPalette
-      ? Object.fromEntries(
-          (mutationFilterTypes()[mutationFilter] || []).map((key) => [
-            key,
-            t(`metadata.mutation-catalog-titles.${key}`),
-          ])
-        )
-      : {};
+
+    let legend = (mutationFilterTypes()[mutationFilter] || []).map((key) => {
+      return {
+        id: key,
+        group: mutationsGroups()[key],
+        color: mutationsColorPalette()[key],
+        title: t(`metadata.mutation-catalog-titles.${key}`),
+        header: t(
+          `metadata.mutation-catalog-headers.${mutationsGroups()[key]}`
+        ),
+        subtitle: t(
+          `metadata.mutation-catalog-subtitles.${mutationsGroups()[key]}`
+        ),
+      };
+    });
+
     let catalog = mutationCatalog.filter(
       (d) => d.variantType === mutationFilter
     );
@@ -98,7 +101,6 @@ class SignaturesTab extends Component {
                   loading={loading}
                   dataPoints={catalog}
                   title={t("components.mutation-catalog-panel.title")}
-                  legendTitle={t("metadata.mutation-type")}
                   xTitle={""}
                   xVariable={"type"}
                   xFormat={null}
@@ -106,8 +108,8 @@ class SignaturesTab extends Component {
                   yVariable={"mutations"}
                   yFormat={"~s"}
                   colorVariable={"mutationType"}
-                  colorPalette={colorPalette}
-                  legendTitles={legendPaletteTitles}
+                  legend={legend}
+                  xAxisRotation={mutationFilter === "sbs" ? -90 : 0}
                   segmentedOptions={Object.keys(mutationFilterTypes()).map(
                     (d) => {
                       return {
@@ -226,8 +228,6 @@ class SignaturesTab extends Component {
                         yVariable={"mutations"}
                         yFormat={"~s"}
                         colorVariable={"mutationType"}
-                        colorPalette={colorPalette}
-                        legendTitles={legendPaletteTitles}
                         segmentedOptions={Object.keys(
                           mutationFilterTypes()
                         ).map((d) => {
@@ -294,7 +294,6 @@ const mapStateToProps = (state) => ({
   error: state.SignatureStatistics.error,
   metadata: state.CaseReport.metadata,
   id: state.CaseReport.id,
-  mutationsColorPalette: state.Settings.data?.mutationsColorPalette,
   mutationCatalog: state.SignatureStatistics.mutationCatalog,
   decomposedCatalog: state.SignatureStatistics.decomposedCatalog,
   referenceCatalog: state.SignatureStatistics.referenceCatalog,

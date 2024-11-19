@@ -24,11 +24,11 @@ const Wrapper = styled.div`
     user-select: none;
   }
 
-  .variant-legend {
-    font: 10px sans-serif;
+  .variant-legend-header {
+    font: 12px sans-serif;
     pointer-events: none;
     user-select: none;
-    font-weight: 500;
+    font-weight: 600;
   }
   .axis--y g.tick line {
     stroke: #777;

@@ -132,25 +132,37 @@ export function nucleotideColors() {
 }
 
 export function deletionInsertionMutationVariant(input) {
-  if (input.includes("1:Del:C")) {
-    return { variant: "1DelC", label: ` ${input.slice(-1)}` };
-  } else if (input.includes("1:Del:T")) {
-    return { variant: "1DelT", label: ` ${input.slice(-1)}` };
-  } else if (input.includes("1:Ins:C")) {
-    return { variant: "1InsC", label: ` ${input.slice(-1)}` };
-  } else if (input.includes("1:Ins:T")) {
-    return { variant: "1InsT", label: ` ${input.slice(-1)}` };
-  } else if (input.includes("long_Del")) {
-    return { variant: "longDel", label: "5+" };
-  } else if (input.includes("long_Ins")) {
-    return { variant: "longIns", label: "5+" };
-  } else if (input.includes("MH")) {
-    return { variant: "delMH", label: "5+" };
-  } else if (input.includes("complex")) {
-    return { variant: "delComplex", label: "5+" };
-  } else {
-    return { variant: null, label: null };
-  }
+  const label = +input.slice(-1);
+  const baseLabel = `${label}${label > 4 ? "+" : ""}`;
+  const incrementedLabel = `${label + 1}${label > 4 ? "+" : ""}`;
+
+  const patterns = [
+    { match: "1:Del:C", variant: "1DelC", label: incrementedLabel },
+    { match: "1:Del:T", variant: "1DelT", label: incrementedLabel },
+    { match: "1:Ins:C", variant: "1InsC", label: baseLabel },
+    { match: "1:Ins:T", variant: "1InsT", label: baseLabel },
+    { match: "2:Del:R", variant: "2DelR", label: incrementedLabel },
+    { match: "3:Del:R", variant: "3DelR", label: incrementedLabel },
+    { match: "4:Del:R", variant: "4DelR", label: incrementedLabel },
+    { match: "5:Del:R", variant: "5DelR", label: incrementedLabel },
+    { match: "2:Ins:R", variant: "2InsR", label: baseLabel },
+    { match: "3:Ins:R", variant: "3InsR", label: baseLabel },
+    { match: "4:Ins:R", variant: "4InsR", label: baseLabel },
+    { match: "5:Ins:R", variant: "5InsR", label: baseLabel },
+    { match: "2:Del:M", variant: "2DelM", label: baseLabel },
+    { match: "3:Del:M", variant: "3DelM", label: baseLabel },
+    { match: "4:Del:M", variant: "4DelM", label: baseLabel },
+    { match: "5:Del:M", variant: "5DelM", label: baseLabel },
+    { match: "long_Del", variant: "longDel", label: "5+" },
+    { match: "long_Ins", variant: "longIns", label: "5+" },
+    { match: "MH", variant: "delMH", label: "5+" },
+    { match: "complex", variant: "delComplex", label: "5+" },
+  ];
+
+  const matchedPattern = patterns.find(({ match }) => input.includes(match));
+  return matchedPattern
+    ? { variant: matchedPattern.variant, label: matchedPattern.label }
+    : { variant: null, label: null };
 }
 
 export function nucleotideMutationText(nucleotideMutation) {
@@ -773,11 +785,85 @@ export function mutationFilterTypes() {
       "1DelT",
       "1InsC",
       "1InsT",
+      "2DelR",
+      "3DelR",
+      "4DelR",
+      "5DelR",
+      "2InsR",
+      "3InsR",
+      "4InsR",
+      "5InsR",
+      "2DelM",
+      "3DelM",
+      "4DelM",
+      "5DelM",
       "longDel",
       "longIns",
       "delMH",
       "delComplex",
     ],
+  };
+}
+
+export function mutationsColorPalette() {
+  return {
+    "C>A": "#00BFFE",
+    "C>G": "#000000",
+    "C>T": "#CE2626",
+    "T>A": "#BFBFBF",
+    "T>C": "#9ACD34",
+    "T>G": "#EEB4B3",
+    "1DelC": "#FDBE6D",
+    "1DelT": "#FC7F03",
+    "1InsC": "#ACDB88",
+    "1InsT": "#38A02E",
+    "2DelR": "#FCC9B4",
+    "3DelR": "#FC896A",
+    "4DelR": "#EF4432",
+    "5DelR": "#BC191A",
+    "2InsR": "#CFE0F0",
+    "3InsR": "#94C3DF",
+    "4InsR": "#4B97C8",
+    "5InsR": "#1764AA",
+    "2DelM": "#E1E1EC",
+    "3DelM": "#B5B5D7",
+    "4DelM": "#8683BC",
+    "5DelM": "#623F99",
+    longDel: "#BE1819",
+    longIns: "#1A65AC",
+    delMH: "#614099",
+    delComplex: "#E3E1EB",
+  };
+}
+
+export function mutationsGroups() {
+  return {
+    "C>A": "Cmutation",
+    "C>G": "Cmutation",
+    "C>T": "Cmutation",
+    "T>A": "Tmutation",
+    "T>C": "Tmutation",
+    "T>G": "Tmutation",
+    "1DelC": "1Del",
+    "1DelT": "1Del",
+    "1InsC": "1Ins",
+    "1InsT": "1Ins",
+    "2DelR": "longDel",
+    "3DelR": "longDel",
+    "4DelR": "longDel",
+    "5DelR": "longDel",
+    "2InsR": "longIns",
+    "3InsR": "longIns",
+    "4InsR": "longIns",
+    "5InsR": "longIns",
+    "2DelM": "delMH",
+    "3DelM": "delMH",
+    "4DelM": "delMH",
+    "5DelM": "delMH",
+    longDel: "longDel",
+    longIns: "longIns",
+    delMH: "delMH",
+    delComplex: "delComplex",
   };
 }
 

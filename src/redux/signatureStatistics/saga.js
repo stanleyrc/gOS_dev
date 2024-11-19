@@ -4,6 +4,7 @@ import {
   getSignatureMetrics,
   nucleotideMutationText,
   deletionInsertionMutationVariant,
+  mutationsGroups,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import * as d3 from "d3";
@@ -81,6 +82,7 @@ function* fetchData(action) {
                   d.type = d.tnc;
                   d.mutationType = (d.tnc?.match(/\[(.*?)\]/) || [])[1];
                   d.variantType = "sbs";
+                  d.group = mutationsGroups()[d.mutationType];
                   d.label = nucleotideMutationText(d.tnc);
                   d.probability = 1.0;
                   mutationCatalog.push(d);
@@ -93,6 +95,7 @@ function* fetchData(action) {
                   );
                   d.type = d.insdel;
                   d.mutationType = variant;
+                  d.group = mutationsGroups()[d.mutationType];
                   d.variantType = "indel";
                   d.label = label;
                   d.probability = 1.0;
