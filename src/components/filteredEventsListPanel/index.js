@@ -13,6 +13,7 @@ import {
   Tooltip,
   Avatar,
 } from "antd";
+import * as d3 from "d3";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
@@ -58,8 +59,12 @@ class FilteredEventsListPanel extends Component {
             value: d,
           };
         }),
-        filterMultiple: false,
+        filterMultiple: true,
         onFilter: (value, record) => record.gene.indexOf(value) === 0,
+        sorter: {
+          compare: (a, b) => d3.ascending(a.gene, b.gene),
+          multiple: 2,
+        },
         render: (_, record) =>
           record.gene ? (
             <Button
@@ -130,14 +135,17 @@ class FilteredEventsListPanel extends Component {
         ),
         dataIndex: "tier",
         key: "tier",
-        sorter: (a, b) => a.tier - b.tier,
+        sorter: {
+          compare: (a, b) => d3.ascending(a.tier, b.tier),
+          multiple: 1,
+        },
         filters: [...new Set(filteredEvents.map((d) => d.tier))].map((d) => {
           return {
             text: d,
             value: d,
           };
         }),
-        filterMultiple: false,
+        filterMultiple: true,
         onFilter: (value, record) => record.tier === value,
         render: (_, record) =>
           record.tier ? (
