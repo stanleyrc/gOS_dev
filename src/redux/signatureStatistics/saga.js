@@ -166,6 +166,10 @@ function* fetchData(action) {
                                 [])[1],
                               variantType: "sbs",
                               label: nucleotideMutationText(d.tnc),
+                              group:
+                                mutationsGroups()[
+                                  (d.tnc?.match(/\[(.*?)\]/) || [])[1]
+                                ],
                             };
                             return entry;
                           })
@@ -203,6 +207,7 @@ function* fetchData(action) {
                               probability: d.p,
                               mutations: Math.round(d.p * mutationGlobalValue),
                               type: d.insdel,
+                              group: mutationsGroups()[variant],
                               mutationType: variant,
                               variantType: "indel",
                             };
