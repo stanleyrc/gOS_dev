@@ -269,7 +269,7 @@ class Plot {
 
       this.regl.poll();
       this.draw(this.dataBufferList);
-      //this.drawFboIntervals(this.dataBufferFboList);
+      this.drawFboIntervals(this.dataBufferFboList);
     } catch (err) {
       console.log(`Genes webgl failed with error: ${err}`);
     }

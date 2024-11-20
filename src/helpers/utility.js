@@ -924,6 +924,17 @@ export function segmentAttributes() {
   };
 }
 
+function transformFusionGeneCoords(fusionGeneCoords) {
+  return fusionGeneCoords
+    .split(",")
+    .map((coord) => {
+      const [chrom, positions] = coord.split(":");
+      const [start, end] = positions.split("-");
+      return `${chrom}:${start}-${chrom}:${end.replace(/[+-]$/, "")}`;
+    })
+    .join("|");
+}
+
 export function transformFilteredEventAttributes(filteredEvents) {
   return filteredEvents
     .map((event) => {
@@ -932,13 +943,15 @@ export function transformFilteredEventAttributes(filteredEvents) {
       let chromosome = null;
       let startPoint = null;
       let endPoint = null;
+      let actualLocation = null;
       if (event.Genome_Location) {
         const regex = /^(\w+):(\d+)-(\d+).*/;
         let match = regex.exec(event.Genome_Location);
         chromosome = match[1];
         startPoint = match[2];
         endPoint = match[3];
-        location = `${chromosome}:${startPoint}-${endPoint}`;
+        location = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
+        actualLocation = location;
         if (event.vartype === "SNV") {
           // center the SNV in the plot while encapsulating its gene in the
           // window
@@ -949,21 +962,20 @@ export function transformFilteredEventAttributes(filteredEvents) {
             const geneStartPoint = parseInt(startPoint);
             const geneEndPoint = parseInt(endPoint);
 
-            let padding =
-              snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint
-                ? snvStartPoint - geneStartPoint
-                : geneEndPoint - snvEndPoint;
-            padding += 1000;
-            startPoint = parseInt(snvStartPoint - padding);
-            endPoint = parseInt(snvEndPoint + padding);
+            startPoint = d3.min([+snvStartPoint, +geneStartPoint]) - 1e4;
+            endPoint = d3.max([+snvEndPoint, +geneEndPoint]) + 1e4;
             location = event.Variant_g;
+            actualLocation = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
           } catch (error) {
             console.log(error);
           }
         } else if (event.vartype === "fusion") {
           gene = event.fusion_genes;
           try {
-            location = event.fusion_genes;
+            location = event.fusion_gene_coords;
+            actualLocation = transformFusionGeneCoords(
+              event.fusion_gene_coords
+            );
             chromosome = event.fusion_gene_coords
               .split(",")
               .map((d) => d.split(":")[0]);
@@ -988,6 +1000,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         startPoint: startPoint,
         endPoint: endPoint,
         location: location,
+        actualLocation: actualLocation,
         id: event.id,
         variant: event.Variant,
         dosage: event.dosage,

@@ -58,22 +58,7 @@ function* selectFilteredEvent(action) {
   let selectedFilteredEvent = filteredEvent;
   let urlGene = new URL(decodeURI(document.location));
   if (selectedFilteredEvent) {
-    let loc = "";
-
-    if (
-      Array.isArray(selectedFilteredEvent.chromosome) &&
-      Array.isArray(selectedFilteredEvent.startPoint) &&
-      Array.isArray(selectedFilteredEvent.endPoint)
-    ) {
-      for (let i = 0; i < selectedFilteredEvent.chromosome.length; i++) {
-        if (i > 0) {
-          loc += "|";
-        }
-        loc += `${selectedFilteredEvent.chromosome[i]}:${selectedFilteredEvent.startPoint[i]}-${selectedFilteredEvent.chromosome[i]}:${selectedFilteredEvent.endPoint[i]}`;
-      }
-    } else {
-      loc = `${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.startPoint}-${selectedFilteredEvent.chromosome}:${selectedFilteredEvent.endPoint}`;
-    }
+    let loc = selectedFilteredEvent.actualLocation;
     let domsGene = locationToDomains(chromoBins, loc);
     // eliminate domains that are smaller than 10 bases wide
     if (domsGene.length > 1) {
