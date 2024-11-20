@@ -983,7 +983,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         type: event.type,
         name: event.Name,
         tier: event.Tier,
-        role: event.Role_in_Cancer,
+        role: event.role,
         chromosome: chromosome,
         startPoint: startPoint,
         endPoint: endPoint,
@@ -995,6 +995,15 @@ export function transformFilteredEventAttributes(filteredEvents) {
         diagnoses: event.diagnoses,
         therapeutics: event.therapeutics,
         resistances: event.resistances,
+        estimatedAlteredCopies: event.estimated_altered_copies,
+        effect: event.effect,
+        refCounts: event.ref,
+        altCounts: event.alt,
+        vaf: event.VAF,
+        segmentCopyNumber: event.segment_cn,
+        variant_summary: event.variant_summary,
+        gene_summary: event.gene_summary,
+        mutation_effect_description: event.mutation_effect_description,
       };
     })
     .sort((a, b) => {
@@ -1003,7 +1012,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
       if (b.tier == null) return -1;
 
       // Otherwise, sort by tier in ascending order
-      return a.tier - b.tier;
+      return d3.ascending(+a.tier, +b.tier);
     });
 }
 

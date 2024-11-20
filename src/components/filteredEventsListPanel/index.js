@@ -45,7 +45,6 @@ class FilteredEventsListPanel extends Component {
       selectFilteredEvent,
     } = this.props;
 
-    //const { open } = this.state;
     let open = selectedFilteredEvent?.id;
 
     const columns = [
@@ -53,17 +52,22 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.gene"),
         dataIndex: "gene",
         key: "gene",
-        filters: [...new Set(filteredEvents.map((d) => d.gene))].map((d) => {
-          return {
-            text: d,
-            value: d,
-          };
-        }),
+        filters: [...new Set(filteredEvents.map((d) => d.gene))]
+          .sort((a, b) => d3.ascending(a, b))
+          .map((d) => {
+            return {
+              text: d,
+              value: d,
+            };
+          }),
         filterMultiple: true,
         onFilter: (value, record) => record.gene.indexOf(value) === 0,
         sorter: {
-          compare: (a, b) => d3.ascending(a.gene, b.gene),
-          multiple: 2,
+          compare: (a, b) => {
+            if (a.gene == null) return 1;
+            if (b.gene == null) return -1;
+            return d3.ascending(a.gene, b.gene);
+          },
         },
         render: (_, record) =>
           record.gene ? (
@@ -80,30 +84,102 @@ class FilteredEventsListPanel extends Component {
           ),
       },
       {
+        title: t("components.filtered-events-panel.role"),
+        dataIndex: "role",
+        key: "role",
+        filters: [...new Set(filteredEvents.map((d) => d.role))]
+          .sort((a, b) => d3.ascending(a, b))
+          .map((d) => {
+            return {
+              text: d,
+              value: d,
+            };
+          }),
+        filterMultiple: true,
+        onFilter: (value, record) => record.role.indexOf(value) === 0,
+        sorter: {
+          compare: (a, b) => {
+            if (a.role == null) return 1;
+            if (b.role == null) return -1;
+            return d3.ascending(a.role, b.role);
+          },
+        },
+        render: (_, record) =>
+          record.role
+            ? record.role
+            : t("components.filtered-events-panel.unavailable", {
+                value: "role",
+              }),
+      },
+      {
         title: t("components.filtered-events-panel.variant"),
         dataIndex: "variant",
         key: "variant",
-        filters: [...new Set(filteredEvents.map((d) => d.variant))].map((d) => {
-          return {
-            text: d,
-            value: d,
-          };
-        }),
-        filterMultiple: false,
+        sorter: {
+          compare: (a, b) => {
+            if (a.variant == null) return 1;
+            if (b.variant == null) return -1;
+            return d3.ascending(a.variant, b.variant);
+          },
+        },
+        filters: [...new Set(filteredEvents.map((d) => d.variant))]
+          .sort((a, b) => d3.ascending(a, b))
+          .map((d) => {
+            return {
+              text: d,
+              value: d,
+            };
+          }),
+        filterMultiple: true,
         onFilter: (value, record) => record.variant.indexOf(value) === 0,
       },
       {
         title: t("components.filtered-events-panel.type"),
         dataIndex: "type",
         key: "type",
+        sorter: {
+          compare: (a, b) => {
+            if (a.type == null) return 1;
+            if (b.type == null) return -1;
+            return d3.ascending(a.type, b.type);
+          },
+        },
         filters: [...new Set(filteredEvents.map((d) => d.type))].map((d) => {
           return {
             text: d,
             value: d,
           };
         }),
-        filterMultiple: false,
+        filterMultiple: true,
         onFilter: (value, record) => record.type.indexOf(value) === 0,
+      },
+      {
+        title: t("components.filtered-events-panel.effect"),
+        dataIndex: "effect",
+        key: "effect",
+        filters: [...new Set(filteredEvents.map((d) => d.effect))]
+          .sort((a, b) => d3.ascending(a, b))
+          .map((d) => {
+            return {
+              text: d,
+              value: d,
+            };
+          }),
+        filterMultiple: true,
+        onFilter: (value, record) => record.effect.indexOf(value) === 0,
+        sorter: {
+          compare: (a, b) => {
+            if (a.effect == null) return 1;
+            if (b.effect == null) return -1;
+            return d3.ascending(a.effect, b.effect);
+          },
+        },
+        render: (_, record) =>
+          record.effect
+            ? record.effect
+            : t("components.filtered-events-panel.unavailable", {
+                value: t("components.filtered-events-panel.effect"),
+              }),
       },
       {
         title: (
@@ -136,8 +212,11 @@ class FilteredEventsListPanel extends Component {
         dataIndex: "tier",
         key: "tier",
         sorter: {
-          compare: (a, b) => d3.ascending(a.tier, b.tier),
-          multiple: 1,
+          compare: (a, b) => {
+            if (a.tier == null) return 1;
+            if (b.tier == null) return -1;
+            return d3.ascending(+a.tier, +b.tier);
+          },
         },
         filters: [...new Set(filteredEvents.map((d) => d.tier))].map((d) => {
           return {
@@ -170,18 +249,104 @@ class FilteredEventsListPanel extends Component {
               </Button>
             </Tooltip>
           ) : (
-            t("components.filtered-events-panel.unavailable", { value: "tier" })
+            t("components.filtered-events-panel.unavailable", {
+              value: t("components.filtered-events-panel.tier"),
+            })
           ),
       },
       {
-        title: t("components.filtered-events-panel.dosage"),
-        dataIndex: "dosage",
-        key: "dosage",
-        render: (value) =>
-          value
-            ? value
+        title: t("components.filtered-events-panel.estimatedAlteredCopies"),
+        dataIndex: "estimatedAlteredCopies",
+        key: "estimatedAlteredCopies",
+        sorter: {
+          compare: (a, b) => {
+            if (a.estimatedAlteredCopies == null) return 1;
+            if (b.estimatedAlteredCopies == null) return -1;
+            return d3.ascending(
+              +a.estimatedAlteredCopies,
+              +b.estimatedAlteredCopies
+            );
+          },
+        },
+        render: (_, record) =>
+          record.estimatedAlteredCopies
+            ? d3.format(".3f")(+record.estimatedAlteredCopies)
             : t("components.filtered-events-panel.unavailable", {
-                value: "dosage",
+                value: t(
+                  "components.filtered-events-panel.estimatedAlteredCopies"
+                ),
+              }),
+      },
+      {
+        title: t("components.filtered-events-panel.refCounts"),
+        dataIndex: "refCounts",
+        key: "refCounts",
+        sorter: {
+          compare: (a, b) => {
+            if (a.refCounts == null) return 1;
+            if (b.refCounts == null) return -1;
+            return d3.ascending(+a.refCounts, +b.refCounts);
+          },
+        },
+        render: (_, record) =>
+          record.refCounts
+            ? record.refCounts
+            : t("components.filtered-events-panel.unavailable", {
+                value: t("components.filtered-events-panel.refCounts"),
+              }),
+      },
+      {
+        title: t("components.filtered-events-panel.altCounts"),
+        dataIndex: "altCounts",
+        key: "altCounts",
+        sorter: {
+          compare: (a, b) => {
+            if (a.altCounts == null) return 1;
+            if (b.altCounts == null) return -1;
+            return d3.ascending(+a.altCounts, +b.altCounts);
+          },
+        },
+        render: (_, record) =>
+          record.altCounts
+            ? record.altCounts
+            : t("components.filtered-events-panel.unavailable", {
+                value: t("components.filtered-events-panel.altCounts"),
+              }),
+      },
+      {
+        title: t("components.filtered-events-panel.vaf"),
+        dataIndex: "vaf",
+        key: "vaf",
+        sorter: {
+          compare: (a, b) => {
+            if (a.vaf == null) return 1;
+            if (b.vaf == null) return -1;
+            return d3.ascending(+a.vaf, +b.vaf);
+          },
+        },
+        render: (_, record) =>
+          record.vaf
+            ? d3.format(".3f")(+record.vaf)
+            : t("components.filtered-events-panel.unavailable", {
+                value: t("components.filtered-events-panel.vaf"),
+              }),
+      },
+      {
+        title: t("components.filtered-events-panel.segmentCopyNumber"),
+        dataIndex: "segmentCopyNumber",
+        key: "segmentCopyNumber",
+        sorter: {
+          compare: (a, b) => {
+            if (a.segmentCopyNumber == null) return 1;
+            if (b.segmentCopyNumber == null) return -1;
+            return d3.ascending(+a.segmentCopyNumber, +b.segmentCopyNumber);
+          },
+        },
+        render: (_, record) =>
+          record.segmentCopyNumber
+            ? +record.segmentCopyNumber
+            : t("components.filtered-events-panel.unavailable", {
+                value: t("components.filtered-events-panel.segmentCopyNumber"),
               }),
       },
       {
@@ -198,7 +363,7 @@ class FilteredEventsListPanel extends Component {
             </Button>
           ) : (
             t("components.filtered-events-panel.unavailable", {
-              value: "location",
+              value: t("components.filtered-events-panel.location"),
             })
           ),
       },

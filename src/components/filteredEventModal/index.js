@@ -49,14 +49,15 @@ class FilteredEventModal extends Component {
       name,
       type,
       role,
-      variant,
       tier,
       location,
       therapeutics,
       resistances,
       diagnoses,
       prognoses,
-      dosage,
+      variant_summary,
+      gene_summary,
+      mutation_effect_description,
     } = record;
 
     let content = (
@@ -65,7 +66,11 @@ class FilteredEventModal extends Component {
         gutter={[16, 24]}
       >
         <Col className="gutter-row" span={24}>
-          <Descriptions title={t("components.filtered-events-panel.info")}>
+          <Descriptions
+            title={t("components.filtered-events-panel.info")}
+            bordered
+            layout="vertical"
+          >
             <Item label={t("components.filtered-events-panel.gene")}>
               <a
                 href="#/"
@@ -101,6 +106,35 @@ class FilteredEventModal extends Component {
                   value: "tier",
                 })
               )}
+            </Item>
+            <Item label={t("components.filtered-events-panel.variant_summary")}>
+              {variant_summary
+                ? variant_summary
+                : t("components.filtered-events-panel.unavailable", {
+                    value: t(
+                      "components.filtered-events-panel.variant_summary"
+                    ),
+                  })}
+            </Item>
+            <Item label={t("components.filtered-events-panel.gene_summary")}>
+              {gene_summary
+                ? gene_summary
+                : t("components.filtered-events-panel.unavailable", {
+                    value: t("components.filtered-events-panel.gene_summary"),
+                  })}
+            </Item>
+            <Item
+              label={t(
+                "components.filtered-events-panel.mutation_effect_description"
+              )}
+            >
+              {mutation_effect_description
+                ? mutation_effect_description
+                : t("components.filtered-events-panel.unavailable", {
+                    value: t(
+                      "components.filtered-events-panel.mutation_effect_description"
+                    ),
+                  })}
             </Item>
             <Item label={t("components.filtered-events-panel.therapeutics")}>
               {therapeutics
