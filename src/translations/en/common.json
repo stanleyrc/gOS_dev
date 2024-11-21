@@ -383,7 +383,7 @@
       "variant_summary": "Variant Summary",
       "gene_summary": "Gene Summary",
       "mutation_effect_description": "Mutation Effect",
-      "unavailable": "-",
+      "unavailable": "NA",
       "tier-info": {
         "1": "Clinically Actionable",
         "2": "Clinically Significant",
