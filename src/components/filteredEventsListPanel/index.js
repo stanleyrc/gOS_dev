@@ -278,6 +278,24 @@ class FilteredEventsListPanel extends Component {
               }),
       },
       {
+        title: t("components.filtered-events-panel.segmentCopyNumber"),
+        dataIndex: "segmentCopyNumber",
+        key: "segmentCopyNumber",
+        sorter: {
+          compare: (a, b) => {
+            if (a.segmentCopyNumber == null) return 1;
+            if (b.segmentCopyNumber == null) return -1;
+            return d3.ascending(+a.segmentCopyNumber, +b.segmentCopyNumber);
+          },
+        },
+        render: (_, record) =>
+          record.segmentCopyNumber
+            ? +record.segmentCopyNumber
+            : t("components.filtered-events-panel.unavailable", {
+                value: t("components.filtered-events-panel.segmentCopyNumber"),
+              }),
+      },
+      {
         title: t("components.filtered-events-panel.refCounts"),
         dataIndex: "refCounts",
         key: "refCounts",
@@ -329,24 +347,6 @@ class FilteredEventsListPanel extends Component {
             ? d3.format(".3f")(+record.vaf)
             : t("components.filtered-events-panel.unavailable", {
                 value: t("components.filtered-events-panel.vaf"),
-              }),
-      },
-      {
-        title: t("components.filtered-events-panel.segmentCopyNumber"),
-        dataIndex: "segmentCopyNumber",
-        key: "segmentCopyNumber",
-        sorter: {
-          compare: (a, b) => {
-            if (a.segmentCopyNumber == null) return 1;
-            if (b.segmentCopyNumber == null) return -1;
-            return d3.ascending(+a.segmentCopyNumber, +b.segmentCopyNumber);
-          },
-        },
-        render: (_, record) =>
-          record.segmentCopyNumber
-            ? +record.segmentCopyNumber
-            : t("components.filtered-events-panel.unavailable", {
-                value: t("components.filtered-events-panel.segmentCopyNumber"),
               }),
       },
       {
