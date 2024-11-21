@@ -35,6 +35,7 @@ class ListView extends Component {
       ...this.formRef.current.getFieldsValue(),
       page: 1,
       per_page: 10,
+      orderId: 1,
     });
   };
 
@@ -47,7 +48,10 @@ class ListView extends Component {
       },
       {}
     );
-    this.props.onSearch({ ...emptySearchValues, ...{ page: 1, per_page: 10 } });
+    this.props.onSearch({
+      ...emptySearchValues,
+      ...{ page: 1, per_page: 10, orderId: 1 },
+    });
   };
 
   onPageChanged = (page, per_page) => {
@@ -125,19 +129,19 @@ class ListView extends Component {
                         </Form.Item>
                       </Col>
                     ))}
-                    <Col className="gutter-row" span={2}>
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          {t("containers.list-view.filters.submit")}
-                        </Button>
-                      </Form.Item>
-                    </Col>
-                    <Col className="gutter-row" span={2}>
-                      <Form.Item>
-                        <Button htmlType="button" onClick={this.onReset}>
-                          {t("containers.list-view.filters.reset")}
-                        </Button>
-                      </Form.Item>
+                    <Col className="gutter-row" span={4}>
+                      <Space>
+                        <Form.Item>
+                          <Button type="primary" htmlType="submit">
+                            {t("containers.list-view.filters.submit")}
+                          </Button>
+                        </Form.Item>
+                        <Form.Item>
+                          <Button htmlType="button" onClick={this.onReset}>
+                            {t("containers.list-view.filters.reset")}
+                          </Button>
+                        </Form.Item>
+                      </Space>
                     </Col>
                   </Row>
                 </Card>
