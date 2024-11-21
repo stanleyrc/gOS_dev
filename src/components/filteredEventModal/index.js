@@ -12,6 +12,7 @@ import {
   Descriptions,
   Tag,
   Avatar,
+  Typography,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -19,7 +20,8 @@ import { roleColorMap, tierColor } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import { downloadCanvasAsPng } from "../../helpers/utility";
 import Wrapper from "./index.style";
-import appActions from "../../redux/app/actions";
+
+const { Text } = Typography;
 
 const { Item } = Descriptions;
 
@@ -53,11 +55,11 @@ class FilteredEventModal extends Component {
       location,
       therapeutics,
       resistances,
-      diagnoses,
+      effect,
       prognoses,
       variant_summary,
       gene_summary,
-      mutation_effect_description,
+      effect_description,
     } = record;
 
     let content = (
@@ -102,67 +104,75 @@ class FilteredEventModal extends Component {
                   {t(`components.filtered-events-panel.tier-info.${tier}`)}
                 </Space>
               ) : (
-                t("components.filtered-events-panel.unavailable", {
-                  value: "tier",
-                })
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
+              )}
+            </Item>
+            <Item label={t("components.filtered-events-panel.effect")}>
+              {effect ? (
+                effect
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
+              )}
+            </Item>
+            <Item label={t("components.filtered-events-panel.gene_summary")}>
+              {gene_summary ? (
+                gene_summary
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
+              )}
+            </Item>
+            <Item
+              label={t("components.filtered-events-panel.effect_description")}
+            >
+              {effect_description ? (
+                effect_description
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
               )}
             </Item>
             <Item label={t("components.filtered-events-panel.variant_summary")}>
-              {variant_summary
-                ? variant_summary
-                : t("components.filtered-events-panel.unavailable", {
-                    value: t(
-                      "components.filtered-events-panel.variant_summary"
-                    ),
-                  })}
-            </Item>
-            <Item label={t("components.filtered-events-panel.gene_summary")}>
-              {gene_summary
-                ? gene_summary
-                : t("components.filtered-events-panel.unavailable", {
-                    value: t("components.filtered-events-panel.gene_summary"),
-                  })}
-            </Item>
-            <Item
-              label={t(
-                "components.filtered-events-panel.mutation_effect_description"
+              {variant_summary ? (
+                variant_summary
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
               )}
-            >
-              {mutation_effect_description
-                ? mutation_effect_description
-                : t("components.filtered-events-panel.unavailable", {
-                    value: t(
-                      "components.filtered-events-panel.mutation_effect_description"
-                    ),
-                  })}
-            </Item>
-            <Item label={t("components.filtered-events-panel.therapeutics")}>
-              {therapeutics
-                ? therapeutics
-                : t("components.filtered-events-panel.unavailable", {
-                    value: "therapeutics",
-                  })}
             </Item>
             <Item label={t("components.filtered-events-panel.resistances")}>
-              {resistances
-                ? resistances
-                : t("components.filtered-events-panel.unavailable", {
-                    value: "resistances",
-                  })}
+              {resistances ? (
+                resistances
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
+              )}
             </Item>
-            <Item label={t("components.filtered-events-panel.diagnoses")}>
-              {diagnoses
-                ? diagnoses
-                : t("components.filtered-events-panel.unavailable", {
-                    value: "diagnoses",
-                  })}
+            <Item label={t("components.filtered-events-panel.therapeutics")}>
+              {therapeutics ? (
+                therapeutics
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
+              )}
             </Item>
             <Item label={t("components.filtered-events-panel.prognoses")}>
-              {prognoses
-                ? prognoses
-                : t("components.filtered-events-panel.unavailable", {
-                    value: "prognoses",
-                  })}
+              {prognoses ? (
+                prognoses
+              ) : (
+                <Text italic disabled>
+                  {t("components.filtered-events-panel.unavailable")}
+                </Text>
+              )}
             </Item>
           </Descriptions>
         </Col>

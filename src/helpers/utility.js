@@ -1016,7 +1016,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         segmentCopyNumber: event.segment_cn,
         variant_summary: event.variant_summary,
         gene_summary: event.gene_summary,
-        mutation_effect_description: event.mutation_effect_description,
+        effect_description: event.effect_description,
       };
     })
     .sort((a, b) => {
