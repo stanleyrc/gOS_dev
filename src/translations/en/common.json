@@ -489,8 +489,10 @@
       "hetsnp-plot-y-axis2-title": "Est. CN ↑",
       "mutations-plot": "Mutations Multiplicity",
       "mutations-plot-y-axis-title": "↑ Est. Copies",
+      "igv-plot": "IGV Browser",
       "allelic-plot": "Allelic CN Graph",
       "allelic-plot-y-axis-title": "↑ CN",
+      "igv-plot": "IGV Browser",
       "coverage-y-axis-title": "↑ Base Coverage",
       "coverage-y-axis2-title": "Est. CN ↑",
       "missing-counts-axis": "Counts Axis is not available due to missing attributes."
