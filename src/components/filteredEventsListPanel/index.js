@@ -12,6 +12,7 @@ import {
   Skeleton,
   Tooltip,
   Avatar,
+  Typography,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -22,6 +23,8 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import FilteredEventModal from "../filteredEventModal";
+
+const { Text } = Typography;
 
 const { selectFilteredEvent } = filteredEventsActions;
 
@@ -61,7 +64,7 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.gene.indexOf(value) === 0,
+        onFilter: (value, record) => record.gene?.indexOf(value) === 0,
         sorter: {
           compare: (a, b) => {
             if (a.gene == null) return 1;
@@ -78,9 +81,9 @@ class FilteredEventsListPanel extends Component {
               {record.gene}
             </Button>
           ) : (
-            t("components.filtered-events-panel.unavailable", {
-              value: "gene",
-            })
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
           ),
       },
       {
@@ -96,7 +99,7 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.role.indexOf(value) === 0,
+        onFilter: (value, record) => record.role?.indexOf(value) === 0,
         sorter: {
           compare: (a, b) => {
             if (a.role == null) return 1;
@@ -105,11 +108,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.role
-            ? record.role
-            : t("components.filtered-events-panel.unavailable", {
-                value: "role",
-              }),
+          record.role ? (
+            record.role
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.variant"),
@@ -131,7 +136,15 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.variant.indexOf(value) === 0,
+        onFilter: (value, record) => record.variant?.indexOf(value) === 0,
+        render: (_, record) =>
+          record.variant ? (
+            record.variant
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.type"),
@@ -151,7 +164,15 @@ class FilteredEventsListPanel extends Component {
           };
         }),
         filterMultiple: true,
-        onFilter: (value, record) => record.type.indexOf(value) === 0,
+        onFilter: (value, record) => record.type?.indexOf(value) === 0,
+        render: (_, record) =>
+          record.type ? (
+            record.type
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.effect"),
@@ -166,7 +187,7 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.effect.indexOf(value) === 0,
+        onFilter: (value, record) => record.effect?.indexOf(value) === 0,
         sorter: {
           compare: (a, b) => {
             if (a.effect == null) return 1;
@@ -175,11 +196,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.effect
-            ? record.effect
-            : t("components.filtered-events-panel.unavailable", {
-                value: t("components.filtered-events-panel.effect"),
-              }),
+          record.effect ? (
+            record.effect
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: (
@@ -225,7 +248,7 @@ class FilteredEventsListPanel extends Component {
           };
         }),
         filterMultiple: true,
-        onFilter: (value, record) => record.tier === value,
+        onFilter: (value, record) => record.tier?.indexOf(value) === 0,
         render: (_, record) =>
           record.tier ? (
             <Tooltip
@@ -249,9 +272,9 @@ class FilteredEventsListPanel extends Component {
               </Button>
             </Tooltip>
           ) : (
-            t("components.filtered-events-panel.unavailable", {
-              value: t("components.filtered-events-panel.tier"),
-            })
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
           ),
       },
       {
@@ -269,13 +292,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.estimatedAlteredCopies
-            ? d3.format(".3f")(+record.estimatedAlteredCopies)
-            : t("components.filtered-events-panel.unavailable", {
-                value: t(
-                  "components.filtered-events-panel.estimatedAlteredCopies"
-                ),
-              }),
+          record.estimatedAlteredCopies ? (
+            d3.format(".3f")(+record.estimatedAlteredCopies)
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.segmentCopyNumber"),
@@ -289,11 +312,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.segmentCopyNumber
-            ? +record.segmentCopyNumber
-            : t("components.filtered-events-panel.unavailable", {
-                value: t("components.filtered-events-panel.segmentCopyNumber"),
-              }),
+          record.segmentCopyNumber ? (
+            +record.segmentCopyNumber
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.refCounts"),
@@ -307,11 +332,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.refCounts
-            ? record.refCounts
-            : t("components.filtered-events-panel.unavailable", {
-                value: t("components.filtered-events-panel.refCounts"),
-              }),
+          record.refCounts ? (
+            +record.refCounts
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.altCounts"),
@@ -325,11 +352,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.altCounts
-            ? record.altCounts
-            : t("components.filtered-events-panel.unavailable", {
-                value: t("components.filtered-events-panel.altCounts"),
-              }),
+          record.altCounts ? (
+            +record.altCounts
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.vaf"),
@@ -343,11 +372,13 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.vaf
-            ? d3.format(".3f")(+record.vaf)
-            : t("components.filtered-events-panel.unavailable", {
-                value: t("components.filtered-events-panel.vaf"),
-              }),
+          record.vaf ? (
+            d3.format(".3f")(+record.vaf)
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
       },
       {
         title: t("components.filtered-events-panel.location"),
@@ -362,9 +393,9 @@ class FilteredEventsListPanel extends Component {
               {record.location}
             </Button>
           ) : (
-            t("components.filtered-events-panel.unavailable", {
-              value: t("components.filtered-events-panel.location"),
-            })
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
           ),
       },
     ];
