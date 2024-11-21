@@ -952,7 +952,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         endPoint = match[3];
         location = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
         actualLocation = location;
-        if (event.vartype === "SNV") {
+        if (["SNV", "DEL"].includes(event.vartype)) {
           // center the SNV in the plot while encapsulating its gene in the
           // window
           try {
