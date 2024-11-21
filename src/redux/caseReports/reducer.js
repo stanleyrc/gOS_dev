@@ -45,6 +45,7 @@ export default function appReducer(state = initState, action) {
           page: 1,
           per_page: 10,
           texts: "",
+          orderId: 1,
         },
         loading: true,
       };

@@ -42,7 +42,7 @@ class Topbar extends Component {
                   <div
                     className="ant-pro-top-nav-header-logo"
                     id="logo"
-                    onClick={() => searchCaseReports({ texts: "" })}
+                    onClick={() => searchCaseReports({ texts: "", orderId: 1 })}
                   >
                     <img src={logo} alt="logo" />
                     <h1>{siteConfig.siteName}</h1>
