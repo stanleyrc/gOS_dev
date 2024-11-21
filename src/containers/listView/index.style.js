@@ -18,6 +18,21 @@ const Wrapper = styled.div`
   .ant-panel-list-container {
     margin: 24px;
   }
+  .filters-box .ant-form-item {
+    margin-bottom: 0px;
+  }
+  .results-top-box,
+  .results-bottom-box {
+    margin: 24px 0px;
+  }
+  .results-top-box .order-selector-container {
+    text-align: right;
+  }
+
+  .order-select {
+    width: 340px;
+  }
+
   .stats .ant-statistic-content-value,
   .stats .ant-statistic-content-suffix {
     font-size: 16px;

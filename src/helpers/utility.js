@@ -95,7 +95,7 @@ export function dataToGenome(data, chromoBins) {
 }
 
 export function defaultSearchFilters() {
-  return { page: 1, per_page: 10, texts: "" };
+  return { page: 1, per_page: 10, texts: "", orderId: 1 };
 }
 
 export function plotMargins() {
@@ -674,6 +674,25 @@ export function magnitude(n) {
   let order = Math.floor(Math.log(n) / Math.LN10 + 0.000000001); // because float math sucks like that
   return Math.pow(10, order);
 }
+
+const attributes = [
+  "pair",
+  "svCount",
+  "snvCount",
+  "tmb",
+  "lohFraction",
+  "purity",
+  "ploidy",
+];
+const sorts = ["ascending", "descending"];
+
+export const orderListViewFilters = attributes.flatMap((attribute, i) =>
+  sorts.map((sort, j) => ({
+    id: i * sorts.length + j + 1,
+    attribute,
+    sort,
+  }))
+);
 
 export function densityPlotTypes() {
   return ["contourplot", "scatterplot"];

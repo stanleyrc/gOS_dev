@@ -5,7 +5,7 @@ const initState = {
   datafiles: [],
   populations: {},
   reportsFilters: [],
-  searchFilters: { page: 1, per_page: 10, texts: "" },
+  searchFilters: { page: 1, per_page: 10, texts: "", orderId: 1 },
   reports: [],
   totalReports: [],
   error: null,

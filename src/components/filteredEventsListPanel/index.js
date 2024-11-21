@@ -73,7 +73,7 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.gene ? (
+          record.gene != null ? (
             <Button
               type="link"
               onClick={() => selectFilteredEvent(record, "detail")}
@@ -108,7 +108,7 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.role ? (
+          record.role != null ? (
             record.role
           ) : (
             <Text italic disabled>
@@ -138,7 +138,7 @@ class FilteredEventsListPanel extends Component {
         filterMultiple: true,
         onFilter: (value, record) => record.variant?.indexOf(value) === 0,
         render: (_, record) =>
-          record.variant ? (
+          record.variant != null ? (
             record.variant
           ) : (
             <Text italic disabled>
@@ -166,7 +166,7 @@ class FilteredEventsListPanel extends Component {
         filterMultiple: true,
         onFilter: (value, record) => record.type?.indexOf(value) === 0,
         render: (_, record) =>
-          record.type ? (
+          record.type != null ? (
             record.type
           ) : (
             <Text italic disabled>
@@ -196,7 +196,7 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.effect ? (
+          record.effect != null ? (
             record.effect
           ) : (
             <Text italic disabled>
@@ -250,7 +250,7 @@ class FilteredEventsListPanel extends Component {
         filterMultiple: true,
         onFilter: (value, record) => record.tier?.indexOf(value) === 0,
         render: (_, record) =>
-          record.tier ? (
+          record.tier != null ? (
             <Tooltip
               title={t(
                 `components.filtered-events-panel.tier-info.${record.tier}`
@@ -292,7 +292,7 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.estimatedAlteredCopies ? (
+          record.estimatedAlteredCopies != null ? (
             d3.format(".3f")(+record.estimatedAlteredCopies)
           ) : (
             <Text italic disabled>
@@ -312,28 +312,8 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.segmentCopyNumber ? (
+          record.segmentCopyNumber != null ? (
             +record.segmentCopyNumber
-          ) : (
-            <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.refCounts"),
-        dataIndex: "refCounts",
-        key: "refCounts",
-        sorter: {
-          compare: (a, b) => {
-            if (a.refCounts == null) return 1;
-            if (b.refCounts == null) return -1;
-            return d3.ascending(+a.refCounts, +b.refCounts);
-          },
-        },
-        render: (_, record) =>
-          record.refCounts ? (
-            +record.refCounts
           ) : (
             <Text italic disabled>
               {t("components.filtered-events-panel.unavailable")}
@@ -352,8 +332,28 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.altCounts ? (
+          record.altCounts != null ? (
             +record.altCounts
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
+      },
+      {
+        title: t("components.filtered-events-panel.refCounts"),
+        dataIndex: "refCounts",
+        key: "refCounts",
+        sorter: {
+          compare: (a, b) => {
+            if (a.refCounts == null) return 1;
+            if (b.refCounts == null) return -1;
+            return d3.ascending(+a.refCounts, +b.refCounts);
+          },
+        },
+        render: (_, record) =>
+          record.refCounts != null ? (
+            +record.refCounts
           ) : (
             <Text italic disabled>
               {t("components.filtered-events-panel.unavailable")}
@@ -372,7 +372,7 @@ class FilteredEventsListPanel extends Component {
           },
         },
         render: (_, record) =>
-          record.vaf ? (
+          record.vaf != null ? (
             d3.format(".3f")(+record.vaf)
           ) : (
             <Text italic disabled>
@@ -385,7 +385,7 @@ class FilteredEventsListPanel extends Component {
         dataIndex: "location",
         key: "location",
         render: (_, record) =>
-          record.location ? (
+          record.location != null ? (
             <Button
               type="link"
               onClick={() => selectFilteredEvent(record, "tracks")}

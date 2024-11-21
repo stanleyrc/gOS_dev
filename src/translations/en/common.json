@@ -80,6 +80,10 @@
     },
     "purity-ploidy-title": "Purity/ploidy",
     "junction-burden": "Junction burden",
+    "pair": {
+      "short": "Pair",
+      "full": "Pair"
+    },
     "tumor_median_coverage": {
       "short": "Coverage Tumor/Normal ",
       "full": "Denoised Coverage Tumor/Normal"
@@ -195,7 +199,6 @@
     "m_reads": "<strong>{{count}}</strong> Total Reads (Millions)",
     "%_reads_mapped": "<strong>{{count}}</strong> Reads Mapped",
     "percent_reads_mapped": "<strong>{{count}}</strong> Reads Mapped",
-    "pair": "Pair",
     "alternate": "Alternate Allele",
     "chromosome": "Chromosome",
     "mapping_quality": "Mapping Quality",
@@ -299,7 +302,8 @@
         "inferred_sex": "Inferred Sex",
         "submit": "Submit",
         "reset": "Reset"
-      }
+      },
+      "ordering": "Sorting by <strong>{{attribute}}</strong> in <strong>{{sort}}</strong> order"
     },
     "detail-view": {
       "tabs": {

@@ -109,7 +109,6 @@ export default function appReducer(state = initState, action) {
         ...action.properties,
       };
     case actions.SELECT_REPORT:
-      console.log(action);
       let reportMetadata = {};
       Object.values(reportAttributesMap()).forEach((key) => {
         reportMetadata[key] = null;

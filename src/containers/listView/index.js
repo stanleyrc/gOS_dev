@@ -16,7 +16,10 @@ import {
   Typography,
 } from "antd";
 import * as d3 from "d3";
-import { snakeCaseToHumanReadable } from "../../helpers/utility";
+import {
+  snakeCaseToHumanReadable,
+  orderListViewFilters,
+} from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const { Meta } = Card;
@@ -57,6 +60,16 @@ class ListView extends Component {
     this.props.onSearch(searchFilters);
   };
 
+  onOrderChanged = (orderId) => {
+    let fieldValues = this.formRef.current.getFieldsValue();
+    let searchFilters = {
+      ...this.props.searchFilters,
+      ...fieldValues,
+      ...{ page: 1, per_page: 10, orderId },
+    };
+    this.props.onSearch(searchFilters);
+  };
+
   render() {
     const {
       t,
@@ -66,167 +79,205 @@ class ListView extends Component {
       searchFilters,
       totalRecords,
     } = this.props;
-
     return (
       <Wrapper>
-        <div className="ant-panel-list-container">
-          <Row gutter={[16, 16]}>
-            <Col className="gutter-row" span={24}>
-              <Card>
-                <Form
-                  layout="inline"
-                  ref={this.formRef}
-                  onFinish={this.onValuesChange}
-                  onValuesChange={this.onValuesChange}
-                >
-                  {filters.map((d) => (
-                    <Form.Item
-                      key={`containers.list-view.filters.${d.filter}`}
-                      name={d.filter}
-                      label={t(`containers.list-view.filters.${d.filter}`)}
-                      rules={[
-                        {
-                          required: false,
-                        },
-                      ]}
-                    >
-                      <Select
-                        placeholder={t(
-                          "containers.list-view.filters.placeholder"
-                        )}
-                        mode="multiple"
-                        allowClear
-                        style={{ width: 200 }}
-                        maxTagCount="responsive"
-                        maxTagTextLength={5}
-                      >
-                        {d.records.map((e, i) => (
-                          <Option key={i} value={e}>
-                            {e
-                              ? snakeCaseToHumanReadable(e)
-                              : t("containers.list-view.filters.empty")}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button type="primary" htmlType="submit">
-                      {t("containers.list-view.filters.submit")}
-                    </Button>
-                  </Form.Item>
-                  <Form.Item>
-                    <Button htmlType="button" onClick={this.onReset}>
-                      {t("containers.list-view.filters.reset")}
-                    </Button>
-                  </Form.Item>
-                </Form>
-              </Card>
-            </Col>
-            {records.length > 0 && (
+        <Form
+          layout="horizontal"
+          ref={this.formRef}
+          onFinish={this.onValuesChange}
+          onValuesChange={this.onValuesChange}
+        >
+          <div className="ant-panel-list-container">
+            <Row gutter={[16, 16]}>
               <Col className="gutter-row" span={24}>
-                <Pagination
-                  showSizeChanger
-                  total={totalRecords}
-                  showTotal={(total, range) =>
-                    `${range[0]}-${range[1]} of ${total} items`
-                  }
-                  defaultCurrent={1}
-                  current={searchFilters.page || 1}
-                  pageSize={searchFilters.per_page || 10}
-                  onChange={this.onPageChanged}
-                />
+                <Card className="filters-box">
+                  <Row>
+                    {filters.map((d) => (
+                      <Col className="gutter-row" span={4}>
+                        <Form.Item
+                          key={`containers.list-view.filters.${d.filter}`}
+                          name={d.filter}
+                          label={t(`containers.list-view.filters.${d.filter}`)}
+                          rules={[
+                            {
+                              required: false,
+                            },
+                          ]}
+                        >
+                          <Select
+                            placeholder={t(
+                              "containers.list-view.filters.placeholder"
+                            )}
+                            mode="multiple"
+                            allowClear
+                            style={{ width: 200 }}
+                            maxTagCount="responsive"
+                            maxTagTextLength={5}
+                          >
+                            {d.records.map((e, i) => (
+                              <Option key={i} value={e}>
+                                {e
+                                  ? snakeCaseToHumanReadable(e)
+                                  : t("containers.list-view.filters.empty")}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    ))}
+                    <Col className="gutter-row" span={2}>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                          {t("containers.list-view.filters.submit")}
+                        </Button>
+                      </Form.Item>
+                    </Col>
+                    <Col className="gutter-row" span={2}>
+                      <Form.Item>
+                        <Button htmlType="button" onClick={this.onReset}>
+                          {t("containers.list-view.filters.reset")}
+                        </Button>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Card>
               </Col>
-            )}
-            {records.map((d) => (
-              <Col key={d.pair} className="gutter-row" span={6}>
-                <Card
-                  className="case-report-card"
-                  onClick={(e) => handleCardClick(e, d.pair)}
-                  hoverable
-                  title={
-                    <Space>
-                      <b>{d.pair}</b>
-                      <Text type="secondary">{d.inferred_sex}</Text>
-                    </Space>
-                  }
-                  bordered={false}
-                  extra={
-                    <Avatar
-                      style={{
-                        backgroundColor: "#fde3cf",
-                        color: "#f56a00",
-                      }}
-                    >
-                      {d.tumor_type}
-                    </Avatar>
-                  }
-                  actions={[
-                    <Statistic
-                      className="stats"
-                      title={t(`metadata.svCount.short`)}
-                      value={d3.format(",")(d.sv_count)}
-                    />,
-                    <Statistic
-                      className="stats"
-                      title={t(`metadata.tmb.short`)}
-                      value={d3.format(",")(d.tmb)}
-                    />,
-                    <Statistic
-                      className="stats"
-                      title={t(`metadata.lohFraction.short`)}
-                      value={d3.format(".3")(d.loh_fraction)}
-                    />,
-                    <Statistic
-                      className="stats"
-                      title={t("metadata.purity-ploidy-title")}
-                      value={d3.format(".2f")(d.purity)}
-                      suffix={`/ ${d3.format(".2f")(d.ploidy)}`}
-                    />,
-                  ]}
-                >
-                  <Meta
-                    title={d.disease}
-                    description={
-                      d.primary_site
-                        ? snakeCaseToHumanReadable(d.primary_site)
-                        : t("containers.list-view.filters.empty")
+            </Row>
+            {records.length > 0 && (
+              <Row className="results-top-box" gutter={[16, 16]}>
+                <Col className="gutter-row" span={12}>
+                  <Pagination
+                    showSizeChanger
+                    total={totalRecords}
+                    showTotal={(total, range) =>
+                      `${range[0]}-${range[1]} of ${total} items`
                     }
+                    defaultCurrent={1}
+                    current={searchFilters.page || 1}
+                    pageSize={searchFilters.per_page || 10}
+                    onChange={this.onPageChanged}
                   />
-                </Card>
-              </Col>
-            ))}
+                </Col>
+                <Col className="gutter-row order-selector-container" span={12}>
+                  <Select
+                    className="order-select"
+                    value={searchFilters.orderId}
+                    onSelect={this.onOrderChanged}
+                    bordered={false}
+                  >
+                    {orderListViewFilters.map((d) => (
+                      <Option key={d.id} value={d.id}>
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: t("containers.list-view.ordering", {
+                              attribute: t(`metadata.${d.attribute}.short`),
+                              sort: d.sort,
+                            }),
+                          }}
+                        />
+                      </Option>
+                    ))}
+                  </Select>
+                </Col>
+              </Row>
+            )}
+
+            <Row gutter={[16, 16]}>
+              {records.map((d) => (
+                <Col key={d.pair} className="gutter-row" span={6}>
+                  <Card
+                    className="case-report-card"
+                    onClick={(e) => handleCardClick(e, d.pair)}
+                    hoverable
+                    title={
+                      <Space>
+                        <b>{d.pair}</b>
+                        <Text type="secondary">{d.inferred_sex}</Text>
+                      </Space>
+                    }
+                    bordered={false}
+                    extra={
+                      <Avatar
+                        style={{
+                          backgroundColor: "#fde3cf",
+                          color: "#f56a00",
+                        }}
+                      >
+                        {d.tumor_type}
+                      </Avatar>
+                    }
+                    actions={[
+                      <Statistic
+                        className="stats"
+                        title={t(`metadata.svCount.short`)}
+                        value={d3.format(",")(d.sv_count)}
+                      />,
+                      <Statistic
+                        className="stats"
+                        title={t(`metadata.tmb.short`)}
+                        value={d3.format(",")(d.tmb)}
+                      />,
+                      <Statistic
+                        className="stats"
+                        title={t(`metadata.lohFraction.short`)}
+                        value={d3.format(".3f")(d.loh_fraction)}
+                      />,
+                      <Statistic
+                        className="stats"
+                        title={t("metadata.purity-ploidy-title")}
+                        value={d3.format(".3f")(d.purity)}
+                        suffix={`/ ${d3.format(".3f")(d.ploidy)}`}
+                      />,
+                    ]}
+                  >
+                    <Meta
+                      title={d.disease}
+                      description={
+                        d.primary_site
+                          ? snakeCaseToHumanReadable(d.primary_site)
+                          : t("containers.list-view.filters.empty")
+                      }
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
             {records.length > 0 && (
-              <Col className="gutter-row" span={24}>
-                <Pagination
-                  showSizeChanger
-                  total={totalRecords}
-                  showTotal={(total, range) =>
-                    `${range[0]}-${range[1]} of ${total} items`
-                  }
-                  defaultCurrent={1}
-                  current={searchFilters.page || 1}
-                  pageSize={searchFilters.per_page || 10}
-                  onChange={this.onPageChanged}
-                />
-              </Col>
+              <Row className="results-bottom-box" gutter={[16, 16]}>
+                <Col className="gutter-row" span={24}>
+                  <Pagination
+                    showSizeChanger
+                    total={totalRecords}
+                    showTotal={(total, range) =>
+                      `${range[0]}-${range[1]} of ${total} items`
+                    }
+                    defaultCurrent={1}
+                    current={searchFilters.page || 1}
+                    pageSize={searchFilters.per_page || 10}
+                    onChange={this.onPageChanged}
+                  />
+                </Col>
+              </Row>
             )}
+
             {records.length < 1 && (
-              <Col className="gutter-row" span={24}>
-                <Card>
-                  <Empty description={false} />
-                </Card>
-              </Col>
+              <Row gutter={[16, 16]}>
+                <Col className="gutter-row" span={24}>
+                  <Card>
+                    <Empty description={false} />
+                  </Card>
+                </Col>
+              </Row>
             )}
-          </Row>
-        </div>
+          </div>
+        </Form>
       </Wrapper>
     );
   }
 }
 ListView.propTypes = {};
 ListView.defaultProps = {
-  searchFilters: { per_page: 10, page: 1 },
+  searchFilters: { per_page: 10, page: 1, orderId: 1 },
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});
