@@ -32,9 +32,9 @@ class IGVPanel extends Component {
       // Return in IGV format
       return `chr${chrStart}:${posStart}-${posEnd}`;
     })
-    .filter(Boolean) // Remove any null entries
-    .join('|'); // Rejoin multiple locations if they exist
-    this.igvBrowser.on('locuschange', this.handleLocationChange);
+    // .filter(Boolean) // Remove any null entries
+    // .join('|'); // Rejoin multiple locations if they exist
+    // this.igvBrowser.on('locuschange', this.handleLocationChange);
   }
 
   handleLocationChange = (event) => {
@@ -84,16 +84,18 @@ class IGVPanel extends Component {
     const rawLocation = domainsToLocation(this.props.chromoBins, this.props.domains);
     const formattedLocation = this.formatLocationForIGV(rawLocation);
     console.log('IGV formatted location:', formattedLocation);
-    console.log( `${window.location.origin}/data/${this.props.pair}/tumor.bam`)
+    
+    const data_endpoint = "https://genome.med.nyu.edu/external/imielinskilab/mskiweb/diders01/case-reports-clinical-backup/build/data/"
+    console.log(`${data_endpoint}/${this.props.pair}/tumor.bam`)
 
     const options = {
-      genome: "hg38",
+      genome: "hg19",
       locus: formattedLocation,
       tracks: [
         {
           name: this.props.pair,
-          url: `${window.location.origin}/data/${this.props.pair}/tumor.bam`,
-          indexURL: `${window.location.origin}/data/${this.props.pair}/tumor.bam.bai`,
+          url: `${data_endpoint}/${this.props.pair}/tumor.bam`,
+          indexURL: `${data_endpoint}/${this.props.pair}/tumor.bam.bai`,
           format: "bam"
         }
       ]
