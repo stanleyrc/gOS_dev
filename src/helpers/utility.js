@@ -962,8 +962,13 @@ export function transformFilteredEventAttributes(filteredEvents) {
             const geneStartPoint = parseInt(startPoint);
             const geneEndPoint = parseInt(endPoint);
 
-            startPoint = d3.min([+snvStartPoint, +geneStartPoint]) - 1e4;
-            endPoint = d3.max([+snvEndPoint, +geneEndPoint]) + 1e4;
+            let padding =
+              snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint
+                ? snvStartPoint - geneStartPoint
+                : geneEndPoint - snvEndPoint;
+            padding += 1000;
+            startPoint = parseInt(snvStartPoint - padding);
+            endPoint = parseInt(snvEndPoint + padding);
             location = event.Variant_g;
             actualLocation = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
           } catch (error) {
