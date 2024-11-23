@@ -337,15 +337,17 @@ class HeaderPanel extends Component {
                                 >
                                   {d === "tumor_median_coverage"
                                     ? `${
-                                        metadata["tumor_median_coverage"]
+                                        metadata["tumor_median_coverage"] !=
+                                        null
                                           ? `${metadata["tumor_median_coverage"]}X`
                                           : t("general.not-applicable")
                                       } / ${
-                                        metadata["normal_median_coverage"]
+                                        metadata["normal_median_coverage"] !=
+                                        null
                                           ? `${metadata["normal_median_coverage"]}X`
                                           : t("general.not-applicable")
                                       }`
-                                    : metadata[d]
+                                    : metadata[d] != null
                                     ? d3.format(plotTypes()[d].format)(
                                         +metadata[d]
                                       )
@@ -371,7 +373,11 @@ class HeaderPanel extends Component {
                                 color: colorMarkers["purity"],
                               }}
                             >
-                              {d3.format(plotTypes()["purity"].format)(+purity)}
+                              {purity != null
+                                ? d3.format(plotTypes()["purity"].format)(
+                                    +purity
+                                  )
+                                : t("general.not-applicable")}
                             </span>
                           </span>
                           <span className="ant-statistic-content-suffix">
@@ -384,7 +390,11 @@ class HeaderPanel extends Component {
                                 color: colorMarkers["ploidy"],
                               }}
                             >
-                              {d3.format(plotTypes()["ploidy"].format)(+ploidy)}
+                              {ploidy != null
+                                ? d3.format(plotTypes()["ploidy"].format)(
+                                    +ploidy
+                                  )
+                                : t("general.not-applicable")}
                             </span>
                           </span>
                         </div>

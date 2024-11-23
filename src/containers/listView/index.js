@@ -214,23 +214,43 @@ class ListView extends Component {
                       <Statistic
                         className="stats"
                         title={t(`metadata.svCount.short`)}
-                        value={d3.format(",")(d.sv_count)}
+                        value={
+                          d.sv_count != null
+                            ? d3.format(",")(d.sv_count)
+                            : t("general.not-applicable")
+                        }
                       />,
                       <Statistic
                         className="stats"
                         title={t(`metadata.tmb.short`)}
-                        value={d3.format(",")(d.tmb)}
+                        value={
+                          d.tmb != null
+                            ? d3.format(",")(d.tmb)
+                            : t("general.not-applicable")
+                        }
                       />,
                       <Statistic
                         className="stats"
                         title={t(`metadata.lohFraction.short`)}
-                        value={d3.format(".3f")(d.loh_fraction)}
+                        value={
+                          d.loh_fraction != null
+                            ? d3.format(".3f")(d.loh_fraction)
+                            : t("general.not-applicable")
+                        }
                       />,
                       <Statistic
                         className="stats"
                         title={t("metadata.purity-ploidy-title")}
-                        value={d3.format(".3f")(d.purity)}
-                        suffix={`/ ${d3.format(".3f")(d.ploidy)}`}
+                        value={
+                          d.purity != null
+                            ? d3.format(".3f")(d.purity)
+                            : t("general.not-applicable")
+                        }
+                        suffix={`/ ${
+                          d.ploidy != null
+                            ? d3.format(".3f")(d.ploidy)
+                            : t("general.not-applicable")
+                        }`}
                       />,
                     ]}
                   >

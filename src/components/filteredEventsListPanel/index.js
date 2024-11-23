@@ -313,7 +313,7 @@ class FilteredEventsListPanel extends Component {
         },
         render: (_, record) =>
           record.segmentCopyNumber != null ? (
-            +record.segmentCopyNumber
+            d3.format(".3f")(+record.segmentCopyNumber)
           ) : (
             <Text italic disabled>
               {t("components.filtered-events-panel.unavailable")}
@@ -402,7 +402,7 @@ class FilteredEventsListPanel extends Component {
     return (
       <Wrapper>
         <Row className="ant-panel-container ant-home-plot-container">
-          <Col className="gutter-row" span={24}>
+          <Col className="gutter-row table-container" span={24}>
             {error ? (
               <ErrorPanel
                 avatar={<CgArrowsBreakeH />}

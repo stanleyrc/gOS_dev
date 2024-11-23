@@ -1,6 +1,10 @@
 import styled from "styled-components";
 
 const Wrapper = styled.div`
+  .table-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
   .site-page-header {
     background: white;
     padding: 16px 0px;
