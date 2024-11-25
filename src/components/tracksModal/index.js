@@ -11,6 +11,7 @@ import { transitionStyle, downloadCanvasAsPng } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import GenesPanel from "../genesPanel";
+import IGVPanel from "../igvPanel";
 import appActions from "../../redux/app/actions";
 
 const { updateHoveredLocation } = appActions;
@@ -88,24 +89,22 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {genome && (
-          <Col className="gutter-row" span={24}>
-            <GenomePanel
-              {...{
-                loading: genome.loading,
-                genome: genome.data,
-                error: genome.error,
-                filename: genome.filename,
-                title: genomePlotTitle,
-                yAxisTitle: genomePlotYAxisTitle,
-                chromoBins,
-                visible: true,
-                index: 0,
-                height,
-              }}
-            />
-          </Col>
-        )}
+        <Col className="gutter-row" span={24}>
+          <GenomePanel
+            {...{
+              loading: genome.loading,
+              genome: genome.data,
+              error: genome.error,
+              filename: genome.filename,
+              title: genomePlotTitle,
+              yAxisTitle: genomePlotYAxisTitle,
+              chromoBins,
+              visible: true,
+              index: 0,
+              height,
+            }}
+          />
+        </Col>
         {genomeCoverage && (
           <Col className="gutter-row" span={24}>
             <ScatterPlotPanel
@@ -244,6 +243,16 @@ class TracksModal extends Component {
             />
           </Col>
         )}
+        <Col className="gutter-row" span={24}>
+          <IGVPanel
+            {...{
+              title: t("components.tracks-modal.igv-plot"),
+              chromoBins,
+              visible: true,
+              height,
+            }}
+          />
+        </Col>
       </Row>
     );
     return (
