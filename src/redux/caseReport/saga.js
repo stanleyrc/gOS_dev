@@ -13,6 +13,7 @@ import populationStatisticsActions from "../populationStatistics/actions";
 import ppfitActions from "../ppfit/actions";
 import sageQcActions from "../sageQc/actions";
 import signatureStatisticsActions from "../signatureStatistics/actions";
+import igvActions from "../igv/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReport(action) {
@@ -68,6 +69,7 @@ function* followUpFetchCaseReportSuccess(action) {
     ppfitActions.FETCH_PPFIT_DATA_REQUEST,
     sageQcActions.FETCH_SAGEQC_REQUEST,
     signatureStatisticsActions.FETCH_SIGNATURE_STATISTICS_REQUEST,
+    igvActions.FETCH_IGV_DATA_REQUEST,
   ];
 
   yield all(actionTypes.map((type) => put({ type })));

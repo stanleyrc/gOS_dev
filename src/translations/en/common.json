@@ -450,6 +450,16 @@
         }
       }
     },
+    "igv-panel": {
+      "title": "IGV Browser",
+      "error": {
+        "title": "Loading the IGV Browser failed",
+        "subtitle": "Fetching {{filename}} for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The request has failed with the following error:"
+        }
+      }
+    },
     "mutation-catalog-panel": {
       "header": "Signatures",
       "title": "Mutation Catalog",
@@ -496,7 +506,6 @@
       "igv-plot": "IGV Browser",
       "allelic-plot": "Allelic CN Graph",
       "allelic-plot-y-axis-title": "↑ CN",
-      "igv-plot": "IGV Browser",
       "coverage-y-axis-title": "↑ Base Coverage",
       "coverage-y-axis2-title": "Est. CN ↑",
       "missing-counts-axis": "Counts Axis is not available due to missing attributes."

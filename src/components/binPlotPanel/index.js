@@ -80,6 +80,7 @@ class BinPlotPanel extends Component {
       genomeCoverage,
       hetsnps,
       genes,
+      igv,
       inViewport,
       renderOutsideViewPort,
       visible,
@@ -160,6 +161,7 @@ class BinPlotPanel extends Component {
                     genomeCoverage,
                     hetsnps,
                     genes,
+                    igv,
                     chromoBins,
                     modalTitleText: `sequence-${segment?.iid}`,
                     modalTitle: (
@@ -252,6 +254,7 @@ const mapStateToProps = (state) => ({
   genomeCoverage: state.GenomeCoverage,
   hetsnps: state.Hetsnps,
   genes: state.Genes,
+  igv: state.Igv
 });
 export default connect(
   mapStateToProps,

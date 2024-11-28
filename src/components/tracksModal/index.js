@@ -11,7 +11,7 @@ import { transitionStyle, downloadCanvasAsPng } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import GenesPanel from "../genesPanel";
-import IGVPanel from "../igvPanel";
+import IgvPanel from "../igvPanel/index";
 import appActions from "../../redux/app/actions";
 
 const { updateHoveredLocation } = appActions;
@@ -45,6 +45,7 @@ class TracksModal extends Component {
       metadata,
       genes,
       allelic,
+      igv,
       inViewport,
       renderOutsideViewPort,
       chromoBins,
@@ -244,12 +245,16 @@ class TracksModal extends Component {
           </Col>
         )}
         <Col className="gutter-row" span={24}>
-          <IGVPanel
+          <IgvPanel
             {...{
-              title: t("components.tracks-modal.igv-plot"),
-              chromoBins,
               visible: true,
-              height,
+              loading: igv.loading,
+              error: igv.error,
+              missingFiles: igv.missingFiles,
+              filename: igv.filename,
+              filenameIndex: igv.filenameIndex,
+              format: igv.format,
+              name: igv.name,
             }}
           />
         </Col>

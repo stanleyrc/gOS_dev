@@ -45,6 +45,7 @@ class FilteredEventsListPanel extends Component {
       hetsnps,
       genes,
       allelic,
+      igv,
       selectFilteredEvent,
     } = this.props;
 
@@ -433,6 +434,7 @@ class FilteredEventsListPanel extends Component {
                       genomeCoverage,
                       hetsnps,
                       genes,
+                      igv,
                       chromoBins,
                       allelic,
                       modalTitleText: selectedFilteredEvent.gene,
@@ -530,6 +532,7 @@ const mapStateToProps = (state) => ({
   genomeCoverage: state.GenomeCoverage,
   hetsnps: state.Hetsnps,
   genes: state.Genes,
+  igv: state.Igv
 });
 export default connect(
   mapStateToProps,
