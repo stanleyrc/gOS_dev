@@ -3,7 +3,7 @@ import actions from "./actions";
 const initState = {
   loading: false,
   filename: "tumor.bam",
-  filenameIndex: "tumor.bam.ui",
+  filenameIndex: "tumor.bam.bai",
   format: "bam",
   name: null,
   filenamePresent: null,
