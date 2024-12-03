@@ -9,10 +9,12 @@ import {
   Space,
   Row,
   Col,
+  Segmented,
   Skeleton,
   Tooltip,
   Avatar,
   Typography,
+  Badge,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -28,7 +30,21 @@ const { Text } = Typography;
 
 const { selectFilteredEvent } = filteredEventsActions;
 
+const eventColumns = {
+  snv: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12],
+  cna: [0, 1, 2, 3, 4, 5, 7, 12],
+  fusion: [0, 1, 2, 3, 4, 5, 8, 12],
+};
+
 class FilteredEventsListPanel extends Component {
+  state = {
+    eventType: Object.keys(eventColumns)[0],
+  };
+
+  handleSegmentedChange = (eventType) => {
+    this.setState({ eventType });
+  };
+
   render() {
     const {
       t,
@@ -51,12 +67,17 @@ class FilteredEventsListPanel extends Component {
 
     let open = selectedFilteredEvent?.id;
 
+    let { eventType } = this.state;
+
+    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
+    let records = recordsHash.get(eventType) || [];
+
     const columns = [
       {
         title: t("components.filtered-events-panel.gene"),
         dataIndex: "gene",
         key: "gene",
-        filters: [...new Set(filteredEvents.map((d) => d.gene))]
+        filters: [...new Set(records.map((d) => d.gene))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
             return {
@@ -65,7 +86,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.gene?.indexOf(value) === 0,
+        onFilter: (value, record) => record.gene?.startsWith(value),
+        filterSearch: true,
         sorter: {
           compare: (a, b) => {
             if (a.gene == null) return 1;
@@ -91,7 +113,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.role"),
         dataIndex: "role",
         key: "role",
-        filters: [...new Set(filteredEvents.map((d) => d.role))]
+        filters: [...new Set(records.map((d) => d.role))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
             return {
@@ -128,7 +150,7 @@ class FilteredEventsListPanel extends Component {
             return d3.ascending(a.variant, b.variant);
           },
         },
-        filters: [...new Set(filteredEvents.map((d) => d.variant))]
+        filters: [...new Set(records.map((d) => d.variant))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
             return {
@@ -158,7 +180,7 @@ class FilteredEventsListPanel extends Component {
             return d3.ascending(a.type, b.type);
           },
         },
-        filters: [...new Set(filteredEvents.map((d) => d.type))].map((d) => {
+        filters: [...new Set(records.map((d) => d.type))].map((d) => {
           return {
             text: d,
             value: d,
@@ -179,7 +201,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.effect"),
         dataIndex: "effect",
         key: "effect",
-        filters: [...new Set(filteredEvents.map((d) => d.effect))]
+        filters: [...new Set(records.map((d) => d.effect))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
             return {
@@ -242,7 +264,7 @@ class FilteredEventsListPanel extends Component {
             return d3.ascending(+a.tier, +b.tier);
           },
         },
-        filters: [...new Set(filteredEvents.map((d) => d.tier))].map((d) => {
+        filters: [...new Set(records.map((d) => d.tier))].map((d) => {
           return {
             text: d,
             value: d,
@@ -315,6 +337,26 @@ class FilteredEventsListPanel extends Component {
         render: (_, record) =>
           record.segmentCopyNumber != null ? (
             d3.format(".3f")(+record.segmentCopyNumber)
+          ) : (
+            <Text italic disabled>
+              {t("components.filtered-events-panel.unavailable")}
+            </Text>
+          ),
+      },
+      {
+        title: t("components.filtered-events-panel.fusionCopyNumber"),
+        dataIndex: "fusionCopyNumber",
+        key: "fusionCopyNumber",
+        sorter: {
+          compare: (a, b) => {
+            if (a.fusionCopyNumber == null) return 1;
+            if (b.fusionCopyNumber == null) return -1;
+            return d3.ascending(+a.fusionCopyNumber, +b.fusionCopyNumber);
+          },
+        },
+        render: (_, record) =>
+          record.fusionCopyNumber != null ? (
+            d3.format(".3f")(+record.fusionCopyNumber)
           ) : (
             <Text italic disabled>
               {t("components.filtered-events-panel.unavailable")}
@@ -400,11 +442,12 @@ class FilteredEventsListPanel extends Component {
           ),
       },
     ];
+
     return (
       <Wrapper>
-        <Row className="ant-panel-container ant-home-plot-container">
-          <Col className="gutter-row table-container" span={24}>
-            {error ? (
+        {error ? (
+          <Row className="ant-panel-container ant-home-plot-container">
+            <Col className="gutter-row table-container" span={24}>
               <ErrorPanel
                 avatar={<CgArrowsBreakeH />}
                 header={t("components.filtered-events-panel.header")}
@@ -417,96 +460,141 @@ class FilteredEventsListPanel extends Component {
                 )}
                 explanationDescription={error.stack}
               />
-            ) : (
-              <Skeleton active loading={loading}>
-                <Table
-                  columns={columns}
-                  dataSource={filteredEvents}
-                  pagination={{ pageSize: 50 }}
-                  showSorterTooltip={false}
+            </Col>
+          </Row>
+        ) : (
+          <>
+            <Row className="ant-panel-container ant-home-plot-container">
+              <Col className="gutter-row table-container" span={24}>
+                <Segmented
+                  options={Object.keys(eventColumns).map((d) => {
+                    return {
+                      label: (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: t(
+                              "components.filtered-events-panel.event",
+                              {
+                                eventType: t(
+                                  `components.filtered-events-panel.event-types.${d}`
+                                ),
+                                count: (recordsHash.get(d) || []).length,
+                              }
+                            ),
+                          }}
+                        />
+                      ),
+                      value: d,
+                      disabled: (recordsHash.get(d) || []).length === 0,
+                    };
+                  })}
+                  onChange={(d) => this.handleSegmentedChange(d)}
+                  value={eventType}
                 />
-                {selectedFilteredEvent && viewMode === "tracks" && (
-                  <TracksModal
-                    {...{
-                      loading,
-                      genome,
-                      mutations,
-                      genomeCoverage,
-                      hetsnps,
-                      genes,
-                      igv,
-                      chromoBins,
-                      allelic,
-                      modalTitleText: selectedFilteredEvent.gene,
-                      modalTitle: (
-                        <Space>
-                          {selectedFilteredEvent.gene}
-                          {selectedFilteredEvent.name}
-                          {selectedFilteredEvent.type}
-                          {selectedFilteredEvent.role?.split(",").map((tag) => (
-                            <Tag
-                              color={roleColorMap()[tag.trim()]}
-                              key={tag.trim()}
-                            >
-                              {tag.trim()}
-                            </Tag>
-                          ))}
-                          {selectedFilteredEvent.tier}
-                          {selectedFilteredEvent.location}
-                        </Space>
-                      ),
-                      genomePlotTitle: t("components.tracks-modal.genome-plot"),
-                      genomePlotYAxisTitle: t(
-                        "components.tracks-modal.genome-y-axis-title"
-                      ),
-                      coveragePlotTitle: t(
-                        "components.tracks-modal.coverage-plot"
-                      ),
-                      coverageYAxisTitle: t(
-                        "components.tracks-modal.coverage-y-axis-title"
-                      ),
-                      coverageYAxis2Title: t(
-                        "components.tracks-modal.coverage-y-axis2-title"
-                      ),
-                      hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
-                      hetsnpPlotYAxisTitle: t(
-                        "components.tracks-modal.hetsnp-plot-y-axis-title"
-                      ),
-                      hetsnpPlotYAxis2Title: t(
-                        "components.tracks-modal.hetsnp-plot-y-axis2-title"
-                      ),
-                      mutationsPlotTitle: t(
-                        "components.tracks-modal.mutations-plot"
-                      ),
-                      mutationsPlotYAxisTitle: t(
-                        "components.tracks-modal.mutations-plot-y-axis-title"
-                      ),
-                      allelicPlotTitle: t(
-                        "components.tracks-modal.allelic-plot"
-                      ),
-                      allelicPlotYAxisTitle: t(
-                        "components.tracks-modal.allelic-plot-y-axis-title"
-                      ),
-                      handleOkClicked: () => selectFilteredEvent(null),
-                      handleCancelClicked: () => selectFilteredEvent(null),
-                      open,
-                    }}
-                  />
-                )}
-                {selectedFilteredEvent && viewMode === "detail" && (
-                  <FilteredEventModal
-                    {...{
-                      record: selectedFilteredEvent,
-                      handleOkClicked: () => selectFilteredEvent(null),
-                      handleCancelClicked: () => selectFilteredEvent(null),
-                      open,
-                    }}
-                  />
-                )}
-              </Skeleton>
-            )}
-          </Col>
-        </Row>
+              </Col>
+            </Row>
+            <Row className="ant-panel-container ant-home-plot-container">
+              <Col className="gutter-row table-container" span={24}>
+                {
+                  <Skeleton active loading={loading}>
+                    <Table
+                      columns={columns.filter((d, i) =>
+                        eventColumns[eventType].includes(i)
+                      )}
+                      dataSource={records}
+                      pagination={{ pageSize: 50 }}
+                      showSorterTooltip={false}
+                    />
+                    {selectedFilteredEvent && viewMode === "tracks" && (
+                      <TracksModal
+                        {...{
+                          loading,
+                          genome,
+                          mutations,
+                          genomeCoverage,
+                          hetsnps,
+                          genes,
+                          igv,
+                          chromoBins,
+                          allelic,
+                          modalTitleText: selectedFilteredEvent.gene,
+                          modalTitle: (
+                            <Space>
+                              {selectedFilteredEvent.gene}
+                              {selectedFilteredEvent.name}
+                              {selectedFilteredEvent.type}
+                              {selectedFilteredEvent.role
+                                ?.split(",")
+                                .map((tag) => (
+                                  <Tag
+                                    color={roleColorMap()[tag.trim()]}
+                                    key={tag.trim()}
+                                  >
+                                    {tag.trim()}
+                                  </Tag>
+                                ))}
+                              {selectedFilteredEvent.tier}
+                              {selectedFilteredEvent.location}
+                            </Space>
+                          ),
+                          genomePlotTitle: t(
+                            "components.tracks-modal.genome-plot"
+                          ),
+                          genomePlotYAxisTitle: t(
+                            "components.tracks-modal.genome-y-axis-title"
+                          ),
+                          coveragePlotTitle: t(
+                            "components.tracks-modal.coverage-plot"
+                          ),
+                          coverageYAxisTitle: t(
+                            "components.tracks-modal.coverage-y-axis-title"
+                          ),
+                          coverageYAxis2Title: t(
+                            "components.tracks-modal.coverage-y-axis2-title"
+                          ),
+                          hetsnpPlotTitle: t(
+                            "components.tracks-modal.hetsnp-plot"
+                          ),
+                          hetsnpPlotYAxisTitle: t(
+                            "components.tracks-modal.hetsnp-plot-y-axis-title"
+                          ),
+                          hetsnpPlotYAxis2Title: t(
+                            "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                          ),
+                          mutationsPlotTitle: t(
+                            "components.tracks-modal.mutations-plot"
+                          ),
+                          mutationsPlotYAxisTitle: t(
+                            "components.tracks-modal.mutations-plot-y-axis-title"
+                          ),
+                          allelicPlotTitle: t(
+                            "components.tracks-modal.allelic-plot"
+                          ),
+                          allelicPlotYAxisTitle: t(
+                            "components.tracks-modal.allelic-plot-y-axis-title"
+                          ),
+                          handleOkClicked: () => selectFilteredEvent(null),
+                          handleCancelClicked: () => selectFilteredEvent(null),
+                          open,
+                        }}
+                      />
+                    )}
+                    {selectedFilteredEvent && viewMode === "detail" && (
+                      <FilteredEventModal
+                        {...{
+                          record: selectedFilteredEvent,
+                          handleOkClicked: () => selectFilteredEvent(null),
+                          handleCancelClicked: () => selectFilteredEvent(null),
+                          open,
+                        }}
+                      />
+                    )}
+                  </Skeleton>
+                }
+              </Col>
+            </Row>
+          </>
+        )}
       </Wrapper>
     );
   }
@@ -532,7 +620,7 @@ const mapStateToProps = (state) => ({
   genomeCoverage: state.GenomeCoverage,
   hetsnps: state.Hetsnps,
   genes: state.Genes,
-  igv: state.Igv
+  igv: state.Igv,
 });
 export default connect(
   mapStateToProps,

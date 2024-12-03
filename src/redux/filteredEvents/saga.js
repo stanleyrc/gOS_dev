@@ -4,6 +4,7 @@ import { getCurrentState } from "./selectors";
 import {
   transformFilteredEventAttributes,
   locationToDomains,
+  getEventType,
 } from "../../helpers/utility";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
@@ -22,7 +23,12 @@ function* fetchFilteredEvents(action) {
 
     let filteredEvents = transformFilteredEventAttributes(
       responseReportFilteredEvents.data || []
-    );
+    )
+      .filter((d) => +d.tier !== 3)
+      .map((d) => {
+        d.eventType = getEventType(d);
+        return d;
+      });
 
     let selectedFilteredEvent = filteredEvents.find(
       (e) =>

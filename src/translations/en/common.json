@@ -364,6 +364,8 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "event": "<strong>{{count}}</strong> {{eventType}} event",
+      "event_plural": "<strong>{{count}}</strong> {{eventType}} events",
       "info": "Filtered Event Info",
       "header": "Filtered Events",
       "genome-plot": "Genome Plot",
@@ -380,6 +382,7 @@
       "altCounts": "ALT Counts",
       "vaf": "Variant Allele Frequency",
       "segmentCopyNumber": "Total Segmental Copies",
+      "fusionCopyNumber": "Total Fusion Copies",
       "estimatedAlteredCopies": "Altered Copies",
       "role": "Role in Cancer",
       "location": "Location",
@@ -392,6 +395,11 @@
         "1": "Clinically Actionable",
         "2": "Clinically Significant",
         "3": "Variant of Unknown Significance (VUS)"
+      },
+      "event-types": {
+        "snv": "SNV",
+        "cna": "CNA",
+        "fusion": "Fusion"
       },
       "select-type": {
         "placeholder": "select one or many"

@@ -139,6 +139,17 @@ export function nucleotideColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
+export function getEventType(event) {
+  const { type } = event;
+  if (["fusion", "fusions"].includes(type?.toLowerCase())) {
+    return "fusion";
+  } else if (["scna", "cna"].includes(type?.toLowerCase())) {
+    return "cna";
+  } else {
+    return "snv";
+  }
+}
+
 export function deletionInsertionMutationVariant(input) {
   const label = +input.slice(-1);
   const baseLabel = `${label}${label > 4 ? "+" : ""}`;
@@ -1087,6 +1098,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         altCounts: event.alt,
         vaf: event.VAF,
         segmentCopyNumber: event.segment_cn,
+        fusionCopyNumber: event.fusion_cn,
         variant_summary: event.variant_summary,
         gene_summary: event.gene_summary,
         effect_description: event.effect_description,
