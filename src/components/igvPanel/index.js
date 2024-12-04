@@ -24,6 +24,9 @@ import * as htmlToImage from "html-to-image";
 import logo from "../../assets/images/igv-logo.png";
 import Wrapper from "./index.style";
 import IgvPlot from "../igvPlot";
+import settingsActions from "../../redux/settings/actions";
+
+const { updateDomains } = settingsActions;
 
 const margins = {
   padding: 0,
@@ -32,6 +35,7 @@ const margins = {
 
 class IgvPanel extends Component {
   container = null;
+  domains = [];
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -46,6 +50,22 @@ class IgvPanel extends Component {
         message.error(this.props.t("general.error", { error }));
       });
   };
+
+  handleUpdateDomain = (domain, index) => {
+    if (this.props.domains[index].toString() !== domain.toString()) {
+      let newDomains = JSON.parse(JSON.stringify(this.props.domains));
+      newDomains[index] = domain;
+      this.props.updateDomains(newDomains);
+    }
+  };
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      nextProps.domains.toString() !== this.props.domains.toString() ||
+      nextProps.filename.toString() !== this.props.filename.toString() ||
+      nextProps.filenameIndex.toString() !== this.props.filenameIndex.toString()
+    );
+  }
 
   render() {
     const {
@@ -72,7 +92,7 @@ class IgvPanel extends Component {
 
     return (
       <Wrapper visible={visible}>
-        {error ? (
+        {error && false ? (
           <ErrorPanel
             avatar={<img src={logo} alt="logo" height={16} />}
             header={
@@ -135,9 +155,22 @@ class IgvPanel extends Component {
                 >
                   {(inViewport || renderOutsideViewPort) && (
                     <Row gutter={[margins.gap, 0]}>
-                      <Col flex={1}>
-                        <IgvPlot {...{ url, indexURL, format, name }} />
-                      </Col>
+                      {domains.map((domain, index) => (
+                        <Col span={Math.ceil(24 / domains.length)} flex={1}>
+                          <IgvPlot
+                            {...{
+                              index,
+                              url,
+                              indexURL,
+                              format,
+                              name,
+                              chromoBins,
+                              domain,
+                              updateDomain: this.handleUpdateDomain,
+                            }}
+                          />
+                        </Col>
+                      ))}
                     </Row>
                   )}
                 </div>
@@ -153,7 +186,9 @@ IgvPanel.propTypes = {};
 IgvPanel.defaultProps = {
   visible: true,
 };
-const mapDispatchToProps = () => ({});
+const mapDispatchToProps = (dispatch) => ({
+  updateDomains: (domains) => dispatch(updateDomains(domains)),
+});
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   domains: state.Settings.domains,

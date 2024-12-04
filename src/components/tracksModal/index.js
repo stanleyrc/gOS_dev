@@ -299,7 +299,7 @@ TracksModal.propTypes = {
   data: PropTypes.array,
 };
 TracksModal.defaultProps = {
-  width: 1200,
+  width: 1800,
   height: 180,
   viewType: "modal",
 };

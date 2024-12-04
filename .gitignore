@@ -3,7 +3,7 @@ node_modules
 scripts/flow/*/.flowconfig
 .spec.md
 .flowconfig
-deploy.sh
+*.sh
 *~
 *.pyc
 *.swp

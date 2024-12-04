@@ -3,18 +3,15 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
 import { withTranslation } from "react-i18next";
-import { lociToDomains, domainsToLoci } from "../../helpers/utility.js";
+import { lociToDomains, domainToLoci } from "../../helpers/utility.js";
 import Wrapper from "./index.style";
-import settingsActions from "../../redux/settings/actions";
-
-const { updateDomains } = settingsActions;
 
 const margins = {};
 
 class IgvPlot extends Component {
   container = null;
   igvBrowser = null;
-  domains = [];
+  domain = [];
 
   constructor(props) {
     super(props);
@@ -25,11 +22,11 @@ class IgvPlot extends Component {
     if (this.igvInitialized) return;
     this.igvInitialized = true;
 
-    const { domains, chromoBins, url, indexURL, format, name } = this.props;
+    const { domain, chromoBins, url, indexURL, format, name } = this.props;
 
     const igvOptions = {
       genome: "hg19",
-      locus: domainsToLoci(chromoBins, domains),
+      locus: domainToLoci(chromoBins, domain),
       tracks: [
         {
           name,
@@ -48,13 +45,13 @@ class IgvPlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.domains.toString() !== this.props.domains.toString();
+    return nextProps.domain.toString() !== this.props.domain.toString();
   }
 
   componentDidUpdate() {
-    const { domains, chromoBins } = this.props;
-    if (domains.toString() !== this.domains.toString()) {
-      this.igvBrowser.search(domainsToLoci(chromoBins, domains));
+    const { domain, chromoBins } = this.props;
+    if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
+      this.igvBrowser.search(domainToLoci(chromoBins, domain));
     }
   }
 
@@ -71,8 +68,8 @@ class IgvPlot extends Component {
     try {
       // Use getLocus() to fetch the current location from the IGV browser
       let loci = await this.igvBrowser.currentLoci();
-      this.domains = lociToDomains(this.props.chromoBins, loci);
-      this.props.updateDomains(this.domains);
+      this.domain = lociToDomains(this.props.chromoBins, loci)[0];
+      this.props.updateDomain(this.domain, this.props.index);
     } catch (error) {
       console.error("Error retrieving locus:", error);
     }
@@ -88,13 +85,8 @@ class IgvPlot extends Component {
 }
 IgvPlot.propTypes = {};
 IgvPlot.defaultProps = {};
-const mapDispatchToProps = (dispatch) => ({
-  updateDomains: (domains) => dispatch(updateDomains(domains)),
-});
-const mapStateToProps = (state) => ({
-  chromoBins: state.Settings.chromoBins,
-  domains: state.Settings.domains,
-});
+const mapDispatchToProps = (dispatch) => ({});
+const mapStateToProps = (state) => ({});
 
 // Prevent Hot Module Replacement for this component
 if (module.hot) {

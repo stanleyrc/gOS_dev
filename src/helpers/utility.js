@@ -571,9 +571,7 @@ export function lociToDomains(chromoBins, loci) {
   return locationToDomains(chromoBins, location);
 }
 
-export function domainsToLoci(chromoBins, domains) {
-  //take the first domain
-  let domain = domains[0];
+export function domainToLoci(chromoBins, domain) {
   let from = domain[0];
   let to = domain[1];
   let startLoci, endLoci;
