@@ -13,6 +13,7 @@ import {
   Tag,
   Avatar,
   Typography,
+  Tabs,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -20,6 +21,7 @@ import { roleColorMap, tierColor } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import { downloadCanvasAsPng } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import TracksModal from "../tracksModal";
 
 const { Text } = Typography;
 
@@ -43,9 +45,25 @@ class FilteredEventModal extends Component {
   };
 
   render() {
-    const { t, record, handleOkClicked, handleCancelClicked, width, open } =
-      this.props;
+    const { 
+      t, 
+      record, 
+      handleOkClicked, 
+      handleCancelClicked, 
+      width, 
+      open,
+      genome,
+      mutations,
+      chromoBins,
+      genomeCoverage,
+      hetsnps,
+      genes,
+      igv,
+      allelic
+    } = this.props;
+
     if (!open) return null;
+
     const {
       gene,
       name,
@@ -62,7 +80,7 @@ class FilteredEventModal extends Component {
       effect_description,
     } = record;
 
-    let content = (
+    let summaryContent = (
       <Row
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
@@ -178,6 +196,56 @@ class FilteredEventModal extends Component {
         </Col>
       </Row>
     );
+
+    const items = [
+      {
+        key: 'filtered-event-summary',
+        label: 'Summary',
+        children: summaryContent,
+      },
+      {
+        key: 'filtered-event-plots',
+        label: 'Plots',
+        children: (
+          <TracksModal
+            {...{
+              loading: genome.loading,
+              genome,
+              mutations,
+              genomeCoverage,
+              hetsnps,
+              genes,
+              igv,
+              chromoBins,
+              allelic,
+              modalTitle: "",
+              genomePlotTitle: t("components.tracks-modal.genome-plot"),
+              genomePlotYAxisTitle: t("components.tracks-modal.genome-y-axis-title"),
+              coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
+              coverageYAxisTitle: t("components.tracks-modal.coverage-y-axis-title"),
+              coverageYAxis2Title: t("components.tracks-modal.coverage-y-axis2-title"),
+              hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
+              hetsnpPlotYAxisTitle: t("components.tracks-modal.hetsnp-plot-y-axis-title"),
+              hetsnpPlotYAxis2Title: t("components.tracks-modal.hetsnp-plot-y-axis2-title"),
+              mutationsPlotTitle: t("components.tracks-modal.mutations-plot"),
+              mutationsPlotYAxisTitle: t("components.tracks-modal.mutations-plot-y-axis-title"),
+              allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
+              allelicPlotYAxisTitle: t("components.tracks-modal.allelic-plot-y-axis-title"),
+              handleOkClicked: () => {},
+              handleCancelClicked: () => {},
+              open: true,
+              viewType: "inline",
+            }}
+          />
+        ),
+      },
+      {
+        key: 'filtered-event-notes',
+        label: 'Notes',
+        children: <div>Notes content will go here</div>,
+      },
+    ];
+
     return (
       <Wrapper visible={open}>
         <Modal
@@ -210,7 +278,9 @@ class FilteredEventModal extends Component {
           footer={null}
           forceRender={true}
         >
-          <div ref={(elem) => (this.container = elem)}>{content}</div>
+          <div ref={(elem) => (this.container = elem)}>
+            <Tabs defaultActiveKey="filtered-event-summary" items={items} />
+          </div>
         </Modal>
       </Wrapper>
     );
@@ -223,7 +293,16 @@ FilteredEventModal.defaultProps = {
   viewType: "modal",
 };
 const mapDispatchToProps = (dispatch) => ({});
-const mapStateToProps = (state) => ({});
+const mapStateToProps = (state) => ({
+  genome: state.Genome,
+  mutations: state.Mutations,
+  allelic: state.Allelic,
+  chromoBins: state.Settings.chromoBins,
+  genomeCoverage: state.GenomeCoverage,
+  hetsnps: state.Hetsnps,
+  genes: state.Genes,
+  igv: state.Igv,
+});
 export default connect(
   mapStateToProps,
   mapDispatchToProps
