@@ -397,6 +397,7 @@
         "3": "Variant of Unknown Significance (VUS)"
       },
       "event-types": {
+        "all": "All",
         "snv": "SNV",
         "cna": "CNA",
         "fusion": "Fusion"
