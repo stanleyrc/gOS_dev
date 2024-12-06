@@ -12,6 +12,10 @@ const Wrapper = styled.div`
   .ant-tabs {
     margin-top: -24px;
   }
+  
+  .ant-input-textarea {
+    width: 100%;
+  }
 `;
 
 export default Wrapper;

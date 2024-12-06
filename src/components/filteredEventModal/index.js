@@ -14,7 +14,9 @@ import {
   Avatar,
   Typography,
   Tabs,
+  Input,
 } from "antd";
+import NotesModal from "../notesModal";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -43,6 +45,7 @@ class FilteredEventModal extends Component {
         message.error(this.props.t("general.error", { error }));
       });
   };
+
 
   render() {
     const { 
@@ -242,7 +245,7 @@ class FilteredEventModal extends Component {
       {
         key: 'filtered-event-notes',
         label: 'Notes',
-        children: <div>Notes content will go here</div>,
+        children: <NotesModal record={record} />,
       },
     ];
 
@@ -286,6 +289,7 @@ class FilteredEventModal extends Component {
     );
   }
 }
+
 FilteredEventModal.propTypes = {};
 FilteredEventModal.defaultProps = {
   width: 1800,

@@ -517,6 +517,45 @@
       "coverage-y-axis-title": "↑ Base Coverage",
       "coverage-y-axis2-title": "Est. CN ↑",
       "missing-counts-axis": "Counts Axis is not available due to missing attributes."
+    },
+    "notes-modal": {
+      "enter-notes": "Enter notes here...",
+      "literature": "Literature",
+      "clinical-trials": "Clinical Trials",
+      "literature-placeholder": "Literature information will be displayed here",
+      "clinical-trials-placeholder": "Clinical trials information will be displayed here"
+    },
+    "pubmed-wizard": {
+      "search-placeholder": "Search PubMed literature...",
+      "no-results": "No results found",
+      "error-searching": "Error searching PubMed",
+      "author": "Author",
+      "author-placeholder": "Enter author name...",
+      "journal": "Journal",
+      "journal-placeholder": "Enter journal name...",
+      "date-range": "Publication Date Range",
+      "article-type": "Article Type",
+      "article-type-placeholder": "Select article types...",
+      "availability": "Availability",
+      "availability-placeholder": "Select availability...",
+      "article-types": {
+        "review": "Review",
+        "clinical-trial": "Clinical Trial",
+        "case-reports": "Case Reports",
+        "meta-analysis": "Meta-Analysis"
+      },
+      "availability-options": {
+        "free": "Free full text",
+        "full": "Full text"
+      },
+      "results": {
+        "title": "Search Results",
+        "year": "Year",
+        "journal": "Journal",
+        "abstract": "Abstract",
+        "view-on-pubmed": "View on PubMed",
+        "add-citation-tooltip": "Add article citation to notes"
+      }
     }
   },
   "tabs": {
