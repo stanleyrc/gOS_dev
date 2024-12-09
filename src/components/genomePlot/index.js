@@ -467,6 +467,13 @@ class GenomePlot extends Component {
     }
   }
 
+  handleIntervalClick(panelIndex, shape) {
+    // center this interval in the viewport
+    let newDomains = JSON.parse(JSON.stringify(this.props.domains));
+    newDomains[panelIndex] = [shape.startPlace - 1e3, shape.endPlace + 1e3];
+    this.props.updateDomains(newDomains);
+  }
+
   handlePanelMouseMove = (e, panelIndex) => {
     panelIndex > -1 &&
       this.props.updateHoveredLocation(
@@ -642,6 +649,9 @@ class GenomePlot extends Component {
                           stroke: d.stroke,
                           strokeWidth: 1,
                         }}
+                        onClick={(event) =>
+                          this.handleIntervalClick(panel.index, d)
+                        }
                       />
                     ) : (
                       <rect
@@ -670,6 +680,9 @@ class GenomePlot extends Component {
                           stroke: d.stroke,
                           strokeWidth: 1,
                         }}
+                        onClick={(event) =>
+                          this.handleIntervalClick(panel.index, d)
+                        }
                       />
                     );
                   })}
