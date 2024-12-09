@@ -1036,14 +1036,8 @@ export function transformFilteredEventAttributes(filteredEvents) {
             const snvMatch = regex.exec(event.Variant_g);
             const snvStartPoint = parseInt(snvMatch[2]);
             const snvEndPoint = parseInt(snvMatch[3]);
-            const geneStartPoint = parseInt(startPoint);
-            const geneEndPoint = parseInt(endPoint);
 
-            let padding =
-              snvStartPoint - geneStartPoint > geneEndPoint - snvEndPoint
-                ? snvStartPoint - geneStartPoint
-                : geneEndPoint - snvEndPoint;
-            padding += 1000;
+            let padding = 250;
             startPoint = parseInt(snvStartPoint - padding);
             endPoint = parseInt(snvEndPoint + padding);
             location = event.Variant_g;
