@@ -14,7 +14,6 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  Badge,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -31,6 +30,7 @@ const { Text } = Typography;
 const { selectFilteredEvent } = filteredEventsActions;
 
 const eventColumns = {
+  all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   snv: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12],
   cna: [0, 1, 2, 3, 4, 5, 7, 12],
   fusion: [0, 1, 2, 3, 4, 5, 8, 12],
@@ -38,7 +38,7 @@ const eventColumns = {
 
 class FilteredEventsListPanel extends Component {
   state = {
-    eventType: Object.keys(eventColumns)[0],
+    eventType: "all",
   };
 
   handleSegmentedChange = (eventType) => {
@@ -69,8 +69,12 @@ class FilteredEventsListPanel extends Component {
 
     let { eventType } = this.state;
 
-    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
-    let records = recordsHash.get(eventType) || [];
+    let recordsHash = d3.group(
+      filteredEvents.filter((d) => d.tier && +d.tier < 3),
+      (d) => d.eventType
+    );
+    let records =
+      (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
     const columns = [
       {
@@ -478,14 +482,21 @@ class FilteredEventsListPanel extends Component {
                                 eventType: t(
                                   `components.filtered-events-panel.event-types.${d}`
                                 ),
-                                count: (recordsHash.get(d) || []).length,
+                                count: (d === "all"
+                                  ? filteredEvents
+                                  : recordsHash.get(d) || []
+                                ).length,
                               }
                             ),
                           }}
                         />
                       ),
                       value: d,
-                      disabled: (recordsHash.get(d) || []).length === 0,
+                      disabled:
+                        (d === "all"
+                          ? filteredEvents
+                          : recordsHash.get(d) || []
+                        ).length === 0,
                     };
                   })}
                   onChange={(d) => this.handleSegmentedChange(d)}

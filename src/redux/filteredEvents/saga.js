@@ -23,12 +23,10 @@ function* fetchFilteredEvents(action) {
 
     let filteredEvents = transformFilteredEventAttributes(
       responseReportFilteredEvents.data || []
-    )
-      .filter((d) => +d.tier !== 3)
-      .map((d) => {
-        d.eventType = getEventType(d);
-        return d;
-      });
+    ).map((d) => {
+      d.eventType = getEventType(d);
+      return d;
+    });
 
     let selectedFilteredEvent = filteredEvents.find(
       (e) =>

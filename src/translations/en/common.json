@@ -364,8 +364,8 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
-      "event": "<strong>{{count}}</strong> {{eventType}} event",
-      "event_plural": "<strong>{{count}}</strong> {{eventType}} events",
+      "event": "<strong>{{count}}</strong> {{eventType}} Event",
+      "event_plural": "<strong>{{count}}</strong> {{eventType}} Events",
       "info": "Filtered Event Info",
       "header": "Filtered Events",
       "genome-plot": "Genome Plot",
@@ -397,9 +397,10 @@
         "3": "Variant of Unknown Significance (VUS)"
       },
       "event-types": {
-        "snv": "SNV",
-        "cna": "CNA",
-        "fusion": "Fusion"
+        "all": "All",
+        "snv": "Oncogenic Small Mutations",
+        "cna": "Oncogenic CNA",
+        "fusion": "Oncogenic Fusions"
       },
       "select-type": {
         "placeholder": "select one or many"
