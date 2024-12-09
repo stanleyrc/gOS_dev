@@ -86,7 +86,7 @@ class NotesModal extends Component {
                 header={t("components.notes-modal.literature")} 
                 key="literature"
               >
-                <PubmedWizard onAddCitation={this.handleAddCitation} />
+                <PubmedWizard t={t} onAddCitation={this.handleAddCitation} record={this.props.record} />
               </Collapse.Panel>
               <Collapse.Panel 
                 header={t("components.notes-modal.clinical-trials")} 

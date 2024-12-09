@@ -15,8 +15,18 @@ import { withTranslation } from "react-i18next";
 import { usePubmedSearch } from "../../hooks/usePubmedSearch";
 
 const { RangePicker } = DatePicker;
-const PubmedWizard = ({ t, onAddCitation }) => {
-  const [searchTerm, setSearchTerm] = useState("");
+const PubmedWizard = ({ t, onAddCitation, record }) => {
+  console.log(record)
+  const [searchTerm, setSearchTerm] = useState(() => {
+    if (!record) return "";
+  
+    const terms = [];
+    if (record.gene) terms.push(record.gene);
+    if (record.type) terms.push(record.type);
+    if (record.effect && record.effect !== "Unknown") terms.push(record.effect);
+  
+    return terms.join(" ");
+  });
   const [results, setResults] = useState([]);
   const [prevSearchTerm, setPrevSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -166,10 +176,8 @@ const PubmedWizard = ({ t, onAddCitation }) => {
             onChange={handlePageChange}
             showTotal={() => `${range[0]}-${range[1]} of ${total}`}
             style={{ marginTop: '20px', textAlign: 'center' }}
-            showTotal={() => `${range[0]}-${range[1]} of ${total}`}
             showSizeChanger={false}
             showQuickJumper={true}
-            style={{ marginTop: '20px', textAlign: 'center' }}
           />
         )}
       </ResultsSection>
