@@ -398,9 +398,9 @@
       },
       "event-types": {
         "all": "All",
-        "snv": "SNV",
-        "cna": "CNA",
-        "fusion": "Fusion"
+        "snv": "oncogenic small mutations",
+        "cna": "oncogenic cna",
+        "fusion": "oncogenic fusions"
       },
       "select-type": {
         "placeholder": "select one or many"

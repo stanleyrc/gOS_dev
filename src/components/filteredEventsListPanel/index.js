@@ -69,7 +69,10 @@ class FilteredEventsListPanel extends Component {
 
     let { eventType } = this.state;
 
-    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
+    let recordsHash = d3.group(
+      filteredEvents.filter((d) => d.tier && +d.tier < 3),
+      (d) => d.eventType
+    );
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
