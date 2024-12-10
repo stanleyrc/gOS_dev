@@ -92,7 +92,7 @@ class IgvPanel extends Component {
 
     return (
       <Wrapper visible={visible}>
-        {error && false ? (
+        {error ? (
           <ErrorPanel
             avatar={<img src={logo} alt="logo" height={16} />}
             header={
