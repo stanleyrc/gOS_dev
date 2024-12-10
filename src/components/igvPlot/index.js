@@ -31,6 +31,7 @@ class IgvPlot extends Component {
       locus: domainToLoci(chromoBins, domain),
       tracks: [
         {
+          id: name,
           name,
           url,
           indexURL,
@@ -41,10 +42,14 @@ class IgvPlot extends Component {
 
     igv.createBrowser(this.container, igvOptions).then((browser) => {
       this.igvBrowser = browser;
-      this.igvBrowser.sort({
-        option: "BASE",
-        direction: "ASC",
-      });
+      // Sort the first track by BASE Ascending
+      const track = this.igvBrowser.findTracks("id", name)[0];
+      if (track) {
+        track.sort({
+          option: "BASE",
+          direction: "ASC",
+        });
+      }
       // Add location change listener
       this.igvBrowser.on("locuschange", this.handleLocusChange);
     });
@@ -58,10 +63,6 @@ class IgvPlot extends Component {
     const { domain, chromoBins } = this.props;
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
       this.igvBrowser.search(domainToLoci(chromoBins, domain));
-      this.igvBrowser.sort({
-        option: "BASE",
-        direction: "ASC",
-      });
     }
   }
 
