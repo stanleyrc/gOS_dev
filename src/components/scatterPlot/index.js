@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import debounce from "lodash.debounce";
 import { findMaxInRanges } from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
@@ -36,6 +37,7 @@ class ScatterPlot extends Component {
     this.maxDataPointsY = d3.max(this.dataPointsY);
     this.dataPointsX = data.getChild("x").toArray();
     this.dataPointsColor = data.getChild("color").toArray();
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
   componentDidMount() {
@@ -93,6 +95,17 @@ class ScatterPlot extends Component {
     this.updateStage();
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      nextProps.domains.toString() !== this.props.domains.toString() ||
+      nextProps.width !== this.props.width ||
+      nextProps.height !== this.props.height ||
+      nextProps.hoveredLocation !== this.props.hoveredLocation ||
+      nextProps.hoveredLocationPanelIndex !==
+        this.props.hoveredLocationPanelIndex
+    );
+  }
+
   componentDidUpdate(prevProps, prevState) {
     const {
       domains,
@@ -127,7 +140,7 @@ class ScatterPlot extends Component {
             .translate(-s[0], 0)
         );
     });
-    if (this.panels[hoveredLocationPanelIndex] && hoveredLocation) {
+    if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.plotContainer)
         .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
         .classed("hidden", !hoveredLocation)
@@ -242,7 +255,7 @@ class ScatterPlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.props.updateDomains(newDomains);
+        this.debouncedUpdateDomains(newDomains);
       });
     }
   }

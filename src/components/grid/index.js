@@ -365,7 +365,7 @@ class Grid extends Component {
     let randId = `cutt-off-clip-${Math.random()}`;
     return (
       <Wrapper
-        className="axis axis-container"
+        className="axis axis-container ant-wrapper"
         ref={(elem) => (this.container = elem)}
       >
         <defs>

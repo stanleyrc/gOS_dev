@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import debounce from "lodash.debounce";
 import Wrapper from "./index.style";
 import { humanize, measureText } from "../../helpers/utility";
 import Plot from "./plot";
@@ -35,6 +36,7 @@ class GenesPlot extends Component {
         text: "",
       },
     };
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
   componentDidMount() {
@@ -62,6 +64,14 @@ class GenesPlot extends Component {
 
     this.plot = new Plot(this.regl, margins.gapX, 0);
     this.updateStage();
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      nextProps.domains.toString() !== this.props.domains.toString() ||
+      nextProps.width !== this.props.width ||
+      nextProps.height !== this.props.height
+    );
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -210,7 +220,7 @@ class GenesPlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.props.updateDomains(newDomains);
+        this.debouncedUpdateDomains(newDomains);
       });
     }
   }

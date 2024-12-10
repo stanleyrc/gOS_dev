@@ -67,6 +67,7 @@ class TracksModal extends Component {
       open,
       viewType,
     } = this.props;
+
     if (!open) return null;
     const { cov_slope, cov_intercept, hets_slope, hets_intercept } = metadata;
     let content = (

@@ -3,6 +3,16 @@ import styled from "styled-components";
 const Wrapper = styled.g`
   .ant-wrapper {
     background: white;
+    pointer-events: none;
+    user-select: none;
+  }
+  g,
+  line,
+  circle,
+  text,
+  path {
+    pointer-events: none !important;
+    user-select: none !important;
   }
   .axis text,
   .y-axis-title {
@@ -27,6 +37,7 @@ const Wrapper = styled.g`
   .chromo-separator line {
     stroke-width: 1.5;
     stroke-dasharray: 2, 2;
+    pointer-events: none;
   }
   .label-chromosome {
     font-size: 10px;

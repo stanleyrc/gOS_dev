@@ -114,6 +114,7 @@ class GenomePanel extends Component {
       domains,
       mutationsPlot,
     } = this.props;
+    if (!visible) return null;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
 
@@ -150,6 +151,14 @@ class GenomePanel extends Component {
                   <GiDna2 />
                 </span>
                 <span className="ant-pro-menu-item-title">{title}</span>
+                {genome && (
+                  <span>
+                    <b>{d3.format(",")(genome.intervals.length)}</b>{" "}
+                    {t("components.genome-panel.interval", {
+                      count: genome.intervals.length,
+                    })}
+                  </span>
+                )}
                 <span>{domainsToLocation(chromoBins, domains)}</span>
               </Space>
             }

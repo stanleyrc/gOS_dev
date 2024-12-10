@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import * as d3 from "d3";
+import debounce from "lodash.debounce";
 import Wrapper from "./index.style";
 import Connection from "../../helpers/connection";
 import {
@@ -43,6 +44,7 @@ class GenomePlot extends Component {
         text: "",
       },
     };
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 10);
   }
 
   updatePanels() {
@@ -383,7 +385,7 @@ class GenomePlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.props.updateDomains(newDomains);
+        this.debouncedUpdateDomains(newDomains);
       });
     }
   }
@@ -475,15 +477,18 @@ class GenomePlot extends Component {
   }
 
   handlePanelMouseMove = (e, panelIndex) => {
-    panelIndex > -1 &&
+    if (panelIndex > -1) {
       this.props.updateHoveredLocation(
         this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
         panelIndex
       );
+    }
   };
 
   handlePanelMouseOut = (e, panelIndex) => {
-    panelIndex > -1 && this.props.updateHoveredLocation(null, panelIndex);
+    if (panelIndex > -1) {
+      this.props.updateHoveredLocation(null, panelIndex);
+    }
   };
 
   render() {
@@ -583,6 +588,28 @@ class GenomePlot extends Component {
                 id={`panel-${panel.index}`}
                 transform={`translate(${[panel.offset, 0]})`}
               >
+                <g ref={(elem) => (this.grid = elem)}>
+                  <Grid
+                    scaleX={panel.xScale}
+                    scaleY={panel.yScale}
+                    axisWidth={panel.panelWidth}
+                    axisHeight={panel.panelHeight}
+                    chromoBins={chromoBins}
+                  />
+                  <line
+                    className="hovered-location-line hidden"
+                    id={`hovered-location-line-${panel.index}`}
+                    y1={0}
+                    y2={panel.panelHeight}
+                  />
+                  <text
+                    className="hovered-location-text"
+                    id={`hovered-location-text-${panel.index}`}
+                    x={-1000}
+                    dx={5}
+                    dy={10}
+                  ></text>
+                </g>
                 <rect
                   className="zoom-background"
                   id={`panel-rect-${panel.index}`}
@@ -599,32 +626,6 @@ class GenomePlot extends Component {
                     pointerEvents: "all",
                   }}
                 />
-                <g ref={(elem) => (this.grid = elem)}>
-                  {
-                    <>
-                      <Grid
-                        scaleX={panel.xScale}
-                        scaleY={panel.yScale}
-                        axisWidth={panel.panelWidth}
-                        axisHeight={panel.panelHeight}
-                        chromoBins={chromoBins}
-                      />
-                      <line
-                        className="hovered-location-line hidden"
-                        id={`hovered-location-line-${panel.index}`}
-                        y1={0}
-                        y2={panel.panelHeight}
-                      />
-                      <text
-                        className="hovered-location-text"
-                        id={`hovered-location-text-${panel.index}`}
-                        x={-1000}
-                        dx={5}
-                        dy={10}
-                      ></text>
-                    </>
-                  }
-                </g>
                 <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
                     return mutationsPlot ? (

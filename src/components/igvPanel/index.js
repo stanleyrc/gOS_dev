@@ -86,7 +86,7 @@ class IgvPanel extends Component {
       dataset,
       id,
     } = this.props;
-
+    if (!visible) return null;
     let url = `${dataset.dataPath}${id}/${filename}`;
     let indexURL = `${dataset.dataPath}${id}/${filenameIndex}`;
 

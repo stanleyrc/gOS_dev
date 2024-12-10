@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
+import debounce from "lodash.debounce";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
 import { withTranslation } from "react-i18next";
 import { lociToDomains, domainToLoci } from "../../helpers/utility.js";
@@ -16,6 +17,7 @@ class IgvPlot extends Component {
   constructor(props) {
     super(props);
     this.igvInitialized = false;
+    this.debouncedUpdateDomain = debounce(this.props.updateDomain, 100);
   }
 
   componentDidMount() {
@@ -39,6 +41,10 @@ class IgvPlot extends Component {
 
     igv.createBrowser(this.container, igvOptions).then((browser) => {
       this.igvBrowser = browser;
+      this.igvBrowser.sort({
+        option: "BASE",
+        direction: "ASC",
+      });
       // Add location change listener
       this.igvBrowser.on("locuschange", this.handleLocusChange);
     });
@@ -52,6 +58,10 @@ class IgvPlot extends Component {
     const { domain, chromoBins } = this.props;
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
       this.igvBrowser.search(domainToLoci(chromoBins, domain));
+      this.igvBrowser.sort({
+        option: "BASE",
+        direction: "ASC",
+      });
     }
   }
 
@@ -69,7 +79,7 @@ class IgvPlot extends Component {
       // Use getLocus() to fetch the current location from the IGV browser
       let loci = await this.igvBrowser.currentLoci();
       this.domain = lociToDomains(this.props.chromoBins, loci)[0];
-      this.props.updateDomain(this.domain, this.props.index);
+      this.debouncedUpdateDomain(this.domain, this.props.index);
     } catch (error) {
       console.error("Error retrieving locus:", error);
     }

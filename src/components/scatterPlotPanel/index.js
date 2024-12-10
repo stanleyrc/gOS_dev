@@ -120,6 +120,7 @@ class ScatterPlotPanel extends Component {
       flipAxesY,
       notification,
     } = this.props;
+    if (!visible) return null;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
     //if (!data) return null;
