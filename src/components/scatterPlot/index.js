@@ -147,7 +147,8 @@ class ScatterPlot extends Component {
         .attr(
           "transform",
           `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation),
+            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+              -10000,
             0,
           ]})`
         );
@@ -155,7 +156,8 @@ class ScatterPlot extends Component {
         .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
         .attr(
           "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation)
+          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+            -10000
         )
         .text(
           Object.values(chromoBins)

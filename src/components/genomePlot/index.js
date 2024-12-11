@@ -324,7 +324,7 @@ class GenomePlot extends Component {
         .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
         .attr(
           "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation)
+          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) || -10000
         )
         .text(
           Object.values(chromoBins)

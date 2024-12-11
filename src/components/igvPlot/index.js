@@ -25,10 +25,10 @@ class IgvPlot extends Component {
     this.igvInitialized = true;
 
     const { domain, chromoBins, url, indexURL, format, name } = this.props;
-
+    let locus = domainToLoci(chromoBins, domain);
     const igvOptions = {
       genome: "hg19",
-      locus: domainToLoci(chromoBins, domain),
+      locus,
       tracks: [
         {
           id: name,
@@ -42,27 +42,58 @@ class IgvPlot extends Component {
 
     igv.createBrowser(this.container, igvOptions).then((browser) => {
       this.igvBrowser = browser;
+      // Add location change listener
+      this.igvBrowser.on("locuschange", this.handleLocusChange);
+
       // Sort the first track by BASE Ascending
       const track = this.igvBrowser.findTracks("id", name)[0];
       if (track) {
+        // Extract chromosome and position range
+        const [chromosome, range] = locus.split(":");
+        const [start, end] = range.split("-").map(Number);
+
+        // Calculate the midpoint
+        const midpoint = Math.floor((start + end) / 2);
+        console.log("here", track, locus, chromosome, midpoint);
         track.sort({
+          chr: chromosome,
+          position: midpoint,
           option: "BASE",
           direction: "ASC",
         });
       }
-      // Add location change listener
-      this.igvBrowser.on("locuschange", this.handleLocusChange);
     });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.domain.toString() !== this.props.domain.toString();
+    return (
+      nextProps.domain.toString() !== this.props.domain.toString() ||
+      nextProps.url.toString() !== this.props.url.toString()
+    );
   }
 
   componentDidUpdate() {
-    const { domain, chromoBins } = this.props;
+    const { domain, chromoBins, name } = this.props;
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
-      this.igvBrowser.search(domainToLoci(chromoBins, domain));
+      let locus = domainToLoci(chromoBins, domain);
+      this.igvBrowser.search(locus);
+
+      // Sort the first track by BASE Ascending
+      const track = this.igvBrowser.findTracks("id", name)[0];
+      if (track) {
+        // Extract chromosome and position range
+        const [chromosome, range] = locus.split(":");
+        const [start, end] = range.split("-").map(Number);
+
+        // Calculate the midpoint
+        const midpoint = Math.floor((start + end) / 2);
+        track.sort({
+          chr: chromosome,
+          position: midpoint,
+          option: "BASE",
+          direction: "ASC",
+        });
+      }
     }
   }
 
