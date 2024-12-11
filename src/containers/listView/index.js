@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
+import GoslingChat from '../../components/goslingChat';
 import {
   Row,
   Col,
@@ -29,14 +30,14 @@ const { Text } = Typography;
 class ListView extends Component {
   formRef = React.createRef();
 
-  onValuesChange = (values) => {
-    this.props.onSearch({
-      ...this.props.searchFilters,
-      ...this.formRef.current.getFieldsValue(),
-      page: 1,
-      per_page: 10,
-      orderId: 1,
-    });
+  state = {
+    isChatOpen: false
+  };
+
+  handleChatClick = () => {
+    this.setState(prevState => ({
+      isChatOpen: !prevState.isChatOpen
+    }));
   };
 
   onReset = () => {
@@ -72,6 +73,16 @@ class ListView extends Component {
       ...{ page: 1, per_page: 10, orderId },
     };
     this.props.onSearch(searchFilters);
+  };
+
+  onValuesChange = (values) => {
+    this.props.onSearch({
+      ...this.props.searchFilters,
+      ...this.formRef.current.getFieldsValue(),
+      page: 1,
+      per_page: 10,
+      orderId: 1,
+    });
   };
 
   render() {
@@ -295,7 +306,16 @@ class ListView extends Component {
             )}
           </div>
         </Form>
-      </Wrapper>
+      {this.state.isChatOpen && <GoslingChat onClose={this.handleChatClick} />}
+      <Button
+        type="primary"
+        shape="circle"
+        onClick={this.handleChatClick}
+        className="chat-float-button"
+      >
+        🐦
+      </Button>
+    </Wrapper>
     );
   }
 }

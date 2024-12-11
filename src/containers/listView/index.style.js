@@ -7,6 +7,22 @@ const Wrapper = styled.div`
     border: 1px solid rgb(235, 237, 240);
     padding-bottom: 50px;
   }
+  .chat-float-button {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 100;
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+  }
   .ant-home-content-container {
     margin: 24px;
     margin-top: -45.5px;
