@@ -55,11 +55,9 @@ const NotesModal = ({
 
     const pmids = extractPMIDs(notes);
     if (pmids.length === 0) {
-      message.info(t('components.notes-modal.no-pmids-found'));
       return {};
     }
 
-    setIsLoading(true);
     const paperSummaries = {};
     try {
       for (const pmid of pmids) {
@@ -82,7 +80,6 @@ const NotesModal = ({
       console.error('Error fetching full text:', error);
       message.error(t('components.notes-modal.fetch-error'));
     } finally {
-      setIsLoading(false);
     }
   };
 
@@ -94,11 +91,9 @@ const NotesModal = ({
 
     const nctIds = extractNCTIDs(notes);
     if (nctIds.length === 0) {
-      message.info(t('components.notes-modal.no-nctids-found'));
       return;
     }
 
-    setIsLoading(true);
     try {
       const idList = nctIds.join(',');
       const results = await searchClinicalTrials({ terms: idList });
@@ -115,7 +110,6 @@ const NotesModal = ({
       console.error('Error fetching clinical trials:', error);
       message.error(t('components.notes-modal.fetch-error'));
     } finally {
-      setIsLoading(false);
     }
   };
 
@@ -136,6 +130,12 @@ const NotesModal = ({
   };
 
   const handleAddCitation = (citation) => {
+    // Check if citation already exists in notes
+    if (notes && notes.includes(citation)) {
+      message.info(t('components.notes-modal.citation-exists'));
+      return;
+    }
+
     const updatedNotes = notes ? `${notes}\n${citation}` : citation;
     setNotes(updatedNotes);
     

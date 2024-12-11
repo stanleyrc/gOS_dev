@@ -238,6 +238,8 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
                   <div>
                     <div>NCT ID: {item.nctId}</div>
                     <div>Status: {item.status}</div>
+                    <div>Conditions: {Array.isArray(item.conditions) && item.conditions.length > 0 ? item.conditions.join(', ') : item.conditions}</div>
+                    <div>Keywords: {Array.isArray(item.keywords) && item.keywords.length > 0 ? item.keywords.join(', ') : item.keywords}</div>
                   </div>
                 }
               />

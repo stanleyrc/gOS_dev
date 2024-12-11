@@ -58,12 +58,16 @@ export const useClinicalTrialsSearch = () => {
         const identificationModule = protocolSection.identificationModule || {};
         const statusModule = protocolSection.statusModule || {};
         const descriptionModule = protocolSection.descriptionModule || {};
+        const conditionsModule = protocolSection.conditionsModule || {};
         const eligibilityModule = protocolSection.eligibilityModule || {};
+        console.log(conditionsModule.keywords);
 
         return {
           nctId: identificationModule.nctId || 'N/A',
           title: identificationModule.briefTitle || 'No title available',
           description: descriptionModule.briefSummary || 'No description available',
+          conditions: conditionsModule.conditions || 'No conditions available',
+          keywords: conditionsModule.keywords || 'No keywords available',
           status: statusModule.overallStatus || 'Status not available',
           link: `https://clinicaltrials.gov/study/${identificationModule.nctId}`,
           eligibilityCriteria: eligibilityModule.eligibilityCriteria || 'No eligibility criteria available'

@@ -530,7 +530,12 @@
       "clinical-trials": "Clinical Trials",
       "literature-placeholder": "Literature information will be displayed here",
       "clinical-trials-placeholder": "Clinical trials information will be displayed here",
-      "generate-notes": "Generate Notes"
+      "generate-note": "Generate Note",
+      "empty-notes": "Please enter some notes first",
+      "fetch-error": "Error fetching data",
+      "gpt-error": "Error generating note",
+      "citation-exists": "This citation has already been added to the notes",
+      "storage-limit-reached": "Storage limit reached"
     },
     "pubmed-wizard": {
       "search-placeholder": "Search PubMed literature...",

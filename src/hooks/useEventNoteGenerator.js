@@ -24,20 +24,54 @@ Format your response in markdown with the following sections:
 ## FREQUENCY & PROGNOSIS
 [Frequency and prognosis information]
 
-Base your analysis on the provided genomic data, research papers, clinical trials, and clinician notes.
-Be precise and clinical in your language, similar to FoundationOne CDx reports.`;
+## REFERENCES
+[List references which are directly cited in this report in APA format]
+
+Base your analysis ONLY on the provided event data, research papers, clinical trials, and clinician notes. Do not include any additional information outside of the provided context.
+Be precise and clinical in your language, similar to FoundationOne CDx reports.
+Only use the headers provided above. Do not include any additional sections.`;
 
 /**
  * Formats input data into a structured string for GPT processing
  */
 function formatInputData(record, metadata, paperSummaries, clinicalTrials, clinicianNotes) {
-  // For now, just concatenate everything with section headers
+  // Extract only specified fields from record
+  const relevantRecord = {
+    gene: record.gene,
+    type: record.type,
+    tier: record.tier,
+    role: record.role,
+    variant: record.variant,
+    therapeutics: record.therapeutics,
+    resistances: record.resistances,
+    estimatedAlteredCopies: record.estimatedAlteredCopies,
+    effect: record.effect,
+    refCounts: record.refCounts,
+    altCounts: record.altCounts,
+    vaf: record.vaf,
+    segmentCopyNumber: record.segmentCopyNumber,
+    variant_summary: record.variant_summary,
+    gene_summary: record.gene_summary,
+    effect_description: record.effect_description,
+    eventType: record.eventType
+  };
+
+  // Extract only specified fields from metadata
+  const relevantMetadata = {
+    pair: metadata.pair,
+    tumor: metadata.tumor,
+    disease: metadata.disease,
+    primary_site: metadata.primary_site,
+    sex: metadata.sex
+  };
+
+  // Return formatted string with filtered data
   return `
 GENOMIC EVENT RECORD:
-${JSON.stringify(record, null, 2)}
+${JSON.stringify(relevantRecord, null, 2)}
 
 CASE METADATA:
-${JSON.stringify(metadata, null, 2)}
+${JSON.stringify(relevantMetadata, null, 2)}
 
 RESEARCH PAPER SUMMARIES:
 ${Object.entries(paperSummaries)
