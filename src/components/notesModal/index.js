@@ -1,25 +1,40 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
-import { Row, Col, Input, message, Collapse } from "antd";
-import { useGPT } from '../../hooks/useGPT';
-import { Button } from 'antd';
+import { connect } from "react-redux";
+import { Button, Row, Col, Input, message, Collapse } from "antd";
 import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
 import { usePubmedFullText } from '../../hooks/usePubmedFullText';
+import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
+import { useEventNoteGenerator } from "../../hooks/useEventNoteGenerator";
 import PubmedWizard from "../pubmedWizard";
 import ClinicalTrialsWizard from "../clinicalTrialsWizard";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
-import { extractPMIDs, extractNCTIDs } from '../../helpers/notes';
+import { extractPMIDs, extractNCTIDs, formatClinicalTrials } from '../../helpers/notes';
 
 const API_CALL_DELAY = 1000;
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const NotesModal = ({ record, t }) => {
+const NotesModal = ({ 
+  record, 
+  t,
+  id,
+  report,
+  genome,
+  mutations,
+  allelic,
+  chromoBins,
+  genomeCoverage,
+  hetsnps,
+  genes,
+  igv 
+}) => {
   const [notes, setNotes] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
-  const { queryGPT } = useGPT();
+  const generateNote = useEventNoteGenerator();
   const { summarizePaper } = usePaperSummarizer();
   const { getFullText, isLoading: isLoadingFullText } = usePubmedFullText();
+  const { searchClinicalTrials } = useClinicalTrialsSearch();
 
   React.useEffect(() => {
     if (record) {
@@ -35,13 +50,13 @@ const NotesModal = ({ record, t }) => {
   const handleExtractLiteratureFullText = async () => {
     if (!notes.trim()) {
       message.warning(t('components.notes-modal.empty-notes'));
-      return;
+      return {};
     }
 
     const pmids = extractPMIDs(notes);
     if (pmids.length === 0) {
       message.info(t('components.notes-modal.no-pmids-found'));
-      return;
+      return {};
     }
 
     setIsLoading(true);
@@ -61,7 +76,8 @@ const NotesModal = ({ record, t }) => {
         }
         await delay(API_CALL_DELAY);
       }
-    console.log('Paper Summaries:', paperSummaries);
+      console.log('Paper Summaries:', paperSummaries);
+      return paperSummaries;
     } catch (error) {
       console.error('Error fetching full text:', error);
       message.error(t('components.notes-modal.fetch-error'));
@@ -69,6 +85,40 @@ const NotesModal = ({ record, t }) => {
       setIsLoading(false);
     }
   };
+
+  const handleExtractClinicalTrials = async () => {
+    if (!notes.trim()) {
+      message.warning(t('components.notes-modal.empty-notes'));
+      return;
+    }
+
+    const nctIds = extractNCTIDs(notes);
+    if (nctIds.length === 0) {
+      message.info(t('components.notes-modal.no-nctids-found'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const idList = nctIds.join(',');
+      const results = await searchClinicalTrials({ terms: idList });
+      const trialsObject = {};
+      
+      // Convert array to object keyed by NCT ID
+      results.results.forEach(trial => {
+        trialsObject[trial.nctId] = formatClinicalTrials(trial);
+      });
+      
+      console.log('Clinical Trials:', trialsObject);
+      return trialsObject;
+    } catch (error) {
+      console.error('Error fetching clinical trials:', error);
+      message.error(t('components.notes-modal.fetch-error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const handleNotesChange = (e) => {
     const newNotes = e.target.value;
@@ -100,8 +150,7 @@ const NotesModal = ({ record, t }) => {
     }
   };
 
-  // Add this new handler for GPT submission
-  const handleGPTSubmit = async () => {
+  const handleGenerateEventNote = async () => {
     if (!notes.trim()) {
       message.warning(t('components.notes-modal.empty-notes'));
       return;
@@ -109,7 +158,17 @@ const NotesModal = ({ record, t }) => {
 
     setIsLoading(true);
     try {
-      const response = await queryGPT(notes);
+      const paperSummaries = await handleExtractLiteratureFullText();
+      const clinicalTrials = await handleExtractClinicalTrials();
+    
+      const response = await generateNote(
+        record,
+        report,
+        paperSummaries,  
+        clinicalTrials,  
+        notes 
+      )
+
       if (response) {
         const updatedNotes = `${response}`;
         setNotes(updatedNotes);
@@ -119,7 +178,7 @@ const NotesModal = ({ record, t }) => {
       }
     } catch (error) {
       message.error(t('components.notes-modal.gpt-error'));
-      console.error('GPT Error:', error);
+      console.error('Note Generation Error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -137,13 +196,13 @@ const NotesModal = ({ record, t }) => {
           />
           <Button 
             type="primary"
-            onClick={handleExtractLiteratureFullText}
+            onClick={handleGenerateEventNote}
             loading={isLoading || isLoadingFullText}
-            style={{ marginTop: '8px' }}
+            style={{ marginTop: '8px', marginLeft: '8px' }}
           >
-            {t("components.notes-modal.extract-literature")}
+            {t("components.notes-modal.generate-note")}
           </Button>
-        </Col>
+        </Col> 
       </Row>
       <Row style={{ marginTop: '16px' }}>
         <Col span={24}>
@@ -171,12 +230,35 @@ const NotesModal = ({ record, t }) => {
   );
 }
 
+const mapStateToProps = (state) => ({
+  id: state.CaseReport.id,
+  report: state.CaseReport.metadata,
+  genome: state.Genome,
+  mutations: state.Mutations,
+  allelic: state.Allelic,
+  chromoBins: state.Settings.chromoBins,
+  genomeCoverage: state.GenomeCoverage,
+  hetsnps: state.Hetsnps,
+  genes: state.Genes,
+  igv: state.Igv,
+});
+
 NotesModal.propTypes = {
   record: PropTypes.shape({
     gene: PropTypes.string,
     location: PropTypes.string,
   }),
   t: PropTypes.func.isRequired,
+  id: PropTypes.string,
+  report: PropTypes.object,
+  genome: PropTypes.object,
+  mutations: PropTypes.object,
+  allelic: PropTypes.object,
+  chromoBins: PropTypes.object,
+  genomeCoverage: PropTypes.object,
+  hetsnps: PropTypes.object,
+  genes: PropTypes.object,
+  igv: PropTypes.object,
 };
 
-export default withTranslation("common")(NotesModal);
+export default connect(mapStateToProps)(withTranslation("common")(NotesModal));

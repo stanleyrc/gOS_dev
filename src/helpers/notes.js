@@ -15,6 +15,22 @@ export function extractPMIDs(text) {
 }
 
 /**
+ * Formats clinical trial results into a readable string
+ * @param {Object[]} trials - Array of clinical trial objects
+ * @returns {string} Formatted string of trial information
+ */
+export function formatClinicalTrials(trial) {
+    return `
+Trial ID: ${trial.nctId}
+Title: ${trial.title}
+Status: ${trial.status}
+Link: ${trial.link}
+Description: ${trial.description}
+Eligibility:\n${trial.eligibilityCriteria.replace(/^/gm, '\t')}
+----------------------------------------`;
+}
+
+/**
  * Extracts NCT IDs from text containing "NCT ID: {number}" patterns
  * @param {string} text - Input text that may contain NCT ID references
  * @returns {string[]} Array of NCT IDs found in the text
