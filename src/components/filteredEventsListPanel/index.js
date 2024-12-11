@@ -14,7 +14,10 @@ import {
   Tooltip,
   Avatar,
   Typography,
+  message
 } from "antd";
+import { FileTextOutlined } from '@ant-design/icons';
+import { generateEventNotesPDF } from '../../helpers/notes';
 import * as d3 from "d3";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
@@ -39,6 +42,32 @@ const eventColumns = {
 class FilteredEventsListPanel extends Component {
   state = {
     eventType: "all",
+  };
+
+  handleExportNotes = () => {
+    const { t, id, filteredEvents } = this.props;
+    
+    try {
+      // Generate PDF
+      message.loading({ content: t('components.filtered-events-panel.generating-pdf'), key: 'export' });
+      const doc = generateEventNotesPDF(filteredEvents, id);
+      
+      // Check if any notes were found
+      if (doc.internal.pages.length <= 1) {
+        message.warning(t('components.filtered-events-panel.no-notes'));
+        return;
+      }
+      
+      // Save the PDF
+      doc.save(`${id}_events_report.pdf`);
+      message.success({ content: t('components.filtered-events-panel.export.success'), key: 'export' });
+    } catch (error) {
+      console.error('Export error:', error);
+      message.error({ 
+        content: t('components.filtered-events-panel.export.error'), 
+        key: 'export' 
+      });
+    }
   };
 
   handleSegmentedChange = (eventType) => {
@@ -469,6 +498,14 @@ class FilteredEventsListPanel extends Component {
         ) : (
           <>
             <Row className="ant-panel-container ant-home-plot-container">
+              <Button
+                type="primary"
+                icon={<FileTextOutlined />}
+                onClick={this.handleExportNotes}
+                style={{ marginBottom: 16 }}
+              >
+                {t('components.filtered-events-panel.export.notes')}
+              </Button>
               <Col className="gutter-row table-container" span={24}>
                 <Segmented
                   options={Object.keys(eventColumns).map((d) => {

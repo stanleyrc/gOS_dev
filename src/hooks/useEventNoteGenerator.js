@@ -4,14 +4,13 @@ import { useGPT } from './useGPT';
 const SYSTEM_PROMPT = `You are a genomic report generator that creates reports in the style of FoundationOne CDx reports. 
 Format your response in markdown with the following sections:
 
-# GENOMIC FINDINGS
-## GENE
-[Gene name and details]
+## [GENE NAME]
+[Gene summary]
 
-## ALTERATION
+### Alteration
 [Specific alteration details]
 
-## VARIANT ALLELE FREQUENCY (% VAF)
+### Variant Allele Frequency (VAF)
 [Frequency information]
 
 ## POTENTIAL TREATMENT STRATEGIES

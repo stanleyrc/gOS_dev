@@ -369,6 +369,13 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "export": {
+        "notes": "Export Notes",
+        "error": "Error exporting notes",
+        "success": "Notes exported successfully",
+        "no-notes": "No notes found to export",
+        "generating-pdf": "Generating PDF..."
+      },
       "event": "<strong>{{count}}</strong> {{eventType}} Event",
       "event_plural": "<strong>{{count}}</strong> {{eventType}} Events",
       "info": "Filtered Event Info",

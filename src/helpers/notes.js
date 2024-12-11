@@ -1,8 +1,116 @@
-/**
- * Extracts PMIDs from text containing "PMID: {number}" patterns
- * @param {string} text - Input text that may contain PMID references
- * @returns {string[]} Array of PMID numbers found in the text
- */
+import { jsPDF } from 'jspdf';
+import 'jspdf/dist/polyfills.es.js';
+import { marked } from 'marked';
+
+function renderMarkdownToPDF(markdown, doc, startX, startY, lineHeight, maxWidth) {
+  // Parse markdown to HTML tokens
+  const tokens = marked.lexer(markdown);
+  let currentY = startY;
+  const originalSize = doc.getFontSize();
+
+  for (const token of tokens) {
+    // Check if we need a new page
+    if (currentY > doc.internal.pageSize.height - 20) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    switch (token.type) {
+      case 'heading':
+        // Scale font size based on heading level (h1 = 18pt, h2 = 16pt, etc.)
+        const fontSize = Math.max(originalSize + (6 - token.depth) * 2, originalSize);
+        doc.setFontSize(fontSize);
+        doc.setFont(undefined, 'bold');
+        const headingText = doc.splitTextToSize(token.text, maxWidth);
+        doc.text(headingText, startX, currentY);
+        currentY += lineHeight * 1.5 * headingText.length;
+        doc.setFontSize(originalSize);
+        doc.setFont(undefined, 'normal');
+        break;
+
+      case 'list':
+        const items = token.items;
+        items.forEach((item, index) => {
+          const bullet = token.ordered ? `${index + 1}.` : '•';
+          const itemText = doc.splitTextToSize(item.text, maxWidth - 10);
+          doc.text(bullet, startX, currentY);
+          doc.text(itemText, startX + 10, currentY);
+          currentY += lineHeight * itemText.length;
+        });
+        currentY += lineHeight / 2;
+        break;
+
+      case 'paragraph':
+        const lines = doc.splitTextToSize(token.text, maxWidth);
+        doc.text(lines, startX, currentY);
+        currentY += lineHeight * lines.length + lineHeight / 2;
+        break;
+
+      case 'blockquote':
+        doc.setDrawColor(200, 200, 200);
+        doc.line(startX - 5, currentY - 5, startX - 5, currentY + lineHeight);
+        const quoteText = doc.splitTextToSize(token.text, maxWidth - 10);
+        doc.text(quoteText, startX + 5, currentY);
+        currentY += lineHeight * quoteText.length + lineHeight;
+        break;
+
+      case 'space':
+        currentY += lineHeight;
+        break;
+    }
+  }
+
+  return currentY;
+}
+
+export function generateEventNotesPDF(events, id) {
+  try {
+    const doc = new jsPDF();
+    const margin = 20;
+    let yPos = 20;
+    const maxWidth = doc.internal.pageSize.width - 2 * margin;
+    const lineHeight = 7;
+
+    // Add title
+    doc.setFontSize(16);
+    doc.text(`Case ${id}`, margin, yPos);
+    yPos += lineHeight * 2;
+
+    // Reset font size for content
+    doc.setFontSize(12);
+
+    events.forEach((event) => {
+      let notes = localStorage.getItem(`event_notes_${event.gene}_${event.location}`);
+      
+      if (notes && notes.trim()) {
+        // Always put each event on a new page
+        if (yPos > margin) {
+          doc.addPage();
+          yPos = margin;
+        }
+
+        // Check if we need a new page
+        if (yPos > doc.internal.pageSize.height - margin) {
+          doc.addPage();
+          yPos = margin;
+        }
+
+        // remove ** from markdown
+        notes = notes.replace(/\*\*/g, '');
+        
+        // Parse and render markdown content
+        yPos = renderMarkdownToPDF(notes, doc, margin, yPos, lineHeight, maxWidth);
+        yPos += lineHeight; // Add space after each event's notes
+      }
+    });
+
+    return doc;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
+  }
+}
+
 export function extractPMIDs(text) {
   // Match "PMID: " followed by numbers
   const pmidRegex = /PMID:\s*(\d+)/g;
