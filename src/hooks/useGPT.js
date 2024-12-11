@@ -1,4 +1,7 @@
-const API_URL = '/api/gpt-4o/v1.0.0/chat/completions';
+const API_URLS = {
+  smart: '/api/gpt-4o/v1.0.0/chat/completions',
+  cheap: '/api/gpt-4o-mini/v1.0.0/chat/completions'
+};
 
 // Default system message that can be overridden
 const DEFAULT_SYSTEM_MESSAGE = {
@@ -11,6 +14,7 @@ const DEFAULT_SYSTEM_MESSAGE = {
  * @param {string} userMessage - The user's input message
  * @param {Object} options - Optional configuration
  * @param {string} options.systemMessage - Override default system message
+ * @param {string} options.model - Model to use ('smart' or 'cheap')
  * @returns {Promise<string>} The AI response content
  */
 export const queryGPT = async (userMessage, options = {}) => {
@@ -18,6 +22,14 @@ export const queryGPT = async (userMessage, options = {}) => {
   
   if (!apiKey) {
     throw new Error('GPT API key not found in environment variables');
+  }
+
+  // Default to 'smart' if no model specified
+  const model = options.model || 'smart';
+  const API_URL = API_URLS[model];
+
+  if (!API_URL) {
+    throw new Error('Invalid model specified. Use "smart" or "cheap".');
   }
 
   const messages = [

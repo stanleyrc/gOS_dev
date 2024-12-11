@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import { Row, Col, Input, message, Collapse } from "antd";
 import { useGPT } from '../../hooks/useGPT';
 import { Button } from 'antd';
+import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
 import { usePubmedFullText } from '../../hooks/usePubmedFullText';
 import PubmedWizard from "../pubmedWizard";
 import ClinicalTrialsWizard from "../clinicalTrialsWizard";
@@ -17,6 +18,7 @@ const NotesModal = ({ record, t }) => {
   const [notes, setNotes] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const { queryGPT } = useGPT();
+  const { summarizePaper } = usePaperSummarizer();
   const { getFullText, isLoading: isLoadingFullText } = usePubmedFullText();
 
   React.useEffect(() => {
@@ -43,19 +45,23 @@ const NotesModal = ({ record, t }) => {
     }
 
     setIsLoading(true);
+    const paperSummaries = {};
     try {
       for (const pmid of pmids) {
         const result = await getFullText(pmid);
         if (result) {
-          console.log(`Results for PMID ${pmid}:`);
           if (result.isFullText) {
-            console.log('Full text:', result.fullText);
-          } else {
-            console.log('Abstract:', result.abstract);
-          }
+            try {
+              const summary = await summarizePaper(result.fullText);
+              paperSummaries[pmid] = summary;
+            } catch (summaryError) {
+              console.error(`Error summarizing PMID ${pmid}:`, summaryError);
+            }
+          } else if (result.abstract) { paperSummaries[pmid] = result.abstract; }
         }
         await delay(API_CALL_DELAY);
       }
+    console.log('Paper Summaries:', paperSummaries);
     } catch (error) {
       console.error('Error fetching full text:', error);
       message.error(t('components.notes-modal.fetch-error'));
