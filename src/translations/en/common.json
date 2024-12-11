@@ -28,7 +28,12 @@
     "attributes-missing": {
       "title": "Missing data",
       "description": "Attribute <strong>{{attribute}}</strong> is not present"
-    }
+    },
+    "select-all": "Select All",
+    "deselect-all": "Deselect All",
+    "search": "Search",
+    "previous": "Previous",
+    "next": "Next"
   },
   "quality-status": {
     "title": "Quality Status of this case",
@@ -557,18 +562,38 @@
         "view-on-pubmed": "View on PubMed",
         "add-citation-tooltip": "Add article citation to notes"
       }
-    }
-  },
-  "tabs": {
+    },
+    "clinical-trials-wizard": {
+      "search-placeholder": "Search clinical trials...",
+      "no-results": "No results found",
+      "error-searching": "Error searching clinical trials",
+      "condition": "Condition/Disease",
+      "condition-placeholder": "Enter condition or disease...",
+      "terms": "Search Terms",
+      "terms-placeholder": "Enter additional search terms...",
+      "location": "Location",
+      "location-placeholder": "Enter city, state, or country...",
+      "study-status": "Study Status",
+      "results": {
+        "title": "Search Results",
+        "status": "Status",
+        "phase": "Phase",
+        "location": "Location",
+        "description": "Description",
+        "add-to-notes": "Add to notes",
+        "show-eligibility": "Show eligibility criteria",
+        "hide-eligibility": "Hide eligibility criteria"
+      }
+    },
     "sageQc": {
-      "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
-      "error": {
-        "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
-        "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
-        "explanation": {
-          "title": "The request has failed with the following error:"
+        "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
+        "error": {
+          "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
+          "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
+          "explanation": {
+            "title": "The request has failed with the following error:"
+          }
         }
       }
     }
-  }
 }

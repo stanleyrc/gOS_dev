@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { Row, Col, Input, message, Collapse } from "antd";
 import PubmedWizard from "../pubmedWizard";
+import ClinicalTrialsWizard from "../clinicalTrialsWizard";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
 
@@ -92,7 +93,11 @@ class NotesModal extends Component {
                 header={t("components.notes-modal.clinical-trials")} 
                 key="clinical-trials"
               >
-                <p>{t("components.notes-modal.clinical-trials-placeholder")}</p>
+                <ClinicalTrialsWizard 
+                  t={t} 
+                  record={this.props.record} 
+                  onAddCitation={this.handleAddCitation}
+                />
               </Collapse.Panel>
             </Collapse>
           </Col>

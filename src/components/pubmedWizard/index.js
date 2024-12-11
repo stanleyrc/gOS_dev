@@ -16,7 +16,6 @@ import { usePubmedSearch } from "../../hooks/usePubmedSearch";
 
 const { RangePicker } = DatePicker;
 const PubmedWizard = ({ t, onAddCitation, record }) => {
-  console.log(record)
   const [searchTerm, setSearchTerm] = useState(() => {
     if (!record) return "";
   
