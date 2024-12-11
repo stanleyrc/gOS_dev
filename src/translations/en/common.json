@@ -529,7 +529,8 @@
       "literature": "Literature",
       "clinical-trials": "Clinical Trials",
       "literature-placeholder": "Literature information will be displayed here",
-      "clinical-trials-placeholder": "Clinical trials information will be displayed here"
+      "clinical-trials-placeholder": "Clinical trials information will be displayed here",
+      "generate-notes": "Generate Notes"
     },
     "pubmed-wizard": {
       "search-placeholder": "Search PubMed literature...",

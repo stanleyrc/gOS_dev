@@ -1,43 +1,76 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { Row, Col, Input, message, Collapse } from "antd";
+import { useGPT } from '../../hooks/useGPT';
+import { Button } from 'antd';
+import { usePubmedFullText } from '../../hooks/usePubmedFullText';
 import PubmedWizard from "../pubmedWizard";
 import ClinicalTrialsWizard from "../clinicalTrialsWizard";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
+import { extractPMIDs, extractNCTIDs } from '../../helpers/notes';
 
-class NotesModal extends Component {
-  state = {
-    notes: ''
-  };
+const API_CALL_DELAY = 1000;
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  componentDidMount() {
-    if (this.props.record) {
-      const storedNotes = localStorage.getItem(this.getNotesStorageKey(this.props.record)) || '';
-      this.setState({ notes: storedNotes });
+const NotesModal = ({ record, t }) => {
+  const [notes, setNotes] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const { queryGPT } = useGPT();
+  const { getFullText, isLoading: isLoadingFullText } = usePubmedFullText();
+
+  React.useEffect(() => {
+    if (record) {
+      const storedNotes = localStorage.getItem(getNotesStorageKey(record)) || '';
+      setNotes(storedNotes);
     }
-  }
+  }, [record]);
 
-  componentDidUpdate(prevProps) {
-    if (this.props.record && 
-        (prevProps.record?.gene !== this.props.record.gene || 
-         prevProps.record?.location !== this.props.record.location)) {
-      const storedNotes = localStorage.getItem(this.getNotesStorageKey(this.props.record)) || '';
-      this.setState({ notes: storedNotes });
-    }
-  }
-
-  getNotesStorageKey = (record) => {
+  const getNotesStorageKey = (record) => {
     return `event_notes_${record.gene}_${record.location}`;
   };
 
-  handleNotesChange = (e) => {
+  const handleExtractLiteratureFullText = async () => {
+    if (!notes.trim()) {
+      message.warning(t('components.notes-modal.empty-notes'));
+      return;
+    }
+
+    const pmids = extractPMIDs(notes);
+    if (pmids.length === 0) {
+      message.info(t('components.notes-modal.no-pmids-found'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      for (const pmid of pmids) {
+        const result = await getFullText(pmid);
+        if (result) {
+          console.log(`Results for PMID ${pmid}:`);
+          if (result.isFullText) {
+            console.log('Full text:', result.fullText);
+          } else {
+            console.log('Abstract:', result.abstract);
+          }
+        }
+        await delay(API_CALL_DELAY);
+      }
+    } catch (error) {
+      console.error('Error fetching full text:', error);
+      message.error(t('components.notes-modal.fetch-error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNotesChange = (e) => {
     const newNotes = e.target.value;
-    this.setState({ notes: newNotes });
+    setNotes(newNotes);
     
-    if (this.props.record) {
+    if (record) {
       try {
-        localStorage.setItem(this.getNotesStorageKey(this.props.record), newNotes);
+        localStorage.setItem(getNotesStorageKey(record), newNotes);
       } catch (error) {
         if (error.name === 'QuotaExceededError') {
           message.error(this.props.t('components.filtered-events-panel.storage-limit-reached'));
@@ -46,65 +79,90 @@ class NotesModal extends Component {
     }
   };
 
-  handleAddCitation = (citation) => {
-    this.setState(prevState => ({
-      notes: prevState.notes 
-        ? `${prevState.notes}\n${citation}` 
-        : citation
-    }), () => {
-      // Save to localStorage after updating
-      if (this.props.record) {
-        try {
-          localStorage.setItem(this.getNotesStorageKey(this.props.record), this.state.notes);
-        } catch (error) {
-          if (error.name === 'QuotaExceededError') {
-            message.error(this.props.t('components.filtered-events-panel.storage-limit-reached'));
-          }
+  const handleAddCitation = (citation) => {
+    const updatedNotes = notes ? `${notes}\n${citation}` : citation;
+    setNotes(updatedNotes);
+    
+    if (record) {
+      try {
+        localStorage.setItem(getNotesStorageKey(record), updatedNotes);
+      } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+          message.error(t('components.filtered-events-panel.storage-limit-reached'));
         }
       }
-    });
+    }
   };
 
-  render() {
-    const { t } = this.props;
-    
-    return (
-      <Wrapper>
-        <Row>
-          <Col span={24}>
-            <Input.TextArea
-              value={this.state.notes}
-              onChange={this.handleNotesChange}
-              placeholder={t("components.notes-modal.enter-notes")}
-              autoSize={{ minRows: 4, maxRows: 12 }}
-            />
-          </Col>
-        </Row>
-        <Row style={{ marginTop: '16px' }}>
-          <Col span={24}>
-            <Collapse>
-              <Collapse.Panel 
-                header={t("components.notes-modal.literature")} 
-                key="literature"
-              >
-                <PubmedWizard t={t} onAddCitation={this.handleAddCitation} record={this.props.record} />
-              </Collapse.Panel>
-              <Collapse.Panel 
-                header={t("components.notes-modal.clinical-trials")} 
-                key="clinical-trials"
-              >
-                <ClinicalTrialsWizard 
-                  t={t} 
-                  record={this.props.record} 
-                  onAddCitation={this.handleAddCitation}
-                />
-              </Collapse.Panel>
-            </Collapse>
-          </Col>
-        </Row>
-      </Wrapper>
-    );
-  }
+  // Add this new handler for GPT submission
+  const handleGPTSubmit = async () => {
+    if (!notes.trim()) {
+      message.warning(t('components.notes-modal.empty-notes'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await queryGPT(notes);
+      if (response) {
+        const updatedNotes = `${response}`;
+        setNotes(updatedNotes);
+        if (record) {
+          localStorage.setItem(getNotesStorageKey(record), updatedNotes);
+        }
+      }
+    } catch (error) {
+      message.error(t('components.notes-modal.gpt-error'));
+      console.error('GPT Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Wrapper>
+      <Row>
+        <Col span={24}>
+          <Input.TextArea
+            value={notes}
+            onChange={handleNotesChange}
+            placeholder={t("components.notes-modal.enter-notes")}
+            autoSize={{ minRows: 4, maxRows: 12 }}
+          />
+          <Button 
+            type="primary"
+            onClick={handleExtractLiteratureFullText}
+            loading={isLoading || isLoadingFullText}
+            style={{ marginTop: '8px' }}
+          >
+            {t("components.notes-modal.extract-literature")}
+          </Button>
+        </Col>
+      </Row>
+      <Row style={{ marginTop: '16px' }}>
+        <Col span={24}>
+          <Collapse>
+            <Collapse.Panel 
+              header={t("components.notes-modal.literature")} 
+              key="literature"
+            >
+              <PubmedWizard t={t} onAddCitation={handleAddCitation} record={record} />
+            </Collapse.Panel>
+            <Collapse.Panel 
+              header={t("components.notes-modal.clinical-trials")} 
+              key="clinical-trials"
+            >
+              <ClinicalTrialsWizard 
+                t={t} 
+                record={record} 
+                onAddCitation={handleAddCitation}
+              />
+            </Collapse.Panel>
+          </Collapse>
+        </Col>
+      </Row>
+    </Wrapper>
+  );
 }
 
 NotesModal.propTypes = {

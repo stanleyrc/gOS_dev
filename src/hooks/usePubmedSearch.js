@@ -77,7 +77,7 @@ export const usePubmedSearch = () => {
         const doi = article.querySelector("ArticleId[IdType='doi']")?.textContent;
 
         const link = `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
-        const citation = `${authorList}. ${title} ${journal}. ${year}. doi: ${doi}.`;
+        const citation = `${authorList}. ${title} ${journal}. ${year}. doi: ${doi}. PMID: ${pmid}`;
 
         return {
           pmid,
