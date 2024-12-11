@@ -55,33 +55,10 @@ class IgvPlot extends Component {
   }
 
   componentDidUpdate() {
-    const { domain, chromoBins, name } = this.props;
+    const { domain, chromoBins } = this.props;
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
       let locus = domainToLoci(chromoBins, domain);
       this.igvBrowser.search(locus);
-
-      // Extract chromosome and position range
-      const [chromosome, range] = locus.split(":");
-      const [start, end] = range.split("-").map(Number);
-
-      // Calculate the midpoint
-      const midpoint = Math.floor((start + end) / 2);
-      try {
-        // Sort the first track by BASE Ascending
-        const track = this.igvBrowser.findTracks("id", name)[0];
-        if (track) {
-          track.sort({
-            chr: chromosome,
-            position: midpoint,
-            option: "BASE",
-            direction: "ASC",
-          });
-        }
-      } catch (err) {
-        console.log(
-          `Error in sorting for ${name} on ${chromosome} and position ${midpoint} with error: ${err.message}`
-        );
-      }
     }
   }
 
