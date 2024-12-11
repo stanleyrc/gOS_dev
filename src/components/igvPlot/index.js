@@ -44,24 +44,6 @@ class IgvPlot extends Component {
       this.igvBrowser = browser;
       // Add location change listener
       this.igvBrowser.on("locuschange", this.handleLocusChange);
-
-      // Sort the first track by BASE Ascending
-      const track = this.igvBrowser.findTracks("id", name)[0];
-      if (track) {
-        // Extract chromosome and position range
-        const [chromosome, range] = locus.split(":");
-        const [start, end] = range.split("-").map(Number);
-
-        // Calculate the midpoint
-        const midpoint = Math.floor((start + end) / 2);
-        console.log("here", track, locus, chromosome, midpoint);
-        track.sort({
-          chr: chromosome,
-          position: midpoint,
-          option: "BASE",
-          direction: "ASC",
-        });
-      }
     });
   }
 
@@ -78,21 +60,27 @@ class IgvPlot extends Component {
       let locus = domainToLoci(chromoBins, domain);
       this.igvBrowser.search(locus);
 
-      // Sort the first track by BASE Ascending
-      const track = this.igvBrowser.findTracks("id", name)[0];
-      if (track) {
-        // Extract chromosome and position range
-        const [chromosome, range] = locus.split(":");
-        const [start, end] = range.split("-").map(Number);
+      // Extract chromosome and position range
+      const [chromosome, range] = locus.split(":");
+      const [start, end] = range.split("-").map(Number);
 
-        // Calculate the midpoint
-        const midpoint = Math.floor((start + end) / 2);
-        track.sort({
-          chr: chromosome,
-          position: midpoint,
-          option: "BASE",
-          direction: "ASC",
-        });
+      // Calculate the midpoint
+      const midpoint = Math.floor((start + end) / 2);
+      try {
+        // Sort the first track by BASE Ascending
+        const track = this.igvBrowser.findTracks("id", name)[0];
+        if (track) {
+          track.sort({
+            chr: chromosome,
+            position: midpoint,
+            option: "BASE",
+            direction: "ASC",
+          });
+        }
+      } catch (err) {
+        console.log(
+          `Error in sorting for ${name} on ${chromosome} and position ${midpoint} with error: ${err.message}`
+        );
       }
     }
   }
@@ -108,9 +96,8 @@ class IgvPlot extends Component {
 
   handleLocusChange = async () => {
     try {
-      // Use getLocus() to fetch the current location from the IGV browser
-      let loci = await this.igvBrowser.currentLoci();
-      this.domain = lociToDomains(this.props.chromoBins, loci)[0];
+      let locus = await this.igvBrowser.currentLoci();
+      this.domain = lociToDomains(this.props.chromoBins, locus)[0];
       this.debouncedUpdateDomain(this.domain, this.props.index);
     } catch (error) {
       console.error("Error retrieving locus:", error);
