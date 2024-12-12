@@ -10,10 +10,12 @@ export function filterDataFrame(df, mask) {
   if (!df || !mask || !mask.rows) {
     return [];
   }
-
   try {
-    const filteredDf = df.iloc(mask);
-    return filteredDf['id'].values;
+    console.log('GPT generated filter: ', mask)
+    const expression = eval(mask.rows)
+    const filteredDf = df.iloc({ rows: expression });
+    const ids = filteredDf['id'].values;
+    return [...new Set(ids)];
   } catch (error) {
     console.error('Error filtering DataFrame:', error);
     return [];

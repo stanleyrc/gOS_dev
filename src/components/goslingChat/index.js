@@ -3,11 +3,15 @@ import { Card, Input, Button, List, Avatar } from 'antd';
 import { SendOutlined, CloseOutlined } from '@ant-design/icons';
 import { connect } from "react-redux";
 import * as dfd from "danfojs";
+import { useGPTToolRouter } from '../../hooks/useGPTToolRouter';
+import { useGenerateDataFrameFilter } from '../../hooks/useGenerateDataFrameFilter';
+import { useGPT } from '../../hooks/useGPT';
 import GlobalStyle from './index.styles.js';
 import axios from "axios";
 import { transformFilteredEventAttributes } from "../../helpers/utility";
+import { filterDataFrame } from '../../helpers/gosling';
 
-const GoslingChat = ({ onClose, reports, dataset }) => {
+const GoslingChat = ({ onClose, reports, dataset, onSearch }) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [allFilteredEvents, setAllFilteredEvents] = useState([]);
@@ -59,8 +63,56 @@ const GoslingChat = ({ onClose, reports, dataset }) => {
     fetchAllFilteredEvents();
   }, [reports, dataset]);
 
-  const handleSend = () => {
+  const { routeQuery } = useGPTToolRouter();
+  const { queryGPT } = useGPT();
+  const { generateFilter } = useGenerateDataFrameFilter();
+
+  const getBotResponse = async (userMessage) => {
+    try {
+      // Get available columns from the DataFrame
+      const columns = eventsDF ? eventsDF.columns : [];
+      
+      // Route the query to appropriate tool
+      const toolName = await routeQuery(userMessage);
+      
+      let response;
+      if (toolName === 'generateFilter') {
+        const filterMask = await generateFilter(
+          columns,
+          userMessage
+        );
+        
+        // Apply the filter to the DataFrame
+        const filteredCaseIds = filterDataFrame(eventsDF, filterMask);
+
+        // Update the search filters to show only the filtered cases
+        onSearch({
+          pair: filteredCaseIds, // Add filtered cases to search filters
+          page: 1,              // Reset to first page
+          per_page: 10,         // Keep default page size
+          orderId: 1            // Keep default ordering
+        });
+        
+        response = `I've filtered the view to show these cases: ${filteredCaseIds.join(', ')}`;
+        
+      } else {
+        // Handle general conversation
+        response = await queryGPT(userMessage, {
+          model: 'smart'
+        });
+      }
+      
+      return response;
+      
+    } catch (error) {
+      console.error('Error getting bot response:', error);
+      return "I'm sorry, I encountered an error processing your request.";
+    }
+  };
+
+  const handleSend = async () => {
     if (inputValue.trim()) {
+      // Add user message
       setMessages([
         ...messages,
         {
@@ -69,16 +121,18 @@ const GoslingChat = ({ onClose, reports, dataset }) => {
           timestamp: new Date().getTime()
         }
       ]);
+      
+      const userMessage = inputValue;
       setInputValue('');
-      // Here you would typically make an API call to get the chatbot response
-      // For now, we'll just add a mock response
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          type: 'bot',
-          content: "I'm Gosling, how can I help you?",
-          timestamp: new Date().getTime()
-        }]);
-      }, 1000);
+
+      // Get bot response
+      const response = await getBotResponse(userMessage);
+      
+      setMessages(prev => [...prev, {
+        type: 'bot',
+        content: response,
+        timestamp: new Date().getTime()
+      }]);
     }
   };
 
@@ -89,7 +143,7 @@ const GoslingChat = ({ onClose, reports, dataset }) => {
       className="gosling-chat-card"
       title={
         <div className="chat-header">
-          <span>Gosling Chat</span>
+          <span>Chat with gOSling</span>
           <CloseOutlined className="close-button" onClick={onClose} />
         </div>
       }
@@ -131,6 +185,7 @@ const GoslingChat = ({ onClose, reports, dataset }) => {
 
 GoslingChat.defaultProps = {
   onClose: () => {},
+  onSearch: () => {},  // Add default prop
 };
 
 const mapStateToProps = (state) => ({

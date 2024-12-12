@@ -306,12 +306,13 @@ class ListView extends Component {
             )}
           </div>
         </Form>
-      {this.state.isChatOpen && <GoslingChat onClose={this.handleChatClick} />}
+      {this.state.isChatOpen && <GoslingChat onClose={this.handleChatClick} onSearch={this.props.onSearch} />}
       <Button
         type="primary"
         shape="circle"
         onClick={this.handleChatClick}
         className="chat-float-button"
+        title="Chat with gOSling"
       >
         🐦
       </Button>
