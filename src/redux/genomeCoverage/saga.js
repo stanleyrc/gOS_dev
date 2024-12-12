@@ -25,9 +25,15 @@ function* fetchCoverageData(action) {
     };
     yield call(fetchArrowData, coveragePlot);
 
+    let dataPointsY = coveragePlot.data.getChild("y").toArray();
+    let dataPointsX = coveragePlot.data.getChild("x").toArray();
+    let dataPointsColor = coveragePlot.data.getChild("color").toArray();
+
     yield put({
       type: actions.FETCH_COVERAGE_DATA_SUCCESS,
-      data: coveragePlot.data,
+      dataPointsY,
+      dataPointsX,
+      dataPointsColor,
     });
   } catch (error) {
     yield put({

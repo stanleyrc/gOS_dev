@@ -105,7 +105,9 @@ class ScatterPlotPanel extends Component {
     const {
       t,
       loading,
-      data,
+      dataPointsY,
+      dataPointsX,
+      dataPointsColor,
       error,
       filename,
       title,
@@ -161,14 +163,14 @@ class ScatterPlotPanel extends Component {
                 <span className="ant-pro-menu-item-title">
                   <Space>
                     {title}
-                    {data && (
+                    {
                       <span>
-                        <b>{d3.format(",")(data.numRows)}</b>{" "}
+                        <b>{d3.format(",")(dataPointsX.length)}</b>{" "}
                         {t("components.coverage-panel.datapoint", {
-                          count: data.numRows,
+                          count: dataPointsX.length,
                         })}
                       </span>
-                    )}
+                    }
                     {notification.status && (
                       <Popover
                         placement="bottomLeft"
@@ -242,7 +244,9 @@ class ScatterPlotPanel extends Component {
                           {...{
                             width: w - gap,
                             height: h,
-                            data,
+                            dataPointsY,
+                            dataPointsX,
+                            dataPointsColor,
                             domains,
                             scaleY2,
                             yAxisTitle,

@@ -23,20 +23,11 @@ class ScatterPlot extends Component {
   regl = null;
   container = null;
   plotContainer = null;
-  dataPointsX = null;
-  dataPointsY = null;
-  maxDataPointsY = null;
   zoom = null;
   maxYValues = null;
 
   constructor(props) {
     super(props);
-
-    let { data } = props;
-    this.dataPointsY = data.getChild("y").toArray();
-    this.maxDataPointsY = d3.max(this.dataPointsY);
-    this.dataPointsX = data.getChild("x").toArray();
-    this.dataPointsColor = data.getChild("color").toArray();
     this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
@@ -198,16 +189,17 @@ class ScatterPlot extends Component {
   }
 
   updateStage() {
-    let { domains, width, height } = this.props;
+    let { domains, width, height, dataPointsY, dataPointsX, dataPointsColor } =
+      this.props;
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gapY;
 
     this.points.load(
       stageWidth,
       stageHeight,
-      this.dataPointsX,
-      this.dataPointsY,
-      this.dataPointsColor,
+      dataPointsX,
+      dataPointsY,
+      dataPointsColor,
       domains,
       this.maxYValues
     );
@@ -288,6 +280,8 @@ class ScatterPlot extends Component {
       yAxisTitle,
       yAxis2Title,
       flipAxesY,
+      dataPointsY,
+      dataPointsX,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -296,11 +290,7 @@ class ScatterPlot extends Component {
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.panels = [];
-    this.maxYValues = findMaxInRanges(
-      domains,
-      this.dataPointsX,
-      this.dataPointsY
-    );
+    this.maxYValues = findMaxInRanges(domains, dataPointsX, dataPointsY);
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);

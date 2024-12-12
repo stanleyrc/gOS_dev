@@ -26,9 +26,15 @@ function* fetchData(action) {
 
     yield call(fetchArrowData, hetsnpsPlot);
 
+    let dataPointsY = hetsnpsPlot.data.getChild("y").toArray();
+    let dataPointsX = hetsnpsPlot.data.getChild("x").toArray();
+    let dataPointsColor = hetsnpsPlot.data.getChild("color").toArray();
+
     yield put({
       type: actions.FETCH_HETSNPS_DATA_SUCCESS,
-      data: hetsnpsPlot.data,
+      dataPointsY,
+      dataPointsX,
+      dataPointsColor,
     });
   } catch (error) {
     yield put({
