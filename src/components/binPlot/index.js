@@ -299,8 +299,6 @@ class BinPlot extends Component {
 
     xScale = currentTransform.rescaleX(xScale);
 
-    yScale = currentTransform.rescaleY(yScale);
-
     this.renderYAxis(yScale);
     this.renderXAxis(xScale);
 
@@ -333,21 +331,21 @@ class BinPlot extends Component {
             </clipPath>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
+            <rect
+              className="zoom-background"
+              id={`panel-rect`}
+              x={0.5}
+              width={panelWidth}
+              height={panelHeight}
+              style={{
+                stroke: "steelblue",
+                fill: "none",
+                strokeWidth: 1,
+                opacity: 0.375,
+                pointerEvents: "all",
+              }}
+            />
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <rect
-                className="zoom-background"
-                id={`panel-rect`}
-                x={0.5}
-                width={panelWidth}
-                height={panelHeight}
-                style={{
-                  stroke: "steelblue",
-                  fill: "transparent",
-                  strokeWidth: 1,
-                  opacity: 0.375,
-                  pointerEvents: "all",
-                }}
-              />
               <g clipPath="url(#cuttOffViewPane1)">
                 {separators.map((d, i) => (
                   <g key={i}>
@@ -379,11 +377,8 @@ class BinPlot extends Component {
                     fill={chromoBins[d.chromosome]?.color}
                     x={xScale(d.xPos)}
                     width={xScale(d.xPosTo) - xScale(d.xPos)}
-                    y={
-                      currentTransform.k * d.cumulativeWidthPixels +
-                      currentTransform.y
-                    }
-                    height={currentTransform.k * d.widthPixels}
+                    y={d.cumulativeWidthPixels}
+                    height={d.widthPixels}
                     onMouseMove={(e) => this.handleMouseMove(e, d, i)}
                     onMouseOut={(e) => this.handleMouseOut(e, d)}
                     onClick={(e) => selectSegment(d)}
