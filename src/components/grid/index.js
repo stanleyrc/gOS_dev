@@ -23,53 +23,56 @@ class Grid extends Component {
     this.renderSeparators();
   }
 
+  // Always to the left hand
   renderYAxis() {
-    let { scaleY, axisWidth, gapLeft, flipAxesY } = this.props;
+    let { scaleY, scaleY2, axisWidth, gapLeft } = this.props;
     if (!scaleY) {
       return;
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
 
-    let yAxis = flipAxesY
-      ? d3
-          .axisLeft(scaleY)
+    const tickValues = scaleY2
+      ? scaleY2
           .ticks(8)
-          .tickSizeInner(-axisWidth)
-          .tickPadding(-axisWidth - 0.8 * gapLeft)
-      : d3
-          .axisRight(scaleY)
-          .ticks(8)
-          .tickSizeInner(axisWidth)
-          .tickPadding(-axisWidth - gapLeft);
+          .map((d) =>
+            d3.scaleLinear().domain(scaleY2.domain()).range(scaleY.domain())(d)
+          )
+      : scaleY.ticks(8);
+
+    tickValues[tickValues.length - 1] = scaleY2
+      ? d3.scaleLinear().domain(scaleY2.domain()).range(scaleY.domain())(
+          scaleY2.domain()[1]
+        )
+      : scaleY.domain()[1];
+
+    let yAxis = d3
+      .axisRight(scaleY)
+      .ticks(8)
+      .tickValues(tickValues)
+      .tickSizeInner(axisWidth)
+      .tickPadding(-axisWidth - gapLeft);
 
     yAxisContainer.call(yAxis);
   }
 
+  // Always to the right hand
   renderYAxis2() {
-    let { scaleY2, scaleY, gapRight, flipAxesY, axisWidth, gapLeft } =
-      this.props;
-    if (!scaleY2.show) {
-      return;
-    }
-    const { slope, intercept } = scaleY2;
-    const domain2 = [
-      scaleY.domain()[0] * slope + intercept,
-      scaleY.domain()[1] * slope + intercept,
-    ];
-    let yScale2 = d3.scaleLinear().domain(domain2).range(scaleY.range());
-    let yAxis2Container = d3
+    const { scaleY2, gapRight } = this.props;
+
+    if (!scaleY2) return;
+
+    const yAxis2Container = d3
       .select(this.container)
       .select(".y-axis2-container");
 
-    let yAxis2 = flipAxesY
-      ? d3
-          .axisRight(yScale2)
-          .tickValues(scaleY.ticks(8).map((d) => +d * slope + intercept))
-          .tickPadding(-axisWidth - 0.8 * gapLeft)
-      : d3
-          .axisLeft(yScale2)
-          .tickValues(scaleY.ticks(8).map((d) => +d * slope + intercept))
-          .tickPadding(-gapRight);
+    let tickValues = scaleY2.ticks(8);
+    tickValues[tickValues.length - 1] = scaleY2.domain()[1];
+
+    const yAxis2 = d3
+      .axisLeft(scaleY2)
+      .ticks(8)
+      .tickValues(tickValues)
+      .tickPadding(-gapRight);
 
     yAxis2Container.call(yAxis2);
   }
@@ -384,7 +387,7 @@ class Grid extends Component {
             transform={`translate(${[gap, 0]})`}
           ></g>
         )}
-        {showY && scaleY2.show && (
+        {showY && scaleY2 && (
           <g
             className="axis--y y-axis2-container"
             transform={`translate(${[gap + axisWidth - 10, 0]})`}
@@ -416,9 +419,7 @@ Grid.defaultProps = {
   gapLeft: 24,
   gapRight: 35,
   fontSize: 10,
-  flipAxesY: false,
   showY: true,
-  scaleY2: { show: false, slope: 1, intercept: 0 },
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});

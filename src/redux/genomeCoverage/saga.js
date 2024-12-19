@@ -17,7 +17,7 @@ function* fetchCoverageData(action) {
   try {
     const currentState = yield select(getCurrentState);
     const { dataset } = currentState.Settings;
-    const { id } = currentState.CaseReport;
+    const { id, metadata } = currentState.CaseReport;
 
     let coveragePlot = {
       path: `${dataset.dataPath}${id}/coverage.arrow`,
@@ -25,13 +25,17 @@ function* fetchCoverageData(action) {
     };
     yield call(fetchArrowData, coveragePlot);
 
-    let dataPointsY = coveragePlot.data.getChild("y").toArray();
+    let dataPointsY2 = coveragePlot.data.getChild("y").toArray();
+    let dataPointsY1 = dataPointsY2.map(
+      (d) => d * (metadata?.cov_slope || 1) + (metadata?.cov_intercept || 0)
+    );
     let dataPointsX = coveragePlot.data.getChild("x").toArray();
     let dataPointsColor = coveragePlot.data.getChild("color").toArray();
 
     yield put({
       type: actions.FETCH_COVERAGE_DATA_SUCCESS,
-      dataPointsY,
+      dataPointsY1,
+      dataPointsY2,
       dataPointsX,
       dataPointsColor,
     });

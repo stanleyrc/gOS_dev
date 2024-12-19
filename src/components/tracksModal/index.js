@@ -112,7 +112,8 @@ class TracksModal extends Component {
             <ScatterPlotPanel
               {...{
                 loading: genomeCoverage.loading,
-                dataPointsY: genomeCoverage.dataPointsY,
+                dataPointsY1: genomeCoverage.dataPointsY1,
+                dataPointsY2: genomeCoverage.dataPointsY2,
                 dataPointsX: genomeCoverage.dataPointsX,
                 dataPointsColor: genomeCoverage.dataPointsColor,
                 error: genomeCoverage.error,
@@ -144,17 +145,14 @@ class TracksModal extends Component {
                       : []),
                   ],
                 },
-                scaleY2: {
-                  show: cov_slope != null && cov_intercept != null,
-                  slope: +cov_slope,
-                  intercept: +cov_intercept,
-                },
                 chromoBins,
                 visible: true,
                 height,
-                yAxisTitle: coverageYAxisTitle,
+                yAxisTitle:
+                  cov_slope == null || cov_intercept == null
+                    ? coverageYAxis2Title
+                    : coverageYAxisTitle,
                 yAxis2Title: coverageYAxis2Title,
-                flipAxesY: true,
               }}
             />
           </Col>
@@ -164,7 +162,8 @@ class TracksModal extends Component {
             <ScatterPlotPanel
               {...{
                 loading: hetsnps.loading,
-                dataPointsY: hetsnps.dataPointsY,
+                dataPointsY1: hetsnps.dataPointsY1,
+                dataPointsY2: hetsnps.dataPointsY2,
                 dataPointsX: hetsnps.dataPointsX,
                 dataPointsColor: hetsnps.dataPointsColor,
                 error: hetsnps.error,
@@ -196,17 +195,14 @@ class TracksModal extends Component {
                       : []),
                   ],
                 },
-                scaleY2: {
-                  show: hets_slope != null && hets_intercept != null,
-                  slope: +hets_slope,
-                  intercept: +hets_intercept,
-                },
                 chromoBins,
                 visible: true,
                 height,
-                yAxisTitle: hetsnpPlotYAxisTitle,
+                yAxisTitle:
+                  hets_slope == null || hets_intercept == null
+                    ? hetsnpPlotYAxis2Title
+                    : hetsnpPlotYAxisTitle,
                 yAxis2Title: hetsnpPlotYAxis2Title,
-                flipAxesY: true,
               }}
             />
           </Col>

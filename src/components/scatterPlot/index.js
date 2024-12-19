@@ -24,7 +24,6 @@ class ScatterPlot extends Component {
   container = null;
   plotContainer = null;
   zoom = null;
-  maxYValues = null;
 
   constructor(props) {
     super(props);
@@ -189,19 +188,26 @@ class ScatterPlot extends Component {
   }
 
   updateStage() {
-    let { domains, width, height, dataPointsY, dataPointsX, dataPointsColor } =
-      this.props;
-    let stageWidth = width - 2 * margins.gapX;
-    let stageHeight = height - 3 * margins.gapY;
+    const {
+      domains,
+      width,
+      height,
+      dataPointsY2,
+      dataPointsX,
+      dataPointsColor,
+    } = this.props;
+
+    const stageWidth = width - 2 * margins.gapX;
+    const stageHeight = height - 3 * margins.gapY;
 
     this.points.load(
       stageWidth,
       stageHeight,
       dataPointsX,
-      dataPointsY,
+      dataPointsY2,
       dataPointsColor,
       domains,
-      this.maxYValues
+      findMaxInRanges(domains, dataPointsX, dataPointsY2)
     );
     this.points.render();
   }
@@ -276,11 +282,10 @@ class ScatterPlot extends Component {
       domains,
       chromoBins,
       defaultDomain,
-      scaleY2,
       yAxisTitle,
       yAxis2Title,
-      flipAxesY,
-      dataPointsY,
+      dataPointsY1,
+      dataPointsY2,
       dataPointsX,
     } = this.props;
 
@@ -290,7 +295,7 @@ class ScatterPlot extends Component {
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.panels = [];
-    this.maxYValues = findMaxInRanges(domains, dataPointsX, dataPointsY);
+    let maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);
@@ -313,16 +318,24 @@ class ScatterPlot extends Component {
         .domain(defaultDomain)
         .range([0, panelWidth]);
 
-      let yExtent = [0, this.maxYValues[index]];
+      let yExtent2 = [0, maxY2Values[index]];
+      let yExtent1 = yExtent2.map((d) =>
+        d3
+          .scaleLinear()
+          .domain(d3.extent(dataPointsY2))
+          .range(d3.extent(dataPointsY1))(d)
+      );
 
-      let yScale = d3.scaleLinear().domain(yExtent).range([panelHeight, 0]);
+      let yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
+      let yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
 
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
 
       this.panels.push({
         index,
         xScale,
-        yScale,
+        yScale1,
+        yScale2,
         zoom,
         panelWidth,
         panelHeight,
@@ -347,14 +360,14 @@ class ScatterPlot extends Component {
             className="y-axis-title"
             transform={`translate(${[0, margins.gapY / 3]})`}
           >
-            {flipAxesY ? yAxis2Title : yAxisTitle}
+            {yAxisTitle}
           </text>
           <text
             className="y-axis-title"
             transform={`translate(${[width, margins.gapY / 3]})`}
             textAnchor="end"
           >
-            {flipAxesY ? yAxisTitle : yAxis2Title}
+            {yAxis2Title}
           </text>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             {this.panels.map((panel, i) => (
@@ -366,17 +379,16 @@ class ScatterPlot extends Component {
                 <Grid
                   gap={0}
                   scaleX={panel.xScale}
-                  scaleY={panel.yScale}
-                  scaleY2={scaleY2}
+                  scaleY={panel.yScale1}
+                  scaleY2={panel.yScale2}
                   axisWidth={panelWidth}
                   axisHeight={panelHeight}
                   chromoBins={chromoBins}
-                  flipAxesY={flipAxesY}
                 />
                 <line
                   className="hovered-location-line hidden"
                   id={`hovered-location-line-${panel.index}`}
-                  y1={0}
+                  Y2={0}
                   y2={panel.panelHeight}
                 />
                 <text
@@ -416,10 +428,7 @@ ScatterPlot.propTypes = {
   data: PropTypes.object,
   chromoBins: PropTypes.object,
 };
-ScatterPlot.defaultProps = {
-  scaleY2: { show: false, slope: 1, intercept: 0 },
-  flipAxesY: false,
-};
+ScatterPlot.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
   updateHoveredLocation: (hoveredLocation, panelIndex) =>
