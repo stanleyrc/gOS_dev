@@ -4,6 +4,12 @@ import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
 
+export function chunks(arr, size = 4) {
+  return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    arr.slice(i * size, i * size + size)
+  );
+}
+
 export function replaceSearchParams(location, params = {}) {
   let searchParams = new URLSearchParams(location.search);
   Object.keys(params).forEach((param) => {
@@ -998,6 +1004,42 @@ export function segmentAttributes() {
     post_var: ".4f",
     var: ".4f",
     sd: ".4f",
+  };
+}
+
+export function higlassGenesFieldsArrayToObject(fields) {
+  /* Example Fields
+  0: "chr6"
+  1: "32546546"
+  2: "32557613"
+  3: "HLA-DRB1"
+  4: "2496"
+  5: "-"
+  6: "union_3123"
+  7: "3123"
+  8: "protein-coding"
+  9: "major histocompatibility complex, class II, DR beta 1"
+  10: "32546867"
+  11: "32557519"
+  12: "32546546,32548023,32548522,32549333,32551885,32557419"
+  13: "32546881,32548047,32548633,32549615,32552155,32557613"
+*/
+  return {
+    chromosome: fields[0].replaceAll("chr", ""),
+    startPoint: +fields[1],
+    endPoint: +fields[2],
+    title: fields[3],
+    importance: +fields[4],
+    strand: fields[5],
+    id: fields[6],
+    internalId: fields[7],
+    bioType: fields[8],
+    description: fields[9],
+    cdsStartPoint: +fields[10],
+    cdsEndPoint: +fields[11],
+    exons: fields[12].split(",").map((d, i) => {
+      return { startPoint: +d, endPoint: +fields[13].split(",")[i] };
+    }),
   };
 }
 

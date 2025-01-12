@@ -13,6 +13,7 @@ import ScatterPlotPanel from "../scatterPlotPanel";
 import GenesPanel from "../genesPanel";
 import IgvPanel from "../igvPanel/index";
 import appActions from "../../redux/app/actions";
+import GenesPanelHiglass from "../genesPanelHiglass";
 
 const { updateHoveredLocation } = appActions;
 
@@ -84,6 +85,19 @@ class TracksModal extends Component {
                 genes: genes.data,
                 error: genes.error,
                 filename: genes.filename,
+                chromoBins,
+                height,
+              }}
+            />
+          </Col>
+        )}
+        {genes && (
+          <Col className="gutter-row" span={24}>
+            <GenesPanelHiglass
+              {...{
+                loading: genes.loading,
+                genesList: genes.list,
+                error: genes.error,
                 chromoBins,
                 visible: true,
                 height,

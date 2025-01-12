@@ -342,6 +342,8 @@
       "decomposed-mode": "Decomposed"
     },
     "download-as-png-tooltip": "Download as PNG",
+    "expand": "Expand",
+    "collapse": "Collapse",
     "histogram-panel": {
       "header": "Histogram Chart",
       "datapoint": "datapoint",
