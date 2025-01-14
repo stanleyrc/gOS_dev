@@ -11,10 +11,10 @@ import {
   Tooltip,
   Popover,
   Typography,
+  Button,
 } from "antd";
 import * as d3 from "d3";
 import {
-  downloadCanvasAsPng,
   legendColors,
   qualityStatusTagClasses,
   qualityStatusTypographyClasses,
@@ -27,31 +27,22 @@ import {
   ExclamationCircleOutlined,
   QuestionCircleOutlined,
 } from "@ant-design/icons";
-import html2canvas from "html2canvas";
 import Wrapper from "./index.style";
 
-const { Text } = Typography;
+const { Text, Link } = Typography;
 
 class HeaderPanel extends Component {
-  onDownloadButtonClicked = () => {
-    html2canvas(document.body)
-      .then((canvas) => {
-        downloadCanvasAsPng(
-          canvas,
-          `${this.props.selectedFiles
-            .map((d) => d.file)
-            .join("_")
-            .replace(/\s+/g, "_")
-            .toLowerCase()}.png`
-        );
-      })
-      .catch((error) => {
-        message.error(this.props.t("general.error", { error }));
-      });
-  };
-
   render() {
-    const { t, report, metadata, plots, qualityStatus } = this.props;
+    const {
+      t,
+      report,
+      metadata,
+      plots,
+      qualityStatus,
+      dataset,
+      qualityReportPresent,
+      qualityReportName,
+    } = this.props;
     if (!report) return null;
     const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
       metadata;
@@ -232,20 +223,33 @@ class HeaderPanel extends Component {
                 <Popover
                   placement="bottomLeft"
                   title={
-                    <Space>
-                      <Text>{t(`quality-status.title`)}:</Text>
-                      <Text
-                        type={
-                          qualityStatusTypographyClasses()[qualityStatus.level]
-                        }
+                    <>
+                      <Space>
+                        <Text>{t(`quality-status.title`)}:</Text>
+                        <Text
+                          type={
+                            qualityStatusTypographyClasses()[
+                              qualityStatus.level
+                            ]
+                          }
+                        >
+                          <strong>
+                            {t(
+                              `quality-status.level.${qualityStatus.level}.adjective`
+                            )}
+                          </strong>
+                        </Text>
+                      </Space>
+                      <Link
+                        disabled={!qualityReportPresent}
+                        className="quality-report-link"
+                        style={{ float: "right" }}
+                        href={`${dataset.dataPath}${report}/${qualityReportName}`}
+                        target="_blank"
                       >
-                        <strong>
-                          {t(
-                            `quality-status.level.${qualityStatus.level}.adjective`
-                          )}
-                        </strong>
-                      </Text>
-                    </Space>
+                        {t(`components.header-panel.view-report`)}
+                      </Link>
+                    </>
                   }
                   content={
                     <Space direction="vertical">
@@ -418,6 +422,9 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,
   qualityStatus: state.CaseReport.qualityStatus,
+  qualityReportPresent: state.CaseReport.qualityReportPresent,
+  qualityReportName: state.CaseReport.qualityReportName,
+  dataset: state.Settings.dataset,
   metadata: state.CaseReport.metadata,
   plots: state.App.populationMetrics,
 });

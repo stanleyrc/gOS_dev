@@ -344,6 +344,9 @@
     "download-as-png-tooltip": "Download as PNG",
     "expand": "Expand",
     "collapse": "Collapse",
+    "header-panel": {
+      "view-report": "View Report"
+    },
     "histogram-panel": {
       "header": "Histogram Chart",
       "datapoint": "datapoint",

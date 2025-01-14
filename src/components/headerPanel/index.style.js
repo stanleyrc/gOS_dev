@@ -5,6 +5,9 @@ const Wrapper = styled.div`
     background: white;
     padding: 16px 0px;
     margin: 0px 24px;
+    .quality-report-link {
+      font-weight: bold;
+    }
     .site-page-content {
       margin-bottom: 24px;
     }
@@ -95,6 +98,10 @@ const Wrapper = styled.div`
       text-decoration: underline dashed;
       text-underline-position: under;
       text-decoration-color: #d2d2d2;
+    }
+    div.ant-popover-title > div > a {
+      text-align: right;
+      float: right;
     }
   }
 `;

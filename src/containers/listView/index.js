@@ -114,7 +114,7 @@ class ListView extends Component {
                             )}
                             mode="multiple"
                             allowClear
-                            style={{ width: 200 }}
+                            style={{ width: 150 }}
                             maxTagCount="responsive"
                             maxTagTextLength={5}
                           >
