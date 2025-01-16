@@ -50,7 +50,8 @@ class Grid extends Component {
       .ticks(8)
       .tickValues(tickValues)
       .tickSizeInner(axisWidth)
-      .tickPadding(-axisWidth - gapLeft);
+      .tickPadding(-axisWidth - gapLeft)
+      .tickFormat(d3.format("~s"));
 
     yAxisContainer.call(yAxis);
   }
@@ -72,7 +73,8 @@ class Grid extends Component {
       .axisLeft(scaleY2)
       .ticks(8)
       .tickValues(tickValues)
-      .tickPadding(-gapRight);
+      .tickPadding(-gapRight)
+      .tickFormat(d3.format("~s"));
 
     yAxis2Container.call(yAxis2);
   }

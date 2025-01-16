@@ -25,8 +25,8 @@ function* fetchCoverageData(action) {
     };
     yield call(fetchArrowData, coveragePlot);
 
-    let dataPointsY2 = coveragePlot.data.getChild("y").toArray();
-    let dataPointsY1 = dataPointsY2.map(
+    let dataPointsCount = coveragePlot.data.getChild("y").toArray();
+    let dataPointsCopyNumber = dataPointsCount.map(
       (d) => d * (metadata?.cov_slope || 1) + (metadata?.cov_intercept || 0)
     );
     let dataPointsX = coveragePlot.data.getChild("x").toArray();
@@ -34,8 +34,8 @@ function* fetchCoverageData(action) {
 
     yield put({
       type: actions.FETCH_COVERAGE_DATA_SUCCESS,
-      dataPointsY1,
-      dataPointsY2,
+      dataPointsCount,
+      dataPointsCopyNumber,
       dataPointsX,
       dataPointsColor,
     });

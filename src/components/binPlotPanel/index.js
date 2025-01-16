@@ -184,17 +184,17 @@ class BinPlotPanel extends Component {
                       "components.tracks-modal.coverage-plot"
                     ),
                     coverageYAxisTitle: t(
-                      "components.tracks-modal.coverage-y-axis-title"
+                      "components.tracks-modal.coverage-copy-number"
                     ),
                     coverageYAxis2Title: t(
-                      "components.tracks-modal.coverage-y-axis2-title"
+                      "components.tracks-modal.coverage-count"
                     ),
                     hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
                     hetsnpPlotYAxisTitle: t(
-                      "components.tracks-modal.hetsnp-plot-y-axis-title"
+                      "components.tracks-modal.hetsnp-copy-number"
                     ),
                     hetsnpPlotYAxis2Title: t(
-                      "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                      "components.tracks-modal.hetsnp-plot-count"
                     ),
                     handleOkClicked: this.handleModalOKClicked,
                     handleCancelClicked: this.handleModalCancelClicked,
@@ -254,7 +254,7 @@ const mapStateToProps = (state) => ({
   genomeCoverage: state.GenomeCoverage,
   hetsnps: state.Hetsnps,
   genes: state.Genes,
-  igv: state.Igv
+  igv: state.Igv,
 });
 export default connect(
   mapStateToProps,

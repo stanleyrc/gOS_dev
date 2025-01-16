@@ -126,8 +126,8 @@ class TracksModal extends Component {
             <ScatterPlotPanel
               {...{
                 loading: genomeCoverage.loading,
-                dataPointsY1: genomeCoverage.dataPointsY1,
-                dataPointsY2: genomeCoverage.dataPointsY2,
+                dataPointsY1: genomeCoverage.dataPointsCopyNumber,
+                dataPointsY2: genomeCoverage.dataPointsCount,
                 dataPointsX: genomeCoverage.dataPointsX,
                 dataPointsColor: genomeCoverage.dataPointsColor,
                 error: genomeCoverage.error,
@@ -176,8 +176,8 @@ class TracksModal extends Component {
             <ScatterPlotPanel
               {...{
                 loading: hetsnps.loading,
-                dataPointsY1: hetsnps.dataPointsY1,
-                dataPointsY2: hetsnps.dataPointsY2,
+                dataPointsY1: hetsnps.dataPointsCopyNumber,
+                dataPointsY2: hetsnps.dataPointsCount,
                 dataPointsX: hetsnps.dataPointsX,
                 dataPointsColor: hetsnps.dataPointsColor,
                 error: hetsnps.error,
