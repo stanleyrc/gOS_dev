@@ -124,7 +124,10 @@ function* fetchHiglassGenesData(action) {
         Object.values(results.data)
           .flat()
           .forEach((gene, i) => {
-            list.push(gene);
+            list.push({
+              ...gene,
+              ...higlassGenesFieldsArrayToObject(gene.fields),
+            });
           });
       })
       .catch((error) => {

@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import Grid from "../grid/index";
+import { humanize, measureText } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import debounce from "lodash.debounce";
 import settingsActions from "../../redux/settings/actions";
@@ -25,8 +25,8 @@ class GenesPlot extends Component {
     super(props);
 
     this.state = {
+      selectedGene: null,
       tooltip: {
-        shape: null,
         visible: false,
         shapeId: -1,
         x: -1000,
@@ -211,8 +211,66 @@ class GenesPlot extends Component {
     this.props.updateHoveredLocation(null, panelIndex);
   };
 
+  tooltipContent(gene) {
+    let attributes = [
+      { label: "iid", value: gene.id },
+      { label: "title", value: gene.title },
+      { label: "type", value: gene.bioType },
+      { label: "Chromosome", value: gene.chromosome },
+      { label: "Start Point", value: d3.format(",")(gene.startPoint) },
+      { label: "End Point", value: d3.format(",")(gene.endPoint) },
+    ];
+    gene.strand && attributes.push({ label: "Strand", value: gene.strand });
+    return attributes;
+  }
+
+  handleTitleClick = (selectedGene) => {
+    window
+      .open(
+        `https://www.genecards.org/cgi-bin/carddisp.pl?gene=${selectedGene.title}`,
+        "_blank"
+      )
+      .focus();
+  };
+
+  handleGeneMouseOver = (event, selectedGene) => {
+    const { width, height } = this.props;
+
+    let textData = this.tooltipContent(selectedGene);
+    let diffY = d3.min([
+      0,
+      height - event.nativeEvent.offsetY - textData.length * 16 - 12,
+    ]);
+    let diffX = d3.min([
+      0,
+      width -
+        event.nativeEvent.offsetX -
+        d3.max(textData, (d) => measureText(`${d.label}: ${d.value}`, 12)) -
+        0,
+    ]);
+    this.setState({
+      selectedGene,
+      tooltip: {
+        shape: selectedGene,
+        shapeId: selectedGene.id,
+        visible: true,
+        x: event.nativeEvent.offsetX + diffX,
+        y: event.nativeEvent.offsetY + diffY,
+        text: textData,
+      },
+    });
+  };
+
+  handleGeneMouseLeave = () => {
+    this.setState({
+      selectedGene: null,
+      tooltip: { shape: null, shapeId: null, visible: false },
+    });
+  };
+
   render() {
     const { width, height, domains, genesList, defaultDomain } = this.props;
+    const { tooltip, selectedGene } = this.state;
 
     let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 2 * margins.gapY;
@@ -317,59 +375,93 @@ class GenesPlot extends Component {
                 transform={`translate(${[panel.offset, 0]})`}
               >
                 <g clipPath={`url(#cuttOffViewPane-${panel.index})`}>
-                  {panel.dataGenes.map((e, j) => (
-                    <g>
+                  <rect
+                    className="zoom-background"
+                    id={`panel-rect-${panel.index}`}
+                    x={0.5}
+                    width={panelWidth}
+                    height={panelHeight}
+                    onMouseMove={(e) => this.handleMouseMove(e, i)}
+                    onMouseOut={(e) => this.handleMouseOut(e, i)}
+                    style={{
+                      stroke: "steelblue",
+                      fill: "transparent",
+                      strokeWidth: 1,
+                      opacity: 0.375,
+                      pointerEvents: "all",
+                    }}
+                  />
+                  {panel.dataGenes.map((gene, j) => (
+                    <g
+                      onMouseOver={(event) =>
+                        this.handleGeneMouseOver(event, gene)
+                      }
+                      onMouseLeave={() => this.handleGeneMouseLeave(gene)}
+                    >
                       <rect
+                        className={
+                          gene.id === selectedGene?.id ? "highlighted" : ""
+                        }
                         transform={`translate(${[
-                          panel.xScale(e.xStart),
-                          panel.yScale(e.y) - 1,
+                          panel.xScale(gene.xStart),
+                          panel.yScale(gene.y) - 1,
                         ]})`}
-                        fill={e.fields[5] === "+" ? "#3333FF" : "#FF4444"}
-                        width={panel.xScale(e.xEnd) - panel.xScale(e.xStart)}
+                        fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
+                        width={
+                          panel.xScale(gene.xEnd) - panel.xScale(gene.xStart)
+                        }
                         height={2}
                       />
                       <polygon
-                        key={e.uid}
-                        id={e.uid}
+                        className={
+                          gene.id === selectedGene?.id ? "highlighted" : ""
+                        }
+                        key={gene.uid}
+                        id={gene.uid}
                         transform={`translate(${[0, 0]})`}
                         points={
-                          e.fields[5] === "+"
+                          gene.fields[5] === "+"
                             ? [
-                                panel.xScale(e.xEnd),
-                                panel.yScale(e.y),
-                                panel.xScale(e.xEnd) - 5,
-                                panel.yScale(e.y) - 5,
-                                panel.xScale(e.xEnd) - 5,
-                                panel.yScale(e.y) + 5,
+                                panel.xScale(gene.xEnd),
+                                panel.yScale(gene.y),
+                                panel.xScale(gene.xEnd) - 5,
+                                panel.yScale(gene.y) - 5,
+                                panel.xScale(gene.xEnd) - 5,
+                                panel.yScale(gene.y) + 5,
                               ]
                             : [
-                                panel.xScale(e.xStart),
-                                panel.yScale(e.y),
-                                panel.xScale(e.xStart) + 5,
-                                panel.yScale(e.y) - 5,
-                                panel.xScale(e.xStart) + 5,
-                                panel.yScale(e.y) + 5,
+                                panel.xScale(gene.xStart),
+                                panel.yScale(gene.y),
+                                panel.xScale(gene.xStart) + 5,
+                                panel.yScale(gene.y) - 5,
+                                panel.xScale(gene.xStart) + 5,
+                                panel.yScale(gene.y) + 5,
                               ]
                         }
-                        fill={e.fields[5] === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
                       />
                       <text
+                        className={
+                          gene.id === selectedGene?.id ? "highlighted" : ""
+                        }
                         transform={`translate(${[
-                          (panel.xScale(e.xStart) + panel.xScale(e.xEnd)) / 2,
-                          e.fields[5] === "+"
-                            ? panel.yScale(e.y) - 15
-                            : panel.yScale(e.y) + 15,
+                          (d3.max([0, panel.xScale(gene.xStart)]) +
+                            d3.min([panel.xScale(gene.xEnd), panelWidth])) /
+                            2,
+                          gene.fields[5] === "+"
+                            ? panel.yScale(gene.y) - 15
+                            : panel.yScale(gene.y) + 15,
                         ]})`}
                         textAnchor="middle"
-                        fill={e.fields[5] === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
                         fontSize={9}
+                        onClick={() => this.handleTitleClick(gene)}
                       >
-                        {e.fields[3]}
+                        {gene.fields[3]}
                       </text>
                     </g>
                   ))}
                 </g>
-
                 <line
                   className="hovered-location-line hidden"
                   id={`hovered-location-line-${panel.index}`}
@@ -383,25 +475,37 @@ class GenesPlot extends Component {
                   dx={5}
                   dy={10}
                 ></text>
-                <rect
-                  className="zoom-background"
-                  id={`panel-rect-${panel.index}`}
-                  x={0.5}
-                  width={panelWidth}
-                  height={panelHeight}
-                  onMouseMove={(e) => this.handleMouseMove(e, i)}
-                  onMouseOut={(e) => this.handleMouseOut(e, i)}
-                  style={{
-                    stroke: "steelblue",
-                    fill: "transparent",
-                    strokeWidth: 1,
-                    opacity: 0.375,
-                    pointerEvents: "all",
-                  }}
-                />
               </g>
             ))}
           </g>
+          {tooltip.visible && (
+            <g
+              className="tooltip"
+              transform={`translate(${[tooltip.x + 30, tooltip.y]})`}
+              pointerEvents="none"
+            >
+              <rect
+                x="0"
+                y="0"
+                width={d3.max(
+                  tooltip.text,
+                  (d) => measureText(`${d.label}: ${d.value}`, 12) + 30
+                )}
+                height={tooltip.text.length * 16 + 12}
+                rx="5"
+                ry="5"
+                fill="rgb(97, 97, 97)"
+                fillOpacity="0.67"
+              />
+              <text x="10" y="28" fontSize="12" fill="#FFF">
+                {tooltip.text.map((d, i) => (
+                  <tspan key={i} x={10} y={18 + i * 16}>
+                    <tspan fontWeight="bold">{d.label}</tspan>: {d.value}
+                  </tspan>
+                ))}
+              </text>
+            </g>
+          )}
         </svg>
       </Wrapper>
     );

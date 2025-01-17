@@ -21,6 +21,10 @@ const Wrapper = styled.div`
     font-size: 10px;
     user-select: none;
   }
+  .highlighted {
+    font-weight: bold;
+    fill: #ff7f0e !important;
+  }
 `;
 
 export default Wrapper;
