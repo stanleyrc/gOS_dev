@@ -1007,27 +1007,35 @@ export function segmentAttributes() {
   };
 }
 
-export function higlassGenesFieldsArrayToObject(fields) {
+export function higlassGenesFieldsArrayToObject(fields, chromoBins) {
   /* Example Fields
-  0: "chr6"
-  1: "32546546"
-  2: "32557613"
-  3: "HLA-DRB1"
-  4: "2496"
-  5: "-"
-  6: "union_3123"
-  7: "3123"
-  8: "protein-coding"
-  9: "major histocompatibility complex, class II, DR beta 1"
-  10: "32546867"
-  11: "32557519"
-  12: "32546546,32548023,32548522,32549333,32551885,32557419"
-  13: "32546881,32548047,32548633,32549615,32552155,32557613"
+# 0: chr (chr1)
+# 1: txStart (52301201) [9]
+# 2: txEnd (52317145) [10]
+# 3: geneName (ACVRL1)   [2]
+# 4: citationCount (123) [16]
+# 5: strand (+)  [8]
+# 6: refseqId (NM_000020)
+# 7: geneId (94) [1]
+# 8: geneType (protein-coding)
+# 9: geneDesc (activin A receptor type II-like 1)
+# 10: cdsStart (52306258)
+# 11: cdsEnd (52314677)
+# 12: exonStarts (52301201,52306253,52306882,52307342,52307757,52308222,52309008,52309819,52312768,52314542,)
+# 13: exonEnds (52301479,52306319,52307134,52307554,52307857,52308369,52309284,52310017,52312899,52317145,)
+
 */
+  let chromosome = fields[0].replaceAll("chr", "");
+  let startPoint = +fields[1];
+  let endPoint = +fields[2];
+  let cdsStartPoint = +fields[10];
+  let cdsEndPoint = +fields[11];
   return {
-    chromosome: fields[0].replaceAll("chr", ""),
-    startPoint: +fields[1],
-    endPoint: +fields[2],
+    chromosome,
+    startPoint,
+    endPoint,
+    startPlace: chromoBins[chromosome].startPlace + startPoint - 1,
+    endPlace: chromoBins[chromosome].startPlace + endPoint - 1,
     title: fields[3],
     importance: +fields[4],
     strand: fields[5],
@@ -1035,10 +1043,18 @@ export function higlassGenesFieldsArrayToObject(fields) {
     internalId: fields[7],
     bioType: fields[8],
     description: fields[9],
-    cdsStartPoint: +fields[10],
-    cdsEndPoint: +fields[11],
+    cdsStartPoint,
+    cdsEndPoint,
+    cdsStartPlace: chromoBins[chromosome].startPlace + cdsStartPoint - 1,
+    cdsEndPlace: chromoBins[chromosome].startPlace + cdsEndPoint - 1,
     exons: fields[12].split(",").map((d, i) => {
-      return { startPoint: +d, endPoint: +fields[13].split(",")[i] };
+      return {
+        startPoint: +d,
+        endPoint: +fields[13].split(",")[i],
+        startPlace: chromoBins[chromosome].startPlace + (+d) - 1,
+        endPlace:
+          chromoBins[chromosome].startPlace + (+fields[13].split(",")[i]) - 1,
+      };
     }),
   };
 }

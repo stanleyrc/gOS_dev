@@ -103,7 +103,7 @@ function* fetchHiglassGenesInfo(action) {
 function* fetchHiglassGenesData(action) {
   const currentState = yield select(getCurrentState);
   const { tilesetId, maxGenomeLength, higlassServerPath } = currentState.Genes;
-  const { domains } = currentState.Settings;
+  const { domains, chromoBins } = currentState.Settings;
 
   let list = [];
   try {
@@ -126,7 +126,7 @@ function* fetchHiglassGenesData(action) {
           .forEach((gene, i) => {
             list.push({
               ...gene,
-              ...higlassGenesFieldsArrayToObject(gene.fields),
+              ...higlassGenesFieldsArrayToObject(gene.fields, chromoBins),
             });
           });
       })

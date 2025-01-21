@@ -27,7 +27,7 @@ class ScatterPlot extends Component {
 
   constructor(props) {
     super(props);
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 10);
   }
 
   componentDidMount() {

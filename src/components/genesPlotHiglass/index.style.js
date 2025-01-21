@@ -25,6 +25,11 @@ const Wrapper = styled.div`
     font-weight: bold;
     fill: #ff7f0e !important;
   }
+  .rect-highlighted {
+    font-weight: bold;
+    fill: #ff7f0e !important;
+    stroke: #b3590a !important;
+  }
 `;
 
 export default Wrapper;

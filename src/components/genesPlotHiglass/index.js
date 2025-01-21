@@ -34,7 +34,7 @@ class GenesPlot extends Component {
         text: "",
       },
     };
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 10);
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -213,14 +213,24 @@ class GenesPlot extends Component {
 
   tooltipContent(gene) {
     let attributes = [
-      { label: "iid", value: gene.id },
-      { label: "title", value: gene.title },
-      { label: "type", value: gene.bioType },
-      { label: "Chromosome", value: gene.chromosome },
-      { label: "Start Point", value: d3.format(",")(gene.startPoint) },
-      { label: "End Point", value: d3.format(",")(gene.endPoint) },
+      { label: "id", value: gene.id },
+      { label: "Title", value: gene.title },
+      { label: "Type", value: gene.bioType },
+      { label: "Description", value: gene.description },
+      {
+        label: "Locus",
+        value: `chr${gene.chromosome}: ${d3.format(",")(
+          gene.startPoint
+        )} - ${d3.format(",")(gene.endPoint)}`,
+      },
+      {
+        label: "CDS Locus",
+        value: `chr${gene.chromosome}: ${d3.format(",")(
+          gene.cdsStartPoint
+        )} - ${d3.format(",")(gene.cdsEndPoint)}`,
+      },
+      { label: "Strand", value: gene.strand },
     ];
-    gene.strand && attributes.push({ label: "Strand", value: gene.strand });
     return attributes;
   }
 
@@ -233,7 +243,7 @@ class GenesPlot extends Component {
       .focus();
   };
 
-  handleGeneMouseOver = (event, selectedGene) => {
+  handleGeneMouseMove = (event, selectedGene) => {
     const { width, height } = this.props;
 
     let textData = this.tooltipContent(selectedGene);
@@ -246,7 +256,7 @@ class GenesPlot extends Component {
       width -
         event.nativeEvent.offsetX -
         d3.max(textData, (d) => measureText(`${d.label}: ${d.value}`, 12)) -
-        0,
+        60,
     ]);
     this.setState({
       selectedGene,
@@ -261,7 +271,7 @@ class GenesPlot extends Component {
     });
   };
 
-  handleGeneMouseLeave = () => {
+  handleGeneMouseOut = () => {
     this.setState({
       selectedGene: null,
       tooltip: { shape: null, shapeId: null, visible: false },
@@ -393,14 +403,44 @@ class GenesPlot extends Component {
                   />
                   {panel.dataGenes.map((gene, j) => (
                     <g
-                      onMouseOver={(event) =>
-                        this.handleGeneMouseOver(event, gene)
+                      onMouseMove={(event) =>
+                        this.handleGeneMouseMove(event, gene)
                       }
-                      onMouseLeave={() => this.handleGeneMouseLeave(gene)}
+                      onMouseOut={() => this.handleGeneMouseOut(gene)}
                     >
+                      {gene.exons
+                        .filter(
+                          (g) =>
+                            panel.xScale(g.endPlace) -
+                              panel.xScale(g.startPlace) >
+                            1
+                        )
+                        .map((g) => (
+                          <rect
+                            className={`exon-rect ${
+                              gene.id === selectedGene?.id
+                                ? "rect-highlighted"
+                                : ""
+                            }`}
+                            transform={`translate(${[
+                              panel.xScale(g.startPlace),
+                              panel.yScale(gene.y) - 8,
+                            ]})`}
+                            fill={gene.strand === "+" ? "#3333FF" : "#FF4444"}
+                            stroke={d3
+                              .rgb(gene.strand === "+" ? "#3333FF" : "#FF4444")
+                              .darker()}
+                            fillOpacity="0.15"
+                            width={
+                              panel.xScale(g.endPlace) -
+                              panel.xScale(g.startPlace)
+                            }
+                            height={16}
+                          />
+                        ))}
                       <rect
                         className={
-                          gene.id === selectedGene?.id ? "highlighted" : ""
+                          gene.id === selectedGene?.id ? "rect-highlighted" : ""
                         }
                         transform={`translate(${[
                           panel.xScale(gene.xStart),
@@ -414,7 +454,7 @@ class GenesPlot extends Component {
                       />
                       <polygon
                         className={
-                          gene.id === selectedGene?.id ? "highlighted" : ""
+                          gene.id === selectedGene?.id ? "rect-highlighted" : ""
                         }
                         key={gene.uid}
                         id={gene.uid}
@@ -449,12 +489,12 @@ class GenesPlot extends Component {
                             d3.min([panel.xScale(gene.xEnd), panelWidth])) /
                             2,
                           gene.fields[5] === "+"
-                            ? panel.yScale(gene.y) - 15
-                            : panel.yScale(gene.y) + 15,
+                            ? panel.yScale(gene.y) - 20
+                            : panel.yScale(gene.y) + 20,
                         ]})`}
                         textAnchor="middle"
                         fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
-                        fontSize={9}
+                        fontSize={10}
                         onClick={() => this.handleTitleClick(gene)}
                       >
                         {gene.fields[3]}
@@ -481,7 +521,7 @@ class GenesPlot extends Component {
           {tooltip.visible && (
             <g
               className="tooltip"
-              transform={`translate(${[tooltip.x + 30, tooltip.y]})`}
+              transform={`translate(${[tooltip.x + 10, tooltip.y]})`}
               pointerEvents="none"
             >
               <rect
