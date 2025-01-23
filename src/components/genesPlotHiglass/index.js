@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { humanize, measureText } from "../../helpers/utility";
+import { filterGenesByOverlap, measureText } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import debounce from "lodash.debounce";
 import settingsActions from "../../redux/settings/actions";
@@ -292,16 +292,21 @@ class GenesPlot extends Component {
 
     domains.forEach((xDomain, index) => {
       let dataGenes = [];
-
+      let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
       genesList.forEach((gene, i) => {
-        if (gene.xEnd >= xDomain[0] && gene.xStart <= xDomain[1]) {
+        if (gene.endPlace >= xDomain[0] && gene.startPlace <= xDomain[1]) {
           dataGenes.push({
             ...gene,
-            y: gene.fields[5] === "+" ? 2 : -2,
+            y: gene.strand === "+" ? 2 : -2,
+            textPosX:
+              (d3.max([0, xScale(gene.startPlace)]) +
+                d3.min([xScale(gene.endPlace), panelWidth])) /
+              2,
           });
         }
       });
 
+      dataGenes = filterGenesByOverlap(dataGenes);
       let offset = index * (panelWidth + margins.gapX);
       let zoom = d3
         .zoom()
@@ -329,7 +334,6 @@ class GenesPlot extends Component {
         .range([panelHeight, 0])
         .nice();
 
-      let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
       let yTicks = yScale.ticks(margins.yTicksCount);
       yTicks[yTicks.length - 1] = yScale.domain()[1];
       this.panels.push({
@@ -345,7 +349,8 @@ class GenesPlot extends Component {
         dataGenes,
       });
     });
-
+    let randID = Math.random();
+    console.log(this.panels[0]);
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
@@ -360,13 +365,16 @@ class GenesPlot extends Component {
           ref={(elem) => (this.plotContainer = elem)}
         >
           <defs>
-            <clipPath key={`cuttOffViewPane`} id={`cuttOffViewPane`}>
+            <clipPath
+              key={`cuttOffViewPane-${randID}`}
+              id={`cuttOffViewPane-${randID}`}
+            >
               <rect x={0} y={0} width={stageWidth} height={stageHeight} />
             </clipPath>
             {this.panels.map((panel, i) => (
               <clipPath
-                key={`cuttOffViewPane-${panel.index}`}
-                id={`cuttOffViewPane-${panel.index}`}
+                key={`cuttOffViewPane-${randID}-${panel.index}`}
+                id={`cuttOffViewPane-${randID}-${panel.index}`}
               >
                 <rect
                   x={0}
@@ -384,12 +392,12 @@ class GenesPlot extends Component {
                 id={`panel-${panel.index}`}
                 transform={`translate(${[panel.offset, 0]})`}
               >
-                <g clipPath={`url(#cuttOffViewPane-${panel.index})`}>
+                <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
                   <rect
                     className="zoom-background"
                     id={`panel-rect-${panel.index}`}
                     x={0.5}
-                    width={panelWidth}
+                    width={panelWidth - 1}
                     height={panelHeight}
                     onMouseMove={(e) => this.handleMouseMove(e, i)}
                     onMouseOut={(e) => this.handleMouseOut(e, i)}
@@ -430,7 +438,8 @@ class GenesPlot extends Component {
                             stroke={d3
                               .rgb(gene.strand === "+" ? "#3333FF" : "#FF4444")
                               .darker()}
-                            fillOpacity="0.15"
+                            fillOpacity={0.15}
+                            strokeOpacity={0.3}
                             width={
                               panel.xScale(g.endPlace) -
                               panel.xScale(g.startPlace)
@@ -443,12 +452,14 @@ class GenesPlot extends Component {
                           gene.id === selectedGene?.id ? "rect-highlighted" : ""
                         }
                         transform={`translate(${[
-                          panel.xScale(gene.xStart),
+                          panel.xScale(gene.startPlace),
                           panel.yScale(gene.y) - 1,
                         ]})`}
-                        fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.strand === "+" ? "#3333FF" : "#FF4444"}
+                        opacity={0.5}
                         width={
-                          panel.xScale(gene.xEnd) - panel.xScale(gene.xStart)
+                          panel.xScale(gene.endPlace) -
+                          panel.xScale(gene.startPlace)
                         }
                         height={2}
                       />
@@ -458,46 +469,48 @@ class GenesPlot extends Component {
                         }
                         key={gene.uid}
                         id={gene.uid}
-                        transform={`translate(${[0, 0]})`}
+                        opacity={0.5}
                         points={
-                          gene.fields[5] === "+"
+                          gene.strand === "+"
                             ? [
-                                panel.xScale(gene.xEnd),
+                                panel.xScale(gene.endPlace),
                                 panel.yScale(gene.y),
-                                panel.xScale(gene.xEnd) - 5,
+                                panel.xScale(gene.endPlace) - 5,
                                 panel.yScale(gene.y) - 5,
-                                panel.xScale(gene.xEnd) - 5,
+                                panel.xScale(gene.endPlace) - 5,
                                 panel.yScale(gene.y) + 5,
                               ]
                             : [
-                                panel.xScale(gene.xStart),
+                                panel.xScale(gene.startPlace),
                                 panel.yScale(gene.y),
-                                panel.xScale(gene.xStart) + 5,
+                                panel.xScale(gene.startPlace) + 5,
                                 panel.yScale(gene.y) - 5,
-                                panel.xScale(gene.xStart) + 5,
+                                panel.xScale(gene.startPlace) + 5,
                                 panel.yScale(gene.y) + 5,
                               ]
                         }
-                        fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.strand === "+" ? "#3333FF" : "#FF4444"}
                       />
                       <text
                         className={
-                          gene.id === selectedGene?.id ? "highlighted" : ""
+                          gene.id === selectedGene?.id
+                            ? "highlighted"
+                            : gene.textOverlap
+                            ? "hidden"
+                            : ""
                         }
                         transform={`translate(${[
-                          (d3.max([0, panel.xScale(gene.xStart)]) +
-                            d3.min([panel.xScale(gene.xEnd), panelWidth])) /
-                            2,
-                          gene.fields[5] === "+"
+                          gene.textPosX,
+                          gene.strand === "+"
                             ? panel.yScale(gene.y) - 20
                             : panel.yScale(gene.y) + 20,
                         ]})`}
                         textAnchor="middle"
-                        fill={gene.fields[5] === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.color ? gene.color : "currentColor"}
                         fontSize={10}
                         onClick={() => this.handleTitleClick(gene)}
                       >
-                        {gene.fields[3]}
+                        {gene.title}
                       </text>
                     </g>
                   ))}

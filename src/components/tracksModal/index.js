@@ -79,20 +79,6 @@ class TracksModal extends Component {
       >
         {genes && (
           <Col className="gutter-row" span={24}>
-            <GenesPanel
-              {...{
-                loading: genes.loading,
-                genes: genes.data,
-                error: genes.error,
-                filename: genes.filename,
-                chromoBins,
-                height,
-              }}
-            />
-          </Col>
-        )}
-        {genes && (
-          <Col className="gutter-row" span={24}>
             <GenesPanelHiglass
               {...{
                 loading: genes.loading,

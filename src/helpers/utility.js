@@ -10,6 +10,87 @@ export function chunks(arr, size = 4) {
   );
 }
 
+export function filterGenesByOverlap(genes) {
+  // A helper to measure text width precisely via a hidden canvas
+  function getTextWidth(text, font = "10px Arial") {
+    const canvas =
+      getTextWidth.canvas ||
+      (getTextWidth.canvas = document.createElement("canvas"));
+    const context = canvas.getContext("2d");
+    context.font = font;
+    return context.measureText(text).width;
+  }
+
+  // We’ll sort a copy of the array so we don’t mutate the original
+  // Sort by importance descending
+  const sortedGenes = [...genes].sort((a, b) => b.importance - a.importance);
+
+  // We’ll store the accepted genes here
+  const acceptedGenes = [];
+
+  // Keep track of bounding boxes by strand: {"+" : [...], "-" : [...]}
+  // Each bounding box will be { left, right } in pixel coordinates.
+  const boxesByStrand = { "+": [], "-": [] };
+
+  // Utility to check if two [left, right] intervals overlap
+  function overlaps(aLeft, aRight, bLeft, bRight) {
+    return aLeft <= bRight && bLeft <= aRight;
+  }
+
+  // Iterate over genes (most important first)
+  for (const gene of sortedGenes) {
+    const strand = gene.strand;
+    // Compute midpoint (x-coord) in the same scale as startPlace/endPlace
+    const mid = gene.textPosX;
+
+    // Measure the width of the gene's title in pixels
+    const textWidth = getTextWidth(gene.title);
+
+    // Approximate bounding box of the text
+    const left = mid - textWidth / 2;
+    const right = mid + textWidth / 2;
+
+    // Check if this bounding box overlaps with any existing box on the same strand
+    const strandBoxes = boxesByStrand[strand] || [];
+    const hasOverlap = strandBoxes.some((box) =>
+      overlaps(box.left, box.right, left, right)
+    );
+
+    // If no overlap, accept this gene and record its bounding box
+    if (!hasOverlap) {
+      acceptedGenes.push(gene);
+      strandBoxes.push({ left, right });
+      boxesByStrand[strand] = strandBoxes;
+    }
+    gene.textOverlap = hasOverlap;
+  }
+
+  // Return only the accepted genes.
+  // If you need them in the original array order, you could sort acceptedGenes
+  // by their original index. Here we just return the order determined by sorting (by importance).
+  return sortedGenes;
+}
+
+export function color2RGB(color) {
+  let red = Math.floor(color / 65536.0);
+  let green = Math.floor((color - red * 65536.0) / 256.0);
+  let blue = color - red * 65536.0 - green * 256.0;
+
+  // Make sure to clamp the values to the 0–255 range just in case
+  let r = Math.max(0, Math.min(255, red));
+  let g = Math.max(0, Math.min(255, green));
+  let b = Math.max(0, Math.min(255, blue));
+
+  // Convert each color component to a two‐character hex string
+  const toHex = (value) => {
+    const hex = value.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+
+  // Concatenate them in the form "#RRGGBB"
+  return "#" + toHex(r) + toHex(g) + toHex(b);
+}
+
 export function replaceSearchParams(location, params = {}) {
   let searchParams = new URLSearchParams(location.search);
   Object.keys(params).forEach((param) => {
@@ -1051,9 +1132,9 @@ export function higlassGenesFieldsArrayToObject(fields, chromoBins) {
       return {
         startPoint: +d,
         endPoint: +fields[13].split(",")[i],
-        startPlace: chromoBins[chromosome].startPlace + (+d) - 1,
+        startPlace: chromoBins[chromosome].startPlace + +d - 1,
         endPlace:
-          chromoBins[chromosome].startPlace + (+fields[13].split(",")[i]) - 1,
+          chromoBins[chromosome].startPlace + +fields[13].split(",")[i] - 1,
       };
     }),
   };

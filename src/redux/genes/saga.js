@@ -4,9 +4,13 @@ import axios from "axios";
 import {
   loadArrowTable,
   higlassGenesFieldsArrayToObject,
+  merge,
+  cluster,
+  color2RGB,
 } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
+import settingsActions from "../settings/actions";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path)
@@ -44,6 +48,11 @@ function* fetchGenesData(action) {
         d3.ascending(a.label.toLowerCase(), b.label.toLowerCase())
       );
 
+    let titlesColorMap = {};
+    geneTitles.forEach((d, i) => {
+      titlesColorMap[d] = color2RGB(genesData.get(i).toJSON().color);
+    });
+
     yield put({
       type: actions.FETCH_GENES_DATA_SUCCESS,
       data: genesData,
@@ -56,6 +65,7 @@ function* fetchGenesData(action) {
       genesColor: genesData.getChild("color").toArray(),
       genesStrand: genesData.getChild("strand").toArray(),
       genesWeight: genesData.getChild("weight").toArray(),
+      titlesColorMap,
     });
   } catch (error) {
     yield put({
@@ -102,7 +112,8 @@ function* fetchHiglassGenesInfo(action) {
 
 function* fetchHiglassGenesData(action) {
   const currentState = yield select(getCurrentState);
-  const { tilesetId, maxGenomeLength, higlassServerPath } = currentState.Genes;
+  const { tilesetId, maxGenomeLength, higlassServerPath, titlesColorMap } =
+    currentState.Genes;
   const { domains, chromoBins } = currentState.Settings;
 
   let list = [];
@@ -127,6 +138,7 @@ function* fetchHiglassGenesData(action) {
             list.push({
               ...gene,
               ...higlassGenesFieldsArrayToObject(gene.fields, chromoBins),
+              color: titlesColorMap[gene.fields[3]],
             });
           });
       })
@@ -146,6 +158,37 @@ function* fetchHiglassGenesData(action) {
       error,
     });
   }
+}
+
+function* locateGenes(action) {
+  const currentState = yield select(getCurrentState);
+  const { data } = currentState.Genes;
+  const { genomeLength, chromoBins } = currentState.Settings;
+
+  const { geneIndexes } = action;
+  let selectedGenes = geneIndexes.map((d, i) => data.get(d).toJSON());
+  console.log(selectedGenes);
+  let newDomains = selectedGenes.map((d, i) => [
+    d3.max([Math.floor(0.99999 * d.startPlace), 1]),
+    d3.min([Math.floor(1.00001 * d.endPlace), genomeLength]),
+  ]);
+  if (geneIndexes.length < 1) {
+    let firstChromosome = Object.values(chromoBins)[0];
+    newDomains = [[firstChromosome.startPlace, firstChromosome.endPlace]];
+  } else {
+    let merged = merge(
+      newDomains
+        .map((d) => {
+          return { startPlace: d[0], endPlace: d[1] };
+        })
+        .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
+    );
+    newDomains = cluster(merged, genomeLength);
+  }
+  yield put({
+    type: settingsActions.UPDATE_DOMAINS,
+    domains: newDomains,
+  });
 }
 
 function* higlassGenesFetchedSuccessFollowUp(action) {
@@ -168,6 +211,7 @@ function* actionWatcher() {
     actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
     fetchHiglassGenesData
   );
+  yield takeLatest(actions.LOCATE_GENES, locateGenes);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

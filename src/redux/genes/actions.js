@@ -11,6 +11,8 @@ const actions = {
   FETCH_GENES_DATA_SUCCESS: "FETCH_GENES_DATA_SUCCESS",
   FETCH_GENES_DATA_FAILED: "FETCH_GENES_DATA_FAILED",
 
+  LOCATE_GENES: "LOCATE_GENES",
+
   fetchGenesInfo: () => ({
     type: actions.FETCH_HIGLASS_GENES_INFO_REQUEST,
   }),
@@ -18,6 +20,8 @@ const actions = {
   fetchGenesData: () => ({
     type: actions.FETCH_GENES_DATA_REQUEST,
   }),
+
+  locateGenes: (geneIndexes) => ({ type: actions.LOCATE_GENES, geneIndexes }),
 };
 
 export default actions;

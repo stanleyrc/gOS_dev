@@ -18,6 +18,7 @@ const initState = {
   genesColor: [],
   genesStrand: [],
   genesWeight: [],
+  titlesColorMap: {},
   error: null,
 };
 
@@ -80,6 +81,7 @@ export default function appReducer(state = initState, action) {
         genesColor: [],
         genesStrand: [],
         genesWeight: [],
+        titlesColorMap: {},
         error: null,
         loading: true,
       };
@@ -96,6 +98,7 @@ export default function appReducer(state = initState, action) {
         genesColor: action.genesColor,
         genesStrand: action.genesStrand,
         genesWeight: action.genesWeight,
+        titlesColorMap: action.titlesColorMap,
         loading: false,
       };
     case actions.FETCH_GENES_DATA_FAILED:
@@ -111,6 +114,7 @@ export default function appReducer(state = initState, action) {
         genesColor: [],
         genesStrand: [],
         genesWeight: [],
+        titlesColorMap: {},
         error: action.error,
         loading: false,
       };

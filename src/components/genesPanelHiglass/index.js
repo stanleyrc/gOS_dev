@@ -11,22 +11,22 @@ import {
   message,
   Row,
   Col,
-  Typography,
   Spin,
+  Select,
 } from "antd";
 import * as d3 from "d3";
 import { AiOutlineDownload } from "react-icons/ai";
 import { LoadingOutlined } from "@ant-design/icons";
-import { downloadCanvasAsPng } from "../../helpers/utility";
+import { downloadCanvasAsPng, merge, cluster } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import Wrapper from "./index.style";
 import GenesPlot from "../genesPlotHiglass";
-import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
+import genesActions from "../../redux/genes/actions";
 
-const { updateDomains } = appActions;
-
-const { Text } = Typography;
+const { updateDomains } = settingsActions;
+const { locateGenes } = genesActions;
 
 const margins = {
   padding: 0,
@@ -55,7 +55,8 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, loading, genesList, domains } = this.props;
+    const { t, loading, genesList, domains, genesOptionsList, locateGenes } =
+      this.props;
     return (
       <Wrapper>
         {
@@ -87,6 +88,26 @@ class GenesPanel extends Component {
             }
             extra={
               <Space>
+                <Select
+                  allowClear
+                  showSearch
+                  mode="multiple"
+                  style={{ width: 300 }}
+                  placeholder={t("components.genes-panel.locator")}
+                  onChange={locateGenes}
+                  options={genesOptionsList}
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.label.toLowerCase() ?? "").includes(
+                      input.toLowerCase()
+                    )
+                  }
+                  filterSort={(optionA, optionB) =>
+                    (optionA?.label ?? "")
+                      .toLowerCase()
+                      .localeCompare((optionB?.label ?? "").toLowerCase())
+                  }
+                />
                 <Tooltip title={t("components.download-as-png-tooltip")}>
                   <Button
                     type="default"
@@ -134,9 +155,11 @@ GenesPanel.propTypes = {};
 GenesPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
+  locateGenes: (genesIndexes) => dispatch(locateGenes(genesIndexes)),
 });
 const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
+  genesOptionsList: state.Genes.optionsList,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
 });
 export default connect(
