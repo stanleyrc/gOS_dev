@@ -191,6 +191,12 @@ function* locateGenes(action) {
   });
 }
 
+function* triggerFetchingHiglassGenesData(action) {
+  yield put({
+    type: actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
+  });
+}
+
 function* actionWatcher() {
   yield takeLatest(actions.FETCH_GENES_DATA_REQUEST, fetchGenesData);
   yield takeLatest(
@@ -202,14 +208,14 @@ function* actionWatcher() {
     fetchHiglassGenesData
   );
   yield takeLatest(actions.LOCATE_GENES, locateGenes);
-  yield all([
-    take(actions.FETCH_GENES_DATA_SUCCESS),
-    take(settingsActions.FETCH_SETTINGS_DATA_SUCCESS),
-    take(actions.FETCH_HIGLASS_GENES_INFO_SUCCESS),
-  ]);
-  yield put({
-    type: actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
-  });
+  yield takeLatest(
+    actions.FETCH_GENES_DATA_SUCCESS,
+    triggerFetchingHiglassGenesData
+  );
+  yield takeLatest(
+    actions.FETCH_HIGLASS_GENES_INFO_SUCCESS,
+    triggerFetchingHiglassGenesData
+  );
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);
