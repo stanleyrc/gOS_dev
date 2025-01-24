@@ -191,12 +191,6 @@ function* locateGenes(action) {
   });
 }
 
-function* triggerFetchingHiglassGenesData(action) {
-  yield put({
-    type: actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
-  });
-}
-
 function* actionWatcher() {
   yield takeLatest(actions.FETCH_GENES_DATA_REQUEST, fetchGenesData);
   yield takeLatest(
@@ -208,13 +202,10 @@ function* actionWatcher() {
     fetchHiglassGenesData
   );
   yield takeLatest(actions.LOCATE_GENES, locateGenes);
-  yield takeLatest(
-    actions.FETCH_GENES_DATA_SUCCESS,
-    triggerFetchingHiglassGenesData
-  );
+  yield takeLatest(actions.FETCH_GENES_DATA_SUCCESS, fetchHiglassGenesData);
   yield takeLatest(
     actions.FETCH_HIGLASS_GENES_INFO_SUCCESS,
-    triggerFetchingHiglassGenesData
+    fetchHiglassGenesData
   );
 }
 export default function* rootSaga() {
