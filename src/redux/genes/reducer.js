@@ -4,7 +4,7 @@ const initState = {
   loading: false,
   filename: "genes/hg19.arrow",
   reference: "hg19",
-  higlassServerPath: "http://higlass.io",
+  higlassServerPath: "https://higlass.io",
   maxGenomeLength: null,
   tilesetId: null,
   list: [],
