@@ -70,7 +70,6 @@ function* settingsFetchedFollowUp(action) {
 }
 
 function* updateDomainsFollowUp(action) {
-  //yield delay(100); // to throttle multiple requests fired during zooming and panning
   yield put({
     type: genesActions.FETCH_HIGLASS_GENES_DATA_REQUEST,
   });

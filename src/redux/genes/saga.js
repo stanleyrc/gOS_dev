@@ -1,4 +1,4 @@
-import { all, put, call, select, takeLatest } from "redux-saga/effects";
+import { all, put, call, select, takeLatest, take } from "redux-saga/effects";
 import * as d3 from "d3";
 import axios from "axios";
 import {
@@ -191,12 +191,6 @@ function* locateGenes(action) {
   });
 }
 
-function* higlassGenesFetchedSuccessFollowUp(action) {
-  yield put({
-    type: actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
-  });
-}
-
 function* actionWatcher() {
   yield takeLatest(actions.FETCH_GENES_DATA_REQUEST, fetchGenesData);
   yield takeLatest(
@@ -204,14 +198,18 @@ function* actionWatcher() {
     fetchHiglassGenesInfo
   );
   yield takeLatest(
-    actions.FETCH_HIGLASS_GENES_INFO_SUCCESS,
-    higlassGenesFetchedSuccessFollowUp
-  );
-  yield takeLatest(
     actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
     fetchHiglassGenesData
   );
   yield takeLatest(actions.LOCATE_GENES, locateGenes);
+  yield all([
+    take(actions.FETCH_GENES_DATA_SUCCESS),
+    take(settingsActions.FETCH_SETTINGS_DATA_SUCCESS),
+    take(actions.FETCH_HIGLASS_GENES_INFO_SUCCESS),
+  ]);
+  yield put({
+    type: actions.FETCH_HIGLASS_GENES_DATA_REQUEST,
+  });
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

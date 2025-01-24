@@ -350,7 +350,7 @@ class GenesPlot extends Component {
       });
     });
     let randID = Math.random();
-    console.log(this.panels[0]);
+
     return (
       <Wrapper className="ant-wrapper" margins={margins}>
         <div
