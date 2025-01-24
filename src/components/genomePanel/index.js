@@ -113,6 +113,7 @@ class GenomePanel extends Component {
       chromoBins,
       domains,
       mutationsPlot,
+      commonRangeY
     } = this.props;
     if (!visible) return null;
     const { parentWidth, height } = this.state;
@@ -212,6 +213,7 @@ class GenomePanel extends Component {
                           genome,
                           mutationsPlot,
                           yAxisTitle,
+                          commonRangeY
                         }}
                       />
                     )}
@@ -231,6 +233,7 @@ GenomePanel.defaultProps = {
   height: 400,
   mutationsPlot: false,
   visible: true,
+  commonRangeY: null
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({

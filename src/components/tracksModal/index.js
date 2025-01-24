@@ -2,15 +2,18 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
-import { Row, Col, Modal, message, Tooltip, Space, Button } from "antd";
+import { Row, Col, Modal, message, Space, Button, Segmented } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
 import { AiOutlineDownload } from "react-icons/ai";
 import * as htmlToImage from "html-to-image";
-import { transitionStyle, downloadCanvasAsPng } from "../../helpers/utility";
+import {
+  transitionStyle,
+  downloadCanvasAsPng,
+  dataRanges,
+} from "../../helpers/utility";
 import Wrapper from "./index.style";
 import ScatterPlotPanel from "../scatterPlotPanel";
-import GenesPanel from "../genesPanel";
 import IgvPanel from "../igvPanel/index";
 import appActions from "../../redux/app/actions";
 import GenesPanelHiglass from "../genesPanelHiglass";
@@ -19,6 +22,10 @@ const { updateHoveredLocation } = appActions;
 
 class TracksModal extends Component {
   container = null;
+
+  state = {
+    yScaleMode: "distinct",
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -34,9 +41,14 @@ class TracksModal extends Component {
       });
   };
 
+  handleYscaleSegmentedChange = (yScaleMode) => {
+    this.setState({ yScaleMode });
+  };
+
   render() {
     const {
       t,
+      domains,
       genome,
       mutations,
       genomeCoverage,
@@ -71,12 +83,41 @@ class TracksModal extends Component {
 
     if (!open) return null;
     const { cov_slope, cov_intercept, hets_slope, hets_intercept } = metadata;
+    const { yScaleMode } = this.state;
+
+    let commonRangeY =
+      yScaleMode === "common"
+        ? dataRanges(
+            domains,
+            genome.data,
+            mutations.data,
+            genomeCoverage,
+            hetsnps,
+            allelic.data
+          )
+        : null;
+
     let content = (
       <Row
         style={transitionStyle(inViewport || renderOutsideViewPort)}
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
+        {false && (
+          <Segmented
+            options={[
+              {
+                label: t("components.segmented-filter.commonYscale"),
+                value: "common",
+              },
+              {
+                label: t("components.segmented-filter.individualYscale"),
+                value: "individual",
+              },
+            ]}
+            onChange={(d) => this.handleYscaleSegmentedChange(d)}
+          />
+        )}
         {genes && (
           <Col className="gutter-row" span={24}>
             <GenesPanelHiglass
@@ -104,6 +145,7 @@ class TracksModal extends Component {
               visible: true,
               index: 0,
               height,
+              commonRangeY,
             }}
           />
         </Col>
@@ -153,6 +195,7 @@ class TracksModal extends Component {
                     ? coverageYAxis2Title
                     : coverageYAxisTitle,
                 yAxis2Title: coverageYAxis2Title,
+                commonRangeY,
               }}
             />
           </Col>
@@ -203,6 +246,7 @@ class TracksModal extends Component {
                     ? hetsnpPlotYAxis2Title
                     : hetsnpPlotYAxisTitle,
                 yAxis2Title: hetsnpPlotYAxis2Title,
+                commonRangeY,
               }}
             />
           </Col>
@@ -221,6 +265,7 @@ class TracksModal extends Component {
                 visible: true,
                 index: 0,
                 height,
+                commonRangeY,
               }}
             />
           </Col>
@@ -241,6 +286,7 @@ class TracksModal extends Component {
                 index: 0,
                 height,
                 mutationsPlot: true,
+                commonRangeY,
               }}
             />
           </Col>

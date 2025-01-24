@@ -48,8 +48,15 @@ class GenomePlot extends Component {
   }
 
   updatePanels() {
-    let { domains, width, height, commonYScale, defaultDomain, genome } =
-      this.props;
+    let {
+      domains,
+      width,
+      height,
+      commonYScale,
+      defaultDomain,
+      genome,
+      commonRangeY,
+    } = this.props;
     const { intervals, frameConnections } = genome;
     let stageWidth = width - 2 * margins.gap;
     let stageHeight = height - 3 * margins.gap;
@@ -91,10 +98,12 @@ class GenomePlot extends Component {
       let intervalMin = d3.min(filteredIntervals, (d) => d.y);
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
       let offsetPerc = 0.5;
-      let yDomain = [
-        intervalMin - intervalMin * offsetPerc,
-        intervalMax + intervalMax * offsetPerc,
-      ];
+      let yDomain = commonRangeY
+        ? commonRangeY
+        : [
+            intervalMin - intervalMin * offsetPerc,
+            intervalMax + intervalMax * offsetPerc,
+          ];
       let yScale = d3
         .scaleLinear()
         .domain(yDomain)
@@ -241,7 +250,8 @@ class GenomePlot extends Component {
       nextProps.hoveredLocation !== this.props.hoveredLocation ||
       nextProps.hoveredLocationPanelIndex !==
         this.props.hoveredLocationPanelIndex ||
-      nextProps.commonYScale !== this.props.commonYScale
+      nextProps.commonYScale !== this.props.commonYScale ||
+      nextProps.commonRangeY !== this.props.commonRangeY
     );
   }
 
@@ -324,7 +334,8 @@ class GenomePlot extends Component {
         .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
         .attr(
           "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) || -10000
+          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+            -10000
         )
         .text(
           Object.values(chromoBins)
@@ -776,6 +787,7 @@ GenomePlot.defaultProps = {
   mutationsPlot: false,
   yAxisTitle: "",
   yAxis2Title: "",
+  commonRangeY: null,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

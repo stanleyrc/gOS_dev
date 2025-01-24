@@ -4,6 +4,57 @@ import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
 
+export function dataRanges(
+  domains,
+  genome,
+  mutations,
+  genomeCoverage,
+  hetsnps,
+  allelic
+) {
+  function filterIntervalsByDomain(domain, intervals) {
+    let filteredIntervals = intervals.filter(
+      (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
+    );
+    let intervalMin = d3.min(filteredIntervals, (d) => d.y);
+    let intervalMax = d3.max(filteredIntervals, (d) => d.y);
+    let offsetPerc = 0.5;
+    let yDomain = [
+      intervalMin - intervalMin * offsetPerc,
+      intervalMax + intervalMax * offsetPerc,
+    ];
+    return yDomain;
+  }
+
+  let maxY = d3.max(
+    [
+      domains
+        .map((domain, index) =>
+          [
+            filterIntervalsByDomain(domain, genome.intervals),
+            filterIntervalsByDomain(domain, allelic.intervals),
+            filterIntervalsByDomain(domain, mutations.intervals),
+          ].flat()
+        )
+        .flat(),
+      findMaxInRanges(
+        domains,
+        genomeCoverage.dataPointsX,
+        genomeCoverage.dataPointsCopyNumber
+      ),
+      findMaxInRanges(
+        domains,
+        hetsnps.dataPointsX,
+        hetsnps.dataPointsCopyNumber
+      ),
+    ].flat()
+  );
+
+  let yScale = d3.scaleLinear().domain([0, maxY]).range([1, 0]).nice();
+
+  return yScale.domain();
+}
+
 export function chunks(arr, size = 4) {
   return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
     arr.slice(i * size, i * size + size)
@@ -778,7 +829,7 @@ export function cluster(
   ]);
 }
 
-// returns the maxium Y value within the domains array as applied to the dataPointsX
+// returns the maximum Y value within the domains array as applied to the dataPointsX
 export function findMaxInRanges(
   domains,
   dataPointsX,

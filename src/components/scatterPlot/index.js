@@ -92,7 +92,8 @@ class ScatterPlot extends Component {
       nextProps.height !== this.props.height ||
       nextProps.hoveredLocation !== this.props.hoveredLocation ||
       nextProps.hoveredLocationPanelIndex !==
-        this.props.hoveredLocationPanelIndex
+        this.props.hoveredLocationPanelIndex ||
+      nextProps.commonRangeY !== this.props.commonRangeY
     );
   }
 
@@ -192,9 +193,11 @@ class ScatterPlot extends Component {
       domains,
       width,
       height,
+      dataPointsY1,
       dataPointsY2,
       dataPointsX,
       dataPointsColor,
+      commonRangeY,
     } = this.props;
 
     const stageWidth = width - 2 * margins.gapX;
@@ -204,10 +207,12 @@ class ScatterPlot extends Component {
       stageWidth,
       stageHeight,
       dataPointsX,
-      dataPointsY2,
+      commonRangeY ? dataPointsY1 : dataPointsY2,
       dataPointsColor,
       domains,
-      findMaxInRanges(domains, dataPointsX, dataPointsY2)
+      commonRangeY
+        ? domains.map((d) => commonRangeY[1])
+        : findMaxInRanges(domains, dataPointsX, dataPointsY2)
     );
     this.points.render();
   }
@@ -287,6 +292,7 @@ class ScatterPlot extends Component {
       dataPointsY1,
       dataPointsY2,
       dataPointsX,
+      commonRangeY,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -318,16 +324,30 @@ class ScatterPlot extends Component {
         .domain(defaultDomain)
         .range([0, panelWidth]);
 
-      let yExtent2 = [0, maxY2Values[index]];
-      let yExtent1 = yExtent2.map((d) =>
-        d3
-          .scaleLinear()
-          .domain(d3.extent(dataPointsY2))
-          .range(d3.extent(dataPointsY1))(d)
-      );
+      let yScale1, yScale2;
+      if (commonRangeY) {
+        let yExtent1 = commonRangeY;
+        let yExtent2 = yExtent1.map((d) =>
+          d3
+            .scaleLinear()
+            .domain(d3.extent(dataPointsY1))
+            .range(d3.extent(dataPointsY2))(d)
+        );
 
-      let yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
-      let yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+        yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
+        yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+      } else {
+        let yExtent2 = [0, maxY2Values[index]];
+        let yExtent1 = yExtent2.map((d) =>
+          d3
+            .scaleLinear()
+            .domain(d3.extent(dataPointsY2))
+            .range(d3.extent(dataPointsY1))(d)
+        );
+
+        yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
+        yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+      }
 
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
 
@@ -428,7 +448,9 @@ ScatterPlot.propTypes = {
   data: PropTypes.object,
   chromoBins: PropTypes.object,
 };
-ScatterPlot.defaultProps = {};
+ScatterPlot.defaultProps = {
+  commonRangeY: null,
+};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
   updateHoveredLocation: (hoveredLocation, panelIndex) =>

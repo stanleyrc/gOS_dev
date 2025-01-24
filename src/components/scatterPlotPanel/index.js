@@ -120,6 +120,7 @@ class ScatterPlotPanel extends Component {
       yAxisTitle,
       yAxis2Title,
       notification,
+      commonRangeY,
     } = this.props;
     if (!visible) return null;
     const { parentWidth, height } = this.state;
@@ -250,6 +251,7 @@ class ScatterPlotPanel extends Component {
                             domains,
                             yAxisTitle,
                             yAxis2Title,
+                            commonRangeY,
                           }}
                         />
                       </Col>
@@ -267,6 +269,7 @@ class ScatterPlotPanel extends Component {
 ScatterPlotPanel.propTypes = {};
 ScatterPlotPanel.defaultProps = {
   notification: { status: null, heading: null, messages: [] },
+  commonRangeY: null
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
