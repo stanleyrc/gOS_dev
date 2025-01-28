@@ -630,7 +630,7 @@ class GenomePlot extends Component {
                     pointerEvents: "all",
                   }}
                 />
-                <g clipPath={`url(#1cuttOffViewPane-${randID}-${panel.index})`}>
+                <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
                     return mutationsPlot ? (
                       <path
@@ -675,7 +675,8 @@ class GenomePlot extends Component {
                           panel.yScale(d.y) - 0.5 * margins.bar,
                         ]})`}
                         width={d3.min([
-                          panel.xScale(d.endPlace) - panel.xScale(d.startPlace),
+                          panel.xScale(d.endPlace) -
+                            d3.max([panel.xScale(d.startPlace), 0]),
                           panel.panelWidth,
                         ])}
                         data-startPlace={d.startPlace}
