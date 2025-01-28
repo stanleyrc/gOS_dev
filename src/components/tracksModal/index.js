@@ -24,7 +24,7 @@ class TracksModal extends Component {
   container = null;
 
   state = {
-    yScaleMode: "distinct",
+    yScaleMode: "common",
   };
 
   onDownloadButtonClicked = () => {
@@ -86,16 +86,7 @@ class TracksModal extends Component {
     const { yScaleMode } = this.state;
 
     let commonRangeY =
-      yScaleMode === "common"
-        ? dataRanges(
-            domains,
-            genome.data,
-            mutations.data,
-            genomeCoverage,
-            hetsnps,
-            allelic.data
-          )
-        : null;
+      yScaleMode === "common" ? dataRanges(domains, genome.data) : null;
 
     let content = (
       <Row
@@ -103,7 +94,7 @@ class TracksModal extends Component {
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
-        {false && (
+        {
           <Segmented
             options={[
               {
@@ -117,7 +108,7 @@ class TracksModal extends Component {
             ]}
             onChange={(d) => this.handleYscaleSegmentedChange(d)}
           />
-        )}
+        }
         {genes && (
           <Col className="gutter-row" span={24}>
             <GenesPanelHiglass
@@ -294,7 +285,6 @@ class TracksModal extends Component {
         <Col className="gutter-row" span={24}>
           <IgvPanel
             {...{
-              visible: true,
               loading: igv.loading,
               error: igv.error,
               missingFiles: igv.missingFiles,
@@ -347,7 +337,7 @@ TracksModal.propTypes = {
 };
 TracksModal.defaultProps = {
   width: 1800,
-  height: 180,
+  height: 200,
   viewType: "modal",
 };
 const mapDispatchToProps = (dispatch) => ({

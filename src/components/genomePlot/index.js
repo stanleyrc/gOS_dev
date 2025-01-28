@@ -95,22 +95,19 @@ class GenomePlot extends Component {
         ])
         .on("zoom", (event) => this.zooming(event, index))
         .on("end", (event) => this.zoomEnded(event, index));
-      let intervalMin = d3.min(filteredIntervals, (d) => d.y);
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
-      let offsetPerc = 0.5;
-      let yDomain = commonRangeY
-        ? commonRangeY
-        : [
-            intervalMin - intervalMin * offsetPerc,
-            intervalMax + intervalMax * offsetPerc,
-          ];
-      let yScale = d3
-        .scaleLinear()
-        .domain(yDomain)
-        .range([panelHeight, 0])
-        .nice();
-      let yTicks = yScale.ticks(margins.yTicksCount);
-      yTicks[yTicks.length - 1] = yScale.domain()[1];
+      let offsetPerc = 1;
+      let yScale = commonRangeY
+        ? d3
+            .scaleLinear()
+            .domain(commonRangeY)
+            .range([panelHeight, 0])
+            .clamp(true)
+        : d3
+            .scaleLinear()
+            .domain([0, intervalMax + offsetPerc])
+            .range([panelHeight, 0])
+            .nice();
       let panel = {
         index,
         zoom,
@@ -119,7 +116,6 @@ class GenomePlot extends Component {
         panelHeight,
         xScale,
         yScale,
-        yTicks,
         panelGenomeScale,
         offset,
         intervals: filteredIntervals.sort((a, b) =>
@@ -141,11 +137,8 @@ class GenomePlot extends Component {
         .range([panelHeight, 0])
         .clamp(true)
         .nice();
-      let commonYTicks = commonYScale.ticks(margins.yTicksCount);
-      commonYTicks[commonYTicks.length - 1] = commonYScale.domain()[1];
       this.panels.forEach((d) => {
         d.yScale = commonYScale;
-        d.yTicks = commonYTicks;
       });
     }
 
@@ -637,7 +630,7 @@ class GenomePlot extends Component {
                     pointerEvents: "all",
                   }}
                 />
-                <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
+                <g clipPath={`url(#1cuttOffViewPane-${randID}-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
                     return mutationsPlot ? (
                       <path
@@ -678,12 +671,20 @@ class GenomePlot extends Component {
                           "annotated"
                         }`}
                         transform={`translate(${[
-                          panel.xScale(d.startPlace),
+                          d3.max([panel.xScale(d.startPlace), 0]),
                           panel.yScale(d.y) - 0.5 * margins.bar,
                         ]})`}
-                        width={
+                        width={d3.min([
+                          panel.xScale(d.endPlace) - panel.xScale(d.startPlace),
+                          panel.panelWidth,
+                        ])}
+                        data-startPlace={d.startPlace}
+                        data-endPlace={d.endPlace}
+                        data-endPos={panel.xScale(d.endPlace)}
+                        data-x={Math.floor(panel.xScale(d.startPlace))}
+                        data-width={Math.floor(
                           panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
-                        }
+                        )}
                         height={margins.bar}
                         style={{
                           fill: d.overlapping

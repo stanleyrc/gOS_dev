@@ -25,56 +25,50 @@ class Grid extends Component {
 
   // Always to the left hand
   renderYAxis() {
-    let { scaleY, scaleY2, axisWidth, gapLeft } = this.props;
+    let { scaleY, axisWidth, gapLeft } = this.props;
     if (!scaleY) {
       return;
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
 
-    const tickValues = scaleY2
-      ? scaleY2
-          .ticks(8)
-          .map((d) =>
-            d3.scaleLinear().domain(scaleY2.domain()).range(scaleY.domain())(d)
-          )
-      : scaleY.ticks(8);
+    const tickValues = scaleY.ticks();
 
-    tickValues[tickValues.length - 1] = scaleY2
-      ? d3.scaleLinear().domain(scaleY2.domain()).range(scaleY.domain())(
-          scaleY2.domain()[1]
-        )
-      : scaleY.domain()[1];
+    tickValues[tickValues.length - 1] = scaleY.domain()[1];
 
     let yAxis = d3
       .axisRight(scaleY)
-      .ticks(8)
-      .tickValues(tickValues)
       .tickSizeInner(axisWidth)
-      .tickPadding(-axisWidth - gapLeft)
-      .tickFormat(d3.format("~s"));
+      .tickValues(tickValues)
+      .tickPadding(-axisWidth - gapLeft);
 
     yAxisContainer.call(yAxis);
   }
 
   // Always to the right hand
   renderYAxis2() {
-    const { scaleY2, gapRight } = this.props;
+    const { scaleY, scaleY2, gapRight } = this.props;
 
     if (!scaleY2) return;
+
+    let scaleYtoY2 = d3
+      .scaleLinear()
+      .domain(scaleY.domain())
+      .range(scaleY2.domain());
+
+    const tickValues = scaleY
+      ? scaleY.ticks().map((d) => scaleYtoY2(d))
+      : scaleY2.ticks();
+
+    tickValues[tickValues.length - 1] = scaleYtoY2(scaleY.domain()[1]);
 
     const yAxis2Container = d3
       .select(this.container)
       .select(".y-axis2-container");
 
-    let tickValues = scaleY2.ticks(8);
-    tickValues[tickValues.length - 1] = scaleY2.domain()[1];
-
     const yAxis2 = d3
       .axisLeft(scaleY2)
-      .ticks(8)
       .tickValues(tickValues)
-      .tickPadding(-gapRight)
-      .tickFormat(d3.format("~s"));
+      .tickPadding(-gapRight);
 
     yAxis2Container.call(yAxis2);
   }

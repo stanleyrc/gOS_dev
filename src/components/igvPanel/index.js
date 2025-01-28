@@ -4,7 +4,11 @@ import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
 import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
 import { withTranslation } from "react-i18next";
-import { AiOutlineDownload } from "react-icons/ai";
+import {
+  AiOutlineDownload,
+  AiOutlineDown,
+  AiOutlineRight,
+} from "react-icons/ai";
 import {
   downloadCanvasAsPng,
   transitionStyle,
@@ -28,6 +32,10 @@ class IgvPanel extends Component {
   container = null;
   domains = [];
 
+  state = {
+    visible: false,
+  };
+
   onDownloadButtonClicked = () => {
     htmlToImage
       .toCanvas(this.container, { pixelRatio: 2 })
@@ -50,6 +58,10 @@ class IgvPanel extends Component {
     }
   };
 
+  toggleVisibility = (visible) => {
+    this.setState({ visible });
+  };
+
   render() {
     const {
       t,
@@ -62,18 +74,17 @@ class IgvPanel extends Component {
       name,
       inViewport,
       renderOutsideViewPort,
-      visible,
       error,
       domains,
       chromoBins,
       dataset,
       id,
     } = this.props;
-    if (!visible) return null;
+    const { visible } = this.state;
     let url = `${dataset.dataPath}${id}/${filename}`;
     let indexURL = `${dataset.dataPath}${id}/${filenameIndex}`;
     return (
-      <Wrapper visible={visible}>
+      <Wrapper>
         {error ? (
           <ErrorPanel
             avatar={<img src={logo} alt="logo" height={16} />}
@@ -116,6 +127,24 @@ class IgvPanel extends Component {
             }
             extra={
               <Space>
+                <Tooltip
+                  title={
+                    visible ? t("components.collapse") : t("components.expand")
+                  }
+                >
+                  <Button
+                    type="text"
+                    icon={
+                      visible ? (
+                        <AiOutlineDown style={{ marginTop: 5 }} />
+                      ) : (
+                        <AiOutlineRight style={{ marginTop: 5 }} />
+                      )
+                    }
+                    size="small"
+                    onClick={() => this.toggleVisibility(!visible)}
+                  />
+                </Tooltip>
                 <Tooltip title={t("components.download-as-png-tooltip")}>
                   <Button
                     type="default"
@@ -163,9 +192,7 @@ class IgvPanel extends Component {
   }
 }
 IgvPanel.propTypes = {};
-IgvPanel.defaultProps = {
-  visible: true,
-};
+IgvPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
