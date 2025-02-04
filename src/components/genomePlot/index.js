@@ -625,7 +625,7 @@ class GenomePlot extends Component {
                   style={{
                     stroke: "steelblue",
                     fill: "transparent",
-                    strokeWidth: 1,
+                    strokeWidth: 0,
                     opacity: 0.375,
                     pointerEvents: "all",
                   }}

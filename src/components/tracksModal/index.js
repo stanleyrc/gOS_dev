@@ -5,6 +5,11 @@ import handleViewport from "react-in-viewport";
 import { Row, Col, Modal, message, Space, Button, Segmented } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
+import LegendPanel from "../legendPanel";
+import ScatterPlotPanel from "../scatterPlotPanel";
+import IgvPanel from "../igvPanel/index";
+import appActions from "../../redux/app/actions";
+import GenesPanelHiglass from "../genesPanelHiglass";
 import { AiOutlineDownload } from "react-icons/ai";
 import * as htmlToImage from "html-to-image";
 import {
@@ -13,10 +18,6 @@ import {
   dataRanges,
 } from "../../helpers/utility";
 import Wrapper from "./index.style";
-import ScatterPlotPanel from "../scatterPlotPanel";
-import IgvPanel from "../igvPanel/index";
-import appActions from "../../redux/app/actions";
-import GenesPanelHiglass from "../genesPanelHiglass";
 
 const { updateHoveredLocation } = appActions;
 
@@ -118,6 +119,9 @@ class TracksModal extends Component {
             onChange={(d) => this.handleYscaleSegmentedChange(d)}
           />
         }
+        <Col className="gutter-row" span={24}>
+          <LegendPanel />
+        </Col>
         {genes && (
           <Col className="gutter-row" span={24}>
             <GenesPanelHiglass

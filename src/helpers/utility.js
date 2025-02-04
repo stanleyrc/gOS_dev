@@ -852,7 +852,7 @@ export function findMaxInRanges(
     let resultValue;
     if (usePercentile && valuesInRangeSlice.length > 0) {
       valuesInRangeSlice.sort((a, b) => a - b); // Sort values to calculate the percentile
-      const index = Math.floor(0.999 * valuesInRangeSlice.length);
+      const index = Math.floor(0.99 * valuesInRangeSlice.length);
       resultValue = valuesInRangeSlice[index];
     } else {
       resultValue =
