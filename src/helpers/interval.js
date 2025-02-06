@@ -89,6 +89,7 @@ class Interval {
         return { key: key.trim(), value: value.trim() };
       });
       const gene = annotations.find((item) => item.key === "Gene")?.value;
+      const geneType = annotations.find((item) => item.key === "Type")?.value;
       const filter = annotations.find((item) => item.key === "Filter")?.value;
       const variant = annotations.find((item) => item.key === "Variant")?.value;
       const protein_variant = annotations.find(
@@ -123,6 +124,9 @@ class Interval {
 
       if (gene) {
         attributes.push({ label: "Gene", value: gene });
+      }
+      if (geneType) {
+        attributes.push({ label: "Type", value: geneType });
       }
       if (filter) {
         attributes.push({ label: "Filter", value: filter });
