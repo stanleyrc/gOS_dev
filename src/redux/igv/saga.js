@@ -1,7 +1,5 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
-import { allelicToGenome } from "../../helpers/utility";
-import { dataToGenome } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";

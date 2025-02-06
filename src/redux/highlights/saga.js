@@ -16,11 +16,9 @@ function* fetchHighlightsData(action) {
       { cancelToken: getCancelToken() }
     );
 
-    let data = responseData.data;
-
     yield put({
       type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
-      data,
+      data: responseData.data,
     });
   } catch (error) {
     console.log(error);

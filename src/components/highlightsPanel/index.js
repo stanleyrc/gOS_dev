@@ -3,17 +3,13 @@ import { withTranslation } from "react-i18next";
 import { withRouter } from "react-router-dom";
 import { connect } from "react-redux";
 import {
-  Tag,
-  Table,
   Button,
   Space,
   Row,
   Col,
-  Segmented,
   Card,
   Tooltip,
   message,
-  Typography,
   Descriptions,
 } from "antd";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -22,7 +18,6 @@ import { FaDna } from "react-icons/fa";
 import Wrapper from "./index.style";
 import * as htmlToImage from "html-to-image";
 
-const { Text } = Typography;
 const { Item } = Descriptions;
 class HighlightsPanel extends Component {
   container = null;
@@ -44,10 +39,10 @@ class HighlightsPanel extends Component {
   render() {
     const { t, title, data, error, renderOutsideViewPort, inViewport } =
       this.props;
-    if (error) {
+    if (!data) {
       return null;
     }
-    console.log(data);
+    console.log("here", data);
     const { karyotype, gene_mutations } = data;
     return (
       <Wrapper ref={(elem) => (this.container = elem)}>

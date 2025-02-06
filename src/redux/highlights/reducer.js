@@ -3,7 +3,7 @@ import actions from "./actions";
 const initState = {
   loading: false,
   filename: "highlights.json",
-  data: {},
+  data: null,
   error: null,
 };
 
@@ -13,7 +13,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: null,
-        data: {},
+        data: null,
         loading: true,
       };
     case actions.FETCH_HIGHLIGHTS_DATA_SUCCESS:
@@ -26,7 +26,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: action.error,
-        data: {},
+        data: null,
         loading: false,
       };
     default:
