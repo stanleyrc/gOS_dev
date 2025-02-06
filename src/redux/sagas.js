@@ -19,6 +19,7 @@ import signatureProfilesSagas from "./signatureProfiles/saga";
 import biomarkersSagas from "./biomarkers/saga";
 import curatedGenesSagas from "./curatedGenes/saga";
 import igvSagas from "./igv/saga";
+import highlightsSagas from "./highlights/saga";
 
 export default function* rootSaga(getState) {
   yield all([
@@ -42,5 +43,6 @@ export default function* rootSaga(getState) {
     biomarkersSagas(),
     curatedGenesSagas(),
     igvSagas(),
+    highlightsSagas(),
   ]);
 }

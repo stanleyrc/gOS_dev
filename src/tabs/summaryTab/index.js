@@ -6,6 +6,7 @@ import { chunks } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
+import HighlightsPanel from "../../components/highlightsPanel";
 
 class SummaryTab extends Component {
   render() {
@@ -15,6 +16,7 @@ class SummaryTab extends Component {
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
+          <HighlightsPanel title={t("components.highlights-panel.title")} />
           {plotsList.map((d, i) => (
             <Row
               key={0}

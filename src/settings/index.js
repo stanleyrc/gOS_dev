@@ -1,6 +1,6 @@
 const siteConfig = {
-  siteName: "Case Report",
-  footerText: "Case Report ©2023 Created by C. Xanthopoulakis",
+  siteName: "gOS",
+  footerText: "gOS ©2023 Created by C. Xanthopoulakis",
 };
 
 const language = "english";
