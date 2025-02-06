@@ -70,6 +70,7 @@ function* settingsFetchedFollowUp(action) {
 }
 
 function* updateDomainsFollowUp(action) {
+  yield delay(500);
   yield put({
     type: genesActions.FETCH_HIGLASS_GENES_DATA_REQUEST,
   });

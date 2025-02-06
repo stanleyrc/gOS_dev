@@ -17,7 +17,7 @@ class IgvPlot extends Component {
   constructor(props) {
     super(props);
     this.igvInitialized = false;
-    this.debouncedUpdateDomain = debounce(this.props.updateDomain, 10);
+    this.debouncedUpdateDomain = debounce(this.props.updateDomain, 100);
   }
 
   componentDidMount() {

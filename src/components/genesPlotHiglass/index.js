@@ -34,7 +34,7 @@ class GenesPlot extends Component {
         text: "",
       },
     };
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 10);
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
   shouldComponentUpdate(nextProps, nextState) {

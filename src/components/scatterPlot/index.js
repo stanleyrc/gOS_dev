@@ -27,7 +27,7 @@ class ScatterPlot extends Component {
 
   constructor(props) {
     super(props);
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 10);
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
   componentDidMount() {
@@ -326,7 +326,7 @@ class ScatterPlot extends Component {
 
       let yScale1, yScale2;
       if (commonRangeY) {
-        d3.scaleLinear().domain(commonRangeY).ticks()
+        d3.scaleLinear().domain(commonRangeY).ticks();
         let yExtent1 = commonRangeY;
         let yExtent2 = yExtent1.map((d) =>
           d3

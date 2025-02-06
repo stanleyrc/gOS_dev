@@ -346,6 +346,9 @@
     "download-as-png-tooltip": "Download as PNG",
     "expand": "Expand",
     "collapse": "Collapse",
+    "genome-range-panel": {
+      "reset": "Reset to full genome view"
+    },
     "header-panel": {
       "view-report": "View Report"
     },

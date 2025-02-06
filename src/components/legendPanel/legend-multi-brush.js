@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import * as d3 from "d3";
 import Fragment from "./fragment";
+import debounce from "lodash/debounce";
 import settingsActions from "../../redux/settings/actions";
 
 const { updateDomains } = settingsActions;
@@ -55,6 +56,7 @@ class LegendMultiBrush extends Component {
         this.update();
       }
     });
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
   createDefaults(domain) {
@@ -206,7 +208,7 @@ class LegendMultiBrush extends Component {
     // draw the brushes
     this.renderBrushes();
 
-    this.props.updateDomains(
+    this.debouncedUpdateDomains(
       this.fragments
         .filter((d) => d.selection)
         .map((d) => d.domain)

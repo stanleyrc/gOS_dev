@@ -44,7 +44,7 @@ class GenomePlot extends Component {
         text: "",
       },
     };
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 10);
+    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
   }
 
   updatePanels() {
@@ -460,7 +460,7 @@ class GenomePlot extends Component {
           })
           .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
       );
-      this.props.updateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
+      this.debouncedUpdateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
     } else {
       this.props.selectPhylogenyNodes(
         this.props.connectionsAssociations.map((d, i) => {
@@ -477,7 +477,7 @@ class GenomePlot extends Component {
     // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     newDomains[panelIndex] = [shape.startPlace - 1e3, shape.endPlace + 1e3];
-    this.props.updateDomains(newDomains);
+    this.debouncedUpdateDomains(newDomains);
   }
 
   handlePanelMouseMove = (e, panelIndex) => {
