@@ -831,7 +831,8 @@ export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
-  usePercentile = true
+  usePercentile = true,
+  p = 0.90 // 90th percentile
 ) {
   return domains.map(([start, end]) => {
     let left = 0,
@@ -851,9 +852,26 @@ export function findMaxInRanges(
     // Calculate either max or 99th percentile
     let resultValue;
     if (usePercentile && valuesInRangeSlice.length > 0) {
-      valuesInRangeSlice.sort((a, b) => a - b); // Sort values to calculate the percentile
-      const index = Math.floor(0.99 * valuesInRangeSlice.length);
-      resultValue = valuesInRangeSlice[index];
+
+
+      // After sorting:
+      valuesInRangeSlice.sort((a, b) => a - b);
+
+      // "Continuous" approach with optional interpolation:
+      const n = valuesInRangeSlice.length;
+      const i = (n - 1) * p; // fractional index
+      const iLow = Math.floor(i);
+      const iHigh = Math.ceil(i);
+      if (iLow === iHigh) {
+        // If i is an integer, no interpolation needed
+        resultValue = valuesInRangeSlice[iLow];
+      } else {
+        // Linear interpolation (optional, for a more precise percentile):
+        const fraction = i - iLow;
+        resultValue =
+          valuesInRangeSlice[iLow] * (1 - fraction) +
+          valuesInRangeSlice[iHigh] * fraction;
+      }
     } else {
       resultValue =
         valuesInRangeSlice.length > 0 ? d3.max(valuesInRangeSlice) : -Infinity;
@@ -1470,6 +1488,29 @@ export function calculateOptimalBins(data) {
   const k = 1 + Math.log2(n) + Math.log2(1 + Math.abs(skewness));
 
   return Math.ceil(k);
+}
+
+export function parseCosmicSignatureWeightMatrix(matrixText) {
+  const lines = matrixText.trim().split("\n");
+  const headers = lines[0].split(/\s+/).slice(1);
+  const matrix = {};
+
+  headers.forEach((sig) => {
+    if (sig !== "") {
+      matrix[sig] = {};
+    }
+  });
+
+  lines.slice(1).forEach((line) => {
+    const [tnc, ...weights] = line.split(/\s+/);
+    headers.forEach((sig, index) => {
+      if (sig !== "") {
+        matrix[sig][tnc] = parseFloat(weights[index]);
+      }
+    });
+  });
+
+  return matrix;
 }
 
 export function Legend(

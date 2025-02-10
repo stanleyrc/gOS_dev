@@ -37,12 +37,11 @@ class HighlightsPanel extends Component {
   };
 
   render() {
-    const { t, title, data, error, renderOutsideViewPort, inViewport } =
-      this.props;
+    const { t, title, data, renderOutsideViewPort, inViewport } = this.props;
     if (!data) {
       return null;
     }
-    console.log("here", data);
+
     const { karyotype, gene_mutations } = data;
     return (
       <Wrapper ref={(elem) => (this.container = elem)}>
