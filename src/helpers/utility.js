@@ -39,12 +39,16 @@ export function dataRanges(
       findMaxInRanges(
         domains,
         genomeCoverage.dataPointsX,
-        genomeCoverage.dataPointsCopyNumber
+        genomeCoverage.dataPointsCopyNumber,
+        true,
+        0.9
       ),
       findMaxInRanges(
         domains,
         hetsnps.dataPointsX,
-        hetsnps.dataPointsCopyNumber
+        hetsnps.dataPointsCopyNumber,
+        true,
+        0.9
       ),
     ].flat()
   );
@@ -832,7 +836,7 @@ export function findMaxInRanges(
   dataPointsX,
   dataPointsY,
   usePercentile = true,
-  p = 0.90 // 90th percentile
+  p = 0.99 // 99th percentile by default
 ) {
   return domains.map(([start, end]) => {
     let left = 0,
@@ -852,8 +856,6 @@ export function findMaxInRanges(
     // Calculate either max or 99th percentile
     let resultValue;
     if (usePercentile && valuesInRangeSlice.length > 0) {
-
-
       // After sorting:
       valuesInRangeSlice.sort((a, b) => a - b);
 

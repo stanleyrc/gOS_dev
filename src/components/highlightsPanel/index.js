@@ -10,15 +10,20 @@ import {
   Card,
   Tooltip,
   message,
-  Descriptions,
+  Skeleton,
+  Typography,
+  Table,
+  Tag,
 } from "antd";
 import { AiOutlineDownload } from "react-icons/ai";
 import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
+import * as d3 from "d3";
 import { FaDna } from "react-icons/fa";
 import Wrapper from "./index.style";
 import * as htmlToImage from "html-to-image";
 
-const { Item } = Descriptions;
+const { Text } = Typography;
+
 class HighlightsPanel extends Component {
   container = null;
 
@@ -37,12 +42,53 @@ class HighlightsPanel extends Component {
   };
 
   render() {
-    const { t, title, data, renderOutsideViewPort, inViewport } = this.props;
+    const { t, loading, title, data, renderOutsideViewPort, inViewport } =
+      this.props;
     if (!data) {
       return null;
     }
 
     const { karyotype, gene_mutations } = data;
+    let records = gene_mutations || [];
+    const columns = [
+      "alteration_type",
+      "gene_name",
+      "variant",
+      "aggregate_label",
+      "tier",
+      "indication",
+    ].map((x) => {
+      return {
+        title: t(`components.highlights-panel.${x}`),
+        dataIndex: x,
+        key: x,
+        filters: [...new Set(records.map((d) => d[x]).flat())]
+          .sort((a, b) => d3.ascending(a, b))
+          .map((d) => {
+            return {
+              text: d,
+              value: d,
+            };
+          }),
+        filterMultiple: true,
+        onFilter: (value, record) =>
+          record[x].includes(value) || record[x] == value,
+        filterSearch: true,
+        sorter: {
+          compare: (a, b) => {
+            if (a[x] == null) return 1;
+            if (b[x] == null) return -1;
+            return d3.ascending(a[x], b[x]);
+          },
+        },
+        render: (_, record) =>
+          Array.isArray(record[x]) ? (
+            record[x].map((e) => <Tag>{e}</Tag>)
+          ) : (
+            <Text>{record[x]}</Text>
+          ),
+      };
+    });
     return (
       <Wrapper ref={(elem) => (this.container = elem)}>
         <Row className="ant-panel-container ant-home-plot-container">
@@ -72,44 +118,23 @@ class HighlightsPanel extends Component {
                 </Space>
               }
             >
-              <Descriptions bordered size="small">
-                {karyotype && (
-                  <Item
-                    label={t("components.highlights-panel.karyotype")}
-                    span={3}
-                  >
-                    {karyotype}
-                  </Item>
-                )}
-                {(gene_mutations || []).map((d, i) => (
-                  <Item
-                    label={t("components.highlights-panel.gene-mutations", {
-                      value: i + 1,
-                    })}
-                    span={3}
-                  >
+              <Skeleton active loading={loading}>
+                <Table
+                  columns={columns}
+                  dataSource={records}
+                  pagination={{ pageSize: 50 }}
+                  showSorterTooltip={false}
+                  bordered
+                  title={() => (
                     <Space>
-                      {[
-                        "gene_name",
-                        "variant_p",
-                        "vaf",
-                        "altered_copies",
-                        "total_copies",
-                        "alteration_type",
-                        "aggregate_label",
-                      ]
-                        .filter((x) => !!d[x])
-                        .map((x) => (
-                          <Space>
-                            {t(`components.highlights-panel.${x}`, {
-                              value: d[x],
-                            })}
-                          </Space>
-                        ))}
+                      <strong>
+                        {t("components.highlights-panel.karyotype")}:
+                      </strong>
+                      {karyotype}
                     </Space>
-                  </Item>
-                ))}
-              </Descriptions>
+                  )}
+                />
+              </Skeleton>
             </Card>
           </Col>
         </Row>

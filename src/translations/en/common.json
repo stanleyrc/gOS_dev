@@ -349,15 +349,18 @@
     "highlights-panel": {
       "title": "Highlights",
       "karyotype": "Karyotype",
-      "gene-mutations": "Gene Mutation #{{value}}",
+      "gene-mutations": "Gene Mutation",
       "gene": "Gene",
-      "gene_name": "{{value}}",
-      "variant_p": "{{value}} Variant",
-      "vaf": "VAF={{value}}",
-      "altered_copies": "{{value}} Altered Copies",
-      "total_copies": "{{value}} Total Copies",
-      "alteration_type": "{{value}}",
-      "aggregate_label": "{{value}}"
+      "gene_name": "Gene Name",
+      "variant": "Variant",
+      "variant_p": "Variant",
+      "vaf": "VAF",
+      "altered_copies": "Altered Copies",
+      "total_copies": "Total Copies",
+      "alteration_type": "Alteration Type",
+      "aggregate_label": "Aggregate Label",
+      "tier": "Tier",
+      "indication": "Indication"
     },
     "genome-range-panel": {
       "reset": "Reset to full genome view"

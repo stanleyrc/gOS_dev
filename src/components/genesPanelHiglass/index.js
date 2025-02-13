@@ -55,8 +55,18 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, loading, genesList, domains, genesOptionsList, locateGenes } =
-      this.props;
+    const {
+      t,
+      loading,
+      genesList,
+      domains,
+      genesOptionsList,
+      locateGenes,
+      visible,
+    } = this.props;
+    if (!visible) {
+      return null;
+    }
     return (
       <Wrapper>
         {
