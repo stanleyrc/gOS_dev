@@ -320,10 +320,10 @@ class BinPlot extends Component {
           <defs>
             <clipPath key="cuttOffViewPane1" id="cuttOffViewPane1">
               <rect
-                x={-margins.gapX}
+                x={0}
                 y={-margins.gapY}
                 width={panelWidth + margins.gapX}
-                height={panelHeight + margins.gapY}
+                height={panelHeight + 3 * margins.gapY}
               />
             </clipPath>
             <clipPath key="cuttOffViewPane2" id="cuttOffViewPane2">
@@ -351,7 +351,7 @@ class BinPlot extends Component {
                   <g key={i}>
                     <line
                       transform={`translate(${[xScale(d), 0]})`}
-                      y2={panelHeight - 2}
+                      y2={panelHeight + 15}
                       stroke="#FFD6D6"
                       strokeDasharray="4 1"
                     />
@@ -366,6 +366,18 @@ class BinPlot extends Component {
                       }
                     >
                       {d3.format(".3f")(d)}
+                    </text>
+                    <text
+                      transform={`translate(${[xScale(d), panelHeight + 20]})`}
+                      textAnchor="middle"
+                      fill={d3.rgb("#FFD6D6").darker()}
+                      dy="5"
+                      fontSize="10"
+                      opacity={
+                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
+                      }
+                    >
+                      {i}
                     </text>
                   </g>
                 ))}
