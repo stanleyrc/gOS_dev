@@ -374,6 +374,21 @@
       "datapoint_plural": "datapoints",
       "title": "Histogram Chart"
     },
+    "snvplicity-panel": {
+      "header": "SNV Multiplicity",
+      "title": "{{mode}} <strong>{{type}}</strong> Copies",
+      "y-title": "↑ Count",
+      "x-title": "SNVplicity Copies  →",
+      "filter-by-copy-number": "Filter by Copy Number",
+      "germline": "Germline",
+      "somatic": "Somatic",
+      "all": "All",
+      "major": "Major",
+      "minor": "Minor",
+      "hetsnps": "Heterozygous SNPs",
+      "altered": "Altered",
+      "total": "Total"
+    },
     "ridgeline-panel": {
       "header": "Ridgeline Chart",
       "distribution": "distribution",

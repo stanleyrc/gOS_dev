@@ -19,6 +19,7 @@ import Biomarkers from "./biomarkers/reducer";
 import CuratedGenes from "./curatedGenes/reducer";
 import Igv from "./igv/reducer";
 import Highlights from "./highlights/reducer";
+import Snvplicity from "./snvplicity/reducer";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
@@ -43,4 +44,5 @@ export default {
   CuratedGenes,
   Igv,
   Highlights,
+  Snvplicity
 };

@@ -1107,6 +1107,61 @@ export function mutationsGroups() {
   };
 }
 
+export function snvplicityGroups() {
+  return [
+    { type: "germline", mode: "altered" },
+    { type: "germline", mode: "total" },
+    { type: "somatic", mode: "altered" },
+    { type: "somatic", mode: "total" },
+    { type: "hetsnps", mode: "major" },
+    { type: "hetsnps", mode: "minor" },
+  ];
+}
+
+export function binDataByCopyNumber(rawArray, binSize = 0.05) {
+  // 1) Group data by `jabba_cn`
+  const dataByCN = d3.group(rawArray, (d) => d.jabba_cn);
+
+  // 2) Figure out min & max of `mult_cn` to define domain
+  const minMult = d3.min(rawArray, (d) => d.mult_cn);
+  const maxMult = d3.max(rawArray, (d) => d.mult_cn);
+
+  // 3) Create a bin generator
+  //    - .thresholds() expects an array of bin boundaries
+  const binGenerator = d3
+    .bin()
+    .value((d) => d.mult_cn)
+    .domain([minMult, maxMult])
+    .thresholds(d3.range(minMult, maxMult, binSize));
+
+  // 4) Build the final result
+  let final = [];
+
+  // For each distinct jabba_cn group
+  for (const [jabbaCN, records] of dataByCN.entries()) {
+    // bin the records based on `mult_cn`
+    const bins = binGenerator(records);
+    // Each bin is an array. bin.x0 and bin.x1 define the bin boundaries
+
+    bins.forEach((bin, index) => {
+      // sum up the "count" for everything that fell in this bin
+      const totalCount = d3.sum(bin, (d) => d.count);
+
+      // only push if there's at least one data point in the bin
+      if (bin.length > 0) {
+        final.push({
+          index: `${index}-${jabbaCN}`,
+          jabba_cn: jabbaCN,
+          mult_cn_bin: [bin.x0, bin.x1], // an array of [lower, upper]
+          count: totalCount,
+        });
+      }
+    });
+  }
+
+  return final;
+}
+
 export function coverageQCFields() {
   return [
     { variable: "percent_reads_mapped", format: ".1%" },

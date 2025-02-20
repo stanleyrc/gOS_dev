@@ -15,6 +15,7 @@ import sageQcActions from "../sageQc/actions";
 import signatureStatisticsActions from "../signatureStatistics/actions";
 import igvActions from "../igv/actions";
 import highlightsActions from "../highlights/actions";
+import snvplicityActions from "../snvplicity/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReport(action) {
@@ -100,6 +101,7 @@ function* followUpFetchCaseReportSuccess(action) {
     signatureStatisticsActions.FETCH_SIGNATURE_STATISTICS_REQUEST,
     igvActions.FETCH_IGV_DATA_REQUEST,
     highlightsActions.FETCH_HIGHLIGHTS_DATA_REQUEST,
+    snvplicityActions.FETCH_SNVPLICITY_DATA_REQUEST,
   ];
 
   yield all(actionTypes.map((type) => put({ type })));

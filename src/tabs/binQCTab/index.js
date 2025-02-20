@@ -1,15 +1,13 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col, Image } from "antd";
-import { placeholderImage } from "../../helpers/utility";
+import { Row, Col } from "antd";
 import Wrapper from "./index.style";
 import BinPlotPanel from "../../components/binPlotPanel";
+import SnvplicityPlotPanel from "../../components/snvplicityPlotPanel";
 
 class BinQcTab extends Component {
   render() {
-    const { metadata, dataset } = this.props;
-
     return (
       <Wrapper>
         <Row
@@ -20,17 +18,12 @@ class BinQcTab extends Component {
             <BinPlotPanel />
           </Col>
         </Row>
-
         <Row
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
-          <Col className="gutter-row" span={12}>
-            <Image
-              height={722}
-              src={`${dataset.dataPath}${metadata.pair}/ppfit.png`}
-              fallback={placeholderImage()}
-            />
+          <Col className="gutter-row" span={24}>
+            <SnvplicityPlotPanel />
           </Col>
         </Row>
       </Wrapper>
