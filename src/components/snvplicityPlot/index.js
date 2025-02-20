@@ -33,8 +33,17 @@ class SnvplicityPlot extends Component {
   };
 
   getPlotConfiguration() {
-    const { width, height, data, xTitle, yTitle, chromoBins, title, colorScale, selectedCopyNumber } =
-      this.props;
+    const {
+      width,
+      height,
+      data,
+      xTitle,
+      yTitle,
+      chromoBins,
+      title,
+      colorScale,
+      selectedCopyNumber,
+    } = this.props;
 
     let series = d3.groups(data, (d) => d.jabba_cn);
 
@@ -47,7 +56,7 @@ class SnvplicityPlot extends Component {
     let extent = d3.extent(data.map((d) => d.mult_cn_bin).flat());
     const xScale = d3
       .scaleLinear()
-      .domain([Math.floor(extent[0]), Math.ceil(extent[1])])
+      .domain([Math.floor(extent[0]), d3.min([10, Math.ceil(extent[1])])])
       .range([0, panelWidth]);
 
     let yScale = d3
@@ -69,7 +78,7 @@ class SnvplicityPlot extends Component {
       chromoBins,
       title,
       colorScale,
-      selectedCopyNumber
+      selectedCopyNumber,
     };
   }
 
@@ -115,7 +124,7 @@ class SnvplicityPlot extends Component {
       yTitle,
       yScale,
       colorScale,
-      selectedCopyNumber
+      selectedCopyNumber,
     } = this.getPlotConfiguration();
 
     const { tooltip } = this.state;
@@ -151,23 +160,29 @@ class SnvplicityPlot extends Component {
             <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
               <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
                 <g clipPath="url(#cuttOffViewPane2)">
-                  {series.filter(d => selectedCopyNumber === "All" || selectedCopyNumber === d[0]).map((d, i) => (
-                    <g key={`cn-${d[0]}`}>
-                      {d[1].map((dd, ii) => (
-                        <rect
-                          key={dd.index}
-                          fill={colorScale(dd.jabba_cn)}
-                          x={xScale(dd.mult_cn_bin[0])}
-                          width={
-                            xScale(dd.mult_cn_bin[1]) -
-                            xScale(dd.mult_cn_bin[0])
-                          }
-                          y={yScale(dd.count)}
-                          height={panelHeight - yScale(dd.count)}
-                        />
-                      ))}
-                    </g>
-                  ))}
+                  {series
+                    .filter(
+                      (d) =>
+                        selectedCopyNumber === "All" ||
+                        selectedCopyNumber === d[0]
+                    )
+                    .map((d, i) => (
+                      <g key={`cn-${d[0]}`}>
+                        {d[1].map((dd, ii) => (
+                          <rect
+                            key={dd.index}
+                            fill={colorScale(dd.jabba_cn)}
+                            x={xScale(dd.mult_cn_bin[0])}
+                            width={
+                              xScale(dd.mult_cn_bin[1]) -
+                              xScale(dd.mult_cn_bin[0])
+                            }
+                            y={yScale(dd.count)}
+                            height={panelHeight - yScale(dd.count)}
+                          />
+                        ))}
+                      </g>
+                    ))}
                 </g>
                 <g
                   className="axis--y y-axis-container"
@@ -243,8 +258,7 @@ SnvplicityPlot.defaultProps = {
   data: {},
 };
 const mapDispatchToProps = () => ({});
-const mapStateToProps = (state) => ({
-});
+const mapStateToProps = (state) => ({});
 export default connect(
   mapStateToProps,
   mapDispatchToProps

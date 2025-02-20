@@ -1162,6 +1162,41 @@ export function binDataByCopyNumber(rawArray, binSize = 0.05) {
   return final;
 }
 
+
+/**
+ * Creates a color scale for copy-number values using schemeTableau10.
+ * If there are more than 10 distinct values, we reuse the palette but
+ * increasingly darken each subsequent group of 10.
+ *
+ * @param {number[]} cnValues - Array of numeric copy-number values.
+ * @returns {d3.ScaleOrdinal<number, string>} A D3 ordinal scale mapping CN -> color.
+ */
+export function createCnColorScale(cnValues) {
+  // 1) Remove duplicates and sort
+  const distinctValues = Array.from(new Set(cnValues)).sort((a, b) => a - b);
+
+  // 2) For each distinct CN, assign a color by cycling through schemeTableau10
+  //    and darkening by 0.15 for each repeated lap.
+  const basePalette = d3.schemeTableau10; // 10-element array of base colors
+  const colorRange = distinctValues.map((cn, i) => {
+    const baseColor = d3.color(basePalette[i % 10]);
+    if (!baseColor) return basePalette[i % 10]; // Fallback if something is null
+
+    // darker(...) each time we wrap around by 10
+    const repeatCount = Math.floor(i / 10);
+    const darkerColor = baseColor.darker(repeatCount * 0.15);
+
+    return darkerColor.formatHex(); // e.g. "#abcdef"
+  });
+
+  // 3) Create the ordinal scale
+  const colorScale = d3.scaleOrdinal()
+    .domain(distinctValues)
+    .range(colorRange);
+
+  return colorScale;
+}
+
 export function coverageQCFields() {
   return [
     { variable: "percent_reads_mapped", format: ".1%" },

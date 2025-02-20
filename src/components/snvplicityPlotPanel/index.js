@@ -23,6 +23,7 @@ import {
   downloadCanvasAsPng,
   transitionStyle,
   snvplicityGroups,
+  createCnColorScale,
 } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
@@ -58,7 +59,7 @@ class SnvplicityPlotPanel extends Component {
     const { t, loading, inViewport, renderOutsideViewPort, visible, data } =
       this.props;
 
-    if (!visible) {
+    if (!visible || (data && Object.values(data).flat().length === 0)) {
       return null;
     }
 
@@ -71,10 +72,7 @@ class SnvplicityPlotPanel extends Component {
           ),
         ].sort((a, b) => d3.ascending(a, b))
       : [];
-    let colorScale = d3.scaleOrdinal(
-      distinctCopyNumbers,
-      d3.quantize(d3.interpolateTurbo, distinctCopyNumbers.length)
-    );
+    let colorScale = createCnColorScale(distinctCopyNumbers);
     const { selectedCopyNumber } = this.state;
     return (
       <Wrapper visible={visible}>
