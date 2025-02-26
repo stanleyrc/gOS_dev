@@ -6,6 +6,7 @@ import datasetsActions from "../datasets/actions";
 import caseReportsActions from "../caseReports/actions";
 import caseReportActions from "../caseReport/actions";
 import genesActions from "../genes/actions";
+import cytobandsActions from "../cytobands/actions";
 import biomarkersActions from "../biomarkers/actions";
 import curatedGenesActions from "../curatedGenes/actions";
 import { cancelAllRequests } from "../../helpers/cancelToken";
@@ -64,9 +65,12 @@ function* updateCaseReportFollowUp(action) {
 }
 
 function* settingsFetchedFollowUp(action) {
-  yield put({
-    type: genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
-  });
+  let actionTypes = [
+    genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
+    cytobandsActions.FETCH_CYTOBANDS_REQUEST,
+  ];
+
+  yield all(actionTypes.map((type) => put({ type })));
 }
 
 function* updateDomainsFollowUp(action) {

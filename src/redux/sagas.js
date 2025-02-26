@@ -21,6 +21,7 @@ import curatedGenesSagas from "./curatedGenes/saga";
 import igvSagas from "./igv/saga";
 import highlightsSagas from "./highlights/saga";
 import snvplicitySagas from "./snvplicity/saga";
+import cytobandsSagas from "./cytobands/saga";
 
 export default function* rootSaga(getState) {
   yield all([
@@ -46,5 +47,6 @@ export default function* rootSaga(getState) {
     igvSagas(),
     highlightsSagas(),
     snvplicitySagas(),
+    cytobandsSagas()
   ]);
 }

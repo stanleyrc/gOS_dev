@@ -1,14 +1,13 @@
 import styled from "styled-components";
 
 const Wrapper = styled.div`
-  .ant-wrapper {
-    background: white;
+  .ant-wrapper-genes {
+    background: transparent;
     padding: 0px;
-    min-height: 400px;
+    min-height: 70px;
   }
-  svg.plot-container {
-    position: absolute;
-    top: 0px;
+  svg.plot-container-genes {
+    position: relative;
     user-select: none;
   }
   line.hovered-location-line {

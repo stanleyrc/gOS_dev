@@ -352,16 +352,12 @@ class GenesPlot extends Component {
     let randID = Math.random();
 
     return (
-      <Wrapper className="ant-wrapper" margins={margins}>
-        <div
-          className="areaplot"
-          style={{ width: stageWidth, height: stageHeight }}
-          ref={(elem) => (this.container = elem)}
-        />
+      <Wrapper className="ant-wrapper-genes" margins={margins}>
+        <div className="areaplot" ref={(elem) => (this.container = elem)} />
         <svg
           width={width}
           height={height}
-          className="plot-container"
+          className="plot-container-genes"
           ref={(elem) => (this.plotContainer = elem)}
         >
           <defs>

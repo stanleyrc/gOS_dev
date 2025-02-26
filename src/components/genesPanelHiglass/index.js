@@ -24,6 +24,7 @@ import Wrapper from "./index.style";
 import GenesPlot from "../genesPlotHiglass";
 import settingsActions from "../../redux/settings/actions";
 import genesActions from "../../redux/genes/actions";
+import CytobandsPlot from "../cytobandsPlot";
 
 const { updateDomains } = settingsActions;
 const { locateGenes } = genesActions;
@@ -139,13 +140,22 @@ class GenesPanel extends Component {
                   {({ width, height }) => {
                     return (
                       <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col flex={1}>
+                        <Col span={24}>
                           <GenesPlot
                             {...{
                               width,
-                              height,
+                              height: height / 2,
                               domains,
                               genesList,
+                            }}
+                          />
+                        </Col>
+                        <Col span={24}>
+                          <CytobandsPlot
+                            {...{
+                              width,
+                              height: height / 2,
+                              domains,
                             }}
                           />
                         </Col>
