@@ -1,13 +1,13 @@
 import styled from "styled-components";
 
 const Wrapper = styled.div`
-  .ant-wrapper {
+  .ant-wrapper-legend {
     background: white;
     padding: 0px;
     .brush-container .selection {
-      stroke: #FF7F0E;
+      stroke: #ff7f0e !important;
       stroke-width: 1.3;
-      fill-opacity: .125;
+      fill-opacity: 0.125;
       shape-rendering: crispEdges;
     }
     text {
@@ -15,7 +15,7 @@ const Wrapper = styled.div`
     }
     .brush .selection {
       stroke: steelblue;
-      fill-opacity: .125;
+      fill-opacity: 0.125;
       shape-rendering: crispEdges;
     }
     .highlighted .selection {

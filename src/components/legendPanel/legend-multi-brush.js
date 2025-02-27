@@ -310,7 +310,7 @@ class LegendMultiBrush extends Component {
       .range([0, stageWidth]);
 
     return (
-      <div className="ant-wrapper">
+      <div className="ant-wrapper-legend">
         <svg
           ref={(elem) => (this.container = elem)}
           width={width}

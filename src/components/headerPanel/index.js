@@ -4,14 +4,12 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import {
   Space,
-  message,
   PageHeader,
   Tag,
   Avatar,
   Tooltip,
   Popover,
   Typography,
-  Button,
 } from "antd";
 import * as d3 from "d3";
 import {

@@ -4,6 +4,7 @@ const initState = {
   loading: false,
   filename: "cytobands.tsv",
   data: [],
+  chromosomeOutlines: [],
   error: null,
 };
 
@@ -13,6 +14,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         data: [],
+        chromosomeOutlines: [],
         error: null,
         loading: true,
       };
@@ -20,6 +22,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         data: action.data,
+        chromosomeOutlines: action.chromosomeOutlines,
         loading: false,
       };
     case actions.FETCH_CYTOBANDS_FAILED:

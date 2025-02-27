@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { measureText } from "../../helpers/utility";
+import { createChromosomePaths } from "../../helpers/cytobandsUtil";
 import Wrapper from "./index.style";
 import debounce from "lodash.debounce";
 import settingsActions from "../../redux/settings/actions";
@@ -41,6 +42,8 @@ class CytobandsPlot extends Component {
     return (
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextProps.cytobands.toString() !== this.props.cytobands.toString() ||
+      nextProps.chromosomeOutlines.toString() !==
+        this.props.chromosomeOutlines.toString() ||
       nextProps.width !== this.props.width ||
       nextProps.height !== this.props.height ||
       nextState.selectedCytoband?.id !== this.state.selectedCytoband?.id ||
@@ -265,7 +268,14 @@ class CytobandsPlot extends Component {
   };
 
   render() {
-    const { width, height, domains, defaultDomain, cytobands } = this.props;
+    const {
+      width,
+      height,
+      domains,
+      defaultDomain,
+      cytobands,
+      chromosomeOutlines,
+    } = this.props;
     const { tooltip, selectedCytoband } = this.state;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -322,6 +332,18 @@ class CytobandsPlot extends Component {
         .range([panelHeight, 0])
         .nice();
 
+      let outlines = chromosomeOutlines.map((chromo) => {
+        const { chromosome, color, pointsLeft, pointsRight } = chromo;
+        return {
+          ...createChromosomePaths(
+            pointsLeft.map((point) => [xScale(point[0]), yScale(point[1])]),
+            pointsRight.map((point) => [xScale(point[0]), yScale(point[1])])
+          ),
+          chromosome,
+          color,
+        };
+      });
+
       let yTicks = yScale.ticks(margins.yTicksCount);
       yTicks[yTicks.length - 1] = yScale.domain()[1];
       this.panels.push({
@@ -335,13 +357,13 @@ class CytobandsPlot extends Component {
         offset,
         panelGenomeScale,
         dataCytobands,
+        outlines,
       });
     });
     let randID = Math.random();
 
     return (
-      <Wrapper className="ant-wrapper-cytobands" margins={margins}>
-        <div className="areaplot" ref={(elem) => (this.container = elem)} />
+      <Wrapper className="ant-wrapper-cytobands">
         <svg
           width={width}
           height={height}
@@ -369,7 +391,7 @@ class CytobandsPlot extends Component {
               </clipPath>
             ))}
           </defs>
-          <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
+          <g transform={`translate(${[margins.gapX, 0]})`}>
             {this.panels.map((panel, i) => (
               <g
                 key={`panel-${panel.index}`}
@@ -412,46 +434,59 @@ class CytobandsPlot extends Component {
                         }
                         onMouseOut={() => this.handleCytobandMouseOut(cytoband)}
                       />
-                      {cytoband.segments.map((segment, k) => (
-                        <line
-                          key={k}
-                          x1={panel.xScale(segment[0][0])}
-                          y1={panel.yScale(segment[0][1])}
-                          x2={panel.xScale(segment[1][0])}
-                          y2={panel.yScale(segment[1][1])}
-                          stroke={cytoband.chromosomeColor}
-                          strokeWidth={2}
-                        />
-                      ))}
-                      {(measureText(cytoband.title, 10) <=
-                        panel.xScale(cytoband.endPlace) -
-                          panel.xScale(cytoband.startPlace) ||
-                        cytoband.id === selectedCytoband?.id) && (
-                        <text
-                          className={
-                            cytoband.id === selectedCytoband?.id
-                              ? "highlighted"
-                              : ""
-                          }
-                          transform={`translate(${[
-                            cytoband.textPosX,
-                            panel.yScale(cytoband.y),
-                          ]})`}
-                          textAnchor="middle"
-                          fill={
-                            cytoband.titleColor
-                              ? cytoband.titleColor
-                              : "currentColor"
-                          }
-                          dy={-7.7}
-                          fontSize={10}
-                        >
-                          {cytoband.title}
-                        </text>
-                      )}
                     </g>
                   ))}
                 </g>
+                {panel.outlines.map((outline, k) => (
+                  <g
+                    className="chromosome-outline"
+                    key={outline.chromosome}
+                    clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}
+                  >
+                    <path
+                      d={outline.left}
+                      stroke={outline.color}
+                      fill="transparent"
+                      strokeWidth={2}
+                    />
+                    <path
+                      d={outline.right}
+                      stroke={outline.color}
+                      fill="transparent"
+                      strokeWidth={2}
+                    />
+                  </g>
+                ))}
+                {panel.dataCytobands.map((cytoband, j) => (
+                  <g className="cytoband" key={cytoband.id}>
+                    {(measureText(cytoband.title, 10) <=
+                      panel.xScale(cytoband.endPlace) -
+                        panel.xScale(cytoband.startPlace) ||
+                      cytoband.id === selectedCytoband?.id) && (
+                      <text
+                        className={
+                          cytoband.id === selectedCytoband?.id
+                            ? "highlighted"
+                            : ""
+                        }
+                        transform={`translate(${[
+                          cytoband.textPosX,
+                          panel.yScale(cytoband.y),
+                        ]})`}
+                        textAnchor="middle"
+                        fill={
+                          cytoband.titleColor
+                            ? cytoband.titleColor
+                            : "currentColor"
+                        }
+                        dy={-7.7}
+                        fontSize={10}
+                      >
+                        {cytoband.title}
+                      </text>
+                    )}
+                  </g>
+                ))}
                 <line
                   className="hovered-location-line hidden"
                   id={`hovered-location-line-${panel.index}`}
@@ -517,6 +552,7 @@ const mapStateToProps = (state) => ({
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
   cytobands: state.Cytobands.data,
+  chromosomeOutlines: state.Cytobands.chromosomeOutlines,
   hoveredLocation: state.App.hoveredLocation,
   hoveredLocationPanelIndex: state.App.hoveredLocationPanelIndex,
   zoomedByCmd: state.App.zoomedByCmd,

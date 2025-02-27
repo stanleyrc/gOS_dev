@@ -6,7 +6,7 @@ import ContainerDimensions from "react-container-dimensions";
 import { Card, Space } from "antd";
 import { connect } from "react-redux";
 import Wrapper from "./index.style";
-import { locateGenomeRange } from "../../helpers/utility"; 
+import { locateGenomeRange } from "../../helpers/utility";
 import GenomeRangePanel from "./genomeRangePanel";
 import LegendMultiBrush from "./legend-multi-brush";
 const margins = {
@@ -39,7 +39,7 @@ class LegendPanel extends Component {
             {({ width }) => {
               return (
                 <LegendMultiBrush
-                  className="ant-wrapper"
+                  className="ant-wrapper-legend"
                   {...{ width: width - 2 * margins.padding }}
                 />
               );

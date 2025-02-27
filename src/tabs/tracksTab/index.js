@@ -59,6 +59,7 @@ class TracksTab extends Component {
             handleCancelClicked: () => updateSelectedFilteredEvent(null),
             open: true,
             viewType: "inline",
+            legendPanelPinned: true,
           }}
         />
       </Wrapper>

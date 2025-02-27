@@ -14,7 +14,7 @@ const { updateDomains } = settingsActions;
 
 const margins = {
   gapX: 24,
-  gapY: 24,
+  gapY: 0,
   yTicksCount: 10,
 };
 
@@ -530,7 +530,7 @@ class GenesPlot extends Component {
           {tooltip.visible && (
             <g
               className="tooltip"
-              transform={`translate(${[tooltip.x + 10, tooltip.y]})`}
+              transform={`translate(${[tooltip.x + 10, tooltip.y + 5]})`}
               pointerEvents="none"
             >
               <rect

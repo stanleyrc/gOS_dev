@@ -4,7 +4,7 @@ const Wrapper = styled.div`
   .ant-wrapper-cytobands {
     background: transparent;
     padding: 0px;
-    min-height: 70px;
+    min-height: 50px;
   }
   svg.plot-container-cytobands {
     position: relative;
@@ -29,13 +29,11 @@ const Wrapper = styled.div`
     stroke: #b3590a !important;
     stroke-width: 3px;
   }
-  .tooltip {
-    pointer-events: none;
-    user-select: none;
-  }
+  .tooltip,
+  .chromosome-outline,
   .cytoband text {
-    user-select: none;
     pointer-events: none;
+    user-select: none;
   }
 `;
 

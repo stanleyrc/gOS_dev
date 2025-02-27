@@ -2,14 +2,13 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
-import { Row, Col, Modal, message, Space, Button, Segmented } from "antd";
+import { Row, Col, Modal, message, Space, Button, Affix } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
-import LegendPanel from "../legendPanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import IgvPanel from "../igvPanel/index";
 import appActions from "../../redux/app/actions";
-import GenesPanelHiglass from "../genesPanelHiglass";
+import TracksLegendPanel from "../tracksLegendPanel";
 import { AiOutlineDownload } from "react-icons/ai";
 import * as htmlToImage from "html-to-image";
 import {
@@ -80,6 +79,7 @@ class TracksModal extends Component {
       height,
       open,
       viewType,
+      legendPanelPinned,
     } = this.props;
 
     if (!open) return null;
@@ -98,44 +98,32 @@ class TracksModal extends Component {
           )
         : null;
 
+    let tracksLegend = (
+      <TracksLegendPanel
+        {...{
+          loading: genes.loading,
+          genesList: genes.list,
+          error: genes.error,
+          chromoBins,
+          visible: true,
+          height,
+          handleSegmentedChange: this.handleYscaleSegmentedChange,
+        }}
+      />
+    );
     let content = (
       <Row
         style={transitionStyle(inViewport || renderOutsideViewPort)}
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
-        {
-          <Segmented
-            options={[
-              {
-                label: t("components.segmented-filter.commonYscale"),
-                value: "common",
-              },
-              {
-                label: t("components.segmented-filter.individualYscale"),
-                value: "individual",
-              },
-            ]}
-            onChange={(d) => this.handleYscaleSegmentedChange(d)}
-          />
-        }
         <Col className="gutter-row" span={24}>
-          <LegendPanel />
+          {legendPanelPinned ? (
+            <Affix offsetTop={194}>{tracksLegend}</Affix>
+          ) : (
+            tracksLegend
+          )}
         </Col>
-        {genes && (
-          <Col className="gutter-row" span={24}>
-            <GenesPanelHiglass
-              {...{
-                loading: genes.loading,
-                genesList: genes.list,
-                error: genes.error,
-                chromoBins,
-                visible: true,
-                height,
-              }}
-            />
-          </Col>
-        )}
         <Col className="gutter-row" span={24}>
           <GenomePanel
             {...{
@@ -352,6 +340,7 @@ TracksModal.defaultProps = {
   width: 1800,
   height: 200,
   viewType: "modal",
+  legendPanelPinned: false,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateHoveredLocation: (hoveredLocation, panelIndex) =>

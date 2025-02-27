@@ -1,6 +1,9 @@
 import { all, takeEvery, put, select, call } from "redux-saga/effects";
 import * as d3 from "d3";
-import { setCytobandProperties } from "../../helpers/cytobandsUtil";
+import {
+  setCytobandProperties,
+  getChromosomeOutlines,
+} from "../../helpers/cytobandsUtil";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
 
@@ -20,9 +23,12 @@ function* fetchCytobandsData(action) {
       return cytoband;
     });
 
+    const chromosomeOutlines = getChromosomeOutlines(data, chromoBins);
+
     yield put({
       type: actions.FETCH_CYTOBANDS_SUCCESS,
       data,
+      chromosomeOutlines,
     });
   } catch (error) {
     yield put({

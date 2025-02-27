@@ -546,6 +546,11 @@
       "gene_plural": "records",
       "locator": "Type in the genes you wish to locate"
     },
+    "tracks-legend-panel": {
+      "header": "Legend",
+      "record": "gene in viewport",
+      "record_plural": "genes in viewport"
+    },
     "tracks-modal": {
       "genome-plot": "Total CN Graph",
       "genome-y-axis-title": "↑ CN",
