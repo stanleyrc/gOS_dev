@@ -24,10 +24,14 @@ class ScatterPlot extends Component {
   container = null;
   plotContainer = null;
   zoom = null;
+  extentDataPointsY1 = null;
+  extentDataPointsY2 = null;
+  maxY2Values = null;
 
   constructor(props) {
     super(props);
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 1);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   componentDidMount() {
@@ -50,7 +54,7 @@ class ScatterPlot extends Component {
     this.regl.on("restore", () => {
       console.log("webgl context restored");
       this.points = new Points(this.regl, margins.gapX, 0);
-      this.updateStage();
+      this.updateStage(true);
     });
 
     this.points = new Points(this.regl, margins.gapX, 0);
@@ -82,11 +86,12 @@ class ScatterPlot extends Component {
         );
     });
 
-    this.updateStage();
+    this.updateStage(true);
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return (
+      nextProps.dataPointsX.length !== this.props.dataPointsX.length ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextProps.width !== this.props.width ||
       nextProps.height !== this.props.height ||
@@ -171,7 +176,9 @@ class ScatterPlot extends Component {
       this.componentWillUnmount();
       this.componentDidMount();
     } else {
-      this.updateStage();
+      this.updateStage(
+        prevProps.dataPointsX.length !== this.props.dataPointsX.length
+      );
     }
   }
 
@@ -188,7 +195,7 @@ class ScatterPlot extends Component {
     }
   }
 
-  updateStage() {
+  updateStage(reloadData = false) {
     const {
       domains,
       width,
@@ -203,16 +210,19 @@ class ScatterPlot extends Component {
     const stageWidth = width - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gapY;
 
-    this.points.load(
+    if (reloadData) {
+      console.log("Reloading data");
+      this.points.setData(
+        dataPointsX,
+        commonRangeY ? dataPointsY1 : dataPointsY2,
+        dataPointsColor
+      );
+    }
+    this.points.updateDomains(
       stageWidth,
       stageHeight,
-      dataPointsX,
-      commonRangeY ? dataPointsY1 : dataPointsY2,
-      dataPointsColor,
       domains,
-      commonRangeY
-        ? domains.map((d) => commonRangeY[1])
-        : findMaxInRanges(domains, dataPointsX, dataPointsY2)
+      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values
     );
     this.points.render();
   }
@@ -301,7 +311,11 @@ class ScatterPlot extends Component {
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.panels = [];
-    let maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+    this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+    this.extentDataPointsY1 =
+      this.extentDataPointsY1 || d3.extent(dataPointsY1);
+    this.extentDataPointsY2 =
+      this.extentDataPointsY2 || d3.extent(dataPointsY2);
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);
@@ -331,19 +345,19 @@ class ScatterPlot extends Component {
         let yExtent2 = yExtent1.map((d) =>
           d3
             .scaleLinear()
-            .domain(d3.extent(dataPointsY1))
-            .range(d3.extent(dataPointsY2))(d)
+            .domain(this.extentDataPointsY1)
+            .range(this.extentDataPointsY2)(d)
         );
 
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
         yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
       } else {
-        let yExtent2 = [0, maxY2Values[index]];
+        let yExtent2 = [0, this.maxY2Values[index]];
         let yExtent1 = yExtent2.map((d) =>
           d3
             .scaleLinear()
-            .domain(d3.extent(dataPointsY2))
-            .range(d3.extent(dataPointsY1))(d)
+            .domain(this.extentDataPointsY2)
+            .range(this.extentDataPointsY1)(d)
         );
 
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);

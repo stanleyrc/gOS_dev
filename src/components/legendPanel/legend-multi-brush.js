@@ -56,7 +56,8 @@ class LegendMultiBrush extends Component {
         this.update();
       }
     });
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 1);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   createDefaults(domain) {

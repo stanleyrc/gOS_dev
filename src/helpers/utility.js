@@ -4,14 +4,7 @@ import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
 
-export function dataRanges(
-  domains,
-  genome,
-  mutations,
-  genomeCoverage,
-  hetsnps,
-  allelic
-) {
+export function dataRanges(domains, genome) {
   function filterIntervalsByDomain(domain, intervals) {
     let filteredIntervals = intervals.filter(
       (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
@@ -26,31 +19,9 @@ export function dataRanges(
     return yDomain;
   }
   let maxY = d3.max(
-    [
-      domains
-        .map((domain, index) =>
-          [
-            filterIntervalsByDomain(domain, genome.intervals),
-            filterIntervalsByDomain(domain, allelic.intervals),
-            filterIntervalsByDomain(domain, mutations.intervals),
-          ].flat()
-        )
-        .flat(),
-      findMaxInRanges(
-        domains,
-        genomeCoverage.dataPointsX,
-        genomeCoverage.dataPointsCopyNumber,
-        true,
-        0.9
-      ),
-      findMaxInRanges(
-        domains,
-        hetsnps.dataPointsX,
-        hetsnps.dataPointsCopyNumber,
-        true,
-        0.9
-      ),
-    ].flat()
+    domains
+      .map((domain) => filterIntervalsByDomain(domain, genome.intervals))
+      .flat()
   );
   let yScale = d3.scaleLinear().domain([0, maxY]).range([1, 0]).nice();
   return yScale.domain();
@@ -842,16 +813,19 @@ export function findMaxInRanges(
     let left = 0,
       right = dataPointsX.length - 1;
 
-    // Binary search for the first element >= start
-    while (left <= right) {
-      const mid = Math.floor((left + right) / 2);
-      if (dataPointsX[mid] < start) left = mid + 1;
-      else right = mid - 1;
-    }
+    // // Binary search for the first element >= start
+    // while (left <= right) {
+    //   const mid = Math.floor((left + right) / 2);
+    //   if (dataPointsX[mid] < start) left = mid + 1;
+    //   else right = mid - 1;
+    // }
+
+    left = findIndexForNum(dataPointsX, start);
+    right = findIndexForNum(dataPointsX, end);
 
     // Collect values within the specified range using slice
-    const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
-    const valuesInRangeSlice = dataPointsY.slice(left, sliceEnd);
+    //const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
+    const valuesInRangeSlice = dataPointsY.slice(left, right);
 
     // Calculate either max or 99th percentile
     let resultValue;
@@ -881,6 +855,37 @@ export function findMaxInRanges(
 
     return resultValue;
   });
+}
+
+/**
+ * findIndexForNum(sortedArray, num):
+ *
+ * Returns the smallest index i such that sortedArray[i] >= num.
+ * That implies:
+ *    - For i > 0: sortedArray[i - 1] < num <= sortedArray[i]
+ *    - If i === 0: then sortedArray[0] is already >= num
+ *    - If i === sortedArray.length: all elements are < num
+ *
+ * sortedArray must be sorted in ascending order (no duplicates needed, but it’s typical).
+ */
+export function findIndexForNum(sortedArray, num) {
+  let left = 0;
+  let right = sortedArray.length; // note: we use right = length (one past last index)
+
+  while (left < right) {
+    const mid = (left + right) >>> 1; // floor((left+right)/2)
+    if (sortedArray[mid] < num) {
+      // num is bigger, so we must look right of mid
+      left = mid + 1;
+    } else {
+      // sortedArray[mid] >= num, so tighten to [left .. mid]
+      right = mid;
+    }
+  }
+
+  // After the loop, 'left' is the smallest index where sortedArray[left] >= num
+  // or left === sortedArray.length if all elements < num
+  return left;
 }
 
 export function magnitude(n) {
@@ -1162,7 +1167,6 @@ export function binDataByCopyNumber(rawArray, binSize = 0.05) {
   return final;
 }
 
-
 /**
  * Creates a color scale for copy-number values using schemeTableau10.
  * If there are more than 10 distinct values, we reuse the palette but
@@ -1190,9 +1194,7 @@ export function createCnColorScale(cnValues) {
   });
 
   // 3) Create the ordinal scale
-  const colorScale = d3.scaleOrdinal()
-    .domain(distinctValues)
-    .range(colorRange);
+  const colorScale = d3.scaleOrdinal().domain(distinctValues).range(colorRange);
 
   return colorScale;
 }

@@ -87,16 +87,7 @@ class TracksModal extends Component {
     const { yScaleMode } = this.state;
 
     let commonRangeY =
-      yScaleMode === "common"
-        ? dataRanges(
-            domains,
-            genome.data,
-            mutations.data,
-            genomeCoverage,
-            hetsnps,
-            allelic.data
-          )
-        : null;
+      yScaleMode === "common" ? dataRanges(domains, genome.data) : null;
 
     let tracksLegend = (
       <TracksLegendPanel
