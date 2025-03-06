@@ -177,7 +177,10 @@ class ScatterPlot extends Component {
       this.componentDidMount();
     } else {
       this.updateStage(
-        prevProps.dataPointsX.length !== this.props.dataPointsX.length
+        prevProps.dataPointsX.length !== this.props.dataPointsX.length ||
+          (prevProps.commonRangeY === null &&
+            this.props.commonRangeY !== null) ||
+          (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
       );
     }
   }
@@ -218,6 +221,7 @@ class ScatterPlot extends Component {
         dataPointsColor
       );
     }
+
     this.points.updateDomains(
       stageWidth,
       stageHeight,
