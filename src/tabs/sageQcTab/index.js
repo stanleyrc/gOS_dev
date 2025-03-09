@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col, Skeleton } from "antd";
+import { Row, Col, Skeleton, Image } from "antd";
 import { GiBubbles } from "react-icons/gi";
 import DensityPlotPanel from "../../components/densityPlotPanel";
 import DistributionPlotPanel from "../../components/distributionPlotPanel";
@@ -10,7 +10,7 @@ import Wrapper from "./index.style";
 
 class SageQcTab extends Component {
   render() {
-    const { t, loading, error, dataPoints, metadata } = this.props;
+    const { t, loading, error, dataPoints, metadata, dataset, id } = this.props;
 
     return (
       <Wrapper>
@@ -67,6 +67,23 @@ class SageQcTab extends Component {
                 />
               </Col>
             </Row>
+            <Row
+              className="ant-panel-container ant-home-plot-container"
+              gutter={16}
+            >
+              <Col className="gutter-row" span={12}>
+                <Image
+                  src={`${dataset.dataPath}${id}/coverage_cn_boxplot_original.png`}
+                  fallback="https://placehold.co/600x400?text=Coverage+cn+boxplot+original+not+found"
+                />
+              </Col>
+              <Col className="gutter-row" span={12}>
+                <Image
+                  src={`${dataset.dataPath}${id}/coverage_cn_boxplot_denoised.png`}
+                  fallback="https://placehold.co/600x400?text=Coverage+cn+boxplot+denoised+not+found"
+                />
+              </Col>
+            </Row>
           </Skeleton>
         )}
       </Wrapper>
@@ -81,6 +98,8 @@ const mapStateToProps = (state) => ({
   metadata: state.CaseReport.metadata,
   dataPoints: state.SageQc.records,
   error: state.SageQc.error,
+  dataset: state.Settings.dataset,
+  id: state.CaseReport.id,
 });
 export default connect(
   mapStateToProps,
