@@ -20,6 +20,13 @@ import {
   plotTypes,
 } from "../../helpers/utility";
 import {
+  valueFormat,
+  hrdFields,
+  svCountFields,
+  headerList,
+  msiFields,
+} from "../../helpers/metadata";
+import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
@@ -66,57 +73,22 @@ class HeaderPanel extends Component {
         <span
           dangerouslySetInnerHTML={{
             __html: t(translationKey, {
-              count:
-                typeof value === "string"
-                  ? value
-                  : d3.format(formatString)(value),
+              count: value,
+              value: isNaN(value) ? value : d3.format(formatString)(value),
             }),
           }}
         />
       ) : null;
     };
 
-    const svCountFields = [
-      "tyfonas",
-      "dm",
-      "bfb",
-      "cpxdm",
-      "chromothripsis",
-      "chromoplexy",
-      "tic",
-      "rigma",
-      "pyrgo",
-      "del",
-      "dup",
-      "simple",
-      "DEL-like",
-      "DUP-like",
-      "INV-like",
-      "TRA-like",
-    ];
-
-    const hrdFields = [
-      "dels_mh",
-      "del_rep",
-      "rs3",
-      "rs5",
-      "sbs3",
-      "sbs8",
-      "qrppos",
-      "qrpmin",
-      "qrpmix",
-    ];
-
     let tooltips = {
       tumor_median_coverage: (
-        <span>
+        <Space direction="vertical" size="small">
           {createTooltip(
             "metadata.m_reads_mapped",
             "coverage_qc.m_reads_mapped"
           )}
-          <br />
           {createTooltip("metadata.m_reads", "coverage_qc.m_reads")}
-          <br />
           {createTooltip(
             "metadata.percent_duplication",
             "coverage_qc.percent_duplication",
@@ -127,44 +99,32 @@ class HeaderPanel extends Component {
             "coverage_qc.percent_optical_dups_of_dups",
             ".2%"
           )}
-          <br />
           {coverageQCFields().map((field, index) => {
             const tooltip = createTooltip(
               `metadata.${field.variable}`,
               `coverage_qc.${field.variable}`,
               field.format
             );
-            return tooltip ? (
-              <span key={field}>
-                {tooltip}
-                {index < coverageQCFields().length - 1 && <br />}
-              </span>
-            ) : null;
+            return tooltip ? <span key={field}>{tooltip}</span> : null;
           })}
-        </span>
+        </Space>
       ),
       svCount: (
-        <span>
+        <Space direction="vertical" size="small">
           {createTooltip("metadata.junction_count", "junction_count")}
-          <br />
           {createTooltip("metadata.loose_count", "loose_count")}
-          <br />
           {svCountFields.map((field, index) => {
             const tooltip = createTooltip(
               `metadata.${field}_count`,
-              `sv_types_count.${field}`
+              `sv_types_count.${field}`,
+              valueFormat(field)
             );
-            return tooltip ? (
-              <span key={field}>
-                {tooltip}
-                {index < svCountFields.length - 1 && <br />}
-              </span>
-            ) : null;
+            return tooltip ? <span key={field}>{tooltip}</span> : null;
           })}
-        </span>
+        </Space>
       ),
-      hrdScore: (
-        <span>
+      hrdB12Score: (
+        <Space direction="vertical" size="small">
           {hrdFields
             .filter((field, index) =>
               `hrd.${field}`
@@ -174,16 +134,30 @@ class HeaderPanel extends Component {
             .map((field, index) => {
               const tooltip = createTooltip(
                 `metadata.${field}`,
-                `hrd.${field}`
+                `hrd.${field}`,
+                valueFormat(field)
               );
-              return tooltip ? (
-                <span key={field}>
-                  {tooltip}
-                  {index < hrdFields.length - 1 && <br />}
-                </span>
-              ) : null;
+              return tooltip ? <span key={field}>{tooltip}</span> : null;
             })}
-        </span>
+        </Space>
+      ),
+      msiLabel: (
+        <Space direction="vertical" size="small">
+          {msiFields
+            .filter((field, index) =>
+              `msisensor.${field}`
+                .split(".")
+                .reduce((acc, key) => acc?.[key], metadata)
+            )
+            .map((field, index) => {
+              const tooltip = createTooltip(
+                `metadata.msisensor.${field}`,
+                `msisensor.${field}`,
+                valueFormat(`msisensor.${field}`)
+              );
+              return tooltip ? <span key={field}>{tooltip}</span> : null;
+            })}
+        </Space>
       ),
       snvCount: createTooltip(
         "metadata.snv_count_normal_vaf_greater0",
@@ -311,14 +285,7 @@ class HeaderPanel extends Component {
                 </div>
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
-                    {[
-                      "tumor_median_coverage",
-                      "snvCount",
-                      "svCount",
-                      "hrdScore",
-                      "tmb",
-                      "lohFraction",
-                    ].map((d) => (
+                    {headerList.map((d) => (
                       <Tooltip key={`metadata.${d}.short`} title={tooltips[d]}>
                         <div className="stat-item">
                           <div className="ant-statistic">
@@ -350,9 +317,9 @@ class HeaderPanel extends Component {
                                           : t("general.not-applicable")
                                       }`
                                     : metadata[d] != null
-                                    ? d3.format(plotTypes()[d].format)(
-                                        +metadata[d]
-                                      )
+                                    ? isNaN(metadata[d])
+                                      ? metadata[d]
+                                      : d3.format(valueFormat(d))(metadata[d])
                                     : t("general.not-applicable")}
                                 </span>
                               </span>
@@ -376,9 +343,7 @@ class HeaderPanel extends Component {
                               }}
                             >
                               {purity != null
-                                ? d3.format(plotTypes()["purity"].format)(
-                                    +purity
-                                  )
+                                ? d3.format(valueFormat("purity"))(+purity)
                                 : t("general.not-applicable")}
                             </span>
                           </span>
@@ -393,9 +358,7 @@ class HeaderPanel extends Component {
                               }}
                             >
                               {ploidy != null
-                                ? d3.format(plotTypes()["ploidy"].format)(
-                                    +ploidy
-                                  )
+                                ? d3.format(valueFormat("ploidy"))(+ploidy)
                                 : t("general.not-applicable")}
                             </span>
                           </span>

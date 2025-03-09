@@ -939,10 +939,10 @@ export function plotTypes() {
       scaleX: "log",
       scaleXFormat: "~s",
     },
-    hrdScore: {
+    hrdB12Score: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2f",
+      format: ".3f",
       scaleX: "linear",
       scaleXFormat: "0.5f",
     },
@@ -985,7 +985,6 @@ export function reportAttributesMap() {
     normal_median_coverage: "normal_median_coverage",
     snv_count: "snvCount",
     sv_count: "svCount",
-    hrd_score: "hrdScore",
     tmb: "tmb",
     loh_fraction: "lohFraction",
     purity: "purity",
@@ -1011,6 +1010,7 @@ export function reportAttributesMap() {
     sigprofiler_indel_count: "sigprofiler_indel_count",
     sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
     sigprofiler_sbs_count: "sigprofiler_sbs_count",
+    msisensor: "msisensor",
   };
 }
 

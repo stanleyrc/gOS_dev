@@ -38,6 +38,10 @@ function* fetchCaseReport(action) {
       metadata[reportAttributesMap()[key]] = reportMetadata[key];
     });
 
+    metadata.hrdB12Score = metadata.hrd?.b1_2_score;
+    metadata.msiLabel = metadata.msisensor?.label;
+    metadata.msiScore = metadata.msisensor?.score;
+
     let qualityStatus = assessQuality(metadata);
 
     let qualityReportPresent = null;
