@@ -96,13 +96,29 @@
       "short": "SV Count",
       "full": "SV Count"
     },
+    "hrdScore": {
+      "short": "HRDetect",
+      "full": "Homologous Recombination Deficiency (HRD)"
+    },
     "hrdB12Score": {
       "short": "B1+2",
-      "full": "Homologous Recombination Deficiency (HRD)"
+      "full": "B1+2 phenotypic score"
+    },
+    "hrdB1Score": {
+      "short": "B1",
+      "full": "B1 phenotypic score"
+    },
+    "hrdB2Score": {
+      "short": "B2",
+      "full": "B2 phenotypic score"
     },
     "msiLabel": {
       "short": "MSI",
       "full": "MSI Sensor"
+    },
+    "msiScore": {
+      "short": "MSI Score",
+      "full": "Microsatellite Instability (MSI)"
     },
     "tmb": {
       "short": "TMB",

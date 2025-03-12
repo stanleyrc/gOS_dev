@@ -939,13 +939,6 @@ export function plotTypes() {
       scaleX: "log",
       scaleXFormat: "~s",
     },
-    hrdB12Score: {
-      plotType: "histogram",
-      tumor_type: "tumor_type",
-      format: ".3f",
-      scaleX: "linear",
-      scaleXFormat: "0.5f",
-    },
     tmb: {
       plotType: "histogram",
       tumor_type: "tumor_type",
@@ -973,6 +966,41 @@ export function plotTypes() {
       format: ".2f",
       scaleX: "linear",
       scaleXFormat: "0.2f",
+    },
+    hrdScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".4f",
+      scaleX: "linear",
+      scaleXFormat: "0.5f",
+    },
+    hrdB12Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".4f",
+      scaleX: "linear",
+      scaleXFormat: "0.5f",
+    },
+    hrdB1Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".4f",
+      scaleX: "linear",
+      scaleXFormat: "0.5f",
+    },
+    hrdB2Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".4f",
+      scaleX: "linear",
+      scaleXFormat: "0.5f",
+    },
+    msiScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2%",
+      scaleX: "linear",
+      scaleXFormat: "0.2%",
     },
   };
 }

@@ -26,6 +26,8 @@ import {
   svCountFields,
   headerList,
   msiFields,
+  hrdDividers,
+  msiLabels,
 } from "../../helpers/metadata";
 import {
   CheckCircleOutlined,
@@ -53,15 +55,8 @@ class HeaderPanel extends Component {
     const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
       metadata;
 
-    let colorMarkers = {
-      MSS: "#33a02c",
-      "MSI-Low": "#faad14",
-      "MSI-High": "#ff4d4f",
-    };
-    let hrdDividers = {
-      "hrd.DUP_1kb_100kb": "b12Features",
-      "hrd.del_mh_prop": "hrdetectFeatures",
-    };
+    let colorMarkers = { ...msiLabels };
+
     Object.keys(plotTypes()).forEach((d) => {
       let plot = plots.find((e) => e.id === d);
       let markValue = metadata[d];

@@ -114,6 +114,17 @@ export const headerList = [
   "lohFraction",
 ];
 
+export const hrdDividers = {
+  "hrd.DUP_1kb_100kb": "b12Features",
+  "hrd.del_mh_prop": "hrdetectFeatures",
+};
+
+export const msiLabels = {
+  MSS: "#33a02c",
+  "MSI-Low": "#faad14",
+  "MSI-High": "#ff4d4f",
+};
+
 export function valueFormat(value) {
   return valueFormats[value] || ".2f";
 }
