@@ -52,7 +52,12 @@ class HeaderPanel extends Component {
     const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
       metadata;
 
-    let colorMarkers = {};
+    let colorMarkers = {
+      MSS: "#33a02c",
+      "MSI-Low": "#faad14",
+      "MSI-High": "#ff4d4f",
+    };
+
     Object.keys(plotTypes()).forEach((d) => {
       let plot = plots.find((e) => e.id === d);
       let markValue = metadata[d];
@@ -301,7 +306,9 @@ class HeaderPanel extends Component {
                                 <span
                                   className="ant-statistic-content-value-int"
                                   style={{
-                                    color: colorMarkers[d],
+                                    color: isNaN(metadata[d])
+                                      ? colorMarkers[metadata[d]]
+                                      : colorMarkers[d],
                                   }}
                                 >
                                   {d === "tumor_median_coverage"
