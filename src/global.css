@@ -268,3 +268,12 @@ html[dir='rtl'] .dz-hidden-input {
   bottom: 0;
   transform: rotate(45deg);
 }
+.tooltip-divider {
+  color: #fff !important;
+  border-top-color: #fff !important;
+  margin: 0px !important;
+}
+.hrd-tooltip {
+  margin: 5px !important;
+  display: block;
+}

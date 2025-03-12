@@ -10,6 +10,7 @@ import {
   Tooltip,
   Popover,
   Typography,
+  Divider,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -57,7 +58,10 @@ class HeaderPanel extends Component {
       "MSI-Low": "#faad14",
       "MSI-High": "#ff4d4f",
     };
-
+    let hrdDividers = {
+      "hrd.DUP_1kb_100kb": "b12Features",
+      "hrd.del_mh_prop": "hrdetectFeatures",
+    };
     Object.keys(plotTypes()).forEach((d) => {
       let plot = plots.find((e) => e.id === d);
       let markValue = metadata[d];
@@ -85,7 +89,6 @@ class HeaderPanel extends Component {
         />
       ) : null;
     };
-
     let tooltips = {
       tumor_median_coverage: (
         <Space direction="vertical" size="small">
@@ -129,7 +132,7 @@ class HeaderPanel extends Component {
         </Space>
       ),
       hrdB12Score: (
-        <Space direction="vertical" size="small">
+        <span>
           {hrdFields
             .filter((field, index) =>
               `hrd.${field}`
@@ -138,13 +141,27 @@ class HeaderPanel extends Component {
             )
             .map((field, index) => {
               const tooltip = createTooltip(
-                `metadata.${field}`,
+                `metadata.hrd.${field}`,
                 `hrd.${field}`,
-                valueFormat(field)
+                valueFormat(`hrd.${field}`)
               );
-              return tooltip ? <span key={field}>{tooltip}</span> : null;
+              let divider = hrdDividers[`hrd.${field}`] ? (
+                <Divider orientation="left" plain className="tooltip-divider">
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: t(`metadata.hrd.${hrdDividers[`hrd.${field}`]}`),
+                    }}
+                  />
+                </Divider>
+              ) : null;
+              return tooltip ? (
+                <span className="hrd-tooltip" key={field}>
+                  {divider}
+                  <span key={field}>{tooltip}</span>
+                </span>
+              ) : null;
             })}
-        </Space>
+        </span>
       ),
       msiLabel: (
         <Space direction="vertical" size="small">
