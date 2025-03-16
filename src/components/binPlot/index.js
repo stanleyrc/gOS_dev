@@ -89,7 +89,7 @@ class BinPlot extends Component {
 
     const { beta, purity } = separatorsConfig;
     let separators = d3.range(0, maxSeparatorsCount + 1).map((i) => {
-      let a = (2 * (1 - purity)) / 2;
+      let a = (2 * (1 - purity)) / purity;
       let b = 1 / beta;
       let ppfit_intercept = a / b;
       let ppfit_slope = beta;
