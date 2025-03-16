@@ -89,7 +89,7 @@ class BinPlotPanel extends Component {
       metadata,
     } = this.props;
 
-    const { beta, gamma } = metadata;
+    const { beta, gamma, purity } = metadata;
 
     if (!metadata.pair || ppfit.data.intervals.length < 1) {
       return null;
@@ -222,6 +222,7 @@ class BinPlotPanel extends Component {
                                   this.handleSelectSegment(e),
                                 slope: 1 / beta,
                                 intercept: gamma / beta,
+                                separatorsConfig: { beta, purity },
                               }}
                             />
                           </Col>

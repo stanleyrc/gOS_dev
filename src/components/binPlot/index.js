@@ -70,6 +70,7 @@ class BinPlot extends Component {
       selectSegment,
       slope,
       intercept,
+      separatorsConfig,
     } = this.props;
 
     const { minBarHeight, minBarWidth } = margins;
@@ -86,9 +87,14 @@ class BinPlot extends Component {
 
     let maxSeparatorsCount = Math.ceil((extent[1] - intercept) / slope);
 
-    let separators = d3
-      .range(0, maxSeparatorsCount + 1)
-      .map((i) => slope * i + intercept);
+    const { beta, purity } = separatorsConfig;
+    let separators = d3.range(0, maxSeparatorsCount + 1).map((i) => {
+      let a = (2 * (1 - purity)) / 2;
+      let b = 1 / beta;
+      let ppfit_intercept = a / b;
+      let ppfit_slope = beta;
+      return ppfit_slope * i + ppfit_intercept;
+    });
 
     extent[1] = separators[separators.length - 1];
 
