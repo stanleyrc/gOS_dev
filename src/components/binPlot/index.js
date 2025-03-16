@@ -371,7 +371,7 @@ class BinPlot extends Component {
                         xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
                       }
                     >
-                      {d3.format(".3f")(d)}
+                      {i}
                     </text>
                     <text
                       transform={`translate(${[xScale(d), panelHeight + 20]})`}
@@ -383,7 +383,7 @@ class BinPlot extends Component {
                         xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
                       }
                     >
-                      {i}
+                      {d3.format(".3f")(d)}
                     </text>
                   </g>
                 ))}
