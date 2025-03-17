@@ -57,7 +57,7 @@ function* fetchCaseReports() {
         }
       });
     });
-    console.log(populations);
+
     let { page, per_page } = defaultSearchFilters();
     let records = datafiles
       .filter((d) => d.visible !== false)
