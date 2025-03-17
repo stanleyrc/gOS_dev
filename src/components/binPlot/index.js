@@ -85,16 +85,18 @@ class BinPlot extends Component {
 
     let extent = [0, d3.max(filteredData, (d) => d.metadata.mean)];
 
-    let maxSeparatorsCount = Math.ceil((extent[1] - intercept) / slope);
-
     const { beta, purity } = separatorsConfig;
-    let separators = d3.range(0, maxSeparatorsCount + 1).map((i) => {
-      let a = (2 * (1 - purity)) / purity;
-      let b = 1 / beta;
-      let ppfit_intercept = a / b;
-      let ppfit_slope = beta;
-      return ppfit_slope * i + ppfit_intercept;
-    });
+    let a = (2 * (1 - purity)) / purity;
+    let b = 1 / beta;
+    let ppfit_intercept = a / b;
+    let ppfit_slope = beta;
+    let maxSeparatorsCount = Math.ceil(
+      (extent[1] - ppfit_intercept) / ppfit_slope
+    );
+
+    let separators = d3
+      .range(0, maxSeparatorsCount + 1)
+      .map((i) => ppfit_slope * i + ppfit_intercept);
 
     extent[1] = separators[separators.length - 1];
 
