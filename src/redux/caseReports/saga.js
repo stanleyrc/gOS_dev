@@ -42,14 +42,22 @@ function* fetchCaseReports() {
     let flippedMap = flip(reportAttributesMap());
     Object.keys(plotTypes()).forEach((d, i) => {
       populations[d] = datafiles.map((e) => {
-        return {
-          pair: e.pair,
-          value: e[flippedMap[d]],
-          tumor_type: e.tumor_type,
-        };
+        try {
+          return {
+            pair: e.pair,
+            value: eval(`e.${flippedMap[d]}`),
+            tumor_type: e.tumor_type,
+          };
+        } catch (error) {
+          return {
+            pair: e.pair,
+            value: null,
+            tumor_type: e.tumor_type,
+          };
+        }
       });
     });
-
+    console.log(populations);
     let { page, per_page } = defaultSearchFilters();
     let records = datafiles
       .filter((d) => d.visible !== false)

@@ -1039,6 +1039,11 @@ export function reportAttributesMap() {
     sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
     sigprofiler_sbs_count: "sigprofiler_sbs_count",
     msisensor: "msisensor",
+    "msisensor.score": "msiScore",
+    "hrd.hrd_score": "hrdScore",
+    "hrd.b1_2_score": "hrdB12Score",
+    "hrd.b1_score": "hrdB1Score",
+    "hrd.b2_score": "hrdB2Score",
   };
 }
 
