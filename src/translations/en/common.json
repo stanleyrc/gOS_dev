@@ -353,10 +353,10 @@
     "detail-view": {
       "tabs": {
         "tab1": "Overall",
-        "tab2": "Genome view",
-        "tab3": "Population view",
+        "tab2": "Genome View",
+        "tab3": "Population View",
         "tab4": "Variant QC",
-        "tab5": "Purity ploidy fit",
+        "tab5": "Purity-Ploidy Fit",
         "tab6": "Signatures"
       }
     },
