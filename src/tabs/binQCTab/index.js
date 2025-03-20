@@ -39,8 +39,8 @@ class BinQcTab extends Component {
           </Col>
           <Col className="gutter-row" span={12}>
             <Image
-              src={`${dataset.dataPath}${id}/purple_sunrise_beta_gamma.png`}
-              fallback="https://placehold.co/600x400?text=Purple+Sunrise+Beta+Gamma+not+found"
+              src={`${dataset.dataPath}${id}/hetsnps_major_minor.png`}
+              fallback="https://placehold.co/600x400?text=Hetsnps+Major+Minor+not+found"
             />
           </Col>
         </Row>
