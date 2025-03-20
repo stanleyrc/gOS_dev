@@ -39,10 +39,17 @@ const eventColumns = {
 class FilteredEventsListPanel extends Component {
   state = {
     eventType: "all",
+    tierFilters: [1, 2], // start with tiers 1 & 2 checked
   };
 
   handleSegmentedChange = (eventType) => {
     this.setState({ eventType });
+  };
+
+  handleTableChange = (pagination, filters, sorter) => {
+    // When the user changes filters (e.g. checks tier 3),
+    // update tierFilters in the state:
+    this.setState({ tierFilters: filters.tier || [] });
   };
 
   render() {
@@ -67,7 +74,7 @@ class FilteredEventsListPanel extends Component {
 
     let open = selectedFilteredEvent?.id;
 
-    let { eventType } = this.state;
+    let { eventType, tierFilters } = this.state;
 
     let recordsHash = d3.group(
       filteredEvents.filter((d) => d.tier && +d.tier < 3),
@@ -271,11 +278,12 @@ class FilteredEventsListPanel extends Component {
         filters: [...new Set(records.map((d) => d.tier))].map((d) => {
           return {
             text: d,
-            value: d,
+            value: +d,
           };
         }),
         filterMultiple: true,
-        onFilter: (value, record) => record.tier?.indexOf(value) === 0,
+        onFilter: (value, record) => +record.tier === +value,
+        filteredValue: tierFilters, // controlled by the component
         render: (_, record) =>
           record.tier != null ? (
             <Tooltip
@@ -515,6 +523,9 @@ class FilteredEventsListPanel extends Component {
                       dataSource={records}
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
+                      onChange={this.handleTableChange}
+                      scroll={{ x: "max-content", y: 500 }}
+                      tableLayout="fixed"
                     />
                     {selectedFilteredEvent && viewMode === "tracks" && (
                       <TracksModal
