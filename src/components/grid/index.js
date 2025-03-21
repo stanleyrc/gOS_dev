@@ -31,7 +31,7 @@ class Grid extends Component {
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
 
-    const tickValues = scaleY.ticks();
+    const tickValues = scaleY.ticks().filter((d) => Number.isInteger(d));
 
     tickValues[tickValues.length - 1] = scaleY.domain()[1];
 
