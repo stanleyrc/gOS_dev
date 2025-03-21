@@ -59,14 +59,15 @@ class HeaderPanel extends Component {
 
     Object.keys(plotTypes()).forEach((d) => {
       let plot = plots.find((e) => e.id === d);
-      let markValue = metadata[d];
-      colorMarkers[d] = markValue
-        ? markValue < plot?.q1
-          ? legendColors()[0]
-          : markValue > plot?.q3
-          ? legendColors()[2]
-          : legendColors()[1]
-        : "gray";
+      let markValue = +metadata[d];
+      colorMarkers[d] =
+        markValue != null
+          ? markValue < plot?.q1
+            ? legendColors()[0]
+            : markValue > plot?.q3
+            ? legendColors()[2]
+            : legendColors()[1]
+          : "gray";
     });
 
     const createTooltip = (translationKey, valueKey, formatString = "20") => {
@@ -406,7 +407,7 @@ const mapStateToProps = (state) => ({
   qualityReportName: state.CaseReport.qualityReportName,
   dataset: state.Settings.dataset,
   metadata: state.CaseReport.metadata,
-  plots: state.App.populationMetrics,
+  plots: state.PopulationStatistics.general,
 });
 export default connect(
   mapStateToProps,
