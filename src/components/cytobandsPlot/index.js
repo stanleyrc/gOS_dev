@@ -35,7 +35,8 @@ class CytobandsPlot extends Component {
         text: "",
       },
     };
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   shouldComponentUpdate(nextProps, nextState) {

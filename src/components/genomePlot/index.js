@@ -44,7 +44,8 @@ class GenomePlot extends Component {
         text: "",
       },
     };
-    this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   updatePanels() {
@@ -460,7 +461,9 @@ class GenomePlot extends Component {
           })
           .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
       );
-      this.debouncedUpdateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
+      this.debouncedUpdateDomains(
+        merged.map((d) => [d.startPlace, d.endPlace])
+      );
     } else {
       this.props.selectPhylogenyNodes(
         this.props.connectionsAssociations.map((d, i) => {

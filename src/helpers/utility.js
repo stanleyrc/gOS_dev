@@ -9,8 +9,7 @@ export function dataRanges(domains, genome) {
     let filteredIntervals = intervals.filter(
       (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
     );
-    let intervalMin = d3.min(filteredIntervals, (d) => d.y);
-    let intervalMax = d3.max(filteredIntervals, (d) => d.y);
+    let [intervalMin, intervalMax] = d3.extent(filteredIntervals, (d) => d.y);
     let offsetPerc = 0.5;
     let yDomain = [
       intervalMin - intervalMin * offsetPerc,
@@ -806,7 +805,7 @@ export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
-  usePercentile = true,
+  usePercentile = false,
   p = 0.99 // 99th percentile by default
 ) {
   return domains.map(([start, end]) => {
