@@ -31,15 +31,21 @@ class Grid extends Component {
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
 
-    const tickValues = scaleY.ticks().filter((d) => Number.isInteger(d));
-
-    tickValues[tickValues.length - 1] = scaleY.domain()[1];
+    const tickValues = [
+      ...new Set(
+        scaleY
+          .ticks()
+          .filter((d) => d >= 0)
+          .map((d) => Math.floor(d))
+      ),
+    ];
 
     let yAxis = d3
       .axisRight(scaleY)
       .tickSizeInner(axisWidth)
       .tickValues(tickValues)
-      .tickPadding(-axisWidth - gapLeft);
+      .tickPadding(-axisWidth - gapLeft)
+      .tickFormat(d3.format("d"));
 
     yAxisContainer.call(yAxis);
   }
@@ -56,7 +62,14 @@ class Grid extends Component {
       .range(scaleY2.domain());
 
     const tickValues = scaleY
-      ? scaleY.ticks().map((d) => scaleYtoY2(d))
+      ? [
+          ...new Set(
+            scaleY
+              .ticks()
+              .filter((d) => d >= 0)
+              .map((d) => Math.floor(d))
+          ),
+        ].map((d) => scaleYtoY2(d))
       : scaleY2.ticks();
 
     tickValues[tickValues.length - 1] = scaleYtoY2(scaleY.domain()[1]);
