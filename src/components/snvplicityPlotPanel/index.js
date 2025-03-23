@@ -75,7 +75,6 @@ class SnvplicityPlotPanel extends Component {
     let colorScale = createCnColorScale(distinctCopyNumbers);
     const { selectedCopyNumber } = this.state;
 
-    console.log(data);
     return (
       <Wrapper visible={visible}>
         <Card
