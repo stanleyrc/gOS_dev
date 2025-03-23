@@ -1146,10 +1146,10 @@ export function mutationsGroups() {
 
 export function snvplicityGroups() {
   return [
-    { type: "germline", mode: "altered" },
-    { type: "germline", mode: "total" },
     { type: "somatic", mode: "altered" },
     { type: "somatic", mode: "total" },
+    { type: "germline", mode: "altered" },
+    { type: "germline", mode: "total" },
     { type: "hetsnps", mode: "major" },
     { type: "hetsnps", mode: "minor" },
   ];

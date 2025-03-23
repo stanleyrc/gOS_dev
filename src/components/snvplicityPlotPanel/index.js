@@ -74,6 +74,8 @@ class SnvplicityPlotPanel extends Component {
       : [];
     let colorScale = createCnColorScale(distinctCopyNumbers);
     const { selectedCopyNumber } = this.state;
+
+    console.log(data);
     return (
       <Wrapper visible={visible}>
         <Card
@@ -156,58 +158,64 @@ class SnvplicityPlotPanel extends Component {
                     key={d[0]}
                     gutter={[margins.gap, 0]}
                   >
-                    {d[1].map((group) => (
-                      <Col
-                        key={group.type + "_" + group.mode}
-                        className="gutter-row"
-                        span={24 / d[1].length}
-                      >
-                        <ContainerDimensions>
-                          {({ width, height }) => {
-                            return (
-                              (inViewport || renderOutsideViewPort) &&
-                              data &&
-                              data[[group.type, group.mode].join("_")] && (
-                                <SnvplicityPlot
-                                  {...{
-                                    width,
-                                    height: 400,
-                                    data: data[
-                                      [group.type, group.mode].join("_")
-                                    ],
-                                    colorScale,
-                                    selectedCopyNumber,
-                                    xTitle: t(
-                                      `components.snvplicity-panel.x-title`
-                                    ),
-                                    yTitle: t(
-                                      `components.snvplicity-panel.y-title`
-                                    ),
-                                    title: (
-                                      <span
-                                        dangerouslySetInnerHTML={{
-                                          __html: t(
-                                            `components.snvplicity-panel.title`,
-                                            {
-                                              type: t(
-                                                `components.snvplicity-panel.${group.type}`
-                                              ),
-                                              mode: t(
-                                                `components.snvplicity-panel.${group.mode}`
-                                              ),
-                                            }
-                                          ),
-                                        }}
-                                      />
-                                    ),
-                                  }}
-                                />
-                              )
-                            );
-                          }}
-                        </ContainerDimensions>
-                      </Col>
-                    ))}
+                    {d[1]
+                      .filter(
+                        (group) =>
+                          data &&
+                          data[[group.type, group.mode].join("_")].length > 0
+                      )
+                      .map((group) => (
+                        <Col
+                          key={group.type + "_" + group.mode}
+                          className="gutter-row"
+                          span={24 / d[1].length}
+                        >
+                          <ContainerDimensions>
+                            {({ width, height }) => {
+                              return (
+                                (inViewport || renderOutsideViewPort) &&
+                                data &&
+                                data[[group.type, group.mode].join("_")] && (
+                                  <SnvplicityPlot
+                                    {...{
+                                      width,
+                                      height: 400,
+                                      data: data[
+                                        [group.type, group.mode].join("_")
+                                      ],
+                                      colorScale,
+                                      selectedCopyNumber,
+                                      xTitle: t(
+                                        `components.snvplicity-panel.x-title`
+                                      ),
+                                      yTitle: t(
+                                        `components.snvplicity-panel.y-title`
+                                      ),
+                                      title: (
+                                        <span
+                                          dangerouslySetInnerHTML={{
+                                            __html: t(
+                                              `components.snvplicity-panel.title`,
+                                              {
+                                                type: t(
+                                                  `components.snvplicity-panel.${group.type}`
+                                                ),
+                                                mode: t(
+                                                  `components.snvplicity-panel.${group.mode}`
+                                                ),
+                                              }
+                                            ),
+                                          }}
+                                        />
+                                      ),
+                                    }}
+                                  />
+                                )
+                              );
+                            }}
+                          </ContainerDimensions>
+                        </Col>
+                      ))}
                   </Row>
                 ))}
             </div>

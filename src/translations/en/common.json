@@ -423,7 +423,7 @@
       "header": "SNV Multiplicity",
       "title": "{{mode}} <strong>{{type}}</strong> Copies",
       "y-title": "↑ Count",
-      "x-title": "SNVplicity Copies  →",
+      "x-title": "Multiplicity →",
       "filter-by-copy-number": "Filter by Copy Number",
       "germline": "Germline",
       "somatic": "Somatic",
