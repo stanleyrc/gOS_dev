@@ -442,6 +442,7 @@
     },
     "violin-panel": {
       "header": {
+        "common": "Population Distribution Violin Charts",
         "total": "Population Distribution Violin Chart - All Tumor Types",
         "tumor": "Population Distribution Violin Chart - Tumor Type {{tumor}}"
       },

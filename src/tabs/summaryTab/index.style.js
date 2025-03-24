@@ -13,6 +13,12 @@ const Wrapper = styled.div`
     margin-top: 24px;
     margin-botton: 24px;
   }
+  .ant-collapse-content > .ant-collapse-content-box {
+    padding: 0px;
+  }
+  .ant-collapse > .ant-collapse-item > .ant-collapse-header {
+    padding: 12px 0px;
+  }
 `;
 
 export default Wrapper;

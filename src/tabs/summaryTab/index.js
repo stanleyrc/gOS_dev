@@ -1,12 +1,14 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col, Skeleton } from "antd";
+import { Row, Col, Skeleton, Collapse, Space } from "antd";
 import { chunks } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
 import HighlightsPanel from "../../components/highlightsPanel";
+
+const { Panel } = Collapse;
 
 class SummaryTab extends Component {
   render() {
@@ -17,39 +19,49 @@ class SummaryTab extends Component {
       <Wrapper>
         <Skeleton active loading={loading}>
           <HighlightsPanel title={t("components.highlights-panel.title")} />
-          {plotsList.map((d, i) => (
-            <Row
-              key={0}
-              id={`row-${0}}`}
-              className="ant-panel-container ant-home-plot-container"
-              gutter={16}
+          <br />
+          <Collapse ghost>
+            <Panel
+              header={
+                <Space>{t("components.violin-panel.header.common")}</Space>
+              }
+              key={1}
             >
-              <Col className="gutter-row" span={12}>
-                {
-                  <ViolinPlotPanel
-                    {...{
-                      title: t("components.violin-panel.header.total"),
-                      plots: plotsList[i],
-                      markers: metadata,
-                    }}
-                  />
-                }
-              </Col>
-              <Col className="gutter-row" span={12}>
-                {
-                  <ViolinPlotPanel
-                    {...{
-                      title: t("components.violin-panel.header.tumor", {
-                        tumor: metadata.tumor,
-                      }),
-                      plots: tumorPlotsList[i],
-                      markers: metadata,
-                    }}
-                  />
-                }
-              </Col>
-            </Row>
-          ))}
+              {plotsList.map((d, i) => (
+                <Row
+                  key={0}
+                  id={`row-${0}}`}
+                  className="ant-panel-container ant-home-plot-container"
+                  gutter={16}
+                >
+                  <Col className="gutter-row" span={12}>
+                    {
+                      <ViolinPlotPanel
+                        {...{
+                          title: t("components.violin-panel.header.total"),
+                          plots: plotsList[i],
+                          markers: metadata,
+                        }}
+                      />
+                    }
+                  </Col>
+                  <Col className="gutter-row" span={12}>
+                    {
+                      <ViolinPlotPanel
+                        {...{
+                          title: t("components.violin-panel.header.tumor", {
+                            tumor: metadata.tumor,
+                          }),
+                          plots: tumorPlotsList[i],
+                          markers: metadata,
+                        }}
+                      />
+                    }
+                  </Col>
+                </Row>
+              ))}
+            </Panel>
+          </Collapse>
         </Skeleton>
         <FilteredEventsListPanel />
       </Wrapper>
