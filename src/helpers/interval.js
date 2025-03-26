@@ -150,24 +150,28 @@ class Interval {
         });
       }
       const oncogenicity = annotations.find(
-        (item) => item?.key === "Oncogenicity"
+        (item) => item.key === "Oncogenicity"
       )?.value;
-      attributes.push({
-        label: "OncoKB Oncogenicity",
-        value: oncogenicity || "NA",
-      });
-
-      const effect = annotations.find((item) => item?.key === "Effect")?.value;
-      attributes.push({
-        label: "OncoKB Predicted Effect",
-        value: effect || "NA",
-      });
-
-      const level = annotations.find((item) => item?.key === "Level")?.value;
-      attributes.push({
-        label: "OncoKB Therapeutic Level",
-        value: level || "NA",
-      });
+      if (oncogenicity) {
+        attributes.push({
+          label: "OncoKB Oncogenicity",
+          value: oncogenicity || "NA",
+        });
+      }
+      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      if (effect) {
+        attributes.push({
+          label: "OncoKB Predicted Effect",
+          value: effect || "NA",
+        });
+      }
+      const level = annotations.find((item) => item.key === "Level")?.value;
+      if (level) {
+        attributes.push({
+          label: "OncoKB Therapeutic Level",
+          value: level || "NA",
+        });
+      }
     }
     if (this.strand) {
       attributes.push({ label: "Strand", value: this.strand });
