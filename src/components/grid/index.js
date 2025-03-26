@@ -25,7 +25,7 @@ class Grid extends Component {
 
   // Always to the left hand
   renderYAxis() {
-    let { scaleY, axisWidth, gapLeft } = this.props;
+    let { scaleY, axisWidth } = this.props;
     if (!scaleY) {
       return;
     }
@@ -39,12 +39,12 @@ class Grid extends Component {
           .map((d) => Math.floor(d))
       ),
     ];
+    tickValues[tickValues.length - 1] = scaleY.domain()[1];
 
     let yAxis = d3
-      .axisRight(scaleY)
-      .tickSizeInner(axisWidth)
+      .axisLeft(scaleY)
+      .tickSizeInner(-axisWidth)
       .tickValues(tickValues)
-      .tickPadding(-axisWidth - gapLeft)
       .tickFormat(d3.format("d"));
 
     yAxisContainer.call(yAxis);
@@ -52,7 +52,7 @@ class Grid extends Component {
 
   // Always to the right hand
   renderYAxis2() {
-    const { scaleY, scaleY2, gapRight } = this.props;
+    const { scaleY, scaleY2 } = this.props;
 
     if (!scaleY2) return;
 
@@ -79,9 +79,9 @@ class Grid extends Component {
       .select(".y-axis2-container");
 
     const yAxis2 = d3
-      .axisLeft(scaleY2)
+      .axisRight(scaleY2)
       .tickValues(tickValues)
-      .tickPadding(-gapRight);
+      .tickFormat(d3.format("d"));
 
     yAxis2Container.call(yAxis2);
   }
@@ -373,7 +373,8 @@ class Grid extends Component {
   }
 
   render() {
-    const { showY, scaleY2, axisWidth, axisHeight, gap } = this.props;
+    const { showY, scaleY2, axisWidth, axisHeight, gap, gapLeft, gapRight } =
+      this.props;
     let randId = `cutt-off-clip-${Math.random()}`;
     return (
       <Wrapper
@@ -393,13 +394,13 @@ class Grid extends Component {
         {showY && (
           <g
             className="axis--y y-axis-container"
-            transform={`translate(${[gap, 0]})`}
+            transform={`translate(${[gapLeft, 0]})`}
           ></g>
         )}
         {showY && scaleY2 && (
           <g
             className="axis--y y-axis2-container"
-            transform={`translate(${[gap + axisWidth - 10, 0]})`}
+            transform={`translate(${[gap + axisWidth + gapRight, 0]})`}
           ></g>
         )}
         <g
@@ -425,8 +426,8 @@ Grid.propTypes = {
 };
 Grid.defaultProps = {
   gap: 0,
-  gapLeft: 24,
-  gapRight: 35,
+  gapLeft: 2,
+  gapRight: -10,
   fontSize: 10,
   showY: true,
 };

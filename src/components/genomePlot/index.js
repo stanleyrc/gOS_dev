@@ -21,6 +21,7 @@ const { updateDomains } = settingsActions;
 
 const margins = {
   gap: 24,
+  gapX: 50,
   bar: 10,
   gapY: 24,
   yTicksCount: 10,
@@ -59,10 +60,10 @@ class GenomePlot extends Component {
       commonRangeY,
     } = this.props;
     const { intervals, frameConnections } = genome;
-    let stageWidth = width - 2 * margins.gap;
+    let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gap;
     let panelWidth =
-      (stageWidth - (domains.length - 1) * margins.gap) / domains.length;
+      (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.connections = [];
     this.panels = domains.map((domain, index) => {
@@ -70,12 +71,12 @@ class GenomePlot extends Component {
         (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
       );
       const xScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
-      let offset = index * (panelWidth + margins.gap);
+      let offset = index * (panelWidth + margins.gapX);
 
       let domainWidth = domain[1] - domain[0];
       let range = [
-        index * (panelWidth + margins.gap),
-        (index + 1) * panelWidth + index * margins.gap,
+        index * (panelWidth + margins.gapX),
+        (index + 1) * panelWidth + index * margins.gapX,
       ];
       let scale = d3.scaleLinear().domain(domain).range(range);
       let innerScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
@@ -577,7 +578,7 @@ class GenomePlot extends Component {
           </defs>
           <text
             className="y-axis-title"
-            transform={`translate(${[0, margins.gapY / 3]})`}
+            transform={`translate(${[margins.gapX / 2, margins.gapY / 3]})`}
           >
             {yAxisTitle}
           </text>
@@ -588,7 +589,7 @@ class GenomePlot extends Component {
           >
             {yAxis2Title}
           </text>
-          <g transform={`translate(${[margins.gap, margins.gap]})`}>
+          <g transform={`translate(${[margins.gapX, margins.gap]})`}>
             {this.panels.map((panel, i) => (
               <g
                 key={`panel-${panel.index}`}

@@ -10,7 +10,7 @@ const { updateDomains } = settingsActions;
 
 const margins = {
   legend: {
-    padding: 24,
+    padding: 50,
     height: 60,
     bar: 30,
     style: { fill: "steelblue", stroke: "black", fillOpacity: 0.8 },

@@ -15,7 +15,7 @@ const { updateHoveredLocation } = appActions;
 const { updateDomains } = settingsActions;
 
 const margins = {
-  gapX: 24,
+  gapX: 50,
   gapY: 24,
 };
 
@@ -397,7 +397,7 @@ class ScatterPlot extends Component {
         >
           <text
             className="y-axis-title"
-            transform={`translate(${[0, margins.gapY / 3]})`}
+            transform={`translate(${[margins.gapX / 2, margins.gapY / 3]})`}
           >
             {yAxisTitle}
           </text>

@@ -12,7 +12,7 @@ import settingsActions from "../../redux/settings/actions";
 const { updateDomains } = settingsActions;
 
 const margins = {
-  gapX: 24,
+  gapX: 50,
   gapY: 0,
   bGap: 0,
   rectangleHeight: 10,

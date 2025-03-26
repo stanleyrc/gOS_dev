@@ -14,7 +14,7 @@ const { updateHoveredLocation } = appActions;
 const { updateDomains } = settingsActions;
 
 const margins = {
-  gapX: 24,
+  gapX: 50,
   gapY: 24,
   yTicksCount: 10,
 };
