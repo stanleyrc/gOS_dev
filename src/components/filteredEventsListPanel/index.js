@@ -40,6 +40,11 @@ class FilteredEventsListPanel extends Component {
   state = {
     eventType: "all",
     tierFilters: [1, 2], // start with tiers 1 & 2 checked
+    typeFilters: [],
+    roleFilters: [],
+    effectFilters: [],
+    variantFilters: [],
+    geneFilters: [],
   };
 
   handleSegmentedChange = (eventType) => {
@@ -49,7 +54,14 @@ class FilteredEventsListPanel extends Component {
   handleTableChange = (pagination, filters, sorter) => {
     // When the user changes filters (e.g. checks tier 3),
     // update tierFilters in the state:
-    this.setState({ tierFilters: filters.tier || [] });
+    this.setState({
+      geneFilters: filters.gene || [],
+      tierFilters: filters.tier || [],
+      typeFilters: filters.type || [],
+      roleFilters: filters.role || [],
+      effectFilters: filters.effect || [],
+      variantFilters: filters.variant || [],
+    });
   };
 
   render() {
@@ -74,7 +86,15 @@ class FilteredEventsListPanel extends Component {
 
     let open = selectedFilteredEvent?.id;
 
-    let { eventType, tierFilters } = this.state;
+    let {
+      eventType,
+      tierFilters,
+      typeFilters,
+      geneFilters,
+      roleFilters,
+      effectFilters,
+      variantFilters,
+    } = this.state;
 
     let recordsHash = d3.group(
       filteredEvents.filter((d) => d.tier && +d.tier < 3),
@@ -98,6 +118,7 @@ class FilteredEventsListPanel extends Component {
           }),
         filterMultiple: true,
         onFilter: (value, record) => record.gene?.startsWith(value),
+        filteredValue: geneFilters, // controlled by the component
         filterSearch: true,
         sorter: {
           compare: (a, b) => {
@@ -133,7 +154,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.role?.indexOf(value) === 0,
+        onFilter: (value, record) => record.role === value,
+        filteredValue: roleFilters, // controlled by the component
         sorter: {
           compare: (a, b) => {
             if (a.role == null) return 1;
@@ -170,7 +192,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.variant?.indexOf(value) === 0,
+        onFilter: (value, record) => record.variant === value,
+        filteredValue: variantFilters, // controlled by the component
         render: (_, record) =>
           record.variant != null ? (
             record.variant
@@ -198,7 +221,8 @@ class FilteredEventsListPanel extends Component {
           };
         }),
         filterMultiple: true,
-        onFilter: (value, record) => record.type?.indexOf(value) === 0,
+        onFilter: (value, record) => record.type === value,
+        filteredValue: typeFilters, // controlled by the component
         render: (_, record) =>
           record.type != null ? (
             record.type
@@ -221,7 +245,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.effect?.indexOf(value) === 0,
+        onFilter: (value, record) => record.effect === value,
+        filteredValue: effectFilters, // controlled by the component
         sorter: {
           compare: (a, b) => {
             if (a.effect == null) return 1;
