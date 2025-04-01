@@ -7,7 +7,12 @@ import { getCancelToken } from "../../helpers/cancelToken";
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
   const { dataset } = currentState.Settings;
-  const { filename, filenameIndex } = currentState.Igv;
+  const {
+    filenameTumor,
+    filenameTumorIndex,
+    filenameNormal,
+    filenameNormalIndex,
+  } = currentState.Igv;
   const { id } = currentState.CaseReport;
 
   const checkFile = function* (file) {
@@ -27,35 +32,18 @@ function* fetchData(action) {
   };
 
   const results = yield all([
-    call(checkFile, filename),
-    call(checkFile, filenameIndex),
+    call(checkFile, filenameTumor),
+    call(checkFile, filenameTumorIndex),
+    call(checkFile, filenameNormal),
+    call(checkFile, filenameNormalIndex),
   ]);
 
-  const missingFiles = results.filter((result) => !result.present);
-
-  if (missingFiles.length === 0) {
-    // All files are present
-    yield put({
-      type: actions.FETCH_IGV_DATA_SUCCESS,
-      filenamePresent: true,
-      filenameIndexPresent: true,
-      name: id,
-    });
-  } else {
-    // Some files are missing
-    const errorMessages = missingFiles.map(
-      (file) => `${file.file} (${file.error})`
-    );
-
-    yield put({
-      type: actions.FETCH_IGV_DATA_FAILED,
-      filenamePresent: results[0].present,
-      filenameIndexPresent: results[1].present,
-      name: id,
-      missingFiles: missingFiles.map((file) => file.file),
-      error: errorMessages.join(", "),
-    });
-  }
+  yield put({
+    type: actions.FETCH_IGV_DATA_SUCCESS,
+    filenameTumorPresent: results[0].present && results[1].present,
+    filenameNormalPresent: results[2].present && results[3].present,
+    missingFiles: results.filter((result) => !result.present),
+  });
 }
 
 function* actionWatcher() {

@@ -68,10 +68,13 @@ class IgvPanel extends Component {
       loading,
       title,
       missingFiles,
-      filename,
-      filenameIndex,
+      filenameTumor,
+      filenameTumorIndex,
+      filenameNormal,
+      filenameNormalIndex,
+      filenameTumorPresent,
+      filenameNormalPresent,
       format,
-      name,
       inViewport,
       renderOutsideViewPort,
       error,
@@ -81,8 +84,10 @@ class IgvPanel extends Component {
       id,
     } = this.props;
     const { visible } = this.state;
-    let url = `${dataset.dataPath}${id}/${filename}`;
-    let indexURL = `${dataset.dataPath}${id}/${filenameIndex}`;
+    let urlTumor = `${dataset.dataPath}${id}/${filenameTumor}`;
+    let indexTumorURL = `${dataset.dataPath}${id}/${filenameTumorIndex}`;
+    let urlNormal = `${dataset.dataPath}${id}/${filenameNormal}`;
+    let indexNormalURL = `${dataset.dataPath}${id}/${filenameNormalIndex}`;
     return (
       <Wrapper>
         {error ? (
@@ -170,10 +175,13 @@ class IgvPanel extends Component {
                         <IgvPlot
                           {...{
                             index,
-                            url,
-                            indexURL,
+                            urlTumor,
+                            indexTumorURL,
+                            urlNormal,
+                            indexNormalURL,
+                            filenameTumorPresent,
+                            filenameNormalPresent,
                             format,
-                            name,
                             chromoBins,
                             domain,
                             updateDomain: this.handleUpdateDomain,

@@ -2,12 +2,13 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
-  filename: "tumor.bam",
-  filenameIndex: "tumor.bam.bai",
+  filenameTumor: "tumor.bam",
+  filenameTumorIndex: "tumor.bam.bai",
+  filenameNormal: "normal.bam",
+  filenameNormalIndex: "normal.bam.bai",
   format: "bam",
-  name: null,
-  filenamePresent: null,
-  filenameIndexPresent: null,
+  filenameTumorPresent: null,
+  filenameNormalPresent: null,
   missingFiles: [],
   error: null,
 };
@@ -23,20 +24,9 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_IGV_DATA_SUCCESS:
       return {
         ...state,
-        name: action.name,
-        filenamePresent: action.filenamePresent,
-        filenameIndexPresent: action.filenameIndexPresent,
-        missingFiles: [],
-        loading: false,
-      };
-    case actions.FETCH_IGV_DATA_FAILED:
-      return {
-        ...state,
-        name: action.name,
-        filenamePresent: action.filenamePresent,
-        filenameIndexPresent: action.filenameIndexPresent,
+        filenameTumorPresent: action.filenameTumorPresent,
+        filenameNormalPresent: action.filenameNormalPresent,
         missingFiles: action.missingFiles,
-        error: action.error,
         loading: false,
       };
     default:

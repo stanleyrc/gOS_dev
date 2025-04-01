@@ -274,19 +274,24 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        <Col className="gutter-row" span={24}>
-          <IgvPanel
-            {...{
-              loading: igv.loading,
-              error: igv.error,
-              missingFiles: igv.missingFiles,
-              filename: igv.filename,
-              filenameIndex: igv.filenameIndex,
-              format: igv.format,
-              name: igv.name,
-            }}
-          />
-        </Col>
+        {(igv.filenameTumorPresent || igv.filenameNormalPresent) && (
+          <Col className="gutter-row" span={24}>
+            <IgvPanel
+              {...{
+                loading: igv.loading,
+                error: igv.error,
+                missingFiles: igv.missingFiles,
+                filenameTumorPresent: igv.filenameTumorPresent,
+                filenameNormalPresent: igv.filenameNormalPresent,
+                filenameTumor: igv.filenameTumor,
+                filenameTumorIndex: igv.filenameTumorIndex,
+                filenameNormal: igv.filenameNormal,
+                filenameNormalIndex: igv.filenameNormalIndex,
+                format: igv.format,
+              }}
+            />
+          </Col>
+        )}
       </Row>
     );
     return (

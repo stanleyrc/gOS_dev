@@ -24,20 +24,42 @@ class IgvPlot extends Component {
     if (this.igvInitialized) return;
     this.igvInitialized = true;
 
-    const { domain, chromoBins, url, indexURL, format, name } = this.props;
+    const {
+      domain,
+      chromoBins,
+      urlTumor,
+      indexTumorURL,
+      urlNormal,
+      indexNormalURL,
+      filenameTumorPresent,
+      filenameNormalPresent,
+      format,
+    } = this.props;
     let locus = domainToLoci(chromoBins, domain);
+    let tracks = [];
+    console.log(this.props);
+    if (filenameTumorPresent) {
+      tracks.push({
+        id: "Tumor",
+        name: "Tumor",
+        url: urlTumor,
+        indexURL: indexTumorURL,
+        format,
+      });
+    }
+    if (filenameNormalPresent) {
+      tracks.push({
+        id: "normal",
+        name: "Normal",
+        url: urlNormal,
+        indexURL: indexNormalURL,
+        format,
+      });
+    }
     const igvOptions = {
       genome: "hg19",
       locus,
-      tracks: [
-        {
-          id: name,
-          name,
-          url,
-          indexURL,
-          format,
-        },
-      ],
+      tracks,
     };
 
     igv.createBrowser(this.container, igvOptions).then((browser) => {
@@ -50,7 +72,7 @@ class IgvPlot extends Component {
   shouldComponentUpdate(nextProps, nextState) {
     return (
       nextProps.domain.toString() !== this.props.domain.toString() ||
-      nextProps.url.toString() !== this.props.url.toString()
+      nextProps.urlTumor?.toString() !== this.props.urlTumor?.toString()
     );
   }
 
