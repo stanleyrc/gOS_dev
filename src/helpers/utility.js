@@ -955,9 +955,10 @@ export function plotTypes() {
     purity: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2f",
+      format: ".2%",
       scaleX: "linear",
-      scaleXFormat: "0.2f",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
     ploidy: {
       plotType: "histogram",
@@ -965,41 +966,47 @@ export function plotTypes() {
       format: ".2f",
       scaleX: "linear",
       scaleXFormat: "0.2f",
+      range: [1.5, 5.5],
     },
     hrdScore: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".4f",
+      format: "0.2%",
       scaleX: "linear",
-      scaleXFormat: "0.5f",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
     hrdB12Score: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".4f",
+      format: "0.2%",
       scaleX: "linear",
-      scaleXFormat: "0.5f",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
     hrdB1Score: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".4f",
+      format: "0.2%",
       scaleX: "linear",
-      scaleXFormat: "0.5f",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
     hrdB2Score: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".4f",
+      format: "0.2%",
       scaleX: "linear",
-      scaleXFormat: "0.5f",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
     msiScore: {
       plotType: "histogram",
       tumor_type: "tumor_type",
       format: ".2%",
       scaleX: "linear",
-      scaleXFormat: "0.2%",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
   };
 }
@@ -1522,7 +1529,7 @@ export function getPopulationMetrics(
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
     plot.q99 = d3.quantile(plot.data, 0.99);
-    plot.range = [
+    plot.range = plotTypes()[d].range || [
       d3.max([d3.min(plot.allData), 0.01]),
       d3.quantile(plot.allData, 0.99),
     ];

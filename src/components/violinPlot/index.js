@@ -115,7 +115,10 @@ class ViolinPlot extends Component {
         (d, i) => `translate(${[xScale(d.plot.id) + xScale.step() / 2, 0]})`
       )
       .each(function (d, i) {
-        let yAxis = d3.axisLeft(d.scaleY).tickSize(3);
+        let yAxis = d3
+          .axisLeft(d.scaleY)
+          .tickSize(3)
+          .tickFormat(d3.format(d.plot.format));
 
         d3.select(this).call(yAxis);
 
@@ -132,7 +135,10 @@ class ViolinPlot extends Component {
             let tickText = d3.select(this).text();
             if (d.plot.scaleX === "log") {
               tickText = tickText === "" ? "" : d3.format("~s")(e);
+            } else {
+              tickText = tickText === "" ? "" : d3.format(d.plot.format)(e);
             }
+
             return tickText;
           });
 
@@ -174,6 +180,8 @@ class ViolinPlot extends Component {
           let tickText = d3.select(this).text();
           if (d.plot.scaleX === "log") {
             tickText = tickText === "" ? "" : d3.format("~s")(e);
+          } else {
+            tickText = tickText === "" ? "" : d3.format(d.plot.format)(e);
           }
           return tickText;
         });
