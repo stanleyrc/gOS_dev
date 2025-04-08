@@ -14,30 +14,32 @@ class PopulationPanel extends Component {
 
     if (!visible) return null;
 
-    let plotRows = plots.map((d, index) => {
-      let plotComponent = (
-        <HistogramPlotPanel
-          {...{
-            data: d.data,
-            q1: d.q1,
-            q3: d.q3,
-            q99: d.q99,
-            scaleX: d.scaleX,
-            range: d.range,
-            bandwidth: d.bandwidth,
-            title: t(`metadata.${d.id}.full`, { ns: scope }),
-            visible: d.data,
-            markValue: d.markValue,
-            markValueText: d.markValueText,
-            colorMarker: d.colorMarker,
-            format: d.format,
-            loading,
-          }}
-        />
-      );
+    let plotRows = plots
+      .filter((d) => !isNaN(d.markValue))
+      .map((d, index) => {
+        let plotComponent = (
+          <HistogramPlotPanel
+            {...{
+              data: d.data,
+              q1: d.q1,
+              q3: d.q3,
+              q99: d.q99,
+              scaleX: d.scaleX,
+              range: d.range,
+              bandwidth: d.bandwidth,
+              title: t(`metadata.${d.id}.full`, { ns: scope }),
+              visible: d.data,
+              markValue: d.markValue,
+              markValueText: d.markValueText,
+              colorMarker: d.colorMarker,
+              format: d.format,
+              loading,
+            }}
+          />
+        );
 
-      return plotComponent;
-    });
+        return plotComponent;
+      });
 
     const tuples = Array.from(
       { length: Math.ceil(plotRows.length / 3) },

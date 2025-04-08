@@ -303,51 +303,63 @@ class HeaderPanel extends Component {
                 </div>
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
-                    {headerList.map((d) => (
-                      <Tooltip key={`metadata.${d}.short`} title={tooltips[d]}>
-                        <div className="stat-item">
-                          <div className="ant-statistic">
-                            <div
-                              className={`ant-statistic-title ${
-                                tooltips[d] ? "has-tooltip" : ""
-                              }`}
-                            >
-                              {t(`metadata.${d}.short`)}
-                            </div>
-                            <div className="ant-statistic-content">
-                              <span className="ant-statistic-content-value">
-                                <span
-                                  className="ant-statistic-content-value-int"
-                                  style={{
-                                    color: isNaN(metadata[d])
-                                      ? colorMarkers[metadata[d]]
-                                      : colorMarkers[d],
-                                  }}
-                                >
-                                  {d === "tumor_median_coverage"
-                                    ? `${
-                                        metadata["tumor_median_coverage"] !=
-                                        null
-                                          ? `${metadata["tumor_median_coverage"]}X`
-                                          : t("general.not-applicable")
-                                      } / ${
-                                        metadata["normal_median_coverage"] !=
-                                        null
-                                          ? `${metadata["normal_median_coverage"]}X`
-                                          : t("general.not-applicable")
-                                      }`
-                                    : metadata[d] != null
-                                    ? isNaN(metadata[d])
-                                      ? metadata[d]
-                                      : d3.format(valueFormat(d))(metadata[d])
-                                    : t("general.not-applicable")}
+                    {headerList
+                      .filter(
+                        (d) =>
+                          !(
+                            metadata[d] === null ||
+                            metadata[d] === undefined ||
+                            metadata[d] === ""
+                          )
+                      )
+                      .map((d) => (
+                        <Tooltip
+                          key={`metadata.${d}.short`}
+                          title={tooltips[d]}
+                        >
+                          <div className="stat-item">
+                            <div className="ant-statistic">
+                              <div
+                                className={`ant-statistic-title ${
+                                  tooltips[d] ? "has-tooltip" : ""
+                                }`}
+                              >
+                                {t(`metadata.${d}.short`)}
+                              </div>
+                              <div className="ant-statistic-content">
+                                <span className="ant-statistic-content-value">
+                                  <span
+                                    className="ant-statistic-content-value-int"
+                                    style={{
+                                      color: isNaN(metadata[d])
+                                        ? colorMarkers[metadata[d]]
+                                        : colorMarkers[d],
+                                    }}
+                                  >
+                                    {d === "tumor_median_coverage"
+                                      ? `${
+                                          metadata["tumor_median_coverage"] !=
+                                          null
+                                            ? `${metadata["tumor_median_coverage"]}X`
+                                            : t("general.not-applicable")
+                                        } / ${
+                                          metadata["normal_median_coverage"] !=
+                                          null
+                                            ? `${metadata["normal_median_coverage"]}X`
+                                            : t("general.not-applicable")
+                                        }`
+                                      : metadata[d] != null
+                                      ? isNaN(metadata[d])
+                                        ? metadata[d]
+                                        : d3.format(valueFormat(d))(metadata[d])
+                                      : t("general.not-applicable")}
+                                  </span>
                                 </span>
-                              </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Tooltip>
-                    ))}
+                        </Tooltip>
+                      ))}
 
                     <div className="stat-item">
                       <div className="ant-statistic">

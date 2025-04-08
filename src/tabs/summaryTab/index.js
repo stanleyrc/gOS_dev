@@ -13,8 +13,11 @@ const { Panel } = Collapse;
 class SummaryTab extends Component {
   render() {
     const { t, loading, metadata, plots, tumorPlots } = this.props;
-    let plotsList = chunks(plots);
-    let tumorPlotsList = chunks(tumorPlots);
+
+    let plotsList = chunks(plots.filter((d) => !isNaN(metadata[d.id])));
+    let tumorPlotsList = chunks(
+      tumorPlots.filter((d) => !isNaN(metadata[d.id]))
+    );
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
