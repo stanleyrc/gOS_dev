@@ -540,6 +540,8 @@
     "genome-panel": {
       "interval": "interval",
       "interval_plural": "intervals",
+      "mutation": "mutation",
+      "mutation_plural": "mutations",
       "error": {
         "title": "Loading the genomic data failed",
         "subtitle": "Fetching the {{filename}} file for this specific case report was unsuccessful",

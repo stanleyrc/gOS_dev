@@ -113,7 +113,7 @@ class GenomePanel extends Component {
       chromoBins,
       domains,
       mutationsPlot,
-      commonRangeY
+      commonRangeY,
     } = this.props;
     if (!visible) return null;
     const { parentWidth, height } = this.state;
@@ -155,9 +155,14 @@ class GenomePanel extends Component {
                 {genome && (
                   <span>
                     <b>{d3.format(",")(genome.intervals.length)}</b>{" "}
-                    {t("components.genome-panel.interval", {
-                      count: genome.intervals.length,
-                    })}
+                    {t(
+                      `components.genome-panel.${
+                        mutationsPlot ? "mutation" : "interval"
+                      }`,
+                      {
+                        count: genome.intervals.length,
+                      }
+                    )}
                   </span>
                 )}
                 <span>{domainsToLocation(chromoBins, domains)}</span>
@@ -213,7 +218,7 @@ class GenomePanel extends Component {
                           genome,
                           mutationsPlot,
                           yAxisTitle,
-                          commonRangeY
+                          commonRangeY,
                         }}
                       />
                     )}
@@ -233,7 +238,7 @@ GenomePanel.defaultProps = {
   height: 400,
   mutationsPlot: false,
   visible: true,
-  commonRangeY: null
+  commonRangeY: null,
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
