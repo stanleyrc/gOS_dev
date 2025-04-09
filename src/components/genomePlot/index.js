@@ -639,16 +639,17 @@ class GenomePlot extends Component {
                     return mutationsPlot ? (
                       <path
                         id={d.primaryKey}
+                        title={d.proteinCoding}
                         d={d.mutationSymbol}
                         type="interval"
                         key={i}
                         className={`shape ${
-                          d.primaryKey === tooltip.shapeId && "highlighted"
+                          d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                         } ${
-                          annotation &&
-                          d.annotationArray.includes(annotation) &&
-                          "annotated"
-                        }`}
+                          annotation && d.annotationArray.includes(annotation)
+                            ? "annotated"
+                            : ""
+                        } ${d.isProteinCoded ? "" : "non-protein-coded"}`}
                         transform={`translate(${[
                           panel.xScale((d.startPlace + d.endPlace) / 2),
                           panel.yScale(d.y),
@@ -668,11 +669,11 @@ class GenomePlot extends Component {
                         type="interval"
                         key={i}
                         className={`shape ${
-                          d.primaryKey === tooltip.shapeId && "highlighted"
+                          d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                         } ${
-                          annotation &&
-                          d.annotationArray.includes(annotation) &&
-                          "annotated"
+                          annotation && d.annotationArray.includes(annotation)
+                            ? "annotated"
+                            : ""
                         }`}
                         transform={`translate(${[
                           d3.max([panel.xScale(d.startPlace), 0]),
@@ -715,7 +716,7 @@ class GenomePlot extends Component {
                   key={d.identifier}
                   transform={d.transform}
                   className={`connection ${
-                    d.primaryKey === tooltip.shapeId && "highlighted"
+                    d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                   } ${
                     selectedConnectionIds.includes(d.cid) &&
                     annotation &&

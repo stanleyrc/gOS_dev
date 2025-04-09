@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { humanize, guid } from "./utility";
+import { proteinCoding } from "./mutations";
 
 class Interval {
   constructor(inter) {
@@ -45,6 +46,28 @@ class Interval {
 
   get isSubInterval() {
     return this.mode === "subinterval";
+  }
+
+  get isProteinCoded() {
+    return this.proteinCoding.some((type) => proteinCoding.includes(type));
+  }
+
+  get proteinCoding() {
+    let coding = [];
+    if (this.annotation) {
+      const annotations = this.annotation.split(";").map((item) => {
+        if (!item.includes(":")) {
+          return null;
+        }
+        const [key, value] = item.split(":");
+        return { key: key.trim(), value: value.trim() };
+      });
+      coding = annotations
+        .find((item) => item.key === "Type")
+        ?.value?.replace("&", ",")
+        ?.split(",");
+    }
+    return coding;
   }
 
   get location() {
