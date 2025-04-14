@@ -1050,6 +1050,7 @@ export function reportAttributesMap() {
     "hrd.b1_2_score": "hrdB12Score",
     "hrd.b1_score": "hrdB1Score",
     "hrd.b2_score": "hrdB2Score",
+    summary: "summary",
   };
 }
 

@@ -255,11 +255,22 @@ class ListView extends Component {
                     ]}
                   >
                     <Meta
-                      title={d.disease}
+                      title={
+                        <Space>
+                          {d.disease}
+                          <Space>
+                            <Text type="secondary">
+                              {d.primary_site
+                                ? snakeCaseToHumanReadable(d.primary_site)
+                                : t("containers.list-view.filters.empty")}
+                            </Text>
+                          </Space>
+                        </Space>
+                      }
                       description={
-                        d.primary_site
-                          ? snakeCaseToHumanReadable(d.primary_site)
-                          : t("containers.list-view.filters.empty")
+                        <Space>
+                          <Text type="secondary">{d.summary}</Text>
+                        </Space>
                       }
                     />
                   </Card>

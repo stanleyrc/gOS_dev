@@ -52,7 +52,7 @@ class HeaderPanel extends Component {
       qualityReportName,
     } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
+    const { tumor, purity, ploidy, pair, sex, disease, primary_site, summary } =
       metadata;
 
     let colorMarkers = { ...msiLabels };
@@ -285,18 +285,23 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-content">
                   <div className="page-header-content">
                     <div className="avatar-content0">
-                      <Space>
-                        <Avatar
-                          size="large"
-                          style={{
-                            backgroundColor: "#fde3cf",
-                            color: "#f56a00",
-                          }}
-                        >
-                          {tumor}
-                        </Avatar>
-                        {disease}
-                        {primary_site}
+                      <Space direction="vertical" size="small">
+                        <Space>
+                          <Avatar
+                            size="large"
+                            style={{
+                              backgroundColor: "#fde3cf",
+                              color: "#f56a00",
+                            }}
+                          >
+                            {tumor}
+                          </Avatar>
+                          {disease}
+                          {primary_site}
+                        </Space>
+                        <Space>
+                          <Text type="secondary">{summary}</Text>
+                        </Space>
                       </Space>
                     </div>
                   </div>
