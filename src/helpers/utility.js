@@ -10,7 +10,7 @@ export function dataRanges(domains, genome) {
       (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
     );
     let [intervalMin, intervalMax] = d3.extent(filteredIntervals, (d) => d.y);
-    let offsetPerc = 0.5;
+    let offsetPerc = 1;
     let yDomain = [
       intervalMin - intervalMin * offsetPerc,
       intervalMax + intervalMax * offsetPerc,
