@@ -98,7 +98,7 @@ class GenomePlot extends Component {
         .on("zoom", (event) => this.zooming(event, index))
         .on("end", (event) => this.zoomEnded(event, index));
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
-      let offsetPerc = 1;
+      let offsetPerc = 2;
       let yScale = commonRangeY
         ? d3
             .scaleLinear()
