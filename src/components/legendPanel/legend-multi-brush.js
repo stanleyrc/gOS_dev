@@ -261,7 +261,12 @@ class LegendMultiBrush extends Component {
   };
 
   componentDidMount() {
-    const { domains } = this.props;
+    const { domains, width, defaultDomain } = this.props;
+    this.stageWidth = width - 2 * margins.legend.padding;
+    this.genomeScale = d3
+      .scaleLinear()
+      .domain(defaultDomain)
+      .range([0, this.stageWidth]);
     domains.map((d) => this.createDefaults(d));
   }
 
@@ -273,7 +278,12 @@ class LegendMultiBrush extends Component {
   }
 
   componentDidUpdate() {
-    const { domains } = this.props;
+    const { domains, defaultDomain, width } = this.props;
+    this.stageWidth = width - 2 * margins.legend.padding;
+    this.genomeScale = d3
+      .scaleLinear()
+      .domain(defaultDomain)
+      .range([0, this.stageWidth]);
     let visibleFragments = this.fragments.filter((d) => d.selection);
     if (visibleFragments.length !== domains.length) {
       this.fragments = [];

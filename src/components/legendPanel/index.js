@@ -37,12 +37,12 @@ class LegendPanel extends Component {
         >
           <ContainerDimensions>
             {({ width }) => {
-              return (
+              return width > 0 ? (
                 <LegendMultiBrush
                   className="ant-wrapper-legend"
                   {...{ width: width - 2 * margins.padding }}
                 />
-              );
+              ) : null;
             }}
           </ContainerDimensions>
         </Card>
