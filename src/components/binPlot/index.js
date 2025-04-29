@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { measureText, segmentAttributes } from "../../helpers/utility";
+import { maxSeparatorsCount } from "../../helpers/segmentWidth";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -68,8 +69,6 @@ class BinPlot extends Component {
       yTitle,
       chromoBins,
       selectSegment,
-      slope,
-      intercept,
       separatorsConfig,
     } = this.props;
 
@@ -81,24 +80,31 @@ class BinPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let filteredData = data.filter((d) => d.metadata.mean);
-
-    let extent = [0, d3.max(filteredData, (d) => d.metadata.mean)];
-
     const { beta, purity } = separatorsConfig;
     let a = (2 * (1 - purity)) / purity;
     let b = 1 / beta;
     let ppfit_intercept = a / b;
     let ppfit_slope = beta;
-    let maxSeparatorsCount = Math.ceil(
-      (extent[1] - ppfit_intercept) / ppfit_slope
-    );
+
+    let originalMaxMean = d3.max(data, (d) => d.metadata.mean);
+
+    let finalMaxMean = d3.min([
+      originalMaxMean,
+      ppfit_intercept + maxSeparatorsCount * ppfit_slope,
+    ]);
+
+    let filteredData = data
+      .filter((d) => d.metadata.mean)
+      .map((d) => {
+        d.metadata.mean = d3.min([d.metadata.mean, finalMaxMean]);
+        return d;
+      });
+
+    let extent = [0, finalMaxMean];
 
     let separators = d3
       .range(0, maxSeparatorsCount + 1)
       .map((i) => ppfit_slope * i + ppfit_intercept);
-
-    extent[1] = separators[separators.length - 1];
 
     let num = Math.ceil(panelWidth / minBarWidth);
     let step = (extent[1] - extent[0]) / num;
@@ -175,7 +181,11 @@ class BinPlot extends Component {
 
     series = series.map((d) => d[1]).flat();
 
-    const xScale = d3.scaleLinear().domain(extent).range([0, panelWidth]);
+    const xScale = d3
+      .scaleLinear()
+      .domain(extent)
+      .range([0, panelWidth])
+      .nice();
 
     let yScale = d3
       .scaleLinear()

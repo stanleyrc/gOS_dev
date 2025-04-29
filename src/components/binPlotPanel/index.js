@@ -220,8 +220,6 @@ class BinPlotPanel extends Component {
                                 ),
                                 selectSegment: (e) =>
                                   this.handleSelectSegment(e),
-                                slope: 1 / beta,
-                                intercept: gamma / beta,
                                 separatorsConfig: { beta, purity },
                               }}
                             />
