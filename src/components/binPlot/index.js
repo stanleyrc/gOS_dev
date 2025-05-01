@@ -86,12 +86,7 @@ class BinPlot extends Component {
     let ppfit_intercept = a / b;
     let ppfit_slope = beta;
 
-    let originalMaxMean = d3.max(data, (d) => d.metadata.mean);
-
-    let finalMaxMean = d3.min([
-      originalMaxMean,
-      ppfit_intercept + maxSeparatorsCount * ppfit_slope,
-    ]);
+    let finalMaxMean = ppfit_intercept + maxSeparatorsCount * ppfit_slope;
 
     let filteredData = data
       .filter((d) => d.metadata.mean)

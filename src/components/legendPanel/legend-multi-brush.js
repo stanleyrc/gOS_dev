@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import * as d3 from "d3";
 import Fragment from "./fragment";
-import debounce from "lodash/debounce";
+import Wrapper from "./legend-multi-brush.style";
 import settingsActions from "../../redux/settings/actions";
 
 const { updateDomains } = settingsActions;
@@ -16,7 +16,7 @@ const margins = {
     style: { fill: "steelblue", stroke: "black", fillOpacity: 0.8 },
   },
   chromoBox: { fillOpacity: 0.66 },
-  chromoText: { textAnchor: "middle", fill: "white" },
+  chromoText: { textAnchor: "middle" },
   brush: { gap: 10, defaultLength: 100 },
 };
 
@@ -58,6 +58,10 @@ class LegendMultiBrush extends Component {
     });
     //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 1);
     this.debouncedUpdateDomains = this.props.updateDomains;
+
+    this.state = {
+      hoveredChromo: null,
+    };
   }
 
   createDefaults(domain) {
@@ -217,6 +221,10 @@ class LegendMultiBrush extends Component {
     );
   };
 
+  handleChromosomeClick = (chromosome) => {
+    this.debouncedUpdateDomains([[chromosome.startPlace, chromosome.endPlace]]);
+  };
+
   renderBrushes = () => {
     var self = this;
 
@@ -268,12 +276,59 @@ class LegendMultiBrush extends Component {
       .domain(defaultDomain)
       .range([0, this.stageWidth]);
     domains.map((d) => this.createDefaults(d));
+
+    // Add global click handler on SVG to detect chromosome clicks based on X position (overlay-friendly)
+    d3.select(this.container).on("click", (event) => {
+      const { chromoBins } = this.props;
+      const [mouseX] = d3.pointer(event, this.container);
+
+      const stageX = mouseX - margins.legend.padding;
+      if (stageX < 0 || stageX > this.stageWidth) return;
+
+      // Find the chromosome under this X
+      const clickedChromo = Object.values(chromoBins).find((d) => {
+        const start = this.genomeScale(d.startPlace);
+        const width =
+          this.genomeScale(d.endPlace) - this.genomeScale(d.startPlace);
+        return stageX >= start && stageX <= start + width;
+      });
+
+      if (clickedChromo) {
+        this.handleChromosomeClick(clickedChromo);
+      }
+    });
+
+    d3.select(this.container).on("mousemove", (event) => {
+      const { chromoBins } = this.props;
+      const [mouseX] = d3.pointer(event, this.container);
+
+      const stageX = mouseX - margins.legend.padding;
+      if (stageX < 0 || stageX > this.stageWidth) {
+        if (this.state.hoveredChromo !== null) {
+          this.setState({ hoveredChromo: null });
+        }
+        return;
+      }
+
+      const hovered = Object.values(chromoBins).find((d) => {
+        const start = this.genomeScale(d.startPlace);
+        const width =
+          this.genomeScale(d.endPlace) - this.genomeScale(d.startPlace);
+        return stageX >= start && stageX <= start + width;
+      });
+
+      const current = hovered ? hovered.chromosome : null;
+      if (this.state.hoveredChromo !== current) {
+        this.setState({ hoveredChromo: current });
+      }
+    });
   }
 
-  shouldComponentUpdate(nextProps) {
+  shouldComponentUpdate(nextProps, nextState) {
     return (
       nextProps.domains.toString() !== this.props.domains.toString() ||
-      nextProps.width !== this.props.width
+      nextProps.width !== this.props.width ||
+      nextState.hoveredChromo !== this.state.hoveredChromo
     );
   }
 
@@ -310,6 +365,7 @@ class LegendMultiBrush extends Component {
 
   render() {
     const { width, defaultDomain, chromoBins } = this.props;
+    const { hoveredChromo } = this.state;
     if (!chromoBins) {
       return null;
     }
@@ -321,59 +377,66 @@ class LegendMultiBrush extends Component {
       .range([0, stageWidth]);
 
     return (
-      <div className="ant-wrapper-legend">
-        <svg
-          ref={(elem) => (this.container = elem)}
-          width={width}
-          height={stageHeight}
-          className="legend-container"
-        >
-          <g
-            className="chromo-legend"
-            transform={`translate(${[
-              margins.legend.padding,
-              0.5 * (stageHeight - margins.legend.bar),
-            ]})`}
+      <Wrapper>
+        <div className="ant-wrapper-legend">
+          <svg
+            ref={(elem) => (this.container = elem)}
+            width={width}
+            height={stageHeight}
+            className="legend-container"
           >
-            <rect
-              className="legend-bar"
-              width={stageWidth}
-              height={margins.legend.bar}
-              {...margins.legend.style}
-            />
-            <g className="chromo-legend-container">
-              {Object.values(chromoBins).map((d, i) => (
-                <g
-                  key={i}
-                  className="chromo-container"
-                  transform={`translate(${[genomeScale(d.startPlace), 0]})`}
-                >
-                  <rect
-                    className="chromo-box"
-                    width={genomeScale(d.endPoint)}
-                    height={margins.legend.bar}
-                    fill={d3.rgb(d.color)}
-                    stroke={d3.rgb(d.color).darker(1)}
-                    {...margins.chromoBox}
-                  />
-                  <text
-                    className="chromo-text"
-                    dx={genomeScale(d.endPoint) / 2}
-                    dy={0.62 * margins.legend.bar}
-                    {...margins.chromoText}
-                  >
-                    {d.chromosome}
-                  </text>
-                </g>
-              ))}
-            </g>
             <g
-              className="brushes"
-              transform={`translate(${[0, -margins.brush.gap]})`}
-            ></g>
-          </g>
-        </svg>
-      </div>
+              className="chromo-legend"
+              transform={`translate(${[
+                margins.legend.padding,
+                0.5 * (stageHeight - margins.legend.bar),
+              ]})`}
+            >
+              <rect
+                className="legend-bar"
+                width={stageWidth}
+                height={margins.legend.bar}
+                {...margins.legend.style}
+              />
+              <g className="chromo-legend-container">
+                {Object.values(chromoBins).map((d, i) => (
+                  <g
+                    key={i}
+                    className="chromo-container"
+                    transform={`translate(${[genomeScale(d.startPlace), 0]})`}
+                  >
+                    <rect
+                      className="chromo-box"
+                      width={genomeScale(d.endPoint)}
+                      height={margins.legend.bar}
+                      fill={d3.rgb(d.color)}
+                      stroke={d3.rgb(d.color).darker(1)}
+                      {...margins.chromoBox}
+                    />
+                    <text
+                      className={`chromo-text${
+                        hoveredChromo === d.chromosome
+                          ? " chromosome-highlighted"
+                          : ""
+                      }`}
+                      fill={hoveredChromo === d.chromosome ? "#ff7f0e" : "#FFF"}
+                      dx={genomeScale(d.endPoint) / 2}
+                      dy={0.62 * margins.legend.bar}
+                      {...margins.chromoText}
+                    >
+                      {d.chromosome}
+                    </text>
+                  </g>
+                ))}
+              </g>
+              <g
+                className="brushes"
+                transform={`translate(${[0, -margins.brush.gap]})`}
+              ></g>
+            </g>
+          </svg>
+        </div>
+      </Wrapper>
     );
   }
 }
