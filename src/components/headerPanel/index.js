@@ -299,8 +299,10 @@ class HeaderPanel extends Component {
                           {disease}
                           {primary_site}
                         </Space>
-                        <Space>
-                          <Text type="secondary">{summary}</Text>
+                        <Space direction="horizontal" size="small">
+                          {summary?.split("\n")?.map((d) => (
+                            <Tag>{d}</Tag>
+                          ))}
                         </Space>
                       </Space>
                     </div>

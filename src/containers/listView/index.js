@@ -259,17 +259,23 @@ class ListView extends Component {
                         <Space>
                           {d.disease}
                           <Space>
-                            <Text type="secondary">
-                              {d.primary_site
-                                ? snakeCaseToHumanReadable(d.primary_site)
-                                : t("containers.list-view.filters.empty")}
-                            </Text>
+                            {d.primary_site && (
+                              <Text type="secondary">
+                                {snakeCaseToHumanReadable(d.primary_site)}
+                              </Text>
+                            )}
                           </Space>
                         </Space>
                       }
                       description={
-                        <Space>
-                          <Text type="secondary">{d.summary}</Text>
+                        <Space
+                          direction="vertical"
+                          size="small"
+                          style={{ display: "flex" }}
+                        >
+                          {d.summary?.split("\n")?.map((d) => (
+                            <Text type="secondary">{d}</Text>
+                          ))}
                         </Space>
                       }
                     />
