@@ -1317,6 +1317,7 @@ export function higlassGenesFieldsArrayToObject(fields, chromoBins) {
     endPoint,
     startPlace: chromoBins[chromosome].startPlace + startPoint - 1,
     endPlace: chromoBins[chromosome].startPlace + endPoint - 1,
+    fillColor: chromoBins[chromosome].color,
     title: fields[3],
     importance: +fields[4],
     strand: fields[5],

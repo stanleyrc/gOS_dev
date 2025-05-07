@@ -431,10 +431,8 @@ class GenesPlot extends Component {
                               panel.xScale(g.startPlace),
                               panel.yScale(gene.y) - 8,
                             ]})`}
-                            fill={gene.strand === "+" ? "#3333FF" : "#FF4444"}
-                            stroke={d3
-                              .rgb(gene.strand === "+" ? "#3333FF" : "#FF4444")
-                              .darker()}
+                            fill={gene.fillColor}
+                            stroke={d3.rgb(gene.fillColor).darker()}
                             fillOpacity={0.15}
                             strokeOpacity={0.3}
                             width={
@@ -452,7 +450,7 @@ class GenesPlot extends Component {
                           panel.xScale(gene.startPlace),
                           panel.yScale(gene.y) - 1,
                         ]})`}
-                        fill={gene.strand === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.fillColor}
                         opacity={0.5}
                         width={
                           panel.xScale(gene.endPlace) -
@@ -466,7 +464,7 @@ class GenesPlot extends Component {
                         }
                         key={gene.uid}
                         id={gene.uid}
-                        opacity={0.5}
+                        opacity={0.66}
                         points={
                           gene.strand === "+"
                             ? [
@@ -486,7 +484,7 @@ class GenesPlot extends Component {
                                 panel.yScale(gene.y) + 5,
                               ]
                         }
-                        fill={gene.strand === "+" ? "#3333FF" : "#FF4444"}
+                        fill={gene.fillColor}
                       />
                       <text
                         className={
