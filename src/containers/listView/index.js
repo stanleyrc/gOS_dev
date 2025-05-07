@@ -95,9 +95,9 @@ class ListView extends Component {
             <Row gutter={[16, 16]}>
               <Col className="gutter-row" span={24}>
                 <Card className="filters-box">
-                  <Row>
+                  <Space size="middle">
                     {filters.map((d) => (
-                      <Col className="gutter-row" span={4}>
+                      <Space size={10}>
                         <Form.Item
                           key={`containers.list-view.filters.${d.filter}`}
                           name={d.filter}
@@ -114,7 +114,7 @@ class ListView extends Component {
                             )}
                             mode="multiple"
                             allowClear
-                            style={{ width: 150 }}
+                            style={{ width: 200 }}
                             maxTagCount="responsive"
                             maxTagTextLength={5}
                           >
@@ -127,9 +127,9 @@ class ListView extends Component {
                             ))}
                           </Select>
                         </Form.Item>
-                      </Col>
+                      </Space>
                     ))}
-                    <Col className="gutter-row" span={4}>
+                    <Space size="middle">
                       <Space>
                         <Form.Item>
                           <Button type="primary" htmlType="submit">
@@ -142,8 +142,8 @@ class ListView extends Component {
                           </Button>
                         </Form.Item>
                       </Space>
-                    </Col>
-                  </Row>
+                    </Space>
+                  </Space>
                 </Card>
               </Col>
             </Row>

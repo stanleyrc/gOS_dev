@@ -340,6 +340,7 @@
       "filters": {
         "placeholder": "select one or many",
         "empty": "(empty)",
+        "tags": "Tags",
         "pair": "Pair",
         "disease": "Disease",
         "tumor_type": "Tumor Type",

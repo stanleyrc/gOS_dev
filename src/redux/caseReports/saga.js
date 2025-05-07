@@ -21,6 +21,14 @@ function* fetchCaseReports() {
     let responseReports = yield call(axios.get, dataset.datafilesPath);
 
     let datafiles = responseReports.data;
+    datafiles.forEach(
+      (d) =>
+        (d.tags =
+          d.summary
+            ?.split("\n")
+            .map((e) => e.trim())
+            .filter((e) => e.length > 0) || [])
+    );
 
     let reportsFilters = [];
 
@@ -28,7 +36,7 @@ function* fetchCaseReports() {
     reportFilters().forEach((filter) => {
       // Extract distinct values for the current filter
       var distinctValues = [
-        ...new Set(datafiles.map((record) => record[filter])),
+        ...new Set(datafiles.map((record) => record[filter]).flat()),
       ].sort((a, b) => d3.ascending(a, b));
 
       // Add the filter information to the reportsFilters array
@@ -121,7 +129,7 @@ function* searchReports({ searchFilters }) {
         });
     } else {
       records = records.filter((d) =>
-        actualSearchFilters[key].includes(d[key])
+        actualSearchFilters[key].some((item) => [d[key]].flat().includes(item))
       );
     }
   });

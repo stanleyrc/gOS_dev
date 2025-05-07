@@ -1059,7 +1059,14 @@ export function mutationCatalogMetadata() {
 }
 
 export function reportFilters() {
-  return ["pair", "tumor_type", "disease", "primary_site", "inferred_sex"];
+  return [
+    "tags",
+    "pair",
+    "tumor_type",
+    "disease",
+    "primary_site",
+    "inferred_sex",
+  ];
 }
 
 export function mutationFilterTypes() {
