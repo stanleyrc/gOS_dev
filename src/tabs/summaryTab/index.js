@@ -8,8 +8,6 @@ import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
 import HighlightsPanel from "../../components/highlightsPanel";
 
-const { Panel } = Collapse;
-
 class SummaryTab extends Component {
   render() {
     const { t, loading, metadata, plots, tumorPlots } = this.props;
@@ -23,48 +21,42 @@ class SummaryTab extends Component {
         <Skeleton active loading={loading}>
           <HighlightsPanel title={t("components.highlights-panel.title")} />
           <br />
-          <Collapse ghost>
-            <Panel
-              header={
-                <Space>{t("components.violin-panel.header.common")}</Space>
+          <Collapse ghost
+                    items={[
+                        { key:1,
+                  label: <Space>{t("components.violin-panel.header.common")}</Space>,
+                  children:    plotsList.map((d, i) =>
+                      <Row
+                          key={i}
+                          id={`row-${i}}`}
+                          className="ant-panel-container ant-home-plot-container"
+                          gutter={16}
+                      >
+                          <Col className="gutter-row" span={12}>
+                              <ViolinPlotPanel
+                                  {...{
+                                      title: t("components.violin-panel.header.total"),
+                                      plots: plotsList[i],
+                                      markers: metadata,
+                                  }}
+                              />
+                          </Col>
+                          <Col className="gutter-row" span={12}>
+                              <ViolinPlotPanel
+                                  {...{
+                                      title: t("components.violin-panel.header.tumor", {
+                                          tumor: metadata.tumor,
+                                      }),
+                                      plots: tumorPlotsList[i],
+                                      markers: metadata,
+                                  }}
+                              />
+                          </Col>
+                      </Row>
+
+                  )
               }
-              key={1}
-            >
-              {plotsList.map((d, i) => (
-                <Row
-                  key={0}
-                  id={`row-${0}}`}
-                  className="ant-panel-container ant-home-plot-container"
-                  gutter={16}
-                >
-                  <Col className="gutter-row" span={12}>
-                    {
-                      <ViolinPlotPanel
-                        {...{
-                          title: t("components.violin-panel.header.total"),
-                          plots: plotsList[i],
-                          markers: metadata,
-                        }}
-                      />
-                    }
-                  </Col>
-                  <Col className="gutter-row" span={12}>
-                    {
-                      <ViolinPlotPanel
-                        {...{
-                          title: t("components.violin-panel.header.tumor", {
-                            tumor: metadata.tumor,
-                          }),
-                          plots: tumorPlotsList[i],
-                          markers: metadata,
-                        }}
-                      />
-                    }
-                  </Col>
-                </Row>
-              ))}
-            </Panel>
-          </Collapse>
+          ]}/>
         </Skeleton>
         <FilteredEventsListPanel />
       </Wrapper>

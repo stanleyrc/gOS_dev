@@ -13,8 +13,6 @@ import BinQCTab from "../../tabs/binQCTab";
 import SignaturesTab from "../../tabs/signaturesTab";
 import settingsActions from "../../redux/settings/actions";
 
-const { TabPane } = Tabs;
-
 const { updateTab, updateDomains } = settingsActions;
 
 class DetailView extends Component {
@@ -46,19 +44,15 @@ class DetailView extends Component {
           </Affix>
           <div className="ant-home-content-container">
             <Tabs
-              defaultActiveKey="1"
-              activeKey={tab.toString()}
-              onChange={(tab) => this.handleTabChanged(tab)}
-            >
-              {tabs.map((d, i) => (
-                <TabPane
-                  tab={t(`containers.detail-view.tabs.tab${i + 1}`)}
-                  key={i + 1}
-                >
-                  {d}
-                </TabPane>
-              ))}
-            </Tabs>
+                defaultActiveKey="1"
+                activeKey={tab.toString()}
+                onChange={(tab) => this.handleTabChanged(tab)}
+                items={tabs.map((Component, i) => ({
+                  key: (i + 1).toString(),
+                  label: t(`containers.detail-view.tabs.tab${i + 1}`),
+                  children: Component,
+                }))}
+            />
           </div>
         </Skeleton>
       </Wrapper>

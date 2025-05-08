@@ -171,7 +171,7 @@ class IgvPanel extends Component {
                 {(inViewport || renderOutsideViewPort) && (
                   <Row gutter={[margins.gap, 0]}>
                     {domains.map((domain, index) => (
-                      <Col span={Math.ceil(24 / domains.length)} flex={1}>
+                      <Col key={index} span={Math.ceil(24 / domains.length)} flex={1}>
                         <IgvPlot
                           {...{
                             index,

@@ -270,8 +270,8 @@ class FilteredEventsListPanel extends Component {
             <Tooltip
               title={
                 <Space direction="vertical">
-                  {[1, 2, 3].map((d) => (
-                    <Space>
+                  {[1, 2, 3].map((d,i) => (
+                    <Space key={i}>
                       <Avatar
                         size="small"
                         style={{

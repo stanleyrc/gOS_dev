@@ -4,10 +4,11 @@
   "homepage": ".",
   "private": true,
   "dependencies": {
+    "@ant-design/pro-components": "^2.8.7",
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^13.0.0",
     "@testing-library/user-event": "^13.2.1",
-    "antd": "^4.20.0",
+    "antd": "^5.25.0",
     "apache-arrow": "^8.0.0",
     "axios": "^0.21.1",
     "d3": "^7.9.0",

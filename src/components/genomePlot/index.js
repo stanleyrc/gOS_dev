@@ -684,9 +684,9 @@ class GenomePlot extends Component {
                             d3.max([panel.xScale(d.startPlace), 0]),
                           panel.panelWidth,
                         ])}
-                        data-startPlace={d.startPlace}
-                        data-endPlace={d.endPlace}
-                        data-endPos={panel.xScale(d.endPlace)}
+                        data-start-place={d.startPlace}
+                        data-end-place={d.endPlace}
+                        data-end-pos={panel.xScale(d.endPlace)}
                         data-x={Math.floor(panel.xScale(d.startPlace))}
                         data-width={Math.floor(
                           panel.xScale(d.endPlace) - panel.xScale(d.startPlace)

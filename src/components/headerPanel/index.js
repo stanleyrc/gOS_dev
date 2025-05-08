@@ -2,9 +2,9 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
+import { PageHeader } from '@ant-design/pro-components';
 import {
   Space,
-  PageHeader,
   Tag,
   Avatar,
   Tooltip,
@@ -243,8 +243,8 @@ class HeaderPanel extends Component {
                   }
                   content={
                     <Space direction="vertical">
-                      {qualityStatus.clauses.map((d) => (
-                        <Text type={qualityStatusTypographyClasses()[d.level]}>
+                      {qualityStatus.clauses.map((d,i) => (
+                        <Text key={i} type={qualityStatusTypographyClasses()[d.level]}>
                           <span
                             dangerouslySetInnerHTML={{
                               __html: t(
@@ -300,8 +300,8 @@ class HeaderPanel extends Component {
                           {primary_site}
                         </Space>
                         <Space direction="horizontal" size="small">
-                          {summary?.split("\n")?.map((d) => (
-                            <Tag>{d}</Tag>
+                          {summary?.split("\n")?.map((d,i) => (
+                            <Tag key={i}>{d}</Tag>
                           ))}
                         </Space>
                       </Space>

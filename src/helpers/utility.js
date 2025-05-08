@@ -532,7 +532,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 2,
-      variable: `metadata.coverage_qc.percent_reads_mapped`,
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.percent_reads_mapped : undefined",
       threshold: 0.99,
       comparison: "<",
       label: "mapped_reads_per_total_reads_less_than_99_percentage",
@@ -540,7 +540,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 2,
-      variable: "metadata.coverage_qc.greater_than_or_equal_to_30x",
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.greater_than_or_equal_to_30x : undefined",
       threshold: 0.95,
       comparison: "<",
       label:
@@ -549,7 +549,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 1,
-      variable: "metadata.coverage_qc.insert_size",
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.insert_size : undefined",
       threshold: 300,
       comparison: "<=",
       label: "median_insert_size_less_or_equal_300",
@@ -557,7 +557,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 1,
-      variable: "metadata.coverage_qc.percent_duplication",
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.percent_duplication : undefined",
       threshold: 0.2,
       comparison: ">=",
       label: "optical_pcr_dups_greater_or_equal_20_percentage",

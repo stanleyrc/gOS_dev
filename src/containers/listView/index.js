@@ -96,8 +96,8 @@ class ListView extends Component {
               <Col className="gutter-row" span={24}>
                 <Card className="filters-box">
                   <Space size="middle">
-                    {filters.map((d) => (
-                      <Space size={10}>
+                    {filters.map((d,i) => (
+                      <Space key={i} size={10}>
                         <Form.Item
                           key={`containers.list-view.filters.${d.filter}`}
                           name={d.filter}
@@ -167,7 +167,7 @@ class ListView extends Component {
                     className="order-select"
                     value={searchFilters.orderId}
                     onSelect={this.onOrderChanged}
-                    bordered={false}
+                    variant="borderless"
                   >
                     {orderListViewFilters.map((d) => (
                       <Option key={d.id} value={d.id}>
@@ -199,7 +199,7 @@ class ListView extends Component {
                         <Text type="secondary">{d.inferred_sex}</Text>
                       </Space>
                     }
-                    bordered={false}
+                    variant="borderless"
                     extra={
                       <Avatar
                         style={{
@@ -273,8 +273,8 @@ class ListView extends Component {
                           size="small"
                           style={{ display: "flex" }}
                         >
-                          {d.summary?.split("\n")?.map((d) => (
-                            <Text type="secondary">{d}</Text>
+                          {d.summary?.split("\n")?.map((d, i) => (
+                            <Text key={i} type="secondary">{d}</Text>
                           ))}
                         </Space>
                       }

@@ -1,6 +1,6 @@
 const siteConfig = {
   siteName: "gOS",
-  footerText: "gOS ©2023 Created by C. Xanthopoulakis",
+  footerText: `gOS ©${new Date().getFullYear()} Created by C. Xanthopoulakis`,
 };
 
 const language = "english";

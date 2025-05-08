@@ -181,8 +181,8 @@ class ScatterPlotPanel extends Component {
                         }
                         content={
                           <Space direction="vertical">
-                            {notification.messages.map((d) => (
-                              <Text>
+                            {notification.messages.map((d,i) => (
+                              <Text key={i}>
                                 <span
                                   dangerouslySetInnerHTML={{
                                     __html: d,
