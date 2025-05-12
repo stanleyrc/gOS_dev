@@ -129,6 +129,7 @@ class SignaturesTab extends Component {
               <br />
               <Space>
                 <Segmented
+                  size="small"
                   options={[
                     {
                       label: t("components.segmented-filter.total"),
@@ -147,6 +148,7 @@ class SignaturesTab extends Component {
                   value={signatureKPIMode}
                 />
                 <Segmented
+                  size="small"
                   options={[
                     {
                       label: t("components.segmented-filter.fraction"),
@@ -163,6 +165,7 @@ class SignaturesTab extends Component {
                   value={signatureFractionMode}
                 />
                 <Segmented
+                  size="small"
                   options={[
                     {
                       label: t("components.segmented-filter.population-mode"),

@@ -92,6 +92,7 @@ class DensityPlotPanel extends Component {
             <Space>
               <span>{t(`components.variantQc-panel.plot-label`)}</span>
               <Segmented
+                size="small"
                 options={densityPlotTypes().map((d) => {
                   return {
                     value: d,

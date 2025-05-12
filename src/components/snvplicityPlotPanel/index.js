@@ -122,6 +122,7 @@ class SnvplicityPlotPanel extends Component {
                       {t(`components.snvplicity-panel.filter-by-copy-number`)}:
                     </span>
                     <Segmented
+                      size="small"
                       options={["All", distinctCopyNumbers]
                         .flat()
                         .map((tag, i) => {

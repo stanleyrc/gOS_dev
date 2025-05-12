@@ -154,6 +154,7 @@ class Home extends Component {
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab3")} key="3">
                   <Segmented
+                    size="small"
                     options={[
                       {
                         label: t("components.segmented-filter.total"),
@@ -238,6 +239,7 @@ class Home extends Component {
                   <br />
                   <Space>
                     <Segmented
+                      size="small"
                       options={[
                         {
                           label: t("components.segmented-filter.total"),
@@ -256,6 +258,7 @@ class Home extends Component {
                       value={signatureKPIMode}
                     />
                     <Segmented
+                      size="small"
                       options={[
                         {
                           label: t("components.segmented-filter.fraction"),
@@ -272,6 +275,7 @@ class Home extends Component {
                       value={signatureFractionMode}
                     />
                     <Segmented
+                      size="small"
                       options={[
                         {
                           label: t(
