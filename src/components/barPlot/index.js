@@ -372,9 +372,9 @@ class BarPlot extends Component {
                         ? "#ff7f0e"
                         : color(d[colorVariable])
                     }
-                    dataKey={d.mutationType}
-                    dataColorKey={d[colorVariable]}
-                    dataFillKey={color(d[colorVariable])}
+                    data-key={d.mutationType}
+                    data-color-key={d[colorVariable]}
+                    data-fill-key={color(d[colorVariable])}
                     onMouseEnter={(e) => this.handleMouseEnter(d)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
                   />
@@ -392,31 +392,31 @@ class BarPlot extends Component {
                     fill={visible && id === d.id ? "#ff7f0e" : "#EDEDED"}
                     stroke={d3.rgb(color(d[colorVariable])).darker()}
                     strokeWidth={1}
-                    dataKey={d.mutationType}
-                    dataColorKey={d[colorVariable]}
-                    dataFillKey={color(d[colorVariable])}
+                    data-key={d.mutationType}
+                    data-color-key={d[colorVariable]}
+                    data-fill-key={color(d[colorVariable])}
                     onMouseEnter={(e) => this.handleMouseEnter(d)}
                     onMouseOut={(e) => this.handleMouseOut(d)}
                   />
                 ))}
               </g>
               <g>
-                {variantLegendPositions.map((d) => (
+                {variantLegendPositions.map((d,i) => (
                   <g
+                    key={i}
                     transform={`translate(${[
                       d.pos,
                       panelHeight + 1.66 * margins.gapY,
                     ]})`}
                   >
                     <rect
-                      class="legendBar"
+                        className="legendBar"
                       y={-panelHeight - 1.66 * margins.gapY - margins.gapLegend}
                       width={d.distance}
                       height={margins.barLengend}
                       fill={d.color}
                     />
                     <text
-                      class="legendBarText"
                       textAnchor="middle"
                       x={d.distance / 2}
                       y={
@@ -425,7 +425,7 @@ class BarPlot extends Component {
                         margins.gapLegend +
                         0.68 * margins.barLengend
                       }
-                      className="variant-legend"
+                      className="legendBarText variant-legend"
                       fill={"#FFF"}
                       stroke={"#FFF"}
                       strokeWidth={0.5}
@@ -436,9 +436,9 @@ class BarPlot extends Component {
                   </g>
                 ))}
               </g>
-              <g class="variant-legend-headers">
-                {variantLegendHeaderPositions.map((d) => (
-                  <g>
+              <g className="variant-legend-headers">
+                {variantLegendHeaderPositions.map((d,i) => (
+                  <g key={i}>
                     <g
                       transform={`translate(${[
                         d.pos,
@@ -462,7 +462,7 @@ class BarPlot extends Component {
                     >
                       {d.distance > 0 && d.subtitle.length > 0 && (
                         <polyline
-                          class="legendPolyline"
+                            className="legendPolyline"
                           points={`${[0, 0]} ${[0, 5]} ${[d.distance, 5]} ${[
                             d.distance,
                             0,
@@ -472,10 +472,9 @@ class BarPlot extends Component {
                         />
                       )}
                       <text
-                        class="legendLowerText"
                         textAnchor="middle"
                         x={d.distance / 2}
-                        className="variant-legend"
+                        className="legendLowerText variant-legend"
                         fill="currentColor"
                       >
                         {d.subtitle}

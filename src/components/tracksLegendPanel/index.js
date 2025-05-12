@@ -106,6 +106,7 @@ class TracksLegendPanel extends Component {
           extra={
             <Space>
               <Segmented
+                size="small"
                 options={[
                   {
                     label: t("components.segmented-filter.commonYscale"),
@@ -120,6 +121,7 @@ class TracksLegendPanel extends Component {
               />
               <GenomeRangePanel />
               <Select
+                size="small"
                 allowClear
                 showSearch
                 mode="multiple"

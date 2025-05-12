@@ -89,10 +89,17 @@ const Wrapper = styled.div`
     .purity-ploidy-separator {
       color: rgba(0, 0, 0, 0.45);
     }
+    .ant-statistic-content {
+      font-size: 24px;
+      line-height: 1.5715;
+    }
+
     .ant-statistic-title,
     .ant-statistic-content-value-int,
     .ant-statistic-content-suffix {
       cursor: default;
+      color: #00000073;
+      margin-bottom: 4px;
     }
     .has-tooltip {
       text-decoration: underline dashed;

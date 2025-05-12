@@ -270,8 +270,8 @@ class FilteredEventsListPanel extends Component {
             <Tooltip
               title={
                 <Space direction="vertical">
-                  {[1, 2, 3].map((d) => (
-                    <Space>
+                  {[1, 2, 3].map((d, i) => (
+                    <Space key={i}>
                       <Avatar
                         size="small"
                         style={{
@@ -504,6 +504,7 @@ class FilteredEventsListPanel extends Component {
             <Row className="ant-panel-container ant-home-plot-container">
               <Col className="gutter-row table-container" span={24}>
                 <Segmented
+                  size="small"
                   options={Object.keys(eventColumns).map((d) => {
                     return {
                       label: (

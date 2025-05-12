@@ -27,6 +27,7 @@ class PopulationTab extends Component {
       <Wrapper>
         <Skeleton active loading={loading}>
           <Segmented
+            size="small"
             options={[
               {
                 label: t("components.segmented-filter.total"),

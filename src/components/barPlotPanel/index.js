@@ -90,6 +90,7 @@ class BarPlotPanel extends Component {
             extra={
               <Space>
                 <Segmented
+                  size="small"
                   options={segmentedOptions}
                   onChange={(d) => handleSegmentedChange(d)}
                   value={segmentedValue}

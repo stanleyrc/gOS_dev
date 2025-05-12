@@ -427,7 +427,7 @@ class ScatterPlot extends Component {
                 <line
                   className="hovered-location-line hidden"
                   id={`hovered-location-line-${panel.index}`}
-                  Y2={0}
+                  y1={0}
                   y2={panel.panelHeight}
                 />
                 <text

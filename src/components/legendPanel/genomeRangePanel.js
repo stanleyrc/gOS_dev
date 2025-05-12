@@ -12,7 +12,6 @@ class GenomeRangePanel extends PureComponent {
   handleResetButtonClick = (e) => {
     e.preventDefault();
     const { defaultDomain, updateDomains } = this.props;
-    console.log(defaultDomain);
     updateDomains([defaultDomain]);
   };
 

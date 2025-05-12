@@ -277,3 +277,6 @@ html[dir='rtl'] .dz-hidden-input {
   margin: 5px !important;
   display: block;
 }
+.ant-card-head-title, .ant-pro-menu-item-title, .ant-table-column-title {
+  font-weight: 500;
+}
