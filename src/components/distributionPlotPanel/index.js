@@ -69,7 +69,6 @@ class DistributionPlotPanel extends Component {
           }
           extra={
             <Space>
-              <span>{t(`components.sageQc-panel.plot-label`)}</span>
               <Tooltip title={t("components.download-as-png-tooltip")}>
                 <Button
                   type="default"
