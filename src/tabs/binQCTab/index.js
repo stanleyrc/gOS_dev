@@ -2,14 +2,13 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { Row, Col, Image } from "antd";
-import { placeholderImage } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import BinPlotPanel from "../../components/binPlotPanel";
+import SnvplicityPlotPanel from "../../components/snvplicityPlotPanel";
 
 class BinQcTab extends Component {
   render() {
-    const { metadata, dataset } = this.props;
-
+    const { dataset, id } = this.props;
     return (
       <Wrapper>
         <Row
@@ -20,16 +19,28 @@ class BinQcTab extends Component {
             <BinPlotPanel />
           </Col>
         </Row>
-
+        <Row
+          className="ant-panel-container ant-home-plot-container"
+          gutter={16}
+        >
+          <Col className="gutter-row" span={24}>
+            <SnvplicityPlotPanel />
+          </Col>
+        </Row>
         <Row
           className="ant-panel-container ant-home-plot-container"
           gutter={16}
         >
           <Col className="gutter-row" span={12}>
             <Image
-              height={722}
-              src={`${dataset.dataPath}${metadata.pair}/ppfit.png`}
-              fallback={placeholderImage()}
+              src={`${dataset.dataPath}${id}/purple_sunrise_pp.png`}
+              fallback="https://placehold.co/600x400?text=Purple+Sunrise+Purity+Ploidy+not+found"
+            />
+          </Col>
+          <Col className="gutter-row" span={12}>
+            <Image
+              src={`${dataset.dataPath}${id}/hetsnps_major_minor.png`}
+              fallback="https://placehold.co/600x400?text=Hetsnps+Major+Minor+not+found"
             />
           </Col>
         </Row>
@@ -43,6 +54,7 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   metadata: state.CaseReport.metadata,
   dataset: state.Settings.dataset,
+  id: state.CaseReport.id,
 });
 export default connect(
   mapStateToProps,

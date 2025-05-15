@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
+import debounce from "lodash.debounce";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
 import { withTranslation } from "react-i18next";
 import { lociToDomains, domainToLoci } from "../../helpers/utility.js";
@@ -16,25 +17,49 @@ class IgvPlot extends Component {
   constructor(props) {
     super(props);
     this.igvInitialized = false;
+    this.debouncedUpdateDomain = debounce(this.props.updateDomain, 100);
   }
 
   componentDidMount() {
     if (this.igvInitialized) return;
     this.igvInitialized = true;
 
-    const { domain, chromoBins, url, indexURL, format, name } = this.props;
-
+    const {
+      domain,
+      chromoBins,
+      urlTumor,
+      indexTumorURL,
+      urlNormal,
+      indexNormalURL,
+      filenameTumorPresent,
+      filenameNormalPresent,
+      format,
+    } = this.props;
+    let locus = domainToLoci(chromoBins, domain);
+    let tracks = [];
+    console.log(this.props);
+    if (filenameTumorPresent) {
+      tracks.push({
+        id: "Tumor",
+        name: "Tumor",
+        url: urlTumor,
+        indexURL: indexTumorURL,
+        format,
+      });
+    }
+    if (filenameNormalPresent) {
+      tracks.push({
+        id: "normal",
+        name: "Normal",
+        url: urlNormal,
+        indexURL: indexNormalURL,
+        format,
+      });
+    }
     const igvOptions = {
       genome: "hg19",
-      locus: domainToLoci(chromoBins, domain),
-      tracks: [
-        {
-          name,
-          url,
-          indexURL,
-          format,
-        },
-      ],
+      locus,
+      tracks,
     };
 
     igv.createBrowser(this.container, igvOptions).then((browser) => {
@@ -45,13 +70,17 @@ class IgvPlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.domain.toString() !== this.props.domain.toString();
+    return (
+      nextProps.domain.toString() !== this.props.domain.toString() ||
+      nextProps.urlTumor?.toString() !== this.props.urlTumor?.toString()
+    );
   }
 
   componentDidUpdate() {
     const { domain, chromoBins } = this.props;
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
-      this.igvBrowser.search(domainToLoci(chromoBins, domain));
+      let locus = domainToLoci(chromoBins, domain);
+      this.igvBrowser.search(locus);
     }
   }
 
@@ -66,10 +95,9 @@ class IgvPlot extends Component {
 
   handleLocusChange = async () => {
     try {
-      // Use getLocus() to fetch the current location from the IGV browser
-      let loci = await this.igvBrowser.currentLoci();
-      this.domain = lociToDomains(this.props.chromoBins, loci)[0];
-      this.props.updateDomain(this.domain, this.props.index);
+      let locus = await this.igvBrowser.currentLoci();
+      this.domain = lociToDomains(this.props.chromoBins, locus)[0];
+      this.debouncedUpdateDomain(this.domain, this.props.index);
     } catch (error) {
       console.error("Error retrieving locus:", error);
     }

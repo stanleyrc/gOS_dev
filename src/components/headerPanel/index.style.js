@@ -5,6 +5,9 @@ const Wrapper = styled.div`
     background: white;
     padding: 16px 0px;
     margin: 0px 24px;
+    .quality-report-link {
+      font-weight: bold;
+    }
     .site-page-content {
       margin-bottom: 24px;
     }
@@ -86,15 +89,26 @@ const Wrapper = styled.div`
     .purity-ploidy-separator {
       color: rgba(0, 0, 0, 0.45);
     }
+    .ant-statistic-content {
+      font-size: 24px;
+      line-height: 1.5715;
+    }
+
     .ant-statistic-title,
     .ant-statistic-content-value-int,
     .ant-statistic-content-suffix {
       cursor: default;
+      color: #00000073;
+      margin-bottom: 4px;
     }
     .has-tooltip {
       text-decoration: underline dashed;
       text-underline-position: under;
       text-decoration-color: #d2d2d2;
+    }
+    div.ant-popover-title > div > a {
+      text-align: right;
+      float: right;
     }
   }
 `;

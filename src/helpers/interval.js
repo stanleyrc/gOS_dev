@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { humanize, guid } from "./utility";
+import { proteinCoding } from "./mutations";
 
 class Interval {
   constructor(inter) {
@@ -47,6 +48,28 @@ class Interval {
     return this.mode === "subinterval";
   }
 
+  get isProteinCoded() {
+    return this.proteinCoding.some((type) => proteinCoding.includes(type));
+  }
+
+  get proteinCoding() {
+    let coding = [];
+    if (this.annotation) {
+      const annotations = this.annotation.split(";").map((item) => {
+        if (!item.includes(":")) {
+          return null;
+        }
+        const [key, value] = item.split(":");
+        return { key: key.trim(), value: value.trim() };
+      });
+      coding = annotations
+        .find((item) => item.key === "Type")
+        ?.value?.replace("&", ",")
+        ?.split(",");
+    }
+    return coding;
+  }
+
   get location() {
     return `${this.chromosome}: ${this.startPoint} - ${this.endPoint}`;
   }
@@ -89,6 +112,7 @@ class Interval {
         return { key: key.trim(), value: value.trim() };
       });
       const gene = annotations.find((item) => item.key === "Gene")?.value;
+      const geneType = annotations.find((item) => item.key === "Type")?.value;
       const filter = annotations.find((item) => item.key === "Filter")?.value;
       const variant = annotations.find((item) => item.key === "Variant")?.value;
       const protein_variant = annotations.find(
@@ -124,6 +148,9 @@ class Interval {
       if (gene) {
         attributes.push({ label: "Gene", value: gene });
       }
+      if (geneType) {
+        attributes.push({ label: "Type", value: geneType });
+      }
       if (filter) {
         attributes.push({ label: "Filter", value: filter });
       }
@@ -146,24 +173,28 @@ class Interval {
         });
       }
       const oncogenicity = annotations.find(
-        (item) => item?.key === "Oncogenicity"
+        (item) => item.key === "Oncogenicity"
       )?.value;
-      attributes.push({
-        label: "OncoKB Oncogenicity",
-        value: oncogenicity || "NA",
-      });
-
-      const effect = annotations.find((item) => item?.key === "Effect")?.value;
-      attributes.push({
-        label: "OncoKB Predicted Effect",
-        value: effect || "NA",
-      });
-
-      const level = annotations.find((item) => item?.key === "Level")?.value;
-      attributes.push({
-        label: "OncoKB Therapeutic Level",
-        value: level || "NA",
-      });
+      if (oncogenicity) {
+        attributes.push({
+          label: "OncoKB Oncogenicity",
+          value: oncogenicity || "NA",
+        });
+      }
+      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      if (effect) {
+        attributes.push({
+          label: "OncoKB Predicted Effect",
+          value: effect || "NA",
+        });
+      }
+      const level = annotations.find((item) => item.key === "Level")?.value;
+      if (level) {
+        attributes.push({
+          label: "OncoKB Therapeutic Level",
+          value: level || "NA",
+        });
+      }
     }
     if (this.strand) {
       attributes.push({ label: "Strand", value: this.strand });

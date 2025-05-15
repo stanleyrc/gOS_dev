@@ -2,19 +2,18 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
+import { PageHeader } from '@ant-design/pro-components';
 import {
   Space,
-  message,
-  PageHeader,
   Tag,
   Avatar,
   Tooltip,
   Popover,
   Typography,
+  Divider,
 } from "antd";
 import * as d3 from "d3";
 import {
-  downloadCanvasAsPng,
   legendColors,
   qualityStatusTagClasses,
   qualityStatusTypographyClasses,
@@ -22,51 +21,53 @@ import {
   plotTypes,
 } from "../../helpers/utility";
 import {
+  valueFormat,
+  hrdFields,
+  svCountFields,
+  headerList,
+  msiFields,
+  hrdDividers,
+  msiLabels,
+} from "../../helpers/metadata";
+import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
   QuestionCircleOutlined,
 } from "@ant-design/icons";
-import html2canvas from "html2canvas";
 import Wrapper from "./index.style";
 
-const { Text } = Typography;
+const { Text, Link } = Typography;
 
 class HeaderPanel extends Component {
-  onDownloadButtonClicked = () => {
-    html2canvas(document.body)
-      .then((canvas) => {
-        downloadCanvasAsPng(
-          canvas,
-          `${this.props.selectedFiles
-            .map((d) => d.file)
-            .join("_")
-            .replace(/\s+/g, "_")
-            .toLowerCase()}.png`
-        );
-      })
-      .catch((error) => {
-        message.error(this.props.t("general.error", { error }));
-      });
-  };
-
   render() {
-    const { t, report, metadata, plots, qualityStatus } = this.props;
+    const {
+      t,
+      report,
+      metadata,
+      plots,
+      qualityStatus,
+      dataset,
+      qualityReportPresent,
+      qualityReportName,
+    } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
+    const { tumor, purity, ploidy, pair, sex, disease, primary_site, summary } =
       metadata;
 
-    let colorMarkers = {};
+    let colorMarkers = { ...msiLabels };
+
     Object.keys(plotTypes()).forEach((d) => {
       let plot = plots.find((e) => e.id === d);
-      let markValue = metadata[d];
-      colorMarkers[d] = markValue
-        ? markValue < plot?.q1
-          ? legendColors()[0]
-          : markValue > plot?.q3
-          ? legendColors()[2]
-          : legendColors()[1]
-        : "gray";
+      let markValue = +metadata[d];
+      colorMarkers[d] =
+        markValue != null
+          ? markValue < plot?.q1
+            ? legendColors()[0]
+            : markValue > plot?.q3
+            ? legendColors()[2]
+            : legendColors()[1]
+          : "gray";
     });
 
     const createTooltip = (translationKey, valueKey, formatString = "20") => {
@@ -77,57 +78,21 @@ class HeaderPanel extends Component {
         <span
           dangerouslySetInnerHTML={{
             __html: t(translationKey, {
-              count:
-                typeof value === "string"
-                  ? value
-                  : d3.format(formatString)(value),
+              count: value,
+              value: isNaN(value) ? value : d3.format(formatString)(value),
             }),
           }}
         />
       ) : null;
     };
-
-    const svCountFields = [
-      "tyfonas",
-      "dm",
-      "bfb",
-      "cpxdm",
-      "chromothripsis",
-      "chromoplexy",
-      "tic",
-      "rigma",
-      "pyrgo",
-      "del",
-      "dup",
-      "simple",
-      "DEL-like",
-      "DUP-like",
-      "INV-like",
-      "TRA-like",
-    ];
-
-    const hrdFields = [
-      "dels_mh",
-      "del_rep",
-      "rs3",
-      "rs5",
-      "sbs3",
-      "sbs8",
-      "qrppos",
-      "qrpmin",
-      "qrpmix",
-    ];
-
     let tooltips = {
       tumor_median_coverage: (
-        <span>
+        <Space direction="vertical" size="small">
           {createTooltip(
             "metadata.m_reads_mapped",
             "coverage_qc.m_reads_mapped"
           )}
-          <br />
           {createTooltip("metadata.m_reads", "coverage_qc.m_reads")}
-          <br />
           {createTooltip(
             "metadata.percent_duplication",
             "coverage_qc.percent_duplication",
@@ -138,43 +103,31 @@ class HeaderPanel extends Component {
             "coverage_qc.percent_optical_dups_of_dups",
             ".2%"
           )}
-          <br />
           {coverageQCFields().map((field, index) => {
             const tooltip = createTooltip(
               `metadata.${field.variable}`,
               `coverage_qc.${field.variable}`,
               field.format
             );
-            return tooltip ? (
-              <span key={field}>
-                {tooltip}
-                {index < coverageQCFields().length - 1 && <br />}
-              </span>
-            ) : null;
+            return tooltip ? <span key={field}>{tooltip}</span> : null;
           })}
-        </span>
+        </Space>
       ),
       svCount: (
-        <span>
+        <Space direction="vertical" size="small">
           {createTooltip("metadata.junction_count", "junction_count")}
-          <br />
           {createTooltip("metadata.loose_count", "loose_count")}
-          <br />
           {svCountFields.map((field, index) => {
             const tooltip = createTooltip(
               `metadata.${field}_count`,
-              `sv_types_count.${field}`
+              `sv_types_count.${field}`,
+              valueFormat(field)
             );
-            return tooltip ? (
-              <span key={field}>
-                {tooltip}
-                {index < svCountFields.length - 1 && <br />}
-              </span>
-            ) : null;
+            return tooltip ? <span key={field}>{tooltip}</span> : null;
           })}
-        </span>
+        </Space>
       ),
-      hrdScore: (
+      hrdB12Score: (
         <span>
           {hrdFields
             .filter((field, index) =>
@@ -184,17 +137,45 @@ class HeaderPanel extends Component {
             )
             .map((field, index) => {
               const tooltip = createTooltip(
-                `metadata.${field}`,
-                `hrd.${field}`
+                `metadata.hrd.${field}`,
+                `hrd.${field}`,
+                valueFormat(`hrd.${field}`)
               );
+              let divider = hrdDividers[`hrd.${field}`] ? (
+                <Divider orientation="left" plain className="tooltip-divider">
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: t(`metadata.hrd.${hrdDividers[`hrd.${field}`]}`),
+                    }}
+                  />
+                </Divider>
+              ) : null;
               return tooltip ? (
-                <span key={field}>
-                  {tooltip}
-                  {index < hrdFields.length - 1 && <br />}
+                <span className="hrd-tooltip" key={field}>
+                  {divider}
+                  <span key={field}>{tooltip}</span>
                 </span>
               ) : null;
             })}
         </span>
+      ),
+      msiLabel: (
+        <Space direction="vertical" size="small">
+          {msiFields
+            .filter((field, index) =>
+              `msisensor.${field}`
+                .split(".")
+                .reduce((acc, key) => acc?.[key], metadata)
+            )
+            .map((field, index) => {
+              const tooltip = createTooltip(
+                `metadata.msisensor.${field}`,
+                `msisensor.${field}`,
+                valueFormat(`msisensor.${field}`)
+              );
+              return tooltip ? <span key={field}>{tooltip}</span> : null;
+            })}
+        </Space>
       ),
       snvCount: createTooltip(
         "metadata.snv_count_normal_vaf_greater0",
@@ -232,25 +213,38 @@ class HeaderPanel extends Component {
                 <Popover
                   placement="bottomLeft"
                   title={
-                    <Space>
-                      <Text>{t(`quality-status.title`)}:</Text>
-                      <Text
-                        type={
-                          qualityStatusTypographyClasses()[qualityStatus.level]
-                        }
+                    <>
+                      <Space>
+                        <Text>{t(`quality-status.title`)}:</Text>
+                        <Text
+                          type={
+                            qualityStatusTypographyClasses()[
+                              qualityStatus.level
+                            ]
+                          }
+                        >
+                          <strong>
+                            {t(
+                              `quality-status.level.${qualityStatus.level}.adjective`
+                            )}
+                          </strong>
+                        </Text>
+                      </Space>
+                      <Link
+                        disabled={!qualityReportPresent}
+                        className="quality-report-link"
+                        style={{ float: "right" }}
+                        href={`${dataset.dataPath}${report}/${qualityReportName}`}
+                        target="_blank"
                       >
-                        <strong>
-                          {t(
-                            `quality-status.level.${qualityStatus.level}.adjective`
-                          )}
-                        </strong>
-                      </Text>
-                    </Space>
+                        {t(`components.header-panel.view-report`)}
+                      </Link>
+                    </>
                   }
                   content={
                     <Space direction="vertical">
-                      {qualityStatus.clauses.map((d) => (
-                        <Text type={qualityStatusTypographyClasses()[d.level]}>
+                      {qualityStatus.clauses.map((d,i) => (
+                        <Text key={i} type={qualityStatusTypographyClasses()[d.level]}>
                           <span
                             dangerouslySetInnerHTML={{
                               __html: t(
@@ -291,74 +285,88 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-content">
                   <div className="page-header-content">
                     <div className="avatar-content0">
-                      <Space>
-                        <Avatar
-                          size="large"
-                          style={{
-                            backgroundColor: "#fde3cf",
-                            color: "#f56a00",
-                          }}
-                        >
-                          {tumor}
-                        </Avatar>
-                        {disease}
-                        {primary_site}
+                      <Space direction="vertical" size="small">
+                        <Space>
+                          <Avatar
+                            size="large"
+                            style={{
+                              backgroundColor: "#fde3cf",
+                              color: "#f56a00",
+                            }}
+                          >
+                            {tumor}
+                          </Avatar>
+                          {disease}
+                          {primary_site}
+                        </Space>
+                        <Space direction="horizontal" size="small">
+                          {summary?.split("\n")?.map((d,i) => (
+                            <Tag key={i}>{d}</Tag>
+                          ))}
+                        </Space>
                       </Space>
                     </div>
                   </div>
                 </div>
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
-                    {[
-                      "tumor_median_coverage",
-                      "snvCount",
-                      "svCount",
-                      "hrdScore",
-                      "tmb",
-                      "lohFraction",
-                    ].map((d) => (
-                      <Tooltip key={`metadata.${d}.short`} title={tooltips[d]}>
-                        <div className="stat-item">
-                          <div className="ant-statistic">
-                            <div
-                              className={`ant-statistic-title ${
-                                tooltips[d] ? "has-tooltip" : ""
-                              }`}
-                            >
-                              {t(`metadata.${d}.short`)}
-                            </div>
-                            <div className="ant-statistic-content">
-                              <span className="ant-statistic-content-value">
-                                <span
-                                  className="ant-statistic-content-value-int"
-                                  style={{
-                                    color: colorMarkers[d],
-                                  }}
-                                >
-                                  {d === "tumor_median_coverage"
-                                    ? `${
-                                        metadata["tumor_median_coverage"] !=
-                                        null
-                                          ? `${metadata["tumor_median_coverage"]}X`
-                                          : t("general.not-applicable")
-                                      } / ${
-                                        metadata["normal_median_coverage"] !=
-                                        null
-                                          ? `${metadata["normal_median_coverage"]}X`
-                                          : t("general.not-applicable")
-                                      }`
-                                    : metadata[d] != null
-                                    ? d3.format(plotTypes()[d].format)(
-                                        +metadata[d]
-                                      )
-                                    : t("general.not-applicable")}
+                    {headerList
+                      .filter(
+                        (d) =>
+                          !(
+                            metadata[d] === null ||
+                            metadata[d] === undefined ||
+                            metadata[d] === ""
+                          )
+                      )
+                      .map((d) => (
+                        <Tooltip
+                          key={`metadata.${d}.short`}
+                          title={tooltips[d]}
+                        >
+                          <div className="stat-item">
+                            <div className="ant-statistic">
+                              <div
+                                className={`ant-statistic-title ${
+                                  tooltips[d] ? "has-tooltip" : ""
+                                }`}
+                              >
+                                {t(`metadata.${d}.short`)}
+                              </div>
+                              <div className="ant-statistic-content">
+                                <span className="ant-statistic-content-value">
+                                  <span
+                                    className="ant-statistic-content-value-int"
+                                    style={{
+                                      color: isNaN(metadata[d])
+                                        ? colorMarkers[metadata[d]]
+                                        : colorMarkers[d],
+                                    }}
+                                  >
+                                    {d === "tumor_median_coverage"
+                                      ? `${
+                                          metadata["tumor_median_coverage"] !=
+                                          null
+                                            ? `${metadata["tumor_median_coverage"]}X`
+                                            : t("general.not-applicable")
+                                        } / ${
+                                          metadata["normal_median_coverage"] !=
+                                          null
+                                            ? `${metadata["normal_median_coverage"]}X`
+                                            : t("general.not-applicable")
+                                        }`
+                                      : metadata[d] != null
+                                      ? isNaN(metadata[d])
+                                        ? metadata[d]
+                                        : d3.format(valueFormat(d))(metadata[d])
+                                      : t("general.not-applicable")}
+                                  </span>
                                 </span>
-                              </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Tooltip>
-                    ))}
+                        </Tooltip>
+                      ))}
 
                     <div className="stat-item">
                       <div className="ant-statistic">
@@ -374,9 +382,7 @@ class HeaderPanel extends Component {
                               }}
                             >
                               {purity != null
-                                ? d3.format(plotTypes()["purity"].format)(
-                                    +purity
-                                  )
+                                ? d3.format(valueFormat("purity"))(+purity)
                                 : t("general.not-applicable")}
                             </span>
                           </span>
@@ -391,9 +397,7 @@ class HeaderPanel extends Component {
                               }}
                             >
                               {ploidy != null
-                                ? d3.format(plotTypes()["ploidy"].format)(
-                                    +ploidy
-                                  )
+                                ? d3.format(valueFormat("ploidy"))(+ploidy)
                                 : t("general.not-applicable")}
                             </span>
                           </span>
@@ -418,8 +422,11 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,
   qualityStatus: state.CaseReport.qualityStatus,
+  qualityReportPresent: state.CaseReport.qualityReportPresent,
+  qualityReportName: state.CaseReport.qualityReportName,
+  dataset: state.Settings.dataset,
   metadata: state.CaseReport.metadata,
-  plots: state.App.populationMetrics,
+  plots: state.PopulationStatistics.general,
 });
 export default connect(
   mapStateToProps,

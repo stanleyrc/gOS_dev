@@ -51,7 +51,7 @@ class Topbar extends Component {
                     className="datasets-select"
                     loading={loadingDatasets}
                     value={dataset.id}
-                    bordered={false}
+                    variant="borderless"
                     onSelect={(datasetId) => {
                       updateDataset(datasets.find((d) => d.id === datasetId));
                     }}
@@ -68,9 +68,8 @@ class Topbar extends Component {
                     className="reports-select"
                     allowClear={true}
                     loading={loading}
-                    showArrow={true}
                     optionLabelProp="value"
-                    dropdownMatchSelectWidth={false}
+                    popupMatchSelectWidth={false}
                     optionFilterProp="children"
                     placeholder={t("topbar.browse-case-reports")}
                     onSearch={(texts) => searchCaseReports({ texts })}

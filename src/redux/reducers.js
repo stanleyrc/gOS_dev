@@ -18,6 +18,9 @@ import SignatureProfiles from "./signatureProfiles/reducer";
 import Biomarkers from "./biomarkers/reducer";
 import CuratedGenes from "./curatedGenes/reducer";
 import Igv from "./igv/reducer";
+import Highlights from "./highlights/reducer";
+import Snvplicity from "./snvplicity/reducer";
+import Cytobands from "./cytobands/reducer";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
@@ -40,5 +43,8 @@ export default {
   SignatureProfiles,
   Biomarkers,
   CuratedGenes,
-  Igv
+  Igv,
+  Highlights,
+  Snvplicity,
+  Cytobands
 };

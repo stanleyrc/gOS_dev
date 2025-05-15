@@ -17,7 +17,7 @@ function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
     const { dataset } = currentState.Settings;
-    const { id } = currentState.CaseReport;
+    const { id, metadata } = currentState.CaseReport;
 
     let hetsnpsPlot = {
       path: `${dataset.dataPath}${id}/hetsnps.arrow`,
@@ -26,9 +26,19 @@ function* fetchData(action) {
 
     yield call(fetchArrowData, hetsnpsPlot);
 
+    let dataPointsCount = hetsnpsPlot.data.getChild("y").toArray();
+    let dataPointsCopyNumber = dataPointsCount.map(
+      (d) => d * (metadata?.hets_slope || 1) + (metadata?.hets_intercept || 0)
+    );
+    let dataPointsX = hetsnpsPlot.data.getChild("x").toArray();
+    let dataPointsColor = hetsnpsPlot.data.getChild("color").toArray();
+
     yield put({
       type: actions.FETCH_HETSNPS_DATA_SUCCESS,
-      data: hetsnpsPlot.data,
+      dataPointsCount,
+      dataPointsCopyNumber,
+      dataPointsX,
+      dataPointsColor,
     });
   } catch (error) {
     yield put({

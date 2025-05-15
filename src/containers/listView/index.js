@@ -106,9 +106,9 @@ class ListView extends Component {
             <Row gutter={[16, 16]}>
               <Col className="gutter-row" span={24}>
                 <Card className="filters-box">
-                  <Row>
-                    {filters.map((d) => (
-                      <Col className="gutter-row" span={4}>
+                  <Space size="middle">
+                    {filters.map((d,i) => (
+                      <Space key={i} size={10}>
                         <Form.Item
                           key={`containers.list-view.filters.${d.filter}`}
                           name={d.filter}
@@ -138,9 +138,9 @@ class ListView extends Component {
                             ))}
                           </Select>
                         </Form.Item>
-                      </Col>
+                      </Space>
                     ))}
-                    <Col className="gutter-row" span={4}>
+                    <Space size="middle">
                       <Space>
                         <Form.Item>
                           <Button type="primary" htmlType="submit">
@@ -153,8 +153,8 @@ class ListView extends Component {
                           </Button>
                         </Form.Item>
                       </Space>
-                    </Col>
-                  </Row>
+                    </Space>
+                  </Space>
                 </Card>
               </Col>
             </Row>
@@ -178,7 +178,7 @@ class ListView extends Component {
                     className="order-select"
                     value={searchFilters.orderId}
                     onSelect={this.onOrderChanged}
-                    bordered={false}
+                    variant="borderless"
                   >
                     {orderListViewFilters.map((d) => (
                       <Option key={d.id} value={d.id}>
@@ -210,7 +210,7 @@ class ListView extends Component {
                         <Text type="secondary">{d.inferred_sex}</Text>
                       </Space>
                     }
-                    bordered={false}
+                    variant="borderless"
                     extra={
                       <Avatar
                         style={{
@@ -266,11 +266,28 @@ class ListView extends Component {
                     ]}
                   >
                     <Meta
-                      title={d.disease}
+                      title={
+                        <Space>
+                          {d.disease}
+                          <Space>
+                            {d.primary_site && (
+                              <Text type="secondary">
+                                {snakeCaseToHumanReadable(d.primary_site)}
+                              </Text>
+                            )}
+                          </Space>
+                        </Space>
+                      }
                       description={
-                        d.primary_site
-                          ? snakeCaseToHumanReadable(d.primary_site)
-                          : t("containers.list-view.filters.empty")
+                        <Space
+                          direction="vertical"
+                          size="small"
+                          style={{ display: "flex" }}
+                        >
+                          {d.summary?.split("\n")?.map((d, i) => (
+                            <Text key={i} type="secondary">{d}</Text>
+                          ))}
+                        </Space>
                       }
                     />
                   </Card>

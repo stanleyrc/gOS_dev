@@ -1,4 +1,4 @@
-import { all, takeLatest, put, call } from "redux-saga/effects";
+import { all, takeLatest, put, call, delay } from "redux-saga/effects";
 import axios from "axios";
 import { updateChromoBins, locationToDomains } from "../../helpers/utility";
 import actions from "./actions";
@@ -6,6 +6,7 @@ import datasetsActions from "../datasets/actions";
 import caseReportsActions from "../caseReports/actions";
 import caseReportActions from "../caseReport/actions";
 import genesActions from "../genes/actions";
+import cytobandsActions from "../cytobands/actions";
 import biomarkersActions from "../biomarkers/actions";
 import curatedGenesActions from "../curatedGenes/actions";
 import { cancelAllRequests } from "../../helpers/cancelToken";
@@ -63,6 +64,22 @@ function* updateCaseReportFollowUp(action) {
   });
 }
 
+function* settingsFetchedFollowUp(action) {
+  let actionTypes = [
+    genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
+    cytobandsActions.FETCH_CYTOBANDS_REQUEST,
+  ];
+
+  yield all(actionTypes.map((type) => put({ type })));
+}
+
+function* updateDomainsFollowUp(action) {
+  yield delay(100);
+  yield put({
+    type: genesActions.FETCH_HIGLASS_GENES_DATA_REQUEST,
+  });
+}
+
 function* updateDatasetFollowUp(action) {
   let actionTypes = [
     caseReportsActions.FETCH_CASE_REPORTS_REQUEST,
@@ -82,8 +99,13 @@ function* updateDatasetFollowUp(action) {
 function* actionWatcher() {
   yield takeLatest(actions.LAUNCH_APPLICATION, launchApplication);
   yield takeLatest(actions.FETCH_SETTINGS_DATA_REQUEST, fetchSettingsData);
+  yield takeLatest(
+    actions.FETCH_SETTINGS_DATA_SUCCESS,
+    settingsFetchedFollowUp
+  );
   yield takeLatest(actions.UPDATE_CASE_REPORT, updateCaseReportFollowUp);
   yield takeLatest(actions.UPDATE_DATASET, updateDatasetFollowUp);
+  yield takeLatest(actions.UPDATE_DOMAINS, updateDomainsFollowUp);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

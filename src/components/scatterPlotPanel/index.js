@@ -105,7 +105,10 @@ class ScatterPlotPanel extends Component {
     const {
       t,
       loading,
-      data,
+      dataPointsY1,
+      dataPointsY2,
+      dataPointsX,
+      dataPointsColor,
       error,
       filename,
       title,
@@ -114,12 +117,12 @@ class ScatterPlotPanel extends Component {
       renderOutsideViewPort,
       visible,
       zoomedByCmd,
-      scaleY2,
       yAxisTitle,
       yAxis2Title,
-      flipAxesY,
       notification,
+      commonRangeY,
     } = this.props;
+    if (!visible) return null;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
     //if (!data) return null;
@@ -160,14 +163,14 @@ class ScatterPlotPanel extends Component {
                 <span className="ant-pro-menu-item-title">
                   <Space>
                     {title}
-                    {data && (
+                    {
                       <span>
-                        <b>{d3.format(",")(data.numRows)}</b>{" "}
+                        <b>{d3.format(",")(dataPointsX.length)}</b>{" "}
                         {t("components.coverage-panel.datapoint", {
-                          count: data.numRows,
+                          count: dataPointsX.length,
                         })}
                       </span>
-                    )}
+                    }
                     {notification.status && (
                       <Popover
                         placement="bottomLeft"
@@ -178,8 +181,8 @@ class ScatterPlotPanel extends Component {
                         }
                         content={
                           <Space direction="vertical">
-                            {notification.messages.map((d) => (
-                              <Text>
+                            {notification.messages.map((d,i) => (
+                              <Text key={i}>
                                 <span
                                   dangerouslySetInnerHTML={{
                                     __html: d,
@@ -241,12 +244,14 @@ class ScatterPlotPanel extends Component {
                           {...{
                             width: w - gap,
                             height: h,
-                            data,
+                            dataPointsY1,
+                            dataPointsY2,
+                            dataPointsX,
+                            dataPointsColor,
                             domains,
-                            scaleY2,
                             yAxisTitle,
                             yAxis2Title,
-                            flipAxesY,
+                            commonRangeY,
                           }}
                         />
                       </Col>
@@ -264,8 +269,7 @@ class ScatterPlotPanel extends Component {
 ScatterPlotPanel.propTypes = {};
 ScatterPlotPanel.defaultProps = {
   notification: { status: null, heading: null, messages: [] },
-  scaleY2: { show: false, slope: 1, intercept: 0 },
-  flipAxesY: false,
+  commonRangeY: null
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({

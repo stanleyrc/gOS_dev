@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import * as d3 from "d3";
+import debounce from "lodash.debounce";
 import Wrapper from "./index.style";
 import Connection from "../../helpers/connection";
 import {
@@ -20,6 +21,7 @@ const { updateDomains } = settingsActions;
 
 const margins = {
   gap: 24,
+  gapX: 50,
   bar: 10,
   gapY: 24,
   yTicksCount: 10,
@@ -43,16 +45,25 @@ class GenomePlot extends Component {
         text: "",
       },
     };
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   updatePanels() {
-    let { domains, width, height, commonYScale, defaultDomain, genome } =
-      this.props;
+    let {
+      domains,
+      width,
+      height,
+      commonYScale,
+      defaultDomain,
+      genome,
+      commonRangeY,
+    } = this.props;
     const { intervals, frameConnections } = genome;
-    let stageWidth = width - 2 * margins.gap;
+    let stageWidth = width - 2 * margins.gapX;
     let stageHeight = height - 3 * margins.gap;
     let panelWidth =
-      (stageWidth - (domains.length - 1) * margins.gap) / domains.length;
+      (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.connections = [];
     this.panels = domains.map((domain, index) => {
@@ -60,12 +71,12 @@ class GenomePlot extends Component {
         (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
       );
       const xScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
-      let offset = index * (panelWidth + margins.gap);
+      let offset = index * (panelWidth + margins.gapX);
 
       let domainWidth = domain[1] - domain[0];
       let range = [
-        index * (panelWidth + margins.gap),
-        (index + 1) * panelWidth + index * margins.gap,
+        index * (panelWidth + margins.gapX),
+        (index + 1) * panelWidth + index * margins.gapX,
       ];
       let scale = d3.scaleLinear().domain(domain).range(range);
       let innerScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
@@ -86,20 +97,19 @@ class GenomePlot extends Component {
         ])
         .on("zoom", (event) => this.zooming(event, index))
         .on("end", (event) => this.zoomEnded(event, index));
-      let intervalMin = d3.min(filteredIntervals, (d) => d.y);
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
-      let offsetPerc = 0.5;
-      let yDomain = [
-        intervalMin - intervalMin * offsetPerc,
-        intervalMax + intervalMax * offsetPerc,
-      ];
-      let yScale = d3
-        .scaleLinear()
-        .domain(yDomain)
-        .range([panelHeight, 0])
-        .nice();
-      let yTicks = yScale.ticks(margins.yTicksCount);
-      yTicks[yTicks.length - 1] = yScale.domain()[1];
+      let offsetPerc = 2;
+      let yScale = commonRangeY
+        ? d3
+            .scaleLinear()
+            .domain(commonRangeY)
+            .range([panelHeight, 0])
+            .clamp(true)
+        : d3
+            .scaleLinear()
+            .domain([0, intervalMax + offsetPerc])
+            .range([panelHeight, 0])
+            .nice();
       let panel = {
         index,
         zoom,
@@ -108,7 +118,6 @@ class GenomePlot extends Component {
         panelHeight,
         xScale,
         yScale,
-        yTicks,
         panelGenomeScale,
         offset,
         intervals: filteredIntervals.sort((a, b) =>
@@ -130,11 +139,8 @@ class GenomePlot extends Component {
         .range([panelHeight, 0])
         .clamp(true)
         .nice();
-      let commonYTicks = commonYScale.ticks(margins.yTicksCount);
-      commonYTicks[commonYTicks.length - 1] = commonYScale.domain()[1];
       this.panels.forEach((d) => {
         d.yScale = commonYScale;
-        d.yTicks = commonYTicks;
       });
     }
 
@@ -239,7 +245,8 @@ class GenomePlot extends Component {
       nextProps.hoveredLocation !== this.props.hoveredLocation ||
       nextProps.hoveredLocationPanelIndex !==
         this.props.hoveredLocationPanelIndex ||
-      nextProps.commonYScale !== this.props.commonYScale
+      nextProps.commonYScale !== this.props.commonYScale ||
+      nextProps.commonRangeY !== this.props.commonRangeY
     );
   }
 
@@ -322,7 +329,8 @@ class GenomePlot extends Component {
         .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
         .attr(
           "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation)
+          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+            -10000
         )
         .text(
           Object.values(chromoBins)
@@ -383,7 +391,7 @@ class GenomePlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.props.updateDomains(newDomains);
+        this.debouncedUpdateDomains(newDomains);
       });
     }
   }
@@ -454,7 +462,9 @@ class GenomePlot extends Component {
           })
           .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
       );
-      this.props.updateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
+      this.debouncedUpdateDomains(
+        merged.map((d) => [d.startPlace, d.endPlace])
+      );
     } else {
       this.props.selectPhylogenyNodes(
         this.props.connectionsAssociations.map((d, i) => {
@@ -471,19 +481,22 @@ class GenomePlot extends Component {
     // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     newDomains[panelIndex] = [shape.startPlace - 1e3, shape.endPlace + 1e3];
-    this.props.updateDomains(newDomains);
+    this.debouncedUpdateDomains(newDomains);
   }
 
   handlePanelMouseMove = (e, panelIndex) => {
-    panelIndex > -1 &&
+    if (panelIndex > -1) {
       this.props.updateHoveredLocation(
         this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
         panelIndex
       );
+    }
   };
 
   handlePanelMouseOut = (e, panelIndex) => {
-    panelIndex > -1 && this.props.updateHoveredLocation(null, panelIndex);
+    if (panelIndex > -1) {
+      this.props.updateHoveredLocation(null, panelIndex);
+    }
   };
 
   render() {
@@ -565,7 +578,7 @@ class GenomePlot extends Component {
           </defs>
           <text
             className="y-axis-title"
-            transform={`translate(${[0, margins.gapY / 3]})`}
+            transform={`translate(${[margins.gapX / 2, margins.gapY / 3]})`}
           >
             {yAxisTitle}
           </text>
@@ -576,13 +589,35 @@ class GenomePlot extends Component {
           >
             {yAxis2Title}
           </text>
-          <g transform={`translate(${[margins.gap, margins.gap]})`}>
+          <g transform={`translate(${[margins.gapX, margins.gap]})`}>
             {this.panels.map((panel, i) => (
               <g
                 key={`panel-${panel.index}`}
                 id={`panel-${panel.index}`}
                 transform={`translate(${[panel.offset, 0]})`}
               >
+                <g ref={(elem) => (this.grid = elem)}>
+                  <Grid
+                    scaleX={panel.xScale}
+                    scaleY={panel.yScale}
+                    axisWidth={panel.panelWidth}
+                    axisHeight={panel.panelHeight}
+                    chromoBins={chromoBins}
+                  />
+                  <line
+                    className="hovered-location-line hidden"
+                    id={`hovered-location-line-${panel.index}`}
+                    y1={0}
+                    y2={panel.panelHeight}
+                  />
+                  <text
+                    className="hovered-location-text"
+                    id={`hovered-location-text-${panel.index}`}
+                    x={-1000}
+                    dx={5}
+                    dy={10}
+                  ></text>
+                </g>
                 <rect
                   className="zoom-background"
                   id={`panel-rect-${panel.index}`}
@@ -594,52 +629,27 @@ class GenomePlot extends Component {
                   style={{
                     stroke: "steelblue",
                     fill: "transparent",
-                    strokeWidth: 1,
+                    strokeWidth: 0,
                     opacity: 0.375,
                     pointerEvents: "all",
                   }}
                 />
-                <g ref={(elem) => (this.grid = elem)}>
-                  {
-                    <>
-                      <Grid
-                        scaleX={panel.xScale}
-                        scaleY={panel.yScale}
-                        axisWidth={panel.panelWidth}
-                        axisHeight={panel.panelHeight}
-                        chromoBins={chromoBins}
-                      />
-                      <line
-                        className="hovered-location-line hidden"
-                        id={`hovered-location-line-${panel.index}`}
-                        y1={0}
-                        y2={panel.panelHeight}
-                      />
-                      <text
-                        className="hovered-location-text"
-                        id={`hovered-location-text-${panel.index}`}
-                        x={-1000}
-                        dx={5}
-                        dy={10}
-                      ></text>
-                    </>
-                  }
-                </g>
                 <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
                   {panel.intervals.map((d, i) => {
                     return mutationsPlot ? (
                       <path
                         id={d.primaryKey}
+                        title={d.proteinCoding}
                         d={d.mutationSymbol}
                         type="interval"
                         key={i}
                         className={`shape ${
-                          d.primaryKey === tooltip.shapeId && "highlighted"
+                          d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                         } ${
-                          annotation &&
-                          d.annotationArray.includes(annotation) &&
-                          "annotated"
-                        }`}
+                          annotation && d.annotationArray.includes(annotation)
+                            ? "annotated"
+                            : ""
+                        } ${d.isProteinCoded ? "" : "non-protein-coded"}`}
                         transform={`translate(${[
                           panel.xScale((d.startPlace + d.endPlace) / 2),
                           panel.yScale(d.y),
@@ -659,19 +669,28 @@ class GenomePlot extends Component {
                         type="interval"
                         key={i}
                         className={`shape ${
-                          d.primaryKey === tooltip.shapeId && "highlighted"
+                          d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                         } ${
-                          annotation &&
-                          d.annotationArray.includes(annotation) &&
-                          "annotated"
+                          annotation && d.annotationArray.includes(annotation)
+                            ? "annotated"
+                            : ""
                         }`}
                         transform={`translate(${[
-                          panel.xScale(d.startPlace),
+                          d3.max([panel.xScale(d.startPlace), 0]),
                           panel.yScale(d.y) - 0.5 * margins.bar,
                         ]})`}
-                        width={
+                        width={d3.min([
+                          panel.xScale(d.endPlace) -
+                            d3.max([panel.xScale(d.startPlace), 0]),
+                          panel.panelWidth,
+                        ])}
+                        data-start-place={d.startPlace}
+                        data-end-place={d.endPlace}
+                        data-end-pos={panel.xScale(d.endPlace)}
+                        data-x={Math.floor(panel.xScale(d.startPlace))}
+                        data-width={Math.floor(
                           panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
-                        }
+                        )}
                         height={margins.bar}
                         style={{
                           fill: d.overlapping
@@ -697,7 +716,7 @@ class GenomePlot extends Component {
                   key={d.identifier}
                   transform={d.transform}
                   className={`connection ${
-                    d.primaryKey === tooltip.shapeId && "highlighted"
+                    d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                   } ${
                     selectedConnectionIds.includes(d.cid) &&
                     annotation &&
@@ -775,6 +794,7 @@ GenomePlot.defaultProps = {
   mutationsPlot: false,
   yAxisTitle: "",
   yAxis2Title: "",
+  commonRangeY: null,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

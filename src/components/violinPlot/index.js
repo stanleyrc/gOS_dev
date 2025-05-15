@@ -63,8 +63,8 @@ class ViolinPlot extends Component {
       const scaleX = d3
         .scaleLinear()
         .domain([0, d3.max(density, (d) => d[1])])
-        .range([xScale.step(), 25])
-        .nice();
+        .range([xScale.step(), 0.5 * xScale.step()]);
+
       return { t, plot, scaleX, scaleY, density };
     });
 
@@ -115,7 +115,10 @@ class ViolinPlot extends Component {
         (d, i) => `translate(${[xScale(d.plot.id) + xScale.step() / 2, 0]})`
       )
       .each(function (d, i) {
-        let yAxis = d3.axisLeft(d.scaleY).tickSize(3);
+        let yAxis = d3
+          .axisLeft(d.scaleY)
+          .tickSize(3)
+          .tickFormat(d3.format(d.plot.format));
 
         d3.select(this).call(yAxis);
 
@@ -132,7 +135,10 @@ class ViolinPlot extends Component {
             let tickText = d3.select(this).text();
             if (d.plot.scaleX === "log") {
               tickText = tickText === "" ? "" : d3.format("~s")(e);
+            } else {
+              tickText = tickText === "" ? "" : d3.format(d.plot.format)(e);
             }
+
             return tickText;
           });
 
@@ -174,6 +180,8 @@ class ViolinPlot extends Component {
           let tickText = d3.select(this).text();
           if (d.plot.scaleX === "log") {
             tickText = tickText === "" ? "" : d3.format("~s")(e);
+          } else {
+            tickText = tickText === "" ? "" : d3.format(d.plot.format)(e);
           }
           return tickText;
         });
@@ -278,19 +286,21 @@ class ViolinPlot extends Component {
                         .x1(-hist.scaleX(0))
                         .curve(d3.curveBasis)(hist.density)}
                     />
-                    <g
-                      transform={`translate(${[
-                        -1.5 * xScale.step(),
-                        hist.scaleY(markers[hist.plot.id]),
-                      ]})`}
-                    >
-                      <line
-                        x1={xScale.step()}
-                        x2={xScale.step() / 2}
-                        stroke="red"
-                        strokeWidth={1}
-                      />
-                    </g>
+                    {markers[hist.plot.id] != null && (
+                      <g
+                        transform={`translate(${[
+                          -1.5 * xScale.step(),
+                          hist.scaleY(markers[hist.plot.id]),
+                        ]})`}
+                      >
+                        <line
+                          x1={xScale.step()}
+                          x2={xScale.step() / 2}
+                          stroke="red"
+                          strokeWidth={1}
+                        />
+                      </g>
+                    )}
                   </g>
                 ))}
               </g>

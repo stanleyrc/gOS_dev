@@ -15,20 +15,10 @@ import {
   nucleotideMutationText,
   deletionInsertionMutationVariant,
 } from "../../helpers/utility";
+import { chartTypes } from "../../helpers/metadata";
 import { getCurrentState } from "./selectors";
 import { loadArrowTable, allelicToGenome } from "../../helpers/utility";
 import actions from "./actions";
-
-const PLOT_TYPES = {
-  coverage: "histogram",
-  snvCount: "histogram",
-  svCount: "histogram",
-  hrdScore: "histogram",
-  tmb: "histogram",
-  lohFraction: "histogram",
-  purity: "histogram",
-  ploidy: "histogram",
-};
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path)
@@ -82,7 +72,7 @@ function* bootApplication(action) {
   let responseSettings = yield call(axios.get, "settings.json");
 
   const responses = yield all(
-    Object.keys(PLOT_TYPES).map((e) => call(axios.get, `common/${e}.json`))
+    Object.keys(chartTypes).map((e) => call(axios.get, `common/${e}.json`))
   );
 
   let populations = {};
@@ -351,7 +341,7 @@ function* selectReport(action) {
       type: actions.SELECT_REPORT_FAILED,
       properties,
     });
-  } 
+  }
 }
 
 function* loadGenes(action) {

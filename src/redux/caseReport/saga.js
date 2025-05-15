@@ -14,12 +14,16 @@ import ppfitActions from "../ppfit/actions";
 import sageQcActions from "../sageQc/actions";
 import signatureStatisticsActions from "../signatureStatistics/actions";
 import igvActions from "../igv/actions";
+import highlightsActions from "../highlights/actions";
+import snvplicityActions from "../snvplicity/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReport(action) {
   cancelAllRequests();
   const currentState = yield select(getCurrentState);
   let { report, dataset } = currentState.Settings;
+  let { qualityReportName } = currentState.CaseReport;
+
   try {
     let responseReportMetadata = yield call(
       axios.get,
@@ -34,12 +38,45 @@ function* fetchCaseReport(action) {
       metadata[reportAttributesMap()[key]] = reportMetadata[key];
     });
 
+    metadata.hrdScore = metadata.hrd?.hrd_score;
+    metadata.hrdB12Score = metadata.hrd?.b1_2_score;
+    metadata.hrdB1Score = metadata.hrd?.b1_score;
+    metadata.hrdB2Score = metadata.hrd?.b2_score;
+    metadata.msiLabel = metadata.msisensor?.label;
+    metadata.msiScore = metadata.msisensor?.score;
+
     let qualityStatus = assessQuality(metadata);
+
+    let qualityReportPresent = null;
+    try {
+      yield call(
+        axios.head,
+        `${dataset.dataPath}${report}/${qualityReportName}`,
+        {
+          cancelToken: getCancelToken(),
+        }
+      );
+      qualityReportPresent = true;
+    } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log(
+          `Request canceled for ${dataset.dataPath}${report}/${qualityReportName}:`,
+          err.message
+        );
+      } else {
+        console.error(
+          `Error checking ${dataset.dataPath}${report}/${qualityReportName}:`,
+          err.message
+        );
+      }
+      qualityReportPresent = false;
+    }
 
     yield put({
       type: actions.FETCH_CASE_REPORT_SUCCESS,
       metadata,
       qualityStatus,
+      qualityReportPresent,
       id: metadata.pair,
     });
   } catch (error) {
@@ -70,6 +107,8 @@ function* followUpFetchCaseReportSuccess(action) {
     sageQcActions.FETCH_SAGEQC_REQUEST,
     signatureStatisticsActions.FETCH_SIGNATURE_STATISTICS_REQUEST,
     igvActions.FETCH_IGV_DATA_REQUEST,
+    highlightsActions.FETCH_HIGHLIGHTS_DATA_REQUEST,
+    snvplicityActions.FETCH_SNVPLICITY_DATA_REQUEST,
   ];
 
   yield all(actionTypes.map((type) => put({ type })));

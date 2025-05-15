@@ -3,7 +3,10 @@ import actions from "./actions";
 const initState = {
   loading: false,
   filename: "coverage.arrow",
-  data: null,
+  dataPointsCount: [],
+  dataPointsCopyNumber: [],
+  dataPointsX: [],
+  dataPointsColor: [],
   error: null,
 };
 
@@ -12,20 +15,29 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_COVERAGE_DATA_REQUEST:
       return {
         ...state,
-        data: null,
+        dataPointsCount: [],
+        dataPointsCopyNumber: [],
+        dataPointsX: [],
+        dataPointsColor: [],
         error: null,
         loading: true,
       };
     case actions.FETCH_COVERAGE_DATA_SUCCESS:
       return {
         ...state,
-        data: action.data,
+        dataPointsCount: action.dataPointsCount,
+        dataPointsCopyNumber: action.dataPointsCopyNumber,
+        dataPointsX: action.dataPointsX,
+        dataPointsColor: action.dataPointsColor,
         loading: false,
       };
     case actions.FETCH_COVERAGE_DATA_FAILED:
       return {
         ...state,
-        data: null,
+        dataPointsCount: [],
+        dataPointsCopyNumber: [],
+        dataPointsX: [],
+        dataPointsColor: [],
         error: action.error,
         loading: false,
       };

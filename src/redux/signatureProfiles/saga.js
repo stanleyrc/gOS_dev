@@ -1,6 +1,9 @@
-import { all, takeEvery, put, select, take } from "redux-saga/effects";
+import { all, takeEvery, put, select, take, call } from "redux-saga/effects";
 import axios from "axios";
-import { getSignatureMetrics } from "../../helpers/utility";
+import {
+  getSignatureMetrics,
+  parseCosmicSignatureWeightMatrix,
+} from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
@@ -11,6 +14,7 @@ function* fetchData(action) {
     const currentState = yield select(getCurrentState);
     let { data: settings, dataset } = currentState.Settings;
     let { datafiles } = currentState.CaseReports;
+    let { signaturesWeightsFiles } = currentState.SignatureProfiles;
 
     let signatures = {};
     let signatureMetrics = [];
@@ -59,28 +63,25 @@ function* fetchData(action) {
     });
 
     let signaturesReference = {};
-    let signaturesReferenceWeightsList = [];
-    settings.signaturesList.types.forEach((type) => {
-      signaturesReference[type] = {};
-
-      settings.signaturesList.datafiles[type].forEach((d) => {
-        signaturesReferenceWeightsList.push({
-          type: type,
-          name: d,
-          path: `${dataset.commonPath}signatures/${type}_signature_weights/${d}.json`,
-        });
-      });
-    });
     yield axios
-      .all(signaturesReferenceWeightsList.map((e) => axios.get(e.path)))
+      .all(
+        Object.keys(signaturesWeightsFiles).map((type) =>
+          axios.get(signaturesWeightsFiles[type])
+        )
+      )
       .then(
         axios.spread((...responses) => {
-          responses.forEach(
-            (d, i) =>
-              (signaturesReference[signaturesReferenceWeightsList[i].type][
-                signaturesReferenceWeightsList[i].name
-              ] = d.data)
-          );
+          responses.forEach((response, i) => {
+            let weights = parseCosmicSignatureWeightMatrix(response.data);
+            signaturesReference[Object.keys(signaturesWeightsFiles)[i]] = {};
+            Object.keys(weights).forEach((name) => {
+              signaturesReference[Object.keys(signaturesWeightsFiles)[i]][
+                name
+              ] = Object.keys(weights[name]).map((tnc) => {
+                return { value: weights[name][tnc], sig: name, tnc };
+              });
+            });
+          });
         })
       )
       .catch((errors) => {

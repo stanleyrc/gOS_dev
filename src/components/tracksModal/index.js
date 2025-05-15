@@ -2,22 +2,30 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
-import { Row, Col, Modal, message, Tooltip, Space, Button } from "antd";
+import { Row, Col, Modal, message, Space, Button, Affix } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
-import { AiOutlineDownload } from "react-icons/ai";
-import * as htmlToImage from "html-to-image";
-import { transitionStyle, downloadCanvasAsPng } from "../../helpers/utility";
-import Wrapper from "./index.style";
 import ScatterPlotPanel from "../scatterPlotPanel";
-import GenesPanel from "../genesPanel";
 import IgvPanel from "../igvPanel/index";
 import appActions from "../../redux/app/actions";
+import TracksLegendPanel from "../tracksLegendPanel";
+import { AiOutlineDownload } from "react-icons/ai";
+import * as htmlToImage from "html-to-image";
+import {
+  transitionStyle,
+  downloadCanvasAsPng,
+  dataRanges,
+} from "../../helpers/utility";
+import Wrapper from "./index.style";
 
 const { updateHoveredLocation } = appActions;
 
 class TracksModal extends Component {
   container = null;
+
+  state = {
+    yScaleMode: "common",
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -33,9 +41,14 @@ class TracksModal extends Component {
       });
   };
 
+  handleYscaleSegmentedChange = (yScaleMode) => {
+    this.setState({ yScaleMode });
+  };
+
   render() {
     const {
       t,
+      domains,
       genome,
       mutations,
       genomeCoverage,
@@ -66,30 +79,42 @@ class TracksModal extends Component {
       height,
       open,
       viewType,
+      legendPanelPinned,
     } = this.props;
+
     if (!open) return null;
     const { cov_slope, cov_intercept, hets_slope, hets_intercept } = metadata;
+    const { yScaleMode } = this.state;
+
+    let commonRangeY =
+      yScaleMode === "common" ? dataRanges(domains, genome.data) : null;
+
+    let tracksLegend = (
+      <TracksLegendPanel
+        {...{
+          loading: genes.loading,
+          genesList: genes.list,
+          error: genes.error,
+          chromoBins,
+          visible: true,
+          height,
+          handleSegmentedChange: this.handleYscaleSegmentedChange,
+        }}
+      />
+    );
     let content = (
       <Row
         style={transitionStyle(inViewport || renderOutsideViewPort)}
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
-        {genes && (
-          <Col className="gutter-row" span={24}>
-            <GenesPanel
-              {...{
-                loading: genes.loading,
-                genes: genes.data,
-                error: genes.error,
-                filename: genes.filename,
-                chromoBins,
-                visible: true,
-                height,
-              }}
-            />
-          </Col>
-        )}
+        <Col className="gutter-row" span={24}>
+          {legendPanelPinned ? (
+            <Affix offsetTop={194}>{tracksLegend}</Affix>
+          ) : (
+            tracksLegend
+          )}
+        </Col>
         <Col className="gutter-row" span={24}>
           <GenomePanel
             {...{
@@ -103,6 +128,7 @@ class TracksModal extends Component {
               visible: true,
               index: 0,
               height,
+              commonRangeY,
             }}
           />
         </Col>
@@ -111,7 +137,10 @@ class TracksModal extends Component {
             <ScatterPlotPanel
               {...{
                 loading: genomeCoverage.loading,
-                data: genomeCoverage.data,
+                dataPointsY1: genomeCoverage.dataPointsCopyNumber,
+                dataPointsY2: genomeCoverage.dataPointsCount,
+                dataPointsX: genomeCoverage.dataPointsX,
+                dataPointsColor: genomeCoverage.dataPointsColor,
                 error: genomeCoverage.error,
                 filename: genomeCoverage.filename,
                 title: coveragePlotTitle,
@@ -141,17 +170,15 @@ class TracksModal extends Component {
                       : []),
                   ],
                 },
-                scaleY2: {
-                  show: cov_slope != null && cov_intercept != null,
-                  slope: +cov_slope,
-                  intercept: +cov_intercept,
-                },
                 chromoBins,
                 visible: true,
                 height,
-                yAxisTitle: coverageYAxisTitle,
+                yAxisTitle:
+                  cov_slope == null || cov_intercept == null
+                    ? coverageYAxis2Title
+                    : coverageYAxisTitle,
                 yAxis2Title: coverageYAxis2Title,
-                flipAxesY: true,
+                commonRangeY,
               }}
             />
           </Col>
@@ -161,7 +188,10 @@ class TracksModal extends Component {
             <ScatterPlotPanel
               {...{
                 loading: hetsnps.loading,
-                data: hetsnps.data,
+                dataPointsY1: hetsnps.dataPointsCopyNumber,
+                dataPointsY2: hetsnps.dataPointsCount,
+                dataPointsX: hetsnps.dataPointsX,
+                dataPointsColor: hetsnps.dataPointsColor,
                 error: hetsnps.error,
                 filename: hetsnps.filename,
                 title: hetsnpPlotTitle,
@@ -191,17 +221,15 @@ class TracksModal extends Component {
                       : []),
                   ],
                 },
-                scaleY2: {
-                  show: hets_slope != null && hets_intercept != null,
-                  slope: +hets_slope,
-                  intercept: +hets_intercept,
-                },
                 chromoBins,
                 visible: true,
                 height,
-                yAxisTitle: hetsnpPlotYAxisTitle,
+                yAxisTitle:
+                  hets_slope == null || hets_intercept == null
+                    ? hetsnpPlotYAxis2Title
+                    : hetsnpPlotYAxisTitle,
                 yAxis2Title: hetsnpPlotYAxis2Title,
-                flipAxesY: true,
+                commonRangeY,
               }}
             />
           </Col>
@@ -220,6 +248,7 @@ class TracksModal extends Component {
                 visible: true,
                 index: 0,
                 height,
+                commonRangeY,
               }}
             />
           </Col>
@@ -240,24 +269,29 @@ class TracksModal extends Component {
                 index: 0,
                 height,
                 mutationsPlot: true,
+                commonRangeY,
               }}
             />
           </Col>
         )}
-        <Col className="gutter-row" span={24}>
-          <IgvPanel
-            {...{
-              visible: true,
-              loading: igv.loading,
-              error: igv.error,
-              missingFiles: igv.missingFiles,
-              filename: igv.filename,
-              filenameIndex: igv.filenameIndex,
-              format: igv.format,
-              name: igv.name,
-            }}
-          />
-        </Col>
+        {(igv.filenameTumorPresent || igv.filenameNormalPresent) && (
+          <Col className="gutter-row" span={24}>
+            <IgvPanel
+              {...{
+                loading: igv.loading,
+                error: igv.error,
+                missingFiles: igv.missingFiles,
+                filenameTumorPresent: igv.filenameTumorPresent,
+                filenameNormalPresent: igv.filenameNormalPresent,
+                filenameTumor: igv.filenameTumor,
+                filenameTumorIndex: igv.filenameTumorIndex,
+                filenameNormal: igv.filenameNormal,
+                filenameNormalIndex: igv.filenameNormalIndex,
+                format: igv.format,
+              }}
+            />
+          </Col>
+        )}
       </Row>
     );
     return (
@@ -300,8 +334,9 @@ TracksModal.propTypes = {
 };
 TracksModal.defaultProps = {
   width: 1800,
-  height: 180,
+  height: 200,
   viewType: "modal",
+  legendPanelPinned: false,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateHoveredLocation: (hoveredLocation, panelIndex) =>

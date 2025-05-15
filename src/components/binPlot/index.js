@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { measureText, segmentAttributes } from "../../helpers/utility";
+import { maxSeparatorsCount } from "../../helpers/segmentWidth";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -68,8 +69,7 @@ class BinPlot extends Component {
       yTitle,
       chromoBins,
       selectSegment,
-      slope,
-      intercept,
+      separatorsConfig,
     } = this.props;
 
     const { minBarHeight, minBarWidth } = margins;
@@ -80,17 +80,26 @@ class BinPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let filteredData = data.filter((d) => d.metadata.mean);
+    const { beta, purity } = separatorsConfig;
+    let a = (2 * (1 - purity)) / purity;
+    let b = 1 / beta;
+    let ppfit_intercept = a / b;
+    let ppfit_slope = beta;
 
-    let extent = [0, d3.max(filteredData, (d) => d.metadata.mean)];
+    let finalMaxMean = ppfit_intercept + maxSeparatorsCount * ppfit_slope;
 
-    let maxSeparatorsCount = Math.ceil((extent[1] - intercept) / slope);
+    let filteredData = data
+      .filter((d) => d.metadata.mean)
+      .map((d) => {
+        d.metadata.mean = d3.min([d.metadata.mean, finalMaxMean]);
+        return d;
+      });
+
+    let extent = [0, finalMaxMean];
 
     let separators = d3
       .range(0, maxSeparatorsCount + 1)
-      .map((i) => slope * i + intercept);
-
-    extent[1] = separators[separators.length - 1];
+      .map((i) => ppfit_slope * i + ppfit_intercept);
 
     let num = Math.ceil(panelWidth / minBarWidth);
     let step = (extent[1] - extent[0]) / num;
@@ -167,7 +176,11 @@ class BinPlot extends Component {
 
     series = series.map((d) => d[1]).flat();
 
-    const xScale = d3.scaleLinear().domain(extent).range([0, panelWidth]);
+    const xScale = d3
+      .scaleLinear()
+      .domain(extent)
+      .range([0, panelWidth])
+      .nice();
 
     let yScale = d3
       .scaleLinear()
@@ -299,8 +312,6 @@ class BinPlot extends Component {
 
     xScale = currentTransform.rescaleX(xScale);
 
-    yScale = currentTransform.rescaleY(yScale);
-
     this.renderYAxis(yScale);
     this.renderXAxis(xScale);
 
@@ -322,10 +333,10 @@ class BinPlot extends Component {
           <defs>
             <clipPath key="cuttOffViewPane1" id="cuttOffViewPane1">
               <rect
-                x={-margins.gapX}
+                x={0}
                 y={-margins.gapY}
                 width={panelWidth + margins.gapX}
-                height={panelHeight + margins.gapY}
+                height={panelHeight + 3 * margins.gapY}
               />
             </clipPath>
             <clipPath key="cuttOffViewPane2" id="cuttOffViewPane2">
@@ -333,27 +344,27 @@ class BinPlot extends Component {
             </clipPath>
           </defs>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
+            <rect
+              className="zoom-background"
+              id={`panel-rect`}
+              x={0.5}
+              width={panelWidth}
+              height={panelHeight}
+              style={{
+                stroke: "steelblue",
+                fill: "none",
+                strokeWidth: 0,
+                opacity: 0.375,
+                pointerEvents: "all",
+              }}
+            />
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <rect
-                className="zoom-background"
-                id={`panel-rect`}
-                x={0.5}
-                width={panelWidth}
-                height={panelHeight}
-                style={{
-                  stroke: "steelblue",
-                  fill: "transparent",
-                  strokeWidth: 1,
-                  opacity: 0.375,
-                  pointerEvents: "all",
-                }}
-              />
               <g clipPath="url(#cuttOffViewPane1)">
                 {separators.map((d, i) => (
                   <g key={i}>
                     <line
                       transform={`translate(${[xScale(d), 0]})`}
-                      y2={panelHeight - 2}
+                      y2={panelHeight + 15}
                       stroke="#FFD6D6"
                       strokeDasharray="4 1"
                     />
@@ -362,6 +373,18 @@ class BinPlot extends Component {
                       textAnchor="middle"
                       fill={d3.rgb("#FFD6D6").darker()}
                       dy="-3"
+                      fontSize="10"
+                      opacity={
+                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
+                      }
+                    >
+                      {i}
+                    </text>
+                    <text
+                      transform={`translate(${[xScale(d), panelHeight + 20]})`}
+                      textAnchor="middle"
+                      fill={d3.rgb("#FFD6D6").darker()}
+                      dy="5"
                       fontSize="10"
                       opacity={
                         xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
@@ -379,11 +402,8 @@ class BinPlot extends Component {
                     fill={chromoBins[d.chromosome]?.color}
                     x={xScale(d.xPos)}
                     width={xScale(d.xPosTo) - xScale(d.xPos)}
-                    y={
-                      currentTransform.k * d.cumulativeWidthPixels +
-                      currentTransform.y
-                    }
-                    height={currentTransform.k * d.widthPixels}
+                    y={d.cumulativeWidthPixels}
+                    height={d.widthPixels}
                     onMouseMove={(e) => this.handleMouseMove(e, d, i)}
                     onMouseOut={(e) => this.handleMouseOut(e, d)}
                     onClick={(e) => selectSegment(d)}

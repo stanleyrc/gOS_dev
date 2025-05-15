@@ -1,61 +1,88 @@
 const fs = require("fs");
 const path = require("path");
 
-const dataFolderPath = "./case-reports-data";
-const outputFolderPath = "./case-reports";
+const caseReportContentFolder =
+  "/gpfs/home/xanthc01/lab/external/mskiweb/xanthc01/content/case_report_content";
+const datafilesPrefixFolder = "/gpfs/home/xanthc01/lab/external";
 
-const allCases = [];
+// Path to datasets.json
+const datasetsFile = path.join(caseReportContentFolder, "datasets.json");
 
-function updateAllCases() {
-  let ignoredCaseReports = [];
-  const ignoredCaseReportsPath = path.join(
-    dataFolderPath,
-    "ignored-case-reports.json"
+// Check if datasets.json exists
+if (!fs.existsSync(datasetsFile)) {
+  console.error(`Error: datasets.json not found at ${datasetsFile}`);
+  process.exit(1);
+}
+
+// Read and parse datasets.json
+const datasets = JSON.parse(fs.readFileSync(datasetsFile, "utf8"));
+
+datasets.forEach((dataset) => {
+  const datafilesPath = dataset.datafilesPath.replace(
+    "/external/imielinskilab",
+    ""
   );
+  const dataPath = dataset.dataPath.replace("/external/imielinskilab", "");
 
-  if (fs.existsSync(ignoredCaseReportsPath)) {
-    const ignoredCaseReportsContent = fs.readFileSync(
-      ignoredCaseReportsPath,
-      "utf8"
-    );
+  const fullDatafilePath = path.join(datafilesPrefixFolder, datafilesPath);
+  const fullDataPath = path.join(datafilesPrefixFolder, dataPath);
 
-    try {
-      ignoredCaseReports = JSON.parse(ignoredCaseReportsContent);
-    } catch (error) {
-      console.error(
-        `Error parsing visibles.json in ${dataFolderPath}: ${error.message}`
-      );
-    }
+  if (!fs.existsSync(fullDatafilePath)) {
+    console.warn(`Warning: datafiles.json not found at ${fullDatafilePath}`);
+    return;
   }
 
-  fs.readdirSync(dataFolderPath).forEach((caseFolder) => {
-    const caseFolderPath = path.join(dataFolderPath, caseFolder);
-    const metadataPath = path.join(caseFolderPath, "metadata.json");
+  const datasetId = dataset.id;
+  console.log(`Processing dataset: ${datasetId}`);
 
-    if (fs.existsSync(metadataPath)) {
-      const metadataContent = fs.readFileSync(metadataPath, "utf8");
+  const compiledData = [];
 
-      try {
-        let metadata = JSON.parse(metadataContent);
-        if (metadata.length > 0) {
-          metadata[0].visible = !ignoredCaseReports.includes(metadata[0].pair);
-        }
+  // Read datafiles.json and extract "pair" values
+  const datafiles = JSON.parse(fs.readFileSync(fullDatafilePath, "utf8"));
 
-        allCases.push(...metadata);
-      } catch (error) {
-        console.error(
-          `Error parsing metadata.json in ${caseFolderPath}: ${error.message}`
-        );
-      }
+  datafiles.forEach((entry) => {
+    const pair = entry.pair;
+    const metadataFile = path.join(fullDataPath, pair, "metadata.json");
+
+    if (!fs.existsSync(metadataFile)) {
+      console.warn(`Warning: metadata.json not found at ${metadataFile}`);
+      return;
+    }
+
+    // Read and parse metadata.json
+    const metadataContent = JSON.parse(fs.readFileSync(metadataFile, "utf8"));
+
+    // Spread metadataContent into compiledData array
+    if (Array.isArray(metadataContent)) {
+      compiledData.push(...metadataContent);
+    } else {
+      console.warn(
+        `Warning: metadata.json at ${metadataFile} is not an array, skipping...`
+      );
     }
   });
 
-  const allCasesPath = path.join(outputFolderPath, "datafiles.json");
-  fs.writeFileSync(allCasesPath, JSON.stringify(allCases, null, 2));
-
-  console.log(
-    `datafiles.json has been updated with ${allCases.length} entries.`
+  // Write to compiled_datafiles.json
+  const compiledDatafilePath = path.join(
+    fullDataPath,
+    "compiled_datafiles.json"
   );
-}
+  fs.writeFileSync(
+    compiledDatafilePath,
+    JSON.stringify(compiledData, null, 2),
+    "utf8"
+  );
 
-updateAllCases();
+  console.log(`Compiled datafiles.json created at: ${compiledDatafilePath}`);
+
+  // Backup old datafiles.json before replacing it
+  const backupDatafilePath = path.join(fullDataPath, "datafiles_backup.json");
+  if (fs.existsSync(fullDatafilePath)) {
+    fs.renameSync(fullDatafilePath, backupDatafilePath);
+    console.log(`Backup created: ${backupDatafilePath}`);
+  }
+
+  // Replace datafiles.json with compiled_datafiles.json
+  fs.renameSync(compiledDatafilePath, fullDatafilePath);
+  console.log(`Replaced ${fullDatafilePath} with compiled data.`);
+});

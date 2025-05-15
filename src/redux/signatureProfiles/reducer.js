@@ -11,6 +11,10 @@ const initState = {
     sbs: { count: [], fraction: [] },
   },
   signaturesReference: { indel: {}, sbs: {} },
+  signaturesWeightsFiles: {
+    indel: "COSMIC_v3.4_ID_GRCh37.txt",
+    sbs: "COSMIC_v3.4_SBS_GRCh37.txt",
+  },
   error: null,
 };
 

@@ -4,6 +4,115 @@ import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
 
+export function dataRanges(domains, genome) {
+  function filterIntervalsByDomain(domain, intervals) {
+    let filteredIntervals = intervals.filter(
+      (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
+    );
+    let [intervalMin, intervalMax] = d3.extent(filteredIntervals, (d) => d.y);
+    let offsetPerc = 1;
+    let yDomain = [
+      intervalMin - intervalMin * offsetPerc,
+      intervalMax + intervalMax * offsetPerc,
+    ];
+    return yDomain;
+  }
+  let maxY = d3.max(
+    domains
+      .map((domain) => filterIntervalsByDomain(domain, genome.intervals))
+      .flat()
+  );
+  let yScale = d3.scaleLinear().domain([0, maxY]).range([1, 0]).nice();
+  return yScale.domain();
+}
+
+export function chunks(arr, size = 4) {
+  return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    arr.slice(i * size, i * size + size)
+  );
+}
+
+export function filterGenesByOverlap(genes) {
+  // A helper to measure text width precisely via a hidden canvas
+  function getTextWidth(text, font = "10px Arial") {
+    const canvas =
+      getTextWidth.canvas ||
+      (getTextWidth.canvas = document.createElement("canvas"));
+    const context = canvas.getContext("2d");
+    context.font = font;
+    return context.measureText(text).width;
+  }
+
+  // We’ll sort a copy of the array so we don’t mutate the original
+  // Sort by importance descending
+  const sortedGenes = [...genes].sort((a, b) => b.importance - a.importance);
+
+  // We’ll store the accepted genes here
+  const acceptedGenes = [];
+
+  // Keep track of bounding boxes by strand: {"+" : [...], "-" : [...]}
+  // Each bounding box will be { left, right } in pixel coordinates.
+  const boxesByStrand = { "+": [], "-": [] };
+
+  // Utility to check if two [left, right] intervals overlap
+  function overlaps(aLeft, aRight, bLeft, bRight) {
+    return aLeft <= bRight && bLeft <= aRight;
+  }
+
+  // Iterate over genes (most important first)
+  for (const gene of sortedGenes) {
+    const strand = gene.strand;
+    // Compute midpoint (x-coord) in the same scale as startPlace/endPlace
+    const mid = gene.textPosX;
+
+    // Measure the width of the gene's title in pixels
+    const textWidth = getTextWidth(gene.title);
+
+    // Approximate bounding box of the text
+    const left = mid - textWidth / 2;
+    const right = mid + textWidth / 2;
+
+    // Check if this bounding box overlaps with any existing box on the same strand
+    const strandBoxes = boxesByStrand[strand] || [];
+    const hasOverlap = strandBoxes.some((box) =>
+      overlaps(box.left, box.right, left, right)
+    );
+
+    // If no overlap, accept this gene and record its bounding box
+    if (!hasOverlap) {
+      acceptedGenes.push(gene);
+      strandBoxes.push({ left, right });
+      boxesByStrand[strand] = strandBoxes;
+    }
+    gene.textOverlap = hasOverlap;
+  }
+
+  // Return only the accepted genes.
+  // If you need them in the original array order, you could sort acceptedGenes
+  // by their original index. Here we just return the order determined by sorting (by importance).
+  return sortedGenes;
+}
+
+export function color2RGB(color) {
+  let red = Math.floor(color / 65536.0);
+  let green = Math.floor((color - red * 65536.0) / 256.0);
+  let blue = color - red * 65536.0 - green * 256.0;
+
+  // Make sure to clamp the values to the 0–255 range just in case
+  let r = Math.max(0, Math.min(255, red));
+  let g = Math.max(0, Math.min(255, green));
+  let b = Math.max(0, Math.min(255, blue));
+
+  // Convert each color component to a two‐character hex string
+  const toHex = (value) => {
+    const hex = value.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+
+  // Concatenate them in the form "#RRGGBB"
+  return "#" + toHex(r) + toHex(g) + toHex(b);
+}
+
 export function replaceSearchParams(location, params = {}) {
   let searchParams = new URLSearchParams(location.search);
   Object.keys(params).forEach((param) => {
@@ -424,7 +533,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 2,
-      variable: `metadata.coverage_qc.percent_reads_mapped`,
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.percent_reads_mapped : undefined",
       threshold: 0.99,
       comparison: "<",
       label: "mapped_reads_per_total_reads_less_than_99_percentage",
@@ -432,7 +541,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 2,
-      variable: "metadata.coverage_qc.greater_than_or_equal_to_30x",
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.greater_than_or_equal_to_30x : undefined",
       threshold: 0.95,
       comparison: "<",
       label:
@@ -441,7 +550,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 1,
-      variable: "metadata.coverage_qc.insert_size",
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.insert_size : undefined",
       threshold: 300,
       comparison: "<=",
       label: "median_insert_size_less_or_equal_300",
@@ -449,7 +558,7 @@ export function assessQuality(metadata) {
     },
     {
       level: 1,
-      variable: "metadata.coverage_qc.percent_duplication",
+      variable: "metadata.coverage_qc ? metadata.coverage_qc.percent_duplication : undefined",
       threshold: 0.2,
       comparison: ">=",
       label: "optical_pcr_dups_greater_or_equal_20_percentage",
@@ -692,34 +801,53 @@ export function cluster(
   ]);
 }
 
-// returns the maxium Y value within the domains array as applied to the dataPointsX
+// returns the maximum Y value within the domains array as applied to the dataPointsX
 export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
-  usePercentile = true
+  usePercentile = false,
+  p = 0.99 // 99th percentile by default
 ) {
   return domains.map(([start, end]) => {
     let left = 0,
       right = dataPointsX.length - 1;
 
-    // Binary search for the first element >= start
-    while (left <= right) {
-      const mid = Math.floor((left + right) / 2);
-      if (dataPointsX[mid] < start) left = mid + 1;
-      else right = mid - 1;
-    }
+    // // Binary search for the first element >= start
+    // while (left <= right) {
+    //   const mid = Math.floor((left + right) / 2);
+    //   if (dataPointsX[mid] < start) left = mid + 1;
+    //   else right = mid - 1;
+    // }
+
+    left = findIndexForNum(dataPointsX, start);
+    right = findIndexForNum(dataPointsX, end);
 
     // Collect values within the specified range using slice
-    const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
-    const valuesInRangeSlice = dataPointsY.slice(left, sliceEnd);
+    //const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
+    const valuesInRangeSlice = dataPointsY.slice(left, right);
 
     // Calculate either max or 99th percentile
     let resultValue;
     if (usePercentile && valuesInRangeSlice.length > 0) {
-      valuesInRangeSlice.sort((a, b) => a - b); // Sort values to calculate the percentile
-      const index = Math.floor(0.999 * valuesInRangeSlice.length);
-      resultValue = valuesInRangeSlice[index];
+      // After sorting:
+      valuesInRangeSlice.sort((a, b) => a - b);
+
+      // "Continuous" approach with optional interpolation:
+      const n = valuesInRangeSlice.length;
+      const i = (n - 1) * p; // fractional index
+      const iLow = Math.floor(i);
+      const iHigh = Math.ceil(i);
+      if (iLow === iHigh) {
+        // If i is an integer, no interpolation needed
+        resultValue = valuesInRangeSlice[iLow];
+      } else {
+        // Linear interpolation (optional, for a more precise percentile):
+        const fraction = i - iLow;
+        resultValue =
+          valuesInRangeSlice[iLow] * (1 - fraction) +
+          valuesInRangeSlice[iHigh] * fraction;
+      }
     } else {
       resultValue =
         valuesInRangeSlice.length > 0 ? d3.max(valuesInRangeSlice) : -Infinity;
@@ -727,6 +855,37 @@ export function findMaxInRanges(
 
     return resultValue;
   });
+}
+
+/**
+ * findIndexForNum(sortedArray, num):
+ *
+ * Returns the smallest index i such that sortedArray[i] >= num.
+ * That implies:
+ *    - For i > 0: sortedArray[i - 1] < num <= sortedArray[i]
+ *    - If i === 0: then sortedArray[0] is already >= num
+ *    - If i === sortedArray.length: all elements are < num
+ *
+ * sortedArray must be sorted in ascending order (no duplicates needed, but it’s typical).
+ */
+export function findIndexForNum(sortedArray, num) {
+  let left = 0;
+  let right = sortedArray.length; // note: we use right = length (one past last index)
+
+  while (left < right) {
+    const mid = (left + right) >>> 1; // floor((left+right)/2)
+    if (sortedArray[mid] < num) {
+      // num is bigger, so we must look right of mid
+      left = mid + 1;
+    } else {
+      // sortedArray[mid] >= num, so tighten to [left .. mid]
+      right = mid;
+    }
+  }
+
+  // After the loop, 'left' is the smallest index where sortedArray[left] >= num
+  // or left === sortedArray.length if all elements < num
+  return left;
 }
 
 export function magnitude(n) {
@@ -780,13 +939,6 @@ export function plotTypes() {
       scaleX: "log",
       scaleXFormat: "~s",
     },
-    hrdScore: {
-      plotType: "histogram",
-      tumor_type: "tumor_type",
-      format: ".2f",
-      scaleX: "linear",
-      scaleXFormat: "0.5f",
-    },
     tmb: {
       plotType: "histogram",
       tumor_type: "tumor_type",
@@ -804,9 +956,10 @@ export function plotTypes() {
     purity: {
       plotType: "histogram",
       tumor_type: "tumor_type",
-      format: ".2f",
+      format: ".2%",
       scaleX: "linear",
-      scaleXFormat: "0.2f",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
     ploidy: {
       plotType: "histogram",
@@ -814,6 +967,47 @@ export function plotTypes() {
       format: ".2f",
       scaleX: "linear",
       scaleXFormat: "0.2f",
+      range: [1.5, 5.5],
+    },
+    hrdScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    hrdB12Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    hrdB1Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    hrdB2Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    msiScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
     },
   };
 }
@@ -826,7 +1020,6 @@ export function reportAttributesMap() {
     normal_median_coverage: "normal_median_coverage",
     snv_count: "snvCount",
     sv_count: "svCount",
-    hrd_score: "hrdScore",
     tmb: "tmb",
     loh_fraction: "lohFraction",
     purity: "purity",
@@ -852,6 +1045,13 @@ export function reportAttributesMap() {
     sigprofiler_indel_count: "sigprofiler_indel_count",
     sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
     sigprofiler_sbs_count: "sigprofiler_sbs_count",
+    msisensor: "msisensor",
+    "msisensor.score": "msiScore",
+    "hrd.hrd_score": "hrdScore",
+    "hrd.b1_2_score": "hrdB12Score",
+    "hrd.b1_score": "hrdB1Score",
+    "hrd.b2_score": "hrdB2Score",
+    summary: "summary",
   };
 }
 
@@ -860,7 +1060,14 @@ export function mutationCatalogMetadata() {
 }
 
 export function reportFilters() {
-  return ["pair", "tumor_type", "disease", "primary_site", "inferred_sex"];
+  return [
+    "tags",
+    "pair",
+    "tumor_type",
+    "disease",
+    "primary_site",
+    "inferred_sex",
+  ];
 }
 
 export function mutationFilterTypes() {
@@ -953,6 +1160,93 @@ export function mutationsGroups() {
   };
 }
 
+export function snvplicityGroups() {
+  return [
+    { type: "somatic", mode: "altered" },
+    { type: "somatic", mode: "total" },
+    { type: "germline", mode: "altered" },
+    { type: "germline", mode: "total" },
+    { type: "hetsnps", mode: "major" },
+    { type: "hetsnps", mode: "minor" },
+  ];
+}
+
+export function binDataByCopyNumber(rawArray, binSize = 0.05) {
+  // 1) Group data by `jabba_cn`
+  const dataByCN = d3.group(rawArray, (d) => d.jabba_cn);
+
+  // 2) Figure out min & max of `mult_cn` to define domain
+  const minMult = d3.min(rawArray, (d) => d.mult_cn);
+  const maxMult = d3.max(rawArray, (d) => d.mult_cn);
+
+  // 3) Create a bin generator
+  //    - .thresholds() expects an array of bin boundaries
+  const binGenerator = d3
+    .bin()
+    .value((d) => d.mult_cn)
+    .domain([minMult, maxMult])
+    .thresholds(d3.range(minMult, maxMult, binSize));
+
+  // 4) Build the final result
+  let final = [];
+
+  // For each distinct jabba_cn group
+  for (const [jabbaCN, records] of dataByCN.entries()) {
+    // bin the records based on `mult_cn`
+    const bins = binGenerator(records);
+    // Each bin is an array. bin.x0 and bin.x1 define the bin boundaries
+
+    bins.forEach((bin, index) => {
+      // sum up the "count" for everything that fell in this bin
+      const totalCount = d3.sum(bin, (d) => d.count);
+
+      // only push if there's at least one data point in the bin
+      if (bin.length > 0) {
+        final.push({
+          index: `${index}-${jabbaCN}`,
+          jabba_cn: jabbaCN,
+          mult_cn_bin: [bin.x0, bin.x1], // an array of [lower, upper]
+          count: totalCount,
+        });
+      }
+    });
+  }
+
+  return final;
+}
+
+/**
+ * Creates a color scale for copy-number values using schemeTableau10.
+ * If there are more than 10 distinct values, we reuse the palette but
+ * increasingly darken each subsequent group of 10.
+ *
+ * @param {number[]} cnValues - Array of numeric copy-number values.
+ * @returns {d3.ScaleOrdinal<number, string>} A D3 ordinal scale mapping CN -> color.
+ */
+export function createCnColorScale(cnValues) {
+  // 1) Remove duplicates and sort
+  const distinctValues = Array.from(new Set(cnValues)).sort((a, b) => a - b);
+
+  // 2) For each distinct CN, assign a color by cycling through schemeTableau10
+  //    and darkening by 0.15 for each repeated lap.
+  const basePalette = d3.schemeTableau10; // 10-element array of base colors
+  const colorRange = distinctValues.map((cn, i) => {
+    const baseColor = d3.color(basePalette[i % 10]);
+    if (!baseColor) return basePalette[i % 10]; // Fallback if something is null
+
+    // darker(...) each time we wrap around by 10
+    const repeatCount = Math.floor(i / 10);
+    const darkerColor = baseColor.darker(repeatCount * 0.15);
+
+    return darkerColor.formatHex(); // e.g. "#abcdef"
+  });
+
+  // 3) Create the ordinal scale
+  const colorScale = d3.scaleOrdinal().domain(distinctValues).range(colorRange);
+
+  return colorScale;
+}
+
 export function coverageQCFields() {
   return [
     { variable: "percent_reads_mapped", format: ".1%" },
@@ -999,6 +1293,59 @@ export function segmentAttributes() {
     post_var: ".4f",
     var: ".4f",
     sd: ".4f",
+  };
+}
+
+export function higlassGenesFieldsArrayToObject(fields, chromoBins) {
+  /* Example Fields
+# 0: chr (chr1)
+# 1: txStart (52301201) [9]
+# 2: txEnd (52317145) [10]
+# 3: geneName (ACVRL1)   [2]
+# 4: citationCount (123) [16]
+# 5: strand (+)  [8]
+# 6: refseqId (NM_000020)
+# 7: geneId (94) [1]
+# 8: geneType (protein-coding)
+# 9: geneDesc (activin A receptor type II-like 1)
+# 10: cdsStart (52306258)
+# 11: cdsEnd (52314677)
+# 12: exonStarts (52301201,52306253,52306882,52307342,52307757,52308222,52309008,52309819,52312768,52314542,)
+# 13: exonEnds (52301479,52306319,52307134,52307554,52307857,52308369,52309284,52310017,52312899,52317145,)
+
+*/
+  let chromosome = fields[0].replaceAll("chr", "");
+  let startPoint = +fields[1];
+  let endPoint = +fields[2];
+  let cdsStartPoint = +fields[10];
+  let cdsEndPoint = +fields[11];
+  return {
+    chromosome,
+    startPoint,
+    endPoint,
+    startPlace: chromoBins[chromosome].startPlace + startPoint - 1,
+    endPlace: chromoBins[chromosome].startPlace + endPoint - 1,
+    fillColor: chromoBins[chromosome].color,
+    title: fields[3],
+    importance: +fields[4],
+    strand: fields[5],
+    id: fields[6],
+    internalId: fields[7],
+    bioType: fields[8],
+    description: fields[9],
+    cdsStartPoint,
+    cdsEndPoint,
+    cdsStartPlace: chromoBins[chromosome].startPlace + cdsStartPoint - 1,
+    cdsEndPlace: chromoBins[chromosome].startPlace + cdsEndPoint - 1,
+    exons: fields[12].split(",").map((d, i) => {
+      return {
+        startPoint: +d,
+        endPoint: +fields[13].split(",")[i],
+        startPlace: chromoBins[chromosome].startPlace + +d - 1,
+        endPlace:
+          chromoBins[chromosome].startPlace + +fields[13].split(",")[i] - 1,
+      };
+    }),
   };
 }
 
@@ -1192,7 +1539,7 @@ export function getPopulationMetrics(
     plot.q1 = d3.quantile(plot.data, 0.25);
     plot.q3 = d3.quantile(plot.data, 0.75);
     plot.q99 = d3.quantile(plot.data, 0.99);
-    plot.range = [
+    plot.range = plotTypes()[d].range || [
       d3.max([d3.min(plot.allData), 0.01]),
       d3.quantile(plot.allData, 0.99),
     ];
@@ -1284,6 +1631,29 @@ export function calculateOptimalBins(data) {
   const k = 1 + Math.log2(n) + Math.log2(1 + Math.abs(skewness));
 
   return Math.ceil(k);
+}
+
+export function parseCosmicSignatureWeightMatrix(matrixText) {
+  const lines = matrixText.trim().split("\n");
+  const headers = lines[0].split(/\s+/).slice(1);
+  const matrix = {};
+
+  headers.forEach((sig) => {
+    if (sig !== "") {
+      matrix[sig] = {};
+    }
+  });
+
+  lines.slice(1).forEach((line) => {
+    const [tnc, ...weights] = line.split(/\s+/);
+    headers.forEach((sig, index) => {
+      if (sig !== "") {
+        matrix[sig][tnc] = parseFloat(weights[index]);
+      }
+    });
+  });
+
+  return matrix;
 }
 
 export function Legend(

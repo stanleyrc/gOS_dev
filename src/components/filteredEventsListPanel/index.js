@@ -42,6 +42,12 @@ const eventColumns = {
 class FilteredEventsListPanel extends Component {
   state = {
     eventType: "all",
+    tierFilters: [1, 2], // start with tiers 1 & 2 checked
+    typeFilters: [],
+    roleFilters: [],
+    effectFilters: [],
+    variantFilters: [],
+    geneFilters: [],
   };
 
   handleExportNotes = () => {
@@ -74,6 +80,19 @@ class FilteredEventsListPanel extends Component {
     this.setState({ eventType });
   };
 
+  handleTableChange = (pagination, filters, sorter) => {
+    // When the user changes filters (e.g. checks tier 3),
+    // update tierFilters in the state:
+    this.setState({
+      geneFilters: filters.gene || [],
+      tierFilters: filters.tier || [],
+      typeFilters: filters.type || [],
+      roleFilters: filters.role || [],
+      effectFilters: filters.effect || [],
+      variantFilters: filters.variant || [],
+    });
+  };
+
   render() {
     const {
       t,
@@ -96,7 +115,15 @@ class FilteredEventsListPanel extends Component {
 
     let open = selectedFilteredEvent?.id;
 
-    let { eventType } = this.state;
+    let {
+      eventType,
+      tierFilters,
+      typeFilters,
+      geneFilters,
+      roleFilters,
+      effectFilters,
+      variantFilters,
+    } = this.state;
 
     let recordsHash = d3.group(
       filteredEvents.filter((d) => d.tier && +d.tier < 3),
@@ -120,6 +147,7 @@ class FilteredEventsListPanel extends Component {
           }),
         filterMultiple: true,
         onFilter: (value, record) => record.gene?.startsWith(value),
+        filteredValue: geneFilters, // controlled by the component
         filterSearch: true,
         sorter: {
           compare: (a, b) => {
@@ -155,7 +183,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.role?.indexOf(value) === 0,
+        onFilter: (value, record) => record.role === value,
+        filteredValue: roleFilters, // controlled by the component
         sorter: {
           compare: (a, b) => {
             if (a.role == null) return 1;
@@ -192,7 +221,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.variant?.indexOf(value) === 0,
+        onFilter: (value, record) => record.variant === value,
+        filteredValue: variantFilters, // controlled by the component
         render: (_, record) =>
           record.variant != null ? (
             record.variant
@@ -220,7 +250,8 @@ class FilteredEventsListPanel extends Component {
           };
         }),
         filterMultiple: true,
-        onFilter: (value, record) => record.type?.indexOf(value) === 0,
+        onFilter: (value, record) => record.type === value,
+        filteredValue: typeFilters, // controlled by the component
         render: (_, record) =>
           record.type != null ? (
             record.type
@@ -243,7 +274,8 @@ class FilteredEventsListPanel extends Component {
             };
           }),
         filterMultiple: true,
-        onFilter: (value, record) => record.effect?.indexOf(value) === 0,
+        onFilter: (value, record) => record.effect === value,
+        filteredValue: effectFilters, // controlled by the component
         sorter: {
           compare: (a, b) => {
             if (a.effect == null) return 1;
@@ -267,8 +299,8 @@ class FilteredEventsListPanel extends Component {
             <Tooltip
               title={
                 <Space direction="vertical">
-                  {[1, 2, 3].map((d) => (
-                    <Space>
+                  {[1, 2, 3].map((d, i) => (
+                    <Space key={i}>
                       <Avatar
                         size="small"
                         style={{
@@ -300,11 +332,12 @@ class FilteredEventsListPanel extends Component {
         filters: [...new Set(records.map((d) => d.tier))].map((d) => {
           return {
             text: d,
-            value: d,
+            value: +d,
           };
         }),
         filterMultiple: true,
-        onFilter: (value, record) => record.tier?.indexOf(value) === 0,
+        onFilter: (value, record) => +record.tier === +value,
+        filteredValue: tierFilters, // controlled by the component
         render: (_, record) =>
           record.tier != null ? (
             <Tooltip
@@ -508,6 +541,7 @@ class FilteredEventsListPanel extends Component {
               </Button>
               <Col className="gutter-row table-container" span={24}>
                 <Segmented
+                  size="small"
                   options={Object.keys(eventColumns).map((d) => {
                     return {
                       label: (
@@ -552,6 +586,9 @@ class FilteredEventsListPanel extends Component {
                       dataSource={records}
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
+                      onChange={this.handleTableChange}
+                      scroll={{ x: "max-content", y: 500 }}
+                      tableLayout="fixed"
                     />
                     {selectedFilteredEvent && viewMode === "tracks" && (
                       <TracksModal
@@ -595,19 +632,19 @@ class FilteredEventsListPanel extends Component {
                             "components.tracks-modal.coverage-plot"
                           ),
                           coverageYAxisTitle: t(
-                            "components.tracks-modal.coverage-y-axis-title"
+                            "components.tracks-modal.coverage-copy-number"
                           ),
                           coverageYAxis2Title: t(
-                            "components.tracks-modal.coverage-y-axis2-title"
+                            "components.tracks-modal.coverage-count"
                           ),
                           hetsnpPlotTitle: t(
                             "components.tracks-modal.hetsnp-plot"
                           ),
                           hetsnpPlotYAxisTitle: t(
-                            "components.tracks-modal.hetsnp-plot-y-axis-title"
+                            "components.tracks-modal.hetsnp-copy-number"
                           ),
                           hetsnpPlotYAxis2Title: t(
-                            "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                            "components.tracks-modal.hetsnp-count"
                           ),
                           mutationsPlotTitle: t(
                             "components.tracks-modal.mutations-plot"

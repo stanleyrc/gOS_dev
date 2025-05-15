@@ -5,7 +5,11 @@ import ContainerDimensions from "react-container-dimensions";
 import handleViewport from "react-in-viewport";
 import { Card, Space, Tooltip, Button, message, Row, Col, Select } from "antd";
 import * as d3 from "d3";
-import { AiOutlineDownload } from "react-icons/ai";
+import {
+  AiOutlineDownload,
+  AiOutlineDown,
+  AiOutlineRight,
+} from "react-icons/ai";
 import {
   downloadCanvasAsPng,
   merge,
@@ -28,6 +32,7 @@ const margins = {
 class GenesPanel extends Component {
   container = null;
   genesStructure = null;
+  state = { visible: false };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -72,15 +77,18 @@ class GenesPanel extends Component {
     }
   };
 
+  toggleVisibility = (visible) => {
+    this.setState({ visible });
+  };
+
   render() {
-    const { t, visible, genes, loading, domains, genesOptionsList } =
-      this.props;
-    if (!visible) return null;
+    const { t, genes, loading, domains, genesOptionsList } = this.props;
+    let { visible } = this.state;
     return (
       <Wrapper>
         {
           <Card
-            loading={loading}
+            loading={visible && loading}
             size="small"
             title={
               <Space>
@@ -114,6 +122,24 @@ class GenesPanel extends Component {
                       .localeCompare((optionB?.label ?? "").toLowerCase())
                   }
                 />
+                <Tooltip
+                  title={
+                    visible ? t("components.collapse") : t("components.expand")
+                  }
+                >
+                  <Button
+                    type="text"
+                    icon={
+                      visible ? (
+                        <AiOutlineDown style={{ marginTop: 5 }} />
+                      ) : (
+                        <AiOutlineRight style={{ marginTop: 5 }} />
+                      )
+                    }
+                    size="small"
+                    onClick={() => this.toggleVisibility(!visible)}
+                  />
+                </Tooltip>
                 <Tooltip title={t("components.download-as-png-tooltip")}>
                   <Button
                     type="default"
@@ -126,7 +152,7 @@ class GenesPanel extends Component {
               </Space>
             }
           >
-            {
+            {visible && (
               <div
                 className="ant-wrapper"
                 ref={(elem) => (this.container = elem)}
@@ -152,7 +178,7 @@ class GenesPanel extends Component {
                   }}
                 </ContainerDimensions>
               </div>
-            }
+            )}
           </Card>
         }
       </Wrapper>

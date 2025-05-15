@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import debounce from "lodash.debounce";
 import { findMaxInRanges } from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
@@ -14,7 +15,7 @@ const { updateHoveredLocation } = appActions;
 const { updateDomains } = settingsActions;
 
 const margins = {
-  gapX: 24,
+  gapX: 50,
   gapY: 24,
 };
 
@@ -22,20 +23,15 @@ class ScatterPlot extends Component {
   regl = null;
   container = null;
   plotContainer = null;
-  dataPointsX = null;
-  dataPointsY = null;
-  maxDataPointsY = null;
   zoom = null;
-  maxYValues = null;
+  extentDataPointsY1 = null;
+  extentDataPointsY2 = null;
+  maxY2Values = null;
 
   constructor(props) {
     super(props);
-
-    let { data } = props;
-    this.dataPointsY = data.getChild("y").toArray();
-    this.maxDataPointsY = d3.max(this.dataPointsY);
-    this.dataPointsX = data.getChild("x").toArray();
-    this.dataPointsColor = data.getChild("color").toArray();
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 1);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   componentDidMount() {
@@ -58,7 +54,7 @@ class ScatterPlot extends Component {
     this.regl.on("restore", () => {
       console.log("webgl context restored");
       this.points = new Points(this.regl, margins.gapX, 0);
-      this.updateStage();
+      this.updateStage(true);
     });
 
     this.points = new Points(this.regl, margins.gapX, 0);
@@ -90,7 +86,20 @@ class ScatterPlot extends Component {
         );
     });
 
-    this.updateStage();
+    this.updateStage(true);
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      nextProps.dataPointsX.length !== this.props.dataPointsX.length ||
+      nextProps.domains.toString() !== this.props.domains.toString() ||
+      nextProps.width !== this.props.width ||
+      nextProps.height !== this.props.height ||
+      nextProps.hoveredLocation !== this.props.hoveredLocation ||
+      nextProps.hoveredLocationPanelIndex !==
+        this.props.hoveredLocationPanelIndex ||
+      nextProps.commonRangeY !== this.props.commonRangeY
+    );
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -127,14 +136,15 @@ class ScatterPlot extends Component {
             .translate(-s[0], 0)
         );
     });
-    if (this.panels[hoveredLocationPanelIndex] && hoveredLocation) {
+    if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.plotContainer)
         .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
         .classed("hidden", !hoveredLocation)
         .attr(
           "transform",
           `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation),
+            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+              -10000,
             0,
           ]})`
         );
@@ -142,7 +152,8 @@ class ScatterPlot extends Component {
         .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
         .attr(
           "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation)
+          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
+            -10000
         )
         .text(
           Object.values(chromoBins)
@@ -165,7 +176,12 @@ class ScatterPlot extends Component {
       this.componentWillUnmount();
       this.componentDidMount();
     } else {
-      this.updateStage();
+      this.updateStage(
+        prevProps.dataPointsX.length !== this.props.dataPointsX.length ||
+          (prevProps.commonRangeY === null &&
+            this.props.commonRangeY !== null) ||
+          (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
+      );
     }
   }
 
@@ -182,19 +198,35 @@ class ScatterPlot extends Component {
     }
   }
 
-  updateStage() {
-    let { domains, width, height } = this.props;
-    let stageWidth = width - 2 * margins.gapX;
-    let stageHeight = height - 3 * margins.gapY;
+  updateStage(reloadData = false) {
+    const {
+      domains,
+      width,
+      height,
+      dataPointsY1,
+      dataPointsY2,
+      dataPointsX,
+      dataPointsColor,
+      commonRangeY,
+    } = this.props;
 
-    this.points.load(
+    const stageWidth = width - 2 * margins.gapX;
+    const stageHeight = height - 3 * margins.gapY;
+
+    if (reloadData) {
+      console.log("Reloading data");
+      this.points.setData(
+        dataPointsX,
+        commonRangeY ? dataPointsY1 : dataPointsY2,
+        dataPointsColor
+      );
+    }
+
+    this.points.updateDomains(
       stageWidth,
       stageHeight,
-      this.dataPointsX,
-      this.dataPointsY,
-      this.dataPointsColor,
       domains,
-      this.maxYValues
+      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values
     );
     this.points.render();
   }
@@ -242,7 +274,7 @@ class ScatterPlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.props.updateDomains(newDomains);
+        this.debouncedUpdateDomains(newDomains);
       });
     }
   }
@@ -269,10 +301,12 @@ class ScatterPlot extends Component {
       domains,
       chromoBins,
       defaultDomain,
-      scaleY2,
       yAxisTitle,
       yAxis2Title,
-      flipAxesY,
+      dataPointsY1,
+      dataPointsY2,
+      dataPointsX,
+      commonRangeY,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -281,11 +315,11 @@ class ScatterPlot extends Component {
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.panels = [];
-    this.maxYValues = findMaxInRanges(
-      domains,
-      this.dataPointsX,
-      this.dataPointsY
-    );
+    this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+    this.extentDataPointsY1 =
+      this.extentDataPointsY1 || d3.extent(dataPointsY1);
+    this.extentDataPointsY2 =
+      this.extentDataPointsY2 || d3.extent(dataPointsY2);
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);
@@ -308,16 +342,39 @@ class ScatterPlot extends Component {
         .domain(defaultDomain)
         .range([0, panelWidth]);
 
-      let yExtent = [0, this.maxYValues[index]];
+      let yScale1, yScale2;
+      if (commonRangeY) {
+        d3.scaleLinear().domain(commonRangeY).ticks();
+        let yExtent1 = commonRangeY;
+        let yExtent2 = yExtent1.map((d) =>
+          d3
+            .scaleLinear()
+            .domain(this.extentDataPointsY1)
+            .range(this.extentDataPointsY2)(d)
+        );
 
-      let yScale = d3.scaleLinear().domain(yExtent).range([panelHeight, 0]);
+        yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
+        yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+      } else {
+        let yExtent2 = [0, this.maxY2Values[index]];
+        let yExtent1 = yExtent2.map((d) =>
+          d3
+            .scaleLinear()
+            .domain(this.extentDataPointsY2)
+            .range(this.extentDataPointsY1)(d)
+        );
+
+        yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
+        yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+      }
 
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
 
       this.panels.push({
         index,
         xScale,
-        yScale,
+        yScale1,
+        yScale2,
         zoom,
         panelWidth,
         panelHeight,
@@ -340,16 +397,16 @@ class ScatterPlot extends Component {
         >
           <text
             className="y-axis-title"
-            transform={`translate(${[0, margins.gapY / 3]})`}
+            transform={`translate(${[margins.gapX / 2, margins.gapY / 3]})`}
           >
-            {flipAxesY ? yAxis2Title : yAxisTitle}
+            {yAxisTitle}
           </text>
           <text
             className="y-axis-title"
             transform={`translate(${[width, margins.gapY / 3]})`}
             textAnchor="end"
           >
-            {flipAxesY ? yAxisTitle : yAxis2Title}
+            {yAxis2Title}
           </text>
           <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
             {this.panels.map((panel, i) => (
@@ -361,12 +418,11 @@ class ScatterPlot extends Component {
                 <Grid
                   gap={0}
                   scaleX={panel.xScale}
-                  scaleY={panel.yScale}
-                  scaleY2={scaleY2}
+                  scaleY={panel.yScale1}
+                  scaleY2={panel.yScale2}
                   axisWidth={panelWidth}
                   axisHeight={panelHeight}
                   chromoBins={chromoBins}
-                  flipAxesY={flipAxesY}
                 />
                 <line
                   className="hovered-location-line hidden"
@@ -392,7 +448,7 @@ class ScatterPlot extends Component {
                   style={{
                     stroke: "steelblue",
                     fill: "transparent",
-                    strokeWidth: 1,
+                    strokeWidth: 0,
                     opacity: 0.375,
                     pointerEvents: "all",
                   }}
@@ -412,8 +468,7 @@ ScatterPlot.propTypes = {
   chromoBins: PropTypes.object,
 };
 ScatterPlot.defaultProps = {
-  scaleY2: { show: false, slope: 1, intercept: 0 },
-  flipAxesY: false,
+  commonRangeY: null,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),

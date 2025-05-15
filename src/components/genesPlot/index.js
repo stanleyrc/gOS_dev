@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import debounce from "lodash.debounce";
 import Wrapper from "./index.style";
 import { humanize, measureText } from "../../helpers/utility";
 import Plot from "./plot";
@@ -11,7 +12,7 @@ import settingsActions from "../../redux/settings/actions";
 const { updateDomains } = settingsActions;
 
 const margins = {
-  gapX: 24,
+  gapX: 50,
   gapY: 0,
   bGap: 0,
   rectangleHeight: 10,
@@ -35,6 +36,8 @@ class GenesPlot extends Component {
         text: "",
       },
     };
+    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
+    this.debouncedUpdateDomains = this.props.updateDomains;
   }
 
   componentDidMount() {
@@ -62,6 +65,14 @@ class GenesPlot extends Component {
 
     this.plot = new Plot(this.regl, margins.gapX, 0);
     this.updateStage();
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      nextProps.domains.toString() !== this.props.domains.toString() ||
+      nextProps.width !== this.props.width ||
+      nextProps.height !== this.props.height
+    );
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -210,7 +221,7 @@ class GenesPlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.props.updateDomains(newDomains);
+        this.debouncedUpdateDomains(newDomains);
       });
     }
   }
@@ -544,7 +555,7 @@ class GenesPlot extends Component {
                   style={{
                     stroke: "steelblue",
                     fill: "transparent",
-                    strokeWidth: 1,
+                    strokeWidth: 0,
                     opacity: 0.375,
                     pointerEvents: "auto",
                   }}

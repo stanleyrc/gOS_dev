@@ -1,0 +1,11 @@
+const actions = {
+  FETCH_CYTOBANDS_REQUEST: "FETCH_CYTOBANDS_REQUEST",
+  FETCH_CYTOBANDS_SUCCESS: "FETCH_CYTOBANDS_SUCCESS",
+  FETCH_CYTOBANDS_FAILED: "FETCH_CYTOBANDS_FAILED",
+
+  fetchCytobands: () => ({
+    type: actions.FETCH_CYTOBANDS_REQUEST,
+  }),
+};
+
+export default actions;
