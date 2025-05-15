@@ -13,6 +13,7 @@ scripts/flow/*/.flowconfig
 .grunt
 _SpecRunner.html
 __benchmarks__
+build*/
 build/
 build2/
 build_backup/
@@ -32,6 +33,8 @@ chrome-user-data
 *.swp
 *.swo
 *.sqlite3
+.aider*
+
 
 packages/react-devtools-core/dist
 packages/react-devtools-extensions/chrome/build

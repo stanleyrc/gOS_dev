@@ -143,7 +143,7 @@ const GoslingChat = ({ onClose, reports, dataset, onSearch }) => {
       className="gosling-chat-card"
       title={
         <div className="chat-header">
-          <span>Chat with gOSling</span>
+          <span>Chat with gOShawk</span>
           <CloseOutlined className="close-button" onClick={onClose} />
         </div>
       }
