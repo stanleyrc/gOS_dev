@@ -15,6 +15,7 @@ export function createProgressChannel(config) {
     axios
       .get(config.url, {
         cancelToken: config.cancelToken,
+        responseType: config.responseType,
         onDownloadProgress,
       })
       .then((response) => {

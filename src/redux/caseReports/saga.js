@@ -1,6 +1,15 @@
-import { all, takeEvery, put, call, select } from "redux-saga/effects";
+import {
+  all,
+  takeEvery,
+  put,
+  call,
+  select,
+  take,
+  cancel,
+} from "redux-saga/effects";
 import { getCurrentState } from "./selectors";
 import axios from "axios";
+import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
   plotTypes,
@@ -9,11 +18,139 @@ import {
   reportAttributesMap,
   defaultSearchFilters,
   orderListViewFilters,
+  datafilesArrowTableToJson,
 } from "../../helpers/utility";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
+import { createProgressChannel } from "../../helpers/progressChannel";
+import { getCancelToken } from "../../helpers/cancelToken";
 
-function* fetchCaseReports() {
+function* fetchCaseReports(action) {
+  const currentState = yield select(getCurrentState);
+  let { dataset } = currentState.Settings;
+
+  // Set up the channel configuration
+  const channelConfig = {
+    url: dataset.datafilesPath,
+    cancelToken: getCancelToken(),
+    responseType: dataset.datafilesPath.endsWith(".arrow")
+      ? "arraybuffer" // Ensure the response is in binary format
+      : "json",
+  };
+  // Create the progress channel
+  const progressChannel = yield call(createProgressChannel, channelConfig);
+
+  try {
+    while (true) {
+      const result = yield take(progressChannel);
+
+      if (result.response) {
+        // The request completed successfully
+        let datafiles = result.response.data;
+        if (dataset.datafilesPath.endsWith(".arrow")) {
+          try {
+            const arrowBuffer = new Uint8Array(result.response.data);
+            const table = yield call(tableFromIPC, arrowBuffer);
+            datafiles = datafilesArrowTableToJson(table);
+          } catch (err) {
+            console.error("Failed to parse Arrow data:", err);
+            yield put({
+              type: actions.FETCH_CASE_REPORTS_FAILED,
+              error: err,
+            });
+            return;
+          }
+        }
+
+        datafiles.forEach(
+          (d) =>
+            (d.tags =
+              d.summary
+                ?.split("\n")
+                .map((e) => e.trim())
+                .filter((e) => e.length > 0) || [])
+        );
+
+        let reportsFilters = [];
+
+        // Iterate through each filter
+        reportFilters().forEach((filter) => {
+          // Extract distinct values for the current filter
+          var distinctValues = [
+            ...new Set(datafiles.map((record) => record[filter]).flat()),
+          ].sort((a, b) => d3.ascending(a, b));
+
+          // Add the filter information to the reportsFilters array
+          reportsFilters.push({
+            filter: filter,
+            records: [...distinctValues],
+          });
+        });
+
+        let populations = {};
+        let flippedMap = flip(reportAttributesMap());
+        Object.keys(plotTypes()).forEach((d, i) => {
+          populations[d] = datafiles.map((e) => {
+            try {
+              return {
+                pair: e.pair,
+                value: eval(`e.${flippedMap[d]}`),
+                tumor_type: e.tumor_type,
+              };
+            } catch (error) {
+              return {
+                pair: e.pair,
+                value: null,
+                tumor_type: e.tumor_type,
+              };
+            }
+          });
+        });
+
+        let { page, per_page } = defaultSearchFilters();
+        let records = datafiles
+          .filter((d) => d.visible !== false)
+          .sort((a, b) => d3.ascending(a.pair, b.pair));
+
+        yield put({
+          type: actions.FETCH_CASE_REPORTS_SUCCESS,
+          datafiles,
+          populations,
+          reportsFilters,
+          reports: records.slice((page - 1) * per_page, page * per_page),
+          totalReports: records.length,
+        });
+      } else if (result.error) {
+        // The request failed
+        console.error(result.error);
+        yield put({
+          type: actions.FETCH_CASE_REPORTS_FAILED,
+          error: result.error,
+        });
+      } else {
+        // Intermediate progress updates
+        yield put({
+          type: actions.FETCH_CASE_REPORTS_REQUEST_LOADING,
+          loadingPercentage: result,
+        });
+      }
+    }
+  } catch (error) {
+    console.log(error);
+    if (axios.isCancel(error)) {
+      console.log(`fetch ${channelConfig.url} request canceled`, error.message);
+    } else {
+      yield put({
+        type: actions.FETCH_CASE_REPORTS_FAILED,
+        error,
+      });
+    }
+  } finally {
+    progressChannel.close();
+  }
+}
+
+function* fetchCaseReports1() {
   try {
     const currentState = yield select(getCurrentState);
     let { dataset } = currentState.Settings;

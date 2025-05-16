@@ -2,6 +2,7 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  loadingPercentage: null,
   datafiles: [],
   populations: {},
   reportsFilters: [],
@@ -16,15 +17,23 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_CASE_REPORTS_REQUEST:
       return {
         ...state,
+        loadingPercentage: 0,
         error: null,
         datafiles: [],
         populations: {},
         reportsFilters: {},
         loading: true,
       };
+    case actions.FETCH_CASE_REPORTS_REQUEST_LOADING:
+      return {
+        ...state,
+        loadingPercentage: action.loadingPercentage,
+        loading: true,
+      };
     case actions.FETCH_CASE_REPORTS_SUCCESS:
       return {
         ...state,
+        loadingPercentage: 100,
         datafiles: action.datafiles,
         populations: action.populations,
         reportsFilters: action.reportsFilters,
@@ -35,6 +44,7 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_CASE_REPORTS_FAILED:
       return {
         ...state,
+        loadingPercentage: null,
         error: action.error,
         loading: false,
       };

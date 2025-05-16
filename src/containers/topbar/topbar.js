@@ -3,7 +3,7 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { withTranslation } from "react-i18next";
-import { Layout, Space, Spin, Select, Avatar } from "antd";
+import { Layout, Space, Spin, Select, Avatar, Progress } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
 import { siteConfig } from "../../settings";
@@ -31,6 +31,7 @@ class Topbar extends Component {
       datasets,
       dataset,
       loadingDatasets,
+      loadingPercentage,
     } = this.props;
     return (
       <TopbarWrapper>
@@ -127,13 +128,20 @@ class Topbar extends Component {
                 <div className="ant-pro-top-nav-header-main-right-container">
                   <Space>
                     <div className="ant-pro-loader-container">
-                      {loading && (
-                        <Spin
-                          indicator={
-                            <LoadingOutlined style={{ fontSize: 16 }} spin />
-                          }
-                        />
-                      )}
+                      {loading &&
+                        (loadingPercentage !== Infinity ? (
+                          <Progress
+                            type="circle"
+                            percent={loadingPercentage}
+                            size={20}
+                          />
+                        ) : (
+                          <Spin
+                            indicator={
+                              <LoadingOutlined style={{ fontSize: 16 }} spin />
+                            }
+                          />
+                        ))}
                     </div>
                   </Space>
                 </div>
@@ -159,6 +167,7 @@ const mapStateToProps = (state) => ({
   datasets: state.Datasets.records,
   report: state.CaseReports.report,
   reports: state.CaseReports.reports,
+  loadingPercentage: state.CaseReports.loadingPercentage,
   totalReports: state.CaseReports.totalReports,
   searchText: state.App.searchText,
   searchFilters: state.App.searchFilters,

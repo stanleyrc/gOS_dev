@@ -3,7 +3,8 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { ScrollToHOC } from "react-scroll-to";
-import { Skeleton } from "antd";
+import { Spin, Progress } from "antd";
+import { LoadingOutlined } from "@ant-design/icons";
 import Wrapper from "./index.style";
 import ListView from "../../containers/listView";
 import caseReportsActions from "../../redux/caseReports/actions";
@@ -11,6 +12,11 @@ import settingsActions from "../../redux/settings/actions";
 
 const { searchCaseReports } = caseReportsActions;
 const { updateCaseReport } = settingsActions;
+
+const twoColors = {
+  "0%": "#108ee9",
+  "100%": "#87d068",
+};
 
 class LandingPage extends Component {
   handleCardClick = (event, report) => {
@@ -31,6 +37,7 @@ class LandingPage extends Component {
   render() {
     const {
       loading,
+      loadingPercentage,
       reports,
       totalReports,
       reportsFilters,
@@ -39,7 +46,22 @@ class LandingPage extends Component {
     } = this.props;
     return (
       <Wrapper>
-        <Skeleton active loading={loading}>
+        {loading && (
+          <div className="loading-container">
+            {loadingPercentage !== Infinity ? (
+              <Progress
+                type="circle"
+                percent={loadingPercentage}
+                strokeColor={twoColors}
+              />
+            ) : (
+              <Spin
+                indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />}
+              />
+            )}
+          </div>
+        )}
+        {!loading && (
           <ListView
             records={reports}
             handleCardClick={this.handleCardClick}
@@ -48,7 +70,7 @@ class LandingPage extends Component {
             searchFilters={searchFilters}
             totalRecords={totalReports}
           />
-        </Skeleton>
+        )}
       </Wrapper>
     );
   }
@@ -61,6 +83,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,
+  loadingPercentage: state.CaseReports.loadingPercentage,
   reports: state.CaseReports.reports,
   reportsFilters: state.CaseReports.reportsFilters,
   searchFilters: state.CaseReports.searchFilters,
