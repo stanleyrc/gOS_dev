@@ -32,7 +32,6 @@ function* fetchCaseReports(action) {
   // Set up the channel configuration
   const channelConfig = {
     url: dataset.datafilesPath,
-    cancelToken: getCancelToken(),
     responseType: dataset.datafilesPath.endsWith(".arrow")
       ? "arraybuffer" // Ensure the response is in binary format
       : "json",
