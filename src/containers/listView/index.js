@@ -14,13 +14,19 @@ import {
   Empty,
   Pagination,
   Typography,
+  Cascader,
+  Flex,
+  Divider,
 } from "antd";
 import * as d3 from "d3";
 import {
   snakeCaseToHumanReadable,
   orderListViewFilters,
 } from "../../helpers/utility";
+import { generateCascaderOptions } from "../../helpers/filters";
 import Wrapper from "./index.style";
+
+const { SHOW_CHILD } = Cascader;
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -74,6 +80,15 @@ class ListView extends Component {
     this.props.onSearch(searchFilters);
   };
 
+  tagsDisplayRender = (labels, selectedOptions = []) =>
+    labels.map((label, i) => {
+      const option = selectedOptions[i];
+      if (i === labels.length - 1) {
+        return <span key={option.value}>{label}</span>;
+      }
+      return <span key={option.value}>{label}: </span>;
+    });
+
   render() {
     const {
       t,
@@ -96,7 +111,7 @@ class ListView extends Component {
               <Col className="gutter-row" span={24}>
                 <Card className="filters-box">
                   <Space size="middle">
-                    {filters.map((d,i) => (
+                    {filters.map((d, i) => (
                       <Space key={i} size={10}>
                         <Form.Item
                           key={`containers.list-view.filters.${d.filter}`}
@@ -108,24 +123,39 @@ class ListView extends Component {
                             },
                           ]}
                         >
-                          <Select
-                            placeholder={t(
-                              "containers.list-view.filters.placeholder"
-                            )}
-                            mode="multiple"
-                            allowClear
-                            style={{ width: 200 }}
-                            maxTagCount="responsive"
-                            maxTagTextLength={5}
-                          >
-                            {d.records.map((e, i) => (
-                              <Option key={i} value={e}>
-                                {e
-                                  ? snakeCaseToHumanReadable(e)
-                                  : t("containers.list-view.filters.empty")}
-                              </Option>
-                            ))}
-                          </Select>
+                          {d.filter === "tags" ? (
+                            <Cascader
+                              placeholder={t(
+                                "containers.list-view.filters.placeholder"
+                              )}
+                              style={{ width: 200 }}
+                              options={generateCascaderOptions(d.records)}
+                              displayRender={this.tagsDisplayRender}
+                              multiple
+                              maxTagCount="responsive"
+                              showCheckedStrategy={SHOW_CHILD}
+                              allowClear
+                            />
+                          ) : (
+                            <Select
+                              placeholder={t(
+                                "containers.list-view.filters.placeholder"
+                              )}
+                              mode="multiple"
+                              allowClear
+                              style={{ width: 200 }}
+                              maxTagCount="responsive"
+                              maxTagTextLength={5}
+                            >
+                              {d.records.map((e, i) => (
+                                <Option key={i} value={e}>
+                                  {e
+                                    ? snakeCaseToHumanReadable(e)
+                                    : t("containers.list-view.filters.empty")}
+                                </Option>
+                              ))}
+                            </Select>
+                          )}
                         </Form.Item>
                       </Space>
                     ))}
@@ -256,25 +286,39 @@ class ListView extends Component {
                   >
                     <Meta
                       title={
-                        <Space>
-                          {d.disease}
+                        d.disease &&
+                        d.primary_site && (
                           <Space>
-                            {d.primary_site && (
-                              <Text type="secondary">
-                                {snakeCaseToHumanReadable(d.primary_site)}
-                              </Text>
-                            )}
+                            {d.disease}
+                            <Space>
+                              {d.primary_site && (
+                                <Text type="secondary">
+                                  {snakeCaseToHumanReadable(d.primary_site)}
+                                </Text>
+                              )}
+                            </Space>
                           </Space>
-                        </Space>
+                        )
                       }
                       description={
                         <Space
                           direction="vertical"
-                          size="small"
+                          size={0}
                           style={{ display: "flex" }}
                         >
-                          {d.summary?.split("\n")?.map((d, i) => (
-                            <Text key={i} type="secondary">{d}</Text>
+                          {generateCascaderOptions(d.tags).map((tag, i) => (
+                            <div key={tag.value}>
+                              <Divider plain orientation="left" size="small">
+                                {tag.label}
+                              </Divider>
+                              <Flex gap="2px" wrap="wrap">
+                                {tag.children.map((child) => (
+                                  <Text key={child.value} code>
+                                    {child.label}
+                                  </Text>
+                                ))}
+                              </Flex>
+                            </div>
                           ))}
                         </Space>
                       }

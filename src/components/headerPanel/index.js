@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { PageHeader } from '@ant-design/pro-components';
+import { PageHeader } from "@ant-design/pro-components";
 import {
   Space,
   Tag,
@@ -11,6 +11,7 @@ import {
   Popover,
   Typography,
   Divider,
+  Flex,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -29,6 +30,7 @@ import {
   hrdDividers,
   msiLabels,
 } from "../../helpers/metadata";
+import { generateCascaderOptions } from "../../helpers/filters";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -52,8 +54,17 @@ class HeaderPanel extends Component {
       qualityReportName,
     } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair, sex, disease, primary_site, summary } =
-      metadata;
+    const {
+      tumor,
+      purity,
+      ploidy,
+      pair,
+      sex,
+      disease,
+      primary_site,
+      summary,
+      tags,
+    } = metadata;
 
     let colorMarkers = { ...msiLabels };
 
@@ -243,8 +254,11 @@ class HeaderPanel extends Component {
                   }
                   content={
                     <Space direction="vertical">
-                      {qualityStatus.clauses.map((d,i) => (
-                        <Text key={i} type={qualityStatusTypographyClasses()[d.level]}>
+                      {qualityStatus.clauses.map((d, i) => (
+                        <Text
+                          key={i}
+                          type={qualityStatusTypographyClasses()[d.level]}
+                        >
                           <span
                             dangerouslySetInnerHTML={{
                               __html: t(
@@ -299,9 +313,20 @@ class HeaderPanel extends Component {
                           {disease}
                           {primary_site}
                         </Space>
-                        <Space direction="horizontal" size="small">
-                          {summary?.split("\n")?.map((d,i) => (
-                            <Tag key={i}>{d}</Tag>
+                        <Space direction="vertical" size={5}>
+                          {generateCascaderOptions(tags).map((tag, i) => (
+                            <Space key={tag.value}>
+                              <Space direction="horizontal" size="small" wrap>
+                                <Text type="secondary" class="tag-header">
+                                  {tag.label}:{" "}
+                                </Text>
+                                {tag.children.map((child) => (
+                                  <Text key={child.value} code>
+                                    {child.label}
+                                  </Text>
+                                ))}
+                              </Space>
+                            </Space>
                           ))}
                         </Space>
                       </Space>

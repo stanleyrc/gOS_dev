@@ -264,9 +264,13 @@ function* searchReports({ searchFilters }) {
             : d3.descending(a[flippedMap[attribute]], b[flippedMap[attribute]]);
         });
     } else {
-      records = records.filter((d) =>
-        actualSearchFilters[key].some((item) => [d[key]].flat().includes(item))
-      );
+      records = records.filter((d) => {
+        return actualSearchFilters[key].some((item) => {
+          const itemArr = Array.isArray(item) ? item : [item];
+          const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
+          return itemArr.some((i) => dKeyArr.includes(i));
+        });
+      });
     }
   });
 
