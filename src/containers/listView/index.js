@@ -98,6 +98,7 @@ class ListView extends Component {
       searchFilters,
       totalRecords,
     } = this.props;
+
     return (
       <Wrapper>
         <Form
@@ -132,6 +133,14 @@ class ListView extends Component {
                               options={generateCascaderOptions(d.records)}
                               displayRender={this.tagsDisplayRender}
                               multiple
+                              showSearch={(inputValue, path) =>
+                                path.some(
+                                  (option) =>
+                                    option.label
+                                      .toLowerCase()
+                                      .indexOf(inputValue.toLowerCase()) > -1
+                                )
+                              }
                               maxTagCount="responsive"
                               showCheckedStrategy={SHOW_CHILD}
                               allowClear
