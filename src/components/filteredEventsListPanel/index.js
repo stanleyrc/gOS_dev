@@ -16,6 +16,7 @@ import {
   Typography,
 } from "antd";
 import * as d3 from "d3";
+import { ArrowRightOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
@@ -108,6 +109,10 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.gene"),
         dataIndex: "gene",
         key: "gene",
+        width: 100,
+        ellipsis: {
+          showTitle: false,
+        },
         filters: [...new Set(records.map((d) => d.gene))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
@@ -133,7 +138,9 @@ class FilteredEventsListPanel extends Component {
               type="link"
               onClick={() => selectFilteredEvent(record, "detail")}
             >
-              {record.gene}
+              <Tooltip placement="topLeft" title={record.gene}>
+                {record.gene}
+              </Tooltip>
             </Button>
           ) : (
             <Text italic disabled>
@@ -176,6 +183,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.variant"),
         dataIndex: "variant",
         key: "variant",
+        width: 120,
         sorter: {
           compare: (a, b) => {
             if (a.variant == null) return 1;
@@ -207,6 +215,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.type"),
         dataIndex: "type",
         key: "type",
+        width: 100,
         sorter: {
           compare: (a, b) => {
             if (a.type == null) return 1;
@@ -293,6 +302,7 @@ class FilteredEventsListPanel extends Component {
         ),
         dataIndex: "tier",
         key: "tier",
+        width: 120,
         sorter: {
           compare: (a, b) => {
             if (a.tier == null) return 1;
@@ -341,6 +351,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.estimatedAlteredCopies"),
         dataIndex: "estimatedAlteredCopies",
         key: "estimatedAlteredCopies",
+        width: 100,
         sorter: {
           compare: (a, b) => {
             if (a.estimatedAlteredCopies == null) return 1;
@@ -364,6 +375,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.segmentCopyNumber"),
         dataIndex: "segmentCopyNumber",
         key: "segmentCopyNumber",
+        width: 130,
         sorter: {
           compare: (a, b) => {
             if (a.segmentCopyNumber == null) return 1;
@@ -384,6 +396,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.fusionCopyNumber"),
         dataIndex: "fusionCopyNumber",
         key: "fusionCopyNumber",
+        width: 100,
         sorter: {
           compare: (a, b) => {
             if (a.fusionCopyNumber == null) return 1;
@@ -404,6 +417,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.altCounts"),
         dataIndex: "altCounts",
         key: "altCounts",
+        width: 100,
         sorter: {
           compare: (a, b) => {
             if (a.altCounts == null) return 1;
@@ -424,6 +438,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.refCounts"),
         dataIndex: "refCounts",
         key: "refCounts",
+        width: 100,
         sorter: {
           compare: (a, b) => {
             if (a.refCounts == null) return 1;
@@ -444,6 +459,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.vaf"),
         dataIndex: "vaf",
         key: "vaf",
+        width: 120,
         sorter: {
           compare: (a, b) => {
             if (a.vaf == null) return 1;
@@ -464,14 +480,20 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.location"),
         dataIndex: "location",
         key: "location",
+        width: 100,
+        fixed: "right",
+        ellipsis: true,
         render: (_, record) =>
           record.location != null ? (
-            <Button
-              type="link"
-              onClick={() => selectFilteredEvent(record, "tracks")}
-            >
-              {record.location}
-            </Button>
+            <Space direction="horizontal" size={0}>
+              {record.location}{" "}
+              <Button
+                type="link"
+                onClick={() => selectFilteredEvent(record, "tracks")}
+              >
+                <ArrowRightOutlined />
+              </Button>
+            </Space>
           ) : (
             <Text italic disabled>
               {t("components.filtered-events-panel.unavailable")}
@@ -551,7 +573,6 @@ class FilteredEventsListPanel extends Component {
                       showSorterTooltip={false}
                       onChange={this.handleTableChange}
                       scroll={{ x: "max-content", y: 500 }}
-                      tableLayout="fixed"
                     />
                     {selectedFilteredEvent && viewMode === "tracks" && (
                       <TracksModal
