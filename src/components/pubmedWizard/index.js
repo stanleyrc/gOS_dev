@@ -13,6 +13,7 @@ import {
 } from "./index.style";
 import { withTranslation } from "react-i18next";
 import { usePubmedSearch } from "../../hooks/usePubmedSearch";
+import { useGPT } from "../../hooks/useGPT";
 
 const { RangePicker } = DatePicker;
 const PubmedWizard = ({ t, onAddCitation, record }) => {
@@ -37,6 +38,7 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
     dateRange: null
   });
   const { searchPubmed, isLoading, error } = usePubmedSearch();
+  const { queryGPT } = useGPT();
 
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({
@@ -52,7 +54,53 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
   const handleSearch = async (page = 1) => {
     const pageToUse = searchTerm !== prevSearchTerm ? 1 : page;
     const searchResults = await searchPubmed(searchTerm, filters, pageToUse);
-    setResults(searchResults.articles);
+    // Extract paper titles from the search results
+    const paperTitles = searchResults.articles.map(item => { return {pmid: item.pmid, title: item.title} })
+    
+    // Determine recommended PMIDs if context is provided
+    let recommendedPmids = [];
+    if (record && record.variant_summary && paperTitles.length) {
+      const prompt = `Of the following papers select the ones most relevant given the context. .:
+
+context:
+${record.variant_summary}
+The user is a clinician who is investigating a cancer patient harboing this mutation.
+
+papers:
+${JSON.stringify(paperTitles)}
+
+Return the pmids only in valid JSON string that can be immediately parsed with JSON.parse() e.g { pmids: <array of pmid numbers as Number> }`;
+
+      try {
+        const gptResponse = await queryGPT(prompt);
+        console.log("GPT prompt:", prompt);
+        console.log("GPT response:", gptResponse);
+        /// remove triple backticks, json, and new lines
+        const cleanedResponse = gptResponse.replace(/```json/g, "").replace(/```/g, "").replace(/\n/g, "");
+        // Expect GPT to return a JSON-formatted array of pmids, e.g. '["123456", "7891011"]'
+        recommendedPmids = JSON.parse(cleanedResponse);
+        console.log("Recommended PMIDs:", recommendedPmids);
+      } catch (e) {
+        console.error('Error fetching recommendations:', e);
+      }
+    }
+
+    // Mark and sort articles: recommended ones first
+    const recommendedArticles = [];
+    const nonRecommendedArticles = [];
+    searchResults.articles.forEach(article => {
+      if (recommendedPmids.pmids.includes(Number(article.pmid))) {
+        article.recommended = true;
+        recommendedArticles.push(article);
+      } else {
+        article.recommended = false;
+        nonRecommendedArticles.push(article);
+      }
+    });
+
+    const sortedArticles = [...recommendedArticles, ...nonRecommendedArticles];
+
+    setResults(sortedArticles);
     setTotal(searchResults.total);
     setRange(searchResults.range);
     setCurrentPage(pageToUse);
@@ -140,6 +188,11 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
                       rel="noopener noreferrer"
                     >
                       {item.title}
+                      {item.recommended && (
+                        <span style={{ color: "red", marginLeft: 8, fontWeight: "bold" }}>
+                          Recommended
+                        </span>
+                      )}
                     </ViewLink>
                     <Tooltip title={t("components.pubmed-wizard.results.add-citation-tooltip")}>
                       <PlusOutlined 

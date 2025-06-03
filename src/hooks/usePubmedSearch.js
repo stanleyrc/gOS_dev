@@ -61,7 +61,6 @@ export const usePubmedSearch = () => {
 
       // Extract article details
       const articles = xmlDoc.getElementsByTagName("PubmedArticle");
-      console.log(articles[0])
       const result = Array.from(articles).map(article => {
         const pmid = article.querySelector("PMID")?.textContent;
         const title = article.querySelector("ArticleTitle")?.textContent || 'No title available';
