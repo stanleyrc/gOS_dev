@@ -2,8 +2,16 @@ import styled from "styled-components";
 
 const Wrapper = styled.div`
   .table-container {
-    overflow-x: auto;
-    overflow-y: hidden;
+    .ant-table {
+      .ant-table-container {
+        .ant-table-body,
+        .ant-table-content {
+          scrollbar-width: thin;
+          scrollbar-color: #eaeaea transparent;
+          scrollbar-gutter: stable;
+        }
+      }
+    }
   }
   .site-page-header {
     background: white;

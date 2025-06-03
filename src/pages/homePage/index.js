@@ -13,9 +13,13 @@ class HomePage extends Component {
     const { report, loading } = this.props;
     return (
       <Wrapper>
-        <Skeleton active loading={loading}>
-          {report ? <DetailPage /> : <LandingPage />}
-        </Skeleton>
+        {report ? (
+          <Skeleton active loading={loading}>
+            <DetailPage />
+          </Skeleton>
+        ) : (
+          <LandingPage />
+        )}
       </Wrapper>
     );
   }

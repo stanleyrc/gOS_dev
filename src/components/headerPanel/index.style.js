@@ -110,6 +110,10 @@ const Wrapper = styled.div`
       text-align: right;
       float: right;
     }
+    .tag-header {
+      font-size: 14px;
+      font-family: Roboto, sans-serif;
+    }
   }
 `;
 

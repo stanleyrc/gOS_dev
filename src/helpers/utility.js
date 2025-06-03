@@ -150,6 +150,42 @@ export async function loadArrowTable(file, cancelToken) {
   }
 }
 
+export function datafilesArrowTableToJson(table) {
+  const structFields = new Set([
+    "deconstructsigs_sbs_fraction",
+    "hrd",
+    "sigprofiler_indel_fraction",
+    "sigprofiler_indel_count",
+    "sigprofiler_sbs_fraction",
+    "sigprofiler_sbs_count",
+    "signatures",
+    "deletionInsertion",
+    "sv_types_count",
+  ]);
+
+  const result = [];
+
+  for (let row of table) {
+    const obj = {};
+
+    for (let [key, value] of row) {
+      if (
+        structFields.has(key) &&
+        value != null &&
+        typeof value.toJSON === "function"
+      ) {
+        obj[key] = value.toJSON();
+      } else {
+        obj[key] = value;
+      }
+    }
+
+    result.push(obj);
+  }
+
+  return result;
+}
+
 export function transitionStyle(inViewport) {
   if (inViewport) {
     return { WebkitTransition: "opacity 0.75s ease-in-out" };
@@ -533,7 +569,8 @@ export function assessQuality(metadata) {
     },
     {
       level: 2,
-      variable: "metadata.coverage_qc ? metadata.coverage_qc.percent_reads_mapped : undefined",
+      variable:
+        "metadata.coverage_qc ? metadata.coverage_qc.percent_reads_mapped : undefined",
       threshold: 0.99,
       comparison: "<",
       label: "mapped_reads_per_total_reads_less_than_99_percentage",
@@ -541,7 +578,8 @@ export function assessQuality(metadata) {
     },
     {
       level: 2,
-      variable: "metadata.coverage_qc ? metadata.coverage_qc.greater_than_or_equal_to_30x : undefined",
+      variable:
+        "metadata.coverage_qc ? metadata.coverage_qc.greater_than_or_equal_to_30x : undefined",
       threshold: 0.95,
       comparison: "<",
       label:
@@ -550,7 +588,8 @@ export function assessQuality(metadata) {
     },
     {
       level: 1,
-      variable: "metadata.coverage_qc ? metadata.coverage_qc.insert_size : undefined",
+      variable:
+        "metadata.coverage_qc ? metadata.coverage_qc.insert_size : undefined",
       threshold: 300,
       comparison: "<=",
       label: "median_insert_size_less_or_equal_300",
@@ -558,7 +597,8 @@ export function assessQuality(metadata) {
     },
     {
       level: 1,
-      variable: "metadata.coverage_qc ? metadata.coverage_qc.percent_duplication : undefined",
+      variable:
+        "metadata.coverage_qc ? metadata.coverage_qc.percent_duplication : undefined",
       threshold: 0.2,
       comparison: ">=",
       label: "optical_pcr_dups_greater_or_equal_20_percentage",

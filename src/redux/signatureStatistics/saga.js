@@ -124,7 +124,7 @@ function* fetchData(action) {
           }
         });
     } catch (err) {
-      console.log(err);
+      console.log("General error on signature Statistics", err);
       errors.push(err);
     }
 

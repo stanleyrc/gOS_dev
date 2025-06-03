@@ -280,3 +280,6 @@ html[dir='rtl'] .dz-hidden-input {
 .ant-card-head-title, .ant-pro-menu-item-title, .ant-table-column-title {
   font-weight: 500;
 }
+code {
+  font-family: 'Roboto', sans-serif !important;
+}

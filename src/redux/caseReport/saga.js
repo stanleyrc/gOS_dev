@@ -38,6 +38,12 @@ function* fetchCaseReport(action) {
       metadata[reportAttributesMap()[key]] = reportMetadata[key];
     });
 
+    metadata.tags =
+      metadata.summary
+        ?.split("\n")
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0) || [];
+
     metadata.hrdScore = metadata.hrd?.hrd_score;
     metadata.hrdB12Score = metadata.hrd?.b1_2_score;
     metadata.hrdB1Score = metadata.hrd?.b1_score;

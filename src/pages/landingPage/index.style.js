@@ -1,6 +1,12 @@
 import styled from "styled-components";
 
 const HomeWrapper = styled.div`
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+  }
   .ant-home-header-container {
     margin: 0px;
     background: white;
