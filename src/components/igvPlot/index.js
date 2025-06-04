@@ -37,7 +37,7 @@ class IgvPlot extends Component {
     } = this.props;
     let locus = domainToLoci(chromoBins, domain);
     let tracks = [];
-    console.log(this.props);
+    
     if (filenameTumorPresent) {
       tracks.push({
         id: "Tumor",
@@ -45,6 +45,7 @@ class IgvPlot extends Component {
         url: urlTumor,
         indexURL: indexTumorURL,
         format,
+        sort: { option: "BASE" },
       });
     }
     if (filenameNormalPresent) {
@@ -54,6 +55,7 @@ class IgvPlot extends Component {
         url: urlNormal,
         indexURL: indexNormalURL,
         format,
+        sort: { option: "BASE" },
       });
     }
     const igvOptions = {
