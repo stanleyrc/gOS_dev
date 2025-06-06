@@ -317,7 +317,7 @@ class HeaderPanel extends Component {
                           {generateCascaderOptions(tags).map((tag, i) => (
                             <Space key={tag.value}>
                               <Space direction="horizontal" size="small" wrap>
-                                <Text type="secondary" class="tag-header">
+                                <Text type="secondary" className="tag-header">
                                   {tag.label}:{" "}
                                 </Text>
                                 {tag.children.map((child) => (

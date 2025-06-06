@@ -7,6 +7,7 @@ const Wrapper = styled.div`
     border: 1px solid rgb(235, 237, 240);
     padding-bottom: 50px;
   }
+
   .ant-home-content-container {
     margin: 24px;
     margin-top: -45.5px;
@@ -18,8 +19,12 @@ const Wrapper = styled.div`
   .ant-panel-list-container {
     margin: 24px;
   }
+
   .filters-box .ant-form-item {
-    margin-bottom: 0px;
+    margin-bottom: 10px;
+  }
+  .filters-box .ant-form-item-label {
+    padding: 0px !important;
   }
   .results-top-box,
   .results-bottom-box {

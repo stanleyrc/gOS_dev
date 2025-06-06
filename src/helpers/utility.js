@@ -1100,12 +1100,17 @@ export function mutationCatalogMetadata() {
 
 export function reportFilters() {
   return [
-    "tags",
-    "pair",
-    "tumor_type",
-    "disease",
-    "primary_site",
-    "inferred_sex",
+    { name: "tags", type: "string", renderer: "cascader" },
+    { name: "pair", type: "string", renderer: "select" },
+    { name: "tumor_type", type: "string", renderer: "select" },
+    { name: "disease", type: "string", renderer: "select" },
+    { name: "primary_site", type: "string", renderer: "select" },
+    { name: "inferred_sex", type: "string", renderer: "select" },
+    { name: "sv_count", type: "number", renderer: "slider" },
+    { name: "tmb", type: "number", renderer: "slider" },
+    { name: "loh_fraction", type: "number", renderer: "slider" },
+    { name: "purity", type: "number", renderer: "slider" },
+    { name: "ploidy", type: "number", renderer: "slider" },
   ];
 }
 

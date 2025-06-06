@@ -17,6 +17,7 @@ import {
   Cascader,
   Flex,
   Divider,
+  Slider,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -83,10 +84,11 @@ class ListView extends Component {
   tagsDisplayRender = (labels, selectedOptions = []) =>
     labels.map((label, i) => {
       const option = selectedOptions[i];
+      console.log("option", option, label);
       if (i === labels.length - 1) {
-        return <span key={option.value}>{label}</span>;
+        return <span key={option?.value}>{label}</span>;
       }
-      return <span key={option.value}>{label}: </span>;
+      return <span key={option?.value}>{label}: </span>;
     });
 
   render() {
@@ -102,257 +104,303 @@ class ListView extends Component {
     return (
       <Wrapper>
         <Form
-          layout="horizontal"
+          layout="vertical"
           ref={this.formRef}
           onFinish={this.onValuesChange}
           onValuesChange={this.onValuesChange}
         >
           <div className="ant-panel-list-container">
-            <Row gutter={[16, 16]}>
-              <Col className="gutter-row" span={24}>
-                <Card className="filters-box">
-                  <Space size="middle">
-                    {filters.map((d, i) => (
-                      <Space key={i} size={10}>
-                        <Form.Item
-                          key={`containers.list-view.filters.${d.filter}`}
-                          name={d.filter}
-                          label={t(`containers.list-view.filters.${d.filter}`)}
-                          rules={[
-                            {
-                              required: false,
-                            },
-                          ]}
-                        >
-                          {d.filter === "tags" ? (
-                            <Cascader
-                              placeholder={t(
-                                "containers.list-view.filters.placeholder"
-                              )}
-                              style={{ width: 200 }}
-                              options={generateCascaderOptions(d.records)}
-                              displayRender={this.tagsDisplayRender}
-                              multiple
-                              showSearch={(inputValue, path) =>
-                                path.some(
-                                  (option) =>
-                                    option.label
-                                      .toLowerCase()
-                                      .indexOf(inputValue.toLowerCase()) > -1
-                                )
-                              }
-                              maxTagCount="responsive"
-                              showCheckedStrategy={SHOW_CHILD}
-                              allowClear
-                            />
-                          ) : (
-                            <Select
-                              placeholder={t(
-                                "containers.list-view.filters.placeholder"
-                              )}
-                              mode="multiple"
-                              allowClear
-                              style={{ width: 200 }}
-                              maxTagCount="responsive"
-                              maxTagTextLength={5}
-                            >
-                              {d.records.map((e, i) => (
-                                <Option key={i} value={e}>
-                                  {e
-                                    ? snakeCaseToHumanReadable(e)
-                                    : t("containers.list-view.filters.empty")}
-                                </Option>
-                              ))}
-                            </Select>
+            <Row gutter={[16, 16]} align="stretch">
+              <Col className="gutter-row" span={4} style={{ display: "flex" }}>
+                <Card
+                  className="filters-box"
+                  title={t("containers.list-view.filters.title")}
+                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                >
+                  {filters.map((d, i) => (
+                    <Form.Item
+                      key={`containers.list-view.filters.${d.filter.name}`}
+                      name={d.filter.name}
+                      label={t(`containers.list-view.filters.${d.filter.name}`)}
+                      rules={[
+                        {
+                          required: false,
+                        },
+                      ]}
+                      initialValue={
+                        d.filter.renderer === "slider" ? d.extent : undefined
+                      }
+                    >
+                      {d.filter.renderer === "cascader" && (
+                        <Cascader
+                          placeholder={t(
+                            "containers.list-view.filters.placeholder"
                           )}
-                        </Form.Item>
-                      </Space>
-                    ))}
-                    <Space size="middle">
-                      <Space>
-                        <Form.Item>
-                          <Button type="primary" htmlType="submit">
-                            {t("containers.list-view.filters.submit")}
-                          </Button>
-                        </Form.Item>
-                        <Form.Item>
-                          <Button htmlType="button" onClick={this.onReset}>
-                            {t("containers.list-view.filters.reset")}
-                          </Button>
-                        </Form.Item>
-                      </Space>
-                    </Space>
+                          style={{ width: "100%" }}
+                          options={generateCascaderOptions(d.records)}
+                          displayRender={this.tagsDisplayRender}
+                          multiple
+                          showSearch={(inputValue, path) =>
+                            path.some(
+                              (option) =>
+                                option.label
+                                  .toLowerCase()
+                                  .indexOf(inputValue.toLowerCase()) > -1
+                            )
+                          }
+                          maxTagCount="responsive"
+                          showCheckedStrategy={SHOW_CHILD}
+                          allowClear
+                        />
+                      )}
+                      {d.filter.renderer === "select" && (
+                        <Select
+                          placeholder={t(
+                            "containers.list-view.filters.placeholder"
+                          )}
+                          mode="multiple"
+                          allowClear
+                          style={{ width: "100%" }}
+                          maxTagCount="responsive"
+                          maxTagTextLength={8}
+                        >
+                          {d.records.map((e, i) => (
+                            <Option key={i} value={e}>
+                              {e
+                                ? snakeCaseToHumanReadable(e)
+                                : t("containers.list-view.filters.empty")}
+                            </Option>
+                          ))}
+                        </Select>
+                      )}
+                      {d.filter.renderer === "slider" &&
+                        !isNaN(d.extent[0]) &&
+                        !isNaN(d.extent[1]) && (
+                          <Slider
+                            range
+                            min={d.extent[0]}
+                            max={d.extent[1]}
+                            step={(d.extent[1] - d.extent[0]) / 100}
+                            marks={{
+                              [d.extent[0]]: d3.format(d.format)(d.extent[0]),
+                              [d.extent[1]]: d3.format(d.format)(d.extent[1]),
+                            }}
+                            tooltip={{
+                              formatter: (value) => d3.format(d.format)(value),
+                            }}
+                          />
+                        )}
+                    </Form.Item>
+                  ))}
+
+                  <Space>
+                    <Form.Item>
+                      <Button type="primary" htmlType="submit">
+                        {t("containers.list-view.filters.submit")}
+                      </Button>
+                    </Form.Item>
+                    <Form.Item>
+                      <Button htmlType="button" onClick={this.onReset}>
+                        {t("containers.list-view.filters.reset")}
+                      </Button>
+                    </Form.Item>
                   </Space>
                 </Card>
               </Col>
-            </Row>
-            {records.length > 0 && (
-              <Row className="results-top-box" gutter={[16, 16]}>
-                <Col className="gutter-row" span={12}>
-                  <Pagination
-                    showSizeChanger
-                    total={totalRecords}
-                    showTotal={(total, range) =>
-                      `${range[0]}-${range[1]} of ${total} items`
-                    }
-                    defaultCurrent={1}
-                    current={searchFilters.page || 1}
-                    pageSize={searchFilters.per_page || 10}
-                    onChange={this.onPageChanged}
-                  />
-                </Col>
-                <Col className="gutter-row order-selector-container" span={12}>
-                  <Select
-                    className="order-select"
-                    value={searchFilters.orderId}
-                    onSelect={this.onOrderChanged}
-                    variant="borderless"
-                  >
-                    {orderListViewFilters.map((d) => (
-                      <Option key={d.id} value={d.id}>
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: t("containers.list-view.ordering", {
-                              attribute: t(`metadata.${d.attribute}.short`),
-                              sort: d.sort,
-                            }),
-                          }}
-                        />
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              </Row>
-            )}
-
-            <Row gutter={[16, 16]}>
-              {records.map((d) => (
-                <Col key={d.pair} className="gutter-row" span={6}>
-                  <Card
-                    className="case-report-card"
-                    onClick={(e) => handleCardClick(e, d.pair)}
-                    hoverable
-                    title={
-                      <Space>
-                        <b>{d.pair}</b>
-                        <Text type="secondary">{d.inferred_sex}</Text>
-                      </Space>
-                    }
-                    variant="borderless"
-                    extra={
-                      <Avatar
-                        style={{
-                          backgroundColor: "#fde3cf",
-                          color: "#f56a00",
-                        }}
+              <Col className="gutter-row" span={20}>
+                {records.length > 0 && (
+                  <Row className="results-top-box" gutter={[16, 16]}>
+                    <Col className="gutter-row" span={12}>
+                      <Pagination
+                        showSizeChanger
+                        total={totalRecords}
+                        showTotal={(total, range) =>
+                          `${range[0]}-${range[1]} of ${total} items`
+                        }
+                        defaultCurrent={1}
+                        current={searchFilters.page || 1}
+                        pageSize={searchFilters.per_page || 10}
+                        onChange={this.onPageChanged}
+                      />
+                    </Col>
+                    <Col
+                      className="gutter-row order-selector-container"
+                      span={12}
+                    >
+                      <Select
+                        className="order-select"
+                        value={searchFilters.orderId}
+                        onSelect={this.onOrderChanged}
+                        variant="borderless"
                       >
-                        {d.tumor_type}
-                      </Avatar>
-                    }
-                    actions={[
-                      <Statistic
-                        className="stats"
-                        title={t(`metadata.svCount.short`)}
-                        value={
-                          d.sv_count != null
-                            ? d3.format(",")(d.sv_count)
-                            : t("general.not-applicable")
-                        }
-                      />,
-                      <Statistic
-                        className="stats"
-                        title={t(`metadata.tmb.short`)}
-                        value={
-                          d.tmb != null
-                            ? d3.format(",")(d.tmb)
-                            : t("general.not-applicable")
-                        }
-                      />,
-                      <Statistic
-                        className="stats"
-                        title={t(`metadata.lohFraction.short`)}
-                        value={
-                          d.loh_fraction != null
-                            ? d3.format(".3f")(d.loh_fraction)
-                            : t("general.not-applicable")
-                        }
-                      />,
-                      <Statistic
-                        className="stats"
-                        title={t("metadata.purity-ploidy-title")}
-                        value={
-                          d.purity != null
-                            ? d3.format(".3f")(d.purity)
-                            : t("general.not-applicable")
-                        }
-                        suffix={`/ ${
-                          d.ploidy != null
-                            ? d3.format(".3f")(d.ploidy)
-                            : t("general.not-applicable")
-                        }`}
-                      />,
-                    ]}
-                  >
-                    <Meta
-                      title={
-                        d.disease &&
-                        d.primary_site && (
+                        {orderListViewFilters.map((d) => (
+                          <Option key={d.id} value={d.id}>
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: t("containers.list-view.ordering", {
+                                  attribute: t(`metadata.${d.attribute}.short`),
+                                  sort: d.sort,
+                                }),
+                              }}
+                            />
+                          </Option>
+                        ))}
+                      </Select>
+                    </Col>
+                  </Row>
+                )}
+
+                <Row gutter={[16, 16]}>
+                  {records.map((d) => (
+                    <Col
+                      key={d.pair}
+                      className="gutter-row"
+                      span={6}
+                      style={{ display: "flex" }}
+                    >
+                      <Card
+                        className="case-report-card"
+                        styles={{
+                          body: {
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                          },
+                        }}
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                        onClick={(e) => handleCardClick(e, d.pair)}
+                        hoverable
+                        title={
                           <Space>
-                            {d.disease}
-                            <Space>
-                              {d.primary_site && (
-                                <Text type="secondary">
-                                  {snakeCaseToHumanReadable(d.primary_site)}
-                                </Text>
-                              )}
-                            </Space>
+                            <b>{d.pair}</b>
+                            <Text type="secondary">{d.inferred_sex}</Text>
                           </Space>
-                        )
-                      }
-                      description={
-                        <Space
-                          direction="vertical"
-                          size={0}
-                          style={{ display: "flex" }}
-                        >
-                          {generateCascaderOptions(d.tags).map((tag, i) => (
-                            <div key={tag.value}>
-                              <Divider plain orientation="left" size="small">
-                                {tag.label}
-                              </Divider>
-                              <Flex gap="2px" wrap="wrap">
-                                {tag.children.map((child) => (
-                                  <Text key={child.value} code>
-                                    {child.label}
-                                  </Text>
-                                ))}
-                              </Flex>
-                            </div>
-                          ))}
-                        </Space>
-                      }
-                    />
-                  </Card>
-                </Col>
-              ))}
+                        }
+                        variant="borderless"
+                        extra={
+                          <Avatar
+                            style={{
+                              backgroundColor: "#fde3cf",
+                              color: "#f56a00",
+                            }}
+                          >
+                            {d.tumor_type}
+                          </Avatar>
+                        }
+                        actions={[
+                          <Statistic
+                            className="stats"
+                            title={t(`metadata.svCount.short`)}
+                            value={
+                              d.sv_count != null
+                                ? d3.format(",")(d.sv_count)
+                                : t("general.not-applicable")
+                            }
+                          />,
+                          <Statistic
+                            className="stats"
+                            title={t(`metadata.tmb.short`)}
+                            value={
+                              d.tmb != null
+                                ? d3.format(",")(d.tmb)
+                                : t("general.not-applicable")
+                            }
+                          />,
+                          <Statistic
+                            className="stats"
+                            title={t(`metadata.lohFraction.short`)}
+                            value={
+                              d.loh_fraction != null
+                                ? d3.format(".3f")(d.loh_fraction)
+                                : t("general.not-applicable")
+                            }
+                          />,
+                          <Statistic
+                            className="stats"
+                            title={t("metadata.purity-ploidy-title")}
+                            value={
+                              d.purity != null
+                                ? d3.format(".1%")(d.purity)
+                                : t("general.not-applicable")
+                            }
+                            suffix={`/ ${
+                              d.ploidy != null
+                                ? d3.format(".2f")(d.ploidy)
+                                : t("general.not-applicable")
+                            }`}
+                          />,
+                        ]}
+                      >
+                        <Meta
+                          title={
+                            d.disease &&
+                            d.primary_site && (
+                              <Space>
+                                <Text type="primary">{d.disease}</Text>
+                                <Space>
+                                  {d.primary_site && (
+                                    <Text type="secondary">
+                                      {snakeCaseToHumanReadable(d.primary_site)}
+                                    </Text>
+                                  )}
+                                </Space>
+                              </Space>
+                            )
+                          }
+                          description={
+                            <Space
+                              direction="vertical"
+                              size={0}
+                              style={{ display: "flex" }}
+                            >
+                              {generateCascaderOptions(d.tags).map((tag, i) => (
+                                <div key={tag.value}>
+                                  <Divider
+                                    plain
+                                    orientation="left"
+                                    size="small"
+                                  >
+                                    {tag.label}
+                                  </Divider>
+                                  <Flex gap="2px" wrap="wrap">
+                                    {tag.children.map((child) => (
+                                      <Text key={child.value} code>
+                                        {child.label}
+                                      </Text>
+                                    ))}
+                                  </Flex>
+                                </div>
+                              ))}
+                            </Space>
+                          }
+                        />
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+                {records.length > 0 && (
+                  <Row className="results-bottom-box" gutter={[16, 16]}>
+                    <Col className="gutter-row" span={24}>
+                      <Pagination
+                        showSizeChanger
+                        total={totalRecords}
+                        showTotal={(total, range) =>
+                          `${range[0]}-${range[1]} of ${total} items`
+                        }
+                        defaultCurrent={1}
+                        current={searchFilters.page || 1}
+                        pageSize={searchFilters.per_page || 10}
+                        onChange={this.onPageChanged}
+                      />
+                    </Col>
+                  </Row>
+                )}
+              </Col>
             </Row>
-            {records.length > 0 && (
-              <Row className="results-bottom-box" gutter={[16, 16]}>
-                <Col className="gutter-row" span={24}>
-                  <Pagination
-                    showSizeChanger
-                    total={totalRecords}
-                    showTotal={(total, range) =>
-                      `${range[0]}-${range[1]} of ${total} items`
-                    }
-                    defaultCurrent={1}
-                    current={searchFilters.page || 1}
-                    pageSize={searchFilters.per_page || 10}
-                    onChange={this.onPageChanged}
-                  />
-                </Col>
-              </Row>
-            )}
 
             {records.length < 1 && (
               <Row gutter={[16, 16]}>

@@ -58,7 +58,7 @@ function* bootApplication(action) {
   reportFilters().forEach((filter) => {
     // Extract distinct values for the current filter
     var distinctValues = [
-      ...new Set(datafiles.map((record) => record[filter])),
+      ...new Set(datafiles.map((record) => record[filter.name])),
     ].sort((a, b) => d3.ascending(a, b));
 
     // Add the filter information to the reportsFilters array
@@ -225,7 +225,7 @@ function* searchReports({ searchFilters }) {
     if (key === "texts") {
       records = records.filter((record) =>
         reportFilters()
-          .map((attr) => record[attr] || "")
+          .map((attr) => record[attr.name] || "")
           .join(",")
           .toLowerCase()
           .includes(actualSearchFilters[key].toLowerCase())
