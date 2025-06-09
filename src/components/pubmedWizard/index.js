@@ -37,8 +37,11 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
     journal: '',
     dateRange: null
   });
+
   const { searchPubmed, isLoading, error } = usePubmedSearch();
   const { queryGPT } = useGPT();
+
+  const [isRanking, setIsRanking] = useState(false);
 
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({
@@ -52,6 +55,7 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
   };
 
   const handleSearch = async (page = 1) => {
+    setIsRanking(true);
     const pageToUse = searchTerm !== prevSearchTerm ? 1 : page;
     const searchResults = await searchPubmed(searchTerm, filters, pageToUse);
     // Extract paper titles from the search results
@@ -101,6 +105,7 @@ Return the pmids only in valid JSON string that can be immediately parsed with J
     const sortedArticles = [...recommendedArticles, ...nonRecommendedArticles];
 
     setResults(sortedArticles);
+    setIsRanking(false);
     setTotal(searchResults.total);
     setRange(searchResults.range);
     setCurrentPage(pageToUse);
@@ -174,7 +179,7 @@ Return the pmids only in valid JSON string that can be immediately parsed with J
         <List
           itemLayout="vertical"
           dataSource={results}
-          loading={isLoading}
+          loading={isLoading || isRanking}
           locale={{ emptyText: t("components.pubmed-wizard.no-results") }}
           pagination={false}
           renderItem={item => (

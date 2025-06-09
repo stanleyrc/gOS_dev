@@ -11,6 +11,7 @@ import ClinicalTrialsWizard from "../clinicalTrialsWizard";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
 import { extractPMIDs, extractNCTIDs, formatClinicalTrials } from '../../helpers/notes';
+import NotesChat from '../notesChat'; // Import the new NotesChat component
 
 const API_CALL_DELAY = 1000;
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -186,25 +187,33 @@ const NotesModal = ({
 
   return (
     <Wrapper>
-      <Row>
-        <Col span={24}>
+      <Row gutter={16}> {/* Added gutter for spacing between columns */}
+        <Col span={12}> {/* Column for Notes Text Area */}
           <Input.TextArea
             value={notes}
             onChange={handleNotesChange}
             placeholder={t("components.notes-modal.enter-notes")}
-            autoSize={{ minRows: 4, maxRows: 12 }}
+            autoSize={{ minRows: 10, maxRows: 20 }} // Adjusted size for side-by-side
+            style={{ height: '450px' }} // Match chat height
           />
           <Button 
             type="primary"
             onClick={handleGenerateEventNote}
             loading={isLoading || isLoadingFullText}
-            style={{ marginTop: '8px', marginLeft: '8px' }}
+            style={{ marginTop: '8px' }} // Removed marginLeft
           >
             {t("components.notes-modal.generate-note")}
           </Button>
-        </Col> 
+        </Col>
+        <Col span={12}> {/* Column for Notes Chat */}
+          <NotesChat 
+            t={t} 
+            record={record} 
+            report={report} 
+          />
+        </Col>
       </Row>
-      <Row style={{ marginTop: '16px' }}>
+      <Row style={{ marginTop: '24px' }}> {/* Increased marginTop for better separation */}
         <Col span={24}>
           <Collapse>
             <Collapse.Panel 
