@@ -32,13 +32,18 @@ export const queryGPT = async (userMessage, options = {}) => {
     throw new Error('Invalid model specified. Use "smart" or "cheap".');
   }
 
-  const messages = [
+  // options.messages can be an array of message objects to use directly
+  const messages = options.messages || [
     options.systemMessage || DEFAULT_SYSTEM_MESSAGE,
     { role: 'user', content: userMessage }
   ];
 
   const payload = {
-    messages
+    messages,
+    ...(options.tools && { tools: options.tools }),
+    ...(options.tool_choice && { tool_choice: options.tool_choice }),
+    // Ensure model is included if passed in options, otherwise it's handled by API_URL selection
+    ...(options.modelPayload && { model: options.modelPayload }) 
   };
 
   try {
@@ -56,7 +61,7 @@ export const queryGPT = async (userMessage, options = {}) => {
     }
 
     const data = await response.json();
-    return data?.choices[0]?.message?.content;
+    return data?.choices[0]?.message; // Return the entire message object
     
   } catch (error) {
     console.error('Error querying GPT:', error);

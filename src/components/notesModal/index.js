@@ -193,17 +193,8 @@ const NotesModal = ({
             value={notes}
             onChange={handleNotesChange}
             placeholder={t("components.notes-modal.enter-notes")}
-            autoSize={{ minRows: 10, maxRows: 20 }} // Adjusted size for side-by-side
             style={{ height: '450px' }} // Match chat height
           />
-          <Button 
-            type="primary"
-            onClick={handleGenerateEventNote}
-            loading={isLoading || isLoadingFullText}
-            style={{ marginTop: '8px' }} // Removed marginLeft
-          >
-            {t("components.notes-modal.generate-note")}
-          </Button>
         </Col>
         <Col span={12}> {/* Column for Notes Chat */}
           <NotesChat 
