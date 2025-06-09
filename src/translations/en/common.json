@@ -343,6 +343,7 @@
     "home": {},
     "list-view": {
       "filters": {
+        "title": "Search Filters",
         "placeholder": "select one or many",
         "empty": "(empty)",
         "tags": "Tags",
@@ -351,6 +352,11 @@
         "tumor_type": "Tumor Type",
         "primary_site": "Primary Site",
         "inferred_sex": "Inferred Sex",
+        "sv_count": "SV Count",
+        "loh_fraction": "Fraction of Genome Altered (FGA)",
+        "tmb": "Tumor Mutational Burden (TMB)",
+        "purity": "Purity",
+        "ploidy": "Ploidy",
         "submit": "Submit",
         "reset": "Reset"
       },

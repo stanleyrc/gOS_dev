@@ -34,8 +34,12 @@ const Wrapper = styled.div`
   .ant-panel-list-container {
     margin: 24px;
   }
+
   .filters-box .ant-form-item {
-    margin-bottom: 0px;
+    margin-bottom: 10px;
+  }
+  .filters-box .ant-form-item-label {
+    padding: 0px !important;
   }
   .results-top-box,
   .results-bottom-box {

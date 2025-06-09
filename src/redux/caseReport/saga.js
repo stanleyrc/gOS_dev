@@ -20,9 +20,15 @@ import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReport(action) {
   cancelAllRequests();
+
   const currentState = yield select(getCurrentState);
   let { report, dataset } = currentState.Settings;
   let { qualityReportName } = currentState.CaseReport;
+
+  // Abort if no report is selected in state
+  if (!report) {
+    return;
+  }
 
   try {
     let responseReportMetadata = yield call(

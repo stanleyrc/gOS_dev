@@ -24,6 +24,7 @@ import actions from "./actions";
 import settingsActions from "../settings/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
 import { getCancelToken } from "../../helpers/cancelToken";
+import { is } from "immutable";
 
 function* fetchCaseReports(action) {
   const currentState = yield select(getCurrentState);
@@ -76,13 +77,19 @@ function* fetchCaseReports(action) {
         reportFilters().forEach((filter) => {
           // Extract distinct values for the current filter
           var distinctValues = [
-            ...new Set(datafiles.map((record) => record[filter]).flat()),
+            ...new Set(datafiles.map((record) => record[filter.name]).flat()),
           ].sort((a, b) => d3.ascending(a, b));
 
           // Add the filter information to the reportsFilters array
           reportsFilters.push({
             filter: filter,
             records: [...distinctValues],
+            extent: d3.extent(
+              distinctValues.filter(
+                (e) => !isNaN(e) && e !== null && e !== undefined
+              )
+            ),
+            format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
           });
         });
 
@@ -149,80 +156,6 @@ function* fetchCaseReports(action) {
   }
 }
 
-function* fetchCaseReports1() {
-  try {
-    const currentState = yield select(getCurrentState);
-    let { dataset } = currentState.Settings;
-    // get the list of all cases from the public/datafiles.json
-    let responseReports = yield call(axios.get, dataset.datafilesPath);
-
-    let datafiles = responseReports.data;
-    datafiles.forEach(
-      (d) =>
-        (d.tags =
-          d.summary
-            ?.split("\n")
-            .map((e) => e.trim())
-            .filter((e) => e.length > 0) || [])
-    );
-
-    let reportsFilters = [];
-
-    // Iterate through each filter
-    reportFilters().forEach((filter) => {
-      // Extract distinct values for the current filter
-      var distinctValues = [
-        ...new Set(datafiles.map((record) => record[filter]).flat()),
-      ].sort((a, b) => d3.ascending(a, b));
-
-      // Add the filter information to the reportsFilters array
-      reportsFilters.push({
-        filter: filter,
-        records: [...distinctValues],
-      });
-    });
-
-    let populations = {};
-    let flippedMap = flip(reportAttributesMap());
-    Object.keys(plotTypes()).forEach((d, i) => {
-      populations[d] = datafiles.map((e) => {
-        try {
-          return {
-            pair: e.pair,
-            value: eval(`e.${flippedMap[d]}`),
-            tumor_type: e.tumor_type,
-          };
-        } catch (error) {
-          return {
-            pair: e.pair,
-            value: null,
-            tumor_type: e.tumor_type,
-          };
-        }
-      });
-    });
-
-    let { page, per_page } = defaultSearchFilters();
-    let records = datafiles
-      .filter((d) => d.visible !== false)
-      .sort((a, b) => d3.ascending(a.pair, b.pair));
-
-    yield put({
-      type: actions.FETCH_CASE_REPORTS_SUCCESS,
-      datafiles,
-      populations,
-      reportsFilters,
-      reports: records.slice((page - 1) * per_page, page * per_page),
-      totalReports: records.length,
-    });
-  } catch (error) {
-    yield put({
-      type: actions.FETCH_CASE_REPORTS_FAILED,
-      error,
-    });
-  }
-}
-
 function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
   let { datafiles } = currentState.CaseReports;
@@ -247,6 +180,7 @@ function* searchReports({ searchFilters }) {
   );
 
   Object.keys(actualSearchFilters).forEach((key) => {
+    let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
     if (key === "texts") {
       records = records
         .filter((record) =>
@@ -264,13 +198,24 @@ function* searchReports({ searchFilters }) {
             : d3.descending(a[flippedMap[attribute]], b[flippedMap[attribute]]);
         });
     } else {
-      records = records.filter((d) => {
-        return actualSearchFilters[key].some((item) => {
-          const itemArr = Array.isArray(item) ? item : [item];
-          const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
-          return itemArr.some((i) => dKeyArr.includes(i));
+      if (keyRenderer === "slider") {
+        records = records.filter((d) => {
+          const value = d[key];
+          if (value == null) return true;
+          return (
+            value >= actualSearchFilters[key][0] &&
+            value <= actualSearchFilters[key][1]
+          );
         });
-      });
+      } else {
+        records = records.filter((d) => {
+          return actualSearchFilters[key].some((item) => {
+            const itemArr = Array.isArray(item) ? item : [item];
+            const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
+            return itemArr.some((i) => dKeyArr.includes(i));
+          });
+        });
+      }
     }
   });
 
