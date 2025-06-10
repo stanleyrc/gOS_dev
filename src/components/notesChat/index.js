@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, List, Avatar, Collapse, Checkbox, Typography } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown';
 import { useGPT } from '../../hooks/useGPT'; // Assuming this path is correct relative to the new file
 import { useGPTToolRouter } from '../../hooks/useGPTToolRouter'; // Import the tool router
 import GlobalStyle from './index.styles.js';
@@ -148,7 +149,13 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
                     {message.type === 'bot' ? '🐦' : '👤'}
                   </Avatar>
                 }
-                description={message.content}
+                description={
+                  message.type === 'bot' ? (
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  ) : (
+                    message.content
+                  )
+                }
               />
             </List.Item>
           )}
