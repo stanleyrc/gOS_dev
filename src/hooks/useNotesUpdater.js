@@ -37,7 +37,7 @@ Only use the headers provided above. Do not include any additional sections.
 /**
  * Formats input data for the notes update GPT processing
  */
-function formatInputDataForUpdate(userRequest, currentNotes, record, metadata, paperSummaries, clinicalTrials) {
+function formatInputDataForUpdate(userRequest, currentNotes, record, metadata, paperSummaries, clinicalTrials, messageHistory = []) {
   // Extract only specified fields from record if available
   const relevantRecord = record ? {
     gene: record.gene,
@@ -87,6 +87,7 @@ RELEVANT CLINICAL TRIALS:
 ${Object.entries(clinicalTrials)
   .map(([nctid, trial]) => `NCTID:${nctid}\n${trial}`)
   .join('\n\n')}
+${messageHistory.length > 0 ? `\nCHAT HISTORY:\n${messageHistory.map(msg => `[${msg.type === 'user' ? 'User' : 'Bot'} at ${new Date(msg.timestamp).toLocaleTimeString()}]: ${msg.content}`).join('\n')}\n` : ''}
 `;
 }
 
@@ -97,7 +98,7 @@ export function useNotesUpdater() {
   const { queryGPT } = useGPT();
   const { summarizePaper } = usePaperSummarizer(); // Instantiate paper summarizer hook
 
-  const performNotesUpdate = async (userRequest, currentNotes, record, metadata, additionalContextItems = []) => {
+  const performNotesUpdate = async (userRequest, currentNotes, record, metadata, additionalContextItems = [], messageHistory = []) => {
     try {
       const finalPaperSummaries = {};
       const finalClinicalTrials = {};
@@ -121,7 +122,7 @@ export function useNotesUpdater() {
         }
       }
 
-      const formattedInput = formatInputDataForUpdate(userRequest, currentNotes, record, metadata, finalPaperSummaries, finalClinicalTrials);
+      const formattedInput = formatInputDataForUpdate(userRequest, currentNotes, record, metadata, finalPaperSummaries, finalClinicalTrials, messageHistory);
       console.log('formatted input for notes update:', formattedInput);
       
       const response = await queryGPT(formattedInput, {

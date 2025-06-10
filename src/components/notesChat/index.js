@@ -68,7 +68,8 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
 
           if (toolName === 'updateNotes') {
             setMessages(prev => [...prev, { type: 'bot', content: t('components.notes-chat.processing-update', "Processing your notes update request..."), timestamp: new Date().getTime() }]);
-            await onExecuteToolCall(mainToolCall);
+            // Pass the current messages state to onExecuteToolCall
+            await onExecuteToolCall(mainToolCall, messages); 
             // Final feedback (success/error) for updateNotes is handled by NotesModal via Antd messages
             setMessages(prev => [...prev, { type: 'bot', content: t('components.notes-chat.processing-update', "Notes updated!"), timestamp: new Date().getTime() }]);
           } else { // Default to chat response for 'queryGPT' or other tools not specifically handled otherwise

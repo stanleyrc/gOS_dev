@@ -80,6 +80,15 @@ const NotesModal = ({
       selectedForContext: true, // Default to selected
     });
 
+    // Add chat history as a memory item
+    initialMemoryItems.push({
+      id: 'chat-history-context',
+      type: 'chatHistory',
+      title: t('components.notes-modal.memory.chat-history-title', 'Chat Conversation History'),
+      data: { info: 'Represents the current chat conversation history.' }, // Symbolic data
+      selectedForContext: true, // Default to selected
+    });
+
     // Preserve existing papers/trials if any (e.g., if record/report/notes updates but papers were already added)
     setMemoryItems(prevItems => {
       const existingExternalItems = prevItems.filter(
@@ -230,7 +239,7 @@ const NotesModal = ({
     );
   };
 
-  const handleExecuteToolCall = async (toolCall) => {
+  const handleExecuteToolCall = async (toolCall, chatMessages) => {
     if (!toolCall || !toolCall.function) {
       console.error("Invalid tool call received in NotesModal");
       return;
@@ -254,6 +263,9 @@ const NotesModal = ({
         item => item.selectedForContext && (item.type === 'paper' || item.type === 'clinicalTrial')
       );
 
+      const chatHistoryItem = memoryItems.find(item => item.id === 'chat-history-context');
+      const includeChatHistory = chatHistoryItem ? chatHistoryItem.selectedForContext : false;
+
       setIsLoading(true);
       try {
         // Use the 'notes' state as the most current version of notes for the update
@@ -262,7 +274,8 @@ const NotesModal = ({
           notes, // Pass the current notes from state
           record, // Main genomic event record for the note
           report, // Main case metadata for the note
-          selectedPapersAndTrials // Additional context from memory (papers, trials)
+          selectedPapersAndTrials, // Additional context from memory (papers, trials)
+          includeChatHistory ? chatMessages : [] // Pass chat messages if selected
         );
 
         if (updatedNotesContent) {
