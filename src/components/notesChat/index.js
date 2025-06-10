@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, List, Avatar, Collapse, Checkbox, Typography } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import { useGPT } from '../../hooks/useGPT'; // Assuming this path is correct relative to the new file
+import { useGPTToolRouter } from '../../hooks/useGPTToolRouter'; // Import the tool router
 import GlobalStyle from './index.styles.js';
 import { withTranslation } from "react-i18next";
 
 const { Panel } = Collapse;
 const { Text } = Typography;
 
-const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory }) => {
+const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory, onExecuteToolCall }) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { queryGPT } = useGPT();
+  const { routeQuery } = useGPTToolRouter(); // Instantiate the tool router
 
   const getBotResponse = async (userMessage) => {
-    setIsLoading(true);
+    // setIsLoading(true); // isLoading is now managed by handleSend
     try {
       let contextPrompt = "";
 
@@ -39,14 +41,13 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
       console.error('Error getting bot response:', error);
       return t('components.notes-chat.gpt-error', "I'm sorry, I encountered an error processing your request.");
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false); // isLoading is now managed by handleSend
     }
   };
 
   const handleSend = async () => {
     if (inputValue.trim()) {
       const userMessageContent = inputValue;
-      // Add user message
       setMessages(prevMessages => [
         ...prevMessages,
         {
@@ -55,17 +56,39 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
           timestamp: new Date().getTime()
         }
       ]);
-      
       setInputValue('');
+      setIsLoading(true);
 
-      // Get bot response
-      const response = await getBotResponse(userMessageContent);
-      
-      setMessages(prevMessages => [...prevMessages, {
-        type: 'bot',
-        content: response,
-        timestamp: new Date().getTime()
-      }]);
+      try {
+        const toolCalls = await routeQuery(userMessageContent);
+
+        if (toolCalls && toolCalls.length > 0) {
+          const mainToolCall = toolCalls[0];
+          const toolName = mainToolCall.function.name;
+
+          if (toolName === 'updateNotes') {
+            setMessages(prev => [...prev, { type: 'bot', content: t('components.notes-chat.processing-update', "Processing your notes update request..."), timestamp: new Date().getTime() }]);
+            await onExecuteToolCall(mainToolCall);
+            // Final feedback (success/error) for updateNotes is handled by NotesModal via Antd messages
+            setMessages(prev => [...prev, { type: 'bot', content: t('components.notes-chat.processing-update', "Notes updated!"), timestamp: new Date().getTime() }]);
+          } else { // Default to chat response for 'queryGPT' or other tools not specifically handled otherwise
+            const queryForBot = toolName === 'queryGPT' && mainToolCall.function.arguments
+              ? (JSON.parse(mainToolCall.function.arguments).query || userMessageContent)
+              : userMessageContent;
+            const botResponseText = await getBotResponse(queryForBot);
+            setMessages(prev => [...prev, { type: 'bot', content: botResponseText, timestamp: new Date().getTime() }]);
+          }
+        } else {
+          // Fallback: Router didn't provide a tool call, or an error occurred in routing that was caught by router
+          const botResponseText = await getBotResponse(userMessageContent);
+          setMessages(prev => [...prev, { type: 'bot', content: botResponseText, timestamp: new Date().getTime() }]);
+        }
+      } catch (error) {
+        console.error('Error in handleSend:', error);
+        setMessages(prev => [...prev, { type: 'bot', content: t('components.notes-chat.handle-send-error', "An error occurred while processing your message."), timestamp: new Date().getTime() }]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -155,8 +178,11 @@ NotesChat.defaultProps = {
   memoryItems: [],
   onToggleMemoryItemSelection: () => {},
   onClearChatMemory: null,
+  onExecuteToolCall: () => {}, // Add new prop with default
 };
 
 // No mapStateToProps or connect needed if props are passed down directly
+// PropTypes would be good to add for onExecuteToolCall: PropTypes.func,
+// but sticking to existing conventions of the file.
 
 export default withTranslation("common")(NotesChat);

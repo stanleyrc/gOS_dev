@@ -4,27 +4,15 @@ const TOOL_ROUTING_SYSTEM_MESSAGE = {
   role: 'system',
   content: `You are a highly intelligent assistant responsible for routing user queries to the appropriate tool.
 Based on the user's query, you must choose one of the available tools to best handle the request.
-You must call one of the provided functions. Do not answer directly without selecting a tool.`
+You must call one of the provided functions. Do not answer directly without selecting a tool.
+
+Use the updateNotes tool when the user asks to modify, add to, or change the notes text.
+Use the rankPapersByRelevance tool when the user asks to analyze research papers against a clinical context and identify relevant PMIDs.
+
+`
 };
 
 const OPENAI_TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "queryGPT",
-      description: "For general questions, conversation, or when no other specific tool is appropriate. This is the default tool if the query does not match other specialized tools.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The user's general question or statement."
-          }
-        },
-        required: ["query"]
-      }
-    }
-  },
   {
     type: "function",
     function: {
@@ -62,6 +50,27 @@ const OPENAI_TOOLS = [
         required: ["recommendedPmids"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "updateNotes",
+      description: "Updates the existing notes content based on user instructions. Use this when the user asks to modify, add to, or generate the notes text.",
+      parameters: {
+        type: "object",
+        properties: {
+          userRequest: {
+            type: "string",
+            description: "The user's specific instruction on how to update the notes."
+          },
+          currentNotes: {
+            type: "string",
+            description: "The full current content of the notes area that needs to be updated."
+          }
+        },
+        required: ["userRequest", "currentNotes"]
+      }
+    }
   }
 ];
 
@@ -76,14 +85,14 @@ export const useGPTToolRouter = () => {
       const message = await queryGPT(userQuery, { // Pass userQuery directly
         systemMessage: TOOL_ROUTING_SYSTEM_MESSAGE,
         tools: OPENAI_TOOLS,
-        tool_choice: "auto", // "auto" lets the model decide; could be "required" if API supports & strictness needed
-        model: 'smart', // Specify model for routing
+        // tool_choice: 'auto',
+        model: 'smart',
       });
 
       if (message && message.tool_calls && message.tool_calls.length > 0) {
         return message.tool_calls;
       } else {
-        console.warn('GPT tool router did not receive specific tool_calls, defaulting to queryGPT. Response content:', message?.content);
+        console.warn('GPT tool router did not receive specific tool_calls, defaulting to queryGPT.\n\nResponse content:', message?.content);
         return
       }
 

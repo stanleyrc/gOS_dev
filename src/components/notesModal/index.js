@@ -6,6 +6,7 @@ import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
 import { usePubmedFullText } from '../../hooks/usePubmedFullText';
 import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
 import { useEventNoteGenerator } from "../../hooks/useEventNoteGenerator";
+import { useNotesUpdater } from "../../hooks/useNotesUpdater"; // Import the new hook
 import PubmedWizard from "../pubmedWizard";
 import ClinicalTrialsWizard from "../clinicalTrialsWizard";
 import { withTranslation } from "react-i18next";
@@ -37,6 +38,7 @@ const NotesModal = ({
   const { summarizePaper } = usePaperSummarizer();
   const { getFullText, isLoading: isLoadingFullText } = usePubmedFullText();
   const { searchClinicalTrials } = useClinicalTrialsSearch();
+  const performNotesUpdate = useNotesUpdater(); // Instantiate the new hook
 
   React.useEffect(() => {
     const initialMemoryItems = [];
@@ -228,6 +230,60 @@ const NotesModal = ({
     );
   };
 
+  const handleExecuteToolCall = async (toolCall) => {
+    if (!toolCall || !toolCall.function) {
+      console.error("Invalid tool call received in NotesModal");
+      return;
+    }
+
+    const { name, arguments: argsString } = toolCall.function;
+    let parsedArgs;
+    try {
+      parsedArgs = JSON.parse(argsString);
+    } catch (error) {
+      console.error("Failed to parse tool call arguments:", error);
+      message.error(t('components.notes-modal.tool-args-error'));
+      return;
+    }
+
+    if (name === "updateNotes") {
+      const { userRequest, currentNotes: currentNotesFromTool } = parsedArgs; // currentNotesFromTool is not directly used; 'notes' state is primary.
+      
+      // Prepare additional context items (papers and clinical trials)
+      const selectedPapersAndTrials = memoryItems.filter(
+        item => item.selectedForContext && (item.type === 'paper' || item.type === 'clinicalTrial')
+      );
+
+      setIsLoading(true);
+      try {
+        // Use the 'notes' state as the most current version of notes for the update
+        const updatedNotesContent = await performNotesUpdate(
+          userRequest,
+          notes, // Pass the current notes from state
+          record, // Main genomic event record for the note
+          report, // Main case metadata for the note
+          selectedPapersAndTrials // Additional context from memory (papers, trials)
+        );
+
+        if (updatedNotesContent) {
+          setNotes(updatedNotesContent);
+          if (record) {
+            localStorage.setItem(getNotesStorageKey(record), updatedNotesContent);
+          }
+          message.success(t('components.notes-modal.notes-updated'));
+        }
+      } catch (error) {
+        message.error(t('components.notes-modal.gpt-error'));
+        console.error('Notes Update Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      console.warn(`Unsupported tool call: ${name}`);
+      // Potentially handle other tools here or delegate
+    }
+  };
+
   const handleClearChatMemory = () => {
     setMemoryItems(prevItems => 
       prevItems.filter(item => item.type !== 'paper' && item.type !== 'clinicalTrial')
@@ -288,6 +344,7 @@ const NotesModal = ({
             memoryItems={memoryItems}
             onToggleMemoryItemSelection={handleToggleMemoryItemSelection}
             onClearChatMemory={handleClearChatMemory}
+            onExecuteToolCall={handleExecuteToolCall} // Pass the handler to NotesChat
           />
         </Col>
       </Row>

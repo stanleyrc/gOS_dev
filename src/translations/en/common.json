@@ -645,7 +645,16 @@
       "fetch-error": "Error fetching data",
       "gpt-error": "Error generating note",
       "citation-exists": "This citation has already been added to the notes",
-      "storage-limit-reached": "Storage limit reached"
+      "storage-limit-reached": "Storage limit reached",
+      "tool-args-error": "Failed to parse tool call arguments",
+      "notes-updated": "Notes updated successfully",
+      "memory": {
+        "record-title": "Event Summary: {{gene}} ({{type}})",
+        "report-title": "Patient Metadata",
+        "user-notes-title": "Current Notes Content",
+        "item-exists": "{{title}} already in memory.",
+        "cleared-chat-items": "Added papers and clinical trials cleared from chat memory."
+      }
     },
     "pubmed-wizard": {
       "search-placeholder": "Search PubMed literature...",

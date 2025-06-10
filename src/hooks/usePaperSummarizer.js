@@ -54,7 +54,7 @@ export const usePaperSummarizer = () => {
         systemMessage: SYSTEM_PROMPT,
         model: 'cheap' // use cheap model for full text summary
       });
-      return summary;
+      return summary.content;
     } catch (error) {
       console.error('Error summarizing paper:', error);
       throw error;
