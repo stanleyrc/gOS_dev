@@ -624,6 +624,8 @@
       "coverage-plot": "Denoised Coverage",
       "hetsnp-plot": "Heterozygous SNPs",
       "hetsnp-copy-number": "Est. CN ↑",
+      "hetsnp-plot-y-axis-title": "Est. CN ↑",
+      "hetsnp-plot-y-axis2-title": "↑ Count",
       "hetsnp-count": "↑ Count",
       "mutations-plot": "Mutations Multiplicity",
       "mutations-plot-y-axis-title": "↑ Est. Copies",
@@ -631,6 +633,8 @@
       "allelic-plot": "Allelic CN Graph",
       "allelic-plot-y-axis-title": "↑ CN",
       "coverage-copy-number": "Est. CN ↑",
+      "coverage-y-axis-title": "Est. CN ↑",
+      "coverage-y-axis2-title": "↑ Base Coverage",
       "coverage-count": "↑ Base Coverage",
       "missing-counts-axis": "Counts Axis is not available due to missing attributes."
     },
