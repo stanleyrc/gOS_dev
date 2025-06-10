@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Button, List, Avatar, Collapse, Checkbox, Typography } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { Card, Input, Button, List, Avatar, Collapse, Checkbox, Typography, message as antdMessage } from 'antd'; // Added message
+import { SendOutlined, ClearOutlined } from '@ant-design/icons'; // Added ClearOutlined
 import ReactMarkdown from 'react-markdown';
 import { useGPT } from '../../hooks/useGPT'; // Assuming this path is correct relative to the new file
 import { useGPTToolRouter } from '../../hooks/useGPTToolRouter'; // Import the tool router
@@ -10,7 +10,7 @@ import { withTranslation } from "react-i18next";
 const { Panel } = Collapse;
 const { Text } = Typography;
 
-const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory, onExecuteToolCall }) => {
+const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory, onExecuteToolCall, onChatHistoryCleared }) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -94,6 +94,14 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
     }
   };
 
+  const handleClearChat = () => {
+    setMessages([]);
+    if (onChatHistoryCleared) {
+      onChatHistoryCleared();
+    }
+    antdMessage.success(t('components.notes-chat.chat-cleared-success', "Chat history cleared."));
+  };
+
   return (
     <>
       <GlobalStyle />
@@ -132,8 +140,16 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
       <Card 
         className="notes-chat-card"
         title={
-          <div className="chat-header">
+          <div className="chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{t('components.notes-chat.title', "Chat about this event")}</span>
+            <Button
+              icon={<ClearOutlined />}
+              onClick={handleClearChat}
+              size="small"
+              title={t('components.notes-chat.clear-chat-button', "Clear Chat")}
+            >
+              {t('components.notes-chat.clear-chat-button-label', "Clear")}
+            </Button>
           </div>
         }
       >
@@ -186,7 +202,8 @@ NotesChat.defaultProps = {
   memoryItems: [],
   onToggleMemoryItemSelection: () => {},
   onClearChatMemory: null,
-  onExecuteToolCall: () => {}, // Add new prop with default
+  onExecuteToolCall: () => {},
+  onChatHistoryCleared: () => {}, // Add new prop with default
 };
 
 // No mapStateToProps or connect needed if props are passed down directly

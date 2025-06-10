@@ -1,7 +1,9 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
-import { Button, Row, Col, Input, message, Collapse } from "antd";
+import { Button, Row, Col, Input, message, Collapse, Card } from "antd"; // Added Card
+import { EditOutlined, SaveOutlined } from '@ant-design/icons'; // Added icons
+import ReactMarkdown from 'react-markdown'; // Ensure ReactMarkdown is imported
 import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
 import { usePubmedFullText } from '../../hooks/usePubmedFullText';
 import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
@@ -32,6 +34,7 @@ const NotesModal = ({
   igv 
 }) => {
   const [notes, setNotes] = React.useState('');
+  const [isEditingNotes, setIsEditingNotes] = React.useState(false); // New state for editing mode
   const [isLoading, setIsLoading] = React.useState(false);
   const [memoryItems, setMemoryItems] = React.useState([]);
   const generateNote = useEventNoteGenerator();
@@ -304,6 +307,17 @@ const NotesModal = ({
     message.success(t('components.notes-modal.memory.cleared-chat-items', 'Added papers and clinical trials cleared from chat memory.'));
   };
 
+  const handleChatHistoryCleared = () => {
+    setMemoryItems(prevItems =>
+      prevItems.map(item =>
+        item.id === 'chat-history-context'
+          ? { ...item, data: { info: t('components.notes-modal.memory.chat-history-cleared', 'Chat history has been cleared by the user.') } }
+          : item
+      )
+    );
+    // No antd message here, as NotesChat will show one.
+  };
+
   const handleGenerateEventNote = async () => {
     if (!notes.trim()) {
       message.warning(t('components.notes-modal.empty-notes'));
@@ -341,27 +355,51 @@ const NotesModal = ({
   return (
     <Wrapper>
       <Row gutter={16}> {/* Added gutter for spacing between columns */}
-        <Col span={12}> {/* Column for Notes Text Area */}
-          <Input.TextArea
-            value={notes}
-            onChange={handleNotesChange}
-            placeholder={t("components.notes-modal.enter-notes")}
-            style={{ height: '450px' }} // Match chat height
-          />
+        <Col span={12}> {/* Column for Notes Text Area / Markdown View */}
+          <Card 
+            title={t("components.notes-modal.notes-title", "Notes")}
+            extra={
+              <Button 
+                icon={isEditingNotes ? <SaveOutlined /> : <EditOutlined />}
+                onClick={() => setIsEditingNotes(!isEditingNotes)}
+              >
+                {isEditingNotes ? t("components.notes-modal.save-notes", "Save") : t("components.notes-modal.edit-notes", "Edit")}
+              </Button>
+            }
+            style={{ height: '500px' }} // Total height for the card
+            bodyStyle={{ padding: '0px', height: 'calc(500px - 56px)', overflowY: 'auto' }} // 56px is a common AntD header height; body handles scrolling.
+          >
+            {isEditingNotes ? (
+              <Input.TextArea
+                value={notes}
+                onChange={handleNotesChange}
+                placeholder={t("components.notes-modal.enter-notes")}
+                style={{ height: '100%', width: '100%', resize: 'none' }} // Fill the card body
+              />
+            ) : (
+              // This div provides padding and border for the Markdown content, fitting within the scrollable card body.
+              // Its height is 100% of the card body, which is scrollable.
+              <div style={{ height: '100%', width: '100%', border: '1px solid #d9d9d9', padding: '4px 11px' }}> 
+                <ReactMarkdown>{notes || t("components.notes-modal.no-notes-preview", "No notes to display. Click 'Edit' to add notes.")}</ReactMarkdown>
+              </div>
+            )}
+          </Card>
         </Col>
         <Col span={12}> {/* Column for Notes Chat */}
-          <NotesChat 
-            t={t} 
+          <NotesChat
+            style={{ height: '500px' }} // Match notes card height
+            t={t}
             record={record} // Kept for potential direct use or if NotesChat needs it for other reasons
             report={report} // Kept for potential direct use
             memoryItems={memoryItems}
             onToggleMemoryItemSelection={handleToggleMemoryItemSelection}
             onClearChatMemory={handleClearChatMemory}
             onExecuteToolCall={handleExecuteToolCall} // Pass the handler to NotesChat
+            onChatHistoryCleared={handleChatHistoryCleared} // Pass the new handler
           />
         </Col>
       </Row>
-      <Row style={{ marginTop: '24px' }}> {/* Increased marginTop for better separation */}
+      <Row style={{ marginTop: '16px' }}> {/* Adjusted marginTop */}
         <Col span={24}>
           <Collapse>
             <Collapse.Panel 
