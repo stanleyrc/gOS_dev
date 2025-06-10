@@ -239,7 +239,16 @@ Based on the context and the list of papers, please identify the PMIDs of the mo
                       <PlusOutlined 
                         onClick={(e) => {
                           e.preventDefault();
-                          onAddCitation(item.citation);
+                          if (onAddCitation) {
+                            const memoryItem = {
+                              id: `paper-${item.pmid}`,
+                              type: 'paper',
+                              title: `Paper: ${item.title} (PMID: ${item.pmid})`,
+                              data: { ...item, source: 'pubmed' }, // Send the whole article or selected fields
+                              selectedForContext: true // Default to selected, can be changed in NotesModal
+                            };
+                            onAddCitation(memoryItem);
+                          }
                         }}
                         style={{ 
                           cursor: 'pointer',

@@ -224,7 +224,18 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
                     </ViewLink>
                     <Tooltip title={t("components.clinical-trials-wizard.results.add-to-notes")}>
                       <AddIcon 
-                        onClick={() => onAddCitation && onAddCitation(`NCT ID: ${item.nctId} - ${item.title}`)}
+                        onClick={() => {
+                          if (onAddCitation) {
+                            const memoryItem = {
+                              id: `trial-${item.nctId}`,
+                              type: 'clinicalTrial',
+                              title: `Trial: ${item.title} (NCT ID: ${item.nctId})`,
+                              data: { ...item, source: 'clinicaltrials' }, // Send the whole item or selected fields
+                              selectedForContext: true // Default to selected, can be changed in NotesModal
+                            };
+                            onAddCitation(memoryItem);
+                          }
+                        }}
                         style={{ 
                           cursor: 'pointer',
                           fontSize: '16px',

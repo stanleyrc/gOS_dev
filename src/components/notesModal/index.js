@@ -32,17 +32,66 @@ const NotesModal = ({
 }) => {
   const [notes, setNotes] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [memoryItems, setMemoryItems] = React.useState([]);
   const generateNote = useEventNoteGenerator();
   const { summarizePaper } = usePaperSummarizer();
   const { getFullText, isLoading: isLoadingFullText } = usePubmedFullText();
   const { searchClinicalTrials } = useClinicalTrialsSearch();
 
   React.useEffect(() => {
+    const initialMemoryItems = [];
+    // Load stored notes first, as it might be needed for the notes memory item
     if (record) {
       const storedNotes = localStorage.getItem(getNotesStorageKey(record)) || '';
-      setNotes(storedNotes);
+      // Only set notes if it's different to avoid potential loops if notes was a dependency
+      // For now, notes is not a direct dependency for this part, but good practice.
+      if (notes !== storedNotes) {
+        setNotes(storedNotes);
+      }
     }
-  }, [record]);
+
+    // Now build memory items including the current notes
+    if (record) {
+      initialMemoryItems.push({
+        id: `record-${record.gene}-${record.location}`, // More specific ID
+        type: 'eventRecord',
+        title: t('components.notes-modal.memory.record-title', { gene: record.gene || 'N/A', type: record.type || 'N/A' }),
+        data: record,
+        selectedForContext: true, // Default to selected
+      });
+    }
+    if (report) {
+      initialMemoryItems.push({
+        id: 'event-report-current', // Assuming one report context at a time
+        type: 'eventReport',
+        title: t('components.notes-modal.memory.report-title', 'Current Event Report'),
+        data: report,
+        selectedForContext: true, // Default to selected
+      });
+    }
+    // Add current notes content as a memory item
+    initialMemoryItems.push({
+      id: 'user-notes-content',
+      type: 'userNotes',
+      title: t('components.notes-modal.memory.user-notes-title', 'Current Notes Content'),
+      data: notes, // Use the current 'notes' state
+      selectedForContext: true, // Default to selected
+    });
+
+    // Preserve existing papers/trials if any (e.g., if record/report/notes updates but papers were already added)
+    setMemoryItems(prevItems => {
+      const existingExternalItems = prevItems.filter(
+        item => item.type === 'paper' || item.type === 'clinicalTrial'
+      );
+      // Filter out old core items (record, report, userNotes) if they exist to avoid duplicates from previous renders
+      // This ensures that the initialMemoryItems (which are always fresh) replace their old counterparts.
+      const newCoreItems = initialMemoryItems.filter(newItem => 
+        !existingExternalItems.find(extItem => extItem.id === newItem.id)
+      );
+      return [...existingExternalItems, ...newCoreItems];
+    });
+
+  }, [record, report, notes, t]); // Added 'notes' and 't' to dependency array
 
   const getNotesStorageKey = (record) => {
     return `event_notes_${record.gene}_${record.location}`;
@@ -130,25 +179,60 @@ const NotesModal = ({
     }
   };
 
-  const handleAddCitation = (citation) => {
-    // Check if citation already exists in notes
-    if (notes && notes.includes(citation)) {
-      message.info(t('components.notes-modal.citation-exists'));
-      return;
-    }
-
-    const updatedNotes = notes ? `${notes}\n${citation}` : citation;
-    setNotes(updatedNotes);
+  const handleAddCitation = (itemToAdd) => {
+    // itemToAdd is now an object { id, type, title, data, selectedForContext }
     
-    if (record) {
-      try {
-        localStorage.setItem(getNotesStorageKey(record), updatedNotes);
-      } catch (error) {
-        if (error.name === 'QuotaExceededError') {
-          message.error(t('components.filtered-events-panel.storage-limit-reached'));
-        }
+    // Add to memoryItems state, preventing duplicates by ID
+    setMemoryItems(prevItems => {
+      const existingItem = prevItems.find(item => item.id === itemToAdd.id);
+      if (existingItem) {
+        message.info(t('components.notes-modal.memory.item-exists', { title: itemToAdd.title }));
+        // Optionally, update selectedForContext if it's different
+        // return prevItems.map(item => item.id === itemToAdd.id ? { ...item, selectedForContext: itemToAdd.selectedForContext } : item);
+        return prevItems;
       }
-    }
+      return [...prevItems, itemToAdd];
+    });
+
+    // Optionally, still append a simple string to the notes text area for visibility
+    // const citationString = itemToAdd.type === 'paper' 
+    //   ? `PMID: ${itemToAdd.data.pmid} - ${itemToAdd.data.title}`
+    //   : `NCT ID: ${itemToAdd.data.nctId} - ${itemToAdd.data.title}`;
+    //
+    // if (notes && notes.includes(citationString)) {
+    //   // Already in notes text, but might not have been in memoryItems if app was reloaded
+    //   // message.info(t('components.notes-modal.citation-exists')); 
+    //   // No return here, as we want to ensure it's in memoryItems state
+    // } else {
+    //   const updatedNotes = notes ? `${notes}\n${citationString}` : citationString;
+    //   setNotes(updatedNotes);
+    //   if (record) {
+    //     try {
+    //       localStorage.setItem(getNotesStorageKey(record), updatedNotes);
+    //     } catch (error) {
+    //       if (error.name === 'QuotaExceededError') {
+    //         message.error(t('components.filtered-events-panel.storage-limit-reached'));
+    //       }
+    //     }
+    //   }
+    // }
+  };
+
+  const handleToggleMemoryItemSelection = (itemId) => {
+    setMemoryItems(prevItems =>
+      prevItems.map(item =>
+        item.id === itemId
+          ? { ...item, selectedForContext: !item.selectedForContext }
+          : item
+      )
+    );
+  };
+
+  const handleClearChatMemory = () => {
+    setMemoryItems(prevItems => 
+      prevItems.filter(item => item.type !== 'paper' && item.type !== 'clinicalTrial')
+    );
+    message.success(t('components.notes-modal.memory.cleared-chat-items', 'Added papers and clinical trials cleared from chat memory.'));
   };
 
   const handleGenerateEventNote = async () => {
@@ -199,8 +283,11 @@ const NotesModal = ({
         <Col span={12}> {/* Column for Notes Chat */}
           <NotesChat 
             t={t} 
-            record={record} 
-            report={report} 
+            record={record} // Kept for potential direct use or if NotesChat needs it for other reasons
+            report={report} // Kept for potential direct use
+            memoryItems={memoryItems}
+            onToggleMemoryItemSelection={handleToggleMemoryItemSelection}
+            onClearChatMemory={handleClearChatMemory}
           />
         </Col>
       </Row>
