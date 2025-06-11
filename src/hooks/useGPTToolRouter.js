@@ -77,13 +77,13 @@ export { OPENAI_TOOLS };
 export const useGPTToolRouter = () => {
   const { queryGPT } = useGPT();
 
-  const routeQuery = async (userQuery) => {
+  const routeQuery = async (userQuery, options = {}) => {
     try {
       const message = await queryGPT(userQuery, { // Pass userQuery directly
         systemMessage: TOOL_ROUTING_SYSTEM_MESSAGE,
         tools: OPENAI_TOOLS,
-        // tool_choice: 'auto',
         model: 'smart',
+        ...options, // Spread incoming options, allowing tool_choice to be overridden
       });
 
       if (message && message.tool_calls && message.tool_calls.length > 0) {

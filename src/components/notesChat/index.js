@@ -10,7 +10,7 @@ import { withTranslation } from "react-i18next";
 const { Panel } = Collapse;
 const { Text } = Typography;
 
-const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory, onExecuteToolCall, onChatHistoryCleared }) => {
+const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory, onExecuteToolCall, onChatHistoryCleared, forceUpdateNotesTool }) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +61,12 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
       setIsLoading(true);
 
       try {
-        const toolCalls = await routeQuery(userMessageContent);
+        const routeQueryOptions = {};
+        if (forceUpdateNotesTool) {
+          routeQueryOptions.tool_choice = { type: "function", function: { name: "updateNotes" } };
+        }
+
+        const toolCalls = await routeQuery(userMessageContent, routeQueryOptions);
 
         if (toolCalls && toolCalls.length > 0) {
           const mainToolCall = toolCalls[0];
@@ -204,6 +209,7 @@ NotesChat.defaultProps = {
   onClearChatMemory: null,
   onExecuteToolCall: () => {},
   onChatHistoryCleared: () => {}, // Add new prop with default
+  forceUpdateNotesTool: false, // Add new prop with default
 };
 
 // No mapStateToProps or connect needed if props are passed down directly

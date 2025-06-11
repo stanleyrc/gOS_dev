@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
-import { Button, Row, Col, Input, message, Collapse, Card } from "antd"; // Added Card
-import { EditOutlined, SaveOutlined } from '@ant-design/icons'; // Added icons
+import { Button, Row, Col, Input, message, Collapse, Card, Tooltip } from "antd"; // Added Card, Tooltip
+import { EditOutlined, SaveOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons'; // Added icons
 import ReactMarkdown from 'react-markdown'; // Ensure ReactMarkdown is imported
 import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
 import { usePubmedFullText } from '../../hooks/usePubmedFullText';
@@ -35,6 +35,7 @@ const NotesModal = ({
 }) => {
   const [notes, setNotes] = React.useState('');
   const [isEditingNotes, setIsEditingNotes] = React.useState(false); // New state for editing mode
+  const [forceUpdateNotesTool, setForceUpdateNotesTool] = React.useState(false); // State for forcing updateNotes tool
   const [isLoading, setIsLoading] = React.useState(false);
   const [memoryItems, setMemoryItems] = React.useState([]);
   const generateNote = useEventNoteGenerator();
@@ -354,9 +355,9 @@ const NotesModal = ({
 
   return (
     <Wrapper>
-      <Row gutter={16}> {/* Added gutter for spacing between columns */}
-        <Col span={12}> {/* Column for Notes Text Area / Markdown View */}
-          <Card 
+      <Row gutter={8} align="start"> {/* Adjusted gutter, align items to start for consistent height */}
+        <Col span={11}> {/* Column for Notes Text Area / Markdown View */}
+          <Card
             title={t("components.notes-modal.notes-title", "Notes")}
             extra={
               <Button 
@@ -385,7 +386,19 @@ const NotesModal = ({
             )}
           </Card>
         </Col>
-        <Col span={12}> {/* Column for Notes Chat */}
+        <Col span={2} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '500px' }}>
+          <Tooltip title={forceUpdateNotesTool ? t("components.notes-modal.force-update-tooltip-on", "Disable updating notes with chat") : t("components.notes-modal.force-update-tooltip-off", "Enable updating notes with chat")}>
+            <Button
+              icon={forceUpdateNotesTool ? <LinkOutlined /> : <DisconnectOutlined />}
+              onClick={() => setForceUpdateNotesTool(!forceUpdateNotesTool)}
+              type={forceUpdateNotesTool ? "primary" : "default"}
+              shape="circle"
+              size="large"
+              style={{ marginBottom: '8px' }} // Add some margin if needed
+            />
+          </Tooltip>
+        </Col>
+        <Col span={11}> {/* Column for Notes Chat */}
           <NotesChat
             style={{ height: '500px' }} // Match notes card height
             t={t}
@@ -396,6 +409,7 @@ const NotesModal = ({
             onClearChatMemory={handleClearChatMemory}
             onExecuteToolCall={handleExecuteToolCall} // Pass the handler to NotesChat
             onChatHistoryCleared={handleChatHistoryCleared} // Pass the new handler
+            forceUpdateNotesTool={forceUpdateNotesTool} // Pass the new state
           />
         </Col>
       </Row>
