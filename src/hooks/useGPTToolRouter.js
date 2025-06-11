@@ -68,6 +68,35 @@ const OPENAI_TOOLS = [
         required: ["userRequest", "currentNotes"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "checkPatientClinicalTrialEligibility",
+      description: "Evaluates a patient's potential eligibility for a clinical trial based on their metadata and the trial's eligibility criteria. Try to be generous in determining possible eligibility, only mark as ineligible if patient directly matches one or more exclusion critiera. Returns a boolean indicating if the patient might be eligible and a brief reasoning.",
+      parameters: {
+        type: "object",
+        properties: {
+          patientMetadata: {
+            type: "string",
+            description: "A summary of the patient's relevant clinical information (e.g., gene mutations, conditions, demographics)."
+          },
+          eligibilityCriteria: {
+            type: "string",
+            description: "The full text of the clinical trial's eligibility criteria (inclusion and exclusion)."
+          },
+          isPotentiallyEligible: {
+            type: "boolean",
+            description: "True if the patient might meet the criteria, false if the patient is likely ineligible based on the provided information."
+          },
+          reasoning: {
+            type: "string",
+            description: "A brief explanation for the eligibility assessment, highlighting key criteria that led to the decision."
+          }
+        },
+        required: ["patientMetadata", "eligibilityCriteria", "isPotentiallyEligible", "reasoning"]
+      }
+    }
   }
 ];
 

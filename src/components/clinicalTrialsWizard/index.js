@@ -1,8 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { PropTypes } from "prop-types";
-import { Input, Form, Checkbox, Switch, Button, Space, Alert, List, Tooltip } from "antd";
-import { PlusOutlined } from '@ant-design/icons';
+import { Input, Form, Checkbox, Button, Alert, List, Tooltip, Spin } from "antd";
+import { 
+  PlusOutlined, 
+  CheckCircleOutlined, 
+  CloseCircleOutlined, 
+  QuestionCircleOutlined,
+  LoadingOutlined 
+} from '@ant-design/icons';
 import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
+import { useGPTToolRouter } from "../../hooks/useGPTToolRouter";
 import { withTranslation } from "react-i18next";
 import {
   Container,
@@ -20,7 +27,8 @@ import {
   EligibilityCriteria,
   ShowMoreButton,
   PaginationContainer,
-  PageInfo
+  PageInfo,
+  EligibilityCheckButtonContainer
 } from "./index.style";
 
 const STUDY_STATUS_OPTIONS = [
@@ -76,6 +84,8 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
   const [total, setTotal] = useState(0);
 
   const [expandedItems, setExpandedItems] = useState({});
+  const [eligibilityStatus, setEligibilityStatus] = useState({}); // { [nctId]: { status: 'inactivated' | 'loading' | 'eligible' | 'ineligible', reasoning: '' } }
+  const { routeQuery } = useGPTToolRouter();
   const {
     searchClinicalTrials,
     results,
@@ -127,6 +137,53 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
       setPrevFilters(filters);
     }
   };
+
+  const handleEligibilityCheck = useCallback(async (trialItem) => {
+    if (!record || !trialItem.eligibilityCriteria) {
+      // console.error("Patient record or eligibility criteria missing.");
+      // Optionally, set an error state for this specific item
+      setEligibilityStatus(prev => ({
+        ...prev,
+        [trialItem.nctId]: { status: 'error', reasoning: 'Patient record or eligibility criteria missing.' }
+      }));
+      return;
+    }
+
+    setEligibilityStatus(prev => ({
+      ...prev,
+      [trialItem.nctId]: { status: 'loading', reasoning: '' }
+    }));
+
+    const patientMetadata = `Patient Details: Gene - ${record.gene || 'N/A'}, Variant Type - ${record.vartype || 'N/A'}, Effect - ${record.effect || 'N/A'}.`;
+    const userQuery = `Based on the following patient details: "${patientMetadata}" and the clinical trial eligibility criteria: "${trialItem.eligibilityCriteria}", assess if the patient is potentially eligible. Focus on identifying ineligibility.`;
+
+    try {
+      const toolCalls = await routeQuery(userQuery, { tool_choice: { type: "function", function: { name: "checkPatientClinicalTrialEligibility" } } });
+      
+      if (toolCalls && toolCalls.length > 0 && toolCalls[0].function) {
+        const args = JSON.parse(toolCalls[0].function.arguments);
+        if (args.isPotentiallyEligible !== undefined) {
+          setEligibilityStatus(prev => ({
+            ...prev,
+            [trialItem.nctId]: {
+              status: args.isPotentiallyEligible ? 'eligible' : 'ineligible',
+              reasoning: args.reasoning || ''
+            }
+          }));
+        } else {
+          throw new Error("AI response did not include eligibility status.");
+        }
+      } else {
+        throw new Error("AI response did not select the eligibility tool or was malformed.");
+      }
+    } catch (err) {
+      console.error("Error checking eligibility:", err);
+      setEligibilityStatus(prev => ({
+        ...prev,
+        [trialItem.nctId]: { status: 'error', reasoning: err.message || 'Failed to check eligibility.' }
+      }));
+    }
+  }, [record, routeQuery]);
 
 
   const hasNextPage = !!nextPageToken;
@@ -247,7 +304,7 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
                 }
                 description={
                   <div>
-                    <div>NCT ID: {item.nctId}</div>
+                    <div>NCT ID: {item.nctId}</div> {/* Ensure item.nctId is correct key */}
                     <div>Status: {item.status}</div>
                     <div>Conditions: {Array.isArray(item.conditions) && item.conditions.length > 0 ? item.conditions.join(', ') : item.conditions}</div>
                     <div>Keywords: {Array.isArray(item.keywords) && item.keywords.length > 0 ? item.keywords.join(', ') : item.keywords}</div>
@@ -265,19 +322,70 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
                       [item.nctId]: !prev[item.nctId]
                     }))}
                   >
-                    {expandedItems[item.nctId] 
+                    {expandedItems[item.nctId]
                       ? t("components.clinical-trials-wizard.results.hide-eligibility")
                       : t("components.clinical-trials-wizard.results.show-eligibility")
                     }
                   </Button>
+                  <EligibilityCheckButtonContainer>
+                    {(!eligibilityStatus[item.nctId] || eligibilityStatus[item.nctId]?.status === 'inactivated') && (
+                      <Tooltip title={t("components.clinical-trials-wizard.results.check-eligibility-tooltip")}>
+                        <Button
+                          icon={<QuestionCircleOutlined />}
+                          onClick={() => handleEligibilityCheck(item)}
+                          size="small"
+                        >
+                          {t("components.clinical-trials-wizard.results.check-eligibility")}
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {eligibilityStatus[item.nctId]?.status === 'loading' && (
+                      <Button icon={<LoadingOutlined />} disabled size="small">
+                        {t("components.clinical-trials-wizard.results.checking-eligibility")}
+                      </Button>
+                    )}
+                    {eligibilityStatus[item.nctId]?.status === 'eligible' && (
+                      <Tooltip title={eligibilityStatus[item.nctId]?.reasoning || t("components.clinical-trials-wizard.results.possibly-eligible-tooltip")}>
+                        <Button
+                          icon={<CheckCircleOutlined style={{ color: 'green' }} />}
+                          onClick={() => handleEligibilityCheck(item)} // Allow re-check
+                          size="small"
+                        >
+                          {t("components.clinical-trials-wizard.results.possibly-eligible")}
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {eligibilityStatus[item.nctId]?.status === 'ineligible' && (
+                      <Tooltip title={eligibilityStatus[item.nctId]?.reasoning || t("components.clinical-trials-wizard.results.ineligible-tooltip")}>
+                        <Button
+                          icon={<CloseCircleOutlined style={{ color: 'red' }} />}
+                          onClick={() => handleEligibilityCheck(item)} // Allow re-check
+                          size="small"
+                        >
+                          {t("components.clinical-trials-wizard.results.ineligible")}
+                        </Button>
+                      </Tooltip>
+                    )}
+                     {eligibilityStatus[item.nctId]?.status === 'error' && (
+                      <Tooltip title={eligibilityStatus[item.nctId]?.reasoning || t("components.clinical-trials-wizard.results.error-tooltip")}>
+                        <Button
+                          icon={<CloseCircleOutlined style={{ color: 'orange' }} />}
+                          onClick={() => handleEligibilityCheck(item)} // Allow re-try
+                          size="small"
+                        >
+                          {t("components.clinical-trials-wizard.results.error-checking")}
+                        </Button>
+                      </Tooltip>
+                    )}
+                  </EligibilityCheckButtonContainer>
                   {expandedItems[item.nctId] && (
                     <EligibilityCriteria>
                       {formatEligibilityCriteria(item.eligibilityCriteria).map((section, idx) => (
                         <div key={idx}>
                           <h4>{section.title}</h4>
                           <ul>
-                            {section.items.map((item, itemIdx) => (
-                              <li key={itemIdx}>{item}</li>
+                            {section.items.map((criteriaItem, itemIdx) => ( // Renamed inner 'item' to 'criteriaItem'
+                              <li key={itemIdx}>{criteriaItem}</li>
                             ))}
                           </ul>
                         </div>

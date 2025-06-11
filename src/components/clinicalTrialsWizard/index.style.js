@@ -174,3 +174,13 @@ export const CheckboxGroup = styled.div`
   border: 1px solid #d9d9d9;
   border-radius: 4px;
 `;
+
+export const EligibilityCheckButtonContainer = styled.div`
+  margin-left: 8px;
+  display: inline-block; 
+  vertical-align: middle; // Helps align with other inline-block elements like buttons
+
+  .ant-btn { // Specific styling for buttons within this container if needed
+    margin-left: 0; // Override default button margins if any
+  }
+`;

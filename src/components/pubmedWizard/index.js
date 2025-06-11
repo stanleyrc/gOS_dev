@@ -56,15 +56,15 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
     };
 
     const userMessageContent = `
-Context:
-${variantSummary}
-The user is a clinician investigating a cancer patient harboring this mutation.
+      Context:
+      ${variantSummary}
+      The user is a clinician investigating a cancer patient harboring this mutation.
 
-Papers (PMID and Title):
-${JSON.stringify(paperTitlesList)}
+      Papers (PMID and Title):
+      ${JSON.stringify(paperTitlesList)}
 
-Based on the context and the list of papers, please identify the PMIDs of the most relevant papers and use the "rankPapersByRelevance" tool to provide them.
-`;
+      Based on the context and the list of papers, please identify the PMIDs of the most relevant papers and use the "rankPapersByRelevance" tool to provide them.
+      `;
 
     const messages = [
       systemMessage,

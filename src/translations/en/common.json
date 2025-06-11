@@ -711,7 +711,16 @@
         "description": "Description",
         "add-to-notes": "Add to notes",
         "show-eligibility": "Show eligibility criteria",
-        "hide-eligibility": "Hide eligibility criteria"
+        "hide-eligibility": "Hide eligibility criteria",
+        "check-eligibility-tooltip": "Use AI to check if the patient might be eligible for this trial based on their record and trial criteria.",
+        "check-eligibility": "Check Eligibility",
+        "checking-eligibility": "Checking...",
+        "possibly-eligible-tooltip": "AI suggests the patient might be eligible. Review criteria carefully.",
+        "possibly-eligible": "Possibly Eligible",
+        "ineligible-tooltip": "AI suggests the patient is likely ineligible.",
+        "ineligible": "Likely Ineligible",
+        "error-tooltip": "An error occurred while checking eligibility.",
+        "error-checking": "Error"
       }
     },
     "sageQc": {
