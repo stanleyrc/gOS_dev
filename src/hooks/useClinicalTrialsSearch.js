@@ -49,8 +49,8 @@ export const useClinicalTrialsSearch = () => {
       }
       
       const searchData = await searchResponse.json();
-      console.log(searchData);
       const studies = searchData.studies || [];
+      console.log(studies[0]);
 
       // Transform the response data
       const transformedResults = studies.map(study => {
@@ -60,7 +60,6 @@ export const useClinicalTrialsSearch = () => {
         const descriptionModule = protocolSection.descriptionModule || {};
         const conditionsModule = protocolSection.conditionsModule || {};
         const eligibilityModule = protocolSection.eligibilityModule || {};
-        console.log(conditionsModule.keywords);
 
         return {
           nctId: identificationModule.nctId || 'N/A',

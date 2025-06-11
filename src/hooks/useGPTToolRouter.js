@@ -6,9 +6,6 @@ const TOOL_ROUTING_SYSTEM_MESSAGE = {
 Based on the user's query, you must choose one of the available tools to best handle the request.
 You must call one of the provided functions. Do not answer directly without selecting a tool.
 
-Use the updateNotes tool when the user asks to modify, add to, or change the notes text.
-Use the rankPapersByRelevance tool when the user asks to analyze research papers against a clinical context and identify relevant PMIDs.
-
 `
 };
 
