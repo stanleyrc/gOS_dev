@@ -88,6 +88,7 @@ class SignaturesTab extends Component {
       mutationFilter === "sbs"
         ? sigprofiler_sbs_cosine_similarity
         : sigprofiler_indel_cosine_similarity;
+    console.log("cons", cosineSimilarityHash);
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
@@ -232,24 +233,25 @@ class SignaturesTab extends Component {
                                 }),
                               }}
                             />
-                            {cosineSimilarityHash[d.id] !== null && (
-                              <Tag
-                                bordered={false}
-                                color={cosineSimilarityClass(
-                                  cosineSimilarityHash[d.id]
-                                )}
-                              >
-                                <span
-                                  dangerouslySetInnerHTML={{
-                                    __html: t(`general.cosine-similarity`, {
-                                      value: d3.format(".0%")(
-                                        cosineSimilarityHash[d.id] || 0
-                                      ),
-                                    }),
-                                  }}
-                                />
-                              </Tag>
-                            )}
+                            {cosineSimilarityHash != null &&
+                              cosineSimilarityHash[d.id] != null && (
+                                <Tag
+                                  bordered={false}
+                                  color={cosineSimilarityClass(
+                                    cosineSimilarityHash[d.id]
+                                  )}
+                                >
+                                  <span
+                                    dangerouslySetInnerHTML={{
+                                      __html: t(`general.cosine-similarity`, {
+                                        value: d3.format(".0%")(
+                                          cosineSimilarityHash[d.id] || 0
+                                        ),
+                                      }),
+                                    }}
+                                  />
+                                </Tag>
+                              )}
                           </Space>
                         }
                         legendTitle={t("metadata.mutation-type")}
