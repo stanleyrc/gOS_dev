@@ -299,9 +299,7 @@ const NotesModal = ({
                 style={{ height: '100%', width: '100%', resize: 'none' }} // Fill the card body
               />
             ) : (
-              // This div provides padding and border for the Markdown content, fitting within the scrollable card body.
-              // Its height is 100% of the card body, which is scrollable.
-              <div style={{ height: '100%', width: '100%', border: '1px solid #d9d9d9', padding: '4px 11px' }}> 
+              <div style={{ height: '100%', width: '100%', padding: '4px 11px' }}> 
                 <ReactMarkdown>{notes || t("components.notes-modal.no-notes-preview", "No notes to display. Click 'Edit' to add notes.")}</ReactMarkdown>
               </div>
             )}

@@ -21,7 +21,7 @@ const NotesChat = ({
   onChatHistoryCleared, 
   forceUpdateNotesTool,
   totalSelectedTokens = 0, // Ensure default value
-  maxContextTokens = 30000, // Ensure default value
+  maxContextTokens = 60000, // Ensure default value
   isTokenLimitExceeded = false // Ensure default value
 }) => {
   const [messages, setMessages] = useState([]);

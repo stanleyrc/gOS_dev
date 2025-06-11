@@ -29,9 +29,9 @@ Format your response in markdown with the following sections:
 ## REFERENCES
 [List references which are directly cited in this report in APA format]
 
-Base your analysis ONLY on the provided event data, research papers, clinical trials, and clinician notes. Do not include any additional information outside of the provided context.
+Base your analysis ONLY on the provided event data, research papers, clinical trials, and clinician notes/messages. Do not include any additional information outside of the provided context.
 Be precise and clinical in your language, similar to FoundationOne CDx reports.
-Only use the headers provided above. Do not include any additional sections.
+Only use the headers provided above. Do not include any additional sections. Make sure to include inline references (e.g [1]) in the body text where relevant. References should be numbered and in APA format in the references section.
 `;
 
 /**

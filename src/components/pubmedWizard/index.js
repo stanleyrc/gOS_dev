@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { PropTypes } from "prop-types";
 import { Input, Alert, DatePicker, Form, Pagination, Tooltip, message } from "antd";
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import {
   Container,
   SearchSection,
@@ -25,8 +25,6 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
   
     const terms = [];
     if (record.gene) terms.push(record.gene);
-    if (record.type) terms.push(record.type);
-    if (record.effect && record.effect !== "Unknown") terms.push(record.effect);
   
     return terms.join(" ");
   });
@@ -47,6 +45,7 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
   const { getFullText } = usePubmedFullText();
 
   const [isRanking, setIsRanking] = useState(false);
+  const [addingPmid, setAddingPmid] = useState(null); // State for loading indicator
 
   // Encapsulated function for getting ranked PMIDs using GPT tool call
   async function getRankedPmidsFromGPT(variantSummary, paperTitlesList, gptQueryFunc) {
@@ -156,6 +155,53 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
     handleSearch(page);
   };
 
+  const handleAddCitation = async (item) => {
+    if (onAddCitation) {
+      setAddingPmid(item.pmid);
+      let summary = null;
+      try {
+        const pmid = item.pmid;
+        const fullTextResult = await getFullText(pmid);
+        if (fullTextResult) {
+          if (fullTextResult.isFullText && fullTextResult.fullText) {
+            try {
+              summary = await summarizePaper(fullTextResult.fullText);
+            } catch (summaryError) {
+              console.error(`Error summarizing PMID ${pmid}:`, summaryError);
+              // Optionally, inform the user that summarization failed but abstract might be available
+            }
+          } else if (fullTextResult.abstract) {
+            summary = fullTextResult.abstract; // Use abstract if full text not available or summarization fails
+          }
+        }
+      } catch (fetchError) {
+        console.error('Error fetching full text or abstract:', fetchError);
+        // Using a more generic key as this message is for the console, actual user message for failure is not requested here.
+        // If user-facing error is needed: message.error(t('components.pubmed-wizard.fetch-summary-error', 'Failed to fetch paper summary.'));
+      } finally {
+        // Ensure memoryItem is created and onAddCitation is called even if summary fetching fails
+        const memoryItem = {
+          id: `paper-${item.pmid}`,
+          type: 'paper',
+          title: `Paper: ${item.title} (PMID: ${item.pmid})`,
+          data: {
+            abstract: item.abstract,
+            authors: item.authors,
+            journal: item.journal,
+            year: item.year,
+            pmid: item.pmid, // Ensure pmid is part of data
+            summary: summary, // Add the fetched/summarized text (could be null)
+            source: 'pubmed'
+          }, // Send the whole article or selected fields
+          selectedForContext: true // Default to selected, can be changed in NotesModal
+        };
+        console.log("Adding citation:", memoryItem);
+        onAddCitation(memoryItem);
+        setAddingPmid(null);
+      }
+    }
+  };
+
   return (
     <Container>
       <SearchSection>
@@ -240,57 +286,21 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
                       )}
                     </ViewLink>
                     <Tooltip title={t("components.pubmed-wizard.results.add-citation-tooltip")}>
-                      <PlusOutlined 
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          if (onAddCitation) {
-                            let summary = null;
-                            try {
-                              const pmid = item.pmid;
-                              const fullTextResult = await getFullText(pmid);
-                              if (fullTextResult) {
-                                if (fullTextResult.isFullText && fullTextResult.fullText) {
-                                  try {
-                                    summary = await summarizePaper(fullTextResult.fullText);
-                                  } catch (summaryError) {
-                                    console.error(`Error summarizing PMID ${pmid}:`, summaryError);
-                                    // Optionally, inform the user that summarization failed but abstract might be available
-                                  }
-                                } else if (fullTextResult.abstract) {
-                                  summary = fullTextResult.abstract; // Use abstract if full text not available or summarization fails
-                                }
-                              }
-                            } catch (fetchError) {
-                              console.error('Error fetching full text or abstract:', fetchError);
-                              // Using a more generic key as this message is for the console, actual user message for failure is not requested here.
-                              // If user-facing error is needed: message.error(t('components.pubmed-wizard.fetch-summary-error', 'Failed to fetch paper summary.'));
-                            }
-
-                            const memoryItem = {
-                              id: `paper-${item.pmid}`,
-                              type: 'paper',
-                              title: `Paper: ${item.title} (PMID: ${item.pmid})`,
-                              data: {
-                                abstract: item.abstract,
-                                authors: item.authors,
-                                journal: item.journal,
-                                year: item.year,
-                                pmid: item.pmid, // Ensure pmid is part of data
-                                summary: summary, // Add the fetched/summarized text
-                                source: 'pubmed'
-                              }, // Send the whole article or selected fields
-                              selectedForContext: true // Default to selected, can be changed in NotesModal
-                            };
-                            console.log("Adding citation:", memoryItem);
-                            onAddCitation(memoryItem);
-                          }
-                        }}
-                        style={{ 
-                          cursor: 'pointer',
+                      {addingPmid === item.pmid ? (
+                        <LoadingOutlined style={{ fontSize: '16px', color: '#1890ff' }} />
+                      ) : (
+                        <PlusOutlined 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleAddCitation(item);
+                          }}
+                          style={{ 
+                            cursor: 'pointer',
                           fontSize: '16px',
                           color: '#1890ff'
                         }}
                       />
+                    )}
                     </Tooltip>
                   </div>
                 }

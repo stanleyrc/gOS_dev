@@ -61,10 +61,15 @@ export const usePubmedSearch = () => {
 
       // Extract article details
       const articles = xmlDoc.getElementsByTagName("PubmedArticle");
+      console.log('articles:', articles);
       const result = Array.from(articles).map(article => {
         const pmid = article.querySelector("PMID")?.textContent;
         const title = article.querySelector("ArticleTitle")?.textContent || 'No title available';
-        const abstract = article.querySelector("AbstractText")?.textContent || 'No abstract available';
+        const abstractNodes = article.querySelectorAll("Abstract > AbstractText");
+        let abstract = 'No abstract available';
+        if (abstractNodes && abstractNodes.length > 0) {
+          abstract = Array.from(abstractNodes).map(node => node.textContent).join(' ');
+        }
         const pubDate = article.querySelector("PubDate");
         const year = pubDate ? pubDate.querySelector("Year")?.textContent : 'Year not available';
         const journal = article.querySelector("Journal > Title")?.textContent || 'Journal not available';

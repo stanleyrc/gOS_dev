@@ -86,6 +86,7 @@ const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
 
   const [expandedItems, setExpandedItems] = useState({});
   const [eligibilityStatus, setEligibilityStatus] = useState({}); // { [nctId]: { status: 'inactivated' | 'loading' | 'eligible' | 'ineligible', reasoning: '' } }
+  const [addingNctId, setAddingNctId] = useState(null); // State for loading indicator
   const { routeQuery } = useGPTToolRouter();
   const {
     searchClinicalTrials,
@@ -287,25 +288,34 @@ const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
                       {item.title}
                     </ViewLink>
                     <Tooltip title={t("components.clinical-trials-wizard.results.add-to-notes")}>
-                      <AddIcon 
-                        onClick={() => {
-                          if (onAddCitation) {
-                            const memoryItem = {
-                              id: `trial-${item.nctId}`,
-                              type: 'clinicalTrial',
-                              title: `Trial: ${item.title} (NCT ID: ${item.nctId})`,
-                              data: { ...item, source: 'clinicaltrials' }, // Send the whole item or selected fields
-                              selectedForContext: true // Default to selected, can be changed in NotesModal
-                            };
-                            onAddCitation(memoryItem);
-                          }
-                        }}
-                        style={{ 
-                          cursor: 'pointer',
-                          fontSize: '16px',
-                          color: '#1890ff'
-                        }}
-                      />
+                      {addingNctId === item.nctId ? (
+                        <LoadingOutlined style={{ fontSize: '16px', color: '#1890ff', cursor: 'default' }} />
+                      ) : (
+                        <AddIcon 
+                          onClick={() => {
+                            if (onAddCitation) {
+                              setAddingNctId(item.nctId);
+                              try {
+                                const memoryItem = {
+                                  id: `trial-${item.nctId}`,
+                                  type: 'clinicalTrial',
+                                  title: `Trial: ${item.title} (NCT ID: ${item.nctId})`,
+                                  data: { ...item, source: 'clinicaltrials' }, // Send the whole item or selected fields
+                                  selectedForContext: true // Default to selected, can be changed in NotesModal
+                                };
+                                onAddCitation(memoryItem);
+                              } finally {
+                                setAddingNctId(null);
+                              }
+                            }
+                          }}
+                          style={{ 
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            color: '#1890ff'
+                          }}
+                        />
+                      )}
                     </Tooltip>
                   </TitleContainer>
                 }

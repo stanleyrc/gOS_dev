@@ -49,7 +49,6 @@ export const usePubmedFullText = () => {
           
           return {
             fullText: bodyText,
-            abstract: null,
             isFullText: true,
             xmlContent: fullTextXml
           };
@@ -61,32 +60,11 @@ export const usePubmedFullText = () => {
       const linksResponse = await fetch(linksUrl);
       const linksData = await linksResponse.json();
 
-      // If no full text available, fall back to abstract
-      if (!linksData.linksets?.[0]?.linksetdbs?.[0]?.links?.[0]) {
-        const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml`;
-        const fetchResponse = await fetch(fetchUrl);
-        const fetchText = await fetchResponse.text();
-
-        // Parse XML
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(fetchText, "text/xml");
-
-        // Get abstract text
-        const abstract = xmlDoc.querySelector("AbstractText")?.textContent || 'No abstract available';
-        
-        return {
-          fullText: null,
-          abstract,
-          isFullText: false
-        };
-      }
-
       // Try to get full text content
       const fullTextUrl = linksData.linksets[0].linksetdbs[0].links[0].url;
       
       return {
         fullText: fullTextUrl,
-        abstract: null,
         isFullText: true
       };
 
