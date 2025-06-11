@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { PropTypes } from "prop-types";
-import { Input, Alert, DatePicker, Form, Pagination, Tooltip } from "antd";
+import { Input, Alert, DatePicker, Form, Pagination, Tooltip, message } from "antd";
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Container,
@@ -14,6 +14,8 @@ import {
 import { withTranslation } from "react-i18next";
 import { usePubmedSearch } from "../../hooks/usePubmedSearch";
 import { useGPT } from "../../hooks/useGPT";
+import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
+import { usePubmedFullText } from '../../hooks/usePubmedFullText';
 import { OPENAI_TOOLS } from "../../hooks/useGPTToolRouter"; // Import the tools
 
 const { RangePicker } = DatePicker;
@@ -41,6 +43,8 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
 
   const { searchPubmed, isLoading, error } = usePubmedSearch();
   const { queryGPT } = useGPT(); // queryGPT function from the hook
+  const { summarizePaper } = usePaperSummarizer();
+  const { getFullText } = usePubmedFullText();
 
   const [isRanking, setIsRanking] = useState(false);
 
@@ -237,16 +241,47 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
                     </ViewLink>
                     <Tooltip title={t("components.pubmed-wizard.results.add-citation-tooltip")}>
                       <PlusOutlined 
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.preventDefault();
                           if (onAddCitation) {
+                            let summary = null;
+                            try {
+                              const pmid = item.pmid;
+                              const fullTextResult = await getFullText(pmid);
+                              if (fullTextResult) {
+                                if (fullTextResult.isFullText && fullTextResult.fullText) {
+                                  try {
+                                    summary = await summarizePaper(fullTextResult.fullText);
+                                  } catch (summaryError) {
+                                    console.error(`Error summarizing PMID ${pmid}:`, summaryError);
+                                    // Optionally, inform the user that summarization failed but abstract might be available
+                                  }
+                                } else if (fullTextResult.abstract) {
+                                  summary = fullTextResult.abstract; // Use abstract if full text not available or summarization fails
+                                }
+                              }
+                            } catch (fetchError) {
+                              console.error('Error fetching full text or abstract:', fetchError);
+                              // Using a more generic key as this message is for the console, actual user message for failure is not requested here.
+                              // If user-facing error is needed: message.error(t('components.pubmed-wizard.fetch-summary-error', 'Failed to fetch paper summary.'));
+                            }
+
                             const memoryItem = {
                               id: `paper-${item.pmid}`,
                               type: 'paper',
                               title: `Paper: ${item.title} (PMID: ${item.pmid})`,
-                              data: { ...item, source: 'pubmed' }, // Send the whole article or selected fields
+                              data: {
+                                abstract: item.abstract,
+                                authors: item.authors,
+                                journal: item.journal,
+                                year: item.year,
+                                pmid: item.pmid, // Ensure pmid is part of data
+                                summary: summary, // Add the fetched/summarized text
+                                source: 'pubmed'
+                              }, // Send the whole article or selected fields
                               selectedForContext: true // Default to selected, can be changed in NotesModal
                             };
+                            console.log("Adding citation:", memoryItem);
                             onAddCitation(memoryItem);
                           }
                         }}

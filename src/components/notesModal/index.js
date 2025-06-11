@@ -1,23 +1,20 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
-import { Button, Row, Col, Input, message, Collapse, Card, Tooltip } from "antd"; // Added Card, Tooltip
-import { EditOutlined, SaveOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons'; // Added icons
-import ReactMarkdown from 'react-markdown'; // Ensure ReactMarkdown is imported
-import { usePaperSummarizer } from '../../hooks/usePaperSummarizer';
-import { usePubmedFullText } from '../../hooks/usePubmedFullText';
+import { Button, Row, Col, Input, message, Collapse, Card, Tooltip } from "antd";
+import { EditOutlined, SaveOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown';
 import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
 import { useEventNoteGenerator } from "../../hooks/useEventNoteGenerator";
-import { useNotesUpdater } from "../../hooks/useNotesUpdater"; // Import the new hook
+import { useNotesUpdater } from "../../hooks/useNotesUpdater";
 import PubmedWizard from "../pubmedWizard";
 import ClinicalTrialsWizard from "../clinicalTrialsWizard";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
-import { extractPMIDs, extractNCTIDs, formatClinicalTrials } from '../../helpers/notes';
-import NotesChat from '../notesChat'; // Import the new NotesChat component
+import NotesChat from '../notesChat';
+import { filterReportAttributes, estimateTokens } from "../../helpers/notes";
 
-const API_CALL_DELAY = 1000;
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const MAX_CONTEXT_TOKENS = 60000; // Maximum allowed tokens for the context
 
 const NotesModal = ({ 
   record, 
@@ -34,19 +31,14 @@ const NotesModal = ({
   igv 
 }) => {
   const [notes, setNotes] = React.useState('');
-  const [isEditingNotes, setIsEditingNotes] = React.useState(false); // New state for editing mode
-  const [forceUpdateNotesTool, setForceUpdateNotesTool] = React.useState(false); // State for forcing updateNotes tool
+  const [isEditingNotes, setIsEditingNotes] = React.useState(false);
+  const [forceUpdateNotesTool, setForceUpdateNotesTool] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [memoryItems, setMemoryItems] = React.useState([]);
-  const generateNote = useEventNoteGenerator();
-  const { summarizePaper } = usePaperSummarizer();
-  const { getFullText, isLoading: isLoadingFullText } = usePubmedFullText();
-  const { searchClinicalTrials } = useClinicalTrialsSearch();
-  const performNotesUpdate = useNotesUpdater(); // Instantiate the new hook
+  const performNotesUpdate = useNotesUpdater();
 
   React.useEffect(() => {
     const initialMemoryItems = [];
-    // Load stored notes first, as it might be needed for the notes memory item
     if (record) {
       const storedNotes = localStorage.getItem(getNotesStorageKey(record)) || '';
       // Only set notes if it's different to avoid potential loops if notes was a dependency
@@ -58,52 +50,72 @@ const NotesModal = ({
 
     // Now build memory items including the current notes
     if (record) {
+      const recordData = record;
       initialMemoryItems.push({
         id: `record-${record.gene}-${record.location}`, // More specific ID
         type: 'eventRecord',
         title: t('components.notes-modal.memory.record-title', { gene: record.gene || 'N/A', type: record.type || 'N/A' }),
-        data: record,
+        data: recordData,
+        tokenCount: estimateTokens(recordData),
         selectedForContext: true, // Default to selected
       });
     }
     if (report) {
+      const reportData = filterReportAttributes(report);
       initialMemoryItems.push({
         id: 'event-report-current', // Assuming one report context at a time
         type: 'eventReport',
         title: t('components.notes-modal.memory.report-title', 'Current Event Report'),
-        data: report,
+        data: reportData,
+        tokenCount: estimateTokens(reportData),
         selectedForContext: true, // Default to selected
       });
     }
     // Add current notes content as a memory item
+    const notesData = notes;
     initialMemoryItems.push({
       id: 'user-notes-content',
       type: 'userNotes',
       title: t('components.notes-modal.memory.user-notes-title', 'Current Notes Content'),
-      data: notes, // Use the current 'notes' state
+      data: notesData, // Use the current 'notes' state
+      tokenCount: estimateTokens(notesData),
       selectedForContext: true, // Default to selected
     });
 
     // Add chat history as a memory item
+    // For chat history, the actual content is managed by NotesChat, so token count here is symbolic or based on placeholder
+    const chatHistoryData = { info: 'Represents the current chat conversation history.' };
     initialMemoryItems.push({
       id: 'chat-history-context',
       type: 'chatHistory',
       title: t('components.notes-modal.memory.chat-history-title', 'Chat Conversation History'),
-      data: { info: 'Represents the current chat conversation history.' }, // Symbolic data
+      data: chatHistoryData, // Symbolic data
+      tokenCount: estimateTokens(chatHistoryData), // This will be small for the placeholder
       selectedForContext: true, // Default to selected
     });
 
-    // Preserve existing papers/trials if any (e.g., if record/report/notes updates but papers were already added)
     setMemoryItems(prevItems => {
       const existingExternalItems = prevItems.filter(
         item => item.type === 'paper' || item.type === 'clinicalTrial'
-      );
-      // Filter out old core items (record, report, userNotes) if they exist to avoid duplicates from previous renders
-      // This ensures that the initialMemoryItems (which are always fresh) replace their old counterparts.
-      const newCoreItems = initialMemoryItems.filter(newItem => 
-        !existingExternalItems.find(extItem => extItem.id === newItem.id)
-      );
-      return [...existingExternalItems, ...newCoreItems];
+      ).map(item => ({ ...item, tokenCount: estimateTokens(item.data) })); // Ensure existing items have token counts
+
+      // Create a map of new core items for easy lookup
+      const newCoreItemsMap = new Map(initialMemoryItems.map(item => [item.id, item]));
+
+      // Combine, ensuring new core items replace old ones if IDs match, and update all token counts
+      const updatedItems = [
+        ...existingExternalItems.filter(item => !newCoreItemsMap.has(item.id)), // Keep external items not replaced
+        ...initialMemoryItems // Add all new/updated core items
+      ].map(item => ({
+        ...item,
+        // Recalculate tokenCount for 'userNotes' specifically if notes changed, others are stable or recalculated above
+        tokenCount: item.id === 'user-notes-content' ? estimateTokens(notes) : (item.tokenCount || estimateTokens(item.data)),
+        // Recalculate tokenCount for 'chat-history-context' if its data changed (e.g. cleared)
+        // For chat history, the actual content is managed by NotesChat, so token count here is symbolic or based on placeholder
+        // but if it's cleared, its data object changes.
+        tokenCount: item.id === 'chat-history-context' ? estimateTokens(item.data) : (item.tokenCount || estimateTokens(item.data))
+      }));
+      return updatedItems;
     });
 
   }, [record, report, notes, t]); // Added 'notes' and 't' to dependency array
@@ -111,73 +123,6 @@ const NotesModal = ({
   const getNotesStorageKey = (record) => {
     return `event_notes_${record.gene}_${record.location}`;
   };
-
-  const handleExtractLiteratureFullText = async () => {
-    if (!notes.trim()) {
-      message.warning(t('components.notes-modal.empty-notes'));
-      return {};
-    }
-
-    const pmids = extractPMIDs(notes);
-    if (pmids.length === 0) {
-      return {};
-    }
-
-    const paperSummaries = {};
-    try {
-      for (const pmid of pmids) {
-        const result = await getFullText(pmid);
-        if (result) {
-          if (result.isFullText) {
-            try {
-              const summary = await summarizePaper(result.fullText);
-              paperSummaries[pmid] = summary;
-            } catch (summaryError) {
-              console.error(`Error summarizing PMID ${pmid}:`, summaryError);
-            }
-          } else if (result.abstract) { paperSummaries[pmid] = result.abstract; }
-        }
-        await delay(API_CALL_DELAY);
-      }
-      console.log('Paper Summaries:', paperSummaries);
-      return paperSummaries;
-    } catch (error) {
-      console.error('Error fetching full text:', error);
-      message.error(t('components.notes-modal.fetch-error'));
-    } finally {
-    }
-  };
-
-  const handleExtractClinicalTrials = async () => {
-    if (!notes.trim()) {
-      message.warning(t('components.notes-modal.empty-notes'));
-      return;
-    }
-
-    const nctIds = extractNCTIDs(notes);
-    if (nctIds.length === 0) {
-      return;
-    }
-
-    try {
-      const idList = nctIds.join(',');
-      const results = await searchClinicalTrials({ terms: idList });
-      const trialsObject = {};
-      
-      // Convert array to object keyed by NCT ID
-      results.results.forEach(trial => {
-        trialsObject[trial.nctId] = formatClinicalTrials(trial);
-      });
-      
-      console.log('Clinical Trials:', trialsObject);
-      return trialsObject;
-    } catch (error) {
-      console.error('Error fetching clinical trials:', error);
-      message.error(t('components.notes-modal.fetch-error'));
-    } finally {
-    }
-  };
-
 
   const handleNotesChange = (e) => {
     const newNotes = e.target.value;
@@ -196,17 +141,19 @@ const NotesModal = ({
 
   const handleAddCitation = (itemToAdd) => {
     // itemToAdd is now an object { id, type, title, data, selectedForContext }
+    const itemWithTokenCount = {
+      ...itemToAdd,
+      tokenCount: estimateTokens(itemToAdd.data),
+    };
     
     // Add to memoryItems state, preventing duplicates by ID
     setMemoryItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === itemToAdd.id);
+      const existingItem = prevItems.find(item => item.id === itemWithTokenCount.id);
       if (existingItem) {
-        message.info(t('components.notes-modal.memory.item-exists', { title: itemToAdd.title }));
-        // Optionally, update selectedForContext if it's different
-        // return prevItems.map(item => item.id === itemToAdd.id ? { ...item, selectedForContext: itemToAdd.selectedForContext } : item);
+        message.info(t('components.notes-modal.memory.item-exists', { title: itemWithTokenCount.title }));
         return prevItems;
       }
-      return [...prevItems, itemToAdd];
+      return [...prevItems, itemWithTokenCount];
     });
 
     // Optionally, still append a simple string to the notes text area for visibility
@@ -319,39 +266,13 @@ const NotesModal = ({
     // No antd message here, as NotesChat will show one.
   };
 
-  const handleGenerateEventNote = async () => {
-    if (!notes.trim()) {
-      message.warning(t('components.notes-modal.empty-notes'));
-      return;
-    }
+  const totalSelectedTokens = React.useMemo(() => {
+    return memoryItems
+      .filter(item => item.selectedForContext)
+      .reduce((sum, item) => sum + (item.tokenCount || 0), 0);
+  }, [memoryItems]);
 
-    setIsLoading(true);
-    try {
-      const paperSummaries = await handleExtractLiteratureFullText();
-      const clinicalTrials = await handleExtractClinicalTrials();
-    
-      const response = await generateNote(
-        record,
-        report,
-        paperSummaries,  
-        clinicalTrials,  
-        notes 
-      )
-
-      if (response) {
-        const updatedNotes = `${response}`;
-        setNotes(updatedNotes);
-        if (record) {
-          localStorage.setItem(getNotesStorageKey(record), updatedNotes);
-        }
-      }
-    } catch (error) {
-      message.error(t('components.notes-modal.gpt-error'));
-      console.error('Note Generation Error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const isTokenLimitExceeded = totalSelectedTokens > MAX_CONTEXT_TOKENS;
 
   return (
     <Wrapper>
@@ -410,6 +331,9 @@ const NotesModal = ({
             onExecuteToolCall={handleExecuteToolCall} // Pass the handler to NotesChat
             onChatHistoryCleared={handleChatHistoryCleared} // Pass the new handler
             forceUpdateNotesTool={forceUpdateNotesTool} // Pass the new state
+            totalSelectedTokens={totalSelectedTokens}
+            maxContextTokens={MAX_CONTEXT_TOKENS}
+            isTokenLimitExceeded={isTokenLimitExceeded}
           />
         </Col>
       </Row>
@@ -428,7 +352,8 @@ const NotesModal = ({
             >
               <ClinicalTrialsWizard 
                 t={t} 
-                record={record} 
+                record={record}
+                report={report} 
                 onAddCitation={handleAddCitation}
               />
             </Collapse.Panel>

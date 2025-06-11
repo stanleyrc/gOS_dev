@@ -30,6 +30,7 @@ import {
   PageInfo,
   EligibilityCheckButtonContainer
 } from "./index.style";
+import { filterReportAttributes } from "../../helpers/notes";
 
 const STUDY_STATUS_OPTIONS = [
   'ACTIVE_NOT_RECRUITING',
@@ -63,7 +64,7 @@ const formatEligibilityCriteria = (criteria) => {
   });
 };
 
-const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
+const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
   const [filters, setFilters] = useState({
     condition: '',
     terms: record?.gene || '',
@@ -154,11 +155,17 @@ const ClinicalTrialsWizard = ({ t, record, onAddCitation }) => {
       [trialItem.nctId]: { status: 'loading', reasoning: '' }
     }));
 
-    const patientMetadata = `Patient Details: Gene - ${record.gene || 'N/A'}, Variant Type - ${record.vartype || 'N/A'}, Effect - ${record.effect || 'N/A'}.`;
+    const reportDetails = report ? JSON.stringify(filterReportAttributes(report), null, 2) : 'No patient report details available.';
+    const patientMetadata = `
+    Patient Report Details: ${reportDetails}\n
+    Alteration details: Gene - ${record.gene || 'N/A'}, Variant Type - ${record.vartype || 'N/A'}, Effect - ${record.effect || 'N/A'}.`;
     const userQuery = `Based on the following patient details: "${patientMetadata}" and the clinical trial eligibility criteria: "${trialItem.eligibilityCriteria}", assess if the patient is potentially eligible. Focus on identifying ineligibility.`;
 
     try {
-      const toolCalls = await routeQuery(userQuery, { tool_choice: { type: "function", function: { name: "checkPatientClinicalTrialEligibility" } } });
+      const toolCalls = await routeQuery(userQuery, {
+        model: 'cheap',
+        tool_choice: { type: "function", function: { name: "checkPatientClinicalTrialEligibility" } }
+      });
       
       if (toolCalls && toolCalls.length > 0 && toolCalls[0].function) {
         const args = JSON.parse(toolCalls[0].function.arguments);
@@ -429,6 +436,7 @@ ClinicalTrialsWizard.propTypes = {
     vartype: PropTypes.string,
     effect: PropTypes.string
   }),
+  report: PropTypes.object,
   onAddCitation: PropTypes.func
 };
 

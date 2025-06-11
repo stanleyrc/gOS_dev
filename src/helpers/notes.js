@@ -153,3 +153,72 @@ export function extractNCTIDs(text) {
   // Return array of just the NCT IDs
    return [...new Set(matches.map(match => match[1]))];
 }
+
+/**
+ * Filters a report object to include only specified top-level attributes.
+ * @param {Object} report - The report object to filter.
+ * @returns {Object} A new object containing only the specified attributes from the report.
+ */
+export function filterReportAttributes(report) {
+  if (!report || typeof report !== 'object') {
+    return {};
+  }
+
+  const attributesToExtract = [
+    'pair',
+    'tumor',
+    'primary_site',
+    'sex',
+    'coverage_qc',
+    'snvCount',
+    'cov_slope',
+    'cov_intercept',
+    'hrd',
+    'tmb',
+    'tumor_median_coverage',
+    'normal_median_coverage',
+    'junction_count',
+    'loose_count',
+    'svCount',
+    'purity',
+    'ploidy',
+    'lohFraction',
+    'sv_types_count',
+    'msisensor',
+    'summary',
+    'tags',
+    'hrdScore',
+    'hrdB12Score',
+    'hrdB1Score',
+    'hrdB2Score',
+    'msiLabel',
+    'msiScore',
+  ];
+
+  const filteredReport = {};
+
+  for (const attribute of attributesToExtract) {
+    if (report.hasOwnProperty(attribute)) {
+      filteredReport[attribute] = report[attribute];
+    }
+  }
+
+  return filteredReport;
+}
+
+/**
+ * Estimates the number of tokens in a given text.
+ * A common heuristic is that one token is roughly 4 characters.
+ * @param {string | object} content - The text string or object to estimate tokens for.
+ * @returns {number} Estimated number of tokens.
+ */
+export function estimateTokens(content) {
+  if (typeof content === 'undefined' || content === null) {
+    return 0;
+  }
+  const text = typeof content === 'string' ? content : JSON.stringify(content);
+  if (!text) {
+    return 0;
+  }
+  return Math.ceil(text.length / 3);
+}

@@ -77,10 +77,6 @@ const OPENAI_TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          patientMetadata: {
-            type: "string",
-            description: "A summary of the patient's relevant clinical information (e.g., gene mutations, conditions, demographics)."
-          },
           eligibilityCriteria: {
             type: "string",
             description: "The full text of the clinical trial's eligibility criteria (inclusion and exclusion)."
@@ -111,7 +107,7 @@ export const useGPTToolRouter = () => {
       const message = await queryGPT(userQuery, { // Pass userQuery directly
         systemMessage: TOOL_ROUTING_SYSTEM_MESSAGE,
         tools: OPENAI_TOOLS,
-        model: 'smart',
+        model: options.model || 'smart',
         ...options, // Spread incoming options, allowing tool_choice to be overridden
       });
 

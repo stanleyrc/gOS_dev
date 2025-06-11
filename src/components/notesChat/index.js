@@ -8,9 +8,22 @@ import GlobalStyle from './index.styles.js';
 import { withTranslation } from "react-i18next";
 
 const { Panel } = Collapse;
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
-const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSelection, onClearChatMemory, onExecuteToolCall, onChatHistoryCleared, forceUpdateNotesTool }) => {
+const NotesChat = ({ 
+  t, 
+  record, 
+  report, 
+  memoryItems = [], 
+  onToggleMemoryItemSelection, 
+  onClearChatMemory, 
+  onExecuteToolCall, 
+  onChatHistoryCleared, 
+  forceUpdateNotesTool,
+  totalSelectedTokens = 0, // Ensure default value
+  maxContextTokens = 30000, // Ensure default value
+  isTokenLimitExceeded = false // Ensure default value
+}) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -125,11 +138,24 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
                     onChange={() => onToggleMemoryItemSelection(item.id)}
                   >
                     {item.title} (<Text type="secondary" style={{fontSize: '0.8em'}}>{item.type}</Text>)
+                    <Text type="secondary" style={{fontSize: '0.8em', marginLeft: '8px'}}>
+                      ({item.tokenCount || 0} {t('components.notes-chat.tokens', 'tokens')})
+                    </Text>
                   </Checkbox>
                 </List.Item>
               )}
             />
           )}
+          <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+            <Text>
+              {t('components.notes-chat.total-tokens', 'Total Selected Tokens')}: {totalSelectedTokens || 0} / {maxContextTokens || 0}
+            </Text>
+            {isTokenLimitExceeded && (
+              <Paragraph type="danger" style={{ marginTop: '5px', marginBottom: '0px' }}>
+                {t('components.notes-chat.token-limit-exceeded-warning', 'Warning: Token limit exceeded. Please deselect items to enable chat.')}
+              </Paragraph>
+            )}
+          </div>
           {memoryItems.filter(item => item.type === 'paper' || item.type === 'clinicalTrial').length > 0 && onClearChatMemory && (
              <Button 
                 onClick={onClearChatMemory} 
@@ -185,15 +211,16 @@ const NotesChat = ({ t, record, report, memoryItems = [], onToggleMemoryItemSele
           <Input
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
-            onPressEnter={handleSend}
+            onPressEnter={!isTokenLimitExceeded && !isLoading ? handleSend : undefined}
             placeholder={t('components.notes-chat.placeholder', "Type a message...")}
-            disabled={isLoading}
+            disabled={isLoading || isTokenLimitExceeded}
           />
           <Button
             type="primary"
             icon={<SendOutlined />}
             onClick={handleSend}
             loading={isLoading}
+            disabled={isLoading || isTokenLimitExceeded}
           />
         </div>
       </Card>
@@ -208,8 +235,11 @@ NotesChat.defaultProps = {
   onToggleMemoryItemSelection: () => {},
   onClearChatMemory: null,
   onExecuteToolCall: () => {},
-  onChatHistoryCleared: () => {}, // Add new prop with default
-  forceUpdateNotesTool: false, // Add new prop with default
+  onChatHistoryCleared: () => {}, 
+  forceUpdateNotesTool: false, 
+  totalSelectedTokens: 0, // Default prop
+  maxContextTokens: 60000, // Default prop
+  isTokenLimitExceeded: false, // Default prop
 };
 
 // No mapStateToProps or connect needed if props are passed down directly
