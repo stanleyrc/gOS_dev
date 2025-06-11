@@ -60,6 +60,7 @@ export const useClinicalTrialsSearch = () => {
         const descriptionModule = protocolSection.descriptionModule || {};
         const conditionsModule = protocolSection.conditionsModule || {};
         const eligibilityModule = protocolSection.eligibilityModule || {};
+        const resultsSection = study.resultsSection || {};
 
         return {
           nctId: identificationModule.nctId || 'N/A',
@@ -69,7 +70,8 @@ export const useClinicalTrialsSearch = () => {
           keywords: conditionsModule.keywords || 'No keywords available',
           status: statusModule.overallStatus || 'Status not available',
           link: `https://clinicaltrials.gov/study/${identificationModule.nctId}`,
-          eligibilityCriteria: eligibilityModule.eligibilityCriteria || 'No eligibility criteria available'
+          eligibilityCriteria: eligibilityModule.eligibilityCriteria || 'No eligibility criteria available',
+          outcomes: resultsSection.outcomeMeasuresModule || null // Add outcomes, default to null if not present
         };
       });
 
