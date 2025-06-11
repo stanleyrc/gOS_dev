@@ -128,3 +128,13 @@ export const msiLabels = {
 export function valueFormat(value) {
   return valueFormats[value] || ".2f";
 }
+
+export function cosineSimilarityClass(value) {
+  if (value >= 0.95) {
+    return "success";
+  } else if (value >= 0.85 && value < 0.95) {
+    return "warning";
+  } else {
+    return "error";
+  }
+}

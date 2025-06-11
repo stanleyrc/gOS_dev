@@ -1084,6 +1084,8 @@ export function reportAttributesMap() {
     sigprofiler_indel_count: "sigprofiler_indel_count",
     sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
     sigprofiler_sbs_count: "sigprofiler_sbs_count",
+    sigprofiler_indel_cosine_similarity: "sigprofiler_indel_cosine_similarity",
+    sigprofiler_sbs_cosine_similarity: "sigprofiler_sbs_cosine_similarity",
     msisensor: "msisensor",
     "msisensor.score": "msiScore",
     "hrd.hrd_score": "hrdScore",

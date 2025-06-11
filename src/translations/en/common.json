@@ -25,6 +25,7 @@
     "mutation": "<strong>{{count}}</strong>mutation in total",
     "mutation_plural": "<strong>{{count}}</strong> mutations in total",
     "not-applicable": "NA",
+    "cosine-similarity": "<strong>{{value}}</strong> cosine similarity",
     "attributes-missing": {
       "title": "Missing data",
       "description": "Attribute <strong>{{attribute}}</strong> is not present"

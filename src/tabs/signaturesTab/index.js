@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Skeleton, Affix, Segmented, Space } from "antd";
+import { Skeleton, Affix, Segmented, Space, Tag } from "antd";
 import * as d3 from "d3";
 import BarPlotPanel from "../../components/barPlotPanel";
 import PopulationPanel from "../../components/populationPanel";
@@ -10,6 +10,7 @@ import {
   mutationsColorPalette,
   mutationsGroups,
 } from "../../helpers/utility";
+import { cosineSimilarityClass } from "../../helpers/metadata";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import ErrorPanel from "../../components/errorPanel";
 import Wrapper from "./index.style";
@@ -78,6 +79,15 @@ class SignaturesTab extends Component {
     let catalog = mutationCatalog.filter(
       (d) => d.variantType === mutationFilter
     );
+
+    const {
+      sigprofiler_sbs_cosine_similarity,
+      sigprofiler_indel_cosine_similarity,
+    } = metadata;
+    const cosineSimilarityHash =
+      mutationFilter === "sbs"
+        ? sigprofiler_sbs_cosine_similarity
+        : sigprofiler_indel_cosine_similarity;
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
@@ -222,6 +232,24 @@ class SignaturesTab extends Component {
                                 }),
                               }}
                             />
+                            {cosineSimilarityHash[d.id] !== null && (
+                              <Tag
+                                bordered={false}
+                                color={cosineSimilarityClass(
+                                  cosineSimilarityHash[d.id]
+                                )}
+                              >
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: t(`general.cosine-similarity`, {
+                                      value: d3.format(".0%")(
+                                        cosineSimilarityHash[d.id] || 0
+                                      ),
+                                    }),
+                                  }}
+                                />
+                              </Tag>
+                            )}
                           </Space>
                         }
                         legendTitle={t("metadata.mutation-type")}
