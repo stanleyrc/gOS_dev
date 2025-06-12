@@ -6,7 +6,9 @@ import {
   CheckCircleOutlined, 
   CloseCircleOutlined, 
   QuestionCircleOutlined,
-  LoadingOutlined 
+  LoadingOutlined,
+  FileDoneOutlined,
+  FileUnknownOutlined 
 } from '@ant-design/icons';
 import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
 import { useGPTToolRouter } from "../../hooks/useGPTToolRouter";
@@ -289,7 +291,7 @@ const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
                     </ViewLink>
                     <Tooltip title={t("components.clinical-trials-wizard.results.add-to-notes")}>
                       {addingNctId === item.nctId ? (
-                        <LoadingOutlined style={{ fontSize: '16px', color: '#1890ff', cursor: 'default' }} />
+                        <LoadingOutlined style={{ fontSize: '16px', color: '#1890ff', cursor: 'default', marginLeft: '8px' }} />
                       ) : (
                         <AddIcon 
                           onClick={() => {
@@ -312,7 +314,8 @@ const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
                           style={{ 
                             cursor: 'pointer',
                             fontSize: '16px',
-                            color: '#1890ff'
+                            color: '#1890ff',
+                            marginLeft: '8px'
                           }}
                         />
                       )}
@@ -392,6 +395,15 @@ const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
                         >
                           {t("components.clinical-trials-wizard.results.error-checking")}
                         </Button>
+                      </Tooltip>
+                    )}
+                    {item.outcomes ? (
+                      <Tooltip title={t("components.clinical-trials-wizard.results.has-results")}>
+                        <FileDoneOutlined style={{ fontSize: '16px', color: 'green', marginLeft: '8px', cursor: 'default', verticalAlign: 'middle' }} />
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title={t("components.clinical-trials-wizard.results.no-results")}>
+                        <FileUnknownOutlined style={{ fontSize: '16px', color: 'grey', marginLeft: '8px', cursor: 'default', verticalAlign: 'middle' }} />
                       </Tooltip>
                     )}
                   </EligibilityCheckButtonContainer>

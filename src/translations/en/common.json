@@ -720,7 +720,9 @@
         "ineligible-tooltip": "AI suggests the patient is likely ineligible.",
         "ineligible": "Likely Ineligible",
         "error-tooltip": "An error occurred while checking eligibility.",
-        "error-checking": "Error"
+        "error-checking": "Error",
+        "has-results": "This trial has reported results",
+        "no-results": "This trial has not yet reported results"
       }
     },
     "sageQc": {
