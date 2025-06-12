@@ -86,7 +86,7 @@
       "full": "Pair"
     },
     "tumor_median_coverage": {
-      "short": "Coverage Tumor/Normal ",
+      "short": "Coverage Tumor/Normal",
       "full": "Denoised Coverage Tumor/Normal"
     },
     "snvCount": {
@@ -348,9 +348,20 @@
         "tumor_type": "Tumor Type",
         "primary_site": "Primary Site",
         "inferred_sex": "Inferred Sex",
+        "tumor_median_coverage": "Coverage Tumor/Normal",
         "sv_count": "SV Count",
+        "snv_count": "SNV Count",
         "loh_fraction": "Fraction of Genome Altered (FGA)",
         "tmb": "Tumor Mutational Burden (TMB)",
+        "hrd": {
+          "hrd_score": "HRDetect",
+          "b1_2_score": "B1+2",
+          "b1_score": "B1",
+          "b2_score": "B2"
+        },
+        "msisensor": {
+          "score": "MSI Score"
+        },
         "purity": "Purity",
         "ploidy": "Ploidy",
         "submit": "Submit",

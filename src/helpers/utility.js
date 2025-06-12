@@ -940,7 +940,14 @@ const attributes = [
   "lohFraction",
   "purity",
   "ploidy",
+  "tumor_median_coverage",
+  "hrdScore",
+  "hrdB12Score",
+  "hrdB1Score",
+  "hrdB2Score",
+  "msiScore",
 ];
+
 const sorts = ["ascending", "descending"];
 
 export const orderListViewFilters = attributes.flatMap((attribute, i) =>
@@ -1108,11 +1115,18 @@ export function reportFilters() {
     { name: "disease", type: "string", renderer: "select" },
     { name: "primary_site", type: "string", renderer: "select" },
     { name: "inferred_sex", type: "string", renderer: "select" },
+    { name: "tumor_median_coverage", type: "number", renderer: "slider" },
+    { name: "snv_count", type: "number", renderer: "slider" },
     { name: "sv_count", type: "number", renderer: "slider" },
     { name: "tmb", type: "number", renderer: "slider" },
     { name: "loh_fraction", type: "number", renderer: "slider" },
     { name: "purity", type: "number", renderer: "slider" },
     { name: "ploidy", type: "number", renderer: "slider" },
+    { name: "hrd.hrd_score", type: "number", renderer: "slider" },
+    { name: "msisensor.score", type: "number", renderer: "slider" },
+    { name: "hrd.b1_2_score", type: "number", renderer: "slider" },
+    { name: "hrd.b1_score", type: "number", renderer: "slider" },
+    { name: "hrd.b2_score", type: "number", renderer: "slider" },
   ];
 }
 

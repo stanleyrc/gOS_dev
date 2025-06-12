@@ -24,7 +24,6 @@ import actions from "./actions";
 import settingsActions from "../settings/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
 import { getCancelToken } from "../../helpers/cancelToken";
-import { is } from "immutable";
 
 function* fetchCaseReports(action) {
   const currentState = yield select(getCurrentState);
@@ -77,9 +76,18 @@ function* fetchCaseReports(action) {
         reportFilters().forEach((filter) => {
           // Extract distinct values for the current filter
           var distinctValues = [
-            ...new Set(datafiles.map((record) => record[filter.name]).flat()),
+            ...new Set(
+              datafiles
+                .map((record) => {
+                  try {
+                    return eval(`record.${filter.name}`);
+                  } catch (err) {
+                    return null;
+                  }
+                })
+                .flat()
+            ),
           ].sort((a, b) => d3.ascending(a, b));
-
           // Add the filter information to the reportsFilters array
           reportsFilters.push({
             filter: filter,
@@ -191,16 +199,25 @@ function* searchReports({ searchFilters }) {
             .includes(actualSearchFilters[key].toLowerCase())
         )
         .sort((a, b) => {
-          if (a[flippedMap[attribute]] == null) return 1;
-          if (b[flippedMap[attribute]] == null) return -1;
+          let aValue = null;
+          let bValue = null;
+          try {
+            aValue = eval(`a.${flippedMap[attribute]}`);
+            bValue = eval(`b.${flippedMap[attribute]}`);
+          } catch (err) {}
+          if (aValue == null) return 1;
+          if (bValue == null) return -1;
           return sort === "ascending"
-            ? d3.ascending(a[flippedMap[attribute]], b[flippedMap[attribute]])
-            : d3.descending(a[flippedMap[attribute]], b[flippedMap[attribute]]);
+            ? d3.ascending(aValue, bValue)
+            : d3.descending(aValue, bValue);
         });
     } else {
       if (keyRenderer === "slider") {
         records = records.filter((d) => {
-          const value = d[key];
+          let value = null;
+          try {
+            value = eval(`d.${key}`);
+          } catch (err) {}
           if (value == null) return true;
           return (
             value >= actualSearchFilters[key][0] &&
@@ -220,9 +237,17 @@ function* searchReports({ searchFilters }) {
   });
 
   records = records.sort((a, b) => {
-    if (a[flippedMap[attribute]] == null) return 1;
-    if (b[flippedMap[attribute]] == null) return -1;
-    return d3[sort](a[flippedMap[attribute]], b[flippedMap[attribute]]);
+    let aValue = null;
+    let bValue = null;
+    try {
+      aValue = eval(`a.${flippedMap[attribute]}`);
+      bValue = eval(`b.${flippedMap[attribute]}`);
+    } catch (err) {}
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+    return sort === "ascending"
+      ? d3.ascending(aValue, bValue)
+      : d3.descending(aValue, bValue);
   });
 
   yield put({
