@@ -77,7 +77,7 @@ const NotesChat = ({
         const routeQueryOptions = {};
         if (forceUpdateNotesTool) {
           routeQueryOptions.tool_choice = { type: "function", function: { name: "updateNotes" } };
-        }
+        } else { routeQueryOptions.tool_choice = 'none' }
 
         const toolCalls = await routeQuery(userMessageContent, routeQueryOptions);
 

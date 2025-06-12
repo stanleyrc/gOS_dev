@@ -9,6 +9,8 @@ const DEFAULT_SYSTEM_MESSAGE = {
   content: 'You are a helpful assistant.'
 };
 
+const OPENAI_RATE_LIMIT_DELAY = 2000; // 2 seconds delay to avoid rate limiting
+
 /**
  * Makes a request to the GPT API
  * @param {string} userMessage - The user's input message
@@ -47,6 +49,8 @@ export const queryGPT = async (userMessage, options = {}) => {
   };
 
   try {
+    // add a 2 second delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, OPENAI_RATE_LIMIT_DELAY || 2000));
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
