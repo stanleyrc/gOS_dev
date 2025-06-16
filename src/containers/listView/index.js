@@ -118,65 +118,100 @@ class ListView extends Component {
                   title={t("containers.list-view.filters.title")}
                   style={{ flex: 1, display: "flex", flexDirection: "column" }}
                 >
-                  {filters.map((d, i) => (
-                    <Form.Item
-                      key={`containers.list-view.filters.${d.filter.name}`}
-                      name={d.filter.name}
-                      label={t(`containers.list-view.filters.${d.filter.name}`)}
-                      rules={[
-                        {
-                          required: false,
-                        },
-                      ]}
-                      initialValue={
-                        d.filter.renderer === "slider" ? d.extent : undefined
-                      }
-                    >
-                      {d.filter.renderer === "cascader" && (
-                        <Cascader
-                          placeholder={t(
-                            "containers.list-view.filters.placeholder"
+                  {filters.map((d) => {
+                    if (d.filter.renderer === "cascader") {
+                      return (
+                        <Form.Item
+                          key={`containers.list-view.filters.${d.filter.name}`}
+                          name={d.filter.name}
+                          label={t(
+                            `containers.list-view.filters.${d.filter.name}`
                           )}
-                          style={{ width: "100%" }}
-                          options={generateCascaderOptions(d.records)}
-                          displayRender={this.tagsDisplayRender}
-                          multiple
-                          showSearch={(inputValue, path) =>
-                            path.some(
-                              (option) =>
-                                option.label
-                                  .toLowerCase()
-                                  .indexOf(inputValue.toLowerCase()) > -1
-                            )
-                          }
-                          maxTagCount="responsive"
-                          showCheckedStrategy={SHOW_CHILD}
-                          allowClear
-                        />
-                      )}
-                      {d.filter.renderer === "select" && (
-                        <Select
-                          placeholder={t(
-                            "containers.list-view.filters.placeholder"
-                          )}
-                          mode="multiple"
-                          allowClear
-                          style={{ width: "100%" }}
-                          maxTagCount="responsive"
-                          maxTagTextLength={8}
+                          rules={[
+                            {
+                              required: false,
+                            },
+                          ]}
                         >
-                          {d.records.map((e, i) => (
-                            <Option key={i} value={e}>
-                              {e
-                                ? snakeCaseToHumanReadable(e)
-                                : t("containers.list-view.filters.empty")}
-                            </Option>
-                          ))}
-                        </Select>
-                      )}
-                      {d.filter.renderer === "slider" &&
-                        !isNaN(d.extent[0]) &&
-                        !isNaN(d.extent[1]) && (
+                          <Cascader
+                            placeholder={t(
+                              "containers.list-view.filters.placeholder"
+                            )}
+                            style={{ width: "100%" }}
+                            options={generateCascaderOptions(d.records)}
+                            displayRender={this.tagsDisplayRender}
+                            multiple
+                            showSearch={(inputValue, path) =>
+                              path.some(
+                                (option) =>
+                                  option.label
+                                    .toLowerCase()
+                                    .indexOf(inputValue.toLowerCase()) > -1
+                              )
+                            }
+                            maxTagCount="responsive"
+                            showCheckedStrategy={SHOW_CHILD}
+                            allowClear
+                          />
+                        </Form.Item>
+                      );
+                    }
+
+                    if (d.filter.renderer === "select") {
+                      return (
+                        <Form.Item
+                          key={`containers.list-view.filters.${d.filter.name}`}
+                          name={d.filter.name}
+                          label={t(
+                            `containers.list-view.filters.${d.filter.name}`
+                          )}
+                          rules={[
+                            {
+                              required: false,
+                            },
+                          ]}
+                        >
+                          <Select
+                            placeholder={t(
+                              "containers.list-view.filters.placeholder"
+                            )}
+                            mode="multiple"
+                            allowClear
+                            style={{ width: "100%" }}
+                            maxTagCount="responsive"
+                            maxTagTextLength={8}
+                          >
+                            {d.records.map((e, i) => (
+                              <Option key={i} value={e}>
+                                {e
+                                  ? snakeCaseToHumanReadable(e)
+                                  : t("containers.list-view.filters.empty")}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      );
+                    }
+
+                    if (
+                      d.filter.renderer === "slider" &&
+                      !isNaN(d.extent[0]) &&
+                      !isNaN(d.extent[1])
+                    ) {
+                      return (
+                        <Form.Item
+                          key={`containers.list-view.filters.${d.filter.name}`}
+                          name={d.filter.name}
+                          label={t(
+                            `containers.list-view.filters.${d.filter.name}`
+                          )}
+                          rules={[
+                            {
+                              required: false,
+                            },
+                          ]}
+                          initialValue={d.extent}
+                        >
                           <Slider
                             range
                             min={d.extent[0]}
@@ -190,10 +225,11 @@ class ListView extends Component {
                               formatter: (value) => d3.format(d.format)(value),
                             }}
                           />
-                        )}
-                    </Form.Item>
-                  ))}
-
+                        </Form.Item>
+                      );
+                    }
+                    return null; // nothing for unknown renderer
+                  })}
                   <Space>
                     <Form.Item>
                       <Button type="primary" htmlType="submit">
