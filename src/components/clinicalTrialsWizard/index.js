@@ -114,9 +114,22 @@ const ClinicalTrialsWizard = ({ t, record, report, onAddCitation }) => {
     
     if (direction === 'next') {
       tokenToUse = nextPageToken;
-    } else if (direction === 'previous' && previousPageTokens.length > 0) {
-      tokenToUse = previousPageTokens[previousPageTokens.length - 1];
+    } else if (direction === 'previous') {
+      // This block is entered only if hasPreviousPage is true,
+      // meaning previousPageTokens.length >= 1.
+      if (previousPageTokens.length === 1) {
+        // We are on Page 2, previousPageTokens = [token_for_P2].
+        // Going back to Page 1, which uses a null token.
+        tokenToUse = null;
+      } else {
+        // We are on Page N (N > 2), previousPageTokens = [token_for_P2, ..., token_for_PN].
+        // Length is N-1.
+        // Going back to Page N-1. The token for Page N-1 is at index (N-1)-2 = N-3.
+        // This corresponds to previousPageTokens[previousPageTokens.length - 2].
+        tokenToUse = previousPageTokens[previousPageTokens.length - 2];
+      }
     }
+    // If direction === 'current', tokenToUse remains null (its default initial value).
 
     const searchResult = await searchClinicalTrials(
       direction === 'current' ? filters : prevFilters,

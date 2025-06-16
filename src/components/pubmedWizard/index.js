@@ -48,14 +48,14 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
   const [addingPmid, setAddingPmid] = useState(null); // State for loading indicator
 
   // Encapsulated function for getting ranked PMIDs using GPT tool call
-  async function getRankedPmidsFromGPT(variantSummary, paperTitlesList, gptQueryFunc) {
-    if (!variantSummary || !paperTitlesList || paperTitlesList.length === 0) {
+  async function getRankedPmidsFromGPT(variantSummary, papers, gptQueryFunc) {
+    if (!variantSummary || !papers || papers.length === 0) {
       return []; // No context or papers, no recommendations
     }
 
     const systemMessage = {
       role: 'system',
-      content: `You are an expert clinical research assistant. Your task is to identify the most relevant PubMed papers from a provided list, given a specific clinical context (e.g., a patient's variant summary). You must use the "rankPapersByRelevance" tool to return your findings.`
+      content: `You are an expert clinical research assistant. Your task is to identify the most relevant PubMed papers from a provided list, given a specific clinical context (e.g., a patient's variant summary).`
     };
 
     const userMessageContent = `
@@ -64,7 +64,7 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
       The user is a clinician investigating a cancer patient harboring this mutation.
 
       Papers (PMID and Title):
-      ${JSON.stringify(paperTitlesList)}
+      ${JSON.stringify(papers)}
 
       Based on the context and the list of papers, please identify the PMIDs of the most relevant papers and use the "rankPapersByRelevance" tool to provide them.
       `;
@@ -119,11 +119,21 @@ const PubmedWizard = ({ t, onAddCitation, record }) => {
     // Extract paper titles from the search results
     const paperTitles = searchResults.articles.map(item => { return {pmid: Number(item.pmid), title: item.title} }) // Ensure pmid is number for stringify
     
+    const papersInfo = searchResults.articles.map(item => { 
+      return {
+        pmid: Number(item.pmid), 
+        title: item.title,
+        abstract: item.abstract,
+        journal: item.journal,
+        year: item.year,
+      } 
+    })
+
     // Determine recommended PMIDs if context is provided
     let recommendedPmidsArray = []; // This will be an array of numbers
     if (record && record.variant_summary && paperTitles.length) {
       // Call the new function, passing the queryGPT function from the hook
-      recommendedPmidsArray = await getRankedPmidsFromGPT(record.variant_summary, paperTitles, queryGPT);
+      recommendedPmidsArray = await getRankedPmidsFromGPT(record.variant_summary, papersInfo, queryGPT);
       console.log("Recommended PMIDs from tool:", recommendedPmidsArray);
     }
 

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
-import { Button, Row, Col, Input, message, Collapse, Card, Tooltip } from "antd";
+import { Button, Row, Col, Input, message, Collapse, Card, Tooltip, Tabs } from "antd";
 import { EditOutlined, SaveOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import { useClinicalTrialsSearch } from "../../hooks/useClinicalTrialsSearch";
@@ -31,24 +31,36 @@ const NotesModal = ({
   igv 
 }) => {
   const [notes, setNotes] = React.useState('');
+  const [scratchpadNotes, setScratchpadNotes] = React.useState('');
   const [isEditingNotes, setIsEditingNotes] = React.useState(false);
   const [forceUpdateNotesTool, setForceUpdateNotesTool] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [memoryItems, setMemoryItems] = React.useState([]);
+  const [activeTabKey, setActiveTabKey] = React.useState("notes");
   const performNotesUpdate = useNotesUpdater();
+
+  const getNotesStorageKey = (record) => {
+    return `event_notes_${record.gene}_${record.location}`;
+  };
+
+  const getScratchpadStorageKey = (record) => {
+    return `event_scratchpad_${record.gene}_${record.location}`;
+  };
 
   React.useEffect(() => {
     const initialMemoryItems = [];
     if (record) {
       const storedNotes = localStorage.getItem(getNotesStorageKey(record)) || '';
-      // Only set notes if it's different to avoid potential loops if notes was a dependency
-      // For now, notes is not a direct dependency for this part, but good practice.
       if (notes !== storedNotes) {
         setNotes(storedNotes);
       }
+      const storedScratchpadNotes = localStorage.getItem(getScratchpadStorageKey(record)) || '';
+      if (scratchpadNotes !== storedScratchpadNotes) {
+        setScratchpadNotes(storedScratchpadNotes);
+      }
     }
 
-    // Now build memory items including the current notes
+    // Now build memory items including the current notes and scratchpad
     if (record) {
       const recordData = record;
       initialMemoryItems.push({
@@ -82,6 +94,17 @@ const NotesModal = ({
       selectedForContext: true, // Default to selected
     });
 
+    // Add scratchpad content as a memory item
+    const scratchpadData = scratchpadNotes; // Use the current 'scratchpadNotes' state
+    initialMemoryItems.push({
+      id: 'scratchpad-content',
+      type: 'scratchpadContent',
+      title: t('components.notes-modal.memory.scratchpad-title', 'Scratchpad Content'),
+      data: scratchpadData,
+      tokenCount: estimateTokens(scratchpadData),
+      selectedForContext: true, // Default to selected
+    });
+
     // Add chat history as a memory item
     // For chat history, the actual content is managed by NotesChat, so token count here is symbolic or based on placeholder
     const chatHistoryData = { info: 'Represents the current chat conversation history.' };
@@ -108,21 +131,25 @@ const NotesModal = ({
         ...initialMemoryItems // Add all new/updated core items
       ].map(item => ({
         ...item,
-        // Recalculate tokenCount for 'userNotes' specifically if notes changed, others are stable or recalculated above
-        tokenCount: item.id === 'user-notes-content' ? estimateTokens(notes) : (item.tokenCount || estimateTokens(item.data)),
+        // Recalculate tokenCount for 'userNotes' and 'scratchpad-content' specifically if their content changed
+        tokenCount: 
+          item.id === 'user-notes-content' ? estimateTokens(notes) :
+          item.id === 'scratchpad-content' ? estimateTokens(scratchpadNotes) :
+          (item.tokenCount || estimateTokens(item.data)),
         // Recalculate tokenCount for 'chat-history-context' if its data changed (e.g. cleared)
         // For chat history, the actual content is managed by NotesChat, so token count here is symbolic or based on placeholder
         // but if it's cleared, its data object changes.
-        tokenCount: item.id === 'chat-history-context' ? estimateTokens(item.data) : (item.tokenCount || estimateTokens(item.data))
+        // This needs to be separate to avoid being overridden by the previous line if item.id is 'chat-history-context'
+        tokenCount: item.id === 'chat-history-context' ? estimateTokens(item.data) : (
+          item.id === 'user-notes-content' ? estimateTokens(notes) :
+          item.id === 'scratchpad-content' ? estimateTokens(scratchpadNotes) :
+          (item.tokenCount || estimateTokens(item.data))
+        )
       }));
       return updatedItems;
     });
 
-  }, [record, report, notes, t]); // Added 'notes' and 't' to dependency array
-
-  const getNotesStorageKey = (record) => {
-    return `event_notes_${record.gene}_${record.location}`;
-  };
+  }, [record, report, notes, scratchpadNotes, t]); // Added 'scratchpadNotes', 'notes' and 't' to dependency array
 
   const handleNotesChange = (e) => {
     const newNotes = e.target.value;
@@ -134,6 +161,21 @@ const NotesModal = ({
       } catch (error) {
         if (error.name === 'QuotaExceededError') {
           message.error(this.props.t('components.filtered-events-panel.storage-limit-reached'));
+        }
+      }
+    }
+  };
+
+  const handleScratchpadChange = (e) => {
+    const newScratchpadNotes = e.target.value;
+    setScratchpadNotes(newScratchpadNotes);
+
+    if (record) {
+      try {
+        localStorage.setItem(getScratchpadStorageKey(record), newScratchpadNotes);
+      } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+          message.error(t('components.filtered-events-panel.storage-limit-reached'));
         }
       }
     }
@@ -278,32 +320,44 @@ const NotesModal = ({
     <Wrapper>
       <Row gutter={8} align="start"> {/* Adjusted gutter, align items to start for consistent height */}
         <Col span={11}> {/* Column for Notes Text Area / Markdown View */}
-          <Card
-            title={t("components.notes-modal.notes-title", "Notes")}
-            extra={
-              <Button 
-                icon={isEditingNotes ? <SaveOutlined /> : <EditOutlined />}
-                onClick={() => setIsEditingNotes(!isEditingNotes)}
+            <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} style={{ height: '100%' }}>
+              <Tabs.TabPane tab={t("components.notes-modal.notes-tab", "Notes")} key="notes" style={{ height: '100%' }}>
+              <Card
+                title={t("components.notes-modal.notes-title", "Notes")}
+                extra={
+                  <Button 
+                    icon={isEditingNotes ? <SaveOutlined /> : <EditOutlined />}
+                    onClick={() => setIsEditingNotes(!isEditingNotes)}
+                  >
+                    {isEditingNotes ? t("components.notes-modal.save-notes", "Save") : t("components.notes-modal.edit-notes", "Edit")}
+                  </Button>
+                }
+                style={{ height: '500px' }} // Total height for the card
+                bodyStyle={{ padding: '0px', height: 'calc(500px - 56px - 39px)', overflowY: 'auto' }} // 56px for card header, ~39px for Tabs nav; body handles scrolling.
               >
-                {isEditingNotes ? t("components.notes-modal.save-notes", "Save") : t("components.notes-modal.edit-notes", "Edit")}
-              </Button>
-            }
-            style={{ height: '500px' }} // Total height for the card
-            bodyStyle={{ padding: '0px', height: 'calc(500px - 56px)', overflowY: 'auto' }} // 56px is a common AntD header height; body handles scrolling.
-          >
-            {isEditingNotes ? (
-              <Input.TextArea
-                value={notes}
-                onChange={handleNotesChange}
-                placeholder={t("components.notes-modal.enter-notes")}
-                style={{ height: '100%', width: '100%', resize: 'none' }} // Fill the card body
-              />
-            ) : (
-              <div style={{ height: '100%', width: '100%', padding: '4px 11px' }}> 
-                <ReactMarkdown>{notes || t("components.notes-modal.no-notes-preview", "No notes to display. Click 'Edit' to add notes.")}</ReactMarkdown>
-              </div>
-            )}
-          </Card>
+                {isEditingNotes ? (
+                  <Input.TextArea
+                    value={notes}
+                    onChange={handleNotesChange}
+                    placeholder={t("components.notes-modal.enter-notes")}
+                    style={{ height: '100%', width: '100%', resize: 'none', border: 'none', padding: '8px' }} // Fill the tab pane
+                  />
+                ) : (
+                  <div style={{ height: '100%', width: '100%', padding: '8px', overflowY: 'auto' }}> 
+                    <ReactMarkdown>{notes || t("components.notes-modal.no-notes-preview", "No notes to display. Click 'Edit' to add notes.")}</ReactMarkdown>
+                  </div>
+                )}
+              </Card>
+              </Tabs.TabPane>
+              <Tabs.TabPane tab={t("components.notes-modal.scratchpad-tab", "Scratchpad")} key="scratchpad" style={{ height: '100%' }}>
+                <Input.TextArea
+                  value={scratchpadNotes}
+                  onChange={handleScratchpadChange}
+                  placeholder={t("components.notes-modal.enter-scratchpad-notes", "Enter scratchpad notes here...")}
+                  style={{ height: '100%', width: '100%', resize: 'none', border: 'none', padding: '8px', minHeight: '500px'}} // Fill the tab pane
+                />
+              </Tabs.TabPane>
+            </Tabs>
         </Col>
         <Col span={2} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '500px' }}>
           <Tooltip title={forceUpdateNotesTool ? t("components.notes-modal.force-update-tooltip-on", "Disable updating notes with chat") : t("components.notes-modal.force-update-tooltip-off", "Enable updating notes with chat")}>

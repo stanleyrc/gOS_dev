@@ -31,7 +31,7 @@ const OPENAI_TOOLS = [
     type: "function",
     function: {
       name: "rankPapersByRelevance",
-      description: "Analyzes a list of research papers against a given clinical context and identifies the PMIDs of the papers most relevant to that context. The user is a clinician investigating a cancer patient. Returns an array of PMIDs.",
+      description: "Analyzes a list of research papers against a given clinical context and identifies the PMIDs of the papers most relevant to that context. Try to foucs on papers from reputable journals. The user is a clinician investigating a cancer patient. Returns an array of PMIDs.",
       parameters: {
         type: "object",
         properties: {
@@ -73,7 +73,7 @@ const OPENAI_TOOLS = [
     type: "function",
     function: {
       name: "checkPatientClinicalTrialEligibility",
-      description: "Evaluates a patient's potential eligibility for a clinical trial based on their metadata and the trial's eligibility criteria. Try to be generous in determining possible eligibility, only mark as ineligible if patient directly matches one or more exclusion critiera. Returns a boolean indicating if the patient might be eligible and a brief reasoning.",
+      description: "Evaluates a patient's potential eligibility for a clinical trial based on their metadata and the trial's eligibility criteria. Try to be generous in determining possible eligibility, i.e assume eligibile and only mark as ineligible if patient directly matches one or more exclusion critiera. Returns a boolean indicating if the patient might be eligible and a brief reasoning.",
       parameters: {
         type: "object",
         properties: {
