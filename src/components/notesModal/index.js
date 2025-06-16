@@ -320,6 +320,15 @@ const NotesModal = ({
     <Wrapper>
       <Row gutter={8} align="start"> {/* Adjusted gutter, align items to start for consistent height */}
         <Col span={11}> {/* Column for Notes Text Area / Markdown View */}
+              <div style={{ backgroundColor: '#fffbe6', border: '1px solid #ffe58f', padding: '8px', marginBottom: '8px', borderRadius: '2px' }}>
+                <p style={{ margin: 0 }}>
+                  {t("components.notes-modal.beta-disclaimer-message", "This is a beta feature and may contain bugs. Please report any issues to:")}
+                  {' '}
+                  <a href="https://github.com/mskilab-org/gOS/issues" target="_blank" rel="noopener noreferrer">
+                    https://github.com/mskilab-org/gOS/issues
+                  </a>
+                </p>
+              </div>
             <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} style={{ height: '100%' }}>
               <Tabs.TabPane tab={t("components.notes-modal.notes-tab", "Notes")} key="notes" style={{ height: '100%' }}>
               <Card

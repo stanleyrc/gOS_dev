@@ -244,7 +244,7 @@ class FilteredEventModal extends Component {
       },
       {
         key: 'filtered-event-notes',
-        label: 'Notes',
+        label: 'gOS AI',
         children: <NotesModal record={record} />,
       },
     ];
