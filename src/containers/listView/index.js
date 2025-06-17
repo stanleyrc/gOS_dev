@@ -36,14 +36,14 @@ const { Text } = Typography;
 class ListView extends Component {
   formRef = React.createRef();
 
-  onValuesChange = (values) => {
-    this.props.onSearch({
-      ...this.props.searchFilters,
-      ...this.formRef.current.getFieldsValue(),
-      page: 1,
-      per_page: 10,
-      orderId: 1,
-    });
+  state = {
+    isChatOpen: false
+  };
+
+  handleChatClick = () => {
+    this.setState(prevState => ({
+      isChatOpen: !prevState.isChatOpen
+    }));
   };
 
   onReset = () => {
@@ -449,7 +449,7 @@ class ListView extends Component {
             )}
           </div>
         </Form>
-      </Wrapper>
+    </Wrapper>
     );
   }
 }

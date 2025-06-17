@@ -29,7 +29,12 @@
     "attributes-missing": {
       "title": "Missing data",
       "description": "Attribute <strong>{{attribute}}</strong> is not present"
-    }
+    },
+    "select-all": "Select All",
+    "deselect-all": "Deselect All",
+    "search": "Search",
+    "previous": "Previous",
+    "next": "Next"
   },
   "quality-status": {
     "title": "Quality Status of this case",
@@ -470,6 +475,13 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "export": {
+        "notes": "Export Notes",
+        "error": "Error exporting notes",
+        "success": "Notes exported successfully",
+        "no-notes": "No notes found to export",
+        "generating-pdf": "Generating PDF..."
+      },
       "event": "<strong>{{count}}</strong> {{eventType}} Event",
       "event_plural": "<strong>{{count}}</strong> {{eventType}} Events",
       "info": "Filtered Event Info",
@@ -624,6 +636,8 @@
       "coverage-plot": "Denoised Coverage",
       "hetsnp-plot": "Heterozygous SNPs",
       "hetsnp-copy-number": "Est. CN ↑",
+      "hetsnp-plot-y-axis-title": "Est. CN ↑",
+      "hetsnp-plot-y-axis2-title": "↑ Count",
       "hetsnp-count": "↑ Count",
       "mutations-plot": "Mutations Multiplicity",
       "mutations-plot-y-axis-title": "↑ Est. Copies",
@@ -631,20 +645,107 @@
       "allelic-plot": "Allelic CN Graph",
       "allelic-plot-y-axis-title": "↑ CN",
       "coverage-copy-number": "Est. CN ↑",
+      "coverage-y-axis-title": "Est. CN ↑",
+      "coverage-y-axis2-title": "↑ Base Coverage",
       "coverage-count": "↑ Base Coverage",
       "missing-counts-axis": "Counts Axis is not available due to missing attributes."
-    }
-  },
-  "tabs": {
+    },
+    "notes-modal": {
+      "enter-notes": "Enter notes here...",
+      "literature": "Literature",
+      "clinical-trials": "Clinical Trials",
+      "literature-placeholder": "Literature information will be displayed here",
+      "clinical-trials-placeholder": "Clinical trials information will be displayed here",
+      "generate-note": "Generate Note",
+      "empty-notes": "Please enter some notes first",
+      "fetch-error": "Error fetching data",
+      "gpt-error": "Error generating note",
+      "citation-exists": "This citation has already been added to the notes",
+      "storage-limit-reached": "Storage limit reached",
+      "tool-args-error": "Failed to parse tool call arguments",
+      "notes-updated": "Notes updated successfully",
+      "memory": {
+        "record-title": "Event Summary: {{gene}} ({{type}})",
+        "report-title": "Patient Metadata",
+        "user-notes-title": "Current Notes Content",
+        "item-exists": "{{title}} already in memory.",
+        "cleared-chat-items": "Added papers and clinical trials cleared from chat memory."
+      }
+    },
+    "pubmed-wizard": {
+      "search-placeholder": "Search PubMed literature...",
+      "no-results": "No results found",
+      "error-searching": "Error searching PubMed",
+      "author": "Author",
+      "author-placeholder": "Enter author name...",
+      "journal": "Journal",
+      "journal-placeholder": "Enter journal name...",
+      "date-range": "Publication Date Range",
+      "article-type": "Article Type",
+      "article-type-placeholder": "Select article types...",
+      "availability": "Availability",
+      "availability-placeholder": "Select availability...",
+      "article-types": {
+        "review": "Review",
+        "clinical-trial": "Clinical Trial",
+        "case-reports": "Case Reports",
+        "meta-analysis": "Meta-Analysis"
+      },
+      "availability-options": {
+        "free": "Free full text",
+        "full": "Full text"
+      },
+      "results": {
+        "title": "Search Results",
+        "year": "Year",
+        "journal": "Journal",
+        "abstract": "Abstract",
+        "view-on-pubmed": "View on PubMed",
+        "add-citation-tooltip": "Add article citation to notes"
+      }
+    },
+    "clinical-trials-wizard": {
+      "search-placeholder": "Search clinical trials...",
+      "no-results": "No results found",
+      "error-searching": "Error searching clinical trials",
+      "condition": "Condition/Disease",
+      "condition-placeholder": "Enter condition or disease...",
+      "terms": "Search Terms",
+      "terms-placeholder": "Enter additional search terms...",
+      "location": "Location",
+      "location-placeholder": "Enter city, state, or country...",
+      "study-status": "Study Status",
+      "results": {
+        "title": "Search Results",
+        "status": "Status",
+        "phase": "Phase",
+        "location": "Location",
+        "description": "Description",
+        "add-to-notes": "Add to notes",
+        "show-eligibility": "Show eligibility criteria",
+        "hide-eligibility": "Hide eligibility criteria",
+        "check-eligibility-tooltip": "Use AI to check if the patient might be eligible for this trial based on their record and trial criteria.",
+        "check-eligibility": "Assess Eligibility",
+        "checking-eligibility": "Assessing...",
+        "possibly-eligible-tooltip": "AI suggests the patient might be eligible. Review criteria carefully.",
+        "possibly-eligible": "Possibly Eligible",
+        "ineligible-tooltip": "AI suggests the patient is likely ineligible.",
+        "ineligible": "Likely Ineligible",
+        "error-tooltip": "An error occurred while checking eligibility.",
+        "error-checking": "Error",
+        "has-results": "This trial has reported results",
+        "no-results": "This trial has not yet reported results"
+      }
+    },
     "sageQc": {
-      "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
-      "error": {
-        "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
-        "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
-        "explanation": {
-          "title": "The request has failed with the following error:"
+        "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
+        "error": {
+          "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
+          "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
+          "explanation": {
+            "title": "The request has failed with the following error:"
+          }
         }
       }
     }
-  }
 }
