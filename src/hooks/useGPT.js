@@ -1,8 +1,14 @@
+// const API_URLS = {
+//   smart: "/api/gpt-4o/v1.0.0/chat/completions",
+//   cheap: "/api/gpt-4o-mini/v1.0.0/chat/completions",
+// };
+
 const API_URLS = {
-  smart: "/api/gpt-4o/v1.0.0/chat/completions",
-  cheap: "/api/gpt-4o-mini/v1.0.0/chat/completions",
+  smart: "http://localhost:3001/api/gpt-4o/v1.0.0/chat/completions",
+  cheap: "http://localhost:3001/api/gpt-4o-mini/v1.0.0/chat/completions",
 };
 
+// http://localhost:3001/api/gpt-4o/v1.0.0/chat/completions
 // Default system message that can be overridden
 const DEFAULT_SYSTEM_MESSAGE = {
   role: "system",
