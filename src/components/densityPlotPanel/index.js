@@ -16,11 +16,8 @@ import {
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
 import { GiBubbles } from "react-icons/gi";
-import {
-  downloadCanvasAsPng,
-  transitionStyle,
-  densityPlotTypes,
-} from "../../helpers/utility";
+import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
+import { densityPlotTypes } from "../../helpers/sageQc";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import DensityPlot from "../densityPlot";
@@ -33,7 +30,7 @@ const margins = {
 class DensityPlotPanel extends Component {
   container = null;
 
-  state = { plotType: densityPlotTypes()[0] };
+  state = { plotType: densityPlotTypes[0] };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -93,7 +90,7 @@ class DensityPlotPanel extends Component {
               <span>{t(`components.variantQc-panel.plot-label`)}</span>
               <Segmented
                 size="small"
-                options={densityPlotTypes().map((d) => {
+                options={densityPlotTypes.map((d) => {
                   return {
                     value: d,
                     label: t(`components.variantQc-panel.${d}`),

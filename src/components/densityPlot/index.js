@@ -69,8 +69,16 @@ class DensityPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight - margins.gapLegend;
 
-    let xScale = d3.scaleLinear().domain(xRange).range([0, panelWidth]).nice();
-    let yScale = d3.scaleLinear().domain(yRange).range([panelHeight, 0]).nice();
+    let xScale = d3
+      .scaleLinear()
+      .domain(xRange || d3.extent(dataPoints, (d) => d[xVariable]))
+      .range([0, panelWidth])
+      .nice();
+    let yScale = d3
+      .scaleLinear()
+      .domain(yRange || d3.extent(dataPoints, (d) => d[yVariable]))
+      .range([panelHeight, 0])
+      .nice();
 
     // Compute the density contours.
     const contours = d3
@@ -341,8 +349,8 @@ DensityPlot.defaultProps = {
   thresholdBreaks: 3,
   colorScheme: d3.schemeBlues,
   colorSchemeSeq: d3.interpolateBlues,
-  contourBandwidth: 10,
-  contourThresholdCount: 500,
+  contourBandwidth: 15,
+  contourThresholdCount: 100,
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

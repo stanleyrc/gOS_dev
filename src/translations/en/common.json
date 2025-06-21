@@ -550,10 +550,23 @@
     },
     "sageQc-panel": {
       "title": "Variant Allele Frequency vs ALT Read Depth distribution plot",
-      "y-title": "↑ Alternative Read Count",
-      "x-title": "Variant Allele Frequency →",
+      "y-title": "↑ {{value}}",
+      "x-title": "{{value}} →",
       "plot-label": "Show as:",
-      "scatterplot": "Scatter Plot"
+      "scatterplot": "Scatter Plot",
+      "xVariable": "x-Axis Variable →",
+      "yVariable": "↑ y-Axis Variable",
+      "colorVariable": "Color Variable",
+      "mapping_quality": "Mapping Quality",
+      "tumor_depth": "Tumor Depth",
+      "normal_depth": "Normal Depth",
+      "tumor_alt_counts": "Tumor ALT Count",
+      "normal_alt_counts": "Normal ALT Count",
+      "tumor_abq": "Tumor Average Base Quality (ABQ)",
+      "tumor_vaf": "Tumor VAF",
+      "normal_vaf": "Normal VAF",
+      "altered_copies": "Altered Copies",
+      "total_snv_copies": "Total SNV Copies"
     },
     "binQc-panel": {
       "genome-plot": "Genome Plot",

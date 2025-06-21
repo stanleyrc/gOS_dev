@@ -31,7 +31,3 @@ export function generateCascaderOptions(tags) {
 
   return options;
 }
-
-export const collapsibleFilters = [
-  {key: "quality-metrics", children: []}
-]

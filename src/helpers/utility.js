@@ -958,10 +958,6 @@ export const orderListViewFilters = attributes.flatMap((attribute, i) =>
   }))
 );
 
-export function densityPlotTypes() {
-  return ["contourplot", "scatterplot"];
-}
-
 export function plotTypes() {
   return {
     tumor_median_coverage: {

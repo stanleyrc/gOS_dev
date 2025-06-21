@@ -1,17 +1,26 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col, Skeleton, Image } from "antd";
+import { Row, Col, Skeleton, Image, Space, Select } from "antd";
 import { GiBubbles } from "react-icons/gi";
 import DensityPlotPanel from "../../components/densityPlotPanel";
+import { densityPlotFields, densityPlotVariables } from "../../helpers/sageQc";
 import DistributionPlotPanel from "../../components/distributionPlotPanel";
 import ErrorPanel from "../../components/errorPanel";
 import Wrapper from "./index.style";
 
+const { Option } = Select;
+
 class SageQcTab extends Component {
+  state = {
+    xVariable: densityPlotFields[0],
+    yVariable: densityPlotFields[1],
+    colorVariable: densityPlotFields[2],
+  };
+
   render() {
     const { t, loading, error, dataPoints, metadata, dataset, id } = this.props;
-
+    
     return (
       <Wrapper>
         {error ? (
@@ -32,19 +41,30 @@ class SageQcTab extends Component {
               gutter={16}
             >
               <Col className="gutter-row" span={24}>
-                <DensityPlotPanel
-                  dataPoints={dataPoints}
-                  xTitle={t("components.variantQc-panel.x-title")}
-                  xVariable="tumor_vaf"
-                  xRange={[0, 1]}
-                  xFormat=".0%"
-                  yTitle={t("components.variantQc-panel.y-title")}
-                  yVariable="tumor_abq"
-                  yFormat=".0f"
-                  yRange={[0, 50]}
-                  title={t("components.variantQc-panel.title")}
-                  colorVariable="tumor_depth"
-                />
+                <Space>
+                  {densityPlotVariables.map((variable) => (
+                    <>
+                      {t(`components.sageQc-panel.${variable}`)}:
+                      <Select
+                        className="variables-select"
+                        value={this.state[variable]}
+                        size="small"
+                        style={{ width: 250 }}
+                        onSelect={(field) => {
+                          this.setState({
+                            [`${variable}`]: field,
+                          });
+                        }}
+                      >
+                        {densityPlotFields.map((d) => (
+                          <Option key={d} value={d}>
+                            {t(`components.sageQc-panel.${d}`)}
+                          </Option>
+                        ))}
+                      </Select>
+                    </>
+                  ))}
+                </Space>
               </Col>
             </Row>
             <Row
@@ -52,18 +72,20 @@ class SageQcTab extends Component {
               gutter={16}
             >
               <Col className="gutter-row" span={24}>
-                <DistributionPlotPanel
+                <DensityPlotPanel
                   dataPoints={dataPoints}
-                  xTitle={t("components.sageQc-panel.x-title")}
-                  xVariable="tumor_vaf"
-                  xRange={[0, 1]}
-                  xFormat=".0%"
-                  yTitle={t("components.sageQc-panel.y-title")}
-                  yVariable="tumor_alt_counts"
-                  yFormat=".0f"
-                  yRange={[0, 40]}
+                  xTitle={t("components.sageQc-panel.x-title", {
+                    value: t(`components.sageQc-panel.${this.state.xVariable}`),
+                  })}
+                  xVariable={this.state.xVariable}
+                  xFormat=".2f"
+                  yTitle={t("components.sageQc-panel.y-title", {
+                    value: t(`components.sageQc-panel.${this.state.yVariable}`),
+                  })}
+                  yVariable={this.state.yVariable}
+                  yFormat=".2f"
                   title={t("components.sageQc-panel.title")}
-                  colorVariable="tumor_abq"
+                  colorVariable={this.state.colorVariable}
                 />
               </Col>
             </Row>
