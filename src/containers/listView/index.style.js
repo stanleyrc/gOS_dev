@@ -60,6 +60,9 @@ const Wrapper = styled.div`
   .case-report-card .ant-card-body {
     min-height: 120px;
   }
+  .filters-collapse {
+    margin-left: -12px;
+  }
 `;
 
 export default Wrapper;

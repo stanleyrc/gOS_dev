@@ -347,6 +347,11 @@
         "title": "Search Filters",
         "placeholder": "select one or many",
         "empty": "(empty)",
+        "collapse": {
+          "quality-metrics": "Quality Metrics",
+          "event-metrics": "Event Metrics",
+          "biomarker-metrics": "Biomarker Metrics"
+        },
         "tags": "Tags",
         "pair": "Pair",
         "disease": "Disease",
@@ -738,14 +743,14 @@
       }
     },
     "sageQc": {
-        "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
-        "error": {
-          "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
-          "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
-          "explanation": {
-            "title": "The request has failed with the following error:"
-          }
+      "header": "Variant Allele Frequency vs ALT Read Depth distribution plot",
+      "error": {
+        "title": "Loading the Variant Sage Qc for Case Report <strong>{{id}}</strong> Failed",
+        "subtitle": "Fetching the sage.qc.json file for this specific case report was unsuccessful",
+        "explanation": {
+          "title": "The request has failed with the following error:"
         }
       }
     }
+  }
 }

@@ -18,6 +18,7 @@ import {
   Flex,
   Divider,
   Slider,
+  Collapse,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -37,13 +38,23 @@ class ListView extends Component {
   formRef = React.createRef();
 
   state = {
-    isChatOpen: false
+    isChatOpen: false,
   };
 
   handleChatClick = () => {
-    this.setState(prevState => ({
-      isChatOpen: !prevState.isChatOpen
+    this.setState((prevState) => ({
+      isChatOpen: !prevState.isChatOpen,
     }));
+  };
+
+  onValuesChange = (values) => {
+    this.props.onSearch({
+      ...this.props.searchFilters,
+      ...this.formRef.current.getFieldsValue(),
+      page: 1,
+      per_page: 10,
+      orderId: 1,
+    });
   };
 
   onReset = () => {
@@ -101,6 +112,108 @@ class ListView extends Component {
       totalRecords,
     } = this.props;
 
+    let filterFormItemRenderer = (d) => {
+      if (d.filter.renderer === "cascader") {
+        return (
+          <Form.Item
+            key={`containers.list-view.filters.${d.filter.name}`}
+            name={d.filter.name}
+            label={t(`containers.list-view.filters.${d.filter.name}`)}
+            rules={[
+              {
+                required: false,
+              },
+            ]}
+          >
+            <Cascader
+              placeholder={t("containers.list-view.filters.placeholder")}
+              style={{ width: "100%" }}
+              options={generateCascaderOptions(d.records)}
+              displayRender={this.tagsDisplayRender}
+              multiple
+              showSearch={(inputValue, path) =>
+                path.some(
+                  (option) =>
+                    option.label
+                      .toLowerCase()
+                      .indexOf(inputValue.toLowerCase()) > -1
+                )
+              }
+              maxTagCount="responsive"
+              showCheckedStrategy={SHOW_CHILD}
+              allowClear
+            />
+          </Form.Item>
+        );
+      }
+
+      if (d.filter.renderer === "select") {
+        return (
+          <Form.Item
+            key={`containers.list-view.filters.${d.filter.name}`}
+            name={d.filter.name}
+            label={t(`containers.list-view.filters.${d.filter.name}`)}
+            rules={[
+              {
+                required: false,
+              },
+            ]}
+          >
+            <Select
+              placeholder={t("containers.list-view.filters.placeholder")}
+              mode="multiple"
+              allowClear
+              style={{ width: "100%" }}
+              maxTagCount="responsive"
+              maxTagTextLength={8}
+            >
+              {d.records.map((e, i) => (
+                <Option key={i} value={e}>
+                  {e
+                    ? snakeCaseToHumanReadable(e)
+                    : t("containers.list-view.filters.empty")}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        );
+      }
+
+      if (
+        d.filter.renderer === "slider" &&
+        !isNaN(d.extent[0]) &&
+        !isNaN(d.extent[1])
+      ) {
+        return (
+          <Form.Item
+            key={`containers.list-view.filters.${d.filter.name}`}
+            name={d.filter.name}
+            label={t(`containers.list-view.filters.${d.filter.name}`)}
+            rules={[
+              {
+                required: false,
+              },
+            ]}
+            initialValue={d.extent}
+          >
+            <Slider
+              range
+              min={d.extent[0]}
+              max={d.extent[1]}
+              step={(d.extent[1] - d.extent[0]) / 100}
+              marks={{
+                [d.extent[0]]: d3.format(d.format)(d.extent[0]),
+                [d.extent[1]]: d3.format(d.format)(d.extent[1]),
+              }}
+              tooltip={{
+                formatter: (value) => d3.format(d.format)(value),
+              }}
+            />
+          </Form.Item>
+        );
+      }
+      return null; // nothing for unknown renderer
+    };
     return (
       <Wrapper>
         <Form
@@ -117,118 +230,35 @@ class ListView extends Component {
                   title={t("containers.list-view.filters.title")}
                   style={{ flex: 1, display: "flex", flexDirection: "column" }}
                 >
-                  {filters.map((d) => {
-                    if (d.filter.renderer === "cascader") {
-                      return (
-                        <Form.Item
-                          key={`containers.list-view.filters.${d.filter.name}`}
-                          name={d.filter.name}
-                          label={t(
-                            `containers.list-view.filters.${d.filter.name}`
-                          )}
-                          rules={[
-                            {
-                              required: false,
-                            },
-                          ]}
-                        >
-                          <Cascader
-                            placeholder={t(
-                              "containers.list-view.filters.placeholder"
-                            )}
-                            style={{ width: "100%" }}
-                            options={generateCascaderOptions(d.records)}
-                            displayRender={this.tagsDisplayRender}
-                            multiple
-                            showSearch={(inputValue, path) =>
-                              path.some(
-                                (option) =>
-                                  option.label
-                                    .toLowerCase()
-                                    .indexOf(inputValue.toLowerCase()) > -1
-                              )
-                            }
-                            maxTagCount="responsive"
-                            showCheckedStrategy={SHOW_CHILD}
-                            allowClear
-                          />
-                        </Form.Item>
-                      );
-                    }
-
-                    if (d.filter.renderer === "select") {
-                      return (
-                        <Form.Item
-                          key={`containers.list-view.filters.${d.filter.name}`}
-                          name={d.filter.name}
-                          label={t(
-                            `containers.list-view.filters.${d.filter.name}`
-                          )}
-                          rules={[
-                            {
-                              required: false,
-                            },
-                          ]}
-                        >
-                          <Select
-                            placeholder={t(
-                              "containers.list-view.filters.placeholder"
-                            )}
-                            mode="multiple"
-                            allowClear
-                            style={{ width: "100%" }}
-                            maxTagCount="responsive"
-                            maxTagTextLength={8}
-                          >
-                            {d.records.map((e, i) => (
-                              <Option key={i} value={e}>
-                                {e
-                                  ? snakeCaseToHumanReadable(e)
-                                  : t("containers.list-view.filters.empty")}
-                              </Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-                      );
-                    }
-
-                    if (
-                      d.filter.renderer === "slider" &&
-                      !isNaN(d.extent[0]) &&
-                      !isNaN(d.extent[1])
-                    ) {
-                      return (
-                        <Form.Item
-                          key={`containers.list-view.filters.${d.filter.name}`}
-                          name={d.filter.name}
-                          label={t(
-                            `containers.list-view.filters.${d.filter.name}`
-                          )}
-                          rules={[
-                            {
-                              required: false,
-                            },
-                          ]}
-                          initialValue={d.extent}
-                        >
-                          <Slider
-                            range
-                            min={d.extent[0]}
-                            max={d.extent[1]}
-                            step={(d.extent[1] - d.extent[0]) / 100}
-                            marks={{
-                              [d.extent[0]]: d3.format(d.format)(d.extent[0]),
-                              [d.extent[1]]: d3.format(d.format)(d.extent[1]),
-                            }}
-                            tooltip={{
-                              formatter: (value) => d3.format(d.format)(value),
-                            }}
-                          />
-                        </Form.Item>
-                      );
-                    }
-                    return null; // nothing for unknown renderer
-                  })}
+                  <>
+                    {filters
+                      .filter((d) => d.filter.group == null)
+                      .map((e) => filterFormItemRenderer(e))}
+                  </>
+                  <Collapse
+                    className="filters-collapse"
+                    ghost
+                    items={d3
+                      .groups(
+                        filters.filter((d) => d.filter.group != null),
+                        (d) => d.filter.group
+                      )
+                      .map(([group, filteredGroups]) => {
+                        return {
+                          key: group,
+                          label: t(
+                            `containers.list-view.filters.collapse.${group}`
+                          ),
+                          children: (
+                            <>
+                              {filteredGroups.map((e) =>
+                                filterFormItemRenderer(e)
+                              )}
+                            </>
+                          ),
+                        };
+                      })}
+                  />
                   <Space>
                     <Form.Item>
                       <Button type="primary" htmlType="submit">
@@ -449,7 +479,7 @@ class ListView extends Component {
             )}
           </div>
         </Form>
-    </Wrapper>
+      </Wrapper>
     );
   }
 }
