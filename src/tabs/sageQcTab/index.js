@@ -13,14 +13,23 @@ const { Option } = Select;
 
 class SageQcTab extends Component {
   state = {
-    xVariable: densityPlotFields[0],
-    yVariable: densityPlotFields[1],
-    colorVariable: densityPlotFields[2],
+    xVariable: densityPlotFields[0].name,
+    yVariable: densityPlotFields[1].name,
+    colorVariable: densityPlotFields[2].name,
   };
 
   render() {
-    const { t, loading, error, dataPoints, metadata, dataset, id } = this.props;
-    
+    const {
+      t,
+      loading,
+      loadingPercentage,
+      error,
+      dataPoints,
+      metadata,
+      dataset,
+      id,
+    } = this.props;
+
     return (
       <Wrapper>
         {error ? (
@@ -35,7 +44,7 @@ class SageQcTab extends Component {
             explanationDescription={error.stack}
           />
         ) : (
-          <Skeleton active loading={loading}>
+          <>
             <Row
               className="ant-panel-container ant-home-plot-container"
               gutter={16}
@@ -57,8 +66,8 @@ class SageQcTab extends Component {
                         }}
                       >
                         {densityPlotFields.map((d) => (
-                          <Option key={d} value={d}>
-                            {t(`components.sageQc-panel.${d}`)}
+                          <Option key={d.name} value={d.name}>
+                            {t(`components.sageQc-panel.${d.name}`)}
                           </Option>
                         ))}
                       </Select>
@@ -73,19 +82,34 @@ class SageQcTab extends Component {
             >
               <Col className="gutter-row" span={24}>
                 <DensityPlotPanel
+                  loading={loading}
+                  loadingPercentage={loadingPercentage}
                   dataPoints={dataPoints}
                   xTitle={t("components.sageQc-panel.x-title", {
                     value: t(`components.sageQc-panel.${this.state.xVariable}`),
                   })}
                   xVariable={this.state.xVariable}
-                  xFormat=".2f"
+                  xFormat={
+                    densityPlotFields.find(
+                      (d) => d.name === this.state.xVariable
+                    ).format
+                  }
                   yTitle={t("components.sageQc-panel.y-title", {
                     value: t(`components.sageQc-panel.${this.state.yVariable}`),
                   })}
                   yVariable={this.state.yVariable}
-                  yFormat=".2f"
+                  yFormat={
+                    densityPlotFields.find(
+                      (d) => d.name === this.state.yVariable
+                    ).format
+                  }
                   title={t("components.sageQc-panel.title")}
                   colorVariable={this.state.colorVariable}
+                  colorFormat={
+                    densityPlotFields.find(
+                      (d) => d.name === this.state.colorVariable
+                    ).format
+                  }
                 />
               </Col>
             </Row>
@@ -106,7 +130,7 @@ class SageQcTab extends Component {
                 />
               </Col>
             </Row>
-          </Skeleton>
+          </>
         )}
       </Wrapper>
     );
@@ -117,6 +141,7 @@ SageQcTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   loading: state.SageQc.loading,
+  loadingPercentage: state.SageQc.loadingPercentage,
   metadata: state.CaseReport.metadata,
   dataPoints: state.SageQc.records,
   error: state.SageQc.error,

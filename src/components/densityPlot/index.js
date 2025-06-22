@@ -61,6 +61,7 @@ class DensityPlot extends Component {
       colorSchemeSeq,
       contourBandwidth,
       contourThresholdCount,
+      colorFormat,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -102,7 +103,7 @@ class DensityPlot extends Component {
         .range(colorScheme[thresholdBreaks]);
       legend = Legend(color, {
         title: t(`metadata.${colorVariable}`),
-        tickFormat: "0.0f",
+        tickFormat: colorFormat,
       });
     } else {
       color = d3
@@ -160,24 +161,38 @@ class DensityPlot extends Component {
     yAxisContainer.call(yAxis);
   }
 
-  handleMouseEnter = (d, i) => {
+  handleMouseEnter = (e, d, i) => {
     const { t } = this.props;
-    const { xScale, yScale, xVariable, yVariable } =
+    const { panelHeight, panelWidth, xScale, yScale, xVariable, yVariable } =
       this.getPlotConfiguration();
+    let tooltipContent = Object.keys(d).map((key) => {
+      return { label: t(`metadata.${key}`), value: d[key] };
+    });
+    let diffY = d3.min([
+      5,
+      panelHeight - yScale(d[yVariable]) - tooltipContent.length * 16 - 10,
+    ]);
+    let diffX = d3.min([
+      5,
+      panelWidth -
+        xScale(d[xVariable]) -
+        d3.max(tooltipContent, (d) =>
+          measureText(`${d.label}: ${d.value}`, 12)
+        ) -
+        35,
+    ]);
     this.setState({
       tooltip: {
         id: i,
         visible: true,
-        x: xScale(d[xVariable]) + margins.tooltipGap,
-        y: yScale(d[yVariable]) - margins.tooltipGap,
-        text: Object.keys(d).map((e) => {
-          return { label: t(`metadata.${e}`), value: d[e] };
-        }),
+        x: xScale(d[xVariable]) + diffX,
+        y: yScale(d[yVariable]) + diffY,
+        text: tooltipContent,
       },
     });
   };
 
-  handleMouseOut = (d) => {
+  handleMouseOut = (e, d) => {
     this.setState({
       tooltip: {
         id: -1,
@@ -240,7 +255,12 @@ class DensityPlot extends Component {
             <g transform={`translate(${[margins.gapX, margins.gapY]})`}>
               <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
                 <g clipPath="url(#cuttOffViewPane)">
-                  <rect width={panelWidth} height={panelHeight} fill="#FFF" />
+                  <rect
+                    width={panelWidth}
+                    height={panelHeight}
+                    fill="#F5F5F5"
+                    fillOpacity={0.33}
+                  />
                   {plotType === "contourplot" && (
                     <g strokeLinejoin="round">
                       {contours.map((d, i) => (
@@ -269,8 +289,8 @@ class DensityPlot extends Component {
                           fill={color(d[colorVariable])}
                           stroke={visible && id === i ? "#FFF" : "transparent"}
                           strokeWidth={visible && id === i ? 3 : 0}
-                          onMouseEnter={(e) => this.handleMouseEnter(d, i)}
-                          onMouseOut={(e) => this.handleMouseOut(d)}
+                          onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
+                          onMouseOut={(e) => this.handleMouseOut(e, d)}
                         />
                       ))}
                 </g>
@@ -347,8 +367,8 @@ DensityPlot.defaultProps = {
   data: [],
   radius: 3.33,
   thresholdBreaks: 3,
-  colorScheme: d3.schemeBlues,
-  colorSchemeSeq: d3.interpolateBlues,
+  colorScheme: d3.schemeOrRd,
+  colorSchemeSeq: d3.interpolateOrRd,
   contourBandwidth: 15,
   contourThresholdCount: 100,
 };

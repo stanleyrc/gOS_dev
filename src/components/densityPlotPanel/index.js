@@ -12,6 +12,8 @@ import {
   Row,
   Col,
   Segmented,
+  Progress,
+  Skeleton,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -54,6 +56,7 @@ class DensityPlotPanel extends Component {
     const {
       t,
       loading,
+      loadingPercentage,
       dataPoints,
       xTitle,
       xVariable,
@@ -68,6 +71,7 @@ class DensityPlotPanel extends Component {
       renderOutsideViewPort,
       visible,
       colorVariable,
+      colorFormat,
     } = this.props;
 
     const { plotType } = this.state;
@@ -75,7 +79,6 @@ class DensityPlotPanel extends Component {
       <Wrapper visible={visible}>
         <Card
           style={transitionStyle(inViewport || renderOutsideViewPort)}
-          loading={loading}
           size="small"
           title={
             <Space>
@@ -112,41 +115,50 @@ class DensityPlotPanel extends Component {
             </Space>
           }
         >
-          {visible && (
-            <div
-              className="ant-wrapper"
-              ref={(elem) => (this.container = elem)}
-            >
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    (inViewport || renderOutsideViewPort) && (
-                      <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col flex={1}>
-                          <DensityPlot
-                            {...{
-                              width,
-                              height,
-                              dataPoints,
-                              xTitle,
-                              xVariable,
-                              xFormat,
-                              yTitle,
-                              yVariable,
-                              yFormat,
-                              xRange,
-                              yRange,
-                              plotType,
-                              colorVariable,
-                            }}
-                          />
-                        </Col>
-                      </Row>
-                    )
-                  );
-                }}
-              </ContainerDimensions>
-            </div>
+          {loading ? (
+            loadingPercentage ? (
+              <Progress percent={loadingPercentage} />
+            ) : (
+              <Skeleton loading={loading} active />
+            )
+          ) : (
+            visible && (
+              <div
+                className="ant-wrapper"
+                ref={(elem) => (this.container = elem)}
+              >
+                <ContainerDimensions>
+                  {({ width, height }) => {
+                    return (
+                      (inViewport || renderOutsideViewPort) && (
+                        <Row style={{ width }} gutter={[margins.gap, 0]}>
+                          <Col flex={1}>
+                            <DensityPlot
+                              {...{
+                                width,
+                                height,
+                                dataPoints,
+                                xTitle,
+                                xVariable,
+                                xFormat,
+                                yTitle,
+                                yVariable,
+                                yFormat,
+                                xRange,
+                                yRange,
+                                plotType,
+                                colorVariable,
+                                colorFormat,
+                              }}
+                            />
+                          </Col>
+                        </Row>
+                      )
+                    );
+                  }}
+                </ContainerDimensions>
+              </div>
+            )
           )}
         </Card>
       </Wrapper>
