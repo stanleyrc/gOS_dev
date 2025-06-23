@@ -193,7 +193,8 @@ function* searchReports({ searchFilters }) {
       records = records
         .filter((record) =>
           reportFilters()
-            .map((attr) => record[attr] || "")
+            .filter((e) => e.renderer === "select")
+            .map((attr) => record[attr.name] || "")
             .join(",")
             .toLowerCase()
             .includes(actualSearchFilters[key].toLowerCase())
