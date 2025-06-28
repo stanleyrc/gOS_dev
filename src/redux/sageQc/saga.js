@@ -2,6 +2,7 @@ import { all, takeEvery, put, call, select, take } from "redux-saga/effects";
 import axios from "axios";
 import actions from "./actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
+import { densityPlotFields } from "../../helpers/sageQc";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 
@@ -32,9 +33,18 @@ function* fetchSageQc(action) {
           return d;
         });
 
+        let sageQcProperties = [
+          ...new Set(records.map((d) => Object.keys(d)).flat()),
+        ];
+        
+        let properties = densityPlotFields.filter((d) =>
+          sageQcProperties.includes(d.name)
+        );
+
         yield put({
           type: actions.FETCH_SAGEQC_SUCCESS,
           records,
+          properties,
         });
       } else if (result.error) {
         // The request failed

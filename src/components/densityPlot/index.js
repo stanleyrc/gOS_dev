@@ -4,7 +4,6 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { Legend, measureText } from "../../helpers/utility";
-import { ckmeans } from "simple-statistics";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -42,6 +41,7 @@ class DensityPlot extends Component {
 
   getPlotConfiguration() {
     const {
+      t,
       width,
       height,
       dataPoints,
@@ -53,11 +53,8 @@ class DensityPlot extends Component {
       yFormat,
       xTitle,
       yTitle,
-      t,
       plotType,
       colorVariable,
-      thresholdBreaks,
-      colorScheme,
       colorSchemeSeq,
       contourBandwidth,
       contourThresholdCount,
@@ -72,40 +69,59 @@ class DensityPlot extends Component {
 
     let xScale = d3
       .scaleLinear()
-      .domain(xRange || d3.extent(dataPoints, (d) => d[xVariable]))
+      .domain(
+        xRange || [
+          0,
+          d3.quantile(
+            dataPoints.map((d) => d[xVariable]),
+            0.99
+          ),
+        ]
+      )
       .range([0, panelWidth])
+      .clamp(true)
       .nice();
     let yScale = d3
       .scaleLinear()
-      .domain(yRange || d3.extent(dataPoints, (d) => d[yVariable]))
+      .domain(
+        yRange || [
+          0,
+          d3.quantile(
+            dataPoints.map((d) => d[yVariable]),
+            0.99
+          ),
+        ]
+      )
+      .clamp(true)
       .range([panelHeight, 0])
       .nice();
 
-    // Compute the density contours.
-    const contours = d3
-      .contourDensity()
-      .x((d) => xScale(d[xVariable]))
-      .y((d) => yScale(d[yVariable]))
-      .thresholds(contourThresholdCount)
-      .bandwidth(contourBandwidth)
-      .size([width, height])(dataPoints);
-
-    let legend, color;
+    let contours, legend, color;
 
     if (plotType === "scatterplot") {
-      let ckmeansThresholds = ckmeans(
-        dataPoints.map((d) => d[colorVariable]),
-        thresholdBreaks
-      ).map((v) => v.pop());
       color = d3
-        .scaleThreshold()
-        .domain(ckmeansThresholds.slice(0, thresholdBreaks - 1))
-        .range(colorScheme[thresholdBreaks]);
+        .scaleSequential(colorSchemeSeq)
+        .domain([
+          0,
+          d3.quantile(
+            dataPoints.map((d) => d[colorVariable]),
+            0.99
+          ),
+        ])
+        .clamp(true)
+        .nice();
       legend = Legend(color, {
         title: t(`metadata.${colorVariable}`),
         tickFormat: colorFormat,
       });
     } else {
+      contours = d3
+        .contourDensity()
+        .x((d) => xScale(d[xVariable]))
+        .y((d) => yScale(d[yVariable]))
+        .thresholds(contourThresholdCount)
+        .bandwidth(contourBandwidth)
+        .size([width, height])(dataPoints);
       color = d3
         .scaleSequential(colorSchemeSeq)
         .domain(d3.extent(contours, (d) => d.value))
@@ -367,8 +383,8 @@ DensityPlot.defaultProps = {
   data: [],
   radius: 3.33,
   thresholdBreaks: 3,
-  colorScheme: d3.schemeOrRd,
-  colorSchemeSeq: d3.interpolateOrRd,
+  colorScheme: d3.schemeBlues,
+  colorSchemeSeq: d3.interpolateBlues,
   contourBandwidth: 15,
   contourThresholdCount: 100,
 };

@@ -1,22 +1,24 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col, Skeleton, Image, Space, Select } from "antd";
+import { Row, Col, Image, Space, Select } from "antd";
 import { GiBubbles } from "react-icons/gi";
 import DensityPlotPanel from "../../components/densityPlotPanel";
-import { densityPlotFields, densityPlotVariables } from "../../helpers/sageQc";
-import DistributionPlotPanel from "../../components/distributionPlotPanel";
+import { densityPlotVariables } from "../../helpers/sageQc";
 import ErrorPanel from "../../components/errorPanel";
 import Wrapper from "./index.style";
 
 const { Option } = Select;
 
 class SageQcTab extends Component {
-  state = {
-    xVariable: densityPlotFields[0].name,
-    yVariable: densityPlotFields[1].name,
-    colorVariable: densityPlotFields[2].name,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      xVariable: null,
+      yVariable: null,
+      colorVariable: null,
+    };
+  }
 
   render() {
     const {
@@ -25,11 +27,17 @@ class SageQcTab extends Component {
       loadingPercentage,
       error,
       dataPoints,
+      sageQcFields,
       metadata,
       dataset,
       id,
     } = this.props;
 
+    let variables = {};
+    densityPlotVariables.forEach(
+      (x, i) =>
+        (variables[`${x}`] = this.state[`${x}`] || sageQcFields[i]?.name)
+    );
     return (
       <Wrapper>
         {error ? (
@@ -51,12 +59,12 @@ class SageQcTab extends Component {
             >
               <Col className="gutter-row" span={24}>
                 <Space>
-                  {densityPlotVariables.map((variable) => (
+                  {densityPlotVariables.map((variable, i) => (
                     <>
                       {t(`components.sageQc-panel.${variable}`)}:
                       <Select
                         className="variables-select"
-                        value={this.state[variable]}
+                        value={variables[`${variable}`]}
                         size="small"
                         style={{ width: 250 }}
                         onSelect={(field) => {
@@ -65,7 +73,7 @@ class SageQcTab extends Component {
                           });
                         }}
                       >
-                        {densityPlotFields.map((d) => (
+                        {sageQcFields.map((d) => (
                           <Option key={d.name} value={d.name}>
                             {t(`components.sageQc-panel.${d.name}`)}
                           </Option>
@@ -86,29 +94,26 @@ class SageQcTab extends Component {
                   loadingPercentage={loadingPercentage}
                   dataPoints={dataPoints}
                   xTitle={t("components.sageQc-panel.x-title", {
-                    value: t(`components.sageQc-panel.${this.state.xVariable}`),
+                    value: t(`components.sageQc-panel.${variables.xVariable}`),
                   })}
-                  xVariable={this.state.xVariable}
+                  xVariable={variables.xVariable}
                   xFormat={
-                    densityPlotFields.find(
-                      (d) => d.name === this.state.xVariable
-                    ).format
+                    sageQcFields.find((d) => d.name === variables.xVariable)
+                      ?.format
                   }
                   yTitle={t("components.sageQc-panel.y-title", {
-                    value: t(`components.sageQc-panel.${this.state.yVariable}`),
+                    value: t(`components.sageQc-panel.${variables.yVariable}`),
                   })}
-                  yVariable={this.state.yVariable}
+                  yVariable={variables.yVariable}
                   yFormat={
-                    densityPlotFields.find(
-                      (d) => d.name === this.state.yVariable
-                    ).format
+                    sageQcFields.find((d) => d.name === variables.yVariable)
+                      ?.format
                   }
                   title={t("components.sageQc-panel.title")}
-                  colorVariable={this.state.colorVariable}
+                  colorVariable={variables.colorVariable}
                   colorFormat={
-                    densityPlotFields.find(
-                      (d) => d.name === this.state.colorVariable
-                    ).format
+                    sageQcFields.find((d) => d.name === variables.colorVariable)
+                      ?.format
                   }
                 />
               </Col>
@@ -144,6 +149,7 @@ const mapStateToProps = (state) => ({
   loadingPercentage: state.SageQc.loadingPercentage,
   metadata: state.CaseReport.metadata,
   dataPoints: state.SageQc.records,
+  sageQcFields: state.SageQc.properties,
   error: state.SageQc.error,
   dataset: state.Settings.dataset,
   id: state.CaseReport.id,
