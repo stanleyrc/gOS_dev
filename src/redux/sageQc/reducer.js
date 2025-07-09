@@ -6,7 +6,7 @@ const initState = {
   records: [],
   error: null,
   properties: [],
-  filename: "sage.qc.json",
+  filename: "sage.qc",
 };
 
 export default function appReducer(state = initState, action) {

@@ -2,9 +2,13 @@ import { all, takeEvery, put, call, select, take } from "redux-saga/effects";
 import axios from "axios";
 import actions from "./actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
-import { densityPlotFields } from "../../helpers/sageQc";
+import {
+  densityPlotFields,
+  sageQcArrowTableToJson,
+} from "../../helpers/sageQc";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import { tableFromIPC } from "apache-arrow";
 
 function* fetchSageQc(action) {
   const currentState = yield select(getCurrentState);
@@ -12,10 +16,25 @@ function* fetchSageQc(action) {
   const { dataset } = currentState.Settings;
   const { id } = currentState.CaseReport;
 
+  const fileBase = `${dataset.dataPath}${id}/${filename}`;
+  const arrowUrl = `${fileBase}.arrow`;
+  const jsonUrl = `${fileBase}.json`;
+  let url;
+  try {
+    yield call(axios.head, arrowUrl);
+    url = arrowUrl;
+  } catch (error) {
+    url = jsonUrl;
+  }
+
   // Set up the channel configuration
+
   const channelConfig = {
-    url: `${dataset.dataPath}${id}/${filename}`,
+    url,
     cancelToken: getCancelToken(),
+    responseType: url.endsWith(".arrow")
+      ? "arraybuffer" // Ensure the response is in binary format
+      : "json",
   };
 
   // Create the progress channel
@@ -26,7 +45,24 @@ function* fetchSageQc(action) {
       const result = yield take(progressChannel);
       if (result.response) {
         // The request completed successfully
-        let records = result.response.data;
+        let records;
+        if (url.endsWith(".arrow")) {
+          // Parse Arrow data to JSON array
+          try {
+            const arrowBuffer = new Uint8Array(result.response.data);
+            const table = yield call(tableFromIPC, arrowBuffer);
+            records = sageQcArrowTableToJson(table);
+          } catch (err) {
+            console.error("Failed to parse Arrow data:", err);
+            yield put({
+              type: actions.FETCH_CASE_REPORTS_FAILED,
+              error: err,
+            });
+            return;
+          }
+        } else {
+          records = result.response.data;
+        }
 
         records.forEach((d, i) => {
           d.id = i + 1;
@@ -36,7 +72,7 @@ function* fetchSageQc(action) {
         let sageQcProperties = [
           ...new Set(records.map((d) => Object.keys(d)).flat()),
         ];
-        
+
         let properties = densityPlotFields.filter((d) =>
           sageQcProperties.includes(d.name)
         );
