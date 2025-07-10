@@ -46,14 +46,13 @@ class FilteredEventModal extends Component {
       });
   };
 
-
   render() {
-    const { 
-      t, 
-      record, 
-      handleOkClicked, 
-      handleCancelClicked, 
-      width, 
+    const {
+      t,
+      record,
+      handleOkClicked,
+      handleCancelClicked,
+      width,
       open,
       genome,
       mutations,
@@ -62,7 +61,7 @@ class FilteredEventModal extends Component {
       hetsnps,
       genes,
       igv,
-      allelic
+      allelic,
     } = this.props;
 
     if (!open) return null;
@@ -126,7 +125,7 @@ class FilteredEventModal extends Component {
                 </Space>
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -135,7 +134,7 @@ class FilteredEventModal extends Component {
                 effect
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -144,7 +143,7 @@ class FilteredEventModal extends Component {
                 gene_summary
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -155,7 +154,7 @@ class FilteredEventModal extends Component {
                 effect_description
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -164,7 +163,7 @@ class FilteredEventModal extends Component {
                 variant_summary
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -173,7 +172,7 @@ class FilteredEventModal extends Component {
                 resistances
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -182,7 +181,7 @@ class FilteredEventModal extends Component {
                 therapeutics
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -191,7 +190,7 @@ class FilteredEventModal extends Component {
                 prognoses
               ) : (
                 <Text italic disabled>
-                  {t("components.filtered-events-panel.unavailable")}
+                  {t("general.unavailable")}
                 </Text>
               )}
             </Item>
@@ -202,13 +201,13 @@ class FilteredEventModal extends Component {
 
     const items = [
       {
-        key: 'filtered-event-summary',
-        label: 'Summary',
+        key: "filtered-event-summary",
+        label: "Summary",
         children: summaryContent,
       },
       {
-        key: 'filtered-event-plots',
-        label: 'Plots',
+        key: "filtered-event-plots",
+        label: "Plots",
         children: (
           <TracksModal
             {...{
@@ -223,17 +222,31 @@ class FilteredEventModal extends Component {
               allelic,
               modalTitle: "",
               genomePlotTitle: t("components.tracks-modal.genome-plot"),
-              genomePlotYAxisTitle: t("components.tracks-modal.genome-y-axis-title"),
+              genomePlotYAxisTitle: t(
+                "components.tracks-modal.genome-y-axis-title"
+              ),
               coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
-              coverageYAxisTitle: t("components.tracks-modal.coverage-y-axis-title"),
-              coverageYAxis2Title: t("components.tracks-modal.coverage-y-axis2-title"),
+              coverageYAxisTitle: t(
+                "components.tracks-modal.coverage-y-axis-title"
+              ),
+              coverageYAxis2Title: t(
+                "components.tracks-modal.coverage-y-axis2-title"
+              ),
               hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
-              hetsnpPlotYAxisTitle: t("components.tracks-modal.hetsnp-plot-y-axis-title"),
-              hetsnpPlotYAxis2Title: t("components.tracks-modal.hetsnp-plot-y-axis2-title"),
+              hetsnpPlotYAxisTitle: t(
+                "components.tracks-modal.hetsnp-plot-y-axis-title"
+              ),
+              hetsnpPlotYAxis2Title: t(
+                "components.tracks-modal.hetsnp-plot-y-axis2-title"
+              ),
               mutationsPlotTitle: t("components.tracks-modal.mutations-plot"),
-              mutationsPlotYAxisTitle: t("components.tracks-modal.mutations-plot-y-axis-title"),
+              mutationsPlotYAxisTitle: t(
+                "components.tracks-modal.mutations-plot-y-axis-title"
+              ),
               allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
-              allelicPlotYAxisTitle: t("components.tracks-modal.allelic-plot-y-axis-title"),
+              allelicPlotYAxisTitle: t(
+                "components.tracks-modal.allelic-plot-y-axis-title"
+              ),
               handleOkClicked: () => {},
               handleCancelClicked: () => {},
               open: true,
@@ -243,8 +256,8 @@ class FilteredEventModal extends Component {
         ),
       },
       {
-        key: 'filtered-event-notes',
-        label: 'gOS AI',
+        key: "filtered-event-notes",
+        label: "gOS AI",
         children: <NotesModal record={record} />,
       },
     ];

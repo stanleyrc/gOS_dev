@@ -354,7 +354,7 @@ class ListView extends Component {
                               color: "#f56a00",
                             }}
                           >
-                            {d.tumor_type}
+                            {d.tumor_type || t("general.unavailable")}
                           </Avatar>
                         }
                         actions={[

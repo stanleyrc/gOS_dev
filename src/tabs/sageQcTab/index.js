@@ -43,12 +43,12 @@ class SageQcTab extends Component {
         {error ? (
           <ErrorPanel
             avatar={<GiBubbles />}
-            header={t("tabs.sageQc.header")}
-            title={t("tabs.sageQc.error.title", {
+            header={t("components.sageQc.header")}
+            title={t("components.sageQc.error.title", {
               id: metadata.pair,
             })}
-            subtitle={t("tabs.sageQc.error.subtitle")}
-            explanationTitle={t("tabs.sageQc.error.explanation.title")}
+            subtitle={t("components.sageQc.error.subtitle")}
+            explanationTitle={t("components.sageQc.error.explanation.title")}
             explanationDescription={error.stack}
           />
         ) : (

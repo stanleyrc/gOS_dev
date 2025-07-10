@@ -20,6 +20,7 @@
     "page-not-found": "Sorry, the page you visited does not exist.",
     "back-to-home": "Back Home",
     "undefined": "Undefined",
+    "unavailable": "NA",
     "count": "Count",
     "density": "Density",
     "mutation": "<strong>{{count}}</strong>mutation in total",

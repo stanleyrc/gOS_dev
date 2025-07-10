@@ -14,10 +14,10 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  message
+  message,
 } from "antd";
-import { FileTextOutlined } from '@ant-design/icons';
-import { generateEventNotesPDF } from '../../helpers/notes';
+import { FileTextOutlined } from "@ant-design/icons";
+import { generateEventNotesPDF } from "../../helpers/notes";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -53,26 +53,32 @@ class FilteredEventsListPanel extends Component {
 
   handleExportNotes = () => {
     const { t, id, filteredEvents } = this.props;
-    
+
     try {
       // Generate PDF
-      message.loading({ content: t('components.filtered-events-panel.generating-pdf'), key: 'export' });
+      message.loading({
+        content: t("components.filtered-events-panel.generating-pdf"),
+        key: "export",
+      });
       const doc = generateEventNotesPDF(filteredEvents, id);
-      
+
       // Check if any notes were found
       if (doc.internal.pages.length <= 1) {
-        message.warning(t('components.filtered-events-panel.no-notes'));
+        message.warning(t("components.filtered-events-panel.no-notes"));
         return;
       }
-      
+
       // Save the PDF
       doc.save(`${id}_events_report.pdf`);
-      message.success({ content: t('components.filtered-events-panel.export.success'), key: 'export' });
+      message.success({
+        content: t("components.filtered-events-panel.export.success"),
+        key: "export",
+      });
     } catch (error) {
-      console.error('Export error:', error);
-      message.error({ 
-        content: t('components.filtered-events-panel.export.error'), 
-        key: 'export' 
+      console.error("Export error:", error);
+      message.error({
+        content: t("components.filtered-events-panel.export.error"),
+        key: "export",
       });
     }
   };
@@ -173,7 +179,7 @@ class FilteredEventsListPanel extends Component {
             </Button>
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -204,7 +210,7 @@ class FilteredEventsListPanel extends Component {
             record.role
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -236,7 +242,7 @@ class FilteredEventsListPanel extends Component {
             record.variant
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -266,7 +272,7 @@ class FilteredEventsListPanel extends Component {
             record.type
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -297,7 +303,7 @@ class FilteredEventsListPanel extends Component {
             record.effect
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -372,7 +378,7 @@ class FilteredEventsListPanel extends Component {
             </Tooltip>
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -396,7 +402,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.estimatedAlteredCopies)
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -417,7 +423,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.segmentCopyNumber)
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -438,7 +444,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.fusionCopyNumber)
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -459,7 +465,7 @@ class FilteredEventsListPanel extends Component {
             +record.altCounts
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -480,7 +486,7 @@ class FilteredEventsListPanel extends Component {
             +record.refCounts
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -501,7 +507,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.vaf)
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -525,7 +531,7 @@ class FilteredEventsListPanel extends Component {
             </Space>
           ) : (
             <Text italic disabled>
-              {t("components.filtered-events-panel.unavailable")}
+              {t("general.unavailable")}
             </Text>
           ),
       },
@@ -559,7 +565,7 @@ class FilteredEventsListPanel extends Component {
                 onClick={this.handleExportNotes}
                 style={{ marginBottom: 16 }}
               >
-                {t('components.filtered-events-panel.export.notes')}
+                {t("components.filtered-events-panel.export.notes")}
               </Button>
               <Col className="gutter-row table-container" span={24}>
                 <Segmented

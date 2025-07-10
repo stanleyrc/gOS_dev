@@ -11,7 +11,6 @@ import {
   Popover,
   Typography,
   Divider,
-  Flex,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -54,17 +53,8 @@ class HeaderPanel extends Component {
       qualityReportName,
     } = this.props;
     if (!report) return null;
-    const {
-      tumor,
-      purity,
-      ploidy,
-      pair,
-      sex,
-      disease,
-      primary_site,
-      summary,
-      tags,
-    } = metadata;
+    const { tumor, purity, ploidy, pair, sex, disease, primary_site, tags } =
+      metadata;
 
     let colorMarkers = { ...msiLabels };
 
@@ -308,7 +298,7 @@ class HeaderPanel extends Component {
                               color: "#f56a00",
                             }}
                           >
-                            {tumor}
+                            {tumor || t("general.unavailable")}
                           </Avatar>
                           {disease}
                           {primary_site}
