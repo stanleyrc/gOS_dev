@@ -21,6 +21,7 @@ export default function appReducer(state = initState, action) {
         error: null,
         datafiles: [],
         populations: {},
+        searchFilters: { page: 1, per_page: 10, texts: "", orderId: 1 },
         reportsFilters: {},
         loading: true,
       };

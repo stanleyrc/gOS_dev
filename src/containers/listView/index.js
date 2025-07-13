@@ -58,19 +58,33 @@ class ListView extends Component {
   };
 
   onReset = () => {
-    this.formRef.current.resetFields();
-    let emptySearchValues = Object.keys(this.props.searchFilters).reduce(
-      (acc, key) => {
-        acc[key] = [];
-        return acc;
-      },
-      {}
-    );
+    const { filters } = this.props;
+    // Build reset values: sliders use their extent, others empty array
+    const resetValues = filters.reduce((acc, d) => {
+      const name = d.filter.name;
+      if (d.filter.renderer === "slider") {
+        acc[name] = d.extent;
+      } else {
+        acc[name] = [];
+      }
+      return acc;
+    }, {});
+    // Update form fields
+    this.formRef.current.setFieldsValue(resetValues);
+    // Trigger search with reset values and pagination defaults
     this.props.onSearch({
-      ...emptySearchValues,
-      ...{ page: 1, per_page: 10, orderId: 1 },
+      ...resetValues,
+      page: 1,
+      per_page: 10,
+      orderId: 1,
     });
   };
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.searchFilters !== this.props.searchFilters) {
+      this.formRef.current.setFieldsValue(this.props.searchFilters);
+    }
+  }
 
   onPageChanged = (page, per_page) => {
     let fieldValues = this.formRef.current.getFieldsValue();
@@ -95,7 +109,6 @@ class ListView extends Component {
   tagsDisplayRender = (labels, selectedOptions = []) =>
     labels.map((label, i) => {
       const option = selectedOptions[i];
-      console.log("option", option, label);
       if (i === labels.length - 1) {
         return <span key={option?.value}>{label}</span>;
       }
@@ -218,6 +231,7 @@ class ListView extends Component {
       <Wrapper>
         <Form
           layout="vertical"
+          initialValues={searchFilters}
           ref={this.formRef}
           onFinish={this.onValuesChange}
           onValuesChange={this.onValuesChange}

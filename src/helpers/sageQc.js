@@ -1,4 +1,4 @@
-export const densityPlotTypes = ["scatterplot", "contourplot"];
+export const densityPlotTypes = ["contourplot", "scatterplot"];
 
 export const densityPlotVariables = ["xVariable", "yVariable", "colorVariable"];
 
@@ -28,7 +28,7 @@ export function sageQcArrowTableToJson(table) {
         obj[key] = null;
       } else if (value instanceof Date) {
         obj[key] = value.toISOString();
-      } else if (typeof value === 'bigint') {
+      } else if (typeof value === "bigint") {
         obj[key] = Number(value);
       } else if (monitoredFields.has(key)) {
         // If the key is in the struct fields, format it as a number

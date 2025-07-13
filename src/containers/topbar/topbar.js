@@ -43,7 +43,7 @@ class Topbar extends Component {
                   <div
                     className="ant-pro-top-nav-header-logo"
                     id="logo"
-                    onClick={() => searchCaseReports({ texts: "", orderId: 1 })}
+                    onClick={() => searchCaseReports(searchFilters)}
                   >
                     <img src={logo} alt="logo" />
                     <h1>{siteConfig.siteName}</h1>
@@ -167,10 +167,10 @@ const mapStateToProps = (state) => ({
   datasets: state.Datasets.records,
   report: state.CaseReports.report,
   reports: state.CaseReports.reports,
+  searchFilters: state.CaseReports.searchFilters,
   loadingPercentage: state.CaseReports.loadingPercentage,
   totalReports: state.CaseReports.totalReports,
   searchText: state.App.searchText,
-  searchFilters: state.App.searchFilters,
 });
 export default connect(
   mapStateToProps,
