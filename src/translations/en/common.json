@@ -435,7 +435,8 @@
       "alteration_type": "Alteration Type",
       "aggregate_label": "Aggregate Label",
       "tier": "Tier",
-      "indication": "Indication"
+      "indication": "Indication",
+      "risk-score": "<strong>{{value}}</strong> Risk Score:"
     },
     "genome-range-panel": {
       "reset": "Reset to full genome view"

@@ -17,6 +17,7 @@ import {
 } from "antd";
 import { AiOutlineDownload } from "react-icons/ai";
 import { downloadCanvasAsPng, transitionStyle } from "../../helpers/utility";
+import { riskColorMap } from "../../helpers/highlights";
 import * as d3 from "d3";
 import { FaDna } from "react-icons/fa";
 import Wrapper from "./index.style";
@@ -48,7 +49,25 @@ class HighlightsPanel extends Component {
       return null;
     }
 
-    const { karyotype, gene_mutations } = data;
+    const { karyotype, risk_score, gene_mutations } = data;
+    const riskTags =
+      Array.isArray(risk_score) && risk_score.length > 0
+        ? risk_score.map((entry, idx) => {
+            const [key, value] = Object.entries(entry)[0];
+            return (
+              <Space key={idx}>
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: t("components.highlights-panel.risk-score", {
+                      value: key,
+                    }),
+                  }}
+                />
+                <Tag color={riskColorMap[value] || "default"}>{value}</Tag>
+              </Space>
+            );
+          })
+        : null;
     let records = gene_mutations || [];
     const columns = [
       "alteration_type",
@@ -72,7 +91,7 @@ class HighlightsPanel extends Component {
           }),
         filterMultiple: true,
         onFilter: (value, record) =>
-          record[x].includes(value) || record[x] == value,
+          record[x].includes(value) || record[x] === value,
         filterSearch: true,
         sorter: {
           compare: (a, b) => {
@@ -126,11 +145,14 @@ class HighlightsPanel extends Component {
                   showSorterTooltip={false}
                   bordered
                   title={() => (
-                    <Space>
-                      <strong>
-                        {t("components.highlights-panel.karyotype")}:
-                      </strong>
-                      {karyotype}
+                    <Space direction="vertical" size="small">
+                      <Space>
+                        <strong>
+                          {t("components.highlights-panel.karyotype")}:
+                        </strong>
+                        {karyotype}
+                      </Space>
+                      {riskTags}
                     </Space>
                   )}
                 />
