@@ -72,6 +72,7 @@ class DensityPlotPanel extends Component {
       visible,
       colorVariable,
       colorFormat,
+      colorVariableType,
     } = this.props;
 
     const { plotType } = this.state;
@@ -149,6 +150,7 @@ class DensityPlotPanel extends Component {
                                 plotType,
                                 colorVariable,
                                 colorFormat,
+                                colorVariableType,
                               }}
                             />
                           </Col>

@@ -3,6 +3,8 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { Row, Col, Image, Space, Select } from "antd";
 import { GiBubbles } from "react-icons/gi";
+import { snakeCaseToHumanReadable } from "../../helpers/utility";
+import * as d3 from "d3";
 import DensityPlotPanel from "../../components/densityPlotPanel";
 import { densityPlotVariables } from "../../helpers/sageQc";
 import ErrorPanel from "../../components/errorPanel";
@@ -34,10 +36,23 @@ class SageQcTab extends Component {
     } = this.props;
 
     let variables = {};
+    let options = {};
+    densityPlotVariables.forEach((variable, i) => {
+      options[variable.name] = sageQcFields
+        .filter((d) => variable.allows.includes(d.type))
+        .sort((a, b) =>
+          i % 2 === 0
+            ? d3.ascending(a.name, b.name)
+            : d3.descending(a.name, b.name)
+        );
+    });
+
     densityPlotVariables.forEach(
       (x, i) =>
-        (variables[`${x}`] = this.state[`${x}`] || sageQcFields[i]?.name)
+        (variables[`${x.name}`] =
+          this.state[`${x.name}`] || options[x.name][0]?.name)
     );
+
     return (
       <Wrapper>
         {error ? (
@@ -61,21 +76,21 @@ class SageQcTab extends Component {
                 <Space>
                   {densityPlotVariables.map((variable, i) => (
                     <>
-                      {t(`components.sageQc-panel.${variable}`)}:
+                      {t(`components.sageQc-panel.${variable.name}`)}:
                       <Select
                         className="variables-select"
-                        value={variables[`${variable}`]}
+                        value={variables[`${variable.name}`]}
                         size="small"
                         style={{ width: 250 }}
                         onSelect={(field) => {
                           this.setState({
-                            [`${variable}`]: field,
+                            [`${variable.name}`]: field,
                           });
                         }}
                       >
-                        {sageQcFields.map((d) => (
+                        {options[variable.name].map((d) => (
                           <Option key={d.name} value={d.name}>
-                            {t(`components.sageQc-panel.${d.name}`)}
+                            {snakeCaseToHumanReadable(d.name)}
                           </Option>
                         ))}
                       </Select>
@@ -93,17 +108,13 @@ class SageQcTab extends Component {
                   loading={loading}
                   loadingPercentage={loadingPercentage}
                   dataPoints={dataPoints}
-                  xTitle={t("components.sageQc-panel.x-title", {
-                    value: t(`components.sageQc-panel.${variables.xVariable}`),
-                  })}
+                  xTitle={snakeCaseToHumanReadable(variables.xVariable)}
                   xVariable={variables.xVariable}
                   xFormat={
                     sageQcFields.find((d) => d.name === variables.xVariable)
                       ?.format
                   }
-                  yTitle={t("components.sageQc-panel.y-title", {
-                    value: t(`components.sageQc-panel.${variables.yVariable}`),
-                  })}
+                  yTitle={snakeCaseToHumanReadable(variables.yVariable)}
                   yVariable={variables.yVariable}
                   yFormat={
                     sageQcFields.find((d) => d.name === variables.yVariable)
@@ -114,6 +125,10 @@ class SageQcTab extends Component {
                   colorFormat={
                     sageQcFields.find((d) => d.name === variables.colorVariable)
                       ?.format
+                  }
+                  colorVariableType={
+                    sageQcFields.find((d) => d.name === variables.colorVariable)
+                      ?.type
                   }
                 />
               </Col>

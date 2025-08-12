@@ -3,7 +3,11 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { Legend, measureText } from "../../helpers/utility";
+import {
+  Legend,
+  measureText,
+  snakeCaseToHumanReadable,
+} from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -56,9 +60,11 @@ class DensityPlot extends Component {
       plotType,
       colorVariable,
       colorSchemeSeq,
+      colorSchemeOrdinal,
       contourBandwidth,
       contourThresholdCount,
       colorFormat,
+      colorVariableType,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -99,19 +105,29 @@ class DensityPlot extends Component {
     let contours, legend, color;
 
     if (plotType === "scatterplot") {
-      color = d3
-        .scaleSequential(colorSchemeSeq)
-        .domain([
-          0,
-          d3.quantile(
-            dataPoints.map((d) => d[colorVariable]),
-            0.99
-          ),
-        ])
-        .clamp(true)
-        .nice();
+      color =
+        colorVariableType === "enum"
+          ? d3
+              .scaleOrdinal()
+              .domain(
+                [...new Set(dataPoints.map((d) => d[colorVariable]))].sort(
+                  (a, b) => d3.ascending(a, b)
+                )
+              )
+              .range(colorSchemeOrdinal)
+          : d3
+              .scaleSequential(colorSchemeSeq)
+              .domain([
+                0,
+                d3.quantile(
+                  dataPoints.map((d) => d[colorVariable]),
+                  0.99
+                ),
+              ])
+              .clamp(true)
+              .nice();
       legend = Legend(color, {
-        title: t(`metadata.${colorVariable}`),
+        title: snakeCaseToHumanReadable(colorVariable),
         tickFormat: colorFormat,
       });
     } else {
@@ -182,7 +198,7 @@ class DensityPlot extends Component {
     const { panelHeight, panelWidth, xScale, yScale, xVariable, yVariable } =
       this.getPlotConfiguration();
     let tooltipContent = Object.keys(d).map((key) => {
-      return { label: t(`metadata.${key}`), value: d[key] };
+      return { label: snakeCaseToHumanReadable(key), value: d[key] };
     });
     let diffY = d3.min([
       5,
@@ -385,6 +401,7 @@ DensityPlot.defaultProps = {
   thresholdBreaks: 3,
   colorScheme: d3.schemeBlues,
   colorSchemeSeq: d3.interpolateBlues,
+  colorSchemeOrdinal: d3.schemeTableau10,
   contourBandwidth: 15,
   contourThresholdCount: 100,
 };

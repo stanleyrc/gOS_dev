@@ -77,6 +77,21 @@ function* fetchSageQc(action) {
           sageQcProperties.includes(d.name)
         );
 
+        if (dataset.variant_qc_dropdown_schema) {
+          properties = Object.keys(dataset.variant_qc_dropdown_schema).map(
+            (d) => {
+              return {
+                name: d,
+                type: dataset.variant_qc_dropdown_schema[d],
+                format:
+                  dataset.variant_qc_dropdown_schema[d] === "float"
+                    ? "0.3f"
+                    : "0.1f",
+              };
+            }
+          );
+        }
+
         yield put({
           type: actions.FETCH_SAGEQC_SUCCESS,
           records,
