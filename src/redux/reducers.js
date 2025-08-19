@@ -10,6 +10,8 @@ import Settings from "./settings/reducer";
 import Genes from "./genes/reducer";
 import Genome from "./genome/reducer";
 import GenomeCoverage from "./genomeCoverage/reducer";
+import MethylationBetaCoverage from "./methylationBetaCoverage/reducer";
+import MethylationIntensityCoverage from "./methylationIntensityCoverage/reducer";
 import Hetsnps from "./hetsnps/reducer";
 import Mutations from "./mutations/reducer";
 import Allelic from "./allelic/reducer";
@@ -36,6 +38,8 @@ export default {
   Genes,
   Genome,
   GenomeCoverage,
+  MethylationBetaCoverage,
+  MethylationIntensityCoverage,
   Hetsnps,
   Mutations,
   Allelic,
@@ -46,5 +50,5 @@ export default {
   Igv,
   Highlights,
   Snvplicity,
-  Cytobands
+  Cytobands,
 };

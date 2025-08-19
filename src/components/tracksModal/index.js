@@ -52,9 +52,17 @@ class TracksModal extends Component {
       genome,
       mutations,
       genomeCoverage,
+      methylationBetaCoverage,
+      methylationIntensityCoverage,
       hetsnps,
       coverageYAxisTitle,
       coverageYAxis2Title,
+      methylationBetaCoveragePlotTitle,
+      methylationBetaCoverageYAxisTitle,
+      methylationBetaCoverageYAxis2Title,
+      methylationIntensityCoveragePlotTitle,
+      methylationIntensityCoverageYAxisTitle,
+      methylationIntensityCoverageYAxis2Title,
       metadata,
       genes,
       allelic,
@@ -83,7 +91,18 @@ class TracksModal extends Component {
     } = this.props;
 
     if (!open) return null;
-    const { cov_slope, cov_intercept, hets_slope, hets_intercept } = metadata;
+    const {
+      cov_slope,
+      cov_intercept,
+      hets_slope,
+      hets_intercept,
+      methylation_intensity_cov_slope,
+      methylation_intensity_cov_intercept,
+      methylation_beta_cov_slope,
+      methylation_beta_cov_intercept,
+    } = metadata;
+
+    console.log(metadata);
     const { yScaleMode } = this.state;
 
     let commonRangeY =
@@ -178,6 +197,114 @@ class TracksModal extends Component {
                     ? coverageYAxis2Title
                     : coverageYAxisTitle,
                 yAxis2Title: coverageYAxis2Title,
+                commonRangeY,
+              }}
+            />
+          </Col>
+        )}
+        {!methylationBetaCoverage.missing && (
+          <Col className="gutter-row" span={24}>
+            <ScatterPlotPanel
+              {...{
+                loading: methylationBetaCoverage.loading,
+                dataPointsY1: methylationBetaCoverage.dataPointsCopyNumber,
+                dataPointsY2: methylationBetaCoverage.dataPointsCount,
+                dataPointsX: methylationBetaCoverage.dataPointsX,
+                dataPointsColor: methylationBetaCoverage.dataPointsColor,
+                error: methylationBetaCoverage.error,
+                filename: methylationBetaCoverage.filename,
+                title: methylationBetaCoveragePlotTitle,
+                notification: {
+                  status:
+                    methylation_beta_cov_slope == null ||
+                    methylation_beta_cov_intercept == null
+                      ? "warning"
+                      : null,
+                  heading:
+                    methylation_beta_cov_slope == null ||
+                    methylation_beta_cov_intercept == null
+                      ? t(`components.tracks-modal.missing-counts-axis`)
+                      : null,
+                  messages: [
+                    ...(methylation_beta_cov_slope == null
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "methylation_beta_cov_slope",
+                          }),
+                        ]
+                      : []),
+                    ...(methylation_beta_cov_intercept == null
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "methylation_beta_cov_intercept",
+                          }),
+                        ]
+                      : []),
+                  ],
+                },
+                chromoBins,
+                visible: true,
+                height,
+                yAxisTitle:
+                  methylation_beta_cov_slope == null ||
+                  methylation_beta_cov_intercept == null
+                    ? methylationBetaCoverageYAxis2Title
+                    : methylationBetaCoverageYAxisTitle,
+                yAxis2Title: methylationBetaCoverageYAxis2Title,
+                commonRangeY,
+              }}
+            />
+          </Col>
+        )}
+        {!methylationIntensityCoverage.missing && (
+          <Col className="gutter-row" span={24}>
+            <ScatterPlotPanel
+              {...{
+                loading: methylationIntensityCoverage.loading,
+                dataPointsY1: methylationIntensityCoverage.dataPointsCopyNumber,
+                dataPointsY2: methylationIntensityCoverage.dataPointsCount,
+                dataPointsX: methylationIntensityCoverage.dataPointsX,
+                dataPointsColor: methylationIntensityCoverage.dataPointsColor,
+                error: methylationIntensityCoverage.error,
+                filename: methylationIntensityCoverage.filename,
+                title: methylationIntensityCoveragePlotTitle,
+                notification: {
+                  status:
+                    methylation_intensity_cov_slope == null ||
+                    methylation_intensity_cov_intercept == null
+                      ? "warning"
+                      : null,
+                  heading:
+                    methylation_intensity_cov_slope == null ||
+                    methylation_intensity_cov_intercept == null
+                      ? t(`components.tracks-modal.missing-counts-axis`)
+                      : null,
+                  messages: [
+                    ...(methylation_intensity_cov_slope == null
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "methylation_intensity_cov_slope",
+                          }),
+                        ]
+                      : []),
+                    ...(methylation_intensity_cov_intercept == null
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "methylation_intensity_cov_intercept",
+                          }),
+                        ]
+                      : []),
+                  ],
+                },
+                chromoBins,
+                visible: true,
+                height,
+                yAxisTitle:
+                  methylation_intensity_cov_slope == null ||
+                  methylation_intensity_cov_intercept == null
+                    ? methylationIntensityCoverageYAxis2Title
+                    : methylationIntensityCoverageYAxisTitle,
+                yAxis2Title: methylationIntensityCoverageYAxis2Title,
                 commonRangeY,
               }}
             />

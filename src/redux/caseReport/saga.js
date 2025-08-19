@@ -7,6 +7,8 @@ import allelicActions from "../allelic/actions";
 import filteredEventsActions from "../filteredEvents/actions";
 import genomeActions from "../genome/actions";
 import genomeCoverageActions from "../genomeCoverage/actions";
+import methylationBetaActions from "../methylationBetaCoverage/actions";
+import methylationIntensityActions from "../methylationIntensityCoverage/actions";
 import hetsnpsActions from "../hetsnps/actions";
 import mutationsActions from "../mutations/actions";
 import populationStatisticsActions from "../populationStatistics/actions";
@@ -112,6 +114,8 @@ function* followUpFetchCaseReportSuccess(action) {
     filteredEventsActions.FETCH_FILTERED_EVENTS_REQUEST,
     genomeActions.FETCH_GENOME_DATA_REQUEST,
     genomeCoverageActions.FETCH_COVERAGE_DATA_REQUEST,
+    methylationBetaActions.FETCH_METHYLATION_BETA_DATA_REQUEST,
+    methylationIntensityActions.FETCH_METHYLATION_INTENSITY_DATA_REQUEST,
     hetsnpsActions.FETCH_HETSNPS_DATA_REQUEST,
     mutationsActions.FETCH_MUTATIONS_DATA_REQUEST,
     populationStatisticsActions.FETCH_POPULATION_STATISTICS_REQUEST,

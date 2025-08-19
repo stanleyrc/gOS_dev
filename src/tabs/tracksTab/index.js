@@ -12,6 +12,8 @@ class TracksTab extends Component {
       mutations,
       chromoBins,
       genomeCoverage,
+      methylationBetaCoverage,
+      methylationIntensityCoverage,
       hetsnps,
       genes,
       igv,
@@ -27,6 +29,8 @@ class TracksTab extends Component {
             genome,
             mutations,
             genomeCoverage,
+            methylationBetaCoverage,
+            methylationIntensityCoverage,
             hetsnps,
             genes,
             igv,
@@ -42,6 +46,24 @@ class TracksTab extends Component {
               "components.tracks-modal.coverage-copy-number"
             ),
             coverageYAxis2Title: t("components.tracks-modal.coverage-count"),
+            methylationBetaCoveragePlotTitle: t(
+              "components.tracks-modal.methylation-beta-coverage-plot"
+            ),
+            methylationBetaCoverageYAxisTitle: t(
+              "components.tracks-modal.methylation-beta-coverage-y-axis-title"
+            ),
+            methylationBetaCoverageYAxis2Title: t(
+              "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
+            ),
+            methylationIntensityCoveragePlotTitle: t(
+              "components.tracks-modal.methylation-intensity-coverage-plot"
+            ),
+            methylationIntensityCoverageYAxisTitle: t(
+              "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
+            ),
+            methylationIntensityCoverageYAxis2Title: t(
+              "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
+            ),
             hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
             hetsnpPlotYAxisTitle: t(
               "components.tracks-modal.hetsnp-copy-number"
@@ -75,6 +97,8 @@ const mapStateToProps = (state) => ({
   allelic: state.Allelic,
   chromoBins: state.Settings.chromoBins,
   genomeCoverage: state.GenomeCoverage,
+  methylationBetaCoverage: state.MethylationBetaCoverage,
+  methylationIntensityCoverage: state.MethylationIntensityCoverage,
   hetsnps: state.Hetsnps,
   genes: state.Genes,
   igv: state.Igv,

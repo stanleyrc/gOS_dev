@@ -13,24 +13,25 @@ function* fetchArrowData(plot) {
     });
 }
 
-function* fetchCoverageData(action) {
+function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
+    const { filename } = currentState.GenomeCoverage;
     const { dataset } = currentState.Settings;
     const { id, metadata } = currentState.CaseReport;
 
-    let coveragePlot = {
-      path: `${dataset.dataPath}${id}/coverage.arrow`,
+    let plot = {
+      path: `${dataset.dataPath}${id}/${filename}`,
       data: null,
     };
-    yield call(fetchArrowData, coveragePlot);
+    yield call(fetchArrowData, plot);
 
-    let dataPointsCount = coveragePlot.data.getChild("y").toArray();
+    let dataPointsCount = plot.data.getChild("y").toArray();
     let dataPointsCopyNumber = dataPointsCount.map(
       (d) => d * (metadata?.cov_slope || 1) + (metadata?.cov_intercept || 0)
     );
-    let dataPointsX = coveragePlot.data.getChild("x").toArray();
-    let dataPointsColor = coveragePlot.data.getChild("color").toArray();
+    let dataPointsX = plot.data.getChild("x").toArray();
+    let dataPointsColor = plot.data.getChild("color").toArray();
 
     yield put({
       type: actions.FETCH_COVERAGE_DATA_SUCCESS,
@@ -48,7 +49,7 @@ function* fetchCoverageData(action) {
 }
 
 function* actionWatcher() {
-  yield takeEvery(actions.FETCH_COVERAGE_DATA_REQUEST, fetchCoverageData);
+  yield takeEvery(actions.FETCH_COVERAGE_DATA_REQUEST, fetchData);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

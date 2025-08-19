@@ -11,6 +11,8 @@ import SettingsSagas from "./settings/saga";
 import GenesSagas from "./genes/saga";
 import GenomeSagas from "./genome/saga";
 import GenomeCoverageSagas from "./genomeCoverage/saga";
+import MethylationBetaCoverageSagas from "./methylationBetaCoverage/saga";
+import MethylationIntensityCoverageSagas from "./methylationIntensityCoverage/saga";
 import HetsnpsSagas from "./hetsnps/saga";
 import MutationsSagas from "./mutations/saga";
 import AllelicSagas from "./allelic/saga";
@@ -37,6 +39,8 @@ export default function* rootSaga(getState) {
     GenesSagas(),
     GenomeSagas(),
     GenomeCoverageSagas(),
+    MethylationBetaCoverageSagas(),
+    MethylationIntensityCoverageSagas(),
     HetsnpsSagas(),
     MutationsSagas(),
     AllelicSagas(),
@@ -47,6 +51,6 @@ export default function* rootSaga(getState) {
     igvSagas(),
     highlightsSagas(),
     snvplicitySagas(),
-    cytobandsSagas()
+    cytobandsSagas(),
   ]);
 }
