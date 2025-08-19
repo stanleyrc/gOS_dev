@@ -66,30 +66,49 @@ function* fetchSageQc(action) {
 
         records.forEach((d, i) => {
           d.id = i + 1;
+          d.oncogenicity =
+            (typeof d.oncogenic === "boolean" && d.oncogenic) ||
+            (typeof d.oncogenic === "string" &&
+              d.oncogenic.toLowerCase() === "true");
           return d;
         });
 
+        // Find properties that exist in at least one record
         let sageQcProperties = [
           ...new Set(records.map((d) => Object.keys(d)).flat()),
         ];
+
+        // Filter out properties that are undefined or null in all records
+        sageQcProperties = sageQcProperties.filter((prop) =>
+          records.some(
+            (record) => record[prop] !== undefined && record[prop] !== null
+          )
+        );
 
         let properties = densityPlotFields.filter((d) =>
           sageQcProperties.includes(d.name)
         );
 
         if (dataset.variant_qc_dropdown_schema) {
-          properties = Object.keys(dataset.variant_qc_dropdown_schema).map(
-            (d) => {
-              return {
-                name: d,
-                type: dataset.variant_qc_dropdown_schema[d],
-                format:
-                  dataset.variant_qc_dropdown_schema[d] === "float"
-                    ? "0.3f"
-                    : "0.1f",
-              };
-            }
+          // First filter the schema keys to only include properties that exist in records
+          const existingProperties = Object.keys(
+            dataset.variant_qc_dropdown_schema
+          ).filter((prop) =>
+            records.some(
+              (record) => record[prop] !== undefined && record[prop] !== null
+            )
           );
+
+          properties = existingProperties.map((d) => {
+            return {
+              name: d,
+              type: dataset.variant_qc_dropdown_schema[d],
+              format:
+                dataset.variant_qc_dropdown_schema[d] === "float"
+                  ? "0.3f"
+                  : "0.1f",
+            };
+          });
         }
 
         yield put({

@@ -194,7 +194,6 @@ class DensityPlot extends Component {
   }
 
   handleMouseEnter = (e, d, i) => {
-    const { t } = this.props;
     const { panelHeight, panelWidth, xScale, yScale, xVariable, yVariable } =
       this.getPlotConfiguration();
     let tooltipContent = Object.keys(d).map((key) => {
@@ -290,8 +289,9 @@ class DensityPlot extends Component {
                   <rect
                     width={panelWidth}
                     height={panelHeight}
-                    fill="#F5F5F5"
-                    fillOpacity={0.33}
+                    fill="transparent"
+                    stroke="lightgray"
+                    strokeWidth={0.33}
                   />
                   {plotType === "contourplot" && (
                     <g strokeLinejoin="round">
@@ -308,19 +308,36 @@ class DensityPlot extends Component {
                   )}
                   {plotType === "scatterplot" &&
                     dataPoints
-                      .sort((a, b) =>
-                        d3.ascending(a[colorVariable], b[colorVariable])
-                      )
+                      .sort((a, b) => {
+                        // Sort by oncogenicity first (false first, true last/top)
+                        const oncogenicityOrder = d3.ascending(
+                          a.oncogenicity || false,
+                          b.oncogenicity || false
+                        );
+                        // If oncogenicity is different, use that order
+                        return (
+                          oncogenicityOrder ||
+                          d3.ascending(a[colorVariable], b[colorVariable])
+                        );
+                      })
                       .map((d, i) => (
-                        <circle
-                          key={i}
-                          cx={xScale(d[xVariable])}
-                          cy={yScale(d[yVariable])}
-                          r={visible && id === i ? 5 : 1.618}
+                        <path
+                          key={d.id}
+                          transform={`translate(${[
+                            xScale(d[xVariable]),
+                            yScale(d[yVariable]),
+                          ]})`}
+                          d={
+                            d.oncogenicity
+                              ? d3.symbol(d3.symbolStar, 100)()
+                              : d3.symbol(d3.symbolCircle, 50)()
+                          }
                           opacity={visible && id === i ? 1 : 1}
                           fill={color(d[colorVariable])}
-                          stroke={visible && id === i ? "#FFF" : "transparent"}
-                          strokeWidth={visible && id === i ? 3 : 0}
+                          stroke={visible && id === i ? "#ff7f0e" : "lightgray"}
+                          strokeWidth={
+                            visible && id === i ? 3 : d.oncogenicity ? 1 : 0.5
+                          }
                           onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
                           onMouseOut={(e) => this.handleMouseOut(e, d)}
                         />
