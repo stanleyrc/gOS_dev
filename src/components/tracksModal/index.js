@@ -380,7 +380,7 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {mutations && (
+        {!mutations.missing && (
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{

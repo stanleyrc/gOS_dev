@@ -12,9 +12,23 @@ function* fetchData(action) {
   const { dataset, chromoBins } = currentState.Settings;
   const { id } = currentState.CaseReport;
 
+  const filePath = `${dataset.dataPath}${id}/${filename}`;
+
+  try {
+    // Check if file exists using HEAD request
+    yield call(axios.head, filePath);
+  } catch (error) {
+    // File doesn't exist or can't be accessed
+    yield put({
+      type: actions.FETCH_MUTATIONS_DATA_MISSING,
+      missing: true,
+    });
+    return; // Exit early
+  }
+
   // Set up the channel configuration
   const channelConfig = {
-    url: `${dataset.dataPath}${id}/${filename}`,
+    url: filePath,
     cancelToken: getCancelToken(),
   };
 

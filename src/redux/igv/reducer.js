@@ -11,6 +11,7 @@ const initState = {
   filenameNormalPresent: null,
   missingFiles: [],
   error: null,
+  missing: false,
 };
 
 export default function appReducer(state = initState, action) {
@@ -20,6 +21,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         error: null,
         loading: true,
+        missing: false,
       };
     case actions.FETCH_IGV_DATA_SUCCESS:
       return {
@@ -28,6 +30,24 @@ export default function appReducer(state = initState, action) {
         filenameNormalPresent: action.filenameNormalPresent,
         missingFiles: action.missingFiles,
         loading: false,
+        missing: false,
+      };
+    case actions.FETCH_IGV_DATA_FAILED:
+      return {
+        ...state,
+        error: action.error,
+        loading: false,
+        missing: false,
+      };
+    case actions.FETCH_IGV_DATA_MISSING:
+      return {
+        ...state,
+        filenameTumorPresent: false,
+        filenameNormalPresent: false,
+        missingFiles: [],
+        loading: false,
+        error: null,
+        missing: true,
       };
     default:
       return state;

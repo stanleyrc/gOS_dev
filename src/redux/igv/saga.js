@@ -38,12 +38,22 @@ function* fetchData(action) {
     call(checkFile, filenameNormalIndex),
   ]);
 
-  yield put({
-    type: actions.FETCH_IGV_DATA_SUCCESS,
-    filenameTumorPresent: results[0].present && results[1].present,
-    filenameNormalPresent: results[2].present && results[3].present,
-    missingFiles: results.filter((result) => !result.present),
-  });
+  // Check if all files are missing
+  const allMissing = results.every((result) => !result.present);
+
+  if (allMissing) {
+    yield put({
+      type: actions.FETCH_IGV_DATA_MISSING,
+      missing: true,
+    });
+  } else {
+    yield put({
+      type: actions.FETCH_IGV_DATA_SUCCESS,
+      filenameTumorPresent: results[0].present && results[1].present,
+      filenameNormalPresent: results[2].present && results[3].present,
+      missingFiles: results.filter((result) => !result.present),
+    });
+  }
 }
 
 function* actionWatcher() {
