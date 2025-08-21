@@ -202,7 +202,7 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {!methylationBetaCoverage.missing && (
+        {!methylationBetaCoverage?.missing && (
           <Col className="gutter-row" span={24}>
             <ScatterPlotPanel
               {...{
