@@ -78,6 +78,8 @@ class BinPlotPanel extends Component {
       loading,
       id,
       genomeCoverage,
+      methylationBetaCoverage,
+      methylationIntensityCoverage,
       hetsnps,
       genes,
       igv,
@@ -159,6 +161,8 @@ class BinPlotPanel extends Component {
                     loading,
                     genome: ppfit,
                     genomeCoverage,
+                    methylationBetaCoverage,
+                    methylationIntensityCoverage,
                     hetsnps,
                     genes,
                     igv,
@@ -188,6 +192,24 @@ class BinPlotPanel extends Component {
                     ),
                     coverageYAxis2Title: t(
                       "components.tracks-modal.coverage-count"
+                    ),
+                    methylationBetaCoveragePlotTitle: t(
+                      "components.tracks-modal.methylation-beta-coverage-plot"
+                    ),
+                    methylationBetaCoverageYAxisTitle: t(
+                      "components.tracks-modal.methylation-beta-coverage-y-axis-title"
+                    ),
+                    methylationBetaCoverageYAxis2Title: t(
+                      "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
+                    ),
+                    methylationIntensityCoveragePlotTitle: t(
+                      "components.tracks-modal.methylation-intensity-coverage-plot"
+                    ),
+                    methylationIntensityCoverageYAxisTitle: t(
+                      "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
+                    ),
+                    methylationIntensityCoverageYAxis2Title: t(
+                      "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
                     ),
                     hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
                     hetsnpPlotYAxisTitle: t(
@@ -251,8 +273,8 @@ const mapStateToProps = (state) => ({
   ppfit: state.Ppfit,
   chromoBins: state.Settings.chromoBins,
   genomeCoverage: state.GenomeCoverage,
-  hetsnps: state.Hetsnps,
-  genes: state.Genes,
+  methylationBetaCoverage: state.MethylationBetaCoverage,
+  methylationIntensityCoverage: state.MethylationIntensityCoverage,
   igv: state.Igv,
 });
 export default connect(

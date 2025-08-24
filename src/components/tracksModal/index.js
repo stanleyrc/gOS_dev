@@ -102,7 +102,6 @@ class TracksModal extends Component {
       methylation_beta_cov_intercept,
     } = metadata;
 
-    console.log(metadata);
     const { yScaleMode } = this.state;
 
     let commonRangeY =
@@ -202,60 +201,6 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {!methylationBetaCoverage?.missing && (
-          <Col className="gutter-row" span={24}>
-            <ScatterPlotPanel
-              {...{
-                loading: methylationBetaCoverage.loading,
-                dataPointsY1: methylationBetaCoverage.dataPointsCopyNumber,
-                dataPointsY2: methylationBetaCoverage.dataPointsCount,
-                dataPointsX: methylationBetaCoverage.dataPointsX,
-                dataPointsColor: methylationBetaCoverage.dataPointsColor,
-                error: methylationBetaCoverage.error,
-                filename: methylationBetaCoverage.filename,
-                title: methylationBetaCoveragePlotTitle,
-                notification: {
-                  status:
-                    methylation_beta_cov_slope == null ||
-                    methylation_beta_cov_intercept == null
-                      ? "warning"
-                      : null,
-                  heading:
-                    methylation_beta_cov_slope == null ||
-                    methylation_beta_cov_intercept == null
-                      ? t(`components.tracks-modal.missing-counts-axis`)
-                      : null,
-                  messages: [
-                    ...(methylation_beta_cov_slope == null
-                      ? [
-                          t(`general.attributes-missing.description`, {
-                            attribute: "methylation_beta_cov_slope",
-                          }),
-                        ]
-                      : []),
-                    ...(methylation_beta_cov_intercept == null
-                      ? [
-                          t(`general.attributes-missing.description`, {
-                            attribute: "methylation_beta_cov_intercept",
-                          }),
-                        ]
-                      : []),
-                  ],
-                },
-                chromoBins,
-                visible: true,
-                height,
-                yAxisTitle:
-                  methylation_beta_cov_slope == null ||
-                  methylation_beta_cov_intercept == null
-                    ? methylationBetaCoverageYAxis2Title
-                    : methylationBetaCoverageYAxisTitle,
-                yAxis2Title: methylationBetaCoverageYAxis2Title,
-                commonRangeY,
-              }}
-            />
-          </Col>
-        )}
         {!methylationIntensityCoverage.missing && (
           <Col className="gutter-row" span={24}>
             <ScatterPlotPanel
@@ -306,6 +251,60 @@ class TracksModal extends Component {
                     : methylationIntensityCoverageYAxisTitle,
                 yAxis2Title: methylationIntensityCoverageYAxis2Title,
                 commonRangeY,
+              }}
+            />
+          </Col>
+        )}
+        {!methylationBetaCoverage?.missing && (
+          <Col className="gutter-row" span={24}>
+            <ScatterPlotPanel
+              {...{
+                loading: methylationBetaCoverage.loading,
+                dataPointsY1: methylationBetaCoverage.dataPointsCopyNumber,
+                dataPointsY2: methylationBetaCoverage.dataPointsCount,
+                dataPointsX: methylationBetaCoverage.dataPointsX,
+                dataPointsColor: methylationBetaCoverage.dataPointsColor,
+                error: methylationBetaCoverage.error,
+                filename: methylationBetaCoverage.filename,
+                title: methylationBetaCoveragePlotTitle,
+                notification: {
+                  status:
+                    methylation_beta_cov_slope == null ||
+                    methylation_beta_cov_intercept == null
+                      ? "warning"
+                      : null,
+                  heading:
+                    methylation_beta_cov_slope == null ||
+                    methylation_beta_cov_intercept == null
+                      ? t(`components.tracks-modal.missing-counts-axis`)
+                      : null,
+                  messages: [
+                    ...(methylation_beta_cov_slope == null
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "methylation_beta_cov_slope",
+                          }),
+                        ]
+                      : []),
+                    ...(methylation_beta_cov_intercept == null
+                      ? [
+                          t(`general.attributes-missing.description`, {
+                            attribute: "methylation_beta_cov_intercept",
+                          }),
+                        ]
+                      : []),
+                  ],
+                },
+                chromoBins,
+                visible: true,
+                height,
+                yAxisTitle:
+                  methylation_beta_cov_slope == null ||
+                  methylation_beta_cov_intercept == null
+                    ? methylationBetaCoverageYAxis2Title
+                    : methylationBetaCoverageYAxisTitle,
+                yAxis2Title: methylationBetaCoverageYAxis2Title,
+                commonRangeY: false, // This plot keeps its own Y-axis range
               }}
             />
           </Col>
@@ -380,7 +379,7 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {!mutations.missing && (
+        {!mutations?.missing && (
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
