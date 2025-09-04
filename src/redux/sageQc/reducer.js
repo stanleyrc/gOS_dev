@@ -7,6 +7,7 @@ const initState = {
   error: null,
   properties: [],
   filename: "sage.qc",
+  selectedVariant: null,
 };
 
 export default function appReducer(state = initState, action) {
@@ -40,6 +41,12 @@ export default function appReducer(state = initState, action) {
         loadingPercentage: null,
         properties: [],
         error: action.error,
+        loading: false,
+      };
+    case actions.SELECT_VARIANT:
+      return {
+        ...state,
+        selectedVariant: action.variant,
         loading: false,
       };
     default:

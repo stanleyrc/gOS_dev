@@ -6,9 +6,11 @@ import {
   densityPlotFields,
   sageQcArrowTableToJson,
 } from "../../helpers/sageQc";
+import { locationToDomains } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { tableFromIPC } from "apache-arrow";
+import settingsActions from "../settings/actions";
 
 function* fetchSageQc(action) {
   const currentState = yield select(getCurrentState);
@@ -70,6 +72,13 @@ function* fetchSageQc(action) {
             (typeof d.oncogenic === "boolean" && d.oncogenic) ||
             (typeof d.oncogenic === "string" &&
               d.oncogenic.toLowerCase() === "true");
+          d.actualLocation = d.end
+            ? `${d.chromosome}:${Math.floor(0.999 * +d.position)}-${
+                d.chromosome
+              }:${Math.floor(1.001 * +d.end)}`
+            : `${d.chromosome}:${Math.floor(0.999 * +d.position)}-${
+                d.chromosome
+              }:${Math.floor(1.001 * +d.position)}`;
           return d;
         });
 
@@ -146,8 +155,49 @@ function* fetchSageQc(action) {
   }
 }
 
+function* selectVariant(action) {
+  const currentState = yield select(getCurrentState);
+  let { chromoBins, defaultDomain } = currentState.Settings;
+  let { variant } = action;
+  let selectedVariant = variant;
+  let urlVariant = new URL(decodeURI(document.location));
+  if (selectedVariant) {
+    let loc = selectedVariant.actualLocation;
+    console.log(loc);
+    let domsVariant = locationToDomains(chromoBins, loc);
+    // eliminate domains that are smaller than 10 bases wide
+    if (domsVariant.length > 1) {
+      domsVariant = domsVariant.filter((d) => d[1] - d[0] > 10);
+    }
+    urlVariant.searchParams.set("variant", selectedVariant.id);
+    window.history.replaceState(
+      unescape(urlVariant.toString()),
+      "Case Report",
+      unescape(urlVariant.toString())
+    );
+    yield put({
+      type: settingsActions.UPDATE_DOMAINS,
+      domains: domsVariant,
+    });
+  } else {
+    // Remove the query parameter
+    urlVariant.searchParams.delete("variant");
+    // Update the URL in the browser's history
+    window.history.replaceState(
+      null,
+      "Case Report",
+      unescape(urlVariant.toString())
+    );
+    yield put({
+      type: settingsActions.UPDATE_DOMAINS,
+      domains: [defaultDomain],
+    });
+  }
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_SAGEQC_REQUEST, fetchSageQc);
+  yield takeEvery(actions.SELECT_VARIANT, selectVariant);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

@@ -552,6 +552,8 @@
     },
     "sageQc-panel": {
       "title": "Variant Allele Frequency vs ALT Read Depth distribution plot",
+      "variantId": "Variant #{{id}}",
+      "oncogenicity": "Oncogenic",
       "y-title": "↑ {{value}}",
       "x-title": "{{value}} →",
       "plot-label": "Show as:",

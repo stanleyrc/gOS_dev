@@ -256,6 +256,8 @@ class DensityPlot extends Component {
       colorVariable,
     } = this.getPlotConfiguration();
 
+    const { handlePointClicked } = this.props;
+
     const { tooltip } = this.state;
     const { visible, id } = tooltip;
     const svgString = new XMLSerializer().serializeToString(legend);
@@ -271,7 +273,6 @@ class DensityPlot extends Component {
             __html: svgString,
           }}
         />
-
         <div
           className="histogram-plot"
           style={{ width: width, height: height }}
@@ -340,6 +341,8 @@ class DensityPlot extends Component {
                           }
                           onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
                           onMouseOut={(e) => this.handleMouseOut(e, d)}
+                          onClick={() => handlePointClicked(d)}
+                          cursor="pointer"
                         />
                       ))}
                 </g>
@@ -422,8 +425,8 @@ DensityPlot.defaultProps = {
   contourBandwidth: 15,
   contourThresholdCount: 100,
 };
-const mapDispatchToProps = () => ({});
-const mapStateToProps = () => ({});
+const mapDispatchToProps = (dispatch) => ({});
+const mapStateToProps = (state) => ({});
 export default connect(
   mapStateToProps,
   mapDispatchToProps
