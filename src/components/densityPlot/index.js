@@ -65,6 +65,7 @@ class DensityPlot extends Component {
       contourThresholdCount,
       colorFormat,
       colorVariableType,
+      selectedId,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -167,6 +168,7 @@ class DensityPlot extends Component {
       contours,
       plotType,
       colorVariable,
+      selectedId,
     };
   }
 
@@ -254,6 +256,7 @@ class DensityPlot extends Component {
       contours,
       plotType,
       colorVariable,
+      selectedId,
     } = this.getPlotConfiguration();
 
     const { handlePointClicked } = this.props;
@@ -310,12 +313,15 @@ class DensityPlot extends Component {
                   {plotType === "scatterplot" &&
                     dataPoints
                       .sort((a, b) => {
-                        // Sort by oncogenicity first (false first, true last/top)
+                        // Selected points come last (on top)
+                        if (a.uid === selectedId) return 1;
+                        if (b.uid === selectedId) return -1;
+                        // Then sort by oncogenicity
                         const oncogenicityOrder = d3.ascending(
                           a.oncogenicity || false,
                           b.oncogenicity || false
                         );
-                        // If oncogenicity is different, use that order
+                        // If oncogenicity is same, sort by color
                         return (
                           oncogenicityOrder ||
                           d3.ascending(a[colorVariable], b[colorVariable])
@@ -335,14 +341,24 @@ class DensityPlot extends Component {
                           }
                           opacity={visible && id === i ? 1 : 1}
                           fill={color(d[colorVariable])}
-                          stroke={visible && id === i ? "#ff7f0e" : "lightgray"}
+                          stroke={
+                            selectedId === d.uid || (visible && id === i)
+                              ? "#ff7f0e"
+                              : "lightgray"
+                          }
                           strokeWidth={
-                            visible && id === i ? 3 : d.oncogenicity ? 1 : 0.5
+                            selectedId === d.uid || (visible && id === i)
+                              ? 3
+                              : d.oncogenicity
+                              ? 1
+                              : 0.5
                           }
                           onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
                           onMouseOut={(e) => this.handleMouseOut(e, d)}
-                          onClick={() => handlePointClicked(d)}
-                          cursor="pointer"
+                          onClick={() =>
+                            handlePointClicked ? handlePointClicked(d) : null
+                          }
+                          cursor={handlePointClicked ? "pointer" : "default"}
                         />
                       ))}
                 </g>
@@ -414,6 +430,7 @@ DensityPlot.propTypes = {
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   data: PropTypes.array,
+  selectedId: PropTypes.string,
 };
 DensityPlot.defaultProps = {
   data: [],
@@ -421,9 +438,10 @@ DensityPlot.defaultProps = {
   thresholdBreaks: 3,
   colorScheme: d3.schemeBlues,
   colorSchemeSeq: d3.interpolateBlues,
-  colorSchemeOrdinal: d3.schemeTableau10,
+  colorSchemeOrdinal: d3.schemeAccent,
   contourBandwidth: 15,
   contourThresholdCount: 100,
+  selectedId: null,
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});

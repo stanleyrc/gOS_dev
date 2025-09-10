@@ -14,7 +14,6 @@ import {
   Segmented,
   Progress,
   Skeleton,
-  Tag,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -24,10 +23,6 @@ import { densityPlotTypes } from "../../helpers/sageQc";
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import DensityPlot from "../densityPlot";
-import TracksModal from "../tracksModal";
-import sageQcActions from "../../redux/sageQc/actions";
-
-const { selectVariant } = sageQcActions;
 
 const margins = {
   padding: 0,
@@ -78,22 +73,11 @@ class DensityPlotPanel extends Component {
       colorVariable,
       colorFormat,
       colorVariableType,
-      selectedVariant,
-      selectVariant,
-      genome,
-      mutations,
-      allelic,
-      chromoBins,
-      genomeCoverage,
-      methylationBetaCoverage,
-      methylationIntensityCoverage,
-      hetsnps,
-      genes,
-      igv,
+      handlePointClicked,
+      selectedId,
     } = this.props;
 
     const { plotType } = this.state;
-    let open = selectedVariant?.id;
 
     return (
       <Wrapper visible={visible}>
@@ -170,7 +154,8 @@ class DensityPlotPanel extends Component {
                                 colorVariable,
                                 colorFormat,
                                 colorVariableType,
-                                handlePointClicked: selectVariant,
+                                handlePointClicked,
+                                selectedId,
                               }}
                             />
                           </Col>
@@ -179,91 +164,6 @@ class DensityPlotPanel extends Component {
                     );
                   }}
                 </ContainerDimensions>
-                {selectedVariant && (
-                  <TracksModal
-                    {...{
-                      loading,
-                      genome,
-                      mutations,
-                      genomeCoverage,
-                      methylationBetaCoverage,
-                      methylationIntensityCoverage,
-                      hetsnps,
-                      genes,
-                      igv,
-                      chromoBins,
-                      allelic,
-                      modalTitleText: selectedVariant.id,
-                      modalTitle: (
-                        <Space>
-                          {t("components.sageQc-panel.variantId", {
-                            id: selectedVariant.id,
-                          })}
-                          {selectedVariant.actualLocation}
-                          {selectedVariant.gene}
-                          {selectedVariant.oncogenicity && (
-                            <Tag color="error">
-                              {t("components.sageQc-panel.oncogenicity")}
-                            </Tag>
-                          )}
-                        </Space>
-                      ),
-                      genomePlotTitle: t("components.tracks-modal.genome-plot"),
-                      genomePlotYAxisTitle: t(
-                        "components.tracks-modal.genome-y-axis-title"
-                      ),
-                      coveragePlotTitle: t(
-                        "components.tracks-modal.coverage-plot"
-                      ),
-                      coverageYAxisTitle: t(
-                        "components.tracks-modal.coverage-copy-number"
-                      ),
-                      coverageYAxis2Title: t(
-                        "components.tracks-modal.coverage-count"
-                      ),
-                      methylationBetaCoveragePlotTitle: t(
-                        "components.tracks-modal.methylation-beta-coverage-plot"
-                      ),
-                      methylationBetaCoverageYAxisTitle: t(
-                        "components.tracks-modal.methylation-beta-coverage-y-axis-title"
-                      ),
-                      methylationBetaCoverageYAxis2Title: t(
-                        "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
-                      ),
-                      methylationIntensityCoveragePlotTitle: t(
-                        "components.tracks-modal.methylation-intensity-coverage-plot"
-                      ),
-                      methylationIntensityCoverageYAxisTitle: t(
-                        "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
-                      ),
-                      methylationIntensityCoverageYAxis2Title: t(
-                        "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
-                      ),
-                      hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
-                      hetsnpPlotYAxisTitle: t(
-                        "components.tracks-modal.hetsnp-copy-number"
-                      ),
-                      hetsnpPlotYAxis2Title: t(
-                        "components.tracks-modal.hetsnp-count"
-                      ),
-                      mutationsPlotTitle: t(
-                        "components.tracks-modal.mutations-plot"
-                      ),
-                      mutationsPlotYAxisTitle: t(
-                        "components.tracks-modal.mutations-plot-y-axis-title"
-                      ),
-                      allelicPlotTitle: t(
-                        "components.tracks-modal.allelic-plot"
-                      ),
-                      allelicPlotYAxisTitle: t(
-                        "components.tracks-modal.allelic-plot-y-axis-title"
-                      ),
-                      handleOkClicked: () => selectVariant(null),
-                      handleCancelClicked: () => selectVariant(null),
-                      open,
-                    }}
-                  />
-                )}
               </div>
             )
           )}
@@ -272,27 +172,16 @@ class DensityPlotPanel extends Component {
     );
   }
 }
-DensityPlotPanel.propTypes = {};
+DensityPlotPanel.propTypes = {
+  handlePointClicked: PropTypes.func,
+};
 DensityPlotPanel.defaultProps = {
+  handlePointClicked: null,
   visible: true,
 };
-const mapDispatchToProps = (dispatch) => ({
-  selectVariant: (variant, viewMode) =>
-    dispatch(selectVariant(variant, viewMode)),
-});
+const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
-  selectedVariant: state.SageQc.selectedVariant,
-  genome: state.Genome,
-  mutations: state.Mutations,
-  allelic: state.Allelic,
-  chromoBins: state.Settings.chromoBins,
-  genomeCoverage: state.GenomeCoverage,
-  methylationBetaCoverage: state.MethylationBetaCoverage,
-  methylationIntensityCoverage: state.MethylationIntensityCoverage,
-  hetsnps: state.Hetsnps,
-  genes: state.Genes,
-  igv: state.Igv,
 });
 export default connect(
   mapStateToProps,

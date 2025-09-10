@@ -106,7 +106,7 @@ class SignaturesTab extends Component {
             />
           ) : (
             <>
-              <Affix offsetTop={194}>
+              <Affix offsetTop={144}>
                 <BarPlotPanel
                   loading={loading}
                   dataPoints={catalog}

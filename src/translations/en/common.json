@@ -613,6 +613,9 @@
         }
       }
     },
+    "metadata-panel": {
+      "header": "Metadata Tags"
+    },
     "mutation-catalog-panel": {
       "header": "Signatures",
       "title": "Mutation Catalog",

@@ -114,6 +114,9 @@ const Wrapper = styled.div`
       font-size: 14px;
       font-family: Roboto, sans-serif;
     }
+    .tags-container {
+      max-width: 60%;
+    }
   }
 `;
 

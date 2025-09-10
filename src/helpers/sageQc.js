@@ -1,4 +1,4 @@
-export const densityPlotTypes = ["contourplot", "scatterplot"];
+export const densityPlotTypes = ["scatterplot", "contourplot"];
 
 export const densityPlotVariables = [
   { name: "xVariable", allows: ["int", "float"] },

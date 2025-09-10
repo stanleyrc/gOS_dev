@@ -2,7 +2,17 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
-import { Row, Col, Modal, message, Space, Button, Affix } from "antd";
+import {
+  Row,
+  Col,
+  Modal,
+  message,
+  Space,
+  Button,
+  Affix,
+  Tabs,
+  Select,
+} from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
@@ -10,6 +20,10 @@ import IgvPanel from "../igvPanel/index";
 import appActions from "../../redux/app/actions";
 import TracksLegendPanel from "../tracksLegendPanel";
 import { AiOutlineDownload } from "react-icons/ai";
+import DensityPlotPanel from "../densityPlotPanel";
+import { densityPlotVariables } from "../../helpers/sageQc";
+import { snakeCaseToHumanReadable } from "../../helpers/utility";
+import * as d3 from "d3";
 import * as htmlToImage from "html-to-image";
 import {
   transitionStyle,
@@ -18,6 +32,7 @@ import {
 } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
+const { Option } = Select;
 const { updateHoveredLocation } = appActions;
 
 class TracksModal extends Component {
@@ -25,6 +40,9 @@ class TracksModal extends Component {
 
   state = {
     yScaleMode: "common",
+    xVariable: null,
+    yVariable: null,
+    colorVariable: null,
   };
 
   onDownloadButtonClicked = () => {
@@ -83,11 +101,17 @@ class TracksModal extends Component {
       allelicPlotYAxisTitle,
       handleOkClicked,
       handleCancelClicked,
+      showVariants,
       width,
       height,
       open,
       viewType,
       legendPanelPinned,
+      dataPoints,
+      sageQcFields,
+      loadingSageQc,
+      loadingPercentageSageQc,
+      selectedVariantId,
     } = this.props;
 
     if (!open) return null;
@@ -103,6 +127,24 @@ class TracksModal extends Component {
     } = metadata;
 
     const { yScaleMode } = this.state;
+
+    let variables = {};
+    let options = {};
+    densityPlotVariables.forEach((variable, i) => {
+      options[variable.name] = sageQcFields
+        .filter((d) => variable.allows.includes(d.type))
+        .sort((a, b) =>
+          i % 2 === 0
+            ? d3.ascending(a.name, b.name)
+            : d3.descending(a.name, b.name)
+        );
+    });
+
+    densityPlotVariables.forEach(
+      (x, i) =>
+        (variables[`${x.name}`] =
+          this.state[`${x.name}`] || options[x.name][0]?.name)
+    );
 
     let commonRangeY =
       yScaleMode === "common" ? dataRanges(domains, genome.data) : null;
@@ -120,7 +162,7 @@ class TracksModal extends Component {
         }}
       />
     );
-    let content = (
+    let tracksContent = (
       <Row
         style={transitionStyle(inViewport || renderOutsideViewPort)}
         className="ant-panel-container ant-home-plot-container"
@@ -128,7 +170,7 @@ class TracksModal extends Component {
       >
         <Col className="gutter-row" span={24}>
           {legendPanelPinned ? (
-            <Affix offsetTop={194}>{tracksLegend}</Affix>
+            <Affix offsetTop={144}>{tracksLegend}</Affix>
           ) : (
             tracksLegend
           )}
@@ -379,7 +421,7 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {!mutations?.missing && (
+        {mutations && !mutations?.missing && (
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
@@ -420,6 +462,84 @@ class TracksModal extends Component {
         )}
       </Row>
     );
+    let variantQcContent = (
+      <Row
+        className="ant-panel-container ant-home-plot-container"
+        gutter={[16, 16]}
+      >
+        <Col className="gutter-row" span={24}>
+          <Space>
+            {densityPlotVariables.map((variable, i) => (
+              <>
+                {t(`components.sageQc-panel.${variable.name}`)}:
+                <Select
+                  className="variables-select"
+                  value={variables[`${variable.name}`]}
+                  size="small"
+                  style={{ width: 250 }}
+                  onSelect={(field) => {
+                    this.setState({
+                      [`${variable.name}`]: field,
+                    });
+                  }}
+                >
+                  {options[variable.name].map((d) => (
+                    <Option key={d.name} value={d.name}>
+                      {snakeCaseToHumanReadable(d.name)}
+                    </Option>
+                  ))}
+                </Select>
+              </>
+            ))}
+          </Space>
+        </Col>
+        <Col className="gutter-row" span={24}>
+          <DensityPlotPanel
+            loading={loadingSageQc}
+            loadingPercentage={loadingPercentageSageQc}
+            dataPoints={dataPoints}
+            xTitle={snakeCaseToHumanReadable(variables.xVariable)}
+            xVariable={variables.xVariable}
+            xFormat={
+              sageQcFields.find((d) => d.name === variables.xVariable)?.format
+            }
+            yTitle={snakeCaseToHumanReadable(variables.yVariable)}
+            yVariable={variables.yVariable}
+            yFormat={
+              sageQcFields.find((d) => d.name === variables.yVariable)?.format
+            }
+            title={t("components.sageQc-panel.title")}
+            colorVariable={variables.colorVariable}
+            colorFormat={
+              sageQcFields.find((d) => d.name === variables.colorVariable)
+                ?.format
+            }
+            colorVariableType={
+              sageQcFields.find((d) => d.name === variables.colorVariable)?.type
+            }
+            selectedId={selectedVariantId}
+          />
+        </Col>
+      </Row>
+    );
+    let content = showVariants ? (
+      <Tabs
+        items={[
+          {
+            key: "tracks",
+            label: t(`containers.detail-view.tabs.tab2`),
+            children: tracksContent,
+          },
+          {
+            key: "variantQc",
+            label: t(`containers.detail-view.tabs.tab4`),
+            children: variantQcContent,
+          },
+        ]}
+      />
+    ) : (
+      tracksContent
+    );
     return (
       <Wrapper visible={open}>
         {viewType === "modal" ? (
@@ -448,7 +568,7 @@ class TracksModal extends Component {
           </Modal>
         ) : (
           <div style={{ height: `${height}px; width: ${width}px` }}>
-            {content}
+            {tracksContent}
           </div>
         )}
       </Wrapper>
@@ -463,16 +583,21 @@ TracksModal.defaultProps = {
   height: 200,
   viewType: "modal",
   legendPanelPinned: false,
+  showVariants: false,
 };
 const mapDispatchToProps = (dispatch) => ({
   updateHoveredLocation: (hoveredLocation, panelIndex) =>
     dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
 });
 const mapStateToProps = (state) => ({
+  loadingSageQc: state.SageQc.loading,
+  loadingPercentageSageQc: state.SageQc.loadingPercentage,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   domains: state.Settings.domains,
   metadata: state.CaseReport.metadata,
   chromoBins: state.Settings.chromoBins,
+  dataPoints: state.SageQc.records,
+  sageQcFields: state.SageQc.properties,
 });
 export default connect(
   mapStateToProps,

@@ -206,7 +206,7 @@ class Home extends Component {
                   />
                 </TabPane>
                 <TabPane tab={t("components.tabs.tab6")} key="6">
-                  <Affix offsetTop={194}>
+                  <Affix offsetTop={144}>
                     <BarPlotPanel
                       dataPoints={catalog}
                       title={t("components.mutation-catalog-panel.title")}

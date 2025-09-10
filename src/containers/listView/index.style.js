@@ -5,7 +5,7 @@ const Wrapper = styled.div`
     margin: 0px;
     background: white;
     border: 1px solid rgb(235, 237, 240);
-    padding-bottom: 50px;
+    padding-bottom: 0px;
   }
   .chat-float-button {
     position: fixed;

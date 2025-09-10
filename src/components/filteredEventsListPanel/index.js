@@ -622,6 +622,8 @@ class FilteredEventsListPanel extends Component {
                     {selectedFilteredEvent && viewMode === "tracks" && (
                       <TracksModal
                         {...{
+                          showVariants: true,
+                          selectedVariantId: selectedFilteredEvent.uid,
                           loading,
                           genome,
                           mutations,

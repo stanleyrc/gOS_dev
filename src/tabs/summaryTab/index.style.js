@@ -19,6 +19,11 @@ const Wrapper = styled.div`
   .ant-collapse > .ant-collapse-item > .ant-collapse-header {
     padding: 12px 0px;
   }
+  .metadata-descriptions .ant-descriptions-item-content {
+    white-space: normal;
+    word-break: keep-all;
+    word-wrap: break-word;
+  }
 `;
 
 export default Wrapper;

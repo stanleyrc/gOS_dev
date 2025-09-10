@@ -3,6 +3,7 @@ import axios from "axios";
 import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
+import { act } from "react";
 
 export function dataRanges(domains, genome) {
   function filterIntervalsByDomain(domain, intervals) {
@@ -1545,6 +1546,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         endPoint: endPoint,
         location: location,
         actualLocation: actualLocation,
+        uid: actualLocation,
         id: event.id,
         variant: event.Variant,
         dosage: event.dosage,

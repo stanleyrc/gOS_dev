@@ -303,22 +303,6 @@ class HeaderPanel extends Component {
                           {disease}
                           {primary_site}
                         </Space>
-                        <Space direction="vertical" size={5}>
-                          {generateCascaderOptions(tags).map((tag, i) => (
-                            <Space key={tag.value}>
-                              <Space direction="horizontal" size="small" wrap>
-                                <Text type="secondary" className="tag-header">
-                                  {tag.label}:{" "}
-                                </Text>
-                                {tag.children.map((child) => (
-                                  <Text key={child.value} code>
-                                    {child.label}
-                                  </Text>
-                                ))}
-                              </Space>
-                            </Space>
-                          ))}
-                        </Space>
                       </Space>
                     </div>
                   </div>

@@ -72,6 +72,7 @@ function* fetchSageQc(action) {
             (typeof d.oncogenic === "boolean" && d.oncogenic) ||
             (typeof d.oncogenic === "string" &&
               d.oncogenic.toLowerCase() === "true");
+          d.uid = `${d.chromosome}:${d.position}-${d.chromosome}:${d.end}`;
           d.actualLocation = d.end
             ? `${d.chromosome}:${Math.floor(0.999 * +d.position)}-${
                 d.chromosome
