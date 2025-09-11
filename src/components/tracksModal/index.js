@@ -462,6 +462,7 @@ class TracksModal extends Component {
         )}
       </Row>
     );
+
     let variantQcContent = (
       <Row
         className="ant-panel-container ant-home-plot-container"

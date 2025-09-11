@@ -260,7 +260,6 @@ class DensityPlot extends Component {
     } = this.getPlotConfiguration();
 
     const { handlePointClicked } = this.props;
-
     const { tooltip } = this.state;
     const { visible, id } = tooltip;
     const svgString = new XMLSerializer().serializeToString(legend);
@@ -329,7 +328,8 @@ class DensityPlot extends Component {
                       })
                       .map((d, i) => (
                         <path
-                          key={d.id}
+                          key={d.uid}
+                          id={d.uid}
                           transform={`translate(${[
                             xScale(d[xVariable]),
                             yScale(d[yVariable]),

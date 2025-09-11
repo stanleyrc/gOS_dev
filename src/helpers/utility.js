@@ -1490,6 +1490,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
       let startPoint = null;
       let endPoint = null;
       let actualLocation = null;
+      let uid = null;
       if (event.Genome_Location) {
         const regex = /^(\w+):(\d+)-(\d+).*/;
         let match = regex.exec(event.Genome_Location);
@@ -1498,6 +1499,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         endPoint = match[3];
         location = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
         actualLocation = location;
+        uid = actualLocation;
         if (["SNV", "DEL"].includes(event.vartype)) {
           // center the SNV in the plot while encapsulating its gene in the
           // window
@@ -1510,6 +1512,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
             startPoint = parseInt(snvStartPoint - padding);
             endPoint = parseInt(snvEndPoint + padding);
             location = event.Variant_g;
+            uid = `${chromosome}:${snvStartPoint}-${chromosome}:${snvEndPoint}`;
             actualLocation = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
           } catch (error) {
             console.log(error);
@@ -1530,6 +1533,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
             endPoint = event.fusion_gene_coords
               .split(",")
               .map((d) => d.split(":")[1].split("-")[1]);
+            uid = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
           } catch (error) {
             console.log(error);
           }
@@ -1546,7 +1550,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         endPoint: endPoint,
         location: location,
         actualLocation: actualLocation,
-        uid: actualLocation,
+        uid,
         id: event.id,
         variant: event.Variant,
         dosage: event.dosage,
