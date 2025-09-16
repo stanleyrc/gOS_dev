@@ -77,6 +77,7 @@ yarn-debug.log*
 yarn-error.log*
 public/data
 public/genes/*
+public/cytobands
 public/common*
 connect.sh
 nyuconnect.sh
