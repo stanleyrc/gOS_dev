@@ -2,7 +2,6 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
-  filename: "cytobands.tsv",
   data: [],
   chromosomeOutlines: [],
   error: null,

@@ -12,11 +12,7 @@ import curatedGenesActions from "../curatedGenes/actions";
 import { cancelAllRequests } from "../../helpers/cancelToken";
 
 function* launchApplication(action) {
-  let actionTypes = [
-    actions.FETCH_SETTINGS_DATA_REQUEST,
-    datasetsActions.FETCH_DATASETS_REQUEST,
-    genesActions.FETCH_GENES_DATA_REQUEST,
-  ];
+  let actionTypes = [actions.FETCH_SETTINGS_DATA_REQUEST];
   yield all(actionTypes.map((type) => put({ type })));
 }
 
@@ -65,10 +61,7 @@ function* updateCaseReportFollowUp(action) {
 }
 
 function* settingsFetchedFollowUp(action) {
-  let actionTypes = [
-    genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
-    cytobandsActions.FETCH_CYTOBANDS_REQUEST,
-  ];
+  let actionTypes = [datasetsActions.FETCH_DATASETS_REQUEST];
 
   yield all(actionTypes.map((type) => put({ type })));
 }
@@ -85,6 +78,9 @@ function* updateDatasetFollowUp(action) {
     caseReportsActions.FETCH_CASE_REPORTS_REQUEST,
     biomarkersActions.FETCH_BIOMARKERS_REQUEST,
     curatedGenesActions.FETCH_CURATED_GENES_REQUEST,
+    genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
+    genesActions.FETCH_GENES_DATA_REQUEST,
+    cytobandsActions.FETCH_CYTOBANDS_REQUEST,
   ];
   yield all(actionTypes.map((type) => put({ type })));
   if (action.report) {

@@ -54,7 +54,7 @@ LegendPanel.propTypes = {};
 LegendPanel.defaultProps = {};
 const mapDispatchToProps = {};
 const mapStateToProps = (state) => ({
-  selectedCoordinate: state.Settings.selectedCoordinate,
+  selectedCoordinate: state.Settings.dataset?.reference,
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
 });

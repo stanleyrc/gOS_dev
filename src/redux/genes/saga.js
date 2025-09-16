@@ -22,8 +22,10 @@ function* fetchArrowData(plot) {
 }
 
 function* fetchGenesData(action) {
+  const currentState = yield select(getCurrentState);
+  const { dataset } = currentState.Settings;
   try {
-    let reference = "hg19";
+    let reference = dataset.reference;
     let genesPlot = {
       path: `genes/${reference}.arrow`,
       data: null,
@@ -55,6 +57,7 @@ function* fetchGenesData(action) {
 
     yield put({
       type: actions.FETCH_GENES_DATA_SUCCESS,
+      reference,
       data: genesData,
       optionsList: genesOptionsList,
       geneTypes,
@@ -77,7 +80,10 @@ function* fetchGenesData(action) {
 
 function* fetchHiglassGenesInfo(action) {
   const currentState = yield select(getCurrentState);
-  const { reference, higlassServerPath } = currentState.Genes;
+  const { dataset } = currentState.Settings;
+  const { higlassServerPath } = currentState.Genes;
+  let reference = dataset.higlassReference;
+
   try {
     let responseGeneAnnotationTilesets = yield call(
       axios.get,

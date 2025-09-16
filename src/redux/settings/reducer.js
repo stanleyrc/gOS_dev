@@ -1,10 +1,9 @@
 import actions from "./actions";
-import { domainsToLocation } from "../../helpers/utility";
+import { updateChromoBins, domainsToLocation } from "../../helpers/utility";
 
 const initState = {
   loading: false,
   data: {},
-  selectedCoordinate: "hg19",
   report: null,
   dataset: {
     id: "demo",
@@ -12,6 +11,7 @@ const initState = {
     datafilesPath: "datafiles.json",
     commonPath: "common/",
     dataPath: "data/",
+    reference: "hg19",
   },
   tab: 1,
   chromoBins: {},
@@ -64,7 +64,6 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         data: action.data,
-        selectedCoordinate: action.selectedCoordinate,
         chromoBins: action.chromoBins,
         defaultDomain: action.defaultDomain,
         domains: action.domains,
@@ -122,6 +121,7 @@ export default function appReducer(state = initState, action) {
       return { ...state, report: action.report };
     case actions.UPDATE_DATASET:
       let dataset = action.dataset;
+      let selectedCoordinate = dataset.reference;
       let rep = action.report;
       url0 = new URL(decodeURI(document.location));
       if (dataset) {
@@ -141,10 +141,17 @@ export default function appReducer(state = initState, action) {
         "Case Report",
         unescape(url0.toString())
       );
+      let { genomeLength, chromoBins } = updateChromoBins(
+        state.data.coordinates.sets[selectedCoordinate]
+      );
       return {
         ...state,
         dataset: action.dataset,
         report: rep,
+        genomeLength,
+        chromoBins,
+        defaultDomain: [1, genomeLength],
+        domains: [[1, genomeLength]],
       };
     default:
       return state;

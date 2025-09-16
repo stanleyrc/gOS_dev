@@ -6,10 +6,19 @@ import settingsActions from "../settings/actions";
 
 function* fetchDatasets() {
   try {
+    const currentState = yield select(getCurrentState);
+    let { data: settings } = currentState.Settings;
     // get the list of all datasets from the public/datasets.json
     let responseDatasets = yield call(axios.get, "datasets.json");
 
     let records = responseDatasets.data;
+
+    // ensure that each dataset has a reference, if not assign hg19 as default
+    records.forEach((dataset) => {
+      dataset.reference = dataset.reference || "hg19";
+      dataset.higlassReference =
+        settings.coordinates.higlassMap[dataset.reference] || "hg19";
+    });
 
     yield put({
       type: actions.FETCH_DATASETS_SUCCESS,

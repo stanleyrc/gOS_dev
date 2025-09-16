@@ -207,7 +207,7 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
-  selectedCoordinate: state.Settings.selectedCoordinate,
+  selectedCoordinate: state.Settings.dataset?.reference,
   genesOptionsList: state.Genes.optionsList,
   renderOutsideViewPort: state.App.renderOutsideViewPort,
 });

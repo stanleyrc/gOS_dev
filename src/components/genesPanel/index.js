@@ -195,7 +195,7 @@ const mapStateToProps = (state) => ({
   renderOutsideViewPort: state.App.renderOutsideViewPort,
   chromoBins: state.Settings.chromoBins,
   genomeLength: state.Settings.genomeLength,
-  selectedCoordinate: state.Settings.selectedCoordinate,
+  selectedCoordinate: state.Settings.dataset?.reference,
   loading: state.Genes.loading,
   genesOptionsList: state.Genes.optionsList,
 });
