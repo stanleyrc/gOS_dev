@@ -1,0 +1,85 @@
+name: Build and Publish Artifacts
+on:
+  push:
+    branches: ["main"]
+
+# Needed so the workflow can push to the artifacts branch
+permissions:
+  contents: write
+
+# Cancel in-flight older runs if you push again
+concurrency:
+  group: build-artifacts
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16.x'
+          cache: 'yarn'
+
+      - name: Install deps
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        env:
+          # give webpack more headroom; harmless on CI
+          NODE_OPTIONS: --max-old-space-size=4096
+          # optional: smaller uploads
+          # GENERATE_SOURCEMAP: 'false'
+        run: yarn build
+
+      - name: Package build as tar.gz
+        run: |
+          mkdir -p out
+          TARBALL="build-${GITHUB_SHA}.tar.gz"
+          tar -czf "out/${TARBALL}" -C build .
+          sha256sum "out/${TARBALL}" > "out/${TARBALL}.sha256"
+          echo "${GITHUB_SHA}" > out/LATEST.txt
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > out/LATEST_BUILT_AT.txt
+
+      - name: Publish to deploy-builds branch
+        run: |
+          BRANCH=deploy-builds
+          # prepare a worktree for the artifacts branch
+          git fetch origin ${BRANCH} || true
+          if git show-ref --quiet refs/heads/${BRANCH}; then
+            git worktree add artifacts ${BRANCH}
+          else
+            git worktree add artifacts -b ${BRANCH}
+          fi
+
+          mkdir -p artifacts/releases
+          cp out/build-${GITHUB_SHA}.tar.gz artifacts/releases/
+          cp out/build-${GITHUB_SHA}.tar.gz.sha256 artifacts/releases/
+          cp out/LATEST.txt artifacts/
+          cp out/LATEST_BUILT_AT.txt artifacts/
+
+          cd artifacts
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+            commit -m "build: ${GITHUB_SHA}"
+          git push origin HEAD:${BRANCH}
+
+      # (Optional) keep branch size under control — keep last 5 tarballs
+      - name: Prune old tarballs (optional)
+        if: always()
+        run: |
+          BRANCH=deploy-builds
+          git worktree add artifacts2 ${BRANCH}
+          cd artifacts2/releases
+          ls -1tr build-*.tar.gz | head -n -5 | xargs -r -I{} bash -c 'rm -f "{}" "{}".sha256'
+          cd ..
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+            commit -m "chore: prune old tarballs" || echo "nothing to prune"
+          git push origin HEAD:${BRANCH}
