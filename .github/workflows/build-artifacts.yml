@@ -49,13 +49,26 @@ jobs:
 
       - name: Publish to deploy-builds branch
         run: |
+          set -e
           BRANCH=deploy-builds
-          # prepare a worktree for the artifacts branch
-          git fetch origin ${BRANCH} || true
-          if git show-ref --quiet refs/heads/${BRANCH}; then
-            git worktree add artifacts ${BRANCH}
+          REPO="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+
+          # fresh shallow clone of the artifacts branch (handles latest state)
+          rm -rf artifacts
+          if git ls-remote --heads origin ${BRANCH} | grep -q "refs/heads/${BRANCH}"; then
+            git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts
           else
-            git worktree add artifacts -b ${BRANCH}
+            # create the branch if it doesn't exist yet
+            mkdir artifacts && cd artifacts
+            git init
+            git remote add origin "$REPO"
+            git checkout -b ${BRANCH}
+            echo "# Prebuilt artifacts" > README.md
+            git add README.md
+            git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+              commit -m "init artifacts branch"
+            git push -u origin ${BRANCH}
+            cd ..
           fi
 
           mkdir -p artifacts/releases
@@ -67,16 +80,19 @@ jobs:
           cd artifacts
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-            commit -m "build: ${GITHUB_SHA}"
+            commit -m "build: ${GITHUB_SHA}" || echo "No changes to commit"
           git push origin HEAD:${BRANCH}
 
       # (Optional) keep branch size under control — keep last 5 tarballs
       - name: Prune old tarballs (optional)
         if: always()
         run: |
+          set -e
           BRANCH=deploy-builds
-          git worktree add artifacts2 ${BRANCH}
-          cd artifacts2/releases
+          REPO="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          rm -rf artifacts_prune
+          git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts_prune
+          cd artifacts_prune/releases
           ls -1tr build-*.tar.gz | head -n -5 | xargs -r -I{} bash -c 'rm -f "{}" "{}".sha256'
           cd ..
           git add -A
