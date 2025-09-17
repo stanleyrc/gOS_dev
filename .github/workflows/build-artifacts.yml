@@ -30,13 +30,16 @@ jobs:
       - name: Install deps
         run: yarn install --frozen-lockfile
 
+      - name: Update browserslist DB (quiet warnings)
+        run: npx update-browserslist-db@latest --yes
+
       - name: Build
         env:
           # give webpack more headroom; harmless on CI
           NODE_OPTIONS: --max-old-space-size=4096
           # optional: smaller uploads
           # GENERATE_SOURCEMAP: 'false'
-        run: yarn build
+        run: CI=false yarn build
 
       - name: Package build as tar.gz
         run: |
