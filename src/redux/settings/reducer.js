@@ -151,7 +151,6 @@ export default function appReducer(state = initState, action) {
         genomeLength,
         chromoBins,
         defaultDomain: [1, genomeLength],
-        domains: [[1, genomeLength]],
       };
     default:
       return state;

@@ -4,7 +4,11 @@ import { connect } from "react-redux";
 import debounce from "lodash.debounce";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
 import { withTranslation } from "react-i18next";
-import { lociToDomains, domainToLoci } from "../../helpers/utility.js";
+import {
+  parseCenterFromLocus,
+  lociToDomains,
+  domainToLoci,
+} from "../../helpers/igvUtil.js";
 import Wrapper from "./index.style";
 
 const margins = {};
@@ -36,8 +40,8 @@ class IgvPlot extends Component {
       format,
     } = this.props;
     let locus = domainToLoci(chromoBins, domain);
+    const { chr, position } = parseCenterFromLocus(locus);
     let tracks = [];
-    
     if (filenameTumorPresent) {
       tracks.push({
         id: "Tumor",
@@ -45,7 +49,8 @@ class IgvPlot extends Component {
         url: urlTumor,
         indexURL: indexTumorURL,
         format,
-        sort: { option: "BASE" },
+        type: "alignment",
+        sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
     if (filenameNormalPresent) {
@@ -55,19 +60,23 @@ class IgvPlot extends Component {
         url: urlNormal,
         indexURL: indexNormalURL,
         format,
-        sort: { option: "BASE" },
+        type: "alignment",
+        sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
     const igvOptions = {
       genome: "hg19",
       locus,
       tracks,
+      showCenterGuide: true,
     };
 
     igv.createBrowser(this.container, igvOptions).then((browser) => {
       this.igvBrowser = browser;
       // Add location change listener
       this.igvBrowser.on("locuschange", this.handleLocusChange);
+      // Initial sort on mount by center base
+      this.sortAlignmentTracksByCenter(chr, position);
     });
   }
 
@@ -83,6 +92,28 @@ class IgvPlot extends Component {
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
       let locus = domainToLoci(chromoBins, domain);
       this.igvBrowser.search(locus);
+      // After moving, default-sort tracks by base at the window center
+      const { chr, position } = parseCenterFromLocus(locus);
+
+      this.sortAlignmentTracksByCenter(chr, position);
+    }
+  }
+
+  // Apply BASE sort at the given center to all alignment tracks
+  sortAlignmentTracksByCenter(chr, position) {
+    if (!this.igvBrowser || !chr || !position) return;
+    try {
+      const tracks = this.igvBrowser.findTracks
+        ? this.igvBrowser.findTracks("type", "alignment")
+        : [];
+      tracks.forEach((track) => {
+        if (track && typeof track.sort === "function") {
+          track.sort({ chr, position, option: "BASE", direction: "ASC" });
+        }
+      });
+    } catch (e) {
+      console.error("Error sorting alignment tracks:", e);
+      // Best-effort; ignore errors
     }
   }
 
@@ -100,6 +131,9 @@ class IgvPlot extends Component {
       let locus = await this.igvBrowser.currentLoci();
       this.domain = lociToDomains(this.props.chromoBins, locus)[0];
       this.debouncedUpdateDomain(this.domain, this.props.index);
+      // Keep alignment tracks sorted by the center base on user navigation
+      const { chr, position } = parseCenterFromLocus(locus);
+      this.sortAlignmentTracksByCenter(chr, position);
     } catch (error) {
       console.error("Error retrieving locus:", error);
     }
