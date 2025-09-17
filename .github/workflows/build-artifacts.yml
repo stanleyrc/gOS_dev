@@ -24,14 +24,11 @@ jobs:
       - name: Use Node 16
         uses: actions/setup-node@v4
         with:
-          node-version: '16.x'
-          cache: 'yarn'
+          node-version: "16.x"
+          cache: "yarn"
 
       - name: Install deps
         run: yarn install --frozen-lockfile
-
-      - name: Update browserslist DB (quiet warnings)
-        run: npx update-browserslist-db@latest --yes
 
       - name: Build
         env:
