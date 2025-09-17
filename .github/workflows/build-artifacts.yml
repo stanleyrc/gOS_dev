@@ -30,6 +30,14 @@ jobs:
       - name: Install deps
         run: yarn install --frozen-lockfile
 
+      - name: Setup SSH for git pushes
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
+
+      - name: Add github.com to known_hosts
+        run: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
+
       - name: Build
         env:
           # give webpack more headroom; harmless on CI
@@ -51,7 +59,7 @@ jobs:
         run: |
           set -e
           BRANCH=deploy-builds
-          REPO="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          REPO="git@github.com:${GITHUB_REPOSITORY}.git"
 
           # fresh shallow clone of the artifacts branch (handles latest state)
           rm -rf artifacts
@@ -89,9 +97,13 @@ jobs:
         run: |
           set -e
           BRANCH=deploy-builds
-          REPO="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          REPO="git@github.com:${GITHUB_REPOSITORY}.git"
           rm -rf artifacts_prune
           git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts_prune
+          if [ ! -d artifacts_prune/releases ]; then
+            echo "No releases to prune yet; skipping"
+            exit 0
+          fi
           cd artifacts_prune/releases
           ls -1tr build-*.tar.gz | head -n -5 | xargs -r -I{} bash -c 'rm -f "{}" "{}".sha256'
           cd ..
