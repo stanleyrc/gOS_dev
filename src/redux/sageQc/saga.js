@@ -164,7 +164,6 @@ function* selectVariant(action) {
   let urlVariant = new URL(decodeURI(document.location));
   if (selectedVariant) {
     let loc = selectedVariant.actualLocation;
-    console.log(loc);
     let domsVariant = locationToDomains(chromoBins, loc);
     // eliminate domains that are smaller than 10 bases wide
     if (domsVariant.length > 1) {

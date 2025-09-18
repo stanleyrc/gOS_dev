@@ -15,7 +15,7 @@ const Wrapper = styled.div`
     opacity: 1;
   }
   path.non-protein-coded {
-    opacity: 0.1667;
+    opacity: 0.5;
   }
   .phylogeny-annotated {
     fill-opacity: 0.33;

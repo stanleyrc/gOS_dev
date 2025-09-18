@@ -94,7 +94,7 @@ class IgvPlot extends Component {
       this.igvBrowser.search(locus);
       // After moving, default-sort tracks by base at the window center
       const { chr, position } = parseCenterFromLocus(locus);
-
+      console.log("Sorting alignment tracks by center:", chr, position);
       this.sortAlignmentTracksByCenter(chr, position);
     }
   }

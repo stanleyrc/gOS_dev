@@ -74,6 +74,10 @@ class Interval {
     return `${this.chromosome}: ${this.startPoint} - ${this.endPoint}`;
   }
 
+  get centerPoint() {
+    return Math.floor((this.startPoint + this.endPoint) / 2);
+  }
+
   get mutationSymbol() {
     let value = d3.symbol(d3.symbolCircle, 10);
     if (this.annotation) {
@@ -101,6 +105,7 @@ class Interval {
   get tooltipContent() {
     let attributes = [
       { label: "Locus", value: this.location },
+      { label: "Center Point", value: this.centerPoint },
       { label: "CN", value: this.y },
     ];
     if (this.annotation) {
@@ -173,7 +178,7 @@ class Interval {
         });
       }
       const oncogenicity = annotations.find(
-        (item) => item.key === "Oncogenicity"
+        (item) => item?.key === "Oncogenicity"
       )?.value;
       if (oncogenicity) {
         attributes.push({
@@ -181,14 +186,14 @@ class Interval {
           value: oncogenicity || "NA",
         });
       }
-      const effect = annotations.find((item) => item.key === "Effect")?.value;
+      const effect = annotations.find((item) => item?.key === "Effect")?.value;
       if (effect) {
         attributes.push({
           label: "OncoKB Predicted Effect",
           value: effect || "NA",
         });
       }
-      const level = annotations.find((item) => item.key === "Level")?.value;
+      const level = annotations.find((item) => item?.key === "Level")?.value;
       if (level) {
         attributes.push({
           label: "OncoKB Therapeutic Level",

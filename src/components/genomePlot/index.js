@@ -477,10 +477,21 @@ class GenomePlot extends Component {
     }
   }
 
-  handleIntervalClick(panelIndex, shape) {
+  handleIntervalClick(panelIndex, shape, padding = 1000) {
     // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
-    newDomains[panelIndex] = [shape.startPlace - 1e3, shape.endPlace + 1e3];
+    newDomains[panelIndex] = [
+      shape.startPlace - padding,
+      shape.endPlace + padding,
+    ];
+    this.debouncedUpdateDomains(newDomains);
+  }
+
+  handleMutationClick(panelIndex, shape, padding = 50) {
+    // center this interval in the viewport
+    let newDomains = JSON.parse(JSON.stringify(this.props.domains));
+    let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2) + 1;
+    newDomains[panelIndex] = [midPoint - padding, midPoint + padding];
     this.debouncedUpdateDomains(newDomains);
   }
 
@@ -651,7 +662,9 @@ class GenomePlot extends Component {
                             : ""
                         } ${d.isProteinCoded ? "" : "non-protein-coded"}`}
                         transform={`translate(${[
-                          panel.xScale((d.startPlace + d.endPlace) / 2),
+                          panel.xScale(
+                            Math.floor((d.startPlace + d.endPlace) / 2)
+                          ),
                           panel.yScale(d.y),
                         ]})`}
                         style={{
@@ -660,7 +673,7 @@ class GenomePlot extends Component {
                           strokeWidth: 1,
                         }}
                         onClick={(event) =>
-                          this.handleIntervalClick(panel.index, d)
+                          this.handleMutationClick(panel.index, d)
                         }
                       />
                     ) : (
