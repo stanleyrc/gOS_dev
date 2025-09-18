@@ -490,7 +490,7 @@ class GenomePlot extends Component {
   handleMutationClick(panelIndex, shape, padding = 50) {
     // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
-    let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2) + 1;
+    let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
     newDomains[panelIndex] = [midPoint - padding, midPoint + padding];
     this.debouncedUpdateDomains(newDomains);
   }
