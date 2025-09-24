@@ -35,17 +35,6 @@ function ReportModal({
   const iframeRef = useRef(null);
   const anchorTimersRef = useRef([]);
 
-  const focusIframe = () => {
-    const el = iframeRef.current;
-    if (!el) return;
-    try {
-      el.focus();
-      el.contentWindow && el.contentWindow.focus && el.contentWindow.focus();
-    } catch (_) {
-      // ignore cross-origin focus errors
-    }
-  };
-
   const applyAnchor = (hashOverride) => {
     const el = iframeRef.current;
     if (!el) return;
@@ -100,7 +89,7 @@ function ReportModal({
     anchorTimersRef.current = [];
 
     // try multiple times to catch post-load DOM changes/reordering
-    [0, 150, 400, 1000, 2000].forEach((delay) => {
+    [0, 150, 300].forEach((delay) => {
       anchorTimersRef.current.push(
         setTimeout(() => applyAnchor(hash), delay)
       );
@@ -108,7 +97,6 @@ function ReportModal({
   };
 
   const handleIframeLoad = () => {
-    focusIframe();
     scheduleAnchorApply();
   };
 
@@ -145,7 +133,6 @@ function ReportModal({
   useEffect(() => {
     if (open && activeTab === "report" && !reportLoading && !error) {
       const id = setTimeout(() => {
-        focusIframe();
         scheduleAnchorApply();
       }, 0);
       return () => clearTimeout(id);
