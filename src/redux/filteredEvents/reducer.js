@@ -39,6 +39,22 @@ export default function appReducer(state = initState, action) {
         viewMode: action.viewMode,
         loading: false,
       };
+    case actions.APPLY_TIER_OVERRIDE: {
+      const { uid, tier } = action;
+      const tierNum = Number(tier);
+      const update = (it) => (it ? { ...it, tier: tierNum } : it);
+
+      return {
+        ...state,
+        filteredEvents: (state.filteredEvents || []).map((it) =>
+          it?.uid === uid ? update(it) : it
+        ),
+        selectedFilteredEvent:
+          state.selectedFilteredEvent?.uid === uid
+            ? update(state.selectedFilteredEvent)
+            : state.selectedFilteredEvent,
+      };
+    }
     default:
       return state;
   }
