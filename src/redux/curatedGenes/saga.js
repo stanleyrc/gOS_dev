@@ -1,5 +1,6 @@
 import { all, takeEvery, put, select, call } from "redux-saga/effects";
 import * as d3 from "d3";
+import axios from "axios";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
 
@@ -7,8 +8,19 @@ function* fetchCuratedGenesData(action) {
   try {
     const currentState = yield select(getCurrentState);
     let { dataset } = currentState.Settings;
+    const filePath = `${dataset.commonPath}all_curated_genes.tsv`;
 
-    let data = yield call(d3.tsv, `${dataset.commonPath}all_curated_genes.tsv`);
+    try {
+      yield call(axios.head, filePath);
+    } catch (error) {
+      yield put({
+        type: actions.FETCH_CURATED_GENES_MISSING,
+        missing: true,
+      });
+      return;
+    }
+
+    let data = yield call(d3.tsv, filePath);
 
     yield put({
       type: actions.FETCH_CURATED_GENES_SUCCESS,

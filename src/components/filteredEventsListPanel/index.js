@@ -17,6 +17,7 @@ import {
   message,
 } from "antd";
 import { FileTextOutlined } from "@ant-design/icons";
+import { BsDashLg } from "react-icons/bs";
 import { generateEventNotesPDF } from "../../helpers/notes";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
@@ -181,7 +182,7 @@ class FilteredEventsListPanel extends Component {
             </Button>
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -212,7 +213,7 @@ class FilteredEventsListPanel extends Component {
             record.role
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -244,7 +245,7 @@ class FilteredEventsListPanel extends Component {
             record.variant
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -274,7 +275,7 @@ class FilteredEventsListPanel extends Component {
             record.type
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -305,7 +306,7 @@ class FilteredEventsListPanel extends Component {
             record.effect
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -380,7 +381,7 @@ class FilteredEventsListPanel extends Component {
             </Tooltip>
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -404,7 +405,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.estimatedAlteredCopies)
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -425,7 +426,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.segmentCopyNumber)
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -446,7 +447,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.fusionCopyNumber)
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -467,7 +468,7 @@ class FilteredEventsListPanel extends Component {
             +record.altCounts
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -488,7 +489,7 @@ class FilteredEventsListPanel extends Component {
             +record.refCounts
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -509,7 +510,7 @@ class FilteredEventsListPanel extends Component {
             d3.format(".3f")(+record.vaf)
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },
@@ -533,7 +534,7 @@ class FilteredEventsListPanel extends Component {
             </Space>
           ) : (
             <Text italic disabled>
-              {t("general.unavailable")}
+              <BsDashLg />
             </Text>
           ),
       },

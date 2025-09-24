@@ -362,14 +362,16 @@ class ListView extends Component {
                         }
                         variant="borderless"
                         extra={
-                          <Avatar
-                            style={{
-                              backgroundColor: "#fde3cf",
-                              color: "#f56a00",
-                            }}
-                          >
-                            {d.tumor_type || t("general.unavailable")}
-                          </Avatar>
+                          d.tumor_type ? (
+                            <Avatar
+                              style={{
+                                backgroundColor: "#fde3cf",
+                                color: "#f56a00",
+                              }}
+                            >
+                              {d.tumor_type}
+                            </Avatar>
+                          ) : null
                         }
                         actions={[
                           <Statistic

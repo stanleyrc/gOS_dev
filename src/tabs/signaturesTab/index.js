@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Skeleton, Affix, Segmented, Space, Tag } from "antd";
+import { Skeleton, Affix, Segmented, Space, Tag, Empty, Card } from "antd";
 import * as d3 from "d3";
 import BarPlotPanel from "../../components/barPlotPanel";
 import PopulationPanel from "../../components/populationPanel";
@@ -10,6 +10,7 @@ import {
   mutationsColorPalette,
   mutationsGroups,
 } from "../../helpers/utility";
+import { FaRegChartBar } from "react-icons/fa";
 import { cosineSimilarityClass } from "../../helpers/metadata";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import ErrorPanel from "../../components/errorPanel";
@@ -53,6 +54,7 @@ class SignaturesTab extends Component {
       signaturePlots,
       signatureTumorPlots,
       error,
+      missing,
     } = this.props;
     const {
       signatureKPIMode,
@@ -91,7 +93,25 @@ class SignaturesTab extends Component {
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
-          {error ? (
+          {missing ? (
+            <Card
+              size="small"
+              title={
+                <Space>
+                  <span role="img" className="anticon anticon-dashboard">
+                    <FaRegChartBar />
+                  </span>
+                  <span className="ant-pro-menu-item-title">
+                    {t("components.mutation-catalog-panel.title")}
+                  </span>
+                </Space>
+              }
+            >
+              <Empty
+                description={t("components.mutation-catalog-panel.empty")}
+              />
+            </Card>
+          ) : error ? (
             <ErrorPanel
               avatar={<CgArrowsBreakeH />}
               header={t("components.mutation-catalog-panel.header")}
@@ -334,6 +354,7 @@ const mapStateToProps = (state) => ({
   referenceCatalog: state.SignatureStatistics.referenceCatalog,
   signaturePlots: state.SignatureStatistics.signatureMetrics,
   signatureTumorPlots: state.SignatureStatistics.tumorSignatureMetrics,
+  missing: state.SignatureStatistics.missing,
 });
 export default connect(
   mapStateToProps,

@@ -631,7 +631,8 @@
         "explanation": {
           "title": "The operation  has failed with the following error:"
         }
-      }
+      },
+      "empty": "The mutations and signatures for this specific case report are not available"
     },
     "coverage-panel": {
       "datapoint": "datapoint",

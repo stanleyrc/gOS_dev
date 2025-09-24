@@ -1,4 +1,4 @@
-import { all, takeEvery, put, select, take } from "redux-saga/effects";
+import { all, takeEvery, put, select, take, call } from "redux-saga/effects";
 import axios from "axios";
 import {
   getSignatureMetrics,
@@ -33,6 +33,30 @@ function* fetchData(action) {
     let mutationCatalog = [];
     let decomposedCatalog = [];
     let referenceCatalog = [];
+
+    const requiredFiles = [
+      `${dataset.dataPath}${id}/mutation_catalog.json`,
+      `${dataset.dataPath}${id}/id_mutation_catalog.json`,
+      `${dataset.dataPath}${id}/sbs_decomposed_prob.json`,
+      `${dataset.dataPath}${id}/id_decomposed_prob.json`,
+    ];
+
+    let missing = false;
+    for (let file of requiredFiles) {
+      try {
+        yield call(axios.head, file);
+      } catch (e) {
+        missing = true;
+        break;
+      }
+    }
+    if (missing) {
+      yield put({
+        type: actions.FETCH_SIGNATURE_STATISTICS_MISSING,
+        missing: true,
+      });
+      return;
+    }
 
     Object.keys(signatures).forEach((type) => {
       signatureMetrics[type] = {};

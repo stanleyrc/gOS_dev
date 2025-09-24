@@ -291,15 +291,17 @@ class HeaderPanel extends Component {
                     <div className="avatar-content0">
                       <Space direction="vertical" size="small">
                         <Space>
-                          <Avatar
-                            size="large"
-                            style={{
-                              backgroundColor: "#fde3cf",
-                              color: "#f56a00",
-                            }}
-                          >
-                            {tumor || t("general.unavailable")}
-                          </Avatar>
+                          {tumor ? (
+                            <Avatar
+                              size="large"
+                              style={{
+                                backgroundColor: "#fde3cf",
+                                color: "#f56a00",
+                              }}
+                            >
+                              {tumor}
+                            </Avatar>
+                          ) : null}
                           {disease}
                           {primary_site}
                         </Space>
