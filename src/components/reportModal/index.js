@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Modal, Spin, Alert, Tabs } from "antd";
 import Wrapper from "./index.style";
 
@@ -6,6 +6,19 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("report");
+
+  const iframeRef = useRef(null);
+
+  const focusIframe = () => {
+    const el = iframeRef.current;
+    if (!el) return;
+    try {
+      el.focus();
+      el.contentWindow && el.contentWindow.focus && el.contentWindow.focus();
+    } catch (_) {
+      // ignore cross-origin focus errors
+    }
+  };
 
   useEffect(() => {
     let aborted = false;
@@ -34,6 +47,13 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
   useEffect(() => {
     if (!open) setActiveTab("report");
   }, [open]);
+
+  useEffect(() => {
+    if (open && activeTab === "report" && !loading && !error) {
+      const id = setTimeout(focusIframe, 0);
+      return () => clearTimeout(id);
+    }
+  }, [open, activeTab, loading, error]);
 
   return (
     <Wrapper>
@@ -65,6 +85,9 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
                   {loading && <div className="report-loading"><Spin /></div>}
                   {!loading && (
                     <iframe
+                      ref={iframeRef}
+                      tabIndex={-1}
+                      onLoad={focusIframe}
                       title="report"
                       src={src}
                       className="report-iframe"

@@ -2,18 +2,16 @@ import styled from "styled-components";
 
 const Wrapper = styled.div`
   .ant-modal {
-    top: 0px;
+    top: 16px;
   }
 
   .ant-modal-content {
     padding: 0;
     display: flex;
     flex-direction: column;
-    max-height: 100vh;
-  }
-
-  .ant-modal-header {
-    padding: 12px 16px;
+    max-height: 95vh;
+    padding: 20px 24px;
+    padding-bottom: 0;
   }
 
   .ant-modal-body {
@@ -22,10 +20,6 @@ const Wrapper = styled.div`
     display: flex;
     flex-direction: column;
     overflow: hidden;
-  }
-
-  .report-tabs .ant-tabs-nav {
-    margin: 8px 16px;
   }
 
   .report-tabs {
@@ -46,6 +40,9 @@ const Wrapper = styled.div`
 
   .report-tabs .ant-tabs-tabpane {
     height: 100%;
+  }
+
+  .report-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
     display: flex;
   }
 
@@ -70,7 +67,7 @@ const Wrapper = styled.div`
 
   .report-iframe {
     width: 100%;
-    height: 85vh;
+    height: 80vh;
     display: block;
     border: 0;
   }
