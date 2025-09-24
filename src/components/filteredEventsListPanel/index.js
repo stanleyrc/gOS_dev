@@ -14,10 +14,10 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  message,
+  // message,
 } from "antd";
 import { FileTextOutlined } from "@ant-design/icons";
-import { generateEventNotesPDF } from "../../helpers/notes";
+ // import { generateEventNotesPDF } from "../../helpers/notes"; // no longer used
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -28,6 +28,7 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import FilteredEventModal from "../filteredEventModal";
+import ReportModal from "../reportModal";
 
 const { Text } = Typography;
 
@@ -49,38 +50,15 @@ class FilteredEventsListPanel extends Component {
     effectFilters: [],
     variantFilters: [],
     geneFilters: [],
+    showReportModal: false,
   };
 
   handleExportNotes = () => {
-    const { t, id, filteredEvents } = this.props;
+    this.setState({ showReportModal: true });
+  };
 
-    try {
-      // Generate PDF
-      message.loading({
-        content: t("components.filtered-events-panel.generating-pdf"),
-        key: "export",
-      });
-      const doc = generateEventNotesPDF(filteredEvents, id);
-
-      // Check if any notes were found
-      if (doc.internal.pages.length <= 1) {
-        message.warning(t("components.filtered-events-panel.no-notes"));
-        return;
-      }
-
-      // Save the PDF
-      doc.save(`${id}_events_report.pdf`);
-      message.success({
-        content: t("components.filtered-events-panel.export.success"),
-        key: "export",
-      });
-    } catch (error) {
-      console.error("Export error:", error);
-      message.error({
-        content: t("components.filtered-events-panel.export.error"),
-        key: "export",
-      });
-    }
+  handleCloseReportModal = () => {
+    this.setState({ showReportModal: false });
   };
 
   handleSegmentedChange = (eventType) => {
@@ -132,6 +110,7 @@ class FilteredEventsListPanel extends Component {
       roleFilters,
       effectFilters,
       variantFilters,
+      showReportModal,
     } = this.state;
 
     let recordsHash = d3.group(
@@ -725,6 +704,12 @@ class FilteredEventsListPanel extends Component {
                         }}
                       />
                     )}
+                    <ReportModal
+                      open={showReportModal}
+                      onClose={this.handleCloseReportModal}
+                      src={`${process.env.PUBLIC_URL}/data/${id}/report.html`}
+                      title={t("components.filtered-events-panel.export.notes")}
+                    />
                   </Skeleton>
                 }
               </Col>
