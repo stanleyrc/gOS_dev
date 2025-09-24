@@ -707,6 +707,19 @@ class FilteredEventsListPanel extends Component {
                         onClose={() => selectFilteredEvent(null)}
                         src={`${process.env.PUBLIC_URL}/data/${id}/report.html#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`}
                         title={selectedFilteredEvent?.gene || t("components.filtered-events-panel.export.notes")}
+                        loading={loading}
+                        genome={genome}
+                        mutations={mutations}
+                        genomeCoverage={genomeCoverage}
+                        methylationBetaCoverage={methylationBetaCoverage}
+                        methylationIntensityCoverage={methylationIntensityCoverage}
+                        hetsnps={hetsnps}
+                        genes={genes}
+                        igv={igv}
+                        chromoBins={chromoBins}
+                        allelic={allelic}
+                        selectedVariantId={selectedFilteredEvent?.uid}
+                        showVariants
                       />
                     )}
                     <ReportModal
@@ -714,6 +727,17 @@ class FilteredEventsListPanel extends Component {
                       onClose={this.handleCloseReportModal}
                       src={`${process.env.PUBLIC_URL}/data/${id}/report.html`}
                       title={t("components.filtered-events-panel.export.notes")}
+                      loading={loading}
+                      genome={genome}
+                      mutations={mutations}
+                      genomeCoverage={genomeCoverage}
+                      methylationBetaCoverage={methylationBetaCoverage}
+                      methylationIntensityCoverage={methylationIntensityCoverage}
+                      hetsnps={hetsnps}
+                      genes={genes}
+                      igv={igv}
+                      chromoBins={chromoBins}
+                      allelic={allelic}
                     />
                   </Skeleton>
                 }

@@ -2,8 +2,33 @@ import React, { useEffect, useState, useRef } from "react";
 import { Modal, Spin, Alert, Tabs } from "antd";
 import Wrapper from "./index.style";
 
-export default function ReportModal({ open, onClose, src, title = "Report" }) {
-  const [loading, setLoading] = useState(false);
+import TracksModal from "../tracksModal";
+import { withTranslation } from "react-i18next";
+
+function ReportModal({
+  open,
+  onClose,
+  src,
+  title = "Report",
+  // data for plots
+  loading,
+  genome,
+  mutations,
+  chromoBins,
+  genomeCoverage,
+  methylationBetaCoverage,
+  methylationIntensityCoverage,
+  hetsnps,
+  genes,
+  igv,
+  allelic,
+  // optional: focus on a specific variant
+  selectedVariantId,
+  showVariants,
+  // i18n
+  t,
+}) {
+  const [reportLoading, setReportLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("report");
 
@@ -24,19 +49,19 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
     let aborted = false;
     if (!open || !src) return;
 
-    setLoading(true);
+    setReportLoading(true);
     setError(null);
 
     fetch(src, { method: "HEAD" })
       .then((res) => {
         if (aborted) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setLoading(false);
+        setReportLoading(false);
       })
       .catch((e) => {
         if (aborted) return;
         setError(e.message || "Failed to load report");
-        setLoading(false);
+        setReportLoading(false);
       });
 
     return () => {
@@ -49,11 +74,11 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
   }, [open]);
 
   useEffect(() => {
-    if (open && activeTab === "report" && !loading && !error) {
+    if (open && activeTab === "report" && !reportLoading && !error) {
       const id = setTimeout(focusIframe, 0);
       return () => clearTimeout(id);
     }
-  }, [open, activeTab, loading, error]);
+  }, [open, activeTab, reportLoading, error]);
 
   return (
     <Wrapper>
@@ -82,8 +107,8 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
                 />
               ) : (
                 <div className="report-container">
-                  {loading && <div className="report-loading"><Spin /></div>}
-                  {!loading && (
+                  {reportLoading && <div className="report-loading"><Spin /></div>}
+                  {!reportLoading && (
                     <iframe
                       ref={iframeRef}
                       tabIndex={-1}
@@ -100,7 +125,75 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
             {
               key: "plots",
               label: "Plots",
-              children: <div>Plots coming soon…</div>,
+              children: (
+                <TracksModal
+                  {...{
+                    loading: genome?.loading ?? loading,
+                    genome,
+                    mutations,
+                    genomeCoverage,
+                    methylationBetaCoverage,
+                    methylationIntensityCoverage,
+                    hetsnps,
+                    genes,
+                    igv,
+                    chromoBins,
+                    allelic,
+                    modalTitle: "",
+                    genomePlotTitle: t("components.tracks-modal.genome-plot"),
+                    genomePlotYAxisTitle: t(
+                      "components.tracks-modal.genome-y-axis-title"
+                    ),
+                    coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
+                    coverageYAxisTitle: t(
+                      "components.tracks-modal.coverage-y-axis-title"
+                    ),
+                    coverageYAxis2Title: t(
+                      "components.tracks-modal.coverage-y-axis2-title"
+                    ),
+                    methylationBetaCoveragePlotTitle: t(
+                      "components.tracks-modal.methylation-beta-coverage-plot"
+                    ),
+                    methylationBetaCoverageYAxisTitle: t(
+                      "components.tracks-modal.methylation-beta-coverage-y-axis-title"
+                    ),
+                    methylationBetaCoverageYAxis2Title: t(
+                      "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
+                    ),
+                    methylationIntensityCoveragePlotTitle: t(
+                      "components.tracks-modal.methylation-intensity-coverage-plot"
+                    ),
+                    methylationIntensityCoverageYAxisTitle: t(
+                      "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
+                    ),
+                    methylationIntensityCoverageYAxis2Title: t(
+                      "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
+                    ),
+                    hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
+                    hetsnpPlotYAxisTitle: t(
+                      "components.tracks-modal.hetsnp-plot-y-axis-title"
+                    ),
+                    hetsnpPlotYAxis2Title: t(
+                      "components.tracks-modal.hetsnp-plot-y-axis2-title"
+                    ),
+                    mutationsPlotTitle: t("components.tracks-modal.mutations-plot"),
+                    mutationsPlotYAxisTitle: t(
+                      "components.tracks-modal.mutations-plot-y-axis-title"
+                    ),
+                    allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
+                    allelicPlotYAxisTitle: t(
+                      "components.tracks-modal.allelic-plot-y-axis-title"
+                    ),
+                    handleOkClicked: () => {},
+                    handleCancelClicked: () => {},
+                    open: true,
+                    viewType: "inline",
+                    // focus on the selected variant when provided (detail view)
+                    showVariants: showVariants ?? !!selectedVariantId,
+                    selectedVariantId,
+                  }}
+                />
+              ),
             },
           ]}
         />
@@ -108,3 +201,4 @@ export default function ReportModal({ open, onClose, src, title = "Report" }) {
     </Wrapper>
   );
 }
+export default withTranslation("common")(ReportModal);
