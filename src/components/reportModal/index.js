@@ -33,6 +33,7 @@ function ReportModal({
   const [activeTab, setActiveTab] = useState("report");
 
   const iframeRef = useRef(null);
+  const anchorTimersRef = useRef([]);
 
   const focusIframe = () => {
     const el = iframeRef.current;
@@ -43,6 +44,72 @@ function ReportModal({
     } catch (_) {
       // ignore cross-origin focus errors
     }
+  };
+
+  const applyAnchor = (hashOverride) => {
+    const el = iframeRef.current;
+    if (!el) return;
+    try {
+      const cw = el.contentWindow;
+      const doc = cw?.document;
+      if (!doc) return;
+
+      const rawHash =
+        hashOverride ??
+        (cw?.location?.hash ? cw.location.hash.slice(1) : null) ??
+        (typeof src === "string" && src.includes("#")
+          ? src.split("#")[1]
+          : null);
+
+      if (!rawHash) return;
+
+      const anchor = decodeURIComponent(rawHash.replace(/^#+/, "")).trim();
+      const target =
+        doc.getElementById(anchor) || doc.getElementsByName(anchor)?.[0];
+
+      if (target && typeof target.scrollIntoView === "function") {
+        target.scrollIntoView({
+          block: "start",
+          inline: "nearest",
+          behavior: "auto",
+        });
+      } else if (cw && typeof cw.location !== "undefined") {
+        cw.location.hash = `#${anchor}`;
+      }
+    } catch (_) {
+      // ignore cross-origin issues
+    }
+  };
+
+  const scheduleAnchorApply = () => {
+    const el = iframeRef.current;
+    if (!el) return;
+
+    let hash = null;
+    if (typeof src === "string" && src.includes("#")) {
+      hash = src.split("#")[1];
+    } else {
+      try {
+        hash = el.contentWindow?.location?.hash?.slice(1) || null;
+      } catch (_) {}
+    }
+    if (!hash) return;
+
+    // clear previous timers
+    anchorTimersRef.current.forEach(clearTimeout);
+    anchorTimersRef.current = [];
+
+    // try multiple times to catch post-load DOM changes/reordering
+    [0, 150, 400, 1000, 2000].forEach((delay) => {
+      anchorTimersRef.current.push(
+        setTimeout(() => applyAnchor(hash), delay)
+      );
+    });
+  };
+
+  const handleIframeLoad = () => {
+    focusIframe();
+    scheduleAnchorApply();
   };
 
   useEffect(() => {
@@ -66,6 +133,8 @@ function ReportModal({
 
     return () => {
       aborted = true;
+      anchorTimersRef.current.forEach(clearTimeout);
+      anchorTimersRef.current = [];
     };
   }, [open, src]);
 
@@ -75,7 +144,10 @@ function ReportModal({
 
   useEffect(() => {
     if (open && activeTab === "report" && !reportLoading && !error) {
-      const id = setTimeout(focusIframe, 0);
+      const id = setTimeout(() => {
+        focusIframe();
+        scheduleAnchorApply();
+      }, 0);
       return () => clearTimeout(id);
     }
   }, [open, activeTab, reportLoading, error]);
@@ -112,7 +184,7 @@ function ReportModal({
                     <iframe
                       ref={iframeRef}
                       tabIndex={-1}
-                      onLoad={focusIframe}
+                      onLoad={handleIframeLoad}
                       title="report"
                       src={src}
                       className="report-iframe"
