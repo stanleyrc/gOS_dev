@@ -31,7 +31,10 @@ const Wrapper = styled.div`
 
   .report-tabs .ant-tabs-content-holder {
     flex: 1;
-    overflow: hidden;
+    overflow: auto;       /* allow scrolling */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;        /* allow children to shrink */
   }
 
   .report-tabs .ant-tabs-content {
@@ -40,10 +43,18 @@ const Wrapper = styled.div`
 
   .report-tabs .ant-tabs-tabpane {
     height: 100%;
+    min-height: 0;        /* critical for flex children scrolling */
   }
 
   .report-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
     display: flex;
+    flex-direction: column;
+  }
+
+  .plots-container {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
   }
 
   .report-container {

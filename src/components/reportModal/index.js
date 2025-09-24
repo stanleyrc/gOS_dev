@@ -126,7 +126,8 @@ function ReportModal({
               key: "plots",
               label: "Plots",
               children: (
-                <TracksModal
+                <div className="plots-container">
+                  <TracksModal
                   {...{
                     loading: genome?.loading ?? loading,
                     genome,
@@ -193,6 +194,7 @@ function ReportModal({
                     selectedVariantId,
                   }}
                 />
+                </div>
               ),
             },
           ]}
