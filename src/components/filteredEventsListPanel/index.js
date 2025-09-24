@@ -706,7 +706,25 @@ class FilteredEventsListPanel extends Component {
                         open
                         onClose={() => selectFilteredEvent(null)}
                         src={`${process.env.PUBLIC_URL}/data/${id}/report.html#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`}
-                        title={selectedFilteredEvent?.gene || t("components.filtered-events-panel.export.notes")}
+                        title={
+                          <Space>
+                            {selectedFilteredEvent.gene}
+                            {selectedFilteredEvent.name}
+                            {selectedFilteredEvent.type}
+                            {selectedFilteredEvent.role
+                              ?.split(",")
+                              .map((tag) => (
+                                <Tag
+                                  color={roleColorMap()[tag.trim()]}
+                                  key={tag.trim()}
+                                >
+                                  {tag.trim()}
+                                </Tag>
+                              ))}
+                            {selectedFilteredEvent.tier}
+                            {selectedFilteredEvent.location}
+                          </Space>
+                        }
                         loading={loading}
                         genome={genome}
                         mutations={mutations}
