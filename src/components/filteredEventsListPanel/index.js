@@ -27,8 +27,15 @@ import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
-import FilteredEventModal from "../filteredEventModal";
 import ReportModal from "../reportModal";
+
+/* helper to build the report anchor */
+function slugify(s) {
+  const str = String(s || "").trim().toLowerCase();
+  const ascii = str.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const cleaned = ascii.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "section";
+}
 
 const { Text } = Typography;
 
@@ -695,13 +702,11 @@ class FilteredEventsListPanel extends Component {
                       />
                     )}
                     {selectedFilteredEvent && viewMode === "detail" && (
-                      <FilteredEventModal
-                        {...{
-                          record: selectedFilteredEvent,
-                          handleOkClicked: () => selectFilteredEvent(null),
-                          handleCancelClicked: () => selectFilteredEvent(null),
-                          open,
-                        }}
+                      <ReportModal
+                        open
+                        onClose={() => selectFilteredEvent(null)}
+                        src={`${process.env.PUBLIC_URL}/data/${id}/report.html#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`}
+                        title={selectedFilteredEvent?.gene || t("components.filtered-events-panel.export.notes")}
                       />
                     )}
                     <ReportModal
