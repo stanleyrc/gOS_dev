@@ -22,11 +22,26 @@ const Wrapper = styled.div`
     overflow: hidden;
   }
 
+  .report-modal-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
   .report-tabs {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
+  }
+
+  .report-toolbar {
+    padding: 8px 0 12px;
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
   }
 
   .report-tabs .ant-tabs-content-holder {
