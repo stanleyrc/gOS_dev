@@ -6,6 +6,7 @@ const initState = {
   selectedFilteredEvent: null,
   viewMode: "tracks",
   error: null,
+  reportSrc: null,
 };
 
 export default function appReducer(state = initState, action) {
@@ -16,6 +17,7 @@ export default function appReducer(state = initState, action) {
         error: null,
         filteredEvents: [],
         loading: true,
+        reportSrc: null,
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
       return {
@@ -23,6 +25,7 @@ export default function appReducer(state = initState, action) {
         filteredEvents: action.filteredEvents,
         selectedFilteredEvent: action.selectedFilteredEvent,
         loading: false,
+        reportSrc: action.reportSrc || null,
       };
     case actions.FETCH_FILTERED_EVENTS_FAILED:
       return {
@@ -31,6 +34,7 @@ export default function appReducer(state = initState, action) {
         selectedFilteredEvent: null,
         error: action.error,
         loading: false,
+        reportSrc: null,
       };
     case actions.SELECT_FILTERED_EVENT:
       return {

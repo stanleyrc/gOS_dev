@@ -246,6 +246,7 @@ class FilteredEventsListPanel extends Component {
       genes,
       allelic,
       igv,
+      reportSrc,
       selectFilteredEvent,
     } = this.props;
 
@@ -693,6 +694,7 @@ class FilteredEventsListPanel extends Component {
                 type="primary"
                 icon={<FileTextOutlined />}
                 onClick={this.handleExportNotes}
+                disabled={!reportSrc}
                 style={{ marginBottom: 16 }}
               >
                 {t("components.filtered-events-panel.export.notes")}
@@ -843,11 +845,11 @@ class FilteredEventsListPanel extends Component {
                         }}
                       />
                     )}
-                    {selectedFilteredEvent && viewMode === "detail" && (
+                    {selectedFilteredEvent && viewMode === "detail" && reportSrc && (
                       <ReportModal
                         open
                         onClose={this.handleCloseDetailReport}
-                        src={`${process.env.PUBLIC_URL}/data/${id}/report.html#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`}
+                        src={`${reportSrc}#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`}
                         title={
                           <Space>
                             {selectedFilteredEvent.gene}
@@ -882,23 +884,25 @@ class FilteredEventsListPanel extends Component {
                         showVariants
                       />
                     )}
-                    <ReportModal
-                      open={showReportModal}
-                      onClose={this.handleCloseReportModal}
-                      src={`${process.env.PUBLIC_URL}/data/${id}/report.html`}
-                      title={t("components.filtered-events-panel.export.notes")}
-                      loading={loading}
-                      genome={genome}
-                      mutations={mutations}
-                      genomeCoverage={genomeCoverage}
-                      methylationBetaCoverage={methylationBetaCoverage}
-                      methylationIntensityCoverage={methylationIntensityCoverage}
-                      hetsnps={hetsnps}
-                      genes={genes}
-                      igv={igv}
-                      chromoBins={chromoBins}
-                      allelic={allelic}
-                    />
+                    {showReportModal && reportSrc && (
+                      <ReportModal
+                        open={showReportModal}
+                        onClose={this.handleCloseReportModal}
+                        src={reportSrc}
+                        title={t("components.filtered-events-panel.export.notes")}
+                        loading={loading}
+                        genome={genome}
+                        mutations={mutations}
+                        genomeCoverage={genomeCoverage}
+                        methylationBetaCoverage={methylationBetaCoverage}
+                        methylationIntensityCoverage={methylationIntensityCoverage}
+                        hetsnps={hetsnps}
+                        genes={genes}
+                        igv={igv}
+                        chromoBins={chromoBins}
+                        allelic={allelic}
+                      />
+                    )}
                   </Skeleton>
                 }
               </Col>
@@ -922,6 +926,7 @@ const mapStateToProps = (state) => ({
   selectedFilteredEvent: state.FilteredEvents.selectedFilteredEvent,
   viewMode: state.FilteredEvents.viewMode,
   error: state.FilteredEvents.error,
+  reportSrc: state.FilteredEvents.reportSrc,
   id: state.CaseReport.id,
   report: state.CaseReport.metadata,
   genome: state.Genome,

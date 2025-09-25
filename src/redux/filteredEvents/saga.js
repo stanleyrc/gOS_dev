@@ -34,10 +34,25 @@ function* fetchFilteredEvents(action) {
         new URL(decodeURI(document.location)).searchParams.get("gene")
     );
 
+    const reportUrl = `${dataset.dataPath}${id}/report.html`;
+    let reportSrc = null;
+    try {
+      yield call(axios.head, reportUrl, { cancelToken: getCancelToken() });
+      reportSrc = reportUrl;
+    } catch (e) {
+      try {
+        yield call(axios.get, reportUrl, { cancelToken: getCancelToken() });
+        reportSrc = reportUrl;
+      } catch (_) {
+        reportSrc = null;
+      }
+    }
+
     yield put({
       type: actions.FETCH_FILTERED_EVENTS_SUCCESS,
       filteredEvents,
       selectedFilteredEvent,
+      reportSrc,
     });
   } catch (error) {
     console.log(error);
