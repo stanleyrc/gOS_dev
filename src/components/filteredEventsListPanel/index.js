@@ -845,11 +845,15 @@ class FilteredEventsListPanel extends Component {
                         }}
                       />
                     )}
-                    {selectedFilteredEvent && viewMode === "detail" && reportSrc && (
+                    {selectedFilteredEvent && viewMode === "detail" && (
                       <ReportModal
                         open
                         onClose={this.handleCloseDetailReport}
-                        src={`${reportSrc}#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`}
+                        src={
+                          reportSrc
+                            ? `${reportSrc}#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`
+                            : undefined
+                        }
                         title={
                           <Space>
                             {selectedFilteredEvent.gene}
@@ -882,6 +886,7 @@ class FilteredEventsListPanel extends Component {
                         allelic={allelic}
                         selectedVariantId={selectedFilteredEvent?.uid}
                         showVariants
+                        record={selectedFilteredEvent}
                       />
                     )}
                     {showReportModal && reportSrc && (
