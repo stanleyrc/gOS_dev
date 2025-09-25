@@ -632,6 +632,7 @@ function ReportModal({
         getContainer={false}
       >
         <div className="report-toolbar">
+          { !showSummaryFallback && (
           <Upload
             accept=".html,.htm"
             showUploadList={false}
@@ -646,6 +647,7 @@ function ReportModal({
               Load saved report
             </Button>
           </Upload>
+          )}
         </div>
         <Tabs
           className="report-tabs"
