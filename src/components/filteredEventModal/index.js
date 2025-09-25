@@ -19,6 +19,7 @@ import {
 import NotesModal from "../notesModal";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
+import { BsDashLg } from "react-icons/bs";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import { downloadCanvasAsPng } from "../../helpers/utility";
@@ -127,7 +128,7 @@ class FilteredEventModal extends Component {
                 </Space>
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -136,7 +137,7 @@ class FilteredEventModal extends Component {
                 effect
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -145,7 +146,7 @@ class FilteredEventModal extends Component {
                 gene_summary
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -156,7 +157,7 @@ class FilteredEventModal extends Component {
                 effect_description
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -165,7 +166,7 @@ class FilteredEventModal extends Component {
                 variant_summary
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -174,7 +175,7 @@ class FilteredEventModal extends Component {
                 resistances
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -183,7 +184,7 @@ class FilteredEventModal extends Component {
                 therapeutics
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>
@@ -192,7 +193,7 @@ class FilteredEventModal extends Component {
                 prognoses
               ) : (
                 <Text italic disabled>
-                  {t("general.unavailable")}
+                  <BsDashLg />
                 </Text>
               )}
             </Item>

@@ -309,58 +309,67 @@ class DensityPlot extends Component {
                       ))}
                     </g>
                   )}
-                  {plotType === "scatterplot" &&
-                    dataPoints
-                      .sort((a, b) => {
-                        // Selected points come last (on top)
-                        if (a.uid === selectedId) return 1;
-                        if (b.uid === selectedId) return -1;
-                        // Then sort by oncogenicity
-                        const oncogenicityOrder = d3.ascending(
-                          a.oncogenicity || false,
-                          b.oncogenicity || false
-                        );
-                        // If oncogenicity is same, sort by color
-                        return (
-                          oncogenicityOrder ||
-                          d3.ascending(a[colorVariable], b[colorVariable])
-                        );
-                      })
-                      .map((d, i) => (
-                        <path
-                          key={d.uid}
-                          id={d.uid}
-                          transform={`translate(${[
-                            xScale(d[xVariable]),
-                            yScale(d[yVariable]),
-                          ]})`}
-                          d={
-                            d.oncogenicity
-                              ? d3.symbol(d3.symbolStar, 100)()
-                              : d3.symbol(d3.symbolCircle, 50)()
-                          }
-                          opacity={visible && id === i ? 1 : 1}
-                          fill={color(d[colorVariable])}
-                          stroke={
-                            selectedId === d.uid || (visible && id === i)
-                              ? "#ff7f0e"
-                              : "lightgray"
-                          }
-                          strokeWidth={
-                            selectedId === d.uid || (visible && id === i)
-                              ? 3
-                              : d.oncogenicity
-                              ? 1
-                              : 0.5
-                          }
-                          onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
-                          onMouseOut={(e) => this.handleMouseOut(e, d)}
-                          onClick={() =>
-                            handlePointClicked ? handlePointClicked(d) : null
-                          }
-                          cursor={handlePointClicked ? "pointer" : "default"}
-                        />
-                      ))}
+                  {dataPoints
+                    .sort((a, b) => {
+                      // Selected points come last (on top)
+                      if (a.uid === selectedId) return 1;
+                      if (b.uid === selectedId) return -1;
+                      // Then sort by oncogenicity
+                      const oncogenicityOrder = d3.ascending(
+                        a.oncogenicity || false,
+                        b.oncogenicity || false
+                      );
+                      // If oncogenicity is same, sort by color
+                      return (
+                        oncogenicityOrder ||
+                        d3.ascending(a[colorVariable], b[colorVariable])
+                      );
+                    })
+                    .map((d, i) => (
+                      <path
+                        key={d.uid}
+                        id={d.uid}
+                        transform={`translate(${[
+                          xScale(d[xVariable]),
+                          yScale(d[yVariable]),
+                        ]})`}
+                        d={
+                          plotType === "contourplot"
+                            ? d3.symbol(d3.symbolCircle, 10)()
+                            : d.oncogenicity
+                            ? d3.symbol(d3.symbolStar, 100)()
+                            : d3.symbol(d3.symbolCircle, 50)()
+                        }
+                        opacity={visible && id === i ? 1 : 1}
+                        fill={
+                          plotType === "contourplot"
+                            ? "#333"
+                            : color(d[colorVariable])
+                        }
+                        stroke={
+                          plotType === "contourplot"
+                            ? "lightgray"
+                            : selectedId === d.uid || (visible && id === i)
+                            ? "#ff7f0e"
+                            : "lightgray"
+                        }
+                        strokeWidth={
+                          plotType === "contourplot"
+                            ? 0.33
+                            : selectedId === d.uid || (visible && id === i)
+                            ? 3
+                            : d.oncogenicity
+                            ? 1
+                            : 0.5
+                        }
+                        onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
+                        onMouseOut={(e) => this.handleMouseOut(e, d)}
+                        onClick={() =>
+                          handlePointClicked ? handlePointClicked(d) : null
+                        }
+                        cursor={handlePointClicked ? "pointer" : "default"}
+                      />
+                    ))}
                 </g>
                 <g
                   className="axis--y y-axis-container"
