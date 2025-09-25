@@ -93,7 +93,7 @@ const Wrapper = styled.div`
 
   .report-iframe {
     width: 100%;
-    height: 80vh;
+    height: 75vh;
     display: block;
     border: 0;
   }
