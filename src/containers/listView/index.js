@@ -227,7 +227,7 @@ class ListView extends Component {
       }
       return null; // nothing for unknown renderer
     };
-    console.log(records);
+
     return (
       <Wrapper>
         <Form
