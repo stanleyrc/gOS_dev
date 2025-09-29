@@ -8,7 +8,7 @@ import SnvplicityPlotPanel from "../../components/snvplicityPlotPanel";
 
 class BinQcTab extends Component {
   render() {
-    const { dataset, id } = this.props;
+    const { dataset, id, imagePresent, imageFile } = this.props;
     return (
       <Wrapper>
         <Row
@@ -24,7 +24,14 @@ class BinQcTab extends Component {
           gutter={16}
         >
           <Col className="gutter-row" span={24}>
-            <SnvplicityPlotPanel />
+            {imagePresent && imageFile ? (
+              <Image
+                src={`${dataset.dataPath}${id}/${imageFile}`}
+                fallback="https://placehold.co/600x400?text=Image+not+found"
+              />
+            ) : (
+              <SnvplicityPlotPanel />
+            )}
           </Col>
         </Row>
         <Row
@@ -54,6 +61,8 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   metadata: state.CaseReport.metadata,
   dataset: state.Settings.dataset,
+  imagePresent: state.Snvplicity.imagePresent,
+  imageFile: state.Snvplicity.imageFile,
   id: state.CaseReport.id,
 });
 export default connect(

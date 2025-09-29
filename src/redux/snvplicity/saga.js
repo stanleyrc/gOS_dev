@@ -10,6 +10,22 @@ export function* fetchSnvplicityData(action) {
   const currentState = yield select(getCurrentState);
   const { dataset } = currentState.Settings;
   const { id } = currentState.CaseReport;
+  const { imageFile } = currentState.Snvplicity;
+
+  // 2) Check if the image file is present
+  const imageUrl = `${dataset.dataPath}${id}/${imageFile}`;
+  try {
+    yield call(axios.head, imageUrl);
+    // If present, dispatch success with imagePresent: true and return
+    yield put({
+      type: actions.FETCH_SNVPLICITY_DATA_SUCCESS,
+      data: null,
+      imagePresent: true,
+    });
+    return;
+  } catch (e) {
+    // If not present, continue with the rest of the saga as before
+  }
 
   try {
     // 2) Prepare parallel requests
@@ -57,6 +73,7 @@ export function* fetchSnvplicityData(action) {
     yield put({
       type: actions.FETCH_SNVPLICITY_DATA_SUCCESS,
       data: binnedData,
+      imagePresent: false,
     });
   } catch (error) {
     // This catch block typically only runs if there was a fatal error
