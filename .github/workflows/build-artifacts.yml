@@ -63,7 +63,7 @@ jobs:
 
           # fresh shallow clone of the artifacts branch (handles latest state)
           rm -rf artifacts
-          if git ls-remote --heads origin ${BRANCH} | grep -q "refs/heads/${BRANCH}"; then
+          if git ls-remote --heads "$REPO" "${BRANCH}" | grep -q "refs/heads/${BRANCH}"; then
             git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts
           else
             # create the branch if it doesn't exist yet
@@ -105,6 +105,7 @@ jobs:
             exit 0
           fi
           cd artifacts_prune/releases
+          shopt -s nullglob
           ls -1tr build-*.tar.gz | head -n -5 | xargs -r -I{} bash -c 'rm -f "{}" "{}".sha256'
           cd ..
           git add -A
