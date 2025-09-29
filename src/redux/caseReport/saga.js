@@ -1,6 +1,6 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
-import { reportAttributesMap, assessQuality } from "../../helpers/utility";
+import { reportAttributesMap } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import allelicActions from "../allelic/actions";
@@ -25,7 +25,6 @@ function* fetchCaseReport(action) {
 
   const currentState = yield select(getCurrentState);
   let { report, dataset } = currentState.Settings;
-  let { qualityReportName } = currentState.CaseReport;
 
   // Abort if no report is selected in state
   if (!report) {
@@ -59,38 +58,9 @@ function* fetchCaseReport(action) {
     metadata.msiLabel = metadata.msisensor?.label;
     metadata.msiScore = metadata.msisensor?.score;
 
-    let qualityStatus = assessQuality(metadata);
-
-    let qualityReportPresent = null;
-    try {
-      yield call(
-        axios.head,
-        `${dataset.dataPath}${report}/${qualityReportName}`,
-        {
-          cancelToken: getCancelToken(),
-        }
-      );
-      qualityReportPresent = true;
-    } catch (err) {
-      if (axios.isCancel(err)) {
-        console.log(
-          `Request canceled for ${dataset.dataPath}${report}/${qualityReportName}:`,
-          err.message
-        );
-      } else {
-        console.error(
-          `Error checking ${dataset.dataPath}${report}/${qualityReportName}:`,
-          err.message
-        );
-      }
-      qualityReportPresent = false;
-    }
-
     yield put({
       type: actions.FETCH_CASE_REPORT_SUCCESS,
       metadata,
-      qualityStatus,
-      qualityReportPresent,
       id: metadata.pair,
     });
   } catch (error) {

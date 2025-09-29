@@ -29,7 +29,6 @@ import {
   hrdDividers,
   msiLabels,
 } from "../../helpers/metadata";
-import { generateCascaderOptions } from "../../helpers/filters";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -47,13 +46,10 @@ class HeaderPanel extends Component {
       report,
       metadata,
       plots,
-      qualityStatus,
       dataset,
-      qualityReportPresent,
-      qualityReportName,
     } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair, sex, disease, primary_site, tags } =
+    const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
       metadata;
 
     let colorMarkers = { ...msiLabels };
@@ -210,69 +206,6 @@ class HeaderPanel extends Component {
           subTitle={
             <Space>
               {sex}
-              {qualityStatus.level > 0 && (
-                <Popover
-                  placement="bottomLeft"
-                  title={
-                    <>
-                      <Space>
-                        <Text>{t(`quality-status.title`)}:</Text>
-                        <Text
-                          type={
-                            qualityStatusTypographyClasses()[
-                              qualityStatus.level
-                            ]
-                          }
-                        >
-                          <strong>
-                            {t(
-                              `quality-status.level.${qualityStatus.level}.adjective`
-                            )}
-                          </strong>
-                        </Text>
-                      </Space>
-                      <Link
-                        disabled={!qualityReportPresent}
-                        className="quality-report-link"
-                        style={{ float: "right" }}
-                        href={`${dataset.dataPath}${report}/${qualityReportName}`}
-                        target="_blank"
-                      >
-                        {t(`components.header-panel.view-report`)}
-                      </Link>
-                    </>
-                  }
-                  content={
-                    <Space direction="vertical">
-                      {qualityStatus.clauses.map((d, i) => (
-                        <Text
-                          key={i}
-                          type={qualityStatusTypographyClasses()[d.level]}
-                        >
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: t(
-                                `quality-status.assessment.${d.label}`,
-                                {
-                                  value: d3.format(d.format)(eval(d.variable)),
-                                }
-                              ),
-                            }}
-                          />
-                        </Text>
-                      ))}
-                    </Space>
-                  }
-                  trigger="hover"
-                >
-                  <Tag
-                    icon={qualityStatusIcons[qualityStatus.level]}
-                    color={qualityStatusTagClasses()[qualityStatus.level]}
-                  >
-                    {t(`quality-status.level.${qualityStatus.level}.noun`)}
-                  </Tag>
-                </Popover>
-              )}
             </Space>
           }
           extra={
@@ -422,9 +355,6 @@ HeaderPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,
-  qualityStatus: state.CaseReport.qualityStatus,
-  qualityReportPresent: state.CaseReport.qualityReportPresent,
-  qualityReportName: state.CaseReport.qualityReportName,
   dataset: state.Settings.dataset,
   metadata: state.CaseReport.metadata,
   plots: state.PopulationStatistics.general,
