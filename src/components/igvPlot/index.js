@@ -21,7 +21,7 @@ class IgvPlot extends Component {
   constructor(props) {
     super(props);
     this.igvInitialized = false;
-    this.debouncedUpdateDomain = debounce(this.props.updateDomain, 100);
+    this.debouncedUpdateDomain = this.props.updateDomain;
   }
 
   componentDidMount() {
@@ -67,6 +67,7 @@ class IgvPlot extends Component {
     const igvOptions = {
       genome: "hg19",
       locus,
+      minimumBases: 1,
       tracks,
       showCenterGuide: true,
     };
@@ -94,7 +95,6 @@ class IgvPlot extends Component {
       this.igvBrowser.search(locus);
       // After moving, default-sort tracks by base at the window center
       const { chr, position } = parseCenterFromLocus(locus);
-      console.log("Sorting alignment tracks by center:", chr, position);
       this.sortAlignmentTracksByCenter(chr, position);
     }
   }
@@ -112,7 +112,7 @@ class IgvPlot extends Component {
         }
       });
     } catch (e) {
-      console.error("Error sorting alignment tracks:", e);
+      //console.error("Error sorting alignment tracks:", e);
       // Best-effort; ignore errors
     }
   }

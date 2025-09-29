@@ -176,7 +176,7 @@ class LegendMultiBrush extends Component {
         }
         fragment.domain = selection
           .map(self.genomeScale.invert)
-          .map(Math.floor);
+          .map(Math.round);
         // finally, update the chart with the selection in question
         self.update();
       })

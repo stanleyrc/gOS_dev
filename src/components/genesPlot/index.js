@@ -183,7 +183,7 @@ class GenesPlot extends Component {
     let newDomain = event.transform
       .rescaleX(panel.panelGenomeScale)
       .domain()
-      .map(Math.floor);
+      .map(Math.round);
     let newDomains = [...this.props.domains];
     let selection = Object.assign([], newDomain);
 

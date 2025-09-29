@@ -10,7 +10,7 @@ import {
   measureText,
   guid,
   k_combinations,
-  merge,
+  merge
 } from "../../helpers/utility";
 import Grid from "../grid/index";
 import appActions from "../../redux/app/actions";
@@ -353,7 +353,7 @@ class GenomePlot extends Component {
     let newDomain = event.transform
       .rescaleX(panel.panelGenomeScale)
       .domain()
-      .map(Math.floor);
+      .map(Math.round);
     let newDomains = [...this.props.domains];
     let selection = Object.assign([], newDomain);
 
@@ -487,11 +487,11 @@ class GenomePlot extends Component {
     this.debouncedUpdateDomains(newDomains);
   }
 
-  handleMutationClick(panelIndex, shape, padding = 50) {
+  handleMutationClick(panelIndex, shape, padding = 30) {
     // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
-    newDomains[panelIndex] = [midPoint - padding, midPoint + padding];
+    newDomains[panelIndex] = [midPoint - padding - 2, midPoint + padding];
     this.debouncedUpdateDomains(newDomains);
   }
 
