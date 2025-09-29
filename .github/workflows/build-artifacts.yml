@@ -104,10 +104,21 @@ jobs:
             echo "No releases to prune yet; skipping"
             exit 0
           fi
-          cd artifacts_prune/releases
+          cd artifacts_prune
           shopt -s nullglob
-          ls -1tr build-*.tar.gz | head -n -5 | xargs -r -I{} bash -c 'rm -f "{}" "{}".sha256'
-          cd ..
+          KEEP=5
+          mapfile -t tarballs < <(git ls-files releases/build-*.tar.gz)
+          if (( ${#tarballs[@]} > KEEP )); then
+            mapfile -t sorted < <(
+              for file in "${tarballs[@]}"; do
+                ts=$(git log -1 --format=%ct -- "$file" || echo 0)
+                printf '%s\t%s\n' "$ts" "$file"
+              done | sort -n | cut -f2-
+            )
+            for file in "${sorted[@]:0:${#sorted[@]}-KEEP}"; do
+              rm -f "$file" "$file".sha256
+            done
+          fi
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
             commit -m "chore: prune old tarballs" || echo "nothing to prune"
