@@ -93,7 +93,7 @@
     },
     "tumor_median_coverage": {
       "short": "Coverage Tumor/Normal",
-      "full": "Denoised Coverage Tumor/Normal"
+      "full": "Coverage Tumor/Normal"
     },
     "snvCount": {
       "short": "SNV Count",
@@ -660,7 +660,7 @@
     "tracks-modal": {
       "genome-plot": "Total CN Graph",
       "genome-y-axis-title": "↑ CN",
-      "coverage-plot": "Denoised Coverage",
+      "coverage-plot": "Coverage",
       "hetsnp-plot": "Heterozygous SNPs",
       "hetsnp-copy-number": "Est. CN ↑",
       "hetsnp-plot-y-axis-title": "Est. CN ↑",
