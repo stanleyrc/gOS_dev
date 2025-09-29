@@ -14,8 +14,8 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  // message,
 } from "antd";
+import { slugify } from "../../helpers/report";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
@@ -29,14 +29,6 @@ import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 
-/* helper to build the report anchor */
-function slugify(s) {
-  const str = String(s || "").trim().toLowerCase();
-  const ascii = str.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
-  const cleaned = ascii.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return cleaned || "section";
-}
-
 const { Text } = Typography;
 
 const { selectFilteredEvent, applyTierOverride } = filteredEventsActions;
@@ -49,6 +41,16 @@ const eventColumns = {
 };
 
 class FilteredEventsListPanel extends Component {
+  handleResetFilters = () => {
+    this.setState({
+      geneFilters: [],
+      tierFilters: [],
+      typeFilters: [],
+      roleFilters: [],
+      effectFilters: [],
+      variantFilters: [],
+    });
+  };
   state = {
     eventType: "all",
     tierFilters: [1, 2], // start with tiers 1 & 2 checked
@@ -116,7 +118,8 @@ class FilteredEventsListPanel extends Component {
     try {
       if (!window.indexedDB || !tierKey) return null;
 
-      const dbInfos = (indexedDB.databases && (await indexedDB.databases())) || [];
+      const dbInfos =
+        (indexedDB.databases && (await indexedDB.databases())) || [];
       const dbNames = (dbInfos || []).map((d) => d?.name).filter(Boolean);
 
       for (const dbName of dbNames) {
@@ -151,7 +154,11 @@ class FilteredEventsListPanel extends Component {
                 const val = getReq.result;
                 if (val != null) {
                   db.close();
-                  resolve(typeof val === "object" && val !== null ? (val.v ?? null) : val);
+                  resolve(
+                    typeof val === "object" && val !== null
+                      ? val.v ?? null
+                      : val
+                  );
                   return;
                 }
                 if (!store.getAll) {
@@ -171,7 +178,11 @@ class FilteredEventsListPanel extends Component {
                   );
                   if (match) {
                     db.close();
-                    resolve(typeof match === "object" && match !== null ? (match.v ?? null) : match);
+                    resolve(
+                      typeof match === "object" && match !== null
+                        ? match.v ?? null
+                        : match
+                    );
                   } else {
                     tryStore(i + 1);
                   }
@@ -195,7 +206,7 @@ class FilteredEventsListPanel extends Component {
   };
 
   applyTierOverrideIfAny = async () => {
-    console.log('Applying tier override if any...');
+    console.log("Applying tier override if any...");
     const { id, selectedFilteredEvent, viewMode } = this.props;
     if (!selectedFilteredEvent || viewMode !== "detail") return;
 
@@ -204,7 +215,7 @@ class FilteredEventsListPanel extends Component {
     if (override != null && `${selectedFilteredEvent.tier}` !== `${override}`) {
       this.props.applyTierOverride(selectedFilteredEvent.uid, `${override}`);
     } else {
-      console.log('No tier override found or no change needed.');
+      console.log("No tier override found or no change needed.");
     }
   };
 
@@ -222,10 +233,6 @@ class FilteredEventsListPanel extends Component {
       })
     );
   };
-
-
-
-
 
   render() {
     const {
@@ -689,17 +696,23 @@ class FilteredEventsListPanel extends Component {
           </Row>
         ) : (
           <>
-            <Row className="ant-panel-container ant-home-plot-container">
-              <Button
-                type="primary"
-                icon={<FileTextOutlined />}
-                onClick={this.handleExportNotes}
-                disabled={!reportSrc}
-                style={{ marginBottom: 16 }}
-              >
-                {t("components.filtered-events-panel.export.notes")}
-              </Button>
-              <Col className="gutter-row table-container" span={24}>
+            <Row
+              className="ant-panel-container ant-home-plot-container"
+              align="middle"
+              justify="space-between"
+            >
+              <Col span={24}>
+                <Button
+                  type="primary"
+                  icon={<FileTextOutlined />}
+                  onClick={this.handleExportNotes}
+                  disabled={!reportSrc}
+                  style={{ marginBottom: 16 }}
+                >
+                  {t("components.filtered-events-panel.export.notes")}
+                </Button>
+              </Col>
+              <Col flex="auto">
                 <Segmented
                   size="small"
                   options={Object.keys(eventColumns).map((d) => {
@@ -733,6 +746,15 @@ class FilteredEventsListPanel extends Component {
                   onChange={(d) => this.handleSegmentedChange(d)}
                   value={eventType}
                 />
+              </Col>
+              <Col style={{ textAlign: "right" }} flex="none">
+                <Button
+                  type="link"
+                  onClick={this.handleResetFilters}
+                  style={{ float: "right", marginBottom: 16 }}
+                >
+                  {t("components.filtered-events-panel.reset-filters")}
+                </Button>
               </Col>
             </Row>
             <Row className="ant-panel-container ant-home-plot-container">
@@ -825,7 +847,7 @@ class FilteredEventsListPanel extends Component {
                             "components.tracks-modal.hetsnp-copy-number"
                           ),
                           hetsnpPlotYAxis2Title: t(
-                            "components.tracks-modal.hetsnp-count"
+                            "components.tracks-modal.hetsnps-count"
                           ),
                           mutationsPlotTitle: t(
                             "components.tracks-modal.mutations-plot"
@@ -851,7 +873,9 @@ class FilteredEventsListPanel extends Component {
                         onClose={this.handleCloseDetailReport}
                         src={
                           reportSrc
-                            ? `${reportSrc}#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`
+                            ? `${reportSrc}#${slugify(
+                                `${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`
+                              )}`
                             : undefined
                         }
                         title={
@@ -878,7 +902,9 @@ class FilteredEventsListPanel extends Component {
                         mutations={mutations}
                         genomeCoverage={genomeCoverage}
                         methylationBetaCoverage={methylationBetaCoverage}
-                        methylationIntensityCoverage={methylationIntensityCoverage}
+                        methylationIntensityCoverage={
+                          methylationIntensityCoverage
+                        }
                         hetsnps={hetsnps}
                         genes={genes}
                         igv={igv}
@@ -894,13 +920,17 @@ class FilteredEventsListPanel extends Component {
                         open={showReportModal}
                         onClose={this.handleCloseReportModal}
                         src={reportSrc}
-                        title={t("components.filtered-events-panel.export.notes")}
+                        title={t(
+                          "components.filtered-events-panel.export.notes"
+                        )}
                         loading={loading}
                         genome={genome}
                         mutations={mutations}
                         genomeCoverage={genomeCoverage}
                         methylationBetaCoverage={methylationBetaCoverage}
-                        methylationIntensityCoverage={methylationIntensityCoverage}
+                        methylationIntensityCoverage={
+                          methylationIntensityCoverage
+                        }
                         hetsnps={hetsnps}
                         genes={genes}
                         igv={igv}

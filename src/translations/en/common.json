@@ -482,6 +482,7 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "reset-filters": "Reset Filters",
       "export": {
         "notes": "Report",
         "error": "Error exporting notes",
