@@ -92,6 +92,7 @@
       "full": "Pair"
     },
     "tumor_median_coverage": {
+      "shorter": "Coverage T/N",
       "short": "Coverage Tumor/Normal",
       "full": "Coverage Tumor/Normal"
     },
