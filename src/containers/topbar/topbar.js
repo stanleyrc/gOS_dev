@@ -73,7 +73,9 @@ class Topbar extends Component {
                     popupMatchSelectWidth={false}
                     optionFilterProp="children"
                     placeholder={t("topbar.browse-case-reports")}
-                    onSearch={(texts) => searchCaseReports({ texts })}
+                    onSearch={(texts) =>
+                      searchCaseReports({ texts: (texts || "").trim() })
+                    }
                     filterOption={false}
                     filterSort={false}
                     notFoundContent={null}

@@ -2,6 +2,7 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  loadingGenesData: false,
   filename: "genes/hg19.arrow",
   reference: "hg19",
   higlassServerPath: "https://higlass.io",
@@ -83,7 +84,7 @@ export default function appReducer(state = initState, action) {
         genesWeight: [],
         titlesColorMap: {},
         error: null,
-        loading: true,
+        loadingGenesData: true,
       };
     case actions.FETCH_GENES_DATA_SUCCESS:
       return {
@@ -99,7 +100,7 @@ export default function appReducer(state = initState, action) {
         genesStrand: action.genesStrand,
         genesWeight: action.genesWeight,
         titlesColorMap: action.titlesColorMap,
-        loading: false,
+        loadingGenesData: false,
       };
     case actions.FETCH_GENES_DATA_FAILED:
       return {
@@ -116,7 +117,7 @@ export default function appReducer(state = initState, action) {
         genesWeight: [],
         titlesColorMap: {},
         error: action.error,
-        loading: false,
+        loadingGenesData: false,
       };
     default:
       return state;

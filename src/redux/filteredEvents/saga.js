@@ -37,15 +37,12 @@ function* fetchFilteredEvents(action) {
     const reportUrl = `${dataset.dataPath}${id}/report.html`;
     let reportSrc = null;
     try {
+      // Check if file exists using HEAD request first
       yield call(axios.head, reportUrl, { cancelToken: getCancelToken() });
       reportSrc = reportUrl;
     } catch (e) {
-      try {
-        yield call(axios.get, reportUrl, { cancelToken: getCancelToken() });
-        reportSrc = reportUrl;
-      } catch (_) {
-        reportSrc = null;
-      }
+      // If HEAD fails, treat as missing (do not attempt GET)
+      reportSrc = null;
     }
 
     yield put({

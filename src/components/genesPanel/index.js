@@ -82,7 +82,8 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, genes, loading, domains, genesOptionsList } = this.props;
+    const { t, genes, loading, loadingGenesData, domains, genesOptionsList } =
+      this.props;
     let { visible } = this.state;
     return (
       <Wrapper>
@@ -106,6 +107,7 @@ class GenesPanel extends Component {
                   allowClear
                   showSearch
                   mode="multiple"
+                  loading={loadingGenesData}
                   style={{ width: 300 }}
                   placeholder={t("components.genes-panel.locator")}
                   onChange={this.handleGenesLocatorChange}
@@ -197,6 +199,7 @@ const mapStateToProps = (state) => ({
   genomeLength: state.Settings.genomeLength,
   selectedCoordinate: state.Settings.dataset?.reference,
   loading: state.Genes.loading,
+  loadingGenesData: state.Genes.loadingGenesData,
   genesOptionsList: state.Genes.optionsList,
 });
 export default connect(
