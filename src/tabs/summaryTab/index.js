@@ -21,7 +21,8 @@ import HighlightsPanel from "../../components/highlightsPanel";
 
 class SummaryTab extends Component {
   render() {
-    const { t, loading, metadata, plots, tumorPlots } = this.props;
+    const { t, loading, metadata, plots, tumorPlots, highlightsMissing } =
+      this.props;
     const { tags } = metadata;
 
     let plotsList = chunks(plots.filter((d) => !isNaN(metadata[d.id])));
@@ -32,8 +33,12 @@ class SummaryTab extends Component {
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
-          <HighlightsPanel title={t("components.highlights-panel.title")} />
-          <br />
+          {!highlightsMissing && (
+            <>
+              <HighlightsPanel title={t("components.highlights-panel.title")} />
+              <br />
+            </>
+          )}
           {tagsList.length > 0 && (
             <Card
               size="small"
@@ -115,6 +120,7 @@ SummaryTab.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   loading: state.PopulationStatistics.loading,
+  highlightsMissing: state.Highlights.highlightsMissing,
   metadata: state.CaseReport.metadata,
   plots: state.PopulationStatistics.general,
   tumorPlots: state.PopulationStatistics.tumor,

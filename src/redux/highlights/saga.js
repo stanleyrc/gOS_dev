@@ -9,16 +9,30 @@ function* fetchHighlightsData(action) {
   const { dataset } = currentState.Settings;
   const { filename } = currentState.Highlights;
   const { id } = currentState.CaseReport;
+  const highlightsUrl = `${dataset.dataPath}${id}/${filename}`;
+  
   try {
-    let responseData = yield call(
-      axios.get,
-      `${dataset.dataPath}${id}/${filename}`,
-      { cancelToken: getCancelToken() }
-    );
+    yield call(axios.head, highlightsUrl);
+    // File exists, proceed to fetch as before
+  } catch (e) {
+    // File is missing, break and dispatch highlightsMissing: true
+    yield put({
+      type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
+      data: null,
+      highlightsMissing: true,
+    });
+    return;
+  }
+
+  try {
+    let responseData = yield call(axios.get, highlightsUrl, {
+      cancelToken: getCancelToken(),
+    });
 
     yield put({
       type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
       data: responseData.data,
+      highlightsMissing: false,
     });
   } catch (error) {
     console.log(error);
