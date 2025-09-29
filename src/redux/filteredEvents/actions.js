@@ -5,6 +5,7 @@ const actions = {
 
   SELECT_FILTERED_EVENT: "SELECT_FILTERED_EVENT",
   FILTERED_EVENT_SELECTED: "FILTERED_EVENT_SELECTED",
+  APPLY_TIER_OVERRIDE: "APPLY_TIER_OVERRIDE",
 
   fetchFilteredEvents: () => ({
     type: actions.FETCH_FILTERED_EVENTS_REQUEST,
@@ -13,6 +14,11 @@ const actions = {
     type: actions.SELECT_FILTERED_EVENT,
     filteredEvent,
     viewMode,
+  }),
+  applyTierOverride: (uid, tier) => ({
+    type: actions.APPLY_TIER_OVERRIDE,
+    uid,
+    tier,
   }),
 };
 

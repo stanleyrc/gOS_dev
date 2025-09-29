@@ -86,3 +86,5 @@ nyuconnect.sh
 .aider*
 .env
 cdx_example.png
+
+report/

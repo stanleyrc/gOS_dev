@@ -14,11 +14,10 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  message,
+  // message,
 } from "antd";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
-import { generateEventNotesPDF } from "../../helpers/notes";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
@@ -28,11 +27,19 @@ import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
-import FilteredEventModal from "../filteredEventModal";
+import ReportModal from "../reportModal";
+
+/* helper to build the report anchor */
+function slugify(s) {
+  const str = String(s || "").trim().toLowerCase();
+  const ascii = str.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const cleaned = ascii.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "section";
+}
 
 const { Text } = Typography;
 
-const { selectFilteredEvent } = filteredEventsActions;
+const { selectFilteredEvent, applyTierOverride } = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -50,39 +57,37 @@ class FilteredEventsListPanel extends Component {
     effectFilters: [],
     variantFilters: [],
     geneFilters: [],
+    showReportModal: false,
   };
+
+  // add as a class field
 
   handleExportNotes = () => {
-    const { t, id, filteredEvents } = this.props;
-
-    try {
-      // Generate PDF
-      message.loading({
-        content: t("components.filtered-events-panel.generating-pdf"),
-        key: "export",
-      });
-      const doc = generateEventNotesPDF(filteredEvents, id);
-
-      // Check if any notes were found
-      if (doc.internal.pages.length <= 1) {
-        message.warning(t("components.filtered-events-panel.no-notes"));
-        return;
-      }
-
-      // Save the PDF
-      doc.save(`${id}_events_report.pdf`);
-      message.success({
-        content: t("components.filtered-events-panel.export.success"),
-        key: "export",
-      });
-    } catch (error) {
-      console.error("Export error:", error);
-      message.error({
-        content: t("components.filtered-events-panel.export.error"),
-        key: "export",
-      });
-    }
+    this.setState({ showReportModal: true });
   };
+
+  handleCloseReportModal = () => {
+    this.setState({ showReportModal: false });
+  };
+
+  handleCloseDetailReport = async () => {
+    await this.applyTierOverrideIfAny();
+    this.props.selectFilteredEvent(null);
+  };
+
+  componentDidMount() {
+    this.applyAllTierOverridesIfAny();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.filteredEvents !== this.props.filteredEvents &&
+      Array.isArray(this.props.filteredEvents) &&
+      this.props.filteredEvents.length
+    ) {
+      this.applyAllTierOverridesIfAny();
+    }
+  }
 
   handleSegmentedChange = (eventType) => {
     this.setState({ eventType });
@@ -100,6 +105,127 @@ class FilteredEventsListPanel extends Component {
       variantFilters: filters.variant || [],
     });
   };
+
+  buildTierKey = (caseId, record) => {
+    if (!caseId || !record) return null;
+    const anchor = slugify(`${record?.gene} ${record?.variant}`);
+    return `gos.tier.${caseId}.${anchor}`;
+  };
+
+  getTierOverrideFromIDB = async (tierKey) => {
+    try {
+      if (!window.indexedDB || !tierKey) return null;
+
+      const dbInfos = (indexedDB.databases && (await indexedDB.databases())) || [];
+      const dbNames = (dbInfos || []).map((d) => d?.name).filter(Boolean);
+
+      for (const dbName of dbNames) {
+        if (!dbName || !dbName.startsWith("gos_report")) continue;
+
+        const result = await new Promise((resolve) => {
+          const openReq = indexedDB.open(dbName);
+          openReq.onerror = () => resolve(null);
+          openReq.onsuccess = () => {
+            const db = openReq.result;
+            const stores = Array.from(db.objectStoreNames || []);
+            if (!stores.length) {
+              db.close();
+              resolve(null);
+              return;
+            }
+
+            const fullKey = `${dbName}::${tierKey}`;
+
+            const tryStore = (i) => {
+              if (i >= stores.length) {
+                db.close();
+                resolve(null);
+                return;
+              }
+              const storeName = stores[i];
+              const tx = db.transaction(storeName, "readonly");
+              const store = tx.objectStore(storeName);
+
+              const getReq = store.get(fullKey);
+              getReq.onsuccess = () => {
+                const val = getReq.result;
+                if (val != null) {
+                  db.close();
+                  resolve(typeof val === "object" && val !== null ? (val.v ?? null) : val);
+                  return;
+                }
+                if (!store.getAll) {
+                  tryStore(i + 1);
+                  return;
+                }
+                const allReq = store.getAll();
+                allReq.onsuccess = () => {
+                  const arr = allReq.result || [];
+                  const match = arr.find(
+                    (r) =>
+                      r?.k === fullKey ||
+                      r?.k === tierKey ||
+                      r?.key === tierKey ||
+                      r === fullKey ||
+                      r === tierKey
+                  );
+                  if (match) {
+                    db.close();
+                    resolve(typeof match === "object" && match !== null ? (match.v ?? null) : match);
+                  } else {
+                    tryStore(i + 1);
+                  }
+                };
+                allReq.onerror = () => tryStore(i + 1);
+              };
+              getReq.onerror = () => tryStore(i + 1);
+            };
+
+            tryStore(0);
+          };
+        });
+
+        if (result != null) {
+          const num = Number(result);
+          return Number.isFinite(num) ? String(num) : String(result);
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  applyTierOverrideIfAny = async () => {
+    console.log('Applying tier override if any...');
+    const { id, selectedFilteredEvent, viewMode } = this.props;
+    if (!selectedFilteredEvent || viewMode !== "detail") return;
+
+    const tierKey = this.buildTierKey(id, selectedFilteredEvent);
+    const override = await this.getTierOverrideFromIDB(tierKey);
+    if (override != null && `${selectedFilteredEvent.tier}` !== `${override}`) {
+      this.props.applyTierOverride(selectedFilteredEvent.uid, `${override}`);
+    } else {
+      console.log('No tier override found or no change needed.');
+    }
+  };
+
+  applyAllTierOverridesIfAny = async () => {
+    const { id, filteredEvents, applyTierOverride } = this.props;
+    if (!Array.isArray(filteredEvents) || !filteredEvents.length) return;
+
+    await Promise.all(
+      filteredEvents.map(async (ev) => {
+        const key = this.buildTierKey(id, ev);
+        const override = await this.getTierOverrideFromIDB(key);
+        if (override != null && `${ev.tier}` !== `${override}`) {
+          applyTierOverride(ev.uid, `${override}`);
+        }
+      })
+    );
+  };
+
+
+
+
 
   render() {
     const {
@@ -120,6 +246,7 @@ class FilteredEventsListPanel extends Component {
       genes,
       allelic,
       igv,
+      reportSrc,
       selectFilteredEvent,
     } = this.props;
 
@@ -133,6 +260,7 @@ class FilteredEventsListPanel extends Component {
       roleFilters,
       effectFilters,
       variantFilters,
+      showReportModal,
     } = this.state;
 
     let recordsHash = d3.group(
@@ -566,6 +694,7 @@ class FilteredEventsListPanel extends Component {
                 type="primary"
                 icon={<FileTextOutlined />}
                 onClick={this.handleExportNotes}
+                disabled={!reportSrc}
                 style={{ marginBottom: 16 }}
               >
                 {t("components.filtered-events-panel.export.notes")}
@@ -717,13 +846,66 @@ class FilteredEventsListPanel extends Component {
                       />
                     )}
                     {selectedFilteredEvent && viewMode === "detail" && (
-                      <FilteredEventModal
-                        {...{
-                          record: selectedFilteredEvent,
-                          handleOkClicked: () => selectFilteredEvent(null),
-                          handleCancelClicked: () => selectFilteredEvent(null),
-                          open,
-                        }}
+                      <ReportModal
+                        open
+                        onClose={this.handleCloseDetailReport}
+                        src={
+                          reportSrc
+                            ? `${reportSrc}#${slugify(`${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`)}`
+                            : undefined
+                        }
+                        title={
+                          <Space>
+                            {selectedFilteredEvent.gene}
+                            {selectedFilteredEvent.name}
+                            {selectedFilteredEvent.type}
+                            {selectedFilteredEvent.role
+                              ?.split(",")
+                              .map((tag) => (
+                                <Tag
+                                  color={roleColorMap()[tag.trim()]}
+                                  key={tag.trim()}
+                                >
+                                  {tag.trim()}
+                                </Tag>
+                              ))}
+                            {selectedFilteredEvent.tier}
+                            {selectedFilteredEvent.location}
+                          </Space>
+                        }
+                        loading={loading}
+                        genome={genome}
+                        mutations={mutations}
+                        genomeCoverage={genomeCoverage}
+                        methylationBetaCoverage={methylationBetaCoverage}
+                        methylationIntensityCoverage={methylationIntensityCoverage}
+                        hetsnps={hetsnps}
+                        genes={genes}
+                        igv={igv}
+                        chromoBins={chromoBins}
+                        allelic={allelic}
+                        selectedVariantId={selectedFilteredEvent?.uid}
+                        showVariants
+                        record={selectedFilteredEvent}
+                      />
+                    )}
+                    {showReportModal && reportSrc && (
+                      <ReportModal
+                        open={showReportModal}
+                        onClose={this.handleCloseReportModal}
+                        src={reportSrc}
+                        title={t("components.filtered-events-panel.export.notes")}
+                        loading={loading}
+                        genome={genome}
+                        mutations={mutations}
+                        genomeCoverage={genomeCoverage}
+                        methylationBetaCoverage={methylationBetaCoverage}
+                        methylationIntensityCoverage={methylationIntensityCoverage}
+                        hetsnps={hetsnps}
+                        genes={genes}
+                        igv={igv}
+                        chromoBins={chromoBins}
+                        allelic={allelic}
                       />
                     )}
                   </Skeleton>
@@ -741,6 +923,7 @@ FilteredEventsListPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
+  applyTierOverride: (uid, tier) => dispatch(applyTierOverride(uid, tier)),
 });
 const mapStateToProps = (state) => ({
   loading: state.FilteredEvents.loading,
@@ -748,6 +931,7 @@ const mapStateToProps = (state) => ({
   selectedFilteredEvent: state.FilteredEvents.selectedFilteredEvent,
   viewMode: state.FilteredEvents.viewMode,
   error: state.FilteredEvents.error,
+  reportSrc: state.FilteredEvents.reportSrc,
   id: state.CaseReport.id,
   report: state.CaseReport.metadata,
   genome: state.Genome,
