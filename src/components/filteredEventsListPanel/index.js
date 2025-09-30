@@ -68,12 +68,9 @@ class FilteredEventsListPanel extends Component {
     this.setState({ showReportModal: true });
   };
 
-  handleCloseReportModal = () => {
+  handleCloseReportModal = async () => {
+    await this.applyAllTierOverridesIfAny();
     this.setState({ showReportModal: false });
-  };
-
-  handleCloseDetailReport = async () => {
-    await this.applyTierOverrideIfAny();
     this.props.selectFilteredEvent(null);
   };
 
@@ -870,7 +867,7 @@ class FilteredEventsListPanel extends Component {
                     {selectedFilteredEvent && viewMode === "detail" && (
                       <ReportModal
                         open
-                        onClose={this.handleCloseDetailReport}
+                        onClose={this.handleCloseReportModal}
                         src={
                           reportSrc
                             ? `${reportSrc}#${slugify(
