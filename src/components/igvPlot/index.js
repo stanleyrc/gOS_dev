@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
-import debounce from "lodash.debounce";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
 import { withTranslation } from "react-i18next";
 import {
@@ -21,7 +20,7 @@ class IgvPlot extends Component {
   constructor(props) {
     super(props);
     this.igvInitialized = false;
-    this.debouncedUpdateDomain = this.props.updateDomain;
+    this.updateDomain = this.props.updateDomain;
   }
 
   componentDidMount() {
@@ -130,7 +129,7 @@ class IgvPlot extends Component {
     try {
       let locus = await this.igvBrowser.currentLoci();
       this.domain = lociToDomains(this.props.chromoBins, locus)[0];
-      this.debouncedUpdateDomain(this.domain, this.props.index);
+      this.updateDomain(this.domain, this.props.index);
       // Keep alignment tracks sorted by the center base on user navigation
       const { chr, position } = parseCenterFromLocus(locus);
       this.sortAlignmentTracksByCenter(chr, position);

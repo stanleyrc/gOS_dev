@@ -3,7 +3,6 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import debounce from "lodash.debounce";
 import { findMaxInRanges } from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
@@ -30,8 +29,8 @@ class ScatterPlot extends Component {
 
   constructor(props) {
     super(props);
-    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 1);
-    this.debouncedUpdateDomains = this.props.updateDomains;
+    //this.updateDomains = debounce(this.props.updateDomains, 1);
+    this.updateDomains = this.props.updateDomains;
   }
 
   componentDidMount() {
@@ -274,7 +273,7 @@ class ScatterPlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.debouncedUpdateDomains(newDomains);
+        this.updateDomains(newDomains);
       });
     }
   }
