@@ -21,6 +21,47 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup SSH for git pushes
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
+
+      - name: Add github.com to known_hosts
+        run: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
+
+      # (Optional) keep branch size under control — prune before producing new build
+      - name: Prune old tarballs (optional)
+        if: always()
+        run: |
+          set -e
+          BRANCH=deploy-builds
+          REPO="git@github.com:${GITHUB_REPOSITORY}.git"
+          rm -rf artifacts_prune
+          git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts_prune
+          if [ ! -d artifacts_prune/releases ]; then
+            echo "No releases to prune yet; skipping"
+            exit 0
+          fi
+          cd artifacts_prune
+          shopt -s nullglob
+          KEEP=5
+          mapfile -t tarballs < <(git ls-files releases/build-*.tar.gz)
+          if (( ${#tarballs[@]} > KEEP )); then
+            mapfile -t sorted < <(
+              for file in "${tarballs[@]}"; do
+                ts=$(git log -1 --format=%ct -- "$file" || echo 0)
+                printf '%s\t%s\n' "$ts" "$file"
+              done | sort -n | cut -f2-
+            )
+            for file in "${sorted[@]:0:${#sorted[@]}-KEEP}"; do
+              rm -f "$file" "$file".sha256
+            done
+          fi
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+            commit -m "chore: prune old tarballs" || echo "nothing to prune"
+          git push origin HEAD:${BRANCH}
+
       - name: Use Node 16
         uses: actions/setup-node@v4
         with:
@@ -29,14 +70,6 @@ jobs:
 
       - name: Install deps
         run: yarn install --frozen-lockfile
-
-      - name: Setup SSH for git pushes
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
-
-      - name: Add github.com to known_hosts
-        run: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
 
       - name: Build
         env:
@@ -89,37 +122,4 @@ jobs:
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
             commit -m "build: ${GITHUB_SHA}" || echo "No changes to commit"
-          git push origin HEAD:${BRANCH}
-
-      # (Optional) keep branch size under control — keep last 5 tarballs
-      - name: Prune old tarballs (optional)
-        if: always()
-        run: |
-          set -e
-          BRANCH=deploy-builds
-          REPO="git@github.com:${GITHUB_REPOSITORY}.git"
-          rm -rf artifacts_prune
-          git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts_prune
-          if [ ! -d artifacts_prune/releases ]; then
-            echo "No releases to prune yet; skipping"
-            exit 0
-          fi
-          cd artifacts_prune
-          shopt -s nullglob
-          KEEP=5
-          mapfile -t tarballs < <(git ls-files releases/build-*.tar.gz)
-          if (( ${#tarballs[@]} > KEEP )); then
-            mapfile -t sorted < <(
-              for file in "${tarballs[@]}"; do
-                ts=$(git log -1 --format=%ct -- "$file" || echo 0)
-                printf '%s\t%s\n' "$ts" "$file"
-              done | sort -n | cut -f2-
-            )
-            for file in "${sorted[@]:0:${#sorted[@]}-KEEP}"; do
-              rm -f "$file" "$file".sha256
-            done
-          fi
-          git add -A
-          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-            commit -m "chore: prune old tarballs" || echo "nothing to prune"
           git push origin HEAD:${BRANCH}

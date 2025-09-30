@@ -6,7 +6,6 @@ import { withTranslation } from "react-i18next";
 import { measureText } from "../../helpers/utility";
 import { createChromosomePaths } from "../../helpers/cytobandsUtil";
 import Wrapper from "./index.style";
-import debounce from "lodash.debounce";
 import settingsActions from "../../redux/settings/actions";
 import appActions from "../../redux/app/actions";
 
@@ -35,8 +34,8 @@ class CytobandsPlot extends Component {
         text: "",
       },
     };
-    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
-    this.debouncedUpdateDomains = this.props.updateDomains;
+    //this.updateDomains = debounce(this.props.updateDomains, 100);
+    this.updateDomains = this.props.updateDomains;
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -198,7 +197,7 @@ class CytobandsPlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.debouncedUpdateDomains(newDomains);
+        this.updateDomains(newDomains);
       });
     }
   }

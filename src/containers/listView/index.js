@@ -227,6 +227,7 @@ class ListView extends Component {
       }
       return null; // nothing for unknown renderer
     };
+
     return (
       <Wrapper>
         <Form
@@ -394,12 +395,16 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t(`metadata.lohFraction.short`)}
-                            value={
-                              d.loh_fraction != null
-                                ? d3.format(".3f")(d.loh_fraction)
+                            title={t(`metadata.tumor_median_coverage.shorter`)}
+                            value={`${
+                              d["tumor_median_coverage"] != null
+                                ? `${d["tumor_median_coverage"]}X`
                                 : t("general.not-applicable")
-                            }
+                            } / ${
+                              d["normal_median_coverage"] != null
+                                ? `${d["normal_median_coverage"]}X`
+                                : t("general.not-applicable")
+                            }`}
                           />,
                           <Statistic
                             className="stats"

@@ -56,8 +56,8 @@ class LegendMultiBrush extends Component {
         this.update();
       }
     });
-    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 1);
-    this.debouncedUpdateDomains = this.props.updateDomains;
+    //this.updateDomains = debounce(this.props.updateDomains, 1);
+    this.updateDomains = this.props.updateDomains;
 
     this.state = {
       hoveredChromo: null,
@@ -213,7 +213,7 @@ class LegendMultiBrush extends Component {
     // draw the brushes
     this.renderBrushes();
 
-    this.debouncedUpdateDomains(
+    this.updateDomains(
       this.fragments
         .filter((d) => d.selection)
         .map((d) => d.domain)
@@ -222,7 +222,7 @@ class LegendMultiBrush extends Component {
   };
 
   handleChromosomeClick = (chromosome) => {
-    this.debouncedUpdateDomains([[chromosome.startPlace, chromosome.endPlace]]);
+    this.updateDomains([[chromosome.startPlace, chromosome.endPlace]]);
   };
 
   renderBrushes = () => {

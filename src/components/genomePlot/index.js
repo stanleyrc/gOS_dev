@@ -3,14 +3,13 @@ import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import * as d3 from "d3";
-import debounce from "lodash.debounce";
 import Wrapper from "./index.style";
 import Connection from "../../helpers/connection";
 import {
   measureText,
   guid,
   k_combinations,
-  merge
+  merge,
 } from "../../helpers/utility";
 import Grid from "../grid/index";
 import appActions from "../../redux/app/actions";
@@ -45,8 +44,8 @@ class GenomePlot extends Component {
         text: "",
       },
     };
-    //this.debouncedUpdateDomains = debounce(this.props.updateDomains, 100);
-    this.debouncedUpdateDomains = this.props.updateDomains;
+    //this.updateDomains = debounce(this.props.updateDomains, 100);
+    this.updateDomains = this.props.updateDomains;
   }
 
   updatePanels() {
@@ -391,7 +390,7 @@ class GenomePlot extends Component {
 
     if (newDomains.toString() !== this.props.domains.toString()) {
       this.setState({ domains: newDomains }, () => {
-        this.debouncedUpdateDomains(newDomains);
+        this.updateDomains(newDomains);
       });
     }
   }
@@ -462,9 +461,7 @@ class GenomePlot extends Component {
           })
           .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
       );
-      this.debouncedUpdateDomains(
-        merged.map((d) => [d.startPlace, d.endPlace])
-      );
+      this.updateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
     } else {
       this.props.selectPhylogenyNodes(
         this.props.connectionsAssociations.map((d, i) => {
@@ -484,7 +481,7 @@ class GenomePlot extends Component {
       shape.startPlace - padding,
       shape.endPlace + padding,
     ];
-    this.debouncedUpdateDomains(newDomains);
+    this.updateDomains(newDomains);
   }
 
   handleMutationClick(panelIndex, shape, padding = 30) {
@@ -492,7 +489,7 @@ class GenomePlot extends Component {
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
     newDomains[panelIndex] = [midPoint - padding - 2, midPoint + padding];
-    this.debouncedUpdateDomains(newDomains);
+    this.updateDomains(newDomains);
   }
 
   handlePanelMouseMove = (e, panelIndex) => {
