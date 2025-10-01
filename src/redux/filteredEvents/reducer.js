@@ -3,6 +3,7 @@ import actions from "./actions";
 const initState = {
   loading: false,
   filteredEvents: [],
+  originalFilteredEvents: [],
   selectedFilteredEvent: null,
   viewMode: "tracks",
   error: null,
@@ -16,6 +17,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         error: null,
         filteredEvents: [],
+        originalFilteredEvents: [],
         loading: true,
         reportSrc: null,
       };
@@ -23,6 +25,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         filteredEvents: action.filteredEvents,
+        originalFilteredEvents: action.filteredEvents,
         selectedFilteredEvent: action.selectedFilteredEvent,
         loading: false,
         reportSrc: action.reportSrc || null,
@@ -31,6 +34,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         filteredEvents: [],
+        originalFilteredEvents: [],
         selectedFilteredEvent: null,
         error: action.error,
         loading: false,
@@ -57,6 +61,21 @@ export default function appReducer(state = initState, action) {
           state.selectedFilteredEvent?.uid === uid
             ? update(state.selectedFilteredEvent)
             : state.selectedFilteredEvent,
+      };
+    }
+    case actions.RESET_TIER_OVERRIDES: {
+      // If already at original, do nothing to avoid useless updates
+      if (state.filteredEvents === state.originalFilteredEvents) return state;
+
+      const selectedUid = state.selectedFilteredEvent?.uid;
+      const newSelected = selectedUid
+        ? (state.originalFilteredEvents || []).find((d) => d?.uid === selectedUid) || null
+        : null;
+
+      return {
+        ...state,
+        filteredEvents: state.originalFilteredEvents,
+        selectedFilteredEvent: newSelected,
       };
     }
     default:

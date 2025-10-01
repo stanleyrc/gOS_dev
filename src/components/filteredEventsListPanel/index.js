@@ -31,7 +31,7 @@ import ReportModal from "../reportModal";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, applyTierOverride } = filteredEventsActions;
+const { selectFilteredEvent, applyTierOverride, resetTierOverrides } = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -41,6 +41,7 @@ const eventColumns = {
 };
 
 class FilteredEventsListPanel extends Component {
+  isApplyingOverrides = false;
   handleResetFilters = () => {
     this.setState({
       geneFilters: [],
@@ -68,12 +69,9 @@ class FilteredEventsListPanel extends Component {
     this.setState({ showReportModal: true });
   };
 
-  handleCloseReportModal = () => {
+  handleCloseReportModal = async () => {
+    await this.applyAllTierOverridesIfAny();
     this.setState({ showReportModal: false });
-  };
-
-  handleCloseDetailReport = async () => {
-    await this.applyTierOverrideIfAny();
     this.props.selectFilteredEvent(null);
   };
 
@@ -220,18 +218,51 @@ class FilteredEventsListPanel extends Component {
   };
 
   applyAllTierOverridesIfAny = async () => {
-    const { id, filteredEvents, applyTierOverride } = this.props;
-    if (!Array.isArray(filteredEvents) || !filteredEvents.length) return;
+    const {
+      id,
+      filteredEvents,
+      originalFilteredEvents,
+      applyTierOverride,
+      resetTierOverrides,
+    } = this.props;
 
-    await Promise.all(
-      filteredEvents.map(async (ev) => {
-        const key = this.buildTierKey(id, ev);
-        const override = await this.getTierOverrideFromIDB(key);
-        if (override != null && `${ev.tier}` !== `${override}`) {
-          applyTierOverride(ev.uid, `${override}`);
-        }
-      })
-    );
+    if (
+      !Array.isArray(filteredEvents) ||
+      !filteredEvents.length ||
+      !Array.isArray(originalFilteredEvents) ||
+      !originalFilteredEvents.length
+    ) {
+      return;
+    }
+
+    if (this.isApplyingOverrides) return;
+    this.isApplyingOverrides = true;
+
+    try {
+      // Start from the original snapshot to avoid stale overrides lingering
+      resetTierOverrides();
+
+      // Build a quick lookup for original tiers
+      const origTierMap = new Map(
+        originalFilteredEvents.map((d) => [d.uid, String(d.tier)])
+      );
+
+      await Promise.all(
+        filteredEvents.map(async (ev) => {
+          const key = this.buildTierKey(id, ev);
+          const override = await this.getTierOverrideFromIDB(key);
+
+          if (override != null) {
+            const origTier = origTierMap.get(ev.uid);
+            if (String(origTier) !== String(override)) {
+              applyTierOverride(ev.uid, String(override));
+            }
+          }
+        })
+      );
+    } finally {
+      this.isApplyingOverrides = false;
+    }
   };
 
   render() {
@@ -870,7 +901,7 @@ class FilteredEventsListPanel extends Component {
                     {selectedFilteredEvent && viewMode === "detail" && (
                       <ReportModal
                         open
-                        onClose={this.handleCloseDetailReport}
+                        onClose={this.handleCloseReportModal}
                         src={
                           reportSrc
                             ? `${reportSrc}#${slugify(
@@ -954,10 +985,12 @@ const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   applyTierOverride: (uid, tier) => dispatch(applyTierOverride(uid, tier)),
+  resetTierOverrides: () => dispatch(resetTierOverrides()),
 });
 const mapStateToProps = (state) => ({
   loading: state.FilteredEvents.loading,
   filteredEvents: state.FilteredEvents.filteredEvents,
+  originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
   selectedFilteredEvent: state.FilteredEvents.selectedFilteredEvent,
   viewMode: state.FilteredEvents.viewMode,
   error: state.FilteredEvents.error,
