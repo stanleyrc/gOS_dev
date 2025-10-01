@@ -179,9 +179,12 @@ class ListView extends Component {
               style={{ width: "100%" }}
               maxTagCount="responsive"
               maxTagTextLength={8}
+              disabled={
+                d.records.length === 0 || d.records.every((e) => e == null)
+              }
             >
               {d.records.map((e, i) => (
-                <Option key={i} value={e}>
+                <Option key={i} value={e || "null"}>
                   {e
                     ? snakeCaseToHumanReadable(e)
                     : t("containers.list-view.filters.empty")}
@@ -432,6 +435,13 @@ class ListView extends Component {
                                   {d.primary_site && (
                                     <Text type="secondary">
                                       {snakeCaseToHumanReadable(d.primary_site)}
+                                    </Text>
+                                  )}
+                                  {d.tumor_details && (
+                                    <Text type="secondary">
+                                      {snakeCaseToHumanReadable(
+                                        d.tumor_details
+                                      )}
                                     </Text>
                                   )}
                                 </Space>

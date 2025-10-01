@@ -3,20 +3,10 @@ import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { PageHeader } from "@ant-design/pro-components";
-import {
-  Space,
-  Tag,
-  Avatar,
-  Tooltip,
-  Popover,
-  Typography,
-  Divider,
-} from "antd";
+import { Space, Tag, Avatar, Tooltip, Divider } from "antd";
 import * as d3 from "d3";
 import {
   legendColors,
-  qualityStatusTagClasses,
-  qualityStatusTypographyClasses,
   coverageQCFields,
   plotTypes,
 } from "../../helpers/utility";
@@ -29,28 +19,22 @@ import {
   hrdDividers,
   msiLabels,
 } from "../../helpers/metadata";
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ExclamationCircleOutlined,
-  QuestionCircleOutlined,
-} from "@ant-design/icons";
 import Wrapper from "./index.style";
-
-const { Text, Link } = Typography;
 
 class HeaderPanel extends Component {
   render() {
-    const {
-      t,
-      report,
-      metadata,
-      plots,
-      dataset,
-    } = this.props;
+    const { t, report, metadata, plots } = this.props;
     if (!report) return null;
-    const { tumor, purity, ploidy, pair, sex, disease, primary_site } =
-      metadata;
+    const {
+      tumor,
+      purity,
+      ploidy,
+      pair,
+      sex,
+      disease,
+      primary_site,
+      tumor_details,
+    } = metadata;
 
     let colorMarkers = { ...msiLabels };
 
@@ -179,12 +163,6 @@ class HeaderPanel extends Component {
         "snv_count_normal_vaf_greater0"
       ),
     };
-    const qualityStatusIcons = {
-      0: <CheckCircleOutlined />,
-      1: <ExclamationCircleOutlined />,
-      2: <CloseCircleOutlined />,
-      3: <QuestionCircleOutlined />,
-    };
 
     tooltips = Object.entries(tooltips)
       .filter(
@@ -203,11 +181,7 @@ class HeaderPanel extends Component {
         <PageHeader
           className="site-page-header"
           title={pair}
-          subTitle={
-            <Space>
-              {sex}
-            </Space>
-          }
+          subTitle={<Space>{sex}</Space>}
           extra={
             <Space size={[0, 4]} wrap>
               <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>
@@ -237,6 +211,7 @@ class HeaderPanel extends Component {
                           ) : null}
                           {disease}
                           {primary_site}
+                          {tumor_details}
                         </Space>
                       </Space>
                     </div>

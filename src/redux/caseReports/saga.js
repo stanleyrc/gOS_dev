@@ -228,6 +228,10 @@ function* searchReports({ searchFilters }) {
       } else {
         records = records.filter((d) => {
           return actualSearchFilters[key].some((item) => {
+            // If the filter value is the string "null", match records where d[key] is null or undefined
+            if (item === "null") {
+              return d[key] == null;
+            }
             const itemArr = Array.isArray(item) ? item : [item];
             const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
             return itemArr.some((i) => dKeyArr.includes(i));

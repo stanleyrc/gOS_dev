@@ -928,6 +928,7 @@ export function reportAttributesMap() {
   return {
     pair: "pair",
     tumor_type: "tumor",
+    tumor_details: "tumor_details",
     tumor_median_coverage: "tumor_median_coverage",
     normal_median_coverage: "normal_median_coverage",
     snv_count: "snvCount",
@@ -982,6 +983,7 @@ export function reportFilters() {
     { name: "tags", type: "string", renderer: "cascader" },
     { name: "pair", type: "string", renderer: "select" },
     { name: "tumor_type", type: "string", renderer: "select" },
+    { name: "tumor_details", type: "string", renderer: "select" },
     { name: "disease", type: "string", renderer: "select" },
     { name: "primary_site", type: "string", renderer: "select" },
     { name: "inferred_sex", type: "string", renderer: "select" },

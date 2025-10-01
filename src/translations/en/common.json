@@ -358,6 +358,7 @@
         "pair": "Pair",
         "disease": "Disease",
         "tumor_type": "Tumor Type",
+        "tumor_details": "Tumor Details",
         "primary_site": "Primary Site",
         "inferred_sex": "Inferred Sex",
         "tumor_median_coverage": "Coverage Tumor/Normal",
