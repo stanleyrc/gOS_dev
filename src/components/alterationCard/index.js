@@ -1,4 +1,5 @@
 import React from "react";
+import { BsDashLg } from "react-icons/bs";
 import { Card, Tag, Typography, Descriptions, Divider, Avatar } from "antd";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
@@ -77,7 +78,6 @@ export default function AlterationCard({ record }) {
     );
   }
 
-  console.log(record)
   const {
     tier,
     gene,
@@ -110,6 +110,7 @@ export default function AlterationCard({ record }) {
     refCounts !== undefined;
 
   const unavailable = null
+  const unavailableMetric = (<Text italic disabled> <BsDashLg /> </Text>)
 
   return (
     <Wrapper>
@@ -179,20 +180,20 @@ export default function AlterationCard({ record }) {
             <div className="metrics-block">
               <Descriptions size="small" bordered column={1}>
                 <Descriptions.Item label="VAF">
-                  {vaf !== undefined ? <span className="monospace">{String(vaf)}</span> : unavailable}
+                  {vaf !== undefined ? <span className="monospace">{String(vaf)}</span> : unavailableMetric}
                 </Descriptions.Item>
                 <Descriptions.Item label="Multiplicity">
                   {estimatedAlteredCopies !== undefined ? (
                     <span className="monospace">{String(estimatedAlteredCopies)}</span>
                   ) : (
-                    unavailable
+                    unavailableMetric
                   )}
                 </Descriptions.Item>
                 <Descriptions.Item label="Tumor Alt">
-                  {altCounts !== undefined ? <span className="monospace">{String(altCounts)}</span> : unavailable}
+                  {altCounts !== undefined ? <span className="monospace">{String(altCounts)}</span> : unavailableMetric}
                 </Descriptions.Item>
                 <Descriptions.Item label="Tumor Ref">
-                  {refCounts !== undefined ? <span className="monospace">{String(refCounts)}</span> : unavailable}
+                  {refCounts !== undefined ? <span className="monospace">{String(refCounts)}</span> : unavailableMetric}
                 </Descriptions.Item>
               </Descriptions>
             </div>
