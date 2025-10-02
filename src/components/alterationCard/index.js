@@ -1,6 +1,6 @@
 import React from "react";
 import { BsDashLg } from "react-icons/bs";
-import { Card, Tag, Typography, Descriptions, Divider, Avatar } from "antd";
+import { Card, Tag, Typography, Descriptions, Divider, Avatar, Input } from "antd";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 
@@ -200,7 +200,16 @@ export default function AlterationCard({ record }) {
           ) : null}
         </div>
 
-        <Divider style={{ margin: "12px 0" }} />
+        <div className="desc-block notes-block" style={{ marginTop: 12 }}>
+          <div className="desc-title">Notes:</div>
+          <Input.TextArea
+            className="notes-textarea"
+            rows={4}
+            readOnly
+            value=""
+            placeholder=""
+          />
+        </div>
 
         <div className="variant-footer">
           <div className="desc-block">
@@ -228,6 +237,7 @@ export default function AlterationCard({ record }) {
                 : unavailable}
             </div>
           </div>
+
         </div>
       </Card>
     </Wrapper>

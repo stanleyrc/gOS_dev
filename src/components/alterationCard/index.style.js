@@ -134,4 +134,12 @@ export default styled.div`
     gap: 6px;
     margin-top: 6px;
   }
+
+  .notes-block {
+    margin-top: 12px;
+  }
+  .notes-textarea {
+    width: 100%;
+    resize: vertical;
+  }
 `;
