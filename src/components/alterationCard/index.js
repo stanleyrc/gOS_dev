@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { BsDashLg } from "react-icons/bs";
 import { Card, Tag, Typography, Descriptions, Avatar, Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
+import filteredEventsActions from "../../redux/filteredEvents/actions";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -248,6 +250,15 @@ function EditableNotesBlock({ value, onChange }) {
 }
 
 export default function AlterationCard({ record }) {
+  const liveRecord = useSelector((state) => {
+    const fe = state?.FilteredEvents;
+    if (!fe) return record;
+    if (record?.uid && fe.selectedFilteredEvent?.uid === record.uid) {
+      return fe.selectedFilteredEvent;
+    }
+    const fromList = (fe.filteredEvents || []).find((d) => d?.uid === record?.uid);
+    return fromList || record;
+  });
   const {
     tier,
     gene,
@@ -263,9 +274,12 @@ export default function AlterationCard({ record }) {
     estimatedAlteredCopies,
     altCounts,
     refCounts,
-  } = record;
+  } = liveRecord || {};
 
-  const tierStr = tier != null ? String(tier) : "Other";
+  const dispatch = useDispatch();
+  const currentTierStr = ["1", "2", "3"].includes(String(tier))
+    ? String(tier)
+    : "3";
   const geneLabel = (gene || "Unknown").replace("::", "-");
   const variantTitle = variant || "";
 
@@ -273,9 +287,12 @@ export default function AlterationCard({ record }) {
   const therapeuticsList = toList(therapeutics);
   const resistancesList = toList(resistances);
 
-  const tierStrInit = tier != null ? String(tier) : "3";
+  const updateFields = (changes) =>
+    dispatch(
+      filteredEventsActions.updateAlterationFields(liveRecord.uid, changes)
+    );
+
   const [local, setLocal] = useState({
-    tier: ["1", "2", "3"].includes(tierStrInit) ? tierStrInit : "3",
     geneSummary: gene_summary || "",
     variantSummary: variant_summary || "",
     effectDescription: effect_description || "",
@@ -283,6 +300,25 @@ export default function AlterationCard({ record }) {
     resistances: resistancesList,
     notes: "",
   });
+
+  useEffect(() => {
+    setLocal({
+      geneSummary: gene_summary || "",
+      variantSummary: variant_summary || "",
+      effectDescription: effect_description || "",
+      therapeutics: therapeuticsList,
+      resistances: resistancesList,
+      notes: (liveRecord && liveRecord.notes) || "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    gene_summary,
+    variant_summary,
+    effect_description,
+    therapeuticsList.join("|"),
+    resistancesList.join("|"),
+    liveRecord && liveRecord.notes,
+  ]);
 
   const hasMetrics =
     vaf !== undefined ||
@@ -293,7 +329,7 @@ export default function AlterationCard({ record }) {
   const unavailable = null
   const unavailableMetric = (<Text italic disabled> <BsDashLg /> </Text>)
 
-  if (!record) {
+  if (!liveRecord) {
     return (
       <Wrapper>
         <Card className="variant-card">
@@ -309,22 +345,26 @@ export default function AlterationCard({ record }) {
       <Card className="variant-card" bordered>
         <div className="variant-header">
           <div className="gene-left">
-            {local.tier && (
-              <div className="tier-control" title={`Tier ${local.tier}`}>
+            {currentTierStr && (
+              <div className="tier-control" title={`Tier ${currentTierStr}`}>
                 <Avatar
                   size={32}
                   style={{
-                    backgroundColor: tierColor(+local.tier) || "#6c757d",
+                    backgroundColor: tierColor(+currentTierStr) || "#6c757d",
                     color: "#fff",
                     fontWeight: 700,
                   }}
                 >
-                  {local.tier}
+                  {currentTierStr}
                 </Avatar>
                 <select
                   className="tier-select"
-                  value={local.tier}
-                  onChange={(e) => setLocal((s) => ({ ...s, tier: e.target.value }))}
+                  value={currentTierStr}
+                  onChange={(e) =>
+                    dispatch(
+                      filteredEventsActions.applyTierOverride(liveRecord.uid, e.target.value)
+                    )
+                  }
                   aria-label={`Set tier for ${geneLabel} ${variantTitle}`}
                 >
                   <option value="1">Tier 1</option>
@@ -359,21 +399,33 @@ export default function AlterationCard({ record }) {
             <EditableTextBlock
               title="Gene Summary"
               value={local.geneSummary}
-              onChange={(v) => setLocal((s) => ({ ...s, geneSummary: v }))}
+              onChange={(v) => {
+                setLocal((s) => ({ ...s, geneSummary: v }));
+                updateFields({ gene_summary: v });
+              }}
              />
             <EditableTextBlock
               title="Variant Summary"
               value={local.variantSummary}
-              onChange={(v) => setLocal((s) => ({ ...s, variantSummary: v }))}
+              onChange={(v) => {
+                setLocal((s) => ({ ...s, variantSummary: v }));
+                updateFields({ variant_summary: v });
+              }}
              />
             <EditableTextBlock
               title="Effect Description"
               value={local.effectDescription}
-              onChange={(v) => setLocal((s) => ({ ...s, effectDescription: v }))}
+              onChange={(v) => {
+                setLocal((s) => ({ ...s, effectDescription: v }));
+                updateFields({ effect_description: v });
+              }}
              />
             <EditableNotesBlock
               value={local.notes}
-              onChange={(v) => setLocal((s) => ({ ...s, notes: v }))}
+              onChange={(v) => {
+                setLocal((s) => ({ ...s, notes: v }));
+                updateFields({ notes: v });
+              }}
              />
           </div>
 
@@ -406,14 +458,20 @@ export default function AlterationCard({ record }) {
           <EditablePillsBlock
             title="Therapeutics"
             list={local.therapeutics}
-            onChange={(arr) => setLocal((s) => ({ ...s, therapeutics: arr }))}
+            onChange={(arr) => {
+              setLocal((s) => ({ ...s, therapeutics: arr }));
+              updateFields({ therapeutics: arr });
+            }}
             pillClass="therapeutic-tag"
           />
 
           <EditablePillsBlock
             title="Resistances"
             list={local.resistances}
-            onChange={(arr) => setLocal((s) => ({ ...s, resistances: arr }))}
+            onChange={(arr) => {
+              setLocal((s) => ({ ...s, resistances: arr }));
+              updateFields({ resistances: arr });
+            }}
             pillClass="resistance-tag"
           />
 

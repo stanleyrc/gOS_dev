@@ -70,22 +70,21 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleCloseReportModal = async () => {
-    await this.applyAllTierOverridesIfAny();
     this.setState({ showReportModal: false });
     this.props.selectFilteredEvent(null);
   };
 
   componentDidMount() {
-    this.applyAllTierOverridesIfAny();
+    this.applyAllTierOverridesIfAny({ reset: true });
   }
 
   componentDidUpdate(prevProps) {
     if (
-      prevProps.filteredEvents !== this.props.filteredEvents &&
-      Array.isArray(this.props.filteredEvents) &&
-      this.props.filteredEvents.length
+      prevProps.originalFilteredEvents !== this.props.originalFilteredEvents &&
+      Array.isArray(this.props.originalFilteredEvents) &&
+      this.props.originalFilteredEvents.length
     ) {
-      this.applyAllTierOverridesIfAny();
+      this.applyAllTierOverridesIfAny({ reset: true });
     }
   }
 
@@ -217,7 +216,8 @@ class FilteredEventsListPanel extends Component {
     }
   };
 
-  applyAllTierOverridesIfAny = async () => {
+  applyAllTierOverridesIfAny = async (opts = {}) => {
+    const { reset = false } = opts;
     const {
       id,
       filteredEvents,
@@ -239,8 +239,10 @@ class FilteredEventsListPanel extends Component {
     this.isApplyingOverrides = true;
 
     try {
-      // Start from the original snapshot to avoid stale overrides lingering
-      resetTierOverrides();
+      if (reset) {
+        // Start from the original snapshot to avoid stale overrides lingering
+        resetTierOverrides();
+      }
 
       // Build a quick lookup for original tiers
       const origTierMap = new Map(

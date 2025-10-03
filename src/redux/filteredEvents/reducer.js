@@ -25,7 +25,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         filteredEvents: action.filteredEvents,
-        originalFilteredEvents: action.filteredEvents,
+        originalFilteredEvents: (action.filteredEvents || []).map((d) => ({ ...d })),
         selectedFilteredEvent: action.selectedFilteredEvent,
         loading: false,
         reportSrc: action.reportSrc || null,
@@ -76,6 +76,28 @@ export default function appReducer(state = initState, action) {
         ...state,
         filteredEvents: state.originalFilteredEvents,
         selectedFilteredEvent: newSelected,
+      };
+    }
+    case actions.UPDATE_ALTERATION_FIELDS: {
+      const { uid, changes } = action;
+      const normalized = {
+        ...changes,
+        ...(Array.isArray(changes?.therapeutics)
+          ? { therapeutics: [...changes.therapeutics] }
+          : {}),
+        ...(Array.isArray(changes?.resistances)
+          ? { resistances: [...changes.resistances] }
+          : {}),
+      };
+      return {
+        ...state,
+        filteredEvents: (state.filteredEvents || []).map((it) =>
+          it?.uid === uid ? { ...it, ...normalized } : it
+        ),
+        selectedFilteredEvent:
+          state.selectedFilteredEvent?.uid === uid
+            ? { ...state.selectedFilteredEvent, ...normalized }
+            : state.selectedFilteredEvent,
       };
     }
     default:
