@@ -660,7 +660,7 @@ class GenomePlot extends Component {
                         } ${d.isProteinCoded ? "" : "non-protein-coded"}`}
                         transform={`translate(${[
                           panel.xScale(
-                            Math.floor((d.startPlace + d.endPlace) / 2)
+                            Math.floor((d.startPlace + d.endPlace) / 2) - 1
                           ),
                           panel.yScale(d.y),
                         ]})`}
