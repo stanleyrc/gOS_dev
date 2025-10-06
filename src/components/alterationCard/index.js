@@ -6,6 +6,7 @@ import { EditOutlined } from "@ant-design/icons";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
+import { linkPmids } from "../../helpers/format";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -18,53 +19,6 @@ function toList(value) {
     .filter(Boolean);
 }
 
-// Helpers to format PMIDs into links safely
-function escapeHtml(s) {
-  return String(s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function normalizePmId(item) {
-  if (item == null) return "";
-  if (typeof item === "number") return String(item);
-  if (typeof item === "string") {
-    const m = item.match(/\b(\d{1,10})\b/);
-    return m ? m[1] : "";
-  }
-  const id = item.pmid || item.PMID || item.uid || item.id || item.Id;
-  return id ? normalizePmId(String(id)) : "";
-}
-
-function pmidToUrl(id) {
-  const pmid = normalizePmId(id);
-  return pmid ? `https://pubmed.ncbi.nlm.nih.gov/${pmid}/` : "";
-}
-
-function linkPmids(text) {
-  if (!text) return "";
-  const escaped = escapeHtml(String(text));
-  const pmidRegex = /(PMID:\s*)([\d,\s]+)/g;
-  return escaped.replace(pmidRegex, (match, prefix, pmidString) => {
-    const pmids = pmidString
-      .trim()
-      .split(/,\s*/)
-      .filter(Boolean);
-    const links = pmids
-      .map((pmid) => {
-        const id = normalizePmId(pmid);
-        const url = pmidToUrl(id);
-        return url
-          ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${id}</a>`
-          : escapeHtml(pmid);
-      })
-      .join(", ");
-    return `${prefix}${links}`;
-  });
-}
 
 function asLinkedHtml(text) {
   return { __html: linkPmids(text) };

@@ -1,13 +1,12 @@
 /* eslint-env browser */
 'use strict';
 
-import { slugify, parseNum, toPercentString, formatCoveragePair, normalizeAlterationType, tagClassForType, splitPillsList, normalizePmId, pmidToUrl } from './format';
+import { slugify, parseNum, toPercentString, formatCoveragePair, normalizeAlterationType, tagClassForType, splitPillsList, normalizePmId, pmidToUrl, escapeHtml, linkPmids } from './format';
 
 function encodeUtf8(s) {
   if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(String(s || ''));
   return String(s || '');
 }
-function escapeHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function escAttr(s) { return escapeHtml(String(s || '')); }
 function inlineOrHrefCss(options = {}) {
   const css = typeof options.inlineCss === 'string' ? options.inlineCss : '';
@@ -161,19 +160,6 @@ function createMetadataBlock(title, data) {
 //     return acc;
 //   }, {});
 // }
-function linkPmids(text) {
-  if (!text) return '';
-  const pmidRegex = /(PMID:\s*)([\d, ]+)/g;
-  return String(text).replace(pmidRegex, (match, prefix, pmidString) => {
-    const pmids = pmidString.trim().split(/, ?/).filter(Boolean);
-    const links = pmids.map(pmid => {
-      const id = normalizePmId(pmid);
-      const url = pmidToUrl(id);
-      return `<a href="${escAttr(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(id)}</a>`;
-    }).join(', ');
-    return `${prefix}${links}`;
-  });
-}
 
 
 
@@ -268,7 +254,7 @@ function createGenomicFindingsBlock(title, entries, storageKey) {
 
  // Generic editable description block (title + hover-visible edit button + textarea editor)
 function createEditableDescBlock(title, rawValue, storageKey) {
-  const displayHtml = linkPmids(escapeHtml(String(rawValue || '')));
+  const displayHtml = linkPmids(String(rawValue || ''));
   const key = String(storageKey || '');
   const titleSafe = escapeHtml(title);
   const keyAttr = escAttr(key);

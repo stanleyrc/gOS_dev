@@ -85,3 +85,31 @@ export function pmidToUrl(id) {
   const pmid = normalizePmId(id);
   return pmid ? `https://pubmed.ncbi.nlm.nih.gov/${pmid}/` : '#';
 }
+
+export function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function linkPmids(text) {
+  if (!text) return '';
+  const escaped = escapeHtml(String(text));
+  const pmidRegex = /(PMID:\s*)([\d,\s]+)/g;
+  return escaped.replace(pmidRegex, (match, prefix, pmidString) => {
+    const pmids = pmidString.trim().split(/,\s*/).filter(Boolean);
+    const links = pmids
+      .map((pmid) => {
+        const id = normalizePmId(pmid);
+        const url = pmidToUrl(id);
+        return url
+          ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(id)}</a>`
+          : escapeHtml(pmid);
+      })
+      .join(', ');
+    return `${prefix}${links}`;
+  });
+}
