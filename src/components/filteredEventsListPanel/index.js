@@ -28,6 +28,9 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
+import { HtmlRenderer } from "../../helpers/HtmlRenderer";
+import { loadInlineReportAssets } from "../../helpers/reportAssets";
+import { buildReportFromState } from "../../helpers/reportMapper";
 
 const { Text } = Typography;
 
@@ -61,12 +64,41 @@ class FilteredEventsListPanel extends Component {
     variantFilters: [],
     geneFilters: [],
     showReportModal: false,
+    exporting: false,
   };
 
   // add as a class field
 
-  handleExportNotes = () => {
-    this.setState({ showReportModal: true });
+  handleExportNotes = async () => {
+    const { id, filteredEvents, report } = this.props;
+    try {
+      this.setState({ exporting: true });
+      const assets = await loadInlineReportAssets();
+      const partialState = {
+        CaseReport: { id, metadata: report },
+        FilteredEvents: { filteredEvents },
+      };
+      const reportObj = buildReportFromState(partialState);
+      const renderer = new HtmlRenderer();
+      const filename = id ? `gos_report_${id}.html` : "gos_report.html";
+      const res = await renderer.render(reportObj, { ...assets, filename });
+      const blob = new Blob([res.html], {
+        type: res.mimeType || "text/html",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename || filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (err) {
+      // Optional: surface to user
+      console.error("Report export failed:", err);
+    } finally {
+      this.setState({ exporting: false });
+    }
   };
 
   handleCloseReportModal = async () => {
@@ -739,7 +771,7 @@ class FilteredEventsListPanel extends Component {
                   type="primary"
                   icon={<FileTextOutlined />}
                   onClick={this.handleExportNotes}
-                  disabled={!reportSrc}
+                  disabled={loading || this.state.exporting}
                   style={{ marginBottom: 16 }}
                 >
                   {t("components.filtered-events-panel.export.notes")}
