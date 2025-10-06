@@ -14,24 +14,39 @@ import {
   Tooltip,
   Avatar,
   Typography,
+  Input,
+  Collapse,
 } from "antd";
-import { slugify } from "../../helpers/report";
+ // centralized anchor/key helpers
+ import { eventAnchor, tierKey as keyTier } from "../../helpers/reportKeys";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
+import { EditOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
+import { linkPmids } from "../../helpers/format";
+import {
+  getTierOverride,
+  clearCase,
+  exportReport,
+  saveTierOverride,
+  saveGlobalNotes,
+  buildTierKey,
+  importReportStateFromHtml,
+} from "../../helpers/reportStateStore";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, applyTierOverride, resetTierOverrides } = filteredEventsActions;
+const { selectFilteredEvent, applyTierOverride, resetTierOverrides, updateAlterationFields, setGlobalNotes } = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -39,6 +54,84 @@ const eventColumns = {
   cna: [0, 1, 2, 3, 4, 5, 7, 12],
   fusion: [0, 1, 2, 3, 4, 5, 8, 12],
 };
+
+function EditableTextBlock({ title, value, onChange }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(value || "");
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    setDraft(value || "");
+  }, [value]);
+  React.useEffect(() => {
+    if (editing && ref.current) ref.current.focus({ cursor: "end" });
+  }, [editing]);
+
+  const handleBlur = () => {
+    onChange(draft || "");
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
+        <div className="desc-title">{title}:</div>
+        <Input.TextArea
+          ref={ref}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          autoSize={{ minRows: 3 }}
+          onBlur={handleBlur}
+          style={{ marginTop: 8 }}
+        />
+      </div>
+    );
+  }
+
+  const html = value && linkPmids(value).replace(/\n/g, "<br/>");
+
+  return (
+    <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
+      <Collapse
+        className="notes-collapse"
+        bordered={false}
+        ghost
+        defaultActiveKey={[]}
+      >
+        <Collapse.Panel
+          key="notes"
+          header={
+            <div className="notes-header">
+              <span className="notes-header-title">{title}</span>
+              <button
+                type="button"
+                className="edit-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditing(true);
+                }}
+                aria-label={`Edit ${title}`}
+              >
+                <EditOutlined />
+              </button>
+            </div>
+          }
+        >
+          <div className="notes-view">
+            {value ? (
+              <div
+                className="desc-text"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            ) : (
+              <span className="notes-empty">No notes added</span>
+            )}
+          </div>
+        </Collapse.Panel>
+      </Collapse>
+    </div>
+  );
+}
 
 class FilteredEventsListPanel extends Component {
   isApplyingOverrides = false;
@@ -61,31 +154,141 @@ class FilteredEventsListPanel extends Component {
     variantFilters: [],
     geneFilters: [],
     showReportModal: false,
+    exporting: false,
   };
 
   // add as a class field
 
-  handleExportNotes = () => {
-    this.setState({ showReportModal: true });
+  handleExportNotes = async () => {
+    const { id, filteredEvents, report, originalFilteredEvents, globalNotes } = this.props;
+    try {
+      this.setState({ exporting: true });
+      await exportReport({
+        id,
+        reportMeta: report,
+        filteredEvents,
+        originalFilteredEvents,
+        globalNotes,
+      });
+    } catch (err) {
+      console.error("Report export failed:", err);
+    } finally {
+      this.setState({ exporting: false });
+    }
+  };
+
+  handleLoadReport = async () => {
+    try {
+      const { t } = this.props;
+      const file = await new Promise((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".html,text/html";
+        input.onchange = () => resolve(input.files && input.files[0]);
+        input.click();
+      });
+      if (!file) return;
+
+      const text = await file.text();
+      const caseId = String(this.props.id || "");
+
+      try {
+        await importReportStateFromHtml({
+          htmlText: text,
+          caseId,
+          filteredEvents: this.props.filteredEvents,
+          applyTierOverride: this.props.applyTierOverride,
+          updateAlterationFields: this.props.updateAlterationFields,
+          setGlobalNotes: this.props.setGlobalNotes,
+        });
+        alert(t("components.filtered-events-panel.import.loaded"));
+      } catch (err) {
+        if (err && err.code === "MISMATCH_CASE") {
+          alert(t("components.filtered-events-panel.import.mismatch-case"));
+          return;
+        }
+        if (err && err.code === "MISSING_STATE") {
+          alert(t("components.filtered-events-panel.import.missing-state"));
+          return;
+        }
+        throw err;
+      }
+    } catch (err) {
+      console.error("Failed to load report:", err);
+      alert(this.props.t("components.filtered-events-panel.import.failed"));
+    }
+  };
+
+
+
+
+  handleResetReportState = async () => {
+    const { id, resetTierOverrides, selectFilteredEvent } = this.props;
+    const caseId = id ? String(id) : "";
+    if (!caseId) {
+      alert(this.props.t("components.filtered-events-panel.reset-prompts.no-case-id"));
+      return;
+    }
+    const c1 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm1"));
+    if (!c1) return;
+    const c2 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm2"));
+    if (!c2) return;
+
+    // 1) Clear IndexedDB for this case
+    await clearCase(caseId);
+
+    // 2) Reset Redux overrides and selection
+    resetTierOverrides();
+    selectFilteredEvent(null);
+
+    // 3) Clear global notes in Redux (and persist empty to app IndexedDB via saga)
+    this.props.setGlobalNotes("");
   };
 
   handleCloseReportModal = async () => {
-    await this.applyAllTierOverridesIfAny();
     this.setState({ showReportModal: false });
     this.props.selectFilteredEvent(null);
   };
 
   componentDidMount() {
-    this.applyAllTierOverridesIfAny();
+    this.applyAllTierOverridesIfAny({ reset: true });
   }
 
   componentDidUpdate(prevProps) {
     if (
-      prevProps.filteredEvents !== this.props.filteredEvents &&
-      Array.isArray(this.props.filteredEvents) &&
-      this.props.filteredEvents.length
+      prevProps.originalFilteredEvents !== this.props.originalFilteredEvents &&
+      Array.isArray(this.props.originalFilteredEvents) &&
+      this.props.originalFilteredEvents.length
     ) {
-      this.applyAllTierOverridesIfAny();
+      this.applyAllTierOverridesIfAny({ reset: true });
+    }
+
+    // Persist tier overrides to IndexedDB whenever tiers change in-app
+    if (prevProps.filteredEvents !== this.props.filteredEvents) {
+      const prevByUid = new Map(
+        (prevProps.filteredEvents || []).map((d) => [d.uid, d])
+      );
+      const caseId = String(this.props.id || "");
+      (this.props.filteredEvents || []).forEach((ev) => {
+        const prev = prevByUid.get(ev.uid);
+        if (!prev) return;
+        const prevTier = prev.tier != null ? String(prev.tier) : "";
+        const curTier = ev.tier != null ? String(ev.tier) : "";
+        if (curTier !== prevTier) {
+          const anchor = eventAnchor(ev?.gene, ev?.variant);
+          if (!anchor) return;
+          const tKey = keyTier(caseId, anchor);
+          saveTierOverride(tKey, curTier);
+        }
+      });
+    }
+
+    // Persist global notes to gos_report IndexedDB when they change
+    if (prevProps.globalNotes !== this.props.globalNotes) {
+      const caseId = String(this.props.id || "");
+      if (caseId) {
+        saveGlobalNotes(caseId, this.props.globalNotes);
+      }
     }
   }
 
@@ -106,118 +309,11 @@ class FilteredEventsListPanel extends Component {
     });
   };
 
-  buildTierKey = (caseId, record) => {
-    if (!caseId || !record) return null;
-    const anchor = slugify(`${record?.gene} ${record?.variant}`);
-    return `gos.tier.${caseId}.${anchor}`;
-  };
 
-  getTierOverrideFromIDB = async (tierKey) => {
-    try {
-      if (!window.indexedDB || !tierKey) return null;
 
-      const dbInfos =
-        (indexedDB.databases && (await indexedDB.databases())) || [];
-      const dbNames = (dbInfos || []).map((d) => d?.name).filter(Boolean);
 
-      for (const dbName of dbNames) {
-        if (!dbName || !dbName.startsWith("gos_report")) continue;
-
-        const result = await new Promise((resolve) => {
-          const openReq = indexedDB.open(dbName);
-          openReq.onerror = () => resolve(null);
-          openReq.onsuccess = () => {
-            const db = openReq.result;
-            const stores = Array.from(db.objectStoreNames || []);
-            if (!stores.length) {
-              db.close();
-              resolve(null);
-              return;
-            }
-
-            const fullKey = `${dbName}::${tierKey}`;
-
-            const tryStore = (i) => {
-              if (i >= stores.length) {
-                db.close();
-                resolve(null);
-                return;
-              }
-              const storeName = stores[i];
-              const tx = db.transaction(storeName, "readonly");
-              const store = tx.objectStore(storeName);
-
-              const getReq = store.get(fullKey);
-              getReq.onsuccess = () => {
-                const val = getReq.result;
-                if (val != null) {
-                  db.close();
-                  resolve(
-                    typeof val === "object" && val !== null
-                      ? val.v ?? null
-                      : val
-                  );
-                  return;
-                }
-                if (!store.getAll) {
-                  tryStore(i + 1);
-                  return;
-                }
-                const allReq = store.getAll();
-                allReq.onsuccess = () => {
-                  const arr = allReq.result || [];
-                  const match = arr.find(
-                    (r) =>
-                      r?.k === fullKey ||
-                      r?.k === tierKey ||
-                      r?.key === tierKey ||
-                      r === fullKey ||
-                      r === tierKey
-                  );
-                  if (match) {
-                    db.close();
-                    resolve(
-                      typeof match === "object" && match !== null
-                        ? match.v ?? null
-                        : match
-                    );
-                  } else {
-                    tryStore(i + 1);
-                  }
-                };
-                allReq.onerror = () => tryStore(i + 1);
-              };
-              getReq.onerror = () => tryStore(i + 1);
-            };
-
-            tryStore(0);
-          };
-        });
-
-        if (result != null) {
-          const num = Number(result);
-          return Number.isFinite(num) ? String(num) : String(result);
-        }
-      }
-    } catch (_) {}
-    return null;
-  };
-
-  applyTierOverrideIfAny = async () => {
-    console.log("Applying tier override if any...");
-    const { id, selectedFilteredEvent, viewMode } = this.props;
-    if (!selectedFilteredEvent || viewMode !== "detail") return;
-
-    const tierKey = this.buildTierKey(id, selectedFilteredEvent);
-    const override = await this.getTierOverrideFromIDB(tierKey);
-    if (override != null && `${selectedFilteredEvent.tier}` !== `${override}`) {
-      this.props.applyTierOverride(selectedFilteredEvent.uid, `${override}`);
-    } else {
-      console.log("No tier override found or no change needed.");
-    }
-  };
-
-  applyAllTierOverridesIfAny = async () => {
+  applyAllTierOverridesIfAny = async (opts = {}) => {
+    const { reset = false } = opts;
     const {
       id,
       filteredEvents,
@@ -239,8 +335,10 @@ class FilteredEventsListPanel extends Component {
     this.isApplyingOverrides = true;
 
     try {
-      // Start from the original snapshot to avoid stale overrides lingering
-      resetTierOverrides();
+      if (reset) {
+        // Start from the original snapshot to avoid stale overrides lingering
+        resetTierOverrides();
+      }
 
       // Build a quick lookup for original tiers
       const origTierMap = new Map(
@@ -249,8 +347,8 @@ class FilteredEventsListPanel extends Component {
 
       await Promise.all(
         filteredEvents.map(async (ev) => {
-          const key = this.buildTierKey(id, ev);
-          const override = await this.getTierOverrideFromIDB(key);
+          const key = buildTierKey(id, ev);
+          const override = await getTierOverride(key);
 
           if (override != null) {
             const origTier = origTierMap.get(ev.uid);
@@ -771,22 +869,20 @@ class FilteredEventsListPanel extends Component {
           </Row>
         ) : (
           <>
+            <Row className="ant-panel-container ant-home-plot-container">
+              <Col span={24}>
+                <EditableTextBlock
+                  title={t("components.alteration-card.labels.notes")}
+                  value={this.props.globalNotes || ""}
+                  onChange={(v) => this.props.setGlobalNotes(v)}
+                />
+              </Col>
+            </Row>
             <Row
               className="ant-panel-container ant-home-plot-container"
               align="middle"
               justify="space-between"
             >
-              <Col span={24}>
-                <Button
-                  type="primary"
-                  icon={<FileTextOutlined />}
-                  onClick={this.handleExportNotes}
-                  disabled={!reportSrc}
-                  style={{ marginBottom: 16 }}
-                >
-                  {t("components.filtered-events-panel.export.notes")}
-                </Button>
-              </Col>
               <Col flex="auto">
                 <Segmented
                   size="small"
@@ -833,6 +929,35 @@ class FilteredEventsListPanel extends Component {
               </Col>
             </Row>
             <Row className="ant-panel-container ant-home-plot-container">
+              <Col flex="none">
+                <Space>
+                  <Button
+                    type="primary"
+                    icon={<FileTextOutlined />}
+                    onClick={this.handleExportNotes}
+                    disabled={loading || this.state.exporting}
+                    style={{ marginBottom: 16 }}
+                  >
+                    {t("components.filtered-events-panel.export.notes")}
+                  </Button>
+                  <Button
+                    onClick={this.handleLoadReport}
+                    style={{ marginBottom: 16 }}
+                  >
+                    {t("components.filtered-events-panel.load-report")}
+                  </Button>
+                </Space>
+              </Col>
+              <Col flex="auto" />
+              <Col style={{ textAlign: "right" }} flex="none">
+                <Button
+                  danger
+                  onClick={this.handleResetReportState}
+                  style={{ marginBottom: 16 }}
+                >
+                  {t("components.filtered-events-panel.reset-state")}
+                </Button>
+              </Col>
               <Col className="gutter-row table-container" span={24}>
                 {
                   <Skeleton active loading={loading}>
@@ -949,8 +1074,9 @@ class FilteredEventsListPanel extends Component {
                         onClose={this.handleCloseReportModal}
                         src={
                           reportSrc
-                            ? `${reportSrc}#${slugify(
-                                `${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`
+                            ? `${reportSrc}#${eventAnchor(
+                                selectedFilteredEvent?.gene,
+                                selectedFilteredEvent?.variant
                               )}`
                             : undefined
                         }
@@ -1031,6 +1157,9 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   applyTierOverride: (uid, tier) => dispatch(applyTierOverride(uid, tier)),
   resetTierOverrides: () => dispatch(resetTierOverrides()),
+  updateAlterationFields: (uid, changes) =>
+    dispatch(updateAlterationFields(uid, changes)),
+  setGlobalNotes: (notes) => dispatch(setGlobalNotes(notes)),
 });
 const mapStateToProps = (state) => ({
   loading: state.FilteredEvents.loading,
@@ -1052,6 +1181,7 @@ const mapStateToProps = (state) => ({
   hetsnps: state.Hetsnps,
   genes: state.Genes,
   igv: state.Igv,
+  globalNotes: state.FilteredEvents.globalNotes,
 });
 export default connect(
   mapStateToProps,

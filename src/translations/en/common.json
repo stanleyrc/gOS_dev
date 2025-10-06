@@ -486,7 +486,7 @@
     "filtered-events-panel": {
       "reset-filters": "Reset Filters",
       "export": {
-        "notes": "Report",
+        "notes": "Export Report",
         "error": "Error exporting notes",
         "success": "Notes exported successfully",
         "no-notes": "No notes found to export",
@@ -543,6 +543,19 @@
         "explanation": {
           "title": "The request has failed with the following error:"
         }
+      },
+      "load-report": "Load Report",
+      "reset-state": "Reset",
+      "import": {
+        "mismatch-case": "Uploaded report does not match the current case. Import aborted.",
+        "missing-state": "Could not find embedded report state in the uploaded file.",
+        "loaded": "Report loaded.",
+        "failed": "Failed to load report."
+      },
+      "reset-prompts": {
+        "no-case-id": "No case ID available to reset.",
+        "confirm1": "Reset all local changes to this report (tiers and edited fields)?",
+        "confirm2": "Are you absolutely sure? This will permanently remove local edits for this case."
       }
     },
     "variantQc-panel": {
@@ -659,6 +672,37 @@
       "record": "gene in viewport",
       "record_plural": "genes in viewport"
     },
+    "alteration-card": {
+      "unknown": "Unknown",
+      "no-alteration": "No alteration selected.",
+      "labels": {
+        "gene-summary": "Gene Summary",
+        "variant-summary": "Variant Summary",
+        "effect-description": "Effect Description",
+        "notes": "Notes",
+        "vaf": "VAF",
+        "multiplicity": "Multiplicity",
+        "tumor-alt": "Tumor Alt",
+        "tumor-ref": "Tumor Ref",
+        "therapeutics": "Therapeutics",
+        "resistances": "Resistances"
+      },
+      "placeholders": {
+        "notes": "Click to add notes…"
+      },
+      "tier-select": {
+        "label": "Set tier for {{gene}} {{variant}}",
+        "options": {
+          "1": "Tier 1",
+          "2": "Tier 2",
+          "3": "Tier 3 / Exclude"
+        }
+      },
+      "aria": {
+        "edit-notes": "Edit Notes",
+        "click-edit-notes": "Click to edit notes"
+      }
+    },
     "tracks-modal": {
       "genome-plot": "Total CN Graph",
       "genome-y-axis-title": "↑ CN",
@@ -684,6 +728,13 @@
       "methylation-intensity-coverage-plot": "Methylation Intensity Coverage",
       "methylation-intensity-coverage-y-axis-title": "Est. CN ↑",
       "methylation-intensity-coverage-y-axis2-title": "↑ Count"
+    },
+    "report-modal": {
+      "tabs": {
+        "alteration": "Alteration",
+        "plots": "Plots"
+      },
+      "no-selection": "No alteration selected"
     },
     "notes-modal": {
       "enter-notes": "Enter notes here...",

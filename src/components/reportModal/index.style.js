@@ -9,9 +9,8 @@ const Wrapper = styled.div`
     padding: 0;
     display: flex;
     flex-direction: column;
-    max-height: 95vh;
+    max-height: 100vh;
     padding: 20px 24px;
-    padding-bottom: 0;
   }
 
   .ant-modal-body {

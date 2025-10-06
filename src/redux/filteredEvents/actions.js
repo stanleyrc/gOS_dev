@@ -7,6 +7,8 @@ const actions = {
   FILTERED_EVENT_SELECTED: "FILTERED_EVENT_SELECTED",
   APPLY_TIER_OVERRIDE: "APPLY_TIER_OVERRIDE",
   RESET_TIER_OVERRIDES: "RESET_TIER_OVERRIDES",
+  UPDATE_ALTERATION_FIELDS: "UPDATE_ALTERATION_FIELDS",
+  SET_GLOBAL_NOTES: "SET_GLOBAL_NOTES",
 
   fetchFilteredEvents: () => ({
     type: actions.FETCH_FILTERED_EVENTS_REQUEST,
@@ -23,6 +25,15 @@ const actions = {
   }),
   resetTierOverrides: () => ({
     type: actions.RESET_TIER_OVERRIDES,
+  }),
+  updateAlterationFields: (uid, changes) => ({
+    type: actions.UPDATE_ALTERATION_FIELDS,
+    uid,
+    changes,
+  }),
+  setGlobalNotes: (notes) => ({
+    type: actions.SET_GLOBAL_NOTES,
+    notes,
   }),
 };
 

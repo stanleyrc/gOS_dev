@@ -8,6 +8,7 @@ const initState = {
   viewMode: "tracks",
   error: null,
   reportSrc: null,
+  globalNotes: "",
 };
 
 export default function appReducer(state = initState, action) {
@@ -20,12 +21,13 @@ export default function appReducer(state = initState, action) {
         originalFilteredEvents: [],
         loading: true,
         reportSrc: null,
+        globalNotes: "",
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
       return {
         ...state,
         filteredEvents: action.filteredEvents,
-        originalFilteredEvents: action.filteredEvents,
+        originalFilteredEvents: (action.filteredEvents || []).map((d) => ({ ...d })),
         selectedFilteredEvent: action.selectedFilteredEvent,
         loading: false,
         reportSrc: action.reportSrc || null,
@@ -39,6 +41,7 @@ export default function appReducer(state = initState, action) {
         error: action.error,
         loading: false,
         reportSrc: null,
+        globalNotes: "",
       };
     case actions.SELECT_FILTERED_EVENT:
       return {
@@ -64,20 +67,57 @@ export default function appReducer(state = initState, action) {
       };
     }
     case actions.RESET_TIER_OVERRIDES: {
-      // If already at original, do nothing to avoid useless updates
-      if (state.filteredEvents === state.originalFilteredEvents) return state;
+      // Restore entire items from the original snapshot (not just tier)
+      const origMap = new Map(
+        (state.originalFilteredEvents || []).map((d) => [d.uid, d])
+      );
 
-      const selectedUid = state.selectedFilteredEvent?.uid;
-      const newSelected = selectedUid
-        ? (state.originalFilteredEvents || []).find((d) => d?.uid === selectedUid) || null
-        : null;
+      const restoreItem = (it) => {
+        if (!it) return it;
+        const orig = origMap.get(it.uid);
+        return orig ? { ...orig } : it;
+      };
+
+      const nextFiltered = (state.filteredEvents || []).map(restoreItem);
+      const nextSelected =
+        state.selectedFilteredEvent &&
+        origMap.has(state.selectedFilteredEvent.uid)
+          ? { ...origMap.get(state.selectedFilteredEvent.uid) }
+          : state.selectedFilteredEvent;
 
       return {
         ...state,
-        filteredEvents: state.originalFilteredEvents,
-        selectedFilteredEvent: newSelected,
+        filteredEvents: nextFiltered,
+        selectedFilteredEvent: nextSelected,
       };
     }
+    case actions.UPDATE_ALTERATION_FIELDS: {
+      const { uid, changes } = action;
+      const normalized = {
+        ...changes,
+        ...(Array.isArray(changes?.therapeutics)
+          ? { therapeutics: [...changes.therapeutics] }
+          : {}),
+        ...(Array.isArray(changes?.resistances)
+          ? { resistances: [...changes.resistances] }
+          : {}),
+      };
+      return {
+        ...state,
+        filteredEvents: (state.filteredEvents || []).map((it) =>
+          it?.uid === uid ? { ...it, ...normalized } : it
+        ),
+        selectedFilteredEvent:
+          state.selectedFilteredEvent?.uid === uid
+            ? { ...state.selectedFilteredEvent, ...normalized }
+            : state.selectedFilteredEvent,
+      };
+    }
+    case actions.SET_GLOBAL_NOTES:
+      return {
+        ...state,
+        globalNotes: String(action.notes || ""),
+      };
     default:
       return state;
   }
