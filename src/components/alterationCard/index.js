@@ -8,7 +8,7 @@ import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import { linkPmids } from "../../helpers/format";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 function toList(value) {
   if (!value) return [];
@@ -20,9 +20,6 @@ function toList(value) {
 }
 
 
-function asLinkedHtml(text) {
-  return { __html: linkPmids(text) };
-}
 
 function EditableTextBlock({ title, value, onChange }) {
   const [editing, setEditing] = useState(false);
@@ -69,7 +66,7 @@ function EditableTextBlock({ title, value, onChange }) {
       ) : value ? (
         <div
           className="desc-text"
-          dangerouslySetInnerHTML={asLinkedHtml(value)}
+          dangerouslySetInnerHTML={{ __html: linkPmids(value) }}
         />
       ) : null}
     </div>
@@ -280,7 +277,6 @@ export default function AlterationCard({ record }) {
     altCounts !== undefined ||
     refCounts !== undefined;
 
-  const unavailable = null
   const unavailableMetric = (<Text italic disabled> <BsDashLg /> </Text>)
 
   if (!liveRecord) {
