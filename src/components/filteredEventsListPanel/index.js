@@ -34,7 +34,7 @@ import { buildReportFromState } from "../../helpers/reportMapper";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, applyTierOverride, resetTierOverrides } = filteredEventsActions;
+const { selectFilteredEvent, applyTierOverride, resetTierOverrides, updateAlterationFields } = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -79,9 +79,76 @@ class FilteredEventsListPanel extends Component {
         FilteredEvents: { filteredEvents },
       };
       const reportObj = buildReportFromState(partialState);
+      // Build delta store (only user changes), keyed like IndexedDB expects
+      const { originalFilteredEvents = [] } = this.props;
+      const origByUid = new Map(
+        (originalFilteredEvents || []).map((d) => [d.uid, d])
+      );
+      const normStr = (v) => (v == null ? "" : String(v));
+      const toList = (v) =>
+        Array.isArray(v)
+          ? v.map((s) => String(s).trim()).filter(Boolean)
+          : String(v || "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+      const sameArr = (a, b) => {
+        if (!Array.isArray(a) || !Array.isArray(b)) return false;
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
+      };
+
+      const deltaKv = [];
+      (filteredEvents || []).forEach((ev) => {
+        const orig = origByUid.get(ev.uid) || {};
+        const anchor = slugify(`${ev?.gene} ${ev?.variant}`);
+        if (!anchor) return;
+        const base = `gos.field.${id}.${anchor}`;
+        const tierKey = `gos.tier.${id}.${anchor}`;
+
+        // Tier override delta
+        const curTier = normStr(ev.tier);
+        const origTier = normStr(orig.tier);
+        if (curTier && curTier !== origTier) {
+          deltaKv.push({ k: tierKey, v: curTier });
+        }
+
+        // Text fields deltas (allow empty string to clear a previously non-empty value)
+        const fields = [
+          ["gene_summary", "gene_summary"],
+          ["variant_summary", "variant_summary"],
+          ["effect_description", "effect_description"],
+          ["notes", "notes"],
+        ];
+        fields.forEach(([prop, key]) => {
+          const cur = normStr(ev[prop]);
+          const prev = normStr(orig[prop]);
+          if (cur !== prev) {
+            deltaKv.push({ k: `${base}.${key}`, v: cur });
+          }
+        });
+
+        // Pills deltas
+        const curTher = toList(ev.therapeutics);
+        const prevTher = toList(orig.therapeutics);
+        if (!sameArr(curTher, prevTher)) {
+          deltaKv.push({ k: `${base}.therapeutics`, v: curTher });
+        }
+        const curRes = toList(ev.resistances);
+        const prevRes = toList(orig.resistances);
+        if (!sameArr(curRes, prevRes)) {
+          deltaKv.push({ k: `${base}.resistances`, v: curRes });
+        }
+      });
+
       const renderer = new HtmlRenderer();
       const filename = id ? `gos_report_${id}.html` : "gos_report.html";
-      const res = await renderer.render(reportObj, { ...assets, filename });
+      const res = await renderer.render(reportObj, {
+        ...assets,
+        filename,
+        initialStore: deltaKv, // embed only deltas as [{k, v}]
+      });
       const blob = new Blob([res.html], {
         type: res.mimeType || "text/html",
       });
@@ -101,9 +168,165 @@ class FilteredEventsListPanel extends Component {
     }
   };
 
-  handleLoadReport = () => {
-    // Temporary stub for now
-    alert("Load Report import coming soon.");
+  handleLoadReport = async () => {
+    try {
+      const file = await new Promise((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".html,text/html";
+        input.onchange = () => resolve(input.files && input.files[0]);
+        input.click();
+      });
+      if (!file) return;
+
+      const text = await file.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, "text/html");
+
+      // Check case id
+      const currentCaseId = String(this.props.id || "");
+      const meta = doc.querySelector('meta[name="gos-case-id"]');
+      const importedCaseId = (meta && meta.getAttribute("content")) || "";
+      if (!importedCaseId || importedCaseId !== currentCaseId) {
+        alert("Uploaded report does not match the current case. Import aborted.");
+        return;
+      }
+
+      // Extract embedded JSON state
+      const scripts = Array.from(doc.querySelectorAll('script[type="application/json"]'));
+      const parseCandidates = [];
+      for (const s of scripts) {
+        try {
+          const txt = s.textContent || "";
+          if (!txt.trim()) continue;
+          parseCandidates.push(JSON.parse(txt));
+        } catch (_) {}
+      }
+      const toKvMap = (data) => {
+        const map = new Map();
+        const add = (k, v) => {
+          if (typeof k === "string") map.set(k, v);
+        };
+        if (Array.isArray(data)) {
+          for (const it of data) {
+            if (it && typeof it === "object" && ("k" in it || "key" in it)) {
+              add(String(it.k ?? it.key), it.v ?? it.value);
+            } else if (Array.isArray(it) && it.length === 2 && typeof it[0] === "string") {
+              add(it[0], it[1]);
+            }
+          }
+        } else if (data && typeof data === "object") {
+          if (Array.isArray(data.items)) return toKvMap(data.items);
+          if (Array.isArray(data.kv)) return toKvMap(data.kv);
+          if (data.data && typeof data.data === "object") {
+            Object.entries(data.data).forEach(([k, v]) => add(k, v));
+          } else {
+            Object.entries(data).forEach(([k, v]) => add(k, v));
+          }
+        }
+        return map;
+      };
+      let storeMap = new Map();
+      for (const cand of parseCandidates) {
+        const m = toKvMap(cand);
+        const cnt = Array.from(m.keys()).filter((k) => String(k).startsWith("gos.")).length;
+        if (cnt > storeMap.size) storeMap = m;
+      }
+      if (!storeMap.size) {
+        alert("Could not find embedded report state in the uploaded file.");
+        return;
+      }
+
+      // Filter keys for this case
+      const id = currentCaseId;
+      const prefixes = [
+        `gos.tier.${id}.`,
+        `gos.field.${id}.`,
+        `gos.notes.${id}`,
+        `gos.genomic.${id}`,
+      ];
+      const entriesForCase = Array.from(storeMap.entries()).filter(([k]) =>
+        prefixes.some((p) => String(k).startsWith(p))
+      );
+
+      // Overwrite IndexedDB for this case first
+      await this.clearCaseFromIndexedDB(id);
+      await new Promise((resolve) => {
+        const dbName = "gos_report";
+        const req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains("kv")) {
+            db.createObjectStore("kv", { keyPath: "k" });
+          }
+        };
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("kv", "readwrite");
+          const store = tx.objectStore("kv");
+          for (const [k, v] of entriesForCase) {
+            try {
+              store.put({ k: String(k), v });
+            } catch (_) {}
+          }
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onabort = tx.onerror = () => {
+            db.close();
+            resolve();
+          };
+        };
+        req.onerror = () => resolve();
+      });
+
+      // Apply to Redux
+      const { filteredEvents, applyTierOverride, updateAlterationFields } = this.props;
+      const get = (k) => storeMap.get(k);
+      const toList = (val) =>
+        Array.isArray(val)
+          ? val.map(String)
+          : String(val || "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+
+      for (const ev of (filteredEvents || [])) {
+        const anchor = slugify(`${ev?.gene} ${ev?.variant}`);
+        if (!anchor) continue;
+        const tierKey = `gos.tier.${id}.${anchor}`;
+        const baseKey = `gos.field.${id}.${anchor}`;
+
+        const tierVal = get(tierKey);
+        if (tierVal != null && String(tierVal) !== String(ev.tier)) {
+          applyTierOverride(ev.uid, String(tierVal));
+        }
+
+        const changes = {};
+        const gs = get(`${baseKey}.gene_summary`);
+        if (gs != null) changes.gene_summary = String(gs);
+        const vs = get(`${baseKey}.variant_summary`);
+        if (vs != null) changes.variant_summary = String(vs);
+        const ed = get(`${baseKey}.effect_description`);
+        if (ed != null) changes.effect_description = String(ed);
+        const nt = get(`${baseKey}.notes`);
+        if (nt != null) changes.notes = String(nt);
+        const th = get(`${baseKey}.therapeutics`);
+        if (th != null) changes.therapeutics = toList(th);
+        const rs = get(`${baseKey}.resistances`);
+        if (rs != null) changes.resistances = toList(rs);
+
+        if (Object.keys(changes).length) {
+          updateAlterationFields(ev.uid, changes);
+        }
+      }
+
+      alert("Report loaded.");
+    } catch (err) {
+      console.error("Failed to load report:", err);
+      alert("Failed to load report.");
+    }
   };
 
   clearCaseFromIndexedDB = async (caseId) => {
@@ -1168,6 +1391,8 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   applyTierOverride: (uid, tier) => dispatch(applyTierOverride(uid, tier)),
   resetTierOverrides: () => dispatch(resetTierOverrides()),
+  updateAlterationFields: (uid, changes) =>
+    dispatch(updateAlterationFields(uid, changes)),
 });
 const mapStateToProps = (state) => ({
   loading: state.FilteredEvents.loading,

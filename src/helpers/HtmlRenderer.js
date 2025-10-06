@@ -64,6 +64,24 @@ function getReportLogoUrl(options = {}) {
   );
 }
 
+ // Build a flat key-value map of initial store for this report
+function buildInitialStore(report) {
+  // Do not embed full initial state here.
+  // The exporter passes in a delta (only user changes) via options.initialStore.
+  return {};
+}
+
+// Safely serialize JSON for embedding in HTML
+function serializeJsonForHtml(obj) {
+  return JSON.stringify(obj).replace(/</g, '\\u003c');
+}
+
+// Inline the initial store as application/json
+function inlineInitialStoreScript(storeObj) {
+  const json = serializeJsonForHtml(storeObj || {});
+  return `  <script type="application/json" id="gos-initial-state">\n${json}\n  </script>`;
+}
+
 function generateDocId() {
   try {
     if (
@@ -700,6 +718,10 @@ class HtmlRenderer {
 
     const docId = generateDocId();
     const initialRev = new Date().toISOString();
+    const initialStore =
+      options && options.initialStore != null
+        ? options.initialStore
+        : buildInitialStore(report);
 
     const html = `
 <!DOCTYPE html>
@@ -720,6 +742,7 @@ class HtmlRenderer {
     ${sections}
   </div>
   <button id="reset-state" type="button" aria-label="Reset local data for this report">Reset</button>
+  ${inlineInitialStoreScript(initialStore)}
   ${inlineClientJs(options)}
 </body>
 </html>`.trim();
