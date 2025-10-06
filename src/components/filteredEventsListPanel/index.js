@@ -15,6 +15,7 @@ import {
   Avatar,
   Typography,
   Input,
+  Collapse,
 } from "antd";
  // centralized anchor/key helpers
  import { eventAnchor, tierKey as keyTier, fieldBase as keyFieldBase } from "../../helpers/reportKeys";
@@ -53,42 +54,75 @@ function EditableTextBlock({ title, value, onChange }) {
   const [draft, setDraft] = React.useState(value || "");
   const ref = React.useRef(null);
 
-  React.useEffect(() => { setDraft(value || ""); }, [value]);
-  React.useEffect(() => { if (editing && ref.current) ref.current.focus({ cursor: "end" }); }, [editing]);
+  React.useEffect(() => {
+    setDraft(value || "");
+  }, [value]);
+  React.useEffect(() => {
+    if (editing && ref.current) ref.current.focus({ cursor: "end" });
+  }, [editing]);
 
   const handleBlur = () => {
     onChange(draft || "");
     setEditing(false);
   };
 
-  return (
-    <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
-      <div className="desc-title">
-        {title}:
-        <button
-          type="button"
-          className="edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${title}`}
-          style={{ marginLeft: 8 }}
-        >
-          <EditOutlined />
-        </button>
-      </div>
-      {editing ? (
+  if (editing) {
+    return (
+      <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
+        <div className="desc-title">{title}:</div>
         <Input.TextArea
           ref={ref}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           autoSize={{ minRows: 3 }}
           onBlur={handleBlur}
+          style={{ marginTop: 8 }}
         />
-      ) : value ? (
-        <div
-          className="desc-text"
-          dangerouslySetInnerHTML={{ __html: linkPmids(value) }}
-        />
-      ) : null}
+      </div>
+    );
+  }
+
+  const html = value && linkPmids(value).replace(/\n/g, "<br/>");
+
+  return (
+    <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
+      <Collapse
+        className="notes-collapse"
+        bordered={false}
+        ghost
+        defaultActiveKey={[]}
+      >
+        <Collapse.Panel
+          key="notes"
+          header={
+            <div className="notes-header">
+              <span className="notes-header-title">{title}</span>
+              <button
+                type="button"
+                className="edit-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditing(true);
+                }}
+                aria-label={`Edit ${title}`}
+              >
+                <EditOutlined />
+              </button>
+            </div>
+          }
+        >
+          <div className="notes-view">
+            {value ? (
+              <div
+                className="desc-text"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            ) : (
+              <span className="notes-empty">No notes added</span>
+            )}
+          </div>
+        </Collapse.Panel>
+      </Collapse>
     </div>
   );
 }

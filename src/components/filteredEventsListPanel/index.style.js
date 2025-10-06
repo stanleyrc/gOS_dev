@@ -96,6 +96,43 @@ const Wrapper = styled.div`
       content: "";
     }
   }
+  .editable-field .ant-input-textarea {
+    margin-top: 8px;
+  }
+  .notes-collapse {
+    margin-bottom: 12px;
+  }
+  .notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    gap: 8px;
+  }
+  .notes-header-title {
+    font-weight: 500;
+  }
+  .notes-empty {
+    color: rgba(0, 0, 0, 0.45);
+    font-style: italic;
+  }
+  .notes-header .edit-btn {
+    margin-left: 8px;
+    border: 0;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    padding: 0;
+  }
+  .notes-header .edit-btn:hover {
+    color: #1890ff;
+  }
+  .notes-view {
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
 `;
 
 export default Wrapper;

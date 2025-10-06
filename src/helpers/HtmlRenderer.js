@@ -257,6 +257,7 @@ function createEditableDescBlock(title, rawValue, storageKey) {
         <button class="edit-btn" type="button" aria-label="Edit ${titleSafe}" data-role="edit-btn">✎</button>
       </div>
       <div class="desc-text"
+           style="white-space:pre-wrap;"
            data-role="display"
            data-render="pmid"
            data-storage-key="${keyAttr}"
@@ -284,6 +285,7 @@ function createEditableNoteBlock(title, rawValue, storageKey) {
         <button class="edit-btn" type="button" aria-label="Edit ${titleSafe}" data-role="edit-btn">✎</button>
       </div>
       <div class="desc-text"
+           style="white-space:pre-wrap;"
            data-role="display"
            data-render="pmid"
            data-storage-key="${keyAttr}"
