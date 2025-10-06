@@ -1,13 +1,9 @@
 /* eslint-env browser */
 'use strict';
 
-import { slugify, parseNum, toPercentString, formatCoveragePair, normalizeAlterationType, tagClassForType, splitPillsList, normalizePmId, pmidToUrl, escapeHtml, linkPmids } from './format';
+import { slugify, parseNum, toPercentString, formatCoveragePair, normalizeAlterationType, tagClassForType, splitPillsList, escapeHtml, linkPmids } from './format';
 import { eventAnchor, tierKey, fieldBase } from './reportKeys';
 
-function encodeUtf8(s) {
-  if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(String(s || ''));
-  return String(s || '');
-}
 function escAttr(s) { return escapeHtml(String(s || '')); }
 function inlineOrHrefCss(options = {}) {
   const css = typeof options.inlineCss === 'string' ? options.inlineCss : '';
@@ -64,12 +60,6 @@ function getReportLogoUrl(options = {}) {
   );
 }
 
- // Build a flat key-value map of initial store for this report
-function buildInitialStore(report) {
-  // Do not embed full initial state here.
-  // The exporter passes in a delta (only user changes) via options.initialStore.
-  return {};
-}
 
 // Safely serialize JSON for embedding in HTML
 function serializeJsonForHtml(obj) {
@@ -349,10 +339,6 @@ function toTitle(report) {
   return `Clinical Evidence Report — ${id || primary || 'Patient'}`;
 }
 
-function metadataItem(key, value) {
-  if (!value && value !== 0) return '';
-  return `<div class="metadata-item"><span class="metadata-key">${escapeHtml(key)}</span><span class="metadata-value">${escapeHtml(String(value))}</span></div>`;
-}
 
 function buildPatientSection(report) {
   const p = report && report.patient ? report.patient : {};
@@ -491,14 +477,6 @@ function buildTherapiesTable(report) {
 }
 
 
-function buildBiomarkersSection(report) {
-  const arr = Array.isArray(report && report.biomarkers) ? report.biomarkers : [];
-  if (!arr.length) return '';
-  const lis = arr.map(b => `<li>${escapeHtml(b.name)}${b.value !== undefined ? `: ${escapeHtml(String(b.value))}` : ''}</li>`).join('');
-  return `
-<h2 id="${slugify('Biomarkers')}">Biomarkers</h2>
-<ul>${lis}</ul>`.trim();
-}
 
 // NEW: small, pure sub-renderers for alterations
 
@@ -517,9 +495,11 @@ function renderVariantHeader(v, caseId) {
   html += `<div class="gene-left">`;
   html += `<div class="tier-control">
       <span class="tier-indicator tier-${escAttr(tierStr)}" aria-hidden="true">${escapeHtml(tierStr)}</span>
+      <!-- UI exposes Tier 3 / Exclude; Tier 3 items are not exported in the report body. -->
       <select class="tier-select" aria-label="Set tier for ${escAttr(geneLabel)} ${escAttr(variantTitle)}" data-storage-key="${escAttr(storageKey)}" data-default-tier="${escAttr(tierStr)}">
         <option value="1"${tierStr==='1'?' selected':''}>Tier 1</option>
         <option value="2"${tierStr==='2'?' selected':''}>Tier 2</option>
+        <option value="3"${tierStr==='3'?' selected':''}>Tier 3 / Exclude</option>
       </select>
     </div>`;
   html += `<h3 class="gene-title">${escapeHtml(geneLabel)}</h3>`;
@@ -596,6 +576,9 @@ function renderVariantCard(v, caseId) {
 
 function buildAlterationsSection(report) {
   const all = Array.isArray(report && report.alterations) ? report.alterations : [];
+  // Render/export only Tier 1 and Tier 2 variants.
+  // Tier 3 variants are intentionally omitted from the report body because there can be too many,
+  // but the UI still allows setting "Tier 3 / Exclude" to support downtiering/uptiering.
   const events = all.filter((e) => {
     const t = Number(e.Tier ?? e.tier);
     return Number.isFinite(t) && t < 3;
@@ -629,6 +612,7 @@ function buildAlterationsSection(report) {
 
 function buildToc(report, options = {}) {
   const all = Array.isArray(report && report.alterations) ? report.alterations : [];
+  // TOC lists only Tier 1 and Tier 2 variants (same filter as the report body).
   const events = all.filter((e) => {
     const t = Number(e.Tier ?? e.tier);
     return Number.isFinite(t) && t < 3;
@@ -702,10 +686,9 @@ class HtmlRenderer {
 
     const docId = generateDocId();
     const initialRev = new Date().toISOString();
+    // Only embed user changes (deltas). Initial state is intentionally empty.
     const initialStore =
-      options && options.initialStore != null
-        ? options.initialStore
-        : buildInitialStore(report);
+      options && options.initialStore != null ? options.initialStore : {};
 
     const html = `
 <!DOCTYPE html>
