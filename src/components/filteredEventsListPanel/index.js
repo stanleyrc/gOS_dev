@@ -18,7 +18,7 @@ import {
   Collapse,
 } from "antd";
  // centralized anchor/key helpers
- import { eventAnchor, tierKey as keyTier, fieldBase as keyFieldBase } from "../../helpers/reportKeys";
+ import { eventAnchor, tierKey as keyTier } from "../../helpers/reportKeys";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
@@ -33,10 +33,16 @@ import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import { HtmlRenderer } from "../../helpers/HtmlRenderer";
 import { linkPmids } from "../../helpers/format";
-import { loadInlineReportAssets } from "../../helpers/reportAssets";
-import { buildReportFromState } from "../../helpers/reportMapper";
+import {
+  getTierOverride,
+  clearCase,
+  exportReport,
+  saveTierOverride,
+  saveGlobalNotes,
+  buildTierKey,
+  importReportStateFromHtml,
+} from "../../helpers/reportStateStore";
 
 const { Text } = Typography;
 
@@ -154,104 +160,17 @@ class FilteredEventsListPanel extends Component {
   // add as a class field
 
   handleExportNotes = async () => {
-    const { id, filteredEvents, report } = this.props;
+    const { id, filteredEvents, report, originalFilteredEvents, globalNotes } = this.props;
     try {
       this.setState({ exporting: true });
-      const assets = await loadInlineReportAssets();
-      const partialState = {
-        CaseReport: { id, metadata: report },
-        FilteredEvents: { filteredEvents },
-      };
-      const reportObj = buildReportFromState(partialState);
-      // Build delta store (only user changes), keyed like IndexedDB expects
-      const { originalFilteredEvents = [] } = this.props;
-      const origByUid = new Map(
-        (originalFilteredEvents || []).map((d) => [d.uid, d])
-      );
-      const normStr = (v) => (v == null ? "" : String(v));
-      const toList = (v) =>
-        Array.isArray(v)
-          ? v.map((s) => String(s).trim()).filter(Boolean)
-          : String(v || "")
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-      const sameArr = (a, b) => {
-        if (!Array.isArray(a) || !Array.isArray(b)) return false;
-        if (a.length !== b.length) return false;
-        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-        return true;
-      };
-
-      const deltaKv = [];
-      (filteredEvents || []).forEach((ev) => {
-        const orig = origByUid.get(ev.uid) || {};
-        const anchor = eventAnchor(ev?.gene, ev?.variant);
-        if (!anchor) return;
-        const base = keyFieldBase(id, anchor);
-        const tKey = keyTier(id, anchor);
-
-        // Tier override delta
-        const curTier = normStr(ev.tier);
-        const origTier = normStr(orig.tier);
-        if (curTier && curTier !== origTier) {
-          deltaKv.push({ k: tKey, v: curTier });
-        }
-
-        // Text fields deltas (allow empty string to clear a previously non-empty value)
-        const fields = [
-          ["gene_summary", "gene_summary"],
-          ["variant_summary", "variant_summary"],
-          ["effect_description", "effect_description"],
-          ["notes", "notes"],
-        ];
-        fields.forEach(([prop, key]) => {
-          const cur = normStr(ev[prop]);
-          const prev = normStr(orig[prop]);
-          if (cur !== prev) {
-            deltaKv.push({ k: `${base}.${key}`, v: cur });
-          }
-        });
-
-        // Pills deltas
-        const curTher = toList(ev.therapeutics);
-        const prevTher = toList(orig.therapeutics);
-        if (!sameArr(curTher, prevTher)) {
-          deltaKv.push({ k: `${base}.therapeutics`, v: curTher });
-        }
-        const curRes = toList(ev.resistances);
-        const prevRes = toList(orig.resistances);
-        if (!sameArr(curRes, prevRes)) {
-          deltaKv.push({ k: `${base}.resistances`, v: curRes });
-        }
+      await exportReport({
+        id,
+        reportMeta: report,
+        filteredEvents,
+        originalFilteredEvents,
+        globalNotes,
       });
-
-      // Global notes delta
-      const globalNotes = String(this.props.globalNotes || "");
-      if (globalNotes) {
-        deltaKv.push({ k: `gos.notes.${id}`, v: globalNotes });
-      }
-
-      const renderer = new HtmlRenderer();
-      const filename = id ? `gos_report_${id}.html` : "gos_report.html";
-      const res = await renderer.render(reportObj, {
-        ...assets,
-        filename,
-        initialStore: deltaKv, // embed only deltas as [{k, v}]
-      });
-      const blob = new Blob([res.html], {
-        type: res.mimeType || "text/html",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename || filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
     } catch (err) {
-      // Optional: surface to user
       console.error("Report export failed:", err);
     } finally {
       this.setState({ exporting: false });
@@ -271,326 +190,37 @@ class FilteredEventsListPanel extends Component {
       if (!file) return;
 
       const text = await file.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, "text/html");
+      const caseId = String(this.props.id || "");
 
-      // Check case id
-      const currentCaseId = String(this.props.id || "");
-      const meta = doc.querySelector('meta[name="gos-case-id"]');
-      const importedCaseId = (meta && meta.getAttribute("content")) || "";
-      if (!importedCaseId || importedCaseId !== currentCaseId) {
-        alert(t("components.filtered-events-panel.import.mismatch-case"));
-        return;
-      }
-
-      // Extract embedded JSON state
-      const scripts = Array.from(doc.querySelectorAll('script[type="application/json"]'));
-      const parseCandidates = [];
-      for (const s of scripts) {
-        try {
-          const txt = s.textContent || "";
-          if (!txt.trim()) continue;
-          parseCandidates.push(JSON.parse(txt));
-        } catch (_) {}
-      }
-      const toKvMap = (data) => {
-        const map = new Map();
-        const add = (k, v) => {
-          if (typeof k === "string") map.set(k, v);
-        };
-        if (Array.isArray(data)) {
-          for (const it of data) {
-            if (it && typeof it === "object" && ("k" in it || "key" in it)) {
-              add(String(it.k ?? it.key), it.v ?? it.value);
-            } else if (Array.isArray(it) && it.length === 2 && typeof it[0] === "string") {
-              add(it[0], it[1]);
-            }
-          }
-        } else if (data && typeof data === "object") {
-          if (Array.isArray(data.items)) return toKvMap(data.items);
-          if (Array.isArray(data.kv)) return toKvMap(data.kv);
-          if (data.data && typeof data.data === "object") {
-            Object.entries(data.data).forEach(([k, v]) => add(k, v));
-          } else {
-            Object.entries(data).forEach(([k, v]) => add(k, v));
-          }
+      try {
+        await importReportStateFromHtml({
+          htmlText: text,
+          caseId,
+          filteredEvents: this.props.filteredEvents,
+          applyTierOverride: this.props.applyTierOverride,
+          updateAlterationFields: this.props.updateAlterationFields,
+          setGlobalNotes: this.props.setGlobalNotes,
+        });
+        alert(t("components.filtered-events-panel.import.loaded"));
+      } catch (err) {
+        if (err && err.code === "MISMATCH_CASE") {
+          alert(t("components.filtered-events-panel.import.mismatch-case"));
+          return;
         }
-        return map;
-      };
-      let storeMap = new Map();
-      for (const cand of parseCandidates) {
-        const m = toKvMap(cand);
-        const cnt = Array.from(m.keys()).filter((k) => String(k).startsWith("gos.")).length;
-        if (cnt > storeMap.size) storeMap = m;
-      }
-      if (!storeMap.size) {
-        alert(t("components.filtered-events-panel.import.missing-state"));
-        return;
-      }
-
-      // Filter keys for this case
-      const id = currentCaseId;
-      const prefixes = [
-        `gos.tier.${id}.`,
-        `gos.field.${id}.`,
-        `gos.notes.${id}`,
-        `gos.genomic.${id}`,
-      ];
-      const entriesForCase = Array.from(storeMap.entries()).filter(([k]) =>
-        prefixes.some((p) => String(k).startsWith(p))
-      );
-
-      // Overwrite IndexedDB for this case first
-      await this.clearCaseFromIndexedDB(id);
-      await new Promise((resolve) => {
-        const dbName = "gos_report";
-        const req = indexedDB.open(dbName, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains("kv")) {
-            db.createObjectStore("kv", { keyPath: "k" });
-          }
-        };
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction("kv", "readwrite");
-          const store = tx.objectStore("kv");
-          for (const [k, v] of entriesForCase) {
-            try {
-              store.put({ k: String(k), v });
-            } catch (_) {}
-          }
-          tx.oncomplete = () => {
-            db.close();
-            resolve();
-          };
-          tx.onabort = tx.onerror = () => {
-            db.close();
-            resolve();
-          };
-        };
-        req.onerror = () => resolve();
-      });
-
-      // Apply to Redux
-      const { filteredEvents, applyTierOverride, updateAlterationFields } = this.props;
-      const get = (k) => storeMap.get(k);
-      const toList = (val) =>
-        Array.isArray(val)
-          ? val.map(String)
-          : String(val || "")
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-
-      for (const ev of (filteredEvents || [])) {
-        const anchor = eventAnchor(ev?.gene, ev?.variant);
-        if (!anchor) continue;
-        const tKey = keyTier(id, anchor);
-        const baseKey = keyFieldBase(id, anchor);
-
-        const tierVal = get(tKey);
-        if (tierVal != null && String(tierVal) !== String(ev.tier)) {
-          applyTierOverride(ev.uid, String(tierVal));
+        if (err && err.code === "MISSING_STATE") {
+          alert(t("components.filtered-events-panel.import.missing-state"));
+          return;
         }
-
-        const changes = {};
-        const gs = get(`${baseKey}.gene_summary`);
-        if (gs != null) changes.gene_summary = String(gs);
-        const vs = get(`${baseKey}.variant_summary`);
-        if (vs != null) changes.variant_summary = String(vs);
-        const ed = get(`${baseKey}.effect_description`);
-        if (ed != null) changes.effect_description = String(ed);
-        const nt = get(`${baseKey}.notes`);
-        if (nt != null) changes.notes = String(nt);
-        const th = get(`${baseKey}.therapeutics`);
-        if (th != null) changes.therapeutics = toList(th);
-        const rs = get(`${baseKey}.resistances`);
-        if (rs != null) changes.resistances = toList(rs);
-
-        if (Object.keys(changes).length) {
-          updateAlterationFields(ev.uid, changes);
-        }
+        throw err;
       }
-
-      const gnotesKey = `gos.notes.${id}`;
-      const gnotes = get(gnotesKey);
-      if (gnotes != null) {
-        this.props.setGlobalNotes(String(gnotes));
-      }
-
-      alert(t("components.filtered-events-panel.import.loaded"));
     } catch (err) {
       console.error("Failed to load report:", err);
       alert(this.props.t("components.filtered-events-panel.import.failed"));
     }
   };
 
-  clearCaseFromIndexedDB = async (caseId) => {
-    try {
-      if (!window.indexedDB || !caseId) return;
-      const prefixes = [`gos.tier.${caseId}.`, `gos.field.${caseId}.`, `gos.notes.${caseId}`];
 
-      const dbInfos =
-        (indexedDB.databases && (await indexedDB.databases())) || [];
-      const dbNames = (dbInfos || []).map((d) => d?.name).filter(Boolean);
 
-      const matchesPrefix = (s) =>
-        typeof s === "string" &&
-        prefixes.some(
-          (p) => s.startsWith(p) || s.includes(`::${p}`)
-        );
-
-      await Promise.all(
-        dbNames
-          .filter((name) => name && name.startsWith("gos_report"))
-          .map(
-            (dbName) =>
-              new Promise((resolve) => {
-                const req = indexedDB.open(dbName);
-                req.onerror = () => resolve();
-                req.onsuccess = () => {
-                  const db = req.result;
-                  const stores = Array.from(db.objectStoreNames || []);
-                  const nextStore = (i) => {
-                    if (i >= stores.length) {
-                      db.close();
-                      resolve();
-                      return;
-                    }
-                    const storeName = stores[i];
-                    const tx = db.transaction(storeName, "readwrite");
-                    const store = tx.objectStore(storeName);
-
-                    let usedCursor = false;
-                    try {
-                      const cursorReq = store.openCursor();
-                      usedCursor = true;
-                      cursorReq.onsuccess = (e) => {
-                        const cursor = e.target.result;
-                        if (cursor) {
-                          const key = cursor.key;
-                          const val = cursor.value;
-                          const keyStr = typeof key === "string" ? key : "";
-                          const kProp =
-                            (val && (val.k || val.key)) || "";
-                          const candidateStrs = [
-                            keyStr,
-                            String(kProp || ""),
-                          ];
-                          const shouldDel = candidateStrs.some(matchesPrefix);
-                          if (shouldDel) {
-                            store.delete(key);
-                          }
-                          cursor.continue();
-                        }
-                      };
-                    } catch (_) {
-                      usedCursor = false;
-                    }
-
-                    if (!usedCursor && store.getAllKeys && store.getAll) {
-                      const keysReq = store.getAllKeys();
-                      const valsReq = store.getAll();
-                      keysReq.onsuccess = () => {
-                        const keys = keysReq.result || [];
-                        valsReq.onsuccess = () => {
-                          const vals = valsReq.result || [];
-                          keys.forEach((k, idx) => {
-                            const keyStr =
-                              typeof k === "string" ? k : "";
-                            const v = vals[idx];
-                            const kProp = (v && (v.k || v.key)) || "";
-                            const candidateStrs = [
-                              keyStr,
-                              String(kProp || ""),
-                            ];
-                            const shouldDel =
-                              candidateStrs.some(matchesPrefix);
-                            if (shouldDel) store.delete(k);
-                          });
-                        };
-                      };
-                    }
-
-                    tx.oncomplete = () => nextStore(i + 1);
-                    tx.onabort = tx.onerror = () => nextStore(i + 1);
-                  };
-
-                  nextStore(0);
-                };
-              })
-          )
-      );
-    } catch (err) {
-      console.error("Failed clearing case state from IndexedDB:", err);
-    }
-  };
-
-  // Persist a single tier override key/value to IndexedDB
-  saveTierOverrideToIDB = async (key, value) => {
-    try {
-      if (!window.indexedDB || !key) return;
-      await new Promise((resolve) => {
-        const req = indexedDB.open("gos_report", 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains("kv")) {
-            db.createObjectStore("kv", { keyPath: "k" });
-          }
-        };
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction("kv", "readwrite");
-          const store = tx.objectStore("kv");
-          try {
-            store.put({ k: String(key), v: value });
-          } catch (_) {}
-          tx.oncomplete = () => {
-            db.close();
-            resolve();
-          };
-          tx.onabort = tx.onerror = () => {
-            db.close();
-            resolve();
-          };
-        };
-        req.onerror = () => resolve();
-      });
-    } catch (_) {}
-  };
-
-  saveKeyValueToIDB = async (key, value) => {
-    try {
-      if (!window.indexedDB || !key) return;
-      await new Promise((resolve) => {
-        const req = indexedDB.open("gos_report", 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains("kv")) {
-            db.createObjectStore("kv", { keyPath: "k" });
-          }
-        };
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction("kv", "readwrite");
-          const store = tx.objectStore("kv");
-          try {
-            store.put({ k: String(key), v: value });
-          } catch (_) {}
-          tx.oncomplete = () => {
-            db.close();
-            resolve();
-          };
-          tx.onabort = tx.onerror = () => {
-            db.close();
-            resolve();
-          };
-        };
-        req.onerror = () => resolve();
-      });
-    } catch (_) {}
-  };
 
   handleResetReportState = async () => {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
@@ -605,7 +235,7 @@ class FilteredEventsListPanel extends Component {
     if (!c2) return;
 
     // 1) Clear IndexedDB for this case
-    await this.clearCaseFromIndexedDB(caseId);
+    await clearCase(caseId);
 
     // 2) Reset Redux overrides and selection
     resetTierOverrides();
@@ -648,7 +278,7 @@ class FilteredEventsListPanel extends Component {
           const anchor = eventAnchor(ev?.gene, ev?.variant);
           if (!anchor) return;
           const tKey = keyTier(caseId, anchor);
-          this.saveTierOverrideToIDB(tKey, curTier);
+          saveTierOverride(tKey, curTier);
         }
       });
     }
@@ -657,8 +287,7 @@ class FilteredEventsListPanel extends Component {
     if (prevProps.globalNotes !== this.props.globalNotes) {
       const caseId = String(this.props.id || "");
       if (caseId) {
-        const key = `gos.notes.${caseId}`;
-        this.saveKeyValueToIDB(key, String(this.props.globalNotes || ""));
+        saveGlobalNotes(caseId, this.props.globalNotes);
       }
     }
   }
@@ -680,116 +309,8 @@ class FilteredEventsListPanel extends Component {
     });
   };
 
-  buildTierKey = (caseId, record) => {
-    if (!caseId || !record) return null;
-    const anchor = eventAnchor(record?.gene, record?.variant);
-    return keyTier(caseId, anchor);
-  };
 
-  getTierOverrideFromIDB = async (tierKey) => {
-    try {
-      if (!window.indexedDB || !tierKey) return null;
 
-      const dbInfos =
-        (indexedDB.databases && (await indexedDB.databases())) || [];
-      const dbNames = (dbInfos || []).map((d) => d?.name).filter(Boolean);
-
-      for (const dbName of dbNames) {
-        if (!dbName || !dbName.startsWith("gos_report")) continue;
-
-        const result = await new Promise((resolve) => {
-          const openReq = indexedDB.open(dbName);
-          openReq.onerror = () => resolve(null);
-          openReq.onsuccess = () => {
-            const db = openReq.result;
-            const stores = Array.from(db.objectStoreNames || []);
-            if (!stores.length) {
-              db.close();
-              resolve(null);
-              return;
-            }
-
-            const fullKey = `${dbName}::${tierKey}`;
-
-            const tryStore = (i) => {
-              if (i >= stores.length) {
-                db.close();
-                resolve(null);
-                return;
-              }
-              const storeName = stores[i];
-              const tx = db.transaction(storeName, "readonly");
-              const store = tx.objectStore(storeName);
-
-              const getReq = store.get(fullKey);
-              getReq.onsuccess = () => {
-                const val = getReq.result;
-                if (val != null) {
-                  db.close();
-                  resolve(
-                    typeof val === "object" && val !== null
-                      ? val.v ?? null
-                      : val
-                  );
-                  return;
-                }
-                if (!store.getAll) {
-                  tryStore(i + 1);
-                  return;
-                }
-                const allReq = store.getAll();
-                allReq.onsuccess = () => {
-                  const arr = allReq.result || [];
-                  const match = arr.find(
-                    (r) =>
-                      r?.k === fullKey ||
-                      r?.k === tierKey ||
-                      r?.key === tierKey ||
-                      r === fullKey ||
-                      r === tierKey
-                  );
-                  if (match) {
-                    db.close();
-                    resolve(
-                      typeof match === "object" && match !== null
-                        ? match.v ?? null
-                        : match
-                    );
-                  } else {
-                    tryStore(i + 1);
-                  }
-                };
-                allReq.onerror = () => tryStore(i + 1);
-              };
-              getReq.onerror = () => tryStore(i + 1);
-            };
-
-            tryStore(0);
-          };
-        });
-
-        if (result != null) {
-          const num = Number(result);
-          return Number.isFinite(num) ? String(num) : String(result);
-        }
-      }
-    } catch (_) {}
-    return null;
-  };
-
-  applyTierOverrideIfAny = async () => {
-    console.log("Applying tier override if any...");
-    const { id, selectedFilteredEvent, viewMode } = this.props;
-    if (!selectedFilteredEvent || viewMode !== "detail") return;
-
-    const tierKey = this.buildTierKey(id, selectedFilteredEvent);
-    const override = await this.getTierOverrideFromIDB(tierKey);
-    if (override != null && `${selectedFilteredEvent.tier}` !== `${override}`) {
-      this.props.applyTierOverride(selectedFilteredEvent.uid, `${override}`);
-    } else {
-      console.log("No tier override found or no change needed.");
-    }
-  };
 
   applyAllTierOverridesIfAny = async (opts = {}) => {
     const { reset = false } = opts;
@@ -826,8 +347,8 @@ class FilteredEventsListPanel extends Component {
 
       await Promise.all(
         filteredEvents.map(async (ev) => {
-          const key = this.buildTierKey(id, ev);
-          const override = await this.getTierOverrideFromIDB(key);
+          const key = buildTierKey(id, ev);
+          const override = await getTierOverride(key);
 
           if (override != null) {
             const origTier = origTierMap.get(ev.uid);
