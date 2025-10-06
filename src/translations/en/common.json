@@ -486,7 +486,7 @@
     "filtered-events-panel": {
       "reset-filters": "Reset Filters",
       "export": {
-        "notes": "Report",
+        "notes": "Export Report",
         "error": "Error exporting notes",
         "success": "Notes exported successfully",
         "no-notes": "No notes found to export",

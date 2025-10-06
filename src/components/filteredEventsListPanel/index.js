@@ -766,17 +766,6 @@ class FilteredEventsListPanel extends Component {
               align="middle"
               justify="space-between"
             >
-              <Col span={24}>
-                <Button
-                  type="primary"
-                  icon={<FileTextOutlined />}
-                  onClick={this.handleExportNotes}
-                  disabled={loading || this.state.exporting}
-                  style={{ marginBottom: 16 }}
-                >
-                  {t("components.filtered-events-panel.export.notes")}
-                </Button>
-              </Col>
               <Col flex="auto">
                 <Segmented
                   size="small"
@@ -823,6 +812,17 @@ class FilteredEventsListPanel extends Component {
               </Col>
             </Row>
             <Row className="ant-panel-container ant-home-plot-container">
+              <Col>
+                <Button
+                  type="primary"
+                  icon={<FileTextOutlined />}
+                  onClick={this.handleExportNotes}
+                  disabled={loading || this.state.exporting}
+                  style={{ marginBottom: 16 }}
+                >
+                  {t("components.filtered-events-panel.export.notes")}
+                </Button>
+              </Col>
               <Col className="gutter-row table-container" span={24}>
                 {
                   <Skeleton active loading={loading}>
