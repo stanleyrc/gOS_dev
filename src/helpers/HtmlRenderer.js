@@ -2,6 +2,7 @@
 'use strict';
 
 import { slugify, parseNum, toPercentString, formatCoveragePair, normalizeAlterationType, tagClassForType, splitPillsList, normalizePmId, pmidToUrl, escapeHtml, linkPmids } from './format';
+import { eventAnchor, tierKey, fieldBase } from './reportKeys';
 
 function encodeUtf8(s) {
   if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(String(s || ''));
@@ -508,9 +509,8 @@ function renderVariantHeader(v, caseId) {
   const variantTitle = String(v.variant || v.Variant || '');
   const roles = Array.isArray(v.role) ? v.role : splitPillsList(v.role);
   const effectTag = v.effect ? `<span class="pill effect-pill">${escapeHtml(v.effect)}</span>` : '';
-  const anchorIdBase = `${geneLabel} ${variantTitle}`.trim() || `${geneLabel} ${String(v.id || '')}`.trim();
-  const anchorId = slugify(anchorIdBase || `${geneLabel}-${tierStr}`);
-  const storageKey = `gos.tier.${caseId}.${anchorId}`;
+  const anchorId = eventAnchor(v.gene, variantTitle);
+  const storageKey = tierKey(caseId, anchorId);
 
   let html = '';
   html += `<div class="variant-header">`;
@@ -580,9 +580,8 @@ function renderVariantCard(v, caseId) {
   const gene = String(v.gene || 'Unknown');
   const geneLabel = gene.replace('::', '-');
   const variantTitle = String(v.variant || v.Variant || '');
-  const anchorIdBase = `${geneLabel} ${variantTitle}`.trim() || `${geneLabel} ${String(v.id || '')}`.trim();
-  const anchorId = slugify(anchorIdBase || `${geneLabel}-${tierStr}`);
-  const fieldKeyBase = `gos.field.${caseId}.${anchorId}`;
+  const anchorId = eventAnchor(v.gene, v.variant || v.Variant);
+  const fieldKeyBase = fieldBase(caseId, anchorId);
 
   const dataAttrs = ` data-gene="${escAttr(geneLabel)}" data-variant="${escAttr(variantTitle)}" data-tier="${escAttr(tierStr)}" data-default-tier="${escAttr(tierStr)}"`;
 
@@ -675,8 +674,7 @@ function buildToc(report, options = {}) {
       items.forEach((ev) => {
         const gene = String(ev.gene || 'Unknown').replace('::', '-');
         const variant = String(ev.variant || ev.Variant || '');
-        const anchorIdBase = `${gene} ${variant}`.trim() || `${gene} ${String(ev.id || '')}`.trim();
-        const anchorId = slugify(anchorIdBase || `${gene}-${tStr}`);
+        const anchorId = eventAnchor(ev.gene, variant);
         const label = variant ? `${gene}: ${variant}` : gene;
         toc += `<li><a href="#${escAttr(anchorId)}">${escapeHtml(label)}</a></li>`;
       });

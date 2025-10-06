@@ -15,7 +15,8 @@ import {
   Avatar,
   Typography,
 } from "antd";
-import { slugify } from "../../helpers/format";
+ // centralized anchor/key helpers
+ import { eventAnchor, tierKey as keyTier, fieldBase as keyFieldBase } from "../../helpers/reportKeys";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
@@ -102,16 +103,16 @@ class FilteredEventsListPanel extends Component {
       const deltaKv = [];
       (filteredEvents || []).forEach((ev) => {
         const orig = origByUid.get(ev.uid) || {};
-        const anchor = slugify(`${ev?.gene} ${ev?.variant}`);
+        const anchor = eventAnchor(ev?.gene, ev?.variant);
         if (!anchor) return;
-        const base = `gos.field.${id}.${anchor}`;
-        const tierKey = `gos.tier.${id}.${anchor}`;
+        const base = keyFieldBase(id, anchor);
+        const tKey = keyTier(id, anchor);
 
         // Tier override delta
         const curTier = normStr(ev.tier);
         const origTier = normStr(orig.tier);
         if (curTier && curTier !== origTier) {
-          deltaKv.push({ k: tierKey, v: curTier });
+          deltaKv.push({ k: tKey, v: curTier });
         }
 
         // Text fields deltas (allow empty string to clear a previously non-empty value)
@@ -293,12 +294,12 @@ class FilteredEventsListPanel extends Component {
               .filter(Boolean);
 
       for (const ev of (filteredEvents || [])) {
-        const anchor = slugify(`${ev?.gene} ${ev?.variant}`);
+        const anchor = eventAnchor(ev?.gene, ev?.variant);
         if (!anchor) continue;
-        const tierKey = `gos.tier.${id}.${anchor}`;
-        const baseKey = `gos.field.${id}.${anchor}`;
+        const tKey = keyTier(id, anchor);
+        const baseKey = keyFieldBase(id, anchor);
 
-        const tierVal = get(tierKey);
+        const tierVal = get(tKey);
         if (tierVal != null && String(tierVal) !== String(ev.tier)) {
           applyTierOverride(ev.uid, String(tierVal));
         }
@@ -430,6 +431,39 @@ class FilteredEventsListPanel extends Component {
     }
   };
 
+  // Persist a single tier override key/value to IndexedDB
+  saveTierOverrideToIDB = async (key, value) => {
+    try {
+      if (!window.indexedDB || !key) return;
+      await new Promise((resolve) => {
+        const req = indexedDB.open("gos_report", 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains("kv")) {
+            db.createObjectStore("kv", { keyPath: "k" });
+          }
+        };
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("kv", "readwrite");
+          const store = tx.objectStore("kv");
+          try {
+            store.put({ k: String(key), v: value });
+          } catch (_) {}
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onabort = tx.onerror = () => {
+            db.close();
+            resolve();
+          };
+        };
+        req.onerror = () => resolve();
+      });
+    } catch (_) {}
+  };
+
   handleResetReportState = async () => {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
     const caseId = id ? String(id) : "";
@@ -471,6 +505,26 @@ class FilteredEventsListPanel extends Component {
     ) {
       this.applyAllTierOverridesIfAny({ reset: true });
     }
+
+    // Persist tier overrides to IndexedDB whenever tiers change in-app
+    if (prevProps.filteredEvents !== this.props.filteredEvents) {
+      const prevByUid = new Map(
+        (prevProps.filteredEvents || []).map((d) => [d.uid, d])
+      );
+      const caseId = String(this.props.id || "");
+      (this.props.filteredEvents || []).forEach((ev) => {
+        const prev = prevByUid.get(ev.uid);
+        if (!prev) return;
+        const prevTier = prev.tier != null ? String(prev.tier) : "";
+        const curTier = ev.tier != null ? String(ev.tier) : "";
+        if (curTier !== prevTier) {
+          const anchor = eventAnchor(ev?.gene, ev?.variant);
+          if (!anchor) return;
+          const tKey = keyTier(caseId, anchor);
+          this.saveTierOverrideToIDB(tKey, curTier);
+        }
+      });
+    }
   }
 
   handleSegmentedChange = (eventType) => {
@@ -492,8 +546,8 @@ class FilteredEventsListPanel extends Component {
 
   buildTierKey = (caseId, record) => {
     if (!caseId || !record) return null;
-    const anchor = slugify(`${record?.gene} ${record?.variant}`);
-    return `gos.tier.${caseId}.${anchor}`;
+    const anchor = eventAnchor(record?.gene, record?.variant);
+    return keyTier(caseId, anchor);
   };
 
   getTierOverrideFromIDB = async (tierKey) => {
@@ -1309,8 +1363,9 @@ class FilteredEventsListPanel extends Component {
                         onClose={this.handleCloseReportModal}
                         src={
                           reportSrc
-                            ? `${reportSrc}#${slugify(
-                                `${selectedFilteredEvent?.gene} ${selectedFilteredEvent?.variant}`
+                            ? `${reportSrc}#${eventAnchor(
+                                selectedFilteredEvent?.gene,
+                                selectedFilteredEvent?.variant
                               )}`
                             : undefined
                         }
