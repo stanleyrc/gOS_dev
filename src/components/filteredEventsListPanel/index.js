@@ -171,6 +171,7 @@ class FilteredEventsListPanel extends Component {
 
   handleLoadReport = async () => {
     try {
+      const { t } = this.props;
       const file = await new Promise((resolve) => {
         const input = document.createElement("input");
         input.type = "file";
@@ -189,7 +190,7 @@ class FilteredEventsListPanel extends Component {
       const meta = doc.querySelector('meta[name="gos-case-id"]');
       const importedCaseId = (meta && meta.getAttribute("content")) || "";
       if (!importedCaseId || importedCaseId !== currentCaseId) {
-        alert("Uploaded report does not match the current case. Import aborted.");
+        alert(t("components.filtered-events-panel.import.mismatch-case"));
         return;
       }
 
@@ -234,7 +235,7 @@ class FilteredEventsListPanel extends Component {
         if (cnt > storeMap.size) storeMap = m;
       }
       if (!storeMap.size) {
-        alert("Could not find embedded report state in the uploaded file.");
+        alert(t("components.filtered-events-panel.import.missing-state"));
         return;
       }
 
@@ -323,10 +324,10 @@ class FilteredEventsListPanel extends Component {
         }
       }
 
-      alert("Report loaded.");
+      alert(t("components.filtered-events-panel.import.loaded"));
     } catch (err) {
       console.error("Failed to load report:", err);
-      alert("Failed to load report.");
+      alert(this.props.t("components.filtered-events-panel.import.failed"));
     }
   };
 
@@ -468,16 +469,12 @@ class FilteredEventsListPanel extends Component {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
     const caseId = id ? String(id) : "";
     if (!caseId) {
-      alert("No case ID available to reset.");
+      alert(this.props.t("components.filtered-events-panel.reset-prompts.no-case-id"));
       return;
     }
-    const c1 = window.confirm(
-      "Reset all local changes to this report (tiers and edited fields)?"
-    );
+    const c1 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm1"));
     if (!c1) return;
-    const c2 = window.confirm(
-      "Are you absolutely sure? This will permanently remove local edits for this case."
-    );
+    const c2 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm2"));
     if (!c2) return;
 
     // 1) Clear IndexedDB for this case
@@ -1234,7 +1231,7 @@ class FilteredEventsListPanel extends Component {
                     onClick={this.handleLoadReport}
                     style={{ marginBottom: 16 }}
                   >
-                    Load Report
+                    {t("components.filtered-events-panel.load-report")}
                   </Button>
                 </Space>
               </Col>
@@ -1245,7 +1242,7 @@ class FilteredEventsListPanel extends Component {
                   onClick={this.handleResetReportState}
                   style={{ marginBottom: 16 }}
                 >
-                  Reset
+                  {t("components.filtered-events-panel.reset-state")}
                 </Button>
               </Col>
               <Col className="gutter-row table-container" span={24}>

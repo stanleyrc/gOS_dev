@@ -7,6 +7,7 @@ import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import { linkPmids } from "../../helpers/format";
+import { useTranslation } from "react-i18next";
 
 const { Title, Text } = Typography;
 
@@ -137,7 +138,7 @@ function EditablePillsBlock({ title, list, onChange, pillClass }) {
   );
 }
 
-function EditableNotesBlock({ value, onChange }) {
+function EditableNotesBlock({ value, onChange, title }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || "");
   const ref = useRef(null);
@@ -162,12 +163,12 @@ function EditableNotesBlock({ value, onChange }) {
   return (
     <div className="desc-block editable-field notes-block" style={{ marginTop: 12 }}>
       <div className="desc-title">
-        Notes:
+        {title}:
         <button
           type="button"
           className="edit-btn"
           onClick={() => setEditing(true)}
-          aria-label="Edit Notes"
+          aria-label={title}
         >
           <EditOutlined />
         </button>
@@ -184,14 +185,14 @@ function EditableNotesBlock({ value, onChange }) {
       ) : (
         <div
           className={`note-display ${isEmpty ? "is-empty" : ""}`}
-          data-placeholder="Click to add notes…"
+          data-placeholder={title}
           onClick={() => setEditing(true)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setEditing(true);
           }}
-          aria-label="Click to edit notes"
+          aria-label={title}
         >
           {value}
         </div>
@@ -201,6 +202,7 @@ function EditableNotesBlock({ value, onChange }) {
 }
 
 export default function AlterationCard({ record }) {
+  const { t } = useTranslation("common");
   const liveRecord = useSelector((state) => {
     const fe = state?.FilteredEvents;
     if (!fe) return record;
@@ -231,7 +233,7 @@ export default function AlterationCard({ record }) {
   const currentTierStr = ["1", "2", "3"].includes(String(tier))
     ? String(tier)
     : "3";
-  const geneLabel = (gene || "Unknown").replace("::", "-");
+  const geneLabel = (gene || t("components.alteration-card.unknown")).replace("::", "-");
   const variantTitle = variant || "";
 
   const roles = toList(role);
@@ -283,7 +285,7 @@ export default function AlterationCard({ record }) {
     return (
       <Wrapper>
         <Card className="variant-card">
-          <Text type="secondary">No alteration selected.</Text>
+          <Text type="secondary">{t("components.alteration-card.no-alteration")}</Text>
         </Card>
       </Wrapper>
     );
@@ -296,7 +298,7 @@ export default function AlterationCard({ record }) {
         <div className="variant-header">
           <div className="gene-left">
             {currentTierStr && (
-              <div className="tier-control" title={`Tier ${currentTierStr}`}>
+              <div className="tier-control" title={`${t("components.filtered-events-panel.tier")} ${currentTierStr}`}>
                 <Avatar
                   size={32}
                   style={{
@@ -315,11 +317,11 @@ export default function AlterationCard({ record }) {
                       filteredEventsActions.applyTierOverride(liveRecord.uid, e.target.value)
                     )
                   }
-                  aria-label={`Set tier for ${geneLabel} ${variantTitle}`}
+                  aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
                 >
-                  <option value="1">Tier 1</option>
-                  <option value="2">Tier 2</option>
-                  <option value="3">Tier 3 / Exclude</option>
+                  <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
+                  <option value="2">{t("components.alteration-card.tier-select.options.2")}</option>
+                  <option value="3">{t("components.alteration-card.tier-select.options.3")}</option>
                 </select>
               </div>
             )}
@@ -347,7 +349,7 @@ export default function AlterationCard({ record }) {
         <div className="variant-body">
           <div className="variant-desc">
             <EditableTextBlock
-              title="Gene Summary"
+              title={t("components.alteration-card.labels.gene-summary")}
               value={local.geneSummary}
               onChange={(v) => {
                 setLocal((s) => ({ ...s, geneSummary: v }));
@@ -355,7 +357,7 @@ export default function AlterationCard({ record }) {
               }}
              />
             <EditableTextBlock
-              title="Variant Summary"
+              title={t("components.alteration-card.labels.variant-summary")}
               value={local.variantSummary}
               onChange={(v) => {
                 setLocal((s) => ({ ...s, variantSummary: v }));
@@ -363,7 +365,7 @@ export default function AlterationCard({ record }) {
               }}
              />
             <EditableTextBlock
-              title="Effect Description"
+              title={t("components.alteration-card.labels.effect-description")}
               value={local.effectDescription}
               onChange={(v) => {
                 setLocal((s) => ({ ...s, effectDescription: v }));
@@ -371,6 +373,7 @@ export default function AlterationCard({ record }) {
               }}
              />
             <EditableNotesBlock
+              title={t("components.alteration-card.labels.notes")}
               value={local.notes}
               onChange={(v) => {
                 setLocal((s) => ({ ...s, notes: v }));
@@ -382,20 +385,20 @@ export default function AlterationCard({ record }) {
           {hasMetrics ? (
             <div className="metrics-block">
               <Descriptions size="small" bordered column={1}>
-                <Descriptions.Item label="VAF">
+                <Descriptions.Item label={t("components.alteration-card.labels.vaf")}>
                   {vaf !== undefined ? <span className="monospace">{String(vaf)}</span> : unavailableMetric}
                 </Descriptions.Item>
-                <Descriptions.Item label="Multiplicity">
+                <Descriptions.Item label={t("components.alteration-card.labels.multiplicity")}>
                   {estimatedAlteredCopies !== undefined ? (
                     <span className="monospace">{String(estimatedAlteredCopies)}</span>
                   ) : (
                     unavailableMetric
                   )}
                 </Descriptions.Item>
-                <Descriptions.Item label="Tumor Alt">
+                <Descriptions.Item label={t("components.alteration-card.labels.tumor-alt")}>
                   {altCounts !== undefined ? <span className="monospace">{String(altCounts)}</span> : unavailableMetric}
                 </Descriptions.Item>
-                <Descriptions.Item label="Tumor Ref">
+                <Descriptions.Item label={t("components.alteration-card.labels.tumor-ref")}>
                   {refCounts !== undefined ? <span className="monospace">{String(refCounts)}</span> : unavailableMetric}
                 </Descriptions.Item>
               </Descriptions>
@@ -406,7 +409,7 @@ export default function AlterationCard({ record }) {
 
         <div className="variant-footer">
           <EditablePillsBlock
-            title="Therapeutics"
+            title={t("components.alteration-card.labels.therapeutics")}
             list={local.therapeutics}
             onChange={(arr) => {
               setLocal((s) => ({ ...s, therapeutics: arr }));
@@ -416,7 +419,7 @@ export default function AlterationCard({ record }) {
           />
 
           <EditablePillsBlock
-            title="Resistances"
+            title={t("components.alteration-card.labels.resistances")}
             list={local.resistances}
             onChange={(arr) => {
               setLocal((s) => ({ ...s, resistances: arr }));

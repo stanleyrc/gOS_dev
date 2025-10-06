@@ -35,11 +35,11 @@ function ReportModal({
 
   const mainTab = {
     key: "alteration",
-    label: "Alteration",
+    label: t("components.report-modal.tabs.alteration"),
     children: record ? (
       <AlterationCard record={record} />
     ) : (
-      <Alert type="info" message="No alteration selected" showIcon />
+      <Alert type="info" message={t("components.report-modal.no-selection")} showIcon />
     ),
   };
 
@@ -48,7 +48,7 @@ function ReportModal({
     mainTab,
     {
       key: "plots",
-      label: "Plots",
+      label: t("components.report-modal.tabs.plots"),
       children: (
         <div className="plots-container">
           <TracksModal
