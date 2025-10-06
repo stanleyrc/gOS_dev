@@ -64,18 +64,16 @@ export default function appReducer(state = initState, action) {
       };
     }
     case actions.RESET_TIER_OVERRIDES: {
-      // If already at original, do nothing to avoid useless updates
-      if (state.filteredEvents === state.originalFilteredEvents) return state;
-
-      const selectedUid = state.selectedFilteredEvent?.uid;
-      const newSelected = selectedUid
-        ? (state.originalFilteredEvents || []).find((d) => d?.uid === selectedUid) || null
-        : null;
+      const origMap = new Map(
+        (state.originalFilteredEvents || []).map((d) => [d.uid, d.tier])
+      );
+      const restoreTier = (it) =>
+        it ? { ...it, tier: origMap.get(it.uid) ?? it.tier } : it;
 
       return {
         ...state,
-        filteredEvents: state.originalFilteredEvents,
-        selectedFilteredEvent: newSelected,
+        filteredEvents: (state.filteredEvents || []).map(restoreTier),
+        selectedFilteredEvent: restoreTier(state.selectedFilteredEvent),
       };
     }
     case actions.UPDATE_ALTERATION_FIELDS: {
