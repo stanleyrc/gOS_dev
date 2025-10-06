@@ -14,6 +14,7 @@ import {
   Tooltip,
   Avatar,
   Typography,
+  Input,
 } from "antd";
  // centralized anchor/key helpers
  import { eventAnchor, tierKey as keyTier, fieldBase as keyFieldBase } from "../../helpers/reportKeys";
@@ -21,21 +22,24 @@ import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
+import { EditOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import { HtmlRenderer } from "../../helpers/HtmlRenderer";
+import { linkPmids } from "../../helpers/format";
 import { loadInlineReportAssets } from "../../helpers/reportAssets";
 import { buildReportFromState } from "../../helpers/reportMapper";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, applyTierOverride, resetTierOverrides, updateAlterationFields } = filteredEventsActions;
+const { selectFilteredEvent, applyTierOverride, resetTierOverrides, updateAlterationFields, setGlobalNotes } = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -43,6 +47,51 @@ const eventColumns = {
   cna: [0, 1, 2, 3, 4, 5, 7, 12],
   fusion: [0, 1, 2, 3, 4, 5, 8, 12],
 };
+
+function EditableTextBlock({ title, value, onChange }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(value || "");
+  const ref = React.useRef(null);
+
+  React.useEffect(() => { setDraft(value || ""); }, [value]);
+  React.useEffect(() => { if (editing && ref.current) ref.current.focus({ cursor: "end" }); }, [editing]);
+
+  const handleBlur = () => {
+    onChange(draft || "");
+    setEditing(false);
+  };
+
+  return (
+    <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
+      <div className="desc-title">
+        {title}:
+        <button
+          type="button"
+          className="edit-btn"
+          onClick={() => setEditing(true)}
+          aria-label={`Edit ${title}`}
+          style={{ marginLeft: 8 }}
+        >
+          <EditOutlined />
+        </button>
+      </div>
+      {editing ? (
+        <Input.TextArea
+          ref={ref}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          autoSize={{ minRows: 3 }}
+          onBlur={handleBlur}
+        />
+      ) : value ? (
+        <div
+          className="desc-text"
+          dangerouslySetInnerHTML={{ __html: linkPmids(value) }}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 class FilteredEventsListPanel extends Component {
   isApplyingOverrides = false;
@@ -142,6 +191,12 @@ class FilteredEventsListPanel extends Component {
           deltaKv.push({ k: `${base}.resistances`, v: curRes });
         }
       });
+
+      // Global notes delta
+      const globalNotes = String(this.props.globalNotes || "");
+      if (globalNotes) {
+        deltaKv.push({ k: `gos.notes.${id}`, v: globalNotes });
+      }
 
       const renderer = new HtmlRenderer();
       const filename = id ? `gos_report_${id}.html` : "gos_report.html";
@@ -324,6 +379,12 @@ class FilteredEventsListPanel extends Component {
         }
       }
 
+      const gnotesKey = `gos.notes.${id}`;
+      const gnotes = get(gnotesKey);
+      if (gnotes != null) {
+        this.props.setGlobalNotes(String(gnotes));
+      }
+
       alert(t("components.filtered-events-panel.import.loaded"));
     } catch (err) {
       console.error("Failed to load report:", err);
@@ -334,7 +395,7 @@ class FilteredEventsListPanel extends Component {
   clearCaseFromIndexedDB = async (caseId) => {
     try {
       if (!window.indexedDB || !caseId) return;
-      const prefixes = [`gos.tier.${caseId}.`, `gos.field.${caseId}.`];
+      const prefixes = [`gos.tier.${caseId}.`, `gos.field.${caseId}.`, `gos.notes.${caseId}`];
 
       const dbInfos =
         (indexedDB.databases && (await indexedDB.databases())) || [];
@@ -465,6 +526,38 @@ class FilteredEventsListPanel extends Component {
     } catch (_) {}
   };
 
+  saveKeyValueToIDB = async (key, value) => {
+    try {
+      if (!window.indexedDB || !key) return;
+      await new Promise((resolve) => {
+        const req = indexedDB.open("gos_report", 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains("kv")) {
+            db.createObjectStore("kv", { keyPath: "k" });
+          }
+        };
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("kv", "readwrite");
+          const store = tx.objectStore("kv");
+          try {
+            store.put({ k: String(key), v: value });
+          } catch (_) {}
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onabort = tx.onerror = () => {
+            db.close();
+            resolve();
+          };
+        };
+        req.onerror = () => resolve();
+      });
+    } catch (_) {}
+  };
+
   handleResetReportState = async () => {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
     const caseId = id ? String(id) : "";
@@ -483,6 +576,9 @@ class FilteredEventsListPanel extends Component {
     // 2) Reset Redux overrides and selection
     resetTierOverrides();
     selectFilteredEvent(null);
+
+    // 3) Clear global notes in Redux (and persist empty to app IndexedDB via saga)
+    this.props.setGlobalNotes("");
   };
 
   handleCloseReportModal = async () => {
@@ -521,6 +617,15 @@ class FilteredEventsListPanel extends Component {
           this.saveTierOverrideToIDB(tKey, curTier);
         }
       });
+    }
+
+    // Persist global notes to gos_report IndexedDB when they change
+    if (prevProps.globalNotes !== this.props.globalNotes) {
+      const caseId = String(this.props.id || "");
+      if (caseId) {
+        const key = `gos.notes.${caseId}`;
+        this.saveKeyValueToIDB(key, String(this.props.globalNotes || ""));
+      }
     }
   }
 
@@ -1165,6 +1270,15 @@ class FilteredEventsListPanel extends Component {
           </Row>
         ) : (
           <>
+            <Row className="ant-panel-container ant-home-plot-container">
+              <Col span={24}>
+                <EditableTextBlock
+                  title={t("components.alteration-card.labels.notes")}
+                  value={this.props.globalNotes || ""}
+                  onChange={(v) => this.props.setGlobalNotes(v)}
+                />
+              </Col>
+            </Row>
             <Row
               className="ant-panel-container ant-home-plot-container"
               align="middle"
@@ -1445,6 +1559,7 @@ const mapDispatchToProps = (dispatch) => ({
   resetTierOverrides: () => dispatch(resetTierOverrides()),
   updateAlterationFields: (uid, changes) =>
     dispatch(updateAlterationFields(uid, changes)),
+  setGlobalNotes: (notes) => dispatch(setGlobalNotes(notes)),
 });
 const mapStateToProps = (state) => ({
   loading: state.FilteredEvents.loading,
@@ -1466,6 +1581,7 @@ const mapStateToProps = (state) => ({
   hetsnps: state.Hetsnps,
   genes: state.Genes,
   igv: state.Igv,
+  globalNotes: state.FilteredEvents.globalNotes,
 });
 export default connect(
   mapStateToProps,

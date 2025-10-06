@@ -29,6 +29,9 @@ function fieldBaseKey(id, anchor) {
 function tierKey(id, anchor) {
   return `gos.tier.${id}.${anchor}`;
 }
+function notesKey(id) {
+  return `gos.notes.${id}`;
+}
 
 function* fetchFilteredEvents(action) {
   const currentState = yield select(getCurrentState);
@@ -144,6 +147,17 @@ function* persistTierOverride(action) {
   } catch (_e) {}
 }
 
+function* persistGlobalNotes(action) {
+  try {
+    const state = yield select(getCurrentState);
+    const id = state?.CaseReport?.id;
+    if (!id) return;
+    const ns = nsForState(state);
+    const key = notesKey(id);
+    yield call(idbSet, ns, key, String(action.notes || ""));
+  } catch (_e) {}
+}
+
 function* persistAlterationFields(action) {
   try {
     const { uid, changes } = action;
@@ -214,13 +228,28 @@ function* hydrateAlterationFieldsFromIdb() {
   } catch (_e) {}
 }
 
+function* hydrateGlobalNotesFromIdb() {
+  try {
+    const state = yield select(getCurrentState);
+    const id = state?.CaseReport?.id;
+    if (!id) return;
+    const ns = nsForState(state);
+    const map = yield call(idbGetAll, ns);
+    const key = notesKey(id);
+    if (Object.prototype.hasOwnProperty.call(map, key)) {
+      yield put({ type: actions.SET_GLOBAL_NOTES, notes: String(map[key] || "") });
+    }
+  } catch (_e) {}
+}
 
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_FILTERED_EVENTS_REQUEST, fetchFilteredEvents);
   yield takeEvery(actions.SELECT_FILTERED_EVENT, selectFilteredEvent);
   yield takeEvery(actions.UPDATE_ALTERATION_FIELDS, persistAlterationFields);
   yield takeEvery(actions.APPLY_TIER_OVERRIDE, persistTierOverride);
+  yield takeEvery(actions.SET_GLOBAL_NOTES, persistGlobalNotes);
   yield takeEvery(actions.FETCH_FILTERED_EVENTS_SUCCESS, hydrateAlterationFieldsFromIdb);
+  yield takeEvery(actions.FETCH_FILTERED_EVENTS_SUCCESS, hydrateGlobalNotesFromIdb);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);
