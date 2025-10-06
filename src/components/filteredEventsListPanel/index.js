@@ -15,7 +15,7 @@ import {
   Avatar,
   Typography,
 } from "antd";
-import { slugify } from "../../helpers/report";
+import { slugify } from "../../helpers/format";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
