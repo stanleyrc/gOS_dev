@@ -168,12 +168,39 @@
     var r = root || document;
     var el =
       r.querySelector('script#gos-state-json[type="application/json"]') ||
+      r.querySelector('script#gos-initial-state[type="application/json"]') ||
       r.querySelector('script[data-gos="state"][type="application/json"]');
     if (!el) return null;
     try {
       var txt = el.textContent || el.innerText || '';
-      var obj = JSON.parse(String(txt || ''));
-      return (obj && typeof obj === 'object') ? obj : null;
+      var raw = JSON.parse(String(txt || ''));
+      var entries = null;
+
+      // If the JSON itself is an array of {k, v}
+      if (Array.isArray(raw)) {
+        entries = {};
+        raw.forEach(function (it) {
+          if (it && it.k != null) entries[String(it.k)] = String(it.v ?? '');
+        });
+      } else if (raw && typeof raw === 'object') {
+        // If it has an entries property (map or array)
+        if (raw.entries && typeof raw.entries === 'object') {
+          if (Array.isArray(raw.entries)) {
+            entries = {};
+            raw.entries.forEach(function (it) {
+              if (it && it.k != null) entries[String(it.k)] = String(it.v ?? '');
+            });
+          } else {
+            entries = raw.entries;
+          }
+        } else if (raw.k != null) {
+          // Single {k, v} object
+          entries = {};
+          entries[String(raw.k)] = String(raw.v ?? '');
+        }
+      }
+
+      return (entries && Object.keys(entries).length) ? { entries: entries } : null;
     } catch (_e) {
       return null;
     }
@@ -197,12 +224,14 @@
  
 
   function getDisplayBaseline(el) {
-    var mode = (el.getAttribute && el.getAttribute('data-render')) || 'pmid';
-    if (mode === 'pills' || mode === 'genomic') {
-      return String(el.getAttribute('data-initial') || '');
-    }
+    var init = (el && el.getAttribute) ? el.getAttribute('data-initial') : null;
+    if (init != null) return String(init || '');
+    var mode = (el && el.getAttribute) ? (el.getAttribute('data-render') || 'pmid') : 'pmid';
     if (mode === 'note') return '';
-    return String(el.textContent || '');
+    if (mode === 'pills' || mode === 'genomic') {
+      return String((el && el.getAttribute && el.getAttribute('data-initial')) || '');
+    }
+    return String((el && el.textContent) || '');
   }
 
   function buildBaselineMap(root) {

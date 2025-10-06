@@ -249,42 +249,52 @@ function createEditableDescBlock(title, rawValue, storageKey) {
   const key = String(storageKey || '');
   const titleSafe = escapeHtml(title);
   const keyAttr = escAttr(key);
+  const plain = String(rawValue || '');
   return `
-  <div class="desc-block editable-field" data-storage-key="${keyAttr}">
-    <div class="desc-title">
-      ${titleSafe}:
-      <button class="edit-btn" type="button" aria-label="Edit ${titleSafe}" data-role="edit-btn">✎</button>
-    </div>
-    <div class="desc-text" data-role="display" data-storage-key="${keyAttr}">${displayHtml}</div>
-    <textarea class="edit-text" data-role="editor" data-storage-key="${keyAttr}" aria-label="Edit ${titleSafe}" style="display:none;"></textarea>
-  </div>`.trim();
+    <div class="desc-block editable-field" data-storage-key="${keyAttr}">
+      <div class="desc-title">
+        ${titleSafe}:
+        <button class="edit-btn" type="button" aria-label="Edit ${titleSafe}" data-role="edit-btn">✎</button>
+      </div>
+      <div class="desc-text"
+           data-role="display"
+           data-render="pmid"
+           data-storage-key="${keyAttr}"
+           data-initial="${escAttr(plain)}">${displayHtml}</div>
+      <textarea class="edit-text"
+                data-role="editor"
+                data-storage-key="${keyAttr}"
+                data-initial="${escAttr(plain)}"
+                aria-label="Edit ${titleSafe}"
+                style="display:none;"></textarea>
+    </div>`.trim();
 }
 
 // Per-alteration editable note block (plain text, click-to-edit, placeholder behavior)
 function createEditableNoteBlock(title, rawValue, storageKey) {
+  const displayHtml = linkPmids(String(rawValue || ''));
   const key = String(storageKey || '');
   const titleSafe = escapeHtml(title);
   const keyAttr = escAttr(key);
   const plain = String(rawValue || '');
-  const placeholder = 'Click to add notes…';
-  const displayHtml = escapeHtml(plain);
   return `
-  <div class="desc-block editable-field" data-storage-key="${keyAttr}">
-    <div class="desc-title">
-      ${titleSafe}:
-      <button class="edit-btn" type="button" aria-label="Edit ${titleSafe}" data-role="edit-btn">✎</button>
-    </div>
-    <div class="desc-text note-display"
-         data-role="display"
-         data-render="note"
-         data-storage-key="${keyAttr}"
-         data-placeholder="${escAttr(placeholder)}">${displayHtml}</div>
-    <textarea class="edit-text note-textarea"
-              data-role="editor"
-              data-storage-key="${keyAttr}"
-              aria-label="Edit ${titleSafe}"
-              style="display:none;"></textarea>
-  </div>`.trim();
+    <div class="desc-block editable-field" data-storage-key="${keyAttr}">
+      <div class="desc-title">
+        ${titleSafe}:
+        <button class="edit-btn" type="button" aria-label="Edit ${titleSafe}" data-role="edit-btn">✎</button>
+      </div>
+      <div class="desc-text"
+           data-role="display"
+           data-render="pmid"
+           data-storage-key="${keyAttr}"
+           data-initial="${escAttr(plain)}">${displayHtml}</div>
+      <textarea class="edit-text"
+                data-role="editor"
+                data-storage-key="${keyAttr}"
+                data-initial="${escAttr(plain)}"
+                aria-label="Edit ${titleSafe}"
+                style="display:none;"></textarea>
+    </div>`.trim();
 }
 
 // --- Pills helpers (server-side rendering/edit blocks) ---
@@ -405,8 +415,7 @@ function buildNotesSection(report) {
   const storageKey = `gos.notes.${caseId || 'unknown'}`;
   return `
 <h2 id="${escAttr(slugify('Notes'))}">Notes</h2>
-<pre id="notes-display" data-storage-key="${escAttr(storageKey)}"></pre>
-<textarea id="notes-textarea" data-storage-key="${escAttr(storageKey)}" placeholder="Enter clinical notes..." aria-label="Notes"></textarea>
+${createEditableDescBlock('Notes', '', storageKey)}
 <div class="notes-help">Notes are saved locally in your browser and stay on this device.</div>`.trim();
 }
 
@@ -531,7 +540,7 @@ function renderVariantBody(v, fieldKeyBase) {
     ? createEditableDescBlock('Effect Description', v.effect_description, `${fieldKeyBase}.effect_description`)
     : '';
 
-  const noteBlock = createEditableNoteBlock('Notes', '', `${fieldKeyBase}.notes`);
+  const noteBlock = createEditableNoteBlock('Notes', v.notes || '', `${fieldKeyBase}.notes`);
 
   const metrics = [];
   if (v.VAF !== undefined) metrics.push(`<div class="metric-row"><span class="metric-label">VAF:</span><span class="metric-value monospace">${escapeHtml(String(v.VAF))}</span></div>`);

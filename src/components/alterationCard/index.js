@@ -138,68 +138,6 @@ function EditablePillsBlock({ title, list, onChange, pillClass }) {
   );
 }
 
-function EditableNotesBlock({ value, onChange, title }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value || "");
-  const ref = useRef(null);
-
-  useEffect(() => {
-    setDraft(value || "");
-  }, [value]);
-
-  useEffect(() => {
-    if (editing && ref.current) {
-      ref.current.focus({ cursor: "end" });
-    }
-  }, [editing]);
-
-  const handleBlur = () => {
-    onChange(draft || "");
-    setEditing(false);
-  };
-
-  const isEmpty = !value;
-
-  return (
-    <div className="desc-block editable-field notes-block" style={{ marginTop: 12 }}>
-      <div className="desc-title">
-        {title}:
-        <button
-          type="button"
-          className="edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={title}
-        >
-          <EditOutlined />
-        </button>
-      </div>
-      {editing ? (
-        <Input.TextArea
-          ref={ref}
-          className="note-textarea"
-          rows={4}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={handleBlur}
-        />
-      ) : (
-        <div
-          className={`note-display ${isEmpty ? "is-empty" : ""}`}
-          data-placeholder={title}
-          onClick={() => setEditing(true)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") setEditing(true);
-          }}
-          aria-label={title}
-        >
-          {value}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function AlterationCard({ record }) {
   const { t } = useTranslation("common");
@@ -372,7 +310,7 @@ export default function AlterationCard({ record }) {
                 updateFields({ effect_description: v });
               }}
              />
-            <EditableNotesBlock
+            <EditableTextBlock
               title={t("components.alteration-card.labels.notes")}
               value={local.notes}
               onChange={(v) => {
