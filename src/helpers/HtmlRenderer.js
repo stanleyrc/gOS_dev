@@ -485,13 +485,6 @@ function buildTherapiesTable(report) {
 </div>`;
 }
 
-function buildSummarySection(report) {
-  const ai = report && typeof report.summary === 'string'
-    ? report.summary.trim()
-    : '';
-  if (!ai) return '';
-  return `<h2 id="${escAttr(slugify('AI Summary'))}">AI Summary</h2>\n<p>${escapeHtml(ai)}</p>`;
-}
 
 function buildBiomarkersSection(report) {
   const arr = Array.isArray(report && report.biomarkers) ? report.biomarkers : [];
@@ -639,10 +632,6 @@ function buildToc(report, options = {}) {
   });
   const caseId = report && report.patient && report.patient.caseId ? report.patient.caseId : '';
 
-  const ai = report && typeof report.summary === 'string'
-    ? report.summary.trim()
-    : '';
-  const hasAi = !!ai;
   const hasAlterations = events.length > 0;
 
   // Group events by tier (string)
@@ -668,9 +657,6 @@ function buildToc(report, options = {}) {
   toc += `<li><a href="#${escAttr(slugify('Overview'))}">Overview</a></li>`;
   toc += `<li><a href="#${escAttr(slugify('Notes'))}">Notes</a></li>`;
 
-  if (hasAi) {
-    toc += `<li><a href="#${escAttr(slugify('AI Summary'))}">AI Summary</a></li>`;
-  }
 
   if (hasAlterations) {
     toc += `<li><a href="#${escAttr(slugify('Alterations'))}">Alterations</a><ul>`;
@@ -709,7 +695,6 @@ class HtmlRenderer {
       buildToc(report, options),
       buildPatientSection(report),
       buildNotesSection(report),
-      buildSummarySection(report),
       buildAlterationsSection(report)
     ].filter(Boolean).join('\n\n');
 
