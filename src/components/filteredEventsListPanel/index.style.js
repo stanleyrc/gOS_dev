@@ -1,6 +1,44 @@
 import styled from "styled-components";
 
 const Wrapper = styled.div`
+  .filtered-events-header-text {
+    max-width: 160px;
+    display: block;
+    white-space: nowrap;
+  }
+
+  .filtered-events-header-cell {
+    max-width: 160px;
+    white-space: nowrap;
+  }
+
+  .filtered-events-location-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .filtered-events-location-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .filtered-events-variant-cell {
+    max-width: 200px;
+  }
+
+  .filtered-events-location-cell-wrapper {
+    max-width: 260px;
+  }
+
+  .filtered-events-ellipsis-text {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .table-container {
     .ant-table {
       .ant-table-container {

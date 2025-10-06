@@ -406,6 +406,9 @@ class FilteredEventsListPanel extends Component {
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
+    const roleInCancerLabel = t("components.filtered-events-panel.role");
+    const effectLabel = t("components.filtered-events-panel.effect");
+
     const columns = [
       {
         title: t("components.filtered-events-panel.gene"),
@@ -451,9 +454,20 @@ class FilteredEventsListPanel extends Component {
           ),
       },
       {
-        title: t("components.filtered-events-panel.role"),
+        title: (
+          <Text
+            className="filtered-events-header-text"
+            ellipsis={{ tooltip: roleInCancerLabel }}
+          >
+            {roleInCancerLabel}
+          </Text>
+        ),
         dataIndex: "role",
         key: "role",
+        width: 160,
+        onHeaderCell: () => ({
+          className: "filtered-events-header-cell",
+        }),
         filters: [...new Set(records.map((d) => d.role))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
@@ -486,6 +500,12 @@ class FilteredEventsListPanel extends Component {
         dataIndex: "variant",
         key: "variant",
         width: 120,
+        ellipsis: {
+          showTitle: false,
+        },
+        onCell: () => ({
+          className: "filtered-events-variant-cell",
+        }),
         sorter: {
           compare: (a, b) => {
             if (a.variant == null) return 1;
@@ -506,7 +526,12 @@ class FilteredEventsListPanel extends Component {
         filteredValue: variantFilters, // controlled by the component
         render: (_, record) =>
           record.variant != null ? (
-            record.variant
+            <Text
+              ellipsis={{ tooltip: record.variant }}
+              className="filtered-events-ellipsis-text"
+            >
+              {record.variant}
+            </Text>
           ) : (
             <Text italic disabled>
               <BsDashLg />
@@ -517,7 +542,7 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.type"),
         dataIndex: "type",
         key: "type",
-        width: 100,
+        width: 240,
         sorter: {
           compare: (a, b) => {
             if (a.type == null) return 1;
@@ -544,9 +569,20 @@ class FilteredEventsListPanel extends Component {
           ),
       },
       {
-        title: t("components.filtered-events-panel.effect"),
+        title: (
+          <Text
+            className="filtered-events-header-text"
+            ellipsis={{ tooltip: effectLabel }}
+          >
+            {effectLabel}
+          </Text>
+        ),
         dataIndex: "effect",
         key: "effect",
+        width: 160,
+        onHeaderCell: () => ({
+          className: "filtered-events-header-cell",
+        }),
         filters: [...new Set(records.map((d) => d.effect))]
           .sort((a, b) => d3.ascending(a, b))
           .map((d) => {
@@ -782,20 +818,28 @@ class FilteredEventsListPanel extends Component {
         title: t("components.filtered-events-panel.location"),
         dataIndex: "location",
         key: "location",
-        width: 100,
+        width: 260,
         fixed: "right",
         ellipsis: true,
+        onCell: () => ({
+          className: "filtered-events-location-cell-wrapper",
+        }),
         render: (_, record) =>
           record.location != null ? (
-            <Space direction="horizontal" size={0}>
-              {record.location}{" "}
+            <div className="filtered-events-location-cell">
+              <Text
+                ellipsis={{ tooltip: record.location }}
+                className="filtered-events-location-text filtered-events-ellipsis-text"
+              >
+                {record.location}
+              </Text>
               <Button
                 type="link"
                 onClick={() => selectFilteredEvent(record, "tracks")}
               >
                 <ArrowRightOutlined />
               </Button>
-            </Space>
+            </div>
           ) : (
             <Text italic disabled>
               <BsDashLg />
@@ -925,7 +969,8 @@ class FilteredEventsListPanel extends Component {
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
                       onChange={this.handleTableChange}
-                      scroll={{ x: "max-content", y: 500 }}
+                      scroll={{ x: "100%", y: 500 }}
+                      tableLayout="fixed"
                     />
                     {selectedFilteredEvent && viewMode === "tracks" && (
                       <TracksModal
