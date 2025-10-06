@@ -101,6 +101,136 @@ class FilteredEventsListPanel extends Component {
     }
   };
 
+  handleLoadReport = () => {
+    // Temporary stub for now
+    alert("Load Report import coming soon.");
+  };
+
+  clearCaseFromIndexedDB = async (caseId) => {
+    try {
+      if (!window.indexedDB || !caseId) return;
+      const prefixes = [`gos.tier.${caseId}.`, `gos.field.${caseId}.`];
+
+      const dbInfos =
+        (indexedDB.databases && (await indexedDB.databases())) || [];
+      const dbNames = (dbInfos || []).map((d) => d?.name).filter(Boolean);
+
+      const matchesPrefix = (s) =>
+        typeof s === "string" &&
+        prefixes.some(
+          (p) => s.startsWith(p) || s.includes(`::${p}`)
+        );
+
+      await Promise.all(
+        dbNames
+          .filter((name) => name && name.startsWith("gos_report"))
+          .map(
+            (dbName) =>
+              new Promise((resolve) => {
+                const req = indexedDB.open(dbName);
+                req.onerror = () => resolve();
+                req.onsuccess = () => {
+                  const db = req.result;
+                  const stores = Array.from(db.objectStoreNames || []);
+                  const nextStore = (i) => {
+                    if (i >= stores.length) {
+                      db.close();
+                      resolve();
+                      return;
+                    }
+                    const storeName = stores[i];
+                    const tx = db.transaction(storeName, "readwrite");
+                    const store = tx.objectStore(storeName);
+
+                    let usedCursor = false;
+                    try {
+                      const cursorReq = store.openCursor();
+                      usedCursor = true;
+                      cursorReq.onsuccess = (e) => {
+                        const cursor = e.target.result;
+                        if (cursor) {
+                          const key = cursor.key;
+                          const val = cursor.value;
+                          const keyStr = typeof key === "string" ? key : "";
+                          const kProp =
+                            (val && (val.k || val.key)) || "";
+                          const candidateStrs = [
+                            keyStr,
+                            String(kProp || ""),
+                          ];
+                          const shouldDel = candidateStrs.some(matchesPrefix);
+                          if (shouldDel) {
+                            store.delete(key);
+                          }
+                          cursor.continue();
+                        }
+                      };
+                    } catch (_) {
+                      usedCursor = false;
+                    }
+
+                    if (!usedCursor && store.getAllKeys && store.getAll) {
+                      const keysReq = store.getAllKeys();
+                      const valsReq = store.getAll();
+                      keysReq.onsuccess = () => {
+                        const keys = keysReq.result || [];
+                        valsReq.onsuccess = () => {
+                          const vals = valsReq.result || [];
+                          keys.forEach((k, idx) => {
+                            const keyStr =
+                              typeof k === "string" ? k : "";
+                            const v = vals[idx];
+                            const kProp = (v && (v.k || v.key)) || "";
+                            const candidateStrs = [
+                              keyStr,
+                              String(kProp || ""),
+                            ];
+                            const shouldDel =
+                              candidateStrs.some(matchesPrefix);
+                            if (shouldDel) store.delete(k);
+                          });
+                        };
+                      };
+                    }
+
+                    tx.oncomplete = () => nextStore(i + 1);
+                    tx.onabort = tx.onerror = () => nextStore(i + 1);
+                  };
+
+                  nextStore(0);
+                };
+              })
+          )
+      );
+    } catch (err) {
+      console.error("Failed clearing case state from IndexedDB:", err);
+    }
+  };
+
+  handleResetReportState = async () => {
+    const { id, resetTierOverrides, selectFilteredEvent } = this.props;
+    const caseId = id ? String(id) : "";
+    if (!caseId) {
+      alert("No case ID available to reset.");
+      return;
+    }
+    const c1 = window.confirm(
+      "Reset all local changes to this report (tiers and edited fields)?"
+    );
+    if (!c1) return;
+    const c2 = window.confirm(
+      "Are you absolutely sure? This will permanently remove local edits for this case."
+    );
+    if (!c2) return;
+
+    // 1) Clear IndexedDB for this case
+    await this.clearCaseFromIndexedDB(caseId);
+
+    // 2) Reset Redux overrides and selection
+    resetTierOverrides();
+    selectFilteredEvent(null);
+  };
+
   handleCloseReportModal = async () => {
     this.setState({ showReportModal: false });
     this.props.selectFilteredEvent(null);
@@ -812,15 +942,33 @@ class FilteredEventsListPanel extends Component {
               </Col>
             </Row>
             <Row className="ant-panel-container ant-home-plot-container">
-              <Col>
+              <Col flex="none">
+                <Space>
+                  <Button
+                    type="primary"
+                    icon={<FileTextOutlined />}
+                    onClick={this.handleExportNotes}
+                    disabled={loading || this.state.exporting}
+                    style={{ marginBottom: 16 }}
+                  >
+                    {t("components.filtered-events-panel.export.notes")}
+                  </Button>
+                  <Button
+                    onClick={this.handleLoadReport}
+                    style={{ marginBottom: 16 }}
+                  >
+                    Load Report
+                  </Button>
+                </Space>
+              </Col>
+              <Col flex="auto" />
+              <Col style={{ textAlign: "right" }} flex="none">
                 <Button
-                  type="primary"
-                  icon={<FileTextOutlined />}
-                  onClick={this.handleExportNotes}
-                  disabled={loading || this.state.exporting}
+                  danger
+                  onClick={this.handleResetReportState}
                   style={{ marginBottom: 16 }}
                 >
-                  {t("components.filtered-events-panel.export.notes")}
+                  Reset
                 </Button>
               </Col>
               <Col className="gutter-row table-container" span={24}>

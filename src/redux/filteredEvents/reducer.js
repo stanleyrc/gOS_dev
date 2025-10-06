@@ -64,16 +64,28 @@ export default function appReducer(state = initState, action) {
       };
     }
     case actions.RESET_TIER_OVERRIDES: {
+      // Restore entire items from the original snapshot (not just tier)
       const origMap = new Map(
-        (state.originalFilteredEvents || []).map((d) => [d.uid, d.tier])
+        (state.originalFilteredEvents || []).map((d) => [d.uid, d])
       );
-      const restoreTier = (it) =>
-        it ? { ...it, tier: origMap.get(it.uid) ?? it.tier } : it;
+
+      const restoreItem = (it) => {
+        if (!it) return it;
+        const orig = origMap.get(it.uid);
+        return orig ? { ...orig } : it;
+      };
+
+      const nextFiltered = (state.filteredEvents || []).map(restoreItem);
+      const nextSelected =
+        state.selectedFilteredEvent &&
+        origMap.has(state.selectedFilteredEvent.uid)
+          ? { ...origMap.get(state.selectedFilteredEvent.uid) }
+          : state.selectedFilteredEvent;
 
       return {
         ...state,
-        filteredEvents: (state.filteredEvents || []).map(restoreTier),
-        selectedFilteredEvent: restoreTier(state.selectedFilteredEvent),
+        filteredEvents: nextFiltered,
+        selectedFilteredEvent: nextSelected,
       };
     }
     case actions.UPDATE_ALTERATION_FIELDS: {
