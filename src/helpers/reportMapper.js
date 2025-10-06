@@ -61,7 +61,8 @@ export function buildReportFromState(state) {
   };
 
   const alterationsRaw = Array.isArray(fe?.filteredEvents) ? fe.filteredEvents : [];
-  const alterations = alterationsRaw.map(mapEvent);
+  const alterationsMapped = alterationsRaw.map(mapEvent);
+  const alterations = alterationsMapped.filter((a) => a.tier === '1' || a.tier === '2');
 
   const report = {
     patient,

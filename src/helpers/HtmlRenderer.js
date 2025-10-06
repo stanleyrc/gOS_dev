@@ -523,7 +523,6 @@ function renderVariantHeader(v, caseId) {
       <select class="tier-select" aria-label="Set tier for ${escAttr(geneLabel)} ${escAttr(variantTitle)}" data-storage-key="${escAttr(storageKey)}" data-default-tier="${escAttr(tierStr)}">
         <option value="1"${tierStr==='1'?' selected':''}>Tier 1</option>
         <option value="2"${tierStr==='2'?' selected':''}>Tier 2</option>
-        <option value="3"${tierStr==='3'?' selected':''}>Tier 3 / Exclude</option>
       </select>
     </div>`;
   html += `<h3 class="gene-title">${escapeHtml(geneLabel)}</h3>`;
@@ -600,7 +599,11 @@ function renderVariantCard(v, caseId) {
 }
 
 function buildAlterationsSection(report) {
-  const events = Array.isArray(report && report.alterations) ? report.alterations : [];
+  const all = Array.isArray(report && report.alterations) ? report.alterations : [];
+  const events = all.filter((e) => {
+    const t = Number(e.Tier ?? e.tier);
+    return Number.isFinite(t) && t < 3;
+  });
   if (!events.length) return '';
 
   const sorted = [...events].sort((a, b) => {
@@ -618,7 +621,7 @@ function buildAlterationsSection(report) {
   html += `\n<section id="alterations-section">`;
   html += `\n<div class="alterations-controls"><input type="search" id="alterations-filter" placeholder="Filter by gene…" aria-label="Filter alterations by gene" /></div>`;
   html += `\n<div class="alterations-list" data-case-id="${escAttr(caseId)}">`;
-  html += `\n<div id="tier-1"></div>\n<div id="tier-2"></div>\n<div id="tier-3"></div>`;
+  html += `\n<div id="tier-1"></div>\n<div id="tier-2"></div>`;
 
   for (const v of sorted) {
     html += renderVariantCard(v, caseId);
@@ -629,7 +632,11 @@ function buildAlterationsSection(report) {
 }
 
 function buildToc(report, options = {}) {
-  const events = Array.isArray(report && report.alterations) ? report.alterations : [];
+  const all = Array.isArray(report && report.alterations) ? report.alterations : [];
+  const events = all.filter((e) => {
+    const t = Number(e.Tier ?? e.tier);
+    return Number.isFinite(t) && t < 3;
+  });
   const caseId = report && report.patient && report.patient.caseId ? report.patient.caseId : '';
 
   const ai = report && typeof report.summary === 'string'
@@ -669,12 +676,6 @@ function buildToc(report, options = {}) {
     toc += `<li><a href="#${escAttr(slugify('Alterations'))}">Alterations</a><ul>`;
     tiers.forEach((tier) => {
       const tStr = String(tier);
-      if (tStr === '3') {
-        if ((byTier[tStr] || []).length > 0) {
-          toc += `<li><a href="#tier-3">Tier 3</a></li>`;
-        }
-        return;
-      }
       toc += `<li><a href="#tier-${escAttr(tStr)}">Tier ${escapeHtml(tStr)}</a><ul>`;
       const items = (byTier[tier] || []).slice().sort((a, b) => {
         const ga = String(a.gene || '').localeCompare(String(b.gene || ''));
