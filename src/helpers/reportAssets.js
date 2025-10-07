@@ -1,23 +1,42 @@
 'use strict';
 
-const CSS_URL = '/report_assets/styles.css';
-const CLIENT_JS_URL = '/report_assets/html_client.js';
-const FORMAT_JS_URL = '/report_assets/format.client.js';
+import axios from 'axios';
+
+const CSS_URL = 'report_assets/styles.css';
+const CLIENT_JS_URL = 'report_assets/html_client.js';
+const FORMAT_JS_URL = 'report_assets/format.client.js';
 
 const ICON_PATHS = {
-  'android-chrome-192x192.png': '/android-chrome-192x192.png',
-  'android-chrome-512x512.png': '/android-chrome-512x512.png',
-  'apple-touch-icon.png': '/apple-touch-icon.png',
-  'favicon-32x32.png': '/favicon-32x32.png',
-  'favicon-16x16.png': '/favicon-16x16.png',
-  'mstile-150x150.png': '/mstile-150x150.png',
+  'android-chrome-192x192.png': 'android-chrome-192x192.png',
+  'android-chrome-512x512.png': 'android-chrome-512x512.png',
+  'apple-touch-icon.png': 'apple-touch-icon.png',
+  'favicon-32x32.png': 'favicon-32x32.png',
+  'favicon-16x16.png': 'favicon-16x16.png',
+  'mstile-150x150.png': 'mstile-150x150.png',
 };
+
+// Resolve asset URLs under PUBLIC_URL (prod) or <base href> if set.
+const PUBLIC_BASE = (
+  ((typeof process !== 'undefined' && process.env && process.env.PUBLIC_URL) || '') ||
+  ((typeof document !== 'undefined' &&
+    document.querySelector('base[href]') &&
+    document.querySelector('base[href]').getAttribute('href')) || '')
+).replace(/\/+$/, '');
+
+function assetUrl(relOrAbsPath) {
+  const p = String(relOrAbsPath || '');
+  if (/^(https?:)?\/\//i.test(p) || /^data:/i.test(p)) return p;
+  const clean = p.replace(/^\/+/, '');
+  return PUBLIC_BASE ? `${PUBLIC_BASE}/${clean}` : `${clean}`;
+}
 
 async function fetchText(url) {
   try {
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) return '';
-    return await res.text();
+    const res = await axios.get(assetUrl(url), {
+      withCredentials: true,
+      transformResponse: [(d) => d], // prevent JSON parsing
+    });
+    return typeof res.data === 'string' ? res.data : String(res.data ?? '');
   } catch {
     return '';
   }
@@ -34,10 +53,11 @@ function blobToDataUrl(blob) {
 
 async function fetchDataUrl(url) {
   try {
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) return '';
-    const blob = await res.blob();
-    return await blobToDataUrl(blob);
+    const res = await axios.get(assetUrl(url), {
+      withCredentials: true,
+      responseType: 'blob',
+    });
+    return await blobToDataUrl(res.data);
   } catch {
     return '';
   }
