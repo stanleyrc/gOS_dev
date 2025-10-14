@@ -63,6 +63,28 @@ const Wrapper = styled.div`
   .filters-collapse {
     margin-left: -12px;
   }
+  .tags-container {
+    width: 100%;
+    align-items: stretch;
+    margin-bottom: 10px;
+  }
+  .tags-container .ant-form-item {
+    margin-bottom: 0;
+  }
+  .tags-container > .tags-operator-item.ant-form-item {
+    flex: 0 0 22px;
+  }
+  .tags-container > .tags-cascader-item.ant-form-item {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .tags-operators-select {
+    width: 100%;
+    height: auto;
+  }
+  .tags-cascader {
+    width: 100%;
+  }
 `;
 
 export default Wrapper;

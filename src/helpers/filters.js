@@ -31,3 +31,5 @@ export function generateCascaderOptions(tags) {
 
   return options;
 }
+
+export const cascaderOperators = ["OR", "AND", "NOT"];

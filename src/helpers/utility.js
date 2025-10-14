@@ -987,6 +987,7 @@ export function reportFilters() {
     { name: "disease", type: "string", renderer: "select" },
     { name: "primary_site", type: "string", renderer: "select" },
     { name: "inferred_sex", type: "string", renderer: "select" },
+    { name: "operator", type: "string", renderer: "cascader-select" },
     {
       name: "tumor_median_coverage",
       type: "number",

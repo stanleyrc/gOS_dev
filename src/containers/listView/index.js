@@ -25,7 +25,10 @@ import {
   snakeCaseToHumanReadable,
   orderListViewFilters,
 } from "../../helpers/utility";
-import { generateCascaderOptions } from "../../helpers/filters";
+import {
+  generateCascaderOptions,
+  cascaderOperators,
+} from "../../helpers/filters";
 import Wrapper from "./index.style";
 
 const { SHOW_CHILD } = Cascader;
@@ -33,6 +36,8 @@ const { SHOW_CHILD } = Cascader;
 const { Meta } = Card;
 const { Option } = Select;
 const { Text } = Typography;
+const { Compact } = Space;
+const { Item } = Form;
 
 class ListView extends Component {
   formRef = React.createRef();
@@ -69,6 +74,7 @@ class ListView extends Component {
       }
       return acc;
     }, {});
+    resetValues["operator"] = cascaderOperators[0]; // default operator
     // Update form fields
     this.formRef.current.setFieldsValue(resetValues);
     // Trigger search with reset values and pagination defaults
@@ -128,41 +134,65 @@ class ListView extends Component {
     let filterFormItemRenderer = (d) => {
       if (d.filter.renderer === "cascader") {
         return (
-          <Form.Item
-            key={`containers.list-view.filters.${d.filter.name}`}
-            name={d.filter.name}
-            label={t(`containers.list-view.filters.${d.filter.name}`)}
-            rules={[
-              {
-                required: false,
-              },
-            ]}
-          >
-            <Cascader
-              placeholder={t("containers.list-view.filters.placeholder")}
-              style={{ width: "100%" }}
-              options={generateCascaderOptions(d.records)}
-              displayRender={this.tagsDisplayRender}
-              multiple
-              showSearch={(inputValue, path) =>
-                path.some(
-                  (option) =>
-                    option.label
-                      .toLowerCase()
-                      .indexOf(inputValue.toLowerCase()) > -1
-                )
-              }
-              maxTagCount="responsive"
-              showCheckedStrategy={SHOW_CHILD}
-              allowClear
-            />
-          </Form.Item>
+          <Compact block className="tags-container">
+            <Item
+              key={`containers.list-view.filters.${d.filter.name}-operator`}
+              className="tags-operator-item"
+              name={`operator`}
+              label={t(
+                `containers.list-view.filters.${d.filter.name}-operator`
+              )}
+              rules={[
+                {
+                  required: false,
+                },
+              ]}
+            >
+              <Select className="tags-operators-select">
+                {cascaderOperators.map((e, i) => (
+                  <Option key={i} value={e}>
+                    {t(`containers.list-view.filters.operators.${e}`)}
+                  </Option>
+                ))}
+              </Select>
+            </Item>
+            <Item
+              key={`containers.list-view.filters.${d.filter.name}`}
+              className="tags-cascader-item"
+              name={d.filter.name}
+              label={t(`containers.list-view.filters.${d.filter.name}`)}
+              rules={[
+                {
+                  required: false,
+                },
+              ]}
+            >
+              <Cascader
+                placeholder={t("containers.list-view.filters.placeholder")}
+                className="tags-cascader"
+                options={generateCascaderOptions(d.records)}
+                displayRender={this.tagsDisplayRender}
+                multiple
+                showSearch={(inputValue, path) =>
+                  path.some(
+                    (option) =>
+                      option.label
+                        .toLowerCase()
+                        .indexOf(inputValue.toLowerCase()) > -1
+                  )
+                }
+                maxTagCount="responsive"
+                showCheckedStrategy={SHOW_CHILD}
+                allowClear
+              />
+            </Item>
+          </Compact>
         );
       }
 
       if (d.filter.renderer === "select") {
         return (
-          <Form.Item
+          <Item
             key={`containers.list-view.filters.${d.filter.name}`}
             name={d.filter.name}
             label={t(`containers.list-view.filters.${d.filter.name}`)}
@@ -191,7 +221,7 @@ class ListView extends Component {
                 </Option>
               ))}
             </Select>
-          </Form.Item>
+          </Item>
         );
       }
 
@@ -201,7 +231,7 @@ class ListView extends Component {
         !isNaN(d.extent[1])
       ) {
         return (
-          <Form.Item
+          <Item
             key={`containers.list-view.filters.${d.filter.name}`}
             name={d.filter.name}
             label={t(`containers.list-view.filters.${d.filter.name}`)}
@@ -225,7 +255,7 @@ class ListView extends Component {
                 formatter: (value) => d3.format(d.format)(value),
               }}
             />
-          </Form.Item>
+          </Item>
         );
       }
       return null; // nothing for unknown renderer
@@ -278,16 +308,16 @@ class ListView extends Component {
                       })}
                   />
                   <Space>
-                    <Form.Item>
+                    <Item>
                       <Button type="primary" htmlType="submit">
                         {t("containers.list-view.filters.submit")}
                       </Button>
-                    </Form.Item>
-                    <Form.Item>
+                    </Item>
+                    <Item>
                       <Button htmlType="button" onClick={this.onReset}>
                         {t("containers.list-view.filters.reset")}
                       </Button>
-                    </Form.Item>
+                    </Item>
                   </Space>
                 </Card>
               </Col>

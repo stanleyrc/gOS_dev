@@ -355,6 +355,7 @@
           "biomarker-metrics": "Biomarker Metrics"
         },
         "tags": "Tags",
+        "tags-operator": "Matching",
         "pair": "Pair",
         "disease": "Disease",
         "tumor_type": "Tumor Type",
@@ -378,7 +379,12 @@
         "purity": "Purity",
         "ploidy": "Ploidy",
         "submit": "Submit",
-        "reset": "Reset"
+        "reset": "Reset",
+        "operators": {
+          "OR": "Any",
+          "AND": "All",
+          "NOT": "No"
+        }
       },
       "ordering": "Sorting by <strong>{{attribute}}</strong> in <strong>{{sort}}</strong> order"
     },

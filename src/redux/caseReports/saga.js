@@ -181,6 +181,7 @@ function* searchReports({ searchFilters }) {
         key !== "page" &&
         key !== "per_page" &&
         key !== "orderId" &&
+        key !== "operator" &&
         value !== null &&
         value !== undefined &&
         !(Array.isArray(value) && value.length === 0)
@@ -225,7 +226,7 @@ function* searchReports({ searchFilters }) {
             value <= actualSearchFilters[key][1]
           );
         });
-      } else {
+      } else if (keyRenderer === "select") {
         records = records.filter((d) => {
           return actualSearchFilters[key].some((item) => {
             // If the filter value is the string "null", match records where d[key] is null or undefined
@@ -237,6 +238,30 @@ function* searchReports({ searchFilters }) {
             return itemArr.some((i) => dKeyArr.includes(i));
           });
         });
+      } else if (keyRenderer === "cascader") {
+        const operator = (searchFilters?.operator || "OR").toUpperCase();
+        const selectedItems = actualSearchFilters[key];
+        const normalize = (value) => (Array.isArray(value) ? value : [value]);
+        const matchesItem = (record, item) => {
+          if (item === "null") {
+            return record[key] == null;
+          }
+          const recordValues = normalize(record[key]);
+          return normalize(item).some((value) => recordValues.includes(value));
+        };
+
+        const cascaderPredicates = {
+          AND: (record) =>
+            selectedItems.every((item) => matchesItem(record, item)),
+          OR: (record) =>
+            selectedItems.some((item) => matchesItem(record, item)),
+          NOT: (record) =>
+            selectedItems.every((item) => !matchesItem(record, item)),
+        };
+
+        const applyPredicate =
+          cascaderPredicates[operator] || cascaderPredicates.OR;
+        records = records.filter(applyPredicate);
       }
     }
   });

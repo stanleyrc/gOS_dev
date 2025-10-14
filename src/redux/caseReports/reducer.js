@@ -1,4 +1,5 @@
 import actions from "./actions";
+import { cascaderOperators } from "../../helpers/filters";
 
 const initState = {
   loading: false,
@@ -6,7 +7,13 @@ const initState = {
   datafiles: [],
   populations: {},
   reportsFilters: [],
-  searchFilters: { page: 1, per_page: 10, texts: "", orderId: 1 },
+  searchFilters: {
+    page: 1,
+    per_page: 10,
+    texts: "",
+    orderId: 1,
+    operator: cascaderOperators[0],
+  },
   reports: [],
   totalReports: [],
   error: null,
@@ -21,7 +28,13 @@ export default function appReducer(state = initState, action) {
         error: null,
         datafiles: [],
         populations: {},
-        searchFilters: { page: 1, per_page: 10, texts: "", orderId: 1 },
+        searchFilters: {
+          page: 1,
+          per_page: 10,
+          texts: "",
+          orderId: 1,
+          operator: cascaderOperators[0],
+        },
         reportsFilters: {},
         loading: true,
       };
@@ -46,6 +59,13 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         loadingPercentage: null,
+        searchFilters: action.searchFilters || {
+          page: 1,
+          per_page: 10,
+          texts: "",
+          orderId: 1,
+          operator: cascaderOperators[0],
+        },
         error: action.error,
         loading: false,
       };
@@ -57,6 +77,7 @@ export default function appReducer(state = initState, action) {
           per_page: 10,
           texts: "",
           orderId: 1,
+          operator: cascaderOperators[0],
         },
         loading: true,
       };
