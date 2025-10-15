@@ -138,3 +138,22 @@ export function cosineSimilarityClass(value) {
     return "error";
   }
 }
+
+export function qcEvaluator(qcMetrics) {
+  return qcMetrics.length === 0
+    ? null
+    : qcMetrics.some((d) => d.code === "FAIL")
+    ? "FAIL"
+    : qcMetrics.some((d) => d.code === "WARN")
+    ? "WARN"
+    : qcMetrics.every((d) => d.code === "UNKNOWN")
+    ? "UNKNOWN"
+    : "PASS";
+}
+
+export const qcMetricsClasses = {
+  pass: "success",
+  warn: "warning",
+  fail: "error",
+  unknown: "default",
+};

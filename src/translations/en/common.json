@@ -37,31 +37,6 @@
     "previous": "Previous",
     "next": "Next"
   },
-  "quality-status": {
-    "title": "Quality Status of this case",
-    "level": {
-      "3": {
-        "noun": "NA Quality Status",
-        "adjective": "Not Available"
-      },
-      "2": { "noun": "Poor Quality", "adjective": "Poor" },
-      "1": { "noun": "Medium Quality", "adjective": "Medium" },
-      "0": { "noun": "Good Quality", "adjective": "Good" }
-    },
-    "assessment": {
-      "missing_qc_metrics": "<strong>No metrics found</strong> in this case report to assess the Quality Status",
-      "tumor_coverage_less_than_80x": "Tumor bam has low coverage: <strong>{{value}}X</strong>",
-      "normal_coverage_less_than_20x": "Normal bam has low coverage: <strong>{{value}}X</strong>",
-      "mapped_reads_per_total_reads_less_than_99_percentage": "High percentage of reads not mapping to hg19: <strong>{{value}}</strong>",
-      "mapped_hq_greater_or_equal_q20_reads_per_total_reads_less_than_80_percentage": "High percentage of reads not mapping to hg19: <strong>{{value}}</strong>",
-      "genome_coverage_at_least_30x_pct_30x_picard_is_less_than_95_percentage": "Insufficient coverage of genome at 30X: <strong>{{value}}</strong>",
-      "amber_contamination_greater_than_1_percentage": "Potential sample contamination detected!",
-      "median_insert_size_less_or_equal_300": "Short median insert sizes detected: <strong>Sensitivity to structural variants may be reduced.</strong>",
-      "optical_pcr_dups_greater_or_equal_20_percentage": "High duplication rate <strong>{{value}}</strong>",
-      "jabba_number_of_loose_ends_greater_or_equal_100": "Sample potentially <strong>hypersegmented</strong>",
-      "jabba_converged_equal_false": "Graph model did not converge, <strong>PGV CN solution must be interpreted with caution</strong>"
-    }
-  },
   "topbar": {
     "report": "<strong>{{count}}</strong> case report in total",
     "report_plural": "<strong>{{count}}</strong> case reports in total",
@@ -383,7 +358,7 @@
         "operators": {
           "OR": "Any",
           "AND": "All",
-          "NOT": "No"
+          "NOT": "Not"
         }
       },
       "ordering": "Sorting by <strong>{{attribute}}</strong> in <strong>{{sort}}</strong> order"
@@ -450,7 +425,8 @@
       "reset": "Reset to full genome view"
     },
     "header-panel": {
-      "view-report": "View Report"
+      "view-report": "View Report",
+      "qcMetrics": "Quality Control Metrics"
     },
     "histogram-panel": {
       "header": "Histogram Chart",

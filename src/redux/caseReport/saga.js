@@ -19,6 +19,7 @@ import igvActions from "../igv/actions";
 import highlightsActions from "../highlights/actions";
 import snvplicityActions from "../snvplicity/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
+import { qcEvaluator } from "../../helpers/metadata";
 
 function* fetchCaseReport(action) {
   cancelAllRequests();
@@ -57,6 +58,9 @@ function* fetchCaseReport(action) {
     metadata.hrdB2Score = metadata.hrd?.b2_score;
     metadata.msiLabel = metadata.msisensor?.label;
     metadata.msiScore = metadata.msisensor?.score;
+
+    metadata.qcMetrics = metadata.qcMetrics || [];
+    metadata.qcEvaluation = qcEvaluator(metadata.qcMetrics);
 
     yield put({
       type: actions.FETCH_CASE_REPORT_SUCCESS,

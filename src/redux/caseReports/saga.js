@@ -20,6 +20,7 @@ import {
   orderListViewFilters,
   datafilesArrowTableToJson,
 } from "../../helpers/utility";
+import { qcEvaluator } from "../../helpers/metadata";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
@@ -62,12 +63,15 @@ function* fetchCaseReports(action) {
         }
 
         datafiles.forEach(
-          (d) =>
-            (d.tags =
+          (d) => {
+            d.tags =
               d.summary
                 ?.split("\n")
                 .map((e) => e.trim())
-                .filter((e) => e.length > 0) || [])
+                .filter((e) => e.length > 0) || [];
+
+            d.qcEvaluation = qcEvaluator(d.qcMetrics || []);
+          } // Ensure qcEvaluation is set for each report
         );
 
         let reportsFilters = [];

@@ -85,6 +85,10 @@ const Wrapper = styled.div`
   .tags-cascader {
     width: 100%;
   }
+  .case-report-ellipsis-text {
+    max-width: 150px;
+    font-size: 16px;
+  }
 `;
 
 export default Wrapper;

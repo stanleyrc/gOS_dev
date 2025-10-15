@@ -971,6 +971,7 @@ export function reportAttributesMap() {
     "hrd.b1_score": "hrdB1Score",
     "hrd.b2_score": "hrdB2Score",
     summary: "summary",
+    qcMetrics: "qcMetrics",
   };
 }
 

@@ -117,6 +117,11 @@ const Wrapper = styled.div`
     .tags-container {
       max-width: 60%;
     }
+    ,
+    .qc-evaluation-tag {
+      cursor: pointer;
+      user-select: none;
+    }
   }
 `;
 

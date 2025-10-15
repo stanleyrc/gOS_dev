@@ -3,7 +3,21 @@ import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { PageHeader } from "@ant-design/pro-components";
-import { Space, Tag, Avatar, Tooltip, Divider } from "antd";
+import {
+  Space,
+  Tag,
+  Avatar,
+  Tooltip,
+  Divider,
+  Popover,
+  Typography,
+} from "antd";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  QuestionCircleOutlined,
+} from "@ant-design/icons";
 import * as d3 from "d3";
 import {
   legendColors,
@@ -18,8 +32,11 @@ import {
   msiFields,
   hrdDividers,
   msiLabels,
+  qcMetricsClasses,
 } from "../../helpers/metadata";
 import Wrapper from "./index.style";
+
+const { Text } = Typography;
 
 class HeaderPanel extends Component {
   render() {
@@ -34,7 +51,39 @@ class HeaderPanel extends Component {
       disease,
       primary_site,
       tumor_details,
+      qcMetrics,
+      qcEvaluation,
     } = metadata;
+
+    let qcMetricsComponent = qcEvaluation ? (
+      <Popover
+        placement="bottomLeft"
+        title={
+          <Space>
+            <Text>{t(`components.header-panel.qcMetrics`)}:</Text>
+            <Text type={qcMetricsClasses[qcEvaluation.toLowerCase()]}>
+              <strong>{qcEvaluation}</strong>
+            </Text>
+          </Space>
+        }
+        content={
+          <Space direction="vertical">
+            {qcMetrics.map((d, i) => (
+              <Text key={i} type={qcMetricsClasses[d.code.toLowerCase()]}>
+                {d.title}
+              </Text>
+            ))}
+          </Space>
+        }
+      >
+        <Tag
+          color={qcMetricsClasses[qcEvaluation.toLowerCase()]}
+          className="qc-evaluation-tag"
+        >
+          {qcEvaluation}
+        </Tag>
+      </Popover>
+    ) : null;
 
     let colorMarkers = { ...msiLabels };
 
@@ -181,7 +230,11 @@ class HeaderPanel extends Component {
         <PageHeader
           className="site-page-header"
           title={pair}
-          subTitle={<Space>{sex}</Space>}
+          subTitle={
+            <Space>
+              <span>{sex}</span> {qcMetricsComponent}
+            </Space>
+          }
           extra={
             <Space size={[0, 4]} wrap>
               <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>

@@ -19,12 +19,14 @@ import {
   Divider,
   Slider,
   Collapse,
+  Tag,
 } from "antd";
 import * as d3 from "d3";
 import {
   snakeCaseToHumanReadable,
   orderListViewFilters,
 } from "../../helpers/utility";
+import { qcMetricsClasses } from "../../helpers/metadata";
 import {
   generateCascaderOptions,
   cascaderOperators,
@@ -390,8 +392,24 @@ class ListView extends Component {
                         hoverable
                         title={
                           <Space>
-                            <b>{d.pair}</b>
+                            <Text
+                              strong
+                              ellipsis={{ tooltip: d.pair }}
+                              className="case-report-ellipsis-text"
+                            >
+                              {d.pair}
+                            </Text>
                             <Text type="secondary">{d.inferred_sex}</Text>
+                            {d.qcEvaluation && (
+                              <Tag
+                                color={
+                                  qcMetricsClasses[d.qcEvaluation.toLowerCase()]
+                                }
+                                className="qc-evaluation-tag"
+                              >
+                                {d.qcEvaluation}
+                              </Tag>
+                            )}
                           </Space>
                         }
                         variant="borderless"
