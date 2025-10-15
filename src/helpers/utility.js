@@ -1409,6 +1409,25 @@ export function transformFilteredEventAttributes(filteredEvents) {
           } catch (error) {
             console.log(error);
           }
+        } else {
+          try {
+            location = event.Genome_Location;
+            actualLocation = transformFusionGeneCoords(
+              location
+            );
+            chromosome = location
+              .split(",")
+              .map((d) => d.split(":")[0]);
+            startPoint = location
+              .split(",")
+              .map((d) => d.split(":")[1].split("-")[0]);
+            endPoint = location
+              .split(",")
+              .map((d) => d.split(":")[1].split("-")[1]);
+            uid = `${chromosome}:${startPoint}-${chromosome}:${endPoint}`;
+          } catch (error) {
+            console.log(error);
+          }
         }
       }
       return {

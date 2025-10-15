@@ -88,3 +88,6 @@ nyuconnect.sh
 cdx_example.png
 
 report/
+.yarnrc.yml
+gOS.code-workspace
+.yarn/install-state.gz
