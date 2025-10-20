@@ -33,7 +33,7 @@ import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import { linkPmids } from "../../helpers/format";
+import EditableTextBlock from "../editableTextBlock";
 import {
   getTierOverride,
   clearCase,
@@ -54,84 +54,6 @@ const eventColumns = {
   cna: [0, 1, 2, 3, 4, 5, 7, 12],
   fusion: [0, 1, 2, 3, 4, 5, 8, 12],
 };
-
-function EditableTextBlock({ title, value, onChange }) {
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState(value || "");
-  const ref = React.useRef(null);
-
-  React.useEffect(() => {
-    setDraft(value || "");
-  }, [value]);
-  React.useEffect(() => {
-    if (editing && ref.current) ref.current.focus({ cursor: "end" });
-  }, [editing]);
-
-  const handleBlur = () => {
-    onChange(draft || "");
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
-        <div className="desc-title">{title}:</div>
-        <Input.TextArea
-          ref={ref}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoSize={{ minRows: 3 }}
-          onBlur={handleBlur}
-          style={{ marginTop: 8 }}
-        />
-      </div>
-    );
-  }
-
-  const html = value && linkPmids(value).replace(/\n/g, "<br/>");
-
-  return (
-    <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
-      <Collapse
-        className="notes-collapse"
-        bordered={false}
-        ghost
-        defaultActiveKey={[]}
-      >
-        <Collapse.Panel
-          key="notes"
-          header={
-            <div className="notes-header">
-              <span className="notes-header-title">{title}</span>
-              <button
-                type="button"
-                className="edit-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditing(true);
-                }}
-                aria-label={`Edit ${title}`}
-              >
-                <EditOutlined />
-              </button>
-            </div>
-          }
-        >
-          <div className="notes-view">
-            {value ? (
-              <div
-                className="desc-text"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            ) : (
-              <span className="notes-empty">No notes added</span>
-            )}
-          </div>
-        </Collapse.Panel>
-      </Collapse>
-    </div>
-  );
-}
 
 class FilteredEventsListPanel extends Component {
   isApplyingOverrides = false;
@@ -875,6 +797,7 @@ class FilteredEventsListPanel extends Component {
                   title={t("components.alteration-card.labels.notes")}
                   value={this.props.globalNotes || ""}
                   onChange={(v) => this.props.setGlobalNotes(v)}
+                  useCollapse={true}
                 />
               </Col>
             </Row>

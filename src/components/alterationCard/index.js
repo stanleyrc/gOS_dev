@@ -6,7 +6,7 @@ import { EditOutlined } from "@ant-design/icons";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
-import { linkPmids } from "../../helpers/format";
+import EditableTextBlock from "../editableTextBlock";
 import { useTranslation } from "react-i18next";
 
 const { Title, Text } = Typography;
@@ -18,60 +18,6 @@ function toList(value) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-}
-
-
-
-function EditableTextBlock({ title, value, onChange }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value || "");
-  const ref = useRef(null);
-
-  useEffect(() => {
-    setDraft(value || "");
-  }, [value]);
-
-  useEffect(() => {
-    if (editing && ref.current) {
-      // put focus inside the edit box on enter
-      ref.current.focus({ cursor: "end" });
-    }
-  }, [editing]);
-
-  const handleBlur = () => {
-    onChange(draft || "");
-    setEditing(false);
-  };
-
-  return (
-    <div className="desc-block editable-field">
-      <div className="desc-title">
-        {title}:
-        <button
-          type="button"
-          className="edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${title}`}
-        >
-          <EditOutlined />
-        </button>
-      </div>
-      {editing ? (
-        <Input.TextArea
-          ref={ref}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoSize={{ minRows: 3 }}
-          onBlur={handleBlur}
-        />
-      ) : value ? (
-        <div
-          className="desc-text"
-          dangerouslySetInnerHTML={{ __html: linkPmids(value) }}
-        />
-      ) : null}
-    </div>
-  );
 }
 
 function EditablePillsBlock({ title, list, onChange, pillClass }) {
