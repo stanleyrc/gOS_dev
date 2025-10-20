@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BsDashLg } from "react-icons/bs";
-import { Card, Tag, Typography, Descriptions, Avatar, Input } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { Card, Tag, Typography, Descriptions, Avatar } from "antd";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import EditableTextBlock from "../editableTextBlock";
+import EditablePillsBlock from "../editablePillsBlock";
 import { useTranslation } from "react-i18next";
 
 const { Title, Text } = Typography;
@@ -18,70 +18,6 @@ function toList(value) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-}
-
-function EditablePillsBlock({ title, list, onChange, pillClass }) {
-  const [editing, setEditing] = useState(false);
-  const ref = useRef(null);
-  const plain = useMemo(() => (list || []).join(", "), [list]);
-  const [draft, setDraft] = useState(plain);
-
-  useEffect(() => {
-    setDraft(plain);
-  }, [plain]);
-
-  useEffect(() => {
-    if (editing && ref.current) {
-      ref.current.focus({ cursor: "end" });
-    }
-  }, [editing]);
-
-  const handleBlur = () => {
-    const items = String(draft || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    onChange(items);
-    setEditing(false);
-  };
-
-  return (
-    <div className="desc-block editable-field">
-      <div className="desc-title">
-        {title}:
-        <button
-          type="button"
-          className="edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${title}`}
-        >
-          <EditOutlined />
-        </button>
-      </div>
-      {editing ? (
-        <Input
-          ref={ref}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={handleBlur}
-        />
-      ) : (
-        <div className={`${pillClass === "resistance-tag" ? "resistance-tags" : "therapeutics-tags"}`}>
-          {(list || []).length
-            ? list.map((v) => (
-                <Tag
-                  key={`${title}-${v}`}
-                  className={`pill ${pillClass}`}
-                  color={pillClass === "resistance-tag" ? "red" : "green"}
-                >
-                  {v}
-                </Tag>
-              ))
-            : null}
-        </div>
-      )}
-    </div>
-  );
 }
 
 
