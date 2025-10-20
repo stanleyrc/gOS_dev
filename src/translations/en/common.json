@@ -526,10 +526,10 @@
           "title": "The request has failed with the following error:"
         }
       },
-      "load-report": "Load Report",
-      "reset-state": "Reset",
+      "load-report": "Import Report",
+      "reset-state": "Clear Report Cache",
       "import": {
-        "mismatch-case": "Uploaded report does not match the current case. Import aborted.",
+        "mismatch-case": "Uploaded report does not match the current case ID. Import aborted.",
         "missing-state": "Could not find embedded report state in the uploaded file.",
         "loaded": "Report loaded.",
         "failed": "Failed to load report."
