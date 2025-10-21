@@ -6,6 +6,7 @@ import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
+import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
@@ -335,9 +336,17 @@ class AlterationCard extends Component {
   }
 }
 
-const mapStateToProps = (state) => ({
-  filteredEvents: state?.FilteredEvents,
-  interpretations: state?.Interpretations,
-});
+const mapStateToProps = (state) => {
+  const mergedEvents = selectMergedEvents(state);
+  
+  return {
+    filteredEvents: {
+      ...state?.FilteredEvents,
+      filteredEvents: mergedEvents.filteredEvents,
+      selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
+    },
+    interpretations: state?.Interpretations,
+  };
+};
 
 export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));

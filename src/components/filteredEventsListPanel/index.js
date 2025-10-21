@@ -31,9 +31,12 @@ import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
+import interpretationsActions from "../../redux/interpretations/actions";
+import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import EditableTextBlock from "../editableTextBlock";
+import EventInterpretation from "../../helpers/EventInterpretation";
 import {
   getTierOverride,
   clearCase,
@@ -1084,28 +1087,32 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(updateAlterationFields(uid, changes)),
   setGlobalNotes: (notes) => dispatch(setGlobalNotes(notes)),
 });
-const mapStateToProps = (state) => ({
-  loading: state.FilteredEvents.loading,
-  filteredEvents: state.FilteredEvents.filteredEvents,
-  originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
-  selectedFilteredEvent: state.FilteredEvents.selectedFilteredEvent,
-  viewMode: state.FilteredEvents.viewMode,
-  error: state.FilteredEvents.error,
-  reportSrc: state.FilteredEvents.reportSrc,
-  id: state.CaseReport.id,
-  report: state.CaseReport.metadata,
-  genome: state.Genome,
-  mutations: state.Mutations,
-  allelic: state.Allelic,
-  chromoBins: state.Settings.chromoBins,
-  genomeCoverage: state.GenomeCoverage,
-  methylationBetaCoverage: state.MethylationBetaCoverage,
-  methylationIntensityCoverage: state.MethylationIntensityCoverage,
-  hetsnps: state.Hetsnps,
-  genes: state.Genes,
-  igv: state.Igv,
-  globalNotes: state.FilteredEvents.globalNotes,
-});
+const mapStateToProps = (state) => {
+  const mergedEvents = selectMergedEvents(state);
+  
+  return {
+    loading: state.FilteredEvents.loading,
+    filteredEvents: mergedEvents.filteredEvents,
+    originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
+    selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
+    viewMode: state.FilteredEvents.viewMode,
+    error: state.FilteredEvents.error,
+    reportSrc: state.FilteredEvents.reportSrc,
+    id: state.CaseReport.id,
+    report: state.CaseReport.metadata,
+    genome: state.Genome,
+    mutations: state.Mutations,
+    allelic: state.Allelic,
+    chromoBins: state.Settings.chromoBins,
+    genomeCoverage: state.GenomeCoverage,
+    methylationBetaCoverage: state.MethylationBetaCoverage,
+    methylationIntensityCoverage: state.MethylationIntensityCoverage,
+    hetsnps: state.Hetsnps,
+    genes: state.Genes,
+    igv: state.Igv,
+    globalNotes: state.FilteredEvents.globalNotes,
+  };
+};
 export default connect(
   mapStateToProps,
   mapDispatchToProps
