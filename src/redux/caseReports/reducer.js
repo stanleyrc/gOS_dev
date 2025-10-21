@@ -86,6 +86,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         reports: action.reports,
         totalReports: action.totalReports,
+        reportsFilters: action.reportsFilters,
         loading: false,
       };
     default:

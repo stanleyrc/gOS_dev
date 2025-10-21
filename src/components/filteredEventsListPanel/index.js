@@ -17,8 +17,8 @@ import {
   Input,
   Collapse,
 } from "antd";
- // centralized anchor/key helpers
- import { eventAnchor, tierKey as keyTier } from "../../helpers/reportKeys";
+// centralized anchor/key helpers
+import { eventAnchor, tierKey as keyTier } from "../../helpers/reportKeys";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
@@ -46,7 +46,13 @@ import {
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, applyTierOverride, resetTierOverrides, updateAlterationFields, setGlobalNotes } = filteredEventsActions;
+const {
+  selectFilteredEvent,
+  applyTierOverride,
+  resetTierOverrides,
+  updateAlterationFields,
+  setGlobalNotes,
+} = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -147,7 +153,7 @@ class FilteredEventsListPanel extends Component {
   };
   state = {
     eventType: "all",
-    tierFilters: [1, 2], // start with tiers 1 & 2 checked
+    tierFilters: [],
     typeFilters: [],
     roleFilters: [],
     effectFilters: [],
@@ -160,7 +166,8 @@ class FilteredEventsListPanel extends Component {
   // add as a class field
 
   handleExportNotes = async () => {
-    const { id, filteredEvents, report, originalFilteredEvents, globalNotes } = this.props;
+    const { id, filteredEvents, report, originalFilteredEvents, globalNotes } =
+      this.props;
     try {
       this.setState({ exporting: true });
       await exportReport({
@@ -219,19 +226,24 @@ class FilteredEventsListPanel extends Component {
     }
   };
 
-
-
-
   handleResetReportState = async () => {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
     const caseId = id ? String(id) : "";
     if (!caseId) {
-      alert(this.props.t("components.filtered-events-panel.reset-prompts.no-case-id"));
+      alert(
+        this.props.t(
+          "components.filtered-events-panel.reset-prompts.no-case-id"
+        )
+      );
       return;
     }
-    const c1 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm1"));
+    const c1 = window.confirm(
+      this.props.t("components.filtered-events-panel.reset-prompts.confirm1")
+    );
     if (!c1) return;
-    const c2 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm2"));
+    const c2 = window.confirm(
+      this.props.t("components.filtered-events-panel.reset-prompts.confirm2")
+    );
     if (!c2) return;
 
     // 1) Clear IndexedDB for this case
@@ -308,9 +320,6 @@ class FilteredEventsListPanel extends Component {
       variantFilters: filters.variant || [],
     });
   };
-
-
-
 
   applyAllTierOverridesIfAny = async (opts = {}) => {
     const { reset = false } = opts;

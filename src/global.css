@@ -283,3 +283,16 @@ html[dir='rtl'] .dz-hidden-input {
 code {
   font-family: 'Roboto', sans-serif !important;
 }
+/* Filter option styling */
+div.filter-option-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+span.filter-option-count {
+  color: #999 !important;
+  font-size: 12px !important;
+}
+.filter-option-text {
+  max-width: 190px !important;
+}

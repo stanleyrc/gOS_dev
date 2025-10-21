@@ -13,13 +13,13 @@ import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
   plotTypes,
-  reportFilters,
   flip,
   reportAttributesMap,
   defaultSearchFilters,
   orderListViewFilters,
   datafilesArrowTableToJson,
 } from "../../helpers/utility";
+import { getReportsFilters, reportFilters } from "../../helpers/filters";
 import { qcEvaluator } from "../../helpers/metadata";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
@@ -76,34 +76,7 @@ function* fetchCaseReports(action) {
 
         let reportsFilters = [];
 
-        // Iterate through each filter
-        reportFilters().forEach((filter) => {
-          // Extract distinct values for the current filter
-          var distinctValues = [
-            ...new Set(
-              datafiles
-                .map((record) => {
-                  try {
-                    return eval(`record.${filter.name}`);
-                  } catch (err) {
-                    return null;
-                  }
-                })
-                .flat()
-            ),
-          ].sort((a, b) => d3.ascending(a, b));
-          // Add the filter information to the reportsFilters array
-          reportsFilters.push({
-            filter: filter,
-            records: [...distinctValues],
-            extent: d3.extent(
-              distinctValues.filter(
-                (e) => !isNaN(e) && e !== null && e !== undefined
-              )
-            ),
-            format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
-          });
-        });
+        reportsFilters = getReportsFilters(datafiles);
 
         let populations = {};
         let flippedMap = flip(reportAttributesMap());
@@ -284,10 +257,12 @@ function* searchReports({ searchFilters }) {
       : d3.descending(aValue, bValue);
   });
 
+  
   yield put({
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
+    reportsFilters: getReportsFilters(records),
   });
 }
 
