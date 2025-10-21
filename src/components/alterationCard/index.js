@@ -8,6 +8,7 @@ import filteredEventsActions from "../../redux/filteredEvents/actions";
 import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
+import EventInterpretation from "../../helpers/EventInterpretation";
 
 const { Title, Text } = Typography;
 
@@ -110,6 +111,18 @@ class AlterationCard extends Component {
 
   updateFields = (changes) => {
     const liveRecord = this.getLiveRecord();
+    console.log('live record', liveRecord);
+    
+    const eventInterpretation = new EventInterpretation({
+      caseId: liveRecord?.id || "UNKNOWN",
+      alterationId: liveRecord.uid || "UNKNOWN",
+      gene: liveRecord.gene,
+      variant: liveRecord.variant,
+      data: changes
+    });
+    
+    console.log(eventInterpretation.serialize());
+    
     this.props.dispatch(
       filteredEventsActions.updateAlterationFields(liveRecord.uid, changes)
     );
@@ -177,11 +190,20 @@ class AlterationCard extends Component {
                   <select
                     className="tier-select"
                     value={currentTierStr}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const eventInterpretation = new EventInterpretation({
+                        caseId: liveRecord?.id || "UNKNOWN",
+                        alterationId: liveRecord.uid || "UNKNOWN",
+                        gene: liveRecord.gene,
+                        variant: liveRecord.variant,
+                        data: { tier: e.target.value }
+                      });
+                      console.log(eventInterpretation.serialize());
+                      
                       this.props.dispatch(
                         filteredEventsActions.applyTierOverride(liveRecord.uid, e.target.value)
-                      )
-                    }
+                      );
+                    }}
                     aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
                   >
                     <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
