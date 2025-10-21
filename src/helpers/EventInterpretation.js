@@ -20,21 +20,42 @@ class EventInterpretation {
   }
 
   getOrCreateAuthorId() {
-    let authorId = localStorage.getItem('gOS_authorId');
-    if (!authorId) {
-      authorId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('gOS_authorId', authorId);
-    }
-    return authorId;
+    const userObj = this.getOrCreateUser();
+    return userObj.userId;
   }
 
   getOrCreateAuthorName() {
-    let authorName = localStorage.getItem('gOS_authorName');
-    if (!authorName) {
-      authorName = 'Anonymous';
-      localStorage.setItem('gOS_authorName', authorName);
+    const userObj = this.getOrCreateUser();
+    return userObj.displayName;
+  }
+
+  getOrCreateUser() {
+    const userKey = 'gOS_user';
+    let userStr = localStorage.getItem(userKey);
+    
+    if (!userStr) {
+      const userId = crypto.randomUUID();
+      const displayName = this.promptForDisplayName();
+      const userObj = { userId, displayName };
+      localStorage.setItem(userKey, JSON.stringify(userObj));
+      return userObj;
     }
-    return authorName;
+    
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      console.error('Failed to parse user from localStorage:', e);
+      const userId = crypto.randomUUID();
+      const displayName = 'Anonymous';
+      const userObj = { userId, displayName };
+      localStorage.setItem(userKey, JSON.stringify(userObj));
+      return userObj;
+    }
+  }
+
+  promptForDisplayName() {
+    const displayName = prompt('Please enter your display name:');
+    return displayName && displayName.trim() ? displayName.trim() : 'Anonymous';
   }
 
   updateData(newData) {

@@ -101,6 +101,7 @@ class AlterationCard extends Component {
   getLiveRecordFromProps(props) {
     const { record, filteredEvents } = props;
     const fe = filteredEvents;
+    console.log(filteredEvents)
     if (!fe) return record;
     if (record?.uid && fe.selectedFilteredEvent?.uid === record.uid) {
       return fe.selectedFilteredEvent;
