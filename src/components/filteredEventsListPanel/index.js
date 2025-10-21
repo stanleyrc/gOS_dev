@@ -37,15 +37,16 @@ import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import EditableTextBlock from "../editableTextBlock";
 import EventInterpretation from "../../helpers/EventInterpretation";
-import {
-  getTierOverride,
-  clearCase,
-  exportReport,
-  saveTierOverride,
-  saveGlobalNotes,
-  buildTierKey,
-  importReportStateFromHtml,
-} from "../../helpers/reportStateStore";
+// DEPRECATED: Import/export functionality will be reimplemented with repository pattern
+// import {
+//   getTierOverride,
+//   clearCase,
+//   exportReport,
+//   saveTierOverride,
+//   saveGlobalNotes,
+//   buildTierKey,
+//   importReportStateFromHtml,
+// } from "../../helpers/reportStateStore";
 
 const { Text } = Typography;
 
@@ -85,89 +86,95 @@ class FilteredEventsListPanel extends Component {
   // add as a class field
 
   handleExportNotes = async () => {
-    const { id, filteredEvents, report, originalFilteredEvents, globalNotes } = this.props;
-    try {
-      this.setState({ exporting: true });
-      await exportReport({
-        id,
-        reportMeta: report,
-        filteredEvents,
-        originalFilteredEvents,
-        globalNotes,
-      });
-    } catch (err) {
-      console.error("Report export failed:", err);
-    } finally {
-      this.setState({ exporting: false });
-    }
+    // DEPRECATED: Will be reimplemented with repository pattern
+    console.warn("Export functionality temporarily disabled - will be reimplemented with repository pattern");
+    // const { id, filteredEvents, report, originalFilteredEvents, globalNotes } = this.props;
+    // try {
+    //   this.setState({ exporting: true });
+    //   await exportReport({
+    //     id,
+    //     reportMeta: report,
+    //     filteredEvents,
+    //     originalFilteredEvents,
+    //     globalNotes,
+    //   });
+    // } catch (err) {
+    //   console.error("Report export failed:", err);
+    // } finally {
+    //   this.setState({ exporting: false });
+    // }
   };
 
   handleLoadReport = async () => {
-    try {
-      const { t } = this.props;
-      const file = await new Promise((resolve) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".html,text/html";
-        input.onchange = () => resolve(input.files && input.files[0]);
-        input.click();
-      });
-      if (!file) return;
+    // DEPRECATED: Will be reimplemented with repository pattern
+    console.warn("Import functionality temporarily disabled - will be reimplemented with repository pattern");
+    // try {
+    //   const { t } = this.props;
+    //   const file = await new Promise((resolve) => {
+    //     const input = document.createElement("input");
+    //     input.type = "file";
+    //     input.accept = ".html,text/html";
+    //     input.onchange = () => resolve(input.files && input.files[0]);
+    //     input.click();
+    //   });
+    //   if (!file) return;
 
-      const text = await file.text();
-      const caseId = String(this.props.id || "");
+    //   const text = await file.text();
+    //   const caseId = String(this.props.id || "");
 
-      try {
-        await importReportStateFromHtml({
-          htmlText: text,
-          caseId,
-          filteredEvents: this.props.filteredEvents,
-          applyTierOverride: this.props.applyTierOverride,
-          updateAlterationFields: this.props.updateAlterationFields,
-          setGlobalNotes: this.props.setGlobalNotes,
-        });
-        alert(t("components.filtered-events-panel.import.loaded"));
-      } catch (err) {
-        if (err && err.code === "MISMATCH_CASE") {
-          alert(t("components.filtered-events-panel.import.mismatch-case"));
-          return;
-        }
-        if (err && err.code === "MISSING_STATE") {
-          alert(t("components.filtered-events-panel.import.missing-state"));
-          return;
-        }
-        throw err;
-      }
-    } catch (err) {
-      console.error("Failed to load report:", err);
-      alert(this.props.t("components.filtered-events-panel.import.failed"));
-    }
+    //   try {
+    //     await importReportStateFromHtml({
+    //       htmlText: text,
+    //       caseId,
+    //       filteredEvents: this.props.filteredEvents,
+    //       applyTierOverride: this.props.applyTierOverride,
+    //       updateAlterationFields: this.props.updateAlterationFields,
+    //       setGlobalNotes: this.props.setGlobalNotes,
+    //     });
+    //     alert(t("components.filtered-events-panel.import.loaded"));
+    //   } catch (err) {
+    //     if (err && err.code === "MISMATCH_CASE") {
+    //       alert(t("components.filtered-events-panel.import.mismatch-case"));
+    //       return;
+    //     }
+    //     if (err && err.code === "MISSING_STATE") {
+    //       alert(t("components.filtered-events-panel.import.missing-state"));
+    //       return;
+    //     }
+    //     throw err;
+    //   }
+    // } catch (err) {
+    //   console.error("Failed to load report:", err);
+    //   alert(this.props.t("components.filtered-events-panel.import.failed"));
+    // }
   };
 
 
 
 
   handleResetReportState = async () => {
-    const { id, resetTierOverrides, selectFilteredEvent } = this.props;
-    const caseId = id ? String(id) : "";
-    if (!caseId) {
-      alert(this.props.t("components.filtered-events-panel.reset-prompts.no-case-id"));
-      return;
-    }
-    const c1 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm1"));
-    if (!c1) return;
-    const c2 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm2"));
-    if (!c2) return;
+    // DEPRECATED: Will be reimplemented with repository pattern
+    console.warn("Reset functionality temporarily disabled - will be reimplemented with repository pattern");
+    // const { id, resetTierOverrides, selectFilteredEvent } = this.props;
+    // const caseId = id ? String(id) : "";
+    // if (!caseId) {
+    //   alert(this.props.t("components.filtered-events-panel.reset-prompts.no-case-id"));
+    //   return;
+    // }
+    // const c1 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm1"));
+    // if (!c1) return;
+    // const c2 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm2"));
+    // if (!c2) return;
 
-    // 1) Clear IndexedDB for this case
-    await clearCase(caseId);
+    // // 1) Clear IndexedDB for this case
+    // await clearCase(caseId);
 
-    // 2) Reset Redux overrides and selection
-    resetTierOverrides();
-    selectFilteredEvent(null);
+    // // 2) Reset Redux overrides and selection
+    // resetTierOverrides();
+    // selectFilteredEvent(null);
 
-    // 3) Clear global notes in Redux (and persist empty to app IndexedDB via saga)
-    this.props.setGlobalNotes("");
+    // // 3) Clear global notes in Redux (and persist empty to app IndexedDB via saga)
+    // this.props.setGlobalNotes("");
   };
 
   handleCloseReportModal = async () => {
@@ -188,33 +195,34 @@ class FilteredEventsListPanel extends Component {
       this.applyAllTierOverridesIfAny({ reset: true });
     }
 
-    // Persist tier overrides to IndexedDB whenever tiers change in-app
-    if (prevProps.filteredEvents !== this.props.filteredEvents) {
-      const prevByUid = new Map(
-        (prevProps.filteredEvents || []).map((d) => [d.uid, d])
-      );
-      const caseId = String(this.props.id || "");
-      (this.props.filteredEvents || []).forEach((ev) => {
-        const prev = prevByUid.get(ev.uid);
-        if (!prev) return;
-        const prevTier = prev.tier != null ? String(prev.tier) : "";
-        const curTier = ev.tier != null ? String(ev.tier) : "";
-        if (curTier !== prevTier) {
-          const anchor = eventAnchor(ev?.gene, ev?.variant);
-          if (!anchor) return;
-          const tKey = keyTier(caseId, anchor);
-          saveTierOverride(tKey, curTier);
-        }
-      });
-    }
+    // DEPRECATED: Persistence will be reimplemented with repository pattern
+    // // Persist tier overrides to IndexedDB whenever tiers change in-app
+    // if (prevProps.filteredEvents !== this.props.filteredEvents) {
+    //   const prevByUid = new Map(
+    //     (prevProps.filteredEvents || []).map((d) => [d.uid, d])
+    //   );
+    //   const caseId = String(this.props.id || "");
+    //   (this.props.filteredEvents || []).forEach((ev) => {
+    //     const prev = prevByUid.get(ev.uid);
+    //     if (!prev) return;
+    //     const prevTier = prev.tier != null ? String(prev.tier) : "";
+    //     const curTier = ev.tier != null ? String(ev.tier) : "";
+    //     if (curTier !== prevTier) {
+    //       const anchor = eventAnchor(ev?.gene, ev?.variant);
+    //       if (!anchor) return;
+    //       const tKey = keyTier(caseId, anchor);
+    //       saveTierOverride(tKey, curTier);
+    //     }
+    //   });
+    // }
 
-    // Persist global notes to gos_report IndexedDB when they change
-    if (prevProps.globalNotes !== this.props.globalNotes) {
-      const caseId = String(this.props.id || "");
-      if (caseId) {
-        saveGlobalNotes(caseId, this.props.globalNotes);
-      }
-    }
+    // // Persist global notes to gos_report IndexedDB when they change
+    // if (prevProps.globalNotes !== this.props.globalNotes) {
+    //   const caseId = String(this.props.id || "");
+    //   if (caseId) {
+    //     saveGlobalNotes(caseId, this.props.globalNotes);
+    //   }
+    // }
   }
 
   handleSegmentedChange = (eventType) => {
@@ -238,54 +246,56 @@ class FilteredEventsListPanel extends Component {
 
 
   applyAllTierOverridesIfAny = async (opts = {}) => {
-    const { reset = false } = opts;
-    const {
-      id,
-      filteredEvents,
-      originalFilteredEvents,
-      applyTierOverride,
-      resetTierOverrides,
-    } = this.props;
+    // DEPRECATED: Loading will be reimplemented with repository pattern
+    console.warn("Loading tier overrides temporarily disabled - will be reimplemented with repository pattern");
+    // const { reset = false } = opts;
+    // const {
+    //   id,
+    //   filteredEvents,
+    //   originalFilteredEvents,
+    //   applyTierOverride,
+    //   resetTierOverrides,
+    // } = this.props;
 
-    if (
-      !Array.isArray(filteredEvents) ||
-      !filteredEvents.length ||
-      !Array.isArray(originalFilteredEvents) ||
-      !originalFilteredEvents.length
-    ) {
-      return;
-    }
+    // if (
+    //   !Array.isArray(filteredEvents) ||
+    //   !filteredEvents.length ||
+    //   !Array.isArray(originalFilteredEvents) ||
+    //   !originalFilteredEvents.length
+    // ) {
+    //   return;
+    // }
 
-    if (this.isApplyingOverrides) return;
-    this.isApplyingOverrides = true;
+    // if (this.isApplyingOverrides) return;
+    // this.isApplyingOverrides = true;
 
-    try {
-      if (reset) {
-        // Start from the original snapshot to avoid stale overrides lingering
-        resetTierOverrides();
-      }
+    // try {
+    //   if (reset) {
+    //     // Start from the original snapshot to avoid stale overrides lingering
+    //     resetTierOverrides();
+    //   }
 
-      // Build a quick lookup for original tiers
-      const origTierMap = new Map(
-        originalFilteredEvents.map((d) => [d.uid, String(d.tier)])
-      );
+    //   // Build a quick lookup for original tiers
+    //   const origTierMap = new Map(
+    //     originalFilteredEvents.map((d) => [d.uid, String(d.tier)])
+    //   );
 
-      await Promise.all(
-        filteredEvents.map(async (ev) => {
-          const key = buildTierKey(id, ev);
-          const override = await getTierOverride(key);
+    //   await Promise.all(
+    //     filteredEvents.map(async (ev) => {
+    //       const key = buildTierKey(id, ev);
+    //       const override = await getTierOverride(key);
 
-          if (override != null) {
-            const origTier = origTierMap.get(ev.uid);
-            if (String(origTier) !== String(override)) {
-              applyTierOverride(ev.uid, String(override));
-            }
-          }
-        })
-      );
-    } finally {
-      this.isApplyingOverrides = false;
-    }
+    //       if (override != null) {
+    //         const origTier = origTierMap.get(ev.uid);
+    //         if (String(origTier) !== String(override)) {
+    //           applyTierOverride(ev.uid, String(override));
+    //         }
+    //       }
+    //     })
+    //   );
+    // } finally {
+    //   this.isApplyingOverrides = false;
+    // }
   };
 
   render() {
