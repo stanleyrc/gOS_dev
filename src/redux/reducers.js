@@ -23,6 +23,7 @@ import Igv from "./igv/reducer";
 import Highlights from "./highlights/reducer";
 import Snvplicity from "./snvplicity/reducer";
 import Cytobands from "./cytobands/reducer";
+import Interpretations from "./interpretations/reducer";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
@@ -51,4 +52,5 @@ export default {
   Highlights,
   Snvplicity,
   Cytobands,
+  Interpretations,
 };

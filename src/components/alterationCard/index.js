@@ -5,6 +5,7 @@ import { Card, Tag, Typography, Descriptions, Avatar } from "antd";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
+import interpretationsActions from "../../redux/interpretations/actions";
 import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
@@ -121,8 +122,14 @@ class AlterationCard extends Component {
       variant: liveRecord.variant,
       data: changes
     });
+
+    console.log(eventInterpretation.toJSON());
     
-    console.log(eventInterpretation.serialize());
+    this.props.dispatch(
+      interpretationsActions.updateInterpretation(eventInterpretation.toJSON())
+    );
+    
+    console.log('interpretations slice:', this.props.interpretations);
     
     this.props.dispatch(
       filteredEventsActions.updateAlterationFields(liveRecord.uid, changes)
@@ -199,7 +206,12 @@ class AlterationCard extends Component {
                         variant: liveRecord.variant,
                         data: { tier: e.target.value }
                       });
-                      console.log(eventInterpretation.serialize());
+                      
+                      this.props.dispatch(
+                        interpretationsActions.updateInterpretation(eventInterpretation.serialize())
+                      );
+                      
+                      console.log('interpretations slice:', this.props.interpretations);
                       
                       this.props.dispatch(
                         filteredEventsActions.applyTierOverride(liveRecord.uid, e.target.value)
@@ -325,6 +337,7 @@ class AlterationCard extends Component {
 
 const mapStateToProps = (state) => ({
   filteredEvents: state?.FilteredEvents,
+  interpretations: state?.Interpretations,
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));
