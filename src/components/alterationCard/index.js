@@ -161,7 +161,7 @@ class AlterationCard extends Component {
     const isCurrentUser = !selectedInterpretation || displayInterpretation?.isCurrentUser;
 
     // Format author and date for watermark button
-    const authorName = displayInterpretation?.authorName || 'Unknown';
+    const authorName = displayInterpretation?.authorName || 'Switch Version';
     const lastModified = displayInterpretation?.lastModified;
     const dateStr = lastModified ? new Date(lastModified).toLocaleString() : '';
     const watermarkText = `${authorName}${dateStr ? ` ${dateStr}` : ''}`;
