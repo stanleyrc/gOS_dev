@@ -8,7 +8,6 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 
 const DB_NAME = "gOS_Interpretations";
 const STORE_NAME = "interpretations";
-const GLOBAL_NOTES_STORE = "globalNotes";
 const DB_VERSION = 1;
 const INDEX_BY_CASE = "by_case";
 
@@ -19,14 +18,10 @@ function openDb() {
       
       req.onupgradeneeded = (event) => {
         const db = req.result;
-        
+
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
           store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
-        }
-        
-        if (!db.objectStoreNames.contains(GLOBAL_NOTES_STORE)) {
-          db.createObjectStore(GLOBAL_NOTES_STORE, { keyPath: "caseId" });
         }
       };
       
@@ -159,10 +154,10 @@ export class IndexedDBRepository extends EventInterpretationRepository {
 
   async clearCase(caseId) {
     if (!window.indexedDB || !caseId) return;
-    
+
     try {
       const interpretations = await this.getForCase(caseId);
-      
+
       await withStore(STORE_NAME, "readwrite", async (store) => {
         const deletePromises = interpretations.map((interp) => {
           return new Promise((resolve, reject) => {
@@ -171,16 +166,8 @@ export class IndexedDBRepository extends EventInterpretationRepository {
             req.onerror = () => reject(req.error);
           });
         });
-        
+
         await Promise.all(deletePromises);
-      });
-      
-      await withStore(GLOBAL_NOTES_STORE, "readwrite", (store) => {
-        return new Promise((resolve) => {
-          const req = store.delete(caseId);
-          req.onsuccess = () => resolve();
-          req.onerror = () => resolve();
-        });
       });
     } catch (e) {
       console.error("Failed to clear case:", e);
@@ -227,41 +214,20 @@ export class IndexedDBRepository extends EventInterpretationRepository {
 
   async saveGlobalNotes(caseId, notes) {
     if (!window.indexedDB || !caseId) return;
-    
-    try {
-      await withStore(GLOBAL_NOTES_STORE, "readwrite", (store) => {
-        return new Promise((resolve, reject) => {
-          const req = store.put({
-            caseId: String(caseId),
-            notes: String(notes || ""),
-            updatedAt: Date.now(),
-          });
-          req.onsuccess = () => resolve();
-          req.onerror = () => reject(req.error);
-        });
-      });
-    } catch (e) {
-      console.error("Failed to save global notes:", e);
-      throw e;
-    }
+
+    const interpretation = new EventInterpretation({
+      caseId,
+      alterationId: "GLOBAL_NOTES",
+      data: { notes: String(notes || "") }
+    });
+
+    await this.save(interpretation);
   }
 
   async getGlobalNotes(caseId) {
     if (!window.indexedDB || !caseId) return null;
-    
-    try {
-      const result = await withStore(GLOBAL_NOTES_STORE, "readonly", (store) => {
-        return new Promise((resolve, reject) => {
-          const req = store.get(String(caseId));
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      });
-      
-      return result?.notes ?? null;
-    } catch (e) {
-      console.error("Failed to get global notes:", e);
-      return null;
-    }
+
+    const interpretation = await this.get(caseId, "GLOBAL_NOTES");
+    return interpretation?.data?.notes ?? null;
   }
 }

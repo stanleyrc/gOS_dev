@@ -1,23 +1,38 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { Row, Col, Input, Typography } from "antd";
 import { linkPmids } from "../../helpers/format";
+import interpretationsActions from "../../redux/interpretations/actions";
+import { getGlobalNotesInterpretation } from "../../redux/interpretations/selectors";
+import EventInterpretation from "../../helpers/EventInterpretation";
 
 const { Text } = Typography;
 
 class GlobalNotesPanel extends Component {
   state = {
-    notes: "",
     editing: false,
     draft: "",
   };
 
   handleEditClick = () => {
-    this.setState({ editing: true, draft: this.state.notes });
+    const { globalNotesInterpretation } = this.props;
+    const currentNotes = globalNotesInterpretation?.data?.notes || "";
+    this.setState({ editing: true, draft: currentNotes });
   };
 
   handleBlur = () => {
-    this.setState({ editing: false, notes: this.state.draft });
+    const { draft } = this.state;
+    const { caseId, dispatch } = this.props;
+
+    const eventInterpretation = new EventInterpretation({
+      caseId,
+      alterationId: "GLOBAL_NOTES",
+      data: { notes: draft }
+    });
+
+    dispatch(interpretationsActions.updateInterpretation(eventInterpretation.toJSON()));
+    this.setState({ editing: false });
   };
 
   handleChange = (e) => {
@@ -34,8 +49,9 @@ class GlobalNotesPanel extends Component {
   }
 
   render() {
-    const { t } = this.props;
-    const { notes, editing, draft } = this.state;
+    const { t, globalNotesInterpretation } = this.props;
+    const { editing, draft } = this.state;
+    const notes = globalNotesInterpretation?.data?.notes || "";
 
     return (
       <Row className="ant-panel-container ant-home-plot-container">
@@ -80,4 +96,9 @@ class GlobalNotesPanel extends Component {
   }
 }
 
-export default withTranslation("common")(GlobalNotesPanel);
+const mapStateToProps = (state) => ({
+  caseId: state?.CaseReport?.id,
+  globalNotesInterpretation: getGlobalNotesInterpretation(state),
+});
+
+export default connect(mapStateToProps)(withTranslation("common")(GlobalNotesPanel));

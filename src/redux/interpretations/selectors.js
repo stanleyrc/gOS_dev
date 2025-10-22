@@ -25,6 +25,10 @@ export const getAllInterpretationsForAlteration = (state, alterationId) => {
     .map(([, interpretation]) => interpretation);
 };
 
+export const getGlobalNotesInterpretation = (state) => {
+  return getInterpretationForAlteration(state, "GLOBAL_NOTES");
+};
+
 const selectFilteredEventsState = (state) => state.FilteredEvents || {};
 
 export const selectMergedEvents = createSelector(

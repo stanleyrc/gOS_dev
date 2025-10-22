@@ -52,11 +52,6 @@ function* fetchFilteredEvents(action) {
       selectedFilteredEvent,
       reportSrc,
     });
-
-    // Load interpretations from IndexedDB for this case
-    if (id) {
-      yield put(interpretationsActions.fetchInterpretationsForCase(id));
-    }
   } catch (error) {
     console.log(error);
     if (axios.isCancel(error)) {
