@@ -1,20 +1,18 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { Row, Col, Input, Typography, Button, Table, Drawer } from "antd";
+import { Row, Col, Input, Button } from "antd";
 import { linkPmids } from "../../helpers/format";
 import interpretationsActions from "../../redux/interpretations/actions";
 import { getGlobalNotesInterpretation, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
-
-const { Text } = Typography;
+import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
 
 class GlobalNotesPanel extends Component {
   state = {
     editing: false,
     draft: "",
     showVersions: false,
-    searchTerm: "",
     selectedInterpretation: null, // When set, overrides the current one
   };
 
@@ -47,15 +45,11 @@ class GlobalNotesPanel extends Component {
   };
 
   handleCloseVersions = () => {
-    this.setState({ showVersions: false, searchTerm: "" });
-  };
-
-  handleSearchChange = (e) => {
-    this.setState({ searchTerm: e.target.value });
+    this.setState({ showVersions: false });
   };
 
   handleSelectInterpretation = (interpretation) => {
-    this.setState({ selectedInterpretation: interpretation, showVersions: false, searchTerm: "" });
+    this.setState({ selectedInterpretation: interpretation, showVersions: false });
   };
 
   handleClearSelection = () => {
@@ -78,7 +72,7 @@ class GlobalNotesPanel extends Component {
 
   render() {
     const { t, globalNotesInterpretation, allGlobalNotesInterpretations } = this.props;
-    const { editing, draft, showVersions, searchTerm, selectedInterpretation } = this.state;
+    const { editing, draft, showVersions, selectedInterpretation } = this.state;
 
     // Determine which interpretation to display
     const displayInterpretation = selectedInterpretation || globalNotesInterpretation;
@@ -92,39 +86,6 @@ class GlobalNotesPanel extends Component {
     const lastModified = displayInterpretation?.lastModified;
     const dateStr = lastModified ? new Date(lastModified).toLocaleDateString() : '';
     const watermarkText = `${authorName}${dateStr ? ` ${dateStr}` : ''}`;
-
-    // Filter interpretations for table
-    const filteredInterpretations = allGlobalNotesInterpretations.filter(interp => {
-      if (!searchTerm) return true;
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        (interp.authorName || '').toLowerCase().includes(searchLower) ||
-        (interp.lastModified || '').toLowerCase().includes(searchLower) ||
-        (interp.data?.notes || '').toLowerCase().includes(searchLower)
-      );
-    });
-
-    const tableColumns = [
-      {
-        title: 'Author',
-        dataIndex: 'authorName',
-        key: 'authorName',
-        width: 120,
-      },
-      {
-        title: 'Date',
-        dataIndex: 'lastModified',
-        key: 'lastModified',
-        width: 120,
-        render: (date) => date ? new Date(date).toLocaleDateString() : '',
-      },
-      {
-        title: 'Notes',
-        dataIndex: ['data', 'notes'],
-        key: 'notes',
-        ellipsis: true,
-      },
-    ];
 
     return (
       <>
@@ -184,40 +145,21 @@ class GlobalNotesPanel extends Component {
           </Col>
         </Row>
 
-        <Drawer
+        <InterpretationVersionsSidepanel
+          tableData={allGlobalNotesInterpretations}
           title="Global Notes Versions"
-          placement="right"
-          width={600}
+          isOpen={showVersions}
           onClose={this.handleCloseVersions}
-          open={showVersions}
-          extra={
-            selectedInterpretation ? (
-              <Button onClick={this.handleClearSelection}>View My Version</Button>
-            ) : null
-          }
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Input
-              placeholder="Search interpretations..."
-              value={searchTerm}
-              onChange={this.handleSearchChange}
-              autoFocus
-              style={{ marginBottom: 16 }}
-            />
-            <Table
-              columns={tableColumns}
-              dataSource={filteredInterpretations}
-              rowKey={(record) => `${record.alterationId}___${record.authorId}`}
-              pagination={{ pageSize: 10 }}
-              size="small"
-              onRow={(record) => ({
-                onClick: () => this.handleSelectInterpretation(record),
-                style: { cursor: 'pointer' },
-              })}
-              scroll={{ y: 'calc(100vh - 200px)' }}
-            />
-          </div>
-        </Drawer>
+          onSelect={this.handleSelectInterpretation}
+          additionalColumns={[
+            {
+              title: 'Notes',
+              dataIndex: ['data', 'notes'],
+              key: 'notes',
+              ellipsis: true,
+            },
+          ]}
+        />
       </>
     );
   }
