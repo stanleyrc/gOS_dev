@@ -171,6 +171,25 @@ const Wrapper = styled.div`
     border-radius: 6px;
     padding: 8px 12px;
   }
+
+  .preview-btn,
+  .import-btn,
+  .export-btn {
+    margin-bottom: 16px;
+  }
+
+  .preview-btn {
+    margin-right: 16px;
+  }
+
+  .reset-filters-btn {
+    float: right;
+    margin-bottom: 16px;
+  }
+
+  .reset-state-btn {
+    margin-bottom: 16px;
+  }
 `;
 
 export default Wrapper;

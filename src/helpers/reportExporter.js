@@ -102,6 +102,30 @@ function buildTherapiesFromAlterations(alterations) {
 }
 
 /**
+ * Generates the HTML report without downloading
+ * @param {Object} state - Redux state
+ * @param {Object} mergedEvents - Events merged with interpretations
+ * @returns {Promise<string>} The generated HTML string
+ */
+export async function previewReport(state, mergedEvents) {
+  try {
+    const gos_user = JSON.parse(localStorage.getItem('gOS_user') || 'null');
+    const caseId = String(state?.CaseReport?.id || '');
+    const interpretationsFiltered = Object.values(state.Interpretations?.byId || {}).filter(i => i.authorId === gos_user.userId && i.caseId === caseId);
+    const report = buildReportFromMergedState(state, mergedEvents);
+    report.author = gos_user ? gos_user.displayName : 'Unknown Author';
+    report.interpretations = interpretationsFiltered;
+    const renderer = new HtmlRenderer();
+    const result = await renderer.render(report);
+    
+    return result.html;
+  } catch (error) {
+    console.error('Failed to preview report:', error);
+    throw error;
+  }
+}
+
+/**
  * Exports the clinical report as a static HTML file
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations

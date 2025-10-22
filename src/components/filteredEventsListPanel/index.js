@@ -15,7 +15,7 @@ import {
   Avatar,
   Typography,
 } from "antd";
-import { FileTextOutlined } from "@ant-design/icons";
+import { FileTextOutlined, EyeOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
@@ -29,7 +29,8 @@ import interpretationsActions from "../../redux/interpretations/actions";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import { exportReport } from "../../helpers/reportExporter";
+import ReportPreviewModal from "../reportPreviewModal";
+import { exportReport, previewReport } from "../../helpers/reportExporter";
 import EventInterpretation from "../../helpers/EventInterpretation";
 
 const { Text } = Typography;
@@ -68,6 +69,9 @@ class FilteredEventsListPanel extends Component {
     variantFilters: [],
     geneFilters: [],
     exporting: false,
+    previewVisible: false,
+    previewHtml: null,
+    previewLoading: false,
   };
 
   // add as a class field
@@ -84,6 +88,25 @@ class FilteredEventsListPanel extends Component {
     } finally {
       this.setState({ exporting: false });
     }
+  };
+
+  handlePreviewReport = async () => {
+    const { mergedEvents } = this.props;
+    try {
+      this.setState({ previewLoading: true, previewVisible: true });
+      const state = this.props;
+      const html = await previewReport(state, mergedEvents);
+      this.setState({ previewHtml: html });
+    } catch (err) {
+      console.error("Report preview failed:", err);
+      this.setState({ previewVisible: false });
+    } finally {
+      this.setState({ previewLoading: false });
+    }
+  };
+
+  handleClosePreview = () => {
+    this.setState({ previewVisible: false, previewHtml: null });
   };
 
   handleLoadReport = async () => {
@@ -733,7 +756,7 @@ class FilteredEventsListPanel extends Component {
                 <Button
                   type="link"
                   onClick={this.handleResetFilters}
-                  style={{ float: "right", marginBottom: 16 }}
+                  className="reset-filters-btn"
                 >
                   {t("components.filtered-events-panel.reset-filters")}
                 </Button>
@@ -743,19 +766,27 @@ class FilteredEventsListPanel extends Component {
               <Col flex="none">
                 <Space>
                   <Button
+                    icon={<EyeOutlined />}
+                    onClick={this.handlePreviewReport}
+                    disabled={loading || this.state.previewLoading}
+                    className="preview-btn"
+                  >
+                    Preview Report
+                  </Button>
+                  <Button
+                    onClick={this.handleLoadReport}
+                    className="import-btn"
+                  >
+                    {t("components.filtered-events-panel.load-report")}
+                  </Button>
+                  <Button
                     type="primary"
                     icon={<FileTextOutlined />}
                     onClick={this.handleExportNotes}
                     disabled={loading || this.state.exporting}
-                    style={{ marginBottom: 16 }}
+                    className="export-btn"
                   >
                     {t("components.filtered-events-panel.export.notes")}
-                  </Button>
-                  <Button
-                    onClick={this.handleLoadReport}
-                    style={{ marginBottom: 16 }}
-                  >
-                    {t("components.filtered-events-panel.load-report")}
                   </Button>
                   <input type="file" ref={this.fileInputRef} accept=".html" style={{display: 'none'}} onChange={this.handleFileChange} />
                 </Space>
@@ -765,7 +796,7 @@ class FilteredEventsListPanel extends Component {
                 <Button
                   danger
                   onClick={this.handleResetReportState}
-                  style={{ marginBottom: 16 }}
+                  className="reset-state-btn"
                 >
                   {t("components.filtered-events-panel.reset-state")}
                 </Button>
@@ -925,6 +956,12 @@ class FilteredEventsListPanel extends Component {
                 }
               </Col>
             </Row>
+            <ReportPreviewModal
+              visible={this.state.previewVisible}
+              onCancel={this.handleClosePreview}
+              loading={this.state.previewLoading}
+              html={this.state.previewHtml}
+            />
           </>
         )}
       </Wrapper>
