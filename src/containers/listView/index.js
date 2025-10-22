@@ -187,9 +187,10 @@ class ListView extends Component {
                       </span>
                       {option?.count != null && (
                         <span className="filter-option-count">
-                          {t("containers.list-view.filters.case", {
-                            count: option?.count,
-                          })}
+                          {option?.children == null &&
+                            t("containers.list-view.filters.case", {
+                              count: option?.count,
+                            })}
                         </span>
                       )}
                     </div>
@@ -543,7 +544,7 @@ class ListView extends Component {
                               style={{ display: "flex" }}
                             >
                               {generateCascaderOptions(d.tags).map((tag, i) => (
-                                <div key={tag.value}>
+                                <div key={`tag-${tag.value}-${i}`}>
                                   <Divider
                                     plain
                                     orientation="left"
