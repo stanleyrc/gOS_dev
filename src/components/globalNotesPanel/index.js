@@ -102,7 +102,7 @@ class GlobalNotesPanel extends Component {
     // Format author and date for watermark button
     const authorName = displayInterpretation?.authorName || 'Unknown';
     const lastModified = displayInterpretation?.lastModified;
-    const dateStr = lastModified ? new Date(lastModified).toLocaleDateString() : '';
+    const dateStr = lastModified ? new Date(lastModified).toLocaleString() : '';
     const watermarkText = `${authorName}${dateStr ? ` ${dateStr}` : ''}`;
 
     return (
@@ -177,7 +177,7 @@ class GlobalNotesPanel extends Component {
 
         <InterpretationVersionsSidepanel
           tableData={allGlobalNotesInterpretations}
-          title="Global Notes Versions"
+          title="Notes Versions"
           isOpen={showVersions}
           onClose={this.handleCloseVersions}
           onSelect={this.handleSelectInterpretation}

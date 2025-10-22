@@ -30,13 +30,15 @@ class InterpretationVersionsSidepanel extends Component {
         dataIndex: 'authorName',
         key: 'authorName',
         width: 120,
+        sorter: (a, b) => (a.authorName || '').localeCompare(b.authorName || ''),
       },
       {
         title: 'Date',
         dataIndex: 'lastModified',
         key: 'lastModified',
         width: 120,
-        render: (date) => date ? new Date(date).toLocaleDateString() : '',
+        render: (date) => date ? new Date(date).toLocaleString() : '',
+        sorter: (a, b) => new Date(a.lastModified || 0) - new Date(b.lastModified || 0),
       },
       ...additionalColumns,
     ];
