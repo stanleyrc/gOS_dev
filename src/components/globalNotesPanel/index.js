@@ -56,6 +56,24 @@ class GlobalNotesPanel extends Component {
     this.setState({ selectedInterpretation: null });
   };
 
+  handleCopyVersion = () => {
+    const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
+    if (!confirmed) return;
+
+    const { selectedInterpretation } = this.state;
+    const { caseId, dispatch } = this.props;
+    const notes = selectedInterpretation?.data?.notes || "";
+
+    const eventInterpretation = new EventInterpretation({
+      caseId,
+      alterationId: "GLOBAL_NOTES",
+      data: { notes }
+    });
+
+    dispatch(interpretationsActions.updateInterpretation(eventInterpretation.toJSON()));
+    this.setState({ selectedInterpretation: null, editing: true, draft: notes });
+  };
+
   componentDidUpdate(prevProps, prevState) {
     if (!prevState.editing && this.state.editing) {
       // Focus the textarea when entering edit mode
@@ -94,21 +112,33 @@ class GlobalNotesPanel extends Component {
             <div className="desc-block editable-field">
               <div className="desc-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>{t("components.alteration-card.labels.notes")}:</span>
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={this.handleShowVersions}
-                  style={{
-                    fontSize: '12px',
-                    color: '#999',
-                    border: 'none',
-                    padding: '2px 8px',
-                    height: 'auto',
-                    lineHeight: '1',
-                  }}
-                >
-                  {watermarkText}
-                </Button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {!isCurrentUser && (
+                    <Button
+                      type="primary"
+                      size="small"
+                      onClick={this.handleCopyVersion}
+                      style={{ fontSize: '12px', height: 'auto', lineHeight: '1' }}
+                    >
+                      Copy to My Version
+                    </Button>
+                  )}
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={this.handleShowVersions}
+                    style={{
+                      fontSize: '12px',
+                      color: '#999',
+                      border: 'none',
+                      padding: '2px 8px',
+                      height: 'auto',
+                      lineHeight: '1',
+                    }}
+                  >
+                    {watermarkText}
+                  </Button>
+                </div>
               </div>
               {editing ? (
                 <Input.TextArea
