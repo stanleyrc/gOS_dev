@@ -14,38 +14,22 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  Input,
-  Collapse,
 } from "antd";
- import { eventAnchor } from "../../helpers/reportKeys";
 import { FileTextOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
 import { ArrowRightOutlined } from "@ant-design/icons";
-import { EditOutlined } from "@ant-design/icons";
 import { roleColorMap, tierColor } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-
-import EventInterpretation from "../../helpers/EventInterpretation";
-// DEPRECATED: Import/export functionality will be reimplemented with repository pattern
-// import {
-//   getTierOverride,
-//   clearCase,
-//   exportReport,
-//   saveTierOverride,
-//   saveGlobalNotes,
-//   buildTierKey,
-//   importReportStateFromHtml,
-// } from "../../helpers/reportStateStore";
+import { exportReport } from "../../helpers/reportExporter";
 
 const { Text } = Typography;
 
@@ -77,30 +61,23 @@ class FilteredEventsListPanel extends Component {
     effectFilters: [],
     variantFilters: [],
     geneFilters: [],
-    showReportModal: false,
     exporting: false,
   };
 
   // add as a class field
 
   handleExportNotes = async () => {
-    // DEPRECATED: Will be reimplemented with repository pattern
-    console.warn("Export functionality temporarily disabled - will be reimplemented with repository pattern");
-    // const { id, filteredEvents, report, originalFilteredEvents, globalNotes } = this.props;
-    // try {
-    //   this.setState({ exporting: true });
-    //   await exportReport({
-    //     id,
-    //     reportMeta: report,
-    //     filteredEvents,
-    //     originalFilteredEvents,
-    //     globalNotes,
-    //   });
-    // } catch (err) {
-    //   console.error("Report export failed:", err);
-    // } finally {
-    //   this.setState({ exporting: false });
-    // }
+    const { mergedEvents } = this.props;
+    try {
+      this.setState({ exporting: true });
+      // Get the full Redux state
+      const state = this.props;
+      await exportReport(state, mergedEvents);
+    } catch (err) {
+      console.error("Report export failed:", err);
+    } finally {
+      this.setState({ exporting: false });
+    }
   };
 
   handleLoadReport = async () => {
@@ -131,7 +108,6 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleCloseReportModal = async () => {
-    this.setState({ showReportModal: false });
     this.props.selectFilteredEvent(null);
   };
 
@@ -184,7 +160,6 @@ class FilteredEventsListPanel extends Component {
       genes,
       allelic,
       igv,
-      reportSrc,
       selectFilteredEvent,
     } = this.props;
 
@@ -198,7 +173,6 @@ class FilteredEventsListPanel extends Component {
       roleFilters,
       effectFilters,
       variantFilters,
-      showReportModal,
     } = this.state;
 
     let recordsHash = d3.group(
@@ -865,14 +839,6 @@ class FilteredEventsListPanel extends Component {
                       <ReportModal
                         open
                         onClose={this.handleCloseReportModal}
-                        src={
-                          reportSrc
-                            ? `${reportSrc}#${eventAnchor(
-                                selectedFilteredEvent?.gene,
-                                selectedFilteredEvent?.variant
-                              )}`
-                            : undefined
-                        }
                         title={
                           <Space>
                             {selectedFilteredEvent.gene}
@@ -910,29 +876,6 @@ class FilteredEventsListPanel extends Component {
                         record={selectedFilteredEvent}
                       />
                     )}
-                    {showReportModal && reportSrc && (
-                      <ReportModal
-                        open={showReportModal}
-                        onClose={this.handleCloseReportModal}
-                        src={reportSrc}
-                        title={t(
-                          "components.filtered-events-panel.export.notes"
-                        )}
-                        loading={loading}
-                        genome={genome}
-                        mutations={mutations}
-                        genomeCoverage={genomeCoverage}
-                        methylationBetaCoverage={methylationBetaCoverage}
-                        methylationIntensityCoverage={
-                          methylationIntensityCoverage
-                        }
-                        hetsnps={hetsnps}
-                        genes={genes}
-                        igv={igv}
-                        chromoBins={chromoBins}
-                        allelic={allelic}
-                      />
-                    )}
                   </Skeleton>
                 }
               </Col>
@@ -961,7 +904,6 @@ const mapStateToProps = (state) => {
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
-    reportSrc: state.FilteredEvents.reportSrc,
     id: state.CaseReport.id,
     report: state.CaseReport.metadata,
     genome: state.Genome,
@@ -974,6 +916,9 @@ const mapStateToProps = (state) => {
     hetsnps: state.Hetsnps,
     genes: state.Genes,
     igv: state.Igv,
+    mergedEvents,
+    CaseReport: state.CaseReport,
+    Interpretations: state.Interpretations,
   };
 };
 export default connect(
