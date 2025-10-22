@@ -30,6 +30,7 @@ import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import { exportReport } from "../../helpers/reportExporter";
+import EventInterpretation from "../../helpers/EventInterpretation";
 
 const { Text } = Typography;
 
@@ -43,6 +44,11 @@ const eventColumns = {
 };
 
 class FilteredEventsListPanel extends Component {
+  constructor(props) {
+    super(props);
+    this.fileInputRef = React.createRef();
+  }
+
   handleResetFilters = () => {
     this.setState({
       geneFilters: [],
@@ -81,11 +87,49 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleLoadReport = async () => {
-    console.warn("Import functionality temporarily disabled - will be reimplemented with repository pattern");
+    this.fileInputRef.current.click();
   };
 
+  handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
+    try {
+      const text = await file.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/html');
+      const script = doc.getElementById('interpretations-data');
+      if (!script) {
+        throw new Error('No interpretations-data script found in HTML');
+      }
+      const interpretationsData = JSON.parse(script.textContent);
 
+      // Validate caseId
+      const currentCaseId = this.props.id;
+      if (!currentCaseId) {
+        throw new Error('No current case loaded');
+      }
+      for (const interp of interpretationsData) {
+        if (interp.caseId !== currentCaseId) {
+          throw new Error(`Case ID mismatch: expected ${currentCaseId}, got ${interp.caseId}`);
+        }
+      }
+
+      // Create EventInterpretation objects and dispatch
+      for (const interpData of interpretationsData) {
+        const interpretation = new EventInterpretation(interpData);
+        this.props.updateInterpretation(interpretation);
+      }
+
+      alert(`Successfully imported ${interpretationsData.length} interpretations`);
+    } catch (error) {
+      console.error('Error importing report:', error);
+      alert(`Failed to import report: ${error.message}`);
+    } finally {
+      // Reset the input
+      event.target.value = '';
+    }
+  };
 
   handleResetReportState = async () => {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
@@ -713,6 +757,7 @@ class FilteredEventsListPanel extends Component {
                   >
                     {t("components.filtered-events-panel.load-report")}
                   </Button>
+                  <input type="file" ref={this.fileInputRef} accept=".html" style={{display: 'none'}} onChange={this.handleFileChange} />
                 </Space>
               </Col>
               <Col flex="auto" />
@@ -893,6 +938,7 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   resetTierOverrides: () => dispatch(resetTierOverrides()),
   clearCaseInterpretations: (caseId) => dispatch(interpretationsActions.clearCaseInterpretations(caseId)),
+  updateInterpretation: (interpretation) => dispatch(interpretationsActions.updateInterpretation(interpretation)),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
