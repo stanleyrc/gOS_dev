@@ -7,6 +7,7 @@ import {
   getEventType,
 } from "../../helpers/utility";
 import actions from "./actions";
+import interpretationsActions from "../interpretations/actions";
 import settingsActions from "../settings/actions";
 import { getCancelToken } from "../../helpers/cancelToken";
 
@@ -51,6 +52,11 @@ function* fetchFilteredEvents(action) {
       selectedFilteredEvent,
       reportSrc,
     });
+
+    // Load interpretations from IndexedDB for this case
+    if (id) {
+      yield put(interpretationsActions.fetchInterpretationsForCase(id));
+    }
   } catch (error) {
     console.log(error);
     if (axios.isCancel(error)) {

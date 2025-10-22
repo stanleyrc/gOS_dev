@@ -4,9 +4,7 @@ import { BsDashLg } from "react-icons/bs";
 import { Card, Tag, Typography, Descriptions, Avatar } from "antd";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
-import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
-import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
@@ -23,125 +21,29 @@ function toList(value) {
     .filter(Boolean);
 }
 
-
 class AlterationCard extends Component {
-  constructor(props) {
-    super(props);
-    
-    const liveRecord = this.getLiveRecord();
-    const {
-      gene_summary,
-      variant_summary,
-      effect_description,
-      therapeutics,
-      resistances,
-    } = liveRecord || {};
-
-    const therapeuticsList = toList(therapeutics);
-    const resistancesList = toList(resistances);
-
-    this.state = {
-      geneSummary: gene_summary || "",
-      variantSummary: variant_summary || "",
-      effectDescription: effect_description || "",
-      therapeutics: therapeuticsList,
-      resistances: resistancesList,
-      notes: (liveRecord && liveRecord.notes) || "",
-    };
-  }
-
-  getLiveRecord() {
-    const { record, filteredEvents } = this.props;
-    const fe = filteredEvents;
-    if (!fe) return record;
-    if (record?.uid && fe.selectedFilteredEvent?.uid === record.uid) {
-      return fe.selectedFilteredEvent;
-    }
-    const fromList = (fe.filteredEvents || []).find((d) => d?.uid === record?.uid);
-    return fromList || record;
-  }
-
-  componentDidUpdate(prevProps) {
-    const liveRecord = this.getLiveRecord();
-    const prevLiveRecord = this.getLiveRecordFromProps(prevProps);
-
-    if (!liveRecord) return;
-
-    const {
-      gene_summary,
-      variant_summary,
-      effect_description,
-      therapeutics,
-      resistances,
-    } = liveRecord;
-
-    const prevRecord = prevLiveRecord || {};
-    const therapeuticsList = toList(therapeutics);
-    const resistancesList = toList(resistances);
-    const prevTherapeuticsList = toList(prevRecord.therapeutics);
-    const prevResistancesList = toList(prevRecord.resistances);
-
-    if (
-      gene_summary !== prevRecord.gene_summary ||
-      variant_summary !== prevRecord.variant_summary ||
-      effect_description !== prevRecord.effect_description ||
-      therapeuticsList.join("|") !== prevTherapeuticsList.join("|") ||
-      resistancesList.join("|") !== prevResistancesList.join("|") ||
-      liveRecord.notes !== prevRecord.notes
-    ) {
-      this.setState({
-        geneSummary: gene_summary || "",
-        variantSummary: variant_summary || "",
-        effectDescription: effect_description || "",
-        therapeutics: therapeuticsList,
-        resistances: resistancesList,
-        notes: (liveRecord && liveRecord.notes) || "",
-      });
-    }
-  }
-
-  getLiveRecordFromProps(props) {
-    const { record, filteredEvents } = props;
-    const fe = filteredEvents;
-    console.log(filteredEvents)
-    if (!fe) return record;
-    if (record?.uid && fe.selectedFilteredEvent?.uid === record.uid) {
-      return fe.selectedFilteredEvent;
-    }
-    const fromList = (fe.filteredEvents || []).find((d) => d?.uid === record?.uid);
-    return fromList || record;
-  }
-
   updateFields = (changes) => {
-    const liveRecord = this.getLiveRecord();
-    console.log('live record', liveRecord);
+    const { record, caseId } = this.props;
     
     const eventInterpretation = new EventInterpretation({
-      caseId: liveRecord?.id || "UNKNOWN",
-      alterationId: liveRecord.uid || "UNKNOWN",
-      gene: liveRecord.gene,
-      variant: liveRecord.variant,
+      caseId: caseId || record?.id || "UNKNOWN",
+      alterationId: record?.uid || "UNKNOWN",
+      gene: record?.gene,
+      variant: record?.variant,
       data: changes
     });
-
-    console.log(eventInterpretation.toJSON());
+    
+    const payload = eventInterpretation.toJSON();
     
     this.props.dispatch(
-      interpretationsActions.updateInterpretation(eventInterpretation.toJSON())
-    );
-    
-    console.log('interpretations slice:', this.props.interpretations);
-    
-    this.props.dispatch(
-      filteredEventsActions.updateAlterationFields(liveRecord.uid, changes)
+      interpretationsActions.updateInterpretation(payload)
     );
   }
 
   render() {
-    const { t } = this.props;
-    const liveRecord = this.getLiveRecord();
+    const { t, record } = this.props;
     
-    if (!liveRecord) {
+    if (!record) {
       return (
         <Wrapper>
           <Card className="variant-card">
@@ -161,7 +63,13 @@ class AlterationCard extends Component {
       estimatedAlteredCopies,
       altCounts,
       refCounts,
-    } = liveRecord;
+      gene_summary,
+      variant_summary,
+      effect_description,
+      therapeutics,
+      resistances,
+      notes,
+    } = record;
 
     const currentTierStr = ["1", "2", "3"].includes(String(tier))
       ? String(tier)
@@ -200,23 +108,7 @@ class AlterationCard extends Component {
                     className="tier-select"
                     value={currentTierStr}
                     onChange={(e) => {
-                      const eventInterpretation = new EventInterpretation({
-                        caseId: liveRecord?.id || "UNKNOWN",
-                        alterationId: liveRecord.uid || "UNKNOWN",
-                        gene: liveRecord.gene,
-                        variant: liveRecord.variant,
-                        data: { tier: e.target.value }
-                      });
-                      
-                      this.props.dispatch(
-                        interpretationsActions.updateInterpretation(eventInterpretation.serialize())
-                      );
-                      
-                      console.log('interpretations slice:', this.props.interpretations);
-                      
-                      this.props.dispatch(
-                        filteredEventsActions.applyTierOverride(liveRecord.uid, e.target.value)
-                      );
+                      this.updateFields({ tier: e.target.value });
                     }}
                     aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
                   >
@@ -251,35 +143,23 @@ class AlterationCard extends Component {
             <div className="variant-desc">
               <EditableTextBlock
                 title={t("components.alteration-card.labels.gene-summary")}
-                value={this.state.geneSummary}
-                onChange={(v) => {
-                  this.setState({ geneSummary: v });
-                  this.updateFields({ gene_summary: v });
-                }}
+                value={gene_summary || ""}
+                onChange={(v) => this.updateFields({ gene_summary: v })}
                />
               <EditableTextBlock
                 title={t("components.alteration-card.labels.variant-summary")}
-                value={this.state.variantSummary}
-                onChange={(v) => {
-                  this.setState({ variantSummary: v });
-                  this.updateFields({ variant_summary: v });
-                }}
+                value={variant_summary || ""}
+                onChange={(v) => this.updateFields({ variant_summary: v })}
                />
               <EditableTextBlock
                 title={t("components.alteration-card.labels.effect-description")}
-                value={this.state.effectDescription}
-                onChange={(v) => {
-                  this.setState({ effectDescription: v });
-                  this.updateFields({ effect_description: v });
-                }}
+                value={effect_description || ""}
+                onChange={(v) => this.updateFields({ effect_description: v })}
                />
               <EditableTextBlock
                 title={t("components.alteration-card.labels.notes")}
-                value={this.state.notes}
-                onChange={(v) => {
-                  this.setState({ notes: v });
-                  this.updateFields({ notes: v });
-                }}
+                value={notes || ""}
+                onChange={(v) => this.updateFields({ notes: v })}
                />
             </div>
 
@@ -311,21 +191,15 @@ class AlterationCard extends Component {
           <div className="variant-footer">
             <EditablePillsBlock
               title={t("components.alteration-card.labels.therapeutics")}
-              list={this.state.therapeutics}
-              onChange={(arr) => {
-                this.setState({ therapeutics: arr });
-                this.updateFields({ therapeutics: arr });
-              }}
+              list={toList(therapeutics)}
+              onChange={(arr) => this.updateFields({ therapeutics: arr })}
               pillClass="therapeutic-tag"
             />
 
             <EditablePillsBlock
               title={t("components.alteration-card.labels.resistances")}
-              list={this.state.resistances}
-              onChange={(arr) => {
-                this.setState({ resistances: arr });
-                this.updateFields({ resistances: arr });
-              }}
+              list={toList(resistances)}
+              onChange={(arr) => this.updateFields({ resistances: arr })}
               pillClass="resistance-tag"
             />
 
@@ -336,17 +210,8 @@ class AlterationCard extends Component {
   }
 }
 
-const mapStateToProps = (state) => {
-  const mergedEvents = selectMergedEvents(state);
-  
-  return {
-    filteredEvents: {
-      ...state?.FilteredEvents,
-      filteredEvents: mergedEvents.filteredEvents,
-      selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
-    },
-    interpretations: state?.Interpretations,
-  };
-};
+const mapStateToProps = (state) => ({
+  caseId: state?.CaseReport?.id,
+});
 
 export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));

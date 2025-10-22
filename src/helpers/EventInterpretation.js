@@ -58,6 +58,14 @@ class EventInterpretation {
     return displayName && displayName.trim() ? displayName.trim() : 'Anonymous';
   }
 
+  static createId(caseId, alterationId) {
+    return `${caseId}::${alterationId}`;
+  }
+
+  hasOverrides() {
+    return this.data && Object.keys(this.data).length > 0;
+  }
+
   updateData(newData) {
     this.data = { ...this.data, ...newData };
     this.lastModified = new Date().toISOString();

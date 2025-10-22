@@ -18,7 +18,6 @@ import signatureStatisticsActions from "../signatureStatistics/actions";
 import igvActions from "../igv/actions";
 import highlightsActions from "../highlights/actions";
 import snvplicityActions from "../snvplicity/actions";
-import interpretationsActions from "../interpretations/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 import { qcEvaluator } from "../../helpers/metadata";
 
@@ -105,10 +104,6 @@ function* followUpFetchCaseReportSuccess(action) {
   ];
 
   yield all(actionTypes.map((type) => put({ type })));
-  
-  if (id) {
-    yield put(interpretationsActions.fetchInterpretationsForCase(id));
-  }
 }
 
 function* actionWatcher() {

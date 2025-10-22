@@ -40,10 +40,22 @@ export default function interpretationsReducer(state = initState, action) {
       const interpretation = action.interpretation;
       const key = `${interpretation.alterationId}___${interpretation.authorId}`;
       
+      console.log('[Reducer] UPDATE_INTERPRETATION_SUCCESS:', { interpretation, key });
+      console.log('[Reducer] Existing byId:', state.byId);
+      
       const existingInterpretation = state.byId[key];
       const mergedInterpretation = existingInterpretation 
-        ? { ...existingInterpretation, ...interpretation }
+        ? {
+            ...existingInterpretation,
+            ...interpretation,
+            data: {
+              ...(existingInterpretation.data || {}),
+              ...(interpretation.data || {}),
+            },
+          }
         : interpretation;
+      
+      console.log('[Reducer] Merged interpretation:', mergedInterpretation);
       
       const updatedById = {
         ...state.byId,
@@ -54,6 +66,9 @@ export default function interpretationsReducer(state = initState, action) {
       if (interpretation.isCurrentUser) {
         updatedSelected[interpretation.alterationId] = key;
       }
+      
+      console.log('[Reducer] New byId:', updatedById);
+      console.log('[Reducer] New selected:', updatedSelected);
 
       return {
         ...state,

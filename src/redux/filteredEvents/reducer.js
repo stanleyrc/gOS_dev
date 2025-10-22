@@ -50,22 +50,6 @@ export default function appReducer(state = initState, action) {
         viewMode: action.viewMode,
         loading: false,
       };
-    case actions.APPLY_TIER_OVERRIDE: {
-      const { uid, tier } = action;
-      const tierNum = Number(tier);
-      const update = (it) => (it ? { ...it, tier: tierNum } : it);
-
-      return {
-        ...state,
-        filteredEvents: (state.filteredEvents || []).map((it) =>
-          it?.uid === uid ? update(it) : it
-        ),
-        selectedFilteredEvent:
-          state.selectedFilteredEvent?.uid === uid
-            ? update(state.selectedFilteredEvent)
-            : state.selectedFilteredEvent,
-      };
-    }
     case actions.RESET_TIER_OVERRIDES: {
       // Restore entire items from the original snapshot (not just tier)
       const origMap = new Map(
@@ -89,28 +73,6 @@ export default function appReducer(state = initState, action) {
         ...state,
         filteredEvents: nextFiltered,
         selectedFilteredEvent: nextSelected,
-      };
-    }
-    case actions.UPDATE_ALTERATION_FIELDS: {
-      const { uid, changes } = action;
-      const normalized = {
-        ...changes,
-        ...(Array.isArray(changes?.therapeutics)
-          ? { therapeutics: [...changes.therapeutics] }
-          : {}),
-        ...(Array.isArray(changes?.resistances)
-          ? { resistances: [...changes.resistances] }
-          : {}),
-      };
-      return {
-        ...state,
-        filteredEvents: (state.filteredEvents || []).map((it) =>
-          it?.uid === uid ? { ...it, ...normalized } : it
-        ),
-        selectedFilteredEvent:
-          state.selectedFilteredEvent?.uid === uid
-            ? { ...state.selectedFilteredEvent, ...normalized }
-            : state.selectedFilteredEvent,
       };
     }
     case actions.SET_GLOBAL_NOTES:

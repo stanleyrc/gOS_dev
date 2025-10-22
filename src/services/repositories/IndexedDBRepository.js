@@ -4,7 +4,7 @@
  */
 
 import { EventInterpretationRepository } from "./EventInterpretationRepository";
-import { EventInterpretation } from "./EventInterpretation";
+import EventInterpretation from "../../helpers/EventInterpretation";
 
 const DB_NAME = "gOS_Interpretations";
 const STORE_NAME = "interpretations";
@@ -78,18 +78,10 @@ export class IndexedDBRepository extends EventInterpretationRepository {
       throw new Error("EventInterpretation must have caseId and alterationId");
     }
     
+    const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     const data = {
-      id: interpretation.id,
-      caseId: interpretation.caseId,
-      alterationId: interpretation.alterationId,
-      tier: interpretation.tier,
-      gene_summary: interpretation.gene_summary,
-      variant_summary: interpretation.variant_summary,
-      effect_description: interpretation.effect_description,
-      notes: interpretation.notes,
-      therapeutics: interpretation.therapeutics,
-      resistances: interpretation.resistances,
-      metadata: interpretation.metadata,
+      id: `${json.caseId}::${json.alterationId}`,
+      ...json,
       updatedAt: Date.now(),
     };
     
@@ -118,7 +110,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
         });
       });
       
-      return data ? EventInterpretation.fromJSON(data) : null;
+      return data ? new EventInterpretation(data) : null;
     } catch (e) {
       console.error("Failed to get interpretation:", e);
       return null;
@@ -140,7 +132,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
         });
       });
       
-      return results.map((data) => EventInterpretation.fromJSON(data));
+      return results.map((data) => new EventInterpretation(data));
     } catch (e) {
       console.error("Failed to get interpretations for case:", e);
       return [];
@@ -214,18 +206,10 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     await withStore(STORE_NAME, "readwrite", async (store) => {
       const savePromises = normalized.map((interp) => {
         return new Promise((resolve, reject) => {
+          const json = interp.toJSON ? interp.toJSON() : interp;
           const data = {
-            id: interp.id,
-            caseId: interp.caseId,
-            alterationId: interp.alterationId,
-            tier: interp.tier,
-            gene_summary: interp.gene_summary,
-            variant_summary: interp.variant_summary,
-            effect_description: interp.effect_description,
-            notes: interp.notes,
-            therapeutics: interp.therapeutics,
-            resistances: interp.resistances,
-            metadata: interp.metadata,
+            id: `${json.caseId}::${json.alterationId}`,
+            ...json,
             updatedAt: Date.now(),
           };
           

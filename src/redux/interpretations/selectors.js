@@ -55,12 +55,16 @@ export const selectMergedEvents = createSelector(
         }
       }
       
-      if (!currentUserInterpretation) return event;
+      if (!currentUserInterpretation) {
+        return event;
+      }
       
-      return {
+      const merged = {
         ...event,
         ...currentUserInterpretation.data,
       };
+      
+      return merged;
     };
     
     const mergedEvents = filteredEvents.map(mergeEventWithInterpretation);

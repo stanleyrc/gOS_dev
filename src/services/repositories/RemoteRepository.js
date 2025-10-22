@@ -4,7 +4,7 @@
  */
 
 import { EventInterpretationRepository } from "./EventInterpretationRepository";
-import { EventInterpretation } from "./EventInterpretation";
+import EventInterpretation from "../../helpers/EventInterpretation";
 
 export class RemoteRepository extends EventInterpretationRepository {
   constructor(config = {}) {
@@ -28,32 +28,30 @@ export class RemoteRepository extends EventInterpretationRepository {
   }
 
   async save(interpretation) {
-    if (!(interpretation instanceof EventInterpretation)) {
-      interpretation = new EventInterpretation(interpretation);
-    }
+    const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     
     const response = await this._fetch(
-      `/cases/${interpretation.caseId}/interpretations/${interpretation.alterationId}`,
+      `/cases/${json.caseId}/interpretations/${json.alterationId}`,
       {
         method: "PUT",
-        body: JSON.stringify(interpretation.toJSON()),
+        body: JSON.stringify(json),
       }
     );
     
-    return EventInterpretation.fromJSON(response);
+    return new EventInterpretation(response);
   }
 
   async get(caseId, alterationId) {
     const response = await this._fetch(
       `/cases/${caseId}/interpretations/${alterationId}`
     );
-    return response ? EventInterpretation.fromJSON(response) : null;
+    return response ? new EventInterpretation(response) : null;
   }
 
   async getForCase(caseId) {
     const response = await this._fetch(`/cases/${caseId}/interpretations`);
     return (response?.interpretations || []).map((data) =>
-      EventInterpretation.fromJSON(data)
+      new EventInterpretation(data)
     );
   }
 
@@ -71,9 +69,7 @@ export class RemoteRepository extends EventInterpretationRepository {
 
   async bulkSave(interpretations) {
     const normalized = interpretations.map((interp) =>
-      interp instanceof EventInterpretation
-        ? interp.toJSON()
-        : new EventInterpretation(interp).toJSON()
+      interp.toJSON ? interp.toJSON() : interp
     );
     
     const response = await this._fetch("/interpretations/bulk", {
@@ -82,7 +78,7 @@ export class RemoteRepository extends EventInterpretationRepository {
     });
     
     return (response?.interpretations || []).map((data) =>
-      EventInterpretation.fromJSON(data)
+      new EventInterpretation(data)
     );
   }
 
