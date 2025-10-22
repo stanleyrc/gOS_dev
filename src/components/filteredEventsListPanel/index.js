@@ -34,7 +34,7 @@ import interpretationsActions from "../../redux/interpretations/actions";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import EditableTextBlock from "../editableTextBlock";
+
 import EventInterpretation from "../../helpers/EventInterpretation";
 // DEPRECATED: Import/export functionality will be reimplemented with repository pattern
 // import {
@@ -49,7 +49,7 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, resetTierOverrides, setGlobalNotes } = filteredEventsActions;
+const { selectFilteredEvent, resetTierOverrides } = filteredEventsActions;
 
 const eventColumns = {
   all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -124,11 +124,10 @@ class FilteredEventsListPanel extends Component {
 
     // Clear interpretations from IndexedDB
     this.props.dispatch(interpretationsActions.clearCaseInterpretations(caseId));
-    
+
     // Reset Redux state
     resetTierOverrides();
     selectFilteredEvent(null);
-    this.props.setGlobalNotes("");
   };
 
   handleCloseReportModal = async () => {
@@ -672,16 +671,6 @@ class FilteredEventsListPanel extends Component {
           </Row>
         ) : (
           <>
-            <Row className="ant-panel-container ant-home-plot-container">
-              <Col span={24}>
-                <EditableTextBlock
-                  title={t("components.alteration-card.labels.notes")}
-                  value={this.props.globalNotes || ""}
-                  onChange={(v) => this.props.setGlobalNotes(v)}
-                  useCollapse={true}
-                />
-              </Col>
-            </Row>
             <Row
               className="ant-panel-container ant-home-plot-container"
               align="middle"
@@ -960,7 +949,6 @@ const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   resetTierOverrides: () => dispatch(resetTierOverrides()),
-  setGlobalNotes: (notes) => dispatch(setGlobalNotes(notes)),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
@@ -985,7 +973,6 @@ const mapStateToProps = (state) => {
     hetsnps: state.Hetsnps,
     genes: state.Genes,
     igv: state.Igv,
-    globalNotes: state.FilteredEvents.globalNotes,
   };
 };
 export default connect(

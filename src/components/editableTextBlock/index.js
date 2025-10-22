@@ -38,7 +38,7 @@ class EditableTextBlock extends Component {
   };
 
   render() {
-    const { title, value, useCollapse } = this.props;
+    const { title, value, useCollapse, minRows = 3 } = this.props;
     const { editing, draft } = this.state;
 
     if (editing) {
@@ -49,7 +49,7 @@ class EditableTextBlock extends Component {
             ref={this.textAreaRef}
             value={draft}
             onChange={this.handleChange}
-            autoSize={{ minRows: 3 }}
+            autoSize={{ minRows }}
             onBlur={this.handleBlur}
             style={{ marginTop: 8 }}
           />

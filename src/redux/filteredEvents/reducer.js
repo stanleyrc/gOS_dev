@@ -8,7 +8,6 @@ const initState = {
   viewMode: "tracks",
   error: null,
   reportSrc: null,
-  globalNotes: "",
 };
 
 export default function appReducer(state = initState, action) {
@@ -21,7 +20,6 @@ export default function appReducer(state = initState, action) {
         originalFilteredEvents: [],
         loading: true,
         reportSrc: null,
-        globalNotes: "",
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
       return {
@@ -41,7 +39,6 @@ export default function appReducer(state = initState, action) {
         error: action.error,
         loading: false,
         reportSrc: null,
-        globalNotes: "",
       };
     case actions.SELECT_FILTERED_EVENT:
       return {
@@ -75,11 +72,6 @@ export default function appReducer(state = initState, action) {
         selectedFilteredEvent: nextSelected,
       };
     }
-    case actions.SET_GLOBAL_NOTES:
-      return {
-        ...state,
-        globalNotes: String(action.notes || ""),
-      };
     default:
       return state;
   }
