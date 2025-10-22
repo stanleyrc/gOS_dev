@@ -329,6 +329,8 @@
           "event-metrics": "Event Metrics",
           "biomarker-metrics": "Biomarker Metrics"
         },
+        "case": "{{count}} case",
+        "case_plural": "{{count}} cases",
         "tags": "Tags",
         "tags-operator": "Matching",
         "pair": "Pair",

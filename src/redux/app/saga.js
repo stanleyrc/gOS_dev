@@ -11,10 +11,10 @@ import {
   getPopulationMetrics,
   getSignatureMetrics,
   sequencesToGenome,
-  reportFilters,
   nucleotideMutationText,
   deletionInsertionMutationVariant,
 } from "../../helpers/utility";
+import { reportFilters } from "../../helpers/filters";
 import { chartTypes } from "../../helpers/metadata";
 import { getCurrentState } from "./selectors";
 import { loadArrowTable, allelicToGenome } from "../../helpers/utility";

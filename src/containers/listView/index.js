@@ -172,8 +172,30 @@ class ListView extends Component {
               <Cascader
                 placeholder={t("containers.list-view.filters.placeholder")}
                 className="tags-cascader"
-                options={generateCascaderOptions(d.records)}
+                options={generateCascaderOptions(d.records, d.frequencies)}
                 displayRender={this.tagsDisplayRender}
+                optionRender={(option) => {
+                  return (
+                    <div className="filter-option-container">
+                      <span>
+                        <Text
+                          className="filter-option-text"
+                          ellipsis={{ tooltip: option?.label }}
+                        >
+                          {option?.label}
+                        </Text>
+                      </span>
+                      {option?.count != null && (
+                        <span className="filter-option-count">
+                          {option?.children == null &&
+                            t("containers.list-view.filters.case", {
+                              count: option?.count,
+                            })}
+                        </span>
+                      )}
+                    </div>
+                  );
+                }}
                 multiple
                 showSearch={(inputValue, path) =>
                   path.some(
@@ -214,15 +236,34 @@ class ListView extends Component {
               disabled={
                 d.records.length === 0 || d.records.every((e) => e == null)
               }
-            >
-              {d.records.map((e, i) => (
-                <Option key={i} value={e || "null"}>
-                  {e
-                    ? snakeCaseToHumanReadable(e)
-                    : t("containers.list-view.filters.empty")}
-                </Option>
-              ))}
-            </Select>
+              options={d.records.map((e) => ({
+                label: e
+                  ? snakeCaseToHumanReadable(e)
+                  : t("containers.list-view.filters.empty"),
+                value: e || "null",
+                count: d.frequencies[e] || 0,
+              }))}
+              labelInValue={false}
+              optionRender={(option) => (
+                <div className="filter-option-container">
+                  <span>
+                    <Text
+                      className="filter-option-text"
+                      ellipsis={{ tooltip: option.data.label }}
+                    >
+                      {option.data.label}
+                    </Text>
+                  </span>
+                  {option.data.count != null && (
+                    <span className="filter-option-count">
+                      {t("containers.list-view.filters.case", {
+                        count: option.data.count,
+                      })}
+                    </span>
+                  )}
+                </div>
+              )}
+            />
           </Item>
         );
       }
@@ -503,7 +544,7 @@ class ListView extends Component {
                               style={{ display: "flex" }}
                             >
                               {generateCascaderOptions(d.tags).map((tag, i) => (
-                                <div key={tag.value}>
+                                <div key={`tag-${tag.value}-${i}`}>
                                   <Divider
                                     plain
                                     orientation="left"

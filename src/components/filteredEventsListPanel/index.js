@@ -62,7 +62,7 @@ class FilteredEventsListPanel extends Component {
   };
   state = {
     eventType: "all",
-    tierFilters: [1, 2], // start with tiers 1 & 2 checked
+    tierFilters: [],
     typeFilters: [],
     roleFilters: [],
     effectFilters: [],
@@ -158,12 +158,20 @@ class FilteredEventsListPanel extends Component {
     const { id, resetTierOverrides, selectFilteredEvent } = this.props;
     const caseId = id ? String(id) : "";
     if (!caseId) {
-      alert(this.props.t("components.filtered-events-panel.reset-prompts.no-case-id"));
+      alert(
+        this.props.t(
+          "components.filtered-events-panel.reset-prompts.no-case-id"
+        )
+      );
       return;
     }
-    const c1 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm1"));
+    const c1 = window.confirm(
+      this.props.t("components.filtered-events-panel.reset-prompts.confirm1")
+    );
     if (!c1) return;
-    const c2 = window.confirm(this.props.t("components.filtered-events-panel.reset-prompts.confirm2"));
+    const c2 = window.confirm(
+      this.props.t("components.filtered-events-panel.reset-prompts.confirm2")
+    );
     if (!c2) return;
 
     // Clear interpretations from IndexedDB
@@ -177,14 +185,6 @@ class FilteredEventsListPanel extends Component {
   handleCloseReportModal = async () => {
     this.props.selectFilteredEvent(null);
   };
-
-  componentDidMount() {
-    // Persistence now handled by persistenceSaga
-  }
-
-  componentDidUpdate(prevProps) {
-    // Persistence now handled by persistenceSaga
-  }
 
   handleSegmentedChange = (eventType) => {
     this.setState({ eventType });
@@ -202,11 +202,6 @@ class FilteredEventsListPanel extends Component {
       variantFilters: filters.variant || [],
     });
   };
-
-
-
-
-
 
   render() {
     const {
