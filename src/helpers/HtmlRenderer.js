@@ -160,7 +160,8 @@ function toTitle(report) {
   const p = report && report.patient ? report.patient : {};
   const id = p.caseId || '';
   const primary = p.primarySite || '';
-  return `Clinical Evidence Report — ${id || primary || 'Patient'}`;
+  const author = report.author || '';
+  return `Clinical Evidence Report — ${id || primary || 'Patient'}${author ? ` ${author}` : ''}`;
 }
 
 function buildPatientSection(report) {
@@ -441,7 +442,11 @@ function buildToc(report, logoDataUrl) {
   }, {});
   const tiers = Object.keys(byTier).sort((a, b) => Number(a) - Number(b));
 
-  let toc = `<div class="report-header">
+  const authorName = report && report.author ? String(report.author) : '';
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const watermark = authorName ? `<div style="text-align:left; color:#ccc; font-size:14px; margin-bottom:10px;">${escapeHtml(dateStr)} ${escapeHtml(authorName)}</div>` : '';
+
+  let toc = watermark + `<div class="report-header">
   <h1>Report for ${escapeHtml(caseId || 'Patient')}</h1>
   ${logoDataUrl
     ? `<div class="report-brand" aria-label="gOS">
@@ -870,6 +875,7 @@ class HtmlRenderer {
     const caseId = report && report.patient && report.patient.caseId
       ? String(report.patient.caseId)
       : '';
+    const authorName = report && report.author ? String(report.author) : '';
     
     // Load logo as data URL
     const logoDataUrl = await loadLogoAsDataUrl();
@@ -880,6 +886,8 @@ class HtmlRenderer {
       buildNotesSection(report),
       buildAlterationsSection(report)
     ].filter(Boolean).join('\n\n');
+
+    const interpretationsScript = report.interpretations && report.interpretations.length > 0 ? `<script type="application/json" id="interpretations-data">${JSON.stringify(report.interpretations)}</script>` : '';
 
     const html = `
 <!DOCTYPE html>
@@ -897,6 +905,7 @@ ${getInlineCSS()}
   <div class="container">
     ${sections}
   </div>
+  ${interpretationsScript}
 </body>
 </html>`.trim();
 
@@ -904,7 +913,7 @@ ${getInlineCSS()}
       html,
       mimeType: 'text/html',
       extension: '.html',
-      filename: options && options.filename ? String(options.filename) : `report-${caseId || 'patient'}.html`
+      filename: options && options.filename ? String(options.filename) : `report-${caseId || 'patient'}-${authorName}.html`
     };
   }
 }
