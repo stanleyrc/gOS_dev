@@ -16,14 +16,18 @@ class EditablePillsBlock extends Component {
   componentDidUpdate(prevProps, prevState) {
     const plain = (this.props.list || []).join(", ");
     const prevPlain = (prevProps.list || []).join(", ");
-    
+
     if (plain !== prevPlain) {
       this.setState({ draft: plain });
     }
-    
-    if (!prevState.editing && this.state.editing && this.inputRef.current) {
-      this.inputRef.current.focus({ cursor: "end" });
+
+    if (prevProps.readOnly !== this.props.readOnly && this.props.readOnly) {
+      this.setState({ editing: false });
     }
+
+  if (!prevState.editing && this.state.editing && this.inputRef.current) {
+  this.inputRef.current.focus({ cursor: "end" });
+  }
   }
 
   handleBlur = () => {
@@ -40,6 +44,7 @@ class EditablePillsBlock extends Component {
   };
 
   setEditing = (editing) => {
+    if (this.props.readOnly) return;
     this.setState({ editing });
   };
 
@@ -48,22 +53,24 @@ class EditablePillsBlock extends Component {
   };
 
   render() {
-    const { title, list, pillClass } = this.props;
+    const { title, list, pillClass, readOnly = false } = this.props;
     const { editing, draft } = this.state;
 
     return (
       <div className="desc-block editable-field">
-        <div className="desc-title">
-          {title}:
-          <button
-            type="button"
-            className="edit-btn"
-            onClick={() => this.setEditing(true)}
-            aria-label={`Edit ${title}`}
-          >
-            <EditOutlined />
+      <div className="desc-title">
+      {title}:
+      {!readOnly && (
+      <button
+        type="button"
+        className="edit-btn"
+        onClick={() => this.setEditing(true)}
+          aria-label={`Edit ${title}`}
+      >
+          <EditOutlined />
           </button>
-        </div>
+        )}
+      </div>
         {editing ? (
           <Input
             ref={this.inputRef}

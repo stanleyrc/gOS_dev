@@ -104,6 +104,14 @@ export default function interpretationsReducer(state = initState, action) {
         status: "failed",
         error: action.error,
       };
+    case actions.SELECT_INTERPRETATION:
+      return {
+        ...state,
+        selected: {
+          ...state.selected,
+          [action.alterationId]: action.key,
+        },
+      };
     default:
       return state;
   }

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { BsDashLg } from "react-icons/bs";
-import { Card, Tag, Typography, Descriptions, Avatar } from "antd";
+import { Card, Tag, Typography, Descriptions, Avatar, Button } from "antd";
 import Wrapper from "./index.style";
 import { tierColor } from "../../helpers/utility";
 import interpretationsActions from "../../redux/interpretations/actions";
@@ -9,6 +9,9 @@ import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
 import EventInterpretation from "../../helpers/EventInterpretation";
+
+import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
+import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getBaseEvent } from "../../redux/interpretations/selectors";
 
 const { Title, Text } = Typography;
 
@@ -22,26 +25,79 @@ function toList(value) {
 }
 
 class AlterationCard extends Component {
+  state = {
+    showVersions: false,
+    selectedInterpretation: null, // When set, overrides the current one
+  };
+
+
+
   updateFields = (changes) => {
     const { record, caseId } = this.props;
-    
+    const currentData = this.props.interpretation?.data || {};
+    const data = { ...currentData, ...changes };
+
     const eventInterpretation = new EventInterpretation({
       caseId: caseId || record?.id || "UNKNOWN",
       alterationId: record?.uid || "UNKNOWN",
       gene: record?.gene,
       variant: record?.variant,
-      data: changes
+      data
     });
-    
+
     const payload = eventInterpretation.toJSON();
-    
+
     this.props.dispatch(
       interpretationsActions.updateInterpretation(payload)
     );
+  };
+
+  handleShowVersions = () => {
+    this.setState({ showVersions: true });
+  };
+
+  handleCloseVersions = () => {
+    this.setState({ showVersions: false });
+  };
+
+  handleSelectInterpretation = (interpretation) => {
+    this.setState({ selectedInterpretation: interpretation, showVersions: false });
+  };
+
+  handleClearSelection = () => {
+    this.setState({ selectedInterpretation: null });
+  };
+
+  handleCopyVersion = () => {
+    const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
+    if (!confirmed) return;
+
+    const { selectedInterpretation } = this.state;
+    const { caseId, record } = this.props;
+    const data = selectedInterpretation?.data || {};
+
+    const eventInterpretation = new EventInterpretation({
+      caseId,
+      alterationId: record?.uid,
+      gene: record?.gene,
+      variant: record?.variant,
+      data
+    });
+
+    this.props.dispatch(interpretationsActions.updateInterpretation(eventInterpretation.toJSON()));
+    this.setState({ selectedInterpretation: null });
+  };
+
+  componentDidUpdate(prevProps, prevState) {
+    // Reset editing state when switching interpretations
+    if (prevState.selectedInterpretation !== this.state.selectedInterpretation) {
+      // EditableTextBlock handles its own reset via props.value change
+    }
   }
 
   render() {
-    const { t, record } = this.props;
+    const { t, record, interpretation, allInterpretations, baseRecord } = this.props;
+    const { showVersions, selectedInterpretation } = this.state;
     
     if (!record) {
       return (
@@ -71,8 +127,22 @@ class AlterationCard extends Component {
       notes,
     } = record;
 
-    const currentTierStr = ["1", "2", "3"].includes(String(tier))
-      ? String(tier)
+    // Determine which interpretation to display
+    const displayInterpretation = selectedInterpretation || interpretation;
+    // Base defaults for editable fields when not present in interpretation
+    const baseDefaults = {
+      tier: baseRecord?.tier || 3, // base tier from original event
+      gene_summary: baseRecord?.gene_summary || "",
+      variant_summary: baseRecord?.variant_summary || "",
+      effect_description: baseRecord?.effect_description || "",
+      notes: baseRecord?.notes || "",
+      therapeutics: baseRecord?.therapeutics || [],
+      resistances: baseRecord?.resistances || [],
+    };
+    const displayData = { ...record, ...baseDefaults, ...displayInterpretation?.data };
+
+    const currentTierStr = ["1", "2", "3"].includes(String(displayData.tier))
+      ? String(displayData.tier)
       : "3";
     const geneLabel = (gene || t("components.alteration-card.unknown")).replace("::", "-");
     const variantTitle = variant || "";
@@ -87,9 +157,45 @@ class AlterationCard extends Component {
 
     const unavailableMetric = (<Text italic disabled> <BsDashLg /> </Text>);
 
+    // Check if current user is viewing their own interpretation
+    const isCurrentUser = !selectedInterpretation || displayInterpretation?.isCurrentUser;
+
+    // Format author and date for watermark button
+    const authorName = displayInterpretation?.authorName || 'Unknown';
+    const lastModified = displayInterpretation?.lastModified;
+    const dateStr = lastModified ? new Date(lastModified).toLocaleString() : '';
+    const watermarkText = `${authorName}${dateStr ? ` ${dateStr}` : ''}`;
+
     return (
       <Wrapper>
-        <Card className="variant-card" bordered>
+        <Card className="variant-card" bordered bodyStyle={{ padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0px', marginBottom: '16px' }}>
+            {!isCurrentUser && (
+              <Button
+                type="primary"
+                size="small"
+                onClick={this.handleCopyVersion}
+                style={{ fontSize: '12px', height: 'auto', lineHeight: '1', marginRight: '8px' }}
+              >
+                Copy to My Version
+              </Button>
+            )}
+            <Button
+              type="text"
+              size="small"
+              onClick={this.handleShowVersions}
+              style={{
+                fontSize: '12px',
+                color: '#999',
+                border: 'none',
+                padding: '2px 8px',
+                height: 'auto',
+                lineHeight: '1',
+              }}
+            >
+              {watermarkText}
+            </Button>
+          </div>
           <div className="variant-header">
             <div className="gene-left">
               {currentTierStr && (
@@ -110,6 +216,7 @@ class AlterationCard extends Component {
                     onChange={(e) => {
                       this.updateFields({ tier: e.target.value });
                     }}
+                    disabled={!isCurrentUser}
                     aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
                   >
                     <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
@@ -143,23 +250,27 @@ class AlterationCard extends Component {
             <div className="variant-desc">
               <EditableTextBlock
                 title={t("components.alteration-card.labels.gene-summary")}
-                value={gene_summary || ""}
+                value={displayData.gene_summary || ""}
                 onChange={(v) => this.updateFields({ gene_summary: v })}
+                readOnly={!isCurrentUser}
                />
               <EditableTextBlock
                 title={t("components.alteration-card.labels.variant-summary")}
-                value={variant_summary || ""}
+                value={displayData.variant_summary || ""}
                 onChange={(v) => this.updateFields({ variant_summary: v })}
+                readOnly={!isCurrentUser}
                />
               <EditableTextBlock
                 title={t("components.alteration-card.labels.effect-description")}
-                value={effect_description || ""}
+                value={displayData.effect_description || ""}
                 onChange={(v) => this.updateFields({ effect_description: v })}
+                readOnly={!isCurrentUser}
                />
               <EditableTextBlock
                 title={t("components.alteration-card.labels.notes")}
-                value={notes || ""}
+                value={displayData.notes || ""}
                 onChange={(v) => this.updateFields({ notes: v })}
+                readOnly={!isCurrentUser}
                />
             </div>
 
@@ -191,27 +302,57 @@ class AlterationCard extends Component {
           <div className="variant-footer">
             <EditablePillsBlock
               title={t("components.alteration-card.labels.therapeutics")}
-              list={toList(therapeutics)}
+              list={toList(displayData.therapeutics)}
               onChange={(arr) => this.updateFields({ therapeutics: arr })}
               pillClass="therapeutic-tag"
+              readOnly={!isCurrentUser}
             />
 
             <EditablePillsBlock
               title={t("components.alteration-card.labels.resistances")}
-              list={toList(resistances)}
+              list={toList(displayData.resistances)}
               onChange={(arr) => this.updateFields({ resistances: arr })}
               pillClass="resistance-tag"
+              readOnly={!isCurrentUser}
             />
 
           </div>
         </Card>
+
+        <InterpretationVersionsSidepanel
+          tableData={allInterpretations}
+          title="Notes Versions"
+          isOpen={showVersions}
+          onClose={this.handleCloseVersions}
+          onSelect={this.handleSelectInterpretation}
+          additionalColumns={[
+            {
+              title: 'Case ID',
+              dataIndex: 'caseId',
+              key: 'caseId',
+            },
+            {
+              title: 'Gene',
+              dataIndex: 'gene',
+              key: 'gene',
+            },
+            {
+              title: 'Variant',
+              dataIndex: 'variant',
+              key: 'variant',
+            },
+          ]}
+        />
       </Wrapper>
     );
   }
 }
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state, ownProps) => ({
   caseId: state?.CaseReport?.id,
+  interpretation: getInterpretationForAlteration(state, ownProps.record?.uid),
+  allInterpretations: getAllInterpretationsForAlteration(state, ownProps.record?.uid),
+  baseRecord: getBaseEvent(state, ownProps.record?.uid),
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));

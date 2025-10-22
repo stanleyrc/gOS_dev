@@ -29,6 +29,11 @@ export const getGlobalNotesInterpretation = (state) => {
   return getInterpretationForAlteration(state, "GLOBAL_NOTES");
 };
 
+export const getBaseEvent = (state, uid) => {
+  const filteredEvents = state.FilteredEvents?.filteredEvents || [];
+  return filteredEvents.find(e => e.uid === uid);
+};
+
 const selectFilteredEventsState = (state) => state.FilteredEvents || {};
 
 export const selectMergedEvents = createSelector(

@@ -11,6 +11,8 @@ const actions = {
   CLEAR_CASE_INTERPRETATIONS_SUCCESS: "CLEAR_CASE_INTERPRETATIONS_SUCCESS",
   CLEAR_CASE_INTERPRETATIONS_FAILED: "CLEAR_CASE_INTERPRETATIONS_FAILED",
 
+  SELECT_INTERPRETATION: "SELECT_INTERPRETATION",
+
   fetchInterpretationsForCase: (caseId) => ({
     type: actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST,
     caseId,
@@ -22,6 +24,11 @@ const actions = {
   clearCaseInterpretations: (caseId) => ({
     type: actions.CLEAR_CASE_INTERPRETATIONS_REQUEST,
     caseId,
+  }),
+  selectInterpretation: (alterationId, key) => ({
+    type: actions.SELECT_INTERPRETATION,
+    alterationId,
+    key,
   }),
 };
 

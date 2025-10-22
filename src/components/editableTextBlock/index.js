@@ -17,6 +17,9 @@ class EditableTextBlock extends Component {
     if (prevProps.value !== this.props.value) {
       this.setState({ draft: this.props.value || "" });
     }
+    if (prevProps.readOnly !== this.props.readOnly && this.props.readOnly) {
+      this.setState({ editing: false });
+    }
     if (!prevState.editing && this.state.editing && this.textAreaRef.current) {
       this.textAreaRef.current.focus({ cursor: "end" });
     }
@@ -30,6 +33,7 @@ class EditableTextBlock extends Component {
   };
 
   setEditing = (editing) => {
+    if (this.props.readOnly) return;
     this.setState({ editing });
   };
 
@@ -38,7 +42,7 @@ class EditableTextBlock extends Component {
   };
 
   render() {
-    const { title, value, useCollapse, minRows = 3 } = this.props;
+    const { title, value, useCollapse, minRows = 3, readOnly = false } = this.props;
     const { editing, draft } = this.state;
 
     if (editing) {
@@ -73,17 +77,19 @@ class EditableTextBlock extends Component {
               header={
                 <div className="notes-header">
                   <span className="notes-header-title">{title}</span>
-                  <button
-                    type="button"
-                    className="edit-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      this.setEditing(true);
-                    }}
-                    aria-label={`Edit ${title}`}
-                  >
-                    <EditOutlined />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="edit-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        this.setEditing(true);
+                      }}
+                      aria-label={`Edit ${title}`}
+                    >
+                      <EditOutlined />
+                    </button>
+                  )}
                 </div>
               }
             >
@@ -107,14 +113,16 @@ class EditableTextBlock extends Component {
       <div className="desc-block editable-field">
         <div className="desc-title">
           {title}:
-          <button
-            type="button"
-            className="edit-btn"
-            onClick={() => this.setEditing(true)}
-            aria-label={`Edit ${title}`}
-          >
-            <EditOutlined />
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="edit-btn"
+              onClick={() => this.setEditing(true)}
+              aria-label={`Edit ${title}`}
+            >
+              <EditOutlined />
+            </button>
+          )}
         </div>
         {value ? (
           <div
