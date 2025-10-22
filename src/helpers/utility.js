@@ -1328,12 +1328,8 @@ export function transformFilteredEventAttributes(filteredEvents) {
         } else {
           try {
             location = event.Genome_Location;
-            actualLocation = transformFusionGeneCoords(
-              location
-            );
-            chromosome = location
-              .split(",")
-              .map((d) => d.split(":")[0]);
+            actualLocation = transformFusionGeneCoords(location);
+            chromosome = location.split(",").map((d) => d.split(":")[0]);
             startPoint = location
               .split(",")
               .map((d) => d.split(":")[1].split("-")[0]);
@@ -1564,29 +1560,6 @@ export function calculateOptimalBins(data) {
   const k = 1 + Math.log2(n) + Math.log2(1 + Math.abs(skewness));
 
   return Math.ceil(k);
-}
-
-export function parseCosmicSignatureWeightMatrix(matrixText) {
-  const lines = matrixText.trim().split("\n");
-  const headers = lines[0].split(/\s+/).slice(1);
-  const matrix = {};
-
-  headers.forEach((sig) => {
-    if (sig !== "") {
-      matrix[sig] = {};
-    }
-  });
-
-  lines.slice(1).forEach((line) => {
-    const [tnc, ...weights] = line.split(/\s+/);
-    headers.forEach((sig, index) => {
-      if (sig !== "") {
-        matrix[sig][tnc] = parseFloat(weights[index]);
-      }
-    });
-  });
-
-  return matrix;
 }
 
 export function Legend(
