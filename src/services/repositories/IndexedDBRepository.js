@@ -75,7 +75,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     
     const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     const data = {
-      id: `${json.caseId}::${json.alterationId}`,
+      id: EventInterpretation.createId(json.caseId, json.alterationId, json.authorId),
       ...json,
       updatedAt: Date.now(),
     };
@@ -91,11 +91,11 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     return interpretation;
   }
 
-  async get(caseId, alterationId) {
+  async get(caseId, alterationId, authorId) {
     if (!window.indexedDB) return null;
-    
-    const id = EventInterpretation.createId(caseId, alterationId);
-    
+
+    const id = EventInterpretation.createId(caseId, alterationId, authorId);
+
     try {
       const data = await withStore(STORE_NAME, "readonly", (store) => {
         return new Promise((resolve, reject) => {
@@ -104,7 +104,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
           req.onerror = () => reject(req.error);
         });
       });
-      
+
       return data ? new EventInterpretation(data) : null;
     } catch (e) {
       console.error("Failed to get interpretation:", e);
@@ -134,11 +134,11 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async delete(caseId, alterationId) {
+  async delete(caseId, alterationId, authorId) {
     if (!window.indexedDB) return;
-    
-    const id = EventInterpretation.createId(caseId, alterationId);
-    
+
+    const id = EventInterpretation.createId(caseId, alterationId, authorId);
+
     try {
       await withStore(STORE_NAME, "readwrite", (store) => {
         return new Promise((resolve, reject) => {
@@ -195,11 +195,11 @@ export class IndexedDBRepository extends EventInterpretationRepository {
         return new Promise((resolve, reject) => {
           const json = interp.toJSON ? interp.toJSON() : interp;
           const data = {
-            id: `${json.caseId}::${json.alterationId}`,
+            id: EventInterpretation.createId(json.caseId, json.alterationId, json.authorId),
             ...json,
             updatedAt: Date.now(),
           };
-          
+
           const req = store.put(data);
           req.onsuccess = () => resolve();
           req.onerror = () => reject(req.error);

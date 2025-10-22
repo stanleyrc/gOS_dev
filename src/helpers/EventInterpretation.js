@@ -58,8 +58,8 @@ class EventInterpretation {
     return displayName && displayName.trim() ? displayName.trim() : 'Anonymous';
   }
 
-  static createId(caseId, alterationId) {
-    return `${caseId}::${alterationId}`;
+  static createId(caseId, alterationId, authorId) {
+    return `${caseId}::${alterationId}::${authorId}`;
   }
 
   hasOverrides() {

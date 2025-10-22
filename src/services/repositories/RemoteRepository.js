@@ -31,7 +31,7 @@ export class RemoteRepository extends EventInterpretationRepository {
     const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     
     const response = await this._fetch(
-      `/cases/${json.caseId}/interpretations/${json.alterationId}`,
+      `/cases/${json.caseId}/interpretations/${json.alterationId}/${json.authorId}`,
       {
         method: "PUT",
         body: JSON.stringify(json),
@@ -41,9 +41,9 @@ export class RemoteRepository extends EventInterpretationRepository {
     return new EventInterpretation(response);
   }
 
-  async get(caseId, alterationId) {
+  async get(caseId, alterationId, authorId) {
     const response = await this._fetch(
-      `/cases/${caseId}/interpretations/${alterationId}`
+      `/cases/${caseId}/interpretations/${alterationId}/${authorId}`
     );
     return response ? new EventInterpretation(response) : null;
   }
@@ -55,8 +55,8 @@ export class RemoteRepository extends EventInterpretationRepository {
     );
   }
 
-  async delete(caseId, alterationId) {
-    return this._fetch(`/cases/${caseId}/interpretations/${alterationId}`, {
+  async delete(caseId, alterationId, authorId) {
+    return this._fetch(`/cases/${caseId}/interpretations/${alterationId}/${authorId}`, {
       method: "DELETE",
     });
   }

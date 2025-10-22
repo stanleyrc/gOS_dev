@@ -81,7 +81,7 @@ function* updateInterpretation(action) {
 
     const repository = getActiveRepository();
     
-    const existing = yield call([repository, repository.get], caseId, interpretation.alterationId);
+    const existing = yield call([repository, repository.get], caseId, interpretation.alterationId, interpretation.authorId);
     
     const existingData = existing ? (existing.toJSON ? existing.toJSON() : existing) : {};
     
@@ -141,7 +141,7 @@ function* clearCaseInterpretations(action) {
     for (const interp of interpretations || []) {
       const authorId = interp.authorId || "currentUser";
       if (authorId === currentUserId) {
-        yield call([repository, repository.delete], caseId, interp.alterationId);
+        yield call([repository, repository.delete], caseId, interp.alterationId, interp.authorId);
       }
     }
 

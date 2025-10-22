@@ -8,7 +8,7 @@ export class EventInterpretationRepository {
     throw new Error("save must be implemented");
   }
 
-  async get(caseId, alterationId) {
+  async get(caseId, alterationId, authorId) {
     throw new Error("get must be implemented");
   }
 
