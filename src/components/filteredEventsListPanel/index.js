@@ -123,7 +123,7 @@ class FilteredEventsListPanel extends Component {
     if (!c2) return;
 
     // Clear interpretations from IndexedDB
-    this.props.dispatch(interpretationsActions.clearCaseInterpretations(caseId));
+    this.props.clearCaseInterpretations(caseId);
 
     // Reset Redux state
     resetTierOverrides();
@@ -949,6 +949,7 @@ const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   resetTierOverrides: () => dispatch(resetTierOverrides()),
+  clearCaseInterpretations: (caseId) => dispatch(interpretationsActions.clearCaseInterpretations(caseId)),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);

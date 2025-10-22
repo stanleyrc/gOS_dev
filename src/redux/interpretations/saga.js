@@ -127,15 +127,24 @@ function* updateInterpretation(action) {
 
 function* clearCaseInterpretations(action) {
   const { caseId } = action;
-  
+
   try {
     if (!caseId) {
       throw new Error("Missing caseId");
     }
 
     const repository = getActiveRepository();
-    yield call([repository, repository.clearCase], caseId);
-    
+    const interpretations = yield call([repository, repository.getForCase], caseId);
+
+    const currentUserId = getCurrentUserId();
+
+    for (const interp of interpretations || []) {
+      const authorId = interp.authorId || "currentUser";
+      if (authorId === currentUserId) {
+        yield call([repository, repository.delete], caseId, interp.alterationId);
+      }
+    }
+
     yield put({
       type: actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS,
       caseId,

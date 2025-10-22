@@ -84,6 +84,26 @@ export default function interpretationsReducer(state = initState, action) {
         status: "failed",
         error: action.error,
       };
+    case actions.CLEAR_CASE_INTERPRETATIONS_REQUEST:
+      return {
+        ...state,
+        status: "pending",
+        error: null,
+      };
+    case actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS:
+      return {
+        ...state,
+        status: "succeeded",
+        byId: {},
+        selected: {},
+        error: null,
+      };
+    case actions.CLEAR_CASE_INTERPRETATIONS_FAILED:
+      return {
+        ...state,
+        status: "failed",
+        error: action.error,
+      };
     default:
       return state;
   }
