@@ -443,8 +443,8 @@ function buildToc(report, logoDataUrl) {
   const tiers = Object.keys(byTier).sort((a, b) => Number(a) - Number(b));
 
   const authorName = report && report.author ? String(report.author) : '';
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const watermark = authorName ? `<div style="text-align:left; color:#ccc; font-size:14px; margin-bottom:10px;">${escapeHtml(dateStr)} ${escapeHtml(authorName)}</div>` : '';
+  const dateStr = new Date().toLocaleString()
+  const watermark = authorName ? `<div style="text-align:left; color:#ccc; font-size:14px; margin-bottom:10px;">${escapeHtml(authorName)} ${escapeHtml(dateStr)} </div>` : '';
 
   let toc = watermark + `<div class="report-header">
   <h1>Report for ${escapeHtml(caseId || 'Patient')}</h1>
