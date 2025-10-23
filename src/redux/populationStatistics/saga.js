@@ -1,5 +1,5 @@
-import { all, takeEvery, put, select, take } from "redux-saga/effects";
-import { getPopulationMetrics } from "../../helpers/utility";
+import { all, takeEvery, put, select, take, call } from "redux-saga/effects";
+import { processDataInWorker } from "../../helpers/workers";
 import { getCurrentState } from "./selectors";
 import actions from "./actions";
 import caseReportActions from "../caseReport/actions";
@@ -11,10 +11,22 @@ function* fetchPopulationStatistics(action) {
     const { metadata } = currentState.CaseReport;
     let { populations } = currentState.CaseReports;
 
+    // Use Web Worker for population metrics computation
+    const computationResult = yield call(
+      processDataInWorker,
+      {
+        populations,
+        metadata,
+      },
+      new URL("../../workers/populationStatisticsWorker.js", import.meta.url)
+    );
+
+    const { general, tumor } = computationResult;
+
     yield put({
       type: actions.FETCH_POPULATION_STATISTICS_SUCCESS,
-      general: getPopulationMetrics(populations, metadata),
-      tumor: getPopulationMetrics(populations, metadata, metadata.tumor),
+      general,
+      tumor,
     });
   } catch (error) {
     yield put({
