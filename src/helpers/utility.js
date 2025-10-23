@@ -1260,7 +1260,7 @@ export function higlassGenesFieldsArrayToObject(fields, chromoBins) {
 
 function transformFusionGeneCoords(fusionGeneCoords) {
   return fusionGeneCoords
-    .split(",")
+    ?.split(",")
     .map((coord) => {
       const [chrom, positions] = coord.split(":");
       const [start, end] = positions.split("-");
