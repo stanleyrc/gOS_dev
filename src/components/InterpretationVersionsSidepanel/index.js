@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { Input, Table, Drawer } from "antd";
+import { withTranslation } from 'react-i18next';
 
 const defaultFilterFunction = (searchTerm, data) => {
   if (!searchTerm) return data;
@@ -26,14 +27,14 @@ class InterpretationVersionsSidepanel extends Component {
 
     const tableColumns = [
       {
-        title: 'Author',
+        title: this.props.t('components.interpretationVersionsSidepanel.authorColumn'),
         dataIndex: 'authorName',
         key: 'authorName',
         width: 120,
         sorter: (a, b) => (a.authorName || '').localeCompare(b.authorName || ''),
       },
       {
-        title: 'Date',
+        title: this.props.t('components.interpretationVersionsSidepanel.dateColumn'),
         dataIndex: 'lastModified',
         key: 'lastModified',
         width: 120,
@@ -53,7 +54,7 @@ class InterpretationVersionsSidepanel extends Component {
       >
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Input
-            placeholder="Search interpretations..."
+            placeholder={this.props.t('components.interpretationVersionsSidepanel.searchPlaceholder')}
             value={searchTerm}
             onChange={this.handleSearchChange}
             autoFocus
@@ -77,4 +78,4 @@ class InterpretationVersionsSidepanel extends Component {
   }
 }
 
-export default InterpretationVersionsSidepanel;
+export default withTranslation("common")(InterpretationVersionsSidepanel);

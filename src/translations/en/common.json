@@ -816,6 +816,14 @@
           "title": "The request has failed with the following error:"
         }
       }
+    },
+    "interpretationVersionsSidepanel": {
+      "searchPlaceholder": "Search interpretations...",
+      "authorColumn": "Author",
+      "dateColumn": "Date"
+    },
+    "signInButton": {
+      "usernamePlaceholder": "Enter username to create new user..."
     }
   }
 }

@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { Popover, Input, Button } from "antd";
 import { UserOutlined } from "@ant-design/icons";
+import { withTranslation } from 'react-i18next';
 import { getUser, setUser, createUser, userAuthRepository } from "../../helpers/userAuth";
 
 class SignInButton extends Component {
@@ -72,7 +73,7 @@ class SignInButton extends Component {
             ) : (
               <Input
                 value={this.state.inputValue}
-                placeholder="Enter username to create new user..."
+                placeholder={this.props.t('components.signInButton.usernamePlaceholder')}
                 onChange={(e) => this.setState({ inputValue: e.target.value })}
                 onBlur={this.handleInputBlur}
                 onPressEnter={this.handleInputBlur}
@@ -96,4 +97,4 @@ class SignInButton extends Component {
   }
 }
 
-export default SignInButton;
+export default withTranslation("common")(SignInButton);
