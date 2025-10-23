@@ -18,7 +18,7 @@ function* fetchPopulationStatistics(action) {
         populations,
         metadata,
       },
-      new URL("../../workers/populationStatisticsWorker.js", import.meta.url)
+      `${window.location.origin}/workers/populationStatistics.worker.js`
     );
 
     const { general, tumor } = computationResult;

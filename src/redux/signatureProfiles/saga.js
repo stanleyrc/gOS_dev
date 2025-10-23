@@ -32,7 +32,7 @@ function* fetchData(action) {
         datafiles,
         signaturesWeightsFiles: absoluteSignaturesWeightsFiles,
       },
-      new URL("../../workers/signatureProfilesWorker.js", import.meta.url)
+      `${window.location.origin}/workers/signatureProfiles.worker.js`
     );
 
     const { signatures, signatureMetrics, signaturesReference } =
