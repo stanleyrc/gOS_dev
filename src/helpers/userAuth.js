@@ -1,6 +1,6 @@
 import { LocalStorageUserAuthRepository } from '../services/repositories/LocalStorageUserAuthRepository';
 
-const userAuthRepository = new LocalStorageUserAuthRepository();
+export const userAuthRepository = new LocalStorageUserAuthRepository();
 
 export function getUser() {
   return userAuthRepository.getUser();

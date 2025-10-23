@@ -1,8 +1,13 @@
 import { UserAuthRepository } from './UserAuthRepository';
+import EventEmitter from 'eventemitter3';
 
 const USER_KEY = 'gOS_user';
 
 export class LocalStorageUserAuthRepository extends UserAuthRepository {
+  constructor() {
+    super();
+    this.emitter = new EventEmitter();
+  }
   getUser() {
     try {
       const userStr = localStorage.getItem(USER_KEY);
@@ -16,6 +21,7 @@ export class LocalStorageUserAuthRepository extends UserAuthRepository {
   setUser(user) {
     try {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
+      this.emitter.emit('userChanged', user);
     } catch (e) {
       console.error('Error setting user to localStorage:', e);
       throw e;
@@ -25,6 +31,7 @@ export class LocalStorageUserAuthRepository extends UserAuthRepository {
   removeUser() {
     try {
       localStorage.removeItem(USER_KEY);
+      this.emitter.emit('userChanged', null);
     } catch (e) {
       console.error('Error removing user from localStorage:', e);
       throw e;

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { Popover, Input, Button } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import { getUser, setUser, createUser } from "../../helpers/userAuth";
+import { getUser, setUser, createUser, userAuthRepository } from "../../helpers/userAuth";
 
 class SignInButton extends Component {
   constructor(props) {
@@ -13,6 +13,22 @@ class SignInButton extends Component {
       inputValue: userData?.displayName || '',
       editing: false,
     };
+  }
+
+  componentDidMount() {
+    this.handleUserChanged = (user) => {
+      this.setState({
+        displayName: user?.displayName || '',
+        inputValue: user?.displayName || '',
+      });
+    };
+    userAuthRepository.emitter.on('userChanged', this.handleUserChanged);
+    // Sync with current user in case it changed after constructor
+    this.handleUserChanged(getUser());
+  }
+
+  componentWillUnmount() {
+    userAuthRepository.emitter.off('userChanged', this.handleUserChanged);
   }
 
   handlePopoverVisibleChange = (visible) => {
@@ -48,7 +64,7 @@ class SignInButton extends Component {
     return (
       <Popover
         content={
-          <div style={{ padding: '8px', maxWidth: '200px' }}>
+          <div style={{ padding: '8px', minWidth: '270px' }}>
             {this.state.displayName && !this.state.editing ? (
               <span onClick={this.handleNameClick} style={{ cursor: 'pointer' }}>
                 {this.state.displayName}
@@ -56,7 +72,7 @@ class SignInButton extends Component {
             ) : (
               <Input
                 value={this.state.inputValue}
-                placeholder="Enter username to create user"
+                placeholder="Enter username to create new user..."
                 onChange={(e) => this.setState({ inputValue: e.target.value })}
                 onBlur={this.handleInputBlur}
                 onPressEnter={this.handleInputBlur}
