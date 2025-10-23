@@ -321,7 +321,7 @@ class AlterationCard extends Component {
 
         <InterpretationVersionsSidepanel
           tableData={allInterpretations}
-          title="Notes Versions"
+          title="Event Versions"
           isOpen={showVersions}
           onClose={this.handleCloseVersions}
           onSelect={this.handleSelectInterpretation}
