@@ -26,15 +26,19 @@ function* fetchData(action) {
     const workerBaseUrl = window.location.href
       .split("?")[0]
       .replace(/\/[^/]*$/, "");
+
+    // Ensure data is serializable by deep cloning through JSON
+    const serializableData = {
+      settings: {
+        signaturesList: JSON.parse(JSON.stringify(settings.signaturesList)),
+      },
+      datafiles: JSON.parse(JSON.stringify(datafiles)),
+      signaturesWeightsFiles: absoluteSignaturesWeightsFiles,
+    };
+
     const computationResult = yield call(
       processDataInWorker,
-      {
-        settings: {
-          signaturesList: settings.signaturesList,
-        },
-        datafiles,
-        signaturesWeightsFiles: absoluteSignaturesWeightsFiles,
-      },
+      serializableData,
       `${workerBaseUrl}/workers/signatureProfiles.worker.js`
     );
 
