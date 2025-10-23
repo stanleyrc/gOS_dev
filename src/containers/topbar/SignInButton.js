@@ -1,15 +1,16 @@
 import React, { Component } from "react";
 import { Popover, Input, Button } from "antd";
 import { UserOutlined } from "@ant-design/icons";
+import { getUser, setUser, createUser } from "../../helpers/userAuth";
 
 class SignInButton extends Component {
   constructor(props) {
     super(props);
-    const userData = JSON.parse(localStorage.getItem('gOS_user') || '{}');
+    const userData = getUser();
     this.state = {
       popoverVisible: false,
-      displayName: userData.displayName || '',
-      inputValue: userData.displayName || '',
+      displayName: userData?.displayName || '',
+      inputValue: userData?.displayName || '',
       editing: false,
     };
   }
@@ -33,9 +34,13 @@ class SignInButton extends Component {
       this.setState({ editing: false, popoverVisible: false, inputValue: this.state.displayName });
     } else {
       this.setState({ displayName: newName, editing: false, popoverVisible: false, inputValue: newName });
-      const userData = JSON.parse(localStorage.getItem('gOS_user') || '{}');
-      userData.displayName = newName;
-      localStorage.setItem('gOS_user', JSON.stringify(userData));
+      const userData = getUser();
+      if (userData) {
+        userData.displayName = newName;
+        setUser(userData);
+      } else {
+        createUser(newName);
+      }
     }
   };
 

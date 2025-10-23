@@ -1,3 +1,5 @@
+import { getUser, createUser } from './userAuth.js';
+
 class EventInterpretation {
   constructor({
     caseId,
@@ -30,27 +32,14 @@ class EventInterpretation {
   }
 
   getOrCreateUser() {
-    const userKey = 'gOS_user';
-    let userStr = localStorage.getItem(userKey);
-    
-    if (!userStr) {
-      const userId = crypto.randomUUID();
+    let user = getUser();
+
+    if (!user) {
       const displayName = this.promptForDisplayName();
-      const userObj = { userId, displayName };
-      localStorage.setItem(userKey, JSON.stringify(userObj));
-      return userObj;
+      user = createUser(displayName);
     }
-    
-    try {
-      return JSON.parse(userStr);
-    } catch (e) {
-      console.error('Failed to parse user from localStorage:', e);
-      const userId = crypto.randomUUID();
-      const displayName = 'Anonymous';
-      const userObj = { userId, displayName };
-      localStorage.setItem(userKey, JSON.stringify(userObj));
-      return userObj;
-    }
+
+    return user;
   }
 
   promptForDisplayName() {

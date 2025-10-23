@@ -3,17 +3,9 @@ import { getCurrentState } from "./selectors";
 import { getActiveRepository } from "../../services/repositories";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import actions from "./actions";
+import { getCurrentUserId } from "../../helpers/userAuth";
 
-function getCurrentUserId() {
-  try {
-    const userStr = localStorage.getItem('gOS_user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      return user.userId;
-    }
-  } catch (e) {}
-  return null;
-}
+
 
 function* fetchInterpretationsForCase(action) {
   const { caseId } = action;
