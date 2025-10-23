@@ -18,7 +18,9 @@ function* fetchPopulationStatistics(action) {
         populations,
         metadata,
       },
-      `${window.location.origin}/workers/populationStatistics.worker.js`
+      `${window.location.href
+        .split("?")[0]
+        .replace(/\/[^/]*$/, "")}/workers/populationStatistics.worker.js`
     );
 
     const { general, tumor } = computationResult;

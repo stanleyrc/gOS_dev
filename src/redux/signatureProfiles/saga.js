@@ -23,6 +23,9 @@ function* fetchData(action) {
     });
 
     // Use Web Worker for heavy computation
+    const workerBaseUrl = window.location.href
+      .split("?")[0]
+      .replace(/\/[^/]*$/, "");
     const computationResult = yield call(
       processDataInWorker,
       {
@@ -32,7 +35,7 @@ function* fetchData(action) {
         datafiles,
         signaturesWeightsFiles: absoluteSignaturesWeightsFiles,
       },
-      `${window.location.origin}/workers/signatureProfiles.worker.js`
+      `${workerBaseUrl}/workers/signatureProfiles.worker.js`
     );
 
     const { signatures, signatureMetrics, signaturesReference } =

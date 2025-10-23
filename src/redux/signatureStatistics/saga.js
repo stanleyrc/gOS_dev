@@ -60,7 +60,9 @@ function* fetchData(action) {
         sigprofiler_sbs_count,
         sigprofiler_indel_count,
       },
-      `${window.location.origin}/workers/signatureStatistics.worker.js`
+      `${window.location.href
+        .split("?")[0]
+        .replace(/\/[^/]*$/, "")}/workers/signatureStatistics.worker.js`
     );
 
     const {
