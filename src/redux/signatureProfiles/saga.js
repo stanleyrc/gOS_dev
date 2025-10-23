@@ -13,7 +13,7 @@ function* fetchData(action) {
     let { signaturesWeightsFiles } = currentState.SignatureProfiles;
 
     // Convert relative signature weights file paths to absolute URLs
-    const baseUrl = window.location.origin;
+    const baseUrl = window.location.href.split("?")[0].replace(/\/[^/]*$/, "");
     const absoluteSignaturesWeightsFiles = {};
     Object.keys(signaturesWeightsFiles).forEach((key) => {
       const filePath = signaturesWeightsFiles[key];
