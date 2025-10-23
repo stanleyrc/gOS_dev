@@ -17,19 +17,21 @@ function getCurrentUserId() {
 
 function* fetchInterpretationsForCase(action) {
   const { caseId } = action;
-  
+
   try {
     if (!caseId) {
       yield put({
         type: actions.FETCH_INTERPRETATIONS_FOR_CASE_SUCCESS,
         byId: {},
         selected: {},
+        allInterpretations: [],
       });
       return;
     }
 
     const repository = getActiveRepository();
-    const interpretations = yield call([repository, repository.getForCase], caseId);
+    const allInterpretations = yield call([repository, repository.getAll]);
+    const interpretations = allInterpretations.filter(i => i.caseId === caseId);
     
     const byId = {};
     const selected = {};
@@ -58,6 +60,7 @@ function* fetchInterpretationsForCase(action) {
       type: actions.FETCH_INTERPRETATIONS_FOR_CASE_SUCCESS,
       byId,
       selected,
+      allInterpretations,
     });
   } catch (error) {
     console.error("Error fetching interpretations for case:", error);

@@ -5,6 +5,7 @@ const initState = {
   error: null,
   byId: {},
   selected: {},
+  byGene: {},
 };
 
 export default function interpretationsReducer(state = initState, action) {
@@ -15,14 +16,25 @@ export default function interpretationsReducer(state = initState, action) {
         status: "pending",
         error: null,
       };
-    case actions.FETCH_INTERPRETATIONS_FOR_CASE_SUCCESS:
+    case actions.FETCH_INTERPRETATIONS_FOR_CASE_SUCCESS: {
+      const newByGene = {};
+      (action.allInterpretations || []).forEach(interpretation => {
+        const gene = interpretation.gene;
+        if (gene) {
+          if (!newByGene[gene]) newByGene[gene] = {};
+          const key = `${interpretation.alterationId}___${interpretation.authorId}`;
+          newByGene[gene][key] = interpretation;
+        }
+      });
       return {
         ...state,
         status: "succeeded",
         byId: action.byId,
         selected: action.selected,
+        byGene: newByGene,
         error: null,
       };
+    }
     case actions.FETCH_INTERPRETATIONS_FOR_CASE_FAILED:
       return {
         ...state,
@@ -66,7 +78,14 @@ export default function interpretationsReducer(state = initState, action) {
       if (interpretation.isCurrentUser) {
         updatedSelected[interpretation.alterationId] = key;
       }
-      
+
+      const updatedByGene = { ...state.byGene };
+      const gene = mergedInterpretation.gene;
+      if (gene) {
+        if (!updatedByGene[gene]) updatedByGene[gene] = {};
+        updatedByGene[gene][key] = mergedInterpretation;
+      }
+
       console.log('[Reducer] New byId:', updatedById);
       console.log('[Reducer] New selected:', updatedSelected);
 
@@ -75,6 +94,7 @@ export default function interpretationsReducer(state = initState, action) {
         status: "succeeded",
         byId: updatedById,
         selected: updatedSelected,
+        byGene: updatedByGene,
         error: null,
       };
     }

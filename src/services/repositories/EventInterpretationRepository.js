@@ -32,6 +32,10 @@ export class EventInterpretationRepository {
     throw new Error("saveGlobalNotes must be implemented");
   }
 
+  async getAll() {
+    throw new Error("getAll must be implemented");
+  }
+
   async getGlobalNotes(caseId) {
     throw new Error("getGlobalNotes must be implemented");
   }

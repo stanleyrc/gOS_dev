@@ -11,7 +11,7 @@ import { withTranslation } from "react-i18next";
 import EventInterpretation from "../../helpers/EventInterpretation";
 
 import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
-import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getBaseEvent } from "../../redux/interpretations/selectors";
+import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getAllInterpretationsForGene, getBaseEvent } from "../../redux/interpretations/selectors";
 
 const { Title, Text } = Typography;
 
@@ -351,7 +351,7 @@ class AlterationCard extends Component {
 const mapStateToProps = (state, ownProps) => ({
   caseId: state?.CaseReport?.id,
   interpretation: getInterpretationForAlteration(state, ownProps.record?.uid),
-  allInterpretations: getAllInterpretationsForAlteration(state, ownProps.record?.uid),
+  allInterpretations: getAllInterpretationsForGene(state, ownProps.record?.gene),
   baseRecord: getBaseEvent(state, ownProps.record?.uid),
 });
 

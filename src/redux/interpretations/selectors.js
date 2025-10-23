@@ -25,6 +25,11 @@ export const getAllInterpretationsForAlteration = (state, alterationId) => {
     .map(([, interpretation]) => interpretation);
 };
 
+export const getAllInterpretationsForGene = (state, gene) => {
+  const byGene = state.Interpretations?.byGene || {};
+  return Object.values(byGene[gene] || {});
+};
+
 export const getGlobalNotesInterpretation = (state) => {
   return getInterpretationForAlteration(state, "GLOBAL_NOTES");
 };

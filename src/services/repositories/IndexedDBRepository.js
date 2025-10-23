@@ -224,6 +224,25 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     await this.save(interpretation);
   }
 
+  async getAll() {
+    if (!window.indexedDB) return [];
+
+    try {
+      const results = await withStore(STORE_NAME, "readonly", (store) => {
+        return new Promise((resolve, reject) => {
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      });
+
+      return results.map((data) => new EventInterpretation(data));
+    } catch (e) {
+      console.error("Failed to get all interpretations:", e);
+      return [];
+    }
+  }
+
   async getGlobalNotes(caseId) {
     if (!window.indexedDB || !caseId) return null;
 
