@@ -1,3 +1,5 @@
+import { splitFloat64 } from "../../helpers/utility.js";
+
 class Points {
   constructor(regl, gapX, gapY) {
     this.regl = regl;
@@ -5,16 +7,12 @@ class Points {
     this.offsetY = gapY;
     this.pointSize = 10;
 
-    // GPU buffers will be set in setData(...)
-    this.dataX = null;
     this.dataY = null;
     this.color = null;
     this.instances = 0;
 
-    // A single position array for instancing (one vertex).
     const positions = [[0.0, 0.0]];
 
-    // Define the draw command once and store it.
     this.drawCommand = regl({
       frag: `
         precision highp float;
@@ -22,11 +20,8 @@ class Points {
         varying vec2 vPos;
         uniform float windowWidth;
         void main() {
-          // Round point into a circle
           vec2 cxy = 2.0 * gl_PointCoord - 1.0;
           float r = dot(cxy, cxy);
-
-          // Discard fragments outside of the circle or out of bounds
           if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
             discard;
           }
@@ -37,20 +32,40 @@ class Points {
       vert: `
         precision highp float;
         attribute vec2 position;
-        attribute float dataX, dataY, color;
+        attribute float dataY, color;
+        attribute float dataXHigh, dataXLow;
 
         varying vec4 vColor;
         varying vec2 vPos;
 
-        uniform vec2 domainX, domainY;
+        uniform float kxHigh, kxLow, ky;
+        uniform float domainX0High, domainX0Low;
+        uniform float ty;
         uniform float stageWidth, stageHeight;
-        uniform float windowWidth, windowHeight, pointSize;
+        uniform float pointSize;
         uniform float offsetX, offsetY;
 
-        // Convert from [0..stageWidth/stageHeight] to clip space [-1..1].
+        // Multiply a (hi,lo) value by a (hi,lo) scale
+        float mul64(float aHigh, float aLow, float bHigh, float bLow) {
+          float high = aHigh * bHigh;
+          float cross = aHigh * bLow + aLow * bHigh;
+          return high + cross;
+        }
+
+        // Subtract two doubles (hi,lo)
+        void sub64(in float aHigh, in float aLow,
+                   in float bHigh, in float bLow,
+                   out float resHigh, out float resLow) {
+          float s = aHigh - bHigh;
+          float v = s - aHigh;
+          float t = ((-bHigh - v) + (aHigh - (s - v))) + (aLow - bLow);
+          resHigh = s;
+          resLow  = t;
+        }
+
         vec2 normalizeCoords(vec2 xy) {
-          float x = xy[0];
-          float y = xy[1];
+          float x = xy.x;
+          float y = xy.y;
           return vec2(
             2.0 * ((x / stageWidth) - 0.5),
             -(2.0 * ((y / stageHeight) - 0.5))
@@ -58,28 +73,22 @@ class Points {
         }
 
         void main() {
-          // Convert dataX, dataY to screen coords (posX, posY)
-          float kx = windowWidth / (domainX.y - domainX.x);
-          float ky = -windowHeight / (domainY.y - domainY.x);
+          float diffHigh, diffLow;
+          sub64(dataXHigh, dataXLow, domainX0High, domainX0Low, diffHigh, diffLow);
 
-          float posX = kx * (dataX - domainX.x);
-          float posY = windowHeight + ky * (dataY - domainY.x);
+          float posX = mul64(diffHigh, diffLow, kxHigh, kxLow);
+          float posY = ky * dataY + ty;
 
           float vecX = position.x + posX;
           float vecY = position.y + posY;
-
-          // Pass screen-space position to fragment for out-of-bounds check
           vPos = vec2(vecX, vecY);
 
-          // Convert to normalized clip space for gl_Position
           vec2 clip = normalizeCoords(vec2(vecX + offsetX, vecY - offsetY));
-          // Optionally clamp if needed
           clip.y = clamp(clip.y, -1.0, 1.0);
 
           gl_PointSize = pointSize;
           gl_Position = vec4(clip, 0.0, 1.0);
 
-          // Convert packed color to normalized RGBA
           float red   = floor(color / 65536.0);
           float green = floor((color - red * 65536.0) / 256.0);
           float blue  = color - red * 65536.0 - green * 256.0;
@@ -88,115 +97,99 @@ class Points {
       `,
 
       attributes: {
-        position: positions,    // Single vertex, instanced
-        dataX: { buffer: regl.prop('dataX'), divisor: 1 },
-        dataY: { buffer: regl.prop('dataY'), divisor: 1 },
-        color: { buffer: regl.prop('color'), divisor: 1 },
+        position: positions,
+        dataXHigh: { buffer: regl.prop("dataXHigh"), divisor: 1 },
+        dataXLow: { buffer: regl.prop("dataXLow"), divisor: 1 },
+        dataY: { buffer: regl.prop("dataY"), divisor: 1 },
+        color: { buffer: regl.prop("color"), divisor: 1 },
       },
 
-      // We'll draw one point, instanced 'instances' times
-      primitive: 'points',
+      primitive: "points",
       count: positions.length,
-      instances: regl.prop('instances'),
+      instances: regl.prop("instances"),
 
       uniforms: {
-        stageWidth: regl.prop('width'),
-        stageHeight: regl.prop('height'),
-        windowWidth: regl.prop('windowWidth'),
-        windowHeight: regl.prop('windowHeight'),
-        pointSize: regl.prop('pointSize'),
-        domainX: regl.prop('domainX'),
-        domainY: regl.prop('domainY'),
-        offsetX: regl.prop('offsetX'),
-        offsetY: regl.prop('offsetY'),
+        kxHigh: regl.prop("kxHigh"),
+        kxLow: regl.prop("kxLow"),
+        ky: regl.prop("ky"),
+        ty: regl.prop("ty"),
+        domainX0High: regl.prop("domainX0High"),
+        domainX0Low: regl.prop("domainX0Low"),
+        windowWidth: regl.prop("windowWidth"),
+        stageWidth: regl.prop("width"),
+        stageHeight: regl.prop("height"),
+        pointSize: regl.prop("pointSize"),
+        offsetX: regl.prop("offsetX"),
+        offsetY: regl.prop("offsetY"),
       },
 
       depth: { enable: false },
       blend: {
         enable: true,
         func: {
-          srcRGB: 'src alpha',
+          srcRGB: "src alpha",
           srcAlpha: 1,
-          dstRGB: 'one minus src alpha',
+          dstRGB: "one minus src alpha",
           dstAlpha: 1,
         },
-        equation: { rgb: 'add', alpha: 'add' },
+        equation: { rgb: "add", alpha: "add" },
         color: [0, 0, 0, 0],
       },
     });
   }
 
-  /**
-   * Upload data to the GPU exactly once (or whenever the dataset changes).
-   */
-  setData(dataPointsX, dataPointsY, dataPointsColor) {
-    // Store references if needed
-    this.dataPointsX = dataPointsX;
-    this.dataPointsY = dataPointsY;
-    this.dataPointsColor = dataPointsColor;
-
-    // Create buffers on the GPU
-    this.dataX = this.regl.buffer(dataPointsX);
+  setData(dataPointsXHigh, dataPointsXLow, dataPointsY, dataPointsColor) {
+    this.dataXHigh = this.regl.buffer(dataPointsXHigh);
+    this.dataXLow = this.regl.buffer(dataPointsXLow);
     this.dataY = this.regl.buffer(dataPointsY);
     this.color = this.regl.buffer(dataPointsColor);
-
-    // Keep track of how many points we have (for instancing).
-    this.instances = dataPointsX.length;
+    this.instances = dataPointsColor.length;
   }
 
-  /**
-   * Update domain, window size, and offsets for each chart/window.
-   * No buffer uploads here; just uniform updates.
-   */
   updateDomains(width, height, domains, maxYValues) {
-    // Compute the width of each sub-window
-    const windowWidth = (width - (domains.length - 1) * this.gap) / domains.length;
+    const windowWidth =
+      (width - (domains.length - 1) * this.gap) / domains.length;
     const windowHeight = height;
 
-    // Build an array of uniform-prop sets, one for each domain.
     this.dataBufferList = domains.map((domainX, i) => {
+      const domainY = [0, maxYValues[i]];
+      const kx = windowWidth / (domainX[1] - domainX[0]);
+      const ky = -windowHeight / (domainY[1] - domainY[0]);
+      const ty = windowHeight - ky * domainY[0];
+
+      const [kxHigh, kxLow] = splitFloat64(kx);
+      const [domainX0High, domainX0Low] = splitFloat64(domainX[0]);
+
       return {
-        // Buffers (they never change unless setData is called)
-        dataX: this.dataX,
+        dataXHigh: this.dataXHigh,
+        dataXLow: this.dataXLow,
         dataY: this.dataY,
         color: this.color,
-
-        // Instancing count
         instances: this.instances,
-
-        // Uniforms (width, height, domain, etc.)
+        kxHigh,
+        kxLow,
+        ky,
+        ty,
+        domainX0High,
+        domainX0Low,
+        windowWidth,
         width,
         height,
-        windowWidth,
-        windowHeight,
         pointSize: this.pointSize,
-        domainX,
-        domainY: [0, maxYValues[i]],
-
-        // Position each domain sub-plot
         offsetX: i * (this.gap + windowWidth),
         offsetY: this.offsetY,
       };
     });
   }
 
-  /**
-   * Render the points using the current uniform set (domain info) 
-   * and the GPU buffers (points data).
-   */
   render() {
     try {
-      // Clear if you want a fresh background each time
       this.regl.clear({
         color: [0, 0, 0, 0],
         depth: false,
-        stencil: true,
+        stencil: false,
       });
-
-      // Poll for changes in some browsers; ensures correct draw ordering
       this.regl.poll();
-
-      // Draw once for each domain in our dataBufferList
       this.drawCommand(this.dataBufferList);
     } catch (err) {
       console.error(`Scatterplot WebGL rendering failed: ${err}`);

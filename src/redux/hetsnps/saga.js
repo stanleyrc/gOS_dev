@@ -3,6 +3,7 @@ import { loadArrowTable } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import { splitFloat64 } from "../../helpers/utility.js";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path, getCancelToken())
@@ -31,6 +32,13 @@ function* fetchData(action) {
       (d) => d * (metadata?.hets_slope || 1) + (metadata?.hets_intercept || 0)
     );
     let dataPointsX = hetsnpsPlot.data.getChild("x").toArray();
+    let dataPointsXHigh = [];
+    let dataPointsXLow = [];
+    dataPointsX.forEach((v) => {
+      const [hi, lo] = splitFloat64(v);
+      dataPointsXHigh.push(hi);
+      dataPointsXLow.push(lo);
+    });
     let dataPointsColor = hetsnpsPlot.data.getChild("color").toArray();
 
     yield put({
@@ -38,6 +46,8 @@ function* fetchData(action) {
       dataPointsCount,
       dataPointsCopyNumber,
       dataPointsX,
+      dataPointsXHigh,
+      dataPointsXLow,
       dataPointsColor,
     });
   } catch (error) {

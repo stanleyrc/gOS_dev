@@ -90,7 +90,7 @@ class ScatterPlot extends Component {
 
   shouldComponentUpdate(nextProps, nextState) {
     return (
-      nextProps.dataPointsX.length !== this.props.dataPointsX.length ||
+      nextProps.dataPointsColor.length !== this.props.dataPointsColor.length ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextProps.width !== this.props.width ||
       nextProps.height !== this.props.height ||
@@ -176,7 +176,8 @@ class ScatterPlot extends Component {
       this.componentDidMount();
     } else {
       this.updateStage(
-        prevProps.dataPointsX.length !== this.props.dataPointsX.length ||
+        prevProps.dataPointsColor.length !==
+          this.props.dataPointsColor.length ||
           (prevProps.commonRangeY === null &&
             this.props.commonRangeY !== null) ||
           (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
@@ -204,7 +205,8 @@ class ScatterPlot extends Component {
       height,
       dataPointsY1,
       dataPointsY2,
-      dataPointsX,
+      dataPointsXHigh,
+      dataPointsXLow,
       dataPointsColor,
       commonRangeY,
     } = this.props;
@@ -215,7 +217,8 @@ class ScatterPlot extends Component {
     if (reloadData) {
       console.log("Reloading data");
       this.points.setData(
-        dataPointsX,
+        dataPointsXHigh,
+        dataPointsXLow,
         commonRangeY ? dataPointsY1 : dataPointsY2,
         dataPointsColor
       );

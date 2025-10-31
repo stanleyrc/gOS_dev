@@ -108,6 +108,8 @@ class ScatterPlotPanel extends Component {
       dataPointsY1,
       dataPointsY2,
       dataPointsX,
+      dataPointsXHigh,
+      dataPointsXLow,
       dataPointsColor,
       error,
       filename,
@@ -165,9 +167,9 @@ class ScatterPlotPanel extends Component {
                     {title}
                     {
                       <span>
-                        <b>{d3.format(",")(dataPointsX.length)}</b>{" "}
+                        <b>{d3.format(",")(dataPointsColor.length)}</b>{" "}
                         {t("components.coverage-panel.datapoint", {
-                          count: dataPointsX.length,
+                          count: dataPointsColor.length,
                         })}
                       </span>
                     }
@@ -181,7 +183,7 @@ class ScatterPlotPanel extends Component {
                         }
                         content={
                           <Space direction="vertical">
-                            {notification.messages.map((d,i) => (
+                            {notification.messages.map((d, i) => (
                               <Text key={i}>
                                 <span
                                   dangerouslySetInnerHTML={{
@@ -247,6 +249,8 @@ class ScatterPlotPanel extends Component {
                             dataPointsY1,
                             dataPointsY2,
                             dataPointsX,
+                            dataPointsXHigh,
+                            dataPointsXLow,
                             dataPointsColor,
                             domains,
                             yAxisTitle,
@@ -269,7 +273,7 @@ class ScatterPlotPanel extends Component {
 ScatterPlotPanel.propTypes = {};
 ScatterPlotPanel.defaultProps = {
   notification: { status: null, heading: null, messages: [] },
-  commonRangeY: null
+  commonRangeY: null,
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({

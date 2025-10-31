@@ -3,7 +3,13 @@ import axios from "axios";
 import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
-import { act } from "react";
+
+// Split a float64 number into high and low float32 components
+export function splitFloat64(x) {
+  const high = Math.fround(x); // nearest float32
+  const low = x - high;
+  return [high, low];
+}
 
 export function dataRanges(domains, genome) {
   function filterIntervalsByDomain(domain, intervals) {
