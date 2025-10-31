@@ -162,12 +162,14 @@ class SageQcTab extends Component {
               <Col className="gutter-row" span={12}>
                 <Image
                   src={`${dataset.dataPath}${id}/coverage_cn_boxplot_original.png`}
+                  preview={false}
                   fallback="https://placehold.co/600x400?text=Coverage+cn+boxplot+original+not+found"
                 />
               </Col>
               <Col className="gutter-row" span={12}>
                 <Image
                   src={`${dataset.dataPath}${id}/coverage_cn_boxplot_denoised.png`}
+                  preview={false}
                   fallback="https://placehold.co/600x400?text=Coverage+cn+boxplot+denoised+not+found"
                 />
               </Col>
