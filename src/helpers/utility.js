@@ -978,6 +978,10 @@ export function reportAttributesMap() {
     "hrd.b2_score": "hrdB2Score",
     summary: "summary",
     qcMetrics: "qcMetrics",
+    treatment: "treatment",
+    treatment_type: "treatment_type",
+    treatment_best_response: "treatment_best_response",
+    treatment_duration: "treatment_duration",
   };
 }
 

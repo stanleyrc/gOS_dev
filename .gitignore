@@ -71,7 +71,7 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 .prettierrc
 
 *.rb
-public/datafiles.json
+public/*datafiles.json
 public/datasets.json
 public/data*
 npm-debug.log*

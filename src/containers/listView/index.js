@@ -37,7 +37,7 @@ const { SHOW_CHILD } = Cascader;
 
 const { Meta } = Card;
 const { Option } = Select;
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { Compact } = Space;
 const { Item } = Form;
 
@@ -214,7 +214,11 @@ class ListView extends Component {
         );
       }
 
-      if (d.filter.renderer === "select") {
+      if (
+        d.filter.renderer === "select" &&
+        d.records.length > 0 &&
+        !d.records.every((e) => e == null)
+      ) {
         return (
           <Item
             key={`containers.list-view.filters.${d.filter.name}`}
@@ -233,9 +237,6 @@ class ListView extends Component {
               style={{ width: "100%" }}
               maxTagCount="responsive"
               maxTagTextLength={8}
-              disabled={
-                d.records.length === 0 || d.records.every((e) => e == null)
-              }
               options={d.records.map((e) => ({
                 label: e
                   ? snakeCaseToHumanReadable(e)
@@ -518,23 +519,21 @@ class ListView extends Component {
                           title={
                             d.disease &&
                             d.primary_site && (
-                              <Space>
+                              <Paragraph>
                                 <Text type="primary">{d.disease}</Text>
-                                <Space>
-                                  {d.primary_site && (
-                                    <Text type="secondary">
-                                      {snakeCaseToHumanReadable(d.primary_site)}
-                                    </Text>
-                                  )}
-                                  {d.tumor_details && (
-                                    <Text type="secondary">
-                                      {snakeCaseToHumanReadable(
-                                        d.tumor_details
-                                      )}
-                                    </Text>
-                                  )}
-                                </Space>
-                              </Space>
+                                {d.primary_site && (
+                                  <Text type="secondary">
+                                    <br />
+                                    {snakeCaseToHumanReadable(d.primary_site)}
+                                  </Text>
+                                )}
+                                {d.tumor_details && (
+                                  <Text type="secondary">
+                                    <br />
+                                    {snakeCaseToHumanReadable(d.tumor_details)}
+                                  </Text>
+                                )}
+                              </Paragraph>
                             )
                           }
                           description={
