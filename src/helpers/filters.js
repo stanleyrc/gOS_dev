@@ -1,6 +1,5 @@
 import * as d3 from "d3";
 import { plotTypes, reportAttributesMap } from "./utility";
-import { all } from "redux-saga/effects";
 
 export function reportFilters() {
   return [
@@ -178,3 +177,75 @@ export function getReportsFilters(reports) {
   //console.log("reportsFilters", reportsFilters);
   return reportsFilters;
 }
+
+const CASCADER_PATH_SEPARATOR = " / ";
+
+export const normalizeSearchInput = (value = "") =>
+  value
+    .toString()
+    .toLowerCase()
+    .replace(/[_\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+export const getSearchTokens = (value) => {
+  const normalized = normalizeSearchInput(value);
+  return normalized ? normalized.split(" ").filter(Boolean) : [];
+};
+
+export const getOptionLabelText = (option) => {
+  const rawLabel = option?.label ?? option?.value ?? "";
+  if (rawLabel == null) {
+    return "";
+  }
+  if (typeof rawLabel === "string" || typeof rawLabel === "number") {
+    return String(rawLabel);
+  }
+  return "";
+};
+
+const advanceTokenMatch = (text, token, offset = 0) => {
+  let cursor = offset;
+  const lowerText = text.toLowerCase();
+  const lowerToken = token.toLowerCase();
+  for (let i = 0; i < lowerToken.length; i += 1) {
+    const nextIndex = lowerText.indexOf(lowerToken[i], cursor);
+    if (nextIndex === -1) {
+      return -1;
+    }
+    cursor = nextIndex + 1;
+  }
+  return cursor;
+};
+
+export const runSequentialFuzzyMatch = (text, tokens) => {
+  if (!text) {
+    return false;
+  }
+  let cursor = 0;
+  for (const token of tokens) {
+    if (!token) {
+      continue;
+    }
+    cursor = advanceTokenMatch(text, token, cursor);
+    if (cursor === -1) {
+      return false;
+    }
+  }
+  return true;
+};
+
+export const cascaderSearchFilter = (inputValue, path) => {
+  const tokens = getSearchTokens(inputValue);
+  if (tokens.length === 0) {
+    return true;
+  }
+  const searchablePath = path
+    .map((option) => getOptionLabelText(option))
+    .filter(Boolean)
+    .join(CASCADER_PATH_SEPARATOR);
+  if (!searchablePath) {
+    return false;
+  }
+  return runSequentialFuzzyMatch(searchablePath, tokens);
+};

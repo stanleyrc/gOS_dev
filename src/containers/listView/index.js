@@ -30,6 +30,7 @@ import { qcMetricsClasses } from "../../helpers/metadata";
 import {
   generateCascaderOptions,
   cascaderOperators,
+  cascaderSearchFilter,
 } from "../../helpers/filters";
 import Wrapper from "./index.style";
 
@@ -197,14 +198,11 @@ class ListView extends Component {
                   );
                 }}
                 multiple
-                showSearch={(inputValue, path) =>
-                  path.some(
-                    (option) =>
-                      option.label
-                        .toLowerCase()
-                        .indexOf(inputValue.toLowerCase()) > -1
-                  )
-                }
+                showSearch={{
+                  limit: false,
+                  filter: cascaderSearchFilter,
+                  matchInputWidth: false,
+                }}
                 maxTagCount="responsive"
                 showCheckedStrategy={SHOW_CHILD}
                 allowClear
