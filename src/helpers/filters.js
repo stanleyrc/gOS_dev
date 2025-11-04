@@ -151,12 +151,11 @@ export function generateCascaderOptions(tags, frequencies = {}) {
 
 export const cascaderOperators = ["OR", "AND", "NOT"];
 
-export function getReportsFilters(reports, fullReports) {
-  let reportsFilters = [];
+export function getReportFilterExtents(reports) {
+  let extents = {};
 
-  // Iterate through each filter
   reportFilters().forEach((filter) => {
-    let fullValues = fullReports
+    let allValues = reports
       .map((record) => {
         try {
           return eval(`record.${filter.name}`);
@@ -165,6 +164,18 @@ export function getReportsFilters(reports, fullReports) {
         }
       })
       .flat();
+    extents[filter.name] = d3.extent(
+      allValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
+    );
+  });
+  return extents;
+}
+
+export function getReportsFilters(reports) {
+  let reportsFilters = [];
+
+  // Iterate through each filter
+  reportFilters().forEach((filter) => {
     let allValues = reports
       .map((record) => {
         try {
@@ -181,15 +192,6 @@ export function getReportsFilters(reports, fullReports) {
       (d) => d
     );
 
-    let fullFrequencyMap = d3.rollup(
-      fullValues,
-      (v) => v.length,
-      (d) => d
-    );
-
-    let fullDistinctValues = Array.from(fullFrequencyMap.entries()).map(
-      ([value, frequency]) => value
-    );
     // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
     let distinctValues = Array.from(frequencyMap.entries())
       .sort((a, b) => {
@@ -209,11 +211,7 @@ export function getReportsFilters(reports, fullReports) {
       extent: d3.extent(
         distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
       ),
-      fullExtent: d3.extent(
-        fullDistinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
-      ),
       totalRecords: reports.length,
-      totalFullRecords: fullReports.length,
       format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
     });
   });

@@ -7,6 +7,7 @@ const initState = {
   datafiles: [],
   populations: {},
   reportsFilters: [],
+  reportsFiltersExtents: {},
   searchFilters: {
     page: 1,
     per_page: 10,
@@ -35,7 +36,10 @@ export default function appReducer(state = initState, action) {
           orderId: 1,
           operator: cascaderOperators[0],
         },
-        reportsFilters: {},
+        reportsFilters: [],
+        reports: [],
+        totalReports: [],
+        reportsFiltersExtents: {},
         loading: true,
       };
     case actions.FETCH_CASE_REPORTS_REQUEST_LOADING:
@@ -53,6 +57,7 @@ export default function appReducer(state = initState, action) {
         reportsFilters: action.reportsFilters,
         reports: action.reports,
         totalReports: action.totalReports,
+        reportsFiltersExtents: action.reportsFiltersExtents,
         loading: false,
       };
     case actions.FETCH_CASE_REPORTS_FAILED:
