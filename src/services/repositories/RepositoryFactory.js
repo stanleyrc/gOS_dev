@@ -16,7 +16,7 @@ export const REPOSITORY_TYPES = {
 class RepositoryFactory {
   constructor() {
     this._instances = new Map();
-    this._activeType = REPOSITORY_TYPES.INDEXED_DB;
+    this._activeType = REPOSITORY_TYPES.DYNAMODB;
   }
 
   setActiveType(type) {

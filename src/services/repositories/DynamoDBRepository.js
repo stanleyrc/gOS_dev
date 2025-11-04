@@ -17,17 +17,28 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
-const TABLE_NAME = process.env.GOS_DYNAMODB_TABLE_NAME || "gos_report_auditing_hmf_test";
-const AWS_REGION = process.env.GOS_AWS_REGION || "us-east-1";
+const TABLE_NAME = process.env.REACT_APP_GOS_DYNAMODB_TABLE_NAME || "gos_report_auditing_hmf_test";
+const AWS_REGION = process.env.REACT_APP_GOS_AWS_REGION || "us-east-1";
 
 export class DynamoDBRepository extends EventInterpretationRepository {
   constructor(config = {}) {
     super();
     this.tableName = config.tableName || TABLE_NAME;
-    this.client = new DynamoDBClient({
+    
+    const clientConfig = {
       region: config.region || AWS_REGION,
       ...config.clientConfig,
-    });
+    };
+
+    // Add credentials from environment variables if available
+    if (process.env.REACT_APP_GOS_AWS_ACCESS_KEY_ID && process.env.REACT_APP_GOS_AWS_SECRET_ACCESS_KEY) {
+      clientConfig.credentials = {
+        accessKeyId: process.env.REACT_APP_GOS_AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.REACT_APP_GOS_AWS_SECRET_ACCESS_KEY,
+      };
+    }
+
+    this.client = new DynamoDBClient(clientConfig);
   }
 
   /**
