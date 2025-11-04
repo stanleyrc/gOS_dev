@@ -7,14 +7,34 @@ export function reportFilters() {
     { name: "pair", type: "string", renderer: "select" },
     { name: "tumor_type", type: "string", renderer: "select" },
     { name: "tumor_details", type: "string", renderer: "select" },
-    { name: "treatment", type: "string", renderer: "select" },
-    { name: "treatment_type", type: "string", renderer: "select" },
-    { name: "treatment_best_response", type: "string", renderer: "select" },
-    { name: "treatment_duration", type: "string", renderer: "select" },
     { name: "disease", type: "string", renderer: "select" },
     { name: "primary_site", type: "string", renderer: "select" },
     { name: "inferred_sex", type: "string", renderer: "select" },
     { name: "operator", type: "string", renderer: "cascader-select" },
+    {
+      name: "treatment",
+      type: "string",
+      renderer: "select",
+      group: "treatment-metrics",
+    },
+    {
+      name: "treatment_type",
+      type: "string",
+      renderer: "select",
+      group: "treatment-metrics",
+    },
+    {
+      name: "treatment_best_response",
+      type: "string",
+      renderer: "select",
+      group: "treatment-metrics",
+    },
+    {
+      name: "treatment_duration",
+      type: "number",
+      renderer: "slider",
+      group: "treatment-metrics",
+    },
     {
       name: "tumor_median_coverage",
       type: "number",
@@ -131,11 +151,20 @@ export function generateCascaderOptions(tags, frequencies = {}) {
 
 export const cascaderOperators = ["OR", "AND", "NOT"];
 
-export function getReportsFilters(reports) {
+export function getReportsFilters(reports, fullReports) {
   let reportsFilters = [];
 
   // Iterate through each filter
   reportFilters().forEach((filter) => {
+    let fullValues = fullReports
+      .map((record) => {
+        try {
+          return eval(`record.${filter.name}`);
+        } catch (err) {
+          return null;
+        }
+      })
+      .flat();
     let allValues = reports
       .map((record) => {
         try {
@@ -152,6 +181,15 @@ export function getReportsFilters(reports) {
       (d) => d
     );
 
+    let fullFrequencyMap = d3.rollup(
+      fullValues,
+      (v) => v.length,
+      (d) => d
+    );
+
+    let fullDistinctValues = Array.from(fullFrequencyMap.entries()).map(
+      ([value, frequency]) => value
+    );
     // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
     let distinctValues = Array.from(frequencyMap.entries())
       .sort((a, b) => {
@@ -171,6 +209,11 @@ export function getReportsFilters(reports) {
       extent: d3.extent(
         distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
       ),
+      fullExtent: d3.extent(
+        fullDistinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
+      ),
+      totalRecords: reports.length,
+      totalFullRecords: fullReports.length,
       format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
     });
   });
@@ -181,6 +224,10 @@ export function getReportsFilters(reports) {
 const CASCADER_PATH_SEPARATOR = " / ";
 
 export const normalizeSearchInput = (value = "") =>
+  // Step 1: Make the search text comparable by
+  //   - forcing it to lowercase
+  //   - turning underscores/dashes into spaces
+  //   - squeezing any extra whitespace
   value
     .toString()
     .toLowerCase()
@@ -190,6 +237,8 @@ export const normalizeSearchInput = (value = "") =>
 
 export const getSearchTokens = (value) => {
   const normalized = normalizeSearchInput(value);
+  // Break the cleaned string into the small pieces (tokens)
+  // we want to match, e.g. "hrd scr" -> ["hrd", "scr"]
   return normalized ? normalized.split(" ").filter(Boolean) : [];
 };
 
@@ -205,6 +254,9 @@ export const getOptionLabelText = (option) => {
 };
 
 const advanceTokenMatch = (text, token, offset = 0) => {
+  // Walk through the full option text one character at a time,
+  // starting from `offset`, and try to find the next token character.
+  // If any character can't be found in order, give up with -1.
   let cursor = offset;
   const lowerText = text.toLowerCase();
   const lowerToken = token.toLowerCase();
@@ -219,6 +271,8 @@ const advanceTokenMatch = (text, token, offset = 0) => {
 };
 
 export const runSequentialFuzzyMatch = (text, tokens) => {
+  // VS Code-style check: for every token we keep searching
+  // further along the option text, never rewinding.
   if (!text) {
     return false;
   }
@@ -238,6 +292,7 @@ export const runSequentialFuzzyMatch = (text, tokens) => {
 export const cascaderSearchFilter = (inputValue, path) => {
   const tokens = getSearchTokens(inputValue);
   if (tokens.length === 0) {
+    // Empty search means everything passes.
     return true;
   }
   const searchablePath = path

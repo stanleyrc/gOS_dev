@@ -927,6 +927,13 @@ export function plotTypes() {
       scaleXFormat: ".0%",
       range: [0, 1],
     },
+    treatment_duration: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ",",
+      scaleX: "linear",
+      scaleXFormat: "~s",
+    },
   };
 }
 

@@ -71,7 +71,7 @@ class ListView extends Component {
     const resetValues = filters.reduce((acc, d) => {
       const name = d.filter.name;
       if (d.filter.renderer === "slider") {
-        acc[name] = d.extent;
+        acc[name] = d.fullExtent;
       } else {
         acc[name] = [];
       }
@@ -199,7 +199,7 @@ class ListView extends Component {
                 }}
                 multiple
                 showSearch={{
-                  limit: false,
+                  limit: 1e7,
                   filter: cascaderSearchFilter,
                   matchInputWidth: false,
                 }}
@@ -269,8 +269,8 @@ class ListView extends Component {
 
       if (
         d.filter.renderer === "slider" &&
-        !isNaN(d.extent[0]) &&
-        !isNaN(d.extent[1])
+        !isNaN(d.fullExtent[0]) &&
+        !isNaN(d.fullExtent[1])
       ) {
         return (
           <Item
@@ -282,16 +282,16 @@ class ListView extends Component {
                 required: false,
               },
             ]}
-            initialValue={d.extent}
+            initialValue={d.fullExtent}
           >
             <Slider
               range
-              min={d.extent[0]}
-              max={d.extent[1]}
-              step={(d.extent[1] - d.extent[0]) / 100}
+              min={d.fullExtent[0]}
+              max={d.fullExtent[1]}
+              step={(d.fullExtent[1] - d.fullExtent[0]) / 100}
               marks={{
-                [d.extent[0]]: d3.format(d.format)(d.extent[0]),
-                [d.extent[1]]: d3.format(d.format)(d.extent[1]),
+                [d.fullExtent[0]]: d3.format(d.format)(d.fullExtent[0]),
+                [d.fullExtent[1]]: d3.format(d.format)(d.fullExtent[1]),
               }}
               tooltip={{
                 formatter: (value) => d3.format(d.format)(value),
@@ -332,6 +332,13 @@ class ListView extends Component {
                       .groups(
                         filters.filter((d) => d.filter.group != null),
                         (d) => d.filter.group
+                      )
+                      .filter(
+                        ([group, groupedItems]) =>
+                          !groupedItems
+                            .map((d) => d.records)
+                            .flat()
+                            .every((e) => e == null)
                       )
                       .map(([group, filteredGroups]) => {
                         return {

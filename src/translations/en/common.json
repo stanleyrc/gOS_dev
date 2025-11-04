@@ -329,6 +329,7 @@
         "placeholder": "select one or many",
         "empty": "(empty)",
         "collapse": {
+          "treatment-metrics": "Treatment Metrics",
           "quality-metrics": "Quality Metrics",
           "event-metrics": "Event Metrics",
           "biomarker-metrics": "Biomarker Metrics"
