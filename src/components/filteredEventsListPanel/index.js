@@ -153,7 +153,7 @@ class FilteredEventsListPanel extends Component {
   };
   state = {
     eventType: "all",
-    tierFilters: [],
+    tierFilters: [1, 2], // start with tiers 1 & 2 checked
     typeFilters: [],
     roleFilters: [],
     effectFilters: [],
