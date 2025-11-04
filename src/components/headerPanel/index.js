@@ -12,12 +12,6 @@ import {
   Popover,
   Typography,
 } from "antd";
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ExclamationCircleOutlined,
-  QuestionCircleOutlined,
-} from "@ant-design/icons";
 import * as d3 from "d3";
 import {
   legendColors,
@@ -51,6 +45,10 @@ class HeaderPanel extends Component {
       disease,
       primary_site,
       tumor_details,
+      treatment,
+      treatment_type,
+      treatment_best_response,
+      treatment_duration,
       qcMetrics,
       qcEvaluation,
     } = metadata;
@@ -262,9 +260,38 @@ class HeaderPanel extends Component {
                               {tumor}
                             </Avatar>
                           ) : null}
-                          {disease}
-                          {primary_site}
-                          {tumor_details}
+                          <Space direction="vertical" size="10">
+                            <Space direction="horizontal" size="small">
+                              {disease}
+                              {primary_site}
+                              {tumor_details}
+                            </Space>
+                            {[
+                              treatment,
+                              treatment_type,
+                              treatment_best_response,
+                              treatment_duration,
+                            ].some((item) => item != null) && (
+                              <Space>
+                                <Text type="secondary">
+                                  {t("metadata.treatment")}:{" "}
+                                </Text>
+                                {treatment}
+                                <Text type="secondary">
+                                  {t("metadata.treatment_type")}:{" "}
+                                </Text>
+                                {treatment_type}
+                                <Text type="secondary">
+                                  {t("metadata.treatment_best_response")}:{" "}
+                                </Text>
+                                {treatment_best_response}
+                                <Text type="secondary">
+                                  {t("metadata.treatment_duration")}:{" "}
+                                </Text>
+                                {treatment_duration}
+                              </Space>
+                            )}
+                          </Space>
                         </Space>
                       </Space>
                     </div>

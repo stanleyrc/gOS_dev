@@ -4,6 +4,7 @@ import axios from "axios";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import { splitFloat64 } from "../../helpers/utility.js";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path, getCancelToken())
@@ -48,6 +49,13 @@ function* fetchData(action) {
         (metadata?.methylation_intensity_cov_intercept || 0)
     );
     let dataPointsX = plot.data.getChild("x").toArray();
+    let dataPointsXHigh = [];
+    let dataPointsXLow = [];
+    dataPointsX.forEach((v) => {
+      const [hi, lo] = splitFloat64(v);
+      dataPointsXHigh.push(hi);
+      dataPointsXLow.push(lo);
+    });
     let dataPointsColor = plot.data.getChild("color").toArray();
 
     yield put({
@@ -55,6 +63,8 @@ function* fetchData(action) {
       dataPointsCount,
       dataPointsCopyNumber,
       dataPointsX,
+      dataPointsXHigh,
+      dataPointsXLow,
       dataPointsColor,
     });
   } catch (error) {

@@ -27,6 +27,7 @@ class BinQcTab extends Component {
             {imagePresent && imageFile ? (
               <Image
                 src={`${dataset.dataPath}${id}/${imageFile}`}
+                preview={false}
                 fallback="https://placehold.co/600x400?text=Image+not+found"
               />
             ) : (
@@ -41,12 +42,14 @@ class BinQcTab extends Component {
           <Col className="gutter-row" span={12}>
             <Image
               src={`${dataset.dataPath}${id}/purple_sunrise_pp.png`}
+              preview={false}
               fallback="https://placehold.co/600x400?text=Purple+Sunrise+Purity+Ploidy+not+found"
             />
           </Col>
           <Col className="gutter-row" span={12}>
             <Image
               src={`${dataset.dataPath}${id}/hetsnps_major_minor.png`}
+              preview={false}
               fallback="https://placehold.co/600x400?text=Hetsnps+Major+Minor+not+found"
             />
           </Col>

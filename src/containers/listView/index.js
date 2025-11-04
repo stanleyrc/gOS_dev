@@ -30,6 +30,7 @@ import { qcMetricsClasses } from "../../helpers/metadata";
 import {
   generateCascaderOptions,
   cascaderOperators,
+  cascaderSearchFilter,
 } from "../../helpers/filters";
 import Wrapper from "./index.style";
 
@@ -37,7 +38,7 @@ const { SHOW_CHILD } = Cascader;
 
 const { Meta } = Card;
 const { Option } = Select;
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { Compact } = Space;
 const { Item } = Form;
 
@@ -70,7 +71,7 @@ class ListView extends Component {
     const resetValues = filters.reduce((acc, d) => {
       const name = d.filter.name;
       if (d.filter.renderer === "slider") {
-        acc[name] = d.extent;
+        acc[name] = d.fullExtent;
       } else {
         acc[name] = [];
       }
@@ -197,14 +198,11 @@ class ListView extends Component {
                   );
                 }}
                 multiple
-                showSearch={(inputValue, path) =>
-                  path.some(
-                    (option) =>
-                      option.label
-                        .toLowerCase()
-                        .indexOf(inputValue.toLowerCase()) > -1
-                  )
-                }
+                showSearch={{
+                  limit: 1e7,
+                  filter: cascaderSearchFilter,
+                  matchInputWidth: false,
+                }}
                 maxTagCount="responsive"
                 showCheckedStrategy={SHOW_CHILD}
                 allowClear
@@ -214,7 +212,11 @@ class ListView extends Component {
         );
       }
 
-      if (d.filter.renderer === "select") {
+      if (
+        d.filter.renderer === "select" &&
+        d.records.length > 0 &&
+        !d.records.every((e) => e == null)
+      ) {
         return (
           <Item
             key={`containers.list-view.filters.${d.filter.name}`}
@@ -233,9 +235,6 @@ class ListView extends Component {
               style={{ width: "100%" }}
               maxTagCount="responsive"
               maxTagTextLength={8}
-              disabled={
-                d.records.length === 0 || d.records.every((e) => e == null)
-              }
               options={d.records.map((e) => ({
                 label: e
                   ? snakeCaseToHumanReadable(e)
@@ -270,8 +269,8 @@ class ListView extends Component {
 
       if (
         d.filter.renderer === "slider" &&
-        !isNaN(d.extent[0]) &&
-        !isNaN(d.extent[1])
+        !isNaN(d.fullExtent[0]) &&
+        !isNaN(d.fullExtent[1])
       ) {
         return (
           <Item
@@ -283,16 +282,16 @@ class ListView extends Component {
                 required: false,
               },
             ]}
-            initialValue={d.extent}
+            initialValue={d.fullExtent}
           >
             <Slider
               range
-              min={d.extent[0]}
-              max={d.extent[1]}
-              step={(d.extent[1] - d.extent[0]) / 100}
+              min={d.fullExtent[0]}
+              max={d.fullExtent[1]}
+              step={(d.fullExtent[1] - d.fullExtent[0]) / 100}
               marks={{
-                [d.extent[0]]: d3.format(d.format)(d.extent[0]),
-                [d.extent[1]]: d3.format(d.format)(d.extent[1]),
+                [d.fullExtent[0]]: d3.format(d.format)(d.fullExtent[0]),
+                [d.fullExtent[1]]: d3.format(d.format)(d.fullExtent[1]),
               }}
               tooltip={{
                 formatter: (value) => d3.format(d.format)(value),
@@ -333,6 +332,13 @@ class ListView extends Component {
                       .groups(
                         filters.filter((d) => d.filter.group != null),
                         (d) => d.filter.group
+                      )
+                      .filter(
+                        ([group, groupedItems]) =>
+                          !groupedItems
+                            .map((d) => d.records)
+                            .flat()
+                            .every((e) => e == null)
                       )
                       .map(([group, filteredGroups]) => {
                         return {
@@ -518,23 +524,21 @@ class ListView extends Component {
                           title={
                             d.disease &&
                             d.primary_site && (
-                              <Space>
+                              <Paragraph>
                                 <Text type="primary">{d.disease}</Text>
-                                <Space>
-                                  {d.primary_site && (
-                                    <Text type="secondary">
-                                      {snakeCaseToHumanReadable(d.primary_site)}
-                                    </Text>
-                                  )}
-                                  {d.tumor_details && (
-                                    <Text type="secondary">
-                                      {snakeCaseToHumanReadable(
-                                        d.tumor_details
-                                      )}
-                                    </Text>
-                                  )}
-                                </Space>
-                              </Space>
+                                {d.primary_site && (
+                                  <Text type="secondary">
+                                    <br />
+                                    {snakeCaseToHumanReadable(d.primary_site)}
+                                  </Text>
+                                )}
+                                {d.tumor_details && (
+                                  <Text type="secondary">
+                                    <br />
+                                    {snakeCaseToHumanReadable(d.tumor_details)}
+                                  </Text>
+                                )}
+                              </Paragraph>
                             )
                           }
                           description={

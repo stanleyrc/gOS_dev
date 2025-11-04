@@ -13,7 +13,7 @@ function* fetchData(action) {
     let { signaturesWeightsFiles } = currentState.SignatureProfiles;
 
     // Convert relative signature weights file paths to absolute URLs
-    const baseUrl = window.location.origin;
+    const baseUrl = window.location.href.split("?")[0].replace(/\/[^/]*$/, "");
     const absoluteSignaturesWeightsFiles = {};
     Object.keys(signaturesWeightsFiles).forEach((key) => {
       const filePath = signaturesWeightsFiles[key];
@@ -23,16 +23,23 @@ function* fetchData(action) {
     });
 
     // Use Web Worker for heavy computation
+    const workerBaseUrl = window.location.href
+      .split("?")[0]
+      .replace(/\/[^/]*$/, "");
+
+    // Ensure data is serializable by deep cloning through JSON
+    const serializableData = {
+      settings: {
+        signaturesList: JSON.parse(JSON.stringify(settings.signaturesList)),
+      },
+      datafiles: JSON.parse(JSON.stringify(datafiles)),
+      signaturesWeightsFiles: absoluteSignaturesWeightsFiles,
+    };
+
     const computationResult = yield call(
       processDataInWorker,
-      {
-        settings: {
-          signaturesList: settings.signaturesList,
-        },
-        datafiles,
-        signaturesWeightsFiles: absoluteSignaturesWeightsFiles,
-      },
-      new URL("../../workers/signatureProfilesWorker.js", import.meta.url)
+      serializableData,
+      `${workerBaseUrl}/workers/signatureProfiles.worker.js`
     );
 
     const { signatures, signatureMetrics, signaturesReference } =

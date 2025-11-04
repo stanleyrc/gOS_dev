@@ -60,7 +60,9 @@ function* fetchData(action) {
         sigprofiler_sbs_count,
         sigprofiler_indel_count,
       },
-      new URL("../../workers/signatureStatisticsWorker.js", import.meta.url)
+      `${window.location.href
+        .split("?")[0]
+        .replace(/\/[^/]*$/, "")}/workers/signatureStatistics.worker.js`
     );
 
     const {

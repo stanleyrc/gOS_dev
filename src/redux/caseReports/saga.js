@@ -76,7 +76,7 @@ function* fetchCaseReports(action) {
 
         let reportsFilters = [];
 
-        reportsFilters = getReportsFilters(datafiles);
+        reportsFilters = getReportsFilters(datafiles, datafiles);
 
         let populations = {};
         let flippedMap = flip(reportAttributesMap());
@@ -257,12 +257,11 @@ function* searchReports({ searchFilters }) {
       : d3.descending(aValue, bValue);
   });
 
-  
   yield put({
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters: getReportsFilters(records),
+    reportsFilters: getReportsFilters(records, datafiles),
   });
 }
 
