@@ -5,10 +5,12 @@
 
 import { IndexedDBRepository } from "./IndexedDBRepository";
 import { RemoteRepository } from "./RemoteRepository";
+import { DynamoDBRepository } from "./DynamoDBRepository";
 
 export const REPOSITORY_TYPES = {
   INDEXED_DB: "indexeddb",
   REMOTE: "remote",
+  DYNAMODB: "dynamodb",
 };
 
 class RepositoryFactory {
@@ -34,10 +36,13 @@ class RepositoryFactory {
     switch (repoType) {
       case REPOSITORY_TYPES.INDEXED_DB:
         return new IndexedDBRepository();
-      
+
       case REPOSITORY_TYPES.REMOTE:
         return new RemoteRepository(config);
-      
+
+      case REPOSITORY_TYPES.DYNAMODB:
+        return new DynamoDBRepository(config);
+
       default:
         throw new Error(`Unknown repository type: ${repoType}`);
     }
