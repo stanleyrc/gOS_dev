@@ -16,7 +16,7 @@ export const REPOSITORY_TYPES = {
 class RepositoryFactory {
   constructor() {
     this._instances = new Map();
-    this._activeType = REPOSITORY_TYPES.DYNAMODB;
+    this._activeType = REPOSITORY_TYPES.INDEXED_DB;
   }
 
   setActiveType(type) {
@@ -28,6 +28,23 @@ class RepositoryFactory {
 
   getActiveType() {
     return this._activeType;
+  }
+
+  _mapAuditLoggingRepoToType(auditLoggingRepo) {
+    if (!auditLoggingRepo) return null;
+    
+    const repoString = String(auditLoggingRepo).toLowerCase();
+    switch (repoString) {
+      case 'dynamodb':
+        return REPOSITORY_TYPES.DYNAMODB;
+      case 'indexeddb':
+        return REPOSITORY_TYPES.INDEXED_DB;
+      case 'remote':
+        return REPOSITORY_TYPES.REMOTE;
+      default:
+        console.warn(`Unknown auditLoggingRepo value: ${auditLoggingRepo}, defaulting to IndexedDB`);
+        return REPOSITORY_TYPES.INDEXED_DB;
+    }
   }
 
   create(type = null, config = {}) {
@@ -60,6 +77,14 @@ class RepositoryFactory {
   }
 
   getActiveRepository(config = {}) {
+    const dataset = config.dataset || config;
+    const auditLoggingRepo = dataset?.auditLoggingRepo;
+    
+    if (auditLoggingRepo) {
+      const repoType = this._mapAuditLoggingRepoToType(auditLoggingRepo);
+      return this.getInstance(repoType, config);
+    }
+    
     return this.getInstance(this._activeType, config);
   }
 

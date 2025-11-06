@@ -21,7 +21,9 @@ function* fetchInterpretationsForCase(action) {
       return;
     }
 
-    const repository = getActiveRepository();
+    const state = yield select();
+    const dataset = state.Settings?.dataset;
+    const repository = getActiveRepository({ dataset });
     const allInterpretations = yield call([repository, repository.getAll]);
     const interpretations = allInterpretations.filter(i => i.caseId === caseId);
     
@@ -74,7 +76,8 @@ function* updateInterpretation(action) {
       throw new Error("Missing caseId or alterationId");
     }
 
-    const repository = getActiveRepository();
+    const dataset = state.Settings?.dataset;
+    const repository = getActiveRepository({ dataset });
     
     const existing = yield call([repository, repository.get], caseId, interpretation.alterationId, interpretation.authorId);
     
@@ -128,7 +131,9 @@ function* clearCaseInterpretations(action) {
       throw new Error("Missing caseId");
     }
 
-    const repository = getActiveRepository();
+    const state = yield select();
+    const dataset = state.Settings?.dataset;
+    const repository = getActiveRepository({ dataset });
     const interpretations = yield call([repository, repository.getForCase], caseId);
 
     const currentUserId = getCurrentUserId();
