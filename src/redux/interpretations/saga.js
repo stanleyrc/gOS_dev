@@ -3,7 +3,8 @@ import { getCurrentState } from "./selectors";
 import { getActiveRepository } from "../../services/repositories";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import actions from "./actions";
-import { getCurrentUserId } from "../../helpers/userAuth";
+import { getCurrentUserId, getUser } from "../../helpers/userAuth";
+import { signInterpretation } from "../../services/signatures/SignatureService";
 
 
 
@@ -99,6 +100,14 @@ function* updateInterpretation(action) {
       data: mergedData,
     });
     
+    // Sign the interpretation before saving
+    const user = getUser();
+    if (user && user.privateKey) {
+      const interpretationData = repoInterpretation.toJSON();
+      const signature = yield call(signInterpretation, interpretationData, user);
+      repoInterpretation.signature = signature;
+    }
+    
     yield call([repository, repository.save], repoInterpretation);
     
     const currentUserId = getCurrentUserId();
@@ -189,6 +198,14 @@ function* updateAuthorName(action) {
         authorName: newAuthorName,
         lastModified: new Date().toISOString(),
       });
+      
+      // Sign the updated interpretation
+      const user = getUser();
+      if (user && user.privateKey) {
+        const interpretationData = updatedInterpretation.toJSON();
+        const signature = yield call(signInterpretation, interpretationData, user);
+        updatedInterpretation.signature = signature;
+      }
       
       yield call([repository, repository.save], updatedInterpretation);
     }

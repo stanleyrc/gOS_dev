@@ -1,5 +1,6 @@
 import { UserAuthRepository } from './UserAuthRepository';
 import EventEmitter from 'eventemitter3';
+import { generateKeyPair, publicKeyToId } from '../crypto/cryptoService';
 
 const USER_KEY = 'gOS_user';
 
@@ -38,10 +39,16 @@ export class LocalStorageUserAuthRepository extends UserAuthRepository {
     }
   }
 
-  createUser(displayName) {
+  async createUser(displayName) {
     try {
-      const userId = crypto.randomUUID();
-      const userObj = { userId, displayName };
+      const { publicKey, privateKey } = await generateKeyPair();
+      const userId = publicKeyToId(publicKey);
+      const userObj = { 
+        userId, 
+        displayName, 
+        publicKey, 
+        privateKey 
+      };
       this.setUser(userObj);
       return userObj;
     } catch (e) {

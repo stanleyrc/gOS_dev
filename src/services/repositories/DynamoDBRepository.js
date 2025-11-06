@@ -6,6 +6,7 @@
 import { EventInterpretationRepository } from "./EventInterpretationRepository";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import { getUser } from "../../helpers/userAuth";
+import { verifyOwnInterpretation } from "../signatures/SignatureService";
 import {
   DynamoDBClient,
   PutItemCommand,
@@ -93,6 +94,7 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       ...data,
       alterationId,
       authorId,
+      signature: data.signature || null,
     });
   }
 
@@ -103,6 +105,17 @@ export class DynamoDBRepository extends EventInterpretationRepository {
 
     if (!interpretation.caseId || !interpretation.alterationId) {
       throw new Error("EventInterpretation must have caseId and alterationId");
+    }
+
+    // Verify signature if present (defense in depth)
+    if (interpretation.signature) {
+      const interpretationData = interpretation.toJSON();
+      const { signature, ...dataWithoutSignature } = interpretationData;
+      const isValid = await verifyOwnInterpretation(dataWithoutSignature, signature);
+      
+      if (!isValid) {
+        console.warn('Signature verification failed for interpretation - proceeding anyway (client-side check)');
+      }
     }
 
     const item = this._toDynamoDBItem(interpretation);

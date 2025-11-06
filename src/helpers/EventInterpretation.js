@@ -9,7 +9,8 @@ class EventInterpretation {
     authorId = null,
     authorName = null,
     lastModified = null,
-    data = {}
+    data = {},
+    signature = null
   } = {}) {
     this.caseId = caseId;
     this.alterationId = alterationId;
@@ -35,6 +36,7 @@ class EventInterpretation {
     
     this.lastModified = lastModified || new Date().toISOString();
     this.data = data;
+    this.signature = signature || null;
   }
 
   static createId(caseId, alterationId, authorId) {
@@ -69,6 +71,10 @@ class EventInterpretation {
 
     if (Object.keys(this.data).length > 0) {
       result.data = this.data;
+    }
+
+    if (this.signature) {
+      result.signature = this.signature;
     }
 
     return result;
