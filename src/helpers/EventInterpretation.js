@@ -1,4 +1,4 @@
-import { getUser, createUser } from './userAuth.js';
+import { getUser } from './userAuth.js';
 
 class EventInterpretation {
   constructor({
@@ -15,36 +15,26 @@ class EventInterpretation {
     this.alterationId = alterationId;
     this.gene = gene;
     this.variant = variant;
-    this.authorId = authorId || this.getOrCreateAuthorId();
-    this.authorName = authorName || this.getOrCreateAuthorName();
+    
+    // Get current user info - caller should ensure user exists via ensureUser() first
+    if (!authorId || !authorName) {
+      const user = getUser();
+      if (user) {
+        this.authorId = authorId || user.userId;
+        this.authorName = authorName || user.displayName;
+      } else {
+        // Fallback - should not happen if ensureUser() was called
+        console.warn('EventInterpretation created without user - please call ensureUser() first');
+        this.authorId = authorId || null;
+        this.authorName = authorName || 'Anonymous';
+      }
+    } else {
+      this.authorId = authorId;
+      this.authorName = authorName;
+    }
+    
     this.lastModified = lastModified || new Date().toISOString();
     this.data = data;
-  }
-
-  getOrCreateAuthorId() {
-    const userObj = this.getOrCreateUser();
-    return userObj.userId;
-  }
-
-  getOrCreateAuthorName() {
-    const userObj = this.getOrCreateUser();
-    return userObj.displayName;
-  }
-
-  getOrCreateUser() {
-    let user = getUser();
-
-    if (!user) {
-      const displayName = this.promptForDisplayName();
-      user = createUser(displayName);
-    }
-
-    return user;
-  }
-
-  promptForDisplayName() {
-    const displayName = prompt('Please enter your display name:');
-    return displayName && displayName.trim() ? displayName.trim() : 'Anonymous';
   }
 
   static createId(caseId, alterationId, authorId) {

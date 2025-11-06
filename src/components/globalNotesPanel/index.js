@@ -22,9 +22,19 @@ class GlobalNotesPanel extends Component {
     this.setState({ editing: true, draft: currentNotes });
   };
 
-  handleBlur = () => {
+  handleBlur = async () => {
     const { draft } = this.state;
     const { caseId, dispatch } = this.props;
+
+    // Ensure user exists before creating interpretation
+    const { ensureUser } = await import("../../helpers/userAuth");
+    try {
+      await ensureUser();
+    } catch (error) {
+      // User cancelled sign-in
+      this.setState({ editing: false });
+      return;
+    }
 
     const eventInterpretation = new EventInterpretation({
       caseId,
@@ -56,13 +66,22 @@ class GlobalNotesPanel extends Component {
     this.setState({ selectedInterpretation: null });
   };
 
-  handleCopyVersion = () => {
+  handleCopyVersion = async () => {
     const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
     if (!confirmed) return;
 
     const { selectedInterpretation } = this.state;
     const { caseId, dispatch } = this.props;
     const notes = selectedInterpretation?.data?.notes || "";
+
+    // Ensure user exists before creating interpretation
+    const { ensureUser } = await import("../../helpers/userAuth");
+    try {
+      await ensureUser();
+    } catch (error) {
+      // User cancelled sign-in
+      return;
+    }
 
     const eventInterpretation = new EventInterpretation({
       caseId,

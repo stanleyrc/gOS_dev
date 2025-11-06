@@ -158,10 +158,64 @@ function* clearCaseInterpretations(action) {
   }
 }
 
+function* updateAuthorName(action) {
+  const { authorId, newAuthorName } = action;
+
+  try {
+    if (!authorId || !newAuthorName) {
+      throw new Error("Missing authorId or newAuthorName");
+    }
+
+    const state = yield select();
+    const dataset = state.Settings?.dataset;
+    const repository = getActiveRepository({ dataset });
+    
+    // Get all interpretations from repository
+    const allInterpretations = yield call([repository, repository.getAll]);
+    
+    // Filter interpretations by authorId
+    const interpretationsToUpdate = allInterpretations.filter(
+      interp => interp.authorId === authorId
+    );
+
+    console.log(`Updating ${interpretationsToUpdate.length} interpretations for authorId ${authorId}`);
+
+    // Update each interpretation's authorName
+    for (const interp of interpretationsToUpdate) {
+      const interpData = interp.toJSON ? interp.toJSON() : interp;
+      
+      const updatedInterpretation = new EventInterpretation({
+        ...interpData,
+        authorName: newAuthorName,
+        lastModified: new Date().toISOString(),
+      });
+      
+      yield call([repository, repository.save], updatedInterpretation);
+    }
+
+    // Dispatch success with updated interpretations
+    yield put({
+      type: actions.UPDATE_AUTHOR_NAME_SUCCESS,
+      authorId,
+      newAuthorName,
+      updatedCount: interpretationsToUpdate.length,
+    });
+
+    console.log(`Successfully updated ${interpretationsToUpdate.length} interpretations`);
+  } catch (error) {
+    console.error("Error updating author name:", error);
+    yield put({
+      type: actions.UPDATE_AUTHOR_NAME_FAILED,
+      error: error.message || "Failed to update author name",
+    });
+  }
+}
+
 function* actionWatcher() {
   yield takeEvery(actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST, fetchInterpretationsForCase);
   yield takeEvery(actions.UPDATE_INTERPRETATION_REQUEST, updateInterpretation);
   yield takeEvery(actions.CLEAR_CASE_INTERPRETATIONS_REQUEST, clearCaseInterpretations);
+  yield takeEvery(actions.UPDATE_AUTHOR_NAME_REQUEST, updateAuthorName);
 }
 
 export default function* rootSaga() {

@@ -11,6 +11,10 @@ const actions = {
   CLEAR_CASE_INTERPRETATIONS_SUCCESS: "CLEAR_CASE_INTERPRETATIONS_SUCCESS",
   CLEAR_CASE_INTERPRETATIONS_FAILED: "CLEAR_CASE_INTERPRETATIONS_FAILED",
 
+  UPDATE_AUTHOR_NAME_REQUEST: "UPDATE_AUTHOR_NAME_REQUEST",
+  UPDATE_AUTHOR_NAME_SUCCESS: "UPDATE_AUTHOR_NAME_SUCCESS",
+  UPDATE_AUTHOR_NAME_FAILED: "UPDATE_AUTHOR_NAME_FAILED",
+
   SELECT_INTERPRETATION: "SELECT_INTERPRETATION",
 
   fetchInterpretationsForCase: (caseId) => ({
@@ -24,6 +28,11 @@ const actions = {
   clearCaseInterpretations: (caseId) => ({
     type: actions.CLEAR_CASE_INTERPRETATIONS_REQUEST,
     caseId,
+  }),
+  updateAuthorName: (authorId, newAuthorName) => ({
+    type: actions.UPDATE_AUTHOR_NAME_REQUEST,
+    authorId,
+    newAuthorName,
   }),
   selectInterpretation: (alterationId, key) => ({
     type: actions.SELECT_INTERPRETATION,

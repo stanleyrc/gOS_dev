@@ -132,6 +132,50 @@ export default function interpretationsReducer(state = initState, action) {
           [action.alterationId]: action.key,
         },
       };
+    case actions.UPDATE_AUTHOR_NAME_REQUEST:
+      return {
+        ...state,
+        status: "pending",
+      };
+    case actions.UPDATE_AUTHOR_NAME_SUCCESS: {
+      const { authorId, newAuthorName } = action;
+      const updatedById = {};
+      const updatedByGene = { ...state.byGene };
+      
+      // Update all interpretations with matching authorId
+      Object.entries(state.byId).forEach(([key, interpretation]) => {
+        if (interpretation.authorId === authorId) {
+          const updated = {
+            ...interpretation,
+            authorName: newAuthorName,
+            lastModified: new Date().toISOString(),
+          };
+          updatedById[key] = updated;
+          
+          // Update in byGene as well
+          const gene = updated.gene;
+          if (gene && updatedByGene[gene] && updatedByGene[gene][key]) {
+            updatedByGene[gene][key] = updated;
+          }
+        } else {
+          updatedById[key] = interpretation;
+        }
+      });
+      
+      return {
+        ...state,
+        status: "succeeded",
+        byId: updatedById,
+        byGene: updatedByGene,
+        error: null,
+      };
+    }
+    case actions.UPDATE_AUTHOR_NAME_FAILED:
+      return {
+        ...state,
+        status: "failed",
+        error: action.error,
+      };
     default:
       return state;
   }

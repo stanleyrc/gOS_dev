@@ -32,10 +32,19 @@ class AlterationCard extends Component {
 
 
 
-  updateFields = (changes) => {
+  updateFields = async (changes) => {
     const { record, caseId } = this.props;
     const currentData = this.props.interpretation?.data || {};
     const data = { ...currentData, ...changes };
+
+    // Ensure user exists before creating interpretation
+    const { ensureUser } = await import("../../helpers/userAuth");
+    try {
+      await ensureUser();
+    } catch (error) {
+      // User cancelled sign-in
+      return;
+    }
 
     const eventInterpretation = new EventInterpretation({
       caseId: caseId || record?.id || "UNKNOWN",
@@ -68,13 +77,22 @@ class AlterationCard extends Component {
     this.setState({ selectedInterpretation: null });
   };
 
-  handleCopyVersion = () => {
+  handleCopyVersion = async () => {
     const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
     if (!confirmed) return;
 
     const { selectedInterpretation } = this.state;
     const { caseId, record } = this.props;
     const data = selectedInterpretation?.data || {};
+
+    // Ensure user exists before creating interpretation
+    const { ensureUser } = await import("../../helpers/userAuth");
+    try {
+      await ensureUser();
+    } catch (error) {
+      // User cancelled sign-in
+      return;
+    }
 
     const eventInterpretation = new EventInterpretation({
       caseId,

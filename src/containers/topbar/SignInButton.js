@@ -1,18 +1,16 @@
 import React, { Component } from "react";
-import { Popover, Input, Button } from "antd";
+import { Button } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { withTranslation } from 'react-i18next';
-import { getUser, setUser, createUser, userAuthRepository } from "../../helpers/userAuth";
+import { getUser, userAuthRepository } from "../../helpers/userAuth";
+import { userSignInService } from "../../services/userSignInService";
 
 class SignInButton extends Component {
   constructor(props) {
     super(props);
     const userData = getUser();
     this.state = {
-      popoverVisible: false,
       displayName: userData?.displayName || '',
-      inputValue: userData?.displayName || '',
-      editing: false,
     };
   }
 
@@ -20,7 +18,6 @@ class SignInButton extends Component {
     this.handleUserChanged = (user) => {
       this.setState({
         displayName: user?.displayName || '',
-        inputValue: user?.displayName || '',
       });
     };
     userAuthRepository.emitter.on('userChanged', this.handleUserChanged);
@@ -32,67 +29,34 @@ class SignInButton extends Component {
     userAuthRepository.emitter.off('userChanged', this.handleUserChanged);
   }
 
-  handlePopoverVisibleChange = (visible) => {
-    this.setState({
-      popoverVisible: visible,
-      editing: visible ? this.state.editing : false,
-      inputValue: visible ? this.state.inputValue : this.state.displayName,
-    });
-  };
-
-  handleNameClick = () => {
-    this.setState({ editing: true, inputValue: this.state.displayName });
-  };
-
-  handleInputBlur = (e) => {
-    const newName = this.state.inputValue.trim();
-    if (newName === '') {
-      // Revert to old name if empty
-      this.setState({ editing: false, popoverVisible: false, inputValue: this.state.displayName });
-    } else {
-      this.setState({ displayName: newName, editing: false, popoverVisible: false, inputValue: newName });
-      const userData = getUser();
-      if (userData) {
-        userData.displayName = newName;
-        setUser(userData);
+  handleButtonClick = async () => {
+    const currentUser = getUser();
+    
+    try {
+      if (currentUser) {
+        // User exists, request name update
+        await userSignInService.requestNameUpdate(currentUser);
       } else {
-        createUser(newName);
+        // No user, request sign-in
+        await userSignInService.requestSignIn();
       }
+    } catch (error) {
+      // User cancelled or error occurred
+      console.log('Sign-in cancelled or failed:', error);
     }
   };
 
   render() {
+    const { displayName } = this.state;
+    
     return (
-      <Popover
-        content={
-          <div style={{ padding: '8px', minWidth: '270px' }}>
-            {this.state.displayName && !this.state.editing ? (
-              <span onClick={this.handleNameClick} style={{ cursor: 'pointer' }}>
-                {this.state.displayName}
-              </span>
-            ) : (
-              <Input
-                value={this.state.inputValue}
-                placeholder={this.props.t('components.signInButton.usernamePlaceholder')}
-                onChange={(e) => this.setState({ inputValue: e.target.value })}
-                onBlur={this.handleInputBlur}
-                onPressEnter={this.handleInputBlur}
-                autoFocus
-              />
-            )}
-          </div>
-        }
-        trigger="click"
-        placement="bottomLeft"
-        open={this.state.popoverVisible}
-        onOpenChange={this.handlePopoverVisibleChange}
-      >
-        <Button
-          type="text"
-          icon={<UserOutlined style={{ fontSize: '20px' }} />}
-          style={{ border: 'none' }}
-        />
-      </Popover>
+      <Button
+        type="text"
+        icon={<UserOutlined style={{ fontSize: '20px' }} />}
+        style={{ border: 'none' }}
+        onClick={this.handleButtonClick}
+        title={displayName || this.props.t('components.signInButton.signIn', 'Sign In')}
+      />
     );
   }
 }
