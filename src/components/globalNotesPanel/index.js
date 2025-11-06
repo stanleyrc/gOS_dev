@@ -67,6 +67,12 @@ class GlobalNotesPanel extends Component {
     this.setState({ selectedInterpretation: null });
   };
 
+  handleRefreshVersions = () => {
+    this.props.dispatch(
+      interpretationsActions.fetchInterpretationsForCase(this.props.caseId)
+    );
+  };
+
   handleCopyVersion = async () => {
     const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
     if (!confirmed) return;
@@ -199,6 +205,7 @@ class GlobalNotesPanel extends Component {
           tableData={allGlobalNotesInterpretations}
           title="Notes Versions"
           isOpen={showVersions}
+          onOpen={this.handleRefreshVersions}
           onClose={this.handleCloseVersions}
           onSelect={this.handleSelectInterpretation}
           additionalColumns={[

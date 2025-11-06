@@ -15,6 +15,13 @@ class InterpretationVersionsSidepanel extends Component {
     searchTerm: "",
   };
 
+  componentDidUpdate(prevProps) {
+    // Trigger refresh when drawer opens
+    if (this.props.isOpen && !prevProps.isOpen && this.props.onOpen) {
+      this.props.onOpen();
+    }
+  }
+
   handleSearchChange = (e) => {
     this.setState({ searchTerm: e.target.value });
   };
