@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { BsDashLg } from "react-icons/bs";
 import { Card, Tag, Typography, Descriptions, Avatar, Button } from "antd";
 import Wrapper from "./index.style";
-import { tierColor } from "../../helpers/utility";
+import { tierColor, getTimeAgo } from "../../helpers/utility";
 import interpretationsActions from "../../redux/interpretations/actions";
 import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
@@ -181,8 +181,8 @@ class AlterationCard extends Component {
     // Format author and date for watermark button
     const authorName = displayInterpretation?.authorName || 'Switch Version';
     const lastModified = displayInterpretation?.lastModified;
-    const dateStr = lastModified ? new Date(lastModified).toLocaleString() : '';
-    const watermarkText = `${authorName}${dateStr ? ` ${dateStr}` : ''}`;
+    const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : '';
+    const watermarkText = authorName === 'Switch Version' ? authorName : `last modified by ${authorName} ${dateStr}`;
 
     return (
       <Wrapper>

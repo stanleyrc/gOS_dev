@@ -7,6 +7,7 @@ import interpretationsActions from "../../redux/interpretations/actions";
 import { getGlobalNotesInterpretation, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
+import { getTimeAgo } from "../../helpers/utility";
 
 class GlobalNotesPanel extends Component {
   state = {
@@ -121,8 +122,8 @@ class GlobalNotesPanel extends Component {
     // Format author and date for watermark button
     const authorName = displayInterpretation?.authorName || 'Switch Version';
     const lastModified = displayInterpretation?.lastModified;
-    const dateStr = lastModified ? new Date(lastModified).toLocaleString() : '';
-    const watermarkText = `${authorName}${dateStr ? ` ${dateStr}` : ''}`;
+    const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : '';
+    const watermarkText = authorName === 'Switch Version' ? authorName : `Last modified by ${authorName} ${dateStr}`;
 
     return (
       <>
