@@ -74,6 +74,7 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 public/*datafiles.json
 public/datasets.json
 public/data*
+public/hmf*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

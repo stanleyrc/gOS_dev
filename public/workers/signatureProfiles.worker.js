@@ -7,48 +7,58 @@ self.onmessage = function (e) {
 
   try {
     let signatures = {};
-    let signatureMetrics = [];
+    let signatureMetrics = {};
+
+    const {
+      types = [],
+      modes = [],
+      datafiles: configuredDatafiles = {},
+    } = settings.signaturesList || {};
 
     // Build signatures structure
-    let signaturesList = [];
-    settings.signaturesList.types.forEach((type) => {
+    types.forEach((type) => {
       signatures[type] = {};
-      settings.signaturesList.modes.forEach((mode) => {
+      signatureMetrics[type] = {};
+      modes.forEach((mode) => {
         signatures[type][mode] = {};
-        settings.signaturesList.datafiles[type].forEach((name) => {
+        signatureMetrics[type][mode] = {};
+        (configuredDatafiles[type] || []).forEach((name) => {
+          // Pre-create the buckets so we can push into them without extra checks
           signatures[type][mode][name] = [];
-          signaturesList.push({
-            type: type,
-            mode: mode,
-            name: name,
-          });
         });
       });
     });
 
     // Process signatures data
-    signaturesList.forEach((sig) => {
-      let { type, mode } = sig;
-      datafiles.forEach((record, i) => {
-        Object.keys(record[`sigprofiler_${type}_${mode}`] || []).forEach(
-          (name) => {
-            if (signatures[type][mode][name]) {
-              signatures[type][mode][name].push({
-                pair: record.pair,
-                tumor_type: record.tumor_type,
-                value: record[`sigprofiler_${type}_${mode}`][name],
-                sig: name,
-              });
-            }
+    datafiles.forEach((record) => {
+      types.forEach((type) => {
+        modes.forEach((mode) => {
+          const signatureValues = record[`sigprofiler_${type}_${mode}`];
+          if (!signatureValues) {
+            return;
           }
-        );
+
+          // Iterate each record only once per type/mode to avoid the OOM-causing nested re-scan
+          Object.entries(signatureValues).forEach(([name, value]) => {
+            const signatureBucket = signatures[type][mode][name];
+            if (!signatureBucket) {
+              // Ignore unexpected names to keep downstream processing stable
+              return;
+            }
+            signatureBucket.push({
+              pair: record.pair,
+              tumor_type: record.tumor_type,
+              value,
+              sig: name,
+            });
+          });
+        });
       });
     });
 
     // Calculate signature metrics (you'll need to implement getSignatureMetrics here or pass it)
-    settings.signaturesList.types.forEach((type) => {
-      signatureMetrics[type] = {};
-      settings.signaturesList.modes.forEach((mode) => {
+    types.forEach((type) => {
+      modes.forEach((mode) => {
         // Note: You'll need to copy the getSignatureMetrics function here
         // or implement a simplified version
         signatureMetrics[type][mode] = {}; // placeholder
