@@ -200,7 +200,10 @@ class ListView extends Component {
                 }}
                 multiple
                 showSearch={{
-                  limit: 1e7,
+                  // PERFORMANCE OPTIMIZATION 1: Limit search results to 50 items
+                  // This prevents the UI from trying to render thousands of search results
+                  // which would cause the browser to become unresponsive
+                  limit: 50,
                   filter: cascaderSearchFilter,
                   matchInputWidth: false,
                 }}
