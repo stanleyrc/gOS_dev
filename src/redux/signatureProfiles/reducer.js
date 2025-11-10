@@ -24,6 +24,15 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: null,
+        signatures: {
+          indel: { count: [], fraction: [] },
+          sbs: { count: [], fraction: [] },
+        },
+        signatureMetrics: {
+          indel: { count: [], fraction: [] },
+          sbs: { count: [], fraction: [] },
+        },
+        signaturesReference: { indel: {}, sbs: {} },
         loading: true,
       };
     case actions.FETCH_SIGNATURE_PROFILES_SUCCESS:
@@ -38,6 +47,15 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: action.error,
+        signatures: {
+          indel: { count: [], fraction: [] },
+          sbs: { count: [], fraction: [] },
+        },
+        signatureMetrics: {
+          indel: { count: [], fraction: [] },
+          sbs: { count: [], fraction: [] },
+        },
+        signaturesReference: { indel: {}, sbs: {} },
         loading: false,
       };
     default:

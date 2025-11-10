@@ -23,6 +23,17 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: null,
+        signatureMetrics: {
+          indel: { count: [], fraction: [] },
+          sbs: { count: [], fraction: [] },
+        },
+        tumorSignatureMetrics: {
+          indel: { count: [], fraction: [] },
+          sbs: { count: [], fraction: [] },
+        },
+        mutationCatalog: [],
+        decomposedCatalog: [],
+        referenceCatalog: [],
         pair: action.pair,
         loading: true,
         missing: false,
@@ -50,7 +61,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         loading: false,
         missing: true,
-        ignatureMetrics: {
+        signatureMetrics: {
           indel: { count: [], fraction: [] },
           sbs: { count: [], fraction: [] },
         },
