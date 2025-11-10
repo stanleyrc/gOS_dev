@@ -30,37 +30,71 @@ jobs:
         run: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
 
       # (Optional) keep branch size under control — prune before producing new build
-      - name: Prune old tarballs (optional)
+      - name: Prune old tarballs and clean git history
         if: always()
         run: |
           set -e
           BRANCH=deploy-builds
           REPO="git@github.com:${GITHUB_REPOSITORY}.git"
           rm -rf artifacts_prune
-          git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts_prune
+
+          # Clone with full history for proper cleanup
+          git clone --branch ${BRANCH} "$REPO" artifacts_prune
           if [ ! -d artifacts_prune/releases ]; then
             echo "No releases to prune yet; skipping"
             exit 0
           fi
           cd artifacts_prune
           shopt -s nullglob
-          KEEP=5
+          KEEP=2  # Keep only 2 most recent releases instead of 5
           mapfile -t tarballs < <(git ls-files releases/build-*.tar.gz)
+
           if (( ${#tarballs[@]} > KEEP )); then
+            echo "Found ${#tarballs[@]} tarballs, keeping ${KEEP} most recent"
             mapfile -t sorted < <(
               for file in "${tarballs[@]}"; do
                 ts=$(git log -1 --format=%ct -- "$file" || echo 0)
                 printf '%s\t%s\n' "$ts" "$file"
               done | sort -n | cut -f2-
             )
-            for file in "${sorted[@]:0:${#sorted[@]}-KEEP}"; do
-              rm -f "$file" "$file".sha256
+            
+            # Files to keep (most recent ones)
+            files_to_keep=("${sorted[@]: -KEEP}")
+            echo "Keeping files: ${files_to_keep[*]}"
+            
+            # Create clean repository with only files we want to keep
+            cd ..
+            rm -rf artifacts_clean
+            mkdir artifacts_clean && cd artifacts_clean
+            git init
+            git remote add origin "$REPO"
+            git checkout -b ${BRANCH}
+            
+            # Copy only the files we want to keep
+            mkdir -p releases
+            for file in "${files_to_keep[@]}"; do
+              if [ -f "../artifacts_prune/$file" ]; then
+                cp "../artifacts_prune/$file" "$file"
+                cp "../artifacts_prune/$file.sha256" "$file.sha256" 2>/dev/null || true
+              fi
             done
+            
+            # Copy other important files
+            cp ../artifacts_prune/README.md . 2>/dev/null || echo "# Prebuilt artifacts" > README.md
+            cp ../artifacts_prune/LATEST.txt . 2>/dev/null || true
+            cp ../artifacts_prune/LATEST_BUILT_AT.txt . 2>/dev/null || true
+            
+            # Commit the clean state
+            git add -A
+            git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore: clean repository, keep only ${KEEP} most recent builds"
+            
+            # Force push the clean history (this removes all traces of old files)
+            git push --force origin HEAD:${BRANCH}
+            echo "Successfully pruned to ${KEEP} builds and cleaned git history"
+          else
+            echo "Only ${#tarballs[@]} tarballs found, no pruning needed (keeping ${KEEP})"
           fi
-          git add -A
-          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-            commit -m "chore: prune old tarballs" || echo "nothing to prune"
-          git push origin HEAD:${BRANCH}
 
       - name: Use Node 16
         uses: actions/setup-node@v4
