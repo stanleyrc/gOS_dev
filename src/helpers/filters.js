@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { plotTypes, reportAttributesMap } from "./utility";
+import common from '../translations/en/common.json';
 
 export function reportFilters() {
   return [
@@ -16,6 +17,7 @@ export function reportFilters() {
       type: "string",
       renderer: "select",
       group: "interpretations",
+      external: true,
     },
     {
       name: "treatment",
@@ -177,28 +179,40 @@ export function getReportFilterExtents(reports) {
   return extents;
 }
 
-export function getReportsFilters(reports, casesWithInterpretations = new Set()) {
+export function getInterpretationsFilter(reports, casesWithInterpretations = new Set()) {
+  const filter = reportFilters().find(f => f.name === "has_interpretations");
+
+  const withCount = reports.filter(r => casesWithInterpretations.has(r.pair)).length;
+  const withoutCount = reports.length - withCount;
+
+  const withLabel = common.containers["list-view"].filters.has_interpretations_labels.with;
+  const withoutLabel = common.containers["list-view"].filters.has_interpretations_labels.without;
+
+  const distinctValues = [withLabel, withoutLabel];
+  const frequencyMap = new Map([
+    [withLabel, withCount],
+    [withoutLabel, withoutCount],
+  ]);
+  
+  return {
+    filter: filter,
+    records: [...distinctValues],
+    frequencies: Object.fromEntries(frequencyMap),
+    extent: d3.extent(
+      distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
+    ),
+    totalRecords: reports.length,
+    format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
+  };
+}
+
+export function getReportsFilters(reports) {
   let reportsFilters = [];
 
-  // Iterate through each filter
-  reportFilters().forEach((filter) => {
-    let distinctValues;
-    let frequencyMap;
-
-    if (filter.name === "has_interpretations") {
-      // Special logic for has_interpretations
-      const totalCases = reports.length;
-      const withCount = reports.filter(r => casesWithInterpretations.has(r.pair)).length;
-      const withoutCount = totalCases - withCount;
-      const allCount = totalCases;
-
-    distinctValues = ["all", "with", "without"];
-      frequencyMap = new Map([
-      ["all", allCount],
-      ["with", withCount],
-    ["without", withoutCount],
-]);
-    } else {
+  // Iterate through each filter (excluding external data source filters)
+  reportFilters()
+    .filter(filter => !filter.external)
+    .forEach((filter) => {
       let allValues = reports
         .map((record) => {
           try {
@@ -209,14 +223,14 @@ export function getReportsFilters(reports, casesWithInterpretations = new Set())
         })
         .flat();
 
-      frequencyMap = d3.rollup(
+      const frequencyMap = d3.rollup(
         allValues,
         (v) => v.length,
         (d) => d
       );
 
       // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
-      distinctValues = Array.from(frequencyMap.entries())
+      const distinctValues = Array.from(frequencyMap.entries())
         .sort((a, b) => {
           // First sort by frequency (descending)
           const freqCompare = d3.descending(a[1], b[1]);
@@ -225,22 +239,21 @@ export function getReportsFilters(reports, casesWithInterpretations = new Set())
           return d3.ascending(a[0], b[0]);
         })
         .map(([value, frequency]) => value);
-    }
 
-    // Add the filter information to the reportsFilters array
-    reportsFilters.push({
-      filter: filter,
-      records: [...distinctValues],
-      frequencies: Object.fromEntries(frequencyMap),
-      extent: d3.extent(
-        distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
-      ),
-      totalRecords: reports.length,
-      format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
+      // Add the filter information to the reportsFilters array
+      reportsFilters.push({
+        filter: filter,
+        records: [...distinctValues],
+        frequencies: Object.fromEntries(frequencyMap),
+        extent: d3.extent(
+          distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
+        ),
+        totalRecords: reports.length,
+        format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
+      });
     });
-});
-//console.log("reportsFilters", reportsFilters);
-return reportsFilters;
+
+  return reportsFilters;
 }
 
 const CASCADER_PATH_SEPARATOR = " / ";

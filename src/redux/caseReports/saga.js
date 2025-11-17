@@ -21,6 +21,7 @@ import {
 } from "../../helpers/utility";
 import {
   getReportsFilters,
+  getInterpretationsFilter,
   getReportFilterExtents,
   reportFilters,
 } from "../../helpers/filters";
@@ -84,7 +85,10 @@ function* fetchCaseReports(action) {
 
         let reportsFilters = [];
 
-        reportsFilters = getReportsFilters(datafiles, casesWithInterpretations);
+        reportsFilters = getReportsFilters(datafiles);
+        
+        const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations);
+        reportsFilters.push(interpretationsFilter);
 
         let reportsFiltersExtents = getReportFilterExtents(datafiles);
 
@@ -287,11 +291,15 @@ function* searchReports({ searchFilters }) {
       : d3.descending(aValue, bValue);
   });
 
+  const reportsFilters = getReportsFilters(records);
+  const interpretationsFilter = getInterpretationsFilter(records, casesWithInterpretations);
+  reportsFilters.push(interpretationsFilter);
+
   yield put({
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters: getReportsFilters(records, casesWithInterpretations),
+    reportsFilters,
   });
 }
 

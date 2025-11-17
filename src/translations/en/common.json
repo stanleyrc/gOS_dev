@@ -329,10 +329,10 @@
         "placeholder": "select one or many",
         "empty": "(empty)",
         "collapse": {
-        "treatment-metrics": "Treatment Metrics",
-        "quality-metrics": "Quality Metrics",
-        "event-metrics": "Event Metrics",
-        "biomarker-metrics": "Biomarker Metrics",
+          "treatment-metrics": "Treatment Metrics",
+          "quality-metrics": "Quality Metrics",
+          "event-metrics": "Event Metrics",
+          "biomarker-metrics": "Biomarker Metrics",
           "interpretations": "Interpretations"
         },
         "case": "{{count}} case",
@@ -365,11 +365,10 @@
         },
         "purity": "Purity",
         "ploidy": "Ploidy",
-        "has_interpretations": {
-          "label": "Has Interpretations",
-          "all": "All Cases",
-          "with": "With Interpretations",
-          "without": "Without Interpretations"
+        "has_interpretations": "Has Interpretations",
+        "has_interpretations_labels": {
+          "with": "Yes",
+          "without": "No"
         },
         "submit": "Submit",
         "reset": "Reset",
