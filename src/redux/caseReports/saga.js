@@ -24,6 +24,7 @@ import {
   getReportFilterExtents,
   reportFilters,
 } from "../../helpers/filters";
+import { getActiveRepository } from "../../services/repositories";
 import { qcEvaluator } from "../../helpers/metadata";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
@@ -78,9 +79,12 @@ function* fetchCaseReports(action) {
           } // Ensure qcEvaluation is set for each report
         );
 
+        const repository = getActiveRepository({ dataset });
+        const casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
+
         let reportsFilters = [];
 
-        reportsFilters = getReportsFilters(datafiles);
+        reportsFilters = getReportsFilters(datafiles, casesWithInterpretations);
 
         let reportsFiltersExtents = getReportFilterExtents(datafiles);
 
@@ -151,6 +155,10 @@ function* fetchCaseReports(action) {
 function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
   let { datafiles } = currentState.CaseReports;
+  let { dataset } = currentState.Settings;
+
+  const repository = getActiveRepository({ dataset });
+  const casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
 
   let records = datafiles.filter((d) => d.visible !== false);
 
@@ -173,8 +181,19 @@ function* searchReports({ searchFilters }) {
   );
 
   Object.keys(actualSearchFilters).forEach((key) => {
-    let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
-    if (key === "texts") {
+  let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
+  if (key === "has_interpretations") {
+      if (actualSearchFilters[key].length === 0 || actualSearchFilters[key].includes("all")) {
+        // show all
+      } else {
+        if (actualSearchFilters[key].includes("with")) {
+          records = records.filter(d => casesWithInterpretations.has(d.pair));
+        }
+        if (actualSearchFilters[key].includes("without")) {
+          records = records.filter(d => !casesWithInterpretations.has(d.pair));
+        }
+      }
+    } else if (key === "texts") {
       records = records
         .filter((record) =>
           reportFilters()
@@ -268,7 +287,7 @@ function* searchReports({ searchFilters }) {
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters: getReportsFilters(records),
+    reportsFilters: getReportsFilters(records, casesWithInterpretations),
   });
 }
 
