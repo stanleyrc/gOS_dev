@@ -41,6 +41,7 @@ class LandingPage extends Component {
       reports,
       totalReports,
       reportsFilters,
+      reportsFiltersExtents,
       searchCaseReports,
       searchFilters,
     } = this.props;
@@ -66,6 +67,7 @@ class LandingPage extends Component {
             records={reports}
             handleCardClick={this.handleCardClick}
             filters={reportsFilters}
+            filtersExtents={reportsFiltersExtents}
             onSearch={searchCaseReports}
             searchFilters={searchFilters}
             totalRecords={totalReports}
@@ -86,6 +88,7 @@ const mapStateToProps = (state) => ({
   loadingPercentage: state.CaseReports.loadingPercentage,
   reports: state.CaseReports.reports,
   reportsFilters: state.CaseReports.reportsFilters,
+  reportsFiltersExtents: state.CaseReports.reportsFiltersExtents,
   searchFilters: state.CaseReports.searchFilters,
   totalReports: state.CaseReports.totalReports,
 });

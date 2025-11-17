@@ -19,7 +19,11 @@ import {
   orderListViewFilters,
   datafilesArrowTableToJson,
 } from "../../helpers/utility";
-import { getReportsFilters, reportFilters } from "../../helpers/filters";
+import {
+  getReportsFilters,
+  getReportFilterExtents,
+  reportFilters,
+} from "../../helpers/filters";
 import { qcEvaluator } from "../../helpers/metadata";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
@@ -76,7 +80,9 @@ function* fetchCaseReports(action) {
 
         let reportsFilters = [];
 
-        reportsFilters = getReportsFilters(datafiles, datafiles);
+        reportsFilters = getReportsFilters(datafiles);
+
+        let reportsFiltersExtents = getReportFilterExtents(datafiles);
 
         let populations = {};
         let flippedMap = flip(reportAttributesMap());
@@ -110,6 +116,7 @@ function* fetchCaseReports(action) {
           reportsFilters,
           reports: records.slice((page - 1) * per_page, page * per_page),
           totalReports: records.length,
+          reportsFiltersExtents,
         });
       } else if (result.error) {
         // The request failed
@@ -261,7 +268,7 @@ function* searchReports({ searchFilters }) {
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters: getReportsFilters(records, datafiles),
+    reportsFilters: getReportsFilters(records),
   });
 }
 

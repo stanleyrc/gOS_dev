@@ -61,14 +61,19 @@ function* fetchData(action) {
 }
 
 function* watchForMultipleActions() {
+  // Wait for the first time both settings and case reports finish loading
   yield all([
     take(settingsActions.FETCH_SETTINGS_DATA_SUCCESS),
     take(caseReportsActions.FETCH_CASE_REPORTS_SUCCESS),
   ]);
 
-  yield put({
-    type: actions.FETCH_SIGNATURE_PROFILES_REQUEST,
-  });
+  yield put({ type: actions.FETCH_SIGNATURE_PROFILES_REQUEST });
+
+  // Re-compute signatures every time case reports change afterwards
+  while (true) {
+    yield take(caseReportsActions.FETCH_CASE_REPORTS_SUCCESS);
+    yield put({ type: actions.FETCH_SIGNATURE_PROFILES_REQUEST });
+  }
 }
 
 function* actionWatcher() {

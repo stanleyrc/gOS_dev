@@ -66,12 +66,12 @@ class ListView extends Component {
   };
 
   onReset = () => {
-    const { filters } = this.props;
+    const { filters, filtersExtents } = this.props;
     // Build reset values: sliders use their extent, others empty array
     const resetValues = filters.reduce((acc, d) => {
       const name = d.filter.name;
       if (d.filter.renderer === "slider") {
-        acc[name] = d.fullExtent;
+        acc[name] = filtersExtents[name];
       } else {
         acc[name] = [];
       }
@@ -131,6 +131,7 @@ class ListView extends Component {
       handleCardClick,
       filters,
       searchFilters,
+      filtersExtents,
       totalRecords,
     } = this.props;
 
@@ -199,7 +200,10 @@ class ListView extends Component {
                 }}
                 multiple
                 showSearch={{
-                  limit: 1e7,
+                  // PERFORMANCE OPTIMIZATION 1: Limit search results to 50 items
+                  // This prevents the UI from trying to render thousands of search results
+                  // which would cause the browser to become unresponsive
+                  limit: 50,
                   filter: cascaderSearchFilter,
                   matchInputWidth: false,
                 }}
@@ -269,8 +273,8 @@ class ListView extends Component {
 
       if (
         d.filter.renderer === "slider" &&
-        !isNaN(d.fullExtent[0]) &&
-        !isNaN(d.fullExtent[1])
+        !isNaN(filtersExtents[d.filter.name]?.[0]) &&
+        !isNaN(filtersExtents[d.filter.name]?.[1])
       ) {
         return (
           <Item
@@ -282,16 +286,24 @@ class ListView extends Component {
                 required: false,
               },
             ]}
-            initialValue={d.fullExtent}
+            initialValue={filtersExtents[d.filter.name]}
           >
             <Slider
               range
-              min={d.fullExtent[0]}
-              max={d.fullExtent[1]}
-              step={(d.fullExtent[1] - d.fullExtent[0]) / 100}
+              min={filtersExtents[d.filter.name]?.[0]}
+              max={filtersExtents[d.filter.name]?.[1]}
+              step={
+                (filtersExtents[d.filter.name]?.[1] -
+                  filtersExtents[d.filter.name]?.[0]) /
+                100
+              }
               marks={{
-                [d.fullExtent[0]]: d3.format(d.format)(d.fullExtent[0]),
-                [d.fullExtent[1]]: d3.format(d.format)(d.fullExtent[1]),
+                [filtersExtents[d.filter.name]?.[0]]: d3.format(d.format)(
+                  filtersExtents[d.filter.name]?.[0]
+                ),
+                [filtersExtents[d.filter.name]?.[1]]: d3.format(d.format)(
+                  filtersExtents[d.filter.name]?.[1]
+                ),
               }}
               tooltip={{
                 formatter: (value) => d3.format(d.format)(value),
@@ -610,6 +622,7 @@ class ListView extends Component {
 ListView.propTypes = {};
 ListView.defaultProps = {
   searchFilters: { per_page: 10, page: 1, orderId: 1 },
+  filtersExtents: {},
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({});
