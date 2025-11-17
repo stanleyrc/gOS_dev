@@ -327,61 +327,46 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   }
 
   async getCasesWithInterpretations(cohortId) {
-    if (!cohortId) return new Set();
-
-    try {
-      // Query using GSI on cohortId (assuming GSI exists)
-      const command = new QueryCommand({
-        TableName: this.tableName,
-        IndexName: "cohortId-index", // Assuming this GSI exists
-        KeyConditionExpression: "cohortId = :cohortId",
-        ExpressionAttributeValues: marshall({
-          ":cohortId": cohortId,
-        }),
-        ProjectionExpression: "caseId", // Only fetch caseId to optimize
-      });
-
-      const response = await this.client.send(command);
-      const items = response.Items || [];
-
-      // Extract unique caseIds
-      const caseIds = new Set(items.map(item => unmarshall(item).caseId));
-      return caseIds;
-    } catch (error) {
-      console.error("Failed to get cases with interpretations:", error);
-      return new Set();
-    }
+    return this._getCasesData(cohortId, "set"); // "set" for Set mode
   }
 
   async getCasesInterpretationsCount(cohortId) {
-    if (!cohortId) return new Map();
+    return this._getCasesData(cohortId, "count"); // "count" for Map mode
+  }
+
+  async _getCasesData(cohortId, returnType) {
+    if (!cohortId) return returnType === "set" ? new Set() : new Map();
 
     try {
-      // Query using GSI on cohortId (assuming GSI exists)
-      const command = new QueryCommand({
+        const command = new QueryCommand({
         TableName: this.tableName,
-        IndexName: "cohortId-index", // Assuming this GSI exists
+    IndexName: "cohortId-index", // Assuming this GSI exists
         KeyConditionExpression: "cohortId = :cohortId",
         ExpressionAttributeValues: marshall({
-          ":cohortId": cohortId,
+    ":cohortId": cohortId,
         }),
         ProjectionExpression: "caseId", // Only fetch caseId to optimize
-      });
+        });
 
-      const response = await this.client.send(command);
-      const items = response.Items || [];
+        const response = await this.client.send(command);
+        const items = response.Items || [];
 
-      // Count interpretations per case
-      const countMap = new Map();
-      items.forEach(item => {
-        const caseId = unmarshall(item).caseId;
-        countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
-      });
-
-      return countMap;
-    } catch (error) {
-      console.error("Failed to get cases interpretations count:", error);
-      return new Map();
+    if (returnType === "set") {
+      // Extract unique caseIds
+      const caseIds = new Set(items.map(item => unmarshall(item).caseId));
+      return caseIds;
+    } else {
+    // Count interpretations per case
+    const countMap = new Map();
+    items.forEach(item => {
+    const caseId = unmarshall(item).caseId;
+    countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
+    });
+    return countMap;
     }
+  } catch (error) {
+    console.error("Failed to get cases data:", error);
+    return returnType === "set" ? new Set() : new Map();
+  }
   }
 }
