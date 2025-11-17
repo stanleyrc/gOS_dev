@@ -3,7 +3,7 @@ import { getUser } from './userAuth.js';
 class EventInterpretation {
   constructor({
     caseId,
-    cohortId,        // NEW: Add cohortId parameter
+    datasetId,
     alterationId,
     gene = null,
     variant = null,
@@ -14,7 +14,7 @@ class EventInterpretation {
     signature = null
   } = {}) {
     this.caseId = caseId;
-    this.cohortId = cohortId;  // NEW: Store cohortId
+    this.datasetId = datasetId;
     this.alterationId = alterationId;
     this.gene = gene;
     this.variant = variant;
@@ -41,8 +41,8 @@ class EventInterpretation {
     this.signature = signature || null;
   }
 
-  static createId(cohortId, caseId, alterationId, authorId) {
-    return `${cohortId}::${caseId}::${alterationId}::${authorId}`;
+  static createId(datasetId, caseId, alterationId, authorId) {
+    return `${datasetId}::${caseId}::${alterationId}::${authorId}`;
   }
 
   hasOverrides() {
@@ -56,7 +56,7 @@ class EventInterpretation {
 
   toJSON() {
     const result = {
-      cohortId: this.cohortId,  // NEW: Include cohortId
+      datasetId: this.datasetId,
       caseId: this.caseId,
       alterationId: this.alterationId,
       authorId: this.authorId,

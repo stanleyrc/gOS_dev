@@ -78,6 +78,8 @@ function* updateInterpretation(action) {
     }
 
     const dataset = state.Settings?.dataset;
+    const datasetId = state.Settings?.dataset.id;
+    console.log(datasetId);
     const repository = getActiveRepository({ dataset });
     
     const existing = yield call([repository, repository.get], caseId, interpretation.alterationId, interpretation.authorId);
@@ -91,6 +93,7 @@ function* updateInterpretation(action) {
     
     const repoInterpretation = new EventInterpretation({
       caseId,
+      datasetId,
       alterationId: interpretation.alterationId,
       gene: interpretation.gene || existingData.gene,
       variant: interpretation.variant || existingData.variant,
@@ -177,6 +180,7 @@ function* updateAuthorName(action) {
 
     const state = yield select();
     const dataset = state.Settings?.dataset;
+    const datasetId = state.Settings?.datasetId;
     const repository = getActiveRepository({ dataset });
     
     // Get all interpretations from repository
@@ -195,6 +199,7 @@ function* updateAuthorName(action) {
       
       const updatedInterpretation = new EventInterpretation({
         ...interpData,
+        datasetId,
         authorName: newAuthorName,
         lastModified: new Date().toISOString(),
       });

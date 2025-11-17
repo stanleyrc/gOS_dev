@@ -8,10 +8,10 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 
 const DB_NAME = "gOS_Interpretations";
 const STORE_NAME = "interpretations";
-const DB_VERSION = 2;  // Increment version
+const DB_VERSION = 3;  // Increment version
 const INDEX_BY_CASE = "by_case";
-const INDEX_BY_COHORT = "by_cohort";          // NEW: Index for cohort queries
-const INDEX_BY_COHORT_CASE = "by_cohort_case";  // NEW: Composite index
+const INDEX_BY_DATASET = "by_dataset";          // NEW: Index for dataset queries
+const INDEX_BY_DATASET_CASE = "by_dataset_case";  // NEW: Composite index
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -24,8 +24,8 @@ function openDb() {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
       const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
       store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
-        store.createIndex(INDEX_BY_COHORT, "cohortId", { unique: false });  // NEW
-          store.createIndex(INDEX_BY_COHORT_CASE, ["cohortId", "caseId"], { unique: false });  // NEW
+      store.createIndex(INDEX_BY_DATASET, "datasetId", { unique: false });  // NEW
+      store.createIndex(INDEX_BY_DATASET_CASE, ["datasetId", "caseId"], { unique: false });  // NEW
         }
       };
       
@@ -79,7 +79,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     
     const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     const data = {
-    id: EventInterpretation.createId(json.cohortId, json.caseId, json.alterationId, json.authorId),
+    id: EventInterpretation.createId(json.datasetId, json.caseId, json.alterationId, json.authorId),
     ...json,
     updatedAt: Date.now(),
     };
@@ -95,10 +95,10 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     return interpretation;
   }
 
-  async get(cohortId, caseId, alterationId, authorId) {
+  async get(datasetId, caseId, alterationId, authorId) {
     if (!window.indexedDB) return null;
 
-    const id = EventInterpretation.createId(cohortId, caseId, alterationId, authorId);
+    const id = EventInterpretation.createId(datasetId, caseId, alterationId, authorId);
 
     try {
       const data = await withStore(STORE_NAME, "readonly", (store) => {
@@ -116,15 +116,15 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getForCase(cohortId, caseId) {
+  async getForCase(datasetId, caseId) {
   if (!window.indexedDB) return [];
-  if (!cohortId || !caseId) return [];
+  if (!datasetId || !caseId) return [];
 
   try {
   const results = await withStore(STORE_NAME, "readonly", (store) => {
   return new Promise((resolve, reject) => {
-  const index = store.index(INDEX_BY_COHORT_CASE);
-  const req = index.getAll([cohortId, caseId]);
+  const index = store.index(INDEX_BY_DATASET_CASE);
+  const req = index.getAll([datasetId, caseId]);
 
   req.onsuccess = () => resolve(req.result || []);
   req.onerror = () => reject(req.error);
@@ -138,10 +138,10 @@ export class IndexedDBRepository extends EventInterpretationRepository {
   }
   }
 
-  async delete(cohortId, caseId, alterationId, authorId) {
+  async delete(datasetId, caseId, alterationId, authorId) {
     if (!window.indexedDB) return;
 
-    const id = EventInterpretation.createId(cohortId, caseId, alterationId, authorId);
+    const id = EventInterpretation.createId(datasetId, caseId, alterationId, authorId);
 
     try {
       await withStore(STORE_NAME, "readwrite", (store) => {
@@ -156,11 +156,11 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async clearCase(cohortId, caseId) {
-    if (!window.indexedDB || !cohortId || !caseId) return;
+  async clearCase(datasetId, caseId) {
+    if (!window.indexedDB || !datasetId || !caseId) return;
 
     try {
-      const interpretations = await this.getForCase(cohortId, caseId);
+      const interpretations = await this.getForCase(datasetId, caseId);
 
       await withStore(STORE_NAME, "readwrite", async (store) => {
         const deletePromises = interpretations.map((interp) => {
@@ -199,7 +199,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
         return new Promise((resolve, reject) => {
           const json = interp.toJSON ? interp.toJSON() : interp;
           const data = {
-          id: EventInterpretation.createId(json.cohortId, json.caseId, json.alterationId, json.authorId),
+          id: EventInterpretation.createId(json.datasetId, json.caseId, json.alterationId, json.authorId),
           ...json,
           updatedAt: Date.now(),
           };
@@ -216,15 +216,15 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     return normalized;
   }
 
-  async saveGlobalNotes(cohortId, caseId, notes) {
-  if (!window.indexedDB || !cohortId || !caseId) return;
+  async saveGlobalNotes(datasetId, caseId, notes) {
+  if (!window.indexedDB || !datasetId || !caseId) return;
 
   const interpretation = new EventInterpretation({
-  cohortId,
+  datasetId,
   caseId,
   alterationId: "GLOBAL_NOTES",
-    data: { notes: String(notes || "") }
-    });
+  data: { notes: String(notes || "") }
+  });
 
     await this.save(interpretation);
   }
@@ -248,21 +248,21 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getGlobalNotes(cohortId, caseId) {
-    if (!window.indexedDB || !cohortId || !caseId) return null;
+  async getGlobalNotes(datasetId, caseId) {
+  if (!window.indexedDB || !datasetId || !caseId) return null;
 
-    const interpretation = await this.get(cohortId, caseId, "GLOBAL_NOTES", null);
+  const interpretation = await this.get(datasetId, caseId, "GLOBAL_NOTES", null);
     return interpretation?.data?.notes ?? null;
   }
 
-  async getCasesWithInterpretations(cohortId) {
-    if (!window.indexedDB || !cohortId) return new Set();
+  async getCasesWithInterpretations(datasetId) {
+  if (!window.indexedDB || !datasetId) return new Set();
 
-    try {
-      const results = await withStore(STORE_NAME, "readonly", (store) => {
-        return new Promise((resolve, reject) => {
-          const index = store.index(INDEX_BY_COHORT);
-          const req = index.getAll(cohortId);
+  try {
+  const results = await withStore(STORE_NAME, "readonly", (store) => {
+  return new Promise((resolve, reject) => {
+  const index = store.index(INDEX_BY_DATASET);
+  const req = index.getAll(datasetId);
 
           req.onsuccess = () => resolve(req.result || []);
           req.onerror = () => reject(req.error);
@@ -278,14 +278,14 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getCasesInterpretationsCount(cohortId) {
-    if (!window.indexedDB || !cohortId) return new Map();
+  async getCasesInterpretationsCount(datasetId) {
+  if (!window.indexedDB || !datasetId) return new Map();
 
-    try {
-      const results = await withStore(STORE_NAME, "readonly", (store) => {
-        return new Promise((resolve, reject) => {
-          const index = store.index(INDEX_BY_COHORT);
-          const req = index.getAll(cohortId);
+  try {
+  const results = await withStore(STORE_NAME, "readonly", (store) => {
+  return new Promise((resolve, reject) => {
+  const index = store.index(INDEX_BY_DATASET);
+  const req = index.getAll(datasetId);
 
           req.onsuccess = () => resolve(req.result || []);
           req.onerror = () => reject(req.error);

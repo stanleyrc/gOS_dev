@@ -66,11 +66,11 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   _toDynamoDBItem(interpretation) {
     const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     const item = {
-      cohortIdCaseId: `${json.cohortId}::${json.caseId}`, // NEW: Composite partition key
+      datasetIdCaseId: `${json.datasetId}::${json.caseId}`, // NEW: Composite partition key
       alterationIdAuthorId: this._createSortKey(json.alterationId, json.authorId),
       // Keep old fields for backwards compatibility during migration
       caseId: json.caseId,
-      cohortId: json.cohortId, // NEW
+      datasetId: json.datasetId, // NEW
       ...json,
       updatedAt: Date.now(),
     };
@@ -136,15 +136,15 @@ export class DynamoDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async get(cohortId, caseId, alterationId, authorId) {
+  async get(datasetId, caseId, alterationId, authorId) {
     const sortKey = this._createSortKey(alterationId, authorId);
 
     try {
       const command = new GetItemCommand({
         TableName: this.tableName,
         Key: marshall({
-          cohortIdCaseId: `${cohortId}::${caseId}`,
-          alterationIdAuthorId: sortKey,
+        datasetIdCaseId: `${datasetId}::${caseId}`,
+        alterationIdAuthorId: sortKey,
         }),
       });
 
@@ -161,15 +161,15 @@ export class DynamoDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getForCase(cohortId, caseId) {
-  if (!cohortId || !caseId) return [];
+  async getForCase(datasetId, caseId) {
+  if (!datasetId || !caseId) return [];
 
   try {
   const command = new QueryCommand({
   TableName: this.tableName,
-  KeyConditionExpression: "cohortIdCaseId = :cohortIdCaseId",
+  KeyConditionExpression: "datasetIdCaseId = :datasetIdCaseId",
   ExpressionAttributeValues: marshall({
-  ":cohortIdCaseId": `${cohortId}::${caseId}`,
+  ":datasetIdCaseId": `${datasetId}::${caseId}`,
   }),
   });
 
@@ -183,15 +183,15 @@ export class DynamoDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async delete(cohortId, caseId, alterationId, authorId) {
+  async delete(datasetId, caseId, alterationId, authorId) {
     const sortKey = this._createSortKey(alterationId, authorId);
 
     try {
       const command = new DeleteItemCommand({
         TableName: this.tableName,
         Key: marshall({
-          cohortIdCaseId: `${cohortId}::${caseId}`,
-          alterationIdAuthorId: sortKey,
+        datasetIdCaseId: `${datasetId}::${caseId}`,
+        alterationIdAuthorId: sortKey,
         }),
       });
 
@@ -202,12 +202,12 @@ export class DynamoDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async clearCase(cohortId, caseId) {
-    if (!cohortId || !caseId) return;
+  async clearCase(datasetId, caseId) {
+    if (!datasetId || !caseId) return;
 
     try {
       // First get all items for this case
-      const interpretations = await this.getForCase(cohortId, caseId);
+      const interpretations = await this.getForCase(datasetId, caseId);
 
       if (interpretations.length === 0) return;
 
@@ -221,7 +221,7 @@ export class DynamoDBRepository extends EventInterpretationRepository {
         const deleteRequests = batch.map(interpretation => ({
         DeleteRequest: {
         Key: marshall({
-        cohortIdCaseId: `${interpretation.cohortId}::${interpretation.caseId}`,
+        datasetIdCaseId: `${interpretation.datasetId}::${interpretation.caseId}`,
         alterationIdAuthorId: this._createSortKey(
         interpretation.alterationId,
         interpretation.authorId
@@ -287,11 +287,11 @@ export class DynamoDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async saveGlobalNotes(cohortId, caseId, notes) {
-  if (!cohortId || !caseId) return;
+  async saveGlobalNotes(datasetId, caseId, notes) {
+  if (!datasetId || !caseId) return;
 
   const interpretation = new EventInterpretation({
-  cohortId,
+  datasetId,
   caseId,
   alterationId: "GLOBAL_NOTES",
     data: { notes: String(notes || "") }
@@ -316,34 +316,34 @@ export class DynamoDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getGlobalNotes(cohortId, caseId) {
-  if (!cohortId || !caseId) return null;
+  async getGlobalNotes(datasetId, caseId) {
+  if (!datasetId || !caseId) return null;
 
   const user = getUser();
   if (!user) return null;
 
-  const interpretation = await this.get(cohortId, caseId, "GLOBAL_NOTES", user.userId);
+  const interpretation = await this.get(datasetId, caseId, "GLOBAL_NOTES", user.userId);
   return interpretation?.data?.notes ?? null;
   }
 
-  async getCasesWithInterpretations(cohortId) {
-    return this._getCasesData(cohortId, "set"); // "set" for Set mode
+  async getCasesWithInterpretations(datasetId) {
+  return this._getCasesData(datasetId, "set"); // "set" for Set mode
   }
 
-  async getCasesInterpretationsCount(cohortId) {
-    return this._getCasesData(cohortId, "count"); // "count" for Map mode
+  async getCasesInterpretationsCount(datasetId) {
+  return this._getCasesData(datasetId, "count"); // "count" for Map mode
   }
 
-  async _getCasesData(cohortId, returnType) {
-    if (!cohortId) return returnType === "set" ? new Set() : new Map();
+  async _getCasesData(datasetId, returnType) {
+  if (!datasetId) return returnType === "set" ? new Set() : new Map();
 
     try {
         const command = new QueryCommand({
         TableName: this.tableName,
-    IndexName: "cohortId-index", // Assuming this GSI exists
-        KeyConditionExpression: "cohortId = :cohortId",
+        IndexName: "datasetId-index", // Assuming this GSI exists
+        KeyConditionExpression: "datasetId = :datasetId",
         ExpressionAttributeValues: marshall({
-    ":cohortId": cohortId,
+        ":datasetId": datasetId,
         }),
         ProjectionExpression: "caseId", // Only fetch caseId to optimize
         });
