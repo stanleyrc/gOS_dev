@@ -87,7 +87,6 @@ export default function appReducer(state = initState, action) {
           orderId: 1,
           operator: cascaderOperators[0],
         },
-        loading: true,
       };
     case actions.CASE_REPORTS_MATCHED:
       return {

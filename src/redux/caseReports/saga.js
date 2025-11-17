@@ -27,6 +27,7 @@ import {
 } from "../../helpers/filters";
 import { getActiveRepository } from "../../services/repositories";
 import { qcEvaluator } from "../../helpers/metadata";
+import common from '../../translations/en/common.json';
 import actions from "./actions";
 import settingsActions from "../settings/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
@@ -191,18 +192,25 @@ function* searchReports({ searchFilters }) {
 
   Object.keys(actualSearchFilters).forEach((key) => {
   let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
-  if (key === "has_interpretations") {
+  const reportFilter = reportFilters().find((d) => d.name === key);
+  
+  if (reportFilter?.external) {
+    if (key === "has_interpretations") {
+      const withLabel = common.containers["list-view"].filters.has_interpretations_labels.with;
+      const withoutLabel = common.containers["list-view"].filters.has_interpretations_labels.without;
+      
       if (actualSearchFilters[key].length === 0 || actualSearchFilters[key].includes("all")) {
         // show all
       } else {
-        if (actualSearchFilters[key].includes("with")) {
+        if (actualSearchFilters[key].includes(withLabel)) {
           records = records.filter(d => casesWithInterpretations.has(d.pair));
         }
-        if (actualSearchFilters[key].includes("without")) {
+        if (actualSearchFilters[key].includes(withoutLabel)) {
           records = records.filter(d => !casesWithInterpretations.has(d.pair));
         }
       }
-    } else if (key === "texts") {
+    }
+  } else if (key === "texts") {
       records = records
         .filter((record) =>
           reportFilters()
