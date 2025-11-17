@@ -118,6 +118,7 @@ function* fetchCaseReports(action) {
           datafiles,
           populations,
           reportsFilters,
+          casesWithInterpretations,
           reports: records.slice((page - 1) * per_page, page * per_page),
           totalReports: records.length,
           reportsFiltersExtents,
@@ -154,11 +155,14 @@ function* fetchCaseReports(action) {
 
 function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
-  let { datafiles } = currentState.CaseReports;
+  let { datafiles, casesWithInterpretations } = currentState.CaseReports;
   let { dataset } = currentState.Settings;
 
-  const repository = getActiveRepository({ dataset });
-  const casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
+  // If not available in state, fetch it
+  if (!casesWithInterpretations || casesWithInterpretations.size === 0) {
+    const repository = getActiveRepository({ dataset });
+    casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
+  }
 
   let records = datafiles.filter((d) => d.visible !== false);
 
