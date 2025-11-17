@@ -82,6 +82,7 @@ function* fetchCaseReports(action) {
 
         const repository = getActiveRepository({ dataset });
         const casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
+        console.log(casesWithInterpretations);
 
         let reportsFilters = [];
 

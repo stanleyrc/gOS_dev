@@ -31,7 +31,7 @@ export class RemoteRepository extends EventInterpretationRepository {
     const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     
     const response = await this._fetch(
-      `/cases/${json.caseId}/interpretations/${json.alterationId}/${json.authorId}`,
+      `/datasets/${json.datasetId}/cases/${json.caseId}/interpretations/${json.alterationId}/${json.authorId}`,
       {
         method: "PUT",
         body: JSON.stringify(json),
@@ -41,28 +41,28 @@ export class RemoteRepository extends EventInterpretationRepository {
     return new EventInterpretation(response);
   }
 
-  async get(caseId, alterationId, authorId) {
+  async get(datasetId, caseId, alterationId, authorId) {
     const response = await this._fetch(
-      `/cases/${caseId}/interpretations/${alterationId}/${authorId}`
+      `/datasets/${datasetId}/cases/${caseId}/interpretations/${alterationId}/${authorId}`
     );
     return response ? new EventInterpretation(response) : null;
   }
 
-  async getForCase(caseId) {
-    const response = await this._fetch(`/cases/${caseId}/interpretations`);
+  async getForCase(datasetId, caseId) {
+    const response = await this._fetch(`/datasets/${datasetId}/cases/${caseId}/interpretations`);
     return (response?.interpretations || []).map((data) =>
       new EventInterpretation(data)
     );
   }
 
-  async delete(caseId, alterationId, authorId) {
-    return this._fetch(`/cases/${caseId}/interpretations/${alterationId}/${authorId}`, {
+  async delete(datasetId, caseId, alterationId, authorId) {
+    return this._fetch(`/datasets/${datasetId}/cases/${caseId}/interpretations/${alterationId}/${authorId}`, {
       method: "DELETE",
     });
   }
 
-  async clearCase(caseId) {
-    return this._fetch(`/cases/${caseId}/interpretations`, {
+  async clearCase(datasetId, caseId) {
+    return this._fetch(`/datasets/${datasetId}/cases/${caseId}/interpretations`, {
       method: "DELETE",
     });
   }
@@ -82,15 +82,25 @@ export class RemoteRepository extends EventInterpretationRepository {
     );
   }
 
-  async saveGlobalNotes(caseId, notes) {
-    return this._fetch(`/cases/${caseId}/notes`, {
+  async saveGlobalNotes(datasetId, caseId, notes) {
+    return this._fetch(`/datasets/${datasetId}/cases/${caseId}/notes`, {
       method: "PUT",
       body: JSON.stringify({ notes }),
     });
   }
 
-  async getGlobalNotes(caseId) {
-    const response = await this._fetch(`/cases/${caseId}/notes`);
+  async getGlobalNotes(datasetId, caseId) {
+    const response = await this._fetch(`/datasets/${datasetId}/cases/${caseId}/notes`);
     return response?.notes ?? null;
+  }
+
+  async getCasesWithInterpretations(datasetId) {
+    const response = await this._fetch(`/datasets/${datasetId}/cases`);
+    return new Set(response?.caseIds || []);
+  }
+
+  async getCasesInterpretationsCount(datasetId) {
+    const response = await this._fetch(`/datasets/${datasetId}/cases/counts`);
+    return new Map(Object.entries(response?.counts || {}));
   }
 }

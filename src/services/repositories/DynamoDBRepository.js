@@ -143,8 +143,8 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       const command = new GetItemCommand({
         TableName: this.tableName,
         Key: marshall({
-        datasetIdCaseId: `${datasetId}::${caseId}`,
-        alterationIdAuthorId: sortKey,
+          datasetIdCaseId: `${datasetId}::${caseId}`,
+          alterationIdAuthorId: sortKey,
         }),
       });
 
@@ -162,16 +162,16 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   }
 
   async getForCase(datasetId, caseId) {
-  if (!datasetId || !caseId) return [];
+    if (!datasetId || !caseId) return [];
 
-  try {
-  const command = new QueryCommand({
-  TableName: this.tableName,
-  KeyConditionExpression: "datasetIdCaseId = :datasetIdCaseId",
-  ExpressionAttributeValues: marshall({
-  ":datasetIdCaseId": `${datasetId}::${caseId}`,
-  }),
-  });
+    try {
+      const command = new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: "datasetIdCaseId = :datasetIdCaseId",
+        ExpressionAttributeValues: marshall({
+          ":datasetIdCaseId": `${datasetId}::${caseId}`,
+        }),
+      });
 
       const response = await this.client.send(command);
       const items = response.Items || [];
@@ -190,8 +190,8 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       const command = new DeleteItemCommand({
         TableName: this.tableName,
         Key: marshall({
-        datasetIdCaseId: `${datasetId}::${caseId}`,
-        alterationIdAuthorId: sortKey,
+          datasetIdCaseId: `${datasetId}::${caseId}`,
+          alterationIdAuthorId: sortKey,
         }),
       });
 
@@ -219,15 +219,15 @@ export class DynamoDBRepository extends EventInterpretationRepository {
 
       for (const batch of batches) {
         const deleteRequests = batch.map(interpretation => ({
-        DeleteRequest: {
-        Key: marshall({
-        datasetIdCaseId: `${interpretation.datasetId}::${interpretation.caseId}`,
-        alterationIdAuthorId: this._createSortKey(
-        interpretation.alterationId,
-        interpretation.authorId
-        ),
-        }),
-        },
+          DeleteRequest: {
+            Key: marshall({
+              datasetIdCaseId: `${interpretation.datasetId}::${interpretation.caseId}`,
+              alterationIdAuthorId: this._createSortKey(
+                interpretation.alterationId,
+                interpretation.authorId
+              ),
+            }),
+          },
         }));
 
         const command = new BatchWriteItemCommand({
@@ -335,38 +335,44 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   }
 
   async _getCasesData(datasetId, returnType) {
-  if (!datasetId) return returnType === "set" ? new Set() : new Map();
+    if (!datasetId) return returnType === "set" ? new Set() : new Map();
 
     try {
-        const command = new QueryCommand({
+      const command = new QueryCommand({
         TableName: this.tableName,
-        IndexName: "datasetId-index", // Assuming this GSI exists
+        IndexName: "datasetId-datasetIdCaseId-index",
         KeyConditionExpression: "datasetId = :datasetId",
         ExpressionAttributeValues: marshall({
-        ":datasetId": datasetId,
+          ":datasetId": datasetId,
         }),
-        ProjectionExpression: "caseId", // Only fetch caseId to optimize
+        ProjectionExpression: "datasetIdCaseId",
+      });
+
+      const response = await this.client.send(command);
+      const items = response.Items || [];
+
+      if (returnType === "set") {
+        // Extract unique caseIds from composite keys
+        const caseIds = new Set();
+        items.forEach(item => {
+          const datasetIdCaseId = unmarshall(item).datasetIdCaseId;
+          const caseId = datasetIdCaseId.split("::").slice(1).join("::");
+          caseIds.add(caseId);
         });
-
-        const response = await this.client.send(command);
-        const items = response.Items || [];
-
-    if (returnType === "set") {
-      // Extract unique caseIds
-      const caseIds = new Set(items.map(item => unmarshall(item).caseId));
-      return caseIds;
-    } else {
-    // Count interpretations per case
-    const countMap = new Map();
-    items.forEach(item => {
-    const caseId = unmarshall(item).caseId;
-    countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
-    });
-    return countMap;
+        return caseIds;
+      } else {
+        // Count interpretations per case
+        const countMap = new Map();
+        items.forEach(item => {
+          const datasetIdCaseId = unmarshall(item).datasetIdCaseId;
+          const caseId = datasetIdCaseId.split("::").slice(1).join("::");
+          countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
+        });
+        return countMap;
+      }
+    } catch (error) {
+      console.error("Failed to get cases data:", error);
+      return returnType === "set" ? new Set() : new Map();
     }
-  } catch (error) {
-    console.error("Failed to get cases data:", error);
-    return returnType === "set" ? new Set() : new Map();
-  }
   }
 }

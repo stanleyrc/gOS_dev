@@ -81,8 +81,8 @@ function* updateInterpretation(action) {
     const datasetId = state.Settings?.dataset.id;
     console.log(datasetId);
     const repository = getActiveRepository({ dataset });
-    
-    const existing = yield call([repository, repository.get], caseId, interpretation.alterationId, interpretation.authorId);
+
+    const existing = yield call([repository, repository.get], datasetId, caseId, interpretation.alterationId, interpretation.authorId);
     
     const existingData = existing ? (existing.toJSON ? existing.toJSON() : existing) : {};
     
@@ -145,15 +145,16 @@ function* clearCaseInterpretations(action) {
 
     const state = yield select();
     const dataset = state.Settings?.dataset;
+    const datasetId = state.Settings?.dataset?.id;
     const repository = getActiveRepository({ dataset });
-    const interpretations = yield call([repository, repository.getForCase], caseId);
+    const interpretations = yield call([repository, repository.getForCase], datasetId, caseId);
 
     const currentUserId = getCurrentUserId();
 
     for (const interp of interpretations || []) {
       const authorId = interp.authorId || "currentUser";
       if (authorId === currentUserId) {
-        yield call([repository, repository.delete], caseId, interp.alterationId, interp.authorId);
+        yield call([repository, repository.delete], datasetId, caseId, interp.alterationId, interp.authorId);
       }
     }
 
@@ -180,7 +181,7 @@ function* updateAuthorName(action) {
 
     const state = yield select();
     const dataset = state.Settings?.dataset;
-    const datasetId = state.Settings?.datasetId;
+    const datasetId = state.Settings?.dataset?.id;
     const repository = getActiveRepository({ dataset });
     
     // Get all interpretations from repository
