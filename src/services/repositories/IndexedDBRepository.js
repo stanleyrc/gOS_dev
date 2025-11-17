@@ -8,8 +8,10 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 
 const DB_NAME = "gOS_Interpretations";
 const STORE_NAME = "interpretations";
-const DB_VERSION = 1;
+const DB_VERSION = 2;  // Increment version
 const INDEX_BY_CASE = "by_case";
+const INDEX_BY_COHORT = "by_cohort";          // NEW: Index for cohort queries
+const INDEX_BY_COHORT_CASE = "by_cohort_case";  // NEW: Composite index
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -17,11 +19,13 @@ function openDb() {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       
       req.onupgradeneeded = (event) => {
-        const db = req.result;
+      const db = req.result;
 
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-          store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+      const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
+        store.createIndex(INDEX_BY_COHORT, "cohortId", { unique: false });  // NEW
+          store.createIndex(INDEX_BY_COHORT_CASE, ["cohortId", "caseId"], { unique: false });  // NEW
         }
       };
       
@@ -75,9 +79,9 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     
     const json = interpretation.toJSON ? interpretation.toJSON() : interpretation;
     const data = {
-      id: EventInterpretation.createId(json.caseId, json.alterationId, json.authorId),
-      ...json,
-      updatedAt: Date.now(),
+    id: EventInterpretation.createId(json.cohortId, json.caseId, json.alterationId, json.authorId),
+    ...json,
+    updatedAt: Date.now(),
     };
     
     await withStore(STORE_NAME, "readwrite", (store) => {
@@ -91,10 +95,10 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     return interpretation;
   }
 
-  async get(caseId, alterationId, authorId) {
+  async get(cohortId, caseId, alterationId, authorId) {
     if (!window.indexedDB) return null;
 
-    const id = EventInterpretation.createId(caseId, alterationId, authorId);
+    const id = EventInterpretation.createId(cohortId, caseId, alterationId, authorId);
 
     try {
       const data = await withStore(STORE_NAME, "readonly", (store) => {
@@ -112,32 +116,32 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getForCase(caseId) {
-    if (!window.indexedDB) return [];
-    if (!caseId) return [];
-    
-    try {
-      const results = await withStore(STORE_NAME, "readonly", (store) => {
-        return new Promise((resolve, reject) => {
-          const index = store.index(INDEX_BY_CASE);
-          const req = index.getAll(caseId);
-          
-          req.onsuccess = () => resolve(req.result || []);
-          req.onerror = () => reject(req.error);
-        });
-      });
-      
-      return results.map((data) => new EventInterpretation(data));
-    } catch (e) {
-      console.error("Failed to get interpretations for case:", e);
-      return [];
-    }
+  async getForCase(cohortId, caseId) {
+  if (!window.indexedDB) return [];
+  if (!cohortId || !caseId) return [];
+
+  try {
+  const results = await withStore(STORE_NAME, "readonly", (store) => {
+  return new Promise((resolve, reject) => {
+  const index = store.index(INDEX_BY_COHORT_CASE);
+  const req = index.getAll([cohortId, caseId]);
+
+  req.onsuccess = () => resolve(req.result || []);
+  req.onerror = () => reject(req.error);
+  });
+  });
+
+  return results.map((data) => new EventInterpretation(data));
+  } catch (e) {
+  console.error("Failed to get interpretations for case:", e);
+  return [];
+  }
   }
 
-  async delete(caseId, alterationId, authorId) {
+  async delete(cohortId, caseId, alterationId, authorId) {
     if (!window.indexedDB) return;
 
-    const id = EventInterpretation.createId(caseId, alterationId, authorId);
+    const id = EventInterpretation.createId(cohortId, caseId, alterationId, authorId);
 
     try {
       await withStore(STORE_NAME, "readwrite", (store) => {
@@ -152,11 +156,11 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async clearCase(caseId) {
-    if (!window.indexedDB || !caseId) return;
+  async clearCase(cohortId, caseId) {
+    if (!window.indexedDB || !cohortId || !caseId) return;
 
     try {
-      const interpretations = await this.getForCase(caseId);
+      const interpretations = await this.getForCase(cohortId, caseId);
 
       await withStore(STORE_NAME, "readwrite", async (store) => {
         const deletePromises = interpretations.map((interp) => {
@@ -195,9 +199,9 @@ export class IndexedDBRepository extends EventInterpretationRepository {
         return new Promise((resolve, reject) => {
           const json = interp.toJSON ? interp.toJSON() : interp;
           const data = {
-            id: EventInterpretation.createId(json.caseId, json.alterationId, json.authorId),
-            ...json,
-            updatedAt: Date.now(),
+          id: EventInterpretation.createId(json.cohortId, json.caseId, json.alterationId, json.authorId),
+          ...json,
+          updatedAt: Date.now(),
           };
 
           const req = store.put(data);
@@ -212,13 +216,14 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     return normalized;
   }
 
-  async saveGlobalNotes(caseId, notes) {
-    if (!window.indexedDB || !caseId) return;
+  async saveGlobalNotes(cohortId, caseId, notes) {
+  if (!window.indexedDB || !cohortId || !caseId) return;
 
-    const interpretation = new EventInterpretation({
-      caseId,
-      alterationId: "GLOBAL_NOTES",
-      data: { notes: String(notes || "") }
+  const interpretation = new EventInterpretation({
+  cohortId,
+  caseId,
+  alterationId: "GLOBAL_NOTES",
+    data: { notes: String(notes || "") }
     });
 
     await this.save(interpretation);
@@ -243,10 +248,61 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     }
   }
 
-  async getGlobalNotes(caseId) {
-    if (!window.indexedDB || !caseId) return null;
+  async getGlobalNotes(cohortId, caseId) {
+    if (!window.indexedDB || !cohortId || !caseId) return null;
 
-    const interpretation = await this.get(caseId, "GLOBAL_NOTES");
+    const interpretation = await this.get(cohortId, caseId, "GLOBAL_NOTES", null);
     return interpretation?.data?.notes ?? null;
+  }
+
+  async getCasesWithInterpretations(cohortId) {
+    if (!window.indexedDB || !cohortId) return new Set();
+
+    try {
+      const results = await withStore(STORE_NAME, "readonly", (store) => {
+        return new Promise((resolve, reject) => {
+          const index = store.index(INDEX_BY_COHORT);
+          const req = index.getAll(cohortId);
+
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      });
+
+      // Extract unique caseIds
+      const caseIds = new Set(results.map(item => item.caseId));
+      return caseIds;
+    } catch (e) {
+      console.error("Failed to get cases with interpretations:", e);
+      return new Set();
+    }
+  }
+
+  async getCasesInterpretationsCount(cohortId) {
+    if (!window.indexedDB || !cohortId) return new Map();
+
+    try {
+      const results = await withStore(STORE_NAME, "readonly", (store) => {
+        return new Promise((resolve, reject) => {
+          const index = store.index(INDEX_BY_COHORT);
+          const req = index.getAll(cohortId);
+
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      });
+
+      // Count interpretations per case
+      const countMap = new Map();
+      results.forEach(item => {
+        const caseId = item.caseId;
+        countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
+      });
+
+      return countMap;
+    } catch (e) {
+      console.error("Failed to get cases interpretations count:", e);
+      return new Map();
+    }
   }
 }

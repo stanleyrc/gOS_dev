@@ -8,19 +8,19 @@ export class EventInterpretationRepository {
     throw new Error("save must be implemented");
   }
 
-  async get(caseId, alterationId, authorId) {
+  async get(cohortId, caseId, alterationId, authorId) {
     throw new Error("get must be implemented");
   }
 
-  async getForCase(caseId) {
+  async getForCase(cohortId, caseId) {
     throw new Error("getForCase must be implemented");
   }
 
-  async delete(caseId, alterationId) {
+  async delete(cohortId, caseId, alterationId, authorId) {
     throw new Error("delete must be implemented");
   }
 
-  async clearCase(caseId) {
+  async clearCase(cohortId, caseId) {
     throw new Error("clearCase must be implemented");
   }
 
@@ -28,7 +28,7 @@ export class EventInterpretationRepository {
     throw new Error("bulkSave must be implemented");
   }
 
-  async saveGlobalNotes(caseId, notes) {
+  async saveGlobalNotes(cohortId, caseId, notes) {
     throw new Error("saveGlobalNotes must be implemented");
   }
 
@@ -36,7 +36,15 @@ export class EventInterpretationRepository {
     throw new Error("getAll must be implemented");
   }
 
-  async getGlobalNotes(caseId) {
+  async getGlobalNotes(cohortId, caseId) {
     throw new Error("getGlobalNotes must be implemented");
+  }
+
+  async getCasesWithInterpretations(cohortId) {
+    throw new Error("getCasesWithInterpretations must be implemented");
+  }
+
+  async getCasesInterpretationsCount(cohortId) {
+    throw new Error("getCasesInterpretationsCount must be implemented");
   }
 }
