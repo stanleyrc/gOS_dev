@@ -9,6 +9,7 @@ const initState = {
   reportsFilters: [],
   reportsFiltersExtents: {},
   casesWithInterpretations: new Set(),
+  interpretationsCounts: new Map(),
   searchFilters: {
     page: 1,
     per_page: 10,
@@ -31,6 +32,7 @@ export default function appReducer(state = initState, action) {
         datafiles: [],
         populations: {},
         casesWithInterpretations: new Set(),
+        interpretationsCounts: new Map(),
         searchFilters: {
           page: 1,
           per_page: 10,
@@ -58,6 +60,7 @@ export default function appReducer(state = initState, action) {
         populations: action.populations,
         reportsFilters: action.reportsFilters,
         casesWithInterpretations: action.casesWithInterpretations || new Set(),
+        interpretationsCounts: action.interpretationsCounts || new Map(),
         reports: action.reports,
         totalReports: action.totalReports,
         reportsFiltersExtents: action.reportsFiltersExtents,

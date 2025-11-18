@@ -20,6 +20,7 @@ import {
   Slider,
   Collapse,
   Tag,
+  Tooltip,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -131,6 +132,26 @@ class ListView extends Component {
       return <span key={option?.value}>{label}: </span>;
     });
 
+  getInterpretationTooltip = (pair, casesWithInterpretations, interpretationsCounts) => {
+    if (!casesWithInterpretations) return '';
+    const authors = Array.from(casesWithInterpretations.byAuthor?.entries() || [])
+      .filter(([author, cases]) => cases.has(pair))
+      .map(([author]) => author);
+    const genes = Array.from(casesWithInterpretations.byGene?.entries() || [])
+      .filter(([gene, cases]) => cases.has(pair))
+      .map(([gene]) => gene);
+    const hasTierChange = casesWithInterpretations.withTierChange?.has(pair);
+    const total = interpretationsCounts.get(pair) || 0;
+    let text = `${total} interpretation${total !== 1 ? 's' : ''} by ${authors.length} author${authors.length !== 1 ? 's' : ''}`;
+    if (genes.length > 0) {
+      text += ` for ${genes.length} gene${genes.length !== 1 ? 's' : ''}`;
+    }
+    if (hasTierChange) {
+      text += ' (includes tier change)';
+    }
+    return text;
+  };
+
   render() {
     const {
       t,
@@ -141,6 +162,7 @@ class ListView extends Component {
       filtersExtents,
       totalRecords,
       casesWithInterpretations,
+      interpretationsCounts,
     } = this.props;
 
     let filterFormItemRenderer = (d) => {
@@ -484,14 +506,16 @@ class ListView extends Component {
                         extra={
                           <Space>
                             {casesWithInterpretations?.all?.has(d.pair) && (
-                              <Avatar
-                                style={{
-                                  backgroundColor: "#d9f7be",
-                                  color: "#52c41a",
-                                }}
-                              >
-                                I
-                              </Avatar>
+                              <Tooltip title={this.getInterpretationTooltip(d.pair, casesWithInterpretations, interpretationsCounts)}>
+                                <Avatar
+                                  style={{
+                                    backgroundColor: "#d9f7be",
+                                    color: "#52c41a",
+                                  }}
+                                >
+                                  I
+                                </Avatar>
+                              </Tooltip>
                             )}
                             {d.tumor_type ? (
                               <Avatar
@@ -648,6 +672,7 @@ ListView.defaultProps = {
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   casesWithInterpretations: state.CaseReports.casesWithInterpretations,
+  interpretationsCounts: state.CaseReports.interpretationsCounts,
 });
 export default connect(
   mapStateToProps,

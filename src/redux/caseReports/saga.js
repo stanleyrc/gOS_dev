@@ -83,6 +83,7 @@ function* fetchCaseReports(action) {
 
         const repository = getActiveRepository({ dataset });
         const casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
+        const interpretationsCounts = yield call(repository.getCasesInterpretationsCount.bind(repository), dataset.id);
         console.log(casesWithInterpretations);
 
         let reportsFilters = [];
@@ -125,6 +126,7 @@ function* fetchCaseReports(action) {
           populations,
           reportsFilters,
           casesWithInterpretations,
+          interpretationsCounts,
           reports: records.slice((page - 1) * per_page, page * per_page),
           totalReports: records.length,
           reportsFiltersExtents,
