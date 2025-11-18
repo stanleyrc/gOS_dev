@@ -104,17 +104,28 @@ function* updateInterpretation(action) {
       data: mergedData,
     });
     
-    // Check if interpretation matches original (should be deleted)
-    const filteredEventsState = yield select(state => state.FilteredEvents);
-    const originalFilteredEvents = filteredEventsState?.originalFilteredEvents || [];
-    const originalEvent = originalFilteredEvents.find(e => e.uid === interpretation.alterationId);
-    
-    if (repoInterpretation.matchesOriginal(originalEvent)) {
-      // Delete interpretation if it matches original
+    // Check if interpretation should be deleted
+    let shouldDelete = false;
+
+    if (interpretation.alterationId === "GLOBAL_NOTES") {
+      // Delete global notes interpretation if notes are empty
+      const notes = repoInterpretation.data?.notes;
+      shouldDelete = !notes || notes.trim() === '';
+    } else {
+      // Check if interpretation matches original (should be deleted)
+      const filteredEventsState = yield select(state => state.FilteredEvents);
+      const originalFilteredEvents = filteredEventsState?.originalFilteredEvents || [];
+      const originalEvent = originalFilteredEvents.find(e => e.uid === interpretation.alterationId);
+
+      shouldDelete = repoInterpretation.matchesOriginal(originalEvent);
+    }
+
+    if (shouldDelete) {
+      // Delete interpretation
       yield call([repository, repository.delete], datasetId, caseId, interpretation.alterationId, interpretation.authorId);
-      
+
       const currentUserId = getCurrentUserId();
-      
+
       // Update interpretations state
       yield put({
         type: actions.UPDATE_INTERPRETATION_SUCCESS,
@@ -126,8 +137,13 @@ function* updateInterpretation(action) {
         },
       });
 
-      // Revert filtered event to original
-      yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
+      // Revert filtered event to original (only for alterations)
+      if (interpretation.alterationId !== "GLOBAL_NOTES") {
+        const filteredEventsState = yield select(state => state.FilteredEvents);
+        const originalFilteredEvents = filteredEventsState?.originalFilteredEvents || [];
+        const originalEvent = originalFilteredEvents.find(e => e.uid === interpretation.alterationId);
+        yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
+      }
 
       return;
     }
