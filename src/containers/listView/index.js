@@ -140,6 +140,7 @@ class ListView extends Component {
       searchFilters,
       filtersExtents,
       totalRecords,
+      casesWithInterpretations,
     } = this.props;
 
     let filterFormItemRenderer = (d) => {
@@ -481,16 +482,28 @@ class ListView extends Component {
                         }
                         variant="borderless"
                         extra={
-                          d.tumor_type ? (
-                            <Avatar
-                              style={{
-                                backgroundColor: "#fde3cf",
-                                color: "#f56a00",
-                              }}
-                            >
-                              {d.tumor_type}
-                            </Avatar>
-                          ) : null
+                          <Space>
+                            {casesWithInterpretations?.all?.has(d.pair) && (
+                              <Avatar
+                                style={{
+                                  backgroundColor: "#d9f7be",
+                                  color: "#52c41a",
+                                }}
+                              >
+                                I
+                              </Avatar>
+                            )}
+                            {d.tumor_type ? (
+                              <Avatar
+                                style={{
+                                  backgroundColor: "#fde3cf",
+                                  color: "#f56a00",
+                                }}
+                              >
+                                {d.tumor_type}
+                              </Avatar>
+                            ) : null}
+                          </Space>
                         }
                         actions={[
                           <Statistic
@@ -633,7 +646,9 @@ ListView.defaultProps = {
   filtersExtents: {},
 };
 const mapDispatchToProps = (dispatch) => ({});
-const mapStateToProps = (state) => ({});
+const mapStateToProps = (state) => ({
+  casesWithInterpretations: state.CaseReports.casesWithInterpretations,
+});
 export default connect(
   mapStateToProps,
   mapDispatchToProps
