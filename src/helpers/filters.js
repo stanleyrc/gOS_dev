@@ -169,10 +169,18 @@ export function generateInterpretationsCascaderOptions(reports, casesWithInterpr
   // Tier Change option
   const tierChangeCount = reports.filter(r => withTierChange.has(r.pair)).length;
   options.push({
-    label: common.containers["list-view"].filters.interpretations_cascader_labels.tier_change,
-    value: "tier_change",
-    count: tierChangeCount,
+  label: common.containers["list-view"].filters.interpretations_cascader_labels.tier_change,
+  value: "tier_change",
+  count: tierChangeCount,
   });
+
+   // Other changes option
+   const otherChangesCount = reports.filter(r => all.has(r.pair) && !withTierChange.has(r.pair)).length;
+   options.push({
+     label: common.containers["list-view"].filters.interpretations_cascader_labels.other_changes,
+     value: "other_changes",
+     count: otherChangesCount,
+   });
   
   // Author option with children
   const authorChildren = [];

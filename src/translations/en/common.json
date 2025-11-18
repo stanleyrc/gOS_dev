@@ -373,6 +373,7 @@
         },
         "interpretations_cascader_labels": {
           "tier_change": "Tier Change",
+          "other_changes": "No Tier Changes",
           "author": "Author",
           "gene": "Gene",
           "without": "No Interpretations"
