@@ -186,11 +186,10 @@ class AlterationCard extends Component {
     const isCurrentUser = !selectedInterpretation || displayInterpretation?.isCurrentUser;
 
     // Format author and date for watermark button
-    const hasOtherVersions = allInterpretations.length > 1;
     const authorName = displayInterpretation?.authorName || 'Switch Version';
     const lastModified = displayInterpretation?.lastModified;
     const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : '';
-    const watermarkText = hasOtherVersions ? (authorName === 'Switch Version' ? authorName : `last modified by ${authorName} ${dateStr}`) : 'No other versions found';
+    const watermarkText = authorName === 'Switch Version' ? authorName : `last modified by ${authorName} ${dateStr}`;
 
     return (
       <Wrapper>

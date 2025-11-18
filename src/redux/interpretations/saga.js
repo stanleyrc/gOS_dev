@@ -40,14 +40,14 @@ function* fetchInterpretationsForCase(action) {
       const json = interp.toJSON ? interp.toJSON() : interp;
       const authorId = json.authorId || "currentUser";
       const key = `${json.alterationId}___${authorId}`;
-      const isCurrentUser = !currentUserId || authorId === currentUserId;
+      const isCurrentUser = !currentUserId || authorId === currentUserId || authorId === "currentUser";
       
       byId[key] = {
         ...json,
         isCurrentUser,
       };
       
-      if (currentUserId && authorId === currentUserId) {
+      if (currentUserId && (authorId === currentUserId || authorId === "currentUser")) {
         selected[json.alterationId] = key;
       }
     }
@@ -144,7 +144,7 @@ function* updateInterpretation(action) {
     
     const currentUserId = getCurrentUserId();
     const savedJson = repoInterpretation.toJSON();
-    const isCurrentUser = !currentUserId || savedJson.authorId === currentUserId;
+    const isCurrentUser = !currentUserId || savedJson.authorId === currentUserId || savedJson.authorId === "currentUser";
     
     const updatedInterpretation = {
       ...savedJson,

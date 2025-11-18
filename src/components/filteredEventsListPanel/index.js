@@ -26,10 +26,12 @@ import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
-import { selectMergedEvents } from "../../redux/interpretations/selectors";
+import { selectMergedEvents, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
+import { store } from "../../redux/store";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import ReportPreviewModal from "../reportPreviewModal";
+import InterpretationsAvatar from "../InterpretationsAvatar";
 import { exportReport, previewReport } from "../../helpers/reportExporter";
 import EventInterpretation from "../../helpers/EventInterpretation";
 
@@ -275,21 +277,25 @@ class FilteredEventsListPanel extends Component {
             return d3.ascending(a.gene, b.gene);
           },
         },
-        render: (_, record) =>
-          record.gene != null ? (
-            <Button
-              type="link"
-              onClick={() => selectFilteredEvent(record, "detail")}
-            >
-              <Tooltip placement="topLeft" title={record.gene}>
-                {record.gene}
-              </Tooltip>
-            </Button>
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
+        render: (_, record) => {
+        const alterationId = record.uid;
+        const count = getAllInterpretationsForAlteration(store.getState(), alterationId).length;
+
+        return record.gene != null ? (
+        <Button
+          type="link"
+        onClick={() => selectFilteredEvent(record, "detail")}
+        >
+        <Tooltip placement="topLeft" title={record.gene}>
+            {record.gene} {count > 0 && <InterpretationsAvatar tooltipText={`Found ${count} interpretation(s)`} size={16} />}
+            </Tooltip>
+        </Button>
+        ) : (
+        <Text italic disabled>
+            <BsDashLg />
+        </Text>
+      );
+    },
       },
       {
         title: (
