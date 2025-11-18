@@ -97,6 +97,8 @@ export default function appReducer(state = initState, action) {
         reports: action.reports,
         totalReports: action.totalReports,
         reportsFilters: action.reportsFilters,
+        casesWithInterpretations: action.casesWithInterpretations || state.casesWithInterpretations,
+        interpretationsCounts: action.interpretationsCounts || state.interpretationsCounts,
         loading: false,
       };
     default:

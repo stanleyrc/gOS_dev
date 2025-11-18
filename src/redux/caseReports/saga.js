@@ -249,9 +249,10 @@ function* searchReports({ searchFilters }) {
   let { datafiles, casesWithInterpretations } = currentState.CaseReports;
   let { dataset } = currentState.Settings;
 
-  // Always fetch fresh casesWithInterpretations to ensure filters are up to date
+  // Always fetch fresh casesWithInterpretations and interpretationsCounts to ensure filters are up to date
   const repository = getActiveRepository({ dataset });
   casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
+  const interpretationsCounts = yield call(repository.getCasesInterpretationsCount.bind(repository), dataset.id);
 
   let records = datafiles.filter((d) => d.visible !== false);
 
@@ -385,6 +386,8 @@ function* searchReports({ searchFilters }) {
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
     reportsFilters,
+    casesWithInterpretations,
+    interpretationsCounts,
   });
 }
 
