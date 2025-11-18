@@ -126,10 +126,11 @@ class GlobalNotesPanel extends Component {
     const isCurrentUser = !selectedInterpretation || displayInterpretation?.isCurrentUser;
 
     // Format author and date for watermark button
+    const hasOtherVersions = allGlobalNotesInterpretations.length > 1;
     const authorName = displayInterpretation?.authorName || 'Switch Version';
     const lastModified = displayInterpretation?.lastModified;
     const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : '';
-    const watermarkText = authorName === 'Switch Version' ? authorName : `Last modified by ${authorName} ${dateStr}`;
+    const watermarkText = hasOtherVersions ? (authorName === 'Switch Version' ? authorName : `Last modified by ${authorName} ${dateStr}`) : 'No other versions found';
 
     return (
       <>
