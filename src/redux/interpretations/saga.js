@@ -47,7 +47,7 @@ function* fetchInterpretationsForCase(action) {
         isCurrentUser,
       };
       
-      if (isCurrentUser) {
+      if (currentUserId && authorId === currentUserId) {
         selected[json.alterationId] = key;
       }
     }

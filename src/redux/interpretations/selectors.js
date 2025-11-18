@@ -1,4 +1,5 @@
 import { createSelector } from "reselect";
+import { getCurrentUserId } from "../../helpers/userAuth";
 
 export const getCurrentState = (state) => state;
 
@@ -49,7 +50,10 @@ export const selectMergedEvents = createSelector(
     
     const mergeEventWithInterpretation = (event) => {
       if (!event) return event;
-      
+
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) return event;
+
       const alterationId = event.uid;
       if (!alterationId) return event;
       
