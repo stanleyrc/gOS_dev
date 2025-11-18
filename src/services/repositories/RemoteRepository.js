@@ -96,7 +96,28 @@ export class RemoteRepository extends EventInterpretationRepository {
 
   async getCasesWithInterpretations(datasetId) {
     const response = await this._fetch(`/datasets/${datasetId}/cases`);
-    return new Set(response?.caseIds || []);
+    
+    // Convert byAuthor and byGene from object to Map with Sets
+    const byAuthor = new Map();
+    if (response?.byAuthor) {
+      Object.entries(response.byAuthor).forEach(([author, cases]) => {
+        byAuthor.set(author, new Set(cases));
+      });
+    }
+    
+    const byGene = new Map();
+    if (response?.byGene) {
+      Object.entries(response.byGene).forEach(([gene, cases]) => {
+        byGene.set(gene, new Set(cases));
+      });
+    }
+    
+    return {
+      withTierChange: new Set(response?.withTierChange || []),
+      byAuthor,
+      byGene,
+      all: new Set(response?.all || []),
+    };
   }
 
   async getCasesInterpretationsCount(datasetId) {

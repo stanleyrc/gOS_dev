@@ -75,9 +75,16 @@ class ListView extends Component {
       } else {
         acc[name] = [];
       }
+      // Set default operator for cascader filters
+      if (d.filter.renderer === "cascader") {
+        if (d.filter.external) {
+          acc[`${name}-operator`] = cascaderOperators[0];
+        } else {
+          acc['operator'] = cascaderOperators[0];
+        }
+      }
       return acc;
     }, {});
-    resetValues["operator"] = cascaderOperators[0]; // default operator
     // Update form fields
     this.formRef.current.setFieldsValue(resetValues);
     // Trigger search with reset values and pagination defaults
@@ -142,10 +149,11 @@ class ListView extends Component {
             <Item
               key={`containers.list-view.filters.${d.filter.name}-operator`}
               className="tags-operator-item"
-              name={`operator`}
+              name={d.filter.external ? `${d.filter.name}-operator` : `operator`}
               label={t(
                 `containers.list-view.filters.${d.filter.name}-operator`
               )}
+              initialValue={cascaderOperators[0]}
               rules={[
                 {
                   required: false,
@@ -174,7 +182,7 @@ class ListView extends Component {
               <Cascader
                 placeholder={t("containers.list-view.filters.placeholder")}
                 className="tags-cascader"
-                options={generateCascaderOptions(d.records, d.frequencies)}
+                options={d.options || generateCascaderOptions(d.records, d.frequencies)}
                 displayRender={this.tagsDisplayRender}
                 optionRender={(option) => {
                   return (
@@ -348,7 +356,7 @@ class ListView extends Component {
                       .filter(
                         ([group, groupedItems]) =>
                           !groupedItems
-                            .map((d) => d.records)
+                            .map((d) => d.records || d.options)
                             .flat()
                             .every((e) => e == null)
                       )

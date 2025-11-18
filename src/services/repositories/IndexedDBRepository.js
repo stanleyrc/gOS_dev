@@ -256,7 +256,14 @@ export class IndexedDBRepository extends EventInterpretationRepository {
   }
 
   async getCasesWithInterpretations(datasetId) {
-  if (!window.indexedDB || !datasetId) return new Set();
+  if (!window.indexedDB || !datasetId) {
+    return {
+      withTierChange: new Set(),
+      byAuthor: new Map(),
+      byGene: new Map(),
+      all: new Set(),
+    };
+  }
 
   try {
   const results = await withStore(STORE_NAME, "readonly", (store) => {
@@ -269,12 +276,52 @@ export class IndexedDBRepository extends EventInterpretationRepository {
         });
       });
 
-      // Extract unique caseIds
-      const caseIds = new Set(results.map(item => item.caseId));
-      return caseIds;
+      // Categorize cases by tier change, author, and gene
+      const withTierChange = new Set();
+      const byAuthor = new Map();
+      const byGene = new Map();
+      const all = new Set();
+
+      results.forEach(item => {
+        const caseId = item.caseId;
+        all.add(caseId);
+        
+        // Tier changes
+        if (item.hasTierChange) {
+          withTierChange.add(caseId);
+        }
+        
+        // By author
+        if (item.authorName) {
+          if (!byAuthor.has(item.authorName)) {
+            byAuthor.set(item.authorName, new Set());
+          }
+          byAuthor.get(item.authorName).add(caseId);
+        }
+        
+        // By gene
+        if (item.gene) {
+          if (!byGene.has(item.gene)) {
+            byGene.set(item.gene, new Set());
+          }
+          byGene.get(item.gene).add(caseId);
+        }
+      });
+
+      return {
+        withTierChange,
+        byAuthor,
+        byGene,
+        all,
+      };
     } catch (e) {
       console.error("Failed to get cases with interpretations:", e);
-      return new Set();
+      return {
+        withTierChange: new Set(),
+        byAuthor: new Map(),
+        byGene: new Map(),
+        all: new Set(),
+      };
     }
   }
 

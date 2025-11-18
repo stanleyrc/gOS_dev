@@ -15,7 +15,7 @@ export function reportFilters() {
     {
       name: "has_interpretations",
       type: "string",
-      renderer: "select",
+      renderer: "cascader",
       group: "interpretations",
       external: true,
     },
@@ -157,6 +157,78 @@ export function generateCascaderOptions(tags, frequencies = {}) {
   return options;
 }
 
+export function generateInterpretationsCascaderOptions(reports, casesWithInterpretations) {
+  const options = [];
+  
+  // Ensure casesWithInterpretations has the expected structure
+  const withTierChange = casesWithInterpretations?.withTierChange || new Set();
+  const byAuthor = casesWithInterpretations?.byAuthor || new Map();
+  const byGene = casesWithInterpretations?.byGene || new Map();
+  const all = casesWithInterpretations?.all || new Set();
+  
+  // Tier Change option
+  const tierChangeCount = reports.filter(r => withTierChange.has(r.pair)).length;
+  options.push({
+    label: common.containers["list-view"].filters.interpretations_cascader_labels.tier_change,
+    value: "tier_change",
+    count: tierChangeCount,
+  });
+  
+  // Author option with children
+  const authorChildren = [];
+  byAuthor.forEach((cases, authorName) => {
+    const count = reports.filter(r => cases.has(r.pair)).length;
+    authorChildren.push({
+      label: authorName,
+      value: authorName,
+      count: count,
+    });
+  });
+  
+  if (authorChildren.length > 0) {
+    authorChildren.sort((a, b) => d3.descending(a.count, b.count));
+    const totalAuthorCount = authorChildren.reduce((sum, child) => sum + child.count, 0);
+    options.push({
+      label: common.containers["list-view"].filters.interpretations_cascader_labels.author,
+      value: "author",
+      count: totalAuthorCount,
+      children: authorChildren,
+    });
+  }
+  
+  // Gene option with children
+  const geneChildren = [];
+  byGene.forEach((cases, geneName) => {
+    const count = reports.filter(r => cases.has(r.pair)).length;
+    geneChildren.push({
+      label: geneName,
+      value: geneName,
+      count: count,
+    });
+  });
+  
+  if (geneChildren.length > 0) {
+    geneChildren.sort((a, b) => d3.descending(a.count, b.count));
+    const totalGeneCount = geneChildren.reduce((sum, child) => sum + child.count, 0);
+    options.push({
+      label: common.containers["list-view"].filters.interpretations_cascader_labels.gene,
+      value: "gene",
+      count: totalGeneCount,
+      children: geneChildren,
+    });
+  }
+  
+  // No interpretations option
+  const noInterpretationsCount = reports.filter(r => !all.has(r.pair)).length;
+  options.push({
+    label: common.containers["list-view"].filters.interpretations_cascader_labels.without,
+    value: "without",
+    count: noInterpretationsCount,
+  });
+  
+  return options;
+}
+
 export const cascaderOperators = ["OR", "AND", "NOT"];
 
 export function getReportFilterExtents(reports) {
@@ -179,28 +251,14 @@ export function getReportFilterExtents(reports) {
   return extents;
 }
 
-export function getInterpretationsFilter(reports, casesWithInterpretations = new Set()) {
+export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }) {
   const filter = reportFilters().find(f => f.name === "has_interpretations");
-
-  const withCount = reports.filter(r => casesWithInterpretations.has(r.pair)).length;
-  const withoutCount = reports.length - withCount;
-
-  const withLabel = common.containers["list-view"].filters.has_interpretations_labels.with;
-  const withoutLabel = common.containers["list-view"].filters.has_interpretations_labels.without;
-
-  const distinctValues = [withLabel, withoutLabel];
-  const frequencyMap = new Map([
-    [withLabel, withCount],
-    [withoutLabel, withoutCount],
-  ]);
+  
+  const options = generateInterpretationsCascaderOptions(reports, casesWithInterpretations);
   
   return {
     filter: filter,
-    records: [...distinctValues],
-    frequencies: Object.fromEntries(frequencyMap),
-    extent: d3.extent(
-      distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
-    ),
+    options: options,
     totalRecords: reports.length,
     format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
   };

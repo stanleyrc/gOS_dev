@@ -365,10 +365,17 @@
         },
         "purity": "Purity",
         "ploidy": "Ploidy",
-        "has_interpretations": "Has Interpretations",
+        "has_interpretations": "Criteria",
+        "has_interpretations-operator": "Matches",
         "has_interpretations_labels": {
           "with": "Yes",
           "without": "No"
+        },
+        "interpretations_cascader_labels": {
+          "tier_change": "Tier Change",
+          "author": "Author",
+          "gene": "Gene",
+          "without": "No Interpretations"
         },
         "submit": "Submit",
         "reset": "Reset",

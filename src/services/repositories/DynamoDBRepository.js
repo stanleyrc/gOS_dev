@@ -74,6 +74,11 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       ...json,
       updatedAt: Date.now(),
     };
+    
+    // Convert hasTierChange to string for GSI (DynamoDB GSI sort keys are String type)
+    if (item.hasTierChange !== undefined && item.hasTierChange !== null) {
+      item.hasTierChange = String(item.hasTierChange);
+    }
 
     // Remove undefined values as DynamoDB doesn't allow them
     Object.keys(item).forEach(key => {
@@ -327,7 +332,119 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   }
 
   async getCasesWithInterpretations(datasetId) {
-  return this._getCasesData(datasetId, "set"); // "set" for Set mode
+    if (!datasetId) {
+      return {
+        withTierChange: new Set(),
+        byAuthor: new Map(),
+        byGene: new Map(),
+        all: new Set(),
+      };
+    }
+
+    try {
+      // Query 1: Get cases WITH tier changes using GSI
+      const withTierChangeCommand = new QueryCommand({
+        TableName: this.tableName,
+        IndexName: "datasetId-hasTierChange-index",
+        KeyConditionExpression: "datasetId = :datasetId AND hasTierChange = :hasTierChange",
+        ExpressionAttributeValues: marshall({
+          ":datasetId": datasetId,
+          ":hasTierChange": "true", // String type in DynamoDB GSI
+        }),
+        ProjectionExpression: "datasetIdCaseId",
+      });
+
+      // Query 2: Get all interpretations grouped by author using GSI
+      const byAuthorCommand = new QueryCommand({
+        TableName: this.tableName,
+        IndexName: "datasetId-authorName-index",
+        KeyConditionExpression: "datasetId = :datasetId",
+        ExpressionAttributeValues: marshall({
+          ":datasetId": datasetId,
+        }),
+        ProjectionExpression: "datasetIdCaseId, authorName",
+      });
+
+      // Query 3: Get all interpretations grouped by gene using GSI
+      const byGeneCommand = new QueryCommand({
+        TableName: this.tableName,
+        IndexName: "datasetId-gene-index",
+        KeyConditionExpression: "datasetId = :datasetId",
+        ExpressionAttributeValues: marshall({
+          ":datasetId": datasetId,
+        }),
+        ProjectionExpression: "datasetIdCaseId, gene",
+      });
+
+      // Execute all queries in parallel
+      const [withTierChangeResponse, byAuthorResponse, byGeneResponse] = await Promise.all([
+        this.client.send(withTierChangeCommand),
+        this.client.send(byAuthorCommand),
+        this.client.send(byGeneCommand),
+      ]);
+
+      const withTierChangeItems = withTierChangeResponse.Items || [];
+      const byAuthorItems = byAuthorResponse.Items || [];
+      const byGeneItems = byGeneResponse.Items || [];
+
+      // Extract cases with tier changes
+      const withTierChange = new Set();
+      withTierChangeItems.forEach(item => {
+        const datasetIdCaseId = unmarshall(item).datasetIdCaseId;
+        const caseId = datasetIdCaseId.split("::").slice(1).join("::");
+        withTierChange.add(caseId);
+      });
+
+      // Group cases by author
+      const byAuthor = new Map();
+      const allCases = new Set();
+      byAuthorItems.forEach(item => {
+        const data = unmarshall(item);
+        const datasetIdCaseId = data.datasetIdCaseId;
+        const caseId = datasetIdCaseId.split("::").slice(1).join("::");
+        const authorName = data.authorName;
+        
+        allCases.add(caseId);
+        
+        if (authorName) {
+          if (!byAuthor.has(authorName)) {
+            byAuthor.set(authorName, new Set());
+          }
+          byAuthor.get(authorName).add(caseId);
+        }
+      });
+
+      // Group cases by gene
+      const byGene = new Map();
+      byGeneItems.forEach(item => {
+        const data = unmarshall(item);
+        const datasetIdCaseId = data.datasetIdCaseId;
+        const caseId = datasetIdCaseId.split("::").slice(1).join("::");
+        const gene = data.gene;
+        
+        if (gene) {
+          if (!byGene.has(gene)) {
+            byGene.set(gene, new Set());
+          }
+          byGene.get(gene).add(caseId);
+        }
+      });
+
+      return {
+        withTierChange,
+        byAuthor,
+        byGene,
+        all: allCases,
+      };
+    } catch (error) {
+      console.error("Failed to get cases with interpretations:", error);
+      return {
+        withTierChange: new Set(),
+        byAuthor: new Map(),
+        byGene: new Map(),
+        all: new Set(),
+      };
+    }
   }
 
   async getCasesInterpretationsCount(datasetId) {

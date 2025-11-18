@@ -159,16 +159,97 @@ function* fetchCaseReports(action) {
   }
 }
 
+/**
+ * Apply filters based on external data sources (not stored on records)
+ */
+function applyExternalFilters(records, searchFilters, externalData) {
+  console.log('searchFilter', searchFilters)
+  const { casesWithInterpretations } = externalData;
+  
+  // Handle has_interpretations filter
+  if (searchFilters.has_interpretations && searchFilters.has_interpretations.length > 0) {
+    const selectedValues = searchFilters.has_interpretations;
+    const operator = searchFilters['has_interpretations-operator'] || "OR";
+    
+    // Build sets of matching records for each selected criterion
+    const matchingSets = selectedValues.map(value => {
+      const matchingRecords = new Set();
+      
+      // value is an array representing the cascader path
+      const category = value[0];
+      const specificValue = value.length > 1 ? value[1] : null;
+      
+      if (category === "tier_change") {
+        records.forEach(r => {
+          if (casesWithInterpretations.withTierChange.has(r.pair)) {
+            matchingRecords.add(r.pair);
+          }
+        });
+      } else if (category === "author" && specificValue) {
+        const authorCases = casesWithInterpretations.byAuthor.get(specificValue);
+        if (authorCases) {
+          records.forEach(r => {
+            if (authorCases.has(r.pair)) {
+              matchingRecords.add(r.pair);
+            }
+          });
+        }
+      } else if (category === "gene" && specificValue) {
+        const geneCases = casesWithInterpretations.byGene.get(specificValue);
+        if (geneCases) {
+          records.forEach(r => {
+            if (geneCases.has(r.pair)) {
+              matchingRecords.add(r.pair);
+            }
+          });
+        }
+      } else if (category === "without") {
+        records.forEach(r => {
+          if (!casesWithInterpretations.all.has(r.pair)) {
+            matchingRecords.add(r.pair);
+          }
+        });
+      }
+      
+      return matchingRecords;
+    });
+    
+    // Apply operator logic
+    if (operator === "OR") {
+      // Union: include if in ANY of the sets
+      const unionSet = new Set();
+      matchingSets.forEach(set => {
+        set.forEach(pair => unionSet.add(pair));
+      });
+      records = records.filter(r => unionSet.has(r.pair));
+    } else if (operator === "AND") {
+      // Intersection: include only if in ALL sets
+      if (matchingSets.length > 0) {
+        records = records.filter(r => {
+          return matchingSets.every(set => set.has(r.pair));
+        });
+      }
+    } else if (operator === "NOT") {
+      // Exclusion: include if NOT in any of the sets
+      const unionSet = new Set();
+      matchingSets.forEach(set => {
+        set.forEach(pair => unionSet.add(pair));
+      });
+      records = records.filter(r => !unionSet.has(r.pair));
+    }
+  }
+
+  return records;
+}
+
 function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
   let { datafiles, casesWithInterpretations } = currentState.CaseReports;
   let { dataset } = currentState.Settings;
 
-  // If not available in state, fetch it
-  if (!casesWithInterpretations || casesWithInterpretations.size === 0) {
-    const repository = getActiveRepository({ dataset });
-    casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
-  }
+  // Always fetch fresh casesWithInterpretations to ensure filters are up to date
+  const repository = getActiveRepository({ dataset });
+  casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
 
   let records = datafiles.filter((d) => d.visible !== false);
 
@@ -177,6 +258,11 @@ function* searchReports({ searchFilters }) {
   let orderId = searchFilters?.orderId || defaultSearchFilters().orderId;
   let { attribute, sort } = orderListViewFilters.find((d) => d.id === orderId);
   let flippedMap = flip(reportAttributesMap());
+
+  // Apply external filters first
+  records = applyExternalFilters(records, searchFilters, { casesWithInterpretations });
+
+  // Apply record-based filters
   let actualSearchFilters = Object.fromEntries(
     Object.entries(searchFilters || {}).filter(
       ([key, value]) =>
@@ -184,6 +270,7 @@ function* searchReports({ searchFilters }) {
         key !== "per_page" &&
         key !== "orderId" &&
         key !== "operator" &&
+        !key.endsWith("-operator") &&
         value !== null &&
         value !== undefined &&
         !(Array.isArray(value) && value.length === 0)
@@ -191,26 +278,15 @@ function* searchReports({ searchFilters }) {
   );
 
   Object.keys(actualSearchFilters).forEach((key) => {
-  let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
-  const reportFilter = reportFilters().find((d) => d.name === key);
-  
-  if (reportFilter?.external) {
-    if (key === "has_interpretations") {
-      const withLabel = common.containers["list-view"].filters.has_interpretations_labels.with;
-      const withoutLabel = common.containers["list-view"].filters.has_interpretations_labels.without;
-      
-      if (actualSearchFilters[key].length === 0 || actualSearchFilters[key].includes("all")) {
-        // show all
-      } else {
-        if (actualSearchFilters[key].includes(withLabel)) {
-          records = records.filter(d => casesWithInterpretations.has(d.pair));
-        }
-        if (actualSearchFilters[key].includes(withoutLabel)) {
-          records = records.filter(d => !casesWithInterpretations.has(d.pair));
-        }
-      }
+    let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
+    const reportFilter = reportFilters().find((d) => d.name === key);
+    
+    // Skip external filters (handled separately)
+    if (reportFilter?.external) {
+      return;
     }
-  } else if (key === "texts") {
+    
+    if (key === "texts") {
       records = records
         .filter((record) =>
           reportFilters()
@@ -233,56 +309,54 @@ function* searchReports({ searchFilters }) {
             ? d3.ascending(aValue, bValue)
             : d3.descending(aValue, bValue);
         });
-    } else {
-      if (keyRenderer === "slider") {
-        records = records.filter((d) => {
-          let value = null;
-          try {
-            value = eval(`d.${key}`);
-          } catch (err) {}
-          if (value == null) return true;
-          return (
-            value >= actualSearchFilters[key][0] &&
-            value <= actualSearchFilters[key][1]
-          );
-        });
-      } else if (keyRenderer === "select") {
-        records = records.filter((d) => {
-          return actualSearchFilters[key].some((item) => {
-            // If the filter value is the string "null", match records where d[key] is null or undefined
-            if (item === "null") {
-              return d[key] == null;
-            }
-            const itemArr = Array.isArray(item) ? item : [item];
-            const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
-            return itemArr.some((i) => dKeyArr.includes(i));
-          });
-        });
-      } else if (keyRenderer === "cascader") {
-        const operator = (searchFilters?.operator || "OR").toUpperCase();
-        const selectedItems = actualSearchFilters[key];
-        const normalize = (value) => (Array.isArray(value) ? value : [value]);
-        const matchesItem = (record, item) => {
+    } else if (keyRenderer === "slider") {
+      records = records.filter((d) => {
+        let value = null;
+        try {
+          value = eval(`d.${key}`);
+        } catch (err) {}
+        if (value == null) return true;
+        return (
+          value >= actualSearchFilters[key][0] &&
+          value <= actualSearchFilters[key][1]
+        );
+      });
+    } else if (keyRenderer === "select") {
+      records = records.filter((d) => {
+        return actualSearchFilters[key].some((item) => {
+          // If the filter value is the string "null", match records where d[key] is null or undefined
           if (item === "null") {
-            return record[key] == null;
+            return d[key] == null;
           }
-          const recordValues = normalize(record[key]);
-          return normalize(item).some((value) => recordValues.includes(value));
-        };
+          const itemArr = Array.isArray(item) ? item : [item];
+          const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
+          return itemArr.some((i) => dKeyArr.includes(i));
+        });
+      });
+    } else if (keyRenderer === "cascader") {
+      const operator = (searchFilters?.operator || "OR").toUpperCase();
+      const selectedItems = actualSearchFilters[key];
+      const normalize = (value) => (Array.isArray(value) ? value : [value]);
+      const matchesItem = (record, item) => {
+        if (item === "null") {
+          return record[key] == null;
+        }
+        const recordValues = normalize(record[key]);
+        return normalize(item).some((value) => recordValues.includes(value));
+      };
 
-        const cascaderPredicates = {
-          AND: (record) =>
-            selectedItems.every((item) => matchesItem(record, item)),
-          OR: (record) =>
-            selectedItems.some((item) => matchesItem(record, item)),
-          NOT: (record) =>
-            selectedItems.every((item) => !matchesItem(record, item)),
-        };
+      const cascaderPredicates = {
+        AND: (record) =>
+          selectedItems.every((item) => matchesItem(record, item)),
+        OR: (record) =>
+          selectedItems.some((item) => matchesItem(record, item)),
+        NOT: (record) =>
+          selectedItems.every((item) => !matchesItem(record, item)),
+      };
 
-        const applyPredicate =
-          cascaderPredicates[operator] || cascaderPredicates.OR;
-        records = records.filter(applyPredicate);
-      }
+      const applyPredicate =
+        cascaderPredicates[operator] || cascaderPredicates.OR;
+      records = records.filter(applyPredicate);
     }
   });
 

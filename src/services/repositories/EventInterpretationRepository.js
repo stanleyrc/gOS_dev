@@ -41,6 +41,7 @@ export class EventInterpretationRepository {
   }
 
   async getCasesWithInterpretations(datasetId) {
+    // Returns: { withTierChange: Set, byAuthor: Map, byGene: Map, all: Set }
     throw new Error("getCasesWithInterpretations must be implemented");
   }
 

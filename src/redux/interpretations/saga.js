@@ -125,10 +125,10 @@ function* updateInterpretation(action) {
           isCurrentUser: true,
         },
       });
-      
+
       // Revert filtered event to original
       yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
-      
+
       return;
     }
     
