@@ -68,6 +68,27 @@ export default function appReducer(state = initState, action) {
         selectedFilteredEvent: nextSelected,
       };
     }
+    case actions.REVERT_FILTERED_EVENT: {
+      const { alterationId, originalEvent } = action;
+      
+      if (!alterationId || !originalEvent) {
+        return state;
+      }
+      
+      const nextFiltered = state.filteredEvents.map(event => 
+        event.uid === alterationId ? { ...originalEvent } : event
+      );
+      
+      const nextSelected = state.selectedFilteredEvent?.uid === alterationId
+        ? { ...originalEvent }
+        : state.selectedFilteredEvent;
+      
+      return {
+        ...state,
+        filteredEvents: nextFiltered,
+        selectedFilteredEvent: nextSelected,
+      };
+    }
     default:
       return state;
   }

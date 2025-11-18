@@ -3,6 +3,7 @@ import { getCurrentState } from "./selectors";
 import { getActiveRepository } from "../../services/repositories";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import actions from "./actions";
+import filteredEventsActions from "../filteredEvents/actions";
 import { getCurrentUserId, getUser } from "../../helpers/userAuth";
 import { signInterpretation } from "../../services/signatures/SignatureService";
 
@@ -102,6 +103,34 @@ function* updateInterpretation(action) {
       lastModified: interpretation.lastModified || new Date().toISOString(),
       data: mergedData,
     });
+    
+    // Check if interpretation matches original (should be deleted)
+    const filteredEventsState = yield select(state => state.FilteredEvents);
+    const originalFilteredEvents = filteredEventsState?.originalFilteredEvents || [];
+    const originalEvent = originalFilteredEvents.find(e => e.uid === interpretation.alterationId);
+    
+    if (repoInterpretation.matchesOriginal(originalEvent)) {
+      // Delete interpretation if it matches original
+      yield call([repository, repository.delete], datasetId, caseId, interpretation.alterationId, interpretation.authorId);
+      
+      const currentUserId = getCurrentUserId();
+      
+      // Update interpretations state
+      yield put({
+        type: actions.UPDATE_INTERPRETATION_SUCCESS,
+        interpretation: null,
+        deletedInterpretation: {
+          alterationId: interpretation.alterationId,
+          authorId: interpretation.authorId || currentUserId,
+          isCurrentUser: true,
+        },
+      });
+      
+      // Revert filtered event to original
+      yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
+      
+      return;
+    }
     
     // Sign the interpretation before saving
     const user = getUser();

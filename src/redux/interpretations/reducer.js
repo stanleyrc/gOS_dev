@@ -50,6 +50,46 @@ export default function interpretationsReducer(state = initState, action) {
       };
     case actions.UPDATE_INTERPRETATION_SUCCESS: {
       const interpretation = action.interpretation;
+      
+      if (!interpretation && action.deletedInterpretation) {
+        const { alterationId, authorId } = action.deletedInterpretation;
+        const key = `${alterationId}___${authorId}`;
+        
+        const updatedById = { ...state.byId };
+        delete updatedById[key];
+        
+        const updatedSelected = { ...state.selected };
+        if (updatedSelected[alterationId] === key) {
+          delete updatedSelected[alterationId];
+        }
+        
+        const updatedByGene = { ...state.byGene };
+        Object.keys(updatedByGene).forEach(gene => {
+          if (updatedByGene[gene][key]) {
+            const newGeneObj = { ...updatedByGene[gene] };
+            delete newGeneObj[key];
+            updatedByGene[gene] = newGeneObj;
+          }
+        });
+        
+        return {
+          ...state,
+          status: "succeeded",
+          byId: updatedById,
+          selected: updatedSelected,
+          byGene: updatedByGene,
+          error: null,
+        };
+      }
+      
+      if (!interpretation) {
+        return {
+          ...state,
+          status: "succeeded",
+          error: null,
+        };
+      }
+      
       const key = `${interpretation.alterationId}___${interpretation.authorId}`;
       
       console.log('[Reducer] UPDATE_INTERPRETATION_SUCCESS:', { interpretation, key });

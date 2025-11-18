@@ -39,6 +39,7 @@ class EventInterpretation {
     this.lastModified = lastModified || new Date().toISOString();
     this.data = data;
     this.signature = signature || null;
+    this.hasTierChange = 'tier' in this.data;
   }
 
   static createId(datasetId, caseId, alterationId, authorId) {
@@ -49,9 +50,32 @@ class EventInterpretation {
     return this.data && Object.keys(this.data).length > 0;
   }
 
+  matchesOriginal(originalEvent) {
+    if (!originalEvent || !this.data) return false;
+    if (Object.keys(this.data).length === 0) return true;
+    
+    for (const [key, value] of Object.entries(this.data)) {
+      const originalValue = originalEvent[key];
+      
+      if (originalValue === undefined) {
+        const isEmpty = value === null || value === undefined || value === '';
+        if (!isEmpty) {
+          return false;
+        }
+      } else {
+        if (String(originalValue) !== String(value)) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  }
+
   updateData(newData) {
     this.data = { ...this.data, ...newData };
     this.lastModified = new Date().toISOString();
+    this.hasTierChange = 'tier' in this.data;
   }
 
   toJSON() {
@@ -61,7 +85,8 @@ class EventInterpretation {
       alterationId: this.alterationId,
       authorId: this.authorId,
       authorName: this.authorName,
-      lastModified: this.lastModified
+      lastModified: this.lastModified,
+      hasTierChange: this.hasTierChange
     };
 
     if (this.gene) {
