@@ -438,12 +438,14 @@ class FilteredEventsListPanel extends Component {
             return d3.ascending(+a.tier, +b.tier);
           },
         },
-        filters: [...new Set(records.map((d) => d.tier))].map((d) => {
-          return {
-            text: d,
-            value: +d,
-          };
-        }),
+        filters: [...new Set(records.map((d) => +d.tier).filter(d => !isNaN(d)))]
+          .sort((a, b) => a - b)
+          .map((d) => {
+            return {
+              text: d,
+              value: d,
+            };
+          }),
         filterMultiple: true,
         onFilter: (value, record) => +record.tier === +value,
         filteredValue: tierFilters, // controlled by the component
