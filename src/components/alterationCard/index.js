@@ -278,7 +278,7 @@ class AlterationCard extends Component {
           <div className="variant-header">
             <div className="gene-left">
               {currentTierStr && (
-              <Tooltip title={this.getTierTooltipContent()} placement="bottom" overlayStyle={{ maxWidth: '350px' }}>
+              <Tooltip title={this.getTierTooltipContent()} placement="bottom" overlayStyle={{ maxWidth: '350px' }} align={{ offset: [10, 0] }}>
               <div className="tier-control">
                     <Avatar
                       size={32}
