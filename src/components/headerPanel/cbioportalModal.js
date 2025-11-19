@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Modal, Space, Input, Row, Col, Form, Skeleton } from "antd";
+import { Modal, Space, Input, Row, Col, Form, Skeleton, Button } from "antd";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
@@ -36,6 +36,20 @@ class CbioportalModal extends Component {
 
   handleInputChange = (field, value) => {
     this.setState({ [field]: value });
+  };
+
+  handleClear = () => {
+    const { report } = this.props;
+    this.setState({
+      tumorDetails: report?.tumor_details || "",
+      disease: report?.disease || "",
+      primarySite: report?.primary_site || "",
+      genes: "",
+    });
+  };
+
+  handleSubmit = () => {
+    console.log("cBioPortal form submitted:", this.state);
   };
 
   render() {
@@ -105,6 +119,18 @@ class CbioportalModal extends Component {
                     placeholder="Enter genes (comma separated)"
                   />
                 </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={24} style={{ textAlign: "right" }}>
+                <Space>
+                  <Button onClick={this.handleClear}>
+                    Clear
+                  </Button>
+                  <Button type="primary" onClick={this.handleSubmit}>
+                    Submit
+                  </Button>
+                </Space>
               </Col>
             </Row>
           </Form>
