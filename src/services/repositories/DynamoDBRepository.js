@@ -523,7 +523,7 @@ export class DynamoDBRepository extends EventInterpretationRepository {
 
         items.forEach(item => {
           const data = unmarshall(item);
-          const tier = Number(data["#data"]?.tier);
+          const tier = Number(data.data?.tier);
           if ([1, 2, 3].includes(tier)) {
             counts[tier]++;
           }
