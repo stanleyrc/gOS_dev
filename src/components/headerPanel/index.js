@@ -11,6 +11,7 @@ import {
   Divider,
   Popover,
   Typography,
+  Button,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -29,10 +30,27 @@ import {
   qcMetricsClasses,
 } from "../../helpers/metadata";
 import Wrapper from "./index.style";
+import CbioportalModal from "./cbioportalModal";
+import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 
 const { Text } = Typography;
 
 class HeaderPanel extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      cbioportalModalVisible: false,
+    };
+  }
+
+  handleCbioportalModalOpen = () => {
+    this.setState({ cbioportalModalVisible: true });
+  };
+
+  handleCbioportalModalClose = () => {
+    this.setState({ cbioportalModalVisible: false });
+  };
+
   render() {
     const { t, report, metadata, plots } = this.props;
     if (!report) return null;
@@ -231,6 +249,29 @@ class HeaderPanel extends Component {
           subTitle={
             <Space>
               <span>{sex}</span> {qcMetricsComponent}
+              <Button
+                type="text"
+                onClick={this.handleCbioportalModalOpen}
+                title={t("components.header-panel.cbioportal-button") || "cBioPortal"}
+                style={{
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={cbioportalIcon}
+                  alt="cBioPortal"
+                  title={t("components.header-panel.cbioportal-button") || "cBioPortal"}
+                  style={{
+                    height: "32px",
+                    width: "32px",
+                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))",
+                    cursor: "pointer",
+                  }}
+                />
+              </Button>
             </Space>
           }
           extra={
@@ -399,6 +440,10 @@ class HeaderPanel extends Component {
             </div>
           </div>
         </PageHeader>
+        <CbioportalModal
+          visible={this.state.cbioportalModalVisible}
+          onCancel={this.handleCbioportalModalClose}
+        />
       </Wrapper>
     );
   }

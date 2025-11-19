@@ -437,7 +437,11 @@
     },
     "header-panel": {
       "view-report": "View Report",
-      "qcMetrics": "Quality Control Metrics"
+      "qcMetrics": "Quality Control Metrics",
+      "cbioportal-button": "cBioPortal"
+    },
+    "cbioportal-modal": {
+      "title": "cBioPortal Integration"
     },
     "histogram-panel": {
       "header": "Histogram Chart",
