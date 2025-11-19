@@ -233,7 +233,7 @@ class FilteredEventsListPanel extends Component {
         onClick={() => selectFilteredEvent(record, "detail")}
         >
         <Tooltip placement="topLeft" title={record.gene}>
-            {record.gene} {count > 0 && <InterpretationsAvatar tooltipText={`Found ${count} interpretation(s)`} size={16} />}
+            {count > 0 && <InterpretationsAvatar tooltipText={`Found ${count} interpretation(s)`} size={18} />} {record.gene} 
             </Tooltip>
         </Button>
         ) : (
