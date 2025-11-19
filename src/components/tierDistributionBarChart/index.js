@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import * as d3 from "d3";
+import { tierColor } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -34,7 +35,7 @@ class TierDistributionBarChart extends Component {
       .scaleBand()
       .domain([1, 2, 3])
       .range([0, innerWidth])
-      .padding(0.1);
+      .padding(0.3);
 
     const maxCount = Math.max(tierCounts[1], tierCounts[2], tierCounts[3]);
     const yScale = d3
@@ -107,7 +108,7 @@ class TierDistributionBarChart extends Component {
         .attr("y", yScale(tierCounts[tier]))
         .attr("width", xScale.bandwidth())
         .attr("height", innerHeight - yScale(tierCounts[tier]))
-        .attr("fill", "#69b3a2");
+        .attr("fill", tierColor(tier));
     });
 
     // Labels
