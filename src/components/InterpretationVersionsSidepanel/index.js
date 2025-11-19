@@ -90,7 +90,7 @@ class InterpretationVersionsSidepanel extends Component {
           <Table
             columns={tableColumns}
             dataSource={filteredData}
-            rowKey={(record) => `${record.alterationId}___${record.authorId}`}
+            rowKey={(record) => `${record.alterationId}___${record.authorId}___${record.caseId}`}
             pagination={{ pageSize: 10 }}
             size="small"
             onRow={(record) => ({

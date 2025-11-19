@@ -22,7 +22,7 @@ export default function interpretationsReducer(state = initState, action) {
         const gene = interpretation.gene;
         if (gene) {
           if (!newByGene[gene]) newByGene[gene] = {};
-          const key = `${interpretation.alterationId}___${interpretation.authorId}`;
+          const key = `${interpretation.alterationId}___${interpretation.authorId}___${interpretation.caseId}`;
           newByGene[gene][key] = interpretation;
         }
       });
@@ -52,8 +52,8 @@ export default function interpretationsReducer(state = initState, action) {
       const interpretation = action.interpretation;
       
       if (!interpretation && action.deletedInterpretation) {
-        const { alterationId, authorId } = action.deletedInterpretation;
-        const key = `${alterationId}___${authorId}`;
+        const { alterationId, authorId, caseId } = action.deletedInterpretation;
+        const key = `${alterationId}___${authorId}___${caseId}`;
         
         const updatedById = { ...state.byId };
         delete updatedById[key];
@@ -90,7 +90,7 @@ export default function interpretationsReducer(state = initState, action) {
         };
       }
       
-      const key = `${interpretation.alterationId}___${interpretation.authorId}`;
+      const key = `${interpretation.alterationId}___${interpretation.authorId}___${interpretation.caseId}`;
       
       console.log('[Reducer] UPDATE_INTERPRETATION_SUCCESS:', { interpretation, key });
       console.log('[Reducer] Existing byId:', state.byId);

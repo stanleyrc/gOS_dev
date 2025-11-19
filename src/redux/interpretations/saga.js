@@ -40,7 +40,7 @@ function* fetchInterpretationsForCase(action) {
       
       const json = interp.toJSON ? interp.toJSON() : interp;
       const authorId = json.authorId || "currentUser";
-      const key = `${json.alterationId}___${authorId}`;
+      const key = `${json.alterationId}___${authorId}___${json.caseId}`;
       const isCurrentUser = !currentUserId || authorId === currentUserId || authorId === "currentUser";
       
       byId[key] = {
@@ -135,6 +135,7 @@ function* updateInterpretation(action) {
         deletedInterpretation: {
           alterationId: interpretation.alterationId,
           authorId: interpretation.authorId || currentUserId,
+          caseId: interpretation.caseId || caseId,
           isCurrentUser: true,
         },
       });
