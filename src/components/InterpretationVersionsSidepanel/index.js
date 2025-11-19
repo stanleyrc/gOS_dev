@@ -53,12 +53,12 @@ class InterpretationVersionsSidepanel extends Component {
         dataIndex: 'dataset',
         key: 'dataset',
         render: (text, record) => {
-          const dataset = datasets.find(d => d.id === record.datasetId);
+          const dataset = datasets.find(d => String(d.id) === String(record.datasetId));
           return dataset ? dataset.title : (record.datasetId || '');
         },
         sorter: (a, b) => {
-          const datasetA = datasets.find(d => d.id === a.datasetId)?.title || '';
-          const datasetB = datasets.find(d => d.id === b.datasetId)?.title || '';
+          const datasetA = datasets.find(d => String(d.id) === String(a.datasetId))?.title || '';
+          const datasetB = datasets.find(d => String(d.id) === String(b.datasetId))?.title || '';
           return datasetA.localeCompare(datasetB);
         },
       },
