@@ -98,6 +98,7 @@ function* updateInterpretation(action) {
       alterationId: interpretation.alterationId,
       gene: interpretation.gene || existingData.gene,
       variant: interpretation.variant || existingData.variant,
+      variant_type: interpretation.variant_type || existingData.variant_type,
       authorId: interpretation.authorId || existingData.authorId,
       authorName: interpretation.authorName || existingData.authorName,
       lastModified: interpretation.lastModified || new Date().toISOString(),

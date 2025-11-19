@@ -7,6 +7,7 @@ class EventInterpretation {
     alterationId,
     gene = null,
     variant = null,
+    variant_type = null,
     authorId = null,
     authorName = null,
     lastModified = null,
@@ -18,6 +19,7 @@ class EventInterpretation {
     this.alterationId = alterationId;
     this.gene = gene;
     this.variant = variant;
+    this.variant_type = variant_type;
     
     // Get current user info - caller should ensure user exists via ensureUser() first
     if (!authorId || !authorName) {
@@ -95,6 +97,10 @@ class EventInterpretation {
 
     if (this.variant) {
       result.variant = this.variant;
+    }
+
+    if (this.variant_type) {
+      result.variant_type = this.variant_type;
     }
 
     if (Object.keys(this.data).length > 0) {

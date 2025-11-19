@@ -51,6 +51,7 @@ class AlterationCard extends Component {
       alterationId: record?.uid || "UNKNOWN",
       gene: record?.gene,
       variant: record?.variant,
+      variant_type: record?.type,
       data
     });
 
@@ -106,6 +107,7 @@ class AlterationCard extends Component {
       alterationId: record?.uid,
       gene: record?.gene,
       variant: record?.variant,
+      variant_type: record?.type,
       data
     });
 
