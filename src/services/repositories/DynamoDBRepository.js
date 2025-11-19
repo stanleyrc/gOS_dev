@@ -492,4 +492,47 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       return returnType === "set" ? new Set() : new Map();
     }
   }
+
+  async getTierCountsByGeneVariantType(gene, variantType) {
+    if (!gene || !variantType) {
+      return { 1: 0, 2: 0, 3: 0 };
+    }
+
+    try {
+      const counts = { 1: 0, 2: 0, 3: 0 };
+      let lastEvaluatedKey = undefined;
+
+      do {
+        const command = new QueryCommand({
+          TableName: this.tableName,
+          IndexName: "gene-variant_type-index",
+          KeyConditionExpression: "gene = :gene AND variant_type = :variantType",
+          ExpressionAttributeValues: marshall({
+            ":gene": gene,
+            ":variantType": variantType,
+          }),
+          ProjectionExpression: "data.tier",
+          ExclusiveStartKey: lastEvaluatedKey,
+        });
+
+        const response = await this.client.send(command);
+        const items = response.Items || [];
+
+        items.forEach(item => {
+          const data = unmarshall(item);
+          const tier = Number(data.data?.tier);
+          if ([1, 2, 3].includes(tier)) {
+            counts[tier]++;
+          }
+        });
+
+        lastEvaluatedKey = response.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      return counts;
+    } catch (error) {
+      console.error("Failed to get tier counts:", error);
+      return { 1: 0, 2: 0, 3: 0 };
+    }
+  }
 }

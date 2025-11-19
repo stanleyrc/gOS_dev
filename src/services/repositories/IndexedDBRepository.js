@@ -8,10 +8,11 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 
 const DB_NAME = "gOS_Interpretations";
 const STORE_NAME = "interpretations";
-const DB_VERSION = 3;  // Increment version
+const DB_VERSION = 4;  // Increment version for new index
 const INDEX_BY_CASE = "by_case";
 const INDEX_BY_DATASET = "by_dataset";          // NEW: Index for dataset queries
 const INDEX_BY_DATASET_CASE = "by_dataset_case";  // NEW: Composite index
+const INDEX_BY_GENE_VARIANT = "by_gene_variant";  // NEW: Index for gene and variant_type queries
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -26,6 +27,7 @@ function openDb() {
       store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
       store.createIndex(INDEX_BY_DATASET, "datasetId", { unique: false });  // NEW
       store.createIndex(INDEX_BY_DATASET_CASE, ["datasetId", "caseId"], { unique: false });  // NEW
+      store.createIndex(INDEX_BY_GENE_VARIANT, ["gene", "variantType"], { unique: false });  // NEW
         }
       };
       
@@ -350,6 +352,37 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     } catch (e) {
       console.error("Failed to get cases interpretations count:", e);
       return new Map();
+    }
+  }
+
+  async getTierCountsByGeneVariantType(gene, variantType) {
+    if (!window.indexedDB || !gene || !variantType) {
+      return { 1: 0, 2: 0, 3: 0 };
+    }
+
+    try {
+      const results = await withStore(STORE_NAME, "readonly", (store) => {
+        return new Promise((resolve, reject) => {
+          const index = store.index(INDEX_BY_GENE_VARIANT);
+          const req = index.getAll([gene, variantType]);
+
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      });
+
+      const counts = { 1: 0, 2: 0, 3: 0 };
+      results.forEach(item => {
+        const tier = Number(item.data?.tier);
+        if ([1, 2, 3].includes(tier)) {
+          counts[tier]++;
+        }
+      });
+
+      return counts;
+    } catch (e) {
+      console.error("Failed to get tier counts by gene and variant type:", e);
+      return { 1: 0, 2: 0, 3: 0 };
     }
   }
 }

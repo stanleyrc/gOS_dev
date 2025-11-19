@@ -124,4 +124,9 @@ export class RemoteRepository extends EventInterpretationRepository {
     const response = await this._fetch(`/datasets/${datasetId}/cases/counts`);
     return new Map(Object.entries(response?.counts || {}));
   }
+
+  async getTierCountsByGeneVariantType(gene, variantType) {
+    const response = await this._fetch(`/genes/${gene}/variant-types/${variantType}/tier-counts`);
+    return response?.counts || { 1: 0, 2: 0, 3: 0 };
+  }
 }

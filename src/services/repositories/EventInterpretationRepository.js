@@ -48,4 +48,8 @@ export class EventInterpretationRepository {
   async getCasesInterpretationsCount(datasetId) {
     throw new Error("getCasesInterpretationsCount must be implemented");
   }
+
+  async getTierCountsByGeneVariantType(gene, variantType) {
+    throw new Error("getTierCountsByGeneVariantType must be implemented");
+  }
 }
