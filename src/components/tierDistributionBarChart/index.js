@@ -20,7 +20,7 @@ class TierDistributionBarChart extends Component {
   }
 
   renderChart() {
-    const { width, height, tierCounts, originalTier } = this.props;
+    const { width, height, tierCounts, originalTier, gene, variantType } = this.props;
 
     if (!this.plotContainer) return;
 
@@ -52,9 +52,9 @@ class TierDistributionBarChart extends Component {
       .attr("y", -margins.gapY / 2)
       .attr("text-anchor", "middle")
       .attr("fill", "white")
-      .style("font-size", "16px")
+      .style("font-size", "12px")
       .style("font-weight", "bold")
-      .text("Retier Distribution");
+      .text(`Retier Distribution for ${gene} ${variantType}`);
 
     // Y-axis
     const numTicks = Math.min(6, maxCount + 1);
@@ -147,6 +147,8 @@ TierDistributionBarChart.propTypes = {
     3: PropTypes.number,
   }).isRequired,
   originalTier: PropTypes.oneOf([1, 2, 3]).isRequired,
+  gene: PropTypes.string.isRequired,
+  variantType: PropTypes.string.isRequired,
 };
 
 export default TierDistributionBarChart;

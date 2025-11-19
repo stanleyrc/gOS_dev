@@ -152,22 +152,24 @@ class AlterationCard extends Component {
 
   getTierTooltipContent() {
     const { tierCounts } = this.state;
-    const { baseRecord } = this.props;
+    const { baseRecord, record } = this.props;
     if (!tierCounts) return 'Loading tier distribution...';
-    
+
     const total = (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
     if (total === 0) {
       return 'No retiering found for this gene variant';
     }
-    
+
     const originalTier = baseRecord?.tier || 3;
-    
+
     return (
       <TierDistributionBarChart
-        width={200}
+        width={300}
         height={150}
         tierCounts={tierCounts}
         originalTier={originalTier}
+        gene={record.gene}
+        variantType={record.type}
       />
     );
   }
@@ -276,8 +278,8 @@ class AlterationCard extends Component {
           <div className="variant-header">
             <div className="gene-left">
               {currentTierStr && (
-                <Tooltip title={this.getTierTooltipContent()}>
-                  <div className="tier-control">
+              <Tooltip title={this.getTierTooltipContent()} placement="bottom" overlayStyle={{ maxWidth: '350px' }}>
+              <div className="tier-control">
                     <Avatar
                       size={32}
                       style={{

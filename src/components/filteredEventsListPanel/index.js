@@ -257,10 +257,12 @@ class FilteredEventsListPanel extends Component {
     const originalTier = originalRecord?.tier || 3;
     return (
       <TierDistributionBarChart
-        width={200}
+        width={300}
         height={150}
         tierCounts={tierCounts}
         originalTier={originalTier}
+        gene={record.gene}
+        variantType={record.type}
       />
     );
   };
@@ -565,6 +567,8 @@ class FilteredEventsListPanel extends Component {
           record.tier != null ? (
             <Tooltip
               title={this.getTierTooltipContent(record)}
+              placement="right"
+              overlayStyle={{ maxWidth: '350px' }}
             >
               <Button
                 type="link"
