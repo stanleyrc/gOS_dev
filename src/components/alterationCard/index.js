@@ -177,7 +177,7 @@ class AlterationCard extends Component {
   }
 
   render() {
-    const { t, record, interpretation, allInterpretations, baseRecord } = this.props;
+    const { t, record, interpretation, allInterpretations, baseRecord, datasets } = this.props;
     const { showVersions, selectedInterpretation } = this.state;
     
     if (!record) {
@@ -409,6 +409,7 @@ class AlterationCard extends Component {
           onOpen={this.handleRefreshVersions}
           onClose={this.handleCloseVersions}
           onSelect={this.handleSelectInterpretation}
+          datasets={datasets}
           additionalColumns={[
             {
               title: 'Case ID',
@@ -419,6 +420,11 @@ class AlterationCard extends Component {
               title: 'Gene',
               dataIndex: 'gene',
               key: 'gene',
+            },
+            {
+              title: 'Type',
+              dataIndex: 'variant_type',
+              key: 'variant_type',
             },
             {
               title: 'Variant',
@@ -438,6 +444,7 @@ const mapStateToProps = (state, ownProps) => ({
   allInterpretations: getAllInterpretationsForGene(state, ownProps.record?.gene),
   baseRecord: getBaseEvent(state, ownProps.record?.uid),
   dataset: state?.Settings?.dataset,
+  datasets: state?.Datasets?.records || [],
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));

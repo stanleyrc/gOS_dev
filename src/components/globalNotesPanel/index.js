@@ -115,7 +115,7 @@ class GlobalNotesPanel extends Component {
   }
 
   render() {
-    const { t, globalNotesInterpretation, allGlobalNotesInterpretations } = this.props;
+    const { t, globalNotesInterpretation, allGlobalNotesInterpretations, datasets } = this.props;
     const { editing, draft, showVersions, selectedInterpretation } = this.state;
 
     // Determine which interpretation to display
@@ -208,6 +208,7 @@ class GlobalNotesPanel extends Component {
           onOpen={this.handleRefreshVersions}
           onClose={this.handleCloseVersions}
           onSelect={this.handleSelectInterpretation}
+          datasets={datasets}
           additionalColumns={[
             {
               title: 'Notes',
@@ -226,6 +227,7 @@ const mapStateToProps = (state) => ({
   caseId: state?.CaseReport?.id,
   globalNotesInterpretation: getGlobalNotesInterpretation(state),
   allGlobalNotesInterpretations: getAllInterpretationsForAlteration(state, "GLOBAL_NOTES"),
+  datasets: state?.Datasets?.records || [],
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(GlobalNotesPanel));

@@ -27,7 +27,7 @@ class InterpretationVersionsSidepanel extends Component {
   };
 
   render() {
-    const { tableData, title, isOpen, onClose, onSelect, filterFunction = defaultFilterFunction, additionalColumns = [] } = this.props;
+    const { tableData, title, isOpen, onClose, onSelect, filterFunction = defaultFilterFunction, additionalColumns = [], datasets = [] } = this.props;
     const { searchTerm } = this.state;
 
     const filteredData = filterFunction(searchTerm, tableData);
@@ -47,6 +47,20 @@ class InterpretationVersionsSidepanel extends Component {
         width: 120,
         render: (date) => date ? new Date(date).toLocaleString() : '',
         sorter: (a, b) => new Date(a.lastModified || 0) - new Date(b.lastModified || 0),
+      },
+      {
+        title: 'Dataset',
+        dataIndex: 'dataset',
+        key: 'dataset',
+        render: (text, record) => {
+          const dataset = datasets.find(d => d.id === record.datasetId);
+          return dataset ? dataset.title : (record.datasetId || '');
+        },
+        sorter: (a, b) => {
+          const datasetA = datasets.find(d => d.id === a.datasetId)?.title || '';
+          const datasetB = datasets.find(d => d.id === b.datasetId)?.title || '';
+          return datasetA.localeCompare(datasetB);
+        },
       },
       ...additionalColumns,
     ];
@@ -77,7 +91,7 @@ class InterpretationVersionsSidepanel extends Component {
               onClick: () => onSelect(record),
               style: { cursor: 'pointer' },
             })}
-            scroll={{ y: 'calc(100vh - 200px)' }}
+            scroll={{ x: 'max-content', y: 'calc(100vh - 200px)' }}
           />
         </div>
       </Drawer>
