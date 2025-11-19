@@ -253,7 +253,8 @@ class FilteredEventsListPanel extends Component {
     if (total === 0) {
       return 'No retiering found for this gene variant';
     }
-    const originalTier = record.tier || 3;
+    const originalRecord = this.props.originalFilteredEvents.find(r => r.uid === record.uid);
+    const originalTier = originalRecord?.tier || 3;
     return (
       <TierDistributionBarChart
         width={200}

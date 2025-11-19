@@ -64,9 +64,22 @@ class TierDistributionBarChart extends Component {
       .call(d3.axisLeft(yScale).tickValues(tickValues).tickFormat(d3.format("d")));
 
     // X-axis
-    g.append("g")
+    const xAxisGroup = g.append("g")
       .attr("transform", `translate(0, ${innerHeight})`)
       .call(d3.axisBottom(xScale));
+
+    // Highlight original tier with a circle
+    if (originalTier) {
+      xAxisGroup.selectAll(".tick")
+        .filter(d => d === originalTier)
+        .insert("circle", "text")
+        .attr("cx", 0)
+        .attr("cy", 14)
+        .attr("r", 10)
+        .attr("fill", "rgba(255, 255, 255, 0.1)")
+        .attr("stroke", "white")
+        .attr("stroke-width", 2);
+    }
 
     // X-axis label
     g.append("text")
