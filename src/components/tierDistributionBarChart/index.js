@@ -55,7 +55,7 @@ class TierDistributionBarChart extends Component {
       .attr("fill", "white")
       .style("font-size", "12px")
       .style("font-weight", "bold")
-      .text(`Retier Distribution for ${gene} ${variantType}`);
+      .text(`Retier Distribution for all ${gene} ${variantType}`);
 
     // Y-axis
     const numTicks = Math.min(6, maxCount + 1);
@@ -69,17 +69,15 @@ class TierDistributionBarChart extends Component {
       .attr("transform", `translate(0, ${innerHeight})`)
       .call(d3.axisBottom(xScale));
 
-    // Highlight original tier with a circle
+    // Highlight original tier with a small filled white dot
     if (originalTier) {
       xAxisGroup.selectAll(".tick")
         .filter(d => d === originalTier)
         .insert("circle", "text")
         .attr("cx", 0)
-        .attr("cy", 14)
-        .attr("r", 10)
-        .attr("fill", "rgba(255, 255, 255, 0.1)")
-        .attr("stroke", "white")
-        .attr("stroke-width", 2);
+        .attr("cy", 22)
+        .attr("r", 2)
+        .attr("fill", "white");
     }
 
     // X-axis label
