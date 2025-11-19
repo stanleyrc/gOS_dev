@@ -43,10 +43,12 @@ export const getBaseEvent = (state, uid) => {
 const selectFilteredEventsState = (state) => state.FilteredEvents || {};
 
 export const selectMergedEvents = createSelector(
-  [selectFilteredEventsState, selectInterpretationsById],
-  (filteredEventsState, interpretationsById) => {
+  [selectFilteredEventsState, selectInterpretationsById, getCurrentState],
+  (filteredEventsState, interpretationsById, state) => {
     const filteredEvents = filteredEventsState.filteredEvents || [];
     const selected = filteredEventsState.selectedFilteredEvent;
+    const currentCaseId = state.CaseReport?.id;
+    const currentDatasetId = state.Settings?.dataset?.id;
     
     const mergeEventWithInterpretation = (event) => {
       if (!event) return event;
@@ -67,7 +69,9 @@ export const selectMergedEvents = createSelector(
       
       for (const key of interpretationKeys) {
         const interpretation = interpretationsById[key];
-        if (interpretation?.isCurrentUser) {
+        if (interpretation?.isCurrentUser && 
+            interpretation?.caseId === currentCaseId &&
+            interpretation?.datasetId === currentDatasetId) {
           currentUserInterpretation = interpretation;
           break;
         }

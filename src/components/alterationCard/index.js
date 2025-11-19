@@ -36,7 +36,7 @@ class AlterationCard extends Component {
 
 
   updateFields = async (changes) => {
-    const { record, caseId } = this.props;
+    const { record, caseId, dataset } = this.props;
     const currentData = this.props.interpretation?.data || {};
     const data = { ...currentData, ...changes };
 
@@ -50,6 +50,7 @@ class AlterationCard extends Component {
     }
 
     const eventInterpretation = new EventInterpretation({
+      datasetId: dataset?.id,
       caseId: caseId || record?.id || "UNKNOWN",
       alterationId: record?.uid || "UNKNOWN",
       gene: record?.gene,
@@ -110,7 +111,7 @@ class AlterationCard extends Component {
     if (!confirmed) return;
 
     const { selectedInterpretation } = this.state;
-    const { caseId, record } = this.props;
+    const { caseId, record, dataset } = this.props;
     const data = selectedInterpretation?.data || {};
 
     // Ensure user exists before creating interpretation
@@ -123,6 +124,7 @@ class AlterationCard extends Component {
     }
 
     const eventInterpretation = new EventInterpretation({
+      datasetId: dataset?.id,
       caseId,
       alterationId: record?.uid,
       gene: record?.gene,

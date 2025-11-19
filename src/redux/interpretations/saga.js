@@ -25,16 +25,17 @@ function* fetchInterpretationsForCase(action) {
 
     const state = yield select();
     const dataset = state.Settings?.dataset;
+    const datasetId = dataset?.id;
     const repository = getActiveRepository({ dataset });
     const allInterpretations = yield call([repository, repository.getAll]);
-    const interpretations = allInterpretations.filter(i => i.caseId === caseId);
+    const interpretationsForCase = allInterpretations.filter(i => i.caseId === caseId && i.datasetId === datasetId);
     
     const byId = {};
     const selected = {};
     
     const currentUserId = getCurrentUserId();
     
-    for (const interp of interpretations || []) {
+    for (const interp of interpretationsForCase || []) {
       if (!interp.hasOverrides()) continue;
       
       const json = interp.toJSON ? interp.toJSON() : interp;
