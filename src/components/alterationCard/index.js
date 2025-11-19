@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { BsDashLg } from "react-icons/bs";
-import { Card, Tag, Typography, Descriptions, Avatar, Button } from "antd";
+import { Card, Tag, Typography, Descriptions, Avatar, Button, Tooltip } from "antd";
 import Wrapper from "./index.style";
 import { tierColor, getTimeAgo } from "../../helpers/utility";
 import interpretationsActions from "../../redux/interpretations/actions";
@@ -12,6 +12,8 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 
 import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
 import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getAllInterpretationsForGene, getBaseEvent } from "../../redux/interpretations/selectors";
+import TierDistributionBarChart from "../tierDistributionBarChart";
+import InterpretationsAvatar from "../InterpretationsAvatar";
 
 const { Title, Text } = Typography;
 
@@ -28,6 +30,7 @@ class AlterationCard extends Component {
   state = {
     showVersions: false,
     selectedInterpretation: null, // When set, overrides the current one
+    tierCounts: null,
   };
 
 
@@ -85,6 +88,23 @@ class AlterationCard extends Component {
     );
   };
 
+  fetchTierCounts = async () => {
+    const { dataset, record } = this.props;
+    if (!dataset || !record || !record.gene || !record.type) {
+      this.setState({ tierCounts: {1: 0, 2: 0, 3: 0} });
+      return;
+    }
+    try {
+      const { getActiveRepository } = await import('../../services/repositories');
+      const repository = getActiveRepository({ dataset });
+      const counts = await repository.getTierCountsByGeneVariantType(record.gene, record.type);
+      this.setState({ tierCounts: counts });
+    } catch (error) {
+      console.error('Failed to fetch tier counts:', error);
+      this.setState({ tierCounts: {1: 0, 2: 0, 3: 0} });
+    }
+  };
+
   handleCopyVersion = async () => {
     const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
     if (!confirmed) return;
@@ -115,11 +135,41 @@ class AlterationCard extends Component {
     this.setState({ selectedInterpretation: null });
   };
 
+  componentDidMount() {
+    this.fetchTierCounts();
+  }
+
   componentDidUpdate(prevProps, prevState) {
     // Reset editing state when switching interpretations
     if (prevState.selectedInterpretation !== this.state.selectedInterpretation) {
       // EditableTextBlock handles its own reset via props.value change
     }
+    // Refetch tier counts if record or dataset changes
+    if (prevProps.record !== this.props.record || prevProps.dataset !== this.props.dataset) {
+      this.fetchTierCounts();
+    }
+  }
+
+  getTierTooltipContent() {
+    const { tierCounts } = this.state;
+    const { record } = this.props;
+    if (!tierCounts) return 'Loading tier distribution...';
+    
+    const total = (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
+    if (total === 0) {
+      return 'No retiering found for this gene variant';
+    }
+    
+    const originalTier = record?.tier || 3;
+    
+    return (
+      <TierDistributionBarChart
+        width={200}
+        height={150}
+        tierCounts={tierCounts}
+        originalTier={originalTier}
+      />
+    );
   }
 
   render() {
@@ -226,31 +276,33 @@ class AlterationCard extends Component {
           <div className="variant-header">
             <div className="gene-left">
               {currentTierStr && (
-                <div className="tier-control" title={`${t("components.filtered-events-panel.tier")} ${currentTierStr}`}>
-                  <Avatar
-                    size={32}
-                    style={{
-                      backgroundColor: tierColor(+currentTierStr) || "#6c757d",
-                      color: "#fff",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {currentTierStr}
-                  </Avatar>
-                  <select
-                    className="tier-select"
-                    value={currentTierStr}
-                    onChange={(e) => {
-                      this.updateFields({ tier: e.target.value });
-                    }}
-                    disabled={!isCurrentUser}
-                    aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
-                  >
-                    <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
-                    <option value="2">{t("components.alteration-card.tier-select.options.2")}</option>
-                    <option value="3">{t("components.alteration-card.tier-select.options.3")}</option>
-                  </select>
-                </div>
+                <Tooltip title={this.getTierTooltipContent()}>
+                  <div className="tier-control">
+                    <Avatar
+                      size={32}
+                      style={{
+                        backgroundColor: tierColor(+currentTierStr) || "#6c757d",
+                        color: "#fff",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {currentTierStr}
+                    </Avatar>
+                    <select
+                      className="tier-select"
+                      value={currentTierStr}
+                      onChange={(e) => {
+                        this.updateFields({ tier: e.target.value });
+                      }}
+                      disabled={!isCurrentUser}
+                      aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
+                    >
+                      <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
+                      <option value="2">{t("components.alteration-card.tier-select.options.2")}</option>
+                      <option value="3">{t("components.alteration-card.tier-select.options.3")}</option>
+                    </select>
+                  </div>
+                </Tooltip>
               )}
               <div>
                 <Title level={4} className="gene-title" style={{ marginBottom: 0 }}>
@@ -381,6 +433,7 @@ const mapStateToProps = (state, ownProps) => ({
   interpretation: getInterpretationForAlteration(state, ownProps.record?.uid),
   allInterpretations: getAllInterpretationsForGene(state, ownProps.record?.gene),
   baseRecord: getBaseEvent(state, ownProps.record?.uid),
+  dataset: state?.Settings?.dataset,
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));

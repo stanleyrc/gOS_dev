@@ -27,7 +27,7 @@ function openDb() {
       store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
       store.createIndex(INDEX_BY_DATASET, "datasetId", { unique: false });  // NEW
       store.createIndex(INDEX_BY_DATASET_CASE, ["datasetId", "caseId"], { unique: false });  // NEW
-      store.createIndex(INDEX_BY_GENE_VARIANT, ["gene", "variantType"], { unique: false });  // NEW
+      store.createIndex(INDEX_BY_GENE_VARIANT, ["gene", "variant_type"], { unique: false });  // NEW
         }
       };
       
