@@ -40,46 +40,74 @@ class TierDistributionBarChart extends Component {
     const yScale = d3
       .scaleLinear()
       .domain([0, maxCount])
-      .range([innerHeight, 0])
-      .nice();
+      .range([innerHeight, 0]);
 
     const g = svg
       .append("g")
       .attr("transform", `translate(${margins.gapX}, ${margins.gapY})`);
 
+    // Title
+    g.append("text")
+      .attr("x", innerWidth / 2)
+      .attr("y", -margins.gapY / 2)
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .style("font-size", "16px")
+      .style("font-weight", "bold")
+      .text("Retier Distribution");
+
     // Y-axis
+    const numTicks = Math.min(6, maxCount + 1);
+    const step = maxCount > 0 ? Math.max(1, Math.floor(maxCount / (numTicks - 1))) : 1;
+    const tickValues = d3.range(0, maxCount + 1, step).filter(x => x <= maxCount);
     g.append("g")
-      .call(d3.axisLeft(yScale).ticks(5));
+      .call(d3.axisLeft(yScale).tickValues(tickValues).tickFormat(d3.format("d")));
 
     // X-axis
     g.append("g")
       .attr("transform", `translate(0, ${innerHeight})`)
       .call(d3.axisBottom(xScale));
 
+    // X-axis label
+    g.append("text")
+      .attr("x", innerWidth / 2)
+      .attr("y", innerHeight + margins.gapY / 2 + 20)
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .style("font-size", "14px")
+      .text("Tier");
+
+    // Y-axis label
+    g.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -innerHeight / 2)
+      .attr("y", -margins.gapX / 2 - 30)
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .style("font-size", "14px")
+      .text("Count");
+
     // Bars
     [1, 2, 3].forEach((tier) => {
-      const isOriginal = tier === originalTier;
       g.append("rect")
         .attr("x", xScale(tier))
         .attr("y", yScale(tierCounts[tier]))
         .attr("width", xScale.bandwidth())
         .attr("height", innerHeight - yScale(tierCounts[tier]))
-        .attr("fill", isOriginal ? "#ff7f0e" : "#69b3a2") // Different color for original
-        .attr("stroke", isOriginal ? "black" : "none")
-        .attr("stroke-width", isOriginal ? 2 : 0);
+        .attr("fill", "#69b3a2");
     });
 
     // Labels
     [1, 2, 3].forEach((tier) => {
-      const isOriginal = tier === originalTier;
       g.append("text")
         .attr("x", xScale(tier) + xScale.bandwidth() / 2)
         .attr("y", yScale(tierCounts[tier]) - 5)
         .attr("text-anchor", "middle")
-        .attr("fill", isOriginal ? "black" : "black")
-        .style("font-weight", isOriginal ? "bold" : "normal")
+        .attr("fill", "white")
         .text(tierCounts[tier]);
     });
+
+
   }
 
   render() {
