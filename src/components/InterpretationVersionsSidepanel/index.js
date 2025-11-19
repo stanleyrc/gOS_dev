@@ -34,24 +34,27 @@ class InterpretationVersionsSidepanel extends Component {
 
     const tableColumns = [
       {
-        title: this.props.t('components.interpretationVersionsSidepanel.authorColumn'),
+        title: () => <span style={{ whiteSpace: 'nowrap' }}>{this.props.t('components.interpretationVersionsSidepanel.authorColumn')}</span>,
         dataIndex: 'authorName',
         key: 'authorName',
         width: 120,
+        minWidth: 120,
         sorter: (a, b) => (a.authorName || '').localeCompare(b.authorName || ''),
       },
       {
-        title: this.props.t('components.interpretationVersionsSidepanel.dateColumn'),
+        title: () => <span style={{ whiteSpace: 'nowrap' }}>{this.props.t('components.interpretationVersionsSidepanel.dateColumn')}</span>,
         dataIndex: 'lastModified',
         key: 'lastModified',
         width: 120,
+        minWidth: 120,
         render: (date) => date ? new Date(date).toLocaleString() : '',
         sorter: (a, b) => new Date(a.lastModified || 0) - new Date(b.lastModified || 0),
       },
       {
-        title: 'Dataset',
+        title: () => <span style={{ whiteSpace: 'nowrap' }}>Dataset</span>,
         dataIndex: 'dataset',
         key: 'dataset',
+        minWidth: 100,
         render: (text, record) => {
           const dataset = datasets.find(d => String(d.id) === String(record.datasetId));
           return dataset ? dataset.title : (record.datasetId || '');
@@ -62,7 +65,10 @@ class InterpretationVersionsSidepanel extends Component {
           return datasetA.localeCompare(datasetB);
         },
       },
-      ...additionalColumns,
+      ...additionalColumns.map(col => ({
+        ...col,
+        title: typeof col.title === 'string' ? () => <span style={{ whiteSpace: 'nowrap' }}>{col.title}</span> : col.title,
+      })),
     ];
 
     return (

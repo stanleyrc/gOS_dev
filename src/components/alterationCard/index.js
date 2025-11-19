@@ -415,21 +415,25 @@ class AlterationCard extends Component {
               title: 'Case ID',
               dataIndex: 'caseId',
               key: 'caseId',
+              width: 100,
             },
             {
               title: 'Gene',
               dataIndex: 'gene',
               key: 'gene',
+              width: 100,
             },
             {
               title: 'Type',
               dataIndex: 'variant_type',
               key: 'variant_type',
+              width: 100,
             },
             {
               title: 'Variant',
               dataIndex: 'variant',
               key: 'variant',
+              width: 100,
             },
           ]}
         />
