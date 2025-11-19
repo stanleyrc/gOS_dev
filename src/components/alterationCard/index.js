@@ -430,6 +430,31 @@ class AlterationCard extends Component {
               width: 100,
             },
             {
+              title: 'Tier',
+              dataIndex: 'tier',
+              key: 'tier',
+              width: 80,
+              minWidth: 80,
+              render: (text, record) => {
+                const tier = record.data?.tier;
+                if (!tier) return '';
+                return (
+                  <Avatar
+                    size={20}
+                    style={{
+                      backgroundColor: tierColor(+tier) || "#6c757d",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {tier}
+                  </Avatar>
+                );
+              },
+              sorter: (a, b) => (a.data?.tier || 3) - (b.data?.tier || 3),
+            },
+            {
               title: 'Variant',
               dataIndex: 'variant',
               key: 'variant',
