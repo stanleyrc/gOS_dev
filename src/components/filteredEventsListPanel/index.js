@@ -34,6 +34,7 @@ import ReportPreviewModal from "../reportPreviewModal";
 import InterpretationsAvatar from "../InterpretationsAvatar";
 import { exportReport, previewReport } from "../../helpers/reportExporter";
 import EventInterpretation from "../../helpers/EventInterpretation";
+import TierDistributionBarChart from "../tierDistributionBarChart";
 
 const { Text } = Typography;
 
@@ -74,6 +75,7 @@ class FilteredEventsListPanel extends Component {
     previewVisible: false,
     previewHtml: null,
     previewLoading: false,
+    tierCountsMap: {},
   };
 
   // add as a class field
@@ -192,6 +194,16 @@ class FilteredEventsListPanel extends Component {
     this.setState({ eventType });
   };
 
+  componentDidMount() {
+    this.fetchTierCountsForRecords();
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.filteredEvents !== this.props.filteredEvents || prevState.eventType !== this.state.eventType) {
+      this.fetchTierCountsForRecords();
+    }
+  }
+
   handleTableChange = (pagination, filters, sorter) => {
     // When the user changes filters (e.g. checks tier 3),
     // update tierFilters in the state:
@@ -203,6 +215,53 @@ class FilteredEventsListPanel extends Component {
       effectFilters: filters.effect || [],
       variantFilters: filters.variant || [],
     });
+  };
+
+  fetchTierCountsForRecords = async () => {
+    const { filteredEvents } = this.props;
+    const { eventType } = this.state;
+    let recordsHash = d3.group(
+      filteredEvents.filter((d) => d.tier && +d.tier < 3),
+      (d) => d.eventType
+    );
+    let records = (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
+    const { dataset } = this.props;
+    const map = {};
+    const promises = records.map(async (record) => {
+      if (!record.gene || !record.type) return;
+      const key = `${record.gene}-${record.type}`;
+      if (map[key]) return; // already fetching
+      try {
+        const { getActiveRepository } = await import('../../services/repositories');
+        const repository = getActiveRepository({ dataset });
+        const counts = await repository.getTierCountsByGeneVariantType(record.gene, record.type);
+        map[key] = counts;
+      } catch (error) {
+        console.error('Failed to fetch tier counts:', error);
+        map[key] = {1: 0, 2: 0, 3: 0};
+      }
+    });
+    await Promise.all(promises);
+    this.setState({ tierCountsMap: map });
+  };
+
+  getTierTooltipContent = (record) => {
+    const key = `${record.gene}-${record.type}`;
+    const tierCounts = this.state.tierCountsMap[key];
+    if (!tierCounts) return 'Loading tier distribution...';
+    const total = (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
+    if (total === 0) {
+      return 'No retiering found for this gene variant';
+    }
+    const originalTier = record.tier || 3;
+    return (
+      <TierDistributionBarChart
+        width={200}
+        height={150}
+        tierCounts={tierCounts}
+        originalTier={originalTier}
+      />
+    );
   };
 
   render() {
@@ -504,9 +563,7 @@ class FilteredEventsListPanel extends Component {
         render: (_, record) =>
           record.tier != null ? (
             <Tooltip
-              title={t(
-                `components.filtered-events-panel.tier-info.${record.tier}`
-              )}
+              title={this.getTierTooltipContent(record)}
             >
               <Button
                 type="link"
@@ -980,7 +1037,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
-  
+
   return {
     loading: state.FilteredEvents.loading,
     filteredEvents: mergedEvents.filteredEvents,
@@ -1003,6 +1060,7 @@ const mapStateToProps = (state) => {
     mergedEvents,
     CaseReport: state.CaseReport,
     Interpretations: state.Interpretations,
+    dataset: state?.Settings?.dataset,
   };
 };
 export default connect(
