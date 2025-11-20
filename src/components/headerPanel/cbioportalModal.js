@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete } from "antd";
+import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete, Select } from "antd";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
@@ -9,16 +9,26 @@ import { useCbioPortal } from "../../hooks/useCbioPortal";
 const CbioportalModal = ({ visible, onCancel, loading }) => {
   const { t } = useTranslation("common");
   const report = useSelector((state) => state.CaseReport.metadata);
-  const { cancerTypes, fetchCancerTypes, isLoading: hookLoading } = useCbioPortal();
+  const { 
+    cancerTypes, 
+    fetchCancerTypes, 
+    fetchStudies, 
+    fetchStudiesByCancerType,
+    isLoading: hookLoading 
+  } = useCbioPortal();
   
   const [tumorDetails, setTumorDetails] = useState("");
   const [disease, setDisease] = useState("");
   const [genes, setGenes] = useState("");
+  const [selectedStudies, setSelectedStudies] = useState([]);
+  const [allStudies, setAllStudies] = useState([]);
+  const [recommendedStudies, setRecommendedStudies] = useState([]);
 
-  // Fetch cancer types on component mount
+  // Fetch cancer types and all studies on component mount
   useEffect(() => {
     fetchCancerTypes();
-  }, [fetchCancerTypes]);
+    fetchStudies().then(data => setAllStudies(data || []));
+  }, [fetchCancerTypes, fetchStudies]);
 
   // Update state when report changes
   useEffect(() => {
@@ -27,6 +37,21 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
       setDisease(report.disease || "");
     }
   }, [report]);
+
+  // Fetch recommended studies when tumor details changes
+  useEffect(() => {
+    if (tumorDetails) {
+      const cancerTypeId = cancerTypeMap[tumorDetails];
+      if (cancerTypeId) {
+        fetchStudiesByCancerType(cancerTypeId).then(data => 
+          setRecommendedStudies(data || [])
+        );
+      }
+    } else {
+      setRecommendedStudies([]);
+      setSelectedStudies([]);
+    }
+  }, [tumorDetails]);
 
   // Convert cancer types to AutoComplete options
   const cancerTypeOptions = cancerTypes.map((ct) => ({
@@ -40,6 +65,37 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
     return acc;
   }, {});
 
+  // Create studies options grouped by recommended and other
+  const getStudiesOptions = () => {
+    const recommendedIds = new Set(recommendedStudies.map(s => s.studyId));
+    const recommended = allStudies.filter(s => recommendedIds.has(s.studyId));
+    const other = allStudies.filter(s => !recommendedIds.has(s.studyId));
+
+    const options = [];
+    
+    if (recommended.length > 0) {
+      options.push({
+        label: 'Recommended',
+        options: recommended.map(study => ({
+          label: study.name || study.studyId,
+          value: study.studyId,
+        })),
+      });
+    }
+
+    if (other.length > 0) {
+      options.push({
+        label: 'Other',
+        options: other.map(study => ({
+          label: study.name || study.studyId,
+          value: study.studyId,
+        })),
+      });
+    }
+
+    return options;
+  };
+
   const handleTumorDetailsChange = (value) => {
     setTumorDetails(value);
   };
@@ -52,10 +108,15 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
     setGenes(e.target.value);
   };
 
+  const handleStudiesChange = (values) => {
+    setSelectedStudies(values);
+  };
+
   const handleClear = () => {
     setTumorDetails(report?.tumor_details || "");
     setDisease(report?.disease || "");
     setGenes("");
+    setSelectedStudies([]);
   };
 
   const handleSubmit = () => {
@@ -63,6 +124,7 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
       tumorDetails,
       disease,
       genes,
+      selectedStudies,
     });
   };
 
@@ -116,6 +178,25 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
             </Col>
           </Row>
           <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Studies">
+                <Select
+                  mode="multiple"
+                  placeholder="Select studies"
+                  options={getStudiesOptions()}
+                  value={selectedStudies}
+                  onChange={handleStudiesChange}
+                  filterOption={(inputValue, option) => {
+                    if (option.options) {
+                      return option.options.some(opt =>
+                        opt.label.toLowerCase().includes(inputValue.toLowerCase())
+                      );
+                    }
+                    return option.label.toLowerCase().includes(inputValue.toLowerCase());
+                  }}
+                />
+              </Form.Item>
+            </Col>
             <Col span={12}>
               <Form.Item label="Genes">
                 <Input
