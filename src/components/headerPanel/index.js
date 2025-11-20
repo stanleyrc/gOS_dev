@@ -443,6 +443,7 @@ class HeaderPanel extends Component {
         <CbioportalModal
           visible={this.state.cbioportalModalVisible}
           onCancel={this.handleCbioportalModalClose}
+          loading={this.props.loading}
         />
       </Wrapper>
     );
@@ -458,6 +459,7 @@ const mapStateToProps = (state) => ({
   dataset: state.Settings.dataset,
   metadata: state.CaseReport.metadata,
   plots: state.PopulationStatistics.general,
+  loading: state.FilteredEvents?.loading || false,
 });
 export default connect(
   mapStateToProps,
