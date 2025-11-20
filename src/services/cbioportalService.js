@@ -77,23 +77,16 @@ class CbioPortalService {
   }
 
   /**
-   * Get studies filtered by cancer type
+   * Get studies filtered by cancer type (client-side filtering)
    * @param {string} cancerTypeId - The cancer type ID to filter by
-   * @returns {Promise<Array>} Array of study objects for the specified cancer type
+   * @param {Array} allStudies - Array of all studies to filter from
+   * @returns {Array} Array of study objects for the specified cancer type
    */
-  async getStudiesByCancerType(cancerTypeId) {
-    try {
-      const response = await this.client.get('/column-store/studies', {
-        params: {
-          projection: 'DETAILED',
-          cancerTypeId,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching studies for cancer type ${cancerTypeId}:`, error);
-      throw new Error(`Failed to fetch studies: ${error.message}`);
+  getStudiesByCancerType(cancerTypeId, allStudies = []) {
+    if (!cancerTypeId || !allStudies.length) {
+      return [];
     }
+    return allStudies.filter(study => study.cancerTypeId === cancerTypeId);
   }
 
   /**

@@ -30,28 +30,58 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
     fetchStudies().then(data => setAllStudies(data || []));
   }, [fetchCancerTypes, fetchStudies]);
 
-  // Update state when report changes
+  // Find closest matching cancer type
+  const findClosestMatch = (value, cancerTypesList) => {
+    if (!value || cancerTypesList.length === 0) return "";
+    
+    const searchValue = value.toLowerCase();
+    
+    // Try exact match first
+    const exactMatch = cancerTypesList.find(ct => 
+      (ct.name || ct.id).toLowerCase() === searchValue
+    );
+    if (exactMatch) return exactMatch.name || exactMatch.id;
+    
+    // Try partial match (cancer type name contains the search value)
+    const partialMatch = cancerTypesList.find(ct => 
+      (ct.name || ct.id).toLowerCase().includes(searchValue)
+    );
+    if (partialMatch) return partialMatch.name || partialMatch.id;
+    
+    // Try reverse partial match (search value contains cancer type name)
+    const reverseMatch = cancerTypesList.find(ct => 
+      searchValue.includes((ct.name || ct.id).toLowerCase())
+    );
+    if (reverseMatch) return reverseMatch.name || reverseMatch.id;
+    
+    return "";
+  };
+
+  // Update state when report or cancer types change
   useEffect(() => {
-    if (report) {
+    if (report && cancerTypes.length > 0) {
+      const matchedTumorDetails = findClosestMatch(report.tumor_details, cancerTypes);
+      setTumorDetails(matchedTumorDetails || report.tumor_details || "");
+      setDisease(report.disease || "");
+    } else if (report) {
       setTumorDetails(report.tumor_details || "");
       setDisease(report.disease || "");
     }
-  }, [report]);
+  }, [report, cancerTypes]);
 
   // Fetch recommended studies when tumor details changes
   useEffect(() => {
-    if (tumorDetails) {
+    if (tumorDetails && allStudies.length > 0) {
       const cancerTypeId = cancerTypeMap[tumorDetails];
       if (cancerTypeId) {
-        fetchStudiesByCancerType(cancerTypeId).then(data => 
-          setRecommendedStudies(data || [])
-        );
+        const filtered = fetchStudiesByCancerType(cancerTypeId, allStudies);
+        setRecommendedStudies(filtered);
       }
     } else {
       setRecommendedStudies([]);
       setSelectedStudies([]);
     }
-  }, [tumorDetails]);
+  }, [tumorDetails, allStudies, fetchStudiesByCancerType]);
 
   // Convert cancer types to AutoComplete options
   const cancerTypeOptions = cancerTypes.map((ct) => ({
@@ -61,7 +91,7 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
 
   // Create a map for looking up cancer type ID by name
   const cancerTypeMap = cancerTypes.reduce((acc, ct) => {
-    acc[ct.name || ct.id] = ct.id;
+    acc[ct.name || ct.cancerTypeId] = ct.cancerTypeId;
     return acc;
   }, {});
 

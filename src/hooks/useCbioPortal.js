@@ -56,29 +56,25 @@ export const useCbioPortal = () => {
   }, []);
 
   /**
-   * Fetch studies filtered by cancer type
+   * Fetch studies filtered by cancer type (client-side filtering)
    * @param {string} cancerTypeId - Cancer type ID
-   * @returns {Promise<Array>} Array of filtered study objects
+   * @param {Array} allStudies - Array of all studies to filter from
+   * @returns {Array} Array of filtered study objects
    */
-  const fetchStudiesByCancerType = useCallback(async (cancerTypeId) => {
+  const fetchStudiesByCancerType = useCallback((cancerTypeId, allStudies = []) => {
     if (!cancerTypeId) {
       setError('Cancer type ID is required');
       return [];
     }
 
-    setIsLoading(true);
-    setError(null);
-
     try {
-      const data = await cbioportalService.getStudiesByCancerType(cancerTypeId);
+      const data = cbioportalService.getStudiesByCancerType(cancerTypeId, allStudies);
       return data;
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch studies for cancer type';
       setError(errorMessage);
       console.error(`Error in fetchStudiesByCancerType(${cancerTypeId}):`, err);
       return [];
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
