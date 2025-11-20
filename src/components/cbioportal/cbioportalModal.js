@@ -131,7 +131,12 @@ class CbioportalModal extends Component {
     const { allStudies, recommendedStudies } = this.state;
     const recommendedIds = new Set(recommendedStudies.map(s => s.studyId));
     const recommended = allStudies.filter(s => recommendedIds.has(s.studyId));
-    const other = allStudies.filter(s => !recommendedIds.has(s.studyId));
+    const panCancer = allStudies.filter(s => 
+      !recommendedIds.has(s.studyId) && s.cancerTypeId === 'mixed'
+    );
+    const other = allStudies.filter(s => 
+      !recommendedIds.has(s.studyId) && s.cancerTypeId !== 'mixed'
+    );
 
     const options = [];
     
@@ -139,6 +144,16 @@ class CbioportalModal extends Component {
       options.push({
         label: 'Recommended',
         options: recommended.map(study => ({
+          label: `${study.name || study.studyId} (${study.allSampleCount || 0} samples)`,
+          value: study.studyId,
+        })),
+      });
+    }
+
+    if (panCancer.length > 0) {
+      options.push({
+        label: 'Pan-Cancer',
+        options: panCancer.map(study => ({
           label: `${study.name || study.studyId} (${study.allSampleCount || 0} samples)`,
           value: study.studyId,
         })),
