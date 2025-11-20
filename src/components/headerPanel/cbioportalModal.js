@@ -166,6 +166,25 @@ class CbioportalModal extends Component {
     this.setState({ selectedStudies: values });
   };
 
+  handleSelectAllRecommended = () => {
+    const { recommendedStudies } = this.state;
+    const recommendedIds = recommendedStudies.map(s => s.studyId);
+    this.setState({ selectedStudies: recommendedIds });
+  };
+
+  handleSelectAll = () => {
+    const { allStudies } = this.state;
+    const allIds = allStudies.map(s => s.studyId);
+    this.setState({ selectedStudies: allIds });
+  };
+
+  handleSelectOther = () => {
+    const { allStudies, recommendedStudies } = this.state;
+    const recommendedIds = new Set(recommendedStudies.map(s => s.studyId));
+    const otherIds = allStudies.filter(s => !recommendedIds.has(s.studyId)).map(s => s.studyId);
+    this.setState({ selectedStudies: otherIds });
+  };
+
   handleClear = () => {
     const { report } = this.props;
     const { initialTumorDetails } = this.state;
@@ -243,21 +262,59 @@ class CbioportalModal extends Component {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="Studies">
-                <Select
-                  mode="multiple"
-                  placeholder="Select studies"
-                  options={this.getStudiesOptions()}
-                  value={selectedStudies}
-                  onChange={this.handleStudiesChange}
-                  filterOption={(inputValue, option) => {
-                    if (option.options) {
-                      return option.options.some(opt =>
-                        opt.label.toLowerCase().includes(inputValue.toLowerCase())
-                      );
-                    }
-                    return option.label.toLowerCase().includes(inputValue.toLowerCase());
-                  }}
-                />
+                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                  <Select
+                    mode="multiple"
+                    placeholder="Select studies"
+                    options={this.getStudiesOptions()}
+                    value={selectedStudies}
+                    onChange={this.handleStudiesChange}
+                    filterOption={(inputValue, option) => {
+                      if (option.options) {
+                        return option.options.some(opt =>
+                          opt.label.toLowerCase().includes(inputValue.toLowerCase())
+                        );
+                      }
+                      return option.label.toLowerCase().includes(inputValue.toLowerCase());
+                    }}
+                  />
+                  <Space size="small">
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      onClick={this.handleSelectAll}
+                      style={{ padding: 0, height: 'auto' }}
+                    >
+                      Select All
+                    </Button>
+                    {this.state.recommendedStudies.length > 0 && (
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        onClick={this.handleSelectAllRecommended}
+                        style={{ padding: 0, height: 'auto' }}
+                      >
+                        Select Recommended
+                      </Button>
+                    )}
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      onClick={this.handleSelectOther}
+                      style={{ padding: 0, height: 'auto' }}
+                    >
+                      Select Other
+                    </Button>
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      onClick={() => this.setState({ selectedStudies: [] })}
+                      style={{ padding: 0, height: 'auto' }}
+                    >
+                      Clear
+                    </Button>
+                  </Space>
+                </Space>
               </Form.Item>
             </Col>
             <Col span={12}>
