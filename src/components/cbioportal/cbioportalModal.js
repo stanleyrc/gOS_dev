@@ -191,7 +191,12 @@ class CbioportalModal extends Component {
   getGeneEntry = (record) => {
     if (!record.gene) return null;
     
-    if (record.type?.toLowerCase() === 'missense' && record.variant) {
+    if (record.type?.toUpperCase() === 'SCNA' && record.variant) {
+      return `${record.gene}:${record.variant}`;
+    } else if (record.type?.toUpperCase() === 'FUSION') {
+      const geneName = record.gene.split('::')[0];
+      return `${geneName}:FUSION`;
+    } else if (record.type?.toLowerCase() === 'missense' && record.variant) {
       const convertedVariant = convertVariantToSingleLetterCode(record.variant);
       return `${record.gene}:MUT=${convertedVariant}`;
     } else if (record.type) {
