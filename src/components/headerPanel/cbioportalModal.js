@@ -62,16 +62,8 @@ class CbioportalModal extends Component {
     }
 
     if (tumorDetails !== prevState.tumorDetails || allStudies !== prevState.allStudies) {
-      if (tumorDetails && allStudies.length > 0) {
-        const cancerTypeMap = this.getCancerTypeMap();
-        const cancerTypeId = cancerTypeMap[tumorDetails];
-        if (cancerTypeId) {
-          const filtered = cbioportalService.getStudiesByCancerType(cancerTypeId, allStudies);
-          this.setState({ recommendedStudies: filtered });
-        }
-      } else {
-        this.setState({ recommendedStudies: [], selectedStudies: [] });
-      }
+      const { selectedStudies, recommendedStudies } = this.getDefaults(tumorDetails);
+      this.setState({ recommendedStudies, selectedStudies });
     }
   }
 
@@ -115,6 +107,23 @@ class CbioportalModal extends Component {
       acc[ct.name || ct.cancerTypeId] = ct.cancerTypeId;
       return acc;
     }, {});
+  };
+
+  getDefaults = (tumorType) => {
+    const { allStudies } = this.state;
+    if (!tumorType || allStudies.length === 0) {
+      return { selectedStudies: [], recommendedStudies: [] };
+    }
+    
+    const cancerTypeMap = this.getCancerTypeMap();
+    const cancerTypeId = cancerTypeMap[tumorType];
+    if (!cancerTypeId) {
+      return { selectedStudies: [], recommendedStudies: [] };
+    }
+    
+    const recommendedStudies = cbioportalService.getStudiesByCancerType(cancerTypeId, allStudies);
+    const selectedStudies = recommendedStudies.map(s => s.studyId);
+    return { selectedStudies, recommendedStudies };
   };
 
   getStudiesOptions = () => {
@@ -213,10 +222,20 @@ class CbioportalModal extends Component {
     this.setState({ selectedStudies: otherIds });
   };
 
-  handleClear = () => {
+  handleReset = () => {
     const { initialTumorDetails } = this.state;
+    const { selectedStudies } = this.getDefaults(initialTumorDetails);
+    
     this.setState({
       tumorDetails: initialTumorDetails,
+      genes: [],
+      selectedStudies,
+    });
+  };
+
+  handleClear = () => {
+    this.setState({
+      tumorDetails: '',
       genes: [],
       selectedStudies: [],
     });
@@ -378,7 +397,10 @@ class CbioportalModal extends Component {
             <Col span={24} style={{ textAlign: "right" }}>
               <Space>
                 <Button onClick={this.handleClear}>
-                  Clear
+                  Clear All
+                </Button>
+                <Button onClick={this.handleReset}>
+                  Reset to Defaults
                 </Button>
                 <Button type="primary" onClick={this.handleSubmit}>
                   Submit
