@@ -1005,6 +1005,37 @@ export function getTimeAgo(date) {
   return 'just now';
 }
 
+export function convertAminoAcidToSingleLetter(aminoAcid) {
+  const aminoAcidMap = {
+    'GLY': 'G', 'ALA': 'A', 'VAL': 'V', 'LEU': 'L', 'ILE': 'I',
+    'THR': 'T', 'SER': 'S', 'MET': 'M', 'CYS': 'C', 'PRO': 'P',
+    'PHE': 'F', 'TYR': 'Y', 'TRP': 'W', 'HIS': 'H', 'LYS': 'K',
+    'ARG': 'R', 'ASP': 'D', 'GLU': 'E', 'ASN': 'N', 'GLN': 'Q'
+  };
+  
+  if (!aminoAcid) return aminoAcid;
+  
+  const upper = aminoAcid.toUpperCase();
+  return aminoAcidMap[upper] || aminoAcid;
+}
+
+export function convertVariantToSingleLetterCode(variant) {
+  if (!variant) return variant;
+  
+  const variantStr = String(variant);
+  const regex = /([A-Za-z]{3})(\d+)([A-Za-z]{3})/;
+  const match = variantStr.match(regex);
+  
+  if (match) {
+    const [, fromAA, position, toAA] = match;
+    const fromSingle = convertAminoAcidToSingleLetter(fromAA);
+    const toSingle = convertAminoAcidToSingleLetter(toAA);
+    return `${fromSingle}${position}${toSingle}`;
+  }
+  
+  return variant;
+}
+
 export function mutationCatalogMetadata() {
   return ["id", "type", "mutations", "mutationType", "label", "probability"];
 }

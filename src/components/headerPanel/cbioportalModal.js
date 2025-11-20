@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
 import { cbioportalService } from "../../services/cbioportalService";
+import { convertVariantToSingleLetterCode } from "../../helpers/utility";
 
 class CbioportalModal extends Component {
   constructor(props) {
@@ -12,7 +13,7 @@ class CbioportalModal extends Component {
     this.state = {
       tumorDetails: "",
       initialTumorDetails: "",
-      genes: "",
+      genes: [],
       selectedStudies: [],
       allStudies: [],
       recommendedStudies: [],
@@ -151,8 +152,28 @@ class CbioportalModal extends Component {
     this.setState({ tumorDetails: value });
   };
 
-  handleGenesChange = (e) => {
-    this.setState({ genes: e.target.value });
+  handleGenesChange = (values) => {
+    this.setState({ genes: values });
+  };
+
+  handleSelectGene = (record) => {
+    const { genes } = this.state;
+    
+    if (!record.gene) return;
+    
+    let geneEntry;
+    if (record.type?.toLowerCase() === 'missense' && record.variant) {
+      const convertedVariant = convertVariantToSingleLetterCode(record.variant);
+      geneEntry = `${record.gene}:MUT=${convertedVariant}`;
+    } else if (record.type) {
+      geneEntry = `${record.gene}:MUT=${record.type.toUpperCase()}`;
+    } else {
+      geneEntry = record.gene;
+    }
+    
+    if (!genes.includes(geneEntry)) {
+      this.setState({ genes: [...genes, geneEntry] });
+    }
   };
 
   handleStudiesChange = (values) => {
@@ -182,7 +203,7 @@ class CbioportalModal extends Component {
     const { initialTumorDetails } = this.state;
     this.setState({
       tumorDetails: initialTumorDetails,
-      genes: "",
+      genes: [],
       selectedStudies: [],
     });
   };
@@ -190,16 +211,14 @@ class CbioportalModal extends Component {
   handleSubmit = () => {
     const { genes, selectedStudies } = this.state;
     
-    if (!genes || selectedStudies.length === 0) {
+    if (!genes || genes.length === 0 || selectedStudies.length === 0) {
       console.warn("Please enter genes and select at least one study");
       return;
     }
-
-    const geneList = genes.split(';').map(g => g.trim()).filter(g => g);
     
     const params = new URLSearchParams({
       cancer_study_list: selectedStudies.join(','),
-      gene_list: geneList.join('\n'),
+      gene_list: genes.join('\n'),
       Z_SCORE_THRESHOLD: '2.0',
       RPPA_SCORE_THRESHOLD: '2.0',
       profileFilter: 'mutations,structural_variants,cna',
@@ -214,6 +233,24 @@ class CbioportalModal extends Component {
   render() {
     const { visible, onCancel, loading, t } = this.props;
     const { tumorDetails, genes, selectedStudies, isLoading } = this.state;
+
+    const selectColumn = [
+      {
+        title: 'Select',
+        key: 'select',
+        width: 80,
+        fixed: 'left',
+        render: (_, record) => (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => this.handleSelectGene(record)}
+          >
+            Select
+          </Button>
+        ),
+      },
+    ];
 
     return (
     <Modal
@@ -256,10 +293,12 @@ class CbioportalModal extends Component {
             </Col>
             <Col span={12}>
               <Form.Item label="Genes">
-                <Input
+                <Select
+                  mode="tags"
                   value={genes}
                   onChange={this.handleGenesChange}
-                  placeholder="Enter genes (semicolon separated, e.g., NF1:MUT=MISSENSE; CDKN2A:MUT)"
+                  placeholder="Select genes from table or enter manually (e.g., NF1:MUT=MISSENSE)"
+                  style={{ width: '100%' }}
                 />
               </Form.Item>
             </Col>
@@ -337,7 +376,7 @@ class CbioportalModal extends Component {
           </Row>
         </Form>
 
-        <FilteredEventsListPanel />
+        <FilteredEventsListPanel additionalColumns={selectColumn} />
       </Skeleton>
     </Modal>
     );

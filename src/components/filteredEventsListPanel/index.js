@@ -171,6 +171,8 @@ class FilteredEventsListPanel extends Component {
       allelic,
       igv,
       selectFilteredEvent,
+      additionalColumns,
+      additionalColumnIndices,
     } = this.props;
 
     let open = selectedFilteredEvent?.id;
@@ -716,9 +718,12 @@ class FilteredEventsListPanel extends Component {
                 {
                   <Skeleton active loading={loading}>
                     <Table
-                      columns={columns.filter((d, i) =>
-                        eventColumns[eventType].includes(i)
-                      )}
+                      columns={[
+                        ...(additionalColumns || []),
+                        ...columns.filter((d, i) =>
+                          eventColumns[eventType].includes(i)
+                        )
+                      ]}
                       dataSource={records}
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
