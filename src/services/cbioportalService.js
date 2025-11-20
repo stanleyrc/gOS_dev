@@ -178,6 +178,107 @@ class CbioPortalService {
       throw new Error(`Failed to fetch mutations: ${error.message}`);
     }
   }
+
+  /**
+   * Get sample lists for a specific study
+   * @param {string} studyId - Study ID
+   * @returns {Promise<Array>} Array of sample list objects with sample IDs
+   * @example
+   * const sampleLists = await cbioportalService.getSampleListsByStudy('chol_jhu_2013');
+   * // Returns:
+   * // [
+   * //   {
+   * //     "sampleListId": "chol_jhu_2013_all",
+   * //     "studyId": "chol_jhu_2013",
+   * //     "category": "all_cases_in_study",
+   * //     "name": "All samples",
+   * //     "description": "All samples (40 samples)",
+   * //     "sampleCount": 40,
+   * //     "sampleIds": ["CHOL12", "GB07", ...]
+   * //   },
+   * //   ...
+   * // ]
+   */
+  async getSampleListsByStudy(studyId) {
+    try {
+      const response = await this.client.get(`/studies/${studyId}/sample-lists`, {
+        params: {
+          projection: 'DETAILED',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching sample lists for study ${studyId}:`, error);
+      throw new Error(`Failed to fetch sample lists: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get unique sample IDs across multiple studies
+   * @param {Array<string>} studyIds - List of study IDs
+   * @returns {Promise<Array<string>>} Array of unique sample IDs across all studies
+   * @example
+   * const sampleIds = await cbioportalService.getUniqueSampleIdsByStudies([
+   *   'chol_jhu_2013',
+   *   'ihch_mskcc_2020'
+   * ]);
+   * // Returns: ["CHOL12", "GB07", "ICC10", ...]
+   */
+  async getUniqueSampleIdsByStudies(studyIds = []) {
+    try {
+      if (!studyIds.length) {
+        return [];
+      }
+
+      const allSampleIds = new Set();
+
+      // Fetch sample lists for each study
+      for (const studyId of studyIds) {
+        const sampleLists = await this.getSampleListsByStudy(studyId);
+        
+        // Extract sample IDs from each sample list
+        sampleLists.forEach(sampleList => {
+          if (sampleList.sampleIds && Array.isArray(sampleList.sampleIds)) {
+            sampleList.sampleIds.forEach(sampleId => {
+              allSampleIds.add(sampleId);
+            });
+          }
+        });
+      }
+
+      return Array.from(allSampleIds);
+    } catch (error) {
+      console.error('Error fetching unique sample IDs:', error);
+      throw new Error(`Failed to fetch unique sample IDs: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get clinical attribute counts for a list of samples
+   * @param {Array<Object>} sampleIdentifiers - List of sample identifiers
+   * @param {string} sampleIdentifiers[].sampleId - Sample ID
+   * @param {string} sampleIdentifiers[].studyId - Study ID
+   * @returns {Promise<Object>} Counts object with clinical attribute statistics
+   * @example
+   * const counts = await cbioportalService.getClinicalAttributeCounts([
+   *   { sampleId: 'ICC10', studyId: 'ihch_ismms_2015' },
+   *   { sampleId: 'ICC12', studyId: 'ihch_ismms_2015' }
+   * ]);
+   */
+  async getClinicalAttributeCounts(sampleIdentifiers = []) {
+    try {
+      const response = await this.client.post(
+        '/clinical-attributes/counts/fetch',
+        {
+          sampleIdentifiers,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching clinical attribute counts:', error);
+      throw new Error(`Failed to fetch clinical attribute counts: ${error.message}`);
+    }
+  }
 }
 
 // Export singleton instance
