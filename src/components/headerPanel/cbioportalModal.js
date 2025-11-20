@@ -197,13 +197,27 @@ class CbioportalModal extends Component {
   };
 
   handleSubmit = () => {
-    const { tumorDetails, disease, genes, selectedStudies } = this.state;
-    console.log("cBioPortal form submitted:", {
-      tumorDetails,
-      disease,
-      genes,
-      selectedStudies,
+    const { genes, selectedStudies } = this.state;
+    
+    if (!genes || selectedStudies.length === 0) {
+      console.warn("Please enter genes and select at least one study");
+      return;
+    }
+
+    const geneList = genes.split(';').map(g => g.trim()).filter(g => g);
+    
+    const params = new URLSearchParams({
+      cancer_study_list: selectedStudies.join(','),
+      gene_list: geneList.join('\n'),
+      Z_SCORE_THRESHOLD: '2.0',
+      RPPA_SCORE_THRESHOLD: '2.0',
+      profileFilter: 'mutations,structural_variants,cna',
+      case_set_id: 'all',
+      Action: 'Submit',
     });
+
+    const url = `https://www.cbioportal.org/results?${params.toString()}`;
+    window.open(url, '_blank');
   };
 
   render() {
@@ -231,7 +245,7 @@ class CbioportalModal extends Component {
       footer={null}
       width={1200}
       style={{ maxHeight: "90vh" }}
-      bodyStyle={{ maxHeight: "calc(90vh - 150px)", overflowY: "auto" }}
+      styles={{ body: { maxHeight: "calc(90vh - 150px)", overflowY: "auto" } }}
     >
       <Skeleton active loading={loading || isLoading}>
         <Form layout="vertical" style={{ marginBottom: 24 }}>
@@ -322,7 +336,7 @@ class CbioportalModal extends Component {
                 <Input
                   value={genes}
                   onChange={this.handleGenesChange}
-                  placeholder="Enter genes (comma separated)"
+                  placeholder="Enter genes (semicolon separated, e.g., NF1:MUT=MISSENSE; CDKN2A:MUT)"
                 />
               </Form.Item>
             </Col>
