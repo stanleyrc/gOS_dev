@@ -8,6 +8,8 @@ const initState = {
   populations: {},
   reportsFilters: [],
   reportsFiltersExtents: {},
+  casesWithInterpretations: new Set(),
+  interpretationsCounts: new Map(),
   searchFilters: {
     page: 1,
     per_page: 10,
@@ -29,6 +31,8 @@ export default function appReducer(state = initState, action) {
         error: null,
         datafiles: [],
         populations: {},
+        casesWithInterpretations: new Set(),
+        interpretationsCounts: new Map(),
         searchFilters: {
           page: 1,
           per_page: 10,
@@ -55,6 +59,8 @@ export default function appReducer(state = initState, action) {
         datafiles: action.datafiles,
         populations: action.populations,
         reportsFilters: action.reportsFilters,
+        casesWithInterpretations: action.casesWithInterpretations || new Set(),
+        interpretationsCounts: action.interpretationsCounts || new Map(),
         reports: action.reports,
         totalReports: action.totalReports,
         reportsFiltersExtents: action.reportsFiltersExtents,
@@ -84,7 +90,6 @@ export default function appReducer(state = initState, action) {
           orderId: 1,
           operator: cascaderOperators[0],
         },
-        loading: true,
       };
     case actions.CASE_REPORTS_MATCHED:
       return {
@@ -92,6 +97,8 @@ export default function appReducer(state = initState, action) {
         reports: action.reports,
         totalReports: action.totalReports,
         reportsFilters: action.reportsFilters,
+        casesWithInterpretations: action.casesWithInterpretations || state.casesWithInterpretations,
+        interpretationsCounts: action.interpretationsCounts || state.interpretationsCounts,
         loading: false,
       };
     default:

@@ -18,6 +18,8 @@ import Wrapper from "./index.style";
 import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
 import HighlightsPanel from "../../components/highlightsPanel";
+import GlobalNotesPanel from "../../components/globalNotesPanel";
+import ReportButtonsPanel from "../../components/reportButtonsPanel";
 
 class SummaryTab extends Component {
   render() {
@@ -110,6 +112,8 @@ class SummaryTab extends Component {
             ]}
           />
         </Skeleton>
+        <ReportButtonsPanel />
+        <GlobalNotesPanel />
         <FilteredEventsListPanel />
       </Wrapper>
     );

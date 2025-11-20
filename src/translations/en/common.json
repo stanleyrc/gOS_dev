@@ -332,7 +332,8 @@
           "treatment-metrics": "Treatment Metrics",
           "quality-metrics": "Quality Metrics",
           "event-metrics": "Event Metrics",
-          "biomarker-metrics": "Biomarker Metrics"
+          "biomarker-metrics": "Biomarker Metrics",
+          "interpretations": "Interpretations"
         },
         "case": "{{count}} case",
         "case_plural": "{{count}} cases",
@@ -364,6 +365,19 @@
         },
         "purity": "Purity",
         "ploidy": "Ploidy",
+        "has_interpretations": "Criteria",
+        "has_interpretations-operator": "Matches",
+        "has_interpretations_labels": {
+          "with": "Yes",
+          "without": "No"
+        },
+        "interpretations_cascader_labels": {
+          "tier_change": "Tier Change",
+          "other_changes": "No Tier Changes",
+          "author": "Author",
+          "gene": "Gene",
+          "without": "No Interpretations"
+        },
         "submit": "Submit",
         "reset": "Reset",
         "operators": {
@@ -541,10 +555,10 @@
           "title": "The request has failed with the following error:"
         }
       },
-      "load-report": "Load Report",
-      "reset-state": "Reset",
+      "load-report": "Import Report",
+      "reset-state": "Clear Report Cache",
       "import": {
-        "mismatch-case": "Uploaded report does not match the current case. Import aborted.",
+        "mismatch-case": "Uploaded report does not match the current case ID. Import aborted.",
         "missing-state": "Could not find embedded report state in the uploaded file.",
         "loaded": "Report loaded.",
         "failed": "Failed to load report."
@@ -829,6 +843,14 @@
           "title": "The request has failed with the following error:"
         }
       }
+    },
+    "interpretationVersionsSidepanel": {
+      "searchPlaceholder": "Search interpretations...",
+      "authorColumn": "Author",
+      "dateColumn": "Date"
+    },
+    "signInButton": {
+      "usernamePlaceholder": "Enter username to create new user..."
     }
   }
 }
