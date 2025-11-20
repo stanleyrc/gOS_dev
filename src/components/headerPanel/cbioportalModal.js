@@ -9,7 +9,6 @@ class CbioportalModal extends Component {
   state = {
     tumorDetails: "",
     disease: "",
-    primarySite: "",
     genes: "",
   };
 
@@ -19,7 +18,6 @@ class CbioportalModal extends Component {
       this.setState({
         tumorDetails: report.tumor_details || "",
         disease: report.disease || "",
-        primarySite: report.primary_site || "",
       });
     }
   }
@@ -29,7 +27,6 @@ class CbioportalModal extends Component {
       this.setState({
         tumorDetails: this.props.report.tumor_details || "",
         disease: this.props.report.disease || "",
-        primarySite: this.props.report.primary_site || "",
       });
     }
   }
@@ -43,7 +40,6 @@ class CbioportalModal extends Component {
     this.setState({
       tumorDetails: report?.tumor_details || "",
       disease: report?.disease || "",
-      primarySite: report?.primary_site || "",
       genes: "",
     });
   };
@@ -54,7 +50,7 @@ class CbioportalModal extends Component {
 
   render() {
     const { t, visible, onCancel, loading } = this.props;
-    const { tumorDetails, disease, primarySite, genes } = this.state;
+    const { tumorDetails, disease, genes } = this.state;
 
     return (
       <Modal
@@ -102,15 +98,6 @@ class CbioportalModal extends Component {
               </Col>
             </Row>
             <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label="Primary Site">
-                  <Input
-                    value={primarySite}
-                    onChange={(e) => this.handleInputChange("primarySite", e.target.value)}
-                    placeholder="Enter primary site"
-                  />
-                </Form.Item>
-              </Col>
               <Col span={12}>
                 <Form.Item label="Genes">
                   <Input
