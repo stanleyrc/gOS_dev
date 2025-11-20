@@ -3,6 +3,8 @@ import { Table, Skeleton, Alert, Row, Col } from "antd";
 import { cbioportalService } from "../../services/cbioportalService";
 
 const SAMPLE_THRESHOLD = 50000;
+const CLINICAL_OUTCOMES = ['DFS_STATUS', 'DFS_MONTHS', 'OS_MONTHS', 'OS_STATUS'];
+const CLINICAL_PERCENTAGE_THRESHOLD = 40;
 
 class ClinicalAttributesPanel extends Component {
   constructor(props) {
@@ -138,13 +140,21 @@ class ClinicalAttributesPanel extends Component {
       return [];
     }
 
-    return counts.map((item, index) => ({
+    const data = counts.map((item, index) => ({
       id: item.clinicalAttributeId,
       key: `${item.clinicalAttributeId}-${index}`,
       attribute: item.clinicalAttributeId,
       count: item.count,
       percentage: totalSamples > 0 ? ((item.count / totalSamples) * 100).toFixed(2) : 0,
+      group: CLINICAL_OUTCOMES.includes(item.clinicalAttributeId) ? 'Clinical' : 'Other',
     }));
+
+    // Sort to place Clinical first
+    return data.sort((a, b) => {
+      if (a.group === 'Clinical' && b.group !== 'Clinical') return -1;
+      if (a.group !== 'Clinical' && b.group === 'Clinical') return 1;
+      return a.attribute.localeCompare(b.attribute);
+    });
   };
 
   render() {
@@ -238,12 +248,25 @@ class ClinicalAttributesPanel extends Component {
     if (attributes.length > 0) {
       const columns = [
         {
+          title: "Group",
+          dataIndex: "group",
+          key: "group",
+          width: 120,
+          render: (group) => (
+            <span style={{ 
+              fontWeight: group === 'Clinical' ? 600 : 400,
+              color: group === 'Clinical' ? '#1890ff' : '#666'
+            }}>
+              {group}
+            </span>
+          ),
+        },
+        {
           title: "Attribute",
           dataIndex: "attribute",
           key: "attribute",
           width: 200,
           sorter: (a, b) => a.attribute.localeCompare(b.attribute),
-          defaultSortOrder: "ascend",
         },
         {
           title: "Count",
@@ -259,7 +282,17 @@ class ClinicalAttributesPanel extends Component {
           key: "percentage",
           width: 80,
           sorter: (a, b) => parseFloat(a.percentage) - parseFloat(b.percentage),
-          render: (percentage) => `${percentage}%`,
+          render: (percentage, record) => {
+            let color = 'inherit';
+            if (record.group === 'Clinical') {
+              color = parseFloat(percentage) < CLINICAL_PERCENTAGE_THRESHOLD ? '#ff4d4f' : '#52c41a';
+            }
+            return (
+              <span style={{ color }}>
+                {percentage}%
+              </span>
+            );
+          },
         },
       ];
 
