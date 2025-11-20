@@ -667,7 +667,7 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   genesData: state.Genes,
   defaultDomain: state.Settings.defaultDomain,
-  zoomedByCmd: state.App.zoomedByCmd,
+  zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(
   mapStateToProps,

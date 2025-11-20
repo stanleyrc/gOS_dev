@@ -13,6 +13,8 @@ const actions = {
 
   UPDATE_CASE_REPORT: "UPDATE_CASE_REPORT",
 
+  HOVERED_LOCATION_UPDATED: "HOVERED_LOCATION_UPDATED",
+
   launchApplication: () => ({
     type: actions.LAUNCH_APPLICATION,
   }),
@@ -40,6 +42,11 @@ const actions = {
     type: actions.UPDATE_DATASET,
     dataset,
     report,
+  }),
+  updateHoveredLocation: (hoveredLocation, hoveredLocationPanelIndex) => ({
+    type: actions.HOVERED_LOCATION_UPDATED,
+    hoveredLocation,
+    hoveredLocationPanelIndex,
   }),
 };
 

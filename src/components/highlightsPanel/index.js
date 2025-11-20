@@ -168,7 +168,7 @@ HighlightsPanel.propTypes = {};
 HighlightsPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   loading: state.Highlights.loading,
   data: state.Highlights.data,
 });

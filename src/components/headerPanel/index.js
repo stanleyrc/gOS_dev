@@ -16,7 +16,8 @@ import * as d3 from "d3";
 import {
   legendColors,
   coverageQCFields,
-  plotTypes,
+  getColorMarker,
+  orderListViewFilters,
 } from "../../helpers/utility";
 import {
   valueFormat,
@@ -85,16 +86,12 @@ class HeaderPanel extends Component {
 
     let colorMarkers = { ...msiLabels };
 
-    Object.keys(plotTypes()).forEach((d) => {
-      let plot = plots.find((e) => e.id === d);
-      let markValue = +metadata[d];
-      colorMarkers[d] =
+    orderListViewFilters.forEach((d) => {
+      let plot = plots.find((e) => e.id === d.attribute);
+      let markValue = +metadata[d.attribute];
+      colorMarkers[d.attribute] =
         markValue != null
-          ? markValue < plot?.q1
-            ? legendColors()[0]
-            : markValue > plot?.q3
-            ? legendColors()[2]
-            : legendColors()[1]
+          ? getColorMarker(markValue, plot?.q1, plot?.q3)
           : "gray";
     });
 
@@ -205,7 +202,7 @@ class HeaderPanel extends Component {
             })}
         </Space>
       ),
-      snvCount: createTooltip(
+      snv_count: createTooltip(
         "metadata.snv_count_normal_vaf_greater0",
         "snv_count_normal_vaf_greater0"
       ),

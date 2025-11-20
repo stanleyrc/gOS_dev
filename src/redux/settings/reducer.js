@@ -14,6 +14,10 @@ const initState = {
     reference: "hg19",
   },
   tab: 1,
+  hoveredLocation: null,
+  hoveredLocationPanelIndex: null,
+  zoomedByCmd: false,
+  renderOutsideViewPort: true,
   chromoBins: {},
   domains: [],
   defaultDomain: null,
@@ -68,12 +72,20 @@ export default function appReducer(state = initState, action) {
         defaultDomain: action.defaultDomain,
         domains: action.domains,
         genomeLength: action.genomeLength,
+        signatureTitles: action.signatureTitles,
         loading: false,
       };
     case actions.FETCH_SETTINGS_DATA_FAILED:
       return {
         ...state,
         error: action.error,
+        loading: false,
+      };
+    case actions.HOVERED_LOCATION_UPDATED:
+      return {
+        ...state,
+        hoveredLocation: action.hoveredLocation,
+        hoveredLocationPanelIndex: action.hoveredLocationPanelIndex,
         loading: false,
       };
     case actions.UPDATE_DOMAINS:

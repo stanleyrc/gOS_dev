@@ -231,7 +231,7 @@ SnvplicityPlotPanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   data: state.Snvplicity.data,
   loading: state.Snvplicity.loading,
 });

@@ -3,6 +3,7 @@ import { getCurrentState } from "./selectors";
 import axios from "axios";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
+import Field from "../../helpers/field";
 
 function* fetchDatasets() {
   try {
@@ -18,6 +19,12 @@ function* fetchDatasets() {
       dataset.reference = dataset.reference || "hg19";
       dataset.higlassReference =
         settings.coordinates.higlassMap[dataset.reference] || "hg19";
+      dataset.fields = dataset.schema
+        ? (dataset.schema || [])
+            .map((d) => new Field(d))
+            .filter((d) => d.isValid)
+        : settings.fields.map((f) => new Field(f));
+      dataset.kpiFields = dataset.fields.filter((d) => d.kpiPlot === true);
     });
 
     yield put({

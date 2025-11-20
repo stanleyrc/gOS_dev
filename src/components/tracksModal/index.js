@@ -17,7 +17,7 @@ import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import IgvPanel from "../igvPanel/index";
-import appActions from "../../redux/app/actions";
+import settingsActions from "../../redux/settings/actions";
 import TracksLegendPanel from "../tracksLegendPanel";
 import { AiOutlineDownload } from "react-icons/ai";
 import DensityPlotPanel from "../densityPlotPanel";
@@ -33,7 +33,7 @@ import {
 import Wrapper from "./index.style";
 
 const { Option } = Select;
-const { updateHoveredLocation } = appActions;
+const { updateHoveredLocation } = settingsActions;
 
 class TracksModal extends Component {
   container = null;
@@ -599,7 +599,7 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   loadingSageQc: state.SageQc.loading,
   loadingPercentageSageQc: state.SageQc.loadingPercentage,
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   domains: state.Settings.domains,
   metadata: state.CaseReport.metadata,
   chromoBins: state.Settings.chromoBins,

@@ -171,8 +171,7 @@ const mapStateToProps = (state) => ({
   reports: state.CaseReports.reports,
   searchFilters: state.CaseReports.searchFilters,
   loadingPercentage: state.CaseReports.loadingPercentage,
-  totalReports: state.CaseReports.totalReports,
-  searchText: state.App.searchText,
+  totalReports: state.CaseReports.totalReports
 });
 export default connect(
   mapStateToProps,

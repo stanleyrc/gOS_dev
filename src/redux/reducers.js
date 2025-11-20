@@ -1,4 +1,3 @@
-import App from "./app/reducer";
 import Datasets from "./datasets/reducer";
 import CaseReports from "./caseReports/reducer";
 import CaseReport from "./caseReport/reducer";
@@ -26,7 +25,6 @@ import Cytobands from "./cytobands/reducer";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
-  App,
   Datasets,
   CaseReports,
   CaseReport,

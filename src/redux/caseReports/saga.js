@@ -12,7 +12,6 @@ import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
-  plotTypes,
   flip,
   reportAttributesMap,
   defaultSearchFilters,
@@ -22,7 +21,6 @@ import {
 import {
   getReportsFilters,
   getReportFilterExtents,
-  reportFilters,
 } from "../../helpers/filters";
 import { qcEvaluator } from "../../helpers/metadata";
 import actions from "./actions";
@@ -80,18 +78,18 @@ function* fetchCaseReports(action) {
 
         let reportsFilters = [];
 
-        reportsFilters = getReportsFilters(datafiles);
+        reportsFilters = getReportsFilters(dataset.fields, datafiles);
 
         let reportsFiltersExtents = getReportFilterExtents(datafiles);
 
         let populations = {};
-        let flippedMap = flip(reportAttributesMap());
-        Object.keys(plotTypes()).forEach((d, i) => {
-          populations[d] = datafiles.map((e) => {
+
+        dataset.kpiFields.forEach((d, i) => {
+          populations[d.id] = datafiles.map((e) => {
             try {
               return {
                 pair: e.pair,
-                value: eval(`e.${flippedMap[d]}`),
+                value: eval(`e.${d.id}`),
                 tumor_type: e.tumor_type,
               };
             } catch (error) {
@@ -151,6 +149,7 @@ function* fetchCaseReports(action) {
 function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
   let { datafiles } = currentState.CaseReports;
+  let { dataset } = currentState.Settings;
 
   let records = datafiles.filter((d) => d.visible !== false);
 
@@ -173,11 +172,11 @@ function* searchReports({ searchFilters }) {
   );
 
   Object.keys(actualSearchFilters).forEach((key) => {
-    let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
+    let keyRenderer = dataset.fields.find((d) => d.name === key)?.renderer;
     if (key === "texts") {
       records = records
         .filter((record) =>
-          reportFilters()
+          dataset.fields
             .filter((e) => e.renderer === "select")
             .map((attr) => record[attr.name] || "")
             .join(",")
@@ -268,7 +267,7 @@ function* searchReports({ searchFilters }) {
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters: getReportsFilters(records),
+    reportsFilters: getReportsFilters(dataset.fields, records),
   });
 }
 

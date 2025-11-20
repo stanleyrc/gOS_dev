@@ -242,9 +242,9 @@ GenomePanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   genomeLength: state.Settings.genomeLength,
-  zoomedByCmd: state.App.zoomedByCmd,
+  zoomedByCmd: state.Settings.zoomedByCmd,
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
 });

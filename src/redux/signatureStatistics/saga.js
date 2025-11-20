@@ -11,7 +11,7 @@ function* fetchData(action) {
   try {
     const currentState = yield select(getCurrentState);
     let { signatures, signaturesReference } = currentState.SignatureProfiles;
-    const { dataset } = currentState.Settings;
+    const { dataset, signatureTitles } = currentState.Settings;
     const { id, metadata } = currentState.CaseReport;
     const { sigprofiler_sbs_count, sigprofiler_indel_count } = metadata;
 
@@ -59,6 +59,7 @@ function* fetchData(action) {
         id,
         sigprofiler_sbs_count,
         sigprofiler_indel_count,
+        signatureTitles,
       },
       `${window.location.href
         .split("?")[0]

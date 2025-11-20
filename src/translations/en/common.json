@@ -469,8 +469,8 @@
     "violin-panel": {
       "header": {
         "common": "Population Distribution Violin Charts",
-        "total": "Population Distribution Violin Chart - All Tumor Types",
-        "tumor": "Population Distribution Violin Chart - Tumor Type {{tumor}}"
+        "total": "<strong>{{scope}}</strong> Population Distribution Violin Chart for all tumor Types",
+        "tumor": "<strong>{{scope}}</strong> Population Distribution Violin Chart for tumor type {{tumor}}"
       },
       "distribution": "distribution",
       "distribution_plural": "distributions",
@@ -623,7 +623,8 @@
       }
     },
     "metadata-panel": {
-      "header": "Metadata Tags"
+      "header": "Case Report Metadata",
+      "title": "Metadata"
     },
     "mutation-catalog-panel": {
       "header": "Signatures",

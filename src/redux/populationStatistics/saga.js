@@ -10,6 +10,8 @@ function* fetchPopulationStatistics(action) {
     const currentState = yield select(getCurrentState);
     const { metadata } = currentState.CaseReport;
     let { populations } = currentState.CaseReports;
+    let { dataset } = currentState.Settings;
+    let { kpiFields } = dataset;
 
     // Use Web Worker for population metrics computation
     const computationResult = yield call(
@@ -17,6 +19,7 @@ function* fetchPopulationStatistics(action) {
       {
         populations,
         metadata,
+        fields: kpiFields,
       },
       `${window.location.href
         .split("?")[0]

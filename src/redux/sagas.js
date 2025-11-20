@@ -1,5 +1,4 @@
 import { all } from "redux-saga/effects";
-import appSagas from "./app/saga";
 import datasetsSagas from "./datasets/saga";
 import caseReportsSagas from "./caseReports/saga";
 import caseReportSagas from "./caseReport/saga";
@@ -27,7 +26,6 @@ import cytobandsSagas from "./cytobands/saga";
 
 export default function* rootSaga(getState) {
   yield all([
-    appSagas(),
     datasetsSagas(),
     caseReportsSagas(),
     caseReportSagas(),

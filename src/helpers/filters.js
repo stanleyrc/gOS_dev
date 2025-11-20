@@ -1,5 +1,4 @@
 import * as d3 from "d3";
-import { plotTypes, reportAttributesMap } from "./utility";
 
 export function reportFilters() {
   return [
@@ -171,15 +170,15 @@ export function getReportFilterExtents(reports) {
   return extents;
 }
 
-export function getReportsFilters(reports) {
+export function getReportsFilters(fields, reports) {
   let reportsFilters = [];
 
   // Iterate through each filter
-  reportFilters().forEach((filter) => {
+  fields.forEach((field) => {
     let allValues = reports
       .map((record) => {
         try {
-          return eval(`record.${filter.name}`);
+          return eval(`record.${field.name}`);
         } catch (err) {
           return null;
         }
@@ -205,14 +204,14 @@ export function getReportsFilters(reports) {
 
     // Add the filter information to the reportsFilters array
     reportsFilters.push({
-      filter: filter,
+      filter: field,
       records: [...distinctValues],
       frequencies: Object.fromEntries(frequencyMap),
       extent: d3.extent(
         distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
       ),
       totalRecords: reports.length,
-      format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
+      format: field.format,
     });
   });
   //console.log("reportsFilters", reportsFilters);

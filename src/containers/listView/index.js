@@ -223,9 +223,9 @@ class ListView extends Component {
       ) {
         return (
           <Item
-            key={`containers.list-view.filters.${d.filter.name}`}
+            key={d.filter.name}
             name={d.filter.name}
-            label={t(`containers.list-view.filters.${d.filter.name}`)}
+            label={d.filter.title}
             rules={[
               {
                 required: false,
@@ -340,6 +340,7 @@ class ListView extends Component {
                   <Collapse
                     className="filters-collapse"
                     ghost
+                    defaultActiveKey={"general"}
                     items={d3
                       .groups(
                         filters.filter((d) => d.filter.group != null),
@@ -355,9 +356,7 @@ class ListView extends Component {
                       .map(([group, filteredGroups]) => {
                         return {
                           key: group,
-                          label: t(
-                            `containers.list-view.filters.collapse.${group}`
-                          ),
+                          label: filteredGroups[0]?.filter?.groupTitle,
                           children: (
                             <>
                               {filteredGroups.map((e) =>
