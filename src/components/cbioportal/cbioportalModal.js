@@ -320,7 +320,7 @@ class CbioportalModal extends Component {
               filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))",
             }}
           />
-          <span>{t("components.cbioportal-modal.title") || "cBioPortal Integration"}</span>
+          <span>{t("components.cbioportal-modal.title") || "cBioPortal"}</span>
         </Space>
       }
       open={visible}
