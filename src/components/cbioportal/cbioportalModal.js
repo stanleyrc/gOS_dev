@@ -358,7 +358,7 @@ class CbioportalModal extends Component {
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={16} style={{ marginBottom: '48px' }}>
             <Col span={12}>
               <Form.Item label={
                 <Space>

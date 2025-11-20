@@ -243,6 +243,7 @@ class ClinicalAttributesPanel extends Component {
           key: "attribute",
           width: 200,
           sorter: (a, b) => a.attribute.localeCompare(b.attribute),
+          defaultSortOrder: "ascend",
         },
         {
           title: "Count",
