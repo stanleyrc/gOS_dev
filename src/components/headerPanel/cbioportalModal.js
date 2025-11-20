@@ -1,37 +1,83 @@
-import React, { useState, useEffect } from "react";
+import React, { Component } from "react";
 import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete, Select } from "antd";
-import { useTranslation } from "react-i18next";
-import { useSelector } from "react-redux";
+import { withTranslation } from "react-i18next";
+import { connect } from "react-redux";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
-import { useCbioPortal } from "../../hooks/useCbioPortal";
+import { cbioportalService } from "../../services/cbioportalService";
 
-const CbioportalModal = ({ visible, onCancel, loading }) => {
-  const { t } = useTranslation("common");
-  const report = useSelector((state) => state.CaseReport.metadata);
-  const { 
-    cancerTypes, 
-    fetchCancerTypes, 
-    fetchStudies, 
-    fetchStudiesByCancerType,
-    isLoading: hookLoading 
-  } = useCbioPortal();
-  
-  const [tumorDetails, setTumorDetails] = useState("");
-  const [disease, setDisease] = useState("");
-  const [genes, setGenes] = useState("");
-  const [selectedStudies, setSelectedStudies] = useState([]);
-  const [allStudies, setAllStudies] = useState([]);
-  const [recommendedStudies, setRecommendedStudies] = useState([]);
+class CbioportalModal extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tumorDetails: "",
+      initialTumorDetails: "",
+      disease: "",
+      genes: "",
+      selectedStudies: [],
+      allStudies: [],
+      recommendedStudies: [],
+      cancerTypes: [],
+      isLoading: false,
+    };
+  }
 
-  // Fetch cancer types and all studies on component mount
-  useEffect(() => {
-    fetchCancerTypes();
-    fetchStudies().then(data => setAllStudies(data || []));
-  }, [fetchCancerTypes, fetchStudies]);
+  async componentDidMount() {
+    this.setState({ isLoading: true });
+    try {
+      const [cancerTypes, studies] = await Promise.all([
+        cbioportalService.getCancerTypes(),
+        cbioportalService.getStudies(),
+      ]);
+      this.setState({
+        cancerTypes: cancerTypes || [],
+        allStudies: studies || [],
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error("Error fetching cBioPortal data:", error);
+      this.setState({ isLoading: false });
+    }
+  }
 
-  // Find closest matching cancer type
-  const findClosestMatch = (value, cancerTypesList) => {
+  componentDidUpdate(prevProps, prevState) {
+    const { report } = this.props;
+    const { cancerTypes, tumorDetails, allStudies } = this.state;
+
+    if (report !== prevProps.report || cancerTypes !== prevState.cancerTypes) {
+      if (report && cancerTypes.length > 0) {
+        const matchedTumorDetails = this.findClosestMatch(report.tumor_details, cancerTypes);
+        const finalTumorDetails = matchedTumorDetails || report.tumor_details || "";
+        this.setState({
+          tumorDetails: finalTumorDetails,
+          initialTumorDetails: finalTumorDetails,
+          disease: report.disease || "",
+        });
+      } else if (report) {
+        const initialValue = report.tumor_details || "";
+        this.setState({
+          tumorDetails: initialValue,
+          initialTumorDetails: initialValue,
+          disease: report.disease || "",
+        });
+      }
+    }
+
+    if (tumorDetails !== prevState.tumorDetails || allStudies !== prevState.allStudies) {
+      if (tumorDetails && allStudies.length > 0) {
+        const cancerTypeMap = this.getCancerTypeMap();
+        const cancerTypeId = cancerTypeMap[tumorDetails];
+        if (cancerTypeId) {
+          const filtered = cbioportalService.getStudiesByCancerType(cancerTypeId, allStudies);
+          this.setState({ recommendedStudies: filtered });
+        }
+      } else {
+        this.setState({ recommendedStudies: [], selectedStudies: [] });
+      }
+    }
+  }
+
+  findClosestMatch = (value, cancerTypesList) => {
     if (!value || cancerTypesList.length === 0) return "";
     
     const searchValue = value.toLowerCase();
@@ -57,46 +103,24 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
     return "";
   };
 
-  // Update state when report or cancer types change
-  useEffect(() => {
-    if (report && cancerTypes.length > 0) {
-      const matchedTumorDetails = findClosestMatch(report.tumor_details, cancerTypes);
-      setTumorDetails(matchedTumorDetails || report.tumor_details || "");
-      setDisease(report.disease || "");
-    } else if (report) {
-      setTumorDetails(report.tumor_details || "");
-      setDisease(report.disease || "");
-    }
-  }, [report, cancerTypes]);
+  getCancerTypeOptions = () => {
+    const { cancerTypes } = this.state;
+    return cancerTypes.map((ct) => ({
+      label: ct.name || ct.id,
+      value: ct.name || ct.id,
+    }));
+  };
 
-  // Fetch recommended studies when tumor details changes
-  useEffect(() => {
-    if (tumorDetails && allStudies.length > 0) {
-      const cancerTypeId = cancerTypeMap[tumorDetails];
-      if (cancerTypeId) {
-        const filtered = fetchStudiesByCancerType(cancerTypeId, allStudies);
-        setRecommendedStudies(filtered);
-      }
-    } else {
-      setRecommendedStudies([]);
-      setSelectedStudies([]);
-    }
-  }, [tumorDetails, allStudies, fetchStudiesByCancerType]);
+  getCancerTypeMap = () => {
+    const { cancerTypes } = this.state;
+    return cancerTypes.reduce((acc, ct) => {
+      acc[ct.name || ct.cancerTypeId] = ct.cancerTypeId;
+      return acc;
+    }, {});
+  };
 
-  // Convert cancer types to AutoComplete options
-  const cancerTypeOptions = cancerTypes.map((ct) => ({
-    label: ct.name || ct.id,
-    value: ct.name || ct.id,
-  }));
-
-  // Create a map for looking up cancer type ID by name
-  const cancerTypeMap = cancerTypes.reduce((acc, ct) => {
-    acc[ct.name || ct.cancerTypeId] = ct.cancerTypeId;
-    return acc;
-  }, {});
-
-  // Create studies options grouped by recommended and other
-  const getStudiesOptions = () => {
+  getStudiesOptions = () => {
+    const { allStudies, recommendedStudies } = this.state;
     const recommendedIds = new Set(recommendedStudies.map(s => s.studyId));
     const recommended = allStudies.filter(s => recommendedIds.has(s.studyId));
     const other = allStudies.filter(s => !recommendedIds.has(s.studyId));
@@ -126,30 +150,35 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
     return options;
   };
 
-  const handleTumorDetailsChange = (value) => {
-    setTumorDetails(value);
+  handleTumorDetailsChange = (value) => {
+    this.setState({ tumorDetails: value });
   };
 
-  const handleDiseaseChange = (e) => {
-    setDisease(e.target.value);
+  handleDiseaseChange = (e) => {
+    this.setState({ disease: e.target.value });
   };
 
-  const handleGenesChange = (e) => {
-    setGenes(e.target.value);
+  handleGenesChange = (e) => {
+    this.setState({ genes: e.target.value });
   };
 
-  const handleStudiesChange = (values) => {
-    setSelectedStudies(values);
+  handleStudiesChange = (values) => {
+    this.setState({ selectedStudies: values });
   };
 
-  const handleClear = () => {
-    setTumorDetails(report?.tumor_details || "");
-    setDisease(report?.disease || "");
-    setGenes("");
-    setSelectedStudies([]);
+  handleClear = () => {
+    const { report } = this.props;
+    const { initialTumorDetails } = this.state;
+    this.setState({
+      tumorDetails: initialTumorDetails,
+      disease: report?.disease || "",
+      genes: "",
+      selectedStudies: [],
+    });
   };
 
-  const handleSubmit = () => {
+  handleSubmit = () => {
+    const { tumorDetails, disease, genes, selectedStudies } = this.state;
     console.log("cBioPortal form submitted:", {
       tumorDetails,
       disease,
@@ -158,7 +187,11 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
     });
   };
 
-  return (
+  render() {
+    const { visible, onCancel, loading, t } = this.props;
+    const { tumorDetails, disease, genes, selectedStudies, isLoading } = this.state;
+
+    return (
     <Modal
       title={
         <Space>
@@ -181,15 +214,15 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
       style={{ maxHeight: "90vh" }}
       bodyStyle={{ maxHeight: "calc(90vh - 150px)", overflowY: "auto" }}
     >
-      <Skeleton active loading={loading || hookLoading}>
+      <Skeleton active loading={loading || isLoading}>
         <Form layout="vertical" style={{ marginBottom: 24 }}>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="Tumor Details">
                 <AutoComplete
                   value={tumorDetails}
-                  options={cancerTypeOptions}
-                  onChange={handleTumorDetailsChange}
+                  options={this.getCancerTypeOptions()}
+                  onChange={this.handleTumorDetailsChange}
                   placeholder="Select or enter tumor details"
                   filterOption={(inputValue, option) =>
                     option.label.toLowerCase().includes(inputValue.toLowerCase())
@@ -201,7 +234,7 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
               <Form.Item label="Disease">
                 <Input
                   value={disease}
-                  onChange={handleDiseaseChange}
+                  onChange={this.handleDiseaseChange}
                   placeholder="Enter disease"
                 />
               </Form.Item>
@@ -213,9 +246,9 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
                 <Select
                   mode="multiple"
                   placeholder="Select studies"
-                  options={getStudiesOptions()}
+                  options={this.getStudiesOptions()}
                   value={selectedStudies}
-                  onChange={handleStudiesChange}
+                  onChange={this.handleStudiesChange}
                   filterOption={(inputValue, option) => {
                     if (option.options) {
                       return option.options.some(opt =>
@@ -231,7 +264,7 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
               <Form.Item label="Genes">
                 <Input
                   value={genes}
-                  onChange={handleGenesChange}
+                  onChange={this.handleGenesChange}
                   placeholder="Enter genes (comma separated)"
                 />
               </Form.Item>
@@ -240,10 +273,10 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
           <Row gutter={16}>
             <Col span={24} style={{ textAlign: "right" }}>
               <Space>
-                <Button onClick={handleClear}>
+                <Button onClick={this.handleClear}>
                   Clear
                 </Button>
-                <Button type="primary" onClick={handleSubmit}>
+                <Button type="primary" onClick={this.handleSubmit}>
                   Submit
                 </Button>
               </Space>
@@ -254,7 +287,12 @@ const CbioportalModal = ({ visible, onCancel, loading }) => {
         <FilteredEventsListPanel />
       </Skeleton>
     </Modal>
-  );
-};
+    );
+  }
+}
 
-export default CbioportalModal;
+const mapStateToProps = (state) => ({
+  report: state.CaseReport.metadata,
+});
+
+export default connect(mapStateToProps)(withTranslation("common")(CbioportalModal));
