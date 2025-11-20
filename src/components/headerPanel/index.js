@@ -30,7 +30,7 @@ import {
   qcMetricsClasses,
 } from "../../helpers/metadata";
 import Wrapper from "./index.style";
-import CbioportalModal from "./cbioportalModal";
+import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 
 const { Text } = Typography;

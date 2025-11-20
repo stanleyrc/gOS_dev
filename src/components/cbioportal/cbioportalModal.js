@@ -1,9 +1,10 @@
 import React, { Component } from "react";
-import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete, Select, Checkbox } from "antd";
+import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete, Select, Checkbox, Alert } from "antd";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
+import ClinicalAttributesPanel from "./ClinicalAttributesPanel";
 import { cbioportalService } from "../../services/cbioportalService";
 import { convertVariantToSingleLetterCode } from "../../helpers/utility";
 
@@ -138,7 +139,7 @@ class CbioportalModal extends Component {
       options.push({
         label: 'Recommended',
         options: recommended.map(study => ({
-          label: study.name || study.studyId,
+          label: `${study.name || study.studyId} (${study.allSampleCount || 0} samples)`,
           value: study.studyId,
         })),
       });
@@ -148,13 +149,20 @@ class CbioportalModal extends Component {
       options.push({
         label: 'Other',
         options: other.map(study => ({
-          label: study.name || study.studyId,
+          label: `${study.name || study.studyId} (${study.allSampleCount || 0} samples)`,
           value: study.studyId,
         })),
       });
     }
 
     return options;
+  };
+
+  getTotalSampleCount = () => {
+    const { allStudies, selectedStudies } = this.state;
+    return allStudies
+      .filter(s => selectedStudies.includes(s.studyId))
+      .reduce((sum, s) => sum + (s.allSampleCount || 0), 0);
   };
 
   handleTumorDetailsChange = (value) => {
@@ -266,6 +274,7 @@ class CbioportalModal extends Component {
   render() {
     const { visible, onCancel, loading, t } = this.props;
     const { tumorDetails, genes, selectedStudies, isLoading } = this.state;
+    const totalSampleCount = this.getTotalSampleCount();
 
     const selectColumn = [
       {
@@ -336,7 +345,16 @@ class CbioportalModal extends Component {
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="Studies">
+              <Form.Item label={
+                <Space>
+                  <span>Studies</span>
+                  {selectedStudies.length > 0 && (
+                    <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>
+                      ({totalSampleCount.toLocaleString()} samples)
+                    </span>
+                  )}
+                </Space>
+              }>
                 <Space direction="vertical" style={{ width: '100%' }} size="small">
                   <Select
                     mode="multiple"
@@ -409,6 +427,11 @@ class CbioportalModal extends Component {
             </Col>
           </Row>
         </Form>
+
+        <ClinicalAttributesPanel 
+          selectedStudies={selectedStudies}
+          allStudies={this.state.allStudies}
+        />
 
         <FilteredEventsListPanel additionalColumns={selectColumn} />
       </Skeleton>
