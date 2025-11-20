@@ -410,6 +410,14 @@ class CbioportalModal extends Component {
                 </Space>
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <div style={{ height: '100%', minHeight: 'auto' }}>
+                <ClinicalAttributesPanel 
+                  selectedStudies={selectedStudies}
+                  allStudies={this.state.allStudies}
+                />
+              </div>
+            </Col>
           </Row>
           <Row gutter={16}>
             <Col span={24} style={{ textAlign: "right" }}>
@@ -427,11 +435,6 @@ class CbioportalModal extends Component {
             </Col>
           </Row>
         </Form>
-
-        <ClinicalAttributesPanel 
-          selectedStudies={selectedStudies}
-          allStudies={this.state.allStudies}
-        />
 
         <FilteredEventsListPanel additionalColumns={selectColumn} />
       </Skeleton>

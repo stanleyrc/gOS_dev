@@ -29,11 +29,19 @@ class ClinicalAttributesPanel extends Component {
     }, 500);
   };
 
+  componentDidMount() {
+    const { selectedStudies } = this.props;
+    // Trigger fetch on mount if studies already selected
+    if (selectedStudies && selectedStudies.length > 0) {
+      this.debouncedFetch();
+    }
+  }
+
   componentDidUpdate(prevProps) {
     const { selectedStudies } = this.props;
     
     // Trigger fetch when selected studies change
-    if (selectedStudies !== prevProps.selectedStudies) {
+    if (JSON.stringify(selectedStudies) !== JSON.stringify(prevProps.selectedStudies)) {
       this.debouncedFetch();
     }
   }
@@ -125,18 +133,17 @@ class ClinicalAttributesPanel extends Component {
   };
 
   transformCountsToTableData = (counts, totalSamples) => {
-    // Assuming counts is an object with attribute data
-    // Transform it into array format for the table
-    if (!counts || typeof counts !== 'object') {
+    // counts is an array of objects with clinicalAttributeId and count
+    if (!Array.isArray(counts)) {
       return [];
     }
 
-    return Object.entries(counts).map(([key, value], index) => ({
-      id: key,
-      key: `${key}-${index}`,
-      attribute: key,
-      count: value,
-      percentage: totalSamples > 0 ? ((value / totalSamples) * 100).toFixed(2) : 0,
+    return counts.map((item, index) => ({
+      id: item.clinicalAttributeId,
+      key: `${item.clinicalAttributeId}-${index}`,
+      attribute: item.clinicalAttributeId,
+      count: item.count,
+      percentage: totalSamples > 0 ? ((item.count / totalSamples) * 100).toFixed(2) : 0,
     }));
   };
 
@@ -144,53 +151,86 @@ class ClinicalAttributesPanel extends Component {
     const { loading, attributes, error, exceedsThreshold, totalSamples } = this.state;
     const { selectedStudies } = this.props;
 
-    // Don't render anything if no studies selected
+    // Show placeholder if no studies selected
     if (!selectedStudies || selectedStudies.length === 0) {
-      return null;
+      return (
+        <div style={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          border: '1px solid #f0f0f0',
+          borderRadius: '4px',
+          padding: '8px',
+          backgroundColor: '#fafafa',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '200px'
+        }}>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Select studies to view attributes
+          </div>
+        </div>
+      );
     }
 
     // Show warning if exceeds threshold
     if (exceedsThreshold) {
       return (
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <Alert
-              message="Too many samples selected"
-              description={`The selected studies contain ${totalSamples.toLocaleString()} samples (more than ${SAMPLE_THRESHOLD.toLocaleString()} limit). Clinical attribute data cannot be fetched for this many samples. Please reduce the number of included studies.`}
-              type="warning"
-              showIcon
-              closable
-            />
-          </Col>
-        </Row>
+        <div style={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          border: '1px solid #f0f0f0',
+          borderRadius: '4px',
+          padding: '8px',
+          backgroundColor: '#fafafa'
+        }}>
+          <Alert
+            message="Too many samples selected"
+            description={`The selected studies contain ${totalSamples.toLocaleString()} samples (more than ${SAMPLE_THRESHOLD.toLocaleString()} limit). Clinical attribute data cannot be fetched. Please reduce the number of included studies.`}
+            type="warning"
+            showIcon
+          />
+        </div>
       );
     }
 
     // Show error if fetch failed
     if (error && !loading) {
       return (
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <Alert
-              message="Error fetching clinical attributes"
-              description={error}
-              type="error"
-              showIcon
-              closable
-            />
-          </Col>
-        </Row>
+        <div style={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          border: '1px solid #f0f0f0',
+          borderRadius: '4px',
+          padding: '8px',
+          backgroundColor: '#fafafa'
+        }}>
+          <Alert
+            message="Error fetching clinical attributes"
+            description={error}
+            type="error"
+            showIcon
+          />
+        </div>
       );
     }
 
     // Show loading state
     if (loading) {
       return (
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <Skeleton active loading={loading} paragraph={{ rows: 4 }} />
-          </Col>
-        </Row>
+        <div style={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          border: '1px solid #f0f0f0',
+          borderRadius: '4px',
+          padding: '8px',
+          backgroundColor: '#fafafa'
+        }}>
+          <Skeleton active loading={loading} paragraph={{ rows: 3 }} />
+        </div>
       );
     }
 
@@ -201,44 +241,55 @@ class ClinicalAttributesPanel extends Component {
           title: "Attribute",
           dataIndex: "attribute",
           key: "attribute",
-          width: "40%",
+          width: 200,
           sorter: (a, b) => a.attribute.localeCompare(b.attribute),
         },
         {
-          title: "Sample Count",
+          title: "Count",
           dataIndex: "count",
           key: "count",
-          width: "30%",
+          width: 100,
           sorter: (a, b) => a.count - b.count,
           render: (count) => count.toLocaleString(),
         },
         {
-          title: "Percentage",
+          title: "%",
           dataIndex: "percentage",
           key: "percentage",
-          width: "30%",
+          width: 80,
           sorter: (a, b) => parseFloat(a.percentage) - parseFloat(b.percentage),
           render: (percentage) => `${percentage}%`,
         },
       ];
 
       return (
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <h3>Clinical Attributes</h3>
-            <div style={{ fontSize: "12px", color: "#666", marginBottom: "12px" }}>
-              Based on {totalSamples.toLocaleString()} samples across selected studies
-            </div>
+        <div style={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          border: '1px solid #f0f0f0',
+          borderRadius: '4px',
+          padding: '8px',
+          backgroundColor: '#fafafa'
+        }}>
+          <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px", fontWeight: 500 }}>
+            Clinical Attributes
+          </div>
+          <div style={{ fontSize: "11px", color: "#999", marginBottom: "8px" }}>
+            {totalSamples.toLocaleString()} samples
+          </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
             <Table
               columns={columns}
               dataSource={attributes}
-              pagination={{ pageSize: 20 }}
+              pagination={false}
               showSorterTooltip={false}
-              scroll={{ x: "100%" }}
+              scroll={{ x: 400, y: 300 }}
               size="small"
+              bordered
             />
-          </Col>
-        </Row>
+          </div>
+        </div>
       );
     }
 
