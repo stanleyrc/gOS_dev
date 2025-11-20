@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete, Select } from "antd";
+import { Modal, Space, Input, Row, Col, Form, Skeleton, Button, AutoComplete, Select, Checkbox } from "antd";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
@@ -156,24 +156,38 @@ class CbioportalModal extends Component {
     this.setState({ genes: values });
   };
 
-  handleSelectGene = (record) => {
-    const { genes } = this.state;
+  getGeneEntry = (record) => {
+    if (!record.gene) return null;
     
-    if (!record.gene) return;
-    
-    let geneEntry;
     if (record.type?.toLowerCase() === 'missense' && record.variant) {
       const convertedVariant = convertVariantToSingleLetterCode(record.variant);
-      geneEntry = `${record.gene}:MUT=${convertedVariant}`;
+      return `${record.gene}:MUT=${convertedVariant}`;
     } else if (record.type) {
-      geneEntry = `${record.gene}:MUT=${record.type.toUpperCase()}`;
+      return `${record.gene}:MUT=${record.type.toUpperCase()}`;
     } else {
-      geneEntry = record.gene;
+      return record.gene;
     }
+  };
+
+  handleToggleGene = (record, checked) => {
+    const { genes } = this.state;
+    const geneEntry = this.getGeneEntry(record);
     
-    if (!genes.includes(geneEntry)) {
-      this.setState({ genes: [...genes, geneEntry] });
+    if (!geneEntry) return;
+    
+    if (checked) {
+      if (!genes.includes(geneEntry)) {
+        this.setState({ genes: [...genes, geneEntry] });
+      }
+    } else {
+      this.setState({ genes: genes.filter(g => g !== geneEntry) });
     }
+  };
+
+  isGeneSelected = (record) => {
+    const { genes } = this.state;
+    const geneEntry = this.getGeneEntry(record);
+    return geneEntry ? genes.includes(geneEntry) : false;
   };
 
   handleStudiesChange = (values) => {
@@ -236,18 +250,16 @@ class CbioportalModal extends Component {
 
     const selectColumn = [
       {
-        title: 'Select',
+        title: '',
         key: 'select',
-        width: 80,
+        width: 50,
         fixed: 'left',
+        align: 'center',
         render: (_, record) => (
-          <Button
-            type="primary"
-            size="small"
-            onClick={() => this.handleSelectGene(record)}
-          >
-            Select
-          </Button>
+          <Checkbox
+            checked={this.isGeneSelected(record)}
+            onChange={(e) => this.handleToggleGene(record, e.target.checked)}
+          />
         ),
       },
     ];
