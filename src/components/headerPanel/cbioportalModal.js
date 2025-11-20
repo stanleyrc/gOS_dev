@@ -12,7 +12,6 @@ class CbioportalModal extends Component {
     this.state = {
       tumorDetails: "",
       initialTumorDetails: "",
-      disease: "",
       genes: "",
       selectedStudies: [],
       allStudies: [],
@@ -51,14 +50,12 @@ class CbioportalModal extends Component {
         this.setState({
           tumorDetails: finalTumorDetails,
           initialTumorDetails: finalTumorDetails,
-          disease: report.disease || "",
         });
       } else if (report) {
         const initialValue = report.tumor_details || "";
         this.setState({
           tumorDetails: initialValue,
           initialTumorDetails: initialValue,
-          disease: report.disease || "",
         });
       }
     }
@@ -154,10 +151,6 @@ class CbioportalModal extends Component {
     this.setState({ tumorDetails: value });
   };
 
-  handleDiseaseChange = (e) => {
-    this.setState({ disease: e.target.value });
-  };
-
   handleGenesChange = (e) => {
     this.setState({ genes: e.target.value });
   };
@@ -186,11 +179,9 @@ class CbioportalModal extends Component {
   };
 
   handleClear = () => {
-    const { report } = this.props;
     const { initialTumorDetails } = this.state;
     this.setState({
       tumorDetails: initialTumorDetails,
-      disease: report?.disease || "",
       genes: "",
       selectedStudies: [],
     });
@@ -222,7 +213,7 @@ class CbioportalModal extends Component {
 
   render() {
     const { visible, onCancel, loading, t } = this.props;
-    const { tumorDetails, disease, genes, selectedStudies, isLoading } = this.state;
+    const { tumorDetails, genes, selectedStudies, isLoading } = this.state;
 
     return (
     <Modal
@@ -251,12 +242,12 @@ class CbioportalModal extends Component {
         <Form layout="vertical" style={{ marginBottom: 24 }}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="Tumor Details">
+              <Form.Item label="Cancer Type">
                 <AutoComplete
                   value={tumorDetails}
                   options={this.getCancerTypeOptions()}
                   onChange={this.handleTumorDetailsChange}
-                  placeholder="Select or enter tumor details"
+                  placeholder="Select or enter cancer type"
                   filterOption={(inputValue, option) =>
                     option.label.toLowerCase().includes(inputValue.toLowerCase())
                   }
@@ -264,11 +255,11 @@ class CbioportalModal extends Component {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Disease">
+              <Form.Item label="Genes">
                 <Input
-                  value={disease}
-                  onChange={this.handleDiseaseChange}
-                  placeholder="Enter disease"
+                  value={genes}
+                  onChange={this.handleGenesChange}
+                  placeholder="Enter genes (semicolon separated, e.g., NF1:MUT=MISSENSE; CDKN2A:MUT)"
                 />
               </Form.Item>
             </Col>
@@ -329,15 +320,6 @@ class CbioportalModal extends Component {
                     </Button>
                   </Space>
                 </Space>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Genes">
-                <Input
-                  value={genes}
-                  onChange={this.handleGenesChange}
-                  placeholder="Enter genes (semicolon separated, e.g., NF1:MUT=MISSENSE; CDKN2A:MUT)"
-                />
               </Form.Item>
             </Col>
           </Row>
