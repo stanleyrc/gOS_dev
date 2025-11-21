@@ -3,7 +3,12 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
-import { legendColors, kde, epanechnikov } from "../../helpers/utility";
+import {
+  legendColors,
+  kde,
+  epanechnikov,
+  getColorMarker,
+} from "../../helpers/utility";
 import Wrapper from "./index.style";
 import { getNestedValue } from "../../helpers/metadata";
 
@@ -237,9 +242,9 @@ class ViolinPlot extends Component {
             <clipPath key="cuttOffViewPane" id={cutOffid}>
               <rect
                 x={0}
-                y={0}
+                y={-50}
                 width={2 * panelWidth}
-                height={1 * panelHeight + 5}
+                height={1 * panelHeight + 60}
               />
             </clipPath>
           </defs>
@@ -295,16 +300,21 @@ class ViolinPlot extends Component {
                         ]})`}
                       >
                         <line
-                          x1={xScale.step()}
+                          x1={0.86 * xScale.step()}
                           x2={xScale.step() / 2}
                           stroke="red"
                           strokeWidth={1}
                         />
                         <text
                           className="marker-value"
-                          x={xScale.step()}
+                          x={0.86 * xScale.step()}
                           dx="0.5em"
                           dy="0.35em"
+                          fill={getColorMarker(
+                            getNestedValue(markers, hist.plot.id),
+                            hist.plot.q1,
+                            hist.plot.q3
+                          )}
                         >
                           {d3.format(hist.plot.markValueFormat)(
                             getNestedValue(markers, hist.plot.id)

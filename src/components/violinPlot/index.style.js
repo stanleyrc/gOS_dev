@@ -49,7 +49,7 @@ const Wrapper = styled.div`
 
   .marker-value {
     font-size: 10px;
-    fill: currentColor;
+    font-weight: bold;
   }
 `;
 
