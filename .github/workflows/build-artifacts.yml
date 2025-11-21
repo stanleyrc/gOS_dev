@@ -83,6 +83,9 @@ jobs:
             cp ../artifacts_prune/README.md . 2>/dev/null || echo "# Prebuilt artifacts" > README.md
             cp ../artifacts_prune/LATEST.txt . 2>/dev/null || true
             cp ../artifacts_prune/LATEST_BUILT_AT.txt . 2>/dev/null || true
+            cp -R ../artifacts_prune/screenshots . 2>/dev/null || true
+            cp ../artifacts_prune/setup.sh . 2>/dev/null || true
+            cp -R ../artifacts_prune/shared . 2>/dev/null || true
             
             # Commit the clean state
             git add -A
