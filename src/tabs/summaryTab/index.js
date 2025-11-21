@@ -65,44 +65,43 @@ class SummaryTab extends Component {
     const plotGroups = this.processPlotGroups(plots, metadata);
     const tumorPlotGroups = this.processPlotGroups(tumorPlots, metadata);
 
-    let fields = dataset.fields.map((field) => {
-      let tagslist = field.isPair
-        ? generateCascaderOptions(metadata[field.id])
-        : [];
-      return {
-        key: field.id,
-        label: field.title,
-        children:
-          metadata[field.id] == null ? (
-            <Text type="secondary">{t("general.not-applicable")}</Text>
-          ) : field.isNumeric ? (
-            d3.format(field.format)(metadata[field.id])
+    let fields = dataset.fields
+      .map((field) => {
+        const value = metadata[field.id];
+        const tagslist = field.isPair ? generateCascaderOptions(value) : [];
+
+        if (value == null || (field.isPair && tagslist.length < 1)) {
+          return null;
+        }
+
+        return {
+          key: field.id,
+          label: field.title,
+          children: field.isNumeric ? (
+            d3.format(field.format)(value)
           ) : field.isPair ? (
-            tagslist.length > 0 ? (
-              <Space direction="vertical" size={0} style={{ display: "flex" }}>
-                {tagslist.map((tag, i) => (
-                  <div key={`tag-${tag.value}-${i}`}>
-                    <Divider plain orientation="left" size="small">
-                      {tag.label}
-                    </Divider>
-                    <Flex gap="2px" wrap="wrap">
-                      {tag.children.map((child) => (
-                        <Text key={child.value} code>
-                          {child.label}
-                        </Text>
-                      ))}
-                    </Flex>
-                  </div>
-                ))}
-              </Space>
-            ) : (
-              <Text type="secondary">{t("general.not-applicable")}</Text>
-            )
+            <Space direction="vertical" size={0} style={{ display: "flex" }}>
+              {tagslist.map((tag, i) => (
+                <div key={`tag-${tag.value}-${i}`}>
+                  <Divider plain orientation="left" size="small">
+                    {tag.label}
+                  </Divider>
+                  <Flex gap="2px" wrap="wrap">
+                    {tag.children.map((child) => (
+                      <Text key={child.value} code>
+                        {child.label}
+                      </Text>
+                    ))}
+                  </Flex>
+                </div>
+              ))}
+            </Space>
           ) : (
-            <Text>{metadata[field.id]}</Text>
+            <Text>{value}</Text>
           ),
-      };
-    });
+        };
+      })
+      .filter(Boolean);
 
     return (
       <Wrapper>
