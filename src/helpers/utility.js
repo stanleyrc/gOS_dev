@@ -818,18 +818,18 @@ export function magnitude(n) {
 
 export const attributes = [
   "pair",
-  "svCount",
-  "snvCount",
+  "sv_count",
+  "snv_count",
   "tmb",
-  "lohFraction",
+  "loh_fraction",
   "purity",
   "ploidy",
   "tumor_median_coverage",
-  "hrdScore",
-  "hrdB12Score",
-  "hrdB1Score",
-  "hrdB2Score",
-  "msiScore",
+  "hrd.hrd_score",
+  "hrd.b1_2_score",
+  "hrd.b1_score",
+  "hrd.b2_score",
+  "msisensor.score",
 ];
 
 const sorts = ["ascending", "descending"];
@@ -841,61 +841,6 @@ export const orderListViewFilters = attributes.flatMap((attribute, i) =>
     sort,
   }))
 );
-
-export function reportAttributesMap() {
-  return {
-    pair: "pair",
-    tumor_type: "tumor",
-    tumor_details: "tumor_details",
-    tumor_median_coverage: "tumor_median_coverage",
-    normal_median_coverage: "normal_median_coverage",
-    snv_count: "snvCount",
-    sv_count: "svCount",
-    tmb: "tmb",
-    loh_fraction: "lohFraction",
-    purity: "purity",
-    ploidy: "ploidy",
-    disease: "disease",
-    inferred_sex: "sex",
-    primary_site: "primary_site",
-    beta: "beta",
-    gamma: "gamma",
-    cov_slope: "cov_slope",
-    cov_intercept: "cov_intercept",
-    methylation_beta_cov_slope: "methylation_beta_cov_slope",
-    methylation_beta_cov_intercept: "methylation_beta_cov_intercept",
-    methylation_intensity_cov_slope: "methylation_intensity_cov_slope",
-    methylation_intensity_cov_intercept: "methylation_intensity_cov_intercept",
-    hets_slope: "hets_slope",
-    hets_intercept: "hets_intercept",
-    loose_count: "loose_count",
-    junction_count: "junction_count",
-    sv_types_count: "sv_types_count",
-    hrd: "hrd",
-    coverage_qc: "coverage_qc",
-    snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
-    signatures: "signatures",
-    deletionInsertion: "deletionInsertion",
-    sigprofiler_indel_fraction: "sigprofiler_indel_fraction",
-    sigprofiler_indel_count: "sigprofiler_indel_count",
-    sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
-    sigprofiler_sbs_count: "sigprofiler_sbs_count",
-    sigprofiler_indel_cosine_similarity: "sigprofiler_indel_cosine_similarity",
-    sigprofiler_sbs_cosine_similarity: "sigprofiler_sbs_cosine_similarity",
-    msisensor: "msisensor",
-    "msisensor.score": "msiScore",
-    "hrd.hrd_score": "hrdScore",
-    "hrd.b1_2_score": "hrdB12Score",
-    "hrd.b1_score": "hrdB1Score",
-    "hrd.b2_score": "hrdB2Score",
-    summary: "summary",
-    qcMetrics: "qcMetrics",
-    treatment: "treatment",
-    treatment_type: "treatment_type",
-    treatment_best_response: "treatment_best_response",
-    treatment_duration: "treatment_duration",
-  };
-}
 
 export function mutationCatalogMetadata() {
   return ["id", "type", "mutations", "mutationType", "label", "probability"];

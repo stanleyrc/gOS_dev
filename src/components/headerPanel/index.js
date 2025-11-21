@@ -19,10 +19,11 @@ import {
   getColorMarker,
   orderListViewFilters,
 } from "../../helpers/utility";
+import { getNestedValue } from "../../helpers/metadata";
 import {
   valueFormat,
   hrdFields,
-  svCountFields,
+  sv_countFields,
   headerList,
   msiFields,
   hrdDividers,
@@ -30,6 +31,7 @@ import {
   qcMetricsClasses,
 } from "../../helpers/metadata";
 import Wrapper from "./index.style";
+import { get } from "immutable";
 
 const { Text } = Typography;
 
@@ -38,11 +40,11 @@ class HeaderPanel extends Component {
     const { t, report, metadata, plots } = this.props;
     if (!report) return null;
     const {
-      tumor,
+      tumor_type,
       purity,
       ploidy,
       pair,
-      sex,
+      inferred_sex,
       disease,
       primary_site,
       tumor_details,
@@ -88,8 +90,8 @@ class HeaderPanel extends Component {
 
     orderListViewFilters.forEach((d) => {
       let plot = plots.find((e) => e.id === d.attribute);
-      let markValue = +metadata[d.attribute];
-      colorMarkers[d.attribute] =
+      let markValue = getNestedValue(metadata, d.attribute);
+      colorMarkers[`${d.attribute}`] =
         markValue != null
           ? getColorMarker(markValue, plot?.q1, plot?.q3)
           : "gray";
@@ -138,11 +140,11 @@ class HeaderPanel extends Component {
           })}
         </Space>
       ),
-      svCount: (
+      sv_count: (
         <Space direction="vertical" size="small">
           {createTooltip("metadata.junction_count", "junction_count")}
           {createTooltip("metadata.loose_count", "loose_count")}
-          {svCountFields.map((field, index) => {
+          {sv_countFields.map((field, index) => {
             const tooltip = createTooltip(
               `metadata.${field}_count`,
               `sv_types_count.${field}`,
@@ -152,13 +154,12 @@ class HeaderPanel extends Component {
           })}
         </Space>
       ),
-      hrdB12Score: (
+      "hrd.b1_2_score": (
         <span>
           {hrdFields
-            .filter((field, index) =>
-              `hrd.${field}`
-                .split(".")
-                .reduce((acc, key) => acc?.[key], metadata)
+            .filter(
+              (field, index) =>
+                getNestedValue(metadata, `hrd.${field}`) !== null
             )
             .map((field, index) => {
               const tooltip = createTooltip(
@@ -184,13 +185,12 @@ class HeaderPanel extends Component {
             })}
         </span>
       ),
-      msiLabel: (
+      "msisensor.label": (
         <Space direction="vertical" size="small">
           {msiFields
-            .filter((field, index) =>
-              `msisensor.${field}`
-                .split(".")
-                .reduce((acc, key) => acc?.[key], metadata)
+            .filter(
+              (field, index) =>
+                getNestedValue(metadata, `msisensor.${field}`) !== null
             )
             .map((field, index) => {
               const tooltip = createTooltip(
@@ -227,7 +227,7 @@ class HeaderPanel extends Component {
           title={pair}
           subTitle={
             <Space>
-              <span>{sex}</span> {qcMetricsComponent}
+              <span>{inferred_sex}</span> {qcMetricsComponent}
             </Space>
           }
           extra={
@@ -246,7 +246,7 @@ class HeaderPanel extends Component {
                     <div className="avatar-content0">
                       <Space direction="vertical" size="small">
                         <Space>
-                          {tumor ? (
+                          {tumor_type ? (
                             <Avatar
                               size="large"
                               style={{
@@ -254,7 +254,7 @@ class HeaderPanel extends Component {
                                 color: "#f56a00",
                               }}
                             >
-                              {tumor}
+                              {tumor_type}
                             </Avatar>
                           ) : null}
                           <Space direction="vertical" size="10">
@@ -300,14 +300,14 @@ class HeaderPanel extends Component {
                       .filter(
                         (d) =>
                           !(
-                            metadata[d] === null ||
-                            metadata[d] === undefined ||
-                            metadata[d] === ""
+                            getNestedValue(metadata, d) === null ||
+                            getNestedValue(metadata, d) === undefined ||
+                            getNestedValue(metadata, d) === ""
                           )
                       )
                       .map((d) => (
                         <Tooltip
-                          key={`metadata.${d}.short`}
+                          key={`components.header-panel.metadata.${d}.short`}
                           title={tooltips[d]}
                         >
                           <div className="stat-item">
@@ -317,15 +317,19 @@ class HeaderPanel extends Component {
                                   tooltips[d] ? "has-tooltip" : ""
                                 }`}
                               >
-                                {t(`metadata.${d}.short`)}
+                                {t(
+                                  `components.header-panel.metadata.${d}.short`
+                                )}
                               </div>
                               <div className="ant-statistic-content">
                                 <span className="ant-statistic-content-value">
                                   <span
                                     className="ant-statistic-content-value-int"
                                     style={{
-                                      color: isNaN(metadata[d])
-                                        ? colorMarkers[metadata[d]]
+                                      color: isNaN(getNestedValue(metadata, d))
+                                        ? colorMarkers[
+                                            getNestedValue(metadata, d)
+                                          ]
                                         : colorMarkers[d],
                                     }}
                                   >
@@ -341,10 +345,12 @@ class HeaderPanel extends Component {
                                             ? `${metadata["normal_median_coverage"]}X`
                                             : t("general.not-applicable")
                                         }`
-                                      : metadata[d] != null
-                                      ? isNaN(metadata[d])
-                                        ? metadata[d]
-                                        : d3.format(valueFormat(d))(metadata[d])
+                                      : getNestedValue(metadata, d) != null
+                                      ? isNaN(getNestedValue(metadata, d))
+                                        ? getNestedValue(metadata, d)
+                                        : d3.format(valueFormat(d))(
+                                            getNestedValue(metadata, d)
+                                          )
                                       : t("general.not-applicable")}
                                   </span>
                                 </span>
@@ -357,7 +363,7 @@ class HeaderPanel extends Component {
                     <div className="stat-item">
                       <div className="ant-statistic">
                         <div className="ant-statistic-title">
-                          {t("metadata.purity-ploidy-title")}
+                          {t("components.header-panel.purity-ploidy-title")}
                         </div>
                         <div className="ant-statistic-content">
                           <span className="ant-statistic-content-value">

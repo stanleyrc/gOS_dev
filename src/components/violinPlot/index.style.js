@@ -46,6 +46,11 @@ const Wrapper = styled.div`
   .domain {
     stroke: transparent;
   }
+
+  .marker-value {
+    font-size: 10px;
+    fill: currentColor;
+  }
 `;
 
 export default Wrapper;

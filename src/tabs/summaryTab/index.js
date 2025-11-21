@@ -16,6 +16,7 @@ import {
 import { chunks } from "../../helpers/utility";
 import { FaInfoCircle } from "react-icons/fa";
 import { generateCascaderOptions } from "../../helpers/filters";
+import { getNestedValue } from "../../helpers/metadata";
 import Wrapper from "./index.style";
 import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
@@ -27,7 +28,9 @@ const { Text } = Typography;
 class SummaryTab extends Component {
   // Helper function to process plot groups
   processPlotGroups = (plots, metadata) => {
-    const filteredPlots = plots.filter((d) => !isNaN(metadata[d.id]));
+    const filteredPlots = plots.filter(
+      (d) => !isNaN(getNestedValue(metadata, d.id))
+    );
     const groups = d3.groups(filteredPlots, (d) => d.group);
 
     return groups.map(([group, groupPlots]) => {
@@ -67,9 +70,8 @@ class SummaryTab extends Component {
 
     let fields = dataset.fields
       .map((field) => {
-        const value = metadata[field.id];
+        const value = getNestedValue(metadata, field.id);
         const tagslist = field.isPair ? generateCascaderOptions(value) : [];
-
         if (value == null || (field.isPair && tagslist.length < 1)) {
           return null;
         }
@@ -166,7 +168,7 @@ class SummaryTab extends Component {
                         {this.renderViolinPlotPanel(
                           tumorPlotGroups[j].plotsList[i],
                           t("components.violin-panel.header.tumor", {
-                            tumor: metadata.tumor,
+                            tumor: metadata.tumor_type,
                             scope: groupTitle,
                           }),
                           metadata

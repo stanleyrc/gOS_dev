@@ -55,7 +55,7 @@ self.onmessage = function (e) {
           signatures[type][mode],
           {
             markData: metadata[`sigprofiler_${type}_${mode}`],
-            tumorType: metadata.tumor,
+            tumorType: metadata.tumor_type,
             format: mode === "fraction" ? ".4f" : ",",
             range: mode === "fraction" ? [0, 1] : null,
           }

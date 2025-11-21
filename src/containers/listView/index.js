@@ -412,7 +412,9 @@ class ListView extends Component {
                             <span
                               dangerouslySetInnerHTML={{
                                 __html: t("containers.list-view.ordering", {
-                                  attribute: t(`metadata.${d.attribute}.short`),
+                                  attribute: t(
+                                    `components.header-panel.metadata.${d.attribute}.short`
+                                  ),
                                   sort: d.sort,
                                 }),
                               }}
@@ -486,7 +488,7 @@ class ListView extends Component {
                         actions={[
                           <Statistic
                             className="stats"
-                            title={t(`metadata.svCount.short`)}
+                            title={t(`components.header-panel.metadata.sv_count.short`)}
                             value={
                               d.sv_count != null
                                 ? d3.format(",")(d.sv_count)
@@ -495,7 +497,7 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t(`metadata.tmb.short`)}
+                            title={t(`components.header-panel.metadata.tmb.short`)}
                             value={
                               d.tmb != null
                                 ? d3.format(",")(d.tmb)
@@ -504,7 +506,7 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t(`metadata.tumor_median_coverage.shorter`)}
+                            title={t(`components.header-panel.metadata.tumor_median_coverage.shorter`)}
                             value={`${
                               d["tumor_median_coverage"] != null
                                 ? `${d["tumor_median_coverage"]}X`
@@ -517,7 +519,7 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t("metadata.purity-ploidy-title")}
+                            title={t("components.header-panel.purity-ploidy-title")}
                             value={
                               d.purity != null
                                 ? d3.format(".1%")(d.purity)

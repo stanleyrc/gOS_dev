@@ -167,7 +167,7 @@ class SignaturesTab extends Component {
                     },
                     {
                       label: t("components.segmented-filter.tumor", {
-                        tumor: metadata.tumor,
+                        tumor: metadata.tumor_type,
                       }),
                       value: "byTumor",
                     },

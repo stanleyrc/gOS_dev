@@ -12,8 +12,6 @@ import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
-  flip,
-  reportAttributesMap,
   defaultSearchFilters,
   orderListViewFilters,
   datafilesArrowTableToJson,
@@ -157,7 +155,6 @@ function* searchReports({ searchFilters }) {
   let perPage = searchFilters?.per_page || defaultSearchFilters().per_page;
   let orderId = searchFilters?.orderId || defaultSearchFilters().orderId;
   let { attribute, sort } = orderListViewFilters.find((d) => d.id === orderId);
-  let flippedMap = flip(reportAttributesMap());
   let actualSearchFilters = Object.fromEntries(
     Object.entries(searchFilters || {}).filter(
       ([key, value]) =>
@@ -187,8 +184,8 @@ function* searchReports({ searchFilters }) {
           let aValue = null;
           let bValue = null;
           try {
-            aValue = eval(`a.${flippedMap[attribute]}`);
-            bValue = eval(`b.${flippedMap[attribute]}`);
+            aValue = eval(`a.${attribute}`);
+            bValue = eval(`b.${attribute}`);
           } catch (err) {}
           if (aValue == null) return 1;
           if (bValue == null) return -1;
@@ -253,8 +250,8 @@ function* searchReports({ searchFilters }) {
     let aValue = null;
     let bValue = null;
     try {
-      aValue = eval(`a.${flippedMap[attribute]}`);
-      bValue = eval(`b.${flippedMap[attribute]}`);
+      aValue = eval(`a.${attribute}`);
+      bValue = eval(`b.${attribute}`);
     } catch (err) {}
     if (aValue == null) return 1;
     if (bValue == null) return -1;

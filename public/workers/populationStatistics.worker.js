@@ -14,7 +14,7 @@ self.onmessage = function (e) {
       fields,
       populations,
       metadata,
-      metadata.tumor
+      metadata.tumor_type
     );
 
     // Post result back to main thread
@@ -70,11 +70,20 @@ self.onmessage = function (e) {
       ];
       plot.format = d.scaleFormat;
       plot.markValueFormat = d.format;
-      if (metadata[d.id] != null) {
-        plot.markValue = metadata[d.id];
+      if (getNestedValue(metadata, d.id) != null) {
+        plot.markValue = getNestedValue(metadata, d.id);
       }
       return plot;
     });
+  }
+
+  function getNestedValue(obj, path) {
+    if (!path) {
+      return undefined;
+    }
+    return path
+      .split(".")
+      .reduce((acc, part) => (acc == null ? acc : acc[part]), obj);
   }
 
   // D3-like utility functions

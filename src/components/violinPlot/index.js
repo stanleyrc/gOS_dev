@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors, kde, epanechnikov } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import { getNestedValue } from "../../helpers/metadata";
 
 const margins = {
   gap: 0,
@@ -76,11 +77,12 @@ class ViolinPlot extends Component {
       xScale,
       histograms,
       markers,
+      plots,
     };
   }
 
   renderXAxis() {
-    const { xScale, panelHeight } = this.getPlotConfiguration();
+    const { xScale, panelHeight, plots } = this.getPlotConfiguration();
 
     let xAxisContainer = d3
       .select(this.plotContainer)
@@ -90,12 +92,11 @@ class ViolinPlot extends Component {
 
     xAxisContainer.call(axisX);
 
-    let t = this.props.t;
     xAxisContainer
       .selectAll("text")
       .attr("text-anchor", "middle")
       .attr("dy", 20)
-      .text((x) => t(`metadata.${x}.short`));
+      .text((x) => plots.find((d) => d.id === x)?.title || x);
   }
 
   renderYAxis() {
@@ -238,7 +239,7 @@ class ViolinPlot extends Component {
                 x={0}
                 y={0}
                 width={2 * panelWidth}
-                height={1 * panelHeight}
+                height={1 * panelHeight + 5}
               />
             </clipPath>
           </defs>
@@ -286,11 +287,11 @@ class ViolinPlot extends Component {
                         .x1(-hist.scaleX(0))
                         .curve(d3.curveBasis)(hist.density)}
                     />
-                    {markers[hist.plot.id] != null && (
+                    {getNestedValue(markers, hist.plot.id) != null && (
                       <g
                         transform={`translate(${[
                           -1.5 * xScale.step(),
-                          hist.scaleY(markers[hist.plot.id]),
+                          hist.scaleY(getNestedValue(markers, hist.plot.id)),
                         ]})`}
                       >
                         <line
@@ -299,6 +300,16 @@ class ViolinPlot extends Component {
                           stroke="red"
                           strokeWidth={1}
                         />
+                        <text
+                          className="marker-value"
+                          x={xScale.step()}
+                          dx="0.5em"
+                          dy="0.35em"
+                        >
+                          {d3.format(hist.plot.markValueFormat)(
+                            getNestedValue(markers, hist.plot.id)
+                          )}
+                        </text>
                       </g>
                     )}
                   </g>

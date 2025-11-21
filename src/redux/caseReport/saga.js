@@ -39,25 +39,13 @@ function* fetchCaseReport(action) {
       { cancelToken: getCancelToken() }
     );
 
-    let metadata = {};
-    let reportMetadata = responseReportMetadata.data[0];
-
-    Object.keys(responseReportMetadata.data[0]).forEach((key) => {
-      metadata[reportAttributesMap()[key]] = reportMetadata[key];
-    });
+    let metadata = { ...responseReportMetadata.data[0] };
 
     metadata.tags =
       metadata.summary
         ?.split("\n")
         .map((e) => e.trim())
         .filter((e) => e.length > 0) || [];
-
-    metadata.hrdScore = metadata.hrd?.hrd_score;
-    metadata.hrdB12Score = metadata.hrd?.b1_2_score;
-    metadata.hrdB1Score = metadata.hrd?.b1_score;
-    metadata.hrdB2Score = metadata.hrd?.b2_score;
-    metadata.msiLabel = metadata.msisensor?.label;
-    metadata.msiScore = metadata.msisensor?.score;
 
     metadata.qcMetrics = metadata.qcMetrics || [];
     metadata.qcEvaluation = qcEvaluator(metadata.qcMetrics);

@@ -1,5 +1,4 @@
-import { useGPT } from './useGPT';
-
+import { useGPT } from "./useGPT";
 
 const SYSTEM_PROMPT = `You are a genomic report generator that creates reports in the style of FoundationOne CDx reports. 
 Format your response in markdown with the following sections:
@@ -33,7 +32,13 @@ Only use the headers provided above. Do not include any additional sections.`;
 /**
  * Formats input data into a structured string for GPT processing
  */
-function formatInputData(record, metadata, paperSummaries, clinicalTrials, clinicianNotes) {
+function formatInputData(
+  record,
+  metadata,
+  paperSummaries,
+  clinicalTrials,
+  clinicianNotes
+) {
   // Extract only specified fields from record
   const relevantRecord = {
     gene: record.gene,
@@ -52,16 +57,16 @@ function formatInputData(record, metadata, paperSummaries, clinicalTrials, clini
     variant_summary: record.variant_summary,
     gene_summary: record.gene_summary,
     effect_description: record.effect_description,
-    eventType: record.eventType
+    eventType: record.eventType,
   };
 
   // Extract only specified fields from metadata
   const relevantMetadata = {
     pair: metadata.pair,
-    tumor: metadata.tumor,
+    tumor: metadata.tumor_type,
     disease: metadata.disease,
     primary_site: metadata.primary_site,
-    sex: metadata.sex
+    sex: metadata.inferred_sex,
   };
 
   // Return formatted string with filtered data
@@ -75,12 +80,12 @@ ${JSON.stringify(relevantMetadata, null, 2)}
 RESEARCH PAPER SUMMARIES:
 ${Object.entries(paperSummaries)
   .map(([pmid, summary]) => `PMID:${pmid}\n${summary}`)
-  .join('\n\n')}
+  .join("\n\n")}
 
 RELEVANT CLINICAL TRIALS:
 ${Object.entries(clinicalTrials)
   .map(([nctid, trial]) => `NCTID:${nctid}\n${trial}`)
-  .join('\n\n')}
+  .join("\n\n")}
 
 CLINICIAN NOTES:
 ${clinicianNotes}
@@ -93,25 +98,36 @@ ${clinicianNotes}
 export function useEventNoteGenerator() {
   const { queryGPT } = useGPT();
 
-  const generateNote = async (record, metadata, paperSummaries = {}, clinicalTrials = {}, clinicianNotes = '') => {
+  const generateNote = async (
+    record,
+    metadata,
+    paperSummaries = {},
+    clinicalTrials = {},
+    clinicianNotes = ""
+  ) => {
     try {
-      const formattedInput = formatInputData(record, metadata, paperSummaries, clinicalTrials, clinicianNotes);
-      console.log('formatted input:', formattedInput);
-      
+      const formattedInput = formatInputData(
+        record,
+        metadata,
+        paperSummaries,
+        clinicalTrials,
+        clinicianNotes
+      );
+      console.log("formatted input:", formattedInput);
+
       const response = await queryGPT(formattedInput, {
         systemMessage: {
-          role: 'system',
-          content: SYSTEM_PROMPT
+          role: "system",
+          content: SYSTEM_PROMPT,
         },
-        model: 'cheap'
+        model: "cheap",
       });
 
-      console.log('gpt: ', response)
+      console.log("gpt: ", response);
 
       return response;
-
     } catch (error) {
-      console.error('Error generating event note:', error);
+      console.error("Error generating event note:", error);
       throw error;
     }
   };
