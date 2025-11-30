@@ -58,11 +58,6 @@ jobs:
             echo "built_at=${BUILT_AT}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build
-
       - name: Publish release with assets
         uses: ncipollo/release-action@v1
         with:
@@ -83,6 +78,26 @@ jobs:
             out/LATEST.txt
             out/LATEST_BUILT_AT.txt
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare static site (shared data + latest release)
+        env:
+          TAG: ${{ steps.package.outputs.release_tag }}
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_SERVER: "1"
+          PORT: "3001"
+        run: |
+          set -euo pipefail
+          ./setup.sh
+          SHA=$(cat LATEST.txt)
+          SITE_DIR="site"
+          rm -rf "$SITE_DIR"
+          mv "out/build-$SHA" "$SITE_DIR"
+
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
 
   deploy-pages:
     runs-on: ubuntu-latest
