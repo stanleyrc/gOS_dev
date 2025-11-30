@@ -3,9 +3,10 @@ on:
   push:
     branches: ["main"]
 
-# Needed so the workflow can push to the artifacts branch
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 # Cancel in-flight older runs if you push again
 concurrency:
@@ -16,89 +17,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout full history
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup SSH for git pushes
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
-
-      - name: Add github.com to known_hosts
-        run: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
-
-      # (Optional) keep branch size under control — prune before producing new build
-      - name: Prune old tarballs and clean git history
-        if: always()
-        run: |
-          set -e
-          BRANCH=deploy-builds
-          REPO="git@github.com:${GITHUB_REPOSITORY}.git"
-          rm -rf artifacts_prune
-
-          # Clone with full history for proper cleanup
-          git clone --branch ${BRANCH} "$REPO" artifacts_prune
-          if [ ! -d artifacts_prune/releases ]; then
-            echo "No releases to prune yet; skipping"
-            exit 0
-          fi
-          cd artifacts_prune
-          shopt -s nullglob
-          KEEP=2  # Keep only 2 most recent releases instead of 5
-          mapfile -t tarballs < <(git ls-files releases/build-*.tar.gz)
-
-          if (( ${#tarballs[@]} > KEEP )); then
-            echo "Found ${#tarballs[@]} tarballs, keeping ${KEEP} most recent"
-            mapfile -t sorted < <(
-              for file in "${tarballs[@]}"; do
-                ts=$(git log -1 --format=%ct -- "$file" || echo 0)
-                printf '%s\t%s\n' "$ts" "$file"
-              done | sort -n | cut -f2-
-            )
-            
-            # Files to keep (most recent ones)
-            files_to_keep=("${sorted[@]: -KEEP}")
-            echo "Keeping files: ${files_to_keep[*]}"
-            
-            # Create clean repository with only files we want to keep
-            cd ..
-            rm -rf artifacts_clean
-            mkdir artifacts_clean && cd artifacts_clean
-            git init
-            git remote add origin "$REPO"
-            git checkout -b ${BRANCH}
-            
-            # Copy only the files we want to keep
-            mkdir -p releases
-            for file in "${files_to_keep[@]}"; do
-              if [ -f "../artifacts_prune/$file" ]; then
-                cp "../artifacts_prune/$file" "$file"
-                cp "../artifacts_prune/$file.sha256" "$file.sha256" 2>/dev/null || true
-              fi
-            done
-            
-            # Copy other important files
-            cp ../artifacts_prune/README.md . 2>/dev/null || echo "# Prebuilt artifacts" > README.md
-            cp ../artifacts_prune/LATEST.txt . 2>/dev/null || true
-            cp ../artifacts_prune/LATEST_BUILT_AT.txt . 2>/dev/null || true
-            cp -R ../artifacts_prune/.github . 2>/dev/null || true
-            cp -R ../artifacts_prune/screenshots . 2>/dev/null || true
-            cp ../artifacts_prune/setup.sh . 2>/dev/null || true
-            cp -R ../artifacts_prune/shared . 2>/dev/null || true
-            
-            # Commit the clean state
-            git add -A
-            git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-              commit -m "chore: clean repository, keep only ${KEEP} most recent builds"
-            
-            # Force push the clean history (this removes all traces of old files)
-            git push --force origin HEAD:${BRANCH}
-            echo "Successfully pruned to ${KEEP} builds and cleaned git history"
-          else
-            echo "Only ${#tarballs[@]} tarballs found, no pruning needed (keeping ${KEEP})"
-          fi
 
       - name: Use Node 16
         uses: actions/setup-node@v4
@@ -113,51 +33,68 @@ jobs:
         env:
           # give webpack more headroom; harmless on CI
           NODE_OPTIONS: --max-old-space-size=4096
+          REACT_APP_RELEASE_TAG: build-${{ github.sha }}
+          REACT_APP_RELEASE_COMMIT: ${{ github.sha }}
           # optional: smaller uploads
           # GENERATE_SOURCEMAP: 'false'
         run: CI=false yarn build
 
       - name: Package build as tar.gz
+        id: package
         run: |
+          set -e
           mkdir -p out
+          RELEASE_TAG="build-${GITHUB_SHA}"
           TARBALL="build-${GITHUB_SHA}.tar.gz"
           tar -czf "out/${TARBALL}" -C build .
           sha256sum "out/${TARBALL}" > "out/${TARBALL}.sha256"
           echo "${GITHUB_SHA}" > out/LATEST.txt
-          date -u +"%Y-%m-%dT%H:%M:%SZ" > out/LATEST_BUILT_AT.txt
+          BUILT_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "${BUILT_AT}" > out/LATEST_BUILT_AT.txt
+          {
+            echo "tarball=out/${TARBALL}"
+            echo "checksum=out/${TARBALL}.sha256"
+            echo "release_tag=${RELEASE_TAG}"
+            echo "built_at=${BUILT_AT}"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Publish to deploy-builds branch
-        run: |
-          set -e
-          BRANCH=deploy-builds
-          REPO="git@github.com:${GITHUB_REPOSITORY}.git"
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
 
-          # fresh shallow clone of the artifacts branch (handles latest state)
-          rm -rf artifacts
-          if git ls-remote --heads "$REPO" "${BRANCH}" | grep -q "refs/heads/${BRANCH}"; then
-            git clone --branch ${BRANCH} --single-branch --depth=1 "$REPO" artifacts
-          else
-            # create the branch if it doesn't exist yet
-            mkdir artifacts && cd artifacts
-            git init
-            git remote add origin "$REPO"
-            git checkout -b ${BRANCH}
-            echo "# Prebuilt artifacts" > README.md
-            git add README.md
-            git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-              commit -m "init artifacts branch"
-            git push -u origin ${BRANCH}
-            cd ..
-          fi
+      - name: Publish release with assets
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.package.outputs.release_tag }}
+          name: Build ${{ github.sha }}
+          body: |
+            Automated build from commit ${{ github.sha }}.
+            Built at ${{ steps.package.outputs.built_at }}.
+          draft: false
+          prerelease: false
+          makeLatest: true
+          allowUpdates: true
+          replacesArtifacts: true
+          artifactErrorsFailBuild: true
+          artifacts: |
+            ${{ steps.package.outputs.tarball }}
+            ${{ steps.package.outputs.checksum }}
+            out/LATEST.txt
+            out/LATEST_BUILT_AT.txt
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-          mkdir -p artifacts/releases
-          cp out/build-${GITHUB_SHA}.tar.gz artifacts/releases/
-          cp out/build-${GITHUB_SHA}.tar.gz.sha256 artifacts/releases/
-          cp out/LATEST.txt artifacts/
-          cp out/LATEST_BUILT_AT.txt artifacts/
-
-          cd artifacts
-          git add -A
-          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-            commit -m "build: ${GITHUB_SHA}" || echo "No changes to commit"
-          git push origin HEAD:${BRANCH}
+  deploy-pages:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

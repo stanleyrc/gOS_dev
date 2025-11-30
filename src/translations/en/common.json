@@ -65,10 +65,6 @@
       "tag3": "top 25%"
     },
     "junction-burden": "Junction burden",
-    "pair": {
-      "short": "Pair",
-      "full": "Pair"
-    },
     "junction_count": "<strong>{{value}}</strong> junction",
     "junction_count_plural": "<strong>{{value}}</strong> junctions",
     "loose_count": "<strong>{{value}}</strong> loose end",
@@ -386,6 +382,10 @@
       "qcMetrics": "Quality Control Metrics",
       "purity-ploidy-title": "Purity/Ploidy",
       "metadata": {
+        "pair": {
+          "short": "Pair",
+          "full": "Pair"
+        },
         "tumor_median_coverage": {
           "shorter": "Coverage T/N",
           "short": "Coverage Tumor/Normal",

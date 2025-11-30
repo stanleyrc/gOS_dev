@@ -1,0 +1,941 @@
+{
+  "gptKey": "",
+  "coordinates": {
+    "default": "hg19",
+    "higlassMap": {
+      "hg19": "hg19",
+      "hg19_chr": "hg19",
+      "hg38": "hg38",
+      "hg38_chr": "hg38"
+    },
+    "sets": {
+      "hg19": [
+        {
+          "chromosome": "1",
+          "startPoint": 1,
+          "endPoint": 249250621,
+          "color": "#1f77b4"
+        },
+        {
+          "chromosome": "2",
+          "startPoint": 1,
+          "endPoint": 243199373,
+          "color": "#ff7f0e"
+        },
+        {
+          "chromosome": "3",
+          "startPoint": 1,
+          "endPoint": 198022430,
+          "color": "#2ca02c"
+        },
+        {
+          "chromosome": "4",
+          "startPoint": 1,
+          "endPoint": 191154276,
+          "color": "#d62728"
+        },
+        {
+          "chromosome": "5",
+          "startPoint": 1,
+          "endPoint": 180915260,
+          "color": "#9467bd"
+        },
+        {
+          "chromosome": "6",
+          "startPoint": 1,
+          "endPoint": 171115067,
+          "color": "#8c564b"
+        },
+        {
+          "chromosome": "7",
+          "startPoint": 1,
+          "endPoint": 159138663,
+          "color": "#e377c2"
+        },
+        {
+          "chromosome": "8",
+          "startPoint": 1,
+          "endPoint": 146364022,
+          "color": "#7f7f7f"
+        },
+        {
+          "chromosome": "9",
+          "startPoint": 1,
+          "endPoint": 141213431,
+          "color": "#bcbd22"
+        },
+        {
+          "chromosome": "10",
+          "startPoint": 1,
+          "endPoint": 135534747,
+          "color": "#17becf"
+        },
+        {
+          "chromosome": "11",
+          "startPoint": 1,
+          "endPoint": 135006516,
+          "color": "#393b79"
+        },
+        {
+          "chromosome": "12",
+          "startPoint": 1,
+          "endPoint": 133851895,
+          "color": "#5254a3"
+        },
+        {
+          "chromosome": "13",
+          "startPoint": 1,
+          "endPoint": 115169878,
+          "color": "#6b6ecf"
+        },
+        {
+          "chromosome": "14",
+          "startPoint": 1,
+          "endPoint": 107349540,
+          "color": "#9c9ede"
+        },
+        {
+          "chromosome": "15",
+          "startPoint": 1,
+          "endPoint": 102531392,
+          "color": "#637939"
+        },
+        {
+          "chromosome": "16",
+          "startPoint": 1,
+          "endPoint": 90354753,
+          "color": "#8ca252"
+        },
+        {
+          "chromosome": "17",
+          "startPoint": 1,
+          "endPoint": 81195210,
+          "color": "#b5cf6b"
+        },
+        {
+          "chromosome": "18",
+          "startPoint": 1,
+          "endPoint": 78077248,
+          "color": "#cedb9c"
+        },
+        {
+          "chromosome": "19",
+          "startPoint": 1,
+          "endPoint": 59128983,
+          "color": "#8c6d31"
+        },
+        {
+          "chromosome": "20",
+          "startPoint": 1,
+          "endPoint": 63025520,
+          "color": "#bd9e39"
+        },
+        {
+          "chromosome": "21",
+          "startPoint": 1,
+          "endPoint": 48129895,
+          "color": "#e7ba52"
+        },
+        {
+          "chromosome": "22",
+          "startPoint": 1,
+          "endPoint": 51304566,
+          "color": "#e7cb94"
+        },
+        {
+          "chromosome": "X",
+          "startPoint": 1,
+          "endPoint": 155270560,
+          "color": "#843c39"
+        },
+        {
+          "chromosome": "Y",
+          "startPoint": 1,
+          "endPoint": 59373566,
+          "color": "#ad494a"
+        },
+        {
+          "chromosome": "M",
+          "startPoint": 1,
+          "endPoint": 16571,
+          "color": "#d6616b"
+        }
+      ],
+      "hg19_chr": [
+        {
+          "chromosome": "chr1",
+          "startPoint": 1,
+          "endPoint": 249250621,
+          "color": "#1f77b4"
+        },
+        {
+          "chromosome": "chr2",
+          "startPoint": 1,
+          "endPoint": 243199373,
+          "color": "#ff7f0e"
+        },
+        {
+          "chromosome": "chr3",
+          "startPoint": 1,
+          "endPoint": 198022430,
+          "color": "#2ca02c"
+        },
+        {
+          "chromosome": "chr4",
+          "startPoint": 1,
+          "endPoint": 191154276,
+          "color": "#d62728"
+        },
+        {
+          "chromosome": "chr5",
+          "startPoint": 1,
+          "endPoint": 180915260,
+          "color": "#9467bd"
+        },
+        {
+          "chromosome": "chr6",
+          "startPoint": 1,
+          "endPoint": 171115067,
+          "color": "#8c564b"
+        },
+        {
+          "chromosome": "chr7",
+          "startPoint": 1,
+          "endPoint": 159138663,
+          "color": "#e377c2"
+        },
+        {
+          "chromosome": "chr8",
+          "startPoint": 1,
+          "endPoint": 146364022,
+          "color": "#7f7f7f"
+        },
+        {
+          "chromosome": "chr9",
+          "startPoint": 1,
+          "endPoint": 141213431,
+          "color": "#bcbd22"
+        },
+        {
+          "chromosome": "chr10",
+          "startPoint": 1,
+          "endPoint": 135534747,
+          "color": "#17becf"
+        },
+        {
+          "chromosome": "chr11",
+          "startPoint": 1,
+          "endPoint": 135006516,
+          "color": "#393b79"
+        },
+        {
+          "chromosome": "chr12",
+          "startPoint": 1,
+          "endPoint": 133851895,
+          "color": "#5254a3"
+        },
+        {
+          "chromosome": "chr13",
+          "startPoint": 1,
+          "endPoint": 115169878,
+          "color": "#6b6ecf"
+        },
+        {
+          "chromosome": "chr14",
+          "startPoint": 1,
+          "endPoint": 107349540,
+          "color": "#9c9ede"
+        },
+        {
+          "chromosome": "chr15",
+          "startPoint": 1,
+          "endPoint": 102531392,
+          "color": "#637939"
+        },
+        {
+          "chromosome": "chr16",
+          "startPoint": 1,
+          "endPoint": 90354753,
+          "color": "#8ca252"
+        },
+        {
+          "chromosome": "chr17",
+          "startPoint": 1,
+          "endPoint": 81195210,
+          "color": "#b5cf6b"
+        },
+        {
+          "chromosome": "chr18",
+          "startPoint": 1,
+          "endPoint": 78077248,
+          "color": "#cedb9c"
+        },
+        {
+          "chromosome": "chr19",
+          "startPoint": 1,
+          "endPoint": 59128983,
+          "color": "#8c6d31"
+        },
+        {
+          "chromosome": "chr20",
+          "startPoint": 1,
+          "endPoint": 63025520,
+          "color": "#bd9e39"
+        },
+        {
+          "chromosome": "chr21",
+          "startPoint": 1,
+          "endPoint": 48129895,
+          "color": "#e7ba52"
+        },
+        {
+          "chromosome": "chr22",
+          "startPoint": 1,
+          "endPoint": 51304566,
+          "color": "#e7cb94"
+        },
+        {
+          "chromosome": "chrX",
+          "startPoint": 1,
+          "endPoint": 155270560,
+          "color": "#843c39"
+        },
+        {
+          "chromosome": "chrY",
+          "startPoint": 1,
+          "endPoint": 59373566,
+          "color": "#ad494a"
+        },
+        {
+          "chromosome": "chrM",
+          "startPoint": 1,
+          "endPoint": 16571,
+          "color": "#d6616b"
+        }
+      ],
+      "hg38": [
+        {
+          "chromosome": "1",
+          "startPoint": 1,
+          "endPoint": 248956422,
+          "color": "#1f77b4"
+        },
+        {
+          "chromosome": "2",
+          "startPoint": 1,
+          "endPoint": 242193529,
+          "color": "#ff7f0e"
+        },
+        {
+          "chromosome": "3",
+          "startPoint": 1,
+          "endPoint": 198295559,
+          "color": "#2ca02c"
+        },
+        {
+          "chromosome": "4",
+          "startPoint": 1,
+          "endPoint": 190214555,
+          "color": "#d62728"
+        },
+        {
+          "chromosome": "5",
+          "startPoint": 1,
+          "endPoint": 181538259,
+          "color": "#9467bd"
+        },
+        {
+          "chromosome": "6",
+          "startPoint": 1,
+          "endPoint": 170805979,
+          "color": "#8c564b"
+        },
+        {
+          "chromosome": "7",
+          "startPoint": 1,
+          "endPoint": 159345973,
+          "color": "#e377c2"
+        },
+        {
+          "chromosome": "8",
+          "startPoint": 1,
+          "endPoint": 145138636,
+          "color": "#7f7f7f"
+        },
+        {
+          "chromosome": "9",
+          "startPoint": 1,
+          "endPoint": 138394717,
+          "color": "#bcbd22"
+        },
+        {
+          "chromosome": "10",
+          "startPoint": 1,
+          "endPoint": 133797422,
+          "color": "#17becf"
+        },
+        {
+          "chromosome": "11",
+          "startPoint": 1,
+          "endPoint": 135086622,
+          "color": "#393b79"
+        },
+        {
+          "chromosome": "12",
+          "startPoint": 1,
+          "endPoint": 133275309,
+          "color": "#5254a3"
+        },
+        {
+          "chromosome": "13",
+          "startPoint": 1,
+          "endPoint": 114364328,
+          "color": "#6b6ecf"
+        },
+        {
+          "chromosome": "14",
+          "startPoint": 1,
+          "endPoint": 107043718,
+          "color": "#9c9ede"
+        },
+        {
+          "chromosome": "15",
+          "startPoint": 1,
+          "endPoint": 101991189,
+          "color": "#637939"
+        },
+        {
+          "chromosome": "16",
+          "startPoint": 1,
+          "endPoint": 90338345,
+          "color": "#8ca252"
+        },
+        {
+          "chromosome": "17",
+          "startPoint": 1,
+          "endPoint": 83257441,
+          "color": "#b5cf6b"
+        },
+        {
+          "chromosome": "18",
+          "startPoint": 1,
+          "endPoint": 80373285,
+          "color": "#cedb9c"
+        },
+        {
+          "chromosome": "19",
+          "startPoint": 1,
+          "endPoint": 58617616,
+          "color": "#8c6d31"
+        },
+        {
+          "chromosome": "20",
+          "startPoint": 1,
+          "endPoint": 64444167,
+          "color": "#bd9e39"
+        },
+        {
+          "chromosome": "21",
+          "startPoint": 1,
+          "endPoint": 46709983,
+          "color": "#e7ba52"
+        },
+        {
+          "chromosome": "22",
+          "startPoint": 1,
+          "endPoint": 50818468,
+          "color": "#e7cb94"
+        },
+        {
+          "chromosome": "X",
+          "startPoint": 1,
+          "endPoint": 156040895,
+          "color": "#843c39"
+        },
+        {
+          "chromosome": "Y",
+          "startPoint": 1,
+          "endPoint": 57227415,
+          "color": "#40a35a"
+        },
+        {
+          "chromosome": "M",
+          "startPoint": 1,
+          "endPoint": 16569,
+          "color": "#d6616b"
+        }
+      ],
+      "hg38_chr": [
+        {
+          "chromosome": "chr1",
+          "startPoint": 1,
+          "endPoint": 248956422,
+          "color": "#1f77b4"
+        },
+        {
+          "chromosome": "chr2",
+          "startPoint": 1,
+          "endPoint": 242193529,
+          "color": "#ff7f0e"
+        },
+        {
+          "chromosome": "chr3",
+          "startPoint": 1,
+          "endPoint": 198295559,
+          "color": "#2ca02c"
+        },
+        {
+          "chromosome": "chr4",
+          "startPoint": 1,
+          "endPoint": 190214555,
+          "color": "#d62728"
+        },
+        {
+          "chromosome": "chr5",
+          "startPoint": 1,
+          "endPoint": 181538259,
+          "color": "#9467bd"
+        },
+        {
+          "chromosome": "chr6",
+          "startPoint": 1,
+          "endPoint": 170805979,
+          "color": "#8c564b"
+        },
+        {
+          "chromosome": "chr7",
+          "startPoint": 1,
+          "endPoint": 159345973,
+          "color": "#e377c2"
+        },
+        {
+          "chromosome": "chr8",
+          "startPoint": 1,
+          "endPoint": 145138636,
+          "color": "#7f7f7f"
+        },
+        {
+          "chromosome": "chr9",
+          "startPoint": 1,
+          "endPoint": 138394717,
+          "color": "#bcbd22"
+        },
+        {
+          "chromosome": "chr10",
+          "startPoint": 1,
+          "endPoint": 133797422,
+          "color": "#17becf"
+        },
+        {
+          "chromosome": "chr11",
+          "startPoint": 1,
+          "endPoint": 135086622,
+          "color": "#393b79"
+        },
+        {
+          "chromosome": "chr12",
+          "startPoint": 1,
+          "endPoint": 133275309,
+          "color": "#5254a3"
+        },
+        {
+          "chromosome": "chr13",
+          "startPoint": 1,
+          "endPoint": 114364328,
+          "color": "#6b6ecf"
+        },
+        {
+          "chromosome": "chr14",
+          "startPoint": 1,
+          "endPoint": 107043718,
+          "color": "#9c9ede"
+        },
+        {
+          "chromosome": "chr15",
+          "startPoint": 1,
+          "endPoint": 101991189,
+          "color": "#637939"
+        },
+        {
+          "chromosome": "chr16",
+          "startPoint": 1,
+          "endPoint": 90338345,
+          "color": "#8ca252"
+        },
+        {
+          "chromosome": "chr17",
+          "startPoint": 1,
+          "endPoint": 83257441,
+          "color": "#b5cf6b"
+        },
+        {
+          "chromosome": "chr18",
+          "startPoint": 1,
+          "endPoint": 80373285,
+          "color": "#cedb9c"
+        },
+        {
+          "chromosome": "chr19",
+          "startPoint": 1,
+          "endPoint": 58617616,
+          "color": "#8c6d31"
+        },
+        {
+          "chromosome": "chr20",
+          "startPoint": 1,
+          "endPoint": 64444167,
+          "color": "#bd9e39"
+        },
+        {
+          "chromosome": "chr21",
+          "startPoint": 1,
+          "endPoint": 46709983,
+          "color": "#e7ba52"
+        },
+        {
+          "chromosome": "chr22",
+          "startPoint": 1,
+          "endPoint": 50818468,
+          "color": "#e7cb94"
+        },
+        {
+          "chromosome": "chrX",
+          "startPoint": 1,
+          "endPoint": 156040895,
+          "color": "#843c39"
+        },
+        {
+          "chromosome": "Y",
+          "startPoint": 1,
+          "endPoint": 57227415,
+          "color": "#40a35a"
+        },
+        {
+          "chromosome": "M",
+          "startPoint": 1,
+          "endPoint": 16569,
+          "color": "#d6616b"
+        }
+      ]
+    }
+  },
+  "signaturesList": {
+    "folder": "sigprofiler",
+    "types": ["indel", "sbs"],
+    "modes": ["count", "fraction"],
+    "datafiles": {
+      "indel": [
+        "ID1",
+        "ID2",
+        "ID3",
+        "ID4",
+        "ID5",
+        "ID6",
+        "ID7",
+        "ID8",
+        "ID9",
+        "ID10",
+        "ID11",
+        "ID12",
+        "ID13",
+        "ID14",
+        "ID15",
+        "ID16",
+        "ID17",
+        "ID18",
+        "ID19",
+        "ID20",
+        "ID21",
+        "ID22",
+        "ID23",
+        "IDFFPE"
+      ],
+      "sbs": [
+        "SBS1",
+        "SBS2",
+        "SBS3",
+        "SBS4",
+        "SBS5",
+        "SBS6",
+        "SBS7a",
+        "SBS7b",
+        "SBS7c",
+        "SBS7d",
+        "SBS8",
+        "SBS9",
+        "SBS10a",
+        "SBS10b",
+        "SBS10c",
+        "SBS10d",
+        "SBS11",
+        "SBS12",
+        "SBS13",
+        "SBS14",
+        "SBS15",
+        "SBS16",
+        "SBS17a",
+        "SBS17b",
+        "SBS18",
+        "SBS19",
+        "SBS20",
+        "SBS21",
+        "SBS22a",
+        "SBS22b",
+        "SBS23",
+        "SBS24",
+        "SBS25",
+        "SBS26",
+        "SBS27",
+        "SBS28",
+        "SBS29",
+        "SBS30",
+        "SBS31",
+        "SBS32",
+        "SBS33",
+        "SBS34",
+        "SBS35",
+        "SBS36",
+        "SBS37",
+        "SBS38",
+        "SBS39",
+        "SBS40a",
+        "SBS40b",
+        "SBS40c",
+        "SBS41",
+        "SBS42",
+        "SBS43",
+        "SBS44",
+        "SBS45",
+        "SBS46",
+        "SBS47",
+        "SBS48",
+        "SBS49",
+        "SBS50",
+        "SBS51",
+        "SBS52",
+        "SBS53",
+        "SBS54",
+        "SBS55",
+        "SBS56",
+        "SBS57",
+        "SBS58",
+        "SBS59",
+        "SBS60",
+        "SBS84",
+        "SBS85",
+        "SBS86",
+        "SBS87",
+        "SBS88",
+        "SBS89",
+        "SBS90",
+        "SBS91",
+        "SBS92",
+        "SBS93",
+        "SBS94",
+        "SBS95",
+        "SBS96",
+        "SBS97",
+        "SBS98",
+        "SBS99"
+      ]
+    }
+  },
+  "fields": [
+    { "id": "tags", "title": "Tags", "type": "pair" },
+    { "id": "pair", "title": "Pair", "type": "string" },
+    { "id": "tumor_type", "title": "Tumor Type", "type": "string" },
+    { "id": "tumor_details", "title": "Tumor Details", "type": "string" },
+    { "id": "disease", "title": "Disease", "type": "string" },
+    { "id": "primary_site", "title": "Primary Site", "type": "string" },
+    { "id": "inferred_sex", "title": "Inferred Sex", "type": "string" },
+    {
+      "id": "treatment",
+      "type": "string",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "treatment_type",
+      "type": "string",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "treatment_best_response",
+      "type": "string",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "treatment_duration",
+      "type": "numeric",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "tumor_median_coverage",
+      "title": "Coverage Tumor/Normal",
+      "type": "numeric",
+      "shortTitle": "Coverage T/N",
+      "description": "The median sequencing coverage across the tumor genome.",
+      "kpiPlot": true,
+      "format": ",",
+      "minValue": 0,
+      "group": "quality-metrics",
+      "groupTitle": "Quality Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "purity",
+      "title": "Purity",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ".2%",
+      "scaleFormat": ".0%",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "quality-metrics",
+      "groupTitle": "Quality Metrics",
+      "groupOrder": 3
+    },
+    {
+      "id": "ploidy",
+      "title": "Ploidy",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ".2f",
+      "scale": "linear",
+      "minValue": 1.5,
+      "maxValue": 5.5,
+      "group": "quality-metrics",
+      "groupTitle": "Quality Metrics",
+      "groupOrder": 3
+    },
+    {
+      "id": "snv_count",
+      "title": "SNV Count",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ",",
+      "scale": "log",
+      "minValue": 1,
+      "group": "event-metrics",
+      "groupTitle": "Event Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "sv_count",
+      "title": "SV Count",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ",",
+      "scale": "log",
+      "minValue": 1,
+      "group": "event-metrics",
+      "groupTitle": "Event Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "loh_fraction",
+      "title": "Fraction of Genome Altered (FGA)",
+      "shortTitle": "FGA",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ".3",
+      "scale": "linear",
+      "minValue": 0,
+      "group": "event-metrics",
+      "groupTitle": "Event Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "tmb",
+      "title": "Tumor Mutational Burden (TMB)",
+      "shortTitle": "TMB",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ",",
+      "scale": "log",
+      "minValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.hrd_score",
+      "title": "HRDetect",
+      "shortTitle": "HRD",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "msisensor.score",
+      "title": "MSI Score",
+      "shortTitle": "MSI",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ".2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.b1_2_score",
+      "title": "B1+B2 Score",
+      "shortTitle": "B1+B2",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.b1_score",
+      "title": "B1 Score",
+      "shortTitle": "B1",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "maxValueY": null,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.b2_score",
+      "title": "B2 Score",
+      "shortTitle": "B2",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "maxValueY": null,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    }
+  ]
+}
