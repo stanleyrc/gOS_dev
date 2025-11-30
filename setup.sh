@@ -40,8 +40,7 @@ fi
 
 RELEASE_JSON=$(curl -fsSL "${AUTH_HEADER[@]}" "$API_URL")
 
-read -r TAG_NAME SHA TARBALL_NAME TARBALL_URL CHECKSUM_NAME CHECKSUM_URL LATEST_URL BUILT_AT_URL <<EOF
-$(python3 - <<'PY' <<<"$RELEASE_JSON")
+mapfile -t RELEASE_FIELDS < <(python3 - <<'PY' <<<"$RELEASE_JSON")
 import json, sys, re
 data = json.load(sys.stdin)
 assets = data.get("assets", [])
@@ -68,7 +67,20 @@ print(checksum_url)
 print(latest_url)
 print(built_at_url)
 PY
-EOF
+
+TAG_NAME="${RELEASE_FIELDS[0]:-}"
+SHA="${RELEASE_FIELDS[1]:-}"
+TARBALL_NAME="${RELEASE_FIELDS[2]:-}"
+TARBALL_URL="${RELEASE_FIELDS[3]:-}"
+CHECKSUM_NAME="${RELEASE_FIELDS[4]:-}"
+CHECKSUM_URL="${RELEASE_FIELDS[5]:-}"
+LATEST_URL="${RELEASE_FIELDS[6]:-}"
+BUILT_AT_URL="${RELEASE_FIELDS[7]:-}"
+
+if [[ -z "$TARBALL_URL" || -z "$CHECKSUM_URL" || -z "$LATEST_URL" || -z "$BUILT_AT_URL" ]]; then
+  echo "Failed to resolve release assets from GitHub API response" >&2
+  exit 1
+fi
 
 echo "Using release: ${TAG_NAME:-unknown}"
 echo "Artifact SHA: ${SHA}"
