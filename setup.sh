@@ -90,6 +90,10 @@ download "$CHECKSUM_URL" "$CHECKSUM_PATH"
 download "$LATEST_URL" "$LATEST_PATH"
 download "$BUILT_AT_URL" "$BUILT_AT_PATH"
 
+# Mirror metadata into repo root for callers expecting it there.
+cp "$LATEST_PATH" "$APP_ROOT/LATEST.txt"
+cp "$BUILT_AT_PATH" "$APP_ROOT/LATEST_BUILT_AT.txt"
+
 EXPECTED_SHA256=$(awk 'NR==1 {print $1}' "$CHECKSUM_PATH")
 ACTUAL_SHA256=$($HASH_BIN "$TARBALL_PATH" | awk '{print $1}')
 if [[ "$EXPECTED_SHA256" != "$ACTUAL_SHA256" ]]; then
