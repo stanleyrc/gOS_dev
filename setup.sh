@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Downloads the latest GitHub Release artifact, unpacks it with shared data, and serves it locally.
+# Downloads the latest GitHub Release tarball, merges shared data, and serves it locally.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 APP_ROOT="$SCRIPT_DIR"
 RELEASES_DIR="$APP_ROOT/releases"
@@ -10,23 +10,33 @@ PORT="${PORT:-3001}"
 TARGET_TAG="${TAG:-}"
 REPO="${REPO:-mskilab/case-report}"
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required to run the local HTTP server" >&2
-  exit 1
-fi
+need_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing required command: $1" >&2
+    exit 1
+  fi
+}
 
-AUTH_HEADER=()
-if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  AUTH_HEADER=(-H "Authorization: Bearer $GITHUB_TOKEN")
-fi
+need_cmd curl
+need_cmd jq
+need_cmd tar
 
 if command -v sha256sum >/dev/null 2>&1; then
-  HASH_BIN=(sha256sum)
+  HASH_BIN="sha256sum"
 elif command -v shasum >/dev/null 2>&1; then
-  HASH_BIN=(shasum -a 256)
+  HASH_BIN="shasum -a 256"
 else
-  echo "sha256sum or shasum is required to verify the download" >&2
+  echo "Missing sha256sum or shasum" >&2
   exit 1
+fi
+
+if [[ "${SKIP_SERVER:-0}" != "1" ]]; then
+  need_cmd python3
+fi
+
+AUTH_HEADER=""
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  AUTH_HEADER="Authorization: Bearer $GITHUB_TOKEN"
 fi
 
 API_BASE="https://api.github.com/repos/${REPO}/releases"
@@ -38,47 +48,23 @@ else
   echo "Fetching latest release metadata from ${REPO}..."
 fi
 
-RELEASE_JSON=$(curl -fsSL "${AUTH_HEADER[@]}" "$API_URL")
+TMP_JSON=$(mktemp)
+curl -fsSL ${AUTH_HEADER:+-H "$AUTH_HEADER"} "$API_URL" -o "$TMP_JSON"
 
-mapfile -t RELEASE_FIELDS < <(python3 - <<'PY' <<<"$RELEASE_JSON")
-import json, sys, re
-data = json.load(sys.stdin)
-assets = data.get("assets", [])
+TARBALL_NAME=$(jq -r '.assets[] | select(.name|startswith("build-") and endswith(".tar.gz")) | .name' "$TMP_JSON" | head -n1)
+TARBALL_URL=$(jq -r '.assets[] | select(.name|startswith("build-") and endswith(".tar.gz")) | .browser_download_url' "$TMP_JSON" | head -n1)
+CHECKSUM_NAME=$(jq -r '.assets[] | select(.name|endswith(".tar.gz.sha256")) | .name' "$TMP_JSON" | head -n1)
+CHECKSUM_URL=$(jq -r '.assets[] | select(.name|endswith(".tar.gz.sha256")) | .browser_download_url' "$TMP_JSON" | head -n1)
+LATEST_URL=$(jq -r '.assets[] | select(.name=="LATEST.txt") | .browser_download_url' "$TMP_JSON" | head -n1)
+BUILT_AT_URL=$(jq -r '.assets[] | select(.name=="LATEST_BUILT_AT.txt") | .browser_download_url' "$TMP_JSON" | head -n1)
+TAG_NAME=$(jq -r '.tag_name // ""' "$TMP_JSON")
+SHA="${TARBALL_NAME#build-}"
+SHA="${SHA%.tar.gz}"
 
-def pick(predicate, label):
-    for asset in assets:
-        name = asset.get("name", "")
-        if predicate(name):
-            return name, asset.get("browser_download_url", "")
-    sys.exit(f"Missing release asset: {label}")
-
-tar_name, tar_url = pick(lambda n: n.startswith("build-") and n.endswith(".tar.gz"), "build-*.tar.gz")
-checksum_name, checksum_url = pick(lambda n: n.startswith("build-") and n.endswith(".tar.gz.sha256"), "build-*.tar.gz.sha256")
-latest_name, latest_url = pick(lambda n: n == "LATEST.txt", "LATEST.txt")
-built_at_name, built_at_url = pick(lambda n: n == "LATEST_BUILT_AT.txt", "LATEST_BUILT_AT.txt")
-
-sha = re.sub(r"^build-|\\.tar\\.gz$", "", tar_name)
-print(data.get("tag_name", ""))
-print(sha)
-print(tar_name)
-print(tar_url)
-print(checksum_name)
-print(checksum_url)
-print(latest_url)
-print(built_at_url)
-PY
-
-TAG_NAME="${RELEASE_FIELDS[0]:-}"
-SHA="${RELEASE_FIELDS[1]:-}"
-TARBALL_NAME="${RELEASE_FIELDS[2]:-}"
-TARBALL_URL="${RELEASE_FIELDS[3]:-}"
-CHECKSUM_NAME="${RELEASE_FIELDS[4]:-}"
-CHECKSUM_URL="${RELEASE_FIELDS[5]:-}"
-LATEST_URL="${RELEASE_FIELDS[6]:-}"
-BUILT_AT_URL="${RELEASE_FIELDS[7]:-}"
+rm -f "$TMP_JSON"
 
 if [[ -z "$TARBALL_URL" || -z "$CHECKSUM_URL" || -z "$LATEST_URL" || -z "$BUILT_AT_URL" ]]; then
-  echo "Failed to resolve release assets from GitHub API response" >&2
+  echo "Failed to locate release assets (tarball/checksum/LATEST files)" >&2
   exit 1
 fi
 
@@ -91,7 +77,7 @@ download() {
   local url="$1"
   local dest="$2"
   echo "Downloading $(basename "$dest")..."
-  curl -fSL "${AUTH_HEADER[@]}" -H "Accept: application/octet-stream" "$url" -o "$dest"
+  curl -fSL ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "Accept: application/octet-stream" "$url" -o "$dest"
 }
 
 TARBALL_PATH="$RELEASES_DIR/$TARBALL_NAME"
@@ -105,7 +91,7 @@ download "$LATEST_URL" "$LATEST_PATH"
 download "$BUILT_AT_URL" "$BUILT_AT_PATH"
 
 EXPECTED_SHA256=$(awk 'NR==1 {print $1}' "$CHECKSUM_PATH")
-ACTUAL_SHA256=$("${HASH_BIN[@]}" "$TARBALL_PATH" | awk '{print $1}')
+ACTUAL_SHA256=$($HASH_BIN "$TARBALL_PATH" | awk '{print $1}')
 if [[ "$EXPECTED_SHA256" != "$ACTUAL_SHA256" ]]; then
   echo "Checksum mismatch for $TARBALL_NAME" >&2
   echo "Expected: $EXPECTED_SHA256" >&2
@@ -124,7 +110,6 @@ if [[ ! -d "$APP_ROOT/shared" ]]; then
   exit 1
 fi
 
-# Ship shared datasets/config alongside the static build so the app can boot.
 cp -a "$APP_ROOT/shared/." "$DEPLOY_DIR/"
 
 echo "Prepared build at $DEPLOY_DIR"

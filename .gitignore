@@ -93,3 +93,4 @@ report/
 .yarnrc.yml
 gOS.code-workspace
 .yarn/install-state.gz
+releases/
