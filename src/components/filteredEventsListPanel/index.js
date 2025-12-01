@@ -47,23 +47,6 @@ const eventColumns = {
   complexsv: [2, 3, 12],
 };
 
-// Default column keys - can be moved to settings.json in the future
-const DEFAULT_COLUMN_KEYS = [
-  "gene",
-  "role",
-  "variant",
-  "type",
-  "effect",
-  "tier",
-  "estimatedAlteredCopies",
-  "segmentCopyNumber",
-  "fusionCopyNumber",
-  "altCounts",
-  "refCounts",
-  "vaf",
-  "location",
-];
-
 // Helper function to extract text from column title (handles both strings and JSX)
 const getColumnTitle = (title) => {
   if (typeof title === "string") return title;
@@ -81,8 +64,9 @@ class FilteredEventsListPanel extends Component {
 
   handleResetFilters = () => {
     const { additionalColumns } = this.props;
+    const defaultColumnKeys = this.getDefaultColumnKeys();
     const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const defaultKeys = [...new Set([...DEFAULT_COLUMN_KEYS, ...additionalKeys])];
+    const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
     this.setState({
       geneFilters: [],
       tierFilters: [],
@@ -102,10 +86,31 @@ class FilteredEventsListPanel extends Component {
     variantFilters: [],
     geneFilters: [],
     tierCountsMap: {},
-    selectedColumnKeys: [...DEFAULT_COLUMN_KEYS],
+    selectedColumnKeys: [],
   };
 
   // add as a class field
+
+  getDefaultColumnKeys = () => {
+    const { data: settingsData, dataset } = this.props;
+    
+    // Get columns from settings.json
+    const settingsColumns = settingsData?.filteredEventsColumns || [];
+    const settingsColumnIds = (Array.isArray(settingsColumns) ? settingsColumns : [])
+      .map((col) => col?.id)
+      .filter(Boolean);
+    
+    // Get optional columns from current dataset
+    // Safely handles cases where optionalFilteredEventsColumns attribute is missing or undefined
+    const datasetColumns = dataset?.optionalFilteredEventsColumns || [];
+    const datasetColumnIds = (Array.isArray(datasetColumns) ? datasetColumns : [])
+      .map((col) => col?.id)
+      .filter(Boolean);
+    
+    // Merge: settings columns first, then dataset-specific columns
+    const mergedColumnIds = [...new Set([...settingsColumnIds, ...datasetColumnIds])];
+    return mergedColumnIds;
+  };
 
   handleCloseReportModal = async () => {
     this.props.selectFilteredEvent(null);
@@ -128,15 +133,18 @@ class FilteredEventsListPanel extends Component {
     if (prevProps.filteredEvents !== this.props.filteredEvents || prevState.eventType !== this.state.eventType) {
       this.fetchTierCountsForRecords();
     }
-    if (prevProps.additionalColumns !== this.props.additionalColumns) {
+    if (prevProps.additionalColumns !== this.props.additionalColumns ||
+        prevProps.data !== this.props.data ||
+        prevProps.dataset !== this.props.dataset) {
       this.initializeSelectedColumns();
     }
   }
 
   initializeSelectedColumns = () => {
     const { additionalColumns } = this.props;
+    const defaultColumnKeys = this.getDefaultColumnKeys();
     const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const selectedKeys = [...new Set([...DEFAULT_COLUMN_KEYS, ...additionalKeys])];
+    const selectedKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
     this.setState({ selectedColumnKeys: selectedKeys });
   };
 
@@ -720,35 +728,6 @@ class FilteredEventsListPanel extends Component {
               className="ant-panel-container ant-home-plot-container"
               align="middle"
               justify="space-between"
-              style={{ marginBottom: "12px" }}
-            >
-              <Col flex="auto">
-                <Select
-                  mode="multiple"
-                  placeholder={t("components.filtered-events-panel.select-columns")}
-                  value={selectedColumnKeys}
-                  onChange={this.handleColumnSelectionChange}
-                  style={{ width: "300px" }}
-                  size="small"
-                  maxTagCount="responsive"
-                >
-                  {columns.map((col) => (
-                    <Select.Option key={col.key} value={col.key}>
-                      {getColumnTitle(col.title)}
-                    </Select.Option>
-                  ))}
-                  {(additionalColumns || []).map((col) => (
-                    <Select.Option key={col.key} value={col.key}>
-                      {getColumnTitle(col.title)}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Col>
-            </Row>
-            <Row
-              className="ant-panel-container ant-home-plot-container"
-              align="middle"
-              justify="space-between"
             >
               <Col flex="auto">
                 <Segmented
@@ -793,6 +772,35 @@ class FilteredEventsListPanel extends Component {
                 >
                   {t("components.filtered-events-panel.reset-filters")}
                 </Button>
+              </Col>
+            </Row>
+            <Row
+              className="ant-panel-container ant-home-plot-container"
+              align="middle"
+              justify="space-between"
+              style={{ marginBottom: "12px" }}
+            >
+              <Col flex="auto">
+                <Select
+                  mode="multiple"
+                  placeholder={t("components.filtered-events-panel.select-columns")}
+                  value={selectedColumnKeys}
+                  onChange={this.handleColumnSelectionChange}
+                  style={{ width: "50%" }}
+                  size="small"
+                  maxTagCount="responsive"
+                >
+                  {columns.map((col) => (
+                    <Select.Option key={col.key} value={col.key}>
+                      {getColumnTitle(col.title)}
+                    </Select.Option>
+                  ))}
+                  {(additionalColumns || []).map((col) => (
+                    <Select.Option key={col.key} value={col.key}>
+                      {getColumnTitle(col.title)}
+                    </Select.Option>
+                  ))}
+                </Select>
               </Col>
             </Row>
             <Row className="ant-panel-container ant-home-plot-container">
@@ -995,6 +1003,7 @@ const mapStateToProps = (state) => {
     CaseReport: state.CaseReport,
     Interpretations: state.Interpretations,
     dataset: state?.Settings?.dataset,
+    data: state?.Settings?.data,
   };
 };
 export default connect(

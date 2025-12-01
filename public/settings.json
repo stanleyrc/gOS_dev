@@ -947,5 +947,130 @@
       "groupOrder": 6,
       "external": true
     }
+  ],
+  "filteredEventsColumns": [
+    {
+      "id": "gene",
+      "title": "components.filtered-events-panel.gene",
+      "key": "gene",
+      "dataIndex": "gene",
+      "type": "string",
+      "width": 100,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "role",
+      "title": "components.filtered-events-panel.role",
+      "key": "role",
+      "dataIndex": "role",
+      "type": "string",
+      "width": 160,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "variant",
+      "title": "components.filtered-events-panel.variant",
+      "key": "variant",
+      "dataIndex": "variant",
+      "type": "string",
+      "width": 120,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "type",
+      "title": "components.filtered-events-panel.type",
+      "key": "type",
+      "dataIndex": "type",
+      "type": "string",
+      "width": 240,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "effect",
+      "title": "components.filtered-events-panel.effect",
+      "key": "effect",
+      "dataIndex": "effect",
+      "type": "string",
+      "width": 160,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "tier",
+      "title": "components.filtered-events-panel.tier",
+      "key": "tier",
+      "dataIndex": "tier",
+      "type": "numeric",
+      "width": 120,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "estimatedAlteredCopies",
+      "title": "components.filtered-events-panel.estimatedAlteredCopies",
+      "key": "estimatedAlteredCopies",
+      "dataIndex": "estimatedAlteredCopies",
+      "type": "numeric",
+      "width": 100,
+      "sortable": true
+    },
+    {
+      "id": "segmentCopyNumber",
+      "title": "components.filtered-events-panel.segmentCopyNumber",
+      "key": "segmentCopyNumber",
+      "dataIndex": "segmentCopyNumber",
+      "type": "numeric",
+      "width": 130,
+      "sortable": true
+    },
+    {
+      "id": "fusionCopyNumber",
+      "title": "components.filtered-events-panel.fusionCopyNumber",
+      "key": "fusionCopyNumber",
+      "dataIndex": "fusionCopyNumber",
+      "type": "numeric",
+      "width": 100,
+      "sortable": true
+    },
+    {
+      "id": "altCounts",
+      "title": "components.filtered-events-panel.altCounts",
+      "key": "altCounts",
+      "dataIndex": "altCounts",
+      "type": "numeric",
+      "width": 100,
+      "sortable": true
+    },
+    {
+      "id": "refCounts",
+      "title": "components.filtered-events-panel.refCounts",
+      "key": "refCounts",
+      "dataIndex": "refCounts",
+      "type": "numeric",
+      "width": 100,
+      "sortable": true
+    },
+    {
+      "id": "vaf",
+      "title": "components.filtered-events-panel.vaf",
+      "key": "vaf",
+      "dataIndex": "vaf",
+      "type": "numeric",
+      "width": 100,
+      "sortable": true
+    },
+    {
+      "id": "location",
+      "title": "components.filtered-events-panel.location",
+      "key": "location",
+      "dataIndex": "location",
+      "type": "string",
+      "width": 200,
+      "sortable": true
+    }
   ]
 }
