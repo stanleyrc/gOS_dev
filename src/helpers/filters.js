@@ -241,7 +241,6 @@ export const cascaderOperators = ["OR", "AND", "NOT"];
 
 export function getReportFilterExtents(reports) {
   let extents = {};
-
   reportFilters().forEach((filter) => {
     let allValues = reports
       .map((record) => {
@@ -259,19 +258,6 @@ export function getReportFilterExtents(reports) {
   return extents;
 }
 
-export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }) {
-  const filter = reportFilters().find(f => f.name === "has_interpretations");
-  
-  const options = generateInterpretationsCascaderOptions(reports, casesWithInterpretations);
-  
-  return {
-    filter: filter,
-    options: options,
-    totalRecords: reports.length,
-    format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
-  };
-}
-
 export function getReportsFilters(fields, reports) {
   let reportsFilters = [];
 
@@ -287,22 +273,22 @@ export function getReportsFilters(fields, reports) {
       })
       .flat();
 
-      const frequencyMap = d3.rollup(
-        allValues,
-        (v) => v.length,
-        (d) => d
-      );
+    let frequencyMap = d3.rollup(
+      allValues,
+      (v) => v.length,
+      (d) => d
+    );
 
-      // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
-      const distinctValues = Array.from(frequencyMap.entries())
-        .sort((a, b) => {
-          // First sort by frequency (descending)
-          const freqCompare = d3.descending(a[1], b[1]);
-          if (freqCompare !== 0) return freqCompare;
-          // If frequencies are equal, sort by value (ascending)
-          return d3.ascending(a[0], b[0]);
-        })
-        .map(([value, frequency]) => value);
+    // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
+    let distinctValues = Array.from(frequencyMap.entries())
+      .sort((a, b) => {
+        // First sort by frequency (descending)
+        const freqCompare = d3.descending(a[1], b[1]);
+        if (freqCompare !== 0) return freqCompare;
+        // If frequencies are equal, sort by value (ascending)
+        return d3.ascending(a[0], b[0]);
+      })
+      .map(([value, frequency]) => value);
 
     // Add the filter information to the reportsFilters array
     reportsFilters.push({
@@ -315,9 +301,24 @@ export function getReportsFilters(fields, reports) {
       totalRecords: reports.length,
       format: field.format,
     });
-
+  });
+  //console.log("reportsFilters", reportsFilters);
   return reportsFilters;
 }
+
+export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }) {
+  const filter = reportFilters().find(f => f.name === "has_interpretations");
+  
+  const options = generateInterpretationsCascaderOptions(reports, casesWithInterpretations);
+  
+  return {
+    filter: filter,
+    options: options,
+    totalRecords: reports.length,
+    format: plotTypes()[reportAttributesMap()[filter.name]]?.format
+  };
+}
+
 
 const CASCADER_PATH_SEPARATOR = " / ";
 

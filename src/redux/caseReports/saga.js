@@ -15,11 +15,14 @@ import {
   defaultSearchFilters,
   orderListViewFilters,
   datafilesArrowTableToJson,
+  flip,
+  reportAttributesMap,
 } from "../../helpers/utility";
 import {
   getReportsFilters,
   getInterpretationsFilter,
   getReportFilterExtents,
+  reportFilters,
 } from "../../helpers/filters";
 import { getActiveRepository } from "../../services/repositories";
 import { qcEvaluator } from "../../helpers/metadata";
@@ -373,7 +376,7 @@ function* searchReports({ searchFilters }) {
       : d3.descending(aValue, bValue);
   });
 
-  const reportsFilters = getReportsFilters(records);
+  const reportsFilters = getReportsFilters(dataset.fields, records);
   const interpretationsFilter = getInterpretationsFilter(records, casesWithInterpretations);
   reportsFilters.push(interpretationsFilter);
 

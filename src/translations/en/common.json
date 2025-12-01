@@ -391,13 +391,11 @@
     "genome-range-panel": {
       "reset": "Reset to full genome view"
     },
+    "cbioportal-modal": { "title": "cBioPortal" },
     "header-panel": {
       "view-report": "View Report",
       "qcMetrics": "Quality Control Metrics",
-      "cbioportal-button": "cBioPortal"
-    },
-    "cbioportal-modal": {
-      "title": "cBioPortal"
+      "cbioportal-button": "cBioPortal",
       "purity-ploidy-title": "Purity/Ploidy",
       "metadata": {
         "pair": {

@@ -862,7 +862,7 @@
       "scale": "log",
       "minValue": 1,
       "group": "biomarker-metrics",
-      "groupTitle": "Biomarker Metrics",
+      "groupTitle": "iomarker Metrics",
       "groupOrder": 5
     },
     {
