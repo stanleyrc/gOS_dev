@@ -279,6 +279,14 @@ export function legendColors() {
   return ["#1f78b4", "#33a02c", "#fc8d62"];
 }
 
+export function getColorMarker(markValue, q1, q3) {
+  return markValue < q1
+    ? legendColors()[0]
+    : markValue > q3
+    ? legendColors()[2]
+    : legendColors()[1];
+}
+
 export function qualityStatusTagClasses() {
   return { 0: "success", 1: "warning", 2: "error" };
 }
@@ -808,20 +816,20 @@ export function magnitude(n) {
   return Math.pow(10, order);
 }
 
-const attributes = [
+export const attributes = [
   "pair",
-  "svCount",
-  "snvCount",
+  "sv_count",
+  "snv_count",
   "tmb",
-  "lohFraction",
+  "loh_fraction",
   "purity",
   "ploidy",
   "tumor_median_coverage",
-  "hrdScore",
-  "hrdB12Score",
-  "hrdB1Score",
-  "hrdB2Score",
-  "msiScore",
+  "hrd.hrd_score",
+  "hrd.b1_2_score",
+  "hrd.b1_score",
+  "hrd.b2_score",
+  "msisensor.score",
 ];
 
 const sorts = ["ascending", "descending"];
@@ -1500,109 +1508,6 @@ export function allelicToGenome(allelic) {
     intervals: allelic.intervals,
     connections: allelic.connections,
   };
-}
-
-export function getPopulationMetrics(
-  populations,
-  metadata = {},
-  tumour_type = null
-) {
-  // Extract the data from the responses and store it in an object
-  return Object.keys(plotTypes()).map((d, i) => {
-    let plot = {};
-    let cutoff = Infinity;
-    plot.id = d;
-    plot.type = plotTypes()[d].plotType;
-    plot.scaleX = plotTypes()[d].scaleX;
-    plot.allData = populations[d].map((e) => +e.value);
-    plot.data = populations[d]
-      .filter((e) =>
-        tumour_type ? e[plotTypes()[d].tumor_type] === tumour_type : true
-      )
-      .map((e) => +e.value)
-      .filter((e) => e < cutoff)
-      .sort((a, b) => d3.ascending(a, b));
-    plot.bandwidth = Math.pow(
-      (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
-      0.2
-    );
-    plot.q1 = d3.quantile(plot.data, 0.25);
-    plot.q3 = d3.quantile(plot.data, 0.75);
-    plot.q99 = d3.quantile(plot.data, 0.99);
-    plot.range = plotTypes()[d].range || [
-      d3.max([d3.min(plot.allData), 0.01]),
-      d3.quantile(plot.allData, 0.99),
-    ];
-    plot.format = plotTypes()[d].scaleXFormat;
-    if (metadata[d]) {
-      plot.markValue = metadata[d];
-      plot.markValueText = d3.format(plotTypes()[d].format)(metadata[d]);
-      plot.colorMarker =
-        plot.markValue < plot.q1
-          ? legendColors()[0]
-          : plot.markValue > plot.q3
-          ? legendColors()[2]
-          : legendColors()[1];
-    }
-    return plot;
-  });
-}
-
-export function getSignatureMetrics(
-  populations,
-  props = {
-    range: null,
-    markData: {},
-    tumorType: null,
-    format: "0.4f",
-    scaleX: "linear",
-    type: "histogram",
-  }
-) {
-  const { range, markData, tumorType, type, format, scaleX } = props;
-  // Extract the data from the responses and store it in an object
-  return Object.keys(populations)
-    .map((d, i) => {
-      let plot = {};
-      let cutoff = Infinity;
-      plot.id = d;
-      plot.type = type;
-      plot.scaleX = scaleX;
-      plot.allData = populations[d].map((e) => +e.value);
-      plot.data = populations[d]
-        .filter((e) =>
-          tumorType ? !e.tumor_type || e.tumor_type === tumorType : true
-        )
-        .map((d) => +d.value)
-        .filter((d) => d < cutoff)
-        .sort((a, b) => d3.ascending(a, b));
-      plot.bandwidth = Math.pow(
-        (4 * Math.pow(d3.deviation(plot.data), 5)) / (3.0 * plot.data.length),
-        0.15
-      );
-      plot.q1 = d3.quantile(plot.data, 0.25);
-      plot.q3 = d3.quantile(plot.data, 0.75);
-      plot.q99 = d3.quantile(plot.data, 0.99);
-      let minValue = scaleX === "log" ? 1 : 0;
-      let maxValue = d3.max([
-        plot.allData.find((e) => e > 0),
-        d3.quantile(plot.data, 0.8),
-      ]);
-      plot.range = range ? range : [minValue, maxValue];
-      plot.format = format;
-      if (Object.keys(markData).includes(d)) {
-        plot.markValue = +markData[d];
-        plot.markValueText = d3.format(format)(markData[d]);
-        plot.colorMarker =
-          plot.markValue < plot.q1
-            ? legendColors()[0]
-            : plot.markValue > plot.q3
-            ? legendColors()[2]
-            : legendColors()[1];
-      }
-      return plot;
-    })
-    .sort((a, b) => d3.descending(a.markValue, b.markValue));
 }
 
 // Function to calculate optimum number of bins using Doane's rule

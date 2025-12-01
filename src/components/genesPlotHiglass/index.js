@@ -6,10 +6,8 @@ import { withTranslation } from "react-i18next";
 import { filterGenesByOverlap, measureText } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import settingsActions from "../../redux/settings/actions";
-import appActions from "../../redux/app/actions";
 
-const { updateHoveredLocation } = appActions;
-const { updateDomains } = settingsActions;
+const { updateDomains, updateHoveredLocation } = settingsActions;
 
 const margins = {
   gapX: 50,
@@ -573,9 +571,9 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
-  hoveredLocation: state.App.hoveredLocation,
-  hoveredLocationPanelIndex: state.App.hoveredLocationPanelIndex,
-  zoomedByCmd: state.App.zoomedByCmd,
+  hoveredLocation: state.Settings.hoveredLocation,
+  hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
+  zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(
   mapStateToProps,

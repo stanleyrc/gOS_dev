@@ -1,6 +1,5 @@
 const valueFormats = {
   "hrd.hrd_score": ".4f",
-  hrdB12Score: ".3f",
   "hrd.b1_2_score": ".3f",
   "hrd.b1_score": ".3f",
   "hrd.b2_score": ".3f",
@@ -39,10 +38,10 @@ const valueFormats = {
   "TRA-like": ",",
   coverage_variance: ".2f",
   tumor_median_coverage: ",",
-  snvCount: ",",
-  svCount: ",",
+  snv_count: ",",
+  sv_count: ",",
   tmb: ",",
-  lohFraction: ".3",
+  loh_fraction: ".3",
   purity: ".2f",
   ploidy: ".2f",
   "msisensor.score": ".2%",
@@ -72,7 +71,7 @@ export const hrdFields = [
   "RS5",
 ];
 
-export const svCountFields = [
+export const sv_countFields = [
   "tyfonas",
   "dm",
   "bfb",
@@ -93,25 +92,14 @@ export const svCountFields = [
 
 export const msiFields = ["score", "n_unstable", "n_evaluated", "label"];
 
-export const chartTypes = {
-  coverage: "histogram",
-  snvCount: "histogram",
-  svCount: "histogram",
-  hrdB12Score: "histogram",
-  tmb: "histogram",
-  lohFraction: "histogram",
-  purity: "histogram",
-  ploidy: "histogram",
-};
-
 export const headerList = [
   "tumor_median_coverage",
-  "snvCount",
-  "svCount",
-  "hrdB12Score",
-  "msiLabel",
+  "snv_count",
+  "sv_count",
+  "hrd.b1_2_score",
+  "msisensor.label",
   "tmb",
-  "lohFraction",
+  "loh_fraction",
 ];
 
 export const hrdDividers = {
@@ -157,3 +145,12 @@ export const qcMetricsClasses = {
   fail: "error",
   unknown: "default",
 };
+
+export function getNestedValue(obj, path) {
+  if (!path) {
+    return undefined;
+  }
+  return path
+    .split(".")
+    .reduce((acc, part) => (acc == null ? acc : acc[part]), obj);
+}

@@ -1,70 +1,88 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Row, Col } from "antd";
+import * as d3 from "d3";
+import { Row, Col, Divider } from "antd";
 import HistogramPlotPanel from "../histogramPlotPanel";
+import { getColorMarker } from "../../helpers/utility";
 import Wrapper from "./index.style";
-import appActions from "../../redux/app/actions";
-
-const {} = appActions;
 
 class PopulationPanel extends Component {
   render() {
-    const { t, loading, plots, visible, scope } = this.props;
+    const { loading, plots, visible } = this.props;
 
     if (!visible) return null;
 
-    let plotRows = plots
-      .filter((d) => !isNaN(d.markValue))
-      .map((d, index) => {
-        let plotComponent = (
-          <HistogramPlotPanel
-            {...{
-              data: d.data,
-              q1: d.q1,
-              q3: d.q3,
-              q99: d.q99,
-              scaleX: d.scaleX,
-              range: d.range,
-              bandwidth: d.bandwidth,
-              title: t(`metadata.${d.id}.full`, { ns: scope }),
-              visible: d.data,
-              markValue: d.markValue,
-              markValueText: d.markValueText,
-              colorMarker: d.colorMarker,
-              format: d.format,
-              loading,
-            }}
-          />
-        );
-
-        return plotComponent;
-      });
-
-    const tuples = Array.from(
-      { length: Math.ceil(plotRows.length / 3) },
-      (_, i) => plotRows.slice(i * 3, i * 3 + 3)
+    let plotGroups = d3.groups(
+      plots.filter((d) => !isNaN(d.markValue)),
+      (d) => d.group
     );
+
+    let plotTuples = plotGroups.map(([group, groupPlots]) => {
+      let groupTitle = groupPlots[0]?.groupTitle || group;
+      let plotRows = groupPlots
+        .sort((a, b) => d3.ascending(a.order, b.order))
+        .map((d, index) => {
+          let plotComponent = (
+            <HistogramPlotPanel
+              {...{
+                data: d.data,
+                q1: d.q1,
+                q3: d.q3,
+                q99: d.q99,
+                scaleX: d.scaleX,
+                range: d.range,
+                bandwidth: d.bandwidth,
+                title: d.title,
+                group: d.group,
+                groupTitle: d.groupTitle,
+                order: d.order,
+                visible: d.data,
+                markValue: d.markValue,
+                markValueText: d3.format(d.markValueFormat)(d.markValue),
+                colorMarker: getColorMarker(d.markValue, d.q1, d.q3),
+                format: d.format,
+                loading,
+              }}
+            />
+          );
+
+          return plotComponent;
+        });
+
+      let tuples = Array.from(
+        { length: Math.ceil(plotRows.length / 3) },
+        (_, i) => plotRows.slice(i * 3, i * 3 + 3)
+      );
+      return { groupTitle, tuples };
+    });
 
     return (
       <Wrapper>
-        {tuples.map((pair, index) => (
-          <Row
-            key={index}
-            id={`row-${index}}`}
-            className="ant-panel-container ant-home-plot-container"
-            gutter={16}
-          >
-            {pair.map((plotComponent, i) => (
-              <Col
-                key={i}
-                className="gutter-row"
-                span={Math.floor(24 / pair.length)}
+        {plotTuples.map(({ groupTitle, tuples }, groupIndex) => (
+          <div key={groupIndex} className="population-plot-group">
+            <Divider plain orientation="left">
+              {groupTitle}
+            </Divider>
+            {tuples.map((pair, index) => (
+              <Row
+                key={index}
+                id={`row-${groupIndex}-${index}}`}
+                className="ant-panel-container ant-home-plot-container"
+                gutter={16}
               >
-                {plotComponent}
-              </Col>
+                {pair.map((plotComponent, i) => (
+                  <Col
+                    key={i}
+                    className="gutter-row"
+                    span={Math.floor(24 / pair.length)}
+                  >
+                    {plotComponent}
+                  </Col>
+                ))}
+              </Row>
             ))}
-          </Row>
+          </div>
         ))}
       </Wrapper>
     );

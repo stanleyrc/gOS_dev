@@ -272,22 +272,20 @@ export function getInterpretationsFilter(reports, casesWithInterpretations = { a
   };
 }
 
-export function getReportsFilters(reports) {
+export function getReportsFilters(fields, reports) {
   let reportsFilters = [];
 
-  // Iterate through each filter (excluding external data source filters)
-  reportFilters()
-    .filter(filter => !filter.external)
-    .forEach((filter) => {
-      let allValues = reports
-        .map((record) => {
-          try {
-            return eval(`record.${filter.name}`);
-          } catch (err) {
-            return null;
-          }
-        })
-        .flat();
+  // Iterate through each filter
+  fields.forEach((field) => {
+    let allValues = reports
+      .map((record) => {
+        try {
+          return eval(`record.${field.name}`);
+        } catch (err) {
+          return null;
+        }
+      })
+      .flat();
 
       const frequencyMap = d3.rollup(
         allValues,
@@ -306,17 +304,16 @@ export function getReportsFilters(reports) {
         })
         .map(([value, frequency]) => value);
 
-      // Add the filter information to the reportsFilters array
-      reportsFilters.push({
-        filter: filter,
-        records: [...distinctValues],
-        frequencies: Object.fromEntries(frequencyMap),
-        extent: d3.extent(
-          distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
-        ),
-        totalRecords: reports.length,
-        format: plotTypes()[reportAttributesMap()[filter.name]]?.format,
-      });
+    // Add the filter information to the reportsFilters array
+    reportsFilters.push({
+      filter: field,
+      records: [...distinctValues],
+      frequencies: Object.fromEntries(frequencyMap),
+      extent: d3.extent(
+        distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
+      ),
+      totalRecords: reports.length,
+      format: field.format,
     });
 
   return reportsFilters;

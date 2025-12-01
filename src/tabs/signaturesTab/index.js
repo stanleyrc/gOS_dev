@@ -167,7 +167,7 @@ class SignaturesTab extends Component {
                     },
                     {
                       label: t("components.segmented-filter.tumor", {
-                        tumor: metadata.tumor,
+                        tumor: metadata.tumor_type,
                       }),
                       value: "byTumor",
                     },
@@ -317,7 +317,6 @@ class SignaturesTab extends Component {
                       plots:
                         signaturePlots[mutationFilter][signatureFractionMode],
                       visible: signatureKPIMode === "total",
-                      scope: "signatures",
                     }}
                   />
                   <PopulationPanel
@@ -329,7 +328,6 @@ class SignaturesTab extends Component {
                           signatureFractionMode
                         ],
                       visible: signatureKPIMode === "byTumor",
-                      scope: "signatures",
                     }}
                   />
                 </Space>

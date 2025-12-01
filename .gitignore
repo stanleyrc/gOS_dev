@@ -6,6 +6,7 @@ deploy_key.pub
 .spec.md
 .flowconfig
 *.sh
+!setup.sh
 *~
 *.pyc
 *.swp
@@ -92,3 +93,4 @@ report/
 .yarnrc.yml
 gOS.code-workspace
 .yarn/install-state.gz
+releases/

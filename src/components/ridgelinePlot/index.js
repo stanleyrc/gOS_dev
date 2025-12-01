@@ -123,7 +123,7 @@ class Ridgeline extends Component {
       .attr("x", -margins.gapX)
       .attr("dy", -3)
       .attr("text-anchor", "start")
-      .text((x) => t(`metadata.${x}.full`));
+      .text((x) => t(`components.header-panel.metadata.${x}.full`));
   }
 
   render() {

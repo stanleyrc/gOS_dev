@@ -1,0 +1,9 @@
+[
+  {
+    "id": "demo",
+    "title": "DEMO Dataset",
+    "datafilesPath": "datafiles.json",
+    "commonPath": "common/",
+    "dataPath": "data/"
+  }
+]

@@ -209,7 +209,7 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
   dataset: state.Settings.dataset,

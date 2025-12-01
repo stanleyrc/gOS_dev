@@ -35,7 +35,7 @@ class PopulationTab extends Component {
               },
               {
                 label: t("components.segmented-filter.tumor", {
-                  tumor: metadata.tumor,
+                  tumor: metadata.tumor_type,
                 }),
                 value: "byTumor",
               },
@@ -48,7 +48,7 @@ class PopulationTab extends Component {
               metadata,
               plots,
               visible: populationKPIMode === "total",
-              scope: "common",
+  
             }}
           />
           <PopulationPanel
@@ -57,7 +57,6 @@ class PopulationTab extends Component {
               metadata,
               plots: tumorPlots,
               visible: populationKPIMode === "byTumor",
-              scope: "common",
             }}
           />
         </Skeleton>

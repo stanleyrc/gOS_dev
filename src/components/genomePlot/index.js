@@ -12,11 +12,9 @@ import {
   merge,
 } from "../../helpers/utility";
 import Grid from "../grid/index";
-import appActions from "../../redux/app/actions";
 import settingsActions from "../../redux/settings/actions";
 
-const { selectPhylogenyNodes, updateHoveredLocation } = appActions;
-const { updateDomains } = settingsActions;
+const { updateDomains, updateHoveredLocation } = settingsActions;
 
 const margins = {
   gap: 24,
@@ -236,8 +234,6 @@ class GenomePlot extends Component {
       nextProps.genome.toString() !== this.props.genome.toString() ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextState.tooltip.shapeId !== this.state.tooltip.shapeId ||
-      nextProps.selectedConnectionIds.toString() !==
-        this.props.selectedConnectionIds.toString() ||
       nextProps.annotation !== this.props.annotation ||
       nextProps.width !== this.props.width ||
       nextProps.height !== this.props.height ||
@@ -462,15 +458,6 @@ class GenomePlot extends Component {
           .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
       );
       this.updateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
-    } else {
-      this.props.selectPhylogenyNodes(
-        this.props.connectionsAssociations.map((d, i) => {
-          return {
-            id: d.sample,
-            selected: d.connections.includes(connection.cid),
-          };
-        })
-      );
     }
   }
 
@@ -511,7 +498,6 @@ class GenomePlot extends Component {
     const {
       width,
       height,
-      selectedConnectionIds,
       annotation,
       mutationsPlot,
       yAxisTitle,
@@ -728,15 +714,9 @@ class GenomePlot extends Component {
                   className={`connection ${
                     d.primaryKey === tooltip.shapeId ? "highlighted" : ""
                   } ${
-                    selectedConnectionIds.includes(d.cid) &&
                     annotation &&
-                    d.annotationArray.includes(annotation)
-                      ? "cross-annotated"
-                      : (selectedConnectionIds.includes(d.cid) &&
-                          "phylogeny-annotated") ||
-                        (annotation &&
-                          d.annotationArray.includes(annotation) &&
-                          "annotated")
+                    d.annotationArray.includes(annotation) &&
+                    "annotated"
                   }`}
                   d={d.render}
                   onClick={(event) => this.handleConnectionClick(event, d)}
@@ -800,7 +780,6 @@ GenomePlot.defaultProps = {
   xDomain: [],
   defaultDomain: [],
   commonYScale: false,
-  selectedConnectionIds: [],
   mutationsPlot: false,
   yAxisTitle: "",
   yAxis2Title: "",
@@ -808,7 +787,6 @@ GenomePlot.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
-  selectPhylogenyNodes: (nodes) => dispatch(selectPhylogenyNodes(nodes)),
   updateHoveredLocation: (hoveredLocation, panelIndex) =>
     dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
 });
@@ -816,11 +794,9 @@ const mapStateToProps = (state) => ({
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
   domains: state.Settings.domains,
-  zoomedByCmd: state.App.zoomedByCmd,
-  selectedConnectionIds: state.App.selectedConnectionIds,
-  connectionsAssociations: state.App.connectionsAssociations,
-  hoveredLocation: state.App.hoveredLocation,
-  hoveredLocationPanelIndex: state.App.hoveredLocationPanelIndex,
+  zoomedByCmd: state.Settings.zoomedByCmd,
+  hoveredLocation: state.Settings.hoveredLocation,
+  hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
 });
 export default connect(
   mapStateToProps,

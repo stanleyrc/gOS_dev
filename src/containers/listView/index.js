@@ -236,9 +236,9 @@ class ListView extends Component {
       ) {
         return (
           <Item
-            key={`containers.list-view.filters.${d.filter.name}`}
+            key={d.filter.name}
             name={d.filter.name}
-            label={t(`containers.list-view.filters.${d.filter.name}`)}
+            label={d.filter.title}
             rules={[
               {
                 required: false,
@@ -353,6 +353,7 @@ class ListView extends Component {
                   <Collapse
                     className="filters-collapse"
                     ghost
+                    defaultActiveKey={"general"}
                     items={d3
                       .groups(
                         filters.filter((d) => d.filter.group != null),
@@ -368,9 +369,7 @@ class ListView extends Component {
                       .map(([group, filteredGroups]) => {
                         return {
                           key: group,
-                          label: t(
-                            `containers.list-view.filters.collapse.${group}`
-                          ),
+                          label: filteredGroups[0]?.filter?.groupTitle,
                           children: (
                             <>
                               {filteredGroups.map((e) =>
@@ -426,7 +425,9 @@ class ListView extends Component {
                             <span
                               dangerouslySetInnerHTML={{
                                 __html: t("containers.list-view.ordering", {
-                                  attribute: t(`metadata.${d.attribute}.short`),
+                                  attribute: t(
+                                    `components.header-panel.metadata.${d.attribute}.short`
+                                  ),
                                   sort: d.sort,
                                 }),
                               }}
@@ -507,7 +508,7 @@ class ListView extends Component {
                         actions={[
                           <Statistic
                             className="stats"
-                            title={t(`metadata.svCount.short`)}
+                            title={t(`components.header-panel.metadata.sv_count.short`)}
                             value={
                               d.sv_count != null
                                 ? d3.format(",")(d.sv_count)
@@ -516,7 +517,7 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t(`metadata.tmb.short`)}
+                            title={t(`components.header-panel.metadata.tmb.short`)}
                             value={
                               d.tmb != null
                                 ? d3.format(",")(d.tmb)
@@ -525,7 +526,7 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t(`metadata.tumor_median_coverage.shorter`)}
+                            title={t(`components.header-panel.metadata.tumor_median_coverage.shorter`)}
                             value={`${
                               d["tumor_median_coverage"] != null
                                 ? `${d["tumor_median_coverage"]}X`
@@ -538,7 +539,7 @@ class ListView extends Component {
                           />,
                           <Statistic
                             className="stats"
-                            title={t("metadata.purity-ploidy-title")}
+                            title={t("components.header-panel.purity-ploidy-title")}
                             value={
                               d.purity != null
                                 ? d3.format(".1%")(d.purity)

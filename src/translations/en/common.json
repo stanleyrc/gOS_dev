@@ -64,65 +64,7 @@
       "tag2": "mid 50%",
       "tag3": "top 25%"
     },
-    "purity-ploidy-title": "Purity/Ploidy",
     "junction-burden": "Junction burden",
-    "pair": {
-      "short": "Pair",
-      "full": "Pair"
-    },
-    "tumor_median_coverage": {
-      "shorter": "Coverage T/N",
-      "short": "Coverage Tumor/Normal",
-      "full": "Coverage Tumor/Normal"
-    },
-    "snvCount": {
-      "short": "SNV Count",
-      "full": "SNV Count"
-    },
-    "svCount": {
-      "short": "SV Count",
-      "full": "SV Count"
-    },
-    "hrdScore": {
-      "short": "HRDetect",
-      "full": "Homologous Recombination Deficiency (HRD)"
-    },
-    "hrdB12Score": {
-      "short": "B1+2",
-      "full": "B1+2 phenotypic score"
-    },
-    "hrdB1Score": {
-      "short": "B1",
-      "full": "B1 phenotypic score"
-    },
-    "hrdB2Score": {
-      "short": "B2",
-      "full": "B2 phenotypic score"
-    },
-    "msiLabel": {
-      "short": "MSI",
-      "full": "MSI Sensor"
-    },
-    "msiScore": {
-      "short": "MSI Score",
-      "full": "Microsatellite Instability (MSI)"
-    },
-    "tmb": {
-      "short": "TMB",
-      "full": "Tumor Mutational Burden (TMB)"
-    },
-    "lohFraction": {
-      "short": "FGA",
-      "full": "Fraction of Genome Altered (FGA)"
-    },
-    "purity": {
-      "short": "Purity",
-      "full": "Purity"
-    },
-    "ploidy": {
-      "short": "Ploidy",
-      "full": "Ploidy"
-    },
     "junction_count": "<strong>{{value}}</strong> junction",
     "junction_count_plural": "<strong>{{value}}</strong> junctions",
     "loose_count": "<strong>{{value}}</strong> loose end",
@@ -456,6 +398,70 @@
     },
     "cbioportal-modal": {
       "title": "cBioPortal"
+      "purity-ploidy-title": "Purity/Ploidy",
+      "metadata": {
+        "pair": {
+          "short": "Pair",
+          "full": "Pair"
+        },
+        "tumor_median_coverage": {
+          "shorter": "Coverage T/N",
+          "short": "Coverage Tumor/Normal",
+          "full": "Coverage Tumor/Normal"
+        },
+        "snv_count": {
+          "short": "SNV Count",
+          "full": "SNV Count"
+        },
+        "sv_count": {
+          "short": "SV Count",
+          "full": "SV Count"
+        },
+        "hrd": {
+          "hrd_score": {
+            "short": "HRDetect",
+            "full": "Homologous Recombination Deficiency (HRD)"
+          },
+          "b1_2_score": {
+            "short": "B1+2",
+            "full": "B1+2 phenotypic score"
+          },
+          "b1_score": {
+            "short": "B1",
+            "full": "B1 phenotypic score"
+          },
+          "b2_score": {
+            "short": "B2",
+            "full": "B2 phenotypic score"
+          }
+        },
+        "msisensor": {
+          "label": {
+            "short": "MSI",
+            "full": "MSI Sensor"
+          },
+          "score": {
+            "short": "MSI Score",
+            "full": "Microsatellite Instability (MSI)"
+          }
+        },
+        "tmb": {
+          "short": "TMB",
+          "full": "Tumor Mutational Burden (TMB)"
+        },
+        "loh_fraction": {
+          "short": "FGA",
+          "full": "Fraction of Genome Altered (FGA)"
+        },
+        "purity": {
+          "short": "Purity",
+          "full": "Purity"
+        },
+        "ploidy": {
+          "short": "Ploidy",
+          "full": "Ploidy"
+        }
+      }
     },
     "histogram-panel": {
       "header": "Histogram Chart",
@@ -487,8 +493,8 @@
     "violin-panel": {
       "header": {
         "common": "Population Distribution Violin Charts",
-        "total": "Population Distribution Violin Chart - All Tumor Types",
-        "tumor": "Population Distribution Violin Chart - Tumor Type {{tumor}}"
+        "total": "<strong>{{scope}}</strong> Population Distribution Violin Chart for all tumor Types",
+        "tumor": "<strong>{{scope}}</strong> Population Distribution Violin Chart for tumor type {{tumor}}"
       },
       "distribution": "distribution",
       "distribution_plural": "distributions",
@@ -641,7 +647,8 @@
       }
     },
     "metadata-panel": {
-      "header": "Metadata Tags"
+      "header": "Case Report Metadata",
+      "title": "Metadata"
     },
     "mutation-catalog-panel": {
       "header": "Signatures",

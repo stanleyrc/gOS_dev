@@ -3,14 +3,19 @@
 /* eslint no-restricted-globals: "off" */
 
 self.onmessage = function (e) {
-  const { populations, metadata } = e.data;
+  const { populations, metadata, fields } = e.data;
 
   try {
     // Calculate general population metrics
-    const general = getPopulationMetrics(populations, metadata);
+    const general = getPopulationMetrics(fields, populations, metadata);
 
     // Calculate tumor-specific population metrics
-    const tumor = getPopulationMetrics(populations, metadata, metadata.tumor);
+    const tumor = getPopulationMetrics(
+      fields,
+      populations,
+      metadata,
+      metadata.tumor_type
+    );
 
     // Post result back to main thread
     self.postMessage({
@@ -29,22 +34,26 @@ self.onmessage = function (e) {
 
   // Helper functions (copied from utility)
   function getPopulationMetrics(
+    fields,
     populations,
     metadata = {},
     tumour_type = null
   ) {
     // Extract the data from the responses and store it in an object
-    return Object.keys(plotTypes()).map((d, i) => {
-      let plot = {};
+    return fields.map((d, i) => {
+      let plot = { metadata: d };
       let cutoff = Infinity;
-      plot.id = d;
-      plot.type = plotTypes()[d].plotType;
-      plot.scaleX = plotTypes()[d].scaleX;
-      plot.allData = populations[d].map((e) => +e.value);
-      plot.data = populations[d]
-        .filter((e) =>
-          tumour_type ? e[plotTypes()[d].tumor_type] === tumour_type : true
-        )
+      plot.id = d.id;
+      plot.title = d.title;
+      plot.group = d.group;
+      plot.groupTitle = d.groupTitle;
+      plot.groupOrder = d.groupOrder || 0;
+      plot.order = d.order || i;
+      plot.type = d.type;
+      plot.scaleX = d.scale;
+      plot.allData = populations[d.id].map((e) => +e.value);
+      plot.data = populations[d.id]
+        .filter((e) => (tumour_type ? e.tumor_type === tumour_type : true))
         .map((e) => +e.value)
         .filter((e) => e < cutoff)
         .sort((a, b) => ascending(a, b));
@@ -55,131 +64,39 @@ self.onmessage = function (e) {
       plot.q1 = quantile(plot.data, 0.25);
       plot.q3 = quantile(plot.data, 0.75);
       plot.q99 = quantile(plot.data, 0.99);
-      plot.range = plotTypes()[d].range || [
-        max([min(plot.allData), 0.01]),
-        quantile(plot.allData, 0.99),
+      plot.range = [
+        d.minValue == null ? max([min(plot.allData), 0.01]) : +d.minValue,
+        d.maxValue == null ? quantile(plot.allData, 0.99) : +d.maxValue,
       ];
-      plot.format = plotTypes()[d].scaleXFormat;
-      if (metadata[d]) {
-        plot.markValue = metadata[d];
-        plot.markValueText = format(plotTypes()[d].format)(metadata[d]);
-        plot.colorMarker =
-          plot.markValue < plot.q1
-            ? legendColors()[0]
-            : plot.markValue > plot.q3
-            ? legendColors()[2]
-            : legendColors()[1];
+      plot.format = d.scaleFormat;
+      plot.markValueFormat = d.format;
+      if (getNestedValue(metadata, d.id) != null) {
+        plot.markValue = getNestedValue(metadata, d.id);
       }
       return plot;
     });
   }
 
-  function plotTypes() {
-    return {
-      tumor_median_coverage: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ",",
-        scaleX: "linear",
-        scaleXFormat: "~s",
-      },
-      snvCount: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ",",
-        scaleX: "log",
-        scaleXFormat: "~s",
-      },
-      svCount: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ",",
-        scaleX: "log",
-        scaleXFormat: "~s",
-      },
-      tmb: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ",",
-        scaleX: "log",
-        scaleXFormat: "~s",
-      },
-      lohFraction: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ".3",
-        scaleX: "linear",
-        scaleXFormat: "0.2f",
-      },
-      purity: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ".2%",
-        scaleX: "linear",
-        scaleXFormat: ".0%",
-        range: [0, 1],
-      },
-      ploidy: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ".2f",
-        scaleX: "linear",
-        scaleXFormat: "0.2f",
-        range: [1.5, 5.5],
-      },
-      hrdScore: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: "0.2%",
-        scaleX: "linear",
-        scaleXFormat: ".0%",
-        range: [0, 1],
-      },
-      hrdB12Score: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: "0.2%",
-        scaleX: "linear",
-        scaleXFormat: ".0%",
-        range: [0, 1],
-      },
-      hrdB1Score: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: "0.2%",
-        scaleX: "linear",
-        scaleXFormat: ".0%",
-        range: [0, 1],
-      },
-      hrdB2Score: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: "0.2%",
-        scaleX: "linear",
-        scaleXFormat: ".0%",
-        range: [0, 1],
-      },
-      msiScore: {
-        plotType: "histogram",
-        tumor_type: "tumor_type",
-        format: ".2%",
-        scaleX: "linear",
-        scaleXFormat: ".0%",
-        range: [0, 1],
-      },
-    };
-  }
-
-  function legendColors() {
-    // first color for x < μ - 2σ
-    // second color for |x - μ| < 2σ
-    // third color for x > μ + 2σ
-    return ["#1f78b4", "#33a02c", "#fc8d62"];
+  function getNestedValue(obj, path) {
+    if (!path) {
+      return undefined;
+    }
+    return path
+      .split(".")
+      .reduce((acc, part) => (acc == null ? acc : acc[part]), obj);
   }
 
   // D3-like utility functions
   function ascending(a, b) {
-    return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+    return a == null || b == null
+      ? NaN
+      : a < b
+      ? -1
+      : a > b
+      ? 1
+      : a >= b
+      ? 0
+      : NaN;
   }
 
   function quantile(values, p) {
@@ -206,25 +123,26 @@ self.onmessage = function (e) {
   }
 
   function min(values) {
-    return Math.min(...values);
+    let minVal;
+    for (const value of values) {
+      if (value != null && value >= value) {
+        if (minVal === undefined || minVal > value) {
+          minVal = value;
+        }
+      }
+    }
+    return minVal;
   }
 
   function max(values) {
-    return Math.max(...values);
-  }
-
-  function format(specifier) {
-    // Simplified d3.format implementation for common cases
-    return function (value) {
-      if (specifier === ",") return value.toLocaleString();
-      if (specifier === ".2%") return (value * 100).toFixed(2) + "%";
-      if (specifier === ".0%") return Math.round(value * 100) + "%";
-      if (specifier === ".2f") return value.toFixed(2);
-      if (specifier === ".3") return value.toFixed(3);
-      if (specifier === "~s") return value.toLocaleString();
-      if (specifier === "0.2f") return value.toFixed(2);
-      if (specifier === "0.2%") return (value * 100).toFixed(2) + "%";
-      return value.toString();
-    };
+    let maxVal;
+    for (const value of values) {
+      if (value != null && value >= value) {
+        if (maxVal === undefined || maxVal < value) {
+          maxVal = value;
+        }
+      }
+    }
+    return maxVal;
   }
 };

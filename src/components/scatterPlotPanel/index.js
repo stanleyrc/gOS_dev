@@ -279,8 +279,8 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
-  zoomedByCmd: state.App.zoomedByCmd,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
+  zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(
   mapStateToProps,

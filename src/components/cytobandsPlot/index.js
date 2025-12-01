@@ -7,10 +7,8 @@ import { measureText } from "../../helpers/utility";
 import { createChromosomePaths } from "../../helpers/cytobandsUtil";
 import Wrapper from "./index.style";
 import settingsActions from "../../redux/settings/actions";
-import appActions from "../../redux/app/actions";
 
-const { updateHoveredLocation } = appActions;
-const { updateDomains } = settingsActions;
+const { updateDomains, updateHoveredLocation } = settingsActions;
 
 const margins = {
   gapX: 50,
@@ -553,9 +551,9 @@ const mapStateToProps = (state) => ({
   defaultDomain: state.Settings.defaultDomain,
   cytobands: state.Cytobands.data,
   chromosomeOutlines: state.Cytobands.chromosomeOutlines,
-  hoveredLocation: state.App.hoveredLocation,
-  hoveredLocationPanelIndex: state.App.hoveredLocationPanelIndex,
-  zoomedByCmd: state.App.zoomedByCmd,
+  hoveredLocation: state.Settings.hoveredLocation,
+  hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
+  zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(
   mapStateToProps,

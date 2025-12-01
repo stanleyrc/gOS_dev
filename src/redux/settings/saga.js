@@ -1,5 +1,6 @@
 import { all, takeLatest, put, call, delay } from "redux-saga/effects";
 import axios from "axios";
+import i18n from "../../i18n";
 import { updateChromoBins, locationToDomains } from "../../helpers/utility";
 import actions from "./actions";
 import datasetsActions from "../datasets/actions";
@@ -36,6 +37,18 @@ function* fetchSettingsData(action) {
       domains = [[1, genomeLength]];
     }
 
+    // Create hash of signature titles using translations
+    const signatureTitles = Object.values(
+      responseData.data.signaturesList.datafiles
+    )
+      .flat()
+      .reduce((acc, signatureId) => {
+        acc[signatureId] = i18n.t(`metadata.${signatureId}.full`, {
+          ns: "signatures",
+        });
+        return acc;
+      }, {});
+
     yield put({
       type: actions.FETCH_SETTINGS_DATA_SUCCESS,
       data: responseData.data,
@@ -44,6 +57,7 @@ function* fetchSettingsData(action) {
       defaultDomain: [1, genomeLength],
       domains,
       genomeLength,
+      signatureTitles,
     });
   } catch (error) {
     yield put({

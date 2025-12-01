@@ -194,7 +194,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   chromoBins: state.Settings.chromoBins,
   genomeLength: state.Settings.genomeLength,
   selectedCoordinate: state.Settings.dataset?.reference,

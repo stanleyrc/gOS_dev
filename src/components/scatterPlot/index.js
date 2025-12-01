@@ -7,11 +7,9 @@ import { findMaxInRanges } from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
-import appActions from "../../redux/app/actions";
 import settingsActions from "../../redux/settings/actions";
 
-const { updateHoveredLocation } = appActions;
-const { updateDomains } = settingsActions;
+const { updateDomains, updateHoveredLocation } = settingsActions;
 
 const margins = {
   gapX: 50,
@@ -480,9 +478,9 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
-  hoveredLocation: state.App.hoveredLocation,
-  hoveredLocationPanelIndex: state.App.hoveredLocationPanelIndex,
-  zoomedByCmd: state.App.zoomedByCmd,
+  hoveredLocation: state.Settings.hoveredLocation,
+  hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
+  zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(
   mapStateToProps,

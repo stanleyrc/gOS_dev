@@ -267,7 +267,7 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   metadata: state.CaseReport.metadata,
   id: state.CaseReport.id,
   ppfit: state.Ppfit,

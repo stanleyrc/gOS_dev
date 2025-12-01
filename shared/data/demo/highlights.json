@@ -1,0 +1,38 @@
+{
+  "karyotype": "46,XY,t(7;21)(p22.1;q22.12)",
+  "risk_score": [
+    { "ELN": "Very High" },
+    { "IPSS-R": "High" },
+    { "WHO": "Medium" },
+    { "CustomRisk": "Low" }
+  ],
+  "gene_mutations": [
+    {
+      "gene_name": "TP53",
+      "variant_p": "p.R248Q",
+      "vaf": 0.34,
+      "altered_copies": null,
+      "total_copies": null,
+      "alteration_type": "snv",
+      "aggregate_label": null
+    },
+    {
+      "gene_name": "MYC",
+      "variant_p": null,
+      "vaf": null,
+      "altered_copies": 4,
+      "total_copies": 7,
+      "alteration_type": "cna",
+      "aggregate_label": "Amplification"
+    },
+    {
+      "gene_name": "USP42",
+      "variant_p": null,
+      "vaf": null,
+      "altered_copies": null,
+      "total_copies": null,
+      "alteration_type": "rearrangement",
+      "aggregate_label": "t(7;21)(p22.1;q22.12) with RUNX1"
+    }
+  ]
+}

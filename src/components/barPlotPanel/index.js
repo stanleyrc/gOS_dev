@@ -159,7 +159,7 @@ BarPlotPanel.defaultProps = {
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.App.renderOutsideViewPort,
+  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
 });
 export default connect(
   mapStateToProps,

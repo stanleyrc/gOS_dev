@@ -1,8 +1,15 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf/dist/polyfills.es.js';
-import { marked } from 'marked';
+import { jsPDF } from "jspdf";
+import "jspdf/dist/polyfills.es.js";
+import { marked } from "marked";
 
-function renderMarkdownToPDF(markdown, doc, startX, startY, lineHeight, maxWidth) {
+function renderMarkdownToPDF(
+  markdown,
+  doc,
+  startX,
+  startY,
+  lineHeight,
+  maxWidth
+) {
   // Parse markdown to HTML tokens
   const tokens = marked.lexer(markdown);
   let currentY = startY;
@@ -16,22 +23,25 @@ function renderMarkdownToPDF(markdown, doc, startX, startY, lineHeight, maxWidth
     }
 
     switch (token.type) {
-      case 'heading':
+      case "heading":
         // Scale font size based on heading level (h1 = 18pt, h2 = 16pt, etc.)
-        const fontSize = Math.max(originalSize + (6 - token.depth) * 2, originalSize);
+        const fontSize = Math.max(
+          originalSize + (6 - token.depth) * 2,
+          originalSize
+        );
         doc.setFontSize(fontSize);
-        doc.setFont(undefined, 'bold');
+        doc.setFont(undefined, "bold");
         const headingText = doc.splitTextToSize(token.text, maxWidth);
         doc.text(headingText, startX, currentY);
         currentY += lineHeight * 1.5 * headingText.length;
         doc.setFontSize(originalSize);
-        doc.setFont(undefined, 'normal');
+        doc.setFont(undefined, "normal");
         break;
 
-      case 'list':
+      case "list":
         const items = token.items;
         items.forEach((item, index) => {
-          const bullet = token.ordered ? `${index + 1}.` : '•';
+          const bullet = token.ordered ? `${index + 1}.` : "•";
           const itemText = doc.splitTextToSize(item.text, maxWidth - 10);
           doc.text(bullet, startX, currentY);
           doc.text(itemText, startX + 10, currentY);
@@ -40,13 +50,13 @@ function renderMarkdownToPDF(markdown, doc, startX, startY, lineHeight, maxWidth
         currentY += lineHeight / 2;
         break;
 
-      case 'paragraph':
+      case "paragraph":
         const lines = doc.splitTextToSize(token.text, maxWidth);
         doc.text(lines, startX, currentY);
         currentY += lineHeight * lines.length + lineHeight / 2;
         break;
 
-      case 'blockquote':
+      case "blockquote":
         doc.setDrawColor(200, 200, 200);
         doc.line(startX - 5, currentY - 5, startX - 5, currentY + lineHeight);
         const quoteText = doc.splitTextToSize(token.text, maxWidth - 10);
@@ -54,7 +64,7 @@ function renderMarkdownToPDF(markdown, doc, startX, startY, lineHeight, maxWidth
         currentY += lineHeight * quoteText.length + lineHeight;
         break;
 
-      case 'space':
+      case "space":
         currentY += lineHeight;
         break;
     }
@@ -80,8 +90,10 @@ export function generateEventNotesPDF(events, id) {
     doc.setFontSize(12);
 
     events.forEach((event) => {
-      let notes = localStorage.getItem(`event_notes_${event.gene}_${event.location}`);
-      
+      let notes = localStorage.getItem(
+        `event_notes_${event.gene}_${event.location}`
+      );
+
       if (notes && notes.trim()) {
         // Always put each event on a new page
         if (yPos > margin) {
@@ -96,17 +108,24 @@ export function generateEventNotesPDF(events, id) {
         }
 
         // remove ** from markdown
-        notes = notes.replace(/\*\*/g, '');
-        
+        notes = notes.replace(/\*\*/g, "");
+
         // Parse and render markdown content
-        yPos = renderMarkdownToPDF(notes, doc, margin, yPos, lineHeight, maxWidth);
+        yPos = renderMarkdownToPDF(
+          notes,
+          doc,
+          margin,
+          yPos,
+          lineHeight,
+          maxWidth
+        );
         yPos += lineHeight; // Add space after each event's notes
       }
     });
 
     return doc;
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error("Error generating PDF:", error);
     throw error;
   }
 }
@@ -114,12 +133,12 @@ export function generateEventNotesPDF(events, id) {
 export function extractPMIDs(text) {
   // Match "PMID: " followed by numbers
   const pmidRegex = /PMID:\s*(\d+)/g;
-  
+
   // Find all matches and extract just the PMID numbers
   const matches = [...text.matchAll(pmidRegex)];
-  
+
   // Return array of unique PMID numbers
-  return [...new Set(matches.map(match => match[1]))];
+  return [...new Set(matches.map((match) => match[1]))];
 }
 
 /**
@@ -128,13 +147,13 @@ export function extractPMIDs(text) {
  * @returns {string} Formatted string of trial information
  */
 export function formatClinicalTrials(trial) {
-    return `
+  return `
 Trial ID: ${trial.nctId}
 Title: ${trial.title}
 Status: ${trial.status}
 Link: ${trial.link}
 Description: ${trial.description}
-Eligibility:\n${trial.eligibilityCriteria.replace(/^/gm, '\t')}
+Eligibility:\n${trial.eligibilityCriteria.replace(/^/gm, "\t")}
 ----------------------------------------`;
 }
 
@@ -146,12 +165,12 @@ Eligibility:\n${trial.eligibilityCriteria.replace(/^/gm, '\t')}
 export function extractNCTIDs(text) {
   // Match "NCT ID: " followed by NCT number (NCT followed by 8 digits)
   const nctRegex = /NCT ID:\s*(NCT\d{8})/g;
-  
+
   // Find all matches and extract just the NCT IDs
   const matches = [...text.matchAll(nctRegex)];
-  
+
   // Return array of just the NCT IDs
-   return [...new Set(matches.map(match => match[1]))];
+  return [...new Set(matches.map((match) => match[1]))];
 }
 
 /**
@@ -160,39 +179,39 @@ export function extractNCTIDs(text) {
  * @returns {Object} A new object containing only the specified attributes from the report.
  */
 export function filterReportAttributes(report) {
-  if (!report || typeof report !== 'object') {
+  if (!report || typeof report !== "object") {
     return {};
   }
 
   const attributesToExtract = [
-    'pair',
-    'tumor',
-    'primary_site',
-    'sex',
-    'coverage_qc',
-    'snvCount',
-    'cov_slope',
-    'cov_intercept',
-    'hrd',
-    'tmb',
-    'tumor_median_coverage',
-    'normal_median_coverage',
-    'junction_count',
-    'loose_count',
-    'svCount',
-    'purity',
-    'ploidy',
-    'lohFraction',
-    'sv_types_count',
-    'msisensor',
-    'summary',
-    'tags',
-    'hrdScore',
-    'hrdB12Score',
-    'hrdB1Score',
-    'hrdB2Score',
-    'msiLabel',
-    'msiScore',
+    "pair",
+    "tumor",
+    "primary_site",
+    "inferred_sex",
+    "coverage_qc",
+    "snv_count",
+    "cov_slope",
+    "cov_intercept",
+    "hrd",
+    "tmb",
+    "tumor_median_coverage",
+    "normal_median_coverage",
+    "junction_count",
+    "loose_count",
+    "sv_count",
+    "purity",
+    "ploidy",
+    "loh_fraction",
+    "sv_types_count",
+    "msisensor",
+    "summary",
+    "tags",
+    "hrd.hrd_score",
+    "hrd.b1_2_score",
+    "hrd.b1_score",
+    "hrd.b2_score",
+    "msisensor.label",
+    "msisensor.score",
   ];
 
   const filteredReport = {};
@@ -213,10 +232,10 @@ export function filterReportAttributes(report) {
  * @returns {number} Estimated number of tokens.
  */
 export function estimateTokens(content) {
-  if (typeof content === 'undefined' || content === null) {
+  if (typeof content === "undefined" || content === null) {
     return 0;
   }
-  const text = typeof content === 'string' ? content : JSON.stringify(content);
+  const text = typeof content === "string" ? content : JSON.stringify(content);
   if (!text) {
     return 0;
   }

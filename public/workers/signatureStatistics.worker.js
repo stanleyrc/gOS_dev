@@ -11,6 +11,7 @@ self.onmessage = function (e) {
     id,
     sigprofiler_sbs_count,
     sigprofiler_indel_count,
+    signatureTitles,
   } = e.data;
 
   try {
@@ -34,6 +35,7 @@ self.onmessage = function (e) {
       Object.keys(signatures[type]).forEach((mode) => {
         signatureMetrics[type][mode] = getSignatureMetrics(
           signatures[type][mode],
+          signatureTitles,
           {
             markData: metadata[`sigprofiler_${type}_${mode}`],
             format: mode === "fraction" ? ".4f" : ",",
@@ -53,7 +55,7 @@ self.onmessage = function (e) {
           signatures[type][mode],
           {
             markData: metadata[`sigprofiler_${type}_${mode}`],
-            tumorType: metadata.tumor,
+            tumorType: metadata.tumor_type,
             format: mode === "fraction" ? ".4f" : ",",
             range: mode === "fraction" ? [0, 1] : null,
           }
@@ -361,6 +363,7 @@ self.onmessage = function (e) {
   // Helper functions (copied from utility)
   function getSignatureMetrics(
     populations,
+    titles,
     props = {
       range: null,
       markData: {},
@@ -377,6 +380,11 @@ self.onmessage = function (e) {
         let plot = {};
         let cutoff = Infinity;
         plot.id = d;
+        plot.title = titles && titles[d] ? titles[d] : d;
+        plot.group = "signatures";
+        plot.groupTitle = "Signatures";
+        plot.groupOrder = 0;
+        plot.order = i;
         plot.type = type;
         plot.scaleX = scaleX;
         plot.allData = populations[d].map((e) => +e.value);
@@ -401,15 +409,9 @@ self.onmessage = function (e) {
         ]);
         plot.range = range ? range : [minValue, maxValue];
         plot.format = format;
+        plot.markValueFormat = format;
         if (Object.keys(markData).includes(d)) {
           plot.markValue = +markData[d];
-          plot.markValueText = format_(format)(markData[d]);
-          plot.colorMarker =
-            plot.markValue < plot.q1
-              ? legendColors()[0]
-              : plot.markValue > plot.q3
-              ? legendColors()[2]
-              : legendColors()[1];
         }
         return plot;
       })
@@ -491,13 +493,6 @@ self.onmessage = function (e) {
       : { variant: null, label: null };
   }
 
-  function legendColors() {
-    // first color for x < μ - 2σ
-    // second color for |x - μ| < 2σ
-    // third color for x > μ + 2σ
-    return ["#1f78b4", "#33a02c", "#fc8d62"];
-  }
-
   // D3-like utility functions
   function quantile(values, p) {
     const sorted = values.slice().sort(ascending);
@@ -523,31 +518,38 @@ self.onmessage = function (e) {
   }
 
   function max(values) {
-    return Math.max(...values.filter((v) => v != null && !isNaN(v)));
+    let maxVal;
+    for (const value of values) {
+      if (value != null && value >= value) {
+        if (maxVal === undefined || maxVal < value) {
+          maxVal = value;
+        }
+      }
+    }
+    return maxVal;
   }
 
   function descending(a, b) {
-    return b < a ? -1 : b > a ? 1 : b >= a ? 0 : NaN;
-  }
-
-  function format_(specifier) {
-    // Simplified d3.format implementation for common cases
-    return function (value) {
-      if (specifier === ",") return value.toLocaleString();
-      if (specifier === ".2%") return (value * 100).toFixed(2) + "%";
-      if (specifier === ".0%") return Math.round(value * 100) + "%";
-      if (specifier === ".2f") return value.toFixed(2);
-      if (specifier === ".3") return value.toFixed(3);
-      if (specifier === ".4f") return value.toFixed(4);
-      if (specifier === "0.4f") return value.toFixed(4);
-      if (specifier === "~s") return value.toLocaleString();
-      if (specifier === "0.2f") return value.toFixed(2);
-      if (specifier === "0.2%") return (value * 100).toFixed(2) + "%";
-      return value.toString();
-    };
+    return a == null || b == null
+      ? NaN
+      : b < a
+      ? -1
+      : b > a
+      ? 1
+      : b >= a
+      ? 0
+      : NaN;
   }
 
   function ascending(a, b) {
-    return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+    return a == null || b == null
+      ? NaN
+      : a < b
+      ? -1
+      : a > b
+      ? 1
+      : a >= b
+      ? 0
+      : NaN;
   }
 };

@@ -12,9 +12,6 @@ import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
-  plotTypes,
-  flip,
-  reportAttributesMap,
   defaultSearchFilters,
   orderListViewFilters,
   datafilesArrowTableToJson,
@@ -23,7 +20,6 @@ import {
   getReportsFilters,
   getInterpretationsFilter,
   getReportFilterExtents,
-  reportFilters,
 } from "../../helpers/filters";
 import { getActiveRepository } from "../../services/repositories";
 import { qcEvaluator } from "../../helpers/metadata";
@@ -88,7 +84,7 @@ function* fetchCaseReports(action) {
 
         let reportsFilters = [];
 
-        reportsFilters = getReportsFilters(datafiles);
+        reportsFilters = getReportsFilters(dataset.fields, datafiles);
         
         const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations);
         reportsFilters.push(interpretationsFilter);
@@ -96,13 +92,13 @@ function* fetchCaseReports(action) {
         let reportsFiltersExtents = getReportFilterExtents(datafiles);
 
         let populations = {};
-        let flippedMap = flip(reportAttributesMap());
-        Object.keys(plotTypes()).forEach((d, i) => {
-          populations[d] = datafiles.map((e) => {
+
+        dataset.kpiFields.forEach((d, i) => {
+          populations[d.id] = datafiles.map((e) => {
             try {
               return {
                 pair: e.pair,
-                value: eval(`e.${flippedMap[d]}`),
+                value: eval(`e.${d.id}`),
                 tumor_type: e.tumor_type,
               };
             } catch (error) {
@@ -281,7 +277,7 @@ function* searchReports({ searchFilters }) {
   );
 
   Object.keys(actualSearchFilters).forEach((key) => {
-    let keyRenderer = reportFilters().find((d) => d.name === key)?.renderer;
+    let keyRenderer = dataset.fields.find((d) => d.name === key)?.renderer;
     const reportFilter = reportFilters().find((d) => d.name === key);
     
     // Skip external filters (handled separately)
@@ -292,7 +288,7 @@ function* searchReports({ searchFilters }) {
     if (key === "texts") {
       records = records
         .filter((record) =>
-          reportFilters()
+          dataset.fields
             .filter((e) => e.renderer === "select")
             .map((attr) => record[attr.name] || "")
             .join(",")
@@ -303,8 +299,8 @@ function* searchReports({ searchFilters }) {
           let aValue = null;
           let bValue = null;
           try {
-            aValue = eval(`a.${flippedMap[attribute]}`);
-            bValue = eval(`b.${flippedMap[attribute]}`);
+            aValue = eval(`a.${attribute}`);
+            bValue = eval(`b.${attribute}`);
           } catch (err) {}
           if (aValue == null) return 1;
           if (bValue == null) return -1;
@@ -367,8 +363,8 @@ function* searchReports({ searchFilters }) {
     let aValue = null;
     let bValue = null;
     try {
-      aValue = eval(`a.${flippedMap[attribute]}`);
-      bValue = eval(`b.${flippedMap[attribute]}`);
+      aValue = eval(`a.${attribute}`);
+      bValue = eval(`b.${attribute}`);
     } catch (err) {}
     if (aValue == null) return 1;
     if (bValue == null) return -1;
@@ -385,7 +381,7 @@ function* searchReports({ searchFilters }) {
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters,
+    reportsFilters: getReportsFilters(dataset.fields, records),
     casesWithInterpretations,
     interpretationsCounts,
   });
