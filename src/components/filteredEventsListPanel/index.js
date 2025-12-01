@@ -14,6 +14,7 @@ import {
   Tooltip,
   Avatar,
   Typography,
+  Select,
 } from "antd";
 import { FileTextOutlined, EyeOutlined } from "@ant-design/icons";
 import { BsDashLg } from "react-icons/bs";
@@ -46,6 +47,36 @@ const eventColumns = {
   complexsv: [2, 3, 12],
 };
 
+// Default column keys - can be moved to settings.json in the future
+const DEFAULT_COLUMN_KEYS = [
+  "gene",
+  "role",
+  "variant",
+  "type",
+  "effect",
+  "tier",
+  "estimatedAlteredCopies",
+  "segmentCopyNumber",
+  "fusionCopyNumber",
+  "altCounts",
+  "refCounts",
+  "vaf",
+  "location",
+];
+
+// Helper function to extract text from column title (handles both strings and JSX)
+const getColumnTitle = (title) => {
+  if (typeof title === "string") return title;
+  if (typeof title === "object" && title?.props?.children) {
+    // Handle Text component with children
+    const children = Array.isArray(title.props.children)
+      ? title.props.children[title.props.children.length - 1]
+      : title.props.children;
+    return typeof children === "string" ? children : "Column";
+  }
+  return "Column";
+};
+
 class FilteredEventsListPanel extends Component {
 
   handleResetFilters = () => {
@@ -56,6 +87,7 @@ class FilteredEventsListPanel extends Component {
       roleFilters: [],
       effectFilters: [],
       variantFilters: [],
+      selectedColumnKeys: [...DEFAULT_COLUMN_KEYS],
     });
   };
   state = {
@@ -67,6 +99,7 @@ class FilteredEventsListPanel extends Component {
     variantFilters: [],
     geneFilters: [],
     tierCountsMap: {},
+    selectedColumnKeys: [...DEFAULT_COLUMN_KEYS],
   };
 
   // add as a class field
@@ -77,6 +110,10 @@ class FilteredEventsListPanel extends Component {
 
   handleSegmentedChange = (eventType) => {
     this.setState({ eventType });
+  };
+
+  handleColumnSelectionChange = (selectedKeys) => {
+    this.setState({ selectedColumnKeys: selectedKeys });
   };
 
   componentDidMount() {
@@ -186,6 +223,7 @@ class FilteredEventsListPanel extends Component {
       roleFilters,
       effectFilters,
       variantFilters,
+      selectedColumnKeys,
     } = this.state;
 
     let recordsHash = d3.group(
@@ -668,6 +706,35 @@ class FilteredEventsListPanel extends Component {
               className="ant-panel-container ant-home-plot-container"
               align="middle"
               justify="space-between"
+              style={{ marginBottom: "12px" }}
+            >
+              <Col flex="auto">
+                <Select
+                  mode="multiple"
+                  placeholder={t("components.filtered-events-panel.select-columns")}
+                  value={selectedColumnKeys}
+                  onChange={this.handleColumnSelectionChange}
+                  style={{ width: "300px" }}
+                  size="small"
+                  maxTagCount="responsive"
+                >
+                  {columns.map((col) => (
+                    <Select.Option key={col.key} value={col.key}>
+                      {getColumnTitle(col.title)}
+                    </Select.Option>
+                  ))}
+                  {(additionalColumns || []).map((col) => (
+                    <Select.Option key={col.key} value={col.key}>
+                      {getColumnTitle(col.title)}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Col>
+            </Row>
+            <Row
+              className="ant-panel-container ant-home-plot-container"
+              align="middle"
+              justify="space-between"
             >
               <Col flex="auto">
                 <Segmented
@@ -720,9 +787,12 @@ class FilteredEventsListPanel extends Component {
                   <Skeleton active loading={loading}>
                     <Table
                       columns={[
-                        ...(additionalColumns || []),
+                        ...(additionalColumns || []).filter((col) =>
+                          selectedColumnKeys.includes(col.key)
+                        ),
                         ...columns.filter((d, i) =>
-                          eventColumns[eventType].includes(i)
+                          eventColumns[eventType].includes(i) &&
+                          selectedColumnKeys.includes(d.key)
                         )
                       ]}
                       dataSource={records}
