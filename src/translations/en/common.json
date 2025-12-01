@@ -543,7 +543,8 @@
         "all": "All",
         "snv": "Oncogenic Small Mutations",
         "cna": "Oncogenic CNA",
-        "fusion": "Oncogenic Fusions"
+        "fusion": "Oncogenic Fusions",
+        "complexsv": "Complex SV"
       },
       "select-type": {
         "placeholder": "select one or many"

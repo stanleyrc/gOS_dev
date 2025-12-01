@@ -43,6 +43,7 @@ const eventColumns = {
   snv: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12],
   cna: [0, 1, 2, 3, 4, 5, 7, 12],
   fusion: [0, 1, 2, 3, 4, 5, 8, 12],
+  complexsv: [2, 3, 12],
 };
 
 class FilteredEventsListPanel extends Component {
@@ -105,7 +106,7 @@ class FilteredEventsListPanel extends Component {
     const { filteredEvents } = this.props;
     const { eventType } = this.state;
     let recordsHash = d3.group(
-      filteredEvents.filter((d) => d.tier && +d.tier < 3),
+      filteredEvents.filter((d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"),
       (d) => d.eventType
     );
     let records = (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
@@ -188,7 +189,7 @@ class FilteredEventsListPanel extends Component {
     } = this.state;
 
     let recordsHash = d3.group(
-      filteredEvents.filter((d) => d.tier && +d.tier < 3),
+      filteredEvents.filter((d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"),
       (d) => d.eventType
     );
     let records =

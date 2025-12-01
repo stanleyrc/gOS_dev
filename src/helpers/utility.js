@@ -305,6 +305,8 @@ export function getEventType(event) {
     return "fusion";
   } else if (["scna", "cna"].includes(type?.toLowerCase())) {
     return "cna";
+  } else if (["complex sv"].includes(type?.toLowerCase())) {
+    return "complexsv";
   } else {
     return "snv";
   }
