@@ -1414,6 +1414,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         }
       }
       return {
+        ...event,
         gene: gene,
         type: event.type,
         name: event.Name,
