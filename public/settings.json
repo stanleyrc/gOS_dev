@@ -952,9 +952,9 @@
     {
       "id": "gene",
       "title": "components.filtered-events-panel.gene",
-      "key": "gene",
       "dataIndex": "gene",
       "type": "string",
+      "viewType": "gene-link",
       "width": 100,
       "filterable": true,
       "sortable": true
@@ -962,9 +962,9 @@
     {
       "id": "role",
       "title": "components.filtered-events-panel.role",
-      "key": "role",
       "dataIndex": "role",
       "type": "string",
+      "viewType": "string-basic",
       "width": 160,
       "filterable": true,
       "sortable": true
@@ -972,19 +972,20 @@
     {
       "id": "variant",
       "title": "components.filtered-events-panel.variant",
-      "key": "variant",
       "dataIndex": "variant",
       "type": "string",
+      "viewType": "string-basic",
       "width": 120,
       "filterable": true,
-      "sortable": true
+      "sortable": true,
+      "ellipsis": true
     },
     {
       "id": "type",
       "title": "components.filtered-events-panel.type",
-      "key": "type",
       "dataIndex": "type",
       "type": "string",
+      "viewType": "string-basic",
       "width": 240,
       "filterable": true,
       "sortable": true
@@ -992,9 +993,9 @@
     {
       "id": "effect",
       "title": "components.filtered-events-panel.effect",
-      "key": "effect",
       "dataIndex": "effect",
       "type": "string",
+      "viewType": "string-basic",
       "width": 160,
       "filterable": true,
       "sortable": true
@@ -1002,9 +1003,9 @@
     {
       "id": "tier",
       "title": "components.filtered-events-panel.tier",
-      "key": "tier",
       "dataIndex": "tier",
       "type": "numeric",
+      "viewType": "tier-badge",
       "width": 120,
       "filterable": true,
       "sortable": true
@@ -1012,64 +1013,76 @@
     {
       "id": "estimatedAlteredCopies",
       "title": "components.filtered-events-panel.estimatedAlteredCopies",
-      "key": "estimatedAlteredCopies",
       "dataIndex": "estimatedAlteredCopies",
       "type": "numeric",
+      "viewType": "formatted-number",
       "width": 100,
-      "sortable": true
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
     },
     {
       "id": "segmentCopyNumber",
       "title": "components.filtered-events-panel.segmentCopyNumber",
-      "key": "segmentCopyNumber",
       "dataIndex": "segmentCopyNumber",
       "type": "numeric",
+      "viewType": "formatted-number",
       "width": 130,
-      "sortable": true
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
     },
     {
       "id": "fusionCopyNumber",
       "title": "components.filtered-events-panel.fusionCopyNumber",
-      "key": "fusionCopyNumber",
       "dataIndex": "fusionCopyNumber",
       "type": "numeric",
+      "viewType": "formatted-number",
       "width": 100,
-      "sortable": true
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
     },
     {
       "id": "altCounts",
       "title": "components.filtered-events-panel.altCounts",
-      "key": "altCounts",
       "dataIndex": "altCounts",
       "type": "numeric",
+      "viewType": "formatted-number",
       "width": 100,
       "sortable": true
     },
     {
       "id": "refCounts",
       "title": "components.filtered-events-panel.refCounts",
-      "key": "refCounts",
       "dataIndex": "refCounts",
       "type": "numeric",
+      "viewType": "formatted-number",
       "width": 100,
       "sortable": true
     },
     {
       "id": "vaf",
       "title": "components.filtered-events-panel.vaf",
-      "key": "vaf",
       "dataIndex": "vaf",
       "type": "numeric",
+      "viewType": "formatted-number",
       "width": 100,
-      "sortable": true
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
     },
     {
       "id": "location",
       "title": "components.filtered-events-panel.location",
-      "key": "location",
       "dataIndex": "location",
       "type": "string",
-      "width": 200,
+      "viewType": "location-link",
+      "width": 260,
       "sortable": true
     }
   ]
