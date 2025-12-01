@@ -862,7 +862,7 @@
       "scale": "log",
       "minValue": 1,
       "group": "biomarker-metrics",
-      "groupTitle": "iomarker Metrics",
+      "groupTitle": "Biomarker Metrics",
       "groupOrder": 5
     },
     {
@@ -936,6 +936,16 @@
       "group": "biomarker-metrics",
       "groupTitle": "Biomarker Metrics",
       "groupOrder": 5
+    },
+    {
+      "id": "has_interpretations",
+      "title": "Criteria",
+      "type": "string",
+      "renderer": "cascader",
+      "group": "interpretations",
+      "groupTitle": "Interpretations",
+      "groupOrder": 6,
+      "external": true
     }
   ]
 }

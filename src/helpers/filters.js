@@ -261,8 +261,8 @@ export function getReportFilterExtents(reports) {
 export function getReportsFilters(fields, reports) {
   let reportsFilters = [];
 
-  // Iterate through each filter
-  fields.forEach((field) => {
+  // Iterate through each filter (skip external filters as they need special handling)
+  fields.filter(field => !field.external).forEach((field) => {
     let allValues = reports
       .map((record) => {
         try {
@@ -306,8 +306,16 @@ export function getReportsFilters(fields, reports) {
   return reportsFilters;
 }
 
-export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }) {
-  const filter = reportFilters().find(f => f.name === "has_interpretations");
+export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }, fields = null) {
+  // Try to find the filter in the provided fields (from settings.json)
+  // Fall back to hardcoded filter for backward compatibility
+  let filter;
+  if (fields && Array.isArray(fields)) {
+    filter = fields.find(f => f.id === "has_interpretations" || f.name === "has_interpretations");
+  }
+  if (!filter) {
+    filter = reportFilters().find(f => f.name === "has_interpretations");
+  }
   
   const options = generateInterpretationsCascaderOptions(reports, casesWithInterpretations);
   
@@ -315,7 +323,7 @@ export function getInterpretationsFilter(reports, casesWithInterpretations = { a
     filter: filter,
     options: options,
     totalRecords: reports.length,
-    format: plotTypes()[reportAttributesMap()[filter.name]]?.format
+    format: filter?.format || plotTypes()[reportAttributesMap()[filter?.name]]?.format
   };
 }
 

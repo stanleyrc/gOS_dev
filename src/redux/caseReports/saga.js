@@ -89,7 +89,7 @@ function* fetchCaseReports(action) {
 
         reportsFilters = getReportsFilters(dataset.fields, datafiles);
         
-        const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations);
+        const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations, dataset.fields);
         reportsFilters.push(interpretationsFilter);
 
         let reportsFiltersExtents = getReportFilterExtents(datafiles);
@@ -377,14 +377,14 @@ function* searchReports({ searchFilters }) {
   });
 
   const reportsFilters = getReportsFilters(dataset.fields, records);
-  const interpretationsFilter = getInterpretationsFilter(records, casesWithInterpretations);
+  const interpretationsFilter = getInterpretationsFilter(records, casesWithInterpretations, dataset.fields);
   reportsFilters.push(interpretationsFilter);
 
   yield put({
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
     totalReports: records.length,
-    reportsFilters: getReportsFilters(dataset.fields, records),
+    reportsFilters: reportsFilters,
     casesWithInterpretations,
     interpretationsCounts,
   });

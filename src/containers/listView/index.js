@@ -231,6 +231,7 @@ class ListView extends Component {
 
       if (
         d.filter.renderer === "select" &&
+        d.records &&
         d.records.length > 0 &&
         !d.records.every((e) => e == null)
       ) {
@@ -286,6 +287,7 @@ class ListView extends Component {
 
       if (
         d.filter.renderer === "slider" &&
+        filtersExtents[d.filter.name] &&
         !isNaN(filtersExtents[d.filter.name]?.[0]) &&
         !isNaN(filtersExtents[d.filter.name]?.[1])
       ) {
