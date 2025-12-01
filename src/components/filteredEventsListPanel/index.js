@@ -80,6 +80,9 @@ const getColumnTitle = (title) => {
 class FilteredEventsListPanel extends Component {
 
   handleResetFilters = () => {
+    const { additionalColumns } = this.props;
+    const additionalKeys = (additionalColumns || []).map((col) => col.key);
+    const defaultKeys = [...new Set([...DEFAULT_COLUMN_KEYS, ...additionalKeys])];
     this.setState({
       geneFilters: [],
       tierFilters: [],
@@ -87,7 +90,7 @@ class FilteredEventsListPanel extends Component {
       roleFilters: [],
       effectFilters: [],
       variantFilters: [],
-      selectedColumnKeys: [...DEFAULT_COLUMN_KEYS],
+      selectedColumnKeys: defaultKeys,
     });
   };
   state = {
@@ -118,13 +121,24 @@ class FilteredEventsListPanel extends Component {
 
   componentDidMount() {
     this.fetchTierCountsForRecords();
+    this.initializeSelectedColumns();
   }
 
   componentDidUpdate(prevProps, prevState) {
     if (prevProps.filteredEvents !== this.props.filteredEvents || prevState.eventType !== this.state.eventType) {
       this.fetchTierCountsForRecords();
     }
+    if (prevProps.additionalColumns !== this.props.additionalColumns) {
+      this.initializeSelectedColumns();
+    }
   }
+
+  initializeSelectedColumns = () => {
+    const { additionalColumns } = this.props;
+    const additionalKeys = (additionalColumns || []).map((col) => col.key);
+    const selectedKeys = [...new Set([...DEFAULT_COLUMN_KEYS, ...additionalKeys])];
+    this.setState({ selectedColumnKeys: selectedKeys });
+  };
 
   handleTableChange = (pagination, filters, sorter) => {
     // When the user changes filters (e.g. checks tier 3),
