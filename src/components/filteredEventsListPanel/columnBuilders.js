@@ -3,13 +3,25 @@ import * as d3 from "d3";
 import { getColumnRenderer } from "./columnRegistry";
 
 /**
+ * resolvePath
+ * Safely access nested object properties using dot notation
+ * e.g. resolvePath(record, "AlphaMissense.score")
+ */
+function resolvePath(obj, path) {
+  if (!path || !obj) return undefined;
+  // Handle if path is already an array of keys (AntD style)
+  const keys = Array.isArray(path) ? path : path.split(".");
+  return keys.reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+}
+
+/**
  * buildFilters
  * Dynamically generate filter options from record data
  */
 function buildFilters(records, dataIndex, filterType = "string") {
   if (!records.length) return [];
 
-  const values = [...new Set(records.map((d) => d[dataIndex]))];
+  const values = [...new Set(records.map((d) => resolvePath(d, dataIndex)))];
   
   if (filterType === "numeric") {
     return values
@@ -37,8 +49,8 @@ function buildFilters(records, dataIndex, filterType = "string") {
 function buildSorter(dataIndex, dataType = "string") {
   return {
     compare: (a, b) => {
-      const aVal = a[dataIndex];
-      const bVal = b[dataIndex];
+      const aVal = resolvePath(a, dataIndex);
+      const bVal = resolvePath(b, dataIndex);
 
       if (aVal == null) return 1;
       if (bVal == null) return -1;
@@ -58,15 +70,15 @@ function buildSorter(dataIndex, dataType = "string") {
  */
 function buildFilter(dataIndex, filterType = "string") {
   if (filterType === "numeric") {
-    return (value, record) => +record[dataIndex] === +value;
+    return (value, record) => +resolvePath(record, dataIndex) === +value;
   }
 
   if (filterType === "string-startsWith") {
-    return (value, record) => record[dataIndex]?.startsWith(value);
+    return (value, record) => resolvePath(record, dataIndex)?.startsWith(value);
   }
 
   // Default string equality
-  return (value, record) => record[dataIndex] === value;
+  return (value, record) => resolvePath(record, dataIndex) === value;
 }
 
 /**
@@ -93,6 +105,7 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
     filterType = type === "numeric" ? "numeric" : "string",
     ellipsis = false,
     rendererProps: columnRendererProps = {},
+    fields,
   } = columnDef;
 
   // Extract the t function from rendererProps (if provided by component)
@@ -121,13 +134,20 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
         : ellipsis
         ? true
         : false,
-    render: (_, record) => (
-      <RendererComponent
-        value={record[dataIndex]}
-        record={record}
-        {...mergedRendererProps}
-      />
-    ),
+    render: (_, record) => {
+      const additionalFieldValues = Array.isArray(fields)
+        ? fields.reduce((acc, key) => ({ ...acc, [key]: resolvePath(record, key) }), {})
+        : undefined;
+
+      return (
+        <RendererComponent
+          value={resolvePath(record, dataIndex)}
+          record={record}
+          additionalFieldValues={additionalFieldValues}
+          {...mergedRendererProps}
+        />
+      );
+    },
   };
 
   // Add filters if enabled
