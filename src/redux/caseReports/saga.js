@@ -78,7 +78,11 @@ function* fetchCaseReports(action) {
 
         reportsFilters = getReportsFilters(dataset.fields, datafiles);
 
-        let reportsFiltersExtents = getReportFilterExtents(datafiles);
+        // let reportsFiltersExtents = getReportFilterExtents(datafiles);
+        let reportsFiltersExtents = reportsFilters.reduce((acc, item) => {
+          acc[item.filter.name] = item.extent;
+          return acc;
+        }, {});
 
         let populations = {};
 
