@@ -70,6 +70,8 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 .env.test.local
 .env.production.local
 .prettierrc
+AGENT.md
+*SPEC.md
 
 *.rb
 public/*datafiles.json

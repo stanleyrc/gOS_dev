@@ -20,7 +20,9 @@ import {
   Slider,
   Collapse,
   Tag,
+  Tabs,
 } from "antd";
+import AggregationsPanel from "./AggregationsPanel";
 import * as d3 from "d3";
 import {
   snakeCaseToHumanReadable,
@@ -48,6 +50,11 @@ class ListView extends Component {
 
   state = {
     isChatOpen: false,
+    activeTab: "cases",
+  };
+
+  handleTabChange = (key) => {
+    this.setState({ activeTab: key });
   };
 
   handleChatClick = () => {
@@ -145,6 +152,8 @@ class ListView extends Component {
       totalRecords,
       casesWithInterpretations,
       interpretationsCounts,
+      datafiles,
+      dataset,
     } = this.props;
 
     let filterFormItemRenderer = (d) => {
@@ -400,245 +409,265 @@ class ListView extends Component {
                 </Card>
               </Col>
               <Col className="gutter-row" span={20}>
-                {records.length > 0 && (
-                  <Row className="results-top-box" gutter={[16, 16]}>
-                    <Col className="gutter-row" span={12}>
-                      <Pagination
-                        showSizeChanger
-                        total={totalRecords}
-                        showTotal={(total, range) =>
-                          `${range[0]}-${range[1]} of ${total} items`
-                        }
-                        defaultCurrent={1}
-                        current={searchFilters.page || 1}
-                        pageSize={searchFilters.per_page || 10}
-                        onChange={this.onPageChanged}
-                      />
-                    </Col>
-                    <Col
-                      className="gutter-row order-selector-container"
-                      span={12}
-                    >
-                      <Select
-                        className="order-select"
-                        value={searchFilters.orderId}
-                        onSelect={this.onOrderChanged}
-                        variant="borderless"
-                      >
-                        {orderListViewFilters.map((d) => (
-                          <Option key={d.id} value={d.id}>
-                            <span
-                              dangerouslySetInnerHTML={{
-                                __html: t("containers.list-view.ordering", {
-                                  attribute: t(
-                                    `components.header-panel.metadata.${d.attribute}.short`
-                                  ),
-                                  sort: d.sort,
-                                }),
-                              }}
-                            />
-                          </Option>
-                        ))}
-                      </Select>
-                    </Col>
-                  </Row>
-                )}
+                <Tabs
+                  activeKey={this.state.activeTab}
+                  onChange={this.handleTabChange}
+                  items={[
+                    {
+                      key: "cases",
+                      label: t("containers.list-view.tabs.cases"),
+                      children: (
+                        <>
+                          {records.length > 0 && (
+                            <Row className="results-top-box" gutter={[16, 16]}>
+                              <Col className="gutter-row" span={12}>
+                                <Pagination
+                                  showSizeChanger
+                                  total={totalRecords}
+                                  showTotal={(total, range) =>
+                                    `${range[0]}-${range[1]} of ${total} items`
+                                  }
+                                  defaultCurrent={1}
+                                  current={searchFilters.page || 1}
+                                  pageSize={searchFilters.per_page || 10}
+                                  onChange={this.onPageChanged}
+                                />
+                              </Col>
+                              <Col
+                                className="gutter-row order-selector-container"
+                                span={12}
+                              >
+                                <Select
+                                  className="order-select"
+                                  value={searchFilters.orderId}
+                                  onSelect={this.onOrderChanged}
+                                  variant="borderless"
+                                >
+                                  {orderListViewFilters.map((d) => (
+                                    <Option key={d.id} value={d.id}>
+                                      <span
+                                        dangerouslySetInnerHTML={{
+                                          __html: t("containers.list-view.ordering", {
+                                            attribute: t(
+                                              `components.header-panel.metadata.${d.attribute}.short`
+                                            ),
+                                            sort: d.sort,
+                                          }),
+                                        }}
+                                      />
+                                    </Option>
+                                  ))}
+                                </Select>
+                              </Col>
+                            </Row>
+                          )}
 
-                <Row gutter={[16, 16]}>
-                  {records.map((d) => (
-                    <Col
-                      key={d.pair}
-                      className="gutter-row"
-                      span={6}
-                      style={{ display: "flex" }}
-                    >
-                      <Card
-                        className="case-report-card"
-                        styles={{
-                          body: {
-                            flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                          },
-                        }}
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                        }}
-                        onClick={(e) => handleCardClick(e, d.pair)}
-                        hoverable
-                        title={
-                          <Space>
-                            <Text
-                              strong
-                              ellipsis={{ tooltip: d.pair }}
-                              className="case-report-ellipsis-text"
-                            >
-                              {d.pair}
-                            </Text>
-                            <Text type="secondary">{d.inferred_sex}</Text>
-                            {d.qcEvaluation && (
-                              <Tag
-                                color={
-                                  qcMetricsClasses[d.qcEvaluation.toLowerCase()]
-                                }
-                                className="qc-evaluation-tag"
+                          <Row gutter={[16, 16]}>
+                            {records.map((d) => (
+                              <Col
+                                key={d.pair}
+                                className="gutter-row"
+                                span={6}
+                                style={{ display: "flex" }}
                               >
-                                {d.qcEvaluation}
-                              </Tag>
-                            )}
-                          </Space>
-                        }
-                        variant="borderless"
-                        extra={
-                          <Space>
-                            <InterpretationsAvatar
-                              pair={d.pair}
-                              casesWithInterpretations={casesWithInterpretations}
-                              interpretationsCounts={interpretationsCounts}
-                            />
-                            {d.tumor_type ? (
-                              <Avatar
-                                style={{
-                                  backgroundColor: "#fde3cf",
-                                  color: "#f56a00",
-                                }}
-                              >
-                                {d.tumor_type}
-                              </Avatar>
-                            ) : null}
-                          </Space>
-                        }
-                        actions={[
-                          <Statistic
-                            className="stats"
-                            title={t(`components.header-panel.metadata.sv_count.short`)}
-                            value={
-                              d.sv_count != null
-                                ? d3.format(",")(d.sv_count)
-                                : t("general.not-applicable")
-                            }
-                          />,
-                          <Statistic
-                            className="stats"
-                            title={t(`components.header-panel.metadata.tmb.short`)}
-                            value={
-                              d.tmb != null
-                                ? d3.format(",")(d.tmb)
-                                : t("general.not-applicable")
-                            }
-                          />,
-                          <Statistic
-                            className="stats"
-                            title={t(`components.header-panel.metadata.tumor_median_coverage.shorter`)}
-                            value={`${
-                              d["tumor_median_coverage"] != null
-                                ? `${d["tumor_median_coverage"]}X`
-                                : t("general.not-applicable")
-                            } / ${
-                              d["normal_median_coverage"] != null
-                                ? `${d["normal_median_coverage"]}X`
-                                : t("general.not-applicable")
-                            }`}
-                          />,
-                          <Statistic
-                            className="stats"
-                            title={t("components.header-panel.purity-ploidy-title")}
-                            value={
-                              d.purity != null
-                                ? d3.format(".1%")(d.purity)
-                                : t("general.not-applicable")
-                            }
-                            suffix={`/ ${
-                              d.ploidy != null
-                                ? d3.format(".2f")(d.ploidy)
-                                : t("general.not-applicable")
-                            }`}
-                          />,
-                        ]}
-                      >
-                        <Meta
-                          title={
-                            d.disease &&
-                            d.primary_site && (
-                              <Paragraph>
-                                <Text type="primary">{d.disease}</Text>
-                                {d.primary_site && (
-                                  <Text type="secondary">
-                                    <br />
-                                    {snakeCaseToHumanReadable(d.primary_site)}
-                                  </Text>
-                                )}
-                                {d.tumor_details && (
-                                  <Text type="secondary">
-                                    <br />
-                                    {snakeCaseToHumanReadable(d.tumor_details)}
-                                  </Text>
-                                )}
-                              </Paragraph>
-                            )
-                          }
-                          description={
-                            <Space
-                              direction="vertical"
-                              size={0}
-                              style={{ display: "flex" }}
-                            >
-                              {generateCascaderOptions(d.tags).map((tag, i) => (
-                                <div key={`tag-${tag.value}-${i}`}>
-                                  <Divider
-                                    plain
-                                    orientation="left"
-                                    size="small"
-                                  >
-                                    {tag.label}
-                                  </Divider>
-                                  <Flex gap="2px" wrap="wrap">
-                                    {tag.children.map((child) => (
-                                      <Text key={child.value} code>
-                                        {child.label}
+                                <Card
+                                  className="case-report-card"
+                                  styles={{
+                                    body: {
+                                      flex: 1,
+                                      display: "flex",
+                                      flexDirection: "column",
+                                    },
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                  }}
+                                  onClick={(e) => handleCardClick(e, d.pair)}
+                                  hoverable
+                                  title={
+                                    <Space>
+                                      <Text
+                                        strong
+                                        ellipsis={{ tooltip: d.pair }}
+                                        className="case-report-ellipsis-text"
+                                      >
+                                        {d.pair}
                                       </Text>
-                                    ))}
-                                  </Flex>
-                                </div>
-                              ))}
-                            </Space>
-                          }
+                                      <Text type="secondary">{d.inferred_sex}</Text>
+                                      {d.qcEvaluation && (
+                                        <Tag
+                                          color={
+                                            qcMetricsClasses[d.qcEvaluation.toLowerCase()]
+                                          }
+                                          className="qc-evaluation-tag"
+                                        >
+                                          {d.qcEvaluation}
+                                        </Tag>
+                                      )}
+                                    </Space>
+                                  }
+                                  variant="borderless"
+                                  extra={
+                                    <Space>
+                                      <InterpretationsAvatar
+                                        pair={d.pair}
+                                        casesWithInterpretations={casesWithInterpretations}
+                                        interpretationsCounts={interpretationsCounts}
+                                      />
+                                      {d.tumor_type ? (
+                                        <Avatar
+                                          style={{
+                                            backgroundColor: "#fde3cf",
+                                            color: "#f56a00",
+                                          }}
+                                        >
+                                          {d.tumor_type}
+                                        </Avatar>
+                                      ) : null}
+                                    </Space>
+                                  }
+                                  actions={[
+                                    <Statistic
+                                      className="stats"
+                                      title={t(`components.header-panel.metadata.sv_count.short`)}
+                                      value={
+                                        d.sv_count != null
+                                          ? d3.format(",")(d.sv_count)
+                                          : t("general.not-applicable")
+                                      }
+                                    />,
+                                    <Statistic
+                                      className="stats"
+                                      title={t(`components.header-panel.metadata.tmb.short`)}
+                                      value={
+                                        d.tmb != null
+                                          ? d3.format(",")(d.tmb)
+                                          : t("general.not-applicable")
+                                      }
+                                    />,
+                                    <Statistic
+                                      className="stats"
+                                      title={t(`components.header-panel.metadata.tumor_median_coverage.shorter`)}
+                                      value={`${
+                                        d["tumor_median_coverage"] != null
+                                          ? `${d["tumor_median_coverage"]}X`
+                                          : t("general.not-applicable")
+                                      } / ${
+                                        d["normal_median_coverage"] != null
+                                          ? `${d["normal_median_coverage"]}X`
+                                          : t("general.not-applicable")
+                                      }`}
+                                    />,
+                                    <Statistic
+                                      className="stats"
+                                      title={t("components.header-panel.purity-ploidy-title")}
+                                      value={
+                                        d.purity != null
+                                          ? d3.format(".1%")(d.purity)
+                                          : t("general.not-applicable")
+                                      }
+                                      suffix={`/ ${
+                                        d.ploidy != null
+                                          ? d3.format(".2f")(d.ploidy)
+                                          : t("general.not-applicable")
+                                      }`}
+                                    />,
+                                  ]}
+                                >
+                                  <Meta
+                                    title={
+                                      d.disease &&
+                                      d.primary_site && (
+                                        <Paragraph>
+                                          <Text type="primary">{d.disease}</Text>
+                                          {d.primary_site && (
+                                            <Text type="secondary">
+                                              <br />
+                                              {snakeCaseToHumanReadable(d.primary_site)}
+                                            </Text>
+                                          )}
+                                          {d.tumor_details && (
+                                            <Text type="secondary">
+                                              <br />
+                                              {snakeCaseToHumanReadable(d.tumor_details)}
+                                            </Text>
+                                          )}
+                                        </Paragraph>
+                                      )
+                                    }
+                                    description={
+                                      <Space
+                                        direction="vertical"
+                                        size={0}
+                                        style={{ display: "flex" }}
+                                      >
+                                        {generateCascaderOptions(d.tags).map((tag, i) => (
+                                          <div key={`tag-${tag.value}-${i}`}>
+                                            <Divider
+                                              plain
+                                              orientation="left"
+                                              size="small"
+                                            >
+                                              {tag.label}
+                                            </Divider>
+                                            <Flex gap="2px" wrap="wrap">
+                                              {tag.children.map((child) => (
+                                                <Text key={child.value} code>
+                                                  {child.label}
+                                                </Text>
+                                              ))}
+                                            </Flex>
+                                          </div>
+                                        ))}
+                                      </Space>
+                                    }
+                                  />
+                                </Card>
+                              </Col>
+                            ))}
+                          </Row>
+                          {records.length > 0 && (
+                            <Row className="results-bottom-box" gutter={[16, 16]}>
+                              <Col className="gutter-row" span={24}>
+                                <Pagination
+                                  showSizeChanger
+                                  total={totalRecords}
+                                  showTotal={(total, range) =>
+                                    `${range[0]}-${range[1]} of ${total} items`
+                                  }
+                                  defaultCurrent={1}
+                                  current={searchFilters.page || 1}
+                                  pageSize={searchFilters.per_page || 10}
+                                  onChange={this.onPageChanged}
+                                />
+                              </Col>
+                            </Row>
+                          )}
+                          {records.length < 1 && (
+                            <Card>
+                              <Empty description={false} />
+                            </Card>
+                          )}
+                        </>
+                      ),
+                    },
+                    {
+                      key: "aggregations",
+                      label: t("containers.list-view.tabs.aggregations"),
+                      children: (
+                        <AggregationsPanel
+                          datafiles={datafiles}
+                          searchFilters={searchFilters}
+                          dataset={dataset}
                         />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-                {records.length > 0 && (
-                  <Row className="results-bottom-box" gutter={[16, 16]}>
-                    <Col className="gutter-row" span={24}>
-                      <Pagination
-                        showSizeChanger
-                        total={totalRecords}
-                        showTotal={(total, range) =>
-                          `${range[0]}-${range[1]} of ${total} items`
-                        }
-                        defaultCurrent={1}
-                        current={searchFilters.page || 1}
-                        pageSize={searchFilters.per_page || 10}
-                        onChange={this.onPageChanged}
-                      />
-                    </Col>
-                  </Row>
-                )}
+                      ),
+                    },
+                  ]}
+                />
               </Col>
             </Row>
-
-            {records.length < 1 && (
-              <Row gutter={[16, 16]}>
-                <Col className="gutter-row" span={24}>
-                  <Card>
-                    <Empty description={false} />
-                  </Card>
-                </Col>
-              </Row>
-            )}
           </div>
         </Form>
       </Wrapper>

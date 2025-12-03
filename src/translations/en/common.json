@@ -266,6 +266,25 @@
   "containers": {
     "home": {},
     "list-view": {
+      "tabs": {
+        "cases": "Cases",
+        "aggregations": "Cohort Aggregations"
+      },
+      "aggregations": {
+        "title": "Cohort Level Aggregations",
+        "subtitle": "Showing {{count}} filtered cases",
+        "aggregate_by": "Aggregate by:",
+        "class_column": "Class",
+        "count_column": "Count",
+        "percentage_column": "% of Total",
+        "total_row": "Total",
+        "empty_class": "(empty)",
+        "no_data": "No data available",
+        "log_scale": "logarithmic scale",
+        "table_tab": "Table",
+        "visualization_tab": "Visualization",
+        "visualization_coming_soon": "Visualization coming soon"
+      },
       "filters": {
         "title": "Search Filters",
         "placeholder": "select one or many",

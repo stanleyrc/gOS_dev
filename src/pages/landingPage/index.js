@@ -44,6 +44,8 @@ class LandingPage extends Component {
       reportsFiltersExtents,
       searchCaseReports,
       searchFilters,
+      datafiles,
+      dataset,
     } = this.props;
     return (
       <Wrapper>
@@ -71,6 +73,8 @@ class LandingPage extends Component {
             onSearch={searchCaseReports}
             searchFilters={searchFilters}
             totalRecords={totalReports}
+            datafiles={datafiles}
+            dataset={dataset}
           />
         )}
       </Wrapper>
@@ -91,6 +95,8 @@ const mapStateToProps = (state) => ({
   reportsFiltersExtents: state.CaseReports.reportsFiltersExtents,
   searchFilters: state.CaseReports.searchFilters,
   totalReports: state.CaseReports.totalReports,
+  datafiles: state.CaseReports.datafiles,
+  dataset: state.Settings.dataset,
 });
 export default connect(
   mapStateToProps,

@@ -89,6 +89,34 @@ const Wrapper = styled.div`
     max-width: 150px;
     font-size: 16px;
   }
+
+  /* Aggregations Panel Styles */
+  .aggregation-panel-card {
+    margin-top: 16px;
+  }
+  .aggregation-panel-header {
+    margin-bottom: 16px;
+  }
+  .aggregation-field-selector {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+  }
+  .aggregation-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+  }
+  .aggregation-table-container {
+    margin-top: 16px;
+  }
+  .aggregation-table-header {
+    margin-bottom: 12px;
+  }
+  .aggregation-total-row {
+    background-color: #fafafa;
+  }
 `;
 
 export default Wrapper;
