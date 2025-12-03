@@ -4,6 +4,7 @@ import {
   StringRenderer,
   GeneRenderer,
   LocationRenderer,
+  ClassIconRenderer,
 } from "./columnRenderers";
 
 /**
@@ -24,6 +25,7 @@ export const filteredEventsColumnRegistry = {
   "formatted-number": FormattedNumberRenderer,
   "string-basic": StringRenderer,
   "location-link": LocationRenderer,
+  "class-icon": ClassIconRenderer,
 };
 
 /**

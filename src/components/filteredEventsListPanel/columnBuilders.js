@@ -33,6 +33,24 @@ function buildFilters(records, dataIndex, filterType = "string") {
       }));
   }
 
+  if (filterType === "object") {
+    // For object types, filter by class property if available
+    const classValues = [
+      ...new Set(
+        records
+          .map((d) => {
+            const obj = resolvePath(d, dataIndex);
+            return obj && obj.class ? obj.class : null;
+          })
+          .filter((v) => v != null)
+      ),
+    ];
+    return classValues.sort((a, b) => d3.ascending(a, b)).map((v) => ({
+      text: v,
+      value: v,
+    }));
+  }
+
   return values
     .filter((v) => v != null)
     .sort((a, b) => d3.ascending(a, b))
@@ -59,6 +77,13 @@ function buildSorter(dataIndex, dataType = "string") {
         return d3.ascending(+aVal, +bVal);
       }
 
+      if (dataType === "object") {
+        // Sort by class property for objects
+        const aClass = aVal?.class || "";
+        const bClass = bVal?.class || "";
+        return d3.ascending(aClass, bClass);
+      }
+
       return d3.ascending(aVal, bVal);
     },
   };
@@ -71,6 +96,13 @@ function buildSorter(dataIndex, dataType = "string") {
 function buildFilter(dataIndex, filterType = "string") {
   if (filterType === "numeric") {
     return (value, record) => +resolvePath(record, dataIndex) === +value;
+  }
+
+  if (filterType === "object") {
+    return (value, record) => {
+      const obj = resolvePath(record, dataIndex);
+      return obj && obj.class === value;
+    };
   }
 
   if (filterType === "string-startsWith") {
@@ -102,7 +134,7 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
     width = 120,
     filterable = false,
     sortable = false,
-    filterType = type === "numeric" ? "numeric" : "string",
+    filterType = type === "numeric" ? "numeric" : type === "object" ? "object" : "string",
     ellipsis = false,
     rendererProps: columnRendererProps = {},
     fields,
