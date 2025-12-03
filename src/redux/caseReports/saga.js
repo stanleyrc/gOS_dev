@@ -92,7 +92,11 @@ function* fetchCaseReports(action) {
         const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations, dataset.fields);
         reportsFilters.push(interpretationsFilter);
 
-        let reportsFiltersExtents = getReportFilterExtents(datafiles);
+        // let reportsFiltersExtents = getReportFilterExtents(datafiles);
+        let reportsFiltersExtents = reportsFilters.reduce((acc, item) => {
+          acc[item.filter.name] = item.extent;
+          return acc;
+        }, {});
 
         let populations = {};
 

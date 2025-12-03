@@ -295,7 +295,10 @@ class ListView extends Component {
           <Item
             key={`containers.list-view.filters.${d.filter.name}`}
             name={d.filter.name}
-            label={t(`containers.list-view.filters.${d.filter.name}`)}
+            label={t(
+              `containers.list-view.filters.${d.filter.name}`,
+              d.filter.title || d.filter.name
+            )}
             rules={[
               {
                 required: false,
