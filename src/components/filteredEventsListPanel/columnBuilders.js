@@ -78,7 +78,22 @@ function buildSorter(dataIndex, dataType = "string") {
       }
 
       if (dataType === "object") {
-        // Sort by class property for objects
+        // Sort by score first (if available), then by class
+        const aScore = aVal?.score;
+        const bScore = bVal?.score;
+        const aHasScore = aScore !== undefined && aScore !== null;
+        const bHasScore = bScore !== undefined && bScore !== null;
+        
+        // Both have scores: sort by score descending
+        if (aHasScore && bHasScore) {
+          const scoreComp = d3.ascending(+bScore, +aScore); // descending
+          if (scoreComp !== 0) return scoreComp;
+        }
+        // One has score: score comes first
+        else if (aHasScore) return -1;
+        else if (bHasScore) return 1;
+        
+        // Neither has score or scores are equal: sort by class
         const aClass = aVal?.class || "";
         const bClass = bVal?.class || "";
         return d3.ascending(aClass, bClass);
