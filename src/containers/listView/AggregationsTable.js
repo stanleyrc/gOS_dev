@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
-import { Table, Typography, Select, Tooltip, Row, Col } from "antd";
+import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 
 const { Text } = Typography;
@@ -79,6 +80,48 @@ class AggregationsTable extends Component {
       ? selectedKeys
       : ["pair", ...selectedKeys];
     this.setState({ selectedColumnKeys: keysWithPair });
+  };
+
+  exportToCSV = () => {
+    const { filteredRecords } = this.props;
+    const { selectedColumnKeys } = this.state;
+    const allColumns = this.buildColumns();
+    const visibleColumns = allColumns.filter((col) =>
+      selectedColumnKeys.includes(col.key)
+    );
+
+    // Build CSV header
+    const headers = visibleColumns.map((col) => col.label).join(",");
+
+    // Build CSV rows
+    const rows = filteredRecords.map((record) => {
+      return visibleColumns
+        .map((col) => {
+          const value = getValue(record, col.dataIndex);
+          const stringValue = value == null ? "" : String(value);
+          // Remove newlines and replace with spaces
+          const cleanedValue = stringValue.replace(/\n/g, " ").replace(/\r/g, "");
+          // Escape quotes and wrap in quotes if contains comma or quotes
+          const escaped = cleanedValue.replace(/"/g, '""');
+          return escaped.includes(",") || escaped.includes('"')
+            ? `"${escaped}"`
+            : escaped;
+        })
+        .join(",");
+    });
+
+    const csv = [headers, ...rows].join("\n");
+
+    // Create blob and download
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "aggregations_table.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   buildColumns = () => {
@@ -204,6 +247,8 @@ class AggregationsTable extends Component {
         );
       }
 
+      const isSummary = col.key === "summary";
+      
       return {
         key: col.key,
         title: headerTitle,
@@ -214,7 +259,25 @@ class AggregationsTable extends Component {
           if (isNumeric && !isNaN(value)) {
             return d3.format(",")(value);
           }
-          return String(value);
+          const formattedValue = String(value);
+          
+          // Make summary cells horizontally scrollable
+          if (isSummary) {
+            return (
+              <div style={{ 
+                minWidth: "700px",
+                minHeight: "60px",
+                overflowX: "auto",
+                overflowY: "hidden",
+                whiteSpace: "nowrap",
+                paddingRight: "8px"
+              }}>
+                {formattedValue}
+              </div>
+            );
+          }
+          
+          return formattedValue;
         },
       };
     });
@@ -281,6 +344,16 @@ class AggregationsTable extends Component {
                 </Select.Option>
               ))}
             </Select>
+          </Col>
+          <Col style={{ marginLeft: "8px" }}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={this.exportToCSV}
+            >
+              {t("containers.list-view.aggregations.export") || "Export CSV"}
+            </Button>
           </Col>
         </Row>
 

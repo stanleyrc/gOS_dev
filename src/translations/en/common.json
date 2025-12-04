@@ -299,7 +299,8 @@
         "normal_median_coverage_column": "Normal Coverage",
         "purity_column": "Purity",
         "ploidy_column": "Ploidy",
-        "summary_column": "Alterations"
+        "summary_column": "Alterations",
+        "export": "Export CSV"
       },
       "filters": {
         "title": "Search Filters",
