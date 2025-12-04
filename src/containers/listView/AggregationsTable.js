@@ -254,6 +254,22 @@ class AggregationsTable extends Component {
         title: headerTitle,
         label: col.title,
         dataIndex: col.dataIndex,
+        sorter: (a, b) => {
+          const aVal = getValue(a, col.dataIndex);
+          const bVal = getValue(b, col.dataIndex);
+          
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          
+          if (isNumeric) {
+            const aNum = parseFloat(aVal);
+            const bNum = parseFloat(bVal);
+            return aNum - bNum;
+          }
+          
+          return String(aVal).localeCompare(String(bVal));
+        },
         render: (value) => {
           if (value == null) return "-";
           if (isNumeric && !isNaN(value)) {
