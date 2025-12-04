@@ -117,6 +117,18 @@ const Wrapper = styled.div`
   .aggregation-total-row {
     background-color: #fafafa;
   }
+
+  /* Aggregations Visualization Styles */
+  .aggregation-visualization-container {
+    padding: 16px 0;
+    min-height: 450px;
+  }
+  .aggregation-visualization-container .plot-container {
+    overflow: visible;
+  }
+  .aggregation-visualization-container .ant-select {
+    font-size: 12px;
+  }
 `;
 
 export default Wrapper;

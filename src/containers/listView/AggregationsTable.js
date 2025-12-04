@@ -69,18 +69,22 @@ class AggregationsTable extends PureComponent {
       return;
     }
 
-    const numericKeys = [
-      "sv_count",
-      "tmb",
-      "tumor_median_coverage",
-      "normal_median_coverage",
-      "purity",
-      "ploidy",
+    const numericColumns = [
+      { key: "sv_count", dataIndex: "sv_count" },
+      { key: "tmb", dataIndex: "tmb" },
+      { key: "tumor_median_coverage", dataIndex: "tumor_median_coverage" },
+      { key: "normal_median_coverage", dataIndex: "normal_median_coverage" },
+      { key: "purity", dataIndex: "purity" },
+      { key: "ploidy", dataIndex: "ploidy" },
+      { key: "HRDetect", dataIndex: "hrd.hrd_score" },
+      { key: "B1+2", dataIndex: "hrd.b1_2_score" },
+      { key: "B1", dataIndex: "hrd.b1_score" },
+      { key: "B2", dataIndex: "hrd.b2_score" },
     ];
     const columnStats = {};
 
-    numericKeys.forEach((key) => {
-      columnStats[key] = calculateStats(filteredRecords, key);
+    numericColumns.forEach(({ key, dataIndex }) => {
+      columnStats[key] = calculateStats(filteredRecords, dataIndex);
     });
 
     this.setState({ columnStats });
@@ -100,6 +104,10 @@ class AggregationsTable extends PureComponent {
       "normal_median_coverage",
       "purity",
       "ploidy",
+      "HRDetect",
+      "B1+2",
+      "B1",
+      "B2",
       "summary",
     ];
   };
@@ -250,6 +258,34 @@ class AggregationsTable extends PureComponent {
         type: "numeric",
       },
       {
+        key: "HRDetect",
+        title:
+          t("containers.list-view.aggregations.HRDetect_column") || "HRDetect",
+        dataIndex: "hrd.hrd_score",
+        type: "numeric",
+      },
+      {
+        key: "B1+2",
+        title:
+          t("containers.list-view.aggregations.B1+2_column") || "B1+2",
+        dataIndex: "hrd.b1_2_score",
+        type: "numeric",
+      },
+      {
+        key: "B1",
+        title:
+          t("containers.list-view.aggregations.B1_column") || "B1",
+        dataIndex: "hrd.b1_score",
+        type: "numeric",
+      },
+      {
+        key: "B2",
+        title:
+          t("containers.list-view.aggregations.B2_column") || "B2",
+        dataIndex: "hrd.b2_score",
+        type: "numeric",
+      },
+      {
         key: "summary",
         title:
           t("containers.list-view.aggregations.summary_column") ||
@@ -285,51 +321,52 @@ class AggregationsTable extends PureComponent {
       
       return {
          key: col.key,
-         title: headerTitle,
-         label: col.title,
-         dataIndex: col.dataIndex,
-         width: isSummary ? 800 : 150,
-         sorter: (a, b) => {
-           const aVal = getValue(a, col.dataIndex);
-           const bVal = getValue(b, col.dataIndex);
+          title: headerTitle,
+          label: col.title,
+          dataIndex: col.dataIndex,
+          width: isSummary ? 800 : 150,
+          sorter: (a, b) => {
+            const aVal = getValue(a, col.dataIndex);
+            const bVal = getValue(b, col.dataIndex);
+            
+            if (aVal == null && bVal == null) return 0;
+            if (aVal == null) return 1;
+            if (bVal == null) return -1;
+            
+            if (isNumeric) {
+              const aNum = parseFloat(aVal);
+              const bNum = parseFloat(bVal);
+              return aNum - bNum;
+            }
+            
+            return String(aVal).localeCompare(String(bVal));
+          },
+          render: (_, record) => {
+           const value = getValue(record, col.dataIndex);
+           if (value == null) return "-";
+           if (isNumeric && !isNaN(value)) {
+             return d3.format(",")(value);
+           }
+           const formattedValue = String(value);
            
-           if (aVal == null && bVal == null) return 0;
-           if (aVal == null) return 1;
-           if (bVal == null) return -1;
-           
-           if (isNumeric) {
-             const aNum = parseFloat(aVal);
-             const bNum = parseFloat(bVal);
-             return aNum - bNum;
+           // Make summary cells horizontally scrollable
+           if (isSummary) {
+             return (
+               <div style={{ 
+                 minWidth: "700px",
+                 minHeight: "60px",
+                 overflowX: "auto",
+                 overflowY: "hidden",
+                 whiteSpace: "nowrap",
+                 paddingRight: "8px"
+               }}>
+                 {formattedValue}
+               </div>
+             );
            }
            
-           return String(aVal).localeCompare(String(bVal));
+           return formattedValue;
          },
-         render: (value) => {
-          if (value == null) return "-";
-          if (isNumeric && !isNaN(value)) {
-            return d3.format(",")(value);
-          }
-          const formattedValue = String(value);
-          
-          // Make summary cells horizontally scrollable
-          if (isSummary) {
-            return (
-              <div style={{ 
-                minWidth: "700px",
-                minHeight: "60px",
-                overflowX: "auto",
-                overflowY: "hidden",
-                whiteSpace: "nowrap",
-                paddingRight: "8px"
-              }}>
-                {formattedValue}
-              </div>
-            );
-          }
-          
-          return formattedValue;
-        },
       };
     });
   };

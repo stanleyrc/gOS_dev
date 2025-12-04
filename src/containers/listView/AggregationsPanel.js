@@ -3,6 +3,7 @@ import { withTranslation } from "react-i18next";
 import { Card, Spin, Empty, Tabs, Typography } from "antd";
 import { debounce } from "lodash";
 import AggregationsTable from "./AggregationsTable";
+import AggregationsVisualization from "./AggregationsVisualization";
 import { reportFilters } from "../../helpers/filters";
 
 const { Text } = Typography;
@@ -166,13 +167,16 @@ class AggregationsPanel extends Component {
             {
               key: "visualization",
               label: t("containers.list-view.aggregations.visualization_tab"),
-              disabled: true,
-              children: (
+              children: loading ? (
+                <div className="aggregation-loading">
+                  <Spin />
+                </div>
+              ) : filteredRecords.length === 0 ? (
                 <Empty
-                  description={t(
-                    "containers.list-view.aggregations.visualization_coming_soon"
-                  )}
+                  description={t("containers.list-view.aggregations.no_data")}
                 />
+              ) : (
+                <AggregationsVisualization filteredRecords={filteredRecords} />
               ),
             },
           ]}

@@ -299,6 +299,10 @@
         "normal_median_coverage_column": "Normal Coverage",
         "purity_column": "Purity",
         "ploidy_column": "Ploidy",
+        "HRDetect_column": "HRDetect",
+        "B1+2_column": "B1+2",
+        "B1_column": "B1",
+        "B2_column": "B2",
         "summary_column": "Alterations",
         "export": "Export CSV"
       },
