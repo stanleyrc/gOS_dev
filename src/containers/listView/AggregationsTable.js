@@ -284,27 +284,28 @@ class AggregationsTable extends PureComponent {
       const isSummary = col.key === "summary";
       
       return {
-        key: col.key,
-        title: headerTitle,
-        label: col.title,
-        dataIndex: col.dataIndex,
-        sorter: (a, b) => {
-          const aVal = getValue(a, col.dataIndex);
-          const bVal = getValue(b, col.dataIndex);
-          
-          if (aVal == null && bVal == null) return 0;
-          if (aVal == null) return 1;
-          if (bVal == null) return -1;
-          
-          if (isNumeric) {
-            const aNum = parseFloat(aVal);
-            const bNum = parseFloat(bVal);
-            return aNum - bNum;
-          }
-          
-          return String(aVal).localeCompare(String(bVal));
-        },
-        render: (value) => {
+         key: col.key,
+         title: headerTitle,
+         label: col.title,
+         dataIndex: col.dataIndex,
+         width: isSummary ? 800 : 150,
+         sorter: (a, b) => {
+           const aVal = getValue(a, col.dataIndex);
+           const bVal = getValue(b, col.dataIndex);
+           
+           if (aVal == null && bVal == null) return 0;
+           if (aVal == null) return 1;
+           if (bVal == null) return -1;
+           
+           if (isNumeric) {
+             const aNum = parseFloat(aVal);
+             const bNum = parseFloat(bVal);
+             return aNum - bNum;
+           }
+           
+           return String(aVal).localeCompare(String(bVal));
+         },
+         render: (value) => {
           if (value == null) return "-";
           if (isNumeric && !isNaN(value)) {
             return d3.format(",")(value);
