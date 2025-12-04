@@ -72,6 +72,7 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 .prettierrc
 AGENT.md
 *SPEC.md
+thoughts/
 
 *.rb
 public/*datafiles.json

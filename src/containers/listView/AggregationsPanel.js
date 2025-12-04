@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
-import { Card, Select, Spin, Empty, Tabs, Typography } from "antd";
+import { Card, Spin, Empty, Tabs, Typography } from "antd";
 import { debounce } from "lodash";
-import * as d3 from "d3";
 import AggregationsTable from "./AggregationsTable";
 import { reportFilters } from "../../helpers/filters";
 
@@ -15,11 +14,8 @@ const getValue = (record, fieldId) => {
 
 class AggregationsPanel extends Component {
   state = {
-    selectedField: null,
-    aggregation: [],
     filteredRecords: [],
     loading: false,
-    isLogScale: false,
   };
 
   debouncedCalculate = debounce(() => {
@@ -27,11 +23,7 @@ class AggregationsPanel extends Component {
   }, 300);
 
   componentDidMount() {
-    const { dataset } = this.props;
-    const defaultField = dataset?.kpiFields?.[0]?.id || null;
-    this.setState({ selectedField: defaultField }, () => {
-      this.applyFiltersAndCalculate();
-    });
+    this.applyFiltersAndCalculate();
   }
 
   componentDidUpdate(prevProps) {
@@ -50,27 +42,7 @@ class AggregationsPanel extends Component {
   applyFiltersAndCalculate = () => {
     this.setState({ loading: true }, () => {
       const filteredRecords = this.applyFilters();
-      const { selectedField } = this.state;
-      const { dataset } = this.props;
-
-      if (!selectedField || !dataset) {
-        this.setState({ loading: false, filteredRecords, aggregation: [] });
-        return;
-      }
-
-      const fieldDef = dataset.kpiFields.find((f) => f.id === selectedField);
-      if (!fieldDef) {
-        this.setState({ loading: false, filteredRecords, aggregation: [] });
-        return;
-      }
-
-      const result = this.calculateAggregation(filteredRecords, fieldDef);
-      this.setState({
-        loading: false,
-        filteredRecords,
-        aggregation: result.data,
-        isLogScale: result.isLogScale,
-      });
+      this.setState({ loading: false, filteredRecords });
     });
   };
 
@@ -156,123 +128,9 @@ class AggregationsPanel extends Component {
     return records;
   };
 
-  calculateAggregation = (records, fieldDef) => {
-    if (fieldDef.type === "numeric") {
-      return this.aggregateNumeric(records, fieldDef);
-    } else if (fieldDef.type === "string") {
-      return this.aggregateString(records, fieldDef);
-    }
-    return { data: [], isLogScale: false };
-  };
-
-  aggregateNumeric = (records, fieldDef) => {
-    const values = records
-      .map((r) => getValue(r, fieldDef.id))
-      .filter((v) => v != null && !isNaN(v) && isFinite(v));
-
-    if (values.length === 0) {
-      return { data: [], isLogScale: false };
-    }
-
-    const [min, max] = d3.extent(values);
-    const isLogScale = fieldDef.scale === "log";
-    const format = fieldDef.format || ",";
-
-    if (min === max) {
-      return {
-        data: [{ class: d3.format(format)(min), count: values.length }],
-        isLogScale,
-      };
-    }
-
-    let bins;
-    if (isLogScale && min > 0) {
-      const logMin = Math.floor(Math.log10(min));
-      const logMax = Math.ceil(Math.log10(max));
-      const thresholds = [];
-      for (let i = logMin; i <= logMax; i++) {
-        thresholds.push(Math.pow(10, i));
-      }
-
-      const binGenerator = d3.bin().domain([min, max]).thresholds(thresholds);
-      bins = binGenerator(values);
-    } else {
-      const binGenerator = d3.bin().domain([min, max]).thresholds(5);
-      bins = binGenerator(values);
-    }
-
-    return {
-      data: bins
-        .map((bin) => ({
-          class: `${d3.format(format)(bin.x0)} - ${d3.format(format)(bin.x1)}`,
-          count: bin.length,
-        }))
-        .filter((b) => b.count > 0),
-      isLogScale,
-    };
-  };
-
-  aggregateString = (records, fieldDef) => {
-    const { t } = this.props;
-    const allValues = records.map((r) => getValue(r, fieldDef.id));
-
-    const nullCount = allValues.filter((v) => v == null).length;
-    const validValues = allValues.filter((v) => v != null);
-
-    const grouped = d3.rollup(
-      validValues,
-      (v) => v.length,
-      (v) => String(v)
-    );
-
-    const result = Array.from(grouped)
-      .map(([value, count]) => ({
-        class: value,
-        count: count,
-      }))
-      .sort((a, b) => d3.descending(a.count, b.count));
-
-    if (nullCount > 0) {
-      result.push({
-        class: t("containers.list-view.aggregations.empty_class"),
-        count: nullCount,
-      });
-    }
-
-    return { data: result, isLogScale: false };
-  };
-
-  handleFieldChange = (fieldId) => {
-    this.setState({ selectedField: fieldId, loading: true }, () => {
-      const { filteredRecords } = this.state;
-      const { dataset } = this.props;
-      const fieldDef = dataset.kpiFields.find((f) => f.id === fieldId);
-
-      if (!fieldDef) {
-        this.setState({ loading: false, aggregation: [] });
-        return;
-      }
-
-      const result = this.calculateAggregation(filteredRecords, fieldDef);
-      this.setState({
-        loading: false,
-        aggregation: result.data,
-        isLogScale: result.isLogScale,
-      });
-    });
-  };
-
   render() {
-    const { t, dataset } = this.props;
-    const { selectedField, aggregation, filteredRecords, loading, isLogScale } =
-      this.state;
-
-    const fieldDef = dataset?.kpiFields?.find((f) => f.id === selectedField);
-    const fieldOptions =
-      dataset?.kpiFields?.map((field) => ({
-        value: field.id,
-        label: field.title || field.shortTitle || field.id,
-      })) || [];
+    const { t } = this.props;
+    const { filteredRecords, loading } = this.state;
 
     return (
       <Card className="aggregation-panel-card">
@@ -285,19 +143,6 @@ class AggregationsPanel extends Component {
           </Text>
         </div>
 
-        <div className="aggregation-field-selector">
-          <Text style={{ marginRight: 8 }}>
-            {t("containers.list-view.aggregations.aggregate_by")}
-          </Text>
-          <Select
-            value={selectedField}
-            onChange={this.handleFieldChange}
-            style={{ width: 300 }}
-            options={fieldOptions}
-            loading={loading}
-          />
-        </div>
-
         <Tabs
           defaultActiveKey="table"
           items={[
@@ -308,17 +153,12 @@ class AggregationsPanel extends Component {
                 <div className="aggregation-loading">
                   <Spin />
                 </div>
-              ) : aggregation.length === 0 ? (
+              ) : filteredRecords.length === 0 ? (
                 <Empty
                   description={t("containers.list-view.aggregations.no_data")}
                 />
               ) : (
-                <AggregationsTable
-                  fieldDef={fieldDef}
-                  aggregation={aggregation}
-                  totalCount={filteredRecords.length}
-                  isLogScale={isLogScale}
-                />
+                <AggregationsTable filteredRecords={filteredRecords} />
               ),
             },
             {
