@@ -69,10 +69,12 @@ class AggregationsPanel extends Component {
       )
     );
 
+    const allReportFilters = reportFilters();
+
     Object.keys(actualSearchFilters).forEach((key) => {
       const fieldDef = dataset?.fields?.find((d) => d.name === key);
       const keyRenderer = fieldDef?.renderer;
-      const reportFilter = reportFilters().find((d) => d.name === key);
+      const reportFilter = allReportFilters.find((d) => d.name === key);
 
       if (reportFilter?.external) {
         return;

@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { PureComponent } from "react";
 import { withTranslation } from "react-i18next";
 import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
@@ -6,9 +6,17 @@ import * as d3 from "d3";
 
 const { Text } = Typography;
 
-// Safely access nested properties
+// Cache for path splits to avoid repeated string splitting
+const pathCache = {};
+
+// Safely access nested properties with cached path splits
 const getValue = (record, path) => {
-  return path.split(".").reduce((obj, key) => obj?.[key], record);
+  let parts = pathCache[path];
+  if (!parts) {
+    parts = path.split(".");
+    pathCache[path] = parts;
+  }
+  return parts.reduce((obj, key) => obj?.[key], record);
 };
 
 // Calculate summary statistics for numeric column
@@ -36,20 +44,47 @@ const calculateStats = (records, dataIndex) => {
   return { mean, median, std, count: values.length };
 };
 
-class AggregationsTable extends Component {
+class AggregationsTable extends PureComponent {
   state = {
     selectedColumnKeys: [],
+    columnStats: {},
   };
 
   componentDidMount() {
     this.initializeSelectedColumns();
+    this.recalculateStats();
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.filteredRecords !== this.props.filteredRecords) {
       this.initializeSelectedColumns();
+      this.recalculateStats();
     }
   }
+
+  recalculateStats = () => {
+    const { filteredRecords } = this.props;
+    if (!filteredRecords || filteredRecords.length === 0) {
+      this.setState({ columnStats: {} });
+      return;
+    }
+
+    const numericKeys = [
+      "sv_count",
+      "tmb",
+      "tumor_median_coverage",
+      "normal_median_coverage",
+      "purity",
+      "ploidy",
+    ];
+    const columnStats = {};
+
+    numericKeys.forEach((key) => {
+      columnStats[key] = calculateStats(filteredRecords, key);
+    });
+
+    this.setState({ columnStats });
+  };
 
   getColumnKeys = () => {
     return [
@@ -125,7 +160,8 @@ class AggregationsTable extends Component {
   };
 
   buildColumns = () => {
-    const { t, filteredRecords } = this.props;
+    const { t } = this.props;
+    const { columnStats } = this.state;
 
     // Define all available columns from case properties
     const columnDefs = [
@@ -225,9 +261,7 @@ class AggregationsTable extends Component {
 
     return columnDefs.map((col) => {
       const isNumeric = col.type === "numeric";
-      const stats = isNumeric
-        ? calculateStats(filteredRecords, col.dataIndex)
-        : null;
+      const stats = isNumeric ? columnStats[col.key] : null;
 
       let headerTitle = col.title;
       if (isNumeric && stats) {
@@ -308,12 +342,6 @@ class AggregationsTable extends Component {
       selectedColumnKeys.includes(col.key)
     );
 
-    // Add keys to records for React rendering
-    const dataWithKeys = filteredRecords.map((item, index) => ({
-      ...item,
-      key: item.pair || index,
-    }));
-
     return (
       <div className="aggregation-table-container">
         <Row
@@ -375,7 +403,8 @@ class AggregationsTable extends Component {
 
         <Table
           columns={visibleColumns}
-          dataSource={dataWithKeys}
+          dataSource={filteredRecords}
+          rowKey={(record, index) => record.pair || index}
           pagination={{
             pageSize: 10,
             hideOnSinglePage: true,
