@@ -598,8 +598,7 @@ class AggregationsVisualization extends Component {
                   </div>
 
                 <div style={{ 
-                  overflowX: scrollable ? "auto" : "hidden",
-                  overflowY: "auto",
+                  overflow: "auto",
                   maxWidth: containerWidth,
                   maxHeight: 700,
                 }}>
