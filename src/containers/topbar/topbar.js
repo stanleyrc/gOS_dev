@@ -65,25 +65,30 @@ class Topbar extends Component {
                     ))}
                   </Select>
                   <Select
-                    showSearch={true}
-                    value={searchFilters.texts}
-                    className="reports-select"
-                    allowClear={true}
-                    loading={loading}
-                    optionLabelProp="value"
-                    popupMatchSelectWidth={false}
-                    optionFilterProp="children"
-                    placeholder={t("topbar.browse-case-reports")}
-                    onSearch={(texts) =>
-                      searchCaseReports({ texts: (texts || "").trim() })
-                    }
-                    filterOption={false}
-                    filterSort={false}
-                    notFoundContent={null}
-                    onSelect={(report) => {
-                      updateCaseReport(report);
-                    }}
-                    onClear={(e) => searchCaseReports({ texts: "" })}
+                   showSearch={true}
+                   value={searchFilters.texts}
+                   className="reports-select"
+                   allowClear={true}
+                   loading={loading}
+                   optionLabelProp="value"
+                   popupMatchSelectWidth={false}
+                   optionFilterProp="children"
+                   placeholder={t("topbar.browse-case-reports")}
+                   searchValue={searchFilters.texts}
+                   onSearch={(texts) => {
+                     const trimmedTexts = (texts || "").trim();
+                     if (trimmedTexts !== "" || searchFilters.texts === "") {
+                       searchCaseReports({ ...searchFilters, texts: trimmedTexts });
+                     }
+                   }}
+                   filterOption={false}
+                   filterSort={false}
+                   notFoundContent={null}
+                   autoClearSearchValue={false}
+                   onSelect={(report) => {
+                     updateCaseReport(report);
+                   }}
+                   onClear={(e) => searchCaseReports({ ...searchFilters, texts: "" })}
                   >
                     {reports.map((d) => (
                       <Option key={d.pair} value={d.pair} label={d.pair}>
