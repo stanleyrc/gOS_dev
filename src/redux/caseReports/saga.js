@@ -284,8 +284,9 @@ function* searchReports({ searchFilters }) {
   );
 
   Object.keys(actualSearchFilters).forEach((key) => {
-    let keyRenderer = dataset.fields.find((d) => d.name === key)?.renderer;
     const reportFilter = reportFilters().find((d) => d.name === key);
+    // Fallback to reportFilters() if renderer not defined in dataset.fields
+    let keyRenderer = dataset.fields.find((d) => d.name === key)?.renderer || reportFilter?.renderer;
     
     // Skip external filters (handled separately)
     if (reportFilter?.external) {
@@ -380,8 +381,8 @@ function* searchReports({ searchFilters }) {
       : d3.descending(aValue, bValue);
   });
 
-  const reportsFilters = getReportsFilters(dataset.fields, records);
-  const interpretationsFilter = getInterpretationsFilter(records, casesWithInterpretations, dataset.fields);
+  const reportsFilters = getReportsFilters(dataset.fields, datafiles);
+  const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations, dataset.fields);
   reportsFilters.push(interpretationsFilter);
 
   yield put({
