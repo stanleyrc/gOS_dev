@@ -414,21 +414,7 @@ class AggregationsVisualization extends Component {
     );
   }
 
-  renderColorLegend(config) {
-    const { colorCategories, color } = config;
-    if (!colorCategories) return null;
 
-    return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxWidth: 200 }}>
-        {colorCategories.map((cat) => (
-          <div key={cat} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 12, height: 12, backgroundColor: color(cat), borderRadius: 2 }} />
-            <span style={{ fontSize: 11 }}>{cat}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   renderScatterPlot(config) {
     const { filteredRecords = [] } = this.props;
@@ -573,25 +559,11 @@ class AggregationsVisualization extends Component {
 
             return (
               <div style={{ position: "relative" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                  <div>
-                    {this.renderDropdown("yVariable")}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginRight: 64 }}>
-                    {this.renderDropdown("colorVariable")}
-                    {svgString && (
-                      <div
-                        style={{ marginLeft: 12 }}
-                        dangerouslySetInnerHTML={{ __html: svgString }}
-                      />
-                    )}
-                    {colorCategories && (
-                      <div style={{ marginLeft: 12 }}>
-                        {this.renderColorLegend(config)}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 4 }}>
+                   <div>
+                     {this.renderDropdown("yVariable")}
+                   </div>
+                 </div>
 
                 <div style={{ 
                   overflowX: scrollable ? "auto" : "hidden",
