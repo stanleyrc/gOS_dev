@@ -8,7 +8,7 @@ import { Legend, measureText } from "../../helpers/utility";
 const margins = {
   gapX: 34,
   gapY: 24,
-  gapLegend: 50,
+  gapLegend: 0,
   tooltipGap: 5,
 };
 
@@ -71,7 +71,7 @@ class AggregationsVisualization extends Component {
 
     const stageWidth = width - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gapY;
-    const panelWidth = stageWidth - 120;
+    const panelWidth = stageWidth;
     const panelHeight = stageHeight - margins.gapLegend;
 
     const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
@@ -193,15 +193,24 @@ class AggregationsVisualization extends Component {
 
             return (
               <div style={{ position: "relative" }}>
-                {/* Y-axis dropdown - positioned at top left */}
-                <div style={{ position: "absolute", top: 0, left: 0, zIndex: 10 }}>
-                  {this.renderDropdown("yVariable")}
+                {/* Top row: Y-axis dropdown on left, Color dropdown + legend on right */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                  <div>
+                    {this.renderDropdown("yVariable")}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginRight: 64 }}>
+                    {this.renderDropdown("colorVariable")}
+                    <div
+                      style={{ marginLeft: 12 }}
+                      dangerouslySetInnerHTML={{ __html: svgString }}
+                    />
+                  </div>
                 </div>
 
                 {/* Main plot area */}
-                <div style={{ display: "flex", alignItems: "flex-start" }}>
+                <div>
                   <svg
-                    width={width - 150}
+                    width={width}
                     height={height}
                     className="plot-container"
                     ref={(elem) => (this.plotContainer = elem)}
@@ -288,15 +297,6 @@ class AggregationsVisualization extends Component {
                       )}
                     </g>
                   </svg>
-
-                  {/* Right side: Color dropdown + Legend */}
-                  <div style={{ marginLeft: 8, marginTop: margins.gapY }}>
-                    {this.renderDropdown("colorVariable")}
-                    <div
-                      style={{ marginTop: 8 }}
-                      dangerouslySetInnerHTML={{ __html: svgString }}
-                    />
-                  </div>
                 </div>
 
                 {/* X-axis dropdown - positioned at bottom center */}
