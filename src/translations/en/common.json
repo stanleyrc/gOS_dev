@@ -268,7 +268,7 @@
     "list-view": {
       "tabs": {
         "cases": "Cases",
-        "aggregations": "Cohort Aggregations"
+        "aggregations": "Aggregations"
       },
       "aggregations": {
         "title": "Cohort Level Aggregations",

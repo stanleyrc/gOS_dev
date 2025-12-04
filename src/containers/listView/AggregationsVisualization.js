@@ -8,6 +8,7 @@ import { Legend, measureText } from "../../helpers/utility";
 const margins = {
   gapX: 34,
   gapY: 24,
+  gapYBottom: 60,
   gapLegend: 0,
   tooltipGap: 5,
 };
@@ -125,11 +126,11 @@ class AggregationsVisualization extends Component {
     const { filteredRecords = [] } = this.props;
     const { xVariable, yVariable, colorVariable } = this.state;
     const containerWidth = this.currentWidth || 600;
-    const height = 400;
+    const height = 600;
     const plotType = this.getPlotType();
 
     const stageWidth = containerWidth - 2 * margins.gapX;
-    const stageHeight = height - 3 * margins.gapY;
+    const stageHeight = height - 2 * margins.gapY - margins.gapYBottom;
     const panelHeight = stageHeight - margins.gapLegend;
 
     let xScale, yScale, color, legend, categoryData, stackedData;
@@ -166,9 +167,8 @@ class AggregationsVisualization extends Component {
 
       const maxY = d3.max(stackedData, (layer) => d3.max(layer, (d) => d[1])) || 1;
       yScale = d3.scaleLinear()
-        .domain([0, maxY])
-        .range([panelHeight, 0])
-        .nice();
+        .domain([0, Math.ceil(maxY)])
+        .range([panelHeight, 0]);
 
       color = d3.scaleOrdinal(d3.schemeTableau10).domain(colorCategories);
       legend = null;
@@ -222,9 +222,8 @@ class AggregationsVisualization extends Component {
         const allMeans = categoryData.map((d) => d.mean + d.stdErr);
         const maxY = d3.max(allMeans) || 1;
         yScale = d3.scaleLinear()
-          .domain([0, maxY * 1.1])
-          .range([panelHeight, 0])
-          .nice();
+          .domain([0, Math.ceil(maxY * 1.1)])
+          .range([panelHeight, 0]);
       } else {
         yScale = d3.scaleBand()
           .domain(categories)
@@ -234,9 +233,8 @@ class AggregationsVisualization extends Component {
         const allMeans = categoryData.map((d) => d.mean + d.stdErr);
         const maxX = d3.max(allMeans) || 1;
         xScale = d3.scaleLinear()
-          .domain([0, maxX * 1.1])
-          .range([0, panelWidth])
-          .nice();
+          .domain([0, Math.ceil(maxX * 1.1)])
+          .range([0, panelWidth]);
       }
 
       legend = null;
@@ -252,16 +250,14 @@ class AggregationsVisualization extends Component {
       const yValues = filteredRecords.map((d) => getValue(d, yVariable)).filter((v) => v != null && !isNaN(v));
 
       xScale = d3.scaleLinear()
-        .domain([0, d3.quantile(xValues, 0.99) || 1])
+        .domain([0, Math.ceil(d3.quantile(xValues, 0.99) || 1)])
         .range([0, panelWidth])
-        .clamp(true)
-        .nice();
+        .clamp(true);
 
       yScale = d3.scaleLinear()
-        .domain([0, d3.quantile(yValues, 0.99) || 1])
+        .domain([0, Math.ceil(d3.quantile(yValues, 0.99) || 1)])
         .range([panelHeight, 0])
-        .clamp(true)
-        .nice();
+        .clamp(true);
 
       const colorType = getColumnType(colorVariable);
       if (colorType === "categorical") {
@@ -561,14 +557,15 @@ class AggregationsVisualization extends Component {
               <div style={{ position: "relative" }}>
                 <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 4 }}>
                    <div>
-                     {this.renderDropdown("yVariable")}
-                   </div>
-                 </div>
+                      {this.renderDropdown("yVariable")}
+                    </div>
+                  </div>
 
                 <div style={{ 
                   overflowX: scrollable ? "auto" : "hidden",
-                  overflowY: "hidden",
+                  overflowY: "auto",
                   maxWidth: containerWidth,
+                  maxHeight: 700,
                 }}>
                   <svg
                     width={width}
