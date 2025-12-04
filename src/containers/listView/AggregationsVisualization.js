@@ -12,6 +12,9 @@ const margins = {
   tooltipGap: 5,
 };
 
+const MIN_BAR_WIDTH = 30;
+const MIN_CATEGORY_WIDTH = 40;
+
 const numericColumns = [
   { key: "sv_count", dataIndex: "sv_count", label: "SV Count", type: "numeric" },
   { key: "tmb", dataIndex: "tmb", label: "TMB", type: "numeric" },
@@ -121,21 +124,28 @@ class AggregationsVisualization extends Component {
   getPlotConfiguration() {
     const { filteredRecords = [] } = this.props;
     const { xVariable, yVariable, colorVariable } = this.state;
-    const width = this.currentWidth || 600;
+    const containerWidth = this.currentWidth || 600;
     const height = 400;
     const plotType = this.getPlotType();
 
-    const stageWidth = width - 2 * margins.gapX;
+    const stageWidth = containerWidth - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gapY;
-    const panelWidth = stageWidth;
     const panelHeight = stageHeight - margins.gapLegend;
 
     let xScale, yScale, color, legend, categoryData, stackedData;
+    let panelWidth = stageWidth;
+    let scrollable = false;
 
     if (plotType === "stacked-bar") {
       const xCategories = [...new Set(filteredRecords.map((d) => getValue(d, xVariable)).filter(Boolean))].sort();
       const colorCategories = [...new Set(filteredRecords.map((d) => getValue(d, colorVariable)).filter(Boolean))].sort();
       
+      const minRequiredWidth = xCategories.length * MIN_BAR_WIDTH;
+      if (minRequiredWidth > stageWidth) {
+        panelWidth = minRequiredWidth;
+        scrollable = true;
+      }
+
       categoryData = xCategories.map((xCat) => {
         const row = { category: xCat };
         colorCategories.forEach((colorCat) => {
@@ -164,7 +174,8 @@ class AggregationsVisualization extends Component {
       legend = null;
 
       return {
-        width, height, panelWidth, panelHeight, xScale, yScale, color, legend,
+        containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
+        xScale, yScale, color, legend, scrollable,
         xVariable, yVariable, colorVariable, plotType, stackedData, colorCategories: colorCategories,
       };
     } else if (plotType === "categorical-scatter") {
@@ -174,6 +185,12 @@ class AggregationsVisualization extends Component {
 
       const categories = [...new Set(filteredRecords.map((d) => getValue(d, catVar)).filter(Boolean))].sort();
       
+      const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
+      if (xType === "categorical" && minRequiredWidth > stageWidth) {
+        panelWidth = minRequiredWidth;
+        scrollable = true;
+      }
+
       categoryData = categories.map((cat) => {
         const values = filteredRecords
           .filter((d) => getValue(d, catVar) === cat)
@@ -225,7 +242,8 @@ class AggregationsVisualization extends Component {
       legend = null;
 
       return {
-        width, height, panelWidth, panelHeight, xScale, yScale, color, legend,
+        containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
+        xScale, yScale, color, legend, scrollable,
         xVariable, yVariable, colorVariable, plotType, categoryData,
         catVar, numVar, colorCategories,
       };
@@ -251,7 +269,8 @@ class AggregationsVisualization extends Component {
         color = d3.scaleOrdinal(d3.schemeTableau10).domain(colorCategories);
         legend = null;
         return {
-          width, height, panelWidth, panelHeight, xScale, yScale, color, legend,
+          containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
+          xScale, yScale, color, legend, scrollable,
           xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, colorVariable, plotType,
           colorCategories,
         };
@@ -265,7 +284,8 @@ class AggregationsVisualization extends Component {
         legend = Legend(color, { title: colorLabel, tickFormat: ",.2f" });
 
         return {
-          width, height, panelWidth, panelHeight, xScale, yScale, color, legend,
+          containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
+          xScale, yScale, color, legend, scrollable,
           xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, colorVariable, plotType,
         };
       }
@@ -363,8 +383,19 @@ class AggregationsVisualization extends Component {
     this.setState({ [variable]: value });
   };
 
-  renderDropdown(variable, style = {}, columns = allColumns) {
+  getColumnsForVariable(variable) {
+    if (variable === "yVariable") {
+      return numericColumns;
+    }
+    if (variable === "colorVariable") {
+      return categoricalColumns;
+    }
+    return allColumns;
+  }
+
+  renderDropdown(variable, style = {}, columns = null) {
     const value = this.state[variable];
+    const availableColumns = columns || this.getColumnsForVariable(variable);
 
     return (
       <Select
@@ -374,7 +405,7 @@ class AggregationsVisualization extends Component {
         style={{ width: 140, ...style }}
         dropdownMatchSelectWidth={false}
       >
-        {columns.map((col) => (
+        {availableColumns.map((col) => (
           <Select.Option key={col.dataIndex} value={col.dataIndex}>
             {col.label}
           </Select.Option>
@@ -534,10 +565,10 @@ class AggregationsVisualization extends Component {
     return (
       <div className="aggregation-visualization-container">
         <ContainerDimensions>
-          {({ width }) => {
-            this.currentWidth = width;
+          {({ width: containerWidth }) => {
+            this.currentWidth = containerWidth;
             const config = this.getPlotConfiguration();
-            const { height, panelWidth, panelHeight, legend, colorCategories } = config;
+            const { width, height, panelWidth, panelHeight, legend, colorCategories, scrollable } = config;
             const svgString = legend ? new XMLSerializer().serializeToString(legend) : null;
 
             return (
@@ -547,7 +578,7 @@ class AggregationsVisualization extends Component {
                     {this.renderDropdown("yVariable")}
                   </div>
                   <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginRight: 64 }}>
-                    {this.renderDropdown("colorVariable", {}, categoricalColumns)}
+                    {this.renderDropdown("colorVariable")}
                     {svgString && (
                       <div
                         style={{ marginLeft: 12 }}
@@ -562,7 +593,11 @@ class AggregationsVisualization extends Component {
                   </div>
                 </div>
 
-                <div>
+                <div style={{ 
+                  overflowX: scrollable ? "auto" : "hidden",
+                  overflowY: "hidden",
+                  maxWidth: containerWidth,
+                }}>
                   <svg
                     width={width}
                     height={height}
