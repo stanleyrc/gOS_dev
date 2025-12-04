@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
-import { Select } from "antd";
+import { Select, Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { Legend, measureText } from "../../helpers/utility";
@@ -15,6 +15,24 @@ const margins = {
 
 const MIN_BAR_WIDTH = 30;
 const MIN_CATEGORY_WIDTH = 40;
+
+const parseAlterationSummary = (summary) => {
+  if (!summary || typeof summary !== "string") {
+    return [];
+  }
+  const lines = summary.split("\n");
+  const types = [];
+  lines.forEach((line) => {
+    const match = line.match(/^([^:]+):/);
+    if (match) {
+      const typeNormalized = match[1].toLowerCase().replace(/\s+/g, "_");
+      if (!types.includes(typeNormalized)) {
+        types.push(typeNormalized);
+      }
+    }
+  });
+  return types;
+};
 
 const numericColumns = [
   { key: "sv_count", dataIndex: "sv_count", label: "SV Count", type: "numeric" },
@@ -35,6 +53,7 @@ const categoricalColumns = [
   { key: "tumor_type", dataIndex: "tumor_type", label: "Tumor Type", type: "categorical" },
   { key: "inferred_sex", dataIndex: "inferred_sex", label: "Inferred Sex", type: "categorical" },
   { key: "qcEvaluation", dataIndex: "qcEvaluation", label: "QC Evaluation", type: "categorical" },
+  { key: "alteration_type", dataIndex: "alteration_type", label: "Alteration Type", type: "categorical" },
 ];
 
 const allColumns = [...numericColumns, ...categoricalColumns];
@@ -50,6 +69,9 @@ const getColumnLabel = (dataIndex) => {
 };
 
 const getValue = (record, path) => {
+  if (path === "alteration_type") {
+    return parseAlterationSummary(record.summary);
+  }
   return path.split(".").reduce((obj, key) => obj?.[key], record);
 };
 
@@ -66,6 +88,7 @@ class AggregationsVisualization extends Component {
       y: -1000,
       text: [],
     },
+    computingAlterations: false,
   };
 
   componentDidMount() {
@@ -122,6 +145,33 @@ class AggregationsVisualization extends Component {
     }
   }
 
+  expandRecordsByAlterationType(records, variable) {
+    if (variable !== "alteration_type") {
+      return records;
+    }
+    
+    const expandedRecords = [];
+    records.forEach((record) => {
+      const alterationTypes = parseAlterationSummary(record.summary);
+      if (alterationTypes.length > 0) {
+        alterationTypes.forEach((altType) => {
+          expandedRecords.push({
+            ...record,
+            _alterationType: altType,
+          });
+        });
+      }
+    });
+    return expandedRecords;
+  }
+
+  getEffectiveValue(record, variable) {
+    if (variable === "alteration_type") {
+      return record._alterationType;
+    }
+    return getValue(record, variable);
+  }
+
   getPlotConfiguration() {
     const { filteredRecords = [] } = this.props;
     const { xVariable, yVariable, colorVariable } = this.state;
@@ -138,8 +188,10 @@ class AggregationsVisualization extends Component {
     let scrollable = false;
 
     if (plotType === "stacked-bar") {
-      const xCategories = [...new Set(filteredRecords.map((d) => getValue(d, xVariable)).filter(Boolean))].sort();
-      const colorCategories = [...new Set(filteredRecords.map((d) => getValue(d, colorVariable)).filter(Boolean))].sort();
+      const xRecords = this.expandRecordsByAlterationType(filteredRecords, xVariable);
+      
+      const xCategories = [...new Set(xRecords.map((d) => this.getEffectiveValue(d, xVariable)).filter(Boolean))].sort();
+      const yCategories = [...new Set(xRecords.map((d) => this.getEffectiveValue(d, yVariable)).filter(Boolean))].sort();
       
       const minRequiredWidth = xCategories.length * MIN_BAR_WIDTH;
       if (minRequiredWidth > stageWidth) {
@@ -149,15 +201,15 @@ class AggregationsVisualization extends Component {
 
       categoryData = xCategories.map((xCat) => {
         const row = { category: xCat };
-        colorCategories.forEach((colorCat) => {
-          row[colorCat] = filteredRecords.filter(
-            (d) => getValue(d, xVariable) === xCat && getValue(d, colorVariable) === colorCat
+        yCategories.forEach((yCat) => {
+          row[yCat] = xRecords.filter(
+            (d) => this.getEffectiveValue(d, xVariable) === xCat && this.getEffectiveValue(d, yVariable) === yCat
           ).length;
         });
         return row;
       });
 
-      const stack = d3.stack().keys(colorCategories);
+      const stack = d3.stack().keys(yCategories);
       stackedData = stack(categoryData);
 
       xScale = d3.scaleBand()
@@ -170,20 +222,21 @@ class AggregationsVisualization extends Component {
         .domain([0, Math.ceil(maxY)])
         .range([panelHeight, 0]);
 
-      color = d3.scaleOrdinal(d3.schemeTableau10).domain(colorCategories);
+      color = d3.scaleOrdinal(d3.schemeTableau10).domain(yCategories);
       legend = null;
 
       return {
         containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
         xScale, yScale, color, legend, scrollable,
-        xVariable, yVariable, colorVariable, plotType, stackedData, colorCategories: colorCategories,
+        xVariable, yVariable, colorVariable, plotType, stackedData, yCategories: yCategories,
       };
     } else if (plotType === "categorical-scatter") {
       const xType = getColumnType(xVariable);
       const catVar = xType === "categorical" ? xVariable : yVariable;
       const numVar = xType === "categorical" ? yVariable : xVariable;
 
-      const categories = [...new Set(filteredRecords.map((d) => getValue(d, catVar)).filter(Boolean))].sort();
+      const catRecords = this.expandRecordsByAlterationType(filteredRecords, catVar);
+      const categories = [...new Set(catRecords.map((d) => this.getEffectiveValue(d, catVar)).filter(Boolean))].sort();
       
       const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
       if (xType === "categorical" && minRequiredWidth > stageWidth) {
@@ -192,8 +245,8 @@ class AggregationsVisualization extends Component {
       }
 
       categoryData = categories.map((cat) => {
-        const values = filteredRecords
-          .filter((d) => getValue(d, catVar) === cat)
+        const values = catRecords
+          .filter((d) => this.getEffectiveValue(d, catVar) === cat)
           .map((d) => getValue(d, numVar))
           .filter((v) => v != null && !isNaN(v));
         
@@ -209,9 +262,6 @@ class AggregationsVisualization extends Component {
           count: values.length,
         };
       });
-
-      const colorCategories = [...new Set(filteredRecords.map((d) => getValue(d, colorVariable)).filter(Boolean))].sort();
-      color = d3.scaleOrdinal(d3.schemeTableau10).domain(colorCategories);
 
       if (xType === "categorical") {
         xScale = d3.scaleBand()
@@ -237,13 +287,10 @@ class AggregationsVisualization extends Component {
           .range([0, panelWidth]);
       }
 
-      legend = null;
-
       return {
         containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
-        xScale, yScale, color, legend, scrollable,
-        xVariable, yVariable, colorVariable, plotType, categoryData,
-        catVar, numVar, colorCategories,
+        xScale, yScale, plotType, categoryData,
+        catVar, numVar, xVariable, yVariable,
       };
     } else {
       const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
@@ -259,32 +306,11 @@ class AggregationsVisualization extends Component {
         .range([panelHeight, 0])
         .clamp(true);
 
-      const colorType = getColumnType(colorVariable);
-      if (colorType === "categorical") {
-        const colorCategories = [...new Set(filteredRecords.map((d) => getValue(d, colorVariable)).filter(Boolean))].sort();
-        color = d3.scaleOrdinal(d3.schemeTableau10).domain(colorCategories);
-        legend = null;
-        return {
-          containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
-          xScale, yScale, color, legend, scrollable,
-          xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, colorVariable, plotType,
-          colorCategories,
-        };
-      } else {
-        const colorValues = filteredRecords.map((d) => getValue(d, colorVariable)).filter((v) => v != null && !isNaN(v));
-        color = d3.scaleSequential(d3.interpolateBlues)
-          .domain([0, d3.quantile(colorValues, 0.99) || 1])
-          .clamp(true);
-
-        const colorLabel = getColumnLabel(colorVariable);
-        legend = Legend(color, { title: colorLabel, tickFormat: ",.2f" });
-
-        return {
-          containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
-          xScale, yScale, color, legend, scrollable,
-          xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, colorVariable, plotType,
-        };
-      }
+      return {
+        containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
+        xScale, yScale, scrollable,
+        xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, plotType,
+      };
     }
   }
 
@@ -338,14 +364,14 @@ class AggregationsVisualization extends Component {
 
   handleBarMouseEnter = (e, layer, d) => {
     const config = this.getPlotConfiguration();
-    const { panelWidth, xScale, yScale } = config;
+    const { panelWidth, xScale, yScale, xVariable, yVariable } = config;
     const category = d.data.category;
-    const colorCategory = layer.key;
-    const count = d.data[colorCategory];
+    const stackCategory = layer.key;
+    const count = d.data[stackCategory];
 
     const tooltipContent = [
-      { label: "X Category", value: category },
-      { label: "Color Category", value: colorCategory },
+      { label: getColumnLabel(xVariable), value: category },
+      { label: getColumnLabel(yVariable), value: stackCategory },
       { label: "Count", value: count },
     ];
 
@@ -376,12 +402,24 @@ class AggregationsVisualization extends Component {
   };
 
   handleVariableChange = (variable, value) => {
-    this.setState({ [variable]: value });
+    const isAlterationTypeChange = 
+      (variable === "xVariable" && value === "alteration_type") ||
+      (variable === "yVariable" && value === "alteration_type");
+    
+    if (isAlterationTypeChange) {
+      this.setState({ [variable]: value, computingAlterations: true });
+      // Simulate async processing to avoid UI lock
+      setTimeout(() => {
+        this.setState({ computingAlterations: false });
+      }, 0);
+    } else {
+      this.setState({ [variable]: value });
+    }
   };
 
   getColumnsForVariable(variable) {
     if (variable === "yVariable") {
-      return numericColumns;
+      return allColumns;
     }
     if (variable === "colorVariable") {
       return categoricalColumns;
@@ -414,18 +452,15 @@ class AggregationsVisualization extends Component {
 
   renderScatterPlot(config) {
     const { filteredRecords = [] } = this.props;
-    const { xScale, yScale, color, xVariable, yVariable, colorVariable, colorCategories } = config;
+    const { xScale, yScale, xVariable, yVariable } = config;
 
     return filteredRecords.map((d, i) => {
       const xVal = getValue(d, xVariable);
       const yVal = getValue(d, yVariable);
-      const colorVal = getValue(d, colorVariable);
 
       if (xVal == null || yVal == null || isNaN(xVal) || isNaN(yVal)) {
         return null;
       }
-
-      const fillColor = colorCategories ? color(colorVal) : color(colorVal || 0);
 
       return (
         <circle
@@ -433,7 +468,7 @@ class AggregationsVisualization extends Component {
           cx={xScale(xVal)}
           cy={yScale(yVal)}
           r={5}
-          fill={fillColor}
+          fill="#1890ff"
           stroke="white"
           strokeWidth={0.5}
           opacity={0.8}
@@ -541,7 +576,7 @@ class AggregationsVisualization extends Component {
   }
 
   render() {
-    const { tooltip } = this.state;
+    const { tooltip, computingAlterations } = this.state;
     const plotType = this.getPlotType();
 
     return (
@@ -556,8 +591,9 @@ class AggregationsVisualization extends Component {
             return (
               <div style={{ position: "relative" }}>
                 <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 4 }}>
-                   <div>
+                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {this.renderDropdown("yVariable")}
+                      {computingAlterations && <Spin size="small" />}
                     </div>
                   </div>
 
