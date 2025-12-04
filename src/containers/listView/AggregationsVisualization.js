@@ -585,24 +585,6 @@ class AggregationsVisualization extends Component {
                       <g className="y-axis-container" />
                       <g className="x-axis-container" transform={`translate(0, ${panelHeight})`} />
 
-                      <text
-                        x={-margins.gapX + 5}
-                        y={-10}
-                        fontSize={12}
-                        textAnchor="start"
-                      >
-                        {getColumnLabel(this.state.yVariable)}
-                      </text>
-
-                      <text
-                        x={panelWidth}
-                        y={panelHeight + margins.gapY + 15}
-                        fontSize={12}
-                        textAnchor="end"
-                      >
-                        {getColumnLabel(this.state.xVariable)}
-                      </text>
-
                       {tooltip.visible && (
                         <g transform={`translate(${tooltip.x}, ${tooltip.y})`} pointerEvents="none">
                           <rect

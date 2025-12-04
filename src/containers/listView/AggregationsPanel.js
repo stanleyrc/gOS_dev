@@ -167,16 +167,22 @@ class AggregationsPanel extends Component {
             {
               key: "visualization",
               label: t("containers.list-view.aggregations.visualization_tab"),
-              children: loading ? (
-                <div className="aggregation-loading">
-                  <Spin />
+              children: (
+                <div style={{ position: "relative" }}>
+                  {loading && (
+                    <div className="aggregation-loading" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.8)", zIndex: 1 }}>
+                      <Spin />
+                    </div>
+                  )}
+                  {!loading && filteredRecords.length === 0 && (
+                    <Empty
+                      description={t("containers.list-view.aggregations.no_data")}
+                    />
+                  )}
+                  <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>
+                    <AggregationsVisualization filteredRecords={filteredRecords} />
+                  </div>
                 </div>
-              ) : filteredRecords.length === 0 ? (
-                <Empty
-                  description={t("containers.list-view.aggregations.no_data")}
-                />
-              ) : (
-                <AggregationsVisualization filteredRecords={filteredRecords} />
               ),
             },
           ]}
