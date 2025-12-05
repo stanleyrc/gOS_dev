@@ -266,6 +266,46 @@
   "containers": {
     "home": {},
     "list-view": {
+      "tabs": {
+        "cases": "Cases",
+        "aggregations": "Aggregations"
+      },
+      "aggregations": {
+        "title": "Cohort Level Aggregations",
+        "subtitle": "Showing {{count}} filtered cases",
+        "aggregate_by": "Aggregate by:",
+        "class_column": "Class",
+        "count_column": "Count",
+        "percentage_column": "% of Total",
+        "total_row": "Total",
+        "empty_class": "(empty)",
+        "no_data": "No data available",
+        "log_scale": "logarithmic scale",
+        "table_tab": "Table",
+        "visualization_tab": "Visualization",
+        "visualization_coming_soon": "Visualization coming soon",
+        "data_table_title": "Data Table",
+        "record_count": "{{count}} records",
+        "select-columns": "Select columns...",
+        "pair_column": "Pair",
+        "disease_column": "Disease",
+        "primary_site_column": "Primary Site",
+        "tumor_details_column": "Tumor Details",
+        "inferred_sex_column": "Inferred Sex",
+        "qc_evaluation_column": "QC Evaluation",
+        "sv_count_column": "SV Count",
+        "tmb_column": "TMB",
+        "tumor_median_coverage_column": "Tumor Coverage",
+        "normal_median_coverage_column": "Normal Coverage",
+        "purity_column": "Purity",
+        "ploidy_column": "Ploidy",
+        "HRDetect_column": "HRDetect",
+        "B1+2_column": "B1+2",
+        "B1_column": "B1",
+        "B2_column": "B2",
+        "summary_column": "Alterations",
+        "export": "Export CSV"
+      },
       "filters": {
         "title": "Search Filters",
         "placeholder": "select one or many",
@@ -274,7 +314,8 @@
           "treatment-metrics": "Treatment Metrics",
           "quality-metrics": "Quality Metrics",
           "event-metrics": "Event Metrics",
-          "biomarker-metrics": "Biomarker Metrics"
+          "biomarker-metrics": "Biomarker Metrics",
+          "interpretations": "Interpretations"
         },
         "case": "{{count}} case",
         "case_plural": "{{count}} cases",
@@ -306,6 +347,19 @@
         },
         "purity": "Purity",
         "ploidy": "Ploidy",
+        "has_interpretations": "Criteria",
+        "has_interpretations-operator": "Matches",
+        "has_interpretations_labels": {
+          "with": "Yes",
+          "without": "No"
+        },
+        "interpretations_cascader_labels": {
+          "tier_change": "Tier Change",
+          "other_changes": "No Tier Changes",
+          "author": "Author",
+          "gene": "Gene",
+          "without": "No Interpretations"
+        },
         "submit": "Submit",
         "reset": "Reset",
         "operators": {
@@ -377,9 +431,11 @@
     "genome-range-panel": {
       "reset": "Reset to full genome view"
     },
+    "cbioportal-modal": { "title": "cBioPortal" },
     "header-panel": {
       "view-report": "View Report",
       "qcMetrics": "Quality Control Metrics",
+      "cbioportal-button": "cBioPortal",
       "purity-ploidy-title": "Purity/Ploidy",
       "metadata": {
         "pair": {
@@ -483,6 +539,7 @@
       "title": "Violin Chart"
     },
     "filtered-events-panel": {
+      "select-columns": "Select Columns",
       "reset-filters": "Reset Filters",
       "export": {
         "notes": "Export Report",
@@ -527,7 +584,8 @@
         "all": "All",
         "snv": "Oncogenic Small Mutations",
         "cna": "Oncogenic CNA",
-        "fusion": "Oncogenic Fusions"
+        "fusion": "Oncogenic Fusions",
+        "complexsv": "Complex SV"
       },
       "select-type": {
         "placeholder": "select one or many"
@@ -543,10 +601,10 @@
           "title": "The request has failed with the following error:"
         }
       },
-      "load-report": "Load Report",
-      "reset-state": "Reset",
+      "load-report": "Import Report",
+      "reset-state": "Clear Report Cache",
       "import": {
-        "mismatch-case": "Uploaded report does not match the current case. Import aborted.",
+        "mismatch-case": "Uploaded report does not match the current case ID. Import aborted.",
         "missing-state": "Could not find embedded report state in the uploaded file.",
         "loaded": "Report loaded.",
         "failed": "Failed to load report."
@@ -832,6 +890,14 @@
           "title": "The request has failed with the following error:"
         }
       }
+    },
+    "interpretationVersionsSidepanel": {
+      "searchPlaceholder": "Search interpretations...",
+      "authorColumn": "Author",
+      "dateColumn": "Date"
+    },
+    "signInButton": {
+      "usernamePlaceholder": "Enter username to create new user..."
     }
   }
 }

@@ -1,4 +1,6 @@
 import * as d3 from "d3";
+import { plotTypes, reportAttributesMap } from "./utility";
+import common from '../translations/en/common.json';
 
 export function reportFilters() {
   return [
@@ -10,6 +12,13 @@ export function reportFilters() {
     { name: "primary_site", type: "string", renderer: "select" },
     { name: "inferred_sex", type: "string", renderer: "select" },
     { name: "operator", type: "string", renderer: "cascader-select" },
+    {
+      name: "has_interpretations",
+      type: "string",
+      renderer: "cascader",
+      group: "interpretations",
+      external: true,
+    },
     {
       name: "treatment",
       type: "string",
@@ -148,11 +157,90 @@ export function generateCascaderOptions(tags, frequencies = {}) {
   return options;
 }
 
+export function generateInterpretationsCascaderOptions(reports, casesWithInterpretations) {
+  const options = [];
+  
+  // Ensure casesWithInterpretations has the expected structure
+  const withTierChange = casesWithInterpretations?.withTierChange || new Set();
+  const byAuthor = casesWithInterpretations?.byAuthor || new Map();
+  const byGene = casesWithInterpretations?.byGene || new Map();
+  const all = casesWithInterpretations?.all || new Set();
+  
+  // Tier Change option
+  const tierChangeCount = reports.filter(r => withTierChange.has(r.pair)).length;
+  options.push({
+  label: common.containers["list-view"].filters.interpretations_cascader_labels.tier_change,
+  value: "tier_change",
+  count: tierChangeCount,
+  });
+
+   // Other changes option
+   const otherChangesCount = reports.filter(r => all.has(r.pair) && !withTierChange.has(r.pair)).length;
+   options.push({
+     label: common.containers["list-view"].filters.interpretations_cascader_labels.other_changes,
+     value: "other_changes",
+     count: otherChangesCount,
+   });
+  
+  // Author option with children
+  const authorChildren = [];
+  byAuthor.forEach((cases, authorName) => {
+    const count = reports.filter(r => cases.has(r.pair)).length;
+    authorChildren.push({
+      label: authorName,
+      value: authorName,
+      count: count,
+    });
+  });
+  
+  if (authorChildren.length > 0) {
+    authorChildren.sort((a, b) => d3.descending(a.count, b.count));
+    const totalAuthorCount = authorChildren.reduce((sum, child) => sum + child.count, 0);
+    options.push({
+      label: common.containers["list-view"].filters.interpretations_cascader_labels.author,
+      value: "author",
+      count: totalAuthorCount,
+      children: authorChildren,
+    });
+  }
+  
+  // Gene option with children
+  const geneChildren = [];
+  byGene.forEach((cases, geneName) => {
+    const count = reports.filter(r => cases.has(r.pair)).length;
+    geneChildren.push({
+      label: geneName,
+      value: geneName,
+      count: count,
+    });
+  });
+  
+  if (geneChildren.length > 0) {
+    geneChildren.sort((a, b) => d3.descending(a.count, b.count));
+    const totalGeneCount = geneChildren.reduce((sum, child) => sum + child.count, 0);
+    options.push({
+      label: common.containers["list-view"].filters.interpretations_cascader_labels.gene,
+      value: "gene",
+      count: totalGeneCount,
+      children: geneChildren,
+    });
+  }
+  
+  // No interpretations option
+  const noInterpretationsCount = reports.filter(r => !all.has(r.pair)).length;
+  options.push({
+    label: common.containers["list-view"].filters.interpretations_cascader_labels.without,
+    value: "without",
+    count: noInterpretationsCount,
+  });
+  
+  return options;
+}
+
 export const cascaderOperators = ["OR", "AND", "NOT"];
 
 export function getReportFilterExtents(reports) {
   let extents = {};
-
   reportFilters().forEach((filter) => {
     let allValues = reports
       .map((record) => {
@@ -173,8 +261,8 @@ export function getReportFilterExtents(reports) {
 export function getReportsFilters(fields, reports) {
   let reportsFilters = [];
 
-  // Iterate through each filter
-  fields.forEach((field) => {
+  // Iterate through each filter (skip external filters as they need special handling)
+  fields.filter(field => !field.external).forEach((field) => {
     let allValues = reports
       .map((record) => {
         try {
@@ -217,6 +305,28 @@ export function getReportsFilters(fields, reports) {
   //console.log("reportsFilters", reportsFilters);
   return reportsFilters;
 }
+
+export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }, fields = null) {
+  // Try to find the filter in the provided fields (from settings.json)
+  // Fall back to hardcoded filter for backward compatibility
+  let filter;
+  if (fields && Array.isArray(fields)) {
+    filter = fields.find(f => f.id === "has_interpretations" || f.name === "has_interpretations");
+  }
+  if (!filter) {
+    filter = reportFilters().find(f => f.name === "has_interpretations");
+  }
+  
+  const options = generateInterpretationsCascaderOptions(reports, casesWithInterpretations);
+  
+  return {
+    filter: filter,
+    options: options,
+    totalRecords: reports.length,
+    format: filter?.format || plotTypes()[reportAttributesMap()[filter?.name]]?.format
+  };
+}
+
 
 const CASCADER_PATH_SEPARATOR = " / ";
 

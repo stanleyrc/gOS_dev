@@ -35,6 +35,46 @@ The `shared/` directory contains the minimum data/config the UI expects:
 
 Add your own case report data by mirroring the structure above and updating the JSON manifests accordingly.
 
+### Configuring datasets
+
+The `datasets.json` file defines available datasets and their configuration. Each dataset entry supports:
+
+```json
+{
+  "id": "my-dataset",
+  "title": "My Dataset",
+  "datafilesPath": "datafiles.json",
+  "commonPath": "common/",
+  "dataPath": "data/",
+  "reference": "hg19",
+  "optionalFilteredEventsColumns": [
+    {
+      "id": "custom-col",
+      "title": "Custom Column",
+      "dataIndex": "customField",
+      "viewType": "gene-link"
+    }
+  ],
+  "schema": [
+    {
+      "id": "sample_type",
+      "title": "Sample Type",
+      "type": "string"
+    }
+  ]
+}
+```
+
+**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Available `viewType` renderers:
+- `"gene-link"` – renders gene names as clickable links
+- `"tier-badge"` – renders tier/category badges
+- `"formatted-number"` – renders formatted numeric values
+- `"string-basic"` – renders plain text (default)
+- `"location-link"` – renders genomic locations as links
+- `"class-icon"` – renders class with icon
+
+**Cohort Filters:** Define dataset-specific filters for the cohort-level view using `schema`. When provided, this overrides the default schema from settings. Each filter must include `id`, `title`, and `type`.
+
 ## Deployments
 - **Releases:** `.github/workflows/build-artifacts.yml` builds on `main`, uploads the tarball/checksum/LATEST files to a GitHub Release, and marks it as the latest.
 - **GitHub Pages:** The same workflow uploads the built `build/` directory as a Pages artifact and deploys it to the `github-pages` environment. The live site always matches the newest release.

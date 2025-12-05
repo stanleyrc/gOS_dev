@@ -14,134 +14,51 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  Input,
-  Collapse,
+  Select,
 } from "antd";
-// centralized anchor/key helpers
-import { eventAnchor, tierKey as keyTier } from "../../helpers/reportKeys";
-import { FileTextOutlined } from "@ant-design/icons";
-import { BsDashLg } from "react-icons/bs";
 import * as d3 from "d3";
-import { ArrowRightOutlined } from "@ant-design/icons";
-import { EditOutlined } from "@ant-design/icons";
-import { roleColorMap, tierColor } from "../../helpers/utility";
+import { roleColorMap } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { EditOutlined as _unusedEditOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
+
+import { selectMergedEvents, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
+import { store } from "../../redux/store";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import { linkPmids } from "../../helpers/format";
-import {
-  getTierOverride,
-  clearCase,
-  exportReport,
-  saveTierOverride,
-  saveGlobalNotes,
-  buildTierKey,
-  importReportStateFromHtml,
-} from "../../helpers/reportStateStore";
+import InterpretationsAvatar from "../InterpretationsAvatar";
+import EventInterpretation from "../../helpers/EventInterpretation";
+import TierDistributionBarChart from "../tierDistributionBarChart";
+import { buildColumnsFromSettings } from "./columnBuilders";
 
 const { Text } = Typography;
 
-const {
-  selectFilteredEvent,
-  applyTierOverride,
-  resetTierOverrides,
-  updateAlterationFields,
-  setGlobalNotes,
-} = filteredEventsActions;
+const { selectFilteredEvent } = filteredEventsActions;
 
-const eventColumns = {
-  all: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-  snv: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12],
-  cna: [0, 1, 2, 3, 4, 5, 7, 12],
-  fusion: [0, 1, 2, 3, 4, 5, 8, 12],
+const EVENT_TYPES = ["all", "snv", "cna", "fusion", "complexsv"];
+
+// Helper function to extract text from column title (handles both strings and JSX)
+const getColumnTitle = (title) => {
+  if (typeof title === "string") return title;
+  if (typeof title === "object" && title?.props?.children) {
+    // Handle Text component with children
+    const children = Array.isArray(title.props.children)
+      ? title.props.children[title.props.children.length - 1]
+      : title.props.children;
+    return typeof children === "string" ? children : "Column";
+  }
+  return "Column";
 };
 
-function EditableTextBlock({ title, value, onChange }) {
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState(value || "");
-  const ref = React.useRef(null);
-
-  React.useEffect(() => {
-    setDraft(value || "");
-  }, [value]);
-  React.useEffect(() => {
-    if (editing && ref.current) ref.current.focus({ cursor: "end" });
-  }, [editing]);
-
-  const handleBlur = () => {
-    onChange(draft || "");
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
-        <div className="desc-title">{title}:</div>
-        <Input.TextArea
-          ref={ref}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoSize={{ minRows: 3 }}
-          onBlur={handleBlur}
-          style={{ marginTop: 8 }}
-        />
-      </div>
-    );
-  }
-
-  const html = value && linkPmids(value).replace(/\n/g, "<br/>");
-
-  return (
-    <div className="desc-block editable-field" style={{ marginBottom: 12 }}>
-      <Collapse
-        className="notes-collapse"
-        bordered={false}
-        ghost
-        defaultActiveKey={[]}
-      >
-        <Collapse.Panel
-          key="notes"
-          header={
-            <div className="notes-header">
-              <span className="notes-header-title">{title}</span>
-              <button
-                type="button"
-                className="edit-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditing(true);
-                }}
-                aria-label={`Edit ${title}`}
-              >
-                <EditOutlined />
-              </button>
-            </div>
-          }
-        >
-          <div className="notes-view">
-            {value ? (
-              <div
-                className="desc-text"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            ) : (
-              <span className="notes-empty">No notes added</span>
-            )}
-          </div>
-        </Collapse.Panel>
-      </Collapse>
-    </div>
-  );
-}
-
 class FilteredEventsListPanel extends Component {
-  isApplyingOverrides = false;
+
   handleResetFilters = () => {
+    const { additionalColumns } = this.props;
+    const defaultColumnKeys = this.getDefaultColumnKeys();
+    const additionalKeys = (additionalColumns || []).map((col) => col.key);
+    const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
     this.setState({
       geneFilters: [],
       tierFilters: [],
@@ -149,6 +66,7 @@ class FilteredEventsListPanel extends Component {
       roleFilters: [],
       effectFilters: [],
       variantFilters: [],
+      selectedColumnKeys: defaultKeys,
     });
   };
   state = {
@@ -159,153 +77,67 @@ class FilteredEventsListPanel extends Component {
     effectFilters: [],
     variantFilters: [],
     geneFilters: [],
-    showReportModal: false,
-    exporting: false,
+    tierCountsMap: {},
+    selectedColumnKeys: [],
   };
 
   // add as a class field
 
-  handleExportNotes = async () => {
-    const { id, filteredEvents, report, originalFilteredEvents, globalNotes } =
-      this.props;
-    try {
-      this.setState({ exporting: true });
-      await exportReport({
-        id,
-        reportMeta: report,
-        filteredEvents,
-        originalFilteredEvents,
-        globalNotes,
-      });
-    } catch (err) {
-      console.error("Report export failed:", err);
-    } finally {
-      this.setState({ exporting: false });
-    }
-  };
-
-  handleLoadReport = async () => {
-    try {
-      const { t } = this.props;
-      const file = await new Promise((resolve) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".html,text/html";
-        input.onchange = () => resolve(input.files && input.files[0]);
-        input.click();
-      });
-      if (!file) return;
-
-      const text = await file.text();
-      const caseId = String(this.props.id || "");
-
-      try {
-        await importReportStateFromHtml({
-          htmlText: text,
-          caseId,
-          filteredEvents: this.props.filteredEvents,
-          applyTierOverride: this.props.applyTierOverride,
-          updateAlterationFields: this.props.updateAlterationFields,
-          setGlobalNotes: this.props.setGlobalNotes,
-        });
-        alert(t("components.filtered-events-panel.import.loaded"));
-      } catch (err) {
-        if (err && err.code === "MISMATCH_CASE") {
-          alert(t("components.filtered-events-panel.import.mismatch-case"));
-          return;
-        }
-        if (err && err.code === "MISSING_STATE") {
-          alert(t("components.filtered-events-panel.import.missing-state"));
-          return;
-        }
-        throw err;
-      }
-    } catch (err) {
-      console.error("Failed to load report:", err);
-      alert(this.props.t("components.filtered-events-panel.import.failed"));
-    }
-  };
-
-  handleResetReportState = async () => {
-    const { id, resetTierOverrides, selectFilteredEvent } = this.props;
-    const caseId = id ? String(id) : "";
-    if (!caseId) {
-      alert(
-        this.props.t(
-          "components.filtered-events-panel.reset-prompts.no-case-id"
-        )
-      );
-      return;
-    }
-    const c1 = window.confirm(
-      this.props.t("components.filtered-events-panel.reset-prompts.confirm1")
-    );
-    if (!c1) return;
-    const c2 = window.confirm(
-      this.props.t("components.filtered-events-panel.reset-prompts.confirm2")
-    );
-    if (!c2) return;
-
-    // 1) Clear IndexedDB for this case
-    await clearCase(caseId);
-
-    // 2) Reset Redux overrides and selection
-    resetTierOverrides();
-    selectFilteredEvent(null);
-
-    // 3) Clear global notes in Redux (and persist empty to app IndexedDB via saga)
-    this.props.setGlobalNotes("");
+  getDefaultColumnKeys = () => {
+    const { data: settingsData, dataset } = this.props;
+    
+    // Get columns from settings.json
+    const settingsColumns = settingsData?.filteredEventsColumns || [];
+    const settingsColumnIds = (Array.isArray(settingsColumns) ? settingsColumns : [])
+      .map((col) => col?.id)
+      .filter(Boolean);
+    
+    // Get optional columns from current dataset
+    // Safely handles cases where optionalFilteredEventsColumns attribute is missing or undefined
+    const datasetColumns = dataset?.optionalFilteredEventsColumns || [];
+    const datasetColumnIds = (Array.isArray(datasetColumns) ? datasetColumns : [])
+      .map((col) => col?.id)
+      .filter(Boolean);
+    
+    // Merge: settings columns first, then dataset-specific columns
+    const mergedColumnIds = [...new Set([...settingsColumnIds, ...datasetColumnIds])];
+    return mergedColumnIds;
   };
 
   handleCloseReportModal = async () => {
-    this.setState({ showReportModal: false });
     this.props.selectFilteredEvent(null);
   };
 
-  componentDidMount() {
-    this.applyAllTierOverridesIfAny({ reset: true });
-  }
-
-  componentDidUpdate(prevProps) {
-    if (
-      prevProps.originalFilteredEvents !== this.props.originalFilteredEvents &&
-      Array.isArray(this.props.originalFilteredEvents) &&
-      this.props.originalFilteredEvents.length
-    ) {
-      this.applyAllTierOverridesIfAny({ reset: true });
-    }
-
-    // Persist tier overrides to IndexedDB whenever tiers change in-app
-    if (prevProps.filteredEvents !== this.props.filteredEvents) {
-      const prevByUid = new Map(
-        (prevProps.filteredEvents || []).map((d) => [d.uid, d])
-      );
-      const caseId = String(this.props.id || "");
-      (this.props.filteredEvents || []).forEach((ev) => {
-        const prev = prevByUid.get(ev.uid);
-        if (!prev) return;
-        const prevTier = prev.tier != null ? String(prev.tier) : "";
-        const curTier = ev.tier != null ? String(ev.tier) : "";
-        if (curTier !== prevTier) {
-          const anchor = eventAnchor(ev?.gene, ev?.variant);
-          if (!anchor) return;
-          const tKey = keyTier(caseId, anchor);
-          saveTierOverride(tKey, curTier);
-        }
-      });
-    }
-
-    // Persist global notes to gos_report IndexedDB when they change
-    if (prevProps.globalNotes !== this.props.globalNotes) {
-      const caseId = String(this.props.id || "");
-      if (caseId) {
-        saveGlobalNotes(caseId, this.props.globalNotes);
-      }
-    }
-  }
-
   handleSegmentedChange = (eventType) => {
     this.setState({ eventType });
+  };
+
+  handleColumnSelectionChange = (selectedKeys) => {
+    this.setState({ selectedColumnKeys: selectedKeys });
+  };
+
+  componentDidMount() {
+    this.fetchTierCountsForRecords();
+    this.initializeSelectedColumns();
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.filteredEvents !== this.props.filteredEvents || prevState.eventType !== this.state.eventType) {
+      this.fetchTierCountsForRecords();
+    }
+    if (prevProps.additionalColumns !== this.props.additionalColumns ||
+        prevProps.data !== this.props.data ||
+        prevProps.dataset !== this.props.dataset) {
+      this.initializeSelectedColumns();
+    }
+  }
+
+  initializeSelectedColumns = () => {
+    const { additionalColumns } = this.props;
+    const defaultColumnKeys = this.getDefaultColumnKeys();
+    const additionalKeys = (additionalColumns || []).map((col) => col.key);
+    const selectedKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
+    this.setState({ selectedColumnKeys: selectedKeys });
   };
 
   handleTableChange = (pagination, filters, sorter) => {
@@ -321,55 +153,54 @@ class FilteredEventsListPanel extends Component {
     });
   };
 
-  applyAllTierOverridesIfAny = async (opts = {}) => {
-    const { reset = false } = opts;
-    const {
-      id,
-      filteredEvents,
-      originalFilteredEvents,
-      applyTierOverride,
-      resetTierOverrides,
-    } = this.props;
-
-    if (
-      !Array.isArray(filteredEvents) ||
-      !filteredEvents.length ||
-      !Array.isArray(originalFilteredEvents) ||
-      !originalFilteredEvents.length
-    ) {
-      return;
-    }
-
-    if (this.isApplyingOverrides) return;
-    this.isApplyingOverrides = true;
-
-    try {
-      if (reset) {
-        // Start from the original snapshot to avoid stale overrides lingering
-        resetTierOverrides();
+  fetchTierCountsForRecords = async () => {
+    const { filteredEvents } = this.props;
+    const { eventType } = this.state;
+    let recordsHash = d3.group(
+      filteredEvents.filter((d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"),
+      (d) => d.eventType
+    );
+    let records = (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
+    const { dataset } = this.props;
+    const map = {};
+    const promises = records.map(async (record) => {
+      if (!record.gene || !record.type) return;
+      const key = `${record.gene}-${record.type}`;
+      if (map[key]) return; // already fetching
+      try {
+        const { getActiveRepository } = await import('../../services/repositories');
+        const repository = getActiveRepository({ dataset });
+        const counts = await repository.getTierCountsByGeneVariantType(record.gene, record.type);
+        map[key] = counts;
+      } catch (error) {
+        console.error('Failed to fetch tier counts:', error);
+        map[key] = {1: 0, 2: 0, 3: 0};
       }
+    });
+    await Promise.all(promises);
+    this.setState({ tierCountsMap: map });
+  };
 
-      // Build a quick lookup for original tiers
-      const origTierMap = new Map(
-        originalFilteredEvents.map((d) => [d.uid, String(d.tier)])
-      );
-
-      await Promise.all(
-        filteredEvents.map(async (ev) => {
-          const key = buildTierKey(id, ev);
-          const override = await getTierOverride(key);
-
-          if (override != null) {
-            const origTier = origTierMap.get(ev.uid);
-            if (String(origTier) !== String(override)) {
-              applyTierOverride(ev.uid, String(override));
-            }
-          }
-        })
-      );
-    } finally {
-      this.isApplyingOverrides = false;
+  getTierTooltipContent = (record) => {
+    const key = `${record.gene}-${record.type}`;
+    const tierCounts = this.state.tierCountsMap[key];
+    if (!tierCounts) return 'Loading tier distribution...';
+    const total = (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
+    if (total === 0) {
+      return 'No retiering found for this gene variant';
     }
+    const originalRecord = this.props.originalFilteredEvents.find(r => r.uid === record.uid);
+    const originalTier = originalRecord?.tier || 3;
+    return (
+      <TierDistributionBarChart
+        width={300}
+        height={150}
+        tierCounts={tierCounts}
+        originalTier={originalTier}
+        gene={record.gene}
+        variantType={record.type}
+      />
+    );
   };
 
   render() {
@@ -391,8 +222,11 @@ class FilteredEventsListPanel extends Component {
       genes,
       allelic,
       igv,
-      reportSrc,
       selectFilteredEvent,
+      additionalColumns,
+      additionalColumnIndices,
+      data,
+      dataset,
     } = this.props;
 
     let open = selectedFilteredEvent?.id;
@@ -405,11 +239,11 @@ class FilteredEventsListPanel extends Component {
       roleFilters,
       effectFilters,
       variantFilters,
-      showReportModal,
+      selectedColumnKeys,
     } = this.state;
 
     let recordsHash = d3.group(
-      filteredEvents.filter((d) => d.tier && +d.tier < 3),
+      filteredEvents.filter((d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"),
       (d) => d.eventType
     );
     let records =
@@ -418,444 +252,17 @@ class FilteredEventsListPanel extends Component {
     const roleInCancerLabel = t("components.filtered-events-panel.role");
     const effectLabel = t("components.filtered-events-panel.effect");
 
-    const columns = [
+    // Build columns from settings.json and dataset configuration
+    const columns = buildColumnsFromSettings(
+      data?.filteredEventsColumns || [],
+      dataset?.optionalFilteredEventsColumns || [],
+      records,
       {
-        title: t("components.filtered-events-panel.gene"),
-        dataIndex: "gene",
-        key: "gene",
-        width: 100,
-        ellipsis: {
-          showTitle: false,
-        },
-        filters: [...new Set(records.map((d) => d.gene))]
-          .sort((a, b) => d3.ascending(a, b))
-          .map((d) => {
-            return {
-              text: d,
-              value: d,
-            };
-          }),
-        filterMultiple: true,
-        onFilter: (value, record) => record.gene?.startsWith(value),
-        filteredValue: geneFilters, // controlled by the component
-        filterSearch: true,
-        sorter: {
-          compare: (a, b) => {
-            if (a.gene == null) return 1;
-            if (b.gene == null) return -1;
-            return d3.ascending(a.gene, b.gene);
-          },
-        },
-        render: (_, record) =>
-          record.gene != null ? (
-            <Button
-              type="link"
-              onClick={() => selectFilteredEvent(record, "detail")}
-            >
-              <Tooltip placement="topLeft" title={record.gene}>
-                {record.gene}
-              </Tooltip>
-            </Button>
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: (
-          <Text
-            className="filtered-events-header-text"
-            ellipsis={{ tooltip: roleInCancerLabel }}
-          >
-            {roleInCancerLabel}
-          </Text>
-        ),
-        dataIndex: "role",
-        key: "role",
-        width: 160,
-        onHeaderCell: () => ({
-          className: "filtered-events-header-cell",
-        }),
-        filters: [...new Set(records.map((d) => d.role))]
-          .sort((a, b) => d3.ascending(a, b))
-          .map((d) => {
-            return {
-              text: d,
-              value: d,
-            };
-          }),
-        filterMultiple: true,
-        onFilter: (value, record) => record.role === value,
-        filteredValue: roleFilters, // controlled by the component
-        sorter: {
-          compare: (a, b) => {
-            if (a.role == null) return 1;
-            if (b.role == null) return -1;
-            return d3.ascending(a.role, b.role);
-          },
-        },
-        render: (_, record) =>
-          record.role != null ? (
-            record.role
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.variant"),
-        dataIndex: "variant",
-        key: "variant",
-        width: 120,
-        ellipsis: {
-          showTitle: false,
-        },
-        onCell: () => ({
-          className: "filtered-events-variant-cell",
-        }),
-        sorter: {
-          compare: (a, b) => {
-            if (a.variant == null) return 1;
-            if (b.variant == null) return -1;
-            return d3.ascending(a.variant, b.variant);
-          },
-        },
-        filters: [...new Set(records.map((d) => d.variant))]
-          .sort((a, b) => d3.ascending(a, b))
-          .map((d) => {
-            return {
-              text: d,
-              value: d,
-            };
-          }),
-        filterMultiple: true,
-        onFilter: (value, record) => record.variant === value,
-        filteredValue: variantFilters, // controlled by the component
-        render: (_, record) =>
-          record.variant != null ? (
-            <Text
-              ellipsis={{ tooltip: record.variant }}
-              className="filtered-events-ellipsis-text"
-            >
-              {record.variant}
-            </Text>
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.type"),
-        dataIndex: "type",
-        key: "type",
-        width: 240,
-        sorter: {
-          compare: (a, b) => {
-            if (a.type == null) return 1;
-            if (b.type == null) return -1;
-            return d3.ascending(a.type, b.type);
-          },
-        },
-        filters: [...new Set(records.map((d) => d.type))].map((d) => {
-          return {
-            text: d,
-            value: d,
-          };
-        }),
-        filterMultiple: true,
-        onFilter: (value, record) => record.type === value,
-        filteredValue: typeFilters, // controlled by the component
-        render: (_, record) =>
-          record.type != null ? (
-            record.type
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: (
-          <Text
-            className="filtered-events-header-text"
-            ellipsis={{ tooltip: effectLabel }}
-          >
-            {effectLabel}
-          </Text>
-        ),
-        dataIndex: "effect",
-        key: "effect",
-        width: 160,
-        onHeaderCell: () => ({
-          className: "filtered-events-header-cell",
-        }),
-        filters: [...new Set(records.map((d) => d.effect))]
-          .sort((a, b) => d3.ascending(a, b))
-          .map((d) => {
-            return {
-              text: d,
-              value: d,
-            };
-          }),
-        filterMultiple: true,
-        onFilter: (value, record) => record.effect === value,
-        filteredValue: effectFilters, // controlled by the component
-        sorter: {
-          compare: (a, b) => {
-            if (a.effect == null) return 1;
-            if (b.effect == null) return -1;
-            return d3.ascending(a.effect, b.effect);
-          },
-        },
-        render: (_, record) =>
-          record.effect != null ? (
-            record.effect
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: (
-          <Space>
-            {t("components.filtered-events-panel.tier")}
-            <Tooltip
-              title={
-                <Space direction="vertical">
-                  {[1, 2, 3].map((d, i) => (
-                    <Space key={i}>
-                      <Avatar
-                        size="small"
-                        style={{
-                          color: "#FFF",
-                          backgroundColor: tierColor(+d),
-                        }}
-                      >
-                        {d}
-                      </Avatar>
-                      {t(`components.filtered-events-panel.tier-info.${d}`)}
-                    </Space>
-                  ))}
-                </Space>
-              }
-            >
-              <InfoCircleOutlined />
-            </Tooltip>
-          </Space>
-        ),
-        dataIndex: "tier",
-        key: "tier",
-        width: 120,
-        sorter: {
-          compare: (a, b) => {
-            if (a.tier == null) return 1;
-            if (b.tier == null) return -1;
-            return d3.ascending(+a.tier, +b.tier);
-          },
-        },
-        filters: [...new Set(records.map((d) => d.tier))].map((d) => {
-          return {
-            text: d,
-            value: +d,
-          };
-        }),
-        filterMultiple: true,
-        onFilter: (value, record) => +record.tier === +value,
-        filteredValue: tierFilters, // controlled by the component
-        render: (_, record) =>
-          record.tier != null ? (
-            <Tooltip
-              title={t(
-                `components.filtered-events-panel.tier-info.${record.tier}`
-              )}
-            >
-              <Button
-                type="link"
-                onClick={() => selectFilteredEvent(record, "detail")}
-              >
-                <Avatar
-                  size="small"
-                  style={{
-                    color: "#FFF",
-                    backgroundColor: tierColor(+record.tier),
-                  }}
-                >
-                  {record.tier}
-                </Avatar>
-              </Button>
-            </Tooltip>
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.estimatedAlteredCopies"),
-        dataIndex: "estimatedAlteredCopies",
-        key: "estimatedAlteredCopies",
-        width: 100,
-        sorter: {
-          compare: (a, b) => {
-            if (a.estimatedAlteredCopies == null) return 1;
-            if (b.estimatedAlteredCopies == null) return -1;
-            return d3.ascending(
-              +a.estimatedAlteredCopies,
-              +b.estimatedAlteredCopies
-            );
-          },
-        },
-        render: (_, record) =>
-          record.estimatedAlteredCopies != null ? (
-            d3.format(".3f")(+record.estimatedAlteredCopies)
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.segmentCopyNumber"),
-        dataIndex: "segmentCopyNumber",
-        key: "segmentCopyNumber",
-        width: 130,
-        sorter: {
-          compare: (a, b) => {
-            if (a.segmentCopyNumber == null) return 1;
-            if (b.segmentCopyNumber == null) return -1;
-            return d3.ascending(+a.segmentCopyNumber, +b.segmentCopyNumber);
-          },
-        },
-        render: (_, record) =>
-          record.segmentCopyNumber != null ? (
-            d3.format(".3f")(+record.segmentCopyNumber)
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.fusionCopyNumber"),
-        dataIndex: "fusionCopyNumber",
-        key: "fusionCopyNumber",
-        width: 100,
-        sorter: {
-          compare: (a, b) => {
-            if (a.fusionCopyNumber == null) return 1;
-            if (b.fusionCopyNumber == null) return -1;
-            return d3.ascending(+a.fusionCopyNumber, +b.fusionCopyNumber);
-          },
-        },
-        render: (_, record) =>
-          record.fusionCopyNumber != null ? (
-            d3.format(".3f")(+record.fusionCopyNumber)
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.altCounts"),
-        dataIndex: "altCounts",
-        key: "altCounts",
-        width: 100,
-        sorter: {
-          compare: (a, b) => {
-            if (a.altCounts == null) return 1;
-            if (b.altCounts == null) return -1;
-            return d3.ascending(+a.altCounts, +b.altCounts);
-          },
-        },
-        render: (_, record) =>
-          record.altCounts != null ? (
-            +record.altCounts
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.refCounts"),
-        dataIndex: "refCounts",
-        key: "refCounts",
-        width: 100,
-        sorter: {
-          compare: (a, b) => {
-            if (a.refCounts == null) return 1;
-            if (b.refCounts == null) return -1;
-            return d3.ascending(+a.refCounts, +b.refCounts);
-          },
-        },
-        render: (_, record) =>
-          record.refCounts != null ? (
-            +record.refCounts
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.vaf"),
-        dataIndex: "vaf",
-        key: "vaf",
-        width: 120,
-        sorter: {
-          compare: (a, b) => {
-            if (a.vaf == null) return 1;
-            if (b.vaf == null) return -1;
-            return d3.ascending(+a.vaf, +b.vaf);
-          },
-        },
-        render: (_, record) =>
-          record.vaf != null ? (
-            d3.format(".3f")(+record.vaf)
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-      {
-        title: t("components.filtered-events-panel.location"),
-        dataIndex: "location",
-        key: "location",
-        width: 260,
-        fixed: "right",
-        ellipsis: true,
-        onCell: () => ({
-          className: "filtered-events-location-cell-wrapper",
-        }),
-        render: (_, record) =>
-          record.location != null ? (
-            <div className="filtered-events-location-cell">
-              <Text
-                ellipsis={{ tooltip: record.location }}
-                className="filtered-events-location-text filtered-events-ellipsis-text"
-              >
-                {record.location}
-              </Text>
-              <Button
-                type="link"
-                onClick={() => selectFilteredEvent(record, "tracks")}
-              >
-                <ArrowRightOutlined />
-              </Button>
-            </div>
-          ) : (
-            <Text italic disabled>
-              <BsDashLg />
-            </Text>
-          ),
-      },
-    ];
+        t,
+        selectFilteredEvent,
+        getTierTooltipContent: this.getTierTooltipContent,
+      }
+    );
 
     return (
       <Wrapper>
@@ -878,15 +285,6 @@ class FilteredEventsListPanel extends Component {
           </Row>
         ) : (
           <>
-            <Row className="ant-panel-container ant-home-plot-container">
-              <Col span={24}>
-                <EditableTextBlock
-                  title={t("components.alteration-card.labels.notes")}
-                  value={this.props.globalNotes || ""}
-                  onChange={(v) => this.props.setGlobalNotes(v)}
-                />
-              </Col>
-            </Row>
             <Row
               className="ant-panel-container ant-home-plot-container"
               align="middle"
@@ -895,7 +293,7 @@ class FilteredEventsListPanel extends Component {
               <Col flex="auto">
                 <Segmented
                   size="small"
-                  options={Object.keys(eventColumns).map((d) => {
+                  options={EVENT_TYPES.map((d) => {
                     return {
                       label: (
                         <span
@@ -931,49 +329,50 @@ class FilteredEventsListPanel extends Component {
                 <Button
                   type="link"
                   onClick={this.handleResetFilters}
-                  style={{ float: "right", marginBottom: 16 }}
+                  className="reset-filters-btn"
                 >
                   {t("components.filtered-events-panel.reset-filters")}
                 </Button>
               </Col>
             </Row>
+            <Row
+              className="ant-panel-container ant-home-plot-container"
+              align="middle"
+              justify="space-between"
+              style={{ marginBottom: "12px" }}
+            >
+              <Col flex="auto">
+                <Select
+                   mode="multiple"
+                   placeholder={t("components.filtered-events-panel.select-columns")}
+                   value={selectedColumnKeys}
+                   onChange={this.handleColumnSelectionChange}
+                   style={{ width: "50%" }}
+                   size="small"
+                   maxTagCount="responsive"
+                 >
+                   {columns.map((col) => (
+                     <Select.Option key={col.key} value={col.key}>
+                       {getColumnTitle(col.title)}
+                     </Select.Option>
+                   ))}
+                   {(additionalColumns || []).map((col) => (
+                     <Select.Option key={col.key} value={col.key}>
+                       {getColumnTitle(col.title)}
+                     </Select.Option>
+                   ))}
+                 </Select>
+              </Col>
+            </Row>
             <Row className="ant-panel-container ant-home-plot-container">
-              <Col flex="none">
-                <Space>
-                  <Button
-                    type="primary"
-                    icon={<FileTextOutlined />}
-                    onClick={this.handleExportNotes}
-                    disabled={loading || this.state.exporting}
-                    style={{ marginBottom: 16 }}
-                  >
-                    {t("components.filtered-events-panel.export.notes")}
-                  </Button>
-                  <Button
-                    onClick={this.handleLoadReport}
-                    style={{ marginBottom: 16 }}
-                  >
-                    {t("components.filtered-events-panel.load-report")}
-                  </Button>
-                </Space>
-              </Col>
-              <Col flex="auto" />
-              <Col style={{ textAlign: "right" }} flex="none">
-                <Button
-                  danger
-                  onClick={this.handleResetReportState}
-                  style={{ marginBottom: 16 }}
-                >
-                  {t("components.filtered-events-panel.reset-state")}
-                </Button>
-              </Col>
               <Col className="gutter-row table-container" span={24}>
                 {
                   <Skeleton active loading={loading}>
                     <Table
-                      columns={columns.filter((d, i) =>
-                        eventColumns[eventType].includes(i)
-                      )}
+                       columns={[
+                         ...(additionalColumns || []),
+                         ...columns
+                       ].filter((col) => selectedColumnKeys.includes(col.key))}
                       dataSource={records}
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
@@ -1081,14 +480,6 @@ class FilteredEventsListPanel extends Component {
                       <ReportModal
                         open
                         onClose={this.handleCloseReportModal}
-                        src={
-                          reportSrc
-                            ? `${reportSrc}#${eventAnchor(
-                                selectedFilteredEvent?.gene,
-                                selectedFilteredEvent?.variant
-                              )}`
-                            : undefined
-                        }
                         title={
                           <Space>
                             {selectedFilteredEvent.gene}
@@ -1126,33 +517,11 @@ class FilteredEventsListPanel extends Component {
                         record={selectedFilteredEvent}
                       />
                     )}
-                    {showReportModal && reportSrc && (
-                      <ReportModal
-                        open={showReportModal}
-                        onClose={this.handleCloseReportModal}
-                        src={reportSrc}
-                        title={t(
-                          "components.filtered-events-panel.export.notes"
-                        )}
-                        loading={loading}
-                        genome={genome}
-                        mutations={mutations}
-                        genomeCoverage={genomeCoverage}
-                        methylationBetaCoverage={methylationBetaCoverage}
-                        methylationIntensityCoverage={
-                          methylationIntensityCoverage
-                        }
-                        hetsnps={hetsnps}
-                        genes={genes}
-                        igv={igv}
-                        chromoBins={chromoBins}
-                        allelic={allelic}
-                      />
-                    )}
                   </Skeleton>
                 }
               </Col>
             </Row>
+
           </>
         )}
       </Wrapper>
@@ -1164,34 +533,35 @@ FilteredEventsListPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
-  applyTierOverride: (uid, tier) => dispatch(applyTierOverride(uid, tier)),
-  resetTierOverrides: () => dispatch(resetTierOverrides()),
-  updateAlterationFields: (uid, changes) =>
-    dispatch(updateAlterationFields(uid, changes)),
-  setGlobalNotes: (notes) => dispatch(setGlobalNotes(notes)),
 });
-const mapStateToProps = (state) => ({
-  loading: state.FilteredEvents.loading,
-  filteredEvents: state.FilteredEvents.filteredEvents,
-  originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
-  selectedFilteredEvent: state.FilteredEvents.selectedFilteredEvent,
-  viewMode: state.FilteredEvents.viewMode,
-  error: state.FilteredEvents.error,
-  reportSrc: state.FilteredEvents.reportSrc,
-  id: state.CaseReport.id,
-  report: state.CaseReport.metadata,
-  genome: state.Genome,
-  mutations: state.Mutations,
-  allelic: state.Allelic,
-  chromoBins: state.Settings.chromoBins,
-  genomeCoverage: state.GenomeCoverage,
-  methylationBetaCoverage: state.MethylationBetaCoverage,
-  methylationIntensityCoverage: state.MethylationIntensityCoverage,
-  hetsnps: state.Hetsnps,
-  genes: state.Genes,
-  igv: state.Igv,
-  globalNotes: state.FilteredEvents.globalNotes,
-});
+const mapStateToProps = (state) => {
+  const mergedEvents = selectMergedEvents(state);
+
+  return {
+    loading: state.FilteredEvents.loading,
+    filteredEvents: mergedEvents.filteredEvents,
+    originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
+    selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
+    viewMode: state.FilteredEvents.viewMode,
+    error: state.FilteredEvents.error,
+    id: state.CaseReport.id,
+    report: state.CaseReport.metadata,
+    genome: state.Genome,
+    mutations: state.Mutations,
+    allelic: state.Allelic,
+    chromoBins: state.Settings.chromoBins,
+    genomeCoverage: state.GenomeCoverage,
+    methylationBetaCoverage: state.MethylationBetaCoverage,
+    methylationIntensityCoverage: state.MethylationIntensityCoverage,
+    hetsnps: state.Hetsnps,
+    genes: state.Genes,
+    igv: state.Igv,
+    CaseReport: state.CaseReport,
+    Interpretations: state.Interpretations,
+    dataset: state?.Settings?.dataset,
+    data: state?.Settings?.data,
+  };
+};
 export default connect(
   mapStateToProps,
   mapDispatchToProps

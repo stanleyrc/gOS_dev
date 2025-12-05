@@ -936,6 +936,160 @@
       "group": "biomarker-metrics",
       "groupTitle": "Biomarker Metrics",
       "groupOrder": 5
+    },
+    {
+      "id": "has_interpretations",
+      "title": "Criteria",
+      "type": "string",
+      "renderer": "cascader",
+      "group": "interpretations",
+      "groupTitle": "Interpretations",
+      "groupOrder": 6,
+      "external": true
+    }
+  ],
+  "filteredEventsColumns": [
+    {
+      "id": "gene",
+      "title": "components.filtered-events-panel.gene",
+      "dataIndex": "gene",
+      "type": "string",
+      "viewType": "gene-link",
+      "width": 100,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "role",
+      "title": "components.filtered-events-panel.role",
+      "dataIndex": "role",
+      "type": "string",
+      "viewType": "string-basic",
+      "width": 160,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "variant",
+      "title": "components.filtered-events-panel.variant",
+      "dataIndex": "variant",
+      "type": "string",
+      "viewType": "string-basic",
+      "width": 120,
+      "filterable": true,
+      "sortable": true,
+      "ellipsis": true
+    },
+    {
+      "id": "type",
+      "title": "components.filtered-events-panel.type",
+      "dataIndex": "type",
+      "type": "string",
+      "viewType": "string-basic",
+      "width": 240,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "effect",
+      "title": "components.filtered-events-panel.effect",
+      "dataIndex": "effect",
+      "type": "string",
+      "viewType": "string-basic",
+      "width": 160,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "tier",
+      "title": "components.filtered-events-panel.tier",
+      "dataIndex": "tier",
+      "type": "numeric",
+      "viewType": "tier-badge",
+      "width": 120,
+      "filterable": true,
+      "sortable": true
+    },
+    {
+      "id": "estimatedAlteredCopies",
+      "title": "components.filtered-events-panel.estimatedAlteredCopies",
+      "dataIndex": "estimatedAlteredCopies",
+      "type": "numeric",
+      "viewType": "formatted-number",
+      "width": 100,
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
+    },
+    {
+      "id": "segmentCopyNumber",
+      "title": "components.filtered-events-panel.segmentCopyNumber",
+      "dataIndex": "segmentCopyNumber",
+      "type": "numeric",
+      "viewType": "formatted-number",
+      "width": 130,
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
+    },
+    {
+      "id": "fusionCopyNumber",
+      "title": "components.filtered-events-panel.fusionCopyNumber",
+      "dataIndex": "fusionCopyNumber",
+      "type": "numeric",
+      "viewType": "formatted-number",
+      "width": 100,
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
+    },
+    {
+      "id": "altCounts",
+      "title": "components.filtered-events-panel.altCounts",
+      "dataIndex": "altCounts",
+      "type": "numeric",
+      "viewType": "formatted-number",
+      "width": 100,
+      "sortable": true,
+      "rendererProps": {
+        "format": ","
+      }
+    },
+    {
+      "id": "refCounts",
+      "title": "components.filtered-events-panel.refCounts",
+      "dataIndex": "refCounts",
+      "type": "numeric",
+      "viewType": "formatted-number",
+      "width": 100,
+      "sortable": true,
+      "rendererProps": {
+        "format": ","
+      }
+    },
+    {
+      "id": "vaf",
+      "title": "components.filtered-events-panel.vaf",
+      "dataIndex": "vaf",
+      "type": "numeric",
+      "viewType": "formatted-number",
+      "width": 100,
+      "sortable": true,
+      "rendererProps": {
+        "format": ".3f"
+      }
+    },
+    {
+      "id": "location",
+      "title": "components.filtered-events-panel.location",
+      "dataIndex": "location",
+      "type": "string",
+      "viewType": "location-link",
+      "width": 260,
+      "sortable": true
     }
   ]
 }

@@ -15,7 +15,8 @@ class Field {
     this.shortTitle = field.shortTitle || this.title;
     this.description = field.description || this.title;
     this.type = field.type;
-    this.renderer = RENDERER[field.type] || "select";
+    // Allow explicit renderer override, otherwise derive from type
+    this.renderer = field.renderer || (field.type === "pair" ? "cascader" : (RENDERER[field.type] || "select"));
     this.kpiPlot =
       field.kpiPlot == null
         ? false
@@ -31,6 +32,7 @@ class Field {
     this.groupTitle = field.groupTitle || "General";
     this.groupOrder = field.groupOrder != null ? +field.groupOrder : 0;
     this.order = field.order != null ? +field.order : 99;
+    this.external = field.external || false;
   }
   get isNumeric() {
     return this.type === "numeric";

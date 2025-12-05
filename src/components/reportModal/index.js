@@ -10,7 +10,6 @@ import { withTranslation } from "react-i18next";
 function ReportModal({
   open,
   onClose,
-  src,
   title = "Report",
   // data for plots
   loading,

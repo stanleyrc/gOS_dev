@@ -89,6 +89,46 @@ const Wrapper = styled.div`
     max-width: 150px;
     font-size: 16px;
   }
+
+  /* Aggregations Panel Styles */
+  .aggregation-panel-card {
+    margin-top: 16px;
+  }
+  .aggregation-panel-header {
+    margin-bottom: 16px;
+  }
+  .aggregation-field-selector {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+  }
+  .aggregation-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+  }
+  .aggregation-table-container {
+    margin-top: 16px;
+  }
+  .aggregation-table-header {
+    margin-bottom: 12px;
+  }
+  .aggregation-total-row {
+    background-color: #fafafa;
+  }
+
+  /* Aggregations Visualization Styles */
+  .aggregation-visualization-container {
+    padding: 16px 0;
+    min-height: 450px;
+  }
+  .aggregation-visualization-container .plot-container {
+    overflow: visible;
+  }
+  .aggregation-visualization-container .ant-select {
+    font-size: 12px;
+  }
 `;
 
 export default Wrapper;

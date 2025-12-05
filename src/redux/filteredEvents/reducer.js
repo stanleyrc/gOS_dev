@@ -7,8 +7,6 @@ const initState = {
   selectedFilteredEvent: null,
   viewMode: "tracks",
   error: null,
-  reportSrc: null,
-  globalNotes: "",
 };
 
 export default function appReducer(state = initState, action) {
@@ -20,8 +18,6 @@ export default function appReducer(state = initState, action) {
         filteredEvents: [],
         originalFilteredEvents: [],
         loading: true,
-        reportSrc: null,
-        globalNotes: "",
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
       return {
@@ -30,7 +26,6 @@ export default function appReducer(state = initState, action) {
         originalFilteredEvents: (action.filteredEvents || []).map((d) => ({ ...d })),
         selectedFilteredEvent: action.selectedFilteredEvent,
         loading: false,
-        reportSrc: action.reportSrc || null,
       };
     case actions.FETCH_FILTERED_EVENTS_FAILED:
       return {
@@ -40,8 +35,6 @@ export default function appReducer(state = initState, action) {
         selectedFilteredEvent: null,
         error: action.error,
         loading: false,
-        reportSrc: null,
-        globalNotes: "",
       };
     case actions.SELECT_FILTERED_EVENT:
       return {
@@ -50,22 +43,6 @@ export default function appReducer(state = initState, action) {
         viewMode: action.viewMode,
         loading: false,
       };
-    case actions.APPLY_TIER_OVERRIDE: {
-      const { uid, tier } = action;
-      const tierNum = Number(tier);
-      const update = (it) => (it ? { ...it, tier: tierNum } : it);
-
-      return {
-        ...state,
-        filteredEvents: (state.filteredEvents || []).map((it) =>
-          it?.uid === uid ? update(it) : it
-        ),
-        selectedFilteredEvent:
-          state.selectedFilteredEvent?.uid === uid
-            ? update(state.selectedFilteredEvent)
-            : state.selectedFilteredEvent,
-      };
-    }
     case actions.RESET_TIER_OVERRIDES: {
       // Restore entire items from the original snapshot (not just tier)
       const origMap = new Map(
@@ -91,33 +68,27 @@ export default function appReducer(state = initState, action) {
         selectedFilteredEvent: nextSelected,
       };
     }
-    case actions.UPDATE_ALTERATION_FIELDS: {
-      const { uid, changes } = action;
-      const normalized = {
-        ...changes,
-        ...(Array.isArray(changes?.therapeutics)
-          ? { therapeutics: [...changes.therapeutics] }
-          : {}),
-        ...(Array.isArray(changes?.resistances)
-          ? { resistances: [...changes.resistances] }
-          : {}),
-      };
+    case actions.REVERT_FILTERED_EVENT: {
+      const { alterationId, originalEvent } = action;
+      
+      if (!alterationId || !originalEvent) {
+        return state;
+      }
+      
+      const nextFiltered = state.filteredEvents.map(event => 
+        event.uid === alterationId ? { ...originalEvent } : event
+      );
+      
+      const nextSelected = state.selectedFilteredEvent?.uid === alterationId
+        ? { ...originalEvent }
+        : state.selectedFilteredEvent;
+      
       return {
         ...state,
-        filteredEvents: (state.filteredEvents || []).map((it) =>
-          it?.uid === uid ? { ...it, ...normalized } : it
-        ),
-        selectedFilteredEvent:
-          state.selectedFilteredEvent?.uid === uid
-            ? { ...state.selectedFilteredEvent, ...normalized }
-            : state.selectedFilteredEvent,
+        filteredEvents: nextFiltered,
+        selectedFilteredEvent: nextSelected,
       };
     }
-    case actions.SET_GLOBAL_NOTES:
-      return {
-        ...state,
-        globalNotes: String(action.notes || ""),
-      };
     default:
       return state;
   }

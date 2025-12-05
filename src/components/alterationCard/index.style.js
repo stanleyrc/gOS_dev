@@ -206,6 +206,9 @@ export default styled.div`
     height: 32px;
     flex-shrink: 0;
   }
+  .tier-control .ant-avatar {
+    pointer-events: none;
+  }
   .tier-select {
     position: absolute;
     top: 0;

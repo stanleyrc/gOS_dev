@@ -305,6 +305,8 @@ export function getEventType(event) {
     return "fusion";
   } else if (["scna", "cna"].includes(type?.toLowerCase())) {
     return "cna";
+  } else if (["complex sv"].includes(type?.toLowerCase())) {
+    return "complexsv";
   } else {
     return "snv";
   }
@@ -842,6 +844,208 @@ export const orderListViewFilters = attributes.flatMap((attribute, i) =>
   }))
 );
 
+export function plotTypes() {
+  return {
+    tumor_median_coverage: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ",",
+      scaleX: "linear",
+      scaleXFormat: "~s",
+    },
+    snvCount: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ",",
+      scaleX: "log",
+      scaleXFormat: "~s",
+    },
+    svCount: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ",",
+      scaleX: "log",
+      scaleXFormat: "~s",
+    },
+    tmb: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ",",
+      scaleX: "log",
+      scaleXFormat: "~s",
+    },
+    lohFraction: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".3",
+      scaleX: "linear",
+      scaleXFormat: "0.2f",
+    },
+    purity: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    ploidy: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2f",
+      scaleX: "linear",
+      scaleXFormat: "0.2f",
+      range: [1.5, 5.5],
+    },
+    hrdScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    hrdB12Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    hrdB1Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    hrdB2Score: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: "0.2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    msiScore: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ".2%",
+      scaleX: "linear",
+      scaleXFormat: ".0%",
+      range: [0, 1],
+    },
+    treatment_duration: {
+      plotType: "histogram",
+      tumor_type: "tumor_type",
+      format: ",",
+      scaleX: "linear",
+      scaleXFormat: "~s",
+    },
+  };
+}
+
+export function reportAttributesMap() {
+  return {
+    pair: "pair",
+    tumor_type: "tumor",
+    tumor_details: "tumor_details",
+    tumor_median_coverage: "tumor_median_coverage",
+    normal_median_coverage: "normal_median_coverage",
+    snv_count: "snvCount",
+    sv_count: "svCount",
+    tmb: "tmb",
+    loh_fraction: "lohFraction",
+    purity: "purity",
+    ploidy: "ploidy",
+    disease: "disease",
+    inferred_sex: "sex",
+    primary_site: "primary_site",
+    beta: "beta",
+    gamma: "gamma",
+    cov_slope: "cov_slope",
+    cov_intercept: "cov_intercept",
+    methylation_beta_cov_slope: "methylation_beta_cov_slope",
+    methylation_beta_cov_intercept: "methylation_beta_cov_intercept",
+    methylation_intensity_cov_slope: "methylation_intensity_cov_slope",
+    methylation_intensity_cov_intercept: "methylation_intensity_cov_intercept",
+    hets_slope: "hets_slope",
+    hets_intercept: "hets_intercept",
+    loose_count: "loose_count",
+    junction_count: "junction_count",
+    sv_types_count: "sv_types_count",
+    hrd: "hrd",
+    coverage_qc: "coverage_qc",
+    snv_count_normal_vaf_greater0: "snv_count_normal_vaf_greater0",
+    signatures: "signatures",
+    deletionInsertion: "deletionInsertion",
+    sigprofiler_indel_fraction: "sigprofiler_indel_fraction",
+    sigprofiler_indel_count: "sigprofiler_indel_count",
+    sigprofiler_sbs_fraction: "sigprofiler_sbs_fraction",
+    sigprofiler_sbs_count: "sigprofiler_sbs_count",
+    sigprofiler_indel_cosine_similarity: "sigprofiler_indel_cosine_similarity",
+    sigprofiler_sbs_cosine_similarity: "sigprofiler_sbs_cosine_similarity",
+    msisensor: "msisensor",
+    "msisensor.score": "msiScore",
+    "hrd.hrd_score": "hrdScore",
+    "hrd.b1_2_score": "hrdB12Score",
+    "hrd.b1_score": "hrdB1Score",
+    "hrd.b2_score": "hrdB2Score",
+    summary: "summary",
+    qcMetrics: "qcMetrics",
+    treatment: "treatment",
+    treatment_type: "treatment_type",
+    treatment_best_response: "treatment_best_response",
+    treatment_duration: "treatment_duration",
+  };
+}
+
+export function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay > 0) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  if (diffHour > 0) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+  if (diffMin > 0) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
+  return 'just now';
+}
+
+export function convertAminoAcidToSingleLetter(aminoAcid) {
+  const aminoAcidMap = {
+    'GLY': 'G', 'ALA': 'A', 'VAL': 'V', 'LEU': 'L', 'ILE': 'I',
+    'THR': 'T', 'SER': 'S', 'MET': 'M', 'CYS': 'C', 'PRO': 'P',
+    'PHE': 'F', 'TYR': 'Y', 'TRP': 'W', 'HIS': 'H', 'LYS': 'K',
+    'ARG': 'R', 'ASP': 'D', 'GLU': 'E', 'ASN': 'N', 'GLN': 'Q'
+  };
+  
+  if (!aminoAcid) return aminoAcid;
+  
+  const upper = aminoAcid.toUpperCase();
+  return aminoAcidMap[upper] || aminoAcid;
+}
+
+export function convertVariantToSingleLetterCode(variant) {
+  if (!variant) return variant;
+  
+  const variantStr = String(variant);
+  const regex = /([A-Za-z]{3})(\d+)([A-Za-z]{3})/;
+  const match = variantStr.match(regex);
+  
+  if (match) {
+    const [, fromAA, position, toAA] = match;
+    const fromSingle = convertAminoAcidToSingleLetter(fromAA);
+    const toSingle = convertAminoAcidToSingleLetter(toAA);
+    return `${fromSingle}${position}${toSingle}`;
+  }
+  
+  return variant;
+}
+
 export function mutationCatalogMetadata() {
   return ["id", "type", "mutations", "mutationType", "label", "probability"];
 }
@@ -1210,6 +1414,7 @@ export function transformFilteredEventAttributes(filteredEvents) {
         }
       }
       return {
+        ...event,
         gene: gene,
         type: event.type,
         name: event.Name,

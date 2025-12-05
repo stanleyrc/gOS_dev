@@ -18,6 +18,7 @@ import signatureStatisticsActions from "../signatureStatistics/actions";
 import igvActions from "../igv/actions";
 import highlightsActions from "../highlights/actions";
 import snvplicityActions from "../snvplicity/actions";
+import interpretationsActions from "../interpretations/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 import { qcEvaluator } from "../../helpers/metadata";
 
@@ -71,6 +72,13 @@ function* fetchCaseReport(action) {
 }
 
 function* followUpFetchCaseReportSuccess(action) {
+  const { id } = action;
+
+  // Load interpretations from repository for this case
+  if (id) {
+    yield put(interpretationsActions.fetchInterpretationsForCase(id));
+  }
+
   const actionTypes = [
     allelicActions.FETCH_ALLELIC_DATA_REQUEST,
     filteredEventsActions.FETCH_FILTERED_EVENTS_REQUEST,

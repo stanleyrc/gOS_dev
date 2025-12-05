@@ -1,13 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { Component } from "react";
+import { connect } from "react-redux";
 import { BsDashLg } from "react-icons/bs";
-import { Card, Tag, Typography, Descriptions, Avatar, Input } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { Card, Tag, Typography, Descriptions, Avatar, Button, Tooltip } from "antd";
 import Wrapper from "./index.style";
-import { tierColor } from "../../helpers/utility";
-import filteredEventsActions from "../../redux/filteredEvents/actions";
-import { linkPmids } from "../../helpers/format";
-import { useTranslation } from "react-i18next";
+import { tierColor, getTimeAgo } from "../../helpers/utility";
+import interpretationsActions from "../../redux/interpretations/actions";
+import EditableTextBlock from "../editableTextBlock";
+import EditablePillsBlock from "../editablePillsBlock";
+import { withTranslation } from "react-i18next";
+import EventInterpretation from "../../helpers/EventInterpretation";
+
+import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
+import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getAllInterpretationsForGene, getBaseEvent } from "../../redux/interpretations/selectors";
+import TierDistributionBarChart from "../tierDistributionBarChart";
+import InterpretationsAvatar from "../InterpretationsAvatar";
 
 const { Title, Text } = Typography;
 
@@ -20,354 +26,454 @@ function toList(value) {
     .filter(Boolean);
 }
 
-
-
-function EditableTextBlock({ title, value, onChange }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value || "");
-  const ref = useRef(null);
-
-  useEffect(() => {
-    setDraft(value || "");
-  }, [value]);
-
-  useEffect(() => {
-    if (editing && ref.current) {
-      // put focus inside the edit box on enter
-      ref.current.focus({ cursor: "end" });
-    }
-  }, [editing]);
-
-  const handleBlur = () => {
-    onChange(draft || "");
-    setEditing(false);
+class AlterationCard extends Component {
+  state = {
+    showVersions: false,
+    selectedInterpretation: null, // When set, overrides the current one
+    tierCounts: null,
   };
 
-  return (
-    <div className="desc-block editable-field">
-      <div className="desc-title">
-        {title}:
-        <button
-          type="button"
-          className="edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${title}`}
-        >
-          <EditOutlined />
-        </button>
-      </div>
-      {editing ? (
-        <Input.TextArea
-          ref={ref}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoSize={{ minRows: 3 }}
-          onBlur={handleBlur}
-        />
-      ) : value ? (
-        <div
-          className="desc-text"
-          dangerouslySetInnerHTML={{ __html: linkPmids(value) }}
-        />
-      ) : null}
-    </div>
-  );
-}
 
-function EditablePillsBlock({ title, list, onChange, pillClass }) {
-  const [editing, setEditing] = useState(false);
-  const ref = useRef(null);
-  const plain = useMemo(() => (list || []).join(", "), [list]);
-  const [draft, setDraft] = useState(plain);
 
-  useEffect(() => {
-    setDraft(plain);
-  }, [plain]);
+  updateFields = async (changes) => {
+    const { record, caseId, dataset } = this.props;
+    const currentData = this.props.interpretation?.data || {};
+    const data = { ...currentData, ...changes };
 
-  useEffect(() => {
-    if (editing && ref.current) {
-      ref.current.focus({ cursor: "end" });
+    // Ensure user exists before creating interpretation
+    const { ensureUser } = await import("../../helpers/userAuth");
+    try {
+      await ensureUser();
+    } catch (error) {
+      // User cancelled sign-in
+      return;
     }
-  }, [editing]);
 
-  const handleBlur = () => {
-    const items = String(draft || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    onChange(items);
-    setEditing(false);
-  };
-
-  return (
-    <div className="desc-block editable-field">
-      <div className="desc-title">
-        {title}:
-        <button
-          type="button"
-          className="edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${title}`}
-        >
-          <EditOutlined />
-        </button>
-      </div>
-      {editing ? (
-        <Input
-          ref={ref}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={handleBlur}
-        />
-      ) : (
-        <div className={`${pillClass === "resistance-tag" ? "resistance-tags" : "therapeutics-tags"}`}>
-          {(list || []).length
-            ? list.map((v) => (
-                <Tag
-                  key={`${title}-${v}`}
-                  className={`pill ${pillClass}`}
-                  color={pillClass === "resistance-tag" ? "red" : "green"}
-                >
-                  {v}
-                </Tag>
-              ))
-            : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-export default function AlterationCard({ record }) {
-  const { t } = useTranslation("common");
-  const liveRecord = useSelector((state) => {
-    const fe = state?.FilteredEvents;
-    if (!fe) return record;
-    if (record?.uid && fe.selectedFilteredEvent?.uid === record.uid) {
-      return fe.selectedFilteredEvent;
-    }
-    const fromList = (fe.filteredEvents || []).find((d) => d?.uid === record?.uid);
-    return fromList || record;
-  });
-  const {
-    tier,
-    gene,
-    variant,
-    role,
-    effect,
-    gene_summary,
-    variant_summary,
-    effect_description,
-    therapeutics,
-    resistances,
-    vaf,
-    estimatedAlteredCopies,
-    altCounts,
-    refCounts,
-  } = liveRecord || {};
-
-  const dispatch = useDispatch();
-  const currentTierStr = ["1", "2", "3"].includes(String(tier))
-    ? String(tier)
-    : "3";
-  const geneLabel = (gene || t("components.alteration-card.unknown")).replace("::", "-");
-  const variantTitle = variant || "";
-
-  const roles = toList(role);
-  const therapeuticsList = toList(therapeutics);
-  const resistancesList = toList(resistances);
-
-  const updateFields = (changes) =>
-    dispatch(
-      filteredEventsActions.updateAlterationFields(liveRecord.uid, changes)
-    );
-
-  const [local, setLocal] = useState({
-    geneSummary: gene_summary || "",
-    variantSummary: variant_summary || "",
-    effectDescription: effect_description || "",
-    therapeutics: therapeuticsList,
-    resistances: resistancesList,
-    notes: "",
-  });
-
-  useEffect(() => {
-    setLocal({
-      geneSummary: gene_summary || "",
-      variantSummary: variant_summary || "",
-      effectDescription: effect_description || "",
-      therapeutics: therapeuticsList,
-      resistances: resistancesList,
-      notes: (liveRecord && liveRecord.notes) || "",
+    const eventInterpretation = new EventInterpretation({
+      datasetId: dataset?.id,
+      caseId: caseId || record?.id || "UNKNOWN",
+      alterationId: record?.uid || "UNKNOWN",
+      gene: record?.gene,
+      variant: record?.variant,
+      variant_type: record?.type,
+      data
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    gene_summary,
-    variant_summary,
-    effect_description,
-    therapeuticsList.join("|"),
-    resistancesList.join("|"),
-    liveRecord && liveRecord.notes,
-  ]);
 
-  const hasMetrics =
-    vaf !== undefined ||
-    estimatedAlteredCopies !== undefined ||
-    altCounts !== undefined ||
-    refCounts !== undefined;
+    const payload = eventInterpretation.toJSON();
 
-  const unavailableMetric = (<Text italic disabled> <BsDashLg /> </Text>)
+    this.props.dispatch(
+      interpretationsActions.updateInterpretation(payload)
+    );
+  };
 
-  if (!liveRecord) {
+  handleShowVersions = () => {
+    this.setState({ showVersions: true });
+  };
+
+  handleCloseVersions = () => {
+    this.setState({ showVersions: false });
+  };
+
+  handleSelectInterpretation = (interpretation) => {
+    this.setState({ selectedInterpretation: interpretation, showVersions: false });
+  };
+
+  handleClearSelection = () => {
+    this.setState({ selectedInterpretation: null });
+  };
+
+  handleRefreshVersions = () => {
+    const { record } = this.props;
+    this.props.dispatch(
+      interpretationsActions.fetchInterpretationsForCase(this.props.caseId)
+    );
+  };
+
+  fetchTierCounts = async () => {
+    const { dataset, record } = this.props;
+    if (!dataset || !record || !record.gene || !record.type) {
+      this.setState({ tierCounts: {1: 0, 2: 0, 3: 0} });
+      return;
+    }
+    try {
+      const { getActiveRepository } = await import('../../services/repositories');
+      const repository = getActiveRepository({ dataset });
+      const counts = await repository.getTierCountsByGeneVariantType(record.gene, record.type);
+      this.setState({ tierCounts: counts });
+    } catch (error) {
+      console.error('Failed to fetch tier counts:', error);
+      this.setState({ tierCounts: {1: 0, 2: 0, 3: 0} });
+    }
+  };
+
+  handleCopyVersion = async () => {
+    const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
+    if (!confirmed) return;
+
+    const { selectedInterpretation } = this.state;
+    const { caseId, record, dataset } = this.props;
+    const data = selectedInterpretation?.data || {};
+
+    // Ensure user exists before creating interpretation
+    const { ensureUser } = await import("../../helpers/userAuth");
+    try {
+      await ensureUser();
+    } catch (error) {
+      // User cancelled sign-in
+      return;
+    }
+
+    const eventInterpretation = new EventInterpretation({
+      datasetId: dataset?.id,
+      caseId,
+      alterationId: record?.uid,
+      gene: record?.gene,
+      variant: record?.variant,
+      variant_type: record?.type,
+      data
+    });
+
+    this.props.dispatch(interpretationsActions.updateInterpretation(eventInterpretation.toJSON()));
+    this.setState({ selectedInterpretation: null });
+  };
+
+  componentDidMount() {
+    this.fetchTierCounts();
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    // Reset editing state when switching interpretations
+    if (prevState.selectedInterpretation !== this.state.selectedInterpretation) {
+      // EditableTextBlock handles its own reset via props.value change
+    }
+    // Refetch tier counts if record or dataset changes
+    if (prevProps.record !== this.props.record || prevProps.dataset !== this.props.dataset) {
+      this.fetchTierCounts();
+    }
+  }
+
+  getTierTooltipContent() {
+    const { tierCounts } = this.state;
+    const { baseRecord, record } = this.props;
+    if (!tierCounts) return 'Loading tier distribution...';
+
+    const total = (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
+    if (total === 0) {
+      return 'No retiering found for this gene variant';
+    }
+
+    const originalTier = baseRecord?.tier || 3;
+
     return (
-      <Wrapper>
-        <Card className="variant-card">
-          <Text type="secondary">{t("components.alteration-card.no-alteration")}</Text>
-        </Card>
-      </Wrapper>
+      <TierDistributionBarChart
+        width={300}
+        height={150}
+        tierCounts={tierCounts}
+        originalTier={originalTier}
+        gene={record.gene}
+        variantType={record.type}
+      />
     );
   }
 
+  render() {
+    const { t, record, interpretation, allInterpretations, baseRecord, datasets } = this.props;
+    const { showVersions, selectedInterpretation } = this.state;
+    
+    if (!record) {
+      return (
+        <Wrapper>
+          <Card className="variant-card">
+            <Text type="secondary">{t("components.alteration-card.no-alteration")}</Text>
+          </Card>
+        </Wrapper>
+      );
+    }
 
-  return (
-    <Wrapper>
-      <Card className="variant-card" bordered>
-        <div className="variant-header">
-          <div className="gene-left">
-            {currentTierStr && (
-              <div className="tier-control" title={`${t("components.filtered-events-panel.tier")} ${currentTierStr}`}>
-                <Avatar
-                  size={32}
-                  style={{
-                    backgroundColor: tierColor(+currentTierStr) || "#6c757d",
-                    color: "#fff",
-                    fontWeight: 700,
-                  }}
-                >
-                  {currentTierStr}
-                </Avatar>
-                <select
-                  className="tier-select"
-                  value={currentTierStr}
-                  onChange={(e) =>
-                    dispatch(
-                      filteredEventsActions.applyTierOverride(liveRecord.uid, e.target.value)
-                    )
-                  }
-                  aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
-                >
-                  <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
-                  <option value="2">{t("components.alteration-card.tier-select.options.2")}</option>
-                  <option value="3">{t("components.alteration-card.tier-select.options.3")}</option>
-                </select>
-              </div>
+    const {
+      tier,
+      gene,
+      variant,
+      role,
+      effect,
+      vaf,
+      estimatedAlteredCopies,
+      altCounts,
+      refCounts,
+      gene_summary,
+      variant_summary,
+      effect_description,
+      therapeutics,
+      resistances,
+      notes,
+    } = record;
+
+    // Determine which interpretation to display
+    const displayInterpretation = selectedInterpretation || interpretation;
+    // Base defaults for editable fields when not present in interpretation
+    const baseDefaults = {
+      tier: baseRecord?.tier || 3, // base tier from original event
+      gene_summary: baseRecord?.gene_summary || "",
+      variant_summary: baseRecord?.variant_summary || "",
+      effect_description: baseRecord?.effect_description || "",
+      notes: baseRecord?.notes || "",
+      therapeutics: baseRecord?.therapeutics || [],
+      resistances: baseRecord?.resistances || [],
+    };
+    const displayData = { ...record, ...baseDefaults, ...displayInterpretation?.data };
+
+    const currentTierStr = ["1", "2", "3"].includes(String(displayData.tier))
+      ? String(displayData.tier)
+      : "3";
+    const geneLabel = (gene || t("components.alteration-card.unknown")).replace("::", "-");
+    const variantTitle = variant || "";
+
+    const roles = toList(role);
+
+    const hasMetrics =
+      vaf !== undefined ||
+      estimatedAlteredCopies !== undefined ||
+      altCounts !== undefined ||
+      refCounts !== undefined;
+
+    const unavailableMetric = (<Text italic disabled> <BsDashLg /> </Text>);
+
+    // Check if current user is viewing their own interpretation
+    const isCurrentUser = !selectedInterpretation || displayInterpretation?.isCurrentUser;
+
+    // Format author and date for watermark button
+    const authorName = displayInterpretation?.authorName || 'Switch Version';
+    const lastModified = displayInterpretation?.lastModified;
+    const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : '';
+    const watermarkText = authorName === 'Switch Version' ? authorName : `last modified by ${authorName} ${dateStr}`;
+
+    return (
+      <Wrapper>
+        <Card className="variant-card" bordered bodyStyle={{ padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0px', marginBottom: '16px' }}>
+            {!isCurrentUser && (
+              <Button
+                type="primary"
+                size="small"
+                onClick={this.handleCopyVersion}
+                style={{ fontSize: '12px', height: 'auto', lineHeight: '1', marginRight: '8px' }}
+              >
+                Copy to My Version
+              </Button>
             )}
-            <div>
-              <Title level={4} className="gene-title" style={{ marginBottom: 0 }}>
-                {geneLabel}
-              </Title>
-              {variantTitle ? (
-                <div className="variant-title">{variantTitle}</div>
+            <Button
+              type="text"
+              size="small"
+              onClick={this.handleShowVersions}
+              style={{
+                fontSize: '12px',
+                color: '#999',
+                border: 'none',
+                padding: '2px 8px',
+                height: 'auto',
+                lineHeight: '1',
+              }}
+            >
+              {watermarkText}
+            </Button>
+          </div>
+          <div className="variant-header">
+            <div className="gene-left">
+              {currentTierStr && (
+              <Tooltip title={this.getTierTooltipContent()} placement="bottom" overlayStyle={{ maxWidth: '350px' }} align={{ offset: [10, 0] }}>
+              <div className="tier-control">
+                    <Avatar
+                      size={32}
+                      style={{
+                        backgroundColor: tierColor(+currentTierStr) || "#6c757d",
+                        color: "#fff",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {currentTierStr}
+                    </Avatar>
+                    <select
+                      className="tier-select"
+                      value={currentTierStr}
+                      onChange={(e) => {
+                        this.updateFields({ tier: e.target.value });
+                      }}
+                      disabled={!isCurrentUser}
+                      aria-label={t("components.alteration-card.tier-select.label", { gene: geneLabel, variant: variantTitle })}
+                    >
+                      <option value="1">{t("components.alteration-card.tier-select.options.1")}</option>
+                      <option value="2">{t("components.alteration-card.tier-select.options.2")}</option>
+                      <option value="3">{t("components.alteration-card.tier-select.options.3")}</option>
+                    </select>
+                  </div>
+                </Tooltip>
+              )}
+              <div>
+                <Title level={4} className="gene-title" style={{ marginBottom: 0 }}>
+                  {geneLabel}
+                </Title>
+                {variantTitle ? (
+                  <div className="variant-title">{variantTitle}</div>
+                ) : null}
+              </div>
+            </div>
+            <div className="gene-right">
+              {roles.map((r) => (
+                <Tag key={`role-${r}`} className="pill role-pill">
+                  {r}
+                </Tag>
+              ))}
+              {effect ? (
+                <Tag className="pill effect-pill">{effect}</Tag>
               ) : null}
             </div>
           </div>
-          <div className="gene-right">
-            {roles.map((r) => (
-              <Tag key={`role-${r}`} className="pill role-pill">
-                {r}
-              </Tag>
-            ))}
-            {effect ? (
-              <Tag className="pill effect-pill">{effect}</Tag>
+
+          <div className="variant-body">
+            <div className="variant-desc">
+              <EditableTextBlock
+                title={t("components.alteration-card.labels.gene-summary")}
+                value={displayData.gene_summary || ""}
+                onChange={(v) => this.updateFields({ gene_summary: v })}
+                readOnly={!isCurrentUser}
+               />
+              <EditableTextBlock
+                title={t("components.alteration-card.labels.variant-summary")}
+                value={displayData.variant_summary || ""}
+                onChange={(v) => this.updateFields({ variant_summary: v })}
+                readOnly={!isCurrentUser}
+               />
+              <EditableTextBlock
+                title={t("components.alteration-card.labels.effect-description")}
+                value={displayData.effect_description || ""}
+                onChange={(v) => this.updateFields({ effect_description: v })}
+                readOnly={!isCurrentUser}
+               />
+              <EditableTextBlock
+                title={t("components.alteration-card.labels.notes")}
+                value={displayData.notes || ""}
+                onChange={(v) => this.updateFields({ notes: v })}
+                readOnly={!isCurrentUser}
+               />
+            </div>
+
+            {hasMetrics ? (
+              <div className="metrics-block">
+                <Descriptions size="small" bordered column={1}>
+                  <Descriptions.Item label={t("components.alteration-card.labels.vaf")}>
+                    {vaf !== undefined ? <span className="monospace">{String(vaf)}</span> : unavailableMetric}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t("components.alteration-card.labels.multiplicity")}>
+                    {estimatedAlteredCopies !== undefined ? (
+                      <span className="monospace">{String(estimatedAlteredCopies)}</span>
+                    ) : (
+                      unavailableMetric
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t("components.alteration-card.labels.tumor-alt")}>
+                    {altCounts !== undefined ? <span className="monospace">{String(altCounts)}</span> : unavailableMetric}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t("components.alteration-card.labels.tumor-ref")}>
+                    {refCounts !== undefined ? <span className="monospace">{String(refCounts)}</span> : unavailableMetric}
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
             ) : null}
           </div>
-        </div>
 
-        <div className="variant-body">
-          <div className="variant-desc">
-            <EditableTextBlock
-              title={t("components.alteration-card.labels.gene-summary")}
-              value={local.geneSummary}
-              onChange={(v) => {
-                setLocal((s) => ({ ...s, geneSummary: v }));
-                updateFields({ gene_summary: v });
-              }}
-             />
-            <EditableTextBlock
-              title={t("components.alteration-card.labels.variant-summary")}
-              value={local.variantSummary}
-              onChange={(v) => {
-                setLocal((s) => ({ ...s, variantSummary: v }));
-                updateFields({ variant_summary: v });
-              }}
-             />
-            <EditableTextBlock
-              title={t("components.alteration-card.labels.effect-description")}
-              value={local.effectDescription}
-              onChange={(v) => {
-                setLocal((s) => ({ ...s, effectDescription: v }));
-                updateFields({ effect_description: v });
-              }}
-             />
-            <EditableTextBlock
-              title={t("components.alteration-card.labels.notes")}
-              value={local.notes}
-              onChange={(v) => {
-                setLocal((s) => ({ ...s, notes: v }));
-                updateFields({ notes: v });
-              }}
-             />
+
+          <div className="variant-footer">
+            <EditablePillsBlock
+              title={t("components.alteration-card.labels.therapeutics")}
+              list={toList(displayData.therapeutics)}
+              onChange={(arr) => this.updateFields({ therapeutics: arr })}
+              pillClass="therapeutic-tag"
+              readOnly={!isCurrentUser}
+            />
+
+            <EditablePillsBlock
+              title={t("components.alteration-card.labels.resistances")}
+              list={toList(displayData.resistances)}
+              onChange={(arr) => this.updateFields({ resistances: arr })}
+              pillClass="resistance-tag"
+              readOnly={!isCurrentUser}
+            />
+
           </div>
+        </Card>
 
-          {hasMetrics ? (
-            <div className="metrics-block">
-              <Descriptions size="small" bordered column={1}>
-                <Descriptions.Item label={t("components.alteration-card.labels.vaf")}>
-                  {vaf !== undefined ? <span className="monospace">{String(vaf)}</span> : unavailableMetric}
-                </Descriptions.Item>
-                <Descriptions.Item label={t("components.alteration-card.labels.multiplicity")}>
-                  {estimatedAlteredCopies !== undefined ? (
-                    <span className="monospace">{String(estimatedAlteredCopies)}</span>
-                  ) : (
-                    unavailableMetric
-                  )}
-                </Descriptions.Item>
-                <Descriptions.Item label={t("components.alteration-card.labels.tumor-alt")}>
-                  {altCounts !== undefined ? <span className="monospace">{String(altCounts)}</span> : unavailableMetric}
-                </Descriptions.Item>
-                <Descriptions.Item label={t("components.alteration-card.labels.tumor-ref")}>
-                  {refCounts !== undefined ? <span className="monospace">{String(refCounts)}</span> : unavailableMetric}
-                </Descriptions.Item>
-              </Descriptions>
-            </div>
-          ) : null}
-        </div>
-
-
-        <div className="variant-footer">
-          <EditablePillsBlock
-            title={t("components.alteration-card.labels.therapeutics")}
-            list={local.therapeutics}
-            onChange={(arr) => {
-              setLocal((s) => ({ ...s, therapeutics: arr }));
-              updateFields({ therapeutics: arr });
-            }}
-            pillClass="therapeutic-tag"
-          />
-
-          <EditablePillsBlock
-            title={t("components.alteration-card.labels.resistances")}
-            list={local.resistances}
-            onChange={(arr) => {
-              setLocal((s) => ({ ...s, resistances: arr }));
-              updateFields({ resistances: arr });
-            }}
-            pillClass="resistance-tag"
-          />
-
-        </div>
-      </Card>
-    </Wrapper>
-  );
+        <InterpretationVersionsSidepanel
+          tableData={allInterpretations}
+          title="Event Versions"
+          isOpen={showVersions}
+          onOpen={this.handleRefreshVersions}
+          onClose={this.handleCloseVersions}
+          onSelect={this.handleSelectInterpretation}
+          datasets={datasets}
+          additionalColumns={[
+            {
+              title: 'Case ID',
+              dataIndex: 'caseId',
+              key: 'caseId',
+              width: 100,
+            },
+            {
+              title: 'Gene',
+              dataIndex: 'gene',
+              key: 'gene',
+              width: 100,
+            },
+            {
+              title: 'Type',
+              dataIndex: 'variant_type',
+              key: 'variant_type',
+              width: 100,
+            },
+            {
+              title: 'Tier',
+              dataIndex: 'tier',
+              key: 'tier',
+              width: 80,
+              minWidth: 80,
+              render: (text, record) => {
+                const tier = record.data?.tier;
+                if (!tier) return '';
+                return (
+                  <Avatar
+                    size={20}
+                    style={{
+                      backgroundColor: tierColor(+tier) || "#6c757d",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {tier}
+                  </Avatar>
+                );
+              },
+              sorter: (a, b) => (a.data?.tier || 3) - (b.data?.tier || 3),
+            },
+            {
+              title: 'Variant',
+              dataIndex: 'variant',
+              key: 'variant',
+              width: 100,
+            },
+          ]}
+        />
+      </Wrapper>
+    );
+  }
 }
+
+const mapStateToProps = (state, ownProps) => ({
+  caseId: state?.CaseReport?.id,
+  interpretation: getInterpretationForAlteration(state, ownProps.record?.uid),
+  allInterpretations: getAllInterpretationsForGene(state, ownProps.record?.gene),
+  baseRecord: getBaseEvent(state, ownProps.record?.uid),
+  dataset: state?.Settings?.dataset,
+  datasets: state?.Datasets?.records || [],
+});
+
+export default connect(mapStateToProps)(withTranslation("common")(AlterationCard));
