@@ -5,6 +5,7 @@ import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
 import HistogramPlot from "../../components/histogramPlot";
+import KonvaScatter from "../../components/konvaScatter";
 
 const margins = {
   gapX: 34,
@@ -80,6 +81,14 @@ const getValue = (record, path) => {
 
 class AggregationsVisualization extends Component {
   plotContainer = null;
+  cachedConfig = null;
+  cachedConfigKey = null;
+  
+  // Debug tracers
+  static instanceCount = 0;
+  instanceId = ++AggregationsVisualization.instanceCount;
+  renderCount = 0;
+  getPlotConfigCount = 0;
 
   state = {
     xVariable: numericColumns[0].dataIndex,
@@ -94,6 +103,15 @@ class AggregationsVisualization extends Component {
     computingAlterations: false,
     selectedPairs: [],
   };
+
+  scatterXAccessor = (d) => getValue(d, this.state.xVariable);
+  scatterYAccessor = (d) => getValue(d, this.state.yVariable);
+  scatterIdAccessor = (d) => d.pair;
+  scatterTooltipAccessor = (d) => [
+    { label: "Case", value: d.pair },
+    { label: getColumnLabel(this.state.xVariable), value: d3.format(",.2f")(getValue(d, this.state.xVariable)) },
+    { label: getColumnLabel(this.state.yVariable), value: d3.format(",.2f")(getValue(d, this.state.yVariable)) },
+  ];
 
   componentDidMount() {
     this.renderAxes();
@@ -185,11 +203,24 @@ class AggregationsVisualization extends Component {
   }
 
   getPlotConfiguration() {
+    this.getPlotConfigCount++;
     const { filteredRecords = [] } = this.props;
     const { xVariable, yVariable, colorVariable } = this.state;
     const containerWidth = this.currentWidth || 600;
     const height = 600;
     const plotType = this.getPlotType();
+
+    const cacheKey = `${xVariable}-${yVariable}-${colorVariable}-${containerWidth}-${filteredRecords.length}`;
+    if (this.cachedConfig && this.cachedConfigKey === cacheKey) {
+      console.log(`[AggViz #${this.instanceId}] getPlotConfiguration() #${this.getPlotConfigCount} - CACHE HIT`);
+      return this.cachedConfig;
+    }
+    
+    console.log(`[AggViz #${this.instanceId}] getPlotConfiguration() #${this.getPlotConfigCount} - CACHE MISS`, {
+      newKey: cacheKey,
+      oldKey: this.cachedConfigKey,
+      hasCachedConfig: !!this.cachedConfig,
+    });
 
     const stageWidth = containerWidth - 2 * margins.gapX;
     const stageHeight = height - 2 * margins.gapY - margins.gapYBottom;
@@ -237,11 +268,14 @@ class AggregationsVisualization extends Component {
       color = d3.scaleOrdinal(d3.schemeTableau10).domain(yCategories);
       legend = null;
 
-      return {
+      const config = {
         containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
         xScale, yScale, color, legend, scrollable,
         xVariable, yVariable, colorVariable, plotType, stackedData, yCategories: yCategories,
       };
+      this.cachedConfig = config;
+      this.cachedConfigKey = cacheKey;
+      return config;
     } else if (plotType === "density") {
       const { yVariable } = this.state;
       
@@ -258,7 +292,7 @@ class AggregationsVisualization extends Component {
       const stdDev = d3.deviation(values) || 1;
       const bandwidth = 1.06 * stdDev * Math.pow(values.length, -0.2);
       
-      return {
+      const config = {
         containerWidth, 
         width: panelWidth + 2 * margins.gapX, 
         height, 
@@ -274,6 +308,9 @@ class AggregationsVisualization extends Component {
         bandwidth,
         format: ",.2f",
       };
+      this.cachedConfig = config;
+      this.cachedConfigKey = cacheKey;
+      return config;
     } else if (plotType === "categorical-scatter") {
       const xType = getColumnType(xVariable);
       const catVar = xType === "categorical" ? xVariable : yVariable;
@@ -331,11 +368,14 @@ class AggregationsVisualization extends Component {
           .range([0, panelWidth]);
       }
 
-      return {
+      const config = {
         containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
         xScale, yScale, plotType, categoryData,
         catVar, numVar, xVariable, yVariable,
       };
+      this.cachedConfig = config;
+      this.cachedConfigKey = cacheKey;
+      return config;
     } else {
       const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
       const yValues = filteredRecords.map((d) => getValue(d, yVariable)).filter((v) => v != null && !isNaN(v));
@@ -350,11 +390,14 @@ class AggregationsVisualization extends Component {
         .range([panelHeight, 0])
         .clamp(true);
 
-      return {
+      const config = {
         containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
         xScale, yScale, scrollable,
         xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, plotType,
       };
+      this.cachedConfig = config;
+      this.cachedConfigKey = cacheKey;
+      return config;
     }
   }
 
@@ -573,34 +616,36 @@ class AggregationsVisualization extends Component {
       .filter(Boolean);
   }
 
-  renderScatterPlot(config) {
+  renderScatterPlotOverlay(config) {
     const { filteredRecords = [] } = this.props;
-    const { xScale, yScale, xVariable, yVariable } = config;
+    const { xScale, yScale, panelWidth, panelHeight } = config;
 
-    return filteredRecords.map((d, i) => {
-      const xVal = getValue(d, xVariable);
-      const yVal = getValue(d, yVariable);
-
-      if (xVal == null || yVal == null || isNaN(xVal) || isNaN(yVal)) {
-        return null;
-      }
-
-      return (
-        <circle
-          key={d.pair || i}
-          cx={xScale(xVal)}
-          cy={yScale(yVal)}
-          r={5}
-          fill="#1890ff"
-          stroke="white"
-          strokeWidth={0.5}
-          opacity={0.8}
-          onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
-          onMouseOut={this.handleMouseOut}
-          style={{ cursor: "pointer" }}
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: margins.gapY + margins.gapLegend,
+          left: margins.gapX,
+          width: panelWidth,
+          height: panelHeight,
+          pointerEvents: "auto",
+        }}
+      >
+        <KonvaScatter
+          data={filteredRecords}
+          width={panelWidth}
+          height={panelHeight}
+          xAccessor={this.scatterXAccessor}
+          yAccessor={this.scatterYAccessor}
+          xScale={xScale}
+          yScale={yScale}
+          idAccessor={this.scatterIdAccessor}
+          tooltipAccessor={this.scatterTooltipAccessor}
+          radiusAccessor={5}
+          opacityAccessor={0.8}
         />
-      );
-    });
+      </div>
+    );
   }
 
   renderCategoricalScatter(config) {
@@ -731,6 +776,9 @@ class AggregationsVisualization extends Component {
   }
 
   render() {
+    this.renderCount++;
+    console.log(`[AggViz #${this.instanceId}] render() call #${this.renderCount}`);
+    
     const { tooltip, computingAlterations } = this.state;
     const plotType = this.getPlotType();
 
@@ -738,6 +786,7 @@ class AggregationsVisualization extends Component {
       <div className="aggregation-visualization-container">
         <ContainerDimensions>
           {({ width: containerWidth }) => {
+            console.log(`[AggViz #${this.instanceId}] ContainerDimensions callback, width=${containerWidth}`);
             this.currentWidth = containerWidth;
             const config = this.getPlotConfiguration();
             const { width, height, panelWidth, panelHeight, legend, colorCategories, scrollable } = config;
@@ -758,6 +807,7 @@ class AggregationsVisualization extends Component {
                   </div>
 
                 <div style={{ 
+                  position: "relative",
                   overflow: "auto",
                   maxWidth: containerWidth,
                   maxHeight: 700,
@@ -767,6 +817,7 @@ class AggregationsVisualization extends Component {
                     height={height}
                     className="plot-container"
                     ref={(elem) => (this.plotContainer = elem)}
+                    style={{ display: "block" }}
                   >
                     <g transform={`translate(${margins.gapX}, ${margins.gapY + margins.gapLegend})`}>
                       {plotType !== "density" && (
@@ -779,7 +830,6 @@ class AggregationsVisualization extends Component {
                         />
                       )}
 
-                      {plotType === "scatter" && this.renderScatterPlot(config)}
                       {plotType === "categorical-scatter" && this.renderCategoricalScatter(config)}
                       {plotType === "stacked-bar" && this.renderStackedBar(config)}
                       {plotType === "density" && this.renderDensityPlot(config)}
@@ -791,7 +841,7 @@ class AggregationsVisualization extends Component {
                         </>
                       )}
 
-                      {tooltip.visible && (
+                      {tooltip.visible && plotType !== "scatter" && (
                         <g transform={`translate(${tooltip.x}, ${tooltip.y})`} pointerEvents="none">
                           <rect
                             x={0}
@@ -814,6 +864,7 @@ class AggregationsVisualization extends Component {
                       )}
                     </g>
                   </svg>
+                  {plotType === "scatter" && this.renderScatterPlotOverlay(config)}
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>

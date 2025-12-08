@@ -19,24 +19,53 @@ class KonvaScatter extends Component {
   containerRef = null;
   stage = null;
   circlesLayer = null;
-  tooltipData = null;
-
-  state = {
-    tooltip: {
-      visible: false,
-      x: 0,
-      y: 0,
-      content: [],
-    },
-  };
+  tooltipLayer = null;
+  tooltipGroup = null;
+  
+  // Debug tracers
+  static instanceCount = 0;
+  instanceId = ++KonvaScatter.instanceCount;
+  renderCount = 0;
+  renderPointsCount = 0;
 
   componentDidMount() {
+    console.log(`[KonvaScatter #${this.instanceId}] componentDidMount`);
     this.initializeStage();
     this.renderPoints();
   }
 
+  shouldComponentUpdate(nextProps) {
+    // Tooltip is now handled entirely in Konva - no React state for it
+    // Only re-render for meaningful prop changes
+    const { width, height, data, selectedId, selectedIds } = this.props;
+    if (width !== nextProps.width || height !== nextProps.height) return true;
+    if (data !== nextProps.data) return true;
+    if (selectedId !== nextProps.selectedId) return true;
+    if (selectedIds !== nextProps.selectedIds) return true;
+    if (this.scalesChanged(this.props.xScale, nextProps.xScale)) return true;
+    if (this.scalesChanged(this.props.yScale, nextProps.yScale)) return true;
+    
+    console.log(`[KonvaScatter #${this.instanceId}] shouldComponentUpdate - BLOCKED (no meaningful changes)`);
+    return false;
+  }
+
   componentDidUpdate(prevProps) {
     const { width, height, data, xScale, yScale, selectedId, selectedIds } = this.props;
+
+    const reasons = [];
+    if (width !== prevProps.width) reasons.push(`width: ${prevProps.width} -> ${width}`);
+    if (height !== prevProps.height) reasons.push(`height: ${prevProps.height} -> ${height}`);
+    if (data !== prevProps.data) reasons.push(`data: ref changed (${prevProps.data?.length} -> ${data?.length})`);
+    if (selectedId !== prevProps.selectedId) reasons.push(`selectedId`);
+    if (selectedIds !== prevProps.selectedIds) reasons.push(`selectedIds`);
+    
+    const scalesChanged = this.scalesChanged(prevProps.xScale, xScale) || 
+                          this.scalesChanged(prevProps.yScale, yScale);
+    if (scalesChanged) reasons.push(`scales changed`);
+
+    if (reasons.length > 0) {
+      console.log(`[KonvaScatter #${this.instanceId}] componentDidUpdate - props changed:`, reasons.join(', '));
+    }
 
     if (width !== prevProps.width || height !== prevProps.height) {
       this.handleResize();
@@ -44,13 +73,31 @@ class KonvaScatter extends Component {
 
     if (
       data !== prevProps.data ||
-      xScale !== prevProps.xScale ||
-      yScale !== prevProps.yScale ||
+      scalesChanged ||
       selectedId !== prevProps.selectedId ||
       selectedIds !== prevProps.selectedIds
     ) {
       this.renderPoints();
     }
+  }
+
+  scalesChanged(prevScale, nextScale) {
+    if (prevScale === nextScale) return false;
+    if (!prevScale || !nextScale) return true;
+    
+    const prevDomain = prevScale.domain?.();
+    const nextDomain = nextScale.domain?.();
+    const prevRange = prevScale.range?.();
+    const nextRange = nextScale.range?.();
+    
+    if (!prevDomain || !nextDomain || !prevRange || !nextRange) return true;
+    
+    return (
+      prevDomain.length !== nextDomain.length ||
+      prevRange.length !== nextRange.length ||
+      prevDomain.some((v, i) => v !== nextDomain[i]) ||
+      prevRange.some((v, i) => v !== nextRange[i])
+    );
   }
 
   componentWillUnmount() {
@@ -74,9 +121,36 @@ class KonvaScatter extends Component {
     this.circlesLayer = new Konva.Layer();
     this.stage.add(this.circlesLayer);
 
-    this.stage.on("mouseover mousemove", this.handleStageMouseOver);
+    // Tooltip layer with listening: false for performance
+    this.tooltipLayer = new Konva.Layer({ listening: false });
+    this.stage.add(this.tooltipLayer);
+    this.initializeTooltip();
+
+    this.stage.on("mouseover", this.handleStageMouseOver);
     this.stage.on("mouseout", this.handleStageMouseOut);
+    this.stage.on("mousemove", this.handleStageMouseMove);
+    this.stage.on("mouseleave", this.handleStageMouseLeave);
     this.stage.on("click", this.handleStageClick);
+  }
+
+  initializeTooltip() {
+    this.tooltipGroup = new Konva.Group({ visible: false });
+    
+    this.tooltipRect = new Konva.Rect({
+      fill: "rgba(97, 97, 97, 0.9)",
+      cornerRadius: 5,
+    });
+    
+    this.tooltipText = new Konva.Text({
+      fill: "#fff",
+      fontSize: 12,
+      padding: 8,
+      lineHeight: 1.4,
+    });
+    
+    this.tooltipGroup.add(this.tooltipRect);
+    this.tooltipGroup.add(this.tooltipText);
+    this.tooltipLayer.add(this.tooltipGroup);
   }
 
   handleResize() {
@@ -93,7 +167,7 @@ class KonvaScatter extends Component {
   }
 
   handleStageMouseOver = (evt) => {
-    const { disableTooltip, onPointHover, tooltipAccessor } = this.props;
+    const { disableTooltip, onPointHover, tooltipAccessor, width } = this.props;
     const node = evt.target;
 
     if (node === this.stage || !node.getAttr) return;
@@ -101,17 +175,11 @@ class KonvaScatter extends Component {
     const dataPoint = node.getAttr("dataPoint");
     if (!dataPoint) return;
 
-    node.setAttr("prevStrokeWidth", node.strokeWidth());
-    node.setAttr("prevStroke", node.stroke());
-    node.strokeWidth(this.props.highlightStrokeWidth);
-    node.stroke(this.props.highlightStroke);
-    this.circlesLayer.batchDraw();
-
     if (onPointHover) {
       onPointHover(dataPoint);
     }
 
-    if (!disableTooltip) {
+    if (!disableTooltip && this.tooltipGroup) {
       const mousePos = this.stage.getPointerPosition();
       const getTooltipContent = tooltipAccessor
         ? normalizeAccessor(tooltipAccessor)
@@ -121,41 +189,61 @@ class KonvaScatter extends Component {
               .slice(0, 8)
               .map((k) => ({ label: k, value: d[k] }));
 
-      this.setState({
-        tooltip: {
-          visible: true,
-          x: mousePos.x + 10,
-          y: mousePos.y + 10,
-          content: getTooltipContent(dataPoint),
-        },
-      });
+      const content = getTooltipContent(dataPoint);
+      const textContent = content
+        .map((item) => `${item.label}: ${String(item.value)}`)
+        .join("\n");
+      
+      this.tooltipText.text(textContent);
+      const textWidth = this.tooltipText.width();
+      const textHeight = this.tooltipText.height();
+      this.tooltipRect.size({ width: textWidth, height: textHeight });
+      
+      this.updateTooltipPosition(mousePos, width);
+      this.tooltipGroup.visible(true);
+      this.tooltipLayer.batchDraw();
+    }
+  };
+
+  handleStageMouseMove = (evt) => {
+    const { disableTooltip, width } = this.props;
+    
+    if (!disableTooltip && this.tooltipGroup && this.tooltipGroup.visible()) {
+      const mousePos = this.stage.getPointerPosition();
+      this.updateTooltipPosition(mousePos, width);
+      this.tooltipLayer.batchDraw();
     }
   };
 
   handleStageMouseOut = (evt) => {
-    const { onPointHoverEnd } = this.props;
     const node = evt.target;
-
-    if (node === this.stage || !node.getAttr) return;
-
-    const prevStrokeWidth = node.getAttr("prevStrokeWidth");
-    const prevStroke = node.getAttr("prevStroke");
-
-    if (prevStrokeWidth !== undefined) {
-      node.strokeWidth(prevStrokeWidth);
+    if (node === this.stage) return;
+    
+    if (this.tooltipGroup) {
+      this.tooltipGroup.visible(false);
+      this.tooltipLayer.batchDraw();
     }
-    if (prevStroke !== undefined) {
-      node.stroke(prevStroke);
-    }
-    this.circlesLayer.batchDraw();
+  };
 
+  updateTooltipPosition(mousePos, width) {
+    const tooltipWidth = this.tooltipRect.width();
+    const xPos = mousePos.x + 10 + tooltipWidth > width 
+      ? mousePos.x - tooltipWidth - 10 
+      : mousePos.x + 10;
+    this.tooltipGroup.position({ x: xPos, y: mousePos.y + 10 });
+  }
+
+  handleStageMouseLeave = () => {
+    const { onPointHoverEnd } = this.props;
+    
     if (onPointHoverEnd) {
       onPointHoverEnd();
     }
-
-    this.setState({
-      tooltip: { visible: false, x: 0, y: 0, content: [] },
-    });
+    
+    if (this.tooltipGroup) {
+      this.tooltipGroup.visible(false);
+      this.tooltipLayer.batchDraw();
+    }
   };
 
   handleStageClick = (evt) => {
@@ -196,14 +284,20 @@ class KonvaScatter extends Component {
   }
 
   renderPoints() {
-    if (!this.circlesLayer) return;
+    this.renderPointsCount++;
+    const startTime = performance.now();
+    console.log(`[KonvaScatter #${this.instanceId}] renderPoints() call #${this.renderPointsCount}`);
+    
+    if (!this.circlesLayer) {
+      console.log(`[KonvaScatter #${this.instanceId}] renderPoints() aborted - no circlesLayer`);
+      return;
+    }
 
     const {
       data,
       colorAccessor,
       colorScale,
       radiusAccessor,
-      opacityAccessor,
       shapeAccessor,
       idAccessor,
       selectedId,
@@ -211,10 +305,11 @@ class KonvaScatter extends Component {
       highlightStroke,
       highlightStrokeWidth,
       zOrderComparator,
-      hitStrokeWidth,
     } = this.props;
 
+    const destroyStart = performance.now();
     this.circlesLayer.destroyChildren();
+    const destroyTime = performance.now() - destroyStart;
 
     if (!data || data.length === 0) {
       this.circlesLayer.batchDraw();
@@ -230,7 +325,6 @@ class KonvaScatter extends Component {
 
     const getColor = colorAccessor ? normalizeAccessor(colorAccessor) : () => "#1890ff";
     const getRadius = normalizeNumericAccessor(radiusAccessor, 4);
-    const getOpacity = normalizeNumericAccessor(opacityAccessor, 0.8);
     const getShape = shapeAccessor ? normalizeAccessor(shapeAccessor) : () => "circle";
     const getId = idAccessor ? normalizeAccessor(idAccessor) : (d, i) => i;
 
@@ -238,6 +332,7 @@ class KonvaScatter extends Component {
       selectedIds || (selectedId !== undefined && selectedId !== null ? [selectedId] : [])
     );
 
+    const dataFilterStart = performance.now();
     let sortedData = data
       .map((d, i) => {
         const xVal = getX(d);
@@ -252,7 +347,9 @@ class KonvaScatter extends Component {
     if (zOrderComparator) {
       sortedData = sortedData.sort(zOrderComparator);
     }
+    const dataFilterTime = performance.now() - dataFilterStart;
 
+    const shapeCreateStart = performance.now();
     sortedData.forEach((d) => {
       const xVal = getX(d);
       const yVal = getY(d);
@@ -264,13 +361,9 @@ class KonvaScatter extends Component {
       const colorVal = getColor(d);
       const fill = colorScale ? colorScale(colorVal) : colorVal;
       const radius = getRadius(d);
-      const opacity = getOpacity(d);
       const shapeType = getShape(d);
       const pointId = getId(d, d._originalIndex);
       const isSelected = selectedIdsSet.has(pointId);
-
-      const stroke = isSelected ? highlightStroke : "white";
-      const strokeWidth = isSelected ? highlightStrokeWidth : 0.5;
 
       let shape;
 
@@ -282,10 +375,6 @@ class KonvaScatter extends Component {
           innerRadius: radius * 0.5,
           outerRadius: radius * 1.5,
           fill,
-          stroke,
-          strokeWidth,
-          opacity,
-          hitStrokeWidth: hitStrokeWidth || 8,
         });
       } else if (shapeType === "square") {
         const size = radius * 2;
@@ -295,10 +384,6 @@ class KonvaScatter extends Component {
           width: size,
           height: size,
           fill,
-          stroke,
-          strokeWidth,
-          opacity,
-          hitStrokeWidth: hitStrokeWidth || 8,
         });
       } else {
         shape = new Konva.Circle({
@@ -306,11 +391,12 @@ class KonvaScatter extends Component {
           y: screenY,
           radius,
           fill,
-          stroke,
-          strokeWidth,
-          opacity,
-          hitStrokeWidth: hitStrokeWidth || 8,
         });
+      }
+
+      if (isSelected) {
+        shape.stroke(highlightStroke);
+        shape.strokeWidth(highlightStrokeWidth);
       }
 
       shape.setAttr("dataPoint", d);
@@ -318,48 +404,28 @@ class KonvaScatter extends Component {
 
       this.circlesLayer.add(shape);
     });
+    const shapeCreateTime = performance.now() - shapeCreateStart;
 
+    const batchDrawStart = performance.now();
     this.circlesLayer.batchDraw();
-  }
-
-  renderTooltip() {
-    const { tooltip } = this.state;
-    const { width } = this.props;
-
-    if (!tooltip.visible || tooltip.content.length === 0) {
-      return null;
-    }
-
-    const tooltipX = tooltip.x + 150 > width ? tooltip.x - 160 : tooltip.x;
-
-    return (
-      <div
-        style={{
-          position: "absolute",
-          left: tooltipX,
-          top: tooltip.y,
-          background: "rgba(97, 97, 97, 0.9)",
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: 5,
-          fontSize: 12,
-          pointerEvents: "none",
-          zIndex: 1000,
-          maxWidth: 200,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {tooltip.content.map((item, i) => (
-          <div key={i}>
-            <strong>{item.label}</strong>: {String(item.value)}
-          </div>
-        ))}
-      </div>
-    );
+    const batchDrawTime = performance.now() - batchDrawStart;
+    
+    const totalTime = performance.now() - startTime;
+    console.log(`[KonvaScatter #${this.instanceId}] renderPoints() complete:`, {
+      points: sortedData.length,
+      destroyTime: destroyTime.toFixed(1) + 'ms',
+      dataFilterTime: dataFilterTime.toFixed(1) + 'ms',
+      shapeCreateTime: shapeCreateTime.toFixed(1) + 'ms',
+      batchDrawTime: batchDrawTime.toFixed(1) + 'ms',
+      totalTime: totalTime.toFixed(1) + 'ms',
+    });
   }
 
   render() {
-    const { width, height, disableTooltip } = this.props;
+    this.renderCount++;
+    console.log(`[KonvaScatter #${this.instanceId}] render() call #${this.renderCount}`);
+    
+    const { width, height } = this.props;
 
     return (
       <div style={{ position: "relative", width, height }}>
@@ -367,7 +433,6 @@ class KonvaScatter extends Component {
           ref={(ref) => (this.containerRef = ref)}
           style={{ width, height }}
         />
-        {!disableTooltip && this.renderTooltip()}
       </div>
     );
   }
@@ -386,7 +451,6 @@ KonvaScatter.propTypes = {
   colorAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
   colorScale: PropTypes.func,
   radiusAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.number]),
-  opacityAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.number]),
   shapeAccessor: PropTypes.func,
 
   selectedId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -404,16 +468,13 @@ KonvaScatter.propTypes = {
   zOrderComparator: PropTypes.func,
 
   disableTooltip: PropTypes.bool,
-  hitStrokeWidth: PropTypes.number,
 };
 
 KonvaScatter.defaultProps = {
   radiusAccessor: 4,
-  opacityAccessor: 0.8,
   highlightStroke: "#ff7f0e",
   highlightStrokeWidth: 3,
   disableTooltip: false,
-  hitStrokeWidth: 8,
 };
 
 export default KonvaScatter;
