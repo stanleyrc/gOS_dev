@@ -162,7 +162,7 @@ class AggregationsPanel extends Component {
                   description={t("containers.list-view.aggregations.no_data")}
                 />
               ) : (
-                <AggregationsTable filteredRecords={filteredRecords} />
+                <AggregationsTable filteredRecords={filteredRecords} handleCardClick={handleCardClick} />
               ),
             },
             {

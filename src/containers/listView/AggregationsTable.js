@@ -167,6 +167,13 @@ class AggregationsTable extends PureComponent {
     document.body.removeChild(link);
   };
 
+  handlePairClick = (event, pair) => {
+    const { handleCardClick } = this.props;
+    if (handleCardClick && pair) {
+      handleCardClick(event, pair);
+    }
+  };
+
   buildColumns = () => {
     const { t } = this.props;
     const { columnStats } = this.state;
@@ -178,6 +185,7 @@ class AggregationsTable extends PureComponent {
         title: t("containers.list-view.aggregations.pair_column") || "Case ID",
         dataIndex: "pair",
         type: "string",
+        renderLink: true,
       },
       {
         key: "disease",
@@ -348,6 +356,22 @@ class AggregationsTable extends PureComponent {
              return d3.format(",")(value);
            }
            const formattedValue = String(value);
+           
+           // Make pair column a clickable link
+           if (col.renderLink) {
+             return (
+               <a
+                 href={`/?report=${value}`}
+                 onClick={(e) => {
+                   e.preventDefault();
+                   this.handlePairClick(e, value);
+                 }}
+                 style={{ color: "#1890ff", cursor: "pointer" }}
+               >
+                 {formattedValue}
+               </a>
+             );
+           }
            
            // Make summary cells horizontally scrollable
            if (isSummary) {
