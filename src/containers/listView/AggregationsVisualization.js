@@ -3,7 +3,8 @@ import { withTranslation } from "react-i18next";
 import { Select, Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
-import { Legend, measureText } from "../../helpers/utility";
+import { measureText } from "../../helpers/utility";
+import HistogramPlot from "../../components/histogramPlot";
 
 const margins = {
   gapX: 34,
@@ -56,7 +57,9 @@ const categoricalColumns = [
   { key: "alteration_type", dataIndex: "alteration_type", label: "Alteration Type", type: "categorical" },
 ];
 
-const allColumns = [...numericColumns, ...categoricalColumns];
+const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair", type: "pair" };
+
+const allColumns = [...numericColumns, ...categoricalColumns, pairColumn];
 
 const getColumnType = (dataIndex) => {
   const col = allColumns.find((c) => c.dataIndex === dataIndex);
@@ -101,6 +104,11 @@ class AggregationsVisualization extends Component {
 
   getPlotType() {
     const { xVariable, yVariable } = this.state;
+    
+    if (xVariable === "pair") {
+      return "density";
+    }
+    
     const xType = getColumnType(xVariable);
     const yType = getColumnType(yVariable);
     
@@ -115,6 +123,9 @@ class AggregationsVisualization extends Component {
   renderAxes() {
     if (!this.plotContainer) return;
     const plotType = this.getPlotType();
+    
+    if (plotType === "density") return;
+    
     const config = this.getPlotConfiguration();
     const { xScale, yScale } = config;
 
@@ -229,6 +240,38 @@ class AggregationsVisualization extends Component {
         containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight, 
         xScale, yScale, color, legend, scrollable,
         xVariable, yVariable, colorVariable, plotType, stackedData, yCategories: yCategories,
+      };
+    } else if (plotType === "density") {
+      const { yVariable } = this.state;
+      
+      const values = filteredRecords
+        .map((d) => getValue(d, yVariable))
+        .filter((v) => v != null && !isNaN(v));
+      
+      const sortedValues = [...values].sort(d3.ascending);
+      const q1 = d3.quantile(sortedValues, 0.25) || 0;
+      const q3 = d3.quantile(sortedValues, 0.75) || 1;
+      const q99 = d3.quantile(sortedValues, 0.99) || 1;
+      const range = [d3.min(values) || 0, q99];
+      
+      const stdDev = d3.deviation(values) || 1;
+      const bandwidth = 1.06 * stdDev * Math.pow(values.length, -0.2);
+      
+      return {
+        containerWidth, 
+        width: panelWidth + 2 * margins.gapX, 
+        height, 
+        panelWidth, 
+        panelHeight,
+        plotType,
+        densityData: values,
+        yVariable,
+        q1,
+        q3,
+        q99,
+        range,
+        bandwidth,
+        format: ",.2f",
       };
     } else if (plotType === "categorical-scatter") {
       const xType = getColumnType(xVariable);
@@ -402,13 +445,23 @@ class AggregationsVisualization extends Component {
   };
 
   handleVariableChange = (variable, value) => {
+    if (variable === "xVariable" && value === "pair") {
+      const currentYType = getColumnType(this.state.yVariable);
+      if (currentYType === "categorical" || currentYType === "pair") {
+        this.setState({ 
+          xVariable: value, 
+          yVariable: numericColumns[0].dataIndex 
+        });
+        return;
+      }
+    }
+    
     const isAlterationTypeChange = 
       (variable === "xVariable" && value === "alteration_type") ||
       (variable === "yVariable" && value === "alteration_type");
     
     if (isAlterationTypeChange) {
       this.setState({ [variable]: value, computingAlterations: true });
-      // Simulate async processing to avoid UI lock
       setTimeout(() => {
         this.setState({ computingAlterations: false });
       }, 0);
@@ -418,7 +471,12 @@ class AggregationsVisualization extends Component {
   };
 
   getColumnsForVariable(variable) {
+    const { xVariable } = this.state;
+    
     if (variable === "yVariable") {
+      if (xVariable === "pair") {
+        return numericColumns;
+      }
       return allColumns;
     }
     if (variable === "colorVariable") {
@@ -429,7 +487,11 @@ class AggregationsVisualization extends Component {
 
   renderDropdown(variable, style = {}, columns = null) {
     const value = this.state[variable];
+    const { xVariable } = this.state;
     const availableColumns = columns || this.getColumnsForVariable(variable);
+    
+    const isPairMode = xVariable === "pair";
+    const isYDropdown = variable === "yVariable";
 
     return (
       <Select
@@ -439,11 +501,19 @@ class AggregationsVisualization extends Component {
         style={{ width: 140, ...style }}
         dropdownMatchSelectWidth={false}
       >
-        {availableColumns.map((col) => (
-          <Select.Option key={col.dataIndex} value={col.dataIndex}>
-            {col.label}
-          </Select.Option>
-        ))}
+        {availableColumns.map((col) => {
+          const isDisabled = isPairMode && isYDropdown && col.type === "categorical";
+          return (
+            <Select.Option 
+              key={col.dataIndex} 
+              value={col.dataIndex}
+              disabled={isDisabled}
+              style={isDisabled ? { color: '#bfbfbf' } : {}}
+            >
+              {col.label}
+            </Select.Option>
+          );
+        })}
       </Select>
     );
   }
@@ -551,6 +621,35 @@ class AggregationsVisualization extends Component {
     });
   }
 
+  renderDensityPlot(config) {
+    const { panelWidth, panelHeight, densityData, q1, q3, q99, range, bandwidth, format } = config;
+    
+    if (!densityData || densityData.length === 0) {
+      return (
+        <text x={panelWidth / 2} y={panelHeight / 2} textAnchor="middle" fill="#999">
+          No data available
+        </text>
+      );
+    }
+    
+    return (
+      <foreignObject x={0} y={0} width={panelWidth} height={panelHeight}>
+        <HistogramPlot
+          width={panelWidth}
+          height={panelHeight}
+          data={densityData}
+          q1={q1}
+          q3={q3}
+          q99={q99}
+          range={range}
+          bandwidth={bandwidth}
+          format={format}
+          scaleX="linear"
+        />
+      </foreignObject>
+    );
+  }
+
   renderStackedBar(config) {
     const { xScale, yScale, color, stackedData } = config;
 
@@ -609,20 +708,27 @@ class AggregationsVisualization extends Component {
                     ref={(elem) => (this.plotContainer = elem)}
                   >
                     <g transform={`translate(${margins.gapX}, ${margins.gapY + margins.gapLegend})`}>
-                      <rect
-                        width={panelWidth}
-                        height={panelHeight}
-                        fill="transparent"
-                        stroke="lightgray"
-                        strokeWidth={0.33}
-                      />
+                      {plotType !== "density" && (
+                        <rect
+                          width={panelWidth}
+                          height={panelHeight}
+                          fill="transparent"
+                          stroke="lightgray"
+                          strokeWidth={0.33}
+                        />
+                      )}
 
                       {plotType === "scatter" && this.renderScatterPlot(config)}
                       {plotType === "categorical-scatter" && this.renderCategoricalScatter(config)}
                       {plotType === "stacked-bar" && this.renderStackedBar(config)}
+                      {plotType === "density" && this.renderDensityPlot(config)}
 
-                      <g className="y-axis-container" />
-                      <g className="x-axis-container" transform={`translate(0, ${panelHeight})`} />
+                      {plotType !== "density" && (
+                        <>
+                          <g className="y-axis-container" />
+                          <g className="x-axis-container" transform={`translate(0, ${panelHeight})`} />
+                        </>
+                      )}
 
                       {tooltip.visible && (
                         <g transform={`translate(${tooltip.x}, ${tooltip.y})`} pointerEvents="none">
