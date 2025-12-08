@@ -83,12 +83,6 @@ class AggregationsVisualization extends Component {
   plotContainer = null;
   cachedConfig = null;
   cachedConfigKey = null;
-  
-  // Debug tracers
-  static instanceCount = 0;
-  instanceId = ++AggregationsVisualization.instanceCount;
-  renderCount = 0;
-  getPlotConfigCount = 0;
 
   state = {
     xVariable: numericColumns[0].dataIndex,
@@ -203,7 +197,6 @@ class AggregationsVisualization extends Component {
   }
 
   getPlotConfiguration() {
-    this.getPlotConfigCount++;
     const { filteredRecords = [] } = this.props;
     const { xVariable, yVariable, colorVariable } = this.state;
     const containerWidth = this.currentWidth || 600;
@@ -212,15 +205,8 @@ class AggregationsVisualization extends Component {
 
     const cacheKey = `${xVariable}-${yVariable}-${colorVariable}-${containerWidth}-${filteredRecords.length}`;
     if (this.cachedConfig && this.cachedConfigKey === cacheKey) {
-      console.log(`[AggViz #${this.instanceId}] getPlotConfiguration() #${this.getPlotConfigCount} - CACHE HIT`);
       return this.cachedConfig;
     }
-    
-    console.log(`[AggViz #${this.instanceId}] getPlotConfiguration() #${this.getPlotConfigCount} - CACHE MISS`, {
-      newKey: cacheKey,
-      oldKey: this.cachedConfigKey,
-      hasCachedConfig: !!this.cachedConfig,
-    });
 
     const stageWidth = containerWidth - 2 * margins.gapX;
     const stageHeight = height - 2 * margins.gapY - margins.gapYBottom;
@@ -776,9 +762,6 @@ class AggregationsVisualization extends Component {
   }
 
   render() {
-    this.renderCount++;
-    console.log(`[AggViz #${this.instanceId}] render() call #${this.renderCount}`);
-    
     const { tooltip, computingAlterations } = this.state;
     const plotType = this.getPlotType();
 
@@ -786,7 +769,6 @@ class AggregationsVisualization extends Component {
       <div className="aggregation-visualization-container">
         <ContainerDimensions>
           {({ width: containerWidth }) => {
-            console.log(`[AggViz #${this.instanceId}] ContainerDimensions callback, width=${containerWidth}`);
             this.currentWidth = containerWidth;
             const config = this.getPlotConfiguration();
             const { width, height, panelWidth, panelHeight, legend, colorCategories, scrollable } = config;

@@ -21,15 +21,8 @@ class KonvaScatter extends Component {
   circlesLayer = null;
   tooltipLayer = null;
   tooltipGroup = null;
-  
-  // Debug tracers
-  static instanceCount = 0;
-  instanceId = ++KonvaScatter.instanceCount;
-  renderCount = 0;
-  renderPointsCount = 0;
 
   componentDidMount() {
-    console.log(`[KonvaScatter #${this.instanceId}] componentDidMount`);
     this.initializeStage();
     this.renderPoints();
   }
@@ -44,28 +37,14 @@ class KonvaScatter extends Component {
     if (selectedIds !== nextProps.selectedIds) return true;
     if (this.scalesChanged(this.props.xScale, nextProps.xScale)) return true;
     if (this.scalesChanged(this.props.yScale, nextProps.yScale)) return true;
-    
-    console.log(`[KonvaScatter #${this.instanceId}] shouldComponentUpdate - BLOCKED (no meaningful changes)`);
     return false;
   }
 
   componentDidUpdate(prevProps) {
     const { width, height, data, xScale, yScale, selectedId, selectedIds } = this.props;
 
-    const reasons = [];
-    if (width !== prevProps.width) reasons.push(`width: ${prevProps.width} -> ${width}`);
-    if (height !== prevProps.height) reasons.push(`height: ${prevProps.height} -> ${height}`);
-    if (data !== prevProps.data) reasons.push(`data: ref changed (${prevProps.data?.length} -> ${data?.length})`);
-    if (selectedId !== prevProps.selectedId) reasons.push(`selectedId`);
-    if (selectedIds !== prevProps.selectedIds) reasons.push(`selectedIds`);
-    
     const scalesChanged = this.scalesChanged(prevProps.xScale, xScale) || 
                           this.scalesChanged(prevProps.yScale, yScale);
-    if (scalesChanged) reasons.push(`scales changed`);
-
-    if (reasons.length > 0) {
-      console.log(`[KonvaScatter #${this.instanceId}] componentDidUpdate - props changed:`, reasons.join(', '));
-    }
 
     if (width !== prevProps.width || height !== prevProps.height) {
       this.handleResize();
@@ -284,12 +263,7 @@ class KonvaScatter extends Component {
   }
 
   renderPoints() {
-    this.renderPointsCount++;
-    const startTime = performance.now();
-    console.log(`[KonvaScatter #${this.instanceId}] renderPoints() call #${this.renderPointsCount}`);
-    
     if (!this.circlesLayer) {
-      console.log(`[KonvaScatter #${this.instanceId}] renderPoints() aborted - no circlesLayer`);
       return;
     }
 
@@ -307,9 +281,7 @@ class KonvaScatter extends Component {
       zOrderComparator,
     } = this.props;
 
-    const destroyStart = performance.now();
     this.circlesLayer.destroyChildren();
-    const destroyTime = performance.now() - destroyStart;
 
     if (!data || data.length === 0) {
       this.circlesLayer.batchDraw();
@@ -332,7 +304,6 @@ class KonvaScatter extends Component {
       selectedIds || (selectedId !== undefined && selectedId !== null ? [selectedId] : [])
     );
 
-    const dataFilterStart = performance.now();
     let sortedData = data
       .map((d, i) => {
         const xVal = getX(d);
@@ -347,9 +318,7 @@ class KonvaScatter extends Component {
     if (zOrderComparator) {
       sortedData = sortedData.sort(zOrderComparator);
     }
-    const dataFilterTime = performance.now() - dataFilterStart;
 
-    const shapeCreateStart = performance.now();
     sortedData.forEach((d) => {
       const xVal = getX(d);
       const yVal = getY(d);
@@ -404,27 +373,11 @@ class KonvaScatter extends Component {
 
       this.circlesLayer.add(shape);
     });
-    const shapeCreateTime = performance.now() - shapeCreateStart;
 
-    const batchDrawStart = performance.now();
     this.circlesLayer.batchDraw();
-    const batchDrawTime = performance.now() - batchDrawStart;
-    
-    const totalTime = performance.now() - startTime;
-    console.log(`[KonvaScatter #${this.instanceId}] renderPoints() complete:`, {
-      points: sortedData.length,
-      destroyTime: destroyTime.toFixed(1) + 'ms',
-      dataFilterTime: dataFilterTime.toFixed(1) + 'ms',
-      shapeCreateTime: shapeCreateTime.toFixed(1) + 'ms',
-      batchDrawTime: batchDrawTime.toFixed(1) + 'ms',
-      totalTime: totalTime.toFixed(1) + 'ms',
-    });
   }
 
   render() {
-    this.renderCount++;
-    console.log(`[KonvaScatter #${this.instanceId}] render() call #${this.renderCount}`);
-    
     const { width, height } = this.props;
 
     return (
