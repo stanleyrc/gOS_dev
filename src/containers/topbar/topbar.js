@@ -19,6 +19,10 @@ const { searchCaseReports } = caseReportsActions;
 const { updateCaseReport, updateDataset } = settingsActions;
 
 class Topbar extends Component {
+  state = {
+    dropdownOpen: false,
+  };
+
   render() {
     const {
       t,
@@ -75,9 +79,10 @@ class Topbar extends Component {
                    optionFilterProp="children"
                    placeholder={t("topbar.browse-case-reports")}
                    searchValue={searchFilters.texts}
+                   onDropdownVisibleChange={(open) => this.setState({ dropdownOpen: open })}
                    onSearch={(texts) => {
                      const trimmedTexts = (texts || "").trim();
-                     if (trimmedTexts !== "" || searchFilters.texts === "") {
+                     if (this.state.dropdownOpen || trimmedTexts !== "") {
                        searchCaseReports({ ...searchFilters, texts: trimmedTexts });
                      }
                    }}
