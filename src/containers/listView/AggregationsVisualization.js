@@ -107,6 +107,14 @@ class AggregationsVisualization extends Component {
     { label: getColumnLabel(this.state.yVariable), value: d3.format(",.2f")(getValue(d, this.state.yVariable)) },
   ];
 
+  handlePointClick = (dataPoint) => {
+    const { handleCardClick } = this.props;
+    if (handleCardClick && dataPoint?.pair) {
+      const syntheticEvent = { stopPropagation: () => {}, metaKey: false };
+      handleCardClick(syntheticEvent, dataPoint.pair);
+    }
+  };
+
   componentDidMount() {
     this.renderAxes();
   }
@@ -629,6 +637,7 @@ class AggregationsVisualization extends Component {
           tooltipAccessor={this.scatterTooltipAccessor}
           radiusAccessor={5}
           opacityAccessor={0.8}
+          onPointClick={this.handlePointClick}
         />
       </div>
     );

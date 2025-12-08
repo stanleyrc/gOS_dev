@@ -133,7 +133,7 @@ class AggregationsPanel extends Component {
   };
 
   render() {
-    const { t } = this.props;
+    const { t, handleCardClick } = this.props;
     const { filteredRecords, loading } = this.state;
 
     return (
@@ -181,7 +181,7 @@ class AggregationsPanel extends Component {
                     />
                   )}
                   <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>
-                    <AggregationsVisualization filteredRecords={filteredRecords} />
+                    <AggregationsVisualization filteredRecords={filteredRecords} handleCardClick={handleCardClick} />
                   </div>
                 </div>
               ),
