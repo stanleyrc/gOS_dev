@@ -42,6 +42,17 @@ class HistogramPlot extends Component {
     };
   }
 
+  getMarkers() {
+    const { markValue, markers = [] } = this.props;
+    if (markers.length > 0) {
+      return markers;
+    }
+    if (markValue != null && markValue >= 0) {
+      return [{ value: markValue, label: this.props.markValueText, color: this.props.colorMarker }];
+    }
+    return [];
+  }
+
   componentDidMount() {
     const { showAxisY } = this.props;
     showAxisY && this.renderYAxis();
@@ -186,9 +197,6 @@ class HistogramPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      markValue,
-      markValueText,
-      colorMarker,
       q1,
       q3,
       density,
@@ -247,24 +255,29 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(density)}
                 />
-                {markValue >= 0 &&
-                  xScale(markValue) >= 0 &&
-                  xScale(markValue) <= panelWidth && (
+                {this.getMarkers().map((marker, idx) => {
+                  const markerX = xScale(marker.value);
+                  if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
+                    return null;
+                  }
+                  return (
                     <g
+                      key={`marker-${idx}`}
                       className="marker"
-                      transform={`translate(${[xScale(markValue), 0]})`}
+                      transform={`translate(${[markerX, 0]})`}
                     >
-                      <line y2={panelHeight} stroke="red" strokeWidth={3} />
+                      <line y2={panelHeight} stroke={marker.color || "red"} strokeWidth={3} />
                       <text
                         textAnchor={"middle"}
                         dy="-3"
-                        fill={colorMarker}
+                        fill={marker.color || "red"}
                         className="marker"
                       >
-                        {markValueText}
+                        {marker.label}
                       </text>
                     </g>
-                  )}
+                  );
+                })}
               </g>
               <g
                 className="axis--y y-axis-container"
@@ -325,11 +338,17 @@ HistogramPlot.propTypes = {
   height: PropTypes.number.isRequired,
   data: PropTypes.array,
   markValue: PropTypes.number,
+  markers: PropTypes.arrayOf(PropTypes.shape({
+    value: PropTypes.number.isRequired,
+    label: PropTypes.string,
+    color: PropTypes.string,
+  })),
 };
 HistogramPlot.defaultProps = {
   data: [],
   showAxisY: false,
   format: "0.3f",
+  markers: [],
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = () => ({});

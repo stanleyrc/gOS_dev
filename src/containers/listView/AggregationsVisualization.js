@@ -3,7 +3,7 @@ import { withTranslation } from "react-i18next";
 import { Select, Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
-import { measureText } from "../../helpers/utility";
+import { measureText, getColorMarker } from "../../helpers/utility";
 import HistogramPlot from "../../components/histogramPlot";
 
 const margins = {
@@ -57,7 +57,7 @@ const categoricalColumns = [
   { key: "alteration_type", dataIndex: "alteration_type", label: "Alteration Type", type: "categorical" },
 ];
 
-const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair", type: "pair" };
+const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair (Density Plot)", type: "pair" };
 
 const allColumns = [...numericColumns, ...categoricalColumns, pairColumn];
 
@@ -92,6 +92,7 @@ class AggregationsVisualization extends Component {
       text: [],
     },
     computingAlterations: false,
+    selectedPairs: [],
   };
 
   componentDidMount() {
@@ -518,7 +519,59 @@ class AggregationsVisualization extends Component {
     );
   }
 
+  renderPairSelector() {
+    const { filteredRecords = [] } = this.props;
+    const { selectedPairs } = this.state;
 
+    const pairOptions = filteredRecords.map((d) => ({
+      value: d.pair,
+      label: d.pair,
+    }));
+
+    return (
+      <Select
+        mode="multiple"
+        size="small"
+        placeholder="Select cases to highlight..."
+        value={selectedPairs}
+        onChange={(values) => this.setState({ selectedPairs: values })}
+        style={{ width: 300 }}
+        showSearch
+        optionFilterProp="label"
+        popupMatchSelectWidth={false}
+        maxTagCount={2}
+        maxTagPlaceholder={(omittedValues) => `+${omittedValues.length} more`}
+        allowClear
+      >
+        {pairOptions.map((opt) => (
+          <Select.Option key={opt.value} value={opt.value} label={opt.label}>
+            {opt.label}
+          </Select.Option>
+        ))}
+      </Select>
+    );
+  }
+
+  getMarkersForSelectedPairs(config) {
+    const { filteredRecords = [] } = this.props;
+    const { selectedPairs, yVariable } = this.state;
+    const { q1, q3, format } = config;
+
+    return selectedPairs
+      .map((pair) => {
+        const record = filteredRecords.find((d) => d.pair === pair);
+        if (!record) return null;
+        const value = getValue(record, yVariable);
+        if (value == null || isNaN(value)) return null;
+        const formattedValue = d3.format(format || ",.2f")(value);
+        return {
+          value,
+          label: `${pair}: ${formattedValue}`,
+          color: getColorMarker(value, q1, q3),
+        };
+      })
+      .filter(Boolean);
+  }
 
   renderScatterPlot(config) {
     const { filteredRecords = [] } = this.props;
@@ -631,6 +684,8 @@ class AggregationsVisualization extends Component {
         </text>
       );
     }
+
+    const markers = this.getMarkersForSelectedPairs(config);
     
     return (
       <foreignObject x={0} y={0} width={panelWidth} height={panelHeight}>
@@ -645,6 +700,7 @@ class AggregationsVisualization extends Component {
           bandwidth={bandwidth}
           format={format}
           scaleX="linear"
+          markers={markers}
         />
       </foreignObject>
     );
@@ -689,11 +745,16 @@ class AggregationsVisualization extends Component {
 
             return (
               <div style={{ position: "relative" }}>
-                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 4 }}>
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 4, gap: 16 }}>
                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {this.renderDropdown("yVariable")}
                       {computingAlterations && <Spin size="small" />}
                     </div>
+                    {plotType === "density" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {this.renderPairSelector()}
+                      </div>
+                    )}
                   </div>
 
                 <div style={{ 
