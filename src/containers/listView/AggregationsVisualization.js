@@ -58,7 +58,7 @@ const categoricalColumns = [
   { key: "inferred_sex", dataIndex: "inferred_sex", label: "Inferred Sex", type: "categorical" },
   { key: "qcEvaluation", dataIndex: "qcEvaluation", label: "QC Evaluation", type: "categorical" },
   { key: "alteration_type", dataIndex: "alteration_type", label: "Alteration Type", type: "categorical" },
-  { key: "driver_gene", dataIndex: "driver_gene", label: "Driver Genes (Top 20)", type: "categorical" },
+  { key: "driver_gene", dataIndex: "driver_gene", label: "Driver Genes", type: "categorical" },
 ];
 
 const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair (Density Plot)", type: "pair" };
@@ -96,6 +96,7 @@ class AggregationsVisualization extends Component {
     colorVariable: categoricalColumns[0].dataIndex,
     colorByVariable: null,
     selectedGene: null,
+    selectedGeneSet: "top20",
     tooltip: {
       visible: false,
       x: -1000,
@@ -182,7 +183,8 @@ class AggregationsVisualization extends Component {
   }
 
   expandRecordsByCategory(records, variable) {
-    if (variable !== "alteration_type" && variable !== "driver_gene") {
+    const expandableCategories = ["alteration_type", "driver_gene"];
+    if (!expandableCategories.includes(variable)) {
       return records;
     }
     
@@ -203,21 +205,43 @@ class AggregationsVisualization extends Component {
   }
 
   getEffectiveValue(record, variable) {
-    if ((variable === "alteration_type" || variable === "driver_gene") && 
-        record._expandedVariable === variable) {
+    const expandableCategories = ["alteration_type", "driver_gene"];
+    if (expandableCategories.includes(variable) && record._expandedVariable === variable) {
       return record._expandedCategory;
     }
     return getValue(record, variable);
   }
 
+  getGenesForSelectedSet(allGeneFrequencies) {
+    const { selectedGeneSet } = this.state;
+    const { pathwayMap = {} } = this.props;
+    
+    if (selectedGeneSet === "top20") {
+      return Object.entries(allGeneFrequencies)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20)
+        .map(([gene]) => gene);
+    }
+    
+    const geneSetGenes = pathwayMap[selectedGeneSet] || [];
+    const geneSetUpper = geneSetGenes.map((g) => g.toUpperCase());
+    
+    return Object.entries(allGeneFrequencies)
+      .filter(([gene]) => geneSetUpper.includes(gene.toUpperCase()))
+      .sort((a, b) => b[1] - a[1])
+      .map(([gene]) => gene);
+  }
+
   getPlotConfiguration() {
     const { filteredRecords = [] } = this.props;
-    const { xVariable, yVariable, colorVariable } = this.state;
+    const { xVariable, yVariable, colorVariable, selectedGeneSet } = this.state;
     const containerWidth = this.currentWidth || 600;
     const height = 600;
     const plotType = this.getPlotType();
 
-    const cacheKey = `${xVariable}-${yVariable}-${colorVariable}-${containerWidth}-${filteredRecords.length}`;
+    const { pathwayMap } = this.props;
+    const pathwayHash = Object.keys(pathwayMap || {}).length;
+    const cacheKey = `${xVariable}-${yVariable}-${colorVariable}-${selectedGeneSet}-${containerWidth}-${filteredRecords.length}-${pathwayHash}`;
     if (this.cachedConfig && this.cachedConfigKey === cacheKey) {
       return this.cachedConfig;
     }
@@ -284,10 +308,7 @@ class AggregationsVisualization extends Component {
       const yCategories = [...allYValues].sort();
       
       if (xVariable === "driver_gene") {
-        xCategories = Object.entries(xCategoryCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 20)
-          .map(([gene]) => gene);
+        xCategories = this.getGenesForSelectedSet(xCategoryCounts);
       }
       
       const minRequiredWidth = xCategories.length * MIN_BAR_WIDTH;
@@ -385,9 +406,11 @@ class AggregationsVisualization extends Component {
       let categories = Object.keys(valuesByCategory).sort();
       
       if (catVar === "driver_gene") {
-        categories = categories
-          .sort((a, b) => valuesByCategory[b].length - valuesByCategory[a].length)
-          .slice(0, 20);
+        const geneFrequencies = {};
+        categories.forEach((cat) => {
+          geneFrequencies[cat] = valuesByCategory[cat].length;
+        });
+        categories = this.getGenesForSelectedSet(geneFrequencies);
       }
       
       const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
@@ -612,23 +635,71 @@ class AggregationsVisualization extends Component {
     return geneStats.topGenes.slice(0, 20);
   }
 
+  getGeneSetOptions() {
+    const { pathwayMap = {} } = this.props;
+    const pathwayNames = Object.keys(pathwayMap);
+    return [
+      { key: "top20", label: "Top 20" },
+      ...pathwayNames.map((name) => ({
+        key: name,
+        label: name.replace(/_/g, " "),
+      })),
+    ];
+  }
+
   renderDropdown(variable, style = {}, columns = null) {
     const value = this.state[variable];
-    const { xVariable } = this.state;
+    const { xVariable, selectedGeneSet } = this.state;
     const availableColumns = columns || this.getColumnsForVariable(variable);
     
     const isPairMode = xVariable === "pair";
     const isYDropdown = variable === "yVariable";
+    const geneSetOptions = this.getGeneSetOptions();
+
+    const isDriverGeneSelected = value === "driver_gene";
+    const displayValue = isDriverGeneSelected 
+      ? `driver_gene:${selectedGeneSet}`
+      : value;
+
+    const handleChange = (val) => {
+      if (val.startsWith("driver_gene:")) {
+        const geneSet = val.replace("driver_gene:", "");
+        this.setState({ selectedGeneSet: geneSet });
+        this.handleVariableChange(variable, "driver_gene");
+      } else {
+        this.handleVariableChange(variable, val);
+      }
+    };
 
     return (
       <Select
         size="small"
-        value={value}
-        onChange={(val) => this.handleVariableChange(variable, val)}
-        style={{ width: 140, ...style }}
+        value={displayValue}
+        onChange={handleChange}
+        style={{ width: 180, ...style }}
         dropdownMatchSelectWidth={false}
       >
         {availableColumns.map((col) => {
+          if (col.dataIndex === "driver_gene") {
+            return (
+              <Select.OptGroup key="driver_gene" label="Driver Genes">
+                {geneSetOptions.map((opt) => {
+                  const optValue = `driver_gene:${opt.key}`;
+                  const isDisabled = isPairMode && isYDropdown;
+                  return (
+                    <Select.Option
+                      key={optValue}
+                      value={optValue}
+                      disabled={isDisabled}
+                      style={isDisabled ? { color: '#bfbfbf' } : {}}
+                    >
+                      {opt.label}
+                    </Select.Option>
+                  );
+                })}
+              </Select.OptGroup>
+            );
+          }
           const isDisabled = isPairMode && isYDropdown && col.type === "categorical";
           return (
             <Select.Option 

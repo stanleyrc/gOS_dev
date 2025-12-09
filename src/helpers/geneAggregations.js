@@ -101,3 +101,83 @@ export const hasGene = (record, gene) => {
   const genes = parseDriverGenes(record.summary);
   return genes.some((g) => g.gene === gene.toUpperCase());
 };
+
+/**
+ * Load pathway definitions from settings
+ * @param {Object} settings - Settings object from settings.json
+ * @returns {Object} pathwayMap: { pathwayName: [genes...] }
+ */
+export const loadPathways = (settings) => {
+  if (!settings || !settings.gene_sets) {
+    return {};
+  }
+  return settings.gene_sets;
+};
+
+/**
+ * Get pathway for a gene
+ * @param {string} gene - Gene name
+ * @param {Object} pathwayMap - Pathway mapping
+ * @returns {string|null} Pathway name or null
+ */
+export const getPathwayForGene = (gene, pathwayMap) => {
+  if (!pathwayMap) return null;
+  const geneUpper = gene.toUpperCase();
+  for (const [pathway, genes] of Object.entries(pathwayMap)) {
+    if (genes.includes(geneUpper)) {
+      return pathway;
+    }
+  }
+  return null;
+};
+
+/**
+ * Parse driver genes with pathway assignment
+ * @param {string} summary - Summary field
+ * @param {Object} pathwayMap - Pathway mapping
+ * @returns {Array} [{gene, type, pathway}, ...]
+ */
+export const parseDriverGenesWithPathway = (summary, pathwayMap) => {
+  const genes = parseDriverGenes(summary);
+  return genes.map(({ gene, type }) => ({
+    gene,
+    type,
+    pathway: getPathwayForGene(gene, pathwayMap),
+  }));
+};
+
+/**
+ * Compute gene stats aggregated by pathway
+ * @param {Array} records - Case records
+ * @param {Object} pathwayMap - Pathway mapping
+ * @returns {Object} Stats with pathwayFrequency, pathwayByType, topPathways
+ */
+export const computePathwayStats = (records, pathwayMap) => {
+  const pathwayFrequency = {};
+  const pathwayByType = {};
+
+  records.forEach((record) => {
+    const genes = parseDriverGenesWithPathway(record.summary, pathwayMap);
+    const seenPathways = new Set();
+
+    genes.forEach(({ type, pathway }) => {
+      if (!pathway) return;
+
+      if (!seenPathways.has(pathway)) {
+        pathwayFrequency[pathway] = (pathwayFrequency[pathway] || 0) + 1;
+        seenPathways.add(pathway);
+      }
+
+      if (!pathwayByType[pathway]) {
+        pathwayByType[pathway] = {};
+      }
+      pathwayByType[pathway][type] = (pathwayByType[pathway][type] || 0) + 1;
+    });
+  });
+
+  const topPathways = Object.entries(pathwayFrequency)
+    .sort((a, b) => b[1] - a[1])
+    .map(([pathway]) => pathway);
+
+  return { pathwayFrequency, pathwayByType, topPathways };
+};
