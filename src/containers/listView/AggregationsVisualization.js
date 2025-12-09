@@ -117,6 +117,9 @@ class AggregationsVisualization extends Component {
 
   componentDidMount() {
     this.renderAxes();
+    if (!this.currentWidth) {
+      this.forceUpdate();
+    }
   }
 
   componentDidUpdate() {
