@@ -4,7 +4,7 @@ import { Select, Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
-import { parseDriverGenes, computeGeneStats } from "../../helpers/geneAggregations";
+import { parseDriverGenes, computeGeneStats, hasGene } from "../../helpers/geneAggregations";
 import HistogramPlot from "../../components/histogramPlot";
 import KonvaScatter from "../../components/konvaScatter";
 
@@ -18,6 +18,7 @@ const margins = {
 
 const MIN_BAR_WIDTH = 30;
 const MIN_CATEGORY_WIDTH = 40;
+const MAX_COLOR_CATEGORIES = 10;
 
 const parseAlterationSummary = (summary) => {
   if (!summary || typeof summary !== "string") {
@@ -93,6 +94,8 @@ class AggregationsVisualization extends Component {
     xVariable: numericColumns[0].dataIndex,
     yVariable: numericColumns[1].dataIndex,
     colorVariable: categoricalColumns[0].dataIndex,
+    colorByVariable: null,
+    selectedGene: null,
     tooltip: {
       visible: false,
       x: -1000,
@@ -594,6 +597,39 @@ class AggregationsVisualization extends Component {
     return allColumns;
   }
 
+  getColorableColumns() {
+    const { filteredRecords = [] } = this.props;
+    const colorableColumns = [];
+    
+    const candidateColumns = categoricalColumns.filter(
+      (col) => col.dataIndex !== "alteration_type" && col.dataIndex !== "driver_gene"
+    );
+    
+    candidateColumns.forEach((col) => {
+      const uniqueValues = new Set();
+      filteredRecords.forEach((record) => {
+        const val = getValue(record, col.dataIndex);
+        if (val != null) {
+          uniqueValues.add(val);
+        }
+      });
+      if (uniqueValues.size <= MAX_COLOR_CATEGORIES && uniqueValues.size > 0) {
+        colorableColumns.push({
+          ...col,
+          uniqueCount: uniqueValues.size,
+        });
+      }
+    });
+    
+    return colorableColumns;
+  }
+
+  getTopGenes() {
+    const { filteredRecords = [] } = this.props;
+    const geneStats = computeGeneStats(filteredRecords);
+    return geneStats.topGenes.slice(0, 20);
+  }
+
   renderDropdown(variable, style = {}, columns = null) {
     const value = this.state[variable];
     const { xVariable } = this.state;
@@ -660,6 +696,133 @@ class AggregationsVisualization extends Component {
     );
   }
 
+  renderColorBySelector() {
+    const { colorByVariable, selectedGene } = this.state;
+    const colorableColumns = this.getColorableColumns();
+    const topGenes = this.getTopGenes();
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 12, color: "#666" }}>Color:</span>
+        <Select
+          size="small"
+          value={colorByVariable || "none"}
+          onChange={(val) => {
+            if (val === "none") {
+              this.setState({ colorByVariable: null, selectedGene: null });
+            } else if (val === "driver_gene") {
+              this.setState({ colorByVariable: "driver_gene", selectedGene: null });
+            } else {
+              this.setState({ colorByVariable: val, selectedGene: null });
+            }
+          }}
+          style={{ width: 160 }}
+          dropdownMatchSelectWidth={false}
+        >
+          <Select.Option value="none">None</Select.Option>
+          {colorableColumns.map((col) => (
+            <Select.Option key={col.dataIndex} value={col.dataIndex}>
+              {col.label}
+            </Select.Option>
+          ))}
+          {topGenes.length > 0 && (
+            <Select.Option value="driver_gene">Driver Genes (Top 20)</Select.Option>
+          )}
+        </Select>
+        {colorByVariable === "driver_gene" && (
+          <Select
+            size="small"
+            value={selectedGene}
+            onChange={(val) => this.setState({ selectedGene: val })}
+            style={{ width: 100 }}
+            dropdownMatchSelectWidth={false}
+            placeholder="Gene..."
+            allowClear
+            showSearch
+          >
+            {topGenes.map((gene) => (
+              <Select.Option key={gene} value={gene}>
+                {gene}
+              </Select.Option>
+            ))}
+          </Select>
+        )}
+      </div>
+    );
+  }
+
+  getScatterColorConfig() {
+    const { filteredRecords = [] } = this.props;
+    const { colorByVariable, selectedGene } = this.state;
+
+    if (!colorByVariable) {
+      return { colorAccessor: null, colorScale: null, colorCategories: [] };
+    }
+
+    if (colorByVariable === "driver_gene") {
+      if (!selectedGene) {
+        return { colorAccessor: null, colorScale: null, colorCategories: [] };
+      }
+      const categories = ["Mutated", "Wild-type"];
+      const colorScale = d3.scaleOrdinal()
+        .domain(categories)
+        .range(["#e41a1c", "#999999"]);
+      const colorAccessor = (d) => hasGene(d, selectedGene) ? "Mutated" : "Wild-type";
+      return { colorAccessor, colorScale, colorCategories: categories };
+    }
+
+    const uniqueValues = [...new Set(
+      filteredRecords
+        .map((d) => getValue(d, colorByVariable))
+        .filter((v) => v != null)
+    )].sort();
+
+    if (uniqueValues.length === 0 || uniqueValues.length > MAX_COLOR_CATEGORIES) {
+      return { colorAccessor: null, colorScale: null, colorCategories: [] };
+    }
+
+    const colorScale = d3.scaleOrdinal(d3.schemeTableau10).domain(uniqueValues);
+    const colorAccessor = (d) => getValue(d, colorByVariable);
+    return { colorAccessor, colorScale, colorCategories: uniqueValues };
+  }
+
+  renderColorLegend(colorConfig) {
+    const { colorScale, colorCategories } = colorConfig;
+    const { colorByVariable, selectedGene } = this.state;
+
+    if (!colorScale || colorCategories.length === 0) {
+      return null;
+    }
+
+    const label = colorByVariable === "driver_gene" 
+      ? selectedGene 
+      : getColumnLabel(colorByVariable);
+
+    return (
+      <div style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        gap: 12, 
+        marginTop: 8,
+        marginLeft: margins.gapX,
+        flexWrap: "wrap",
+      }}>
+        <span style={{ fontSize: 11, color: "#666", fontWeight: 500 }}>{label}:</span>
+        {colorCategories.map((cat) => (
+          <div key={cat} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              backgroundColor: colorScale(cat),
+            }} />
+            <span style={{ fontSize: 11, color: "#333" }}>{cat}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   getMarkersForSelectedPairs(config) {
     const { filteredRecords = [] } = this.props;
     const { selectedPairs, yVariable } = this.state;
@@ -681,18 +844,39 @@ class AggregationsVisualization extends Component {
       .filter(Boolean);
   }
 
-  renderScatterPlotOverlay(config) {
+  renderScatterPlotOverlay(config, colorConfig) {
     const { filteredRecords = [] } = this.props;
-    const { xVariable, yVariable } = this.state;
+    const { xVariable, yVariable, colorByVariable, selectedGene } = this.state;
     const { xScale, yScale, panelWidth, panelHeight } = config;
+    const { colorAccessor, colorScale } = colorConfig;
 
     const xAccessor = (d) => getValue(d, xVariable);
     const yAccessor = (d) => getValue(d, yVariable);
-    const tooltipAccessor = (d) => [
-      { label: "Case", value: d.pair },
-      { label: getColumnLabel(xVariable), value: d3.format(",.2f")(getValue(d, xVariable)) },
-      { label: getColumnLabel(yVariable), value: d3.format(",.2f")(getValue(d, yVariable)) },
-    ];
+    
+    const tooltipAccessor = (d) => {
+      const items = [
+        { label: "Case", value: d.pair },
+        { label: getColumnLabel(xVariable), value: d3.format(",.2f")(getValue(d, xVariable)) },
+        { label: getColumnLabel(yVariable), value: d3.format(",.2f")(getValue(d, yVariable)) },
+      ];
+      
+      if (colorByVariable === "driver_gene" && selectedGene) {
+        items.push({
+          label: selectedGene,
+          value: hasGene(d, selectedGene) ? "Mutated" : "Wild-type",
+        });
+      } else if (colorByVariable && colorAccessor) {
+        const colorVal = colorAccessor(d);
+        if (colorVal != null) {
+          items.push({
+            label: getColumnLabel(colorByVariable),
+            value: colorVal,
+          });
+        }
+      }
+      
+      return items;
+    };
 
     return (
       <div
@@ -716,7 +900,8 @@ class AggregationsVisualization extends Component {
           idAccessor={this.scatterIdAccessor}
           tooltipAccessor={tooltipAccessor}
           radiusAccessor={5}
-          opacityAccessor={0.8}
+          colorAccessor={colorAccessor}
+          colorScale={colorScale}
           onPointClick={this.handlePointClick}
         />
       </div>
@@ -853,6 +1038,7 @@ class AggregationsVisualization extends Component {
   render() {
     const { tooltip, computingAlterations } = this.state;
     const plotType = this.getPlotType();
+    const colorConfig = this.getScatterColorConfig();
 
     return (
       <div className="aggregation-visualization-container">
@@ -860,7 +1046,7 @@ class AggregationsVisualization extends Component {
           {({ width: containerWidth }) => {
             this.currentWidth = containerWidth;
             const config = this.getPlotConfiguration();
-            const { width, height, panelWidth, panelHeight, legend, colorCategories, scrollable } = config;
+            const { width, height, panelWidth, panelHeight, legend, scrollable } = config;
             const svgString = legend ? new XMLSerializer().serializeToString(legend) : null;
 
             return (
@@ -868,7 +1054,7 @@ class AggregationsVisualization extends Component {
                 <div style={{ textAlign: "center", marginBottom: 12, fontSize: 14, fontWeight: "500", color: "#333" }}>
                   {getColumnLabel(this.state.xVariable)} vs. {getColumnLabel(this.state.yVariable)}
                 </div>
-                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 4, gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {this.renderDropdown("yVariable")}
                       {computingAlterations && <Spin size="small" />}
@@ -878,6 +1064,7 @@ class AggregationsVisualization extends Component {
                         {this.renderPairSelector()}
                       </div>
                     )}
+                    {plotType === "scatter" && this.renderColorBySelector()}
                   </div>
 
                 <div style={{ 
@@ -938,8 +1125,10 @@ class AggregationsVisualization extends Component {
                       )}
                     </g>
                   </svg>
-                  {plotType === "scatter" && this.renderScatterPlotOverlay(config)}
+                  {plotType === "scatter" && this.renderScatterPlotOverlay(config, colorConfig)}
                 </div>
+                
+                {plotType === "scatter" && this.renderColorLegend(colorConfig)}
 
                 <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                   {this.renderDropdown("xVariable")}
