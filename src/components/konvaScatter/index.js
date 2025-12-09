@@ -233,10 +233,20 @@ class KonvaScatter extends Component {
 
   updateTooltipPosition(mousePos, width) {
     const tooltipWidth = this.tooltipRect.width();
+    const tooltipHeight = this.tooltipRect.height();
+    const { height } = this.props;
+
+    // Horizontal: flip left if would overflow right
     const xPos = mousePos.x + 10 + tooltipWidth > width 
       ? mousePos.x - tooltipWidth - 10 
       : mousePos.x + 10;
-    this.tooltipGroup.position({ x: xPos, y: mousePos.y + 10 });
+
+    // Vertical: flip up if would overflow bottom
+    const yPos = mousePos.y + 10 + tooltipHeight > height
+      ? mousePos.y - tooltipHeight - 10
+      : mousePos.y + 10;
+
+    this.tooltipGroup.position({ x: xPos, y: yPos });
   }
 
   handleStageMouseLeave = () => {
