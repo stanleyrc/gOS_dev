@@ -4,6 +4,7 @@ import { Select, Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
+import { parseDriverGenes } from "../../helpers/geneAggregations";
 import HistogramPlot from "../../components/histogramPlot";
 import KonvaScatter from "../../components/konvaScatter";
 
@@ -56,6 +57,7 @@ const categoricalColumns = [
   { key: "inferred_sex", dataIndex: "inferred_sex", label: "Inferred Sex", type: "categorical" },
   { key: "qcEvaluation", dataIndex: "qcEvaluation", label: "QC Evaluation", type: "categorical" },
   { key: "alteration_type", dataIndex: "alteration_type", label: "Alteration Type", type: "categorical" },
+  { key: "driver_gene", dataIndex: "driver_gene", label: "Driver Gene", type: "categorical" },
 ];
 
 const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair (Density Plot)", type: "pair" };
@@ -75,6 +77,9 @@ const getColumnLabel = (dataIndex) => {
 const getValue = (record, path) => {
   if (path === "alteration_type") {
     return parseAlterationSummary(record.summary);
+  }
+  if (path === "driver_gene") {
+    return parseDriverGenes(record.summary).map((g) => g.gene);
   }
   return path.split(".").reduce((obj, key) => obj?.[key], record);
 };
@@ -173,19 +178,20 @@ class AggregationsVisualization extends Component {
     }
   }
 
-  expandRecordsByAlterationType(records, variable) {
-    if (variable !== "alteration_type") {
+  expandRecordsByCategory(records, variable) {
+    if (variable !== "alteration_type" && variable !== "driver_gene") {
       return records;
     }
     
     const expandedRecords = [];
     records.forEach((record) => {
-      const alterationTypes = parseAlterationSummary(record.summary);
-      if (alterationTypes.length > 0) {
-        alterationTypes.forEach((altType) => {
+      const categories = getValue(record, variable);
+      if (categories && categories.length > 0) {
+        categories.forEach((cat) => {
           expandedRecords.push({
             ...record,
-            _alterationType: altType,
+            _expandedCategory: cat,
+            _expandedVariable: variable,
           });
         });
       }
@@ -194,8 +200,9 @@ class AggregationsVisualization extends Component {
   }
 
   getEffectiveValue(record, variable) {
-    if (variable === "alteration_type") {
-      return record._alterationType;
+    if ((variable === "alteration_type" || variable === "driver_gene") && 
+        record._expandedVariable === variable) {
+      return record._expandedCategory;
     }
     return getValue(record, variable);
   }
@@ -221,10 +228,29 @@ class AggregationsVisualization extends Component {
     let scrollable = false;
 
     if (plotType === "stacked-bar") {
-      const xRecords = this.expandRecordsByAlterationType(filteredRecords, xVariable);
+      const xRecords = this.expandRecordsByCategory(filteredRecords, xVariable);
       
-      const xCategories = [...new Set(xRecords.map((d) => this.getEffectiveValue(d, xVariable)).filter(Boolean))].sort();
+      const countMap = {};
+      const xCategoryCounts = {};
+      xRecords.forEach((d) => {
+        const xVal = this.getEffectiveValue(d, xVariable);
+        const yVal = this.getEffectiveValue(d, yVariable);
+        if (xVal && yVal) {
+          if (!countMap[xVal]) countMap[xVal] = {};
+          countMap[xVal][yVal] = (countMap[xVal][yVal] || 0) + 1;
+          xCategoryCounts[xVal] = (xCategoryCounts[xVal] || 0) + 1;
+        }
+      });
+      
+      let xCategories = Object.keys(countMap).sort();
       const yCategories = [...new Set(xRecords.map((d) => this.getEffectiveValue(d, yVariable)).filter(Boolean))].sort();
+      
+      if (xVariable === "driver_gene") {
+        xCategories = Object.entries(xCategoryCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 20)
+          .map(([gene]) => gene);
+      }
       
       const minRequiredWidth = xCategories.length * MIN_BAR_WIDTH;
       if (minRequiredWidth > stageWidth) {
@@ -235,9 +261,7 @@ class AggregationsVisualization extends Component {
       categoryData = xCategories.map((xCat) => {
         const row = { category: xCat };
         yCategories.forEach((yCat) => {
-          row[yCat] = xRecords.filter(
-            (d) => this.getEffectiveValue(d, xVariable) === xCat && this.getEffectiveValue(d, yVariable) === yCat
-          ).length;
+          row[yCat] = countMap[xCat]?.[yCat] || 0;
         });
         return row;
       });
@@ -306,8 +330,27 @@ class AggregationsVisualization extends Component {
       const catVar = xType === "categorical" ? xVariable : yVariable;
       const numVar = xType === "categorical" ? yVariable : xVariable;
 
-      const catRecords = this.expandRecordsByAlterationType(filteredRecords, catVar);
-      const categories = [...new Set(catRecords.map((d) => this.getEffectiveValue(d, catVar)).filter(Boolean))].sort();
+      const catRecords = this.expandRecordsByCategory(filteredRecords, catVar);
+      
+      const valuesByCategory = {};
+      catRecords.forEach((d) => {
+        const cat = this.getEffectiveValue(d, catVar);
+        const numVal = getValue(d, numVar);
+        if (cat && numVal != null && !isNaN(numVal)) {
+          if (!valuesByCategory[cat]) {
+            valuesByCategory[cat] = [];
+          }
+          valuesByCategory[cat].push(numVal);
+        }
+      });
+      
+      let categories = Object.keys(valuesByCategory).sort();
+      
+      if (catVar === "driver_gene") {
+        categories = categories
+          .sort((a, b) => valuesByCategory[b].length - valuesByCategory[a].length)
+          .slice(0, 20);
+      }
       
       const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
       if (xType === "categorical" && minRequiredWidth > stageWidth) {
@@ -316,10 +359,7 @@ class AggregationsVisualization extends Component {
       }
 
       categoryData = categories.map((cat) => {
-        const values = catRecords
-          .filter((d) => this.getEffectiveValue(d, catVar) === cat)
-          .map((d) => getValue(d, numVar))
-          .filter((v) => v != null && !isNaN(v));
+        const values = valuesByCategory[cat] || [];
         
         const mean = d3.mean(values) || 0;
         const stdDev = d3.deviation(values) || 0;
@@ -490,11 +530,11 @@ class AggregationsVisualization extends Component {
       }
     }
     
-    const isAlterationTypeChange = 
-      (variable === "xVariable" && value === "alteration_type") ||
-      (variable === "yVariable" && value === "alteration_type");
+    const isExpandableChange = 
+      (variable === "xVariable" && (value === "alteration_type" || value === "driver_gene")) ||
+      (variable === "yVariable" && (value === "alteration_type" || value === "driver_gene"));
     
-    if (isAlterationTypeChange) {
+    if (isExpandableChange) {
       this.setState({ [variable]: value, computingAlterations: true });
       setTimeout(() => {
         this.setState({ computingAlterations: false });
