@@ -1,7 +1,7 @@
 import React, { Component } from "react";
-import { Select } from "antd";
+import { Cascader, Select } from "antd";
 import * as d3 from "d3";
-import { categoricalColumns, getValue, getColumnLabel, MAX_COLOR_CATEGORIES, margins } from "./helpers";
+import { categoricalColumns, getValue, getColumnLabel, MAX_COLOR_CATEGORIES } from "./helpers";
 import { hasGene } from "../../helpers/geneAggregations";
 
 class ColorControls extends Component {
@@ -9,6 +9,8 @@ class ColorControls extends Component {
     const { filteredRecords = [] } = this.props;
 
     return categoricalColumns.filter((col) => {
+      if (col.dataIndex === "alteration_type") return false;
+      if (col.dataIndex === "driver_gene") return false;
       return filteredRecords.some((record) => {
         const val = getValue(record, col.dataIndex);
         return val != null && (Array.isArray(val) ? val.length > 0 : true);
@@ -16,7 +18,7 @@ class ColorControls extends Component {
     });
   };
 
-  getTopGenes = () => {
+  getGeneFrequencies = () => {
     const { filteredRecords = [] } = this.props;
     const geneFrequencies = {};
 
@@ -29,9 +31,25 @@ class ColorControls extends Component {
       }
     });
 
+    return geneFrequencies;
+  };
+
+  getGenesForSet = (geneSetKey, geneFrequencies) => {
+    const { pathwayMap = {} } = this.props;
+
+    if (!geneSetKey || geneSetKey === "top20") {
+      return Object.entries(geneFrequencies)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20)
+        .map(([gene]) => gene);
+    }
+
+    const geneSetGenes = pathwayMap[geneSetKey] || [];
+    const geneSetUpper = geneSetGenes.map((g) => g.toUpperCase());
+
     return Object.entries(geneFrequencies)
+      .filter(([gene]) => geneSetUpper.includes(gene.toUpperCase()))
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
       .map(([gene]) => gene);
   };
 
@@ -54,11 +72,12 @@ class ColorControls extends Component {
       return { colorAccessor, colorScale, colorCategories: categories };
     }
 
-    const uniqueValues = [...new Set(
-      filteredRecords
-        .map((d) => getValue(d, colorByVariable))
-        .filter((v) => v != null)
-    )].sort();
+    const allValues = filteredRecords
+      .map((d) => getValue(d, colorByVariable))
+      .filter((v) => v != null)
+      .flatMap((v) => Array.isArray(v) ? v : [v]);
+    
+    const uniqueValues = [...new Set(allValues)].sort();
 
     if (uniqueValues.length === 0) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
@@ -68,52 +87,108 @@ class ColorControls extends Component {
       ? d3.schemeTableau10
       : d3.schemeCategory10.concat(d3.schemeSet3);
     const colorScale = d3.scaleOrdinal(colorScheme).domain(uniqueValues);
-    const colorAccessor = (d) => getValue(d, colorByVariable);
+    const colorAccessor = (d) => {
+      const val = getValue(d, colorByVariable);
+      return Array.isArray(val) ? val[0] : val;
+    };
 
     return { colorAccessor, colorScale, colorCategories: uniqueValues };
   };
 
-  renderColorBySelector = () => {
-    const { colorByVariable, selectedGene, onColorChange, onGeneChange } = this.props;
+  buildCascaderOptions = () => {
+    const { pathwayMap = {} } = this.props;
     const colorableColumns = this.getColorableColumns();
-    const topGenes = this.getTopGenes();
-    
-    // Filter out driver_gene from colorableColumns if we have topGenes to avoid duplication
-    const filteredColumns = topGenes.length > 0
-      ? colorableColumns.filter((col) => col.dataIndex !== "driver_gene")
-      : colorableColumns;
+    const geneFrequencies = this.getGeneFrequencies();
+    const hasGenes = Object.keys(geneFrequencies).length > 0;
+
+    const options = [
+      { value: "none", label: "None" },
+      ...colorableColumns.map((col) => ({
+        value: col.dataIndex,
+        label: col.label,
+      })),
+    ];
+
+    if (hasGenes) {
+      const geneSetOptions = [
+        { value: "top20", label: "Top 20" },
+        ...Object.keys(pathwayMap).map((name) => ({
+          value: name,
+          label: name.replace(/_/g, " "),
+        })),
+      ];
+
+      const driverGeneOption = {
+        value: "driver_gene",
+        label: "Driver Genes",
+        children: geneSetOptions,
+      };
+
+      options.push(driverGeneOption);
+    }
+
+    return options;
+  };
+
+  getCascaderValue = () => {
+    const { colorByVariable, selectedGeneSet } = this.props;
+
+    if (!colorByVariable) {
+      return ["none"];
+    }
+
+    if (colorByVariable === "driver_gene" && selectedGeneSet) {
+      return ["driver_gene", selectedGeneSet];
+    }
+
+    if (colorByVariable === "driver_gene") {
+      return ["driver_gene", "top20"];
+    }
+
+    return [colorByVariable];
+  };
+
+  handleCascaderChange = (values) => {
+    const { onColorChange, onGeneChange, onGeneSetChange } = this.props;
+
+    if (!values || values.length === 0 || values[0] === "none") {
+      onColorChange(null);
+      onGeneChange(null);
+      if (onGeneSetChange) onGeneSetChange(null);
+      return;
+    }
+
+    if (values[0] === "driver_gene") {
+      onColorChange("driver_gene");
+      const geneSet = values.length >= 2 ? values[1] : "top20";
+      if (onGeneSetChange) onGeneSetChange(geneSet);
+      onGeneChange(null);
+    } else {
+      onColorChange(values[0]);
+      onGeneChange(null);
+      if (onGeneSetChange) onGeneSetChange(null);
+    }
+  };
+
+  renderColorBySelector = () => {
+    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange } = this.props;
+    const options = this.buildCascaderOptions();
+    const value = this.getCascaderValue();
+    const geneFrequencies = this.getGeneFrequencies();
+    const genesInSet = this.getGenesForSet(selectedGeneSet, geneFrequencies);
 
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 12, color: "#666" }}>Color:</span>
-        <Select
+        <Cascader
+          options={options}
+          value={value}
+          onChange={this.handleCascaderChange}
           size="small"
-          value={colorByVariable || "none"}
-          onChange={(val) => {
-            if (val === "none") {
-              onColorChange(null);
-              onGeneChange(null);
-            } else if (val === "driver_gene") {
-              onColorChange("driver_gene");
-              onGeneChange(null);
-            } else {
-              onColorChange(val);
-              onGeneChange(null);
-            }
-          }}
-          style={{ width: 160 }}
-          dropdownMatchSelectWidth={false}
-        >
-          <Select.Option value="none">None</Select.Option>
-          {filteredColumns.map((col) => (
-            <Select.Option key={col.dataIndex} value={col.dataIndex}>
-              {col.label}
-            </Select.Option>
-          ))}
-          {topGenes.length > 0 && (
-            <Select.Option value="driver_gene">Driver Genes (Top 20)</Select.Option>
-          )}
-        </Select>
+          style={{ width: 200 }}
+          popupMatchSelectWidth={false}
+          placeholder="Select color..."
+        />
         {colorByVariable === "driver_gene" && (
           <Select
             size="small"
@@ -125,7 +200,7 @@ class ColorControls extends Component {
             allowClear
             showSearch
           >
-            {topGenes.map((gene) => (
+            {genesInSet.map((gene) => (
               <Select.Option key={gene} value={gene}>
                 {gene}
               </Select.Option>

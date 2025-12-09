@@ -644,9 +644,11 @@ class AggregationsVisualization extends Component {
                       filteredRecords={filteredRecords}
                       colorByVariable={this.state.colorByVariable}
                       selectedGene={this.state.selectedGene}
-                      margins={margins}
+                      selectedGeneSet={this.state.selectedGeneSet}
+                      pathwayMap={this.props.pathwayMap}
                       onColorChange={(val) => this.setState({ colorByVariable: val })}
                       onGeneChange={(val) => this.setState({ selectedGene: val })}
+                      onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
                     />
                   )}
                 </div>
@@ -771,11 +773,17 @@ class AggregationsVisualization extends Component {
       return { colorAccessor, colorScale, colorCategories: categories };
     }
 
-    const uniqueValues = [...new Set(
-      filteredRecords
-        .map((d) => getValue(d, colorByVariable))
-        .filter((v) => v != null)
-    )].sort();
+    const expandableCategories = ["alteration_type", "driver_gene"];
+    const isExpandable = expandableCategories.includes(colorByVariable);
+
+    const allValues = filteredRecords.flatMap((d) => {
+      const val = getValue(d, colorByVariable);
+      if (isExpandable && Array.isArray(val)) {
+        return val;
+      }
+      return val != null ? [val] : [];
+    });
+    const uniqueValues = [...new Set(allValues)].sort();
 
     if (uniqueValues.length === 0) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
@@ -785,7 +793,13 @@ class AggregationsVisualization extends Component {
       ? d3.schemeTableau10
       : d3.schemeCategory10.concat(d3.schemeSet3);
     const colorScale = d3.scaleOrdinal(colorScheme).domain(uniqueValues);
-    const colorAccessor = (d) => getValue(d, colorByVariable);
+    const colorAccessor = (d) => {
+      const val = getValue(d, colorByVariable);
+      if (isExpandable && Array.isArray(val)) {
+        return val[0];
+      }
+      return val;
+    };
 
     return { colorAccessor, colorScale, colorCategories: uniqueValues };
   }
