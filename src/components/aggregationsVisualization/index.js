@@ -4,13 +4,14 @@ import { Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
-import { computeGeneStats, hasGene } from "../../helpers/geneAggregations";
+import { computeGeneStats, hasGene, parseDriverGenes } from "../../helpers/geneAggregations";
 import AxisSelectors from "./AxisSelectors";
 import ColorControls from "./ColorControls";
 import ScatterPlot from "./ScatterPlot";
 import StackedBarPlot from "./StackedBarPlot";
 import CategoricalScatterPlot from "./CategoricalScatterPlot";
 import DensityPlot from "./DensityPlot";
+import OncoPrintPlot from "./OncoPrintPlot";
 import PlotTooltip from "./PlotTooltip";
 import {
   margins,
@@ -69,7 +70,15 @@ class AggregationsVisualization extends Component {
   }
 
   getPlotType() {
-    const { xVariable, yVariable } = this.state;
+    const { xVariable, yVariable, selectedGeneSet } = this.state;
+
+    // OncoPrint: Pair × Driver Gene (with gene set selected) - check BEFORE generic pair check
+    if (xVariable === "driver_gene" && yVariable === "pair" && selectedGeneSet) {
+      return "oncoprint";
+    }
+    if (yVariable === "driver_gene" && xVariable === "pair" && selectedGeneSet) {
+      return "oncoprint";
+    }
 
     if (xVariable === "pair") {
       return "density";
@@ -170,6 +179,17 @@ class AggregationsVisualization extends Component {
       .filter(([gene]) => geneSetUpper.includes(gene.toUpperCase()))
       .sort((a, b) => b[1] - a[1])
       .map(([gene]) => gene);
+  }
+
+  computeGeneFrequencies(records) {
+    const frequencies = {};
+    records.forEach((record) => {
+      const genes = parseDriverGenes(record.summary);
+      genes.forEach(({ gene }) => {
+        frequencies[gene] = (frequencies[gene] || 0) + 1;
+      });
+    });
+    return frequencies;
   }
 
   getPlotConfiguration() {
@@ -657,86 +677,97 @@ class AggregationsVisualization extends Component {
                 </div>
 
                 <div
-                  style={{
-                    position: "relative",
-                    overflow: "auto",
-                    maxWidth: containerWidth,
-                    maxHeight: 700,
-                  }}
-                >
-                  <svg
-                    width={width}
-                    height={height}
-                    className="plot-container"
-                    ref={(elem) => (this.plotContainer = elem)}
-                    style={{ display: "block" }}
-                  >
-                    <g transform={`translate(${margins.gapX}, ${margins.gapY + margins.gapLegend})`}>
-                      {plotType !== "density" && (
-                        <rect
-                          width={panelWidth}
-                          height={panelHeight}
-                          fill="transparent"
-                          stroke="lightgray"
-                          strokeWidth={0.33}
-                        />
-                      )}
+                   style={{
+                     position: "relative",
+                     overflow: "auto",
+                     maxWidth: containerWidth,
+                     maxHeight: 700,
+                   }}
+                 >
+                   {plotType === "oncoprint" ? (
+                     <OncoPrintPlot
+                       width={width}
+                       height={height}
+                       filteredRecords={filteredRecords}
+                       geneSet={this.getGenesForSelectedSet(this.computeGeneFrequencies(filteredRecords))}
+                       onPairClick={this.handlePointClick}
+                     />
+                   ) : (
+                     <svg
+                       width={width}
+                       height={height}
+                       className="plot-container"
+                       ref={(elem) => (this.plotContainer = elem)}
+                       style={{ display: "block" }}
+                     >
+                       <g transform={`translate(${margins.gapX}, ${margins.gapY + margins.gapLegend})`}>
+                         {plotType !== "density" && (
+                           <rect
+                             width={panelWidth}
+                             height={panelHeight}
+                             fill="transparent"
+                             stroke="lightgray"
+                             strokeWidth={0.33}
+                           />
+                         )}
 
-                      {plotType === "categorical-scatter" && (
-                        <CategoricalScatterPlot
-                          config={config}
-                          xVariable={this.state.xVariable}
-                          onMouseEnter={this.handleMouseEnter}
-                          onMouseOut={this.handleMouseOut}
-                        />
-                      )}
-                      {plotType === "stacked-bar" && (
-                        <StackedBarPlot
-                          config={config}
-                          onBarMouseEnter={this.handleBarMouseEnter}
-                          onMouseOut={this.handleMouseOut}
-                        />
-                      )}
-                      {plotType === "density" && (
-                        <DensityPlot
-                          config={config}
-                          markers={this.getMarkersForSelectedPairs(config)}
-                        />
-                      )}
+                         {plotType === "categorical-scatter" && (
+                           <CategoricalScatterPlot
+                             config={config}
+                             xVariable={this.state.xVariable}
+                             onMouseEnter={this.handleMouseEnter}
+                             onMouseOut={this.handleMouseOut}
+                           />
+                         )}
+                         {plotType === "stacked-bar" && (
+                           <StackedBarPlot
+                             config={config}
+                             onBarMouseEnter={this.handleBarMouseEnter}
+                             onMouseOut={this.handleMouseOut}
+                           />
+                         )}
+                         {plotType === "density" && (
+                           <DensityPlot
+                             config={config}
+                             markers={this.getMarkersForSelectedPairs(config)}
+                           />
+                         )}
 
-                      {plotType !== "density" && (
-                        <>
-                          <g className="y-axis-container" />
-                          <g className="x-axis-container" transform={`translate(0, ${panelHeight})`} />
-                        </>
-                      )}
+                         {plotType !== "density" && (
+                           <>
+                             <g className="y-axis-container" />
+                             <g className="x-axis-container" transform={`translate(0, ${panelHeight})`} />
+                           </>
+                         )}
 
-                      {plotType !== "scatter" && (
-                        <PlotTooltip
-                          visible={tooltip.visible}
-                          x={tooltip.x}
-                          y={tooltip.y}
-                          text={tooltip.text}
-                        />
-                      )}
-                    </g>
-                  </svg>
+                         {plotType !== "scatter" && (
+                           <PlotTooltip
+                             visible={tooltip.visible}
+                             x={tooltip.x}
+                             y={tooltip.y}
+                             text={tooltip.text}
+                           />
+                         )}
+                       </g>
+                     </svg>
+                   )}
 
-                  {plotType === "scatter" && (
-                    <ScatterPlot
-                      data={filteredRecords}
-                      config={config}
-                      colorConfig={this.getColorConfigForScatter()}
-                      xVariable={this.state.xVariable}
-                      yVariable={this.state.yVariable}
-                      colorByVariable={this.state.colorByVariable}
-                      selectedGene={this.state.selectedGene}
-                      onPointClick={this.handlePointClick}
-                    />
-                  )}
-                </div>
+                   {plotType === "scatter" && (
+                     <ScatterPlot
+                       data={filteredRecords}
+                       config={config}
+                       colorConfig={this.getColorConfigForScatter()}
+                       xVariable={this.state.xVariable}
+                       yVariable={this.state.yVariable}
+                       colorByVariable={this.state.colorByVariable}
+                       selectedGene={this.state.selectedGene}
+                       onPointClick={this.handlePointClick}
+                     />
+                   )}
+                 </div>
 
                 {plotType === "scatter" && this.renderColorLegend()}
+                {plotType === "oncoprint" && this.renderOncoPrintLegend()}
 
                 <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                   <AxisSelectors
@@ -842,6 +873,37 @@ class AggregationsVisualization extends Component {
               backgroundColor: colorScale(cat),
             }} />
             <span style={{ fontSize: 11, color: "#333" }}>{cat}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  renderOncoPrintLegend() {
+    const ALTERATION_COLORS = {
+      missense: "#3498db",
+      trunc: "#2ecc71",
+      splice: "#9b59b6",
+      homdel: "#e74c3c",
+      amp: "#e67e22",
+      fusion: "#1abc9c",
+    };
+
+    const legendItems = [
+      { type: "missense", label: "Missense", color: ALTERATION_COLORS.missense },
+      { type: "trunc", label: "Truncating", color: ALTERATION_COLORS.trunc },
+      { type: "splice", label: "Splice", color: ALTERATION_COLORS.splice },
+      { type: "homdel", label: "Homozygous Deletion", color: ALTERATION_COLORS.homdel },
+      { type: "amp", label: "Amplification", color: ALTERATION_COLORS.amp },
+      { type: "fusion", label: "Fusion", color: ALTERATION_COLORS.fusion },
+    ];
+
+    return (
+      <div style={{ display: "flex", gap: 12, marginTop: 8, marginLeft: margins.gapX, flexWrap: "wrap" }}>
+        {legendItems.map(({ type, label, color }) => (
+          <div key={type} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 12, height: 12, backgroundColor: color, borderRadius: 2 }} />
+            <span style={{ fontSize: 11, color: "#666" }}>{label}</span>
           </div>
         ))}
       </div>
