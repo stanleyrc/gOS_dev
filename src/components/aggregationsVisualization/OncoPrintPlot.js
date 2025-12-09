@@ -114,8 +114,11 @@ class OncoPrintPlot extends Component {
         this.tooltipGroup.visible(false);
         this.tooltipLayer.batchDraw();
       }
+      this.stage.container().style.cursor = "default";
       return;
     }
+
+    this.stage.container().style.cursor = "pointer";
 
     const { gene, pair, alterations } = cellData;
     const altText =
@@ -148,6 +151,7 @@ class OncoPrintPlot extends Component {
       this.tooltipGroup.visible(false);
       this.tooltipLayer.batchDraw();
     }
+    this.stage.container().style.cursor = "default";
   };
 
   handleCellClick = (evt) => {
@@ -156,7 +160,7 @@ class OncoPrintPlot extends Component {
     const cellData = node.getAttr ? node.getAttr("cellData") : null;
 
     if (cellData && onPairClick && cellData.pair) {
-      onPairClick(cellData.pair);
+      onPairClick(cellData);
     }
   };
 

@@ -53,7 +53,7 @@ export const categoricalColumns = [
   { key: "driver_gene", dataIndex: "driver_gene", label: "Driver Genes", type: "categorical" },
 ];
 
-export const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair (Density Plot)", type: "pair" };
+export const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair", type: "pair" };
 
 export const allColumns = [...numericColumns, ...categoricalColumns, pairColumn];
 
