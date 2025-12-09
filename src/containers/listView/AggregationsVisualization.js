@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
-import { Select, Spin } from "antd";
+import { Select, Spin, Cascader } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
@@ -647,6 +647,23 @@ class AggregationsVisualization extends Component {
     ];
   }
 
+  getTitleText() {
+    const { xVariable, yVariable, selectedGeneSet } = this.state;
+    const xLabel = xVariable === "driver_gene" 
+      ? this.getGeneSetLabelForKey(selectedGeneSet) 
+      : getColumnLabel(xVariable);
+    const yLabel = yVariable === "driver_gene" 
+      ? this.getGeneSetLabelForKey(selectedGeneSet) 
+      : getColumnLabel(yVariable);
+    return `${xLabel} vs. ${yLabel}`;
+  }
+
+  getGeneSetLabelForKey(key) {
+    const geneSetOptions = this.getGeneSetOptions();
+    const option = geneSetOptions.find((opt) => opt.key === key);
+    return option ? `Driver Genes (${option.label})` : "Driver Genes";
+  }
+
   renderDropdown(variable, style = {}, columns = null) {
     const value = this.state[variable];
     const { xVariable, selectedGeneSet } = this.state;
@@ -671,48 +688,54 @@ class AggregationsVisualization extends Component {
       }
     };
 
+    // Build cascader options with driver genes as parent
+    const cascaderOptions = availableColumns.map((col) => {
+      if (col.dataIndex === "driver_gene") {
+        return {
+          value: "driver_gene",
+          label: "Driver Genes",
+          children: geneSetOptions.map((opt) => ({
+            value: `${opt.key}`,
+            label: opt.label,
+          })),
+        };
+      }
+      return {
+        value: col.dataIndex,
+        label: col.label,
+      };
+    });
+
+    const handleCascaderChange = (selected) => {
+      if (selected.length === 0) return;
+      
+      if (selected[0] === "driver_gene" && selected.length === 2) {
+        // Driver gene option was selected
+        const geneSet = selected[1];
+        this.setState({ selectedGeneSet: geneSet });
+        this.handleVariableChange(variable, "driver_gene");
+      } else if (selected.length === 1) {
+        // Regular option was selected
+        this.handleVariableChange(variable, selected[0]);
+      }
+    };
+
+    // Determine cascade value for display
+    const cascaderValue = isDriverGeneSelected ? ["driver_gene", selectedGeneSet] : [value];
+
+    const isDisabled = isPairMode && isYDropdown;
+
     return (
-      <Select
+      <Cascader
+        options={cascaderOptions}
+        value={cascaderValue}
+        onChange={handleCascaderChange}
         size="small"
-        value={displayValue}
-        onChange={handleChange}
-        style={{ width: 180, ...style }}
-        dropdownMatchSelectWidth={false}
-      >
-        {availableColumns.map((col) => {
-          if (col.dataIndex === "driver_gene") {
-            return (
-              <Select.OptGroup key="driver_gene" label="Driver Genes">
-                {geneSetOptions.map((opt) => {
-                  const optValue = `driver_gene:${opt.key}`;
-                  const isDisabled = isPairMode && isYDropdown;
-                  return (
-                    <Select.Option
-                      key={optValue}
-                      value={optValue}
-                      disabled={isDisabled}
-                      style={isDisabled ? { color: '#bfbfbf' } : {}}
-                    >
-                      {opt.label}
-                    </Select.Option>
-                  );
-                })}
-              </Select.OptGroup>
-            );
-          }
-          const isDisabled = isPairMode && isYDropdown && col.type === "categorical";
-          return (
-            <Select.Option 
-              key={col.dataIndex} 
-              value={col.dataIndex}
-              disabled={isDisabled}
-              style={isDisabled ? { color: '#bfbfbf' } : {}}
-            >
-              {col.label}
-            </Select.Option>
-          );
-        })}
-      </Select>
+        style={{ width: 200, ...style }}
+        popupMatchSelectWidth={false}
+        placeholder="Select axis"
+        disabled={isDisabled}
+      />
     );
   }
 
@@ -1112,7 +1135,7 @@ class AggregationsVisualization extends Component {
             return (
               <div style={{ position: "relative" }}>
                 <div style={{ textAlign: "center", marginBottom: 12, fontSize: 14, fontWeight: "500", color: "#333" }}>
-                  {getColumnLabel(this.state.xVariable)} vs. {getColumnLabel(this.state.yVariable)}
+                  {this.getTitleText()}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
