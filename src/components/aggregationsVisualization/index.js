@@ -633,8 +633,11 @@ class AggregationsVisualization extends Component {
                       selectedPairs={this.state.selectedPairs}
                       filteredRecords={filteredRecords}
                       plotType={plotType}
+                      pathwayMap={this.props.pathwayMap}
+                      selectedGeneSet={this.state.selectedGeneSet}
                       onYChange={(val) => this.handleVariableChange("yVariable", val)}
                       onPairsChange={(vals) => this.setState({ selectedPairs: vals })}
+                      onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
                     />
                     {computingAlterations && <Spin size="small" />}
                   </div>
@@ -741,8 +744,11 @@ class AggregationsVisualization extends Component {
                     yVariable={this.state.yVariable}
                     filteredRecords={filteredRecords}
                     plotType={plotType}
+                    pathwayMap={this.props.pathwayMap}
+                    selectedGeneSet={this.state.selectedGeneSet}
                     onXChange={(val) => this.handleVariableChange("xVariable", val)}
                     onYChange={(val) => this.handleVariableChange("yVariable", val)}
+                    onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
                   />
                 </div>
               </div>

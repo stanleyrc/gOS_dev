@@ -3,18 +3,57 @@ import { Select, Cascader } from "antd";
 import { allColumns } from "./helpers";
 
 class AxisSelectors extends Component {
-  renderDropdown = (variable, onChange, style = {}) => {
-    const cascaderOptions = allColumns
-      .filter((col) => col.type !== "pair")
-      .map((col) => ({
-        value: col.dataIndex,
-        label: col.label,
-      }));
+  buildCascaderOptions() {
+    const { pathwayMap = {} } = this.props;
+    const pathwayNames = Object.keys(pathwayMap);
 
-    const cascaderValue = variable ? [variable] : [];
+    return allColumns
+      .filter((col) => col.type !== "pair")
+      .map((col) => {
+        if (col.dataIndex === "driver_gene") {
+          const children = [
+            { value: "top20", label: "Top 20" },
+            ...pathwayNames.map((name) => ({
+              value: name,
+              label: name.replace(/_/g, " "),
+            })),
+          ];
+          return {
+            value: col.dataIndex,
+            label: col.label,
+            children,
+          };
+        }
+        return {
+          value: col.dataIndex,
+          label: col.label,
+        };
+      });
+  }
+
+  getCascaderValue(variable) {
+    const { selectedGeneSet } = this.props;
+    if (variable === "driver_gene") {
+      return ["driver_gene", selectedGeneSet || "top20"];
+    }
+    return variable ? [variable] : [];
+  }
+
+  renderDropdown = (variable, onChange, style = {}) => {
+    const { onGeneSetChange } = this.props;
+    const cascaderOptions = this.buildCascaderOptions();
+    const cascaderValue = this.getCascaderValue(variable);
+
     const handleCascaderChange = (values) => {
-      if (values.length > 0) {
-        onChange(values[0]);
+      if (values.length === 0) return;
+      const selectedColumn = values[0];
+      if (selectedColumn === "driver_gene" && values.length > 1) {
+        onChange(selectedColumn);
+        if (onGeneSetChange) {
+          onGeneSetChange(values[1]);
+        }
+      } else {
+        onChange(selectedColumn);
       }
     };
 
