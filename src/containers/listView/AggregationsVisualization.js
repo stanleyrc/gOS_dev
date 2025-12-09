@@ -598,30 +598,12 @@ class AggregationsVisualization extends Component {
   }
 
   getColorableColumns() {
-    const { filteredRecords = [] } = this.props;
-    const colorableColumns = [];
-    
-    const candidateColumns = categoricalColumns.filter(
+    // Return all categorical columns except alteration_type and driver_gene
+    // (driver_gene is handled separately with gene selector)
+    // High-cardinality fields are still included - legend will be hidden for them
+    return categoricalColumns.filter(
       (col) => col.dataIndex !== "alteration_type" && col.dataIndex !== "driver_gene"
     );
-    
-    candidateColumns.forEach((col) => {
-      const uniqueValues = new Set();
-      filteredRecords.forEach((record) => {
-        const val = getValue(record, col.dataIndex);
-        if (val != null) {
-          uniqueValues.add(val);
-        }
-      });
-      if (uniqueValues.size <= MAX_COLOR_CATEGORIES && uniqueValues.size > 0) {
-        colorableColumns.push({
-          ...col,
-          uniqueCount: uniqueValues.size,
-        });
-      }
-    });
-    
-    return colorableColumns;
   }
 
   getTopGenes() {
@@ -777,12 +759,18 @@ class AggregationsVisualization extends Component {
         .filter((v) => v != null)
     )].sort();
 
-    if (uniqueValues.length === 0 || uniqueValues.length > MAX_COLOR_CATEGORIES) {
+    if (uniqueValues.length === 0) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
     }
 
-    const colorScale = d3.scaleOrdinal(d3.schemeTableau10).domain(uniqueValues);
+    // Use extended color scheme for high-cardinality fields
+    const colorScheme = uniqueValues.length <= 10 
+      ? d3.schemeTableau10 
+      : d3.schemeCategory10.concat(d3.schemeSet3);
+    const colorScale = d3.scaleOrdinal(colorScheme).domain(uniqueValues);
     const colorAccessor = (d) => getValue(d, colorByVariable);
+    
+    // Return all categories - legend visibility is handled by renderColorLegend
     return { colorAccessor, colorScale, colorCategories: uniqueValues };
   }
 
@@ -790,7 +778,8 @@ class AggregationsVisualization extends Component {
     const { colorScale, colorCategories } = colorConfig;
     const { colorByVariable, selectedGene } = this.state;
 
-    if (!colorScale || colorCategories.length === 0) {
+    // Hide legend for high-cardinality fields (user can still see values in tooltip)
+    if (!colorScale || colorCategories.length === 0 || colorCategories.length > MAX_COLOR_CATEGORIES) {
       return null;
     }
 
