@@ -31,18 +31,20 @@ class KonvaScatter extends Component {
   shouldComponentUpdate(nextProps) {
     // Tooltip is now handled entirely in Konva - no React state for it
     // Only re-render for meaningful prop changes
-    const { width, height, data, selectedId, selectedIds } = this.props;
+    const { width, height, data, selectedId, selectedIds, colorAccessor, colorScale } = this.props;
     if (width !== nextProps.width || height !== nextProps.height) return true;
     if (data !== nextProps.data) return true;
     if (selectedId !== nextProps.selectedId) return true;
     if (selectedIds !== nextProps.selectedIds) return true;
+    if (colorAccessor !== nextProps.colorAccessor) return true;
+    if (colorScale !== nextProps.colorScale) return true;
     if (this.scalesChanged(this.props.xScale, nextProps.xScale)) return true;
     if (this.scalesChanged(this.props.yScale, nextProps.yScale)) return true;
     return false;
   }
 
   componentDidUpdate(prevProps) {
-    const { width, height, data, xScale, yScale, selectedId, selectedIds } = this.props;
+    const { width, height, data, xScale, yScale, selectedId, selectedIds, colorAccessor, colorScale } = this.props;
 
     const scalesChanged = this.scalesChanged(prevProps.xScale, xScale) || 
                           this.scalesChanged(prevProps.yScale, yScale);
@@ -55,7 +57,9 @@ class KonvaScatter extends Component {
       data !== prevProps.data ||
       scalesChanged ||
       selectedId !== prevProps.selectedId ||
-      selectedIds !== prevProps.selectedIds
+      selectedIds !== prevProps.selectedIds ||
+      colorAccessor !== prevProps.colorAccessor ||
+      colorScale !== prevProps.colorScale
     ) {
       this.renderPoints();
     }
