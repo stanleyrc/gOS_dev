@@ -110,14 +110,12 @@ function* fetchCaseReports(action) {
                   pair: e.pair,
                   value: eval(`e.${d.id}`),
                   tumor_type: e.tumor_type,
-                  report: e,
                 };
               } catch (error) {
                 return {
                   pair: e.pair,
                   value: null,
                   tumor_type: e.tumor_type,
-                  report: e,
                 };
               }
             })
@@ -130,14 +128,12 @@ function* fetchCaseReports(action) {
                   pair: e.pair,
                   value: eval(`e.${d.id}`),
                   tumor_type: e.tumor_type,
-                  report: e,
                 };
               } catch (error) {
                 return {
                   pair: e.pair,
                   value: null,
                   tumor_type: e.tumor_type,
-                  report: e,
                 };
               }
             })
@@ -432,14 +428,12 @@ function* searchReports({ searchFilters }) {
             pair: e.pair,
             value: eval(`e.${d.id}`),
             tumor_type: e.tumor_type,
-            report: e,
           };
         } catch (error) {
           return {
             pair: e.pair,
             value: null,
             tumor_type: e.tumor_type,
-            report: e,
           };
         }
       })

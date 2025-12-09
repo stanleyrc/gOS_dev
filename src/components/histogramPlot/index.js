@@ -4,10 +4,10 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors, kde, epanechnikov } from "../../helpers/utility";
+import { getNestedValue } from "../../helpers/metadata";
 import Wrapper from "./index.style";
 import caseReportsActions from "../../redux/caseReports/actions";
 import settingsActions from "../../redux/settings/actions";
-import { update } from "immutable";
 
 const { updateHighlightedCaseReport } = caseReportsActions;
 const { updateCaseReport } = settingsActions;
@@ -81,6 +81,7 @@ class HistogramPlot extends Component {
       highlightedCaseReport,
       updateHighlightedCaseReport,
       updateCaseReport,
+      datafiles,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -117,7 +118,10 @@ class HistogramPlot extends Component {
       .range([panelHeight, 0])
       .nice();
 
-    let highlightedMarkValue = highlightedCaseReport?.report[id];
+    let highlightedMarkValue = getNestedValue(
+      datafiles.find((d) => d.pair === highlightedCaseReport?.pair),
+      id
+    );
     let highlightedMarkValueText = highlightedMarkValue
       ? d3.format(format)(highlightedMarkValue)
       : null;
@@ -426,6 +430,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => ({
   highlightedCaseReport: state.CaseReports.highlightedCaseReport,
+  datafiles: state.CaseReports.datafiles,
 });
 export default connect(
   mapStateToProps,

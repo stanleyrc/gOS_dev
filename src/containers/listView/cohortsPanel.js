@@ -4,13 +4,12 @@ import { connect } from "react-redux";
 import * as d3 from "d3";
 import { Row, Col, Divider, Skeleton, Card, Empty } from "antd";
 import HistogramPlotPanel from "../../components/histogramPlotPanel";
-import { getColorMarker } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 class CohortsPanel extends Component {
   render() {
     const { t, loading, plots } = this.props;
-    console.log("CohortsPanel plots:", plots);
+
     let plotGroups = d3.groups(
       plots.filter((d) => d.data && d.data.length > 0),
       (d) => d.group

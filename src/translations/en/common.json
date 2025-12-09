@@ -38,8 +38,7 @@
     "next": "Next"
   },
   "topbar": {
-    "report_one": "<strong>{{count}}</strong> case report in total",
-    "report_zero": "No case reports available",
+    "report": "<strong>{{count}}</strong> case report in total",
     "report_plural": "<strong>{{count}}</strong> case reports in total",
     "browse-case-reports": "Browse Case Reports",
     "no-case-report-selected": "Select a Case Report to get started!"
@@ -271,7 +270,7 @@
       "tabs": {
         "cases": "Case Reports",
         "aggregations": "Aggregations",
-        "cohorts": "Cohorts"
+        "cohorts": "Population Stats"
       },
       "aggregations": {
         "title": "Cohort Level Aggregations",
