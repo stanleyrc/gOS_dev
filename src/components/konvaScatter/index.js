@@ -21,6 +21,7 @@ class KonvaScatter extends Component {
   circlesLayer = null;
   tooltipLayer = null;
   tooltipGroup = null;
+  hoveredNode = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -146,13 +147,26 @@ class KonvaScatter extends Component {
   }
 
   handleStageMouseOver = (evt) => {
-    const { disableTooltip, onPointHover, tooltipAccessor, width } = this.props;
+    const { disableTooltip, onPointHover, tooltipAccessor, width, hoverStroke, hoverStrokeWidth } = this.props;
     const node = evt.target;
 
     if (node === this.stage || !node.getAttr) return;
 
     const dataPoint = node.getAttr("dataPoint");
     if (!dataPoint) return;
+
+    // Store reference to hovered node for cleanup
+    this.hoveredNode = node;
+
+    // Change cursor to pointer
+    this.stage.container().style.cursor = "pointer";
+
+    // Add orange highlight stroke (save original values for restore)
+    node._originalStroke = node.stroke();
+    node._originalStrokeWidth = node.strokeWidth();
+    node.stroke(hoverStroke);
+    node.strokeWidth(hoverStrokeWidth);
+    this.circlesLayer.batchDraw();
 
     if (onPointHover) {
       onPointHover(dataPoint);
@@ -198,6 +212,19 @@ class KonvaScatter extends Component {
     const node = evt.target;
     if (node === this.stage) return;
     
+    // Reset cursor
+    if (this.stage) {
+      this.stage.container().style.cursor = "default";
+    }
+
+    // Restore original stroke styling
+    if (this.hoveredNode) {
+      this.hoveredNode.stroke(this.hoveredNode._originalStroke || null);
+      this.hoveredNode.strokeWidth(this.hoveredNode._originalStrokeWidth || 0);
+      this.hoveredNode = null;
+      this.circlesLayer.batchDraw();
+    }
+    
     if (this.tooltipGroup) {
       this.tooltipGroup.visible(false);
       this.tooltipLayer.batchDraw();
@@ -217,6 +244,19 @@ class KonvaScatter extends Component {
     
     if (onPointHoverEnd) {
       onPointHoverEnd();
+    }
+    
+    // Reset cursor
+    if (this.stage) {
+      this.stage.container().style.cursor = "default";
+    }
+
+    // Restore original stroke styling
+    if (this.hoveredNode) {
+      this.hoveredNode.stroke(this.hoveredNode._originalStroke || null);
+      this.hoveredNode.strokeWidth(this.hoveredNode._originalStrokeWidth || 0);
+      this.hoveredNode = null;
+      this.circlesLayer.batchDraw();
     }
     
     if (this.tooltipGroup) {
@@ -410,6 +450,8 @@ KonvaScatter.propTypes = {
   selectedIds: PropTypes.array,
   highlightStroke: PropTypes.string,
   highlightStrokeWidth: PropTypes.number,
+  hoverStroke: PropTypes.string,
+  hoverStrokeWidth: PropTypes.number,
 
   tooltipAccessor: PropTypes.func,
   idAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
@@ -427,6 +469,8 @@ KonvaScatter.defaultProps = {
   radiusAccessor: 4,
   highlightStroke: "#ff7f0e",
   highlightStrokeWidth: 3,
+  hoverStroke: "#ff7f0e",
+  hoverStrokeWidth: 3,
   disableTooltip: false,
 };
 
