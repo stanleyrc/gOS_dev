@@ -2,8 +2,8 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { Card, Spin, Empty, Tabs, Typography } from "antd";
 import { debounce } from "lodash";
-import AggregationsTable from "./AggregationsTable";
-import AggregationsVisualization from "./AggregationsVisualization";
+import AggregationsTable from "./aggregationsTable";
+import AggregationsVisualization from "./aggregationsVisualization";
 import { reportFilters } from "../../helpers/filters";
 
 const { Text } = Typography;
@@ -159,7 +159,7 @@ class AggregationsPanel extends Component {
                 </div>
               ) : filteredRecords.length === 0 ? (
                 <Empty
-                  description={t("containers.list-view.aggregations.no_data")}
+                  description={t("containers.list-view.no_data")}
                 />
               ) : (
                 <AggregationsTable filteredRecords={filteredRecords} />
@@ -177,7 +177,7 @@ class AggregationsPanel extends Component {
                   )}
                   {!loading && filteredRecords.length === 0 && (
                     <Empty
-                      description={t("containers.list-view.aggregations.no_data")}
+                      description={t("containers.list-view.no_data")}
                     />
                   )}
                   <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>

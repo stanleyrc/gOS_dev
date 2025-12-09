@@ -5,6 +5,12 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors, kde, epanechnikov } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import caseReportsActions from "../../redux/caseReports/actions";
+import settingsActions from "../../redux/settings/actions";
+import { update } from "immutable";
+
+const { updateHighlightedCaseReport } = caseReportsActions;
+const { updateCaseReport } = settingsActions;
 
 const margins = {
   gap: 0,
@@ -70,6 +76,11 @@ class HistogramPlot extends Component {
       scaleX,
       bandwidth,
       format,
+      dataset,
+      id,
+      highlightedCaseReport,
+      updateHighlightedCaseReport,
+      updateCaseReport,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -106,6 +117,12 @@ class HistogramPlot extends Component {
       .range([panelHeight, 0])
       .nice();
 
+    let highlightedMarkValue = highlightedCaseReport?.report[id];
+    let highlightedMarkValueText = highlightedMarkValue
+      ? d3.format(format)(highlightedMarkValue)
+      : null;
+    let highlightedPair = highlightedCaseReport?.pair;
+
     return {
       width,
       height,
@@ -121,6 +138,15 @@ class HistogramPlot extends Component {
       scaleX,
       density,
       format,
+      dataset,
+      data,
+      id,
+      highlightedCaseReport,
+      updateHighlightedCaseReport,
+      highlightedMarkValue,
+      highlightedMarkValueText,
+      highlightedPair,
+      updateCaseReport,
     };
   }
 
@@ -178,6 +204,30 @@ class HistogramPlot extends Component {
     this.setState({ zoomTransform: currentEvent.transform });
   }
 
+  handleMouseMove(event) {
+    const {
+      xScale,
+      dataset,
+      updateHighlightedCaseReport,
+      highlightedCaseReport,
+    } = this.getPlotConfiguration();
+
+    const mouseX = event.nativeEvent.offsetX - margins.gapX;
+    const invertedX = xScale.invert(mouseX);
+
+    if (invertedX >= xScale.domain()[0] && invertedX <= xScale.domain()[1]) {
+      // Find the closest actual data point using binary search
+      const bisect = d3.bisectCenter(
+        dataset.map((d) => +d.value),
+        invertedX
+      );
+      const closestDataPoint = dataset[bisect];
+      if (closestDataPoint?.pair !== highlightedCaseReport?.pair) {
+        updateHighlightedCaseReport(closestDataPoint);
+      }
+    }
+  }
+
   render() {
     const {
       width,
@@ -192,6 +242,10 @@ class HistogramPlot extends Component {
       q1,
       q3,
       density,
+      highlightedMarkValue,
+      highlightedMarkValueText,
+      highlightedPair,
+      updateCaseReport,
     } = this.getPlotConfiguration();
 
     let clipId = `cuttOffViewPane-${Math.random()}`;
@@ -254,14 +308,54 @@ class HistogramPlot extends Component {
                       className="marker"
                       transform={`translate(${[xScale(markValue), 0]})`}
                     >
-                      <line y2={panelHeight} stroke="red" strokeWidth={3} />
+                      <line
+                        y2={panelHeight}
+                        y1={0.33 * panelHeight}
+                        stroke="red"
+                        strokeWidth={3}
+                      />
                       <text
                         textAnchor={"middle"}
                         dy="-3"
+                        y={0.33 * panelHeight}
                         fill={colorMarker}
                         className="marker"
                       >
                         {markValueText}
+                      </text>
+                    </g>
+                  )}
+                {highlightedMarkValue >= 0 &&
+                  xScale(highlightedMarkValue) >= 0 &&
+                  xScale(highlightedMarkValue) <= panelWidth && (
+                    <g
+                      className="marker"
+                      transform={`translate(${[
+                        xScale(highlightedMarkValue),
+                        0,
+                      ]})`}
+                    >
+                      <line
+                        y2={panelHeight}
+                        y1={0.33 * panelHeight}
+                        stroke="#333"
+                        strokeWidth={3}
+                      />
+                      <text
+                        textAnchor={"middle"}
+                        dy="-3"
+                        y={0.33 * panelHeight}
+                        fill="#333"
+                        className="marker"
+                      >
+                        {highlightedMarkValueText}
+                      </text>
+                      <text
+                        textAnchor={"middle"}
+                        className="clickable-marker"
+                        onClick={(e) => updateCaseReport(highlightedPair)}
+                      >
+                        {highlightedPair}
                       </text>
                     </g>
                   )}
@@ -305,13 +399,7 @@ class HistogramPlot extends Component {
                 y={0.5}
                 width={panelWidth}
                 height={panelHeight}
-                style={{
-                  stroke: "#777",
-                  fill: "transparent",
-                  strokeWidth: 0.5,
-                  opacity: 0.19,
-                  pointerEvents: "all",
-                }}
+                onMouseMove={(e) => this.handleMouseMove(e)}
               />
             </g>
           </g>
@@ -331,8 +419,14 @@ HistogramPlot.defaultProps = {
   showAxisY: false,
   format: "0.3f",
 };
-const mapDispatchToProps = () => ({});
-const mapStateToProps = () => ({});
+const mapDispatchToProps = (dispatch) => ({
+  updateCaseReport: (report) => dispatch(updateCaseReport(report)),
+  updateHighlightedCaseReport: (report) =>
+    dispatch(updateHighlightedCaseReport(report)),
+});
+const mapStateToProps = (state) => ({
+  highlightedCaseReport: state.CaseReports.highlightedCaseReport,
+});
 export default connect(
   mapStateToProps,
   mapDispatchToProps

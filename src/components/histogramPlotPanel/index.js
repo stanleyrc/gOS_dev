@@ -49,7 +49,9 @@ class HistogramPlotPanel extends Component {
     const {
       t,
       loading,
+      id,
       data,
+      dataset,
       q1,
       q3,
       q99,
@@ -127,9 +129,11 @@ class HistogramPlotPanel extends Component {
                         <Col flex={1}>
                           <HistogramPlot
                             {...{
+                              id,
                               width,
                               height,
                               data,
+                              dataset,
                               q1,
                               q3,
                               q99,

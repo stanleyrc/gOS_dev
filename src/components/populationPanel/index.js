@@ -26,7 +26,9 @@ class PopulationPanel extends Component {
           let plotComponent = (
             <HistogramPlotPanel
               {...{
+                id: d.id,
                 data: d.data,
+                dataset: d.dataset,
                 q1: d.q1,
                 q3: d.q3,
                 q99: d.q99,

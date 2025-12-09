@@ -51,6 +51,9 @@ self.onmessage = function (e) {
       plot.order = d.order || i;
       plot.type = d.type;
       plot.scaleX = d.scale;
+      plot.dataset = populations[d.id].sort((a, b) =>
+        ascending(+a.value, +b.value)
+      );
       plot.allData = populations[d.id].map((e) => +e.value);
       plot.data = populations[d.id]
         .filter((e) => (tumour_type ? e.tumor_type === tumour_type : true))

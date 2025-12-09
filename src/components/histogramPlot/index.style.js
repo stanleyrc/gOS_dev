@@ -30,6 +30,20 @@ const Wrapper = styled.div`
     font-size: 12px;
     font-weight: bold;
   }
+  .zoom-background {
+    stroke: #777;
+    fill: transparent;
+    stroke-width: 0.5;
+    opacity: 0.19;
+    pointer-events: all;
+  }
+  .clickable-marker {
+    cursor: pointer;
+    pointer-events: all;
+    font-weight: normal;
+    fill: #333;
+    font-size: 12px;
+  }
 `;
 
 export default Wrapper;

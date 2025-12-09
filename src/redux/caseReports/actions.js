@@ -7,13 +7,20 @@ const actions = {
 
   SEARCH_CASE_REPORTS: "SEARCH_CASE_REPORTS",
   CASE_REPORTS_MATCHED: "CASE_REPORTS_MATCHED",
+  HIGHLIGHTED_CASE_REPORT_UPDATED: "HIGHLIGHTED_CASE_REPORT_UPDATED",
 
   fetchCaseReports: () => ({
     type: actions.FETCH_CASE_REPORTS_REQUEST,
   }),
+
   searchCaseReports: (searchFilters) => ({
     type: actions.SEARCH_CASE_REPORTS,
     searchFilters,
+  }),
+
+  updateHighlightedCaseReport: (report) => ({
+    type: actions.HIGHLIGHTED_CASE_REPORT_UPDATED,
+    report,
   }),
 };
 

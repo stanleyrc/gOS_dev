@@ -1,4 +1,4 @@
-import { HtmlRenderer } from './HtmlRenderer';
+import { HtmlRenderer } from './htmlRenderer';
 import { getUser } from './userAuth';
 
 /**

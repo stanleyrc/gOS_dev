@@ -22,7 +22,6 @@ import {
   Tag,
   Tabs,
 } from "antd";
-import AggregationsPanel from "./AggregationsPanel";
 import * as d3 from "d3";
 import {
   snakeCaseToHumanReadable,
@@ -35,7 +34,9 @@ import {
   cascaderSearchFilter,
 } from "../../helpers/filters";
 import Wrapper from "./index.style";
-import InterpretationsAvatar from "../../components/InterpretationsAvatar";
+import InterpretationsAvatar from "../../components/interpretationsAvatar";
+import AggregationsPanel from "./aggregationsPanel";
+import CohortsPanel from "./cohortsPanel";
 
 const { SHOW_CHILD } = Cascader;
 
@@ -88,7 +89,7 @@ class ListView extends Component {
         if (d.filter.external) {
           acc[`${name}-operator`] = cascaderOperators[0];
         } else {
-          acc['operator'] = cascaderOperators[0];
+          acc["operator"] = cascaderOperators[0];
         }
       }
       return acc;
@@ -139,8 +140,6 @@ class ListView extends Component {
       return <span key={option?.value}>{label}: </span>;
     });
 
-
-
   render() {
     const {
       t,
@@ -163,7 +162,9 @@ class ListView extends Component {
             <Item
               key={`containers.list-view.filters.${d.filter.name}-operator`}
               className="tags-operator-item"
-              name={d.filter.external ? `${d.filter.name}-operator` : `operator`}
+              name={
+                d.filter.external ? `${d.filter.name}-operator` : `operator`
+              }
               label={t(
                 `containers.list-view.filters.${d.filter.name}-operator`
               )}
@@ -196,7 +197,9 @@ class ListView extends Component {
               <Cascader
                 placeholder={t("containers.list-view.filters.placeholder")}
                 className="tags-cascader"
-                options={d.options || generateCascaderOptions(d.records, d.frequencies)}
+                options={
+                  d.options || generateCascaderOptions(d.records, d.frequencies)
+                }
                 displayRender={this.tagsDisplayRender}
                 optionRender={(option) => {
                   return (
@@ -447,12 +450,15 @@ class ListView extends Component {
                                     <Option key={d.id} value={d.id}>
                                       <span
                                         dangerouslySetInnerHTML={{
-                                          __html: t("containers.list-view.ordering", {
-                                            attribute: t(
-                                              `components.header-panel.metadata.${d.attribute}.short`
-                                            ),
-                                            sort: d.sort,
-                                          }),
+                                          __html: t(
+                                            "containers.list-view.ordering",
+                                            {
+                                              attribute: t(
+                                                `components.header-panel.metadata.${d.attribute}.short`
+                                              ),
+                                              sort: d.sort,
+                                            }
+                                          ),
                                         }}
                                       />
                                     </Option>
@@ -495,11 +501,15 @@ class ListView extends Component {
                                       >
                                         {d.pair}
                                       </Text>
-                                      <Text type="secondary">{d.inferred_sex}</Text>
+                                      <Text type="secondary">
+                                        {d.inferred_sex}
+                                      </Text>
                                       {d.qcEvaluation && (
                                         <Tag
                                           color={
-                                            qcMetricsClasses[d.qcEvaluation.toLowerCase()]
+                                            qcMetricsClasses[
+                                              d.qcEvaluation.toLowerCase()
+                                            ]
                                           }
                                           className="qc-evaluation-tag"
                                         >
@@ -513,8 +523,12 @@ class ListView extends Component {
                                     <Space>
                                       <InterpretationsAvatar
                                         pair={d.pair}
-                                        casesWithInterpretations={casesWithInterpretations}
-                                        interpretationsCounts={interpretationsCounts}
+                                        casesWithInterpretations={
+                                          casesWithInterpretations
+                                        }
+                                        interpretationsCounts={
+                                          interpretationsCounts
+                                        }
                                       />
                                       {d.tumor_type ? (
                                         <Avatar
@@ -531,7 +545,9 @@ class ListView extends Component {
                                   actions={[
                                     <Statistic
                                       className="stats"
-                                      title={t(`components.header-panel.metadata.sv_count.short`)}
+                                      title={t(
+                                        `components.header-panel.metadata.sv_count.short`
+                                      )}
                                       value={
                                         d.sv_count != null
                                           ? d3.format(",")(d.sv_count)
@@ -540,7 +556,9 @@ class ListView extends Component {
                                     />,
                                     <Statistic
                                       className="stats"
-                                      title={t(`components.header-panel.metadata.tmb.short`)}
+                                      title={t(
+                                        `components.header-panel.metadata.tmb.short`
+                                      )}
                                       value={
                                         d.tmb != null
                                           ? d3.format(",")(d.tmb)
@@ -549,7 +567,9 @@ class ListView extends Component {
                                     />,
                                     <Statistic
                                       className="stats"
-                                      title={t(`components.header-panel.metadata.tumor_median_coverage.shorter`)}
+                                      title={t(
+                                        `components.header-panel.metadata.tumor_median_coverage.shorter`
+                                      )}
                                       value={`${
                                         d["tumor_median_coverage"] != null
                                           ? `${d["tumor_median_coverage"]}X`
@@ -562,7 +582,9 @@ class ListView extends Component {
                                     />,
                                     <Statistic
                                       className="stats"
-                                      title={t("components.header-panel.purity-ploidy-title")}
+                                      title={t(
+                                        "components.header-panel.purity-ploidy-title"
+                                      )}
                                       value={
                                         d.purity != null
                                           ? d3.format(".1%")(d.purity)
@@ -581,17 +603,23 @@ class ListView extends Component {
                                       d.disease &&
                                       d.primary_site && (
                                         <Paragraph>
-                                          <Text type="primary">{d.disease}</Text>
+                                          <Text type="primary">
+                                            {d.disease}
+                                          </Text>
                                           {d.primary_site && (
                                             <Text type="secondary">
                                               <br />
-                                              {snakeCaseToHumanReadable(d.primary_site)}
+                                              {snakeCaseToHumanReadable(
+                                                d.primary_site
+                                              )}
                                             </Text>
                                           )}
                                           {d.tumor_details && (
                                             <Text type="secondary">
                                               <br />
-                                              {snakeCaseToHumanReadable(d.tumor_details)}
+                                              {snakeCaseToHumanReadable(
+                                                d.tumor_details
+                                              )}
                                             </Text>
                                           )}
                                         </Paragraph>
@@ -603,24 +631,26 @@ class ListView extends Component {
                                         size={0}
                                         style={{ display: "flex" }}
                                       >
-                                        {generateCascaderOptions(d.tags).map((tag, i) => (
-                                          <div key={`tag-${tag.value}-${i}`}>
-                                            <Divider
-                                              plain
-                                              orientation="left"
-                                              size="small"
-                                            >
-                                              {tag.label}
-                                            </Divider>
-                                            <Flex gap="2px" wrap="wrap">
-                                              {tag.children.map((child) => (
-                                                <Text key={child.value} code>
-                                                  {child.label}
-                                                </Text>
-                                              ))}
-                                            </Flex>
-                                          </div>
-                                        ))}
+                                        {generateCascaderOptions(d.tags).map(
+                                          (tag, i) => (
+                                            <div key={`tag-${tag.value}-${i}`}>
+                                              <Divider
+                                                plain
+                                                orientation="left"
+                                                size="small"
+                                              >
+                                                {tag.label}
+                                              </Divider>
+                                              <Flex gap="2px" wrap="wrap">
+                                                {tag.children.map((child) => (
+                                                  <Text key={child.value} code>
+                                                    {child.label}
+                                                  </Text>
+                                                ))}
+                                              </Flex>
+                                            </div>
+                                          )
+                                        )}
                                       </Space>
                                     }
                                   />
@@ -629,7 +659,10 @@ class ListView extends Component {
                             ))}
                           </Row>
                           {records.length > 0 && (
-                            <Row className="results-bottom-box" gutter={[16, 16]}>
+                            <Row
+                              className="results-bottom-box"
+                              gutter={[16, 16]}
+                            >
                               <Col className="gutter-row" span={24}>
                                 <Pagination
                                   showSizeChanger
@@ -647,7 +680,9 @@ class ListView extends Component {
                           )}
                           {records.length < 1 && (
                             <Card>
-                              <Empty description={false} />
+                              <Empty
+                                description={t("containers.list-view.no_data")}
+                              />
                             </Card>
                           )}
                         </>
@@ -663,6 +698,11 @@ class ListView extends Component {
                           dataset={dataset}
                         />
                       ),
+                    },
+                    {
+                      key: "cohorts",
+                      label: t("containers.list-view.tabs.cohorts"),
+                      children: <CohortsPanel />,
                     },
                   ]}
                 />

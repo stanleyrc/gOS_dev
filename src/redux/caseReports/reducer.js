@@ -6,6 +6,7 @@ const initState = {
   loadingPercentage: null,
   datafiles: [],
   populations: {},
+  cohortPopulations: {},
   reportsFilters: [],
   reportsFiltersExtents: {},
   casesWithInterpretations: new Set(),
@@ -20,6 +21,7 @@ const initState = {
   reports: [],
   totalReports: [],
   error: null,
+  highlightedCaseReport: null,
 };
 
 export default function appReducer(state = initState, action) {
@@ -31,6 +33,7 @@ export default function appReducer(state = initState, action) {
         error: null,
         datafiles: [],
         populations: {},
+        cohortPopulations: {},
         casesWithInterpretations: new Set(),
         interpretationsCounts: new Map(),
         searchFilters: {
@@ -45,12 +48,14 @@ export default function appReducer(state = initState, action) {
         totalReports: [],
         reportsFiltersExtents: {},
         loading: true,
+        highlightedCaseReport: null,
       };
     case actions.FETCH_CASE_REPORTS_REQUEST_LOADING:
       return {
         ...state,
         loadingPercentage: action.loadingPercentage,
         loading: true,
+        highlightedCaseReport: null,
       };
     case actions.FETCH_CASE_REPORTS_SUCCESS:
       return {
@@ -58,6 +63,7 @@ export default function appReducer(state = initState, action) {
         loadingPercentage: 100,
         datafiles: action.datafiles,
         populations: action.populations,
+        cohortPopulations: action.cohortPopulations,
         reportsFilters: action.reportsFilters,
         casesWithInterpretations: action.casesWithInterpretations || new Set(),
         interpretationsCounts: action.interpretationsCounts || new Map(),
@@ -65,6 +71,7 @@ export default function appReducer(state = initState, action) {
         totalReports: action.totalReports,
         reportsFiltersExtents: action.reportsFiltersExtents,
         loading: false,
+        highlightedCaseReport: null,
       };
     case actions.FETCH_CASE_REPORTS_FAILED:
       return {
@@ -78,7 +85,11 @@ export default function appReducer(state = initState, action) {
           operator: cascaderOperators[0],
         },
         error: action.error,
+        populations: {},
+        cohortPopulations: {},
+        datafiles: [],
         loading: false,
+        highlightedCaseReport: null,
       };
     case actions.SEARCH_CASE_REPORTS:
       return {
@@ -90,6 +101,7 @@ export default function appReducer(state = initState, action) {
           orderId: 1,
           operator: cascaderOperators[0],
         },
+        highlightedCaseReport: null,
       };
     case actions.CASE_REPORTS_MATCHED:
       return {
@@ -97,9 +109,18 @@ export default function appReducer(state = initState, action) {
         reports: action.reports,
         totalReports: action.totalReports,
         reportsFilters: action.reportsFilters,
-        casesWithInterpretations: action.casesWithInterpretations || state.casesWithInterpretations,
-        interpretationsCounts: action.interpretationsCounts || state.interpretationsCounts,
+        cohortPopulations: action.cohortPopulations,
+        casesWithInterpretations:
+          action.casesWithInterpretations || state.casesWithInterpretations,
+        interpretationsCounts:
+          action.interpretationsCounts || state.interpretationsCounts,
         loading: false,
+        highlightedCaseReport: null,
+      };
+    case actions.HIGHLIGHTED_CASE_REPORT_UPDATED:
+      return {
+        ...state,
+        highlightedCaseReport: action.report,
       };
     default:
       return state;

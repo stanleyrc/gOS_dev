@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Tooltip, Typography } from "antd";
 import { BsDashLg } from "react-icons/bs";
-import InterpretationsAvatar from "../../InterpretationsAvatar";
+import InterpretationsAvatar from "../../interpretationsAvatar";
 import { getAllInterpretationsForAlteration } from "../../../redux/interpretations/selectors";
 import { store } from "../../../redux/store";
 
@@ -10,7 +10,7 @@ const { Text } = Typography;
 /**
  * GeneRenderer
  * Renders gene name with interpretations avatar and link to open detail view
- * 
+ *
  * @param {*} value - The gene value
  * @param {Object} record - The complete record object
  * @param {Function} selectFilteredEvent - Function to handle selection

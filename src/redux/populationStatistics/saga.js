@@ -41,6 +41,41 @@ function* fetchPopulationStatistics(action) {
   }
 }
 
+function* fetchCohortStatistics(action) {
+  try {
+    const currentState = yield select(getCurrentState);
+    const { metadata } = currentState.CaseReport;
+    let populations = currentState.CaseReports.cohortPopulations;
+    let { dataset } = currentState.Settings;
+    let { kpiFields } = dataset;
+
+    // Use Web Worker for population metrics computation
+    const computationResult = yield call(
+      processDataInWorker,
+      {
+        populations,
+        metadata,
+        fields: kpiFields,
+      },
+      `${window.location.href
+        .split("?")[0]
+        .replace(/\/[^/]*$/, "")}/workers/populationStatistics.worker.js`
+    );
+
+    const { general } = computationResult;
+
+    yield put({
+      type: actions.FETCH_COHORT_STATISTICS_SUCCESS,
+      cohort: general,
+    });
+  } catch (error) {
+    yield put({
+      type: actions.FETCH_COHORT_STATISTICS_FAILED,
+      error,
+    });
+  }
+}
+
 function* watchForMultipleActions() {
   yield all([
     take(caseReportsActions.FETCH_CASE_REPORTS_SUCCESS),
@@ -52,12 +87,33 @@ function* watchForMultipleActions() {
   });
 }
 
+function* watchForMultipleCohortActions() {
+  while (true) {
+    yield take([
+      caseReportsActions.FETCH_CASE_REPORTS_SUCCESS,
+      caseReportsActions.CASE_REPORTS_MATCHED,
+    ]);
+
+    yield put({
+      type: actions.FETCH_COHORT_STATISTICS_REQUEST,
+    });
+  }
+}
+
 function* actionWatcher() {
   yield takeEvery(
     actions.FETCH_POPULATION_STATISTICS_REQUEST,
     fetchPopulationStatistics
   );
+  yield takeEvery(
+    actions.FETCH_COHORT_STATISTICS_REQUEST,
+    fetchCohortStatistics
+  );
 }
 export default function* rootSaga() {
-  yield all([actionWatcher(), watchForMultipleActions()]);
+  yield all([
+    actionWatcher(),
+    watchForMultipleActions(),
+    watchForMultipleCohortActions(),
+  ]);
 }

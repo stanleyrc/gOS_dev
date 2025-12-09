@@ -1,12 +1,4 @@
-import {
-  all,
-  takeEvery,
-  put,
-  call,
-  select,
-  take,
-  cancel,
-} from "redux-saga/effects";
+import { all, takeEvery, put, call, select, take } from "redux-saga/effects";
 import { getCurrentState } from "./selectors";
 import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
@@ -15,22 +7,17 @@ import {
   defaultSearchFilters,
   orderListViewFilters,
   datafilesArrowTableToJson,
-  flip,
-  reportAttributesMap,
 } from "../../helpers/utility";
 import {
   getReportsFilters,
   getInterpretationsFilter,
-  getReportFilterExtents,
   reportFilters,
 } from "../../helpers/filters";
 import { getActiveRepository } from "../../services/repositories";
 import { qcEvaluator } from "../../helpers/metadata";
-import common from '../../translations/en/common.json';
 import actions from "./actions";
 import settingsActions from "../settings/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
-import { getCancelToken } from "../../helpers/cancelToken";
 
 function* fetchCaseReports(action) {
   const currentState = yield select(getCurrentState);
@@ -81,15 +68,24 @@ function* fetchCaseReports(action) {
         );
 
         const repository = getActiveRepository({ dataset });
-        const casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
-        const interpretationsCounts = yield call(repository.getCasesInterpretationsCount.bind(repository), dataset.id);
-        console.log(casesWithInterpretations);
+        const casesWithInterpretations = yield call(
+          repository.getCasesWithInterpretations.bind(repository),
+          dataset.id
+        );
+        const interpretationsCounts = yield call(
+          repository.getCasesInterpretationsCount.bind(repository),
+          dataset.id
+        );
 
         let reportsFilters = [];
 
         reportsFilters = getReportsFilters(dataset.fields, datafiles);
-        
-        const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations, dataset.fields);
+
+        const interpretationsFilter = getInterpretationsFilter(
+          datafiles,
+          casesWithInterpretations,
+          dataset.fields
+        );
         reportsFilters.push(interpretationsFilter);
 
         // let reportsFiltersExtents = getReportFilterExtents(datafiles);
@@ -98,40 +94,66 @@ function* fetchCaseReports(action) {
           return acc;
         }, {});
 
-        let populations = {};
-
-        dataset.kpiFields.forEach((d, i) => {
-          populations[d.id] = datafiles.map((e) => {
-            try {
-              return {
-                pair: e.pair,
-                value: eval(`e.${d.id}`),
-                tumor_type: e.tumor_type,
-              };
-            } catch (error) {
-              return {
-                pair: e.pair,
-                value: null,
-                tumor_type: e.tumor_type,
-              };
-            }
-          });
-        });
-
         let { page, per_page } = defaultSearchFilters();
         let records = datafiles
           .filter((d) => d.visible !== false)
           .sort((a, b) => d3.ascending(a.pair, b.pair));
 
+        let populations = {};
+        let cohortPopulations = {};
+
+        dataset.kpiFields.forEach((d, i) => {
+          populations[d.id] = datafiles
+            .map((e) => {
+              try {
+                return {
+                  pair: e.pair,
+                  value: eval(`e.${d.id}`),
+                  tumor_type: e.tumor_type,
+                  report: e,
+                };
+              } catch (error) {
+                return {
+                  pair: e.pair,
+                  value: null,
+                  tumor_type: e.tumor_type,
+                  report: e,
+                };
+              }
+            })
+            .filter((item) => item.value != null && !isNaN(item.value));
+
+          cohortPopulations[d.id] = records
+            .map((e) => {
+              try {
+                return {
+                  pair: e.pair,
+                  value: eval(`e.${d.id}`),
+                  tumor_type: e.tumor_type,
+                  report: e,
+                };
+              } catch (error) {
+                return {
+                  pair: e.pair,
+                  value: null,
+                  tumor_type: e.tumor_type,
+                  report: e,
+                };
+              }
+            })
+            .filter((item) => item.value != null && !isNaN(item.value));
+        });
+
         yield put({
           type: actions.FETCH_CASE_REPORTS_SUCCESS,
           datafiles,
           populations,
+          cohortPopulations,
           reportsFilters,
           casesWithInterpretations,
           interpretationsCounts,
           reports: records.slice((page - 1) * per_page, page * per_page),
-          totalReports: records.length,
+          totalReports: records,
           reportsFiltersExtents,
         });
       } else if (result.error) {
@@ -168,32 +190,35 @@ function* fetchCaseReports(action) {
  * Apply filters based on external data sources (not stored on records)
  */
 function applyExternalFilters(records, searchFilters, externalData) {
-  console.log('searchFilter', searchFilters)
   const { casesWithInterpretations } = externalData;
-  
+
   // Handle has_interpretations filter
-  if (searchFilters.has_interpretations && searchFilters.has_interpretations.length > 0) {
+  if (
+    searchFilters.has_interpretations &&
+    searchFilters.has_interpretations.length > 0
+  ) {
     const selectedValues = searchFilters.has_interpretations;
-    const operator = searchFilters['has_interpretations-operator'] || "OR";
-    
+    const operator = searchFilters["has_interpretations-operator"] || "OR";
+
     // Build sets of matching records for each selected criterion
-    const matchingSets = selectedValues.map(value => {
+    const matchingSets = selectedValues.map((value) => {
       const matchingRecords = new Set();
-      
+
       // value is an array representing the cascader path
       const category = value[0];
       const specificValue = value.length > 1 ? value[1] : null;
-      
+
       if (category === "tier_change") {
-        records.forEach(r => {
+        records.forEach((r) => {
           if (casesWithInterpretations.withTierChange.has(r.pair)) {
             matchingRecords.add(r.pair);
           }
         });
       } else if (category === "author" && specificValue) {
-        const authorCases = casesWithInterpretations.byAuthor.get(specificValue);
+        const authorCases =
+          casesWithInterpretations.byAuthor.get(specificValue);
         if (authorCases) {
-          records.forEach(r => {
+          records.forEach((r) => {
             if (authorCases.has(r.pair)) {
               matchingRecords.add(r.pair);
             }
@@ -202,45 +227,45 @@ function applyExternalFilters(records, searchFilters, externalData) {
       } else if (category === "gene" && specificValue) {
         const geneCases = casesWithInterpretations.byGene.get(specificValue);
         if (geneCases) {
-          records.forEach(r => {
+          records.forEach((r) => {
             if (geneCases.has(r.pair)) {
               matchingRecords.add(r.pair);
             }
           });
         }
       } else if (category === "without") {
-        records.forEach(r => {
+        records.forEach((r) => {
           if (!casesWithInterpretations.all.has(r.pair)) {
             matchingRecords.add(r.pair);
           }
         });
       }
-      
+
       return matchingRecords;
     });
-    
+
     // Apply operator logic
     if (operator === "OR") {
       // Union: include if in ANY of the sets
       const unionSet = new Set();
-      matchingSets.forEach(set => {
-        set.forEach(pair => unionSet.add(pair));
+      matchingSets.forEach((set) => {
+        set.forEach((pair) => unionSet.add(pair));
       });
-      records = records.filter(r => unionSet.has(r.pair));
+      records = records.filter((r) => unionSet.has(r.pair));
     } else if (operator === "AND") {
       // Intersection: include only if in ALL sets
       if (matchingSets.length > 0) {
-        records = records.filter(r => {
-          return matchingSets.every(set => set.has(r.pair));
+        records = records.filter((r) => {
+          return matchingSets.every((set) => set.has(r.pair));
         });
       }
     } else if (operator === "NOT") {
       // Exclusion: include if NOT in any of the sets
       const unionSet = new Set();
-      matchingSets.forEach(set => {
-        set.forEach(pair => unionSet.add(pair));
+      matchingSets.forEach((set) => {
+        set.forEach((pair) => unionSet.add(pair));
       });
-      records = records.filter(r => !unionSet.has(r.pair));
+      records = records.filter((r) => !unionSet.has(r.pair));
     }
   }
 
@@ -254,8 +279,14 @@ function* searchReports({ searchFilters }) {
 
   // Always fetch fresh casesWithInterpretations and interpretationsCounts to ensure filters are up to date
   const repository = getActiveRepository({ dataset });
-  casesWithInterpretations = yield call(repository.getCasesWithInterpretations.bind(repository), dataset.id);
-  const interpretationsCounts = yield call(repository.getCasesInterpretationsCount.bind(repository), dataset.id);
+  casesWithInterpretations = yield call(
+    repository.getCasesWithInterpretations.bind(repository),
+    dataset.id
+  );
+  const interpretationsCounts = yield call(
+    repository.getCasesInterpretationsCount.bind(repository),
+    dataset.id
+  );
 
   let records = datafiles.filter((d) => d.visible !== false);
 
@@ -263,10 +294,11 @@ function* searchReports({ searchFilters }) {
   let perPage = searchFilters?.per_page || defaultSearchFilters().per_page;
   let orderId = searchFilters?.orderId || defaultSearchFilters().orderId;
   let { attribute, sort } = orderListViewFilters.find((d) => d.id === orderId);
-  let flippedMap = flip(reportAttributesMap());
 
   // Apply external filters first
-  records = applyExternalFilters(records, searchFilters, { casesWithInterpretations });
+  records = applyExternalFilters(records, searchFilters, {
+    casesWithInterpretations,
+  });
 
   // Apply record-based filters
   let actualSearchFilters = Object.fromEntries(
@@ -286,13 +318,15 @@ function* searchReports({ searchFilters }) {
   Object.keys(actualSearchFilters).forEach((key) => {
     const reportFilter = reportFilters().find((d) => d.name === key);
     // Fallback to reportFilters() if renderer not defined in dataset.fields
-    let keyRenderer = dataset.fields.find((d) => d.name === key)?.renderer || reportFilter?.renderer;
-    
+    let keyRenderer =
+      dataset.fields.find((d) => d.name === key)?.renderer ||
+      reportFilter?.renderer;
+
     // Skip external filters (handled separately)
     if (reportFilter?.external) {
       return;
     }
-    
+
     if (key === "texts") {
       records = records
         .filter((record) =>
@@ -355,8 +389,7 @@ function* searchReports({ searchFilters }) {
       const cascaderPredicates = {
         AND: (record) =>
           selectedItems.every((item) => matchesItem(record, item)),
-        OR: (record) =>
-          selectedItems.some((item) => matchesItem(record, item)),
+        OR: (record) => selectedItems.some((item) => matchesItem(record, item)),
         NOT: (record) =>
           selectedItems.every((item) => !matchesItem(record, item)),
       };
@@ -382,13 +415,42 @@ function* searchReports({ searchFilters }) {
   });
 
   const reportsFilters = getReportsFilters(dataset.fields, datafiles);
-  const interpretationsFilter = getInterpretationsFilter(datafiles, casesWithInterpretations, dataset.fields);
+  const interpretationsFilter = getInterpretationsFilter(
+    datafiles,
+    casesWithInterpretations,
+    dataset.fields
+  );
   reportsFilters.push(interpretationsFilter);
+
+  let cohortPopulations = {};
+
+  dataset.kpiFields.forEach((d, i) => {
+    cohortPopulations[d.id] = records
+      .map((e) => {
+        try {
+          return {
+            pair: e.pair,
+            value: eval(`e.${d.id}`),
+            tumor_type: e.tumor_type,
+            report: e,
+          };
+        } catch (error) {
+          return {
+            pair: e.pair,
+            value: null,
+            tumor_type: e.tumor_type,
+            report: e,
+          };
+        }
+      })
+      .filter((item) => item.value != null && !isNaN(item.value));
+  });
 
   yield put({
     type: actions.CASE_REPORTS_MATCHED,
     reports: records.slice((page - 1) * perPage, page * perPage),
-    totalReports: records.length,
+    totalReports: records,
+    cohortPopulations: cohortPopulations,
     reportsFilters: reportsFilters,
     casesWithInterpretations,
     interpretationsCounts,

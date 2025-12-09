@@ -38,7 +38,8 @@
     "next": "Next"
   },
   "topbar": {
-    "report": "<strong>{{count}}</strong> case report in total",
+    "report_one": "<strong>{{count}}</strong> case report in total",
+    "report_zero": "No case reports available",
     "report_plural": "<strong>{{count}}</strong> case reports in total",
     "browse-case-reports": "Browse Case Reports",
     "no-case-report-selected": "Select a Case Report to get started!"
@@ -266,9 +267,11 @@
   "containers": {
     "home": {},
     "list-view": {
+      "no_data": "No data available",
       "tabs": {
-        "cases": "Cases",
-        "aggregations": "Aggregations"
+        "cases": "Case Reports",
+        "aggregations": "Aggregations",
+        "cohorts": "Cohorts"
       },
       "aggregations": {
         "title": "Cohort Level Aggregations",
@@ -279,7 +282,6 @@
         "percentage_column": "% of Total",
         "total_row": "Total",
         "empty_class": "(empty)",
-        "no_data": "No data available",
         "log_scale": "logarithmic scale",
         "table_tab": "Table",
         "visualization_tab": "Visualization",

@@ -39,7 +39,7 @@ class LandingPage extends Component {
       loading,
       loadingPercentage,
       reports,
-      totalReports,
+      totalReportsCount,
       reportsFilters,
       reportsFiltersExtents,
       searchCaseReports,
@@ -72,7 +72,7 @@ class LandingPage extends Component {
             filtersExtents={reportsFiltersExtents}
             onSearch={searchCaseReports}
             searchFilters={searchFilters}
-            totalRecords={totalReports}
+            totalRecords={totalReportsCount}
             datafiles={datafiles}
             dataset={dataset}
           />
@@ -94,7 +94,7 @@ const mapStateToProps = (state) => ({
   reportsFilters: state.CaseReports.reportsFilters,
   reportsFiltersExtents: state.CaseReports.reportsFiltersExtents,
   searchFilters: state.CaseReports.searchFilters,
-  totalReports: state.CaseReports.totalReports,
+  totalReportsCount: state.CaseReports.totalReports.length,
   datafiles: state.CaseReports.datafiles,
   dataset: state.Settings.dataset,
 });
