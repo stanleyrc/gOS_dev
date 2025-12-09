@@ -3,13 +3,15 @@ import { Select, Cascader } from "antd";
 import { allColumns } from "./helpers";
 
 class AxisSelectors extends Component {
-  buildCascaderOptions() {
+  buildCascaderOptions(forXAxis = false) {
     const { pathwayMap = {} } = this.props;
     const pathwayNames = Object.keys(pathwayMap);
 
-    return allColumns
-      .filter((col) => col.type !== "pair")
-      .map((col) => {
+    const columnsToUse = forXAxis
+      ? allColumns
+      : allColumns.filter((col) => col.type !== "pair");
+
+    return columnsToUse.map((col) => {
         if (col.dataIndex === "driver_gene") {
           const children = [
             { value: "top20", label: "Top 20" },
@@ -39,9 +41,9 @@ class AxisSelectors extends Component {
     return variable ? [variable] : [];
   }
 
-  renderDropdown = (variable, onChange, style = {}) => {
+  renderDropdown = (variable, onChange, style = {}, forXAxis = false) => {
     const { onGeneSetChange } = this.props;
-    const cascaderOptions = this.buildCascaderOptions();
+    const cascaderOptions = this.buildCascaderOptions(forXAxis);
     const cascaderValue = this.getCascaderValue(variable);
 
     const handleCascaderChange = (values) => {
@@ -109,7 +111,7 @@ class AxisSelectors extends Component {
     if (onXChange !== undefined) {
       return (
         <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-          {this.renderDropdown(xVariable, onXChange)}
+          {this.renderDropdown(xVariable, onXChange, {}, true)}
         </div>
       );
     }
