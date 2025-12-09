@@ -98,14 +98,7 @@ class AggregationsVisualization extends Component {
     selectedPairs: [],
   };
 
-  scatterXAccessor = (d) => getValue(d, this.state.xVariable);
-  scatterYAccessor = (d) => getValue(d, this.state.yVariable);
   scatterIdAccessor = (d) => d.pair;
-  scatterTooltipAccessor = (d) => [
-    { label: "Case", value: d.pair },
-    { label: getColumnLabel(this.state.xVariable), value: d3.format(",.2f")(getValue(d, this.state.xVariable)) },
-    { label: getColumnLabel(this.state.yVariable), value: d3.format(",.2f")(getValue(d, this.state.yVariable)) },
-  ];
 
   handlePointClick = (dataPoint) => {
     const { handleCardClick } = this.props;
@@ -615,7 +608,16 @@ class AggregationsVisualization extends Component {
 
   renderScatterPlotOverlay(config) {
     const { filteredRecords = [] } = this.props;
+    const { xVariable, yVariable } = this.state;
     const { xScale, yScale, panelWidth, panelHeight } = config;
+
+    const xAccessor = (d) => getValue(d, xVariable);
+    const yAccessor = (d) => getValue(d, yVariable);
+    const tooltipAccessor = (d) => [
+      { label: "Case", value: d.pair },
+      { label: getColumnLabel(xVariable), value: d3.format(",.2f")(getValue(d, xVariable)) },
+      { label: getColumnLabel(yVariable), value: d3.format(",.2f")(getValue(d, yVariable)) },
+    ];
 
     return (
       <div
@@ -632,12 +634,12 @@ class AggregationsVisualization extends Component {
           data={filteredRecords}
           width={panelWidth}
           height={panelHeight}
-          xAccessor={this.scatterXAccessor}
-          yAccessor={this.scatterYAccessor}
+          xAccessor={xAccessor}
+          yAccessor={yAccessor}
           xScale={xScale}
           yScale={yScale}
           idAccessor={this.scatterIdAccessor}
-          tooltipAccessor={this.scatterTooltipAccessor}
+          tooltipAccessor={tooltipAccessor}
           radiusAccessor={5}
           opacityAccessor={0.8}
           onPointClick={this.handlePointClick}
