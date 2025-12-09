@@ -4,7 +4,7 @@ import { Select, Spin } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
-import { parseDriverGenes } from "../../helpers/geneAggregations";
+import { parseDriverGenes, computeGeneStats } from "../../helpers/geneAggregations";
 import HistogramPlot from "../../components/histogramPlot";
 import KonvaScatter from "../../components/konvaScatter";
 
@@ -228,22 +228,57 @@ class AggregationsVisualization extends Component {
     let scrollable = false;
 
     if (plotType === "stacked-bar") {
-      const xRecords = this.expandRecordsByCategory(filteredRecords, xVariable);
-      
       const countMap = {};
       const xCategoryCounts = {};
-      xRecords.forEach((d) => {
-        const xVal = this.getEffectiveValue(d, xVariable);
-        const yVal = this.getEffectiveValue(d, yVariable);
-        if (xVal && yVal) {
-          if (!countMap[xVal]) countMap[xVal] = {};
-          countMap[xVal][yVal] = (countMap[xVal][yVal] || 0) + 1;
-          xCategoryCounts[xVal] = (xCategoryCounts[xVal] || 0) + 1;
-        }
-      });
+      const allYValues = new Set();
+      
+      // Special case: driver_gene × alteration_type uses actual gene-type pairs
+      // (alteration type is tied to specific gene, not independent)
+      const isGeneByAlteration = 
+        (xVariable === "driver_gene" && yVariable === "alteration_type") ||
+        (xVariable === "alteration_type" && yVariable === "driver_gene");
+      
+      if (isGeneByAlteration) {
+        // Use computeGeneStats which correctly tracks gene-type pairs
+        const geneStats = computeGeneStats(filteredRecords);
+        const isGeneOnX = xVariable === "driver_gene";
+        
+        Object.entries(geneStats.geneByType).forEach(([gene, typeMap]) => {
+          Object.entries(typeMap).forEach(([type, count]) => {
+            const xVal = isGeneOnX ? gene : type;
+            const yVal = isGeneOnX ? type : gene;
+            
+            if (!countMap[xVal]) countMap[xVal] = {};
+            countMap[xVal][yVal] = (countMap[xVal][yVal] || 0) + count;
+            xCategoryCounts[xVal] = (xCategoryCounts[xVal] || 0) + count;
+            allYValues.add(yVal);
+          });
+        });
+      } else {
+        // Standard expansion for other categorical combinations
+        const xRecords = this.expandRecordsByCategory(filteredRecords, xVariable);
+        
+        xRecords.forEach((d) => {
+          const xVal = this.getEffectiveValue(d, xVariable);
+          let yVals = this.getEffectiveValue(d, yVariable);
+          
+          if (!Array.isArray(yVals)) {
+            yVals = yVals ? [yVals] : [];
+          }
+          
+          yVals.forEach((yVal) => {
+            if (xVal && yVal) {
+              if (!countMap[xVal]) countMap[xVal] = {};
+              countMap[xVal][yVal] = (countMap[xVal][yVal] || 0) + 1;
+              xCategoryCounts[xVal] = (xCategoryCounts[xVal] || 0) + 1;
+              allYValues.add(yVal);
+            }
+          });
+        });
+      }
       
       let xCategories = Object.keys(countMap).sort();
-      const yCategories = [...new Set(xRecords.map((d) => this.getEffectiveValue(d, yVariable)).filter(Boolean))].sort();
+      const yCategories = [...allYValues].sort();
       
       if (xVariable === "driver_gene") {
         xCategories = Object.entries(xCategoryCounts)
