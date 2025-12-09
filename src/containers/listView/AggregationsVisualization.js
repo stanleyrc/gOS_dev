@@ -57,7 +57,7 @@ const categoricalColumns = [
   { key: "inferred_sex", dataIndex: "inferred_sex", label: "Inferred Sex", type: "categorical" },
   { key: "qcEvaluation", dataIndex: "qcEvaluation", label: "QC Evaluation", type: "categorical" },
   { key: "alteration_type", dataIndex: "alteration_type", label: "Alteration Type", type: "categorical" },
-  { key: "driver_gene", dataIndex: "driver_gene", label: "Driver Gene", type: "categorical" },
+  { key: "driver_gene", dataIndex: "driver_gene", label: "Driver Genes (Top 20)", type: "categorical" },
 ];
 
 const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair (Density Plot)", type: "pair" };
@@ -865,6 +865,9 @@ class AggregationsVisualization extends Component {
 
             return (
               <div style={{ position: "relative" }}>
+                <div style={{ textAlign: "center", marginBottom: 12, fontSize: 14, fontWeight: "500", color: "#333" }}>
+                  {getColumnLabel(this.state.xVariable)} vs. {getColumnLabel(this.state.yVariable)}
+                </div>
                 <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 4, gap: 16 }}>
                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {this.renderDropdown("yVariable")}
