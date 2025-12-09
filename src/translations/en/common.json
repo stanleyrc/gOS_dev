@@ -627,6 +627,8 @@
       "title": "Variant Allele Frequency vs ALT Read Depth distribution plot",
       "variantId": "Variant #{{id}}",
       "oncogenicity": "Oncogenic",
+      "loading": "Loading variant data...",
+      "no-data": "No variant data available",
       "y-title": "↑ {{value}}",
       "x-title": "{{value}} →",
       "plot-label": "Show as:",

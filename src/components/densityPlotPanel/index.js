@@ -13,7 +13,7 @@ import {
   Col,
   Segmented,
   Progress,
-  Skeleton,
+  Empty,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -123,8 +123,16 @@ class DensityPlotPanel extends Component {
             loadingPercentage ? (
               <Progress percent={loadingPercentage} />
             ) : (
-              <Skeleton loading={loading} active />
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={t("components.sageQc-panel.loading")}
+              />
             )
+          ) : !dataPoints || dataPoints.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={t("components.sageQc-panel.no-data")}
+            />
           ) : (
             visible && (
               <div

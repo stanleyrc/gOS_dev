@@ -9,6 +9,7 @@ import {
   snakeCaseToHumanReadable,
 } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import KonvaScatter from "../konvaScatter";
 
 const margins = {
   gap: 0,
@@ -179,7 +180,10 @@ class DensityPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const axisX = d3.axisBottom(xScale).tickFormat(d3.format(xFormat));
+    const axisX = d3.axisBottom(xScale);
+    if (xFormat) {
+      axisX.tickFormat(d3.format(xFormat));
+    }
 
     xAxisContainer.call(axisX);
   }
@@ -191,7 +195,10 @@ class DensityPlot extends Component {
       .select(this.plotContainer)
       .select(".y-axis-container");
 
-    let yAxis = d3.axisLeft(yScale).tickFormat(d3.format(yFormat));
+    let yAxis = d3.axisLeft(yScale);
+    if (yFormat) {
+      yAxis.tickFormat(d3.format(yFormat));
+    }
     yAxisContainer.call(yAxis);
   }
 
@@ -349,58 +356,53 @@ class DensityPlot extends Component {
                       ))}
                     </g>
                   )}
-                  {plotType === "scatterplot" &&
-                    dataPoints
-                      .sort((a, b) => {
-                        // Selected points come last (on top)
-                        if (a.uid === selectedId) return 1;
-                        if (b.uid === selectedId) return -1;
-                        // Then sort by oncogenicity
-                        const oncogenicityOrder = d3.ascending(
-                          a.oncogenicity || false,
-                          b.oncogenicity || false
-                        );
-                        // If oncogenicity is same, sort by color
-                        return (
-                          oncogenicityOrder ||
-                          d3.ascending(a[colorVariable], b[colorVariable])
-                        );
-                      })
-                      .map((d, i) => (
-                        <path
-                          key={d.uid}
-                          id={d.uid}
-                          transform={`translate(${[
-                            xScale(d[xVariable]),
-                            yScale(d[yVariable]),
-                          ]})`}
-                          d={
-                            d.oncogenicity
-                              ? d3.symbol(d3.symbolStar, 100)()
-                              : d3.symbol(d3.symbolCircle, 50)()
-                          }
-                          opacity={visible && id === i ? 1 : 1}
-                          fill={color(d[colorVariable])}
-                          stroke={
-                            selectedId === d.uid || (visible && id === i)
-                              ? "#ff7f0e"
-                              : "lightgray"
-                          }
-                          strokeWidth={
-                            selectedId === d.uid || (visible && id === i)
-                              ? 3
-                              : d.oncogenicity
-                              ? 1
-                              : 0.5
-                          }
-                          onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
-                          onMouseOut={(e) => this.handleMouseOut(e, d)}
-                          onClick={() =>
-                            handlePointClicked ? handlePointClicked(d) : null
-                          }
-                          cursor={handlePointClicked ? "pointer" : "default"}
-                        />
-                      ))}
+                  {plotType === "scatterplot" && (
+                    <foreignObject
+                      x={0}
+                      y={0}
+                      width={panelWidth}
+                      height={panelHeight}
+                    >
+                      <KonvaScatter
+                        data={dataPoints}
+                        width={panelWidth}
+                        height={panelHeight}
+                        xAccessor={xVariable}
+                        yAccessor={yVariable}
+                        xScale={xScale}
+                        yScale={yScale}
+                        colorAccessor={colorVariable}
+                        colorScale={color}
+                        radiusAccessor={4}
+                        shapeAccessor={(d) =>
+                          d.oncogenicity ? "star" : "circle"
+                        }
+                        selectedId={selectedId}
+                        idAccessor="uid"
+                        tooltipAccessor={(d) =>
+                          Object.keys(d)
+                            .filter((k) => !k.startsWith("_"))
+                            .map((k) => ({
+                              label: snakeCaseToHumanReadable(k),
+                              value: d[k],
+                            }))
+                        }
+                        zOrderComparator={(a, b) => {
+                          if (a.uid === selectedId) return 1;
+                          if (b.uid === selectedId) return -1;
+                          const oncogenicityOrder = d3.ascending(
+                            a.oncogenicity || false,
+                            b.oncogenicity || false
+                          );
+                          return (
+                            oncogenicityOrder ||
+                            d3.ascending(a[colorVariable], b[colorVariable])
+                          );
+                        }}
+                        onPointClick={handlePointClicked}
+                      />
+                    </foreignObject>
+                  )}
                   {plotType === "contourplot" && (
                     <rect
                       width={panelWidth}
