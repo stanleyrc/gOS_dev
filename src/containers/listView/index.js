@@ -661,7 +661,6 @@ class ListView extends Component {
                           datafiles={datafiles}
                           searchFilters={searchFilters}
                           dataset={dataset}
-                          handleCardClick={handleCardClick}
                         />
                       ),
                     },

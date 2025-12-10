@@ -144,7 +144,7 @@ class AggregationsPanel extends Component {
   };
 
   render() {
-    const { t, handleCardClick } = this.props;
+    const { t, dataset } = this.props;
     const { filteredRecords, loading, pathwayMap } = this.state;
 
     return (
@@ -173,7 +173,7 @@ class AggregationsPanel extends Component {
                   description={t("containers.list-view.aggregations.no_data")}
                 />
               ) : (
-                <AggregationsTable filteredRecords={filteredRecords} handleCardClick={handleCardClick} />
+                <AggregationsTable filteredRecords={filteredRecords} dataset={dataset} />
               ),
             },
             {
@@ -192,7 +192,7 @@ class AggregationsPanel extends Component {
                     />
                   )}
                   <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>
-                    <AggregationsVisualization filteredRecords={filteredRecords} handleCardClick={handleCardClick} pathwayMap={pathwayMap} />
+                    <AggregationsVisualization filteredRecords={filteredRecords} dataset={dataset} pathwayMap={pathwayMap} />
                   </div>
                 </div>
               ),

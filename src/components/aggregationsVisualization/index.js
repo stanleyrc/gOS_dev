@@ -23,6 +23,7 @@ import {
   numericColumns,
   categoricalColumns,
   allColumns,
+  openCaseInNewTab,
 } from "./helpers";
 
 class AggregationsVisualization extends Component {
@@ -51,10 +52,9 @@ class AggregationsVisualization extends Component {
   scatterIdAccessor = (d) => d.pair;
 
   handlePointClick = (dataPoint) => {
-    const { handleCardClick } = this.props;
-    if (handleCardClick && dataPoint?.pair) {
-      const syntheticEvent = { stopPropagation: () => {}, metaKey: false };
-      handleCardClick(syntheticEvent, dataPoint.pair);
+    const { dataset } = this.props;
+    if (dataPoint?.pair) {
+      openCaseInNewTab(dataPoint.pair, dataset);
     }
   };
 

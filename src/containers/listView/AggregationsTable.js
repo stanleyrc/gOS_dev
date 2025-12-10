@@ -3,6 +3,7 @@ import { withTranslation } from "react-i18next";
 import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
+import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
 
 const { Text } = Typography;
 
@@ -168,14 +169,13 @@ class AggregationsTable extends PureComponent {
   };
 
   handlePairClick = (event, pair) => {
-    const { handleCardClick } = this.props;
-    if (handleCardClick && pair) {
-      handleCardClick(event, pair);
-    }
+    const { dataset } = this.props;
+    event.preventDefault();
+    openCaseInNewTab(pair, dataset);
   };
 
   buildColumns = () => {
-    const { t } = this.props;
+    const { t, dataset } = this.props;
     const { columnStats } = this.state;
 
     // Define all available columns from case properties
@@ -359,14 +359,17 @@ class AggregationsTable extends PureComponent {
            
            // Make pair column a clickable link
            if (col.renderLink) {
+             const datasetParam = dataset?.id ? `&dataset=${dataset.id}` : "";
              return (
                <a
-                 href={`/?report=${value}`}
+                 href={`/?report=${value}${datasetParam}`}
                  onClick={(e) => {
                    e.preventDefault();
                    this.handlePairClick(e, value);
                  }}
                  style={{ color: "#1890ff", cursor: "pointer" }}
+                 target="_blank"
+                 rel="noopener noreferrer"
                >
                  {formattedValue}
                </a>

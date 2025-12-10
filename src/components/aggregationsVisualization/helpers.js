@@ -57,6 +57,21 @@ export const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair", type:
 
 export const allColumns = [...numericColumns, ...categoricalColumns, pairColumn];
 
+/**
+ * Opens a case report in a new browser tab with proper dataset context.
+ * @param {string} pair - The case/pair ID to open
+ * @param {object} dataset - The dataset object containing the id
+ */
+export const openCaseInNewTab = (pair, dataset) => {
+  if (!pair) return;
+  const url = new URL(window.location.origin);
+  url.searchParams.set("report", pair);
+  if (dataset?.id) {
+    url.searchParams.set("dataset", dataset.id);
+  }
+  window.open(url.toString(), "_blank");
+};
+
 export const getColumnType = (dataIndex) => {
   const col = allColumns.find((c) => c.dataIndex === dataIndex);
   return col?.type || "numeric";
