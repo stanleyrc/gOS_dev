@@ -232,6 +232,9 @@ class HistogramPlot extends Component {
 
     if (invertedX >= xScale.domain()[0] && invertedX <= xScale.domain()[1]) {
       // Find the closest actual data point using binary search
+      if (!dataset || dataset.length === 0) {
+        return;
+      }
       const bisect = d3.bisectCenter(
         dataset.map((d) => +d.value),
         invertedX
