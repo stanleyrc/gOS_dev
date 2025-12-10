@@ -23,8 +23,8 @@ class OncoPrintPlot extends Component {
   // Layout params for coordinate-based hit detection
   layoutParams = null;
 
-  // Pending render frame ID for cleanup
-  pendingRenderFrame = null;
+  // Pending render timeout for cleanup
+  pendingRenderTimeout = null;
 
   // Cache for parsed driver genes (keyed by record)
   parsedGenesCache = new WeakMap();
@@ -61,8 +61,8 @@ class OncoPrintPlot extends Component {
   }
 
   componentWillUnmount() {
-    if (this.pendingRenderFrame) {
-      cancelAnimationFrame(this.pendingRenderFrame);
+    if (this.pendingRenderTimeout) {
+      clearTimeout(this.pendingRenderTimeout);
     }
     if (this.stage) {
       this.stage.destroy();
@@ -71,16 +71,16 @@ class OncoPrintPlot extends Component {
   }
 
   scheduleRender() {
-    if (this.pendingRenderFrame) {
-      cancelAnimationFrame(this.pendingRenderFrame);
+    if (this.pendingRenderTimeout) {
+      clearTimeout(this.pendingRenderTimeout);
     }
 
     this.setState({ loading: true }, () => {
-      this.pendingRenderFrame = requestAnimationFrame(() => {
-        this.pendingRenderFrame = null;
+      this.pendingRenderTimeout = setTimeout(() => {
+        this.pendingRenderTimeout = null;
         this.renderOncoPrint();
         this.setState({ loading: false });
-      });
+      }, 50);
     });
   }
 
@@ -338,12 +338,10 @@ class OncoPrintPlot extends Component {
     const innerWidth = width - margins.left - margins.right;
     const innerHeight = height - margins.top - margins.bottom;
 
-    // Cell dimensions
     const cellWidth = Math.max(2, Math.min(20, innerWidth / pairs.length));
     const cellHeight = Math.max(12, Math.min(30, innerHeight / genes.length));
     const cellGap = 1;
 
-    // Store layout params for coordinate-based hit detection
     this.layoutParams = {
       margins,
       cellWidth,
@@ -354,7 +352,6 @@ class OncoPrintPlot extends Component {
       matrix,
     };
 
-    // Gene labels (Y-axis)
     genes.forEach((gene, geneIdx) => {
       const text = new Konva.Text({
         x: 5,
@@ -368,7 +365,6 @@ class OncoPrintPlot extends Component {
       this.layer.add(text);
     });
 
-    // Pair labels (X-axis) - only show if space allows
     if (cellWidth >= 8) {
       pairs.forEach((pair, pairIdx) => {
         const text = new Konva.Text({
@@ -383,7 +379,6 @@ class OncoPrintPlot extends Component {
       });
     }
 
-    // Matrix cells
     genes.forEach((gene, geneIdx) => {
       pairs.forEach((pair, pairIdx) => {
         const key = `${gene.toUpperCase()},${pair}`;
@@ -392,7 +387,6 @@ class OncoPrintPlot extends Component {
         const y = margins.top + geneIdx * (cellHeight + cellGap);
 
         if (alterations.length === 0) {
-          // Empty cell
           const rect = new Konva.Rect({
             x,
             y,
@@ -405,7 +399,6 @@ class OncoPrintPlot extends Component {
           rect.setAttr("cellData", { gene, pair, alterations: [] });
           this.layer.add(rect);
         } else {
-          // Multi-alteration cell: stack colors vertically
           const altTypes = [...new Set(alterations.map((a) => a.type))];
           const segmentHeight = cellHeight / altTypes.length;
 
