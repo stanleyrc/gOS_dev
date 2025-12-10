@@ -23,9 +23,24 @@ class OncoPrintPlot extends Component {
   // Layout params for coordinate-based hit detection
   layoutParams = null;
 
+  // Pending render frame ID for cleanup
+  pendingRenderFrame = null;
+
+  // Cache for parsed driver genes (keyed by record)
+  parsedGenesCache = new WeakMap();
+
+  // Memoization for computeOncoPrintData
+  cachedOncoPrintData = null;
+  cachedFilteredRecords = null;
+  cachedGeneSet = null;
+
+  state = {
+    loading: true,
+  };
+
   componentDidMount() {
     this.initializeStage();
-    this.renderOncoPrint();
+    this.scheduleRender();
   }
 
   componentDidUpdate(prevProps) {
@@ -40,16 +55,33 @@ class OncoPrintPlot extends Component {
       if (width !== prevProps.width || height !== prevProps.height) {
         this.handleResize();
       } else {
-        this.renderOncoPrint();
+        this.scheduleRender();
       }
     }
   }
 
   componentWillUnmount() {
+    if (this.pendingRenderFrame) {
+      cancelAnimationFrame(this.pendingRenderFrame);
+    }
     if (this.stage) {
       this.stage.destroy();
       this.stage = null;
     }
+  }
+
+  scheduleRender() {
+    if (this.pendingRenderFrame) {
+      cancelAnimationFrame(this.pendingRenderFrame);
+    }
+
+    this.setState({ loading: true }, () => {
+      this.pendingRenderFrame = requestAnimationFrame(() => {
+        this.pendingRenderFrame = null;
+        this.renderOncoPrint();
+        this.setState({ loading: false });
+      });
+    });
   }
 
   initializeStage() {
@@ -111,12 +143,12 @@ class OncoPrintPlot extends Component {
 
     if (!this.stage) {
       this.initializeStage();
-      this.renderOncoPrint();
+      this.scheduleRender();
       return;
     }
 
     this.stage.size({ width, height });
-    this.renderOncoPrint();
+    this.scheduleRender();
   }
 
   getCellFromPosition(mouseX, mouseY) {
@@ -228,6 +260,15 @@ class OncoPrintPlot extends Component {
     }
   };
 
+  getParsedGenes(record) {
+    if (this.parsedGenesCache.has(record)) {
+      return this.parsedGenesCache.get(record);
+    }
+    const parsed = parseDriverGenes(record.summary);
+    this.parsedGenesCache.set(record, parsed);
+    return parsed;
+  }
+
   computeOncoPrintData() {
     const { filteredRecords, geneSet } = this.props;
 
@@ -235,22 +276,38 @@ class OncoPrintPlot extends Component {
       return { genes: [], pairs: [], matrix: new Map() };
     }
 
+    if (
+      this.cachedOncoPrintData &&
+      this.cachedFilteredRecords === filteredRecords &&
+      this.cachedGeneSet === geneSet
+    ) {
+      return this.cachedOncoPrintData;
+    }
+
     const genes = geneSet.slice();
     const pairs = filteredRecords.map((r) => r.pair).filter(Boolean);
     const matrix = new Map();
 
+    const geneSetUpper = new Set(genes.map((g) => g.toUpperCase()));
+
     filteredRecords.forEach((record) => {
-      const parsedGenes = parseDriverGenes(record.summary);
-      genes.forEach((gene) => {
-        const key = `${gene.toUpperCase()},${record.pair}`;
-        const alterations = parsedGenes.filter((g) => g.gene === gene.toUpperCase());
-        if (alterations.length > 0) {
-          matrix.set(key, alterations);
+      const parsedGenes = this.getParsedGenes(record);
+      parsedGenes.forEach(({ gene, type }) => {
+        if (geneSetUpper.has(gene)) {
+          const key = `${gene},${record.pair}`;
+          if (!matrix.has(key)) {
+            matrix.set(key, []);
+          }
+          matrix.get(key).push({ gene, type });
         }
       });
     });
 
-    return { genes, pairs, matrix };
+    this.cachedOncoPrintData = { genes, pairs, matrix };
+    this.cachedFilteredRecords = filteredRecords;
+    this.cachedGeneSet = geneSet;
+
+    return this.cachedOncoPrintData;
   }
 
   renderOncoPrint() {
@@ -374,6 +431,7 @@ class OncoPrintPlot extends Component {
 
   render() {
     const { width, height } = this.props;
+    const { loading } = this.state;
 
     return (
       <div style={{ position: "relative", width, height, overflow: "auto" }}>
@@ -381,6 +439,40 @@ class OncoPrintPlot extends Component {
           ref={(ref) => (this.containerRef = ref)}
           style={{ width, height }}
         />
+        {loading && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width,
+              height,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "rgba(255, 255, 255, 0.8)",
+              zIndex: 10,
+            }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  border: "3px solid #e0e0e0",
+                  borderTopColor: "#3498db",
+                  borderRadius: "50%",
+                  animation: "oncoPrintSpin 0.8s linear infinite",
+                  margin: "0 auto 8px",
+                }}
+              />
+              <div style={{ color: "#666", fontSize: 13 }}>Loading OncoPrint...</div>
+            </div>
+            <style>
+              {`@keyframes oncoPrintSpin { to { transform: rotate(360deg); } }`}
+            </style>
+          </div>
+        )}
       </div>
     );
   }
