@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
-import { Spin } from "antd";
+import { Spin, Segmented } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
@@ -51,6 +51,7 @@ class AggregationsVisualization extends Component {
     },
     computingAlterations: false,
     selectedPairs: [],
+    scatterPlotType: "scatter",
   };
 
   scatterIdAccessor = (d) => d.pair;
@@ -674,9 +675,22 @@ class AggregationsVisualization extends Component {
 
             return (
               <div style={{ position: "relative" }}>
-                <div style={{ textAlign: "center", marginBottom: 12, fontSize: 14, fontWeight: "500", color: "#333" }}>
+                <div style={{ textAlign: "center", marginBottom: 8, fontSize: 14, fontWeight: "500", color: "#333" }}>
                   {this.getTitleText()}
                 </div>
+                {plotType === "scatter" && (
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+                    <Segmented
+                      size="small"
+                      options={[
+                        { value: "scatter", label: "Scatter" },
+                        { value: "contour", label: "Contour" },
+                      ]}
+                      value={this.state.scatterPlotType}
+                      onChange={(value) => this.setState({ scatterPlotType: value })}
+                    />
+                  </div>
+                )}
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -788,17 +802,18 @@ class AggregationsVisualization extends Component {
                    )}
 
                    {plotType === "scatter" && (
-                     <ScatterPlot
-                       data={filteredRecords}
-                       config={config}
-                       colorConfig={this.getColorConfigForScatter()}
-                       xVariable={this.state.xVariable}
-                       yVariable={this.state.yVariable}
-                       colorByVariable={this.state.colorByVariable}
-                       selectedGene={this.state.selectedGene}
-                       onPointClick={this.handlePointClick}
-                     />
-                   )}
+                      <ScatterPlot
+                        data={filteredRecords}
+                        config={config}
+                        colorConfig={this.getColorConfigForScatter()}
+                        xVariable={this.state.xVariable}
+                        yVariable={this.state.yVariable}
+                        colorByVariable={this.state.colorByVariable}
+                        selectedGene={this.state.selectedGene}
+                        onPointClick={this.handlePointClick}
+                        scatterPlotType={this.state.scatterPlotType}
+                      />
+                    )}
                  </div>
 
                 {plotType === "scatter" && this.renderColorLegend()}

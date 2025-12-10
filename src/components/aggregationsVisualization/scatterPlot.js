@@ -1,11 +1,48 @@
 import React, { Component } from "react";
 import KonvaScatter from "../konvaScatter";
+import KonvaContour from "../konvaContour";
 import { getValue, getColumnLabel, margins } from "./helpers";
 import { hasGene } from "../../helpers/geneAggregations";
 import * as d3 from "d3";
 
 class ScatterPlot extends Component {
   scatterIdAccessor = (d) => d.pair;
+  _cachedContours = null;
+  _contourCacheKey = null;
+
+  getContours() {
+    const { data, config, xVariable, yVariable, contourBandwidth = 15, contourThresholdCount = 100 } = this.props;
+    const { xScale, yScale, panelWidth, panelHeight } = config;
+
+    const xAccessor = (d) => getValue(d, xVariable);
+    const yAccessor = (d) => getValue(d, yVariable);
+
+    const cacheKey = `${data.length}-${xVariable}-${yVariable}-${contourBandwidth}-${contourThresholdCount}-${panelWidth}-${panelHeight}-${xScale.domain().join(",")}-${yScale.domain().join(",")}`;
+
+    if (this._contourCacheKey === cacheKey && this._cachedContours) {
+      return this._cachedContours;
+    }
+
+    const contours = d3
+      .contourDensity()
+      .x((d) => xScale(xAccessor(d)))
+      .y((d) => yScale(yAccessor(d)))
+      .thresholds(contourThresholdCount)
+      .bandwidth(contourBandwidth)
+      .size([panelWidth, panelHeight])(data);
+
+    this._cachedContours = contours;
+    this._contourCacheKey = cacheKey;
+    return contours;
+  }
+
+  getContourColorScale(contours) {
+    const { contourColorScheme = d3.interpolateBlues } = this.props;
+    return d3
+      .scaleSequential(contourColorScheme)
+      .domain(d3.extent(contours, (d) => d.value))
+      .nice();
+  }
 
   render() {
     const {
@@ -17,6 +54,7 @@ class ScatterPlot extends Component {
       colorByVariable,
       selectedGene,
       onPointClick,
+      scatterPlotType = "scatter",
     } = this.props;
 
     const { xScale, yScale, panelWidth, panelHeight } = config;
@@ -50,6 +88,8 @@ class ScatterPlot extends Component {
       return items;
     };
 
+    const isContour = scatterPlotType === "contour";
+
     return (
       <div
         style={{
@@ -61,21 +101,37 @@ class ScatterPlot extends Component {
           pointerEvents: "auto",
         }}
       >
-        <KonvaScatter
-          data={data}
-          width={panelWidth}
-          height={panelHeight}
-          xAccessor={xAccessor}
-          yAccessor={yAccessor}
-          xScale={xScale}
-          yScale={yScale}
-          idAccessor={this.scatterIdAccessor}
-          tooltipAccessor={tooltipAccessor}
-          radiusAccessor={5}
-          colorAccessor={colorAccessor}
-          colorScale={colorScale}
-          onPointClick={onPointClick}
-        />
+        {isContour ? (
+          <KonvaContour
+            contours={this.getContours()}
+            data={data}
+            width={panelWidth}
+            height={panelHeight}
+            xAccessor={xVariable}
+            yAccessor={yVariable}
+            xScale={xScale}
+            yScale={yScale}
+            colorScale={this.getContourColorScale(this.getContours())}
+            tooltipAccessor={tooltipAccessor}
+            onPointClick={onPointClick}
+          />
+        ) : (
+          <KonvaScatter
+            data={data}
+            width={panelWidth}
+            height={panelHeight}
+            xAccessor={xAccessor}
+            yAccessor={yAccessor}
+            xScale={xScale}
+            yScale={yScale}
+            idAccessor={this.scatterIdAccessor}
+            tooltipAccessor={tooltipAccessor}
+            radiusAccessor={5}
+            colorAccessor={colorAccessor}
+            colorScale={colorScale}
+            onPointClick={onPointClick}
+          />
+        )}
       </div>
     );
   }
