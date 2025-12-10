@@ -10,6 +10,7 @@ import {
 } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import KonvaScatter from "../konvaScatter";
+import KonvaContour from "../konvaContour";
 
 const margins = {
   gap: 0,
@@ -22,6 +23,8 @@ const margins = {
 
 class DensityPlot extends Component {
   plotContainer = null;
+  _cachedContours = null;
+  _contourCacheKey = null;
 
   state = {
     tooltip: {
@@ -133,13 +136,20 @@ class DensityPlot extends Component {
         tickFormat: colorFormat,
       });
     } else {
-      contours = d3
-        .contourDensity()
-        .x((d) => xScale(d[xVariable]))
-        .y((d) => yScale(d[yVariable]))
-        .thresholds(contourThresholdCount)
-        .bandwidth(contourBandwidth)
-        .size([width, height])(dataPoints);
+      const cacheKey = `${dataPoints.length}-${xVariable}-${yVariable}-${contourBandwidth}-${contourThresholdCount}-${width}-${height}-${xScale.domain().join(",")}-${yScale.domain().join(",")}`;
+      if (this._contourCacheKey === cacheKey && this._cachedContours) {
+        contours = this._cachedContours;
+      } else {
+        contours = d3
+          .contourDensity()
+          .x((d) => xScale(d[xVariable]))
+          .y((d) => yScale(d[yVariable]))
+          .thresholds(contourThresholdCount)
+          .bandwidth(contourBandwidth)
+          .size([width, height])(dataPoints);
+        this._cachedContours = contours;
+        this._contourCacheKey = cacheKey;
+      }
       color = d3
         .scaleSequential(colorSchemeSeq)
         .domain(d3.extent(contours, (d) => d.value))
@@ -344,17 +354,34 @@ class DensityPlot extends Component {
                     strokeWidth={0.33}
                   />
                   {plotType === "contourplot" && (
-                    <g strokeLinejoin="round">
-                      {contours.map((d, i) => (
-                        <path
-                          key={i}
-                          d={d3.geoPath()(d)}
-                          strokeWidth={i % 5 ? 0.25 : 1}
-                          stroke={d3.rgb(color(d.value)).darker(0.3)}
-                          fill={color(d.value)}
-                        />
-                      ))}
-                    </g>
+                    <foreignObject
+                      x={0}
+                      y={0}
+                      width={panelWidth}
+                      height={panelHeight}
+                    >
+                      <KonvaContour
+                        contours={contours}
+                        data={dataPoints}
+                        width={panelWidth}
+                        height={panelHeight}
+                        xAccessor={xVariable}
+                        yAccessor={yVariable}
+                        xScale={xScale}
+                        yScale={yScale}
+                        colorScale={color}
+                        selectedId={selectedId}
+                        tooltipAccessor={(d) =>
+                          Object.keys(d)
+                            .filter((k) => !k.startsWith("_"))
+                            .map((k) => ({
+                              label: snakeCaseToHumanReadable(k),
+                              value: d[k],
+                            }))
+                        }
+                        onPointClick={handlePointClicked}
+                      />
+                    </foreignObject>
                   )}
                   {plotType === "scatterplot" && (
                     <foreignObject
@@ -403,45 +430,7 @@ class DensityPlot extends Component {
                       />
                     </foreignObject>
                   )}
-                  {plotType === "contourplot" && (
-                    <rect
-                      width={panelWidth}
-                      height={panelHeight}
-                      fill="transparent"
-                      style={{
-                        pointerEvents: "all",
-                        cursor:
-                          visible && id !== -1 && handlePointClicked
-                            ? "pointer"
-                            : "default",
-                      }}
-                      onMouseMove={this.handleContourMouseMove}
-                      onMouseOut={this.handleContourMouseOut}
-                      onClick={this.handleContourClick}
-                    />
-                  )}
-                  {/* Show marker for closest point on contourplot mousemove */}
-                  {plotType === "contourplot" && visible && id !== -1 && (
-                    <path
-                      pointerEvents="none"
-                      transform={`translate(${[
-                        xScale(dataPoints[id][xVariable]),
-                        yScale(dataPoints[id][yVariable]),
-                      ]})`}
-                      d={d3.symbol(d3.symbolCircle, 80)()}
-                      fill="#ff7f0e"
-                      stroke="#fff"
-                      strokeWidth={2}
-                      style={{
-                        cursor: handlePointClicked ? "pointer" : "default",
-                      }}
-                      onClick={() =>
-                        handlePointClicked
-                          ? handlePointClicked(dataPoints[id])
-                          : null
-                      }
-                    />
-                  )}
+
                 </g>
                 <g
                   className="axis--y y-axis-container"
