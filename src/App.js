@@ -11,7 +11,7 @@ import en_US from "antd/lib/locale/en_US";
 import AppHolder from "./commonStyle";
 import { siteConfig } from "./settings";
 import Topbar from "./containers/topbar/topbar";
-import UserSignInModal from "./components/UserSignInModal";
+import UserSignInModal from "./components/userSignInModal";
 import "./global.css";
 
 const { Content, Footer } = Layout;

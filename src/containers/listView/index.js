@@ -22,7 +22,7 @@ import {
   Tag,
   Tabs,
 } from "antd";
-import AggregationsPanel from "./AggregationsPanel";
+import AggregationsPanel from "./aggregationsPanel";
 import * as d3 from "d3";
 import {
   snakeCaseToHumanReadable,
@@ -35,7 +35,7 @@ import {
   cascaderSearchFilter,
 } from "../../helpers/filters";
 import Wrapper from "./index.style";
-import InterpretationsAvatar from "../../components/InterpretationsAvatar";
+import InterpretationsAvatar from "../../components/interpretationsAvatar";
 
 const { SHOW_CHILD } = Cascader;
 

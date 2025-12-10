@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Tooltip, Typography } from "antd";
 import { BsDashLg } from "react-icons/bs";
-import InterpretationsAvatar from "../../InterpretationsAvatar";
+import InterpretationsAvatar from "../../interpretationsAvatar";
 import { getAllInterpretationsForAlteration } from "../../../redux/interpretations/selectors";
 import { store } from "../../../redux/store";
 

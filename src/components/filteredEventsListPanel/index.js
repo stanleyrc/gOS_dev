@@ -28,7 +28,7 @@ import { selectMergedEvents, getAllInterpretationsForAlteration } from "../../re
 import { store } from "../../redux/store";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import InterpretationsAvatar from "../InterpretationsAvatar";
+import InterpretationsAvatar from "../interpretationsAvatar";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";

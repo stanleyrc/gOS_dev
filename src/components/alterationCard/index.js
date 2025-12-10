@@ -13,7 +13,7 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
 import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getAllInterpretationsForGene, getBaseEvent } from "../../redux/interpretations/selectors";
 import TierDistributionBarChart from "../tierDistributionBarChart";
-import InterpretationsAvatar from "../InterpretationsAvatar";
+import InterpretationsAvatar from "../interpretationsAvatar";
 
 const { Title, Text } = Typography;
 

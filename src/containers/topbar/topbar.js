@@ -6,7 +6,7 @@ import { withTranslation } from "react-i18next";
 import { Layout, Space, Spin, Select, Avatar, Progress } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
-import SignInButton from "./SignInButton";
+import SignInButton from "./signInButton";
 import { siteConfig } from "../../settings";
 import logo from "../../assets/images/logo.png";
 import caseReportsActions from "../../redux/caseReports/actions";
