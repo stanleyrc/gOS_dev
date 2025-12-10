@@ -5,14 +5,14 @@ import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
 import { computeGeneStats, hasGene, parseDriverGenes } from "../../helpers/geneAggregations";
-import AxisSelectors from "./AxisSelectors";
-import ColorControls from "./ColorControls";
-import ScatterPlot from "./ScatterPlot";
-import StackedBarPlot from "./StackedBarPlot";
-import CategoricalScatterPlot from "./CategoricalScatterPlot";
-import DensityPlot from "./DensityPlot";
-import OncoPrintPlot from "./OncoPrintPlot";
-import PlotTooltip from "./PlotTooltip";
+import AxisSelectors from "./axisSelectors";
+import ColorControls from "./colorControls";
+import ScatterPlot from "./scatterPlot";
+import StackedBarPlot from "./stackedBarPlot";
+import CategoricalScatterPlot from "./categoricalScatterPlot";
+import DensityPlot from "./densityPlot";
+import OncoPrintPlot from "./oncoPrintPlot";
+import PlotTooltip from "./plotTooltip";
 import {
   margins,
   calculateDynamicMargins,
