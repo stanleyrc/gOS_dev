@@ -18,6 +18,10 @@ class OncoPrintPlot extends Component {
   stage = null;
   layer = null;
   tooltipGroup = null;
+  highlightRect = null;
+
+  // Layout params for coordinate-based hit detection
+  layoutParams = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -90,6 +94,16 @@ class OncoPrintPlot extends Component {
     this.tooltipGroup.add(this.tooltipRect);
     this.tooltipGroup.add(this.tooltipText);
     this.tooltipLayer.add(this.tooltipGroup);
+
+    // Highlight rect for hover feedback
+    this.highlightRect = new Konva.Rect({
+      visible: false,
+      stroke: "#ffcc00",
+      strokeWidth: 2,
+      fill: "transparent",
+      listening: false,
+    });
+    this.tooltipLayer.add(this.highlightRect);
   }
 
   handleResize() {
@@ -105,22 +119,67 @@ class OncoPrintPlot extends Component {
     this.renderOncoPrint();
   }
 
+  getCellFromPosition(mouseX, mouseY) {
+    if (!this.layoutParams) return null;
+
+    const { margins, cellWidth, cellHeight, cellGap, genes, pairs, matrix } = this.layoutParams;
+
+    const relX = mouseX - margins.left;
+    const relY = mouseY - margins.top;
+
+    if (relX < 0 || relY < 0) return null;
+
+    const pairIdx = Math.floor(relX / (cellWidth + cellGap));
+    const geneIdx = Math.floor(relY / (cellHeight + cellGap));
+
+    if (pairIdx < 0 || pairIdx >= pairs.length || geneIdx < 0 || geneIdx >= genes.length) {
+      return null;
+    }
+
+    const gene = genes[geneIdx];
+    const pair = pairs[pairIdx];
+    const key = `${gene.toUpperCase()},${pair}`;
+    const alterations = matrix.get(key) || [];
+
+    return {
+      gene,
+      pair,
+      alterations,
+      geneIdx,
+      pairIdx,
+    };
+  }
+
   handleMouseMove = (evt) => {
-    const node = evt.target;
-    const cellData = node.getAttr ? node.getAttr("cellData") : null;
+    const mousePos = this.stage.getPointerPosition();
+    if (!mousePos) return;
+
+    const cellData = this.getCellFromPosition(mousePos.x, mousePos.y);
 
     if (!cellData) {
       if (this.tooltipGroup) {
         this.tooltipGroup.visible(false);
-        this.tooltipLayer.batchDraw();
       }
+      if (this.highlightRect) {
+        this.highlightRect.visible(false);
+      }
+      this.tooltipLayer.batchDraw();
       this.stage.container().style.cursor = "default";
       return;
     }
 
     this.stage.container().style.cursor = "pointer";
 
-    const { gene, pair, alterations } = cellData;
+    const { gene, pair, alterations, geneIdx, pairIdx } = cellData;
+    const { margins, cellWidth, cellHeight, cellGap } = this.layoutParams;
+
+    // Position highlight rect
+    const cellX = margins.left + pairIdx * (cellWidth + cellGap);
+    const cellY = margins.top + geneIdx * (cellHeight + cellGap);
+    this.highlightRect.position({ x: cellX, y: cellY });
+    this.highlightRect.size({ width: cellWidth, height: cellHeight });
+    this.highlightRect.visible(true);
+
     const altText =
       alterations && alterations.length > 0
         ? alterations.map((a) => a.type).join(", ")
@@ -133,7 +192,6 @@ class OncoPrintPlot extends Component {
     const textHeight = this.tooltipText.height();
     this.tooltipRect.size({ width: textWidth, height: textHeight });
 
-    const mousePos = this.stage.getPointerPosition();
     const { width, height } = this.props;
 
     const xPos =
@@ -149,17 +207,23 @@ class OncoPrintPlot extends Component {
   handleMouseLeave = () => {
     if (this.tooltipGroup) {
       this.tooltipGroup.visible(false);
-      this.tooltipLayer.batchDraw();
     }
+    if (this.highlightRect) {
+      this.highlightRect.visible(false);
+    }
+    this.tooltipLayer.batchDraw();
     this.stage.container().style.cursor = "default";
   };
 
   handleCellClick = (evt) => {
     const { onPairClick } = this.props;
-    const node = evt.target;
-    const cellData = node.getAttr ? node.getAttr("cellData") : null;
+    if (!onPairClick) return;
 
-    if (cellData && onPairClick && cellData.pair) {
+    const mousePos = this.stage.getPointerPosition();
+    if (!mousePos) return;
+
+    const cellData = this.getCellFromPosition(mousePos.x, mousePos.y);
+    if (cellData && cellData.pair) {
       onPairClick(cellData);
     }
   };
@@ -200,6 +264,7 @@ class OncoPrintPlot extends Component {
     this.layer.destroyChildren();
 
     if (genes.length === 0 || pairs.length === 0) {
+      this.layoutParams = null;
       const text = new Konva.Text({
         x: width / 2 - 100,
         y: height / 2 - 10,
@@ -220,6 +285,17 @@ class OncoPrintPlot extends Component {
     const cellWidth = Math.max(2, Math.min(20, innerWidth / pairs.length));
     const cellHeight = Math.max(12, Math.min(30, innerHeight / genes.length));
     const cellGap = 1;
+
+    // Store layout params for coordinate-based hit detection
+    this.layoutParams = {
+      margins,
+      cellWidth,
+      cellHeight,
+      cellGap,
+      genes,
+      pairs,
+      matrix,
+    };
 
     // Gene labels (Y-axis)
     genes.forEach((gene, geneIdx) => {
