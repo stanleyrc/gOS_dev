@@ -6,7 +6,7 @@ import { linkPmids } from "../../helpers/format";
 import interpretationsActions from "../../redux/interpretations/actions";
 import { getGlobalNotesInterpretation, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
-import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
+import InterpretationVersionsSidepanel from "../interpretationVersionsSidepanel";
 import { getTimeAgo } from "../../helpers/utility";
 
 class GlobalNotesPanel extends Component {

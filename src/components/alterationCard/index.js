@@ -10,7 +10,7 @@ import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
 import EventInterpretation from "../../helpers/EventInterpretation";
 
-import InterpretationVersionsSidepanel from "../InterpretationVersionsSidepanel";
+import InterpretationVersionsSidepanel from "../interpretationVersionsSidepanel";
 import { getInterpretationForAlteration, getAllInterpretationsForAlteration, getAllInterpretationsForGene, getBaseEvent } from "../../redux/interpretations/selectors";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import InterpretationsAvatar from "../interpretationsAvatar";
