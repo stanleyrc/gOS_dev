@@ -3,7 +3,7 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { Card, Spin, Empty, Tabs, Typography } from "antd";
 import { debounce } from "lodash";
-import AggregationsTable from "./AggregationsTable";
+import AggregationsTable from "./aggregationsTable";
 import AggregationsVisualization from "../../components/aggregationsVisualization";
 import { reportFilters } from "../../helpers/filters";
 import { loadPathways } from "../../helpers/geneAggregations";
