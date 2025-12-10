@@ -166,6 +166,12 @@ class AggregationsVisualization extends Component {
     const { selectedGeneSet } = this.state;
     const { pathwayMap = {} } = this.props;
 
+    // Handle custom gene sets
+    if (selectedGeneSet && selectedGeneSet.startsWith("custom:")) {
+      const customGeneString = selectedGeneSet.substring(7); // Remove "custom:" prefix
+      return customGeneString.split(",").map((g) => g.trim());
+    }
+
     if (selectedGeneSet === "top20") {
       return Object.entries(allGeneFrequencies)
         .sort((a, b) => b[1] - a[1])
