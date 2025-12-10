@@ -1,8 +1,8 @@
 import React, { Component } from "react";
-import { Cascader, Select } from "antd";
+import { Cascader, Select, Input, Button } from "antd";
 import * as d3 from "d3";
-import { categoricalColumns, getValue, getColumnLabel, MAX_COLOR_CATEGORIES } from "./helpers";
-import { hasGene } from "../../helpers/geneAggregations";
+import { categoricalColumns, getValue, getColumnLabel, MAX_COLOR_CATEGORIES, parseGeneExpression, evaluateGeneExpression } from "./helpers";
+import { hasGene, parseDriverGenes } from "../../helpers/geneAggregations";
 
 class ColorControls extends Component {
   getColorableColumns = () => {
@@ -54,13 +54,37 @@ class ColorControls extends Component {
   };
 
   getScatterColorConfig = () => {
-    const { filteredRecords = [], colorByVariable, selectedGene } = this.props;
+    const { filteredRecords = [], colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.props;
 
     if (!colorByVariable) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
     }
 
     if (colorByVariable === "driver_gene") {
+      if (selectedGeneSet === "custom") {
+        if (!appliedGeneExpression) {
+          return { colorAccessor: null, colorScale: null, colorCategories: [] };
+        }
+        let ast;
+        try {
+          ast = parseGeneExpression(appliedGeneExpression);
+        } catch (e) {
+          return { colorAccessor: null, colorScale: null, colorCategories: [], error: e.message };
+        }
+        if (!ast) {
+          return { colorAccessor: null, colorScale: null, colorCategories: [] };
+        }
+        const categories = ["True", "False"];
+        const colorScale = d3.scaleOrdinal()
+          .domain(categories)
+          .range(["#e41a1c", "#999999"]);
+        const colorAccessor = (d) => {
+          const genes = parseDriverGenes(d.summary).map(g => g.gene);
+          return evaluateGeneExpression(ast, genes) ? "True" : "False";
+        };
+        return { colorAccessor, colorScale, colorCategories: categories };
+      }
+
       if (!selectedGene) {
         return { colorAccessor: null, colorScale: null, colorCategories: [] };
       }
@@ -116,6 +140,7 @@ class ColorControls extends Component {
           value: name,
           label: name.replace(/_/g, " "),
         })),
+        { value: "custom", label: "Custom" },
       ];
 
       const driverGeneOption = {
@@ -171,7 +196,7 @@ class ColorControls extends Component {
   };
 
   renderColorBySelector = () => {
-    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange } = this.props;
+    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange, customGeneExpression, onCustomExpressionChange } = this.props;
     const options = this.buildCascaderOptions();
     const value = this.getCascaderValue();
     const geneFrequencies = this.getGeneFrequencies();
@@ -189,7 +214,26 @@ class ColorControls extends Component {
           popupMatchSelectWidth={false}
           placeholder="Select color..."
         />
-        {colorByVariable === "driver_gene" && (
+        {colorByVariable === "driver_gene" && selectedGeneSet === "custom" && (
+          <>
+            <Input.TextArea
+              size="small"
+              value={customGeneExpression || ""}
+              onChange={(e) => onCustomExpressionChange && onCustomExpressionChange(e.target.value)}
+              style={{ width: 300, minHeight: 32 }}
+              autoSize={{ minRows: 1, maxRows: 3 }}
+              placeholder="e.g. TP53 AND (BRCA1 OR BRCA2)"
+            />
+            <Button
+              size="small"
+              type="primary"
+              onClick={() => this.props.onApplyExpression && this.props.onApplyExpression(customGeneExpression)}
+            >
+              Apply
+            </Button>
+          </>
+        )}
+        {colorByVariable === "driver_gene" && selectedGeneSet !== "custom" && (
           <Select
             size="small"
             value={selectedGene}
@@ -212,16 +256,23 @@ class ColorControls extends Component {
   };
 
   renderColorLegend = (colorConfig) => {
-    const { colorByVariable, selectedGene } = this.props;
+    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.props;
     const { colorScale, colorCategories } = colorConfig;
 
     if (!colorScale || colorCategories.length === 0 || colorCategories.length > MAX_COLOR_CATEGORIES) {
       return null;
     }
 
-    const label = colorByVariable === "driver_gene"
-      ? selectedGene
-      : getColumnLabel(colorByVariable);
+    let label;
+    if (colorByVariable === "driver_gene") {
+      if (selectedGeneSet === "custom") {
+        label = appliedGeneExpression || "Custom";
+      } else {
+        label = selectedGene;
+      }
+    } else {
+      label = getColumnLabel(colorByVariable);
+    }
 
     return (
       <div style={{

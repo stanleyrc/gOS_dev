@@ -104,6 +104,148 @@ export const categoricalColumns = [
 
 export const pairColumn = { key: "pair", dataIndex: "pair", label: "Pair", type: "pair" };
 
+/**
+ * Tokenize a boolean gene expression string.
+ * Tokens: AND, OR, NOT, (, ), and gene names (alphanumeric + hyphen/underscore)
+ */
+function tokenizeGeneExpression(expression) {
+  const tokens = [];
+  const regex = /\s*(AND|OR|NOT|\(|\)|[A-Za-z0-9_-]+)\s*/gi;
+  let match;
+  while ((match = regex.exec(expression)) !== null) {
+    const token = match[1];
+    const upper = token.toUpperCase();
+    if (upper === "AND" || upper === "OR" || upper === "NOT") {
+      tokens.push({ type: upper });
+    } else if (token === "(") {
+      tokens.push({ type: "LPAREN" });
+    } else if (token === ")") {
+      tokens.push({ type: "RPAREN" });
+    } else {
+      tokens.push({ type: "GENE", name: token.toUpperCase() });
+    }
+  }
+  return tokens;
+}
+
+/**
+ * Parse a boolean gene expression into an AST.
+ * Grammar:
+ *   expr     -> orExpr
+ *   orExpr   -> andExpr (OR andExpr)*
+ *   andExpr  -> notExpr (AND notExpr)*
+ *   notExpr  -> NOT notExpr | primary
+ *   primary  -> GENE | LPAREN expr RPAREN
+ */
+export function parseGeneExpression(expression) {
+  if (!expression || typeof expression !== "string") {
+    return null;
+  }
+  const tokens = tokenizeGeneExpression(expression);
+  if (tokens.length === 0) {
+    return null;
+  }
+  let pos = 0;
+
+  function peek() {
+    return tokens[pos] || null;
+  }
+
+  function consume(expectedType) {
+    const token = tokens[pos];
+    if (!token || token.type !== expectedType) {
+      throw new Error(`Expected ${expectedType} at position ${pos}`);
+    }
+    pos++;
+    return token;
+  }
+
+  function parseExpr() {
+    return parseOrExpr();
+  }
+
+  function parseOrExpr() {
+    let left = parseAndExpr();
+    while (peek() && peek().type === "OR") {
+      consume("OR");
+      const right = parseAndExpr();
+      left = { type: "OR", left, right };
+    }
+    return left;
+  }
+
+  function parseAndExpr() {
+    let left = parseNotExpr();
+    while (peek() && peek().type === "AND") {
+      consume("AND");
+      const right = parseNotExpr();
+      left = { type: "AND", left, right };
+    }
+    return left;
+  }
+
+  function parseNotExpr() {
+    if (peek() && peek().type === "NOT") {
+      consume("NOT");
+      const operand = parseNotExpr();
+      return { type: "NOT", operand };
+    }
+    return parsePrimary();
+  }
+
+  function parsePrimary() {
+    const token = peek();
+    if (!token) {
+      throw new Error("Unexpected end of expression");
+    }
+    if (token.type === "GENE") {
+      consume("GENE");
+      return { type: "GENE", name: token.name };
+    }
+    if (token.type === "LPAREN") {
+      consume("LPAREN");
+      const expr = parseExpr();
+      consume("RPAREN");
+      return expr;
+    }
+    throw new Error(`Unexpected token: ${token.type}`);
+  }
+
+  const ast = parseExpr();
+  if (pos < tokens.length) {
+    throw new Error(`Unexpected token at position ${pos}`);
+  }
+  return ast;
+}
+
+/**
+ * Evaluate a parsed gene expression AST against a set of genes.
+ * @param {object} ast - The AST from parseGeneExpression
+ * @param {Set<string>|Array<string>} genes - Genes present in the record (uppercase)
+ * @returns {boolean}
+ */
+export function evaluateGeneExpression(ast, genes) {
+  if (!ast) return false;
+  const geneSet = genes instanceof Set ? genes : new Set((genes || []).map(g => g.toUpperCase()));
+
+  function evaluate(node) {
+    switch (node.type) {
+      case "GENE":
+        return geneSet.has(node.name);
+      case "AND":
+        return evaluate(node.left) && evaluate(node.right);
+      case "OR":
+        return evaluate(node.left) || evaluate(node.right);
+      case "NOT":
+        return !evaluate(node.operand);
+      default:
+        return false;
+    }
+  }
+
+  return evaluate(ast);
+}
+
 export const allColumns = [...numericColumns, ...categoricalColumns, pairColumn];
 
 /**

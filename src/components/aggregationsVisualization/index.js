@@ -18,6 +18,8 @@ import {
   calculateDynamicMargins,
   MIN_BAR_WIDTH,
   MIN_CATEGORY_WIDTH,
+  parseGeneExpression,
+  evaluateGeneExpression,
   getValue,
   getColumnType,
   getColumnLabel,
@@ -40,6 +42,8 @@ class AggregationsVisualization extends Component {
     colorByVariable: null,
     selectedGene: null,
     selectedGeneSet: "top20",
+    customGeneExpression: "",
+    appliedGeneExpression: "",
     tooltip: {
       visible: false,
       x: -1000,
@@ -698,10 +702,14 @@ class AggregationsVisualization extends Component {
                       colorByVariable={this.state.colorByVariable}
                       selectedGene={this.state.selectedGene}
                       selectedGeneSet={this.state.selectedGeneSet}
+                      customGeneExpression={this.state.customGeneExpression}
+                      appliedGeneExpression={this.state.appliedGeneExpression}
                       pathwayMap={this.props.pathwayMap}
                       onColorChange={(val) => this.setState({ colorByVariable: val })}
                       onGeneChange={(val) => this.setState({ selectedGene: val })}
                       onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
+                      onCustomExpressionChange={(val) => this.setState({ customGeneExpression: val })}
+                      onApplyExpression={(val) => this.setState({ appliedGeneExpression: val })}
                     />
                   )}
                 </div>
@@ -822,13 +830,37 @@ class AggregationsVisualization extends Component {
 
   getColorConfigForScatter() {
     const { filteredRecords = [] } = this.props;
-    const { colorByVariable, selectedGene } = this.state;
+    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.state;
 
     if (!colorByVariable) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
     }
 
     if (colorByVariable === "driver_gene") {
+      if (selectedGeneSet === "custom") {
+        if (!appliedGeneExpression) {
+          return { colorAccessor: null, colorScale: null, colorCategories: [] };
+        }
+        let ast;
+        try {
+          ast = parseGeneExpression(appliedGeneExpression);
+        } catch (e) {
+          return { colorAccessor: null, colorScale: null, colorCategories: [], error: e.message };
+        }
+        if (!ast) {
+          return { colorAccessor: null, colorScale: null, colorCategories: [] };
+        }
+        const categories = ["True", "False"];
+        const colorScale = d3.scaleOrdinal()
+          .domain(categories)
+          .range(["#e41a1c", "#999999"]);
+        const colorAccessor = (d) => {
+          const genes = parseDriverGenes(d.summary).map(g => g.gene);
+          return evaluateGeneExpression(ast, genes) ? "True" : "False";
+        };
+        return { colorAccessor, colorScale, colorCategories: categories };
+      }
+
       if (!selectedGene) {
         return { colorAccessor: null, colorScale: null, colorCategories: [] };
       }
@@ -872,7 +904,7 @@ class AggregationsVisualization extends Component {
   }
 
   renderColorLegend() {
-    const { colorByVariable, selectedGene } = this.state;
+    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.state;
     const colorConfig = this.getColorConfigForScatter();
     const { colorScale, colorCategories } = colorConfig;
 
@@ -880,9 +912,16 @@ class AggregationsVisualization extends Component {
       return null;
     }
 
-    const label = colorByVariable === "driver_gene"
-      ? selectedGene
-      : getColumnLabel(colorByVariable);
+    let label;
+    if (colorByVariable === "driver_gene") {
+      if (selectedGeneSet === "custom") {
+        label = appliedGeneExpression || "Custom";
+      } else {
+        label = selectedGene;
+      }
+    } else {
+      label = getColumnLabel(colorByVariable);
+    }
 
     return (
       <div style={{
