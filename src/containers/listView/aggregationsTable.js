@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react";
 import { withTranslation } from "react-i18next";
-import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { Table, Typography, Select, Tooltip, Row, Col, Button, Input } from "antd";
+import { DownloadOutlined, FilterOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
 
@@ -46,15 +46,17 @@ const calculateStats = (records, dataIndex) => {
 };
 
 class AggregationsTable extends PureComponent {
-  state = {
-    selectedColumnKeys: [],
-    columnStats: {},
-  };
+   state = {
+     selectedColumnKeys: [],
+     columnStats: {},
+     summaryFilterText: "",
+     summaryFilterConfirmed: "",
+     };
 
-  componentDidMount() {
-    this.initializeSelectedColumns();
-    this.recalculateStats();
-  }
+     componentDidMount() {
+     this.initializeSelectedColumns();
+     this.recalculateStats();
+   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.filteredRecords !== this.props.filteredRecords) {
@@ -172,6 +174,22 @@ class AggregationsTable extends PureComponent {
     const { dataset } = this.props;
     event.preventDefault();
     openCaseInNewTab(pair, dataset);
+  };
+
+  handleSummaryFilterChange = (e) => {
+    this.setState({ summaryFilterText: e.target.value });
+  };
+
+  handleSummaryFilterConfirm = (confirm) => {
+    this.setState({ summaryFilterConfirmed: this.state.summaryFilterText }, () => {
+      confirm();
+    });
+  };
+
+  handleSummaryFilterReset = (clearFilters) => {
+    this.setState({ summaryFilterText: "", summaryFilterConfirmed: "" }, () => {
+      clearFilters();
+    });
   };
 
   buildColumns = () => {
@@ -300,6 +318,7 @@ class AggregationsTable extends PureComponent {
           "Alterations",
         dataIndex: "summary",
         type: "string",
+        hasFilter: true,
       },
     ];
 
@@ -327,7 +346,7 @@ class AggregationsTable extends PureComponent {
 
       const isSummary = col.key === "summary";
       
-      return {
+      const columnConfig = {
          key: col.key,
           title: headerTitle,
           label: col.title,
@@ -393,10 +412,52 @@ class AggregationsTable extends PureComponent {
            }
            
            return formattedValue;
-         },
-      };
-    });
-  };
+           },
+           };
+           
+           // Add custom filter for summary column
+           if (col.hasFilter && col.key === "summary") {
+             columnConfig.filterIcon = () => (
+               <FilterOutlined style={{ color: this.state.summaryFilterConfirmed ? "#1890ff" : undefined }} />
+             );
+             columnConfig.filteredValue = this.state.summaryFilterConfirmed ? [this.state.summaryFilterConfirmed] : null;
+             columnConfig.filterDropdown = ({ confirm, clearFilters }) => (
+               <div style={{ padding: "8px" }} onKeyDown={(e) => e.stopPropagation()}>
+                 <Input
+                   placeholder="Filter alterations..."
+                   value={this.state.summaryFilterText}
+                   onChange={this.handleSummaryFilterChange}
+                   onPressEnter={() => this.handleSummaryFilterConfirm(confirm)}
+                   style={{ width: "200px", marginBottom: "8px", display: "block" }}
+                   autoFocus
+                 />
+                 <div style={{ display: "flex", justifyContent: "space-between" }}>
+                   <Button
+                     size="small"
+                     onClick={() => this.handleSummaryFilterReset(clearFilters)}
+                   >
+                     Reset
+                   </Button>
+                   <Button
+                     type="primary"
+                     size="small"
+                     onClick={() => this.handleSummaryFilterConfirm(confirm)}
+                   >
+                     Search
+                   </Button>
+                 </div>
+               </div>
+             );
+             columnConfig.onFilter = (value, record) => {
+               if (!value) return true;
+               const cellValue = getValue(record, col.dataIndex);
+               return cellValue != null && String(cellValue).toLowerCase().includes(value.toLowerCase());
+             };
+           }
+           
+           return columnConfig;
+           });
+           };
 
   render() {
     const { t, filteredRecords } = this.props;
