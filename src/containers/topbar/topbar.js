@@ -28,7 +28,7 @@ class Topbar extends Component {
       t,
       loading,
       reports,
-      totalReports,
+      totalReportsCount,
       updateCaseReport,
       updateDataset,
       searchCaseReports,
@@ -69,31 +69,38 @@ class Topbar extends Component {
                     ))}
                   </Select>
                   <Select
-                   showSearch={true}
-                   value={searchFilters.texts}
-                   className="reports-select"
-                   allowClear={true}
-                   loading={loading}
-                   optionLabelProp="value"
-                   popupMatchSelectWidth={false}
-                   optionFilterProp="children"
-                   placeholder={t("topbar.browse-case-reports")}
-                   searchValue={searchFilters.texts}
-                   onDropdownVisibleChange={(open) => this.setState({ dropdownOpen: open })}
-                   onSearch={(texts) => {
-                     const trimmedTexts = (texts || "").trim();
-                     if (this.state.dropdownOpen || trimmedTexts !== "") {
-                       searchCaseReports({ ...searchFilters, texts: trimmedTexts });
-                     }
-                   }}
-                   filterOption={false}
-                   filterSort={false}
-                   notFoundContent={null}
-                   autoClearSearchValue={false}
-                   onSelect={(report) => {
-                     updateCaseReport(report);
-                   }}
-                   onClear={(e) => searchCaseReports({ ...searchFilters, texts: "" })}
+                    showSearch={true}
+                    value={searchFilters.texts}
+                    className="reports-select"
+                    allowClear={true}
+                    loading={loading}
+                    optionLabelProp="value"
+                    popupMatchSelectWidth={false}
+                    optionFilterProp="children"
+                    placeholder={t("topbar.browse-case-reports")}
+                    searchValue={searchFilters.texts}
+                    onDropdownVisibleChange={(open) =>
+                      this.setState({ dropdownOpen: open })
+                    }
+                    onSearch={(texts) => {
+                      const trimmedTexts = (texts || "").trim();
+                      if (this.state.dropdownOpen || trimmedTexts !== "") {
+                        searchCaseReports({
+                          ...searchFilters,
+                          texts: trimmedTexts,
+                        });
+                      }
+                    }}
+                    filterOption={false}
+                    filterSort={false}
+                    notFoundContent={null}
+                    autoClearSearchValue={false}
+                    onSelect={(report) => {
+                      updateCaseReport(report);
+                    }}
+                    onClear={(e) =>
+                      searchCaseReports({ ...searchFilters, texts: "" })
+                    }
                   >
                     {reports.map((d) => (
                       <Option key={d.pair} value={d.pair} label={d.pair}>
@@ -123,15 +130,15 @@ class Topbar extends Component {
                     />
                   ) : (
                     <Space>
-                      {reports.length > 0 && (
+                      {
                         <span
                           dangerouslySetInnerHTML={{
                             __html: t("topbar.report", {
-                              count: totalReports,
+                              count: totalReportsCount,
                             }),
                           }}
                         />
-                      )}
+                      }
                     </Space>
                   )}
                 </Space>
@@ -183,7 +190,7 @@ const mapStateToProps = (state) => ({
   reports: state.CaseReports.reports,
   searchFilters: state.CaseReports.searchFilters,
   loadingPercentage: state.CaseReports.loadingPercentage,
-  totalReports: state.CaseReports.totalReports
+  totalReportsCount: state.CaseReports.totalReports.length,
 });
 export default connect(
   mapStateToProps,

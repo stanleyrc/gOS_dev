@@ -2,8 +2,10 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  cohortsLoading: false,
   general: [],
   tumor: [],
+  cohort: [],
   error: null,
 };
 
@@ -15,6 +17,7 @@ export default function appReducer(state = initState, action) {
         error: null,
         general: [],
         tumor: [],
+        cohort: [],
         loading: true,
       };
     case actions.FETCH_POPULATION_STATISTICS_SUCCESS:
@@ -31,6 +34,26 @@ export default function appReducer(state = initState, action) {
         tumor: [],
         error: action.error,
         loading: false,
+      };
+    case actions.FETCH_COHORT_STATISTICS_REQUEST:
+      return {
+        ...state,
+        error: null,
+        cohort: [],
+        cohortsLoading: true,
+      };
+    case actions.FETCH_COHORT_STATISTICS_SUCCESS:
+      return {
+        ...state,
+        cohort: action.cohort,
+        cohortsLoading: false,
+      };
+    case actions.FETCH_COHORT_STATISTICS_FAILED:
+      return {
+        ...state,
+        cohort: [],
+        error: action.error,
+        cohortsLoading: false,
       };
     default:
       return state;

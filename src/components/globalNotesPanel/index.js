@@ -4,7 +4,10 @@ import { withTranslation } from "react-i18next";
 import { Row, Col, Input, Button } from "antd";
 import { linkPmids } from "../../helpers/format";
 import interpretationsActions from "../../redux/interpretations/actions";
-import { getGlobalNotesInterpretation, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
+import {
+  getGlobalNotesInterpretation,
+  getAllInterpretationsForAlteration,
+} from "../../redux/interpretations/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import InterpretationVersionsSidepanel from "../interpretationVersionsSidepanel";
 import { getTimeAgo } from "../../helpers/utility";
@@ -40,10 +43,12 @@ class GlobalNotesPanel extends Component {
     const eventInterpretation = new EventInterpretation({
       caseId,
       alterationId: "GLOBAL_NOTES",
-      data: { notes: draft }
+      data: { notes: draft },
     });
 
-    dispatch(interpretationsActions.updateInterpretation(eventInterpretation.toJSON()));
+    dispatch(
+      interpretationsActions.updateInterpretation(eventInterpretation.toJSON())
+    );
     this.setState({ editing: false });
   };
 
@@ -60,7 +65,10 @@ class GlobalNotesPanel extends Component {
   };
 
   handleSelectInterpretation = (interpretation) => {
-    this.setState({ selectedInterpretation: interpretation, showVersions: false });
+    this.setState({
+      selectedInterpretation: interpretation,
+      showVersions: false,
+    });
   };
 
   handleClearSelection = () => {
@@ -74,7 +82,9 @@ class GlobalNotesPanel extends Component {
   };
 
   handleCopyVersion = async () => {
-    const confirmed = window.confirm("Are you sure you want to overwrite your version with this one?");
+    const confirmed = window.confirm(
+      "Are you sure you want to overwrite your version with this one?"
+    );
     if (!confirmed) return;
 
     const { selectedInterpretation } = this.state;
@@ -93,11 +103,17 @@ class GlobalNotesPanel extends Component {
     const eventInterpretation = new EventInterpretation({
       caseId,
       alterationId: "GLOBAL_NOTES",
-      data: { notes }
+      data: { notes },
     });
 
-    dispatch(interpretationsActions.updateInterpretation(eventInterpretation.toJSON()));
-    this.setState({ selectedInterpretation: null, editing: true, draft: notes });
+    dispatch(
+      interpretationsActions.updateInterpretation(eventInterpretation.toJSON())
+    );
+    this.setState({
+      selectedInterpretation: null,
+      editing: true,
+      draft: notes,
+    });
   };
 
   componentDidUpdate(prevProps, prevState) {
@@ -109,42 +125,65 @@ class GlobalNotesPanel extends Component {
     }
 
     // Reset editing state when switching interpretations
-    if (prevState.selectedInterpretation !== this.state.selectedInterpretation) {
+    if (
+      prevState.selectedInterpretation !== this.state.selectedInterpretation
+    ) {
       this.setState({ editing: false, draft: "" });
     }
   }
 
   render() {
-    const { t, globalNotesInterpretation, allGlobalNotesInterpretations, datasets } = this.props;
+    const {
+      t,
+      globalNotesInterpretation,
+      allGlobalNotesInterpretations,
+      datasets,
+    } = this.props;
     const { editing, draft, showVersions, selectedInterpretation } = this.state;
 
     // Determine which interpretation to display
-    const displayInterpretation = selectedInterpretation || globalNotesInterpretation;
+    const displayInterpretation =
+      selectedInterpretation || globalNotesInterpretation;
     const notes = displayInterpretation?.data?.notes || "";
 
     // Check if current user is viewing their own interpretation
-    const isCurrentUser = !selectedInterpretation || displayInterpretation?.isCurrentUser;
+    const isCurrentUser =
+      !selectedInterpretation || displayInterpretation?.isCurrentUser;
 
     // Format author and date for watermark button
-    const authorName = displayInterpretation?.authorName || 'Switch Version';
+    const authorName = displayInterpretation?.authorName || "Switch Version";
     const lastModified = displayInterpretation?.lastModified;
-    const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : '';
-    const watermarkText = authorName === 'Switch Version' ? authorName : `Last modified by ${authorName} ${dateStr}`;
+    const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : "";
+    const watermarkText =
+      authorName === "Switch Version"
+        ? authorName
+        : `Last modified by ${authorName} ${dateStr}`;
 
     return (
       <>
         <Row className="ant-panel-container ant-home-plot-container">
           <Col span={24}>
             <div className="desc-block editable-field">
-              <div className="desc-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                className="desc-title"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <span>{t("components.alteration-card.labels.notes")}:</span>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: "flex", gap: "8px" }}>
                   {!isCurrentUser && (
                     <Button
                       type="primary"
                       size="small"
                       onClick={this.handleCopyVersion}
-                      style={{ fontSize: '12px', height: 'auto', lineHeight: '1' }}
+                      style={{
+                        fontSize: "12px",
+                        height: "auto",
+                        lineHeight: "1",
+                      }}
                     >
                       Copy to My Version
                     </Button>
@@ -154,12 +193,12 @@ class GlobalNotesPanel extends Component {
                     size="small"
                     onClick={this.handleShowVersions}
                     style={{
-                      fontSize: '12px',
-                      color: '#999',
-                      border: 'none',
-                      padding: '2px 8px',
-                      height: 'auto',
-                      lineHeight: '1',
+                      fontSize: "12px",
+                      color: "#999",
+                      border: "none",
+                      padding: "2px 8px",
+                      height: "auto",
+                      lineHeight: "1",
                     }}
                   >
                     {watermarkText}
@@ -211,9 +250,9 @@ class GlobalNotesPanel extends Component {
           datasets={datasets}
           additionalColumns={[
             {
-              title: 'Notes',
-              dataIndex: ['data', 'notes'],
-              key: 'notes',
+              title: "Notes",
+              dataIndex: ["data", "notes"],
+              key: "notes",
               ellipsis: true,
             },
           ]}
@@ -226,8 +265,13 @@ class GlobalNotesPanel extends Component {
 const mapStateToProps = (state) => ({
   caseId: state?.CaseReport?.id,
   globalNotesInterpretation: getGlobalNotesInterpretation(state),
-  allGlobalNotesInterpretations: getAllInterpretationsForAlteration(state, "GLOBAL_NOTES"),
+  allGlobalNotesInterpretations: getAllInterpretationsForAlteration(
+    state,
+    "GLOBAL_NOTES"
+  ),
   datasets: state?.Datasets?.records || [],
 });
 
-export default connect(mapStateToProps)(withTranslation("common")(GlobalNotesPanel));
+export default connect(mapStateToProps)(
+  withTranslation("common")(GlobalNotesPanel)
+);

@@ -266,9 +266,11 @@
   "containers": {
     "home": {},
     "list-view": {
+      "no_data": "No data available",
       "tabs": {
-        "cases": "Cases",
-        "aggregations": "Aggregations"
+        "cases": "Case Reports",
+        "aggregations": "Aggregations",
+        "cohorts": "Population Stats"
       },
       "aggregations": {
         "title": "Cohort Level Aggregations",
@@ -279,7 +281,6 @@
         "percentage_column": "% of Total",
         "total_row": "Total",
         "empty_class": "(empty)",
-        "no_data": "No data available",
         "log_scale": "logarithmic scale",
         "table_tab": "Table",
         "visualization_tab": "Visualization",

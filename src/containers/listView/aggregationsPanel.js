@@ -170,7 +170,7 @@ class AggregationsPanel extends Component {
                 </div>
               ) : filteredRecords.length === 0 ? (
                 <Empty
-                  description={t("containers.list-view.aggregations.no_data")}
+                  description={t("containers.list-view.no_data")}
                 />
               ) : (
                 <AggregationsTable filteredRecords={filteredRecords} dataset={dataset} />
@@ -188,7 +188,7 @@ class AggregationsPanel extends Component {
                   )}
                   {!loading && filteredRecords.length === 0 && (
                     <Empty
-                      description={t("containers.list-view.aggregations.no_data")}
+                      description={t("containers.list-view.no_data")}
                     />
                   )}
                   <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>

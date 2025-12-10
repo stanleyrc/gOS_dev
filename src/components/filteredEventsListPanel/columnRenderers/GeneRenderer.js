@@ -10,7 +10,7 @@ const { Text } = Typography;
 /**
  * GeneRenderer
  * Renders gene name with interpretations avatar and link to open detail view
- * 
+ *
  * @param {*} value - The gene value
  * @param {Object} record - The complete record object
  * @param {Function} selectFilteredEvent - Function to handle selection

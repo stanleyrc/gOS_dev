@@ -24,7 +24,10 @@ import { CgArrowsBreakeH } from "react-icons/cg";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 
-import { selectMergedEvents, getAllInterpretationsForAlteration } from "../../redux/interpretations/selectors";
+import {
+  selectMergedEvents,
+  getAllInterpretationsForAlteration,
+} from "../../redux/interpretations/selectors";
 import { store } from "../../redux/store";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
@@ -53,7 +56,6 @@ const getColumnTitle = (title) => {
 };
 
 class FilteredEventsListPanel extends Component {
-
   handleResetFilters = () => {
     const { additionalColumns } = this.props;
     const defaultColumnKeys = this.getDefaultColumnKeys();
@@ -85,22 +87,28 @@ class FilteredEventsListPanel extends Component {
 
   getDefaultColumnKeys = () => {
     const { data: settingsData, dataset } = this.props;
-    
+
     // Get columns from settings.json
     const settingsColumns = settingsData?.filteredEventsColumns || [];
-    const settingsColumnIds = (Array.isArray(settingsColumns) ? settingsColumns : [])
+    const settingsColumnIds = (
+      Array.isArray(settingsColumns) ? settingsColumns : []
+    )
       .map((col) => col?.id)
       .filter(Boolean);
-    
+
     // Get optional columns from current dataset
     // Safely handles cases where optionalFilteredEventsColumns attribute is missing or undefined
     const datasetColumns = dataset?.optionalFilteredEventsColumns || [];
-    const datasetColumnIds = (Array.isArray(datasetColumns) ? datasetColumns : [])
+    const datasetColumnIds = (
+      Array.isArray(datasetColumns) ? datasetColumns : []
+    )
       .map((col) => col?.id)
       .filter(Boolean);
-    
+
     // Merge: settings columns first, then dataset-specific columns
-    const mergedColumnIds = [...new Set([...settingsColumnIds, ...datasetColumnIds])];
+    const mergedColumnIds = [
+      ...new Set([...settingsColumnIds, ...datasetColumnIds]),
+    ];
     return mergedColumnIds;
   };
 
@@ -122,12 +130,17 @@ class FilteredEventsListPanel extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevProps.filteredEvents !== this.props.filteredEvents || prevState.eventType !== this.state.eventType) {
+    if (
+      prevProps.filteredEvents !== this.props.filteredEvents ||
+      prevState.eventType !== this.state.eventType
+    ) {
       this.fetchTierCountsForRecords();
     }
-    if (prevProps.additionalColumns !== this.props.additionalColumns ||
-        prevProps.data !== this.props.data ||
-        prevProps.dataset !== this.props.dataset) {
+    if (
+      prevProps.additionalColumns !== this.props.additionalColumns ||
+      prevProps.data !== this.props.data ||
+      prevProps.dataset !== this.props.dataset
+    ) {
       this.initializeSelectedColumns();
     }
   }
@@ -136,7 +149,9 @@ class FilteredEventsListPanel extends Component {
     const { additionalColumns } = this.props;
     const defaultColumnKeys = this.getDefaultColumnKeys();
     const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const selectedKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
+    const selectedKeys = [
+      ...new Set([...defaultColumnKeys, ...additionalKeys]),
+    ];
     this.setState({ selectedColumnKeys: selectedKeys });
   };
 
@@ -157,10 +172,13 @@ class FilteredEventsListPanel extends Component {
     const { filteredEvents } = this.props;
     const { eventType } = this.state;
     let recordsHash = d3.group(
-      filteredEvents.filter((d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"),
+      filteredEvents.filter(
+        (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
+      ),
       (d) => d.eventType
     );
-    let records = (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
+    let records =
+      (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
     const { dataset } = this.props;
     const map = {};
     const promises = records.map(async (record) => {
@@ -168,13 +186,18 @@ class FilteredEventsListPanel extends Component {
       const key = `${record.gene}-${record.type}`;
       if (map[key]) return; // already fetching
       try {
-        const { getActiveRepository } = await import('../../services/repositories');
+        const { getActiveRepository } = await import(
+          "../../services/repositories"
+        );
         const repository = getActiveRepository({ dataset });
-        const counts = await repository.getTierCountsByGeneVariantType(record.gene, record.type);
+        const counts = await repository.getTierCountsByGeneVariantType(
+          record.gene,
+          record.type
+        );
         map[key] = counts;
       } catch (error) {
-        console.error('Failed to fetch tier counts:', error);
-        map[key] = {1: 0, 2: 0, 3: 0};
+        console.error("Failed to fetch tier counts:", error);
+        map[key] = { 1: 0, 2: 0, 3: 0 };
       }
     });
     await Promise.all(promises);
@@ -184,12 +207,15 @@ class FilteredEventsListPanel extends Component {
   getTierTooltipContent = (record) => {
     const key = `${record.gene}-${record.type}`;
     const tierCounts = this.state.tierCountsMap[key];
-    if (!tierCounts) return 'Loading tier distribution...';
-    const total = (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
+    if (!tierCounts) return "Loading tier distribution...";
+    const total =
+      (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
     if (total === 0) {
-      return 'No retiering found for this gene variant';
+      return "No retiering found for this gene variant";
     }
-    const originalRecord = this.props.originalFilteredEvents.find(r => r.uid === record.uid);
+    const originalRecord = this.props.originalFilteredEvents.find(
+      (r) => r.uid === record.uid
+    );
     const originalTier = originalRecord?.tier || 3;
     return (
       <TierDistributionBarChart
@@ -243,7 +269,9 @@ class FilteredEventsListPanel extends Component {
     } = this.state;
 
     let recordsHash = d3.group(
-      filteredEvents.filter((d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"),
+      filteredEvents.filter(
+        (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
+      ),
       (d) => d.eventType
     );
     let records =
@@ -343,25 +371,27 @@ class FilteredEventsListPanel extends Component {
             >
               <Col flex="auto">
                 <Select
-                   mode="multiple"
-                   placeholder={t("components.filtered-events-panel.select-columns")}
-                   value={selectedColumnKeys}
-                   onChange={this.handleColumnSelectionChange}
-                   style={{ width: "50%" }}
-                   size="small"
-                   maxTagCount="responsive"
-                 >
-                   {columns.map((col) => (
-                     <Select.Option key={col.key} value={col.key}>
-                       {getColumnTitle(col.title)}
-                     </Select.Option>
-                   ))}
-                   {(additionalColumns || []).map((col) => (
-                     <Select.Option key={col.key} value={col.key}>
-                       {getColumnTitle(col.title)}
-                     </Select.Option>
-                   ))}
-                 </Select>
+                  mode="multiple"
+                  placeholder={t(
+                    "components.filtered-events-panel.select-columns"
+                  )}
+                  value={selectedColumnKeys}
+                  onChange={this.handleColumnSelectionChange}
+                  style={{ width: "50%" }}
+                  size="small"
+                  maxTagCount="responsive"
+                >
+                  {columns.map((col) => (
+                    <Select.Option key={col.key} value={col.key}>
+                      {getColumnTitle(col.title)}
+                    </Select.Option>
+                  ))}
+                  {(additionalColumns || []).map((col) => (
+                    <Select.Option key={col.key} value={col.key}>
+                      {getColumnTitle(col.title)}
+                    </Select.Option>
+                  ))}
+                </Select>
               </Col>
             </Row>
             <Row className="ant-panel-container ant-home-plot-container">
@@ -369,10 +399,10 @@ class FilteredEventsListPanel extends Component {
                 {
                   <Skeleton active loading={loading}>
                     <Table
-                       columns={[
-                         ...(additionalColumns || []),
-                         ...columns
-                       ].filter((col) => selectedColumnKeys.includes(col.key))}
+                      columns={[
+                        ...(additionalColumns || []),
+                        ...columns,
+                      ].filter((col) => selectedColumnKeys.includes(col.key))}
                       dataSource={records}
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
@@ -521,7 +551,6 @@ class FilteredEventsListPanel extends Component {
                 }
               </Col>
             </Row>
-
           </>
         )}
       </Wrapper>
