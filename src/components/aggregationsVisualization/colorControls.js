@@ -5,6 +5,8 @@ import { categoricalColumns, getValue, getColumnLabel, MAX_COLOR_CATEGORIES, par
 import { hasGene, parseDriverGenes } from "../../helpers/geneAggregations";
 
 class ColorControls extends Component {
+  expressionInputRef = React.createRef();
+
   getColorableColumns = () => {
     const { filteredRecords = [] } = this.props;
 
@@ -195,8 +197,15 @@ class ColorControls extends Component {
     }
   };
 
+  handleApplyExpression = () => {
+    const { onApplyExpression } = this.props;
+    if (onApplyExpression && this.expressionInputRef.current) {
+      onApplyExpression(this.expressionInputRef.current.resizableTextArea?.textArea?.value || "");
+    }
+  };
+
   renderColorBySelector = () => {
-    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange, customGeneExpression, onCustomExpressionChange } = this.props;
+    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange, appliedGeneExpression } = this.props;
     const options = this.buildCascaderOptions();
     const value = this.getCascaderValue();
     const geneFrequencies = this.getGeneFrequencies();
@@ -217,9 +226,9 @@ class ColorControls extends Component {
         {colorByVariable === "driver_gene" && selectedGeneSet === "custom" && (
           <>
             <Input.TextArea
+              ref={this.expressionInputRef}
               size="small"
-              value={customGeneExpression || ""}
-              onChange={(e) => onCustomExpressionChange && onCustomExpressionChange(e.target.value)}
+              defaultValue={appliedGeneExpression || ""}
               style={{ width: 300, minHeight: 32 }}
               autoSize={{ minRows: 1, maxRows: 3 }}
               placeholder="e.g. TP53 AND (BRCA1 OR BRCA2)"
@@ -227,7 +236,7 @@ class ColorControls extends Component {
             <Button
               size="small"
               type="primary"
-              onClick={() => this.props.onApplyExpression && this.props.onApplyExpression(customGeneExpression)}
+              onClick={this.handleApplyExpression}
             >
               Apply
             </Button>

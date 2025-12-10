@@ -42,7 +42,6 @@ class AggregationsVisualization extends Component {
     colorByVariable: null,
     selectedGene: null,
     selectedGeneSet: "top20",
-    customGeneExpression: "",
     appliedGeneExpression: "",
     tooltip: {
       visible: false,
@@ -702,13 +701,11 @@ class AggregationsVisualization extends Component {
                       colorByVariable={this.state.colorByVariable}
                       selectedGene={this.state.selectedGene}
                       selectedGeneSet={this.state.selectedGeneSet}
-                      customGeneExpression={this.state.customGeneExpression}
                       appliedGeneExpression={this.state.appliedGeneExpression}
                       pathwayMap={this.props.pathwayMap}
                       onColorChange={(val) => this.setState({ colorByVariable: val })}
                       onGeneChange={(val) => this.setState({ selectedGene: val })}
                       onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
-                      onCustomExpressionChange={(val) => this.setState({ customGeneExpression: val })}
                       onApplyExpression={(val) => this.setState({ appliedGeneExpression: val })}
                     />
                   )}
