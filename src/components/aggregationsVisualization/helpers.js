@@ -64,7 +64,7 @@ export const allColumns = [...numericColumns, ...categoricalColumns, pairColumn]
  */
 export const openCaseInNewTab = (pair, dataset) => {
   if (!pair) return;
-  const url = new URL(window.location.origin);
+  const url = new URL(window.location.pathname, window.location.origin);
   url.searchParams.set("report", pair);
   if (dataset?.id) {
     url.searchParams.set("dataset", dataset.id);
