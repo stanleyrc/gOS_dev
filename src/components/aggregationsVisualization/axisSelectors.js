@@ -4,8 +4,12 @@ import { allColumns } from "./helpers";
 
 class AxisSelectors extends Component {
   state = {
-    customGenes: "",
-    showCustomGeneInput: false,
+    customGenesX: "",
+    showCustomGeneInputX: false,
+    enteringCustomX: false,
+    customGenesY: "",
+    showCustomGeneInputY: false,
+    enteringCustomY: false,
   };
 
   buildCascaderOptions(forXAxis = false) {
@@ -24,12 +28,8 @@ class AxisSelectors extends Component {
               value: name,
               label: name.replace(/_/g, " "),
             })),
+            { value: "custom", label: "Custom" },
           ];
-          
-          // Only add Custom option for x/y axis selectors
-          if (forXAxis) {
-            children.push({ value: "custom", label: "Custom" });
-          }
           
           return {
             value: col.dataIndex,
@@ -44,7 +44,11 @@ class AxisSelectors extends Component {
       });
   }
 
-  getCascaderValue(variable) {
+  getCascaderValue(variable, forXAxis = false) {
+    const enteringCustomKey = forXAxis ? "enteringCustomX" : "enteringCustomY";
+    if (this.state[enteringCustomKey]) {
+      return [];
+    }
     const { selectedGeneSet } = this.props;
     if (variable === "driver_gene") {
       return ["driver_gene", selectedGeneSet || "top20"];
@@ -52,9 +56,10 @@ class AxisSelectors extends Component {
     return variable ? [variable] : [];
   }
 
-  handleCustomGenesChange = (e) => {
+  handleCustomGenesChange = (e, isXAxis = false) => {
     const input = e.target.value;
-    this.setState({ customGenes: input });
+    const stateKey = isXAxis ? "customGenesX" : "customGenesY";
+    this.setState({ [stateKey]: input });
 
     // Parse and validate genes (deduplicate and normalize)
     const genes = [...new Set(
@@ -69,8 +74,10 @@ class AxisSelectors extends Component {
     }
   };
 
-  handleCustomGenesSubmit = () => {
-    const { customGenes } = this.state;
+  handleCustomGenesSubmit = (isXAxis = false) => {
+    const customGenesKey = isXAxis ? "customGenesX" : "customGenesY";
+    const enteringCustomKey = isXAxis ? "enteringCustomX" : "enteringCustomY";
+    const customGenes = this.state[customGenesKey];
     const { onGeneSetChange } = this.props;
 
     // Parse, deduplicate, and normalize genes
@@ -95,29 +102,37 @@ class AxisSelectors extends Component {
     if (onGeneSetChange) {
       onGeneSetChange(`custom:${genes.join(",")}`);
       message.success(`Custom gene set applied with ${genes.length} genes.`);
+      this.setState({ [enteringCustomKey]: false });
     }
   };
 
   renderDropdown = (variable, onChange, style = {}, forXAxis = false) => {
     const { onGeneSetChange } = this.props;
-    const { customGenes, showCustomGeneInput } = this.state;
+    const customGenesKey = forXAxis ? "customGenesX" : "customGenesY";
+    const showInputKey = forXAxis ? "showCustomGeneInputX" : "showCustomGeneInputY";
+    const enteringCustomKey = forXAxis ? "enteringCustomX" : "enteringCustomY";
+    const customGenes = this.state[customGenesKey];
+    const showCustomGeneInput = this.state[showInputKey];
+    
     const cascaderOptions = this.buildCascaderOptions(forXAxis);
-    const cascaderValue = this.getCascaderValue(variable);
+    const cascaderValue = this.getCascaderValue(variable, forXAxis);
 
     const handleCascaderChange = (values) => {
       if (values.length === 0) return;
       const selectedColumn = values[0];
       if (selectedColumn === "driver_gene" && values.length > 1) {
-        onChange(selectedColumn);
         if (values[1] === "custom") {
-          this.setState({ showCustomGeneInput: true, customGenes: "" });
-        } else if (onGeneSetChange) {
+          onChange(selectedColumn);
+          onGeneSetChange("custom:");
+          this.setState({ [showInputKey]: true, [customGenesKey]: "", [enteringCustomKey]: true });
+        } else {
+          onChange(selectedColumn);
           onGeneSetChange(values[1]);
-          this.setState({ showCustomGeneInput: false });
+          this.setState({ [showInputKey]: false, [enteringCustomKey]: false });
         }
       } else {
         onChange(selectedColumn);
-        this.setState({ showCustomGeneInput: false });
+        this.setState({ [showInputKey]: false, [enteringCustomKey]: false });
       }
     };
 
@@ -137,14 +152,14 @@ class AxisSelectors extends Component {
             <Input.TextArea
               placeholder="Enter genes separated by commas (max 20). Example: TP53, BRCA1, EGFR"
               value={customGenes}
-              onChange={this.handleCustomGenesChange}
+              onChange={(e) => this.handleCustomGenesChange(e, forXAxis)}
               rows={3}
               size="small"
               style={{ width: 240 }}
             />
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={this.handleCustomGenesSubmit}
+                onClick={() => this.handleCustomGenesSubmit(forXAxis)}
                 style={{
                   padding: "4px 12px",
                   backgroundColor: "#1890ff",
@@ -159,7 +174,10 @@ class AxisSelectors extends Component {
                 Apply
               </button>
               <button
-                onClick={() => this.setState({ showCustomGeneInput: false, customGenes: "" })}
+                onClick={() => {
+                  this.setState({ [customGenesKey]: "" });
+                  onGeneSetChange("custom:");
+                }}
                 style={{
                   padding: "4px 12px",
                   backgroundColor: "#f0f0f0",
