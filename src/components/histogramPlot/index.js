@@ -12,19 +12,13 @@ import settingsActions from "../../redux/settings/actions";
 const { updateHighlightedCaseReport } = caseReportsActions;
 const { updateCaseReport } = settingsActions;
 
-const margins = {
-  gap: 0,
-  gapX: 34,
-  gapY: 12,
-  yTicksCount: 10,
-};
-
 class HistogramPlot extends Component {
   plotContainer = null;
 
   constructor(props) {
     super(props);
 
+    const { margins } = this.props;
     this.zoom = d3
       .zoom()
       .scaleExtent([1, 38])
@@ -82,6 +76,8 @@ class HistogramPlot extends Component {
       updateHighlightedCaseReport,
       updateCaseReport,
       datafiles,
+      margins,
+      niceX,
     } = this.props;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -108,7 +104,7 @@ class HistogramPlot extends Component {
     }
 
     const xScale = this.state.zoomTransform.rescaleX(
-      plotScale.domain(extentToQ99).range([0, panelWidth]).nice()
+      plotScale.domain(extentToQ99).range([0, panelWidth]).nice(niceX)
     );
 
     // Create a scale for the y-axis
@@ -151,6 +147,7 @@ class HistogramPlot extends Component {
       highlightedMarkValueText,
       highlightedPair,
       updateCaseReport,
+      margins,
     };
   }
 
@@ -214,6 +211,7 @@ class HistogramPlot extends Component {
       dataset,
       updateHighlightedCaseReport,
       highlightedCaseReport,
+      margins,
     } = this.getPlotConfiguration();
 
     const mouseX = event.nativeEvent.offsetX - margins.gapX;
@@ -229,6 +227,19 @@ class HistogramPlot extends Component {
       if (closestDataPoint?.pair !== highlightedCaseReport?.pair) {
         updateHighlightedCaseReport(closestDataPoint);
       }
+    }
+  }
+
+  handleMouseOut(event) {
+    const { updateHighlightedCaseReport } = this.getPlotConfiguration();
+    // unless the mouse is moving to the clickable marker, clear the highlight
+    if (
+      !(
+        d3.select(event.nativeEvent.toElement) &&
+        d3.select(event.nativeEvent.toElement).classed("clickable-marker")
+      )
+    ) {
+      updateHighlightedCaseReport(null);
     }
   }
 
@@ -250,6 +261,7 @@ class HistogramPlot extends Component {
       highlightedMarkValueText,
       highlightedPair,
       updateCaseReport,
+      margins,
     } = this.getPlotConfiguration();
 
     let clipId = `cuttOffViewPane-${Math.random()}`;
@@ -354,13 +366,6 @@ class HistogramPlot extends Component {
                       >
                         {highlightedMarkValueText}
                       </text>
-                      <text
-                        textAnchor={"middle"}
-                        className="clickable-marker"
-                        onClick={(e) => updateCaseReport(highlightedPair)}
-                      >
-                        {highlightedPair}
-                      </text>
                     </g>
                   )}
               </g>
@@ -404,7 +409,29 @@ class HistogramPlot extends Component {
                 width={panelWidth}
                 height={panelHeight}
                 onMouseMove={(e) => this.handleMouseMove(e)}
+                onMouseOut={(e) => this.handleMouseOut(e)}
               />
+              {highlightedMarkValue >= 0 &&
+                xScale(highlightedMarkValue) >= 0 &&
+                xScale(highlightedMarkValue) <= panelWidth && (
+                  <g
+                    className="marker"
+                    transform={`translate(${[
+                      xScale(highlightedMarkValue),
+                      0,
+                    ]})`}
+                  >
+                    <text
+                      textAnchor="middle"
+                      className="clickable-marker"
+                      dy="-15"
+                      y={0.33 * panelHeight}
+                      onClick={(e) => updateCaseReport(highlightedPair)}
+                    >
+                      {highlightedPair}
+                    </text>
+                  </g>
+                )}
             </g>
           </g>
         </svg>
@@ -422,6 +449,13 @@ HistogramPlot.defaultProps = {
   data: [],
   showAxisY: false,
   format: "0.3f",
+  niceX: true,
+  margins: {
+    gap: 0,
+    gapX: 34,
+    gapY: 12,
+    yTicksCount: 10,
+  },
 };
 const mapDispatchToProps = (dispatch) => ({
   updateCaseReport: (report) => dispatch(updateCaseReport(report)),

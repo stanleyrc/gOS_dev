@@ -37,6 +37,7 @@ import Wrapper from "./index.style";
 import InterpretationsAvatar from "../../components/interpretationsAvatar";
 import AggregationsPanel from "./aggregationsPanel";
 import CohortsPanel from "./cohortsPanel";
+import HistogramPlot from "../../components/histogramPlot";
 
 const { SHOW_CHILD } = Cascader;
 
@@ -153,6 +154,7 @@ class ListView extends Component {
       interpretationsCounts,
       datafiles,
       dataset,
+      plots,
     } = this.props;
 
     let filterFormItemRenderer = (d) => {
@@ -303,6 +305,8 @@ class ListView extends Component {
         !isNaN(filtersExtents[d.filter.name]?.[0]) &&
         !isNaN(filtersExtents[d.filter.name]?.[1])
       ) {
+        let plot = plots.find((p) => p.id === d.filter.name);
+
         return (
           <Item
             key={`containers.list-view.filters.${d.filter.name}`}
@@ -318,27 +322,52 @@ class ListView extends Component {
             ]}
             initialValue={filtersExtents[d.filter.name]}
           >
-            <Slider
-              range
-              min={filtersExtents[d.filter.name]?.[0]}
-              max={filtersExtents[d.filter.name]?.[1]}
-              step={
-                (filtersExtents[d.filter.name]?.[1] -
-                  filtersExtents[d.filter.name]?.[0]) /
-                100
-              }
-              marks={{
-                [filtersExtents[d.filter.name]?.[0]]: d3.format(d.format)(
-                  filtersExtents[d.filter.name]?.[0]
-                ),
-                [filtersExtents[d.filter.name]?.[1]]: d3.format(d.format)(
-                  filtersExtents[d.filter.name]?.[1]
-                ),
-              }}
-              tooltip={{
-                formatter: (value) => d3.format(d.format)(value),
-              }}
-            />
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <>
+                {plot && (
+                  <HistogramPlot
+                    {...{
+                      id: plot.id,
+                      data: plot.data,
+                      dataset: plot.dataset,
+                      q1: plot.q1,
+                      q3: plot.q3,
+                      q99: plot.q99,
+                      scaleX: plot.scaleX,
+                      bandwidth: plot.bandwidth,
+                      format: plot.format,
+                      niceX: false,
+                      range: filtersExtents[d.filter.name],
+                      width: 230,
+                      height: 100,
+                      margins: { gapX: 10, gapY: 12, gap: 0, yTicksCount: 10 },
+                    }}
+                  />
+                )}
+                <br />
+              </>
+              <Slider
+                range
+                min={filtersExtents[d.filter.name]?.[0]}
+                max={filtersExtents[d.filter.name]?.[1]}
+                step={
+                  (filtersExtents[d.filter.name]?.[1] -
+                    filtersExtents[d.filter.name]?.[0]) /
+                  100
+                }
+                marks={{
+                  [filtersExtents[d.filter.name]?.[0]]: d3.format(d.format)(
+                    filtersExtents[d.filter.name]?.[0]
+                  ),
+                  [filtersExtents[d.filter.name]?.[1]]: d3.format(d.format)(
+                    filtersExtents[d.filter.name]?.[1]
+                  ),
+                }}
+                tooltip={{
+                  formatter: (value) => d3.format(d.format)(value),
+                }}
+              />
+            </Space>
           </Item>
         );
       }
@@ -723,6 +752,7 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   casesWithInterpretations: state.CaseReports.casesWithInterpretations,
   interpretationsCounts: state.CaseReports.interpretationsCounts,
+  plots: state.PopulationStatistics.cohort,
 });
 export default connect(
   mapStateToProps,
