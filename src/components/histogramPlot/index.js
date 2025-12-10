@@ -256,28 +256,29 @@ class HistogramPlot extends Component {
                     .curve(d3.curveBasis)(density)}
                 />
                 {this.getMarkers().map((marker, idx) => {
-                  const markerX = xScale(marker.value);
-                  if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
-                    return null;
-                  }
-                  return (
-                    <g
-                      key={`marker-${idx}`}
-                      className="marker"
-                      transform={`translate(${[markerX, 0]})`}
-                    >
-                      <line y2={panelHeight} stroke={marker.color || "red"} strokeWidth={3} />
-                      <text
-                        textAnchor={"middle"}
-                        dy="-3"
-                        fill={marker.color || "red"}
-                        className="marker"
-                      >
-                        {marker.label}
-                      </text>
-                    </g>
-                  );
-                })}
+                   const markerX = xScale(marker.value);
+                   if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
+                     return null;
+                   }
+                   const labelY = idx % 2 === 0 ? 15 : 30;
+                   return (
+                     <g
+                       key={`marker-${idx}`}
+                       className="marker"
+                       transform={`translate(${[markerX, 0]})`}
+                     >
+                       <line y2={panelHeight} stroke={marker.color || "red"} strokeWidth={3} />
+                       <text
+                         y={labelY}
+                         textAnchor={"middle"}
+                         fill={marker.color || "red"}
+                         className="marker"
+                       >
+                         {marker.label}
+                       </text>
+                     </g>
+                   );
+                 })}
               </g>
               <g
                 className="axis--y y-axis-container"
