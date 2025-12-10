@@ -1,4 +1,5 @@
 import { parseDriverGenes } from "../../helpers/geneAggregations";
+import { measureText } from "../../helpers/utility";
 
 export const margins = {
   gapX: 34,
@@ -7,6 +8,54 @@ export const margins = {
   gapLegend: 0,
   tooltipGap: 5,
 };
+
+const BASE_MARGIN_X = 34;
+const BASE_MARGIN_Y_BOTTOM = 60;
+const FONT_SIZE = 10;
+const ROTATION_ANGLE = 45; // degrees for rotated labels
+
+/**
+ * Calculate dynamic margins based on axis label widths.
+ * Measures the actual text width of axis labels and adjusts margins to prevent cutoff.
+ * @param {Array} categories - Array of category labels (strings)
+ * @param {boolean} isXAxisRotated - Whether X-axis labels are rotated 45 degrees
+ * @param {boolean} isYAxisCategorical - Whether Y-axis has categorical labels
+ * @returns {object} Adjusted margins object
+ */
+export function calculateDynamicMargins(categories = [], isXAxisRotated = false, isYAxisCategorical = false) {
+  const adjustedMargins = { ...margins };
+
+  // Calculate Y-axis margin (left side) for categorical Y-axis labels
+  if (isYAxisCategorical && categories.length > 0) {
+    const longestYLabel = categories.reduce((longest, cat) => {
+      const catStr = String(cat);
+      return catStr.length > longest.length ? catStr : longest;
+    }, "");
+    
+    const yLabelWidth = measureText(longestYLabel, FONT_SIZE);
+    const minYMargin = Math.ceil(yLabelWidth) + 20; // Add padding
+    adjustedMargins.gapX = Math.max(BASE_MARGIN_X, minYMargin);
+  }
+
+  // Calculate X-axis margin (bottom) for rotated categorical X-axis labels
+  if (isXAxisRotated && categories.length > 0) {
+    const longestXLabel = categories.reduce((longest, cat) => {
+      const catStr = String(cat);
+      return catStr.length > longest.length ? catStr : longest;
+    }, "");
+    
+    const xLabelWidth = measureText(longestXLabel, FONT_SIZE);
+    const xLabelHeight = FONT_SIZE;
+    
+    // For 45-degree rotation: effective height = width*sin(45°) + height*cos(45°)
+    const radians = (ROTATION_ANGLE * Math.PI) / 180;
+    const rotatedHeight = Math.ceil(xLabelWidth * Math.sin(radians) + xLabelHeight * Math.cos(radians));
+    const minXMargin = rotatedHeight + 20; // Add padding
+    adjustedMargins.gapYBottom = Math.max(BASE_MARGIN_Y_BOTTOM, minXMargin);
+  }
+
+  return adjustedMargins;
+}
 
 export const MIN_BAR_WIDTH = 30;
 export const MIN_CATEGORY_WIDTH = 40;

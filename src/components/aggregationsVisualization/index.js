@@ -15,6 +15,7 @@ import OncoPrintPlot from "./OncoPrintPlot";
 import PlotTooltip from "./PlotTooltip";
 import {
   margins,
+  calculateDynamicMargins,
   MIN_BAR_WIDTH,
   MIN_CATEGORY_WIDTH,
   getValue,
@@ -206,9 +207,10 @@ class AggregationsVisualization extends Component {
       return this.cachedConfig;
     }
 
-    const stageWidth = containerWidth - 2 * margins.gapX;
-    const stageHeight = height - 2 * margins.gapY - margins.gapYBottom;
-    const panelHeight = stageHeight - margins.gapLegend;
+    let stageWidth = containerWidth - 2 * margins.gapX;
+    let stageHeight = height - 2 * margins.gapY - margins.gapYBottom;
+    let panelHeight = stageHeight - margins.gapLegend;
+    let currentMargins = { ...margins };
 
     let xScale, yScale, color, legend, categoryData, stackedData;
     let panelWidth = stageWidth;
@@ -267,6 +269,12 @@ class AggregationsVisualization extends Component {
         xCategories = this.getGenesForSelectedSet(xCategoryCounts);
       }
 
+      // Calculate dynamic margins for stacked-bar (categorical X, rotated labels)
+      currentMargins = calculateDynamicMargins(xCategories, true, false);
+      stageWidth = containerWidth - 2 * currentMargins.gapX;
+      stageHeight = height - 2 * currentMargins.gapY - currentMargins.gapYBottom;
+      panelHeight = stageHeight - currentMargins.gapLegend;
+
       const minRequiredWidth = xCategories.length * MIN_BAR_WIDTH;
       if (minRequiredWidth > stageWidth) {
         panelWidth = minRequiredWidth;
@@ -298,9 +306,10 @@ class AggregationsVisualization extends Component {
       legend = null;
 
       const config = {
-        containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight,
+        containerWidth, width: panelWidth + 2 * currentMargins.gapX, height, panelWidth, panelHeight,
         xScale, yScale, color, legend, scrollable,
         xVariable, yVariable, colorVariable, plotType, stackedData, yCategories: yCategories,
+        margins: currentMargins,
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
@@ -323,7 +332,7 @@ class AggregationsVisualization extends Component {
 
       const config = {
         containerWidth,
-        width: panelWidth + 2 * margins.gapX,
+        width: panelWidth + 2 * currentMargins.gapX,
         height,
         panelWidth,
         panelHeight,
@@ -336,6 +345,7 @@ class AggregationsVisualization extends Component {
         range,
         bandwidth,
         format: ",.2f",
+        margins: currentMargins,
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
@@ -368,6 +378,14 @@ class AggregationsVisualization extends Component {
         });
         categories = this.getGenesForSelectedSet(geneFrequencies);
       }
+
+      // Calculate dynamic margins for categorical-scatter
+      const isXRotated = xType === "categorical";
+      const isYCategorical = xType !== "categorical";
+      currentMargins = calculateDynamicMargins(categories, isXRotated, isYCategorical);
+      stageWidth = containerWidth - 2 * currentMargins.gapX;
+      stageHeight = height - 2 * currentMargins.gapY - currentMargins.gapYBottom;
+      panelHeight = stageHeight - currentMargins.gapLegend;
 
       const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
       if (xType === "categorical" && minRequiredWidth > stageWidth) {
@@ -416,14 +434,15 @@ class AggregationsVisualization extends Component {
       }
 
       const config = {
-        containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight,
+        containerWidth, width: panelWidth + 2 * currentMargins.gapX, height, panelWidth, panelHeight,
         xScale, yScale, plotType, categoryData,
         catVar, numVar, xVariable, yVariable,
+        margins: currentMargins,
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
       return config;
-    } else {
+      } else {
       const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
       const yValues = filteredRecords.map((d) => getValue(d, yVariable)).filter((v) => v != null && !isNaN(v));
 
@@ -438,15 +457,16 @@ class AggregationsVisualization extends Component {
         .clamp(true);
 
       const config = {
-        containerWidth, width: panelWidth + 2 * margins.gapX, height, panelWidth, panelHeight,
+        containerWidth, width: panelWidth + 2 * currentMargins.gapX, height, panelWidth, panelHeight,
         xScale, yScale, scrollable,
         xFormat: ",.2f", yFormat: ",.2f", xVariable, yVariable, plotType,
+        margins: currentMargins,
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
       return config;
-    }
-  }
+      }
+      }
 
   handleMouseEnter = (e, d, i) => {
     const config = this.getPlotConfiguration();
@@ -637,7 +657,8 @@ class AggregationsVisualization extends Component {
           {({ width: containerWidth }) => {
             this.currentWidth = containerWidth;
             const config = this.getPlotConfiguration();
-            const { width, height, panelWidth, panelHeight } = config;
+            const { width, height, panelWidth, panelHeight, margins: configMargins } = config;
+            const plotMargins = configMargins || margins;
 
             return (
               <div style={{ position: "relative" }}>
@@ -700,7 +721,7 @@ class AggregationsVisualization extends Component {
                        ref={(elem) => (this.plotContainer = elem)}
                        style={{ display: "block" }}
                      >
-                       <g transform={`translate(${margins.gapX}, ${margins.gapY + margins.gapLegend})`}>
+                       <g transform={`translate(${plotMargins.gapX}, ${plotMargins.gapY + plotMargins.gapLegend})`}>
                          {plotType !== "density" && (
                            <rect
                              width={panelWidth}
