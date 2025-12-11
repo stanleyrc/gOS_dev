@@ -47,11 +47,9 @@ const calculateStats = (records, dataIndex) => {
 
 class AggregationsTable extends PureComponent {
    state = {
-     selectedColumnKeys: [],
-     columnStats: {},
-     summaryFilterText: "",
-     summaryFilterConfirmed: "",
-     };
+      selectedColumnKeys: [],
+      columnStats: {},
+      };
 
      componentDidMount() {
      this.initializeSelectedColumns();
@@ -176,21 +174,7 @@ class AggregationsTable extends PureComponent {
     openCaseInNewTab(pair, dataset);
   };
 
-  handleSummaryFilterChange = (e) => {
-    this.setState({ summaryFilterText: e.target.value });
-  };
 
-  handleSummaryFilterConfirm = (confirm) => {
-    this.setState({ summaryFilterConfirmed: this.state.summaryFilterText }, () => {
-      confirm();
-    });
-  };
-
-  handleSummaryFilterReset = (clearFilters) => {
-    this.setState({ summaryFilterText: "", summaryFilterConfirmed: "" }, () => {
-      clearFilters();
-    });
-  };
 
   buildColumns = () => {
     const { t, dataset } = this.props;
@@ -312,14 +296,13 @@ class AggregationsTable extends PureComponent {
         type: "numeric",
       },
       {
-        key: "summary",
-        title:
-          t("containers.list-view.aggregations.summary_column") ||
-          "Alterations",
-        dataIndex: "summary",
-        type: "string",
-        hasFilter: true,
-      },
+         key: "summary",
+         title:
+           t("containers.list-view.aggregations.summary_column") ||
+           "Alterations",
+         dataIndex: "summary",
+         type: "string",
+       },
     ];
 
     return columnDefs.map((col) => {
@@ -414,46 +397,6 @@ class AggregationsTable extends PureComponent {
            return formattedValue;
            },
            };
-           
-           // Add custom filter for summary column
-           if (col.hasFilter && col.key === "summary") {
-             columnConfig.filterIcon = () => (
-               <FilterOutlined style={{ color: this.state.summaryFilterConfirmed ? "#1890ff" : undefined }} />
-             );
-             columnConfig.filteredValue = this.state.summaryFilterConfirmed ? [this.state.summaryFilterConfirmed] : null;
-             columnConfig.filterDropdown = ({ confirm, clearFilters }) => (
-               <div style={{ padding: "8px" }} onKeyDown={(e) => e.stopPropagation()}>
-                 <Input
-                   placeholder="Filter alterations..."
-                   value={this.state.summaryFilterText}
-                   onChange={this.handleSummaryFilterChange}
-                   onPressEnter={() => this.handleSummaryFilterConfirm(confirm)}
-                   style={{ width: "200px", marginBottom: "8px", display: "block" }}
-                   autoFocus
-                 />
-                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                   <Button
-                     size="small"
-                     onClick={() => this.handleSummaryFilterReset(clearFilters)}
-                   >
-                     Reset
-                   </Button>
-                   <Button
-                     type="primary"
-                     size="small"
-                     onClick={() => this.handleSummaryFilterConfirm(confirm)}
-                   >
-                     Search
-                   </Button>
-                 </div>
-               </div>
-             );
-             columnConfig.onFilter = (value, record) => {
-               if (!value) return true;
-               const cellValue = getValue(record, col.dataIndex);
-               return cellValue != null && String(cellValue).toLowerCase().includes(value.toLowerCase());
-             };
-           }
            
            return columnConfig;
            });
