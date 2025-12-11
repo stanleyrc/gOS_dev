@@ -34,6 +34,7 @@ import {
   cascaderSearchFilter,
 } from "../../helpers/filters";
 import Wrapper from "./index.style";
+import ContainerDimensions from "react-container-dimensions";
 import InterpretationsAvatar from "../../components/interpretationsAvatar";
 import AggregationsPanel from "./aggregationsPanel";
 import CohortsPanel from "./cohortsPanel";
@@ -322,30 +323,41 @@ class ListView extends Component {
             ]}
             initialValue={filtersExtents[d.filter.name]}
           >
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <>
-                {plot && (
-                  <HistogramPlot
-                    {...{
-                      id: plot.id,
-                      data: plot.data,
-                      dataset: plot.dataset,
-                      q1: plot.q1,
-                      q3: plot.q3,
-                      q99: plot.q99,
-                      scaleX: plot.scaleX,
-                      bandwidth: plot.bandwidth,
-                      format: plot.format,
-                      niceX: false,
-                      range: filtersExtents[d.filter.name],
-                      width: 230,
-                      height: 100,
-                      margins: { gapX: 10, gapY: 12, gap: 0, yTicksCount: 10 },
-                    }}
-                  />
-                )}
-                <br />
-              </>
+            <Space direction="vertical" className="filter-slider-space">
+              <ContainerDimensions>
+                {({ width, height }) => {
+                  return (
+                    plot && (
+                      <>
+                        <HistogramPlot
+                          {...{
+                            id: plot.id,
+                            data: plot.data,
+                            dataset: plot.dataset,
+                            q1: plot.q1,
+                            q3: plot.q3,
+                            q99: plot.q99,
+                            scaleX: plot.scaleX,
+                            bandwidth: plot.bandwidth,
+                            format: plot.format,
+                            niceX: false,
+                            range: filtersExtents[d.filter.name],
+                            width: width,
+                            height: 100,
+                            margins: {
+                              gapX: 10,
+                              gapY: 12,
+                              gap: 0,
+                              yTicksCount: 10,
+                            },
+                          }}
+                        />
+                        <br />
+                      </>
+                    )
+                  );
+                }}
+              </ContainerDimensions>
               <Slider
                 range
                 min={filtersExtents[d.filter.name]?.[0]}

@@ -129,6 +129,9 @@ const Wrapper = styled.div`
   .aggregation-visualization-container .ant-select {
     font-size: 12px;
   }
+  .filter-slider-space {
+    width: 100%;
+  }
 `;
 
 export default Wrapper;
