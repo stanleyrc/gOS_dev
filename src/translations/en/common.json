@@ -405,9 +405,7 @@
       "fraction": "By Fraction",
       "count": "By Count",
       "population-mode": "Population",
-      "decomposed-mode": "Decomposed",
-      "commonYscale": "Common Y-scale",
-      "individualYscale": "Individual Y-scale"
+      "decomposed-mode": "Decomposed"
     },
     "download-as-png-tooltip": "Download as PNG",
     "expand": "Expand",
@@ -728,8 +726,12 @@
     },
     "tracks-legend-panel": {
       "header": "Legend",
-      "record": "gene in viewport",
-      "record_plural": "genes in viewport"
+      "record": "<strong>{{countText}}</strong> gene in viewport",
+      "record_plural": "<strong>{{countText}}</strong> genes in viewport",
+      "commonYscale": "Common Y-scale",
+      "commonYscale-help": "Apply a common Y-scale across all charts for easier comparison",
+      "individualYscale": "Individual Y-scale",
+      "individualYscale-help": "Apply individual Y-scales for each chart to better visualize distributions"
     },
     "alteration-card": {
       "unknown": "Unknown",

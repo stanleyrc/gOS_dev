@@ -13,7 +13,7 @@ import {
   Col,
   Spin,
   Select,
-  Segmented,
+  Input,
 } from "antd";
 import * as d3 from "d3";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -26,8 +26,8 @@ import GenesPlot from "../genesPlotHiglass";
 import settingsActions from "../../redux/settings/actions";
 import genesActions from "../../redux/genes/actions";
 import CytobandsPlot from "../cytobandsPlot";
-import LegendMultiBrush from "../legendPanel/legend-multi-brush";
-import GenomeRangePanel from "../legendPanel/genomeRangePanel";
+import LegendMultiBrush from "./legend-multi-brush";
+import GenomeRangePanel from "./genomeRangePanel";
 
 const { updateDomains } = settingsActions;
 const { locateGenes } = genesActions;
@@ -40,6 +40,20 @@ const margins = {
 class TracksLegendPanel extends Component {
   container = null;
   genesStructure = null;
+
+  state = { locationString: null };
+
+  handleLocationChange = (e) => {
+    this.setState({ locationString: e.target.value });
+  };
+
+  handleLocationKeyPress = (e) => {
+    if (e.key === "Enter") {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set("location", this.state.locationString);
+      window.location.href = currentUrl.toString();
+    }
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -69,11 +83,17 @@ class TracksLegendPanel extends Component {
       chromoBins,
       selectedCoordinate,
       visible,
-      handleSegmentedChange,
+      handleYscaleModeChange,
+      yScaleMode,
     } = this.props;
     if (!visible) {
       return null;
     }
+    let locationString =
+      this.state.locationString ||
+      domains
+        .map((domain) => locateGenomeRange(chromoBins, domain))
+        .join(" | ");
     return (
       <Wrapper>
         <Card
@@ -84,40 +104,68 @@ class TracksLegendPanel extends Component {
                 <AiFillBoxPlot />
               </span>
               <span>{selectedCoordinate}</span>
-              <span>
-                {domains
-                  .map((domain) => locateGenomeRange(chromoBins, domain))
-                  .join(" | ")}
-              </span>
+              <Input
+                className="location-input"
+                size="small"
+                value={locationString}
+                onChange={this.handleLocationChange}
+                onPressEnter={this.handleLocationKeyPress}
+              />
+            </Space>
+          }
+          extra={
+            <Space>
               {loading ? (
                 <Spin
                   indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />}
                 />
               ) : (
-                <span>
-                  <b>{d3.format(",")(genesList.length)}</b>{" "}
-                  {t("components.tracks-legend-panel.record", {
-                    count: genesList.length,
-                  })}
-                </span>
+                <span
+                  className="gene-records-text"
+                  dangerouslySetInnerHTML={{
+                    __html: t("components.tracks-legend-panel.record", {
+                      count: genesList.length,
+                      countText: d3.format(",")(genesList.length),
+                    }),
+                  }}
+                />
               )}
-            </Space>
-          }
-          extra={
-            <Space>
-              <Segmented
-                size="small"
+              <Select
+                defaultValue={yScaleMode}
+                variant="borderless"
+                onChange={(d) => handleYscaleModeChange(d)}
                 options={[
                   {
-                    label: t("components.segmented-filter.commonYscale"),
                     value: "common",
+                    label: (
+                      <Tooltip
+                        placement="leftTop"
+                        title={t(
+                          "components.tracks-legend-panel.commonYscale-help"
+                        )}
+                      >
+                        <Space>
+                          {t("components.tracks-legend-panel.commonYscale")}
+                        </Space>
+                      </Tooltip>
+                    ),
                   },
                   {
-                    label: t("components.segmented-filter.individualYscale"),
                     value: "individual",
+                    label: (
+                      <Tooltip
+                        placement="leftTop"
+                        title={t(
+                          "components.tracks-legend-panel.individualYscale-help"
+                        )}
+                      >
+                        <Space>
+                          {t("components.tracks-legend-panel.individualYscale")}
+                        </Space>
+                      </Tooltip>
+                    ),
                   },
                 ]}
-                onChange={(d) => handleSegmentedChange(d)}
               />
               <GenomeRangePanel />
               <Select

@@ -158,7 +158,8 @@ class TracksModal extends Component {
           chromoBins,
           visible: true,
           height,
-          handleSegmentedChange: this.handleYscaleSegmentedChange,
+          handleYscaleModeChange: this.handleYscaleSegmentedChange,
+          yScaleMode,
         }}
       />
     );

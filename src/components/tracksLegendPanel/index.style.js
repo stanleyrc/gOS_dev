@@ -35,6 +35,12 @@ const Wrapper = styled.div`
     padding-top: 4px !important;
     padding-bottom: 2px !important;
   }
+  .gene-records-text {
+    width: 200px;
+  }
+  .location-input {
+    width: 500px;
+  }
 `;
 
 export default Wrapper;
