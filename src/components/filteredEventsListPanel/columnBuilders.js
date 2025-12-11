@@ -150,6 +150,7 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
     filterable = false,
     sortable = false,
     filterType = type === "numeric" ? "numeric" : type === "object" ? "object" : "string",
+    filterSearch = false,
     ellipsis = false,
     rendererProps: columnRendererProps = {},
     fields,
@@ -202,6 +203,9 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
     columnConfig.filters = buildFilters(records, dataIndex, filterType);
     columnConfig.filterMultiple = true;
     columnConfig.onFilter = buildFilter(dataIndex, filterType);
+    if (filterSearch) {
+      columnConfig.filterSearch = true;
+    }
   }
 
   // Add sorter if enabled

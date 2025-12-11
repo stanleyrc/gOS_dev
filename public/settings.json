@@ -991,6 +991,7 @@
       "viewType": "gene-link",
       "width": 100,
       "filterable": true,
+      "filterSearch": true,
       "sortable": true
     },
     {
