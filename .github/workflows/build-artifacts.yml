@@ -92,6 +92,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SKIP_SERVER: "1"
           PORT: "3001"
+          SITE_DIR: "site"
         run: |
           set -euo pipefail
           ./setup.sh
