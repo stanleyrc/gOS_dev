@@ -1,6 +1,7 @@
 import React from "react";
 import * as d3 from "d3";
 import { getColumnRenderer } from "./columnRegistry";
+import SliderFilterDropdown from "./SliderFilterDropdown";
 
 /**
  * resolvePath
@@ -124,8 +125,30 @@ function buildFilter(dataIndex, filterType = "string") {
     return (value, record) => resolvePath(record, dataIndex)?.startsWith(value);
   }
 
+  if (filterType === "range") {
+    return (value, record) => {
+      const [minVal, maxVal] = value.split(",").map(Number);
+      const recordVal = +resolvePath(record, dataIndex);
+      if (isNaN(recordVal)) return false;
+      return recordVal >= minVal && recordVal <= maxVal;
+    };
+  }
+
   // Default string equality
   return (value, record) => resolvePath(record, dataIndex) === value;
+}
+
+function computeRangeBounds(records, dataIndex) {
+  const values = records
+    .map((d) => resolvePath(d, dataIndex))
+    .filter((v) => v != null && !isNaN(v))
+    .map(Number);
+  if (values.length === 0) return { min: 0, max: 1, step: 0.1 };
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min;
+  const step = range > 100 ? 1 : range > 10 ? 0.1 : 0.01;
+  return { min, max, step };
 }
 
 /**
@@ -200,11 +223,19 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
 
   // Add filters if enabled
   if (filterable && records && records.length > 0) {
-    columnConfig.filters = buildFilters(records, dataIndex, filterType);
-    columnConfig.filterMultiple = true;
-    columnConfig.onFilter = buildFilter(dataIndex, filterType);
-    if (filterSearch) {
-      columnConfig.filterSearch = true;
+    if (filterType === "range") {
+      const { min, max, step } = computeRangeBounds(records, dataIndex);
+      columnConfig.filterDropdown = (props) => (
+        <SliderFilterDropdown {...props} min={min} max={max} step={step} />
+      );
+      columnConfig.onFilter = buildFilter(dataIndex, filterType);
+    } else {
+      columnConfig.filters = buildFilters(records, dataIndex, filterType);
+      columnConfig.filterMultiple = true;
+      columnConfig.onFilter = buildFilter(dataIndex, filterType);
+      if (filterSearch) {
+        columnConfig.filterSearch = true;
+      }
     }
   }
 

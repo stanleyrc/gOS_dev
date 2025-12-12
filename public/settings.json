@@ -1052,6 +1052,8 @@
       "type": "numeric",
       "viewType": "formatted-number",
       "width": 100,
+      "filterable": true,
+      "filterType": "range",
       "sortable": true,
       "rendererProps": {
         "format": ".3f"
@@ -1064,6 +1066,8 @@
       "type": "numeric",
       "viewType": "formatted-number",
       "width": 130,
+      "filterable": true,
+      "filterType": "range",
       "sortable": true,
       "rendererProps": {
         "format": ".3f"
@@ -1076,6 +1080,8 @@
       "type": "numeric",
       "viewType": "formatted-number",
       "width": 100,
+      "filterable": true,
+      "filterType": "range",
       "sortable": true,
       "rendererProps": {
         "format": ".3f"
@@ -1088,6 +1094,8 @@
       "type": "numeric",
       "viewType": "formatted-number",
       "width": 100,
+      "filterable": true,
+      "filterType": "range",
       "sortable": true,
       "rendererProps": {
         "format": ","
@@ -1100,6 +1108,8 @@
       "type": "numeric",
       "viewType": "formatted-number",
       "width": 100,
+      "filterable": true,
+      "filterType": "range",
       "sortable": true,
       "rendererProps": {
         "format": ","
@@ -1112,6 +1122,8 @@
       "type": "numeric",
       "viewType": "formatted-number",
       "width": 100,
+      "filterable": true,
+      "filterType": "range",
       "sortable": true,
       "rendererProps": {
         "format": ".3f"
