@@ -731,7 +731,9 @@
       "commonYscale": "Common Y-scale",
       "commonYscale-help": "Apply a common Y-scale across all charts for easier comparison",
       "individualYscale": "Individual Y-scale",
-      "individualYscale-help": "Apply individual Y-scales for each chart to better visualize distributions"
+      "individualYscale-help": "Apply individual Y-scales for each chart to better visualize distributions",
+      "location-placeholder": "Try 1:100000-3:200000|11:100000-13:200000",
+      "location-help": "Location as 1:100000-3:200000|11:100000-13:200000"
     },
     "alteration-card": {
       "unknown": "Unknown",

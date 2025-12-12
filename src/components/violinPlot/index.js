@@ -106,6 +106,8 @@ class ViolinPlot extends Component {
 
   renderYAxis() {
     const { xScale, histograms } = this.getPlotConfiguration();
+    const { yTicksCount } = margins;
+
     let yAxisContainer = d3
       .select(this.plotContainer)
       .select(".y-axis-container")
@@ -121,12 +123,24 @@ class ViolinPlot extends Component {
         (d, i) => `translate(${[xScale(d.plot.id) + xScale.step() / 2, 0]})`
       )
       .each(function (d, i) {
+        const tickValues = d3
+          .range(yTicksCount)
+          .map((i) =>
+            d.scaleY.invert(
+              (i * (d.scaleY.range()[1] - d.scaleY.range()[0])) / yTicksCount +
+                d.scaleY.range()[0]
+            )
+          );
+
+        tickValues.push(d.scaleY.domain()[1]);
+
         let yAxis = d3
           .axisLeft(d.scaleY)
           .tickSize(3)
+          .tickValues(tickValues)
           .tickFormat(d3.format(d.plot.format));
 
-        d3.select(this).call(yAxis);
+      d3.select(this).call(yAxis);
 
         d3.select(this)
           .selectAll("text")
@@ -136,16 +150,6 @@ class ViolinPlot extends Component {
               : x > d.plot.q3
               ? legendColors()[2]
               : legendColors()[1];
-          })
-          .text(function (e) {
-            let tickText = d3.select(this).text();
-            if (d.plot.scaleX === "log") {
-              tickText = tickText === "" ? "" : d3.format("~s")(e);
-            } else {
-              tickText = tickText === "" ? "" : d3.format(d.plot.format)(e);
-            }
-
-            return tickText;
           });
 
         d3.select(this)
@@ -157,19 +161,21 @@ class ViolinPlot extends Component {
               ? legendColors()[2]
               : legendColors()[1];
           });
-
-        if (d.plot.scaleX === "log") {
-          d3.select(this)
-            .selectAll(".tick > text")
-            .attr("transform", "rotate(-45)")
-            .attr("dy", "-4")
-            .attr("dx", "7")
-            .style("text-anchor", "end");
-        }
       });
 
     yAxisContainer.each(function (d, i) {
-      let yAxis = d3.axisLeft(d.scaleY).tickSize(3);
+      const tickValues = d3
+        .range(yTicksCount)
+        .map((i) =>
+          d.scaleY.invert(
+            (i * (d.scaleY.range()[1] - d.scaleY.range()[0])) / yTicksCount +
+              d.scaleY.range()[0]
+          )
+        );
+
+      tickValues.push(d.scaleY.domain()[1]);
+
+      let yAxis = d3.axisLeft(d.scaleY).tickSize(3).tickValues(tickValues);
 
       d3.select(this).call(yAxis);
 
@@ -181,15 +187,6 @@ class ViolinPlot extends Component {
             : x > d.plot.q3
             ? legendColors()[2]
             : legendColors()[1];
-        })
-        .text(function (e) {
-          let tickText = d3.select(this).text();
-          if (d.plot.scaleX === "log") {
-            tickText = tickText === "" ? "" : d3.format("~s")(e);
-          } else {
-            tickText = tickText === "" ? "" : d3.format(d.plot.format)(e);
-          }
-          return tickText;
         });
 
       d3.select(this)
@@ -201,15 +198,6 @@ class ViolinPlot extends Component {
             ? legendColors()[2]
             : legendColors()[1];
         });
-
-      if (d.plot.scaleX === "log") {
-        d3.select(this)
-          .selectAll(".tick > text")
-          .attr("transform", "rotate(-45)")
-          .attr("dy", "-4")
-          .attr("dx", "7")
-          .style("text-anchor", "end");
-      }
     });
   }
 

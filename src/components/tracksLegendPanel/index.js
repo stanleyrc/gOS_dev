@@ -89,6 +89,7 @@ class TracksLegendPanel extends Component {
     if (!visible) {
       return null;
     }
+
     let locationString =
       this.state.locationString ||
       domains
@@ -104,13 +105,20 @@ class TracksLegendPanel extends Component {
                 <AiFillBoxPlot />
               </span>
               <span>{selectedCoordinate}</span>
-              <Input
-                className="location-input"
-                size="small"
-                value={locationString}
-                onChange={this.handleLocationChange}
-                onPressEnter={this.handleLocationKeyPress}
-              />
+              <Tooltip
+                title={t("components.tracks-legend-panel.location-help")}
+              >
+                <Input
+                  className="location-input"
+                  size="small"
+                  value={locationString}
+                  onChange={this.handleLocationChange}
+                  onPressEnter={this.handleLocationKeyPress}
+                  placeholder={t(
+                    "components.tracks-legend-panel.location-placeholder"
+                  )}
+                />
+              </Tooltip>
             </Space>
           }
           extra={

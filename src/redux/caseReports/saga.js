@@ -1,4 +1,11 @@
-import { all, takeEvery, put, call, select, take } from "redux-saga/effects";
+import {
+  all,
+  put,
+  call,
+  select,
+  take,
+  takeLatest,
+} from "redux-saga/effects";
 import { getCurrentState } from "./selectors";
 import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
@@ -459,9 +466,9 @@ function* followUpCaseReportsMatched(action) {
 }
 
 function* actionWatcher() {
-  yield takeEvery(actions.FETCH_CASE_REPORTS_REQUEST, fetchCaseReports);
-  yield takeEvery(actions.SEARCH_CASE_REPORTS, searchReports);
-  yield takeEvery(actions.CASE_REPORTS_MATCHED, followUpCaseReportsMatched);
+  yield takeLatest(actions.FETCH_CASE_REPORTS_REQUEST, fetchCaseReports);
+  yield takeLatest(actions.SEARCH_CASE_REPORTS, searchReports);
+  yield takeLatest(actions.CASE_REPORTS_MATCHED, followUpCaseReportsMatched);
 }
 export default function* rootSaga() {
   yield all([actionWatcher()]);

@@ -158,6 +158,10 @@ class ListView extends Component {
       plots,
     } = this.props;
 
+    const initialValues = {
+      ...searchFilters,
+    };
+
     let filterFormItemRenderer = (d) => {
       if (d.filter.renderer === "cascader") {
         return (
@@ -307,78 +311,81 @@ class ListView extends Component {
         !isNaN(filtersExtents[d.filter.name]?.[1])
       ) {
         let plot = plots.find((p) => p.id === d.filter.name);
-
         return (
           <Item
             key={`containers.list-view.filters.${d.filter.name}`}
-            name={d.filter.name}
             label={t(
               `containers.list-view.filters.${d.filter.name}`,
               d.filter.title || d.filter.name
             )}
-            rules={[
-              {
-                required: false,
-              },
-            ]}
-            initialValue={filtersExtents[d.filter.name]}
           >
             <Space direction="vertical" className="filter-slider-space">
-              <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    plot && (
-                      <>
-                        <HistogramPlot
-                          {...{
-                            id: plot.id,
-                            data: plot.data,
-                            dataset: plot.dataset,
-                            q1: plot.q1,
-                            q3: plot.q3,
-                            q99: plot.q99,
-                            scaleX: plot.scaleX,
-                            bandwidth: plot.bandwidth,
-                            format: plot.format,
-                            niceX: false,
-                            range: filtersExtents[d.filter.name],
-                            width: width,
-                            height: 100,
-                            margins: {
-                              gapX: 10,
-                              gapY: 12,
-                              gap: 0,
-                              yTicksCount: 10,
-                            },
-                          }}
-                        />
-                        <br />
-                      </>
-                    )
-                  );
-                }}
-              </ContainerDimensions>
-              <Slider
-                range
-                min={filtersExtents[d.filter.name]?.[0]}
-                max={filtersExtents[d.filter.name]?.[1]}
-                step={
-                  (filtersExtents[d.filter.name]?.[1] -
-                    filtersExtents[d.filter.name]?.[0]) /
-                  100
-                }
-                marks={{
-                  [filtersExtents[d.filter.name]?.[0]]: d3.format(d.format)(
-                    filtersExtents[d.filter.name]?.[0]
-                  ),
-                  [filtersExtents[d.filter.name]?.[1]]: d3.format(d.format)(
-                    filtersExtents[d.filter.name]?.[1]
-                  ),
-                }}
-                tooltip={{
-                  formatter: (value) => d3.format(d.format)(value),
-                }}
-              />
+              <div style={{ width: "100%", height: 120 }}>
+                <ContainerDimensions>
+                  {({ width, height }) => {
+                    return (
+                      plot && (
+                        <div style={{ width: width, height: 120 }}>
+                          <HistogramPlot
+                            {...{
+                              id: plot.id,
+                              data: plot.data,
+                              dataset: plot.dataset,
+                              q1: plot.q1,
+                              q3: plot.q3,
+                              q99: plot.q99,
+                              scaleX: plot.scaleX,
+                              bandwidth: plot.bandwidth,
+                              format: plot.format,
+                              niceX: false,
+                              range: filtersExtents[d.filter.name],
+                              width: width,
+                              height: 100,
+                              margins: {
+                                gapX: 10,
+                                gapY: 12,
+                                gap: 0,
+                                yTicksCount: 10,
+                                xTicksCount: 5,
+                              },
+                            }}
+                          />
+                        </div>
+                      )
+                    );
+                  }}
+                </ContainerDimensions>
+              </div>
+              <Item
+                name={d.filter.name}
+                noStyle
+                initialValue={[
+                  +filtersExtents[d.filter.name]?.[0],
+                  +filtersExtents[d.filter.name]?.[1],
+                ]}
+              >
+                <Slider
+                  range
+                  min={+filtersExtents[d.filter.name]?.[0]}
+                  max={+filtersExtents[d.filter.name]?.[1]}
+                  step={
+                    (filtersExtents[d.filter.name]?.[1] -
+                      filtersExtents[d.filter.name]?.[0]) /
+                    100
+                  }
+                  marks={{
+                    [+filtersExtents[d.filter.name]?.[0]]: d3.format(d.format)(
+                      filtersExtents[d.filter.name]?.[0]
+                    ),
+                    [+filtersExtents[d.filter.name]?.[1]]: d3.format(d.format)(
+                      filtersExtents[d.filter.name]?.[1]
+                    ),
+                  }}
+                  tooltip={{
+                    formatter: (value) => d3.format(d.format)(value),
+                  }}
+                />
+              </Item>
             </Space>
           </Item>
         );
@@ -390,7 +397,7 @@ class ListView extends Component {
       <Wrapper>
         <Form
           layout="vertical"
-          initialValues={searchFilters}
+          initialValues={initialValues}
           ref={this.formRef}
           onFinish={this.onValuesChange}
           onValuesChange={this.onValuesChange}
