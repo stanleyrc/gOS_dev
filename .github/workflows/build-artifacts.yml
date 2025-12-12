@@ -95,10 +95,7 @@ jobs:
         run: |
           set -euo pipefail
           ./setup.sh
-          SHA=$(cat LATEST.txt)
-          SITE_DIR="site"
-          rm -rf "$SITE_DIR"
-          mv "out/build-$SHA" "$SITE_DIR"
+          mv "out/$TAG" "$SITE_DIR"
 
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
