@@ -152,8 +152,7 @@ class HistogramPlot extends Component {
   }
 
   renderXAxis() {
-    const { xScale, q1, q3, format, margins } =
-      this.getPlotConfiguration();
+    const { xScale, q1, q3, format, margins } = this.getPlotConfiguration();
     const { xTicksCount } = margins;
 
     let xAxisContainer = d3
@@ -164,7 +163,7 @@ class HistogramPlot extends Component {
       .range(xTicksCount)
       .map((i) =>
         xScale.invert(
-          (i * (xScale.range()[1] - xScale.range()[0]) / xTicksCount)  +
+          (i * (xScale.range()[1] - xScale.range()[0])) / xTicksCount +
             xScale.range()[0]
         )
       );
@@ -194,7 +193,6 @@ class HistogramPlot extends Component {
         ? legendColors()[2]
         : legendColors()[1];
     });
-
   }
 
   renderYAxis() {
@@ -240,12 +238,8 @@ class HistogramPlot extends Component {
   handleMouseOut(event) {
     const { updateHighlightedCaseReport } = this.getPlotConfiguration();
     // unless the mouse is moving to the clickable marker, clear the highlight
-    if (
-      !(
-        d3.select(event.nativeEvent.toElement) &&
-        d3.select(event.nativeEvent.toElement).classed("clickable-marker")
-      )
-    ) {
+    let node = d3.select(event.nativeEvent.toElement);
+    if (!(node && node?.classed("clickable-marker"))) {
       updateHighlightedCaseReport(null);
     }
   }
