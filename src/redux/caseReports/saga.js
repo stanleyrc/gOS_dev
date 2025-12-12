@@ -6,8 +6,8 @@ import {
   take,
   takeLatest,
 } from "redux-saga/effects";
+import { END } from "redux-saga";
 import { getCurrentState } from "./selectors";
-import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
@@ -43,6 +43,11 @@ function* fetchCaseReports(action) {
   try {
     while (true) {
       const result = yield take(progressChannel);
+
+      // Channel was closed (END) – exit the loop
+      if (result === END) {
+        break;
+      }
 
       if (result.response) {
         // The request completed successfully
@@ -175,17 +180,21 @@ function* fetchCaseReports(action) {
       }
     }
   } catch (error) {
+    // This catch only handles saga-level errors (e.g., from yield call/tableFromIPC),
+    // not the Axios cancellation (which is handled inside the channel).
     console.log(error);
-    if (axios.isCancel(error)) {
-      console.log(`fetch ${channelConfig.url} request canceled`, error.message);
-    } else {
-      yield put({
-        type: actions.FETCH_CASE_REPORTS_FAILED,
-        error,
-      });
-    }
+    yield put({
+      type: actions.FETCH_CASE_REPORTS_FAILED,
+      error,
+    });
   } finally {
-    progressChannel.close();
+    // Ensure the channel is closed on both normal completion and cancellation.
+    // Closing the channel triggers the Axios cancellation via the unsubscribe.
+    try {
+      progressChannel.close();
+    } catch (e) {
+      // no-op; channel may already be closed
+    }
   }
 }
 
