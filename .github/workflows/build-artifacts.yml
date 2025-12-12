@@ -20,10 +20,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node 16
+      - name: Use Node 23
         uses: actions/setup-node@v4
         with:
-          node-version: "16.x"
+          node-version: "23.x"
           cache: "yarn"
 
       - name: Install deps
