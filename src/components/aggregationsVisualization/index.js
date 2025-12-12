@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
-import { Spin, Segmented } from "antd";
+import { Spin, Segmented, Select } from "antd";
 import * as d3 from "d3";
 import ContainerDimensions from "react-container-dimensions";
 import { measureText, getColorMarker } from "../../helpers/utility";
@@ -52,6 +52,7 @@ class AggregationsVisualization extends Component {
     computingAlterations: false,
     selectedPairs: [],
     scatterPlotType: "scatter",
+    oncoPrintSortMethod: "memo",
   };
 
   scatterIdAccessor = (d) => d.pair;
@@ -730,6 +731,20 @@ class AggregationsVisualization extends Component {
                       onApplyExpression={(val) => this.setState({ appliedGeneExpression: val })}
                     />
                   )}
+                  {plotType === "oncoprint" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, color: "#666" }}>Sort:</span>
+                      <Select
+                        size="small"
+                        value={this.state.oncoPrintSortMethod}
+                        onChange={(val) => this.setState({ oncoPrintSortMethod: val })}
+                        style={{ width: 100 }}
+                      >
+                        <Select.Option value="none">None</Select.Option>
+                        <Select.Option value="memo">Memo</Select.Option>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div
@@ -747,6 +762,7 @@ class AggregationsVisualization extends Component {
                        filteredRecords={filteredRecords}
                        geneSet={this.getGenesForSelectedSet(this.computeGeneFrequencies(filteredRecords))}
                        onPairClick={this.handlePointClick}
+                       enableMemoSort={this.state.oncoPrintSortMethod === "memo"}
                      />
                    ) : (
                      <svg

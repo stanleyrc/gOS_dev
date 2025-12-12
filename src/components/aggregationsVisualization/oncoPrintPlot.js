@@ -33,6 +33,7 @@ class OncoPrintPlot extends Component {
   cachedOncoPrintData = null;
   cachedFilteredRecords = null;
   cachedGeneSet = null;
+  cachedEnableMemoSort = null;
 
   state = {
     loading: true,
@@ -44,13 +45,14 @@ class OncoPrintPlot extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { width, height, filteredRecords, geneSet } = this.props;
+    const { width, height, filteredRecords, geneSet, enableMemoSort } = this.props;
 
     if (
       width !== prevProps.width ||
       height !== prevProps.height ||
       filteredRecords !== prevProps.filteredRecords ||
-      geneSet !== prevProps.geneSet
+      geneSet !== prevProps.geneSet ||
+      enableMemoSort !== prevProps.enableMemoSort
     ) {
       if (width !== prevProps.width || height !== prevProps.height) {
         this.handleResize();
@@ -269,8 +271,37 @@ class OncoPrintPlot extends Component {
     return parsed;
   }
 
+  computeMemoSort(genes, pairs, matrix) {
+    const geneFreq = genes.map((gene) => {
+      let count = 0;
+      pairs.forEach((pair) => {
+        if (matrix.has(`${gene.toUpperCase()},${pair}`)) {
+          count++;
+        }
+      });
+      return { gene, count };
+    });
+    geneFreq.sort((a, b) => b.count - a.count);
+    const orderedGenes = geneFreq.map((g) => g.gene);
+
+    const n = orderedGenes.length;
+    const sampleScores = pairs.map((pair) => {
+      let score = 0;
+      orderedGenes.forEach((gene, i) => {
+        if (matrix.has(`${gene.toUpperCase()},${pair}`)) {
+          score += Math.pow(2, n - i);
+        }
+      });
+      return { pair, score };
+    });
+    sampleScores.sort((a, b) => b.score - a.score);
+    const orderedPairs = sampleScores.map((s) => s.pair);
+
+    return { orderedGenes, orderedPairs };
+  }
+
   computeOncoPrintData() {
-    const { filteredRecords, geneSet } = this.props;
+    const { filteredRecords, geneSet, enableMemoSort } = this.props;
 
     if (!geneSet || geneSet.length === 0) {
       return { genes: [], pairs: [], matrix: new Map() };
@@ -279,7 +310,8 @@ class OncoPrintPlot extends Component {
     if (
       this.cachedOncoPrintData &&
       this.cachedFilteredRecords === filteredRecords &&
-      this.cachedGeneSet === geneSet
+      this.cachedGeneSet === geneSet &&
+      this.cachedEnableMemoSort === enableMemoSort
     ) {
       return this.cachedOncoPrintData;
     }
@@ -303,9 +335,24 @@ class OncoPrintPlot extends Component {
       });
     });
 
-    this.cachedOncoPrintData = { genes, pairs, matrix };
+    // Filter out pairs that have no alterations across any gene
+    const pairsWithAlterations = pairs.filter((pair) => {
+      return genes.some((gene) => matrix.has(`${gene.toUpperCase()},${pair}`));
+    });
+
+    let finalGenes = genes;
+    let finalPairs = pairsWithAlterations;
+
+    if (enableMemoSort && genes.length > 0 && finalPairs.length > 0) {
+      const { orderedGenes, orderedPairs } = this.computeMemoSort(genes, finalPairs, matrix);
+      finalGenes = orderedGenes;
+      finalPairs = orderedPairs;
+    }
+
+    this.cachedOncoPrintData = { genes: finalGenes, pairs: finalPairs, matrix };
     this.cachedFilteredRecords = filteredRecords;
     this.cachedGeneSet = geneSet;
+    this.cachedEnableMemoSort = enableMemoSort;
 
     return this.cachedOncoPrintData;
   }
@@ -477,10 +524,12 @@ OncoPrintPlot.propTypes = {
   filteredRecords: PropTypes.array.isRequired,
   geneSet: PropTypes.array.isRequired,
   onPairClick: PropTypes.func,
+  enableMemoSort: PropTypes.bool,
 };
 
 OncoPrintPlot.defaultProps = {
   onPairClick: null,
+  enableMemoSort: true,
 };
 
 export default OncoPrintPlot;
