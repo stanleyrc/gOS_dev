@@ -44,8 +44,14 @@ jobs:
         run: |
           set -e
           mkdir -p out
-          RELEASE_TAG="build-${GITHUB_SHA}"
-          TARBALL="build-${GITHUB_SHA}.tar.gz"
+          
+          # timestamp tag for proper sorting
+          TIMESTAMP=$(date -u +"%Y.%m.%d-%H%M%S")
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          RELEASE_TAG="build-${TIMESTAMP}-${SHORT_SHA}"
+          
+          TARBALL="${RELEASE_TAG}.tar.gz"
+          
           tar -czf "out/${TARBALL}" -C build .
           sha256sum "out/${TARBALL}" > "out/${TARBALL}.sha256"
           echo "${GITHUB_SHA}" > out/LATEST.txt
