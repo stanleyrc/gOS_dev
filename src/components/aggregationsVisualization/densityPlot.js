@@ -4,7 +4,7 @@ import HistogramPlot from "../histogramPlot";
 class DensityPlot extends Component {
   render() {
     const { config, markers } = this.props;
-    const { panelWidth, panelHeight, densityData, q1, q3, q99, range, bandwidth, format } = config;
+    const { panelWidth, panelHeight, densityData, q1, q3, q99, range, bandwidth, format, dataset, id } = config;
 
     if (!densityData || densityData.length === 0) {
       return (
@@ -28,6 +28,8 @@ class DensityPlot extends Component {
           format={format}
           scaleX="linear"
           markers={markers}
+          dataset={dataset}
+          id={id}
         />
       </foreignObject>
     );

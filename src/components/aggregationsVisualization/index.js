@@ -343,6 +343,11 @@ class AggregationsVisualization extends Component {
       const stdDev = d3.deviation(values) || 1;
       const bandwidth = 1.06 * stdDev * Math.pow(values.length, -0.2);
 
+      const dataset = filteredRecords
+        .map((d) => ({ pair: d.pair, value: getValue(d, yVariable) }))
+        .filter((d) => d.value != null && !isNaN(d.value))
+        .sort((a, b) => d3.ascending(a.value, b.value));
+
       const config = {
         containerWidth,
         width: panelWidth + 2 * currentMargins.gapX,
@@ -359,6 +364,8 @@ class AggregationsVisualization extends Component {
         bandwidth,
         format: ",.2f",
         margins: currentMargins,
+        dataset,
+        id: yVariable,
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
