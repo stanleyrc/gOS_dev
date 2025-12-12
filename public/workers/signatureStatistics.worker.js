@@ -38,7 +38,7 @@ self.onmessage = function (e) {
           signatureTitles,
           {
             markData: metadata[`sigprofiler_${type}_${mode}`],
-            format: mode === "fraction" ? ".4f" : ",",
+            format: mode === "fraction" ? ".1f" : ",",
             range: mode === "fraction" ? [0, 1] : null,
             scaleX: "linear",
             type: "histogram",
@@ -56,7 +56,7 @@ self.onmessage = function (e) {
           {
             markData: metadata[`sigprofiler_${type}_${mode}`],
             tumorType: metadata.tumor_type,
-            format: mode === "fraction" ? ".4f" : ",",
+            format: mode === "fraction" ? ".1f" : ",",
             range: mode === "fraction" ? [0, 1] : null,
           }
         );
@@ -368,7 +368,7 @@ self.onmessage = function (e) {
       range: null,
       markData: {},
       tumorType: null,
-      format: "0.4f",
+      format: "0.1f",
       scaleX: "linear",
       type: "histogram",
     }

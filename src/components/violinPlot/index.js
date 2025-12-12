@@ -123,7 +123,7 @@ class ViolinPlot extends Component {
         (d, i) => `translate(${[xScale(d.plot.id) + xScale.step() / 2, 0]})`
       )
       .each(function (d, i) {
-        const tickValues = d3
+        let tickValues = d3
           .range(yTicksCount)
           .map((i) =>
             d.scaleY.invert(
@@ -134,13 +134,15 @@ class ViolinPlot extends Component {
 
         tickValues.push(d.scaleY.domain()[1]);
 
+        tickValues = tickValues.filter((d) => !isNaN(d) && isFinite(d));
+
         let yAxis = d3
           .axisLeft(d.scaleY)
           .tickSize(3)
           .tickValues(tickValues)
           .tickFormat(d3.format(d.plot.format));
 
-      d3.select(this).call(yAxis);
+        d3.select(this).call(yAxis);
 
         d3.select(this)
           .selectAll("text")
@@ -164,7 +166,7 @@ class ViolinPlot extends Component {
       });
 
     yAxisContainer.each(function (d, i) {
-      const tickValues = d3
+      let tickValues = d3
         .range(yTicksCount)
         .map((i) =>
           d.scaleY.invert(
@@ -175,7 +177,13 @@ class ViolinPlot extends Component {
 
       tickValues.push(d.scaleY.domain()[1]);
 
-      let yAxis = d3.axisLeft(d.scaleY).tickSize(3).tickValues(tickValues);
+      tickValues = tickValues.filter((d) => !isNaN(d) && isFinite(d));
+
+      let yAxis = d3
+        .axisLeft(d.scaleY)
+        .tickSize(3)
+        .tickValues(tickValues)
+        .tickFormat(d3.format(d.plot.format));
 
       d3.select(this).call(yAxis);
 
