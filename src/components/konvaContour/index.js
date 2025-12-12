@@ -11,7 +11,7 @@ class KonvaContour extends Component {
   tooltipLayer = null;
   tooltipGroup = null;
   delaunay = null;
-  _delaunayDataPoints = null;
+  _delaunayCacheKey = null;
   _cachedContours = null;
   _contourCacheKey = null;
 
@@ -158,19 +158,41 @@ class KonvaContour extends Component {
     const mousePos = this.stage.getPointerPosition();
     if (!mousePos) return;
 
-    if (!this.delaunay || this._delaunayDataPoints !== data) {
+    const xDomain = xScale.domain ? xScale.domain().join(",") : "";
+    const yDomain = yScale.domain ? yScale.domain().join(",") : "";
+    const xRange = xScale.range ? xScale.range().join(",") : "";
+    const yRange = yScale.range ? yScale.range().join(",") : "";
+    const cacheKey = `${data.length}_${xAccessor}_${yAccessor}_${xDomain}_${yDomain}_${xRange}_${yRange}`;
+
+    if (!this.delaunay || this._delaunayCacheKey !== cacheKey) {
+      const validData = data.filter((d) => {
+        const xVal = d[xAccessor];
+        const yVal = d[yAccessor];
+        return xVal != null && yVal != null && !Number.isNaN(xVal) && !Number.isNaN(yVal);
+      });
+
+      if (validData.length === 0) {
+        this.delaunay = null;
+        this._delaunayCacheKey = cacheKey;
+        this._validData = [];
+        return;
+      }
+
       this.delaunay = d3.Delaunay.from(
-        data,
+        validData,
         (d) => xScale(d[xAccessor]),
         (d) => yScale(d[yAccessor])
       );
-      this._delaunayDataPoints = data;
+      this._delaunayCacheKey = cacheKey;
+      this._validData = validData;
     }
 
-    const idx = this.delaunay.find(mousePos.x, mousePos.y);
-    if (idx === undefined || idx === null) return;
+    if (!this.delaunay || !this._validData || this._validData.length === 0) return;
 
-    const dataPoint = data[idx];
+    const idx = this.delaunay.find(mousePos.x, mousePos.y);
+    if (idx === undefined || idx === null || idx >= this._validData.length) return;
+
+    const dataPoint = this._validData[idx];
     const screenX = xScale(dataPoint[xAccessor]);
     const screenY = yScale(dataPoint[yAccessor]);
 
