@@ -2,14 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Konva from "konva";
 import * as d3 from "d3";
-
-const getNestedValue = (obj, path) => {
-  if (typeof path === "function") return path(obj);
-  if (typeof path === "string") {
-    return path.split(".").reduce((o, key) => o?.[key], obj);
-  }
-  return null;
-};
+import { getValue } from "../aggregationsVisualization/helpers";
 
 class KonvaContour extends Component {
   containerRef = null;
@@ -174,8 +167,8 @@ class KonvaContour extends Component {
 
     if (!this.delaunay || this._delaunayCacheKey !== cacheKey) {
       const validData = data.filter((d) => {
-        const xVal = getNestedValue(d, xAccessor);
-        const yVal = getNestedValue(d, yAccessor);
+        const xVal = getValue(d, xAccessor);
+        const yVal = getValue(d, yAccessor);
         return xVal != null && yVal != null && !Number.isNaN(xVal) && !Number.isNaN(yVal);
       });
 
@@ -188,8 +181,8 @@ class KonvaContour extends Component {
 
       this.delaunay = d3.Delaunay.from(
         validData,
-        (d) => xScale(getNestedValue(d, xAccessor)),
-        (d) => yScale(getNestedValue(d, yAccessor))
+        (d) => xScale(getValue(d, xAccessor)),
+        (d) => yScale(getValue(d, yAccessor))
       );
       this._delaunayCacheKey = cacheKey;
       this._validData = validData;
@@ -201,8 +194,8 @@ class KonvaContour extends Component {
     if (idx === undefined || idx === null || idx >= this._validData.length) return;
 
     const dataPoint = this._validData[idx];
-    const screenX = xScale(getNestedValue(dataPoint, xAccessor));
-    const screenY = yScale(getNestedValue(dataPoint, yAccessor));
+    const screenX = xScale(getValue(dataPoint, xAccessor));
+    const screenY = yScale(getValue(dataPoint, yAccessor));
 
     this.markerCircle.position({ x: screenX, y: screenY });
     this.markerCircle.visible(true);
