@@ -163,15 +163,29 @@ class HistogramPlot extends Component {
   }
 
   renderXAxis() {
-    const { xScale, q1, q3, scaleX, format } = this.getPlotConfiguration();
+    const { xScale, q1, q3, format, margins } =
+      this.getPlotConfiguration();
+    const { xTicksCount } = margins;
 
     let xAxisContainer = d3
       .select(this.plotContainer)
       .select(".x-axis-container");
 
+    const tickValues = d3
+      .range(xTicksCount)
+      .map((i) =>
+        xScale.invert(
+          (i * (xScale.range()[1] - xScale.range()[0]) / xTicksCount)  +
+            xScale.range()[0]
+        )
+      );
+
+    tickValues.push(xScale.domain()[1]);
+
     const axisX = d3
       .axisBottom(xScale)
       .tickSize(4)
+      .tickValues(tickValues)
       .tickFormat(d3.format(format));
 
     xAxisContainer.call(axisX);
@@ -192,13 +206,6 @@ class HistogramPlot extends Component {
         : legendColors()[1];
     });
 
-    if (scaleX === "log") {
-      xAxisContainer
-        .selectAll(".tick > text")
-        .attr("transform", "rotate(45)")
-        .attr("dy", "5")
-        .style("text-anchor", "start");
-    }
   }
 
   renderYAxis() {
@@ -499,6 +506,7 @@ HistogramPlot.defaultProps = {
     gapX: 34,
     gapY: 12,
     yTicksCount: 10,
+    xTicksCount: 10,
   },
 };
 const mapDispatchToProps = (dispatch) => ({

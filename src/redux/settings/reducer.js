@@ -94,6 +94,7 @@ export default function appReducer(state = initState, action) {
       if (doms.length > 1) {
         doms = doms.filter((d) => d[1] - d[0] > 10);
       }
+      doms = [...new Set(doms)]; // remove duplicates
       url0 = new URL(decodeURI(document.location));
       url0.searchParams.set(
         "location",
