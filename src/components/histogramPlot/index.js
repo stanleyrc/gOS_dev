@@ -170,7 +170,7 @@ class HistogramPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const tickValues = d3
+    let tickValues = d3
       .range(xTicksCount)
       .map((i) =>
         xScale.invert(
@@ -180,6 +180,8 @@ class HistogramPlot extends Component {
       );
 
     tickValues.push(xScale.domain()[1]);
+
+    tickValues = tickValues.filter((d) => !isNaN(d) && isFinite(d));
 
     const axisX = d3
       .axisBottom(xScale)
@@ -224,21 +226,22 @@ class HistogramPlot extends Component {
   handleMouseMove(event) {
     const {
       xScale,
-      dataset,
       updateHighlightedCaseReport,
       highlightedCaseReport,
       margins,
+      dataset,
     } = this.getPlotConfiguration();
 
     const mouseX = event.nativeEvent.offsetX - margins.gapX;
     const invertedX = xScale.invert(mouseX);
 
-    if (invertedX >= xScale.domain()[0] && invertedX <= xScale.domain()[1]) {
+    if (
+      invertedX >= xScale.domain()[0] &&
+      invertedX <= xScale.domain()[1] &&
+      dataset
+    ) {
       // Find the closest actual data point using binary search
-      if (!dataset || dataset.length === 0) {
-        return;
-      }
-      const bisect = d3.bisectCenter(
+      let bisect = d3.bisectCenter(
         dataset.map((d) => +d.value),
         invertedX
       );
@@ -252,9 +255,13 @@ class HistogramPlot extends Component {
   handleMouseOut(event) {
     const { updateHighlightedCaseReport } = this.getPlotConfiguration();
     // unless the mouse is moving to the clickable marker, clear the highlight
-    let node = d3.select(event.nativeEvent.toElement);
-    if (!(node && node?.classed("clickable-marker"))) {
-      updateHighlightedCaseReport(null);
+    try {
+      let node = d3.select(event.nativeEvent.toElement);
+      if (!(node && node?.classed("clickable-marker"))) {
+        updateHighlightedCaseReport(null);
+      }
+    } catch (e) {
+      console.error(e);
     }
   }
 
@@ -332,7 +339,8 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(density)}
                 />
-                {markValue >= 0 &&
+                {!isNaN(markValue) &&
+                  markValue >= 0 &&
                   xScale(markValue) >= 0 &&
                   xScale(markValue) <= panelWidth && (
                     <g
@@ -356,7 +364,8 @@ class HistogramPlot extends Component {
                       </text>
                     </g>
                   )}
-                {highlightedMarkValue >= 0 &&
+                {!isNaN(highlightedMarkValue) &&
+                  highlightedMarkValue >= 0 &&
                   xScale(highlightedMarkValue) >= 0 &&
                   xScale(highlightedMarkValue) <= panelWidth && (
                     <g
@@ -492,8 +501,7 @@ HistogramPlot.propTypes = {
 HistogramPlot.defaultProps = {
   data: [],
   showAxisY: false,
-  format: "0.3f",
-  markers: [],
+  format: "0.2f",
   niceX: true,
   margins: {
     gap: 0,
