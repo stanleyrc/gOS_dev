@@ -42,6 +42,17 @@ class HistogramPlot extends Component {
     };
   }
 
+  getMarkers() {
+    const { markValue, markers = [] } = this.props;
+    if (markers.length > 0) {
+      return markers;
+    }
+    if (markValue != null && markValue >= 0) {
+      return [{ value: markValue, label: this.props.markValueText, color: this.props.colorMarker }];
+    }
+    return [];
+  }
+
   componentDidMount() {
     const { showAxisY } = this.props;
     showAxisY && this.renderYAxis();
@@ -262,12 +273,12 @@ class HistogramPlot extends Component {
       panelHeight,
       xScale,
       yScale,
-      markValue,
-      markValueText,
-      colorMarker,
       q1,
       q3,
       density,
+      markValue,
+      colorMarker,
+      markValueText,
       highlightedMarkValue,
       highlightedMarkValueText,
       highlightedPair,
@@ -381,6 +392,30 @@ class HistogramPlot extends Component {
                       </text>
                     </g>
                   )}
+                {this.getMarkers().map((marker, idx) => {
+                   const markerX = xScale(marker.value);
+                   if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
+                     return null;
+                   }
+                   const labelY = idx % 2 === 0 ? 15 : 30;
+                   return (
+                     <g
+                       key={`marker-${idx}`}
+                       className="marker"
+                       transform={`translate(${[markerX, 0]})`}
+                     >
+                       <line y2={panelHeight} stroke={marker.color || "red"} strokeWidth={3} />
+                       <text
+                         y={labelY}
+                         textAnchor={"middle"}
+                         fill={marker.color || "red"}
+                         className="marker"
+                       >
+                         {marker.label}
+                       </text>
+                     </g>
+                   );
+                 })}
               </g>
               <g
                 className="axis--y y-axis-container"
@@ -457,6 +492,11 @@ HistogramPlot.propTypes = {
   height: PropTypes.number.isRequired,
   data: PropTypes.array,
   markValue: PropTypes.number,
+  markers: PropTypes.arrayOf(PropTypes.shape({
+    value: PropTypes.number.isRequired,
+    label: PropTypes.string,
+    color: PropTypes.string,
+  })),
 };
 HistogramPlot.defaultProps = {
   data: [],

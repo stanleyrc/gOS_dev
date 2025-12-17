@@ -1,10 +1,12 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
+import { connect } from "react-redux";
 import { Card, Spin, Empty, Tabs, Typography } from "antd";
 import { debounce } from "lodash";
 import AggregationsTable from "./aggregationsTable";
-import AggregationsVisualization from "./aggregationsVisualization";
+import AggregationsVisualization from "../../components/aggregationsVisualization";
 import { reportFilters } from "../../helpers/filters";
+import { loadPathways } from "../../helpers/geneAggregations";
 
 const { Text } = Typography;
 
@@ -17,6 +19,7 @@ class AggregationsPanel extends Component {
   state = {
     filteredRecords: [],
     loading: false,
+    pathwayMap: {},
   };
 
   debouncedCalculate = debounce(() => {
@@ -24,10 +27,18 @@ class AggregationsPanel extends Component {
   }, 300);
 
   componentDidMount() {
-    this.applyFiltersAndCalculate();
+    const { settingsData } = this.props;
+    const pathwayMap = loadPathways(settingsData);
+    this.setState({ pathwayMap }, () => {
+      this.applyFiltersAndCalculate();
+    });
   }
 
   componentDidUpdate(prevProps) {
+    if (prevProps.settingsData !== this.props.settingsData) {
+      const pathwayMap = loadPathways(this.props.settingsData);
+      this.setState({ pathwayMap });
+    }
     if (
       prevProps.searchFilters !== this.props.searchFilters ||
       prevProps.datafiles !== this.props.datafiles
@@ -133,8 +144,8 @@ class AggregationsPanel extends Component {
   };
 
   render() {
-    const { t } = this.props;
-    const { filteredRecords, loading } = this.state;
+    const { t, dataset } = this.props;
+    const { filteredRecords, loading, pathwayMap } = this.state;
 
     return (
       <Card className="aggregation-panel-card">
@@ -162,7 +173,7 @@ class AggregationsPanel extends Component {
                   description={t("containers.list-view.no_data")}
                 />
               ) : (
-                <AggregationsTable filteredRecords={filteredRecords} />
+                <AggregationsTable filteredRecords={filteredRecords} dataset={dataset} />
               ),
             },
             {
@@ -181,7 +192,7 @@ class AggregationsPanel extends Component {
                     />
                   )}
                   <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>
-                    <AggregationsVisualization filteredRecords={filteredRecords} />
+                    <AggregationsVisualization filteredRecords={filteredRecords} dataset={dataset} pathwayMap={pathwayMap} />
                   </div>
                 </div>
               ),
@@ -193,4 +204,8 @@ class AggregationsPanel extends Component {
   }
 }
 
-export default withTranslation("common")(AggregationsPanel);
+const mapStateToProps = (state) => ({
+  settingsData: state.Settings.data,
+});
+
+export default connect(mapStateToProps)(withTranslation("common")(AggregationsPanel));

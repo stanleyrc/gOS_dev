@@ -1,8 +1,9 @@
 import React, { PureComponent } from "react";
 import { withTranslation } from "react-i18next";
-import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { Table, Typography, Select, Tooltip, Row, Col, Button, Input } from "antd";
+import { DownloadOutlined, FilterOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
+import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
 
 const { Text } = Typography;
 
@@ -45,15 +46,15 @@ const calculateStats = (records, dataIndex) => {
 };
 
 class AggregationsTable extends PureComponent {
-  state = {
-    selectedColumnKeys: [],
-    columnStats: {},
-  };
+   state = {
+      selectedColumnKeys: [],
+      columnStats: {},
+      };
 
-  componentDidMount() {
-    this.initializeSelectedColumns();
-    this.recalculateStats();
-  }
+     componentDidMount() {
+     this.initializeSelectedColumns();
+     this.recalculateStats();
+   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.filteredRecords !== this.props.filteredRecords) {
@@ -167,8 +168,16 @@ class AggregationsTable extends PureComponent {
     document.body.removeChild(link);
   };
 
+  handlePairClick = (event, pair) => {
+    const { dataset } = this.props;
+    event.preventDefault();
+    openCaseInNewTab(pair, dataset);
+  };
+
+
+
   buildColumns = () => {
-    const { t } = this.props;
+    const { t, dataset } = this.props;
     const { columnStats } = this.state;
 
     // Define all available columns from case properties
@@ -178,6 +187,7 @@ class AggregationsTable extends PureComponent {
         title: t("containers.list-view.aggregations.pair_column") || "Case ID",
         dataIndex: "pair",
         type: "string",
+        renderLink: true,
       },
       {
         key: "disease",
@@ -286,13 +296,13 @@ class AggregationsTable extends PureComponent {
         type: "numeric",
       },
       {
-        key: "summary",
-        title:
-          t("containers.list-view.aggregations.summary_column") ||
-          "Alterations",
-        dataIndex: "summary",
-        type: "string",
-      },
+         key: "summary",
+         title:
+           t("containers.list-view.aggregations.summary_column") ||
+           "Alterations",
+         dataIndex: "summary",
+         type: "string",
+       },
     ];
 
     return columnDefs.map((col) => {
@@ -319,7 +329,7 @@ class AggregationsTable extends PureComponent {
 
       const isSummary = col.key === "summary";
       
-      return {
+      const columnConfig = {
          key: col.key,
           title: headerTitle,
           label: col.title,
@@ -349,6 +359,25 @@ class AggregationsTable extends PureComponent {
            }
            const formattedValue = String(value);
            
+           // Make pair column a clickable link
+           if (col.renderLink) {
+             const datasetParam = dataset?.id ? `&dataset=${dataset.id}` : "";
+             return (
+               <a
+                 href={`/?report=${value}${datasetParam}`}
+                 onClick={(e) => {
+                   e.preventDefault();
+                   this.handlePairClick(e, value);
+                 }}
+                 style={{ color: "#1890ff", cursor: "pointer" }}
+                 target="_blank"
+                 rel="noopener noreferrer"
+               >
+                 {formattedValue}
+               </a>
+             );
+           }
+           
            // Make summary cells horizontally scrollable
            if (isSummary) {
              return (
@@ -366,10 +395,12 @@ class AggregationsTable extends PureComponent {
            }
            
            return formattedValue;
-         },
-      };
-    });
-  };
+           },
+           };
+           
+           return columnConfig;
+           });
+           };
 
   render() {
     const { t, filteredRecords } = this.props;

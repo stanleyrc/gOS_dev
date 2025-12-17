@@ -9,6 +9,8 @@ import {
   snakeCaseToHumanReadable,
 } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import KonvaScatter from "../konvaScatter";
+import KonvaContour from "../konvaContour";
 
 const margins = {
   gap: 0,
@@ -21,6 +23,8 @@ const margins = {
 
 class DensityPlot extends Component {
   plotContainer = null;
+  _cachedContours = null;
+  _contourCacheKey = null;
 
   state = {
     tooltip: {
@@ -132,13 +136,20 @@ class DensityPlot extends Component {
         tickFormat: colorFormat,
       });
     } else {
-      contours = d3
-        .contourDensity()
-        .x((d) => xScale(d[xVariable]))
-        .y((d) => yScale(d[yVariable]))
-        .thresholds(contourThresholdCount)
-        .bandwidth(contourBandwidth)
-        .size([width, height])(dataPoints);
+      const cacheKey = `${dataPoints.length}-${xVariable}-${yVariable}-${contourBandwidth}-${contourThresholdCount}-${width}-${height}-${xScale.domain().join(",")}-${yScale.domain().join(",")}`;
+      if (this._contourCacheKey === cacheKey && this._cachedContours) {
+        contours = this._cachedContours;
+      } else {
+        contours = d3
+          .contourDensity()
+          .x((d) => xScale(d[xVariable]))
+          .y((d) => yScale(d[yVariable]))
+          .thresholds(contourThresholdCount)
+          .bandwidth(contourBandwidth)
+          .size([width, height])(dataPoints);
+        this._cachedContours = contours;
+        this._contourCacheKey = cacheKey;
+      }
       color = d3
         .scaleSequential(colorSchemeSeq)
         .domain(d3.extent(contours, (d) => d.value))
@@ -179,7 +190,10 @@ class DensityPlot extends Component {
       .select(this.plotContainer)
       .select(".x-axis-container");
 
-    const axisX = d3.axisBottom(xScale).tickFormat(d3.format(xFormat));
+    const axisX = d3.axisBottom(xScale);
+    if (xFormat) {
+      axisX.tickFormat(d3.format(xFormat));
+    }
 
     xAxisContainer.call(axisX);
   }
@@ -191,7 +205,10 @@ class DensityPlot extends Component {
       .select(this.plotContainer)
       .select(".y-axis-container");
 
-    let yAxis = d3.axisLeft(yScale).tickFormat(d3.format(yFormat));
+    let yAxis = d3.axisLeft(yScale);
+    if (yFormat) {
+      yAxis.tickFormat(d3.format(yFormat));
+    }
     yAxisContainer.call(yAxis);
   }
 
@@ -337,109 +354,83 @@ class DensityPlot extends Component {
                     strokeWidth={0.33}
                   />
                   {plotType === "contourplot" && (
-                    <g strokeLinejoin="round">
-                      {contours.map((d, i) => (
-                        <path
-                          key={i}
-                          d={d3.geoPath()(d)}
-                          strokeWidth={i % 5 ? 0.25 : 1}
-                          stroke={d3.rgb(color(d.value)).darker(0.3)}
-                          fill={color(d.value)}
-                        />
-                      ))}
-                    </g>
-                  )}
-                  {plotType === "scatterplot" &&
-                    dataPoints
-                      .sort((a, b) => {
-                        // Selected points come last (on top)
-                        if (a.uid === selectedId) return 1;
-                        if (b.uid === selectedId) return -1;
-                        // Then sort by oncogenicity
-                        const oncogenicityOrder = d3.ascending(
-                          a.oncogenicity || false,
-                          b.oncogenicity || false
-                        );
-                        // If oncogenicity is same, sort by color
-                        return (
-                          oncogenicityOrder ||
-                          d3.ascending(a[colorVariable], b[colorVariable])
-                        );
-                      })
-                      .map((d, i) => (
-                        <path
-                          key={d.uid}
-                          id={d.uid}
-                          transform={`translate(${[
-                            xScale(d[xVariable]),
-                            yScale(d[yVariable]),
-                          ]})`}
-                          d={
-                            d.oncogenicity
-                              ? d3.symbol(d3.symbolStar, 100)()
-                              : d3.symbol(d3.symbolCircle, 50)()
-                          }
-                          opacity={visible && id === i ? 1 : 1}
-                          fill={color(d[colorVariable])}
-                          stroke={
-                            selectedId === d.uid || (visible && id === i)
-                              ? "#ff7f0e"
-                              : "lightgray"
-                          }
-                          strokeWidth={
-                            selectedId === d.uid || (visible && id === i)
-                              ? 3
-                              : d.oncogenicity
-                              ? 1
-                              : 0.5
-                          }
-                          onMouseEnter={(e) => this.handleMouseEnter(e, d, i)}
-                          onMouseOut={(e) => this.handleMouseOut(e, d)}
-                          onClick={() =>
-                            handlePointClicked ? handlePointClicked(d) : null
-                          }
-                          cursor={handlePointClicked ? "pointer" : "default"}
-                        />
-                      ))}
-                  {plotType === "contourplot" && (
-                    <rect
+                    <foreignObject
+                      x={0}
+                      y={0}
                       width={panelWidth}
                       height={panelHeight}
-                      fill="transparent"
-                      style={{
-                        pointerEvents: "all",
-                        cursor:
-                          visible && id !== -1 && handlePointClicked
-                            ? "pointer"
-                            : "default",
-                      }}
-                      onMouseMove={this.handleContourMouseMove}
-                      onMouseOut={this.handleContourMouseOut}
-                      onClick={this.handleContourClick}
-                    />
+                    >
+                      <KonvaContour
+                        contours={contours}
+                        data={dataPoints}
+                        width={panelWidth}
+                        height={panelHeight}
+                        xAccessor={xVariable}
+                        yAccessor={yVariable}
+                        xScale={xScale}
+                        yScale={yScale}
+                        colorScale={color}
+                        selectedId={selectedId}
+                        tooltipAccessor={(d) =>
+                          Object.keys(d)
+                            .filter((k) => !k.startsWith("_"))
+                            .map((k) => ({
+                              label: snakeCaseToHumanReadable(k),
+                              value: d[k],
+                            }))
+                        }
+                        onPointClick={handlePointClicked}
+                      />
+                    </foreignObject>
                   )}
-                  {/* Show marker for closest point on contourplot mousemove */}
-                  {plotType === "contourplot" && visible && id !== -1 && (
-                    <path
-                      pointerEvents="none"
-                      transform={`translate(${[
-                        xScale(dataPoints[id][xVariable]),
-                        yScale(dataPoints[id][yVariable]),
-                      ]})`}
-                      d={d3.symbol(d3.symbolCircle, 80)()}
-                      fill="#ff7f0e"
-                      stroke="#fff"
-                      strokeWidth={2}
-                      style={{
-                        cursor: handlePointClicked ? "pointer" : "default",
-                      }}
-                      onClick={() =>
-                        handlePointClicked
-                          ? handlePointClicked(dataPoints[id])
-                          : null
-                      }
-                    />
+                  {plotType === "scatterplot" && (
+                    <foreignObject
+                      x={0}
+                      y={0}
+                      width={panelWidth}
+                      height={panelHeight}
+                    >
+                      <KonvaScatter
+                        data={dataPoints}
+                        width={panelWidth}
+                        height={panelHeight}
+                        xAccessor={xVariable}
+                        yAccessor={yVariable}
+                        xScale={xScale}
+                        yScale={yScale}
+                        colorAccessor={colorVariable}
+                        colorScale={color}
+                        radiusAccessor={4}
+                        shapeAccessor={(d) =>
+                          d.oncogenicity ? "star" : "circle"
+                        }
+                        selectedId={selectedId}
+                        idAccessor="uid"
+                        tooltipAccessor={(d) =>
+                          Object.keys(d)
+                            .filter((k) => !k.startsWith("_"))
+                            .map((k) => ({
+                              label: snakeCaseToHumanReadable(k),
+                              value: d[k],
+                            }))
+                        }
+                        zOrderComparator={(a, b) => {
+                          if (a.uid === selectedId) return 1;
+                          if (b.uid === selectedId) return -1;
+                          const oncogenicityOrder = d3.ascending(
+                            a.oncogenicity || false,
+                            b.oncogenicity || false
+                          );
+                          return (
+                            oncogenicityOrder ||
+                            d3.ascending(a[colorVariable], b[colorVariable])
+                          );
+                        }}
+                        onPointClick={handlePointClicked}
+                      />
+                    </foreignObject>
                   )}
+
                 </g>
                 <g
                   className="axis--y y-axis-container"
