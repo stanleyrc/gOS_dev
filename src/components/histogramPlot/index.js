@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors, kde, epanechnikov } from "../../helpers/utility";
+import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
 import { getNestedValue } from "../../helpers/metadata";
 import Wrapper from "./index.style";
 import caseReportsActions from "../../redux/caseReports/actions";
@@ -48,7 +49,13 @@ class HistogramPlot extends Component {
       return markers;
     }
     if (markValue != null && markValue >= 0) {
-      return [{ value: markValue, label: this.props.markValueText, color: this.props.colorMarker }];
+      return [
+        {
+          value: markValue,
+          label: this.props.markValueText,
+          color: this.props.colorMarker,
+        },
+      ];
     }
     return [];
   }
@@ -284,6 +291,7 @@ class HistogramPlot extends Component {
       highlightedPair,
       updateCaseReport,
       margins,
+      dataset,
     } = this.getPlotConfiguration();
 
     let clipId = `cuttOffViewPane-${Math.random()}`;
@@ -393,29 +401,33 @@ class HistogramPlot extends Component {
                     </g>
                   )}
                 {this.getMarkers().map((marker, idx) => {
-                   const markerX = xScale(marker.value);
-                   if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
-                     return null;
-                   }
-                   const labelY = idx % 2 === 0 ? 15 : 30;
-                   return (
-                     <g
-                       key={`marker-${idx}`}
-                       className="marker"
-                       transform={`translate(${[markerX, 0]})`}
-                     >
-                       <line y2={panelHeight} stroke={marker.color || "red"} strokeWidth={3} />
-                       <text
-                         y={labelY}
-                         textAnchor={"middle"}
-                         fill={marker.color || "red"}
-                         className="marker"
-                       >
-                         {marker.label}
-                       </text>
-                     </g>
-                   );
-                 })}
+                  const markerX = xScale(marker.value);
+                  if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
+                    return null;
+                  }
+                  const labelY = idx % 2 === 0 ? 15 : 30;
+                  return (
+                    <g
+                      key={`marker-${idx}`}
+                      className="marker"
+                      transform={`translate(${[markerX, 0]})`}
+                    >
+                      <line
+                        y2={panelHeight}
+                        stroke={marker.color || "red"}
+                        strokeWidth={3}
+                      />
+                      <text
+                        y={labelY}
+                        textAnchor={"middle"}
+                        fill={marker.color || "red"}
+                        className="marker"
+                      >
+                        {marker.label}
+                      </text>
+                    </g>
+                  );
+                })}
               </g>
               <g
                 className="axis--y y-axis-container"
@@ -474,7 +486,9 @@ class HistogramPlot extends Component {
                       className="clickable-marker"
                       dy="-15"
                       y={0.33 * panelHeight}
-                      onClick={(e) => updateCaseReport(highlightedPair)}
+                      onClick={(e) =>
+                        openCaseInNewTab(highlightedPair, dataset)
+                      }
                     >
                       {highlightedPair}
                     </text>
@@ -492,11 +506,13 @@ HistogramPlot.propTypes = {
   height: PropTypes.number.isRequired,
   data: PropTypes.array,
   markValue: PropTypes.number,
-  markers: PropTypes.arrayOf(PropTypes.shape({
-    value: PropTypes.number.isRequired,
-    label: PropTypes.string,
-    color: PropTypes.string,
-  })),
+  markers: PropTypes.arrayOf(
+    PropTypes.shape({
+      value: PropTypes.number.isRequired,
+      label: PropTypes.string,
+      color: PropTypes.string,
+    })
+  ),
 };
 HistogramPlot.defaultProps = {
   data: [],

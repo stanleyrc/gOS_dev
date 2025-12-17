@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react";
 import { withTranslation } from "react-i18next";
-import { Table, Typography, Select, Tooltip, Row, Col, Button, Input } from "antd";
-import { DownloadOutlined, FilterOutlined } from "@ant-design/icons";
+import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
 
