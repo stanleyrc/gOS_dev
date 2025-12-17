@@ -15,6 +15,7 @@ import {
 } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
+import MutationsPanel from "../mutationsPanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import IgvPanel from "../igvPanel/index";
 import settingsActions from "../../redux/settings/actions";
@@ -432,7 +433,7 @@ class TracksModal extends Component {
         )}
         {mutations && !mutations?.missing && (
           <Col className="gutter-row" span={24}>
-            <GenomePanel
+            <MutationsPanel
               {...{
                 loading: mutations.loading,
                 loadingPercentage: mutations.loadingPercentage,
@@ -445,7 +446,6 @@ class TracksModal extends Component {
                 visible: true,
                 index: 0,
                 height,
-                mutationsPlot: true,
                 commonRangeY,
               }}
             />

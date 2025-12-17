@@ -495,15 +495,8 @@ class GenomePlot extends Component {
   };
 
   render() {
-    const {
-      width,
-      height,
-      annotation,
-      mutationsPlot,
-      yAxisTitle,
-      yAxis2Title,
-      chromoBins,
-    } = this.props;
+    const { width, height, annotation, yAxisTitle, yAxis2Title, chromoBins } =
+      this.props;
     const { stageWidth, stageHeight, tooltip } = this.state;
     this.updatePanels();
     let randID = Math.random();
@@ -629,78 +622,47 @@ class GenomePlot extends Component {
                   }}
                 />
                 <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
-                  {panel.intervals.map((d, i) => {
-                    return mutationsPlot ? (
-                      <path
-                        id={d.primaryKey}
-                        title={d.proteinCoding}
-                        d={d.mutationSymbol}
-                        type="interval"
-                        key={i}
-                        className={`shape ${
-                          d.primaryKey === tooltip.shapeId ? "highlighted" : ""
-                        } ${
-                          annotation && d.annotationArray.includes(annotation)
-                            ? "annotated"
-                            : ""
-                        } ${d.isProteinCoded ? "" : "non-protein-coded"}`}
-                        transform={`translate(${[
-                          panel.xScale(
-                            Math.floor((d.startPlace + d.endPlace) / 2) - 1
-                          ),
-                          panel.yScale(d.y),
-                        ]})`}
-                        style={{
-                          fill: d.fill || d.color,
-                          stroke: d.stroke,
-                          strokeWidth: 1,
-                        }}
-                        onClick={(event) =>
-                          this.handleMutationClick(panel.index, d)
-                        }
-                      />
-                    ) : (
-                      <rect
-                        id={d.primaryKey}
-                        type="interval"
-                        key={i}
-                        className={`shape ${
-                          d.primaryKey === tooltip.shapeId ? "highlighted" : ""
-                        } ${
-                          annotation && d.annotationArray.includes(annotation)
-                            ? "annotated"
-                            : ""
-                        }`}
-                        transform={`translate(${[
+                  {panel.intervals.map((d, i) => (
+                    <rect
+                      id={d.primaryKey}
+                      type="interval"
+                      key={i}
+                      className={`shape ${
+                        d.primaryKey === tooltip.shapeId ? "highlighted" : ""
+                      } ${
+                        annotation && d.annotationArray.includes(annotation)
+                          ? "annotated"
+                          : ""
+                      }`}
+                      transform={`translate(${[
+                        d3.max([panel.xScale(d.startPlace), 0]),
+                        panel.yScale(d.y) - 0.5 * margins.bar,
+                      ]})`}
+                      width={d3.min([
+                        panel.xScale(d.endPlace) -
                           d3.max([panel.xScale(d.startPlace), 0]),
-                          panel.yScale(d.y) - 0.5 * margins.bar,
-                        ]})`}
-                        width={d3.min([
-                          panel.xScale(d.endPlace) -
-                            d3.max([panel.xScale(d.startPlace), 0]),
-                          panel.panelWidth,
-                        ])}
-                        data-start-place={d.startPlace}
-                        data-end-place={d.endPlace}
-                        data-end-pos={panel.xScale(d.endPlace)}
-                        data-x={Math.floor(panel.xScale(d.startPlace))}
-                        data-width={Math.floor(
-                          panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
-                        )}
-                        height={margins.bar}
-                        style={{
-                          fill: d.overlapping
-                            ? `url(#diagonalHatch-${randID})`
-                            : d.fill || d.color,
-                          stroke: d.stroke,
-                          strokeWidth: 1,
-                        }}
-                        onClick={(event) =>
-                          this.handleIntervalClick(panel.index, d)
-                        }
-                      />
-                    );
-                  })}
+                        panel.panelWidth,
+                      ])}
+                      data-start-place={d.startPlace}
+                      data-end-place={d.endPlace}
+                      data-end-pos={panel.xScale(d.endPlace)}
+                      data-x={Math.floor(panel.xScale(d.startPlace))}
+                      data-width={Math.floor(
+                        panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
+                      )}
+                      height={margins.bar}
+                      style={{
+                        fill: d.overlapping
+                          ? `url(#diagonalHatch-${randID})`
+                          : d.fill || d.color,
+                        stroke: d.stroke,
+                        strokeWidth: 1,
+                      }}
+                      onClick={(event) =>
+                        this.handleIntervalClick(panel.index, d)
+                      }
+                    />
+                  ))}
                 </g>
               </g>
             ))}
@@ -780,7 +742,6 @@ GenomePlot.defaultProps = {
   xDomain: [],
   defaultDomain: [],
   commonYScale: false,
-  mutationsPlot: false,
   yAxisTitle: "",
   yAxis2Title: "",
   commonRangeY: null,

@@ -153,17 +153,14 @@ class GenomePanel extends Component {
                 </span>
                 <span className="ant-pro-menu-item-title">{title}</span>
                 {genome && (
-                  <span>
-                    <b>{d3.format(",")(genome.intervals.length)}</b>{" "}
-                    {t(
-                      `components.genome-panel.${
-                        mutationsPlot ? "mutation" : "interval"
-                      }`,
-                      {
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: t(`components.genome-panel.interval`, {
                         count: genome.intervals.length,
-                      }
-                    )}
-                  </span>
+                        countText: d3.format(",")(genome.intervals.length),
+                      }),
+                    }}
+                  />
                 )}
                 <span>{domainsToLocation(chromoBins, domains)}</span>
               </Space>
@@ -216,7 +213,6 @@ class GenomePanel extends Component {
                           width: w - gap - 2 * margins.padding,
                           height,
                           genome,
-                          mutationsPlot,
                           yAxisTitle,
                           commonRangeY,
                         }}
@@ -236,7 +232,6 @@ GenomePanel.propTypes = {};
 GenomePanel.defaultProps = {
   error: false,
   height: 400,
-  mutationsPlot: false,
   visible: true,
   commonRangeY: null,
 };
