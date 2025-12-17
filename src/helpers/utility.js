@@ -29,7 +29,11 @@ export function dataRanges(domains, genome) {
       .map((domain) => filterIntervalsByDomain(domain, genome.intervals))
       .flat()
   );
-  let yScale = d3.scaleLinear().domain([0, maxY]).range([1, 0]).nice();
+  let yScale = d3
+    .scaleLinear()
+    .domain([0, maxY || 1])
+    .range([1, 0])
+    .nice();
   return yScale.domain();
 }
 
@@ -1009,40 +1013,56 @@ export function getTimeAgo(date) {
   const diffMin = Math.floor(diffSec / 60);
   const diffHour = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay > 0) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-  if (diffHour > 0) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
-  if (diffMin > 0) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
-  return 'just now';
+  if (diffDay > 0) return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
+  if (diffHour > 0) return `${diffHour} hour${diffHour > 1 ? "s" : ""} ago`;
+  if (diffMin > 0) return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`;
+  return "just now";
 }
 
 export function convertAminoAcidToSingleLetter(aminoAcid) {
   const aminoAcidMap = {
-    'GLY': 'G', 'ALA': 'A', 'VAL': 'V', 'LEU': 'L', 'ILE': 'I',
-    'THR': 'T', 'SER': 'S', 'MET': 'M', 'CYS': 'C', 'PRO': 'P',
-    'PHE': 'F', 'TYR': 'Y', 'TRP': 'W', 'HIS': 'H', 'LYS': 'K',
-    'ARG': 'R', 'ASP': 'D', 'GLU': 'E', 'ASN': 'N', 'GLN': 'Q'
+    GLY: "G",
+    ALA: "A",
+    VAL: "V",
+    LEU: "L",
+    ILE: "I",
+    THR: "T",
+    SER: "S",
+    MET: "M",
+    CYS: "C",
+    PRO: "P",
+    PHE: "F",
+    TYR: "Y",
+    TRP: "W",
+    HIS: "H",
+    LYS: "K",
+    ARG: "R",
+    ASP: "D",
+    GLU: "E",
+    ASN: "N",
+    GLN: "Q",
   };
-  
+
   if (!aminoAcid) return aminoAcid;
-  
+
   const upper = aminoAcid.toUpperCase();
   return aminoAcidMap[upper] || aminoAcid;
 }
 
 export function convertVariantToSingleLetterCode(variant) {
   if (!variant) return variant;
-  
+
   const variantStr = String(variant);
   const regex = /([A-Za-z]{3})(\d+)([A-Za-z]{3})/;
   const match = variantStr.match(regex);
-  
+
   if (match) {
     const [, fromAA, position, toAA] = match;
     const fromSingle = convertAminoAcidToSingleLetter(fromAA);
     const toSingle = convertAminoAcidToSingleLetter(toAA);
     return `${fromSingle}${position}${toSingle}`;
   }
-  
+
   return variant;
 }
 
