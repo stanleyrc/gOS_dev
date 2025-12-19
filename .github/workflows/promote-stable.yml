@@ -1,0 +1,93 @@
+name: Promote Build to Stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Build tag to promote (e.g. build-2025.12.18-120102-1a2b3c4)"
+        required: true
+        type: string
+      make_latest:
+        description: "Mark as the latest stable release"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin main
+
+          if ! git rev-parse "$TAG^{commit}" >/dev/null 2>&1; then
+            echo "Tag not found: $TAG" >&2
+            exit 1
+          fi
+
+          TAG_SHA="$(git rev-parse "$TAG^{commit}")"
+          MAIN_SHA="$(git rev-parse origin/main)"
+
+          if ! git merge-base --is-ancestor "$TAG_SHA" "$MAIN_SHA"; then
+            echo "Refusing to promote $TAG ($TAG_SHA): not reachable from origin/main ($MAIN_SHA)" >&2
+            exit 1
+          fi
+
+          echo "OK: $TAG ($TAG_SHA) is on main"
+
+      - name: Promote GitHub release to stable
+        env:
+          TAG: ${{ inputs.tag }}
+          MAKE_LATEST: ${{ inputs.make_latest }}
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          API="https://api.github.com/repos/${REPO}"
+          AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}"
+          ACCEPT_HEADER="Accept: application/vnd.github+json"
+
+          RELEASE_JSON="$(mktemp)"
+          curl -fsSL -H "$AUTH_HEADER" -H "$ACCEPT_HEADER" \
+            "${API}/releases/tags/${TAG}" > "$RELEASE_JSON"
+
+          RELEASE_ID="$(jq -r '.id // empty' "$RELEASE_JSON")"
+          if [[ -z "$RELEASE_ID" ]]; then
+            echo "Could not resolve release id for tag: ${TAG}" >&2
+            cat "$RELEASE_JSON" >&2
+            exit 1
+          fi
+
+          CURRENT_PRERELEASE="$(jq -r '.prerelease' "$RELEASE_JSON")"
+          if [[ "$CURRENT_PRERELEASE" != "true" ]]; then
+            echo "Release for ${TAG} is already non-prerelease (stable). Nothing to do."
+            exit 0
+          fi
+
+          PATCH_JSON="$(mktemp)"
+          if [[ "$MAKE_LATEST" == "true" ]]; then
+            jq -n '{prerelease:false, make_latest:"true"}' > "$PATCH_JSON"
+          else
+            jq -n '{prerelease:false, make_latest:"false"}' > "$PATCH_JSON"
+          fi
+
+          curl -fsSL -X PATCH -H "$AUTH_HEADER" -H "$ACCEPT_HEADER" \
+            -H "Content-Type: application/json" \
+            --data @"$PATCH_JSON" \
+            "${API}/releases/${RELEASE_ID}" >/dev/null
+
+          echo "Promoted ${TAG} to stable."

@@ -13,7 +13,7 @@ open http://localhost:3001
 ```
 
 What happens:
-- Fetches the latest GitHub Release for `mskilab/case-report` (override with `REPO=owner/repo` or `TAG=v1.2.3`).
+- Fetches the latest **stable** GitHub Release for `mskilab/case-report` (override with `REPO=owner/repo`, `TAG=v1.2.3`, or `--channel edge`).
 - Downloads `build-<sha>.tar.gz`, its checksum, and the `LATEST` metadata, verifies the checksum, and unpacks into `out/build-<sha>/`.
 - Copies the `shared/` data into the unpacked build.
 - Serves the static app on `PORT` (default `3001`). Set `SKIP_SERVER=1` to skip launching the server.
@@ -76,8 +76,17 @@ The `datasets.json` file defines available datasets and their configuration. Eac
 **Cohort Filters:** Define dataset-specific filters for the cohort-level view using `schema`. When provided, this overrides the default schema from settings. Each filter must include `id`, `title`, and `type`.
 
 ## Deployments
-- **Releases:** `.github/workflows/build-artifacts.yml` builds on `main`, uploads the tarball/checksum/LATEST files to a GitHub Release, and marks it as the latest.
-- **GitHub Pages:** The same workflow uploads the built `build/` directory as a Pages artifact and deploys it to the `github-pages` environment. The live site always matches the newest release.
+- **Edge channel (latest `main`):** `.github/workflows/build-artifacts.yml` builds on every push to `main` and publishes a GitHub **prerelease**. This is intended for an “edge” instance that should always track the newest commit on `main`.
+- **Stable channel (promoted builds):** Use `.github/workflows/promote-stable.yml` to promote a specific `build-*` prerelease to a **stable** (non-prerelease) release. The GitHub `.../releases/latest` endpoint will then point at the promoted release.
+- **GitHub Pages:** The build workflow also deploys to the `github-pages` environment, so the live Pages site tracks the edge channel.
+
+### Picking what to deploy
+- **Edge instance:** deploy the most recent release (including prereleases). In GitHub API terms, call `GET /repos/:owner/:repo/releases` and pick the first entry.
+- **Staging instance:** deploy only stable releases via `GET /repos/:owner/:repo/releases/latest` (this endpoint ignores prereleases).
+
+### Running locally
+- Stable (default): `./setup.sh`
+- Edge: `./setup.sh --channel edge`
 
 The legacy `deploy-builds` branch is no longer used; artifacts now live solely on GitHub Releases.
 

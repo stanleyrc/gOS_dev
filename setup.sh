@@ -9,6 +9,59 @@ OUT_DIR="$APP_ROOT/out"
 PORT="${PORT:-3001}"
 TARGET_TAG="${TAG:-}"
 REPO="${REPO:-mskilab/case-report}"
+CHANNEL="${CHANNEL:-stable}" # stable (default) or edge
+
+usage() {
+  cat >&2 <<EOF
+Usage: $0 [--channel stable|edge] [--tag <tag>] [--repo <owner/repo>]
+
+Defaults:
+  --channel stable   (uses the latest stable GitHub Release)
+
+Notes:
+  - --channel edge uses the most recent Release, including prereleases.
+  - --tag always wins over --channel.
+EOF
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tag)
+      TARGET_TAG="${2:-}"
+      shift 2
+      ;;
+    --repo)
+      REPO="${2:-}"
+      shift 2
+      ;;
+    --channel)
+      CHANNEL="${2:-}"
+      shift 2
+      ;;
+    --edge)
+      CHANNEL="edge"
+      shift
+      ;;
+    --stable)
+      CHANNEL="stable"
+      shift
+      ;;
+    -h|--help)
+      usage
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      usage
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -44,20 +97,45 @@ if [[ -n "$TARGET_TAG" ]]; then
   API_URL="${API_BASE}/tags/${TARGET_TAG}"
   echo "Fetching release metadata for tag ${TARGET_TAG} from ${REPO}..."
 else
-  API_URL="${API_BASE}/latest"
-  echo "Fetching latest release metadata from ${REPO}..."
+  case "$CHANNEL" in
+    stable)
+      API_URL="${API_BASE}/latest"
+      echo "Fetching latest stable release metadata from ${REPO}..."
+      ;;
+    edge)
+      API_URL="${API_BASE}"
+      echo "Fetching most recent release metadata (including prereleases) from ${REPO}..."
+      ;;
+    *)
+      echo "Unknown CHANNEL: ${CHANNEL} (expected stable|edge)" >&2
+      exit 1
+      ;;
+  esac
 fi
 
 TMP_JSON=$(mktemp)
 curl -fsSL ${AUTH_HEADER:+-H "$AUTH_HEADER"} "$API_URL" -o "$TMP_JSON"
 
-TARBALL_NAME=$(jq -r '.assets[] | select(.name|startswith("build-") and endswith(".tar.gz")) | .name' "$TMP_JSON" | head -n1)
-TARBALL_URL=$(jq -r '.assets[] | select(.name|startswith("build-") and endswith(".tar.gz")) | .browser_download_url' "$TMP_JSON" | head -n1)
-CHECKSUM_NAME=$(jq -r '.assets[] | select(.name|endswith(".tar.gz.sha256")) | .name' "$TMP_JSON" | head -n1)
-CHECKSUM_URL=$(jq -r '.assets[] | select(.name|endswith(".tar.gz.sha256")) | .browser_download_url' "$TMP_JSON" | head -n1)
-LATEST_URL=$(jq -r '.assets[] | select(.name=="LATEST.txt") | .browser_download_url' "$TMP_JSON" | head -n1)
-BUILT_AT_URL=$(jq -r '.assets[] | select(.name=="LATEST_BUILT_AT.txt") | .browser_download_url' "$TMP_JSON" | head -n1)
-TAG_NAME=$(jq -r '.tag_name // ""' "$TMP_JSON")
+JQ_ROOT='.'
+if [[ -z "$TARGET_TAG" && "$CHANNEL" == "edge" ]]; then
+  if [[ "$(jq -r 'type' "$TMP_JSON")" != "array" ]]; then
+    echo "Expected GitHub API to return an array for ${API_BASE}" >&2
+    exit 1
+  fi
+  if [[ "$(jq 'length' "$TMP_JSON")" -lt 1 ]]; then
+    echo "No releases found for ${REPO}" >&2
+    exit 1
+  fi
+  JQ_ROOT='.[0]'
+fi
+
+TARBALL_NAME=$(jq -r "${JQ_ROOT}.assets[] | select(.name|startswith(\"build-\") and endswith(\".tar.gz\")) | .name" "$TMP_JSON" | head -n1)
+TARBALL_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name|startswith(\"build-\") and endswith(\".tar.gz\")) | .browser_download_url" "$TMP_JSON" | head -n1)
+CHECKSUM_NAME=$(jq -r "${JQ_ROOT}.assets[] | select(.name|endswith(\".tar.gz.sha256\")) | .name" "$TMP_JSON" | head -n1)
+CHECKSUM_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name|endswith(\".tar.gz.sha256\")) | .browser_download_url" "$TMP_JSON" | head -n1)
+LATEST_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name==\"LATEST.txt\") | .browser_download_url" "$TMP_JSON" | head -n1)
+BUILT_AT_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name==\"LATEST_BUILT_AT.txt\") | .browser_download_url" "$TMP_JSON" | head -n1)
+TAG_NAME=$(jq -r "${JQ_ROOT}.tag_name // \"\"" "$TMP_JSON")
 SHA="${TARBALL_NAME#build-}"
 SHA="${SHA%.tar.gz}"
 

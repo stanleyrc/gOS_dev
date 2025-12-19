@@ -68,13 +68,13 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.package.outputs.release_tag }}
-          name: Build ${{ github.sha }}
+          name: Edge build ${{ github.sha }}
           body: |
             Automated build from commit ${{ github.sha }}.
             Built at ${{ steps.package.outputs.built_at }}.
           draft: false
-          prerelease: false
-          makeLatest: true
+          prerelease: true
+          makeLatest: false
           allowUpdates: true
           replacesArtifacts: true
           artifactErrorsFailBuild: true
