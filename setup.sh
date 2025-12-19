@@ -129,13 +129,14 @@ if [[ -z "$TARGET_TAG" && "$CHANNEL" == "edge" ]]; then
   JQ_ROOT='.[0]'
 fi
 
-TARBALL_NAME=$(jq -r "${JQ_ROOT}.assets[] | select(.name|startswith(\"build-\") and endswith(\".tar.gz\")) | .name" "$TMP_JSON" | head -n1)
-TARBALL_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name|startswith(\"build-\") and endswith(\".tar.gz\")) | .browser_download_url" "$TMP_JSON" | head -n1)
-CHECKSUM_NAME=$(jq -r "${JQ_ROOT}.assets[] | select(.name|endswith(\".tar.gz.sha256\")) | .name" "$TMP_JSON" | head -n1)
-CHECKSUM_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name|endswith(\".tar.gz.sha256\")) | .browser_download_url" "$TMP_JSON" | head -n1)
-LATEST_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name==\"LATEST.txt\") | .browser_download_url" "$TMP_JSON" | head -n1)
-BUILT_AT_URL=$(jq -r "${JQ_ROOT}.assets[] | select(.name==\"LATEST_BUILT_AT.txt\") | .browser_download_url" "$TMP_JSON" | head -n1)
-TAG_NAME=$(jq -r "${JQ_ROOT}.tag_name // \"\"" "$TMP_JSON")
+JQ_PREFIX="${JQ_ROOT} |"
+TARBALL_NAME=$(jq -r "${JQ_PREFIX} .assets[] | select(.name|startswith(\"build-\") and endswith(\".tar.gz\")) | .name" "$TMP_JSON" | head -n1)
+TARBALL_URL=$(jq -r "${JQ_PREFIX} .assets[] | select(.name|startswith(\"build-\") and endswith(\".tar.gz\")) | .browser_download_url" "$TMP_JSON" | head -n1)
+CHECKSUM_NAME=$(jq -r "${JQ_PREFIX} .assets[] | select(.name|endswith(\".tar.gz.sha256\")) | .name" "$TMP_JSON" | head -n1)
+CHECKSUM_URL=$(jq -r "${JQ_PREFIX} .assets[] | select(.name|endswith(\".tar.gz.sha256\")) | .browser_download_url" "$TMP_JSON" | head -n1)
+LATEST_URL=$(jq -r "${JQ_PREFIX} .assets[] | select(.name==\"LATEST.txt\") | .browser_download_url" "$TMP_JSON" | head -n1)
+BUILT_AT_URL=$(jq -r "${JQ_PREFIX} .assets[] | select(.name==\"LATEST_BUILT_AT.txt\") | .browser_download_url" "$TMP_JSON" | head -n1)
+TAG_NAME=$(jq -r "${JQ_PREFIX} .tag_name // \"\"" "$TMP_JSON")
 SHA="${TARBALL_NAME#build-}"
 SHA="${SHA%.tar.gz}"
 
