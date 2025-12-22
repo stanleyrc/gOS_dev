@@ -63,7 +63,6 @@ class BarPlotPanel extends Component {
       yFormat,
       title,
       inViewport,
-      renderOutsideViewPort,
       visible,
       segmentedOptions,
       handleSegmentedChange,
@@ -76,7 +75,7 @@ class BarPlotPanel extends Component {
       <Wrapper visible={visible}>
         <Skeleton active loading={loading}>
           <Card
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            style={transitionStyle(inViewport)}
             loading={loading}
             size="small"
             title={
@@ -116,7 +115,7 @@ class BarPlotPanel extends Component {
                 <ContainerDimensions>
                   {({ width, height }) => {
                     return (
-                      (inViewport || renderOutsideViewPort) && (
+                      (inViewport) && (
                         <Row style={{ width }} gutter={[margins.gap, 0]}>
                           <Col flex={1}>
                             <BarPlot
@@ -159,7 +158,6 @@ BarPlotPanel.defaultProps = {
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
 });
 export default connect(
   mapStateToProps,

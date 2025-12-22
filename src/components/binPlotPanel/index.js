@@ -84,7 +84,6 @@ class BinPlotPanel extends Component {
       genes,
       igv,
       inViewport,
-      renderOutsideViewPort,
       visible,
       chromoBins,
       ppfit,
@@ -123,7 +122,7 @@ class BinPlotPanel extends Component {
           />
         ) : (
           <Card
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            style={transitionStyle(inViewport)}
             loading={loading}
             size="small"
             title={
@@ -226,7 +225,7 @@ class BinPlotPanel extends Component {
                 <ContainerDimensions>
                   {({ width, height }) => {
                     return (
-                      (inViewport || renderOutsideViewPort) && (
+                      (inViewport) && (
                         <Row style={{ width }} gutter={[margins.gap, 0]}>
                           <Col flex={1}>
                             <BinPlot
@@ -267,7 +266,6 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   metadata: state.CaseReport.metadata,
   id: state.CaseReport.id,
   ppfit: state.Ppfit,

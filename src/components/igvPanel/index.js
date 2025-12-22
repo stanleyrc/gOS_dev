@@ -76,7 +76,6 @@ class IgvPanel extends Component {
       filenameNormalPresent,
       format,
       inViewport,
-      renderOutsideViewPort,
       error,
       domains,
       chromoBins,
@@ -112,7 +111,7 @@ class IgvPanel extends Component {
           />
         ) : (
           <Card
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            style={transitionStyle(inViewport)}
             loading={loading}
             size="small"
             title={
@@ -168,7 +167,7 @@ class IgvPanel extends Component {
                 className="ant-wrapper"
                 ref={(elem) => (this.container = elem)}
               >
-                {(inViewport || renderOutsideViewPort) && (
+                {(inViewport) && (
                   <Row gutter={[margins.gap, 0]}>
                     {domains.map((domain, index) => (
                       <Col
@@ -209,7 +208,6 @@ const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
   dataset: state.Settings.dataset,

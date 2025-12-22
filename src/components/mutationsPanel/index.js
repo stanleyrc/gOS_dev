@@ -107,7 +107,6 @@ class MutationsPanel extends Component {
       title,
       yAxisTitle,
       inViewport,
-      renderOutsideViewPort,
       visible,
       zoomedByCmd,
       chromoBins,
@@ -145,7 +144,7 @@ class MutationsPanel extends Component {
           />
         ) : (
           <Card
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            style={transitionStyle(inViewport)}
             size="small"
             title={
               <Space>
@@ -208,7 +207,7 @@ class MutationsPanel extends Component {
                       height: this.state.height + "px",
                     }}
                   >
-                    {(inViewport || renderOutsideViewPort) && (
+                    {(inViewport) && (
                       <MutationsPlot
                         {...{
                           width: w - gap - 2 * margins.padding,
@@ -238,7 +237,6 @@ MutationsPanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   genomeLength: state.Settings.genomeLength,
   zoomedByCmd: state.Settings.zoomedByCmd,
   domains: state.Settings.domains,

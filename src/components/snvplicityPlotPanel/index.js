@@ -56,7 +56,7 @@ class SnvplicityPlotPanel extends Component {
   };
 
   render() {
-    const { t, loading, inViewport, renderOutsideViewPort, visible, data } =
+    const { t, loading, inViewport, visible, data } =
       this.props;
 
     if (!visible || (data && Object.values(data).flat().length === 0)) {
@@ -78,7 +78,7 @@ class SnvplicityPlotPanel extends Component {
     return (
       <Wrapper visible={visible}>
         <Card
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
+          style={transitionStyle(inViewport)}
           loading={loading}
           size="small"
           title={
@@ -173,7 +173,7 @@ class SnvplicityPlotPanel extends Component {
                           <ContainerDimensions>
                             {({ width, height }) => {
                               return (
-                                (inViewport || renderOutsideViewPort) &&
+                                (inViewport) &&
                                 data &&
                                 data[[group.type, group.mode].join("_")] && (
                                   <SnvplicityPlot
@@ -231,7 +231,6 @@ SnvplicityPlotPanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   data: state.Snvplicity.data,
   loading: state.Snvplicity.loading,
 });

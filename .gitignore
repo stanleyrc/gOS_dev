@@ -75,6 +75,7 @@ AGENT.md
 thoughts/
 
 *.rb
+*.arrow
 public/*datafiles.json
 public/datasets.json
 public/data*

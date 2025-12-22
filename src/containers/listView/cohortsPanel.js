@@ -65,7 +65,7 @@ class CohortsPanel extends Component {
                 {tuples.map((pair, index) => (
                   <Row
                     key={index}
-                    id={`row-${groupIndex}-${index}}`}
+                    id={`row-${groupIndex}-${index}`}
                     className="ant-panel-container ant-home-plot-container"
                     gutter={16}
                   >

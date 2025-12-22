@@ -213,7 +213,7 @@ export function dataToGenome(data, chromoBins) {
     frameConnections: [],
   };
   genome.intervalBins = {};
-  data.intervals.forEach((d, i) => {
+data.intervals.forEach((d, i) => {
     let interval = new Interval(d);
     if (chromoBins[`${interval.chromosome}`]) {
       interval.startPlace =

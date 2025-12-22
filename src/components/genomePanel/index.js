@@ -107,7 +107,6 @@ class GenomePanel extends Component {
       title,
       yAxisTitle,
       inViewport,
-      renderOutsideViewPort,
       visible,
       zoomedByCmd,
       chromoBins,
@@ -144,7 +143,7 @@ class GenomePanel extends Component {
           />
         ) : (
           <Card
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            style={transitionStyle(inViewport)}
             size="small"
             title={
               <Space>
@@ -207,7 +206,7 @@ class GenomePanel extends Component {
                       height: this.state.height + "px",
                     }}
                   >
-                    {(inViewport || renderOutsideViewPort) && (
+                    {inViewport && (
                       <GenomePlot
                         {...{
                           width: w - gap - 2 * margins.padding,
@@ -237,7 +236,6 @@ GenomePanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   genomeLength: state.Settings.genomeLength,
   zoomedByCmd: state.Settings.zoomedByCmd,
   domains: state.Settings.domains,

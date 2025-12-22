@@ -265,7 +265,6 @@ const mapStateToProps = (state) => ({
   chromoBins: state.Settings.chromoBins,
   selectedCoordinate: state.Settings.dataset?.reference,
   genesOptionsList: state.Genes.optionsList,
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
 });
 export default connect(
   mapStateToProps,

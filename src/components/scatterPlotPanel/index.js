@@ -116,7 +116,6 @@ class ScatterPlotPanel extends Component {
       title,
       domains,
       inViewport,
-      renderOutsideViewPort,
       visible,
       zoomedByCmd,
       yAxisTitle,
@@ -154,7 +153,7 @@ class ScatterPlotPanel extends Component {
           />
         ) : (
           <Card
-            style={transitionStyle(inViewport || renderOutsideViewPort)}
+            style={transitionStyle(inViewport)}
             loading={loading}
             size="small"
             title={
@@ -239,7 +238,7 @@ class ScatterPlotPanel extends Component {
                     height: this.state.height + "px",
                   }}
                 >
-                  {(inViewport || renderOutsideViewPort) && (
+                  {(inViewport) && (
                     <Row>
                       <Col flex={1}>
                         <ScatterPlot
@@ -279,7 +278,6 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(

@@ -42,13 +42,12 @@ class RidgelinePlotPanel extends Component {
       title,
       loading,
       inViewport,
-      renderOutsideViewPort,
       visible,
     } = this.props;
     return (
       <Wrapper visible={visible}>
         <Card
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
+          style={transitionStyle(inViewport)}
           loading={loading}
           size="small"
           title={
@@ -84,7 +83,7 @@ class RidgelinePlotPanel extends Component {
               <ContainerDimensions>
                 {({ width, height }) => {
                   return (
-                    (inViewport || renderOutsideViewPort) && (
+                    (inViewport) && (
                       <Row style={{ width }} gutter={[margins.gap, 0]}>
                         <Col flex={1}>
                           <RidgelinePlot
@@ -119,7 +118,6 @@ RidgelinePlotPanel.defaultProps = {
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
 });
 export default connect(
   mapStateToProps,

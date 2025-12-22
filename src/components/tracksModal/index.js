@@ -87,7 +87,6 @@ class TracksModal extends Component {
       allelic,
       igv,
       inViewport,
-      renderOutsideViewPort,
       chromoBins,
       modalTitle,
       genomePlotTitle,
@@ -166,7 +165,7 @@ class TracksModal extends Component {
     );
     let tracksContent = (
       <Row
-        style={transitionStyle(inViewport || renderOutsideViewPort)}
+        style={transitionStyle(inViewport)}
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
@@ -600,7 +599,6 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   loadingSageQc: state.SageQc.loading,
   loadingPercentageSageQc: state.SageQc.loadingPercentage,
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   domains: state.Settings.domains,
   metadata: state.CaseReport.metadata,
   chromoBins: state.Settings.chromoBins,

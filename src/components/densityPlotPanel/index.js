@@ -68,7 +68,6 @@ class DensityPlotPanel extends Component {
       yFormat,
       title,
       inViewport,
-      renderOutsideViewPort,
       visible,
       colorVariable,
       colorFormat,
@@ -82,7 +81,7 @@ class DensityPlotPanel extends Component {
     return (
       <Wrapper visible={visible}>
         <Card
-          style={transitionStyle(inViewport || renderOutsideViewPort)}
+          style={transitionStyle(inViewport)}
           size="small"
           title={
             <Space>
@@ -142,7 +141,7 @@ class DensityPlotPanel extends Component {
                 <ContainerDimensions>
                   {({ width, height }) => {
                     return (
-                      (inViewport || renderOutsideViewPort) && (
+                      (inViewport) && (
                         <Row style={{ width }} gutter={[margins.gap, 0]}>
                           <Col flex={1}>
                             <DensityPlot
@@ -189,7 +188,6 @@ DensityPlotPanel.defaultProps = {
 };
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
 });
 export default connect(
   mapStateToProps,

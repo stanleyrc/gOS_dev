@@ -43,7 +43,7 @@ class HighlightsPanel extends Component {
   };
 
   render() {
-    const { t, loading, title, data, renderOutsideViewPort, inViewport } =
+    const { t, loading, title, data, inViewport } =
       this.props;
     if (!data) {
       return null;
@@ -113,7 +113,7 @@ class HighlightsPanel extends Component {
         <Row className="ant-panel-container ant-home-plot-container">
           <Col className="gutter-row table-container" span={24}>
             <Card
-              style={transitionStyle(inViewport || renderOutsideViewPort)}
+              style={transitionStyle(inViewport)}
               size="small"
               title={
                 <Space>
@@ -168,7 +168,6 @@ HighlightsPanel.propTypes = {};
 HighlightsPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
-  renderOutsideViewPort: state.Settings.renderOutsideViewPort,
   loading: state.Highlights.loading,
   data: state.Highlights.data,
 });

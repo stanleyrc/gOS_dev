@@ -17,7 +17,6 @@ const initState = {
   hoveredLocation: null,
   hoveredLocationPanelIndex: null,
   zoomedByCmd: false,
-  renderOutsideViewPort: true,
   chromoBins: {},
   domains: [],
   defaultDomain: null,
