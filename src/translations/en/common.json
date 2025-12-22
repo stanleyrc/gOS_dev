@@ -431,10 +431,22 @@
       "reset": "Reset to full genome view"
     },
     "cbioportal-modal": { "title": "cBioPortal" },
+    "clinical-trials-modal": {
+      "title": "Clinical Trials",
+      "plot-tab": "Plot",
+      "table-tab": "Table",
+      "cancer-type": "Cancer Type",
+      "biomarkers": "Biomarkers",
+      "line-of-therapy": "Line",
+      "phase": "Phase",
+      "status": "Status",
+      "outcome-type": "Outcome"
+    },
     "header-panel": {
       "view-report": "View Report",
       "qcMetrics": "Quality Control Metrics",
       "cbioportal-button": "cBioPortal",
+      "clinical-trials-button": "Clinical Trials",
       "purity-ploidy-title": "Purity/Ploidy",
       "metadata": {
         "pair": {

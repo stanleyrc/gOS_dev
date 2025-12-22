@@ -18,10 +18,13 @@ const normalizeNumericAccessor = (accessor, defaultValue) => {
 class KonvaScatter extends Component {
   containerRef = null;
   stage = null;
+  errorBarsLayer = null;
   circlesLayer = null;
+  hoverLayer = null;
   tooltipLayer = null;
   tooltipGroup = null;
   hoveredNode = null;
+  hoveredGroupId = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -106,10 +109,15 @@ class KonvaScatter extends Component {
       height,
     });
 
+    this.errorBarsLayer = new Konva.Layer({ listening: false });
+    this.stage.add(this.errorBarsLayer);
+
     this.circlesLayer = new Konva.Layer();
     this.stage.add(this.circlesLayer);
 
-    // Tooltip layer with listening: false for performance
+    this.hoverLayer = new Konva.Layer({ listening: false });
+    this.stage.add(this.hoverLayer);
+
     this.tooltipLayer = new Konva.Layer({ listening: false });
     this.stage.add(this.tooltipLayer);
     this.initializeTooltip();
@@ -155,7 +163,7 @@ class KonvaScatter extends Component {
   }
 
   handleStageMouseOver = (evt) => {
-    const { disableTooltip, onPointHover, tooltipAccessor, width, hoverStroke, hoverStrokeWidth } = this.props;
+    const { disableTooltip, onPointHover, tooltipAccessor, width, hoverStroke, hoverStrokeWidth, groupAccessor, fadeOnHover } = this.props;
     const node = evt.target;
 
     if (node === this.stage || !node.getAttr) return;
@@ -163,17 +171,22 @@ class KonvaScatter extends Component {
     const dataPoint = node.getAttr("dataPoint");
     if (!dataPoint) return;
 
-    // Store reference to hovered node for cleanup
     this.hoveredNode = node;
-
-    // Change cursor to pointer
     this.stage.container().style.cursor = "pointer";
 
-    // Add orange highlight stroke (save original values for restore)
     node._originalStroke = node.stroke();
     node._originalStrokeWidth = node.strokeWidth();
     node.stroke(hoverStroke);
     node.strokeWidth(hoverStrokeWidth);
+
+    const getGroupId = groupAccessor ? normalizeAccessor(groupAccessor) : null;
+    const groupId = getGroupId ? getGroupId(dataPoint) : null;
+    this.hoveredGroupId = groupId;
+
+    if (fadeOnHover && groupId) {
+      this.applyHoverEffect(groupId);
+    }
+
     this.circlesLayer.batchDraw();
 
     if (onPointHover) {
@@ -206,6 +219,63 @@ class KonvaScatter extends Component {
     }
   };
 
+  applyHoverEffect = (groupId) => {
+    const { groupAccessor, xScale, yScale, xAccessor, yAccessor, colorAccessor, colorScale } = this.props;
+    const getGroupId = groupAccessor ? normalizeAccessor(groupAccessor) : null;
+    const getX = normalizeAccessor(xAccessor);
+    const getY = normalizeAccessor(yAccessor);
+    const getColor = colorAccessor ? normalizeAccessor(colorAccessor) : () => "#1890ff";
+
+    if (!getGroupId) return;
+
+    const sameGroupPoints = [];
+
+    this.circlesLayer.children.forEach((shape) => {
+      const dp = shape.getAttr("dataPoint");
+      if (!dp) return;
+
+      const shapeGroupId = getGroupId(dp);
+      if (shapeGroupId === groupId) {
+        shape.opacity(1);
+        shape.stroke(this.props.hoverStroke);
+        shape.strokeWidth(this.props.hoverStrokeWidth);
+        sameGroupPoints.push({
+          x: xScale(getX(dp)),
+          y: yScale(getY(dp)),
+          color: colorScale ? colorScale(getColor(dp)) : getColor(dp),
+        });
+      } else {
+        shape.opacity(0.2);
+      }
+    });
+
+    this.hoverLayer.destroyChildren();
+    if (sameGroupPoints.length > 1) {
+      sameGroupPoints.sort((a, b) => a.y - b.y);
+      const line = new Konva.Line({
+        points: sameGroupPoints.flatMap((p) => [p.x, p.y]),
+        stroke: "#666",
+        strokeWidth: 2,
+        dash: [5, 5],
+      });
+      this.hoverLayer.add(line);
+    }
+    this.hoverLayer.batchDraw();
+  };
+
+  clearHoverEffect = () => {
+    this.circlesLayer.children.forEach((shape) => {
+      shape.opacity(1);
+      if (shape !== this.hoveredNode) {
+        shape.stroke(shape._originalStroke || null);
+        shape.strokeWidth(shape._originalStrokeWidth || 0);
+      }
+    });
+    this.hoverLayer.destroyChildren();
+    this.hoverLayer.batchDraw();
+    this.circlesLayer.batchDraw();
+  };
+
   handleStageMouseMove = (evt) => {
     const { disableTooltip, width } = this.props;
     
@@ -217,19 +287,24 @@ class KonvaScatter extends Component {
   };
 
   handleStageMouseOut = (evt) => {
+    const { fadeOnHover } = this.props;
     const node = evt.target;
     if (node === this.stage) return;
     
-    // Reset cursor
     if (this.stage) {
       this.stage.container().style.cursor = "default";
     }
 
-    // Restore original stroke styling
     if (this.hoveredNode) {
       this.hoveredNode.stroke(this.hoveredNode._originalStroke || null);
       this.hoveredNode.strokeWidth(this.hoveredNode._originalStrokeWidth || 0);
       this.hoveredNode = null;
+    }
+
+    if (fadeOnHover && this.hoveredGroupId) {
+      this.clearHoverEffect();
+      this.hoveredGroupId = null;
+    } else {
       this.circlesLayer.batchDraw();
     }
     
@@ -258,22 +333,26 @@ class KonvaScatter extends Component {
   }
 
   handleStageMouseLeave = () => {
-    const { onPointHoverEnd } = this.props;
+    const { onPointHoverEnd, fadeOnHover } = this.props;
     
     if (onPointHoverEnd) {
       onPointHoverEnd();
     }
     
-    // Reset cursor
     if (this.stage) {
       this.stage.container().style.cursor = "default";
     }
 
-    // Restore original stroke styling
     if (this.hoveredNode) {
       this.hoveredNode.stroke(this.hoveredNode._originalStroke || null);
       this.hoveredNode.strokeWidth(this.hoveredNode._originalStrokeWidth || 0);
       this.hoveredNode = null;
+    }
+
+    if (fadeOnHover && this.hoveredGroupId) {
+      this.clearHoverEffect();
+      this.hoveredGroupId = null;
+    } else {
       this.circlesLayer.batchDraw();
     }
     
@@ -337,12 +416,19 @@ class KonvaScatter extends Component {
       highlightStroke,
       highlightStrokeWidth,
       zOrderComparator,
+      ciLowerAccessor,
+      ciUpperAccessor,
+      showErrorBars,
     } = this.props;
 
     this.circlesLayer.destroyChildren();
+    if (this.errorBarsLayer) {
+      this.errorBarsLayer.destroyChildren();
+    }
 
     if (!data || data.length === 0) {
       this.circlesLayer.batchDraw();
+      if (this.errorBarsLayer) this.errorBarsLayer.batchDraw();
       return;
     }
 
@@ -350,6 +436,7 @@ class KonvaScatter extends Component {
 
     if (!xScale || !yScale) {
       this.circlesLayer.batchDraw();
+      if (this.errorBarsLayer) this.errorBarsLayer.batchDraw();
       return;
     }
 
@@ -357,6 +444,8 @@ class KonvaScatter extends Component {
     const getRadius = normalizeNumericAccessor(radiusAccessor, 4);
     const getShape = shapeAccessor ? normalizeAccessor(shapeAccessor) : () => "circle";
     const getId = idAccessor ? normalizeAccessor(idAccessor) : (d, i) => i;
+    const getCiLower = ciLowerAccessor ? normalizeAccessor(ciLowerAccessor) : null;
+    const getCiUpper = ciUpperAccessor ? normalizeAccessor(ciUpperAccessor) : null;
 
     const selectedIdsSet = new Set(
       selectedIds || (selectedId !== undefined && selectedId !== null ? [selectedId] : [])
@@ -391,6 +480,41 @@ class KonvaScatter extends Component {
       const shapeType = getShape(d);
       const pointId = getId(d, d._originalIndex);
       const isSelected = selectedIdsSet.has(pointId);
+
+      if (showErrorBars && getCiLower && getCiUpper && this.errorBarsLayer) {
+        const ciLower = getCiLower(d);
+        const ciUpper = getCiUpper(d);
+        if (ciLower != null && ciUpper != null && !isNaN(ciLower) && !isNaN(ciUpper)) {
+          const yLower = yScale(ciLower);
+          const yUpper = yScale(ciUpper);
+          const capWidth = 3;
+
+          const errorBarGroup = new Konva.Group();
+
+          const verticalLine = new Konva.Line({
+            points: [screenX, yLower, screenX, yUpper],
+            stroke: fill,
+            strokeWidth: 1.5,
+          });
+          errorBarGroup.add(verticalLine);
+
+          const lowerCap = new Konva.Line({
+            points: [screenX - capWidth, yLower, screenX + capWidth, yLower],
+            stroke: fill,
+            strokeWidth: 1.5,
+          });
+          errorBarGroup.add(lowerCap);
+
+          const upperCap = new Konva.Line({
+            points: [screenX - capWidth, yUpper, screenX + capWidth, yUpper],
+            stroke: fill,
+            strokeWidth: 1.5,
+          });
+          errorBarGroup.add(upperCap);
+
+          this.errorBarsLayer.add(errorBarGroup);
+        }
+      }
 
       let shape;
 
@@ -432,6 +556,9 @@ class KonvaScatter extends Component {
       this.circlesLayer.add(shape);
     });
 
+    if (this.errorBarsLayer) {
+      this.errorBarsLayer.batchDraw();
+    }
     this.circlesLayer.batchDraw();
   }
 
@@ -481,6 +608,13 @@ KonvaScatter.propTypes = {
   zOrderComparator: PropTypes.func,
 
   disableTooltip: PropTypes.bool,
+
+  ciLowerAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
+  ciUpperAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
+  showErrorBars: PropTypes.bool,
+
+  groupAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
+  fadeOnHover: PropTypes.bool,
 };
 
 KonvaScatter.defaultProps = {
@@ -490,6 +624,8 @@ KonvaScatter.defaultProps = {
   hoverStroke: "#ff7f0e",
   hoverStrokeWidth: 3,
   disableTooltip: false,
+  showErrorBars: false,
+  fadeOnHover: false,
 };
 
 export default KonvaScatter;
