@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { withRouter } from "react-router-dom";
+import handleViewport from "react-in-viewport";
 import { connect } from "react-redux";
 import {
   Button,
@@ -43,8 +44,7 @@ class HighlightsPanel extends Component {
   };
 
   render() {
-    const { t, loading, title, data, inViewport } =
-      this.props;
+    const { t, loading, title, data, inViewport } = this.props;
     if (!data) {
       return null;
     }
@@ -174,4 +174,10 @@ const mapStateToProps = (state) => ({
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withRouter(withTranslation("common")(HighlightsPanel)));
+)(
+  withRouter(
+    withTranslation("common")(
+      handleViewport(HighlightsPanel, { rootMargin: "-1.0px" })
+    )
+  )
+);

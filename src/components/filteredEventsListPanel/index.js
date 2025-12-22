@@ -1,6 +1,7 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { withRouter } from "react-router-dom";
+import handleViewport from "react-in-viewport";
 import { connect } from "react-redux";
 import {
   Tag,
@@ -11,28 +12,18 @@ import {
   Col,
   Segmented,
   Skeleton,
-  Tooltip,
-  Avatar,
   Typography,
   Select,
 } from "antd";
 import * as d3 from "d3";
-import { roleColorMap } from "../../helpers/utility";
+import { roleColorMap, transitionStyle } from "../../helpers/utility";
 import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
-import { InfoCircleOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
-
-import {
-  selectMergedEvents,
-  getAllInterpretationsForAlteration,
-} from "../../redux/interpretations/selectors";
-import { store } from "../../redux/store";
+import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
-import InterpretationsAvatar from "../interpretationsAvatar";
-import EventInterpretation from "../../helpers/EventInterpretation";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
 
@@ -155,7 +146,7 @@ class FilteredEventsListPanel extends Component {
     this.setState({ selectedColumnKeys: selectedKeys });
   };
 
-  handleTableChange = (pagination, filters, sorter) => {
+  handleTableChange = (pagination, filters) => {
     // When the user changes filters (e.g. checks tier 3),
     // update tierFilters in the state:
     this.setState({
@@ -250,23 +241,14 @@ class FilteredEventsListPanel extends Component {
       igv,
       selectFilteredEvent,
       additionalColumns,
-      additionalColumnIndices,
       data,
       dataset,
+      inViewport,
     } = this.props;
 
     let open = selectedFilteredEvent?.id;
 
-    let {
-      eventType,
-      tierFilters,
-      typeFilters,
-      geneFilters,
-      roleFilters,
-      effectFilters,
-      variantFilters,
-      selectedColumnKeys,
-    } = this.state;
+    let { eventType, selectedColumnKeys } = this.state;
 
     let recordsHash = d3.group(
       filteredEvents.filter(
@@ -276,9 +258,6 @@ class FilteredEventsListPanel extends Component {
     );
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
-
-    const roleInCancerLabel = t("components.filtered-events-panel.role");
-    const effectLabel = t("components.filtered-events-panel.effect");
 
     // Build columns from settings.json and dataset configuration
     const columns = buildColumnsFromSettings(
@@ -312,91 +291,101 @@ class FilteredEventsListPanel extends Component {
             </Col>
           </Row>
         ) : (
-          <>
+          <div>
             <Row
               className="ant-panel-container ant-home-plot-container"
               align="middle"
               justify="space-between"
+              style={transitionStyle(inViewport)}
             >
-              <Col flex="auto">
-                <Segmented
-                  size="small"
-                  options={EVENT_TYPES.map((d) => {
-                    return {
-                      label: (
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: t(
-                              "components.filtered-events-panel.event",
-                              {
-                                eventType: t(
-                                  `components.filtered-events-panel.event-types.${d}`
-                                ),
-                                count: (d === "all"
-                                  ? filteredEvents
-                                  : recordsHash.get(d) || []
-                                ).length,
-                              }
-                            ),
-                          }}
-                        />
-                      ),
-                      value: d,
-                      disabled:
-                        (d === "all"
-                          ? filteredEvents
-                          : recordsHash.get(d) || []
-                        ).length === 0,
-                    };
-                  })}
-                  onChange={(d) => this.handleSegmentedChange(d)}
-                  value={eventType}
-                />
-              </Col>
-              <Col style={{ textAlign: "right" }} flex="none">
-                <Button
-                  type="link"
-                  onClick={this.handleResetFilters}
-                  className="reset-filters-btn"
-                >
-                  {t("components.filtered-events-panel.reset-filters")}
-                </Button>
-              </Col>
+              {inViewport && (
+                <Col flex="auto">
+                  <Segmented
+                    size="small"
+                    options={EVENT_TYPES.map((d) => {
+                      return {
+                        label: (
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: t(
+                                "components.filtered-events-panel.event",
+                                {
+                                  eventType: t(
+                                    `components.filtered-events-panel.event-types.${d}`
+                                  ),
+                                  count: (d === "all"
+                                    ? filteredEvents
+                                    : recordsHash.get(d) || []
+                                  ).length,
+                                }
+                              ),
+                            }}
+                          />
+                        ),
+                        value: d,
+                        disabled:
+                          (d === "all"
+                            ? filteredEvents
+                            : recordsHash.get(d) || []
+                          ).length === 0,
+                      };
+                    })}
+                    onChange={(d) => this.handleSegmentedChange(d)}
+                    value={eventType}
+                  />
+                </Col>
+              )}
+              {inViewport && (
+                <Col style={{ textAlign: "right" }} flex="none">
+                  <Button
+                    type="link"
+                    onClick={this.handleResetFilters}
+                    className="reset-filters-btn"
+                  >
+                    {t("components.filtered-events-panel.reset-filters")}
+                  </Button>
+                </Col>
+              )}
             </Row>
             <Row
               className="ant-panel-container ant-home-plot-container"
               align="middle"
               justify="space-between"
-              style={{ marginBottom: "12px" }}
+              style={{ marginBottom: "12px", ...transitionStyle(inViewport) }}
             >
-              <Col flex="auto">
-                <Select
-                  mode="multiple"
-                  placeholder={t(
-                    "components.filtered-events-panel.select-columns"
-                  )}
-                  value={selectedColumnKeys}
-                  onChange={this.handleColumnSelectionChange}
-                  style={{ width: "50%" }}
-                  size="small"
-                  maxTagCount="responsive"
-                >
-                  {columns.map((col) => (
-                    <Select.Option key={col.key} value={col.key}>
-                      {getColumnTitle(col.title)}
-                    </Select.Option>
-                  ))}
-                  {(additionalColumns || []).map((col) => (
-                    <Select.Option key={col.key} value={col.key}>
-                      {getColumnTitle(col.title)}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Col>
+              {inViewport && (
+                <Col flex="auto">
+                  <Select
+                    mode="multiple"
+                    placeholder={t(
+                      "components.filtered-events-panel.select-columns"
+                    )}
+                    value={selectedColumnKeys}
+                    onChange={this.handleColumnSelectionChange}
+                    style={{ width: "50%" }}
+                    size="small"
+                    maxTagCount="responsive"
+                  >
+                    {columns.map((col) => (
+                      <Select.Option key={col.key} value={col.key}>
+                        {getColumnTitle(col.title)}
+                      </Select.Option>
+                    ))}
+                    {(additionalColumns || []).map((col) => (
+                      <Select.Option key={col.key} value={col.key}>
+                        {getColumnTitle(col.title)}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Col>
+              )}
             </Row>
-            <Row className="ant-panel-container ant-home-plot-container">
-              <Col className="gutter-row table-container" span={24}>
-                {
+            <Row
+              className="ant-panel-container ant-home-plot-container"
+              style={transitionStyle(inViewport)}
+            >
+              {inViewport && (
+                <Col className="gutter-row table-container" span={24}>
                   <Skeleton active loading={loading}>
                     <Table
                       columns={[
@@ -548,10 +537,10 @@ class FilteredEventsListPanel extends Component {
                       />
                     )}
                   </Skeleton>
-                }
-              </Col>
+                </Col>
+              )}
             </Row>
-          </>
+          </div>
         )}
       </Wrapper>
     );
@@ -594,4 +583,10 @@ const mapStateToProps = (state) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withRouter(withTranslation("common")(FilteredEventsListPanel)));
+)(
+  withRouter(
+    withTranslation("common")(
+      handleViewport(FilteredEventsListPanel, { rootMargin: "-1.0px" })
+    )
+  )
+);
