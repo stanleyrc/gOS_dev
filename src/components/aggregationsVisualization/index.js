@@ -21,7 +21,6 @@ import {
   parseGeneExpression,
   evaluateGeneExpression,
   getValue,
-  getColumnType,
   getColumnLabel,
   numericColumns,
   categoricalColumns,
@@ -105,8 +104,42 @@ class AggregationsVisualization extends Component {
     this.renderAxes();
   }
 
+  getColumnTypeForVariable(dataIndex) {
+    const dynamicColumns = this.getDynamicColumns();
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === dataIndex);
+    return col?.type || "numeric";
+  }
+
+  getOncoPrintConfig() {
+    const { xVariable, yVariable } = this.state;
+    const dynamicColumns = this.getDynamicColumns();
+    
+    const xCol = dynamicColumns.allColumns.find((c) => c.dataIndex === xVariable);
+    const yCol = dynamicColumns.allColumns.find((c) => c.dataIndex === yVariable);
+    
+    // Numeric mode for object attributes (paired with pair axis)
+    if (xCol?.type === 'object') {
+      return { mode: 'numeric', objectAttribute: xVariable };
+    }
+    if (yCol?.type === 'object') {
+      return { mode: 'numeric', objectAttribute: yVariable };
+    }
+    
+    // Categorical mode for driver_gene
+    return { mode: 'categorical', objectAttribute: null };
+  }
+
   getPlotType() {
     const { xVariable, yVariable, selectedGeneSet } = this.state;
+    const dynamicColumns = this.getDynamicColumns();
+
+    // Check if either variable is an object type → use oncoprint in numeric mode
+    const xCol = dynamicColumns.allColumns.find((c) => c.dataIndex === xVariable);
+    const yCol = dynamicColumns.allColumns.find((c) => c.dataIndex === yVariable);
+    
+    if (xCol?.type === 'object' || yCol?.type === 'object') {
+      return "oncoprint";
+    }
 
     // OncoPrint: Pair × Driver Gene (with gene set selected) - check BEFORE generic pair check
     if (xVariable === "driver_gene" && yVariable === "pair" && selectedGeneSet) {
@@ -120,8 +153,8 @@ class AggregationsVisualization extends Component {
       return "density";
     }
 
-    const xType = getColumnType(xVariable);
-    const yType = getColumnType(yVariable);
+    const xType = this.getColumnTypeForVariable(xVariable);
+    const yType = this.getColumnTypeForVariable(yVariable);
 
     if (xType === "categorical" && yType === "categorical") {
       return "stacked-bar";
@@ -150,7 +183,7 @@ class AggregationsVisualization extends Component {
         .style("text-anchor", "end");
       yAxisContainer.call(d3.axisLeft(yScale));
     } else if (plotType === "categorical-scatter") {
-      const xType = getColumnType(this.state.xVariable);
+      const xType = this.getColumnTypeForVariable(this.state.xVariable);
       if (xType === "categorical") {
         xAxisContainer.call(d3.axisBottom(xScale))
           .selectAll("text")
@@ -402,7 +435,7 @@ class AggregationsVisualization extends Component {
       this.cachedConfigKey = cacheKey;
       return config;
     } else if (plotType === "categorical-scatter") {
-      const xType = getColumnType(xVariable);
+      const xType = this.getColumnTypeForVariable(xVariable);
       const catVar = xType === "categorical" ? xVariable : yVariable;
       const numVar = xType === "categorical" ? yVariable : xVariable;
 
@@ -544,7 +577,7 @@ class AggregationsVisualization extends Component {
         { label: "Std Error", value: d3.format(",.3f")(d.stdErr) },
         { label: "Count", value: d.count },
       ];
-      const xType = getColumnType(xVariable);
+      const xType = this.getColumnTypeForVariable(xVariable);
       if (xType === "categorical") {
         tooltipX = xScale(d.category) + xScale.bandwidth() / 2;
         tooltipY = yScale(d.mean);
@@ -608,7 +641,7 @@ class AggregationsVisualization extends Component {
 
   handleVariableChange = (variable, value) => {
     if (variable === "xVariable" && value === "pair") {
-      const currentYType = getColumnType(this.state.yVariable);
+      const currentYType = this.getColumnTypeForVariable(this.state.yVariable);
       if (currentYType === "categorical" || currentYType === "pair") {
         this.setState({
           xVariable: value,
@@ -787,14 +820,18 @@ class AggregationsVisualization extends Component {
                    }}
                  >
                    {plotType === "oncoprint" ? (
-                     <OncoPrintPlot
-                       width={width}
-                       height={height}
-                       filteredRecords={filteredRecords}
-                       geneSet={this.getGenesForSelectedSet(this.computeGeneFrequencies(filteredRecords))}
-                       onPairClick={this.handlePointClick}
-                       enableMemoSort={this.state.oncoPrintSortMethod === "memo"}
-                     />
+                      <OncoPrintPlot
+                        width={width}
+                        height={height}
+                        filteredRecords={filteredRecords}
+                        geneSet={this.getOncoPrintConfig().mode === 'numeric' 
+                          ? [] 
+                          : this.getGenesForSelectedSet(this.computeGeneFrequencies(filteredRecords))}
+                        mode={this.getOncoPrintConfig().mode}
+                        objectAttribute={this.getOncoPrintConfig().objectAttribute}
+                        onPairClick={this.handlePointClick}
+                        enableMemoSort={this.state.oncoPrintSortMethod === "memo"}
+                      />
                    ) : (
                      <svg
                        width={width}
