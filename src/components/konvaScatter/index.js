@@ -106,7 +106,9 @@ class KonvaScatter extends Component {
       height,
     });
 
-    this.circlesLayer = new Konva.Layer();
+    this.circlesLayer = new Konva.Layer({
+      clip: { x: 0, y: 0, width, height },
+    });
     this.stage.add(this.circlesLayer);
 
     // Tooltip layer with listening: false for performance
@@ -151,6 +153,9 @@ class KonvaScatter extends Component {
     }
 
     this.stage.size({ width, height });
+    if (this.circlesLayer) {
+      this.circlesLayer.clip({ x: 0, y: 0, width, height });
+    }
     this.renderPoints();
   }
 

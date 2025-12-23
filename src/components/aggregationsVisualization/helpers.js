@@ -332,6 +332,7 @@ const BLACKLISTED_ATTRIBUTES = [
   'cov_slope',
   'gamma',
   'hets_intercept',
+  'hets_slope',
   'het_slope',
   'total_genome_length',
 ];
