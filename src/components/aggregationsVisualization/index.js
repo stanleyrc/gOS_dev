@@ -133,11 +133,12 @@ class AggregationsVisualization extends Component {
     const { xVariable, yVariable, selectedGeneSet } = this.state;
     const dynamicColumns = this.getDynamicColumns();
 
-    // Check if either variable is an object type → use oncoprint in numeric mode
     const xCol = dynamicColumns.allColumns.find((c) => c.dataIndex === xVariable);
     const yCol = dynamicColumns.allColumns.find((c) => c.dataIndex === yVariable);
     
-    if (xCol?.type === 'object' || yCol?.type === 'object') {
+    // OncoPrint for object × pair (numeric mode heatmap)
+    if ((xCol?.type === 'object' && yVariable === 'pair') || 
+        (yCol?.type === 'object' && xVariable === 'pair')) {
       return "oncoprint";
     }
 
@@ -153,8 +154,10 @@ class AggregationsVisualization extends Component {
       return "density";
     }
 
-    const xType = this.getColumnTypeForVariable(xVariable);
-    const yType = this.getColumnTypeForVariable(yVariable);
+    // For object types paired with non-pair variables, treat as categorical
+    // (getValue will flatten object to boolean categories: keys where value > 0)
+    const xType = xCol?.type === 'object' ? 'categorical' : this.getColumnTypeForVariable(xVariable);
+    const yType = yCol?.type === 'object' ? 'categorical' : this.getColumnTypeForVariable(yVariable);
 
     if (xType === "categorical" && yType === "categorical") {
       return "stacked-bar";
@@ -183,8 +186,8 @@ class AggregationsVisualization extends Component {
         .style("text-anchor", "end");
       yAxisContainer.call(d3.axisLeft(yScale));
     } else if (plotType === "categorical-scatter") {
-      const xType = this.getColumnTypeForVariable(this.state.xVariable);
-      if (xType === "categorical") {
+      const { xIsCategorical } = config;
+      if (xIsCategorical) {
         xAxisContainer.call(d3.axisBottom(xScale))
           .selectAll("text")
           .attr("transform", "rotate(-45)")
@@ -201,15 +204,20 @@ class AggregationsVisualization extends Component {
   }
 
   expandRecordsByCategory(records, variable) {
+    const dynamicColumns = this.getDynamicColumns();
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === variable);
+    
     const expandableCategories = ["alteration_type", "driver_gene"];
-    if (!expandableCategories.includes(variable)) {
+    const isExpandable = expandableCategories.includes(variable) || col?.type === 'object';
+    
+    if (!isExpandable) {
       return records;
     }
 
     const expandedRecords = [];
     records.forEach((record) => {
-      const categories = getValue(record, variable);
-      if (categories && categories.length > 0) {
+      const categories = getValue(record, variable, dynamicColumns);
+      if (categories && Array.isArray(categories) && categories.length > 0) {
         categories.forEach((cat) => {
           expandedRecords.push({
             ...record,
@@ -223,11 +231,16 @@ class AggregationsVisualization extends Component {
   }
 
   getEffectiveValue(record, variable) {
+    const dynamicColumns = this.getDynamicColumns();
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === variable);
+    
     const expandableCategories = ["alteration_type", "driver_gene"];
-    if (expandableCategories.includes(variable) && record._expandedVariable === variable) {
+    const isExpandable = expandableCategories.includes(variable) || col?.type === 'object';
+    
+    if (isExpandable && record._expandedVariable === variable) {
       return record._expandedCategory;
     }
-    return getValue(record, variable);
+    return getValue(record, variable, dynamicColumns);
   }
 
   getGenesForSelectedSet(allGeneFrequencies) {
@@ -436,8 +449,10 @@ class AggregationsVisualization extends Component {
       return config;
     } else if (plotType === "categorical-scatter") {
       const xType = this.getColumnTypeForVariable(xVariable);
-      const catVar = xType === "categorical" ? xVariable : yVariable;
-      const numVar = xType === "categorical" ? yVariable : xVariable;
+      // Treat 'object' type as categorical (object keys are categories)
+      const xIsCategorical = xType === "categorical" || xType === "object";
+      const catVar = xIsCategorical ? xVariable : yVariable;
+      const numVar = xIsCategorical ? yVariable : xVariable;
 
       const catRecords = this.expandRecordsByCategory(filteredRecords, catVar);
 
@@ -464,15 +479,15 @@ class AggregationsVisualization extends Component {
       }
 
       // Calculate dynamic margins for categorical-scatter
-      const isXRotated = xType === "categorical";
-      const isYCategorical = xType !== "categorical";
+      const isXRotated = xIsCategorical;
+      const isYCategorical = !xIsCategorical;
       currentMargins = calculateDynamicMargins(categories, isXRotated, isYCategorical);
       stageWidth = containerWidth - 2 * currentMargins.gapX;
       stageHeight = height - 2 * currentMargins.gapY - currentMargins.gapYBottom;
       panelHeight = stageHeight - currentMargins.gapLegend;
 
       const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
-      if (xType === "categorical" && minRequiredWidth > stageWidth) {
+      if (xIsCategorical && minRequiredWidth > stageWidth) {
         panelWidth = minRequiredWidth;
         scrollable = true;
       }
@@ -493,7 +508,7 @@ class AggregationsVisualization extends Component {
         };
       });
 
-      if (xType === "categorical") {
+      if (xIsCategorical) {
         xScale = d3.scaleBand()
           .domain(categories)
           .range([0, panelWidth])
@@ -520,7 +535,7 @@ class AggregationsVisualization extends Component {
       const config = {
         containerWidth, width: panelWidth + 2 * currentMargins.gapX, height, panelWidth, panelHeight,
         xScale, yScale, plotType, categoryData,
-        catVar, numVar, xVariable, yVariable,
+        catVar, numVar, xVariable, yVariable, xIsCategorical,
         margins: currentMargins,
       };
       this.cachedConfig = config;
@@ -577,8 +592,8 @@ class AggregationsVisualization extends Component {
         { label: "Std Error", value: d3.format(",.3f")(d.stdErr) },
         { label: "Count", value: d.count },
       ];
-      const xType = this.getColumnTypeForVariable(xVariable);
-      if (xType === "categorical") {
+      const { xIsCategorical } = config;
+      if (xIsCategorical) {
         tooltipX = xScale(d.category) + xScale.bandwidth() / 2;
         tooltipY = yScale(d.mean);
       } else {

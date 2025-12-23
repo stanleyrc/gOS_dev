@@ -498,9 +498,9 @@ class OncoPrintPlot extends Component {
   computeGeneFrequencies(isNumeric = false, keys = []) {
     const { filteredRecords, geneSet, objectAttribute } = this.props;
 
-    // Numeric mode: compute mean values for each key
+    // Numeric mode: compute frequency (percentage where value > 0) for each key
     if (isNumeric && objectAttribute) {
-      return this.computeNumericKeyMeans(keys);
+      return this.computeNumericKeyFrequencies(keys);
     }
 
     // Categorical mode: compute percentages for genes
@@ -551,29 +551,28 @@ class OncoPrintPlot extends Component {
     return geneFrequencies;
   }
 
-  computeNumericKeyMeans(keys) {
+  computeNumericKeyFrequencies(keys) {
     const { filteredRecords, objectAttribute } = this.props;
 
-    const keyMeans = new Map();
+    const totalRecords = filteredRecords.length;
+    const keyFrequencies = new Map();
 
     keys.forEach((key) => {
-      let sum = 0;
       let count = 0;
       filteredRecords.forEach((record) => {
         const objValue = record[objectAttribute];
         if (objValue && typeof objValue === 'object') {
           const val = objValue[key];
-          if (typeof val === 'number' && val !== 0) {
-            sum += val;
+          if (typeof val === 'number' && val > 0) {
             count++;
           }
         }
       });
-      const mean = count > 0 ? sum / count : 0;
-      keyMeans.set(key, mean);
+      const percentage = totalRecords > 0 ? (count / totalRecords) * 100 : 0;
+      keyFrequencies.set(key, percentage);
     });
 
-    return keyMeans;
+    return keyFrequencies;
   }
 
   renderOncoPrint() {
@@ -646,10 +645,10 @@ class OncoPrintPlot extends Component {
     genes.forEach((gene, geneIdx) => {
       const freqValue = frequencies.get(gene);
       let labelText;
-      if (isNumeric) {
-        labelText = freqValue !== undefined ? `${gene} (${freqValue.toFixed(2)})` : gene;
+      if (freqValue !== undefined) {
+        labelText = `${gene} (${freqValue.toFixed(1)}%)`;
       } else {
-        labelText = freqValue !== undefined ? `${gene} (${freqValue.toFixed(1)}%)` : gene;
+        labelText = gene;
       }
 
       const text = new Konva.Text({

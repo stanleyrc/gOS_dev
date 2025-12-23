@@ -273,14 +273,29 @@ export const getColumnLabel = (dataIndex) => {
   return col?.label || dataIndex;
 };
 
-export const getValue = (record, path) => {
+export const getValue = (record, path, dynamicColumns = null) => {
   if (path === "alteration_type") {
     return parseAlterationSummary(record.summary);
   }
   if (path === "driver_gene") {
     return parseDriverGenes(record.summary).map((g) => g.gene);
   }
-  return path.split(".").reduce((obj, key) => obj?.[key], record);
+  
+  const value = path.split(".").reduce((obj, key) => obj?.[key], record);
+  
+  // If dynamicColumns provided, check if this is an object type attribute
+  // and flatten to array of keys where value > 0 (boolean treatment)
+  if (dynamicColumns) {
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === path);
+    if (col?.type === 'object' && value && typeof value === 'object') {
+      return Object.keys(value).filter((k) => {
+        const v = value[k];
+        return typeof v === 'number' && v > 0;
+      });
+    }
+  }
+  
+  return value;
 };
 
 // ============================================================================

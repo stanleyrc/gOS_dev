@@ -1,14 +1,12 @@
 import React, { Component } from "react";
-import { getColumnType } from "./helpers";
 
 class CategoricalScatterPlot extends Component {
   render() {
-    const { config, xVariable, onMouseEnter, onMouseOut } = this.props;
-    const { xScale, yScale, categoryData } = config;
-    const xType = getColumnType(xVariable);
+    const { config, onMouseEnter, onMouseOut } = this.props;
+    const { xScale, yScale, categoryData, xIsCategorical } = config;
 
     return categoryData.map((d, i) => {
-      if (xType === "categorical") {
+      if (xIsCategorical) {
         const cx = xScale(d.category) + xScale.bandwidth() / 2;
         const cy = yScale(d.mean);
         const errorTop = yScale(d.mean + d.stdErr);
