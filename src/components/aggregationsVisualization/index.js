@@ -13,6 +13,7 @@ import CategoricalScatterPlot from "./categoricalScatterPlot";
 import DensityPlot from "./densityPlot";
 import OncoPrintPlot from "./oncoPrintPlot";
 import PlotTooltip from "./plotTooltip";
+import signatureMetadata from "../../translations/en/signatures.json";
 import {
   margins,
   calculateDynamicMargins,
@@ -91,6 +92,47 @@ class AggregationsVisualization extends Component {
     if (dataPoint?.pair) {
       openCaseInNewTab(dataPoint.pair, dataset);
     }
+  };
+
+  isSignatureVariable = (variable) => {
+    if (!variable) return false;
+    const varLower = variable.toLowerCase();
+    // Check if the variable name suggests it's a signature field
+    return varLower.includes('sbs') || varLower.includes('id_first') || varLower.includes('signature');
+  };
+
+  isSignatureValue = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    // Check if the value looks like a signature name (SBS1, ID3, etc.)
+    return /^(SBS|ID)\d+[a-z]?$/i.test(value);
+  };
+
+  getSignatureDescription = (signatureName) => {
+    if (!signatureName) return null;
+    const sig = signatureMetadata.metadata[signatureName];
+    return sig?.full || null;
+  };
+
+  enrichTooltipWithSignatures = (tooltipContent, xVariable, yVariable, xVal, yVal) => {
+    const enriched = [...tooltipContent];
+    
+    // Check xVal - either variable name suggests signature OR value looks like a signature
+    if (xVal && (this.isSignatureVariable(xVariable) || this.isSignatureValue(xVal))) {
+      const sigDesc = this.getSignatureDescription(xVal);
+      if (sigDesc) {
+        enriched.push({ label: "Aetiology", value: sigDesc, isSignature: true });
+      }
+    }
+    
+    // Check yVal - either variable name suggests signature OR value looks like a signature
+    if (yVal && (this.isSignatureVariable(yVariable) || this.isSignatureValue(yVal))) {
+      const sigDesc = this.getSignatureDescription(yVal);
+      if (sigDesc) {
+        enriched.push({ label: "Aetiology", value: sigDesc, isSignature: true });
+      }
+    }
+    
+    return enriched;
   };
 
   componentDidMount() {
@@ -583,6 +625,10 @@ class AggregationsVisualization extends Component {
         { label: getColumnLabel(xVariable), value: d3.format(",.2f")(xVal) },
         { label: getColumnLabel(yVariable), value: d3.format(",.2f")(yVal) },
       ];
+      
+      // Enrich with signature descriptions if applicable
+      tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, xVal, yVal);
+      
       tooltipX = xScale(xVal);
       tooltipY = yScale(yVal);
     } else if (plotType === "categorical-scatter") {
@@ -592,11 +638,15 @@ class AggregationsVisualization extends Component {
         { label: "Std Error", value: d3.format(",.3f")(d.stdErr) },
         { label: "Count", value: d.count },
       ];
+      
+      // Determine which variable is categorical and enrich if it's a signature
       const { xIsCategorical } = config;
       if (xIsCategorical) {
+        tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, d.category, null);
         tooltipX = xScale(d.category) + xScale.bandwidth() / 2;
         tooltipY = yScale(d.mean);
       } else {
+        tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, null, d.category);
         tooltipX = xScale(d.mean);
         tooltipY = yScale(d.category) + yScale.bandwidth() / 2;
       }
@@ -622,11 +672,14 @@ class AggregationsVisualization extends Component {
     const stackCategory = layer.key;
     const count = d.data[stackCategory];
 
-    const tooltipContent = [
+    let tooltipContent = [
       { label: getColumnLabel(xVariable), value: category },
       { label: getColumnLabel(yVariable), value: stackCategory },
       { label: "Count", value: count },
     ];
+
+    // Enrich with signature descriptions if applicable
+    tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, category, stackCategory);
 
     const barX = xScale(category) + xScale.bandwidth() / 2;
     const barY = yScale(d[1]);
