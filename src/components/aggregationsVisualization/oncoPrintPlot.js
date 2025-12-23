@@ -496,28 +496,28 @@ class OncoPrintPlot extends Component {
   }
 
   computeNumericMemoSort(keys, pairs, matrix) {
-    // Sort keys by total sum across all pairs
-    const keySums = keys.map((key) => {
-      let sum = 0;
+    // Sort keys by frequency (count of non-zero values) across all pairs
+    const keyFreqs = keys.map((key) => {
+      let count = 0;
       pairs.forEach((pair) => {
         const val = matrix.get(`${key},${pair}`);
-        if (typeof val === 'number') {
-          sum += val;
+        if (typeof val === 'number' && val > 0) {
+          count++;
         }
       });
-      return { gene: key, sum };
+      return { gene: key, count };
     });
-    keySums.sort((a, b) => b.sum - a.sum);
-    const orderedGenes = keySums.map((k) => k.gene);
+    keyFreqs.sort((a, b) => b.count - a.count);
+    const orderedGenes = keyFreqs.map((k) => k.gene);
 
-    // Sort pairs by weighted sum (higher weight for top keys)
+    // Sort pairs by binary presence (higher weight for top keys)
     const n = orderedGenes.length;
     const sampleScores = pairs.map((pair) => {
       let score = 0;
       orderedGenes.forEach((key, i) => {
         const val = matrix.get(`${key},${pair}`);
-        if (typeof val === 'number') {
-          score += val * Math.pow(2, n - i);
+        if (typeof val === 'number' && val > 0) {
+          score += Math.pow(2, n - i);
         }
       });
       return { pair, score };

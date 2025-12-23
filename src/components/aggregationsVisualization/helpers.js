@@ -309,6 +309,21 @@ export const getValue = (record, path, dynamicColumns = null) => {
 // Attributes to exclude from dropdowns
 const EXCLUDED_ATTRIBUTES = ['visible', 'summary'];
 
+// Deprecated attributes to hide from axis dropdowns
+const BLACKLISTED_ATTRIBUTES = [
+  'signatures',
+  'sbs_signatures', 
+  'indel_signatures',
+  'qc_flag',
+  'beta',
+  'cov_intercept',
+  'cov_slope',
+  'gamma',
+  'hets_intercept',
+  'het_slope',
+  'total_genome_length',
+];
+
 // Attributes that are derived/computed (not direct properties)
 const DERIVED_ATTRIBUTES = [
   { key: 'alteration_type', dataIndex: 'alteration_type', label: 'Alteration Type', type: 'categorical' },
@@ -360,6 +375,7 @@ export function discoverAttributes(records) {
   records.forEach((record) => {
     Object.keys(record).forEach((key) => {
       if (EXCLUDED_ATTRIBUTES.includes(key)) return;
+      if (BLACKLISTED_ATTRIBUTES.includes(key)) return;
       if (key === 'pair') return; // Handle separately
 
       const value = record[key];
