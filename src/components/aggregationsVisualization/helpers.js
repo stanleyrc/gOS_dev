@@ -282,3 +282,129 @@ export const getValue = (record, path) => {
   }
   return path.split(".").reduce((obj, key) => obj?.[key], record);
 };
+
+// ============================================================================
+// Dynamic Attribute Discovery (Phase 1)
+// ============================================================================
+
+// Attributes to exclude from dropdowns
+const EXCLUDED_ATTRIBUTES = ['visible', 'summary'];
+
+// Attributes that are derived/computed (not direct properties)
+const DERIVED_ATTRIBUTES = [
+  { key: 'alteration_type', dataIndex: 'alteration_type', label: 'Alteration Type', type: 'categorical' },
+  { key: 'driver_gene', dataIndex: 'driver_gene', label: 'Driver Genes', type: 'categorical' },
+];
+
+/**
+ * Convert snake_case or camelCase to Title Case label
+ */
+export function formatAttributeLabel(key) {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Determine the type of an attribute value
+ * @returns 'numeric' | 'categorical' | 'object' | 'pair' | null
+ */
+export function inferAttributeType(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && !isNaN(value)) return 'numeric';
+  if (typeof value === 'string') return 'categorical';
+  if (typeof value === 'object' && !Array.isArray(value)) return 'object';
+  return null;
+}
+
+/**
+ * Discover all attributes from records and classify them
+ * @param {Array} records - Array of data records
+ * @returns {Object} { numericColumns, categoricalColumns, objectColumns, pairColumn, allColumns }
+ */
+export function discoverAttributes(records) {
+  if (!records || records.length === 0) {
+    return {
+      numericColumns: [],
+      categoricalColumns: DERIVED_ATTRIBUTES.filter(d => d.type === 'categorical'),
+      objectColumns: [],
+      pairColumn: { key: 'pair', dataIndex: 'pair', label: 'Pair', type: 'pair' },
+      allColumns: DERIVED_ATTRIBUTES,
+    };
+  }
+
+  const attributeTypes = new Map();
+  const objectKeys = new Map(); // For object attributes, track their sub-keys
+
+  // Sample all records to discover attributes
+  records.forEach((record) => {
+    Object.keys(record).forEach((key) => {
+      if (EXCLUDED_ATTRIBUTES.includes(key)) return;
+      if (key === 'pair') return; // Handle separately
+
+      const value = record[key];
+      const type = inferAttributeType(value);
+      
+      if (!type) return;
+
+      const existingType = attributeTypes.get(key);
+      if (!existingType) {
+        attributeTypes.set(key, type);
+        if (type === 'object') {
+          objectKeys.set(key, new Set(Object.keys(value || {})));
+        }
+      } else if (type === 'object' && existingType === 'object') {
+        // Merge object keys
+        const existing = objectKeys.get(key) || new Set();
+        Object.keys(value || {}).forEach((k) => existing.add(k));
+        objectKeys.set(key, existing);
+      }
+    });
+  });
+
+  const numericColumns = [];
+  const categoricalColumns = [];
+  const objectColumns = [];
+
+  attributeTypes.forEach((type, key) => {
+    const column = {
+      key,
+      dataIndex: key,
+      label: formatAttributeLabel(key),
+      type,
+    };
+
+    if (type === 'numeric') {
+      numericColumns.push(column);
+    } else if (type === 'categorical') {
+      categoricalColumns.push(column);
+    } else if (type === 'object') {
+      column.subKeys = Array.from(objectKeys.get(key) || []).sort();
+      objectColumns.push(column);
+    }
+  });
+
+  // Sort columns alphabetically by label
+  numericColumns.sort((a, b) => a.label.localeCompare(b.label));
+  categoricalColumns.sort((a, b) => a.label.localeCompare(b.label));
+  objectColumns.sort((a, b) => a.label.localeCompare(b.label));
+
+  // Add derived attributes to categorical
+  DERIVED_ATTRIBUTES.forEach((derived) => {
+    if (!categoricalColumns.find((c) => c.key === derived.key)) {
+      categoricalColumns.push(derived);
+    }
+  });
+
+  const pairColumn = { key: 'pair', dataIndex: 'pair', label: 'Pair', type: 'pair' };
+  const allColumns = [...numericColumns, ...categoricalColumns, ...objectColumns, pairColumn];
+
+  return {
+    numericColumns,
+    categoricalColumns,
+    objectColumns,
+    pairColumn,
+    allColumns,
+  };
+}

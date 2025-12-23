@@ -27,6 +27,7 @@ import {
   categoricalColumns,
   allColumns,
   openCaseInNewTab,
+  discoverAttributes,
 } from "./helpers";
 
 class AggregationsVisualization extends Component {
@@ -34,26 +35,55 @@ class AggregationsVisualization extends Component {
   cachedConfig = null;
   cachedConfigKey = null;
   colorControlsRef = null;
+  _cachedRecords = null;
+  _cachedDynamicColumns = null;
 
-  state = {
-    xVariable: numericColumns[0].dataIndex,
-    yVariable: numericColumns[1].dataIndex,
-    colorVariable: categoricalColumns[0].dataIndex,
-    colorByVariable: null,
-    selectedGene: null,
-    selectedGeneSet: "top20",
-    appliedGeneExpression: "",
-    tooltip: {
-      visible: false,
-      x: -1000,
-      y: -1000,
-      text: [],
-    },
-    computingAlterations: false,
-    selectedPairs: [],
-    scatterPlotType: "scatter",
-    oncoPrintSortMethod: "memo",
-  };
+  constructor(props) {
+    super(props);
+    
+    // Initialize with dynamic columns
+    const dynamicColumns = discoverAttributes(props.filteredRecords || []);
+    const xVarDefault = dynamicColumns.numericColumns.length > 0 
+      ? dynamicColumns.numericColumns[0].dataIndex 
+      : numericColumns[0].dataIndex;
+    const yVarDefault = dynamicColumns.numericColumns.length > 1 
+      ? dynamicColumns.numericColumns[1].dataIndex 
+      : numericColumns[1].dataIndex;
+    const colorVarDefault = dynamicColumns.categoricalColumns.length > 0 
+      ? dynamicColumns.categoricalColumns[0].dataIndex 
+      : categoricalColumns[0].dataIndex;
+
+    this.state = {
+      xVariable: xVarDefault,
+      yVariable: yVarDefault,
+      colorVariable: colorVarDefault,
+      colorByVariable: null,
+      selectedGene: null,
+      selectedGeneSet: "top20",
+      appliedGeneExpression: "",
+      tooltip: {
+        visible: false,
+        x: -1000,
+        y: -1000,
+        text: [],
+      },
+      computingAlterations: false,
+      selectedPairs: [],
+      scatterPlotType: "scatter",
+      oncoPrintSortMethod: "memo",
+    };
+  }
+
+  getDynamicColumns() {
+    const { filteredRecords = [] } = this.props;
+    // Simple memoization to avoid re-computation on every render
+    if (this._cachedRecords === filteredRecords && this._cachedDynamicColumns) {
+      return this._cachedDynamicColumns;
+    }
+    this._cachedRecords = filteredRecords;
+    this._cachedDynamicColumns = discoverAttributes(filteredRecords);
+    return this._cachedDynamicColumns;
+  }
 
   scatterIdAccessor = (d) => d.pair;
 
@@ -710,6 +740,7 @@ class AggregationsVisualization extends Component {
                       plotType={plotType}
                       pathwayMap={this.props.pathwayMap}
                       selectedGeneSet={this.state.selectedGeneSet}
+                      dynamicColumns={this.getDynamicColumns()}
                       onYChange={(val) => this.handleVariableChange("yVariable", val)}
                       onPairsChange={(vals) => this.setState({ selectedPairs: vals })}
                       onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
@@ -850,6 +881,7 @@ class AggregationsVisualization extends Component {
                     plotType={plotType}
                     pathwayMap={this.props.pathwayMap}
                     selectedGeneSet={this.state.selectedGeneSet}
+                    dynamicColumns={this.getDynamicColumns()}
                     onXChange={(val) => this.handleVariableChange("xVariable", val)}
                     onYChange={(val) => this.handleVariableChange("yVariable", val)}
                     onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
