@@ -326,6 +326,8 @@ const BLACKLISTED_ATTRIBUTES = [
   'signatures',
   'sbs_signatures', 
   'indel_signatures',
+  'sigprofiler_sbs_count',
+  'sigprofiler_indel_count',
   'qc_flag',
   'beta',
   'cov_intercept',
