@@ -35,6 +35,11 @@ class OncoPrintPlot extends Component {
   cachedGeneSet = null;
   cachedEnableMemoSort = null;
 
+  // Memoization for computeGeneFrequencies
+  cachedGeneFrequencies = null;
+  cachedFrequenciesRecords = null;
+  cachedFrequenciesGeneSet = null;
+
   state = {
     loading: true,
   };
@@ -357,6 +362,57 @@ class OncoPrintPlot extends Component {
     return this.cachedOncoPrintData;
   }
 
+  computeGeneFrequencies() {
+    const { filteredRecords, geneSet } = this.props;
+
+    if (!geneSet || geneSet.length === 0 || filteredRecords.length === 0) {
+      return new Map();
+    }
+
+    // Check cache
+    if (
+      this.cachedGeneFrequencies &&
+      this.cachedFrequenciesRecords === filteredRecords &&
+      this.cachedFrequenciesGeneSet === geneSet
+    ) {
+      return this.cachedGeneFrequencies;
+    }
+
+    const totalRecords = filteredRecords.length;
+    const geneFrequencies = new Map();
+    const geneSetUpper = new Set(geneSet.map((g) => g.toUpperCase()));
+
+    // Initialize all genes with 0 count
+    geneSet.forEach((gene) => {
+      geneFrequencies.set(gene, 0);
+    });
+
+    // Count records containing each gene
+    filteredRecords.forEach((record) => {
+      const parsedGenes = this.getParsedGenes(record);
+      const genesInRecord = new Set(parsedGenes.map((g) => g.gene));
+
+      geneSet.forEach((gene) => {
+        if (genesInRecord.has(gene.toUpperCase())) {
+          geneFrequencies.set(gene, geneFrequencies.get(gene) + 1);
+        }
+      });
+    });
+
+    // Convert counts to percentages
+    geneSet.forEach((gene) => {
+      const count = geneFrequencies.get(gene);
+      const percentage = (count / totalRecords) * 100;
+      geneFrequencies.set(gene, percentage);
+    });
+
+    this.cachedGeneFrequencies = geneFrequencies;
+    this.cachedFrequenciesRecords = filteredRecords;
+    this.cachedFrequenciesGeneSet = geneSet;
+
+    return geneFrequencies;
+  }
+
   renderOncoPrint() {
     if (!this.layer) {
       return;
@@ -381,7 +437,7 @@ class OncoPrintPlot extends Component {
       return;
     }
 
-    const margins = { top: 30, right: 20, bottom: 60, left: 100 };
+    const margins = { top: 30, right: 20, bottom: 60, left: 150 };
     const innerWidth = width - margins.left - margins.right;
     const innerHeight = height - margins.top - margins.bottom;
 
@@ -399,11 +455,17 @@ class OncoPrintPlot extends Component {
       matrix,
     };
 
+    const geneFrequencies = this.computeGeneFrequencies();
+
     genes.forEach((gene, geneIdx) => {
+      const frequency = geneFrequencies.get(gene);
+      const frequencyText = frequency !== undefined ? ` (${frequency.toFixed(1)}%)` : "";
+      const labelText = `${gene}${frequencyText}`;
+
       const text = new Konva.Text({
         x: 5,
         y: margins.top + geneIdx * (cellHeight + cellGap) + cellHeight / 2 - 6,
-        text: gene,
+        text: labelText,
         fontSize: 11,
         fill: "#333",
         width: margins.left - 10,
