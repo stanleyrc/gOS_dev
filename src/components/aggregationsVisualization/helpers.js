@@ -20,10 +20,14 @@ const ROTATION_ANGLE = 45; // degrees for rotated labels
  * @param {Array} categories - Array of category labels (strings)
  * @param {boolean} isXAxisRotated - Whether X-axis labels are rotated 45 degrees
  * @param {boolean} isYAxisCategorical - Whether Y-axis has categorical labels
+ * @param {object} options - Additional options for numeric axes
+ * @param {number} options.yMax - Maximum y-axis value for numeric tick label sizing
+ * @param {string} options.yFormat - d3 format string for y-axis tick labels
  * @returns {object} Adjusted margins object
  */
-export function calculateDynamicMargins(categories = [], isXAxisRotated = false, isYAxisCategorical = false) {
+export function calculateDynamicMargins(categories = [], isXAxisRotated = false, isYAxisCategorical = false, options = {}) {
   const adjustedMargins = { ...margins };
+  const { yMax, yFormat = ",.2f" } = options;
 
   // Calculate Y-axis margin (left side) for categorical Y-axis labels
   if (isYAxisCategorical && categories.length > 0) {
@@ -34,6 +38,14 @@ export function calculateDynamicMargins(categories = [], isXAxisRotated = false,
     
     const yLabelWidth = measureText(longestYLabel, FONT_SIZE);
     const minYMargin = Math.ceil(yLabelWidth) + 20; // Add padding
+    adjustedMargins.gapX = Math.max(BASE_MARGIN_X, minYMargin);
+  }
+
+  // Calculate Y-axis margin (left side) for numeric Y-axis labels
+  if (yMax != null && !isYAxisCategorical) {
+    const formattedMax = require("d3").format(yFormat)(yMax);
+    const yLabelWidth = measureText(formattedMax, FONT_SIZE);
+    const minYMargin = Math.ceil(yLabelWidth) + 15; // Add padding for tick marks
     adjustedMargins.gapX = Math.max(BASE_MARGIN_X, minYMargin);
   }
 

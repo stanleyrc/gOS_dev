@@ -587,13 +587,22 @@ class AggregationsVisualization extends Component {
       const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
       const yValues = filteredRecords.map((d) => getValue(d, yVariable)).filter((v) => v != null && !isNaN(v));
 
+      const yMax = Math.ceil(d3.quantile(yValues, 0.99) || 1);
+
+      // Calculate dynamic margins for numeric y-axis labels
+      currentMargins = calculateDynamicMargins([], false, false, { yMax, yFormat: ",.2f" });
+      stageWidth = containerWidth - 2 * currentMargins.gapX;
+      stageHeight = height - 2 * currentMargins.gapY - currentMargins.gapYBottom;
+      panelHeight = stageHeight - currentMargins.gapLegend;
+      panelWidth = stageWidth;
+
       xScale = d3.scaleLinear()
         .domain([0, Math.ceil(d3.quantile(xValues, 0.99) || 1)])
         .range([0, panelWidth])
         .clamp(true);
 
       yScale = d3.scaleLinear()
-        .domain([0, Math.ceil(d3.quantile(yValues, 0.99) || 1)])
+        .domain([0, yMax])
         .range([panelHeight, 0])
         .clamp(true);
 
