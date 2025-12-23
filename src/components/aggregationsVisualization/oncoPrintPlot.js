@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Konva from "konva";
 import { parseDriverGenes } from "../../helpers/geneAggregations";
+import signatureMetadata from "../../translations/en/signatures.json";
 
 const ALTERATION_COLORS = {
   missense: "#3498db",
@@ -13,27 +14,44 @@ const ALTERATION_COLORS = {
   default: "#95a5a6",
 };
 
+const MAX_ROWS = 100;
+const MIN_CELL_WIDTH = 2;
+const MAX_CELL_WIDTH = 20;
+const MIN_CELL_HEIGHT = 12;
+const MAX_CELL_HEIGHT = 30;
+const CELL_GAP = 1;
+const MARGINS = { top: 30, right: 20, bottom: 60, left: 150 };
+const VIRTUALIZATION_BUFFER = 50;
+
 class OncoPrintPlot extends Component {
   containerRef = null;
+  scrollContainerRef = null;
   stage = null;
-  layer = null;
+  labelsLayer = null;
+  heatmapLayer = null;
+  heatmapShape = null;
+  tooltipLayer = null;
   tooltipGroup = null;
   highlightRect = null;
 
-  // Layout params for coordinate-based hit detection
   layoutParams = null;
-
-  // Pending render timeout for cleanup
   pendingRenderTimeout = null;
-
-  // Cache for parsed driver genes (keyed by record)
+  scrollRafId = null;
   parsedGenesCache = new WeakMap();
 
-  // Memoization for computeOncoPrintData
   cachedOncoPrintData = null;
   cachedFilteredRecords = null;
   cachedGeneSet = null;
   cachedEnableMemoSort = null;
+  cachedMode = null;
+  cachedObjectAttribute = null;
+
+  cachedGeneFrequencies = null;
+  cachedFrequenciesRecords = null;
+  cachedFrequenciesGeneSet = null;
+
+  renderedColRange = { startCol: -1, endCol: -1 };
+  currentScrollLeft = 0;
 
   state = {
     loading: true,
@@ -45,15 +63,18 @@ class OncoPrintPlot extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { width, height, filteredRecords, geneSet, enableMemoSort } = this.props;
+    const { width, height, filteredRecords, geneSet, enableMemoSort, mode, objectAttribute } = this.props;
 
     if (
       width !== prevProps.width ||
       height !== prevProps.height ||
       filteredRecords !== prevProps.filteredRecords ||
       geneSet !== prevProps.geneSet ||
-      enableMemoSort !== prevProps.enableMemoSort
+      enableMemoSort !== prevProps.enableMemoSort ||
+      mode !== prevProps.mode ||
+      objectAttribute !== prevProps.objectAttribute
     ) {
+      this.renderedColRange = { startCol: -1, endCol: -1 };
       if (width !== prevProps.width || height !== prevProps.height) {
         this.handleResize();
       } else {
@@ -65,6 +86,9 @@ class OncoPrintPlot extends Component {
   componentWillUnmount() {
     if (this.pendingRenderTimeout) {
       clearTimeout(this.pendingRenderTimeout);
+    }
+    if (this.scrollRafId) {
+      cancelAnimationFrame(this.scrollRafId);
     }
     if (this.stage) {
       this.stage.destroy();
@@ -86,21 +110,51 @@ class OncoPrintPlot extends Component {
     });
   }
 
+  getContentDimensions() {
+    const { genes, pairs } = this.computeOncoPrintData();
+    const { width, height } = this.props;
+    
+    const numRows = Math.min(genes.length, MAX_ROWS);
+    const numCols = pairs.length;
+
+    const innerWidth = width - MARGINS.left - MARGINS.right;
+    const innerHeight = height - MARGINS.top - MARGINS.bottom;
+
+    const cellWidth = Math.max(MIN_CELL_WIDTH, Math.min(MAX_CELL_WIDTH, innerWidth / numCols));
+    const cellHeight = Math.max(MIN_CELL_HEIGHT, Math.min(MAX_CELL_HEIGHT, innerHeight / numRows));
+
+    const contentHeight = MARGINS.top + numRows * (cellHeight + CELL_GAP) + MARGINS.bottom;
+    const contentWidth = MARGINS.left + numCols * (cellWidth + CELL_GAP) + MARGINS.right;
+
+    return { contentWidth, contentHeight, cellWidth, cellHeight, numRows, numCols };
+  }
+
   initializeStage() {
     const { width, height } = this.props;
 
     if (!this.containerRef || width <= 0 || height <= 0) return;
 
+    const { contentHeight } = this.getContentDimensions();
+    const stageHeight = Math.max(height, contentHeight);
+
     this.stage = new Konva.Stage({
       container: this.containerRef,
       width,
-      height,
+      height: stageHeight,
     });
 
-    this.layer = new Konva.Layer();
-    this.stage.add(this.layer);
+    this.heatmapLayer = new Konva.Layer();
+    this.heatmapShape = new Konva.Shape({
+      sceneFunc: (context, shape) => {
+        this.drawHeatmapCells(context);
+      },
+    });
+    this.heatmapLayer.add(this.heatmapShape);
+    this.stage.add(this.heatmapLayer);
 
-    // Tooltip layer
+    this.labelsLayer = new Konva.Layer();
+    this.stage.add(this.labelsLayer);
+
     this.tooltipLayer = new Konva.Layer({ listening: false });
     this.stage.add(this.tooltipLayer);
     this.initializeTooltip();
@@ -129,7 +183,6 @@ class OncoPrintPlot extends Component {
     this.tooltipGroup.add(this.tooltipText);
     this.tooltipLayer.add(this.tooltipGroup);
 
-    // Highlight rect for hover feedback
     this.highlightRect = new Konva.Rect({
       visible: false,
       stroke: "#ffcc00",
@@ -149,22 +202,81 @@ class OncoPrintPlot extends Component {
       return;
     }
 
-    this.stage.size({ width, height });
+    const { contentHeight } = this.getContentDimensions();
+    const stageHeight = Math.max(height, contentHeight);
+
+    this.stage.size({ width, height: stageHeight });
+    
+
+
+    this.renderedColRange = { startCol: -1, endCol: -1 };
     this.scheduleRender();
+  }
+
+  handleScroll = (evt) => {
+    const scrollLeft = evt.target.scrollLeft;
+    this.currentScrollLeft = scrollLeft;
+
+    if (this.scrollRafId) {
+      cancelAnimationFrame(this.scrollRafId);
+    }
+
+    this.scrollRafId = requestAnimationFrame(() => {
+      this.scrollRafId = null;
+      this.updateVisibleCells();
+    });
+  };
+
+  updateVisibleCells() {
+    if (!this.heatmapShape || !this.layoutParams) return;
+
+    this.heatmapLayer.batchDraw();
+  }
+
+  isSignatureValue = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    return /^(SBS|ID)\d+[a-z]?$/i.test(value);
+  };
+
+  getSignatureDescription = (signatureName) => {
+    if (!signatureName) return null;
+    const sig = signatureMetadata.metadata[signatureName];
+    return sig?.full || null;
+  };
+
+  getVisibleColumnRange(scrollLeft = 0) {
+    const { width } = this.props;
+    const { pairs } = this.computeOncoPrintData();
+
+    if (pairs.length === 0) return { startCol: 0, endCol: 0 };
+
+    const { cellWidth } = this.getContentDimensions();
+    const cellStep = cellWidth + CELL_GAP;
+
+    const visibleStart = scrollLeft;
+    const visibleEnd = scrollLeft + width - MARGINS.left;
+
+    let startCol = Math.max(0, Math.floor(visibleStart / cellStep) - VIRTUALIZATION_BUFFER);
+    let endCol = Math.min(pairs.length, Math.ceil(visibleEnd / cellStep) + VIRTUALIZATION_BUFFER);
+
+    return { startCol, endCol };
   }
 
   getCellFromPosition(mouseX, mouseY) {
     if (!this.layoutParams) return null;
 
-    const { margins, cellWidth, cellHeight, cellGap, genes, pairs, matrix } = this.layoutParams;
+    const scrollLeft = this.currentScrollLeft;
+    const { cellWidth, cellHeight, genes, pairs, matrix, isNumeric } = this.layoutParams;
 
-    const relX = mouseX - margins.left;
-    const relY = mouseY - margins.top;
+    const adjustedMouseX = mouseX + scrollLeft;
+
+    const relX = adjustedMouseX - MARGINS.left;
+    const relY = mouseY - MARGINS.top;
 
     if (relX < 0 || relY < 0) return null;
 
-    const pairIdx = Math.floor(relX / (cellWidth + cellGap));
-    const geneIdx = Math.floor(relY / (cellHeight + cellGap));
+    const pairIdx = Math.floor(relX / (cellWidth + CELL_GAP));
+    const geneIdx = Math.floor(relY / (cellHeight + CELL_GAP));
 
     if (pairIdx < 0 || pairIdx >= pairs.length || geneIdx < 0 || geneIdx >= genes.length) {
       return null;
@@ -172,16 +284,16 @@ class OncoPrintPlot extends Component {
 
     const gene = genes[geneIdx];
     const pair = pairs[pairIdx];
-    const key = `${gene.toUpperCase()},${pair}`;
-    const alterations = matrix.get(key) || [];
 
-    return {
-      gene,
-      pair,
-      alterations,
-      geneIdx,
-      pairIdx,
-    };
+    if (isNumeric) {
+      const key = `${gene},${pair}`;
+      const value = matrix.get(key);
+      return { gene, pair, value, isNumeric: true, geneIdx, pairIdx };
+    } else {
+      const key = `${gene.toUpperCase()},${pair}`;
+      const alterations = matrix.get(key) || [];
+      return { gene, pair, alterations, isNumeric: false, geneIdx, pairIdx };
+    }
   }
 
   handleMouseMove = (evt) => {
@@ -204,34 +316,61 @@ class OncoPrintPlot extends Component {
 
     this.stage.container().style.cursor = "pointer";
 
-    const { gene, pair, alterations, geneIdx, pairIdx } = cellData;
-    const { margins, cellWidth, cellHeight, cellGap } = this.layoutParams;
+    const { gene, pair, geneIdx, pairIdx, isNumeric } = cellData;
+    const scrollLeft = this.currentScrollLeft;
+    const { cellWidth, cellHeight } = this.layoutParams;
 
-    // Position highlight rect
-    const cellX = margins.left + pairIdx * (cellWidth + cellGap);
-    const cellY = margins.top + geneIdx * (cellHeight + cellGap);
+    const cellX = MARGINS.left + pairIdx * (cellWidth + CELL_GAP) - scrollLeft;
+    const cellY = MARGINS.top + geneIdx * (cellHeight + CELL_GAP);
     this.highlightRect.position({ x: cellX, y: cellY });
     this.highlightRect.size({ width: cellWidth, height: cellHeight });
     this.highlightRect.visible(true);
 
-    const altText =
-      alterations && alterations.length > 0
-        ? alterations.map((a) => a.type).join(", ")
-        : "No alteration";
+    let textContent;
+    if (isNumeric) {
+      const { value } = cellData;
+      const valueText = value !== undefined && value !== null ? value.toFixed(3) : "No value";
+      textContent = `${pair}\n${gene}\n${valueText}`;
+      
+      const pairSigDesc = this.getSignatureDescription(pair);
+      if (pairSigDesc) {
+        textContent += `\nAetiology: ${pairSigDesc}`;
+      }
+      const geneSigDesc = this.getSignatureDescription(gene);
+      if (geneSigDesc) {
+        textContent += `\nAetiology: ${geneSigDesc}`;
+      }
+    } else {
+      const { alterations } = cellData;
+      const altText =
+        alterations && alterations.length > 0
+          ? alterations.map((a) => a.type).join(", ")
+          : "No alteration";
+      textContent = `${pair}\n${gene}\n${altText}`;
+      
+      const pairSigDesc = this.getSignatureDescription(pair);
+      if (pairSigDesc) {
+        textContent += `\nAetiology: ${pairSigDesc}`;
+      }
+      const geneSigDesc = this.getSignatureDescription(gene);
+      if (geneSigDesc) {
+        textContent += `\nAetiology: ${geneSigDesc}`;
+      }
+    }
 
-    const textContent = `${pair}\n${gene}\n${altText}`;
     this.tooltipText.text(textContent);
 
     const textWidth = this.tooltipText.width();
     const textHeight = this.tooltipText.height();
     this.tooltipRect.size({ width: textWidth, height: textHeight });
 
-    const { width, height } = this.props;
+    const { width } = this.props;
+    const stageHeight = this.stage.height();
 
     const xPos =
       mousePos.x + 10 + textWidth > width ? mousePos.x - textWidth - 10 : mousePos.x + 10;
     const yPos =
-      mousePos.y + 10 + textHeight > height ? mousePos.y - textHeight - 10 : mousePos.y + 10;
+      mousePos.y + 10 + textHeight > stageHeight ? mousePos.y - textHeight - 10 : mousePos.y + 10;
 
     this.tooltipGroup.position({ x: xPos, y: yPos });
     this.tooltipGroup.visible(true);
@@ -246,7 +385,9 @@ class OncoPrintPlot extends Component {
       this.highlightRect.visible(false);
     }
     this.tooltipLayer.batchDraw();
-    this.stage.container().style.cursor = "default";
+    if (this.stage) {
+      this.stage.container().style.cursor = "default";
+    }
   };
 
   handleCellClick = (evt) => {
@@ -301,22 +442,27 @@ class OncoPrintPlot extends Component {
   }
 
   computeOncoPrintData() {
-    const { filteredRecords, geneSet, enableMemoSort } = this.props;
+    const { filteredRecords, geneSet, enableMemoSort, mode, objectAttribute } = this.props;
+
+    if (mode === 'numeric' && objectAttribute) {
+      return this.computeNumericOncoPrintData();
+    }
 
     if (!geneSet || geneSet.length === 0) {
-      return { genes: [], pairs: [], matrix: new Map() };
+      return { genes: [], pairs: [], matrix: new Map(), isNumeric: false };
     }
 
     if (
       this.cachedOncoPrintData &&
       this.cachedFilteredRecords === filteredRecords &&
       this.cachedGeneSet === geneSet &&
-      this.cachedEnableMemoSort === enableMemoSort
+      this.cachedEnableMemoSort === enableMemoSort &&
+      this.cachedMode === mode
     ) {
       return this.cachedOncoPrintData;
     }
 
-    const genes = geneSet.slice();
+    const genes = geneSet.slice(0, MAX_ROWS);
     const pairs = filteredRecords.map((r) => r.pair).filter(Boolean);
     const matrix = new Map();
 
@@ -335,7 +481,6 @@ class OncoPrintPlot extends Component {
       });
     });
 
-    // Filter out pairs that have no alterations across any gene
     const pairsWithAlterations = pairs.filter((pair) => {
       return genes.some((gene) => matrix.has(`${gene.toUpperCase()},${pair}`));
     });
@@ -349,136 +494,397 @@ class OncoPrintPlot extends Component {
       finalPairs = orderedPairs;
     }
 
-    this.cachedOncoPrintData = { genes: finalGenes, pairs: finalPairs, matrix };
+    this.cachedOncoPrintData = { genes: finalGenes, pairs: finalPairs, matrix, isNumeric: false };
     this.cachedFilteredRecords = filteredRecords;
     this.cachedGeneSet = geneSet;
     this.cachedEnableMemoSort = enableMemoSort;
+    this.cachedMode = mode;
 
     return this.cachedOncoPrintData;
   }
 
-  renderOncoPrint() {
-    if (!this.layer) {
-      return;
+  computeNumericOncoPrintData() {
+    const { filteredRecords, objectAttribute, enableMemoSort } = this.props;
+
+    if (
+      this.cachedOncoPrintData &&
+      this.cachedFilteredRecords === filteredRecords &&
+      this.cachedObjectAttribute === objectAttribute &&
+      this.cachedEnableMemoSort === enableMemoSort &&
+      this.cachedMode === 'numeric'
+    ) {
+      return this.cachedOncoPrintData;
     }
 
-    const { width, height } = this.props;
-    const { genes, pairs, matrix } = this.computeOncoPrintData();
-
-    this.layer.destroyChildren();
-
-    if (genes.length === 0 || pairs.length === 0) {
-      this.layoutParams = null;
-      const text = new Konva.Text({
-        x: width / 2 - 100,
-        y: height / 2 - 10,
-        text: "No data to display. Select a gene set with driver genes.",
-        fontSize: 14,
-        fill: "#999",
-      });
-      this.layer.add(text);
-      this.layer.batchDraw();
-      return;
-    }
-
-    const margins = { top: 30, right: 20, bottom: 60, left: 100 };
-    const innerWidth = width - margins.left - margins.right;
-    const innerHeight = height - margins.top - margins.bottom;
-
-    const cellWidth = Math.max(2, Math.min(20, innerWidth / pairs.length));
-    const cellHeight = Math.max(12, Math.min(30, innerHeight / genes.length));
-    const cellGap = 1;
-
-    this.layoutParams = {
-      margins,
-      cellWidth,
-      cellHeight,
-      cellGap,
-      genes,
-      pairs,
-      matrix,
-    };
-
-    genes.forEach((gene, geneIdx) => {
-      const text = new Konva.Text({
-        x: 5,
-        y: margins.top + geneIdx * (cellHeight + cellGap) + cellHeight / 2 - 6,
-        text: gene,
-        fontSize: 11,
-        fill: "#333",
-        width: margins.left - 10,
-        align: "right",
-      });
-      this.layer.add(text);
+    const allKeys = new Set();
+    filteredRecords.forEach((record) => {
+      const objValue = record[objectAttribute];
+      if (objValue && typeof objValue === 'object') {
+        Object.keys(objValue).forEach((key) => {
+          const val = objValue[key];
+          if (typeof val === 'number' && val !== 0) {
+            allKeys.add(key);
+          }
+        });
+      }
     });
 
-    if (cellWidth >= 8) {
-      pairs.forEach((pair, pairIdx) => {
-        const text = new Konva.Text({
-          x: margins.left + pairIdx * (cellWidth + cellGap) + cellWidth / 2,
-          y: margins.top + genes.length * (cellHeight + cellGap) + 5,
-          text: pair,
-          fontSize: 9,
-          fill: "#666",
-          rotation: 45,
+    const keys = Array.from(allKeys).sort().slice(0, MAX_ROWS);
+    const pairs = filteredRecords.map((r) => r.pair).filter(Boolean);
+    const matrix = new Map();
+
+    filteredRecords.forEach((record) => {
+      const objValue = record[objectAttribute];
+      if (objValue && typeof objValue === 'object') {
+        keys.forEach((key) => {
+          const val = objValue[key];
+          if (typeof val === 'number' && val !== 0) {
+            const matrixKey = `${key},${record.pair}`;
+            matrix.set(matrixKey, val);
+          }
         });
-        this.layer.add(text);
-      });
+      }
+    });
+
+    const pairsWithData = pairs.filter((pair) => {
+      return keys.some((key) => matrix.has(`${key},${pair}`));
+    });
+
+    let finalKeys = keys;
+    let finalPairs = pairsWithData;
+
+    if (enableMemoSort && keys.length > 0 && finalPairs.length > 0) {
+      const { orderedGenes, orderedPairs } = this.computeNumericMemoSort(keys, finalPairs, matrix);
+      finalKeys = orderedGenes;
+      finalPairs = orderedPairs;
     }
 
-    genes.forEach((gene, geneIdx) => {
-      pairs.forEach((pair, pairIdx) => {
-        const key = `${gene.toUpperCase()},${pair}`;
-        const alterations = matrix.get(key) || [];
-        const x = margins.left + pairIdx * (cellWidth + cellGap);
-        const y = margins.top + geneIdx * (cellHeight + cellGap);
+    this.cachedOncoPrintData = { genes: finalKeys, pairs: finalPairs, matrix, isNumeric: true };
+    this.cachedFilteredRecords = filteredRecords;
+    this.cachedObjectAttribute = objectAttribute;
+    this.cachedEnableMemoSort = enableMemoSort;
+    this.cachedMode = 'numeric';
 
-        if (alterations.length === 0) {
-          const rect = new Konva.Rect({
-            x,
-            y,
-            width: cellWidth,
-            height: cellHeight,
-            fill: "#f0f0f0",
-            stroke: "#e0e0e0",
-            strokeWidth: 0.5,
-          });
-          rect.setAttr("cellData", { gene, pair, alterations: [] });
-          this.layer.add(rect);
-        } else {
-          const altTypes = [...new Set(alterations.map((a) => a.type))];
-          const segmentHeight = cellHeight / altTypes.length;
+    return this.cachedOncoPrintData;
+  }
 
-          altTypes.forEach((altType, altIdx) => {
-            const rect = new Konva.Rect({
-              x,
-              y: y + altIdx * segmentHeight,
-              width: cellWidth,
-              height: segmentHeight,
-              fill: ALTERATION_COLORS[altType] || ALTERATION_COLORS.default,
-              stroke: "#fff",
-              strokeWidth: 0.5,
-            });
-            rect.setAttr("cellData", { gene, pair, alterations });
-            this.layer.add(rect);
-          });
+  computeNumericMemoSort(keys, pairs, matrix) {
+    const keyFreqs = keys.map((key) => {
+      let count = 0;
+      pairs.forEach((pair) => {
+        const val = matrix.get(`${key},${pair}`);
+        if (typeof val === 'number' && val > 0) {
+          count++;
+        }
+      });
+      return { gene: key, count };
+    });
+    keyFreqs.sort((a, b) => b.count - a.count);
+    const orderedGenes = keyFreqs.map((k) => k.gene);
+
+    const n = orderedGenes.length;
+    const sampleScores = pairs.map((pair) => {
+      let score = 0;
+      orderedGenes.forEach((key, i) => {
+        const val = matrix.get(`${key},${pair}`);
+        if (typeof val === 'number' && val > 0) {
+          score += Math.pow(2, n - i);
+        }
+      });
+      return { pair, score };
+    });
+    sampleScores.sort((a, b) => b.score - a.score);
+    const orderedPairs = sampleScores.map((s) => s.pair);
+
+    return { orderedGenes, orderedPairs };
+  }
+
+  computeGeneFrequencies(isNumeric = false, keys = []) {
+    const { filteredRecords, geneSet, objectAttribute } = this.props;
+
+    if (isNumeric && objectAttribute) {
+      return this.computeNumericKeyFrequencies(keys);
+    }
+
+    if (!geneSet || geneSet.length === 0 || filteredRecords.length === 0) {
+      return new Map();
+    }
+
+    if (
+      this.cachedGeneFrequencies &&
+      this.cachedFrequenciesRecords === filteredRecords &&
+      this.cachedFrequenciesGeneSet === geneSet
+    ) {
+      return this.cachedGeneFrequencies;
+    }
+
+    const totalRecords = filteredRecords.length;
+    const geneFrequencies = new Map();
+
+    geneSet.forEach((gene) => {
+      geneFrequencies.set(gene, 0);
+    });
+
+    filteredRecords.forEach((record) => {
+      const parsedGenes = this.getParsedGenes(record);
+      const genesInRecord = new Set(parsedGenes.map((g) => g.gene));
+
+      geneSet.forEach((gene) => {
+        if (genesInRecord.has(gene.toUpperCase())) {
+          geneFrequencies.set(gene, geneFrequencies.get(gene) + 1);
         }
       });
     });
 
-    this.layer.batchDraw();
+    geneSet.forEach((gene) => {
+      const count = geneFrequencies.get(gene);
+      const percentage = (count / totalRecords) * 100;
+      geneFrequencies.set(gene, percentage);
+    });
+
+    this.cachedGeneFrequencies = geneFrequencies;
+    this.cachedFrequenciesRecords = filteredRecords;
+    this.cachedFrequenciesGeneSet = geneSet;
+
+    return geneFrequencies;
+  }
+
+  computeNumericKeyFrequencies(keys) {
+    const { filteredRecords, objectAttribute } = this.props;
+
+    const totalRecords = filteredRecords.length;
+    const keyFrequencies = new Map();
+
+    keys.forEach((key) => {
+      let count = 0;
+      filteredRecords.forEach((record) => {
+        const objValue = record[objectAttribute];
+        if (objValue && typeof objValue === 'object') {
+          const val = objValue[key];
+          if (typeof val === 'number' && val > 0) {
+            count++;
+          }
+        }
+      });
+      const percentage = totalRecords > 0 ? (count / totalRecords) * 100 : 0;
+      keyFrequencies.set(key, percentage);
+    });
+
+    return keyFrequencies;
+  }
+
+  drawHeatmapCells(context) {
+    if (!this.layoutParams) return;
+
+    const { width } = this.props;
+    const scrollLeft = this.currentScrollLeft;
+    const { genes, pairs, matrix, isNumeric, cellWidth, cellHeight, colorScale } = this.layoutParams;
+    const { startCol, endCol } = this.getVisibleColumnRange(scrollLeft);
+
+    const ctx = context._context;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(MARGINS.left, 0, width - MARGINS.left, this.stage.height());
+    ctx.clip();
+
+    genes.forEach((gene, geneIdx) => {
+      for (let pairIdx = startCol; pairIdx < endCol; pairIdx++) {
+        const pair = pairs[pairIdx];
+        const key = isNumeric ? `${gene},${pair}` : `${gene.toUpperCase()},${pair}`;
+        
+        const contentX = MARGINS.left + pairIdx * (cellWidth + CELL_GAP);
+        const viewportX = contentX - scrollLeft;
+        const y = MARGINS.top + geneIdx * (cellHeight + CELL_GAP);
+
+        if (isNumeric) {
+          const val = matrix.get(key);
+          const fill = colorScale(val);
+          ctx.fillStyle = fill;
+          ctx.fillRect(viewportX, y, cellWidth, cellHeight);
+          ctx.strokeStyle = "#e0e0e0";
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(viewportX, y, cellWidth, cellHeight);
+        } else {
+          const alterations = matrix.get(key) || [];
+          if (alterations.length === 0) {
+            ctx.fillStyle = "#f0f0f0";
+            ctx.fillRect(viewportX, y, cellWidth, cellHeight);
+            ctx.strokeStyle = "#e0e0e0";
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(viewportX, y, cellWidth, cellHeight);
+          } else {
+            const altTypes = [...new Set(alterations.map((a) => a.type))];
+            const segmentHeight = cellHeight / altTypes.length;
+
+            altTypes.forEach((altType, altIdx) => {
+              ctx.fillStyle = ALTERATION_COLORS[altType] || ALTERATION_COLORS.default;
+              ctx.fillRect(viewportX, y + altIdx * segmentHeight, cellWidth, segmentHeight);
+              ctx.strokeStyle = "#fff";
+              ctx.lineWidth = 0.5;
+              ctx.strokeRect(viewportX, y + altIdx * segmentHeight, cellWidth, segmentHeight);
+            });
+          }
+        }
+      }
+    });
+
+    if (cellWidth >= 8) {
+      ctx.font = "9px Arial";
+      ctx.fillStyle = "#666";
+      for (let pairIdx = startCol; pairIdx < endCol; pairIdx++) {
+        const pair = pairs[pairIdx];
+        const contentX = MARGINS.left + pairIdx * (cellWidth + CELL_GAP) + cellWidth / 2;
+        const viewportX = contentX - scrollLeft;
+        const textY = MARGINS.top + genes.length * (cellHeight + CELL_GAP) + 5;
+
+        ctx.save();
+        ctx.translate(viewportX, textY);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillText(pair, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  renderOncoPrint() {
+    if (!this.labelsLayer || !this.heatmapShape) {
+      return;
+    }
+
+    const { width } = this.props;
+    const { genes, pairs, matrix, isNumeric } = this.computeOncoPrintData();
+
+    this.labelsLayer.destroyChildren();
+
+    if (genes.length === 0 || pairs.length === 0) {
+      this.layoutParams = null;
+      const noDataMessage = isNumeric
+        ? "No data to display. The selected attribute has no non-zero values."
+        : "No data to display. Select a gene set with driver genes.";
+      const text = new Konva.Text({
+        x: width / 2 - 150,
+        y: 100,
+        text: noDataMessage,
+        fontSize: 14,
+        fill: "#999",
+      });
+      this.labelsLayer.add(text);
+      this.labelsLayer.batchDraw();
+      return;
+    }
+
+    const { contentHeight, cellWidth, cellHeight } = this.getContentDimensions();
+
+    if (this.stage) {
+      this.stage.height(contentHeight);
+    }
+
+    let colorScale = null;
+    let maxValue = 0;
+    if (isNumeric) {
+      matrix.forEach((val) => {
+        if (typeof val === 'number' && val > maxValue) {
+          maxValue = val;
+        }
+      });
+      colorScale = (val) => {
+        if (typeof val !== 'number' || val === 0) return "#f0f0f0";
+        const intensity = Math.min(1, val / (maxValue || 1));
+        const r = Math.round(240 - intensity * 188);
+        const g = Math.round(240 - intensity * 128);
+        const b = Math.round(240 + intensity * 15);
+        return `rgb(${r}, ${g}, ${b})`;
+      };
+    }
+
+    this.layoutParams = {
+      cellWidth,
+      cellHeight,
+      genes,
+      pairs,
+      matrix,
+      isNumeric,
+      colorScale,
+    };
+
+    const labelBg = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: MARGINS.left,
+      height: contentHeight,
+      fill: "#fff",
+    });
+    this.labelsLayer.add(labelBg);
+
+    const frequencies = this.computeGeneFrequencies(isNumeric, genes);
+
+    genes.forEach((gene, geneIdx) => {
+      const freqValue = frequencies.get(gene);
+      let labelText;
+      if (freqValue !== undefined) {
+        labelText = `${gene} (${freqValue.toFixed(1)}%)`;
+      } else {
+        labelText = gene;
+      }
+
+      const text = new Konva.Text({
+        x: 5,
+        y: MARGINS.top + geneIdx * (cellHeight + CELL_GAP) + cellHeight / 2 - 6,
+        text: labelText,
+        fontSize: 11,
+        fill: "#333",
+        width: MARGINS.left - 10,
+        align: "right",
+      });
+      this.labelsLayer.add(text);
+    });
+
+    this.labelsLayer.batchDraw();
+
+    this.currentScrollLeft = this.scrollContainerRef ? this.scrollContainerRef.scrollLeft : 0;
+    this.heatmapLayer.batchDraw();
   }
 
   render() {
     const { width, height } = this.props;
     const { loading } = this.state;
 
+    const { contentWidth, contentHeight } = this.getContentDimensions();
+    const stageHeight = Math.max(height, contentHeight);
+
     return (
-      <div style={{ position: "relative", width, height, overflow: "auto" }}>
+      <div style={{ position: "relative", width, height, overflow: "hidden" }}>
         <div
-          ref={(ref) => (this.containerRef = ref)}
-          style={{ width, height }}
-        />
+          ref={(ref) => (this.scrollContainerRef = ref)}
+          onScroll={this.handleScroll}
+          style={{
+            width,
+            height,
+            overflowX: "scroll",
+            overflowY: "auto",
+          }}
+        >
+          <div
+            style={{
+              width: contentWidth,
+              height: stageHeight,
+              position: "relative",
+            }}
+          >
+            <div
+              ref={(ref) => (this.containerRef = ref)}
+              style={{
+                position: "sticky",
+                left: 0,
+                width,
+                height: stageHeight,
+              }}
+            />
+          </div>
+        </div>
         {loading && (
           <div
             style={{
@@ -523,11 +929,15 @@ OncoPrintPlot.propTypes = {
   height: PropTypes.number.isRequired,
   filteredRecords: PropTypes.array.isRequired,
   geneSet: PropTypes.array.isRequired,
+  mode: PropTypes.oneOf(['categorical', 'numeric']),
+  objectAttribute: PropTypes.string,
   onPairClick: PropTypes.func,
   enableMemoSort: PropTypes.bool,
 };
 
 OncoPrintPlot.defaultProps = {
+  mode: 'categorical',
+  objectAttribute: null,
   onPairClick: null,
   enableMemoSort: true,
 };

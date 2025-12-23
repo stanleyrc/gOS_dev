@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import KonvaScatter from "../konvaScatter";
 import KonvaContour from "../konvaContour";
-import { getValue, getColumnLabel, margins } from "./helpers";
+import { getValue, getColumnLabel } from "./helpers";
 import { hasGene } from "../../helpers/geneAggregations";
 import * as d3 from "d3";
 
@@ -57,7 +57,7 @@ class ScatterPlot extends Component {
       scatterPlotType = "scatter",
     } = this.props;
 
-    const { xScale, yScale, panelWidth, panelHeight } = config;
+    const { xScale, yScale, panelWidth, panelHeight, margins } = config;
     const { colorAccessor, colorScale } = colorConfig;
 
     const xAccessor = (d) => getValue(d, xVariable);

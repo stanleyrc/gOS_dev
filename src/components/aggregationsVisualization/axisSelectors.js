@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import { Select, Cascader, Input, message } from "antd";
-import { allColumns } from "./helpers";
 
 class AxisSelectors extends Component {
   state = {
@@ -13,35 +12,67 @@ class AxisSelectors extends Component {
   };
 
   buildCascaderOptions(forXAxis = false) {
-    const { pathwayMap = {} } = this.props;
+    const { pathwayMap = {}, dynamicColumns = {} } = this.props;
+    const { allColumns = [] } = dynamicColumns;
     const pathwayNames = Object.keys(pathwayMap);
 
     const columnsToUse = forXAxis
       ? allColumns
       : allColumns.filter((col) => col.type !== "pair");
 
-    return columnsToUse.map((col) => {
-        if (col.dataIndex === "driver_gene") {
-          const children = [
-            { value: "top20", label: "Top 20" },
-            ...pathwayNames.map((name) => ({
-              value: name,
-              label: name.replace(/_/g, " "),
-            })),
-            { value: "custom", label: "Custom" },
-          ];
-          
-          return {
-            value: col.dataIndex,
-            label: col.label,
-            children,
-          };
-        }
-        return {
+    const options = [];
+
+    // Group columns by type
+    const numericCols = columnsToUse.filter((c) => c.type === 'numeric');
+    const categoricalCols = columnsToUse.filter((c) => c.type === 'categorical' || c.type === 'object');
+    const pairCol = columnsToUse.find((c) => c.type === 'pair');
+
+    // Numeric group
+    if (numericCols.length > 0) {
+      options.push({
+        value: '_numeric_group',
+        label: 'Numeric',
+        children: numericCols.map((col) => ({
           value: col.dataIndex,
           label: col.label,
-        };
+        })),
       });
+    }
+
+    // Categorical group (includes object types)
+    if (categoricalCols.length > 0) {
+      options.push({
+        value: '_categorical_group',
+        label: 'Categorical',
+        children: categoricalCols.map((col) => {
+          if (col.dataIndex === 'driver_gene') {
+            return {
+              value: col.dataIndex,
+              label: col.label,
+              children: [
+                { value: "top20", label: "Top 20" },
+                ...pathwayNames.map((name) => ({
+                  value: name,
+                  label: name.replace(/_/g, " "),
+                })),
+                { value: "custom", label: "Custom" },
+              ],
+            };
+          }
+          return { value: col.dataIndex, label: col.label };
+        }),
+      });
+    }
+
+    // Pair as standalone option (X-axis only)
+    if (forXAxis && pairCol) {
+      options.push({
+        value: pairCol.dataIndex,
+        label: pairCol.label,
+      });
+    }
+
+    return options;
   }
 
   getCascaderValue(variable, forXAxis = false) {
@@ -49,11 +80,29 @@ class AxisSelectors extends Component {
     if (this.state[enteringCustomKey]) {
       return [];
     }
-    const { selectedGeneSet } = this.props;
+    const { selectedGeneSet, dynamicColumns = {} } = this.props;
+    const { allColumns = [] } = dynamicColumns;
+    
     if (variable === "driver_gene") {
-      return ["driver_gene", selectedGeneSet || "top20"];
+      return ["_categorical_group", "driver_gene", selectedGeneSet || "top20"];
     }
-    return variable ? [variable] : [];
+    
+    // Determine the group for this variable
+    const col = allColumns.find((c) => c.dataIndex === variable);
+    if (!col) return variable ? [variable] : [];
+    
+    // Pair is a standalone option (no group)
+    if (col.type === 'pair') {
+      return [variable];
+    }
+    
+    // Categorical and object types are grouped under Categorical
+    let groupKey = '_numeric_group';
+    if (col.type === 'categorical' || col.type === 'object') {
+      groupKey = '_categorical_group';
+    }
+    
+    return [groupKey, variable];
   }
 
   handleCustomGenesChange = (e, isXAxis = false) => {
@@ -69,8 +118,8 @@ class AxisSelectors extends Component {
         .filter((g) => g.length > 0)
     )];
 
-    if (genes.length > 20) {
-      message.warning(`Maximum 20 genes allowed. You have ${genes.length} genes.`);
+    if (genes.length > 100) {
+      message.warning(`Maximum 100 genes allowed. You have ${genes.length} genes.`);
     }
   };
 
@@ -93,8 +142,8 @@ class AxisSelectors extends Component {
       return;
     }
 
-    if (genes.length > 20) {
-      message.error(`Maximum 20 genes allowed. You have ${genes.length} genes.`);
+    if (genes.length > 100) {
+      message.error(`Maximum 100 genes allowed. You have ${genes.length} genes.`);
       return;
     }
 
@@ -119,15 +168,23 @@ class AxisSelectors extends Component {
 
     const handleCascaderChange = (values) => {
       if (values.length === 0) return;
-      const selectedColumn = values[0];
-      if (selectedColumn === "driver_gene" && values.length > 1) {
-        if (values[1] === "custom") {
+      
+      // Skip the group level (first value is group key like '_numeric_group')
+      const isGroupedSelection = values[0]?.startsWith('_') && values[0]?.endsWith('_group');
+      const relevantValues = isGroupedSelection ? values.slice(1) : values;
+      
+      if (relevantValues.length === 0) return;
+      
+      const selectedColumn = relevantValues[0];
+      
+      if (selectedColumn === "driver_gene" && relevantValues.length > 1) {
+        if (relevantValues[1] === "custom") {
           onChange(selectedColumn);
           onGeneSetChange("custom:");
           this.setState({ [showInputKey]: true, [customGenesKey]: "", [enteringCustomKey]: true });
         } else {
           onChange(selectedColumn);
-          onGeneSetChange(values[1]);
+          onGeneSetChange(relevantValues[1]);
           this.setState({ [showInputKey]: false, [enteringCustomKey]: false });
         }
       } else {
@@ -150,7 +207,7 @@ class AxisSelectors extends Component {
         {showCustomGeneInput && variable === "driver_gene" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 4 }}>
             <Input.TextArea
-              placeholder="Enter genes separated by commas (max 20). Example: TP53, BRCA1, EGFR"
+              placeholder="Enter genes separated by commas (max 100). Example: TP53, BRCA1, EGFR"
               value={customGenes}
               onChange={(e) => this.handleCustomGenesChange(e, forXAxis)}
               rows={3}

@@ -91,10 +91,14 @@ class KonvaContour extends Component {
       height,
     });
 
-    this.contoursLayer = new Konva.Layer();
+    this.contoursLayer = new Konva.Layer({
+      clip: { x: 0, y: 0, width, height },
+    });
     this.stage.add(this.contoursLayer);
 
-    this.markerLayer = new Konva.Layer();
+    this.markerLayer = new Konva.Layer({
+      clip: { x: 0, y: 0, width, height },
+    });
     this.stage.add(this.markerLayer);
 
     this.tooltipLayer = new Konva.Layer({ listening: false });
@@ -148,6 +152,12 @@ class KonvaContour extends Component {
     }
 
     this.stage.size({ width, height });
+    if (this.contoursLayer) {
+      this.contoursLayer.clip({ x: 0, y: 0, width, height });
+    }
+    if (this.markerLayer) {
+      this.markerLayer.clip({ x: 0, y: 0, width, height });
+    }
     this.renderContours();
   }
 

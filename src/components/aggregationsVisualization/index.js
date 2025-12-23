@@ -13,6 +13,7 @@ import CategoricalScatterPlot from "./categoricalScatterPlot";
 import DensityPlot from "./densityPlot";
 import OncoPrintPlot from "./oncoPrintPlot";
 import PlotTooltip from "./plotTooltip";
+import signatureMetadata from "../../translations/en/signatures.json";
 import {
   margins,
   calculateDynamicMargins,
@@ -21,12 +22,12 @@ import {
   parseGeneExpression,
   evaluateGeneExpression,
   getValue,
-  getColumnType,
   getColumnLabel,
   numericColumns,
   categoricalColumns,
   allColumns,
   openCaseInNewTab,
+  discoverAttributes,
 } from "./helpers";
 
 class AggregationsVisualization extends Component {
@@ -34,26 +35,55 @@ class AggregationsVisualization extends Component {
   cachedConfig = null;
   cachedConfigKey = null;
   colorControlsRef = null;
+  _cachedRecords = null;
+  _cachedDynamicColumns = null;
 
-  state = {
-    xVariable: numericColumns[0].dataIndex,
-    yVariable: numericColumns[1].dataIndex,
-    colorVariable: categoricalColumns[0].dataIndex,
-    colorByVariable: null,
-    selectedGene: null,
-    selectedGeneSet: "top20",
-    appliedGeneExpression: "",
-    tooltip: {
-      visible: false,
-      x: -1000,
-      y: -1000,
-      text: [],
-    },
-    computingAlterations: false,
-    selectedPairs: [],
-    scatterPlotType: "scatter",
-    oncoPrintSortMethod: "memo",
-  };
+  constructor(props) {
+    super(props);
+    
+    // Initialize with dynamic columns
+    const dynamicColumns = discoverAttributes(props.filteredRecords || []);
+    const xVarDefault = dynamicColumns.numericColumns.length > 0 
+      ? dynamicColumns.numericColumns[0].dataIndex 
+      : numericColumns[0].dataIndex;
+    const yVarDefault = dynamicColumns.numericColumns.length > 1 
+      ? dynamicColumns.numericColumns[1].dataIndex 
+      : numericColumns[1].dataIndex;
+    const colorVarDefault = dynamicColumns.categoricalColumns.length > 0 
+      ? dynamicColumns.categoricalColumns[0].dataIndex 
+      : categoricalColumns[0].dataIndex;
+
+    this.state = {
+      xVariable: xVarDefault,
+      yVariable: yVarDefault,
+      colorVariable: colorVarDefault,
+      colorByVariable: null,
+      selectedGene: null,
+      selectedGeneSet: "top20",
+      appliedGeneExpression: "",
+      tooltip: {
+        visible: false,
+        x: -1000,
+        y: -1000,
+        text: [],
+      },
+      computingAlterations: false,
+      selectedPairs: [],
+      scatterPlotType: "scatter",
+      oncoPrintSortMethod: "memo",
+    };
+  }
+
+  getDynamicColumns() {
+    const { filteredRecords = [] } = this.props;
+    // Simple memoization to avoid re-computation on every render
+    if (this._cachedRecords === filteredRecords && this._cachedDynamicColumns) {
+      return this._cachedDynamicColumns;
+    }
+    this._cachedRecords = filteredRecords;
+    this._cachedDynamicColumns = discoverAttributes(filteredRecords);
+    return this._cachedDynamicColumns;
+  }
 
   scatterIdAccessor = (d) => d.pair;
 
@@ -62,6 +92,47 @@ class AggregationsVisualization extends Component {
     if (dataPoint?.pair) {
       openCaseInNewTab(dataPoint.pair, dataset);
     }
+  };
+
+  isSignatureVariable = (variable) => {
+    if (!variable) return false;
+    const varLower = variable.toLowerCase();
+    // Check if the variable name suggests it's a signature field
+    return varLower.includes('sbs') || varLower.includes('id_first') || varLower.includes('signature');
+  };
+
+  isSignatureValue = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    // Check if the value looks like a signature name (SBS1, ID3, etc.)
+    return /^(SBS|ID)\d+[a-z]?$/i.test(value);
+  };
+
+  getSignatureDescription = (signatureName) => {
+    if (!signatureName) return null;
+    const sig = signatureMetadata.metadata[signatureName];
+    return sig?.full || null;
+  };
+
+  enrichTooltipWithSignatures = (tooltipContent, xVariable, yVariable, xVal, yVal) => {
+    const enriched = [...tooltipContent];
+    
+    // Check xVal - either variable name suggests signature OR value looks like a signature
+    if (xVal && (this.isSignatureVariable(xVariable) || this.isSignatureValue(xVal))) {
+      const sigDesc = this.getSignatureDescription(xVal);
+      if (sigDesc) {
+        enriched.push({ label: "Aetiology", value: sigDesc, isSignature: true });
+      }
+    }
+    
+    // Check yVal - either variable name suggests signature OR value looks like a signature
+    if (yVal && (this.isSignatureVariable(yVariable) || this.isSignatureValue(yVal))) {
+      const sigDesc = this.getSignatureDescription(yVal);
+      if (sigDesc) {
+        enriched.push({ label: "Aetiology", value: sigDesc, isSignature: true });
+      }
+    }
+    
+    return enriched;
   };
 
   componentDidMount() {
@@ -75,8 +146,43 @@ class AggregationsVisualization extends Component {
     this.renderAxes();
   }
 
+  getColumnTypeForVariable(dataIndex) {
+    const dynamicColumns = this.getDynamicColumns();
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === dataIndex);
+    return col?.type || "numeric";
+  }
+
+  getOncoPrintConfig() {
+    const { xVariable, yVariable } = this.state;
+    const dynamicColumns = this.getDynamicColumns();
+    
+    const xCol = dynamicColumns.allColumns.find((c) => c.dataIndex === xVariable);
+    const yCol = dynamicColumns.allColumns.find((c) => c.dataIndex === yVariable);
+    
+    // Numeric mode for object attributes (paired with pair axis)
+    if (xCol?.type === 'object') {
+      return { mode: 'numeric', objectAttribute: xVariable };
+    }
+    if (yCol?.type === 'object') {
+      return { mode: 'numeric', objectAttribute: yVariable };
+    }
+    
+    // Categorical mode for driver_gene
+    return { mode: 'categorical', objectAttribute: null };
+  }
+
   getPlotType() {
     const { xVariable, yVariable, selectedGeneSet } = this.state;
+    const dynamicColumns = this.getDynamicColumns();
+
+    const xCol = dynamicColumns.allColumns.find((c) => c.dataIndex === xVariable);
+    const yCol = dynamicColumns.allColumns.find((c) => c.dataIndex === yVariable);
+    
+    // OncoPrint for object × pair (numeric mode heatmap)
+    if ((xCol?.type === 'object' && yVariable === 'pair') || 
+        (yCol?.type === 'object' && xVariable === 'pair')) {
+      return "oncoprint";
+    }
 
     // OncoPrint: Pair × Driver Gene (with gene set selected) - check BEFORE generic pair check
     if (xVariable === "driver_gene" && yVariable === "pair" && selectedGeneSet) {
@@ -90,8 +196,10 @@ class AggregationsVisualization extends Component {
       return "density";
     }
 
-    const xType = getColumnType(xVariable);
-    const yType = getColumnType(yVariable);
+    // For object types paired with non-pair variables, treat as categorical
+    // (getValue will flatten object to boolean categories: keys where value > 0)
+    const xType = xCol?.type === 'object' ? 'categorical' : this.getColumnTypeForVariable(xVariable);
+    const yType = yCol?.type === 'object' ? 'categorical' : this.getColumnTypeForVariable(yVariable);
 
     if (xType === "categorical" && yType === "categorical") {
       return "stacked-bar";
@@ -120,8 +228,8 @@ class AggregationsVisualization extends Component {
         .style("text-anchor", "end");
       yAxisContainer.call(d3.axisLeft(yScale));
     } else if (plotType === "categorical-scatter") {
-      const xType = getColumnType(this.state.xVariable);
-      if (xType === "categorical") {
+      const { xIsCategorical } = config;
+      if (xIsCategorical) {
         xAxisContainer.call(d3.axisBottom(xScale))
           .selectAll("text")
           .attr("transform", "rotate(-45)")
@@ -138,15 +246,20 @@ class AggregationsVisualization extends Component {
   }
 
   expandRecordsByCategory(records, variable) {
+    const dynamicColumns = this.getDynamicColumns();
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === variable);
+    
     const expandableCategories = ["alteration_type", "driver_gene"];
-    if (!expandableCategories.includes(variable)) {
+    const isExpandable = expandableCategories.includes(variable) || col?.type === 'object';
+    
+    if (!isExpandable) {
       return records;
     }
 
     const expandedRecords = [];
     records.forEach((record) => {
-      const categories = getValue(record, variable);
-      if (categories && categories.length > 0) {
+      const categories = getValue(record, variable, dynamicColumns);
+      if (categories && Array.isArray(categories) && categories.length > 0) {
         categories.forEach((cat) => {
           expandedRecords.push({
             ...record,
@@ -160,11 +273,16 @@ class AggregationsVisualization extends Component {
   }
 
   getEffectiveValue(record, variable) {
+    const dynamicColumns = this.getDynamicColumns();
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === variable);
+    
     const expandableCategories = ["alteration_type", "driver_gene"];
-    if (expandableCategories.includes(variable) && record._expandedVariable === variable) {
+    const isExpandable = expandableCategories.includes(variable) || col?.type === 'object';
+    
+    if (isExpandable && record._expandedVariable === variable) {
       return record._expandedCategory;
     }
-    return getValue(record, variable);
+    return getValue(record, variable, dynamicColumns);
   }
 
   getGenesForSelectedSet(allGeneFrequencies) {
@@ -372,9 +490,11 @@ class AggregationsVisualization extends Component {
       this.cachedConfigKey = cacheKey;
       return config;
     } else if (plotType === "categorical-scatter") {
-      const xType = getColumnType(xVariable);
-      const catVar = xType === "categorical" ? xVariable : yVariable;
-      const numVar = xType === "categorical" ? yVariable : xVariable;
+      const xType = this.getColumnTypeForVariable(xVariable);
+      // Treat 'object' type as categorical (object keys are categories)
+      const xIsCategorical = xType === "categorical" || xType === "object";
+      const catVar = xIsCategorical ? xVariable : yVariable;
+      const numVar = xIsCategorical ? yVariable : xVariable;
 
       const catRecords = this.expandRecordsByCategory(filteredRecords, catVar);
 
@@ -401,15 +521,15 @@ class AggregationsVisualization extends Component {
       }
 
       // Calculate dynamic margins for categorical-scatter
-      const isXRotated = xType === "categorical";
-      const isYCategorical = xType !== "categorical";
+      const isXRotated = xIsCategorical;
+      const isYCategorical = !xIsCategorical;
       currentMargins = calculateDynamicMargins(categories, isXRotated, isYCategorical);
       stageWidth = containerWidth - 2 * currentMargins.gapX;
       stageHeight = height - 2 * currentMargins.gapY - currentMargins.gapYBottom;
       panelHeight = stageHeight - currentMargins.gapLegend;
 
       const minRequiredWidth = categories.length * MIN_CATEGORY_WIDTH;
-      if (xType === "categorical" && minRequiredWidth > stageWidth) {
+      if (xIsCategorical && minRequiredWidth > stageWidth) {
         panelWidth = minRequiredWidth;
         scrollable = true;
       }
@@ -430,7 +550,7 @@ class AggregationsVisualization extends Component {
         };
       });
 
-      if (xType === "categorical") {
+      if (xIsCategorical) {
         xScale = d3.scaleBand()
           .domain(categories)
           .range([0, panelWidth])
@@ -457,7 +577,7 @@ class AggregationsVisualization extends Component {
       const config = {
         containerWidth, width: panelWidth + 2 * currentMargins.gapX, height, panelWidth, panelHeight,
         xScale, yScale, plotType, categoryData,
-        catVar, numVar, xVariable, yVariable,
+        catVar, numVar, xVariable, yVariable, xIsCategorical,
         margins: currentMargins,
       };
       this.cachedConfig = config;
@@ -467,13 +587,22 @@ class AggregationsVisualization extends Component {
       const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
       const yValues = filteredRecords.map((d) => getValue(d, yVariable)).filter((v) => v != null && !isNaN(v));
 
+      const yMax = Math.ceil(d3.quantile(yValues, 0.99) || 1);
+
+      // Calculate dynamic margins for numeric y-axis labels
+      currentMargins = calculateDynamicMargins([], false, false, { yMax, yFormat: ",.2f" });
+      stageWidth = containerWidth - 2 * currentMargins.gapX;
+      stageHeight = height - 2 * currentMargins.gapY - currentMargins.gapYBottom;
+      panelHeight = stageHeight - currentMargins.gapLegend;
+      panelWidth = stageWidth;
+
       xScale = d3.scaleLinear()
         .domain([0, Math.ceil(d3.quantile(xValues, 0.99) || 1)])
         .range([0, panelWidth])
         .clamp(true);
 
       yScale = d3.scaleLinear()
-        .domain([0, Math.ceil(d3.quantile(yValues, 0.99) || 1)])
+        .domain([0, yMax])
         .range([panelHeight, 0])
         .clamp(true);
 
@@ -505,6 +634,10 @@ class AggregationsVisualization extends Component {
         { label: getColumnLabel(xVariable), value: d3.format(",.2f")(xVal) },
         { label: getColumnLabel(yVariable), value: d3.format(",.2f")(yVal) },
       ];
+      
+      // Enrich with signature descriptions if applicable
+      tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, xVal, yVal);
+      
       tooltipX = xScale(xVal);
       tooltipY = yScale(yVal);
     } else if (plotType === "categorical-scatter") {
@@ -514,11 +647,15 @@ class AggregationsVisualization extends Component {
         { label: "Std Error", value: d3.format(",.3f")(d.stdErr) },
         { label: "Count", value: d.count },
       ];
-      const xType = getColumnType(xVariable);
-      if (xType === "categorical") {
+      
+      // Determine which variable is categorical and enrich if it's a signature
+      const { xIsCategorical } = config;
+      if (xIsCategorical) {
+        tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, d.category, null);
         tooltipX = xScale(d.category) + xScale.bandwidth() / 2;
         tooltipY = yScale(d.mean);
       } else {
+        tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, null, d.category);
         tooltipX = xScale(d.mean);
         tooltipY = yScale(d.category) + yScale.bandwidth() / 2;
       }
@@ -544,11 +681,14 @@ class AggregationsVisualization extends Component {
     const stackCategory = layer.key;
     const count = d.data[stackCategory];
 
-    const tooltipContent = [
+    let tooltipContent = [
       { label: getColumnLabel(xVariable), value: category },
       { label: getColumnLabel(yVariable), value: stackCategory },
       { label: "Count", value: count },
     ];
+
+    // Enrich with signature descriptions if applicable
+    tooltipContent = this.enrichTooltipWithSignatures(tooltipContent, xVariable, yVariable, category, stackCategory);
 
     const barX = xScale(category) + xScale.bandwidth() / 2;
     const barY = yScale(d[1]);
@@ -578,7 +718,7 @@ class AggregationsVisualization extends Component {
 
   handleVariableChange = (variable, value) => {
     if (variable === "xVariable" && value === "pair") {
-      const currentYType = getColumnType(this.state.yVariable);
+      const currentYType = this.getColumnTypeForVariable(this.state.yVariable);
       if (currentYType === "categorical" || currentYType === "pair") {
         this.setState({
           xVariable: value,
@@ -710,6 +850,7 @@ class AggregationsVisualization extends Component {
                       plotType={plotType}
                       pathwayMap={this.props.pathwayMap}
                       selectedGeneSet={this.state.selectedGeneSet}
+                      dynamicColumns={this.getDynamicColumns()}
                       onYChange={(val) => this.handleVariableChange("yVariable", val)}
                       onPairsChange={(vals) => this.setState({ selectedPairs: vals })}
                       onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
@@ -756,14 +897,18 @@ class AggregationsVisualization extends Component {
                    }}
                  >
                    {plotType === "oncoprint" ? (
-                     <OncoPrintPlot
-                       width={width}
-                       height={height}
-                       filteredRecords={filteredRecords}
-                       geneSet={this.getGenesForSelectedSet(this.computeGeneFrequencies(filteredRecords))}
-                       onPairClick={this.handlePointClick}
-                       enableMemoSort={this.state.oncoPrintSortMethod === "memo"}
-                     />
+                      <OncoPrintPlot
+                        width={width}
+                        height={height}
+                        filteredRecords={filteredRecords}
+                        geneSet={this.getOncoPrintConfig().mode === 'numeric' 
+                          ? [] 
+                          : this.getGenesForSelectedSet(this.computeGeneFrequencies(filteredRecords))}
+                        mode={this.getOncoPrintConfig().mode}
+                        objectAttribute={this.getOncoPrintConfig().objectAttribute}
+                        onPairClick={this.handlePointClick}
+                        enableMemoSort={this.state.oncoPrintSortMethod === "memo"}
+                      />
                    ) : (
                      <svg
                        width={width}
@@ -850,6 +995,7 @@ class AggregationsVisualization extends Component {
                     plotType={plotType}
                     pathwayMap={this.props.pathwayMap}
                     selectedGeneSet={this.state.selectedGeneSet}
+                    dynamicColumns={this.getDynamicColumns()}
                     onXChange={(val) => this.handleVariableChange("xVariable", val)}
                     onYChange={(val) => this.handleVariableChange("yVariable", val)}
                     onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
