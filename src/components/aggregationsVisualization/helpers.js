@@ -263,7 +263,11 @@ export const openCaseInNewTab = (pair, dataset) => {
   window.open(url.toString(), "_blank");
 };
 
-export const getColumnType = (dataIndex) => {
+export const getColumnType = (dataIndex, dynamicColumns = null) => {
+  if (dynamicColumns) {
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === dataIndex);
+    return col?.type || "numeric";
+  }
   const col = allColumns.find((c) => c.dataIndex === dataIndex);
   return col?.type || "numeric";
 };
