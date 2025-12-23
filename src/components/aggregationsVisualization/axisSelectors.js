@@ -118,8 +118,8 @@ class AxisSelectors extends Component {
         .filter((g) => g.length > 0)
     )];
 
-    if (genes.length > 20) {
-      message.warning(`Maximum 20 genes allowed. You have ${genes.length} genes.`);
+    if (genes.length > 100) {
+      message.warning(`Maximum 100 genes allowed. You have ${genes.length} genes.`);
     }
   };
 
@@ -142,8 +142,8 @@ class AxisSelectors extends Component {
       return;
     }
 
-    if (genes.length > 20) {
-      message.error(`Maximum 20 genes allowed. You have ${genes.length} genes.`);
+    if (genes.length > 100) {
+      message.error(`Maximum 100 genes allowed. You have ${genes.length} genes.`);
       return;
     }
 
@@ -207,7 +207,7 @@ class AxisSelectors extends Component {
         {showCustomGeneInput && variable === "driver_gene" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 4 }}>
             <Input.TextArea
-              placeholder="Enter genes separated by commas (max 20). Example: TP53, BRCA1, EGFR"
+              placeholder="Enter genes separated by commas (max 100). Example: TP53, BRCA1, EGFR"
               value={customGenes}
               onChange={(e) => this.handleCustomGenesChange(e, forXAxis)}
               rows={3}
