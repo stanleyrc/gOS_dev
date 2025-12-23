@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Konva from "konva";
 import { parseDriverGenes } from "../../helpers/geneAggregations";
+import signatureMetadata from "../../translations/en/signatures.json";
 
 const ALTERATION_COLORS = {
   missense: "#3498db",
@@ -160,6 +161,18 @@ class OncoPrintPlot extends Component {
     this.scheduleRender();
   }
 
+  isSignatureValue = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    // Check if the value looks like a signature name (SBS1, ID3, etc.)
+    return /^(SBS|ID)\d+[a-z]?$/i.test(value);
+  };
+
+  getSignatureDescription = (signatureName) => {
+    if (!signatureName) return null;
+    const sig = signatureMetadata.metadata[signatureName];
+    return sig?.full || null;
+  };
+
   getCellFromPosition(mouseX, mouseY) {
     if (!this.layoutParams) return null;
 
@@ -240,6 +253,16 @@ class OncoPrintPlot extends Component {
       const { value } = cellData;
       const valueText = value !== undefined && value !== null ? value.toFixed(3) : "No value";
       textContent = `${pair}\n${gene}\n${valueText}`;
+      
+      // Add aetiology if gene or pair is a signature
+      const pairSigDesc = this.getSignatureDescription(pair);
+      if (pairSigDesc) {
+        textContent += `\nAetiology: ${pairSigDesc}`;
+      }
+      const geneSigDesc = this.getSignatureDescription(gene);
+      if (geneSigDesc) {
+        textContent += `\nAetiology: ${geneSigDesc}`;
+      }
     } else {
       const { alterations } = cellData;
       const altText =
@@ -247,6 +270,16 @@ class OncoPrintPlot extends Component {
           ? alterations.map((a) => a.type).join(", ")
           : "No alteration";
       textContent = `${pair}\n${gene}\n${altText}`;
+      
+      // Add aetiology if gene or pair is a signature
+      const pairSigDesc = this.getSignatureDescription(pair);
+      if (pairSigDesc) {
+        textContent += `\nAetiology: ${pairSigDesc}`;
+      }
+      const geneSigDesc = this.getSignatureDescription(gene);
+      if (geneSigDesc) {
+        textContent += `\nAetiology: ${geneSigDesc}`;
+      }
     }
 
     this.tooltipText.text(textContent);
