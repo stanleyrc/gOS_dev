@@ -3,7 +3,10 @@ import { Typography, Button } from "antd";
 import { ZoomOutOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import KonvaScatter from "../konvaScatter";
-import { TREATMENT_COLORS, SOC_CLASSES } from "./constants";
+import { TREATMENT_COLORS, PLOT_CONFIG } from "./constants";
+import { isStandardOfCareTreatment, collectTrialPoints } from "./trialDataUtils";
+import TrialsPlotLegend from "./trialsPlotLegend";
+import TrialsPlotAxes from "./trialsPlotAxes";
 
 const { Text } = Typography;
 
@@ -37,8 +40,8 @@ class TrialsPlotView extends Component {
 
   updateContainerWidth = () => {
     if (this.containerRef.current) {
-      const width = this.containerRef.current.offsetWidth - 220;
-      this.setState({ containerWidth: Math.max(width, 400) });
+      const width = this.containerRef.current.offsetWidth - PLOT_CONFIG.CONTAINER_OFFSET;
+      this.setState({ containerWidth: Math.max(width, PLOT_CONFIG.MIN_WIDTH) });
     }
   };
 
@@ -68,7 +71,7 @@ class TrialsPlotView extends Component {
     const currentRange = xMax - xMin;
 
     // Minimum zoom level (1 month)
-    const minRange = 1 / 12;
+    const minRange = PLOT_CONFIG.MIN_ZOOM_MONTHS;
     // Maximum zoom level (full data range)
     const maxRange = dataXMax - dataXMin;
 
@@ -108,106 +111,7 @@ class TrialsPlotView extends Component {
 
   // Check if a treatment class is Standard of Care (for hollow points)
   isStandardOfCare = (d) => {
-    return SOC_CLASSES.includes(d.treatmentClass);
-  };
-
-  // Validate outcome unit based on outcome type
-  isValidOutcome = (outcome, outcomeType) => {
-    if (outcome.value == null) return false;
-
-    const unitLower = (outcome.unit || "").toLowerCase();
-
-    // For ORR: accept percentage/proportion units
-    if (outcomeType === "ORR") {
-      return ["percent", "proportion", "participant", "patient", "probability", "rate", "%"].some(
-        (w) => unitLower.includes(w)
-      );
-    }
-
-    // For PFS/OS: reject percentage/proportion units, require time units
-    if (outcomeType === "PFS" || outcomeType === "OS") {
-      // Reject non-time units
-      if (
-        unitLower.includes("percent") ||
-        unitLower.includes("proportion") ||
-        unitLower.includes("participant") ||
-        unitLower.includes("patient") ||
-        unitLower.includes("probability") ||
-        unitLower.includes("rate") ||
-        unitLower.includes("%")
-      ) {
-        return false;
-      }
-
-      // Require time units
-      const isTimeUnit =
-        unitLower.includes("month") ||
-        unitLower.includes("day") ||
-        unitLower.includes("week") ||
-        unitLower.includes("year");
-      return isTimeUnit;
-    }
-
-    return false;
-  };
-
-  // Normalize time values to months (for PFS/OS)
-  normalizeToMonths = (value, unit) => {
-    if (value == null || value === undefined) return null;
-    if (!unit) return value;
-
-    const unitLower = unit.toLowerCase().trim();
-
-    // Already in months
-    if (unitLower.includes("month")) return value;
-
-    // Convert from days
-    if (unitLower.includes("day")) return value / 30.44;
-
-    // Convert from weeks
-    if (unitLower.includes("week")) return value / 4.33;
-
-    // Convert from years
-    if (unitLower.includes("year")) return value * 12;
-
-    // Unknown unit, return as-is
-    return value;
-  };
-
-  // Create a unique key for a point to avoid duplicates
-  createPointKey = (trial, outcome) => {
-    return `${trial.nct_id}|${outcome.arm_title}|${outcome.outcome_type}`;
-  };
-
-  // Create a point object from trial and outcome
-  createPoint = (trial, outcome, isORR) => {
-    const rawValue = parseFloat(outcome.value);
-    if (isNaN(rawValue)) return null;
-
-    const value = isORR ? rawValue : this.normalizeToMonths(rawValue, outcome.unit);
-    const ciLower = isORR ? outcome.ci_lower : this.normalizeToMonths(outcome.ci_lower, outcome.unit);
-    const ciUpper = isORR ? outcome.ci_upper : this.normalizeToMonths(outcome.ci_upper, outcome.unit);
-
-    // Skip negative values after normalization
-    if (value < 0) return null;
-
-    const year = this.parseCompletionYear(trial.completion_date);
-    if (!year || isNaN(year)) return null;
-
-    const armTitle = outcome.arm_title || "";
-    const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
-
-    return {
-      x: year,
-      y: value,
-      trial,
-      outcome,
-      treatmentClass,
-      armTitle,
-      nctId: trial.nct_id,
-      ciLower: ciLower != null && ciLower >= 0 ? ciLower : null,
-      ciUpper: ciUpper != null && ciUpper >= 0 ? ciUpper : null,
-    };
+    return isStandardOfCareTreatment(d.treatmentClass);
   };
 
   getPlotData = () => {
@@ -224,74 +128,11 @@ class TrialsPlotView extends Component {
       return this.cachedPlotData;
     }
 
-    const points = [];
-    const socPoints = [];
-    const addedSocKeys = new Set();
-    const isORR = outcomeType === "ORR";
-
-    // If showSocAlways is enabled, first collect ALL SoC points from all trials
-    if (showSocAlways && allTrials) {
-      allTrials.forEach((trial) => {
-        // Skip adjuvant and neoadjuvant trials for SoC comparison
-        if (trial.line_of_therapy === "ADJUVANT" || trial.line_of_therapy === "NEOADJUVANT") {
-          return;
-        }
-
-        const completionDate = trial.completion_date;
-        if (!completionDate) return;
-
-        const validOutcomes = (trial.outcomes || []).filter(
-          (o) => o.outcome_type === outcomeType && this.isValidOutcome(o, outcomeType)
-        );
-        if (validOutcomes.length === 0) return;
-
-        validOutcomes.forEach((outcome) => {
-          const armTitle = outcome.arm_title || "";
-          const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
-
-          // Only include SoC points
-          if (!this.isStandardOfCare({ treatmentClass })) return;
-
-          const key = this.createPointKey(trial, outcome);
-          addedSocKeys.add(key);
-
-          const point = this.createPoint(trial, outcome, isORR);
-          if (point) {
-            socPoints.push(point);
-          }
-        });
-      });
-    }
-
-    // Add points from filtered trials (normal filtering)
-    trials.forEach((trial) => {
-      const completionDate = trial.completion_date;
-      if (!completionDate) return;
-
-      const year = this.parseCompletionYear(completionDate);
-      if (!year || isNaN(year)) return;
-
-      // Filter outcomes by type AND valid units
-      const outcomes = (trial.outcomes || []).filter(
-        (o) => o.outcome_type === outcomeType && this.isValidOutcome(o, outcomeType)
-      );
-      if (outcomes.length === 0) return;
-
-      outcomes.forEach((outcome) => {
-        const key = this.createPointKey(trial, outcome);
-
-        // Skip if already added as SoC point
-        if (addedSocKeys.has(key)) return;
-
-        const point = this.createPoint(trial, outcome, isORR);
-        if (point) {
-          points.push(point);
-        }
-      });
+    const allPoints = collectTrialPoints(trials, outcomeType, {
+      allTrials,
+      showSocAlways,
+      excludeAdjuvant: true,
     });
-
-    // Merge SoC points with filtered points
-    const allPoints = showSocAlways ? [...socPoints, ...points] : points;
 
     // Cache the results
     this.cachedPlotData = allPoints;
@@ -305,32 +146,11 @@ class TrialsPlotView extends Component {
     return allPoints;
   };
 
-  parseCompletionYear = (dateStr) => {
-    if (!dateStr) return null;
-    // Year only: add small random offset to spread points
-    if (dateStr.match(/^\d{4}$/)) {
-      return parseInt(dateStr, 10) + 0.5;
-    }
-    // Year-month: convert to decimal year
-    if (dateStr.match(/^\d{4}-\d{2}$/)) {
-      const [year, month] = dateStr.split("-");
-      return parseInt(year, 10) + (parseInt(month, 10) - 0.5) / 12;
-    }
-    // Full date: convert to precise decimal year
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = dateStr.split("-");
-      const monthDecimal = (parseInt(month, 10) - 1) / 12;
-      const dayDecimal = (parseInt(day, 10) - 1) / 365;
-      return parseInt(year, 10) + monthDecimal + dayDecimal;
-    }
-    return null;
-  };
-
   getScales = (points) => {
     const { containerWidth, zoomXMin, zoomXMax } = this.state;
     const { outcomeType } = this.props;
-    const plotHeight = 550;
-    const margins = { top: 20, right: 20, bottom: 40, left: 60 };
+    const plotHeight = PLOT_CONFIG.HEIGHT;
+    const margins = PLOT_CONFIG.MARGINS;
 
     const xExtent = d3.extent(points, (d) => d.x);
     const dataXMin = Math.floor(xExtent[0] || 2015) - 1;
@@ -353,7 +173,7 @@ class TrialsPlotView extends Component {
     const yExtent = d3.extent(yValues);
 
     const isORR = outcomeType === "ORR";
-    const yMax = isORR ? 100 : (yExtent[1] || 50) * 1.15;
+    const yMax = isORR ? 100 : (yExtent[1] || 50) * PLOT_CONFIG.Y_AXIS_PADDING;
 
     const xScale = d3
       .scaleLinear()
@@ -392,118 +212,6 @@ class TrialsPlotView extends Component {
     if (onTrialClick) {
       onTrialClick(point.trial, point.outcome);
     }
-  };
-
-  groupByTreatmentClass = (points) => {
-    const groups = {};
-    points.forEach((p) => {
-      if (!groups[p.treatmentClass]) {
-        groups[p.treatmentClass] = [];
-      }
-      groups[p.treatmentClass].push(p);
-    });
-    return groups;
-  };
-
-  renderLegend = () => {
-    const points = this.getPlotData();
-    const groups = this.groupByTreatmentClass(points);
-    const color = (className) => TREATMENT_COLORS[className] || "#7F8C8D";
-
-    return Object.keys(groups).sort().map((className) => {
-      const isSoC = SOC_CLASSES.includes(className);
-      return (
-        <div key={className} style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-          <div
-            style={{
-              width: 12,
-              height: 12,
-              backgroundColor: isSoC ? "transparent" : color(className),
-              marginRight: 8,
-              borderRadius: "50%",
-              border: isSoC ? `2px solid ${color(className)}` : "none",
-            }}
-          />
-          <Text style={{ fontSize: 12 }}>{className}{isSoC ? " (SoC)" : ""}</Text>
-        </div>
-      );
-    });
-  };
-
-  renderAxes = (xScale, yScale, plotHeight, margins) => {
-    const { outcomeType } = this.props;
-    const { containerWidth } = this.state;
-
-    // Generate only integer year ticks (like Chart.js afterBuildTicks)
-    // When zoomed in past a single year, no ticks will be shown
-    const [xMin, xMax] = xScale.domain();
-    const xTicks = [];
-    const startYear = Math.ceil(xMin);
-    const endYear = Math.floor(xMax);
-    for (let year = startYear; year <= endYear; year++) {
-      xTicks.push(year);
-    }
-
-    const yTicks = yScale.ticks(8);
-
-    const isORR = outcomeType === "ORR";
-    const yLabel = isORR ? `${outcomeType} (%)` : `${outcomeType} (months)`;
-
-    return (
-      <svg
-        width={containerWidth}
-        height={plotHeight}
-        style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
-      >
-        {xTicks.map((tick) => (
-          <g key={`x-${tick}`} transform={`translate(${xScale(tick)}, ${plotHeight - margins.bottom})`}>
-            <line y2="6" stroke="#000" />
-            <text y="20" textAnchor="middle" style={{ fontSize: 11 }}>
-              {tick}
-            </text>
-          </g>
-        ))}
-        <text
-          x={containerWidth / 2}
-          y={plotHeight - 5}
-          textAnchor="middle"
-          style={{ fontSize: 12 }}
-        >
-          Completion Year
-        </text>
-
-        {yTicks.map((tick) => (
-          <g key={`y-${tick}`} transform={`translate(${margins.left}, ${yScale(tick)})`}>
-            <line x2="-6" stroke="#000" />
-            <text x="-10" dy="0.32em" textAnchor="end" style={{ fontSize: 11 }}>
-              {tick}
-            </text>
-          </g>
-        ))}
-        <text
-          transform={`translate(15, ${plotHeight / 2}) rotate(-90)`}
-          textAnchor="middle"
-          style={{ fontSize: 12 }}
-        >
-          {yLabel}
-        </text>
-
-        <line
-          x1={margins.left}
-          y1={plotHeight - margins.bottom}
-          x2={containerWidth - margins.right}
-          y2={plotHeight - margins.bottom}
-          stroke="#000"
-        />
-        <line
-          x1={margins.left}
-          y1={margins.top}
-          x2={margins.left}
-          y2={plotHeight - margins.bottom}
-          stroke="#000"
-        />
-      </svg>
-    );
   };
 
   render() {
@@ -546,7 +254,12 @@ class TrialsPlotView extends Component {
             </div>
           )}
           <div style={{ position: "relative", height: plotHeight }}>
-            {this.renderAxes(xScale, yScale, plotHeight, margins)}
+            <TrialsPlotAxes
+              xScale={xScale}
+              yScale={yScale}
+              containerWidth={containerWidth}
+              outcomeType={this.props.outcomeType}
+            />
             <KonvaScatter
               data={points}
               width={containerWidth}
@@ -572,19 +285,14 @@ class TrialsPlotView extends Component {
               enablePan={true}
               onZoomChange={this.handleZoomChange}
               zoomLimits={this.getDataXExtent()}
-              minZoomRange={1 / 12}
+              minZoomRange={PLOT_CONFIG.MIN_ZOOM_MONTHS}
             />
           </div>
           <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block" }}>
             Scroll to zoom, drag to pan
           </Text>
         </div>
-        <div style={{ width: 200, flexShrink: 0 }}>
-          <Text strong style={{ marginBottom: 8, display: "block" }}>
-            Legend
-          </Text>
-          {this.renderLegend()}
-        </div>
+        <TrialsPlotLegend points={points} />
       </div>
     );
   }

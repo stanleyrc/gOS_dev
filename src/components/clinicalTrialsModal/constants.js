@@ -38,3 +38,69 @@ export const LINE_OF_THERAPY_OPTIONS = [
 ];
 
 export const OUTCOME_TYPES = ['PFS', 'OS', 'ORR'];
+
+// Plot configuration constants
+export const PLOT_CONFIG = {
+  HEIGHT: 550,
+  MARGINS: { top: 20, right: 20, bottom: 40, left: 60 },
+  CONTAINER_OFFSET: 220,
+  MIN_WIDTH: 400,
+  MIN_ZOOM_MONTHS: 1 / 12,
+  Y_AXIS_PADDING: 1.15,
+};
+
+// Time conversion constants
+export const TIME_CONVERSION = {
+  DAYS_PER_MONTH: 30.44,
+  WEEKS_PER_MONTH: 4.33,
+  MONTHS_PER_YEAR: 12,
+};
+
+// Unit validation arrays
+export const PERCENTAGE_UNITS = ["percent", "proportion", "participant", "patient", "probability", "rate", "%"];
+export const TIME_UNITS = ["month", "day", "week", "year"];
+
+// Default filter state factory
+export const getDefaultFilterState = (includeCancerType = false, cancerType = "") => ({
+  cancerTypeFilter: includeCancerType ? cancerType : "",
+  biomarkerInput: "",
+  biomarkerFilters: [],
+  phaseFilter: null,
+  statusFilter: null,
+  lineOfTherapyFilter: null,
+  nctIdInput: "",
+  nctIdFilters: [],
+  treatmentClassFilter: null,
+  cancerStageFilter: null,
+  priorTkiFilter: false,
+  priorIoFilter: false,
+  priorPlatinumFilter: false,
+  showSocAlways: false,
+});
+
+// Biomarker parsing helper
+export const parseBiomarkerFilter = (filterStr) => {
+  if (!filterStr || !filterStr.trim()) return [];
+  return filterStr
+    .split(",")
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0)
+    .map((term) => {
+      if (term.endsWith("+")) {
+        return { target: term.slice(0, -1).toUpperCase(), status: "POSITIVE" };
+      } else if (term.endsWith("-")) {
+        return { target: term.slice(0, -1).toUpperCase(), status: "NEGATIVE" };
+      } else {
+        return { target: term.toUpperCase(), status: null };
+      }
+    });
+};
+
+// Generic options extractor
+export const getUniqueOptionsFromTrials = (trials, extractorFn) => {
+  const values = new Set();
+  trials.forEach((trial) => extractorFn(trial, values));
+  return Array.from(values)
+    .sort()
+    .map((v) => ({ label: v, value: v }));
+};
