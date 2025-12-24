@@ -11,12 +11,17 @@ class TrialsPlotView extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      containerWidth: 900,
+      containerWidth: null, // Start as null to detect first render
       // Zoom state - track the visible X range
       zoomXMin: null,
       zoomXMax: null,
     };
     this.containerRef = React.createRef();
+    // Cache for computed data
+    this.cachedPlotData = null;
+    this.cachedDataExtent = null;
+    this.lastTrials = null;
+    this.lastOutcomeType = null;
   }
 
   componentDidMount() {
@@ -35,10 +40,19 @@ class TrialsPlotView extends Component {
     }
   };
 
+  // Memoized data extent - only recalculates when trials/outcomeType change
   getDataXExtent = () => {
+    const { trials, outcomeType } = this.props;
+
+    // Use cached extent if data hasn't changed
+    if (this.cachedDataExtent && this.lastTrials === trials && this.lastOutcomeType === outcomeType) {
+      return this.cachedDataExtent;
+    }
+
     const points = this.getPlotData();
     const xExtent = d3.extent(points, (d) => d.x);
-    return [Math.floor(xExtent[0] || 2015) - 1, Math.ceil(xExtent[1] || 2025) + 1];
+    this.cachedDataExtent = [Math.floor(xExtent[0] || 2015) - 1, Math.ceil(xExtent[1] || 2025) + 1];
+    return this.cachedDataExtent;
   };
 
   handleZoomChange = ({ xMin, xMax }) => {
@@ -91,6 +105,12 @@ class TrialsPlotView extends Component {
 
   getPlotData = () => {
     const { trials, outcomeType } = this.props;
+
+    // Return cached data if inputs haven't changed
+    if (this.cachedPlotData && this.lastTrials === trials && this.lastOutcomeType === outcomeType) {
+      return this.cachedPlotData;
+    }
+
     const points = [];
 
     trials.forEach((trial) => {
@@ -123,6 +143,11 @@ class TrialsPlotView extends Component {
         });
       });
     });
+
+    // Cache the results
+    this.cachedPlotData = points;
+    this.lastTrials = trials;
+    this.lastOutcomeType = outcomeType;
 
     return points;
   };
@@ -315,6 +340,17 @@ class TrialsPlotView extends Component {
 
   render() {
     const { containerWidth } = this.state;
+
+    // Wait for container width to be measured
+    if (containerWidth === null) {
+      return (
+        <div ref={this.containerRef} style={{ display: "flex", gap: 16, width: "100%" }}>
+          <div style={{ flex: 1, minWidth: 0 }} />
+          <div style={{ width: 200 }} />
+        </div>
+      );
+    }
+
     const points = this.getPlotData();
     const { xScale, yScale, plotHeight, margins } = this.getScales(points);
     const isZoomed = this.isZoomed();
@@ -328,8 +364,8 @@ class TrialsPlotView extends Component {
     };
 
     return (
-      <div ref={this.containerRef} style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1 }}>
+      <div ref={this.containerRef} style={{ display: "flex", gap: 16, width: "100%" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           {isZoomed && (
             <div style={{ marginBottom: 8 }}>
               <Button
@@ -373,7 +409,7 @@ class TrialsPlotView extends Component {
             Scroll to zoom, drag to pan
           </Text>
         </div>
-        <div style={{ width: 200 }}>
+        <div style={{ width: 200, flexShrink: 0 }}>
           <Text strong style={{ marginBottom: 8, display: "block" }}>
             Legend
           </Text>

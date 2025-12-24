@@ -27,6 +27,8 @@ class KonvaScatter extends Component {
   hoveredGroupId = null;
   isPanning = false;
   lastPanPos = null;
+  pendingZoom = null;
+  zoomRafId = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -94,6 +96,9 @@ class KonvaScatter extends Component {
   }
 
   componentWillUnmount() {
+    if (this.zoomRafId) {
+      cancelAnimationFrame(this.zoomRafId);
+    }
     if (this.stage) {
       this.stage.destroy();
       this.stage = null;
@@ -405,8 +410,10 @@ class KonvaScatter extends Component {
     const pointer = this.stage.getPointerPosition();
     if (!pointer) return;
 
-    // Get current domain
-    const domain = xScale.domain();
+    // Get current domain - use pending zoom if available for smoother accumulation
+    const domain = this.pendingZoom
+      ? [this.pendingZoom.xMin, this.pendingZoom.xMax]
+      : xScale.domain();
     const range = xScale.range();
     const currentMin = domain[0];
     const currentMax = domain[1];
@@ -427,11 +434,21 @@ class KonvaScatter extends Component {
     const newRange = currentRange * factor;
 
     // Zoom towards mouse position
-    let newMin = mouseDataX - mouseRatio * newRange;
-    let newMax = mouseDataX + (1 - mouseRatio) * newRange;
+    const newMin = mouseDataX - mouseRatio * newRange;
+    const newMax = mouseDataX + (1 - mouseRatio) * newRange;
 
-    // Notify parent of zoom change
-    onZoomChange({ xMin: newMin, xMax: newMax });
+    // Store pending zoom and throttle with RAF
+    this.pendingZoom = { xMin: newMin, xMax: newMax };
+
+    if (!this.zoomRafId) {
+      this.zoomRafId = requestAnimationFrame(() => {
+        this.zoomRafId = null;
+        if (this.pendingZoom) {
+          onZoomChange(this.pendingZoom);
+          this.pendingZoom = null;
+        }
+      });
+    }
   };
 
   handlePanStart = (evt) => {
