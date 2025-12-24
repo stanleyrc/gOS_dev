@@ -288,6 +288,12 @@ class KonvaScatter extends Component {
       const shapeGroupId = getGroupId(dp);
       if (shapeGroupId === groupId) {
         shape.opacity(1);
+        // Store original stroke values before modifying (if not already stored)
+        // Use hasOwnProperty since original stroke could be undefined for filled shapes
+        if (!shape.hasOwnProperty('_originalStroke')) {
+          shape._originalStroke = shape.stroke();
+          shape._originalStrokeWidth = shape.strokeWidth();
+        }
         shape.stroke(this.props.hoverStroke);
         shape.strokeWidth(this.props.hoverStrokeWidth);
         sameGroupPoints.push({
@@ -299,6 +305,22 @@ class KonvaScatter extends Component {
         shape.opacity(0.2);
       }
     });
+
+    // Also dim error bars for non-hovered groups
+    if (this.errorBarsLayer) {
+      this.errorBarsLayer.children.forEach((errorBarGroup) => {
+        const dp = errorBarGroup.getAttr("dataPoint");
+        if (!dp) return;
+
+        const shapeGroupId = getGroupId(dp);
+        if (shapeGroupId === groupId) {
+          errorBarGroup.opacity(1);
+        } else {
+          errorBarGroup.opacity(0.2);
+        }
+      });
+      this.errorBarsLayer.batchDraw();
+    }
 
     this.hoverLayer.destroyChildren();
     if (sameGroupPoints.length > 1) {
@@ -317,11 +339,24 @@ class KonvaScatter extends Component {
   clearHoverEffect = () => {
     this.circlesLayer.children.forEach((shape) => {
       shape.opacity(1);
-      if (shape !== this.hoveredNode) {
-        shape.stroke(shape._originalStroke || null);
-        shape.strokeWidth(shape._originalStrokeWidth || 0);
+      // Only restore stroke if original values were stored (i.e., stroke was modified)
+      if (shape.hasOwnProperty('_originalStroke')) {
+        shape.stroke(shape._originalStroke);
+        shape.strokeWidth(shape._originalStrokeWidth);
+        // Clear the stored values
+        delete shape._originalStroke;
+        delete shape._originalStrokeWidth;
       }
     });
+
+    // Restore error bar opacity
+    if (this.errorBarsLayer) {
+      this.errorBarsLayer.children.forEach((errorBarGroup) => {
+        errorBarGroup.opacity(1);
+      });
+      this.errorBarsLayer.batchDraw();
+    }
+
     this.hoverLayer.destroyChildren();
     this.hoverLayer.batchDraw();
     this.circlesLayer.batchDraw();
@@ -754,6 +789,7 @@ class KonvaScatter extends Component {
           const capWidth = 3;
 
           const errorBarGroup = new Konva.Group();
+          errorBarGroup.setAttr("dataPoint", d);
 
           const verticalLine = new Konva.Line({
             points: [screenX, yLower, screenX, yUpper],
@@ -782,9 +818,9 @@ class KonvaScatter extends Component {
 
       let shape;
 
-      // For hollow points, use stroke instead of fill
+      // For hollow points, use transparent fill (for hit detection) with colored stroke
       const shapeConfig = isHollow
-        ? { stroke: fill, strokeWidth: 2, fill: "transparent" }
+        ? { stroke: fill, strokeWidth: 2.5, fill: 'rgba(255,255,255,0.01)' }
         : { fill };
 
       if (shapeType === "star") {

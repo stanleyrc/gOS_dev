@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Card, Tabs, Tag, Space, Typography, Divider, Button } from "antd";
+import { Card, Tabs, Tag, Space, Typography, Divider, Button, Tooltip } from "antd";
 import { CloseOutlined, LinkOutlined } from "@ant-design/icons";
 import { TREATMENT_COLORS, SOC_CLASSES } from "./constants";
 
@@ -248,21 +248,26 @@ class TrialDetailsPanel extends Component {
                 {s}
               </Tag>
             ))}
-            {trial.biomarkers?.map((b, i) => (
-              <Tag
-                key={i}
-                color={
-                  b.status === "POSITIVE"
-                    ? "green"
-                    : b.status === "NEGATIVE"
-                    ? "red"
-                    : "default"
-                }
-              >
-                {b.target}
-                {b.status === "POSITIVE" ? "+" : b.status === "NEGATIVE" ? "-" : ""}
-              </Tag>
-            ))}
+            {trial.biomarkers?.map((b, i) => {
+              const statusSymbol = b.status === "POSITIVE" ? "+" : b.status === "NEGATIVE" ? "-" : "";
+              const displayLabel = `${b.target}${statusSymbol}`;
+              const tooltipText = b.details ? `${displayLabel} (${b.details})` : displayLabel;
+              return (
+                <Tooltip key={i} title={tooltipText}>
+                  <Tag
+                    color={
+                      b.status === "POSITIVE"
+                        ? "green"
+                        : b.status === "NEGATIVE"
+                        ? "red"
+                        : "default"
+                    }
+                  >
+                    {displayLabel}
+                  </Tag>
+                </Tooltip>
+              );
+            })}
           </Space>
           {(trial.prior_tki || trial.prior_io || trial.prior_platinum) && (
             <div style={{ marginTop: 8 }}>
