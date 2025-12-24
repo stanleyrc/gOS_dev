@@ -483,9 +483,23 @@ class KonvaScatter extends Component {
     const currentMax = domain[1];
     const currentRange = currentMax - currentMin;
 
-    // Calculate zoom
+    // Calculate zoom direction
     const scaleBy = 1.1;
-    const direction = evt.evt.deltaY > 0 ? 1 : -1;
+    const direction = evt.evt.deltaY > 0 ? 1 : -1; // 1 = zoom out, -1 = zoom in
+
+    // Early exit if already at limits
+    const isAtMaxZoom = currentRange >= maxRange - 0.001; // Already fully zoomed out
+    const isAtMinZoom = currentRange <= minRange + 0.001; // Already fully zoomed in
+
+    if (isAtMaxZoom && direction > 0) {
+      // Already at max zoom out, can't zoom out further
+      return;
+    }
+    if (isAtMinZoom && direction < 0) {
+      // Already at max zoom in, can't zoom in further
+      return;
+    }
+
     const factor = direction > 0 ? scaleBy : 1 / scaleBy;
 
     // Get mouse position in data coordinates
@@ -780,37 +794,66 @@ class KonvaScatter extends Component {
       const isSelected = selectedIdsSet.has(pointId);
       const isHollow = getHollow(d);
 
-      if (showErrorBars && getCiLower && getCiUpper && this.errorBarsLayer) {
-        const ciLower = getCiLower(d);
-        const ciUpper = getCiUpper(d);
-        if (ciLower != null && ciUpper != null && !isNaN(ciLower) && !isNaN(ciUpper)) {
-          const yLower = yScale(ciLower);
-          const yUpper = yScale(ciUpper);
+      if (showErrorBars && this.errorBarsLayer) {
+        const ciLower = getCiLower ? getCiLower(d) : null;
+        const ciUpper = getCiUpper ? getCiUpper(d) : null;
+        const hasLower = ciLower != null && !isNaN(ciLower);
+        const hasUpper = ciUpper != null && !isNaN(ciUpper);
+
+        // Draw error bars if at least one bound is available
+        if (hasLower || hasUpper) {
+          const yLower = hasLower ? yScale(ciLower) : null;
+          const yUpper = hasUpper ? yScale(ciUpper) : null;
           const capWidth = 3;
 
           const errorBarGroup = new Konva.Group();
           errorBarGroup.setAttr("dataPoint", d);
 
-          const verticalLine = new Konva.Line({
-            points: [screenX, yLower, screenX, yUpper],
-            stroke: fill,
-            strokeWidth: 1.5,
-          });
-          errorBarGroup.add(verticalLine);
+          // Draw vertical line from point to available bound(s)
+          if (hasLower && hasUpper) {
+            // Full interval
+            const verticalLine = new Konva.Line({
+              points: [screenX, yLower, screenX, yUpper],
+              stroke: fill,
+              strokeWidth: 1.5,
+            });
+            errorBarGroup.add(verticalLine);
+          } else if (hasLower) {
+            // Only lower bound - draw from point down
+            const verticalLine = new Konva.Line({
+              points: [screenX, screenY, screenX, yLower],
+              stroke: fill,
+              strokeWidth: 1.5,
+            });
+            errorBarGroup.add(verticalLine);
+          } else if (hasUpper) {
+            // Only upper bound - draw from point up
+            const verticalLine = new Konva.Line({
+              points: [screenX, screenY, screenX, yUpper],
+              stroke: fill,
+              strokeWidth: 1.5,
+            });
+            errorBarGroup.add(verticalLine);
+          }
 
-          const lowerCap = new Konva.Line({
-            points: [screenX - capWidth, yLower, screenX + capWidth, yLower],
-            stroke: fill,
-            strokeWidth: 1.5,
-          });
-          errorBarGroup.add(lowerCap);
+          // Draw caps for available bounds
+          if (hasLower) {
+            const lowerCap = new Konva.Line({
+              points: [screenX - capWidth, yLower, screenX + capWidth, yLower],
+              stroke: fill,
+              strokeWidth: 1.5,
+            });
+            errorBarGroup.add(lowerCap);
+          }
 
-          const upperCap = new Konva.Line({
-            points: [screenX - capWidth, yUpper, screenX + capWidth, yUpper],
-            stroke: fill,
-            strokeWidth: 1.5,
-          });
-          errorBarGroup.add(upperCap);
+          if (hasUpper) {
+            const upperCap = new Konva.Line({
+              points: [screenX - capWidth, yUpper, screenX + capWidth, yUpper],
+              stroke: fill,
+              strokeWidth: 1.5,
+            });
+            errorBarGroup.add(upperCap);
+          }
 
           this.errorBarsLayer.add(errorBarGroup);
         }
@@ -915,30 +958,50 @@ class KonvaScatter extends Component {
     });
 
     // Update error bar positions
-    if (showErrorBars && getCiLower && getCiUpper && this.errorBarsLayer) {
-      let errorIdx = 0;
-      this.currentData.forEach((d) => {
-        const ciLower = getCiLower(d);
-        const ciUpper = getCiUpper(d);
-        if (ciLower == null || ciUpper == null || isNaN(ciLower) || isNaN(ciUpper)) {
-          return;
-        }
-
-        const errorGroup = errorGroups[errorIdx];
-        if (!errorGroup) return;
-        errorIdx++;
+    if (showErrorBars && this.errorBarsLayer) {
+      const capWidth = 3;
+      this.errorBarsLayer.children.forEach((errorGroup) => {
+        const d = errorGroup.getAttr("dataPoint");
+        if (!d) return;
 
         const xVal = getX(d);
+        const yVal = getY(d);
         const screenX = xScale(xVal);
-        const yLower = yScale(ciLower);
-        const yUpper = yScale(ciUpper);
-        const capWidth = 3;
+        const screenY = yScale(yVal);
 
-        // Update the three lines in the error bar group
+        const ciLower = getCiLower ? getCiLower(d) : null;
+        const ciUpper = getCiUpper ? getCiUpper(d) : null;
+        const hasLower = ciLower != null && !isNaN(ciLower);
+        const hasUpper = ciUpper != null && !isNaN(ciUpper);
+
+        const yLower = hasLower ? yScale(ciLower) : null;
+        const yUpper = hasUpper ? yScale(ciUpper) : null;
+
         const lines = errorGroup.children;
-        if (lines[0]) lines[0].points([screenX, yLower, screenX, yUpper]);
-        if (lines[1]) lines[1].points([screenX - capWidth, yLower, screenX + capWidth, yLower]);
-        if (lines[2]) lines[2].points([screenX - capWidth, yUpper, screenX + capWidth, yUpper]);
+        let lineIdx = 0;
+
+        // Update vertical line
+        if (lines[lineIdx]) {
+          if (hasLower && hasUpper) {
+            lines[lineIdx].points([screenX, yLower, screenX, yUpper]);
+          } else if (hasLower) {
+            lines[lineIdx].points([screenX, screenY, screenX, yLower]);
+          } else if (hasUpper) {
+            lines[lineIdx].points([screenX, screenY, screenX, yUpper]);
+          }
+          lineIdx++;
+        }
+
+        // Update lower cap if present
+        if (hasLower && lines[lineIdx]) {
+          lines[lineIdx].points([screenX - capWidth, yLower, screenX + capWidth, yLower]);
+          lineIdx++;
+        }
+
+        // Update upper cap if present
+        if (hasUpper && lines[lineIdx]) {
+          lines[lineIdx].points([screenX - capWidth, yUpper, screenX + capWidth, yUpper]);
+        }
       });
     }
 

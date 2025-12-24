@@ -299,6 +299,8 @@ class TrialsPlotView extends Component {
     this.lastOutcomeType = outcomeType;
     this.lastAllTrials = allTrials;
     this.lastShowSocAlways = showSocAlways;
+    // Clear data extent cache so it recalculates with fresh data
+    this.cachedDataExtent = null;
 
     return allPoints;
   };
