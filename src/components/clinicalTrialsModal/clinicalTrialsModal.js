@@ -6,6 +6,7 @@ import ctgovLogo from "../../assets/images/ctgov_logo.png";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
 import TrialsPlotView from "./trialsPlotView";
 import TrialsTableView from "./trialsTableView";
+import TrialDetailsPanel from "./TrialDetailsPanel";
 import { PHASE_OPTIONS, STATUS_OPTIONS, LINE_OF_THERAPY_OPTIONS, OUTCOME_TYPES } from "./constants";
 
 class ClinicalTrialsModal extends Component {
@@ -22,6 +23,18 @@ class ClinicalTrialsModal extends Component {
       lineOfTherapyFilter: null,
       selectedOutcomeType: "PFS",
       activeTab: "plot",
+      // New filter states
+      nctIdInput: "",
+      nctIdFilters: [],
+      treatmentClassFilter: null,
+      cancerStageFilter: null,
+      priorTkiFilter: false,
+      priorIoFilter: false,
+      priorPlatinumFilter: false,
+      showSocAlways: false,
+      // Trial details panel state
+      selectedTrial: null,
+      selectedOutcome: null,
     };
   }
 
@@ -54,6 +67,28 @@ class ClinicalTrialsModal extends Component {
     return Array.from(cancerTypes)
       .sort()
       .map((ct) => ({ label: ct, value: ct }));
+  };
+
+  getTreatmentClassOptions = () => {
+    const { trials } = this.state;
+    const classes = new Set();
+    trials.forEach((trial) => {
+      Object.values(trial.treatment_class_map || {}).forEach((tc) => classes.add(tc));
+    });
+    return Array.from(classes)
+      .sort()
+      .map((tc) => ({ label: tc, value: tc }));
+  };
+
+  getCancerStageOptions = () => {
+    const { trials } = this.state;
+    const stages = new Set();
+    trials.forEach((trial) => {
+      (trial.cancer_stages || []).forEach((s) => stages.add(s));
+    });
+    return Array.from(stages)
+      .sort()
+      .map((s) => ({ label: s, value: s }));
   };
 
   parseBiomarkerFilter = (filterStr) => {
@@ -90,11 +125,40 @@ class ClinicalTrialsModal extends Component {
   };
 
   getFilteredTrials = () => {
-    const { trials, cancerTypeFilter, biomarkerFilters, phaseFilter, statusFilter, lineOfTherapyFilter } = this.state;
+    const {
+      trials,
+      cancerTypeFilter,
+      biomarkerFilters,
+      phaseFilter,
+      statusFilter,
+      lineOfTherapyFilter,
+      nctIdFilters,
+      treatmentClassFilter,
+      cancerStageFilter,
+      priorTkiFilter,
+      priorIoFilter,
+      priorPlatinumFilter,
+      showSocAlways,
+    } = this.state;
 
-    return trials.filter((trial) => {
+    const socClasses = ["Chemo", "Placebo"];
+    const socTrials = [];
+
+    const filtered = trials.filter((trial) => {
+      // NCT ID filter (OR logic)
+      if (nctIdFilters.length > 0) {
+        const matches = nctIdFilters.some((id) => trial.nct_id?.toUpperCase() === id);
+        if (!matches) return false;
+      }
+
       if (cancerTypeFilter && !(trial.cancer_types || []).includes(cancerTypeFilter)) {
         return false;
+      }
+
+      // Cancer Stage filter
+      if (cancerStageFilter) {
+        const hasMatch = (trial.cancer_stages || []).includes(cancerStageFilter);
+        if (!hasMatch) return false;
       }
 
       if (biomarkerFilters.length > 0) {
@@ -124,8 +188,36 @@ class ClinicalTrialsModal extends Component {
         return false;
       }
 
+      // Treatment Class filter
+      if (treatmentClassFilter) {
+        const hasMatch = Object.values(trial.treatment_class_map || {}).includes(treatmentClassFilter);
+        if (!hasMatch) return false;
+      }
+
+      // Eligibility criteria filters
+      if (priorTkiFilter && trial.prior_tki !== true) return false;
+      if (priorIoFilter && trial.prior_io !== true) return false;
+      if (priorPlatinumFilter && trial.prior_platinum !== true) return false;
+
       return true;
     });
+
+    // Always Show SoC: collect SoC trials separately when enabled
+    if (showSocAlways) {
+      trials.forEach((trial) => {
+        // Skip ADJUVANT and NEOADJUVANT trials for SoC
+        if (trial.line_of_therapy === "ADJUVANT" || trial.line_of_therapy === "NEOADJUVANT") {
+          return;
+        }
+        const hasSocArm = Object.values(trial.treatment_class_map || {}).some((tc) => socClasses.includes(tc));
+        if (hasSocArm && !filtered.includes(trial)) {
+          socTrials.push(trial);
+        }
+      });
+      return [...filtered, ...socTrials];
+    }
+
+    return filtered;
   };
 
   handleCancerTypeChange = (value) => {
@@ -155,6 +247,30 @@ class ClinicalTrialsModal extends Component {
 
   handleOutcomeTypeChange = (value) => {
     this.setState({ selectedOutcomeType: value });
+  };
+
+  handleNctIdChange = (inputValue) => {
+    const filters = inputValue
+      .split(",")
+      .map((id) => id.trim().toUpperCase())
+      .filter((id) => id.length > 0);
+    this.setState({ nctIdInput: inputValue, nctIdFilters: filters });
+  };
+
+  handleTreatmentClassChange = (value) => {
+    this.setState({ treatmentClassFilter: value });
+  };
+
+  handleCancerStageChange = (value) => {
+    this.setState({ cancerStageFilter: value });
+  };
+
+  handleTrialClick = (trial, outcome = null) => {
+    this.setState({ selectedTrial: trial, selectedOutcome: outcome });
+  };
+
+  handleCloseTrialDetails = () => {
+    this.setState({ selectedTrial: null, selectedOutcome: null });
   };
 
   handleTabChange = (key) => {
@@ -196,6 +312,16 @@ class ClinicalTrialsModal extends Component {
       statusFilter: null,
       lineOfTherapyFilter: null,
       selectedOutcomeType: "PFS",
+      nctIdInput: "",
+      nctIdFilters: [],
+      treatmentClassFilter: null,
+      cancerStageFilter: null,
+      priorTkiFilter: false,
+      priorIoFilter: false,
+      priorPlatinumFilter: false,
+      showSocAlways: false,
+      selectedTrial: null,
+      selectedOutcome: null,
     });
   };
 
@@ -207,6 +333,14 @@ class ClinicalTrialsModal extends Component {
       phaseFilter: null,
       statusFilter: null,
       lineOfTherapyFilter: null,
+      nctIdInput: "",
+      nctIdFilters: [],
+      treatmentClassFilter: null,
+      cancerStageFilter: null,
+      priorTkiFilter: false,
+      priorIoFilter: false,
+      priorPlatinumFilter: false,
+      showSocAlways: false,
     });
   };
 
@@ -216,12 +350,20 @@ class ClinicalTrialsModal extends Component {
       isLoading,
       cancerTypeFilter,
       biomarkerInput,
-      biomarkerFilters,
       phaseFilter,
       statusFilter,
       lineOfTherapyFilter,
       selectedOutcomeType,
       activeTab,
+      nctIdInput,
+      treatmentClassFilter,
+      cancerStageFilter,
+      priorTkiFilter,
+      priorIoFilter,
+      priorPlatinumFilter,
+      showSocAlways,
+      selectedTrial,
+      selectedOutcome,
     } = this.state;
 
     const filteredTrials = this.getFilteredTrials();
@@ -250,6 +392,7 @@ class ClinicalTrialsModal extends Component {
           <TrialsPlotView
             trials={filteredTrials}
             outcomeType={selectedOutcomeType}
+            onTrialClick={this.handleTrialClick}
           />
         ),
       },
@@ -260,6 +403,7 @@ class ClinicalTrialsModal extends Component {
           <TrialsTableView
             trials={filteredTrials}
             outcomeType={selectedOutcomeType}
+            onTrialClick={this.handleTrialClick}
           />
         ),
       },
@@ -355,7 +499,82 @@ class ClinicalTrialsModal extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={12} style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-end", paddingBottom: 4 }}>
+              <Col span={6}>
+                <Form.Item label="NCT ID">
+                  <Input
+                    value={nctIdInput}
+                    onChange={(e) => this.handleNctIdChange(e.target.value)}
+                    placeholder="e.g., NCT00003869, NCT01234567"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="Treatment Class">
+                  <Select
+                    value={treatmentClassFilter}
+                    options={this.getTreatmentClassOptions()}
+                    onChange={this.handleTreatmentClassChange}
+                    placeholder="All"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      option.label.toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={6}>
+                <Form.Item label="Cancer Stage">
+                  <Select
+                    value={cancerStageFilter}
+                    options={this.getCancerStageOptions()}
+                    onChange={this.handleCancerStageChange}
+                    placeholder="All"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      option.label.toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="Eligibility Criteria">
+                  <Space direction="vertical" size={0}>
+                    <Checkbox
+                      checked={priorTkiFilter}
+                      onChange={(e) => this.setState({ priorTkiFilter: e.target.checked })}
+                    >
+                      Prior TKI
+                    </Checkbox>
+                    <Checkbox
+                      checked={priorIoFilter}
+                      onChange={(e) => this.setState({ priorIoFilter: e.target.checked })}
+                    >
+                      Prior IO
+                    </Checkbox>
+                    <Checkbox
+                      checked={priorPlatinumFilter}
+                      onChange={(e) => this.setState({ priorPlatinumFilter: e.target.checked })}
+                    >
+                      Prior Platinum
+                    </Checkbox>
+                  </Space>
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="Options">
+                  <Checkbox
+                    checked={showSocAlways}
+                    onChange={(e) => this.setState({ showSocAlways: e.target.checked })}
+                  >
+                    Always Show SoC
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+              <Col span={6} style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-end", paddingBottom: 4 }}>
                 <Space>
                   <Button onClick={this.handleClear}>Clear</Button>
                   <Button onClick={this.handleReset}>Reset</Button>
@@ -382,6 +601,14 @@ class ClinicalTrialsModal extends Component {
             onChange={this.handleTabChange}
             items={tabItems}
           />
+
+          {selectedTrial && (
+            <TrialDetailsPanel
+              trial={selectedTrial}
+              clickedOutcome={selectedOutcome}
+              onClose={this.handleCloseTrialDetails}
+            />
+          )}
         </Skeleton>
       </Modal>
     );

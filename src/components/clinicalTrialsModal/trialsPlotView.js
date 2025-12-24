@@ -1,16 +1,15 @@
 import React, { Component } from "react";
-import { Card, Space, Typography, Button } from "antd";
+import { Typography } from "antd";
 import * as d3 from "d3";
 import KonvaScatter from "../konvaScatter";
 import { TREATMENT_COLORS, SOC_CLASSES } from "./constants";
 
-const { Text, Link } = Typography;
+const { Text } = Typography;
 
 class TrialsPlotView extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      selectedTrial: null,
       containerWidth: 900,
     };
     this.containerRef = React.createRef();
@@ -131,11 +130,10 @@ class TrialsPlotView extends Component {
   };
 
   handlePointClick = (point) => {
-    this.setState({ selectedTrial: { trial: point.trial, outcome: point.outcome } });
-  };
-
-  handleCloseDetails = () => {
-    this.setState({ selectedTrial: null });
+    const { onTrialClick } = this.props;
+    if (onTrialClick) {
+      onTrialClick(point.trial, point.outcome);
+    }
   };
 
   groupByTreatmentClass = (points) => {
@@ -238,7 +236,7 @@ class TrialsPlotView extends Component {
   };
 
   render() {
-    const { selectedTrial, containerWidth } = this.state;
+    const { containerWidth } = this.state;
     const points = this.getPlotData();
     const { xScale, yScale, plotHeight, margins } = this.getScales(points);
 
@@ -275,24 +273,6 @@ class TrialsPlotView extends Component {
           </Text>
           {this.renderLegend()}
         </div>
-        {selectedTrial && (
-          <Card
-            size="small"
-            style={{ width: 320, position: "absolute", right: 240, top: 60 }}
-            title={selectedTrial.trial.nct_id}
-            extra={<Button type="text" size="small" onClick={this.handleCloseDetails}>×</Button>}
-          >
-            <Space direction="vertical" size="small">
-              <Text strong>{selectedTrial.trial.brief_title}</Text>
-              <Text>Phase: {selectedTrial.trial.phase}</Text>
-              <Text>Status: {selectedTrial.trial.status}</Text>
-              <Text>Sponsor: {selectedTrial.trial.sponsor}</Text>
-              <Link href={selectedTrial.trial.url} target="_blank">
-                View on ClinicalTrials.gov
-              </Link>
-            </Space>
-          </Card>
-        )}
       </div>
     );
   }
