@@ -29,6 +29,12 @@ class KonvaScatter extends Component {
   lastPanPos = null;
   pendingZoom = null;
   zoomRafId = null;
+  // Track current data for position-only updates
+  currentData = null;
+  dataAccessors = null;
+  // For local zoom state during active zooming (bypass React)
+  localZoomDomain = null;
+  zoomEndTimeout = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -55,11 +61,28 @@ class KonvaScatter extends Component {
   componentDidUpdate(prevProps) {
     const { width, height, data, xScale, yScale, selectedId, selectedIds, colorAccessor, colorScale, xAccessor, yAccessor } = this.props;
 
-    const scalesChanged = this.scalesChanged(prevProps.xScale, xScale) || 
+    const scalesChanged = this.scalesChanged(prevProps.xScale, xScale) ||
                           this.scalesChanged(prevProps.yScale, yScale);
 
     if (width !== prevProps.width || height !== prevProps.height) {
       this.handleResize();
+      return;
+    }
+
+    // Check if only scales changed (zoom/pan) - use fast position update
+    const onlyScalesChanged = scalesChanged &&
+      data === prevProps.data &&
+      selectedId === prevProps.selectedId &&
+      selectedIds === prevProps.selectedIds &&
+      colorAccessor === prevProps.colorAccessor &&
+      colorScale === prevProps.colorScale &&
+      xAccessor === prevProps.xAccessor &&
+      yAccessor === prevProps.yAccessor;
+
+    if (onlyScalesChanged && this.currentData) {
+      // Fast path: just update positions without recreating shapes
+      this.updatePositions();
+      return;
     }
 
     if (
@@ -98,6 +121,9 @@ class KonvaScatter extends Component {
   componentWillUnmount() {
     if (this.zoomRafId) {
       cancelAnimationFrame(this.zoomRafId);
+    }
+    if (this.zoomEndTimeout) {
+      clearTimeout(this.zoomEndTimeout);
     }
     if (this.stage) {
       this.stage.destroy();
@@ -400,7 +426,7 @@ class KonvaScatter extends Component {
   };
 
   handleWheel = (evt) => {
-    const { enableZoom, onZoomChange, clipBounds, xScale } = this.props;
+    const { enableZoom, onZoomChange, clipBounds, xScale, yScale, zoomLimits, minZoomRange } = this.props;
     if (!enableZoom || !onZoomChange || !xScale) return;
 
     // Prevent page scroll
@@ -410,10 +436,13 @@ class KonvaScatter extends Component {
     const pointer = this.stage.getPointerPosition();
     if (!pointer) return;
 
-    // Get current domain - use pending zoom if available for smoother accumulation
-    const domain = this.pendingZoom
-      ? [this.pendingZoom.xMin, this.pendingZoom.xMax]
-      : xScale.domain();
+    // Get zoom limits
+    const [limitMin, limitMax] = zoomLimits || xScale.domain();
+    const maxRange = limitMax - limitMin;
+    const minRange = minZoomRange || maxRange / 100;
+
+    // Get current domain - use local zoom if active, otherwise props
+    const domain = this.localZoomDomain || xScale.domain();
     const range = xScale.range();
     const currentMin = domain[0];
     const currentMax = domain[1];
@@ -431,24 +460,62 @@ class KonvaScatter extends Component {
     const mouseDataX = currentMin + mouseRatio * currentRange;
 
     // Calculate new range
-    const newRange = currentRange * factor;
+    let newRange = currentRange * factor;
+
+    // Clamp range to limits
+    if (newRange >= maxRange) {
+      // Zooming out to or beyond max - reset to full view
+      this.localZoomDomain = null;
+      if (this.zoomEndTimeout) {
+        clearTimeout(this.zoomEndTimeout);
+      }
+      onZoomChange({ xMin: limitMin, xMax: limitMax });
+      return;
+    }
+    if (newRange < minRange) {
+      // Can't zoom in further
+      return;
+    }
 
     // Zoom towards mouse position
-    const newMin = mouseDataX - mouseRatio * newRange;
-    const newMax = mouseDataX + (1 - mouseRatio) * newRange;
+    let newMin = mouseDataX - mouseRatio * newRange;
+    let newMax = mouseDataX + (1 - mouseRatio) * newRange;
 
-    // Store pending zoom and throttle with RAF
-    this.pendingZoom = { xMin: newMin, xMax: newMax };
+    // Clamp to data bounds
+    if (newMin < limitMin) {
+      newMin = limitMin;
+      newMax = limitMin + newRange;
+    }
+    if (newMax > limitMax) {
+      newMax = limitMax;
+      newMin = limitMax - newRange;
+    }
 
+    // Store local zoom domain
+    this.localZoomDomain = [newMin, newMax];
+
+    // Immediately update positions locally (no React!) - using RAF for smooth animation
     if (!this.zoomRafId) {
       this.zoomRafId = requestAnimationFrame(() => {
         this.zoomRafId = null;
-        if (this.pendingZoom) {
-          onZoomChange(this.pendingZoom);
-          this.pendingZoom = null;
+        if (this.localZoomDomain && this.currentData && this.dataAccessors) {
+          // Create temporary scale with local domain
+          const tempXScale = xScale.copy().domain(this.localZoomDomain);
+          this.updatePositionsWithScale(tempXScale, yScale);
         }
       });
     }
+
+    // Debounce React sync - only fire after 100ms of no wheel events
+    if (this.zoomEndTimeout) {
+      clearTimeout(this.zoomEndTimeout);
+    }
+    this.zoomEndTimeout = setTimeout(() => {
+      if (this.localZoomDomain) {
+        onZoomChange({ xMin: this.localZoomDomain[0], xMax: this.localZoomDomain[1] });
+        this.localZoomDomain = null;
+      }
+    }, 100);
   };
 
   handlePanStart = (evt) => {
@@ -484,10 +551,13 @@ class KonvaScatter extends Component {
   handlePanMove = (evt) => {
     if (!this.isPanning || !this.lastPanPos) return;
 
-    const { onZoomChange, xScale, clipBounds } = this.props;
+    const { onZoomChange, xScale, yScale, clipBounds, zoomLimits } = this.props;
     if (!onZoomChange || !xScale) return;
 
     evt.preventDefault();
+
+    // Get zoom limits
+    const [limitMin, limitMax] = zoomLimits || xScale.domain();
 
     // Get current mouse position
     const rect = this.containerRef.getBoundingClientRect();
@@ -498,17 +568,45 @@ class KonvaScatter extends Component {
     const deltaX = pointerX - this.lastPanPos.x;
     this.lastPanPos = { x: pointerX, y: this.lastPanPos.y };
 
-    // Convert to data units
-    const domain = xScale.domain();
+    // Convert to data units - use local domain if active
+    const domain = this.localZoomDomain || xScale.domain();
     const plotWidth = clipBounds ? clipBounds.width : (xScale.range()[1] - xScale.range()[0]);
     const dataRange = domain[1] - domain[0];
     const dataDelta = (deltaX / plotWidth) * dataRange;
 
     // Calculate new domain (pan is inverted - drag right = move left in data)
-    const newMin = domain[0] - dataDelta;
-    const newMax = domain[1] - dataDelta;
+    let newMin = domain[0] - dataDelta;
+    let newMax = domain[1] - dataDelta;
 
-    onZoomChange({ xMin: newMin, xMax: newMax });
+    // Clamp to data bounds
+    if (newMin < limitMin) {
+      newMin = limitMin;
+      newMax = limitMin + dataRange;
+    }
+    if (newMax > limitMax) {
+      newMax = limitMax;
+      newMin = limitMax - dataRange;
+    }
+
+    // Store local domain and update immediately
+    this.localZoomDomain = [newMin, newMax];
+
+    // Immediate local update (no React)
+    if (this.currentData && this.dataAccessors) {
+      const tempXScale = xScale.copy().domain(this.localZoomDomain);
+      this.updatePositionsWithScale(tempXScale, yScale);
+    }
+
+    // Debounce React sync
+    if (this.zoomEndTimeout) {
+      clearTimeout(this.zoomEndTimeout);
+    }
+    this.zoomEndTimeout = setTimeout(() => {
+      if (this.localZoomDomain) {
+        onZoomChange({ xMin: this.localZoomDomain[0], xMax: this.localZoomDomain[1] });
+        this.localZoomDomain = null;
+      }
+    }, 100);
   };
 
   handlePanEnd = () => {
@@ -516,6 +614,19 @@ class KonvaScatter extends Component {
     this.lastPanPos = null;
     if (this.stage) {
       this.stage.container().style.cursor = "default";
+    }
+
+    // Immediately sync to React when pan ends
+    if (this.zoomEndTimeout) {
+      clearTimeout(this.zoomEndTimeout);
+      this.zoomEndTimeout = null;
+    }
+    if (this.localZoomDomain) {
+      const { onZoomChange } = this.props;
+      if (onZoomChange) {
+        onZoomChange({ xMin: this.localZoomDomain[0], xMax: this.localZoomDomain[1] });
+      }
+      this.localZoomDomain = null;
     }
 
     window.removeEventListener("mousemove", this.handlePanMove);
@@ -718,6 +829,88 @@ class KonvaScatter extends Component {
       this.errorBarsLayer.batchDraw();
     }
     this.circlesLayer.batchDraw();
+
+    // Cache data and accessors for fast position updates during zoom
+    this.currentData = sortedData;
+    this.dataAccessors = { getX, getY, getCiLower, getCiUpper };
+  }
+
+  // Fast position update without recreating shapes - used during zoom/pan
+  updatePositions() {
+    const { xScale, yScale } = this.props;
+    this.updatePositionsWithScale(xScale, yScale);
+  }
+
+  // Core position update with provided scales - for both React updates and local zoom
+  updatePositionsWithScale(xScale, yScale) {
+    if (!this.circlesLayer || !this.currentData || !this.dataAccessors) {
+      return;
+    }
+
+    const { showErrorBars } = this.props;
+    const { getX, getY, getCiLower, getCiUpper } = this.dataAccessors;
+
+    if (!xScale || !yScale) return;
+
+    const circleShapes = this.circlesLayer.children;
+    const errorGroups = this.errorBarsLayer ? this.errorBarsLayer.children : [];
+
+    // Update circle/shape positions
+    circleShapes.forEach((shape) => {
+      const dataPoint = shape.getAttr("dataPoint");
+      if (!dataPoint) return;
+
+      const xVal = getX(dataPoint);
+      const yVal = getY(dataPoint);
+      const screenX = xScale(xVal);
+      const screenY = yScale(yVal);
+
+      if (isNaN(screenX) || isNaN(screenY)) return;
+
+      // Update position based on shape type
+      if (shape.className === "Rect") {
+        const radius = shape.width() / 2;
+        shape.x(screenX - radius);
+        shape.y(screenY - radius);
+      } else {
+        shape.x(screenX);
+        shape.y(screenY);
+      }
+    });
+
+    // Update error bar positions
+    if (showErrorBars && getCiLower && getCiUpper && this.errorBarsLayer) {
+      let errorIdx = 0;
+      this.currentData.forEach((d) => {
+        const ciLower = getCiLower(d);
+        const ciUpper = getCiUpper(d);
+        if (ciLower == null || ciUpper == null || isNaN(ciLower) || isNaN(ciUpper)) {
+          return;
+        }
+
+        const errorGroup = errorGroups[errorIdx];
+        if (!errorGroup) return;
+        errorIdx++;
+
+        const xVal = getX(d);
+        const screenX = xScale(xVal);
+        const yLower = yScale(ciLower);
+        const yUpper = yScale(ciUpper);
+        const capWidth = 3;
+
+        // Update the three lines in the error bar group
+        const lines = errorGroup.children;
+        if (lines[0]) lines[0].points([screenX, yLower, screenX, yUpper]);
+        if (lines[1]) lines[1].points([screenX - capWidth, yLower, screenX + capWidth, yLower]);
+        if (lines[2]) lines[2].points([screenX - capWidth, yUpper, screenX + capWidth, yUpper]);
+      });
+    }
+
+    // Batch draw for performance
+    if (this.errorBarsLayer) {
+      this.errorBarsLayer.batchDraw();
+    }
+    this.circlesLayer.batchDraw();
   }
 
   render() {
@@ -789,6 +982,8 @@ KonvaScatter.propTypes = {
   enableZoom: PropTypes.bool,
   enablePan: PropTypes.bool,
   onZoomChange: PropTypes.func,
+  zoomLimits: PropTypes.arrayOf(PropTypes.number),
+  minZoomRange: PropTypes.number,
 };
 
 KonvaScatter.defaultProps = {

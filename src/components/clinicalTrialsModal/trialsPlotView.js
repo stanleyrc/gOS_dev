@@ -103,6 +103,69 @@ class TrialsPlotView extends Component {
     return SOC_CLASSES.includes(d.treatmentClass);
   };
 
+  // Validate outcome unit based on outcome type
+  isValidOutcome = (outcome, outcomeType) => {
+    if (outcome.value == null) return false;
+
+    const unitLower = (outcome.unit || "").toLowerCase();
+
+    // For ORR: accept percentage/proportion units
+    if (outcomeType === "ORR") {
+      return ["percent", "proportion", "participant", "patient", "probability", "rate", "%"].some(
+        (w) => unitLower.includes(w)
+      );
+    }
+
+    // For PFS/OS: reject percentage/proportion units, require time units
+    if (outcomeType === "PFS" || outcomeType === "OS") {
+      // Reject non-time units
+      if (
+        unitLower.includes("percent") ||
+        unitLower.includes("proportion") ||
+        unitLower.includes("participant") ||
+        unitLower.includes("patient") ||
+        unitLower.includes("probability") ||
+        unitLower.includes("rate") ||
+        unitLower.includes("%")
+      ) {
+        return false;
+      }
+
+      // Require time units
+      const isTimeUnit =
+        unitLower.includes("month") ||
+        unitLower.includes("day") ||
+        unitLower.includes("week") ||
+        unitLower.includes("year");
+      return isTimeUnit;
+    }
+
+    return false;
+  };
+
+  // Normalize time values to months (for PFS/OS)
+  normalizeToMonths = (value, unit) => {
+    if (value == null || value === undefined) return null;
+    if (!unit) return value;
+
+    const unitLower = unit.toLowerCase().trim();
+
+    // Already in months
+    if (unitLower.includes("month")) return value;
+
+    // Convert from days
+    if (unitLower.includes("day")) return value / 30.44;
+
+    // Convert from weeks
+    if (unitLower.includes("week")) return value / 4.33;
+
+    // Convert from years
+    if (unitLower.includes("year")) return value * 12;
+
+    // Unknown unit, return as-is
+    return value;
+  };
+
   getPlotData = () => {
     const { trials, outcomeType } = this.props;
 
@@ -112,6 +175,7 @@ class TrialsPlotView extends Component {
     }
 
     const points = [];
+    const isORR = outcomeType === "ORR";
 
     trials.forEach((trial) => {
       const completionDate = trial.completion_date;
@@ -120,12 +184,23 @@ class TrialsPlotView extends Component {
       const year = this.parseCompletionYear(completionDate);
       if (!year || isNaN(year)) return;
 
-      const outcomes = (trial.outcomes || []).filter((o) => o.outcome_type === outcomeType);
+      // Filter outcomes by type AND valid units
+      const outcomes = (trial.outcomes || []).filter(
+        (o) => o.outcome_type === outcomeType && this.isValidOutcome(o, outcomeType)
+      );
       if (outcomes.length === 0) return;
 
       outcomes.forEach((outcome) => {
-        const value = parseFloat(outcome.value);
-        if (isNaN(value)) return;
+        const rawValue = parseFloat(outcome.value);
+        if (isNaN(rawValue)) return;
+
+        // Normalize to months for PFS/OS, keep as-is for ORR
+        const value = isORR ? rawValue : this.normalizeToMonths(rawValue, outcome.unit);
+        const ciLower = isORR ? outcome.ci_lower : this.normalizeToMonths(outcome.ci_lower, outcome.unit);
+        const ciUpper = isORR ? outcome.ci_upper : this.normalizeToMonths(outcome.ci_upper, outcome.unit);
+
+        // Skip negative values after normalization
+        if (value < 0) return;
 
         const armTitle = outcome.arm_title || "";
         const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
@@ -138,8 +213,8 @@ class TrialsPlotView extends Component {
           treatmentClass,
           armTitle,
           nctId: trial.nct_id,
-          ciLower: outcome.ci_lower,
-          ciUpper: outcome.ci_upper,
+          ciLower: ciLower != null && ciLower >= 0 ? ciLower : null,
+          ciUpper: ciUpper != null && ciUpper >= 0 ? ciUpper : null,
         });
       });
     });
@@ -189,12 +264,18 @@ class TrialsPlotView extends Component {
 
     // Filter points to visible X range for Y-axis calculation
     const visiblePoints = points.filter((d) => d.x >= visibleXMin && d.x <= visibleXMax);
-    const yExtent = visiblePoints.length > 0
-      ? d3.extent(visiblePoints, (d) => d.y)
-      : d3.extent(points, (d) => d.y);
+    const pointsForExtent = visiblePoints.length > 0 ? visiblePoints : points;
+
+    // Calculate y extent including CI upper bounds (not just point values)
+    const yValues = pointsForExtent.flatMap((d) => {
+      const vals = [d.y];
+      if (d.ciUpper != null && !isNaN(d.ciUpper)) vals.push(d.ciUpper);
+      return vals;
+    });
+    const yExtent = d3.extent(yValues);
 
     const isORR = outcomeType === "ORR";
-    const yMax = isORR ? 100 : Math.min((yExtent[1] || 50) * 1.15, 220);
+    const yMax = isORR ? 100 : (yExtent[1] || 50) * 1.15;
 
     const xScale = d3
       .scaleLinear()
@@ -275,7 +356,16 @@ class TrialsPlotView extends Component {
     const { outcomeType } = this.props;
     const { containerWidth } = this.state;
 
-    const xTicks = xScale.ticks(8);
+    // Generate only integer year ticks (like Chart.js afterBuildTicks)
+    // When zoomed in past a single year, no ticks will be shown
+    const [xMin, xMax] = xScale.domain();
+    const xTicks = [];
+    const startYear = Math.ceil(xMin);
+    const endYear = Math.floor(xMax);
+    for (let year = startYear; year <= endYear; year++) {
+      xTicks.push(year);
+    }
+
     const yTicks = yScale.ticks(8);
 
     const isORR = outcomeType === "ORR";
@@ -291,7 +381,7 @@ class TrialsPlotView extends Component {
           <g key={`x-${tick}`} transform={`translate(${xScale(tick)}, ${plotHeight - margins.bottom})`}>
             <line y2="6" stroke="#000" />
             <text y="20" textAnchor="middle" style={{ fontSize: 11 }}>
-              {Math.floor(tick)}
+              {tick}
             </text>
           </g>
         ))}
@@ -403,6 +493,8 @@ class TrialsPlotView extends Component {
               enableZoom={true}
               enablePan={true}
               onZoomChange={this.handleZoomChange}
+              zoomLimits={this.getDataXExtent()}
+              minZoomRange={1 / 12}
             />
           </div>
           <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block" }}>
