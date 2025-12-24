@@ -1,5 +1,6 @@
 import React, { Component } from "react";
-import { Typography } from "antd";
+import { Typography, Button } from "antd";
+import { ZoomOutOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import KonvaScatter from "../konvaScatter";
 import { TREATMENT_COLORS, SOC_CLASSES } from "./constants";
@@ -11,6 +12,9 @@ class TrialsPlotView extends Component {
     super(props);
     this.state = {
       containerWidth: 900,
+      // Zoom state - track the visible X range
+      zoomXMin: null,
+      zoomXMax: null,
     };
     this.containerRef = React.createRef();
   }
@@ -29,6 +33,60 @@ class TrialsPlotView extends Component {
       const width = this.containerRef.current.offsetWidth - 220;
       this.setState({ containerWidth: Math.max(width, 400) });
     }
+  };
+
+  getDataXExtent = () => {
+    const points = this.getPlotData();
+    const xExtent = d3.extent(points, (d) => d.x);
+    return [Math.floor(xExtent[0] || 2015) - 1, Math.ceil(xExtent[1] || 2025) + 1];
+  };
+
+  handleZoomChange = ({ xMin, xMax }) => {
+    const [dataXMin, dataXMax] = this.getDataXExtent();
+    const currentRange = xMax - xMin;
+
+    // Minimum zoom level (1 month)
+    const minRange = 1 / 12;
+    // Maximum zoom level (full data range)
+    const maxRange = dataXMax - dataXMin;
+
+    // Check if we're zooming out beyond data bounds
+    if (currentRange >= maxRange) {
+      this.setState({ zoomXMin: null, zoomXMax: null });
+      return;
+    }
+
+    // Clamp the range
+    if (currentRange < minRange) return;
+
+    // Clamp to data bounds
+    let clampedMin = xMin;
+    let clampedMax = xMax;
+
+    if (clampedMin < dataXMin) {
+      clampedMin = dataXMin;
+      clampedMax = dataXMin + currentRange;
+    }
+    if (clampedMax > dataXMax) {
+      clampedMax = dataXMax;
+      clampedMin = dataXMax - currentRange;
+    }
+
+    this.setState({ zoomXMin: clampedMin, zoomXMax: clampedMax });
+  };
+
+  handleResetZoom = () => {
+    this.setState({ zoomXMin: null, zoomXMax: null });
+  };
+
+  isZoomed = () => {
+    const { zoomXMin, zoomXMax } = this.state;
+    return zoomXMin !== null || zoomXMax !== null;
+  };
+
+  // Check if a treatment class is Standard of Care (for hollow points)
+  isStandardOfCare = (d) => {
+    return SOC_CLASSES.includes(d.treatmentClass);
   };
 
   getPlotData = () => {
@@ -71,36 +129,52 @@ class TrialsPlotView extends Component {
 
   parseCompletionYear = (dateStr) => {
     if (!dateStr) return null;
+    // Year only: add small random offset to spread points
     if (dateStr.match(/^\d{4}$/)) {
-      return parseInt(dateStr, 10);
+      return parseInt(dateStr, 10) + 0.5;
     }
+    // Year-month: convert to decimal year
     if (dateStr.match(/^\d{4}-\d{2}$/)) {
-      return parseInt(dateStr.split("-")[0], 10);
-    }
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month] = dateStr.split("-");
-      return parseInt(year, 10) + (parseInt(month, 10) - 1) / 12;
+      return parseInt(year, 10) + (parseInt(month, 10) - 0.5) / 12;
+    }
+    // Full date: convert to precise decimal year
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split("-");
+      const monthDecimal = (parseInt(month, 10) - 1) / 12;
+      const dayDecimal = (parseInt(day, 10) - 1) / 365;
+      return parseInt(year, 10) + monthDecimal + dayDecimal;
     }
     return null;
   };
 
   getScales = (points) => {
-    const { containerWidth } = this.state;
+    const { containerWidth, zoomXMin, zoomXMax } = this.state;
     const { outcomeType } = this.props;
     const plotHeight = 550;
     const margins = { top: 20, right: 20, bottom: 40, left: 60 };
 
     const xExtent = d3.extent(points, (d) => d.x);
-    const yExtent = d3.extent(points, (d) => d.y);
+    const dataXMin = Math.floor(xExtent[0] || 2015) - 1;
+    const dataXMax = Math.ceil(xExtent[1] || 2025) + 1;
+
+    // Use zoomed range if available, otherwise full data range
+    const visibleXMin = zoomXMin !== null ? zoomXMin : dataXMin;
+    const visibleXMax = zoomXMax !== null ? zoomXMax : dataXMax;
+
+    // Filter points to visible X range for Y-axis calculation
+    const visiblePoints = points.filter((d) => d.x >= visibleXMin && d.x <= visibleXMax);
+    const yExtent = visiblePoints.length > 0
+      ? d3.extent(visiblePoints, (d) => d.y)
+      : d3.extent(points, (d) => d.y);
 
     const isORR = outcomeType === "ORR";
     const yMax = isORR ? 100 : Math.min((yExtent[1] || 50) * 1.15, 220);
 
     const xScale = d3
       .scaleLinear()
-      .domain([Math.floor(xExtent[0] || 2015) - 1, Math.ceil(xExtent[1] || 2025) + 1])
-      .range([margins.left, containerWidth - margins.right])
-      .nice();
+      .domain([visibleXMin, visibleXMax])
+      .range([margins.left, containerWidth - margins.right]);
 
     const yScale = d3
       .scaleLinear()
@@ -150,22 +224,26 @@ class TrialsPlotView extends Component {
   renderLegend = () => {
     const points = this.getPlotData();
     const groups = this.groupByTreatmentClass(points);
+    const color = (className) => TREATMENT_COLORS[className] || "#7F8C8D";
 
-    return Object.keys(groups).sort().map((className) => (
-      <div key={className} style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-        <div
-          style={{
-            width: 12,
-            height: 12,
-            backgroundColor: TREATMENT_COLORS[className] || "#7F8C8D",
-            marginRight: 8,
-            borderRadius: 2,
-            border: SOC_CLASSES.includes(className) ? "2px dashed " + TREATMENT_COLORS[className] : "none",
-          }}
-        />
-        <Text style={{ fontSize: 12 }}>{className}</Text>
-      </div>
-    ));
+    return Object.keys(groups).sort().map((className) => {
+      const isSoC = SOC_CLASSES.includes(className);
+      return (
+        <div key={className} style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
+          <div
+            style={{
+              width: 12,
+              height: 12,
+              backgroundColor: isSoC ? "transparent" : color(className),
+              marginRight: 8,
+              borderRadius: "50%",
+              border: isSoC ? `2px solid ${color(className)}` : "none",
+            }}
+          />
+          <Text style={{ fontSize: 12 }}>{className}{isSoC ? " (SoC)" : ""}</Text>
+        </div>
+      );
+    });
   };
 
   renderAxes = (xScale, yScale, plotHeight, margins) => {
@@ -239,10 +317,30 @@ class TrialsPlotView extends Component {
     const { containerWidth } = this.state;
     const points = this.getPlotData();
     const { xScale, yScale, plotHeight, margins } = this.getScales(points);
+    const isZoomed = this.isZoomed();
+
+    // Clip bounds for the plot area (inside the axes)
+    const clipBounds = {
+      x: margins.left,
+      y: margins.top,
+      width: containerWidth - margins.left - margins.right,
+      height: plotHeight - margins.top - margins.bottom,
+    };
 
     return (
       <div ref={this.containerRef} style={{ display: "flex", gap: 16 }}>
         <div style={{ flex: 1 }}>
+          {isZoomed && (
+            <div style={{ marginBottom: 8 }}>
+              <Button
+                size="small"
+                icon={<ZoomOutOutlined />}
+                onClick={this.handleResetZoom}
+              >
+                Reset Zoom
+              </Button>
+            </div>
+          )}
           <div style={{ position: "relative", height: plotHeight }}>
             {this.renderAxes(xScale, yScale, plotHeight, margins)}
             <KonvaScatter
@@ -264,8 +362,16 @@ class TrialsPlotView extends Component {
               showErrorBars={true}
               groupAccessor="nctId"
               fadeOnHover={true}
+              hollowAccessor={this.isStandardOfCare}
+              clipBounds={clipBounds}
+              enableZoom={true}
+              enablePan={true}
+              onZoomChange={this.handleZoomChange}
             />
           </div>
+          <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block" }}>
+            Scroll to zoom, drag to pan
+          </Text>
         </div>
         <div style={{ width: 200 }}>
           <Text strong style={{ marginBottom: 8, display: "block" }}>

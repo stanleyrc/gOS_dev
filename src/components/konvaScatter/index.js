@@ -25,6 +25,8 @@ class KonvaScatter extends Component {
   tooltipGroup = null;
   hoveredNode = null;
   hoveredGroupId = null;
+  isPanning = false;
+  lastPanPos = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -99,7 +101,7 @@ class KonvaScatter extends Component {
   }
 
   initializeStage() {
-    const { width, height } = this.props;
+    const { width, height, clipBounds } = this.props;
 
     if (!this.containerRef || width <= 0 || height <= 0) return;
 
@@ -109,15 +111,16 @@ class KonvaScatter extends Component {
       height,
     });
 
-    this.errorBarsLayer = new Konva.Layer({ listening: false });
+    // Use clipBounds if provided, otherwise full canvas
+    const clip = clipBounds || { x: 0, y: 0, width, height };
+
+    this.errorBarsLayer = new Konva.Layer({ listening: false, clip });
     this.stage.add(this.errorBarsLayer);
 
-    this.circlesLayer = new Konva.Layer({
-      clip: { x: 0, y: 0, width, height },
-    });
+    this.circlesLayer = new Konva.Layer({ clip });
     this.stage.add(this.circlesLayer);
 
-    this.hoverLayer = new Konva.Layer({ listening: false });
+    this.hoverLayer = new Konva.Layer({ listening: false, clip });
     this.stage.add(this.hoverLayer);
 
     this.tooltipLayer = new Konva.Layer({ listening: false });
@@ -129,6 +132,11 @@ class KonvaScatter extends Component {
     this.stage.on("mousemove", this.handleStageMouseMove);
     this.stage.on("mouseleave", this.handleStageMouseLeave);
     this.stage.on("click", this.handleStageClick);
+
+    // Add zoom/pan handlers
+    this.stage.on("wheel", this.handleWheel);
+    this.stage.on("mousedown", this.handlePanStart);
+    this.stage.on("touchstart", this.handlePanStart);
   }
 
   initializeTooltip() {
@@ -152,7 +160,7 @@ class KonvaScatter extends Component {
   }
 
   handleResize() {
-    const { width, height } = this.props;
+    const { width, height, clipBounds } = this.props;
 
     if (!this.stage) {
       this.initializeStage();
@@ -161,8 +169,15 @@ class KonvaScatter extends Component {
     }
 
     this.stage.size({ width, height });
+    const clip = clipBounds || { x: 0, y: 0, width, height };
     if (this.circlesLayer) {
-      this.circlesLayer.clip({ x: 0, y: 0, width, height });
+      this.circlesLayer.clip(clip);
+    }
+    if (this.errorBarsLayer) {
+      this.errorBarsLayer.clip(clip);
+    }
+    if (this.hoverLayer) {
+      this.hoverLayer.clip(clip);
     }
     this.renderPoints();
   }
@@ -379,6 +394,119 @@ class KonvaScatter extends Component {
     }
   };
 
+  handleWheel = (evt) => {
+    const { enableZoom, onZoomChange, clipBounds, xScale } = this.props;
+    if (!enableZoom || !onZoomChange || !xScale) return;
+
+    // Prevent page scroll
+    evt.evt.preventDefault();
+    evt.evt.stopPropagation();
+
+    const pointer = this.stage.getPointerPosition();
+    if (!pointer) return;
+
+    // Get current domain
+    const domain = xScale.domain();
+    const range = xScale.range();
+    const currentMin = domain[0];
+    const currentMax = domain[1];
+    const currentRange = currentMax - currentMin;
+
+    // Calculate zoom
+    const scaleBy = 1.1;
+    const direction = evt.evt.deltaY > 0 ? 1 : -1;
+    const factor = direction > 0 ? scaleBy : 1 / scaleBy;
+
+    // Get mouse position in data coordinates
+    const plotLeft = clipBounds ? clipBounds.x : range[0];
+    const plotRight = clipBounds ? clipBounds.x + clipBounds.width : range[1];
+    const mouseRatio = Math.max(0, Math.min(1, (pointer.x - plotLeft) / (plotRight - plotLeft)));
+    const mouseDataX = currentMin + mouseRatio * currentRange;
+
+    // Calculate new range
+    const newRange = currentRange * factor;
+
+    // Zoom towards mouse position
+    let newMin = mouseDataX - mouseRatio * newRange;
+    let newMax = mouseDataX + (1 - mouseRatio) * newRange;
+
+    // Notify parent of zoom change
+    onZoomChange({ xMin: newMin, xMax: newMax });
+  };
+
+  handlePanStart = (evt) => {
+    const { enablePan, onZoomChange, xScale, clipBounds } = this.props;
+    if (!enablePan || !onZoomChange || !xScale) return;
+
+    // Don't start pan if clicking on a data point
+    const node = evt.target;
+    if (node !== this.stage && node.getAttr && node.getAttr("dataPoint")) return;
+
+    const pointer = this.stage.getPointerPosition();
+    if (!pointer) return;
+
+    // Check if pointer is within plot area
+    if (clipBounds) {
+      if (pointer.x < clipBounds.x || pointer.x > clipBounds.x + clipBounds.width ||
+          pointer.y < clipBounds.y || pointer.y > clipBounds.y + clipBounds.height) {
+        return;
+      }
+    }
+
+    this.isPanning = true;
+    this.lastPanPos = pointer;
+    this.stage.container().style.cursor = "grabbing";
+
+    // Add global listeners for pan
+    window.addEventListener("mousemove", this.handlePanMove);
+    window.addEventListener("mouseup", this.handlePanEnd);
+    window.addEventListener("touchmove", this.handlePanMove);
+    window.addEventListener("touchend", this.handlePanEnd);
+  };
+
+  handlePanMove = (evt) => {
+    if (!this.isPanning || !this.lastPanPos) return;
+
+    const { onZoomChange, xScale, clipBounds } = this.props;
+    if (!onZoomChange || !xScale) return;
+
+    evt.preventDefault();
+
+    // Get current mouse position
+    const rect = this.containerRef.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const pointerX = clientX - rect.left;
+
+    // Calculate delta in pixels
+    const deltaX = pointerX - this.lastPanPos.x;
+    this.lastPanPos = { x: pointerX, y: this.lastPanPos.y };
+
+    // Convert to data units
+    const domain = xScale.domain();
+    const plotWidth = clipBounds ? clipBounds.width : (xScale.range()[1] - xScale.range()[0]);
+    const dataRange = domain[1] - domain[0];
+    const dataDelta = (deltaX / plotWidth) * dataRange;
+
+    // Calculate new domain (pan is inverted - drag right = move left in data)
+    const newMin = domain[0] - dataDelta;
+    const newMax = domain[1] - dataDelta;
+
+    onZoomChange({ xMin: newMin, xMax: newMax });
+  };
+
+  handlePanEnd = () => {
+    this.isPanning = false;
+    this.lastPanPos = null;
+    if (this.stage) {
+      this.stage.container().style.cursor = "default";
+    }
+
+    window.removeEventListener("mousemove", this.handlePanMove);
+    window.removeEventListener("mouseup", this.handlePanEnd);
+    window.removeEventListener("touchmove", this.handlePanMove);
+    window.removeEventListener("touchend", this.handlePanEnd);
+  };
+
   getScales() {
     const { width, height, data, xAccessor, yAccessor, xScale, yScale } = this.props;
 
@@ -424,6 +552,7 @@ class KonvaScatter extends Component {
       ciLowerAccessor,
       ciUpperAccessor,
       showErrorBars,
+      hollowAccessor,
     } = this.props;
 
     this.circlesLayer.destroyChildren();
@@ -451,6 +580,7 @@ class KonvaScatter extends Component {
     const getId = idAccessor ? normalizeAccessor(idAccessor) : (d, i) => i;
     const getCiLower = ciLowerAccessor ? normalizeAccessor(ciLowerAccessor) : null;
     const getCiUpper = ciUpperAccessor ? normalizeAccessor(ciUpperAccessor) : null;
+    const getHollow = hollowAccessor ? normalizeAccessor(hollowAccessor) : () => false;
 
     const selectedIdsSet = new Set(
       selectedIds || (selectedId !== undefined && selectedId !== null ? [selectedId] : [])
@@ -485,6 +615,7 @@ class KonvaScatter extends Component {
       const shapeType = getShape(d);
       const pointId = getId(d, d._originalIndex);
       const isSelected = selectedIdsSet.has(pointId);
+      const isHollow = getHollow(d);
 
       if (showErrorBars && getCiLower && getCiUpper && this.errorBarsLayer) {
         const ciLower = getCiLower(d);
@@ -523,6 +654,11 @@ class KonvaScatter extends Component {
 
       let shape;
 
+      // For hollow points, use stroke instead of fill
+      const shapeConfig = isHollow
+        ? { stroke: fill, strokeWidth: 2, fill: "transparent" }
+        : { fill };
+
       if (shapeType === "star") {
         shape = new Konva.Star({
           x: screenX,
@@ -530,7 +666,7 @@ class KonvaScatter extends Component {
           numPoints: 5,
           innerRadius: radius * 0.5,
           outerRadius: radius * 1.5,
-          fill,
+          ...shapeConfig,
         });
       } else if (shapeType === "square") {
         const size = radius * 2;
@@ -539,14 +675,14 @@ class KonvaScatter extends Component {
           y: screenY - radius,
           width: size,
           height: size,
-          fill,
+          ...shapeConfig,
         });
       } else {
         shape = new Konva.Circle({
           x: screenX,
           y: screenY,
           radius,
-          fill,
+          ...shapeConfig,
         });
       }
 
@@ -620,6 +756,22 @@ KonvaScatter.propTypes = {
 
   groupAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
   fadeOnHover: PropTypes.bool,
+
+  // Hollow points (stroke-only circles)
+  hollowAccessor: PropTypes.oneOfType([PropTypes.func, PropTypes.string]),
+
+  // Clipping bounds for plot area
+  clipBounds: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number,
+    width: PropTypes.number,
+    height: PropTypes.number,
+  }),
+
+  // Zoom/pan support
+  enableZoom: PropTypes.bool,
+  enablePan: PropTypes.bool,
+  onZoomChange: PropTypes.func,
 };
 
 KonvaScatter.defaultProps = {
@@ -631,6 +783,8 @@ KonvaScatter.defaultProps = {
   disableTooltip: false,
   showErrorBars: false,
   fadeOnHover: false,
+  enableZoom: false,
+  enablePan: false,
 };
 
 export default KonvaScatter;
