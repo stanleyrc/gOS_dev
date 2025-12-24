@@ -20,10 +20,14 @@ const ROTATION_ANGLE = 45; // degrees for rotated labels
  * @param {Array} categories - Array of category labels (strings)
  * @param {boolean} isXAxisRotated - Whether X-axis labels are rotated 45 degrees
  * @param {boolean} isYAxisCategorical - Whether Y-axis has categorical labels
+ * @param {object} options - Additional options for numeric axes
+ * @param {number} options.yMax - Maximum y-axis value for numeric tick label sizing
+ * @param {string} options.yFormat - d3 format string for y-axis tick labels
  * @returns {object} Adjusted margins object
  */
-export function calculateDynamicMargins(categories = [], isXAxisRotated = false, isYAxisCategorical = false) {
+export function calculateDynamicMargins(categories = [], isXAxisRotated = false, isYAxisCategorical = false, options = {}) {
   const adjustedMargins = { ...margins };
+  const { yMax, yFormat = ",.2f" } = options;
 
   // Calculate Y-axis margin (left side) for categorical Y-axis labels
   if (isYAxisCategorical && categories.length > 0) {
@@ -34,6 +38,14 @@ export function calculateDynamicMargins(categories = [], isXAxisRotated = false,
     
     const yLabelWidth = measureText(longestYLabel, FONT_SIZE);
     const minYMargin = Math.ceil(yLabelWidth) + 20; // Add padding
+    adjustedMargins.gapX = Math.max(BASE_MARGIN_X, minYMargin);
+  }
+
+  // Calculate Y-axis margin (left side) for numeric Y-axis labels
+  if (yMax != null && !isYAxisCategorical) {
+    const formattedMax = require("d3").format(yFormat)(yMax);
+    const yLabelWidth = measureText(formattedMax, FONT_SIZE);
+    const minYMargin = Math.ceil(yLabelWidth) + 15; // Add padding for tick marks
     adjustedMargins.gapX = Math.max(BASE_MARGIN_X, minYMargin);
   }
 
@@ -263,7 +275,11 @@ export const openCaseInNewTab = (pair, dataset) => {
   window.open(url.toString(), "_blank");
 };
 
-export const getColumnType = (dataIndex) => {
+export const getColumnType = (dataIndex, dynamicColumns = null) => {
+  if (dynamicColumns) {
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === dataIndex);
+    return col?.type || "numeric";
+  }
   const col = allColumns.find((c) => c.dataIndex === dataIndex);
   return col?.type || "numeric";
 };
@@ -273,12 +289,172 @@ export const getColumnLabel = (dataIndex) => {
   return col?.label || dataIndex;
 };
 
-export const getValue = (record, path) => {
+export const getValue = (record, path, dynamicColumns = null) => {
   if (path === "alteration_type") {
     return parseAlterationSummary(record.summary);
   }
   if (path === "driver_gene") {
     return parseDriverGenes(record.summary).map((g) => g.gene);
   }
-  return path.split(".").reduce((obj, key) => obj?.[key], record);
+  
+  const value = path.split(".").reduce((obj, key) => obj?.[key], record);
+  
+  // If dynamicColumns provided, check if this is an object type attribute
+  // and flatten to array of keys where value > 0 (boolean treatment)
+  if (dynamicColumns) {
+    const col = dynamicColumns.allColumns.find((c) => c.dataIndex === path);
+    if (col?.type === 'object' && value && typeof value === 'object') {
+      return Object.keys(value).filter((k) => {
+        const v = value[k];
+        return typeof v === 'number' && v > 0;
+      });
+    }
+  }
+  
+  return value;
 };
+
+// ============================================================================
+// Dynamic Attribute Discovery (Phase 1)
+// ============================================================================
+
+// Attributes to exclude from dropdowns
+const EXCLUDED_ATTRIBUTES = ['visible', 'summary'];
+
+// Deprecated attributes to hide from axis dropdowns
+const BLACKLISTED_ATTRIBUTES = [
+  'signatures',
+  'sbs_signatures', 
+  'indel_signatures',
+  'sigprofiler_sbs_count',
+  'sigprofiler_indel_count',
+  'qc_flag',
+  'beta',
+  'cov_intercept',
+  'cov_slope',
+  'gamma',
+  'hets_intercept',
+  'hets_slope',
+  'het_slope',
+  'total_genome_length',
+];
+
+// Attributes that are derived/computed (not direct properties)
+const DERIVED_ATTRIBUTES = [
+  { key: 'alteration_type', dataIndex: 'alteration_type', label: 'Alteration Type', type: 'categorical' },
+  { key: 'driver_gene', dataIndex: 'driver_gene', label: 'Driver Genes', type: 'categorical' },
+];
+
+/**
+ * Convert snake_case or camelCase to Title Case label
+ */
+export function formatAttributeLabel(key) {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Determine the type of an attribute value
+ * @returns 'numeric' | 'categorical' | 'object' | 'pair' | null
+ */
+export function inferAttributeType(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && !isNaN(value)) return 'numeric';
+  if (typeof value === 'string') return 'categorical';
+  if (typeof value === 'object' && !Array.isArray(value)) return 'object';
+  return null;
+}
+
+/**
+ * Discover all attributes from records and classify them
+ * @param {Array} records - Array of data records
+ * @returns {Object} { numericColumns, categoricalColumns, objectColumns, pairColumn, allColumns }
+ */
+export function discoverAttributes(records) {
+  if (!records || records.length === 0) {
+    return {
+      numericColumns: [],
+      categoricalColumns: DERIVED_ATTRIBUTES.filter(d => d.type === 'categorical'),
+      objectColumns: [],
+      pairColumn: { key: 'pair', dataIndex: 'pair', label: 'Pair', type: 'pair' },
+      allColumns: DERIVED_ATTRIBUTES,
+    };
+  }
+
+  const attributeTypes = new Map();
+  const objectKeys = new Map(); // For object attributes, track their sub-keys
+
+  // Sample all records to discover attributes
+  records.forEach((record) => {
+    Object.keys(record).forEach((key) => {
+      if (EXCLUDED_ATTRIBUTES.includes(key)) return;
+      if (BLACKLISTED_ATTRIBUTES.includes(key)) return;
+      if (key === 'pair') return; // Handle separately
+
+      const value = record[key];
+      const type = inferAttributeType(value);
+      
+      if (!type) return;
+
+      const existingType = attributeTypes.get(key);
+      if (!existingType) {
+        attributeTypes.set(key, type);
+        if (type === 'object') {
+          objectKeys.set(key, new Set(Object.keys(value || {})));
+        }
+      } else if (type === 'object' && existingType === 'object') {
+        // Merge object keys
+        const existing = objectKeys.get(key) || new Set();
+        Object.keys(value || {}).forEach((k) => existing.add(k));
+        objectKeys.set(key, existing);
+      }
+    });
+  });
+
+  const numericColumns = [];
+  const categoricalColumns = [];
+  const objectColumns = [];
+
+  attributeTypes.forEach((type, key) => {
+    const column = {
+      key,
+      dataIndex: key,
+      label: formatAttributeLabel(key),
+      type,
+    };
+
+    if (type === 'numeric') {
+      numericColumns.push(column);
+    } else if (type === 'categorical') {
+      categoricalColumns.push(column);
+    } else if (type === 'object') {
+      column.subKeys = Array.from(objectKeys.get(key) || []).sort();
+      objectColumns.push(column);
+    }
+  });
+
+  // Sort columns alphabetically by label
+  numericColumns.sort((a, b) => a.label.localeCompare(b.label));
+  categoricalColumns.sort((a, b) => a.label.localeCompare(b.label));
+  objectColumns.sort((a, b) => a.label.localeCompare(b.label));
+
+  // Add derived attributes to categorical
+  DERIVED_ATTRIBUTES.forEach((derived) => {
+    if (!categoricalColumns.find((c) => c.key === derived.key)) {
+      categoricalColumns.push(derived);
+    }
+  });
+
+  const pairColumn = { key: 'pair', dataIndex: 'pair', label: 'Pair', type: 'pair' };
+  const allColumns = [...numericColumns, ...categoricalColumns, ...objectColumns, pairColumn];
+
+  return {
+    numericColumns,
+    categoricalColumns,
+    objectColumns,
+    pairColumn,
+    allColumns,
+  };
+}

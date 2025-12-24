@@ -112,7 +112,9 @@ class KonvaScatter extends Component {
     this.errorBarsLayer = new Konva.Layer({ listening: false });
     this.stage.add(this.errorBarsLayer);
 
-    this.circlesLayer = new Konva.Layer();
+    this.circlesLayer = new Konva.Layer({
+      clip: { x: 0, y: 0, width, height },
+    });
     this.stage.add(this.circlesLayer);
 
     this.hoverLayer = new Konva.Layer({ listening: false });
@@ -159,6 +161,9 @@ class KonvaScatter extends Component {
     }
 
     this.stage.size({ width, height });
+    if (this.circlesLayer) {
+      this.circlesLayer.clip({ x: 0, y: 0, width, height });
+    }
     this.renderPoints();
   }
 
