@@ -22,6 +22,8 @@ class TrialsPlotView extends Component {
     this.cachedDataExtent = null;
     this.lastTrials = null;
     this.lastOutcomeType = null;
+    this.lastAllTrials = null;
+    this.lastShowSocAlways = null;
   }
 
   componentDidMount() {
@@ -40,12 +42,18 @@ class TrialsPlotView extends Component {
     }
   };
 
-  // Memoized data extent - only recalculates when trials/outcomeType change
+  // Memoized data extent - only recalculates when data-affecting props change
   getDataXExtent = () => {
-    const { trials, outcomeType } = this.props;
+    const { trials, outcomeType, allTrials, showSocAlways } = this.props;
 
     // Use cached extent if data hasn't changed
-    if (this.cachedDataExtent && this.lastTrials === trials && this.lastOutcomeType === outcomeType) {
+    if (
+      this.cachedDataExtent &&
+      this.lastTrials === trials &&
+      this.lastOutcomeType === outcomeType &&
+      this.lastAllTrials === allTrials &&
+      this.lastShowSocAlways === showSocAlways
+    ) {
       return this.cachedDataExtent;
     }
 
@@ -166,17 +174,96 @@ class TrialsPlotView extends Component {
     return value;
   };
 
+  // Create a unique key for a point to avoid duplicates
+  createPointKey = (trial, outcome) => {
+    return `${trial.nct_id}|${outcome.arm_title}|${outcome.outcome_type}`;
+  };
+
+  // Create a point object from trial and outcome
+  createPoint = (trial, outcome, isORR) => {
+    const rawValue = parseFloat(outcome.value);
+    if (isNaN(rawValue)) return null;
+
+    const value = isORR ? rawValue : this.normalizeToMonths(rawValue, outcome.unit);
+    const ciLower = isORR ? outcome.ci_lower : this.normalizeToMonths(outcome.ci_lower, outcome.unit);
+    const ciUpper = isORR ? outcome.ci_upper : this.normalizeToMonths(outcome.ci_upper, outcome.unit);
+
+    // Skip negative values after normalization
+    if (value < 0) return null;
+
+    const year = this.parseCompletionYear(trial.completion_date);
+    if (!year || isNaN(year)) return null;
+
+    const armTitle = outcome.arm_title || "";
+    const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
+
+    return {
+      x: year,
+      y: value,
+      trial,
+      outcome,
+      treatmentClass,
+      armTitle,
+      nctId: trial.nct_id,
+      ciLower: ciLower != null && ciLower >= 0 ? ciLower : null,
+      ciUpper: ciUpper != null && ciUpper >= 0 ? ciUpper : null,
+    };
+  };
+
   getPlotData = () => {
-    const { trials, outcomeType } = this.props;
+    const { trials, outcomeType, allTrials, showSocAlways } = this.props;
 
     // Return cached data if inputs haven't changed
-    if (this.cachedPlotData && this.lastTrials === trials && this.lastOutcomeType === outcomeType) {
+    if (
+      this.cachedPlotData &&
+      this.lastTrials === trials &&
+      this.lastOutcomeType === outcomeType &&
+      this.lastAllTrials === allTrials &&
+      this.lastShowSocAlways === showSocAlways
+    ) {
       return this.cachedPlotData;
     }
 
     const points = [];
+    const socPoints = [];
+    const addedSocKeys = new Set();
     const isORR = outcomeType === "ORR";
 
+    // If showSocAlways is enabled, first collect ALL SoC points from all trials
+    if (showSocAlways && allTrials) {
+      allTrials.forEach((trial) => {
+        // Skip adjuvant and neoadjuvant trials for SoC comparison
+        if (trial.line_of_therapy === "ADJUVANT" || trial.line_of_therapy === "NEOADJUVANT") {
+          return;
+        }
+
+        const completionDate = trial.completion_date;
+        if (!completionDate) return;
+
+        const validOutcomes = (trial.outcomes || []).filter(
+          (o) => o.outcome_type === outcomeType && this.isValidOutcome(o, outcomeType)
+        );
+        if (validOutcomes.length === 0) return;
+
+        validOutcomes.forEach((outcome) => {
+          const armTitle = outcome.arm_title || "";
+          const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
+
+          // Only include SoC points
+          if (!this.isStandardOfCare({ treatmentClass })) return;
+
+          const key = this.createPointKey(trial, outcome);
+          addedSocKeys.add(key);
+
+          const point = this.createPoint(trial, outcome, isORR);
+          if (point) {
+            socPoints.push(point);
+          }
+        });
+      });
+    }
+
+    // Add points from filtered trials (normal filtering)
     trials.forEach((trial) => {
       const completionDate = trial.completion_date;
       if (!completionDate) return;
@@ -191,40 +278,29 @@ class TrialsPlotView extends Component {
       if (outcomes.length === 0) return;
 
       outcomes.forEach((outcome) => {
-        const rawValue = parseFloat(outcome.value);
-        if (isNaN(rawValue)) return;
+        const key = this.createPointKey(trial, outcome);
 
-        // Normalize to months for PFS/OS, keep as-is for ORR
-        const value = isORR ? rawValue : this.normalizeToMonths(rawValue, outcome.unit);
-        const ciLower = isORR ? outcome.ci_lower : this.normalizeToMonths(outcome.ci_lower, outcome.unit);
-        const ciUpper = isORR ? outcome.ci_upper : this.normalizeToMonths(outcome.ci_upper, outcome.unit);
+        // Skip if already added as SoC point
+        if (addedSocKeys.has(key)) return;
 
-        // Skip negative values after normalization
-        if (value < 0) return;
-
-        const armTitle = outcome.arm_title || "";
-        const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
-
-        points.push({
-          x: year,
-          y: value,
-          trial,
-          outcome,
-          treatmentClass,
-          armTitle,
-          nctId: trial.nct_id,
-          ciLower: ciLower != null && ciLower >= 0 ? ciLower : null,
-          ciUpper: ciUpper != null && ciUpper >= 0 ? ciUpper : null,
-        });
+        const point = this.createPoint(trial, outcome, isORR);
+        if (point) {
+          points.push(point);
+        }
       });
     });
 
+    // Merge SoC points with filtered points
+    const allPoints = showSocAlways ? [...socPoints, ...points] : points;
+
     // Cache the results
-    this.cachedPlotData = points;
+    this.cachedPlotData = allPoints;
     this.lastTrials = trials;
     this.lastOutcomeType = outcomeType;
+    this.lastAllTrials = allTrials;
+    this.lastShowSocAlways = showSocAlways;
 
-    return points;
+    return allPoints;
   };
 
   parseCompletionYear = (dateStr) => {

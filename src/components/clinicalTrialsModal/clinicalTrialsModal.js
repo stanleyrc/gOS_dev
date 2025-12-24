@@ -138,11 +138,7 @@ class ClinicalTrialsModal extends Component {
       priorTkiFilter,
       priorIoFilter,
       priorPlatinumFilter,
-      showSocAlways,
     } = this.state;
-
-    const socClasses = ["Chemo", "Placebo"];
-    const socTrials = [];
 
     const filtered = trials.filter((trial) => {
       // NCT ID filter (OR logic)
@@ -202,21 +198,7 @@ class ClinicalTrialsModal extends Component {
       return true;
     });
 
-    // Always Show SoC: collect SoC trials separately when enabled
-    if (showSocAlways) {
-      trials.forEach((trial) => {
-        // Skip ADJUVANT and NEOADJUVANT trials for SoC
-        if (trial.line_of_therapy === "ADJUVANT" || trial.line_of_therapy === "NEOADJUVANT") {
-          return;
-        }
-        const hasSocArm = Object.values(trial.treatment_class_map || {}).some((tc) => socClasses.includes(tc));
-        if (hasSocArm && !filtered.includes(trial)) {
-          socTrials.push(trial);
-        }
-      });
-      return [...filtered, ...socTrials];
-    }
-
+    // Note: showSocAlways is now handled at the point level in TrialsPlotView
     return filtered;
   };
 
@@ -384,6 +366,8 @@ class ClinicalTrialsModal extends Component {
       },
     ];
 
+    const { trials } = this.state;
+
     const tabItems = [
       {
         key: "plot",
@@ -391,6 +375,8 @@ class ClinicalTrialsModal extends Component {
         children: (
           <TrialsPlotView
             trials={filteredTrials}
+            allTrials={trials}
+            showSocAlways={showSocAlways}
             outcomeType={selectedOutcomeType}
             onTrialClick={this.handleTrialClick}
           />
