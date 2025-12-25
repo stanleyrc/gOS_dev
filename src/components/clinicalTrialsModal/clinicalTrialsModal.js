@@ -64,10 +64,26 @@ class ClinicalTrialsModal extends Component {
   componentDidUpdate(prevProps) {
     const { report } = this.props;
     if (report !== prevProps.report && report) {
-      const cancerType = report.tumor_details || report.disease || "";
-      this.setState({ cancerTypeFilters: cancerType ? [cancerType] : [] });
+      const validCancerType = this.getValidCancerTypeFromReport();
+      this.setState({ cancerTypeFilters: validCancerType ? [validCancerType] : [] });
     }
   }
+
+  getValidCancerTypeFromReport = () => {
+    const { report } = this.props;
+    const { trials } = this.state;
+    const reportCancerType = report?.tumor_details || report?.disease || "";
+    if (!reportCancerType || trials.length === 0) return null;
+
+    // Get all valid cancer type codes from trials
+    const validCodes = new Set();
+    trials.forEach((trial) => {
+      (trial.cancer_types || []).forEach((ct) => validCodes.add(ct));
+    });
+
+    // Only return if the report's cancer type matches a valid code
+    return validCodes.has(reportCancerType) ? reportCancerType : null;
+  };
 
   getCancerTypeOptions = () => {
     return getUniqueOptionsFromTrials(this.state.trials, (trial, set) => {
@@ -186,10 +202,9 @@ class ClinicalTrialsModal extends Component {
   };
 
   handleReset = () => {
-    const { report } = this.props;
-    const cancerType = report?.tumor_details || report?.disease || "";
+    const validCancerType = this.getValidCancerTypeFromReport();
     this.setState({
-      ...getDefaultFilterState(true, cancerType),
+      ...getDefaultFilterState(true, validCancerType || ""),
       selectedOutcomeType: "PFS",
       selectedTrial: null,
       selectedOutcome: null,
