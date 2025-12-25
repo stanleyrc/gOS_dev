@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Form, Row, Col, Select, Input, Checkbox, Button, Space } from "antd";
+import { Form, Row, Col, Select, Input, Checkbox, Button, Space, Alert } from "antd";
 import { PHASE_OPTIONS, STATUS_OPTIONS, LINE_OF_THERAPY_OPTIONS, OUTCOME_TYPES } from "./constants";
 
 class TrialsFilterForm extends Component {
@@ -40,6 +40,7 @@ class TrialsFilterForm extends Component {
       onShowSocAlwaysChange,
       onClear,
       onReset,
+      hasResults,
     } = this.props;
 
     const sectionLabel = {
@@ -234,6 +235,15 @@ class TrialsFilterForm extends Component {
             </Space>
           </Col>
         </Row>
+
+        {!hasResults && (
+          <Alert
+            type="warning"
+            showIcon
+            message="No trials found for the current filter combination across all outcome measures (PFS, OS, ORR)."
+            style={{ marginTop: 16 }}
+          />
+        )}
       </Form>
     );
   }

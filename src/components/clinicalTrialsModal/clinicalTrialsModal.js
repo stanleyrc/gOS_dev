@@ -13,7 +13,7 @@ import {
   getUniqueOptionsFromTrials,
   getNctIdOptionsFromTrials,
 } from "./constants";
-import { filterTrials } from "./trialDataUtils";
+import { filterTrials, hasAnyOutcomes } from "./trialDataUtils";
 
 class ClinicalTrialsModal extends Component {
   constructor(props) {
@@ -313,6 +313,7 @@ class ClinicalTrialsModal extends Component {
             onShowSocAlwaysChange={(checked) => this.setState({ showSocAlways: checked })}
             onClear={this.handleClear}
             onReset={this.handleReset}
+            hasResults={hasAnyOutcomes(filteredTrials)}
           />
 
           <Collapse

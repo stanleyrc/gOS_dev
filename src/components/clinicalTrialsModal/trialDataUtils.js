@@ -207,6 +207,26 @@ export function trialMatchesBiomarkerFilter(trial, biomarkerFilters) {
 }
 
 /**
+ * Check if filtered trials have any valid outcomes across all outcome types
+ */
+export function hasAnyOutcomes(trials) {
+  const outcomeTypes = ["PFS", "OS", "ORR"];
+
+  for (const trial of trials) {
+    if (!trial.completion_date) continue;
+
+    for (const outcomeType of outcomeTypes) {
+      const validOutcomes = (trial.outcomes || []).filter(
+        (o) => o.outcome_type === outcomeType && isValidOutcome(o, outcomeType)
+      );
+      if (validOutcomes.length > 0) return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Filter trials based on filter criteria
  */
 export function filterTrials(trials, filters) {
