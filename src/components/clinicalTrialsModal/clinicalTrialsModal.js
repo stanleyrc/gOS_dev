@@ -151,13 +151,20 @@ class ClinicalTrialsModal extends Component {
 
     const biomarkerEntry = `${geneName}+`;
 
+    let newFilters;
     if (checked) {
       if (!biomarkerFilters.includes(biomarkerEntry)) {
-        this.setState({ biomarkerFilters: [...biomarkerFilters, biomarkerEntry] });
+        newFilters = [...biomarkerFilters, biomarkerEntry];
+      } else {
+        return;
       }
     } else {
-      this.setState({ biomarkerFilters: biomarkerFilters.filter((b) => b !== biomarkerEntry) });
+      newFilters = biomarkerFilters.filter((b) => b !== biomarkerEntry);
     }
+    this.setState({
+      biomarkerFilters: newFilters,
+      biomarkerInput: newFilters.join(", "),
+    });
   };
 
   isEventSelected = (record) => {
