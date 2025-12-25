@@ -227,6 +227,26 @@ export function hasAnyOutcomes(trials) {
 }
 
 /**
+ * Get which outcome types have valid data for the given trials
+ * Returns an object like { PFS: true, OS: false, ORR: true }
+ */
+export function getAvailableOutcomeTypes(trials) {
+  const outcomeTypes = ["PFS", "OS", "ORR"];
+  const available = {};
+
+  for (const outcomeType of outcomeTypes) {
+    available[outcomeType] = trials.some((trial) => {
+      if (!trial.completion_date) return false;
+      return (trial.outcomes || []).some(
+        (o) => o.outcome_type === outcomeType && isValidOutcome(o, outcomeType)
+      );
+    });
+  }
+
+  return available;
+}
+
+/**
  * Filter trials based on filter criteria
  */
 export function filterTrials(trials, filters) {

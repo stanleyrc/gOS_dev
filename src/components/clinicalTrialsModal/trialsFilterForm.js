@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Form, Row, Col, Select, Input, Checkbox, Button, Space, Alert } from "antd";
-import { PHASE_OPTIONS, STATUS_OPTIONS, LINE_OF_THERAPY_OPTIONS, OUTCOME_TYPES } from "./constants";
+import { PHASE_OPTIONS, STATUS_OPTIONS, LINE_OF_THERAPY_OPTIONS } from "./constants";
 
 class TrialsFilterForm extends Component {
   render() {
@@ -11,7 +11,6 @@ class TrialsFilterForm extends Component {
       phaseFilters,
       statusFilter,
       lineOfTherapyFilter,
-      selectedOutcomeType,
       nctIdFilters,
       treatmentClassFilters,
       cancerStageFilter,
@@ -30,7 +29,6 @@ class TrialsFilterForm extends Component {
       onPhaseChange,
       onStatusChange,
       onLineOfTherapyChange,
-      onOutcomeTypeChange,
       onNctIdChange,
       onTreatmentClassChange,
       onCancerStageChange,
@@ -204,7 +202,7 @@ class TrialsFilterForm extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={6}>
+              <Col span={13}>
                 <Form.Item label={t("components.clinical-trials-modal.status") || "Status"} style={fieldStyle}>
                   <Select
                     value={statusFilter}
@@ -212,15 +210,6 @@ class TrialsFilterForm extends Component {
                     onChange={onStatusChange}
                     placeholder="All"
                     allowClear
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={7}>
-                <Form.Item label={t("components.clinical-trials-modal.outcome-type") || "Outcome"} style={fieldStyle}>
-                  <Select
-                    value={selectedOutcomeType}
-                    options={OUTCOME_TYPES.map((o) => ({ label: o, value: o }))}
-                    onChange={onOutcomeTypeChange}
                   />
                 </Form.Item>
               </Col>

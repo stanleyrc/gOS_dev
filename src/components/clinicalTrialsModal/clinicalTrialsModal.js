@@ -13,7 +13,7 @@ import {
   getUniqueOptionsFromTrials,
   getNctIdOptionsFromTrials,
 } from "./constants";
-import { filterTrials, hasAnyOutcomes } from "./trialDataUtils";
+import { filterTrials, hasAnyOutcomes, getAvailableOutcomeTypes } from "./trialDataUtils";
 
 class ClinicalTrialsModal extends Component {
   constructor(props) {
@@ -213,6 +213,7 @@ class ClinicalTrialsModal extends Component {
     } = this.state;
 
     const filteredTrials = this.getFilteredTrials();
+    const availableOutcomes = getAvailableOutcomeTypes(filteredTrials);
 
     const selectColumn = [
       {
@@ -242,6 +243,8 @@ class ClinicalTrialsModal extends Component {
             allTrials={trials}
             showSocAlways={showSocAlways}
             outcomeType={selectedOutcomeType}
+            availableOutcomes={availableOutcomes}
+            onOutcomeChange={this.handleOutcomeTypeChange}
             onTrialClick={this.handleTrialClick}
           />
         ),
@@ -286,7 +289,6 @@ class ClinicalTrialsModal extends Component {
             phaseFilters={phaseFilters}
             statusFilter={statusFilter}
             lineOfTherapyFilter={lineOfTherapyFilter}
-            selectedOutcomeType={selectedOutcomeType}
             nctIdFilters={nctIdFilters}
             treatmentClassFilters={treatmentClassFilters}
             cancerStageFilter={cancerStageFilter}
@@ -303,7 +305,6 @@ class ClinicalTrialsModal extends Component {
             onPhaseChange={this.handlePhaseChange}
             onStatusChange={this.handleStatusChange}
             onLineOfTherapyChange={this.handleLineOfTherapyChange}
-            onOutcomeTypeChange={this.handleOutcomeTypeChange}
             onNctIdChange={this.handleNctIdChange}
             onTreatmentClassChange={this.handleTreatmentClassChange}
             onCancerStageChange={this.handleCancerStageChange}

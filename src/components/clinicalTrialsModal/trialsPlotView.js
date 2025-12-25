@@ -241,7 +241,7 @@ class TrialsPlotView extends Component {
 
     return (
       <div ref={this.containerRef} style={{ display: "flex", gap: 16, width: "100%" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingLeft: 48 }}>
           {isZoomed && (
             <div style={{ marginBottom: 8 }}>
               <Button
@@ -253,12 +253,14 @@ class TrialsPlotView extends Component {
               </Button>
             </div>
           )}
-          <div style={{ position: "relative", height: plotHeight }}>
+          <div style={{ position: "relative", height: plotHeight, overflow: "visible" }}>
             <TrialsPlotAxes
               xScale={xScale}
               yScale={yScale}
               containerWidth={containerWidth}
               outcomeType={this.props.outcomeType}
+              availableOutcomes={this.props.availableOutcomes}
+              onOutcomeChange={this.props.onOutcomeChange}
             />
             <KonvaScatter
               data={points}
