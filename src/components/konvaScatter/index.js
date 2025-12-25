@@ -40,9 +40,10 @@ class KonvaScatter extends Component {
   errorBarsByGroup = null;   // Map<groupId, errorBarGroup[]>
   // Reusable hover line (Phase 4)
   cachedHoverLine = null;
-  // RAF throttling for hover effect
-  hoverRafId = null;
-  pendingHoverGroupId = null;
+  // Track the currently applied hover group (to skip redundant updates)
+  activeHoverGroupId = null;
+  // Timeout for delayed hover clear (to prevent flicker when moving between layers)
+  hoverClearTimeout = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -134,11 +135,11 @@ class KonvaScatter extends Component {
     if (this.zoomRafId) {
       cancelAnimationFrame(this.zoomRafId);
     }
-    if (this.hoverRafId) {
-      cancelAnimationFrame(this.hoverRafId);
-    }
     if (this.zoomEndTimeout) {
       clearTimeout(this.zoomEndTimeout);
+    }
+    if (this.hoverClearTimeout) {
+      clearTimeout(this.hoverClearTimeout);
     }
     if (this.stage) {
       this.stage.destroy();
@@ -166,7 +167,7 @@ class KonvaScatter extends Component {
     this.circlesLayer = new Konva.Layer({ clip });
     this.stage.add(this.circlesLayer);
 
-    this.hoverLayer = new Konva.Layer({ listening: false, clip });
+    this.hoverLayer = new Konva.Layer({ listening: true, clip });
     this.stage.add(this.hoverLayer);
 
     this.tooltipLayer = new Konva.Layer({ listening: false });
@@ -240,29 +241,22 @@ class KonvaScatter extends Component {
     this.hoveredNode = node;
     this.stage.container().style.cursor = "pointer";
 
-    node._originalStroke = node.stroke();
-    node._originalStrokeWidth = node.strokeWidth();
-    node.stroke(hoverStroke);
-    node.strokeWidth(hoverStrokeWidth);
-
     // Use cached accessor instead of creating new one (Phase 3)
     const groupId = this.dataAccessors?.getGroupId ? this.dataAccessors.getGroupId(dataPoint) : null;
     this.hoveredGroupId = groupId;
 
     if (fadeOnHover && groupId) {
-      // RAF throttle: only apply hover effect once per frame
-      this.pendingHoverGroupId = groupId;
-      if (!this.hoverRafId) {
-        this.hoverRafId = requestAnimationFrame(() => {
-          this.hoverRafId = null;
-          if (this.pendingHoverGroupId) {
-            this.applyHoverEffect(this.pendingHoverGroupId);
-          }
-        });
-      }
+      // Let applyHoverEffect handle all visual changes including stroke
+      this.applyHoverEffect(groupId);
+      // applyHoverEffect does its own batchDraw, skip the one below
+    } else {
+      // No fade effect - just highlight this node
+      node._originalStroke = node.stroke();
+      node._originalStrokeWidth = node.strokeWidth();
+      node.stroke(hoverStroke);
+      node.strokeWidth(hoverStrokeWidth);
+      this.circlesLayer.batchDraw();
     }
-
-    this.circlesLayer.batchDraw();
 
     if (onPointHover) {
       onPointHover(dataPoint);
@@ -295,55 +289,172 @@ class KonvaScatter extends Component {
   };
 
   applyHoverEffect = (groupId) => {
-    const { xScale, yScale, colorScale, hoverStroke, hoverStrokeWidth } = this.props;
+    // Cancel any pending hover clear (prevents flicker when moving between layers)
+    if (this.hoverClearTimeout) {
+      clearTimeout(this.hoverClearTimeout);
+      this.hoverClearTimeout = null;
+    }
 
-    // Use cached accessors and group maps (Phase 3)
+    // Skip if already hovering this group (key optimization from Chart.js)
+    if (groupId === this.activeHoverGroupId) return;
+
+    const { xScale, yScale, colorScale, hoverStroke, hoverStrokeWidth, radiusAccessor, shapeAccessor, hollowAccessor } = this.props;
+
     if (!this.shapesByGroup || !this.dataAccessors) return;
 
     const { getX, getY, getColor } = this.dataAccessors;
+    const getRadius = typeof radiusAccessor === 'function' ? radiusAccessor : () => radiusAccessor || 4;
+    const getShape = shapeAccessor ? normalizeAccessor(shapeAccessor) : () => "circle";
+    const getHollow = hollowAccessor ? normalizeAccessor(hollowAccessor) : () => false;
     const sameGroupPoints = [];
+
+    // Clear previous hover shapes from hoverLayer (except cachedHoverLine)
+    // Use slice() to avoid modifying array during iteration
+    this.hoverLayer.children.slice().forEach((child) => {
+      if (child !== this.cachedHoverLine) {
+        child.destroy();
+      }
+    });
 
     // O(1) lookup for hovered group shapes
     const hoveredShapes = this.shapesByGroup.get(groupId) || [];
+    const hoveredErrorBars = this.errorBarsByGroup?.get(groupId) || [];
 
-    // First pass: dim ALL shapes (still O(n) but simpler operation)
-    this.circlesLayer.children.forEach((shape) => {
-      shape.opacity(0.2);
-    });
-
-    // Second pass: highlight only hovered group shapes (O(k) where k = group size)
-    hoveredShapes.forEach((shape) => {
-      const dp = shape.getAttr("dataPoint");
-      shape.opacity(1);
-      if (!shape.hasOwnProperty('_originalStroke')) {
-        shape._originalStroke = shape.stroke();
-        shape._originalStrokeWidth = shape.strokeWidth();
-      }
-      shape.stroke(hoverStroke);
-      shape.strokeWidth(hoverStrokeWidth);
-
-      if (dp) {
-        sameGroupPoints.push({
-          x: xScale(getX(dp)),
-          y: yScale(getY(dp)),
-          color: colorScale ? colorScale(getColor(dp)) : getColor(dp),
-        });
-      }
-    });
-
-    // Handle error bars similarly
-    if (this.errorBarsLayer && this.errorBarsByGroup) {
-      this.errorBarsLayer.children.forEach((errorBarGroup) => {
-        errorBarGroup.opacity(0.2);
-      });
-
-      const hoveredErrorBars = this.errorBarsByGroup.get(groupId) || [];
-      hoveredErrorBars.forEach((errorBarGroup) => {
-        errorBarGroup.opacity(1);
-      });
+    // Use CSS opacity on the canvas elements - instant, no Konva redraw needed
+    const circlesCanvas = this.circlesLayer.getCanvas()._canvas;
+    circlesCanvas.style.opacity = '0.2';
+    if (this.errorBarsLayer) {
+      const errorBarsCanvas = this.errorBarsLayer.getCanvas()._canvas;
+      errorBarsCanvas.style.opacity = '0.2';
     }
 
-    // Update hover layer (connecting lines) - reuse cached line (Phase 4)
+    // O(k): Create new shapes in hoverLayer for hovered group (avoids moving shapes)
+    hoveredShapes.forEach((originalShape) => {
+      const dp = originalShape.getAttr("dataPoint");
+      if (!dp) return;
+
+      const screenX = xScale(getX(dp));
+      const screenY = yScale(getY(dp));
+      const colorVal = getColor(dp);
+      const fill = colorScale ? colorScale(colorVal) : colorVal;
+      const radius = getRadius(dp);
+      const shapeType = getShape(dp);
+      const isHollow = getHollow(dp);
+
+      const shapeConfig = isHollow
+        ? { stroke: fill, strokeWidth: 2.5, fill: 'rgba(255,255,255,0.01)' }
+        : { fill };
+
+      let shape;
+      if (shapeType === "star") {
+        shape = new Konva.Star({
+          x: screenX,
+          y: screenY,
+          numPoints: 5,
+          innerRadius: radius * 0.5,
+          outerRadius: radius * 1.5,
+          ...shapeConfig,
+          stroke: hoverStroke,
+          strokeWidth: hoverStrokeWidth,
+        });
+      } else if (shapeType === "square") {
+        const size = radius * 2;
+        shape = new Konva.Rect({
+          x: screenX - radius,
+          y: screenY - radius,
+          width: size,
+          height: size,
+          ...shapeConfig,
+          stroke: hoverStroke,
+          strokeWidth: hoverStrokeWidth,
+        });
+      } else {
+        shape = new Konva.Circle({
+          x: screenX,
+          y: screenY,
+          radius,
+          ...shapeConfig,
+          stroke: hoverStroke,
+          strokeWidth: hoverStrokeWidth,
+        });
+      }
+
+      shape.setAttr("dataPoint", dp);
+      this.hoverLayer.add(shape);
+
+      sameGroupPoints.push({
+        x: screenX,
+        y: screenY,
+        color: fill,
+      });
+    });
+
+    // O(k): Create error bars in hoverLayer for hovered group
+    hoveredErrorBars.forEach((originalErrorBar) => {
+      const dp = originalErrorBar.getAttr("dataPoint");
+      if (!dp) return;
+
+      const { getCiLower, getCiUpper } = this.dataAccessors;
+      const screenX = xScale(getX(dp));
+      const screenY = yScale(getY(dp));
+      const colorVal = getColor(dp);
+      const fill = colorScale ? colorScale(colorVal) : colorVal;
+
+      const ciLower = getCiLower ? getCiLower(dp) : null;
+      const ciUpper = getCiUpper ? getCiUpper(dp) : null;
+      const hasLower = ciLower != null && !isNaN(ciLower);
+      const hasUpper = ciUpper != null && !isNaN(ciUpper);
+
+      if (!hasLower && !hasUpper) return;
+
+      const yLower = hasLower ? yScale(ciLower) : null;
+      const yUpper = hasUpper ? yScale(ciUpper) : null;
+      const capWidth = 3;
+
+      const errorBarGroup = new Konva.Group();
+      errorBarGroup.setAttr("dataPoint", dp);
+
+      if (hasLower && hasUpper) {
+        errorBarGroup.add(new Konva.Line({
+          points: [screenX, yLower, screenX, yUpper],
+          stroke: fill,
+          strokeWidth: 1.5,
+        }));
+      } else if (hasLower) {
+        errorBarGroup.add(new Konva.Line({
+          points: [screenX, screenY, screenX, yLower],
+          stroke: fill,
+          strokeWidth: 1.5,
+        }));
+      } else if (hasUpper) {
+        errorBarGroup.add(new Konva.Line({
+          points: [screenX, screenY, screenX, yUpper],
+          stroke: fill,
+          strokeWidth: 1.5,
+        }));
+      }
+
+      if (hasLower) {
+        errorBarGroup.add(new Konva.Line({
+          points: [screenX - capWidth, yLower, screenX + capWidth, yLower],
+          stroke: fill,
+          strokeWidth: 1.5,
+        }));
+      }
+      if (hasUpper) {
+        errorBarGroup.add(new Konva.Line({
+          points: [screenX - capWidth, yUpper, screenX + capWidth, yUpper],
+          stroke: fill,
+          strokeWidth: 1.5,
+        }));
+      }
+
+      this.hoverLayer.add(errorBarGroup);
+    });
+
+    this.activeHoverGroupId = groupId;
+
+    // Draw connecting line between same-group points
     if (sameGroupPoints.length > 1) {
       sameGroupPoints.sort((a, b) => a.y - b.y);
 
@@ -362,43 +473,36 @@ class KonvaScatter extends Component {
       this.cachedHoverLine.visible(false);
     }
 
-    // Single consolidated batch draw at the end (Phase 3)
-    if (this.errorBarsLayer) {
-      this.errorBarsLayer.batchDraw();
-    }
-    this.circlesLayer.batchDraw();
+    // Only need to draw hoverLayer - CSS opacity handles the dimming
     this.hoverLayer.batchDraw();
   };
 
   clearHoverEffect = () => {
-    this.circlesLayer.children.forEach((shape) => {
-      shape.opacity(1);
-      // Only restore stroke if original values were stored (i.e., stroke was modified)
-      if (shape.hasOwnProperty('_originalStroke')) {
-        shape.stroke(shape._originalStroke);
-        shape.strokeWidth(shape._originalStrokeWidth);
-        // Clear the stored values
-        delete shape._originalStroke;
-        delete shape._originalStrokeWidth;
+    // Restore CSS opacity on canvas elements - instant, no Konva redraw
+    const circlesCanvas = this.circlesLayer.getCanvas()._canvas;
+    circlesCanvas.style.opacity = '1';
+    if (this.errorBarsLayer) {
+      const errorBarsCanvas = this.errorBarsLayer.getCanvas()._canvas;
+      errorBarsCanvas.style.opacity = '1';
+    }
+
+    // Clear hover shapes from hoverLayer (except cachedHoverLine)
+    // Use slice() to avoid modifying array during iteration
+    this.hoverLayer.children.slice().forEach((child) => {
+      if (child !== this.cachedHoverLine) {
+        child.destroy();
       }
     });
 
-    // Restore error bar opacity
-    if (this.errorBarsLayer) {
-      this.errorBarsLayer.children.forEach((errorBarGroup) => {
-        errorBarGroup.opacity(1);
-      });
-      this.errorBarsLayer.batchDraw();
-    }
+    this.activeHoverGroupId = null;
 
-    // Hide cached line instead of destroying (Phase 4)
+    // Hide connecting line
     if (this.cachedHoverLine) {
       this.cachedHoverLine.visible(false);
     }
-    // Clear any pending hover RAF
-    this.pendingHoverGroupId = null;
+
+    // Only need to draw hoverLayer
     this.hoverLayer.batchDraw();
-    this.circlesLayer.batchDraw();
   };
 
   handleStageMouseMove = (evt) => {
@@ -415,7 +519,7 @@ class KonvaScatter extends Component {
     const { fadeOnHover } = this.props;
     const node = evt.target;
     if (node === this.stage) return;
-    
+
     if (this.stage) {
       this.stage.container().style.cursor = "default";
     }
@@ -427,12 +531,20 @@ class KonvaScatter extends Component {
     }
 
     if (fadeOnHover && this.hoveredGroupId) {
-      this.clearHoverEffect();
-      this.hoveredGroupId = null;
+      // Use delayed clear to prevent flicker when moving from circlesLayer to hoverLayer
+      // The timeout will be cancelled if we mouseover a shape in the same group
+      if (this.hoverClearTimeout) {
+        clearTimeout(this.hoverClearTimeout);
+      }
+      this.hoverClearTimeout = setTimeout(() => {
+        this.hoverClearTimeout = null;
+        this.clearHoverEffect();
+        this.hoveredGroupId = null;
+      }, 10);
     } else {
       this.circlesLayer.batchDraw();
     }
-    
+
     if (this.tooltipGroup) {
       this.tooltipGroup.visible(false);
       this.tooltipLayer.batchDraw();
@@ -459,11 +571,17 @@ class KonvaScatter extends Component {
 
   handleStageMouseLeave = () => {
     const { onPointHoverEnd, fadeOnHover } = this.props;
-    
+
+    // Cancel any pending hover clear since we're leaving the stage entirely
+    if (this.hoverClearTimeout) {
+      clearTimeout(this.hoverClearTimeout);
+      this.hoverClearTimeout = null;
+    }
+
     if (onPointHoverEnd) {
       onPointHoverEnd();
     }
-    
+
     if (this.stage) {
       this.stage.container().style.cursor = "default";
     }
@@ -480,7 +598,7 @@ class KonvaScatter extends Component {
     } else {
       this.circlesLayer.batchDraw();
     }
-    
+
     if (this.tooltipGroup) {
       this.tooltipGroup.visible(false);
       this.tooltipLayer.batchDraw();
@@ -509,6 +627,17 @@ class KonvaScatter extends Component {
 
     const pointer = this.stage.getPointerPosition();
     if (!pointer) return;
+
+    // Clear hover effect during zoom to avoid stale hover shapes
+    if (this.activeHoverGroupId !== null) {
+      this.clearHoverEffect();
+      this.hoveredGroupId = null;
+      // Also hide tooltip
+      if (this.tooltipGroup) {
+        this.tooltipGroup.visible(false);
+        this.tooltipLayer.batchDraw();
+      }
+    }
 
     // Get zoom limits
     const [limitMin, limitMax] = zoomLimits || xScale.domain();
@@ -622,6 +751,17 @@ class KonvaScatter extends Component {
       if (pointer.x < clipBounds.x || pointer.x > clipBounds.x + clipBounds.width ||
           pointer.y < clipBounds.y || pointer.y > clipBounds.y + clipBounds.height) {
         return;
+      }
+    }
+
+    // Clear hover effect during pan to avoid stale hover shapes
+    if (this.activeHoverGroupId !== null) {
+      this.clearHoverEffect();
+      this.hoveredGroupId = null;
+      // Also hide tooltip
+      if (this.tooltipGroup) {
+        this.tooltipGroup.visible(false);
+        this.tooltipLayer.batchDraw();
       }
     }
 
@@ -751,6 +891,11 @@ class KonvaScatter extends Component {
   renderPoints() {
     if (!this.circlesLayer) {
       return;
+    }
+
+    // Clear any hover state before re-rendering
+    if (this.activeHoverGroupId !== null) {
+      this.clearHoverEffect();
     }
 
     const {
@@ -1083,11 +1228,37 @@ class KonvaScatter extends Component {
       });
     }
 
+    // Update connecting line if hover is active
+    if (this.activeHoverGroupId && this.cachedHoverLine && this.cachedHoverLine.visible()) {
+      const hoveredShapes = this.shapesByGroup?.get(this.activeHoverGroupId) || [];
+      if (hoveredShapes.length > 1) {
+        const sameGroupPoints = hoveredShapes
+          .map((shape) => {
+            const dp = shape.getAttr("dataPoint");
+            if (!dp) return null;
+            return {
+              x: xScale(getX(dp)),
+              y: yScale(getY(dp)),
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.y - b.y);
+
+        if (sameGroupPoints.length > 1) {
+          this.cachedHoverLine.points(sameGroupPoints.flatMap((p) => [p.x, p.y]));
+        }
+      }
+    }
+
     // Batch draw for performance
     if (this.errorBarsLayer) {
       this.errorBarsLayer.batchDraw();
     }
     this.circlesLayer.batchDraw();
+    // Also redraw hoverLayer if hover is active
+    if (this.activeHoverGroupId) {
+      this.hoverLayer.batchDraw();
+    }
   }
 
   render() {
