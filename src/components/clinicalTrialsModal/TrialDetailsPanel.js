@@ -127,7 +127,7 @@ class TrialDetailsPanel extends Component {
         </thead>
         <tbody>
           {outcomes.map((outcome, i) => {
-            const treatmentClass = trial.treatment_class_map?.[outcome.arm_title] || "OTHER";
+            const treatmentClass = trial.treatment_class_map?.[outcome.arm_id] || "OTHER";
             const isHighlighted = outcome.arm_title === clickedOutcome?.arm_title;
             return (
               <tr
@@ -286,12 +286,14 @@ class TrialDetailsPanel extends Component {
           <>
             <Text strong style={{ display: "block", marginBottom: 8 }}>Treatment Arms</Text>
             <Space wrap style={{ marginBottom: 16 }}>
-              {Object.entries(trial.arm_drugs).map(([armName, drugs]) => {
-                const treatmentClass = trial.treatment_class_map?.[armName] || "OTHER";
+              {Object.entries(trial.arm_drugs).map(([armId, drugs]) => {
+                const treatmentClass = trial.treatment_class_map?.[armId] || "OTHER";
                 const color = TREATMENT_COLORS[treatmentClass] || "#7F8C8D";
+                // Look up human-readable arm title from outcomes
+                const armTitle = (trial.outcomes || []).find(o => o.arm_id === armId)?.arm_title || armId;
                 return (
                   <Card
-                    key={armName}
+                    key={armId}
                     size="small"
                     style={{
                       borderLeft: `4px solid ${color}`,
@@ -299,7 +301,7 @@ class TrialDetailsPanel extends Component {
                     }}
                     styles={{ body: { padding: 8 } }}
                   >
-                    <Text strong>{armName}</Text>
+                    <Text strong>{armTitle}</Text>
                     <br />
                     <Tag
                       style={{

@@ -97,8 +97,9 @@ export function createPoint(trial, outcome, isORR) {
   const year = parseCompletionYear(trial.completion_date);
   if (!year || isNaN(year)) return null;
 
+  const armId = outcome.arm_id || "";
   const armTitle = outcome.arm_title || "";
-  const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
+  const treatmentClass = trial.treatment_class_map?.[armId] || "OTHER";
 
   return {
     x: year,
@@ -160,8 +161,8 @@ export function collectTrialPoints(trials, outcomeType, options = {}) {
       if (validOutcomes.length === 0) return;
 
       validOutcomes.forEach((outcome) => {
-        const armTitle = outcome.arm_title || "";
-        const treatmentClass = trial.treatment_class_map?.[armTitle] || "OTHER";
+        const armId = outcome.arm_id || "";
+        const treatmentClass = trial.treatment_class_map?.[armId] || "OTHER";
 
         if (!isStandardOfCareTreatment(treatmentClass)) return;
 
