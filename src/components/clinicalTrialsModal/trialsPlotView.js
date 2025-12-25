@@ -3,7 +3,15 @@ import { Typography, Button } from "antd";
 import { ZoomOutOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import KonvaScatter from "../konvaScatter";
-import { TREATMENT_COLORS, PLOT_CONFIG } from "./constants";
+import {
+  TREATMENT_COLORS,
+  PLOT_CONFIG,
+  LINE_OF_THERAPY_COLORS,
+  STATUS_COLORS,
+  CANCER_TYPE_COLORS,
+  STAGE_COLORS,
+  getColorForValue,
+} from "./constants";
 import { isStandardOfCareTreatment, collectTrialPoints } from "./trialDataUtils";
 import TrialsPlotLegend from "./trialsPlotLegend";
 import TrialsPlotAxes from "./trialsPlotAxes";
@@ -18,6 +26,8 @@ class TrialsPlotView extends Component {
       // Zoom state - track the visible X range
       zoomXMin: null,
       zoomXMax: null,
+      // Color-by state for legend grouping
+      colorBy: 'treatmentClass',
     };
     this.containerRef = React.createRef();
     // Cache for computed data
@@ -194,10 +204,41 @@ class TrialsPlotView extends Component {
     return { xScale, yScale, plotHeight, margins };
   };
 
-  colorAccessor = (d) => d.treatmentClass;
+  handleColorByChange = (colorBy) => {
+    this.setState({ colorBy });
+  };
 
-  colorScale = (treatmentClass) => {
-    return TREATMENT_COLORS[treatmentClass] || TREATMENT_COLORS["OTHER"];
+  getColorValue = (d) => {
+    const { colorBy } = this.state;
+    switch (colorBy) {
+      case 'treatmentClass':
+        return d.treatmentClass;
+      case 'line':
+        return d.trial.line_of_therapy || 'OTHER';
+      case 'cancerType':
+        return (d.trial.cancer_types || [])[0] || 'OTHER';
+      case 'stage':
+        return (d.trial.cancer_stages || [])[0] || 'OTHER';
+      case 'status':
+        return d.trial.status || 'OTHER';
+      default:
+        return d.treatmentClass;
+    }
+  };
+
+  colorAccessor = (d) => this.getColorValue(d);
+
+  colorScale = (value) => {
+    const { colorBy } = this.state;
+    const colorMaps = {
+      treatmentClass: TREATMENT_COLORS,
+      line: LINE_OF_THERAPY_COLORS,
+      cancerType: CANCER_TYPE_COLORS,
+      stage: STAGE_COLORS,
+      status: STATUS_COLORS,
+    };
+    const colorMap = colorMaps[colorBy] || TREATMENT_COLORS;
+    return getColorForValue(value, colorMap);
   };
 
   tooltipAccessor = (d) => {
@@ -277,6 +318,7 @@ class TrialsPlotView extends Component {
               yScale={yScale}
               colorAccessor={this.colorAccessor}
               colorScale={this.colorScale}
+              colorKey={this.state.colorBy}
               radiusAccessor={6}
               tooltipAccessor={this.tooltipAccessor}
               onPointClick={this.handlePointClick}
@@ -299,7 +341,13 @@ class TrialsPlotView extends Component {
             Scroll to zoom, drag to pan
           </Text>
         </div>
-        <TrialsPlotLegend points={points} />
+        <TrialsPlotLegend
+          points={points}
+          colorBy={this.state.colorBy}
+          onColorByChange={this.handleColorByChange}
+          colorScale={this.colorScale}
+          getColorValue={this.getColorValue}
+        />
       </div>
     );
   }

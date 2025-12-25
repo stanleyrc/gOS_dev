@@ -16,6 +16,110 @@ export const TREATMENT_COLORS = {
 
 export const SOC_CLASSES = ['Chemo', 'Placebo'];
 
+// Color-by options for the legend dropdown
+export const COLOR_BY_OPTIONS = [
+  { label: 'Treatment Class', value: 'treatmentClass' },
+  { label: 'Line of Therapy', value: 'line' },
+  { label: 'Cancer Type', value: 'cancerType' },
+  { label: 'Stage', value: 'stage' },
+  { label: 'Status', value: 'status' },
+];
+
+export const LINE_OF_THERAPY_COLORS = {
+  '1L': '#3498DB',
+  '2L': '#E74C3C',
+  '3L+': '#9B59B6',
+  'ADJUVANT': '#27AE60',
+  'NEOADJUVANT': '#F39C12',
+  'MAINTENANCE': '#1ABC9C',
+  'OTHER': '#7F8C8D',
+};
+
+export const STATUS_COLORS = {
+  'COMPLETED': '#27AE60',
+  'RECRUITING': '#3498DB',
+  'ACTIVE_NOT_RECRUITING': '#F39C12',
+  'TERMINATED': '#E74C3C',
+  'WITHDRAWN': '#95A5A6',
+  'SUSPENDED': '#D35400',
+  'OTHER': '#7F8C8D',
+};
+
+export const CANCER_TYPE_COLORS = {
+  'NSCLC': '#3498DB',
+  'SCLC': '#E74C3C',
+  'Breast': '#E91E63',
+  'Colorectal': '#9B59B6',
+  'Prostate': '#00BCD4',
+  'Melanoma': '#795548',
+  'Ovarian': '#FF9800',
+  'Pancreatic': '#607D8B',
+  'Bladder': '#4CAF50',
+  'RCC': '#FF5722',
+  'HCC': '#673AB7',
+  'Gastric': '#009688',
+  'OTHER': '#7F8C8D',
+};
+
+export const STAGE_COLORS = {
+  'I': '#27AE60',
+  'II': '#F39C12',
+  'III': '#E67E22',
+  'IIIA': '#E67E22',
+  'IIIB': '#D35400',
+  'IIIC': '#C0392B',
+  'IV': '#E74C3C',
+  'IVA': '#E74C3C',
+  'IVB': '#C0392B',
+  'Metastatic': '#8E44AD',
+  'Locally Advanced': '#9B59B6',
+  'OTHER': '#7F8C8D',
+};
+
+// Extended color palette for dynamic color generation
+const EXTENDED_PALETTE = [
+  '#3498DB', '#E74C3C', '#2ECC71', '#9B59B6', '#F39C12',
+  '#1ABC9C', '#E91E63', '#00BCD4', '#FF5722', '#673AB7',
+  '#4CAF50', '#FF9800', '#795548', '#607D8B', '#8BC34A',
+  '#FFEB3B', '#03A9F4', '#CDDC39', '#009688', '#FFC107',
+  '#5C6BC0', '#26A69A', '#EC407A', '#7E57C2', '#66BB6A',
+  '#FFCA28', '#29B6F6', '#AB47BC', '#26C6DA', '#D4E157',
+];
+
+// Generate a consistent color for a string value using hash
+const hashString = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+};
+
+// Cache for dynamically assigned colors
+const dynamicColorCache = {};
+
+/**
+ * Get a color for a value, using the provided color map or generating one dynamically
+ */
+export const getColorForValue = (value, colorMap) => {
+  if (colorMap[value]) {
+    return colorMap[value];
+  }
+
+  // Check cache first
+  if (dynamicColorCache[value]) {
+    return dynamicColorCache[value];
+  }
+
+  // Generate a color based on hash
+  const hash = hashString(value);
+  const color = EXTENDED_PALETTE[hash % EXTENDED_PALETTE.length];
+  dynamicColorCache[value] = color;
+  return color;
+};
+
 export const PHASE_OPTIONS = [
   { label: 'Phase 1', value: 'PHASE1' },
   { label: 'Phase 2', value: 'PHASE2' },
