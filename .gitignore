@@ -71,9 +71,9 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 .env.production.local
 .prettierrc
 AGENT.md
-CLAUDE.md
 *SPEC.md
 thoughts/
+.handoffs/
 
 *.rb
 *.arrow
