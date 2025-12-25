@@ -12,6 +12,7 @@ class TrialsFilterForm extends Component {
       statusFilter,
       lineOfTherapyFilter,
       nctIdFilters,
+      sponsorFilters,
       treatmentClassFilters,
       cancerStageFilter,
       priorTkiFilter,
@@ -23,6 +24,7 @@ class TrialsFilterForm extends Component {
       getTreatmentClassOptions,
       getCancerStageOptions,
       getNctIdOptions,
+      getSponsorOptions,
       // Handlers
       onCancerTypeChange,
       onBiomarkerChange,
@@ -30,6 +32,7 @@ class TrialsFilterForm extends Component {
       onStatusChange,
       onLineOfTherapyChange,
       onNctIdChange,
+      onSponsorChange,
       onTreatmentClassChange,
       onCancerStageChange,
       onPriorTkiChange,
@@ -53,13 +56,13 @@ class TrialsFilterForm extends Component {
 
     return (
       <Form layout="vertical" style={{ marginBottom: 16 }}>
-        {/* Top row: Disease, Treatment, Eligibility */}
-        <Row gutter={32} style={{ marginBottom: 16 }}>
+        {/* Row 1: Disease, Treatment, Eligibility */}
+        <Row gutter={48} style={{ marginBottom: 20 }}>
           {/* Disease */}
-          <Col span={10}>
+          <Col flex="1">
             <div style={sectionLabel}>Disease</div>
             <Row gutter={12}>
-              <Col span={10}>
+              <Col flex="1">
                 <Form.Item label={t("components.clinical-trials-modal.cancer-type") || "Cancer Type"} style={fieldStyle}>
                   <Select
                     mode="multiple"
@@ -76,7 +79,7 @@ class TrialsFilterForm extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={7}>
+              <Col flex="1">
                 <Form.Item label="Stage" style={fieldStyle}>
                   <Select
                     value={cancerStageFilter}
@@ -91,7 +94,7 @@ class TrialsFilterForm extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={7}>
+              <Col flex="1">
                 <Form.Item label={t("components.clinical-trials-modal.biomarkers") || "Biomarkers"} style={fieldStyle}>
                   <Input
                     value={biomarkerInput}
@@ -104,10 +107,10 @@ class TrialsFilterForm extends Component {
           </Col>
 
           {/* Treatment */}
-          <Col span={6}>
+          <Col flex="1">
             <div style={sectionLabel}>Treatment</div>
             <Row gutter={12}>
-              <Col span={12}>
+              <Col flex="1">
                 <Form.Item label="Class" style={fieldStyle}>
                   <Select
                     mode="multiple"
@@ -124,7 +127,7 @@ class TrialsFilterForm extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col flex="1">
                 <Form.Item label={t("components.clinical-trials-modal.line-of-therapy") || "Line"} style={fieldStyle}>
                   <Select
                     value={lineOfTherapyFilter}
@@ -139,7 +142,7 @@ class TrialsFilterForm extends Component {
           </Col>
 
           {/* Eligibility */}
-          <Col span={8}>
+          <Col flex="1">
             <div style={sectionLabel}>Eligibility</div>
             <Row gutter={24}>
               <Col>
@@ -169,14 +172,14 @@ class TrialsFilterForm extends Component {
         </Row>
 
         {/* Divider */}
-        <div style={{ borderTop: "1px solid #e8e8e8", marginBottom: 16 }} />
+        <div style={{ borderTop: "1px solid #e8e8e8", marginBottom: 20 }} />
 
-        {/* Bottom row: Trial Details + Actions */}
-        <Row gutter={32} align="bottom">
+        {/* Row 2: Trial Details + Actions */}
+        <Row gutter={48} align="bottom">
           <Col flex="auto">
             <div style={sectionLabel}>Trial Details</div>
-            <Row gutter={12}>
-              <Col span={6}>
+            <Row gutter={12} align="bottom">
+              <Col flex="1">
                 <Form.Item label="NCT ID" style={fieldStyle}>
                   <Select
                     mode="multiple"
@@ -193,7 +196,24 @@ class TrialsFilterForm extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={5}>
+              <Col flex="1">
+                <Form.Item label="Sponsor" style={fieldStyle}>
+                  <Select
+                    mode="multiple"
+                    value={sponsorFilters}
+                    options={getSponsorOptions()}
+                    onChange={onSponsorChange}
+                    placeholder="Select sponsor"
+                    allowClear
+                    showSearch
+                    maxTagCount="responsive"
+                    filterOption={(input, option) =>
+                      option.label.toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col flex="none">
                 <Form.Item label={t("components.clinical-trials-modal.phase") || "Phase"} style={fieldStyle}>
                   <Checkbox.Group
                     value={phaseFilters}
@@ -202,7 +222,7 @@ class TrialsFilterForm extends Component {
                   />
                 </Form.Item>
               </Col>
-              <Col span={13}>
+              <Col flex="1">
                 <Form.Item label={t("components.clinical-trials-modal.status") || "Status"} style={fieldStyle}>
                   <Select
                     value={statusFilter}

@@ -257,6 +257,7 @@ export function filterTrials(trials, filters) {
     statusFilter,
     lineOfTherapyFilter,
     nctIdFilters,
+    sponsorFilters,
     treatmentClassFilters,
     cancerStageFilter,
     priorTkiFilter,
@@ -268,6 +269,12 @@ export function filterTrials(trials, filters) {
     // NCT ID filter (OR logic)
     if (nctIdFilters.length > 0) {
       const matches = nctIdFilters.some((id) => trial.nct_id?.toUpperCase() === id.toUpperCase());
+      if (!matches) return false;
+    }
+
+    // Sponsor filter (OR logic)
+    if (sponsorFilters?.length > 0) {
+      const matches = sponsorFilters.some((s) => trial.sponsor === s);
       if (!matches) return false;
     }
 

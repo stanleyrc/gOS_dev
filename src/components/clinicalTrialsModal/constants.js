@@ -69,6 +69,7 @@ export const getDefaultFilterState = (includeCancerType = false, cancerType = ""
   statusFilter: null,
   lineOfTherapyFilter: null,
   nctIdFilters: [],
+  sponsorFilters: [],
   treatmentClassFilters: [],
   cancerStageFilter: null,
   priorTkiFilter: false,
