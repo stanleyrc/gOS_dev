@@ -11,6 +11,7 @@ import TrialsFilterForm from "./trialsFilterForm";
 import {
   getDefaultFilterState,
   getUniqueOptionsFromTrials,
+  getNctIdOptionsFromTrials,
 } from "./constants";
 import { filterTrials } from "./trialDataUtils";
 
@@ -20,18 +21,17 @@ class ClinicalTrialsModal extends Component {
     this.state = {
       trials: [],
       isLoading: false,
-      cancerTypeFilter: "",
+      cancerTypeFilters: [],
       biomarkerInput: "",
       biomarkerFilters: [],
-      phaseFilter: null,
+      phaseFilters: [],
       statusFilter: null,
       lineOfTherapyFilter: null,
       selectedOutcomeType: "PFS",
       activeTab: "plot",
       // New filter states
-      nctIdInput: "",
       nctIdFilters: [],
-      treatmentClassFilter: null,
+      treatmentClassFilters: [],
       cancerStageFilter: null,
       priorTkiFilter: false,
       priorIoFilter: false,
@@ -64,7 +64,7 @@ class ClinicalTrialsModal extends Component {
     const { report } = this.props;
     if (report !== prevProps.report && report) {
       const cancerType = report.tumor_details || report.disease || "";
-      this.setState({ cancerTypeFilter: cancerType });
+      this.setState({ cancerTypeFilters: cancerType ? [cancerType] : [] });
     }
   }
 
@@ -86,16 +86,20 @@ class ClinicalTrialsModal extends Component {
     });
   };
 
+  getNctIdOptions = () => {
+    return getNctIdOptionsFromTrials(this.state.trials);
+  };
+
   getFilteredTrials = () => {
     const { trials } = this.state;
     return filterTrials(trials, {
-      cancerTypeFilter: this.state.cancerTypeFilter,
+      cancerTypeFilters: this.state.cancerTypeFilters,
       biomarkerFilters: this.state.biomarkerFilters,
-      phaseFilter: this.state.phaseFilter,
+      phaseFilters: this.state.phaseFilters,
       statusFilter: this.state.statusFilter,
       lineOfTherapyFilter: this.state.lineOfTherapyFilter,
       nctIdFilters: this.state.nctIdFilters,
-      treatmentClassFilter: this.state.treatmentClassFilter,
+      treatmentClassFilters: this.state.treatmentClassFilters,
       cancerStageFilter: this.state.cancerStageFilter,
       priorTkiFilter: this.state.priorTkiFilter,
       priorIoFilter: this.state.priorIoFilter,
@@ -103,7 +107,7 @@ class ClinicalTrialsModal extends Component {
     });
   };
 
-  handleCancerTypeChange = this.createStateHandler('cancerTypeFilter');
+  handleCancerTypeChange = this.createStateHandler('cancerTypeFilters');
 
   handleBiomarkerChange = (inputValue) => {
     this.setState({ biomarkerInput: inputValue });
@@ -114,7 +118,7 @@ class ClinicalTrialsModal extends Component {
     this.setState({ biomarkerFilters: filters });
   };
 
-  handlePhaseChange = this.createStateHandler('phaseFilter');
+  handlePhaseChange = this.createStateHandler('phaseFilters');
 
   handleStatusChange = this.createStateHandler('statusFilter');
 
@@ -122,15 +126,9 @@ class ClinicalTrialsModal extends Component {
 
   handleOutcomeTypeChange = this.createStateHandler('selectedOutcomeType');
 
-  handleNctIdChange = (inputValue) => {
-    const filters = inputValue
-      .split(",")
-      .map((id) => id.trim().toUpperCase())
-      .filter((id) => id.length > 0);
-    this.setState({ nctIdInput: inputValue, nctIdFilters: filters });
-  };
+  handleNctIdChange = this.createStateHandler('nctIdFilters');
 
-  handleTreatmentClassChange = this.createStateHandler('treatmentClassFilter');
+  handleTreatmentClassChange = this.createStateHandler('treatmentClassFilters');
 
   handleCancerStageChange = this.createStateHandler('cancerStageFilter');
 
@@ -189,15 +187,15 @@ class ClinicalTrialsModal extends Component {
     const { visible, onCancel, t } = this.props;
     const {
       isLoading,
-      cancerTypeFilter,
+      cancerTypeFilters,
       biomarkerInput,
-      phaseFilter,
+      phaseFilters,
       statusFilter,
       lineOfTherapyFilter,
       selectedOutcomeType,
       activeTab,
-      nctIdInput,
-      treatmentClassFilter,
+      nctIdFilters,
+      treatmentClassFilters,
       cancerStageFilter,
       priorTkiFilter,
       priorIoFilter,
@@ -276,14 +274,14 @@ class ClinicalTrialsModal extends Component {
         <Skeleton active loading={isLoading}>
           <TrialsFilterForm
             t={t}
-            cancerTypeFilter={cancerTypeFilter}
+            cancerTypeFilters={cancerTypeFilters}
             biomarkerInput={biomarkerInput}
-            phaseFilter={phaseFilter}
+            phaseFilters={phaseFilters}
             statusFilter={statusFilter}
             lineOfTherapyFilter={lineOfTherapyFilter}
             selectedOutcomeType={selectedOutcomeType}
-            nctIdInput={nctIdInput}
-            treatmentClassFilter={treatmentClassFilter}
+            nctIdFilters={nctIdFilters}
+            treatmentClassFilters={treatmentClassFilters}
             cancerStageFilter={cancerStageFilter}
             priorTkiFilter={priorTkiFilter}
             priorIoFilter={priorIoFilter}
@@ -292,6 +290,7 @@ class ClinicalTrialsModal extends Component {
             getCancerTypeOptions={this.getCancerTypeOptions}
             getTreatmentClassOptions={this.getTreatmentClassOptions}
             getCancerStageOptions={this.getCancerStageOptions}
+            getNctIdOptions={this.getNctIdOptions}
             onCancerTypeChange={this.handleCancerTypeChange}
             onBiomarkerChange={this.handleBiomarkerChange}
             onPhaseChange={this.handlePhaseChange}

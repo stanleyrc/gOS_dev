@@ -6,14 +6,14 @@ class TrialsFilterForm extends Component {
   render() {
     const {
       t,
-      cancerTypeFilter,
+      cancerTypeFilters,
       biomarkerInput,
-      phaseFilter,
+      phaseFilters,
       statusFilter,
       lineOfTherapyFilter,
       selectedOutcomeType,
-      nctIdInput,
-      treatmentClassFilter,
+      nctIdFilters,
+      treatmentClassFilters,
       cancerStageFilter,
       priorTkiFilter,
       priorIoFilter,
@@ -23,6 +23,7 @@ class TrialsFilterForm extends Component {
       getCancerTypeOptions,
       getTreatmentClassOptions,
       getCancerStageOptions,
+      getNctIdOptions,
       // Handlers
       onCancerTypeChange,
       onBiomarkerChange,
@@ -62,12 +63,14 @@ class TrialsFilterForm extends Component {
               <Col span={10}>
                 <Form.Item label={t("components.clinical-trials-modal.cancer-type") || "Cancer Type"} style={fieldStyle}>
                   <Select
-                    value={cancerTypeFilter || undefined}
+                    mode="multiple"
+                    value={cancerTypeFilters}
                     options={getCancerTypeOptions()}
                     onChange={onCancerTypeChange}
                     placeholder="Select"
                     allowClear
                     showSearch
+                    maxTagCount="responsive"
                     filterOption={(input, option) =>
                       option.label.toLowerCase().includes(input.toLowerCase())
                     }
@@ -108,12 +111,14 @@ class TrialsFilterForm extends Component {
               <Col span={12}>
                 <Form.Item label="Class" style={fieldStyle}>
                   <Select
-                    value={treatmentClassFilter}
+                    mode="multiple"
+                    value={treatmentClassFilters}
                     options={getTreatmentClassOptions()}
                     onChange={onTreatmentClassChange}
                     placeholder="All"
                     allowClear
                     showSearch
+                    maxTagCount="responsive"
                     filterOption={(input, option) =>
                       option.label.toLowerCase().includes(input.toLowerCase())
                     }
@@ -174,21 +179,27 @@ class TrialsFilterForm extends Component {
             <Row gutter={12}>
               <Col span={6}>
                 <Form.Item label="NCT ID" style={fieldStyle}>
-                  <Input
-                    value={nctIdInput}
-                    onChange={(e) => onNctIdChange(e.target.value)}
+                  <Select
+                    mode="multiple"
+                    value={nctIdFilters}
+                    options={getNctIdOptions()}
+                    onChange={onNctIdChange}
                     placeholder="NCT00003869"
+                    allowClear
+                    showSearch
+                    maxTagCount="responsive"
+                    filterOption={(input, option) =>
+                      option.label.toLowerCase().includes(input.toLowerCase())
+                    }
                   />
                 </Form.Item>
               </Col>
               <Col span={5}>
                 <Form.Item label={t("components.clinical-trials-modal.phase") || "Phase"} style={fieldStyle}>
-                  <Select
-                    value={phaseFilter}
-                    options={PHASE_OPTIONS}
+                  <Checkbox.Group
+                    value={phaseFilters}
                     onChange={onPhaseChange}
-                    placeholder="All"
-                    allowClear
+                    options={PHASE_OPTIONS.map((o) => ({ label: o.label.replace("Phase ", ""), value: o.value }))}
                   />
                 </Form.Item>
               </Col>

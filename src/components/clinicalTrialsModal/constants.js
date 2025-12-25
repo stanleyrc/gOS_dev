@@ -62,15 +62,14 @@ export const TIME_UNITS = ["month", "day", "week", "year"];
 
 // Default filter state factory
 export const getDefaultFilterState = (includeCancerType = false, cancerType = "") => ({
-  cancerTypeFilter: includeCancerType ? cancerType : "",
+  cancerTypeFilters: includeCancerType && cancerType ? [cancerType] : [],
   biomarkerInput: "",
   biomarkerFilters: [],
-  phaseFilter: null,
+  phaseFilters: [],
   statusFilter: null,
   lineOfTherapyFilter: null,
-  nctIdInput: "",
   nctIdFilters: [],
-  treatmentClassFilter: null,
+  treatmentClassFilters: [],
   cancerStageFilter: null,
   priorTkiFilter: false,
   priorIoFilter: false,
@@ -103,4 +102,12 @@ export const getUniqueOptionsFromTrials = (trials, extractorFn) => {
   return Array.from(values)
     .sort()
     .map((v) => ({ label: v, value: v }));
+};
+
+// NCT ID options extractor
+export const getNctIdOptionsFromTrials = (trials) => {
+  return trials
+    .filter((trial) => trial.nct_id)
+    .map((trial) => ({ label: trial.nct_id, value: trial.nct_id }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 };

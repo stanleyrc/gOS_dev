@@ -211,13 +211,13 @@ export function trialMatchesBiomarkerFilter(trial, biomarkerFilters) {
  */
 export function filterTrials(trials, filters) {
   const {
-    cancerTypeFilter,
+    cancerTypeFilters,
     biomarkerFilters,
-    phaseFilter,
+    phaseFilters,
     statusFilter,
     lineOfTherapyFilter,
     nctIdFilters,
-    treatmentClassFilter,
+    treatmentClassFilters,
     cancerStageFilter,
     priorTkiFilter,
     priorIoFilter,
@@ -227,12 +227,14 @@ export function filterTrials(trials, filters) {
   return trials.filter((trial) => {
     // NCT ID filter (OR logic)
     if (nctIdFilters.length > 0) {
-      const matches = nctIdFilters.some((id) => trial.nct_id?.toUpperCase() === id);
+      const matches = nctIdFilters.some((id) => trial.nct_id?.toUpperCase() === id.toUpperCase());
       if (!matches) return false;
     }
 
-    if (cancerTypeFilter && !(trial.cancer_types || []).includes(cancerTypeFilter)) {
-      return false;
+    // Cancer Type filter (OR logic - union of selected types)
+    if (cancerTypeFilters.length > 0) {
+      const hasMatch = cancerTypeFilters.some((ct) => (trial.cancer_types || []).includes(ct));
+      if (!hasMatch) return false;
     }
 
     // Cancer Stage filter
@@ -247,8 +249,9 @@ export function filterTrials(trials, filters) {
       }
     }
 
-    if (phaseFilter && trial.phase !== phaseFilter) {
-      return false;
+    // Phase filter (OR logic - any of selected phases)
+    if (phaseFilters.length > 0) {
+      if (!phaseFilters.includes(trial.phase)) return false;
     }
 
     if (statusFilter && trial.status !== statusFilter) {
@@ -259,9 +262,10 @@ export function filterTrials(trials, filters) {
       return false;
     }
 
-    // Treatment Class filter
-    if (treatmentClassFilter) {
-      const hasMatch = Object.values(trial.treatment_class_map || {}).includes(treatmentClassFilter);
+    // Treatment Class filter (OR logic - union of selected classes)
+    if (treatmentClassFilters.length > 0) {
+      const trialClasses = Object.values(trial.treatment_class_map || {});
+      const hasMatch = treatmentClassFilters.some((tc) => trialClasses.includes(tc));
       if (!hasMatch) return false;
     }
 
