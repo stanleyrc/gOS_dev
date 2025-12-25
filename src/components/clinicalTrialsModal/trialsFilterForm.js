@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Form, Row, Col, Select, Input, Checkbox, Button, Space, Alert } from "antd";
-import { PHASE_OPTIONS, STATUS_OPTIONS, LINE_OF_THERAPY_OPTIONS } from "./constants";
+import { PHASE_OPTIONS, STATUS_OPTIONS, LINE_OF_THERAPY_OPTIONS, SOC_DISPLAY_MODE_OPTIONS } from "./constants";
 
 class TrialsFilterForm extends Component {
   render() {
@@ -18,7 +18,7 @@ class TrialsFilterForm extends Component {
       priorTkiFilter,
       priorIoFilter,
       priorPlatinumFilter,
-      showSocAlways,
+      socDisplayMode,
       // Option generators
       getCancerTypeOptions,
       getTreatmentClassOptions,
@@ -38,7 +38,7 @@ class TrialsFilterForm extends Component {
       onPriorTkiChange,
       onPriorIoChange,
       onPriorPlatinumChange,
-      onShowSocAlwaysChange,
+      onSocDisplayModeChange,
       onClear,
       onReset,
       hasResults,
@@ -161,10 +161,13 @@ class TrialsFilterForm extends Component {
                 </Form.Item>
               </Col>
               <Col>
-                <Form.Item label="Display" style={fieldStyle}>
-                  <Checkbox checked={showSocAlways} onChange={(e) => onShowSocAlwaysChange(e.target.checked)}>
-                    Always Show SoC
-                  </Checkbox>
+                <Form.Item label="SoC Display" style={fieldStyle}>
+                  <Select
+                    value={socDisplayMode}
+                    options={SOC_DISPLAY_MODE_OPTIONS}
+                    onChange={onSocDisplayModeChange}
+                    style={{ width: 100 }}
+                  />
                 </Form.Item>
               </Col>
             </Row>

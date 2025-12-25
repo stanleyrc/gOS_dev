@@ -26,7 +26,8 @@ class TrialsPlotView extends Component {
     this.lastTrials = null;
     this.lastOutcomeType = null;
     this.lastAllTrials = null;
-    this.lastShowSocAlways = null;
+    this.lastSocDisplayMode = null;
+    this.lastCancerTypeFilters = null;
   }
 
   componentDidMount() {
@@ -47,7 +48,7 @@ class TrialsPlotView extends Component {
 
   // Memoized data extent - only recalculates when data-affecting props change
   getDataXExtent = () => {
-    const { trials, outcomeType, allTrials, showSocAlways } = this.props;
+    const { trials, outcomeType, allTrials, socDisplayMode, cancerTypeFilters } = this.props;
 
     // Use cached extent if data hasn't changed
     if (
@@ -55,7 +56,8 @@ class TrialsPlotView extends Component {
       this.lastTrials === trials &&
       this.lastOutcomeType === outcomeType &&
       this.lastAllTrials === allTrials &&
-      this.lastShowSocAlways === showSocAlways
+      this.lastSocDisplayMode === socDisplayMode &&
+      this.lastCancerTypeFilters === cancerTypeFilters
     ) {
       return this.cachedDataExtent;
     }
@@ -115,7 +117,7 @@ class TrialsPlotView extends Component {
   };
 
   getPlotData = () => {
-    const { trials, outcomeType, allTrials, showSocAlways } = this.props;
+    const { trials, outcomeType, allTrials, socDisplayMode, cancerTypeFilters } = this.props;
 
     // Return cached data if inputs haven't changed
     if (
@@ -123,14 +125,16 @@ class TrialsPlotView extends Component {
       this.lastTrials === trials &&
       this.lastOutcomeType === outcomeType &&
       this.lastAllTrials === allTrials &&
-      this.lastShowSocAlways === showSocAlways
+      this.lastSocDisplayMode === socDisplayMode &&
+      this.lastCancerTypeFilters === cancerTypeFilters
     ) {
       return this.cachedPlotData;
     }
 
     const allPoints = collectTrialPoints(trials, outcomeType, {
       allTrials,
-      showSocAlways,
+      socDisplayMode,
+      cancerTypeFilters,
       excludeAdjuvant: true,
     });
 
@@ -139,7 +143,8 @@ class TrialsPlotView extends Component {
     this.lastTrials = trials;
     this.lastOutcomeType = outcomeType;
     this.lastAllTrials = allTrials;
-    this.lastShowSocAlways = showSocAlways;
+    this.lastSocDisplayMode = socDisplayMode;
+    this.lastCancerTypeFilters = cancerTypeFilters;
     // Clear data extent cache so it recalculates with fresh data
     this.cachedDataExtent = null;
 

@@ -37,7 +37,7 @@ class ClinicalTrialsModal extends Component {
       priorTkiFilter: false,
       priorIoFilter: false,
       priorPlatinumFilter: false,
-      showSocAlways: false,
+      socDisplayMode: 'hide',
       // Trial details panel state
       selectedTrial: null,
       selectedOutcome: null,
@@ -218,7 +218,7 @@ class ClinicalTrialsModal extends Component {
       priorTkiFilter,
       priorIoFilter,
       priorPlatinumFilter,
-      showSocAlways,
+      socDisplayMode,
       selectedTrial,
       selectedOutcome,
     } = this.state;
@@ -252,7 +252,8 @@ class ClinicalTrialsModal extends Component {
           <TrialsPlotView
             trials={filteredTrials}
             allTrials={trials}
-            showSocAlways={showSocAlways}
+            socDisplayMode={socDisplayMode}
+            cancerTypeFilters={cancerTypeFilters}
             outcomeType={selectedOutcomeType}
             availableOutcomes={availableOutcomes}
             onOutcomeChange={this.handleOutcomeTypeChange}
@@ -307,7 +308,7 @@ class ClinicalTrialsModal extends Component {
             priorTkiFilter={priorTkiFilter}
             priorIoFilter={priorIoFilter}
             priorPlatinumFilter={priorPlatinumFilter}
-            showSocAlways={showSocAlways}
+            socDisplayMode={socDisplayMode}
             getCancerTypeOptions={this.getCancerTypeOptions}
             getTreatmentClassOptions={this.getTreatmentClassOptions}
             getCancerStageOptions={this.getCancerStageOptions}
@@ -325,7 +326,7 @@ class ClinicalTrialsModal extends Component {
             onPriorTkiChange={(checked) => this.setState({ priorTkiFilter: checked })}
             onPriorIoChange={(checked) => this.setState({ priorIoFilter: checked })}
             onPriorPlatinumChange={(checked) => this.setState({ priorPlatinumFilter: checked })}
-            onShowSocAlwaysChange={(checked) => this.setState({ showSocAlways: checked })}
+            onSocDisplayModeChange={(value) => this.setState({ socDisplayMode: value })}
             onClear={this.handleClear}
             onReset={this.handleReset}
             hasResults={hasAnyOutcomes(filteredTrials)}

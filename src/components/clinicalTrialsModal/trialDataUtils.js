@@ -115,11 +115,19 @@ export function createPoint(trial, outcome, isORR) {
 
 /**
  * Collect points from trials with optional SoC filtering
+ * @param {Array} trials - Filtered trials
+ * @param {string} outcomeType - 'PFS', 'OS', or 'ORR'
+ * @param {Object} options
+ * @param {Array} options.allTrials - All trials (unfiltered)
+ * @param {string} options.socDisplayMode - 'hide', 'filtered', or 'all'
+ * @param {Array} options.cancerTypeFilters - Cancer types to filter SoC by (for 'filtered' mode)
+ * @param {boolean} options.excludeAdjuvant - Exclude adjuvant/neoadjuvant trials
  */
 export function collectTrialPoints(trials, outcomeType, options = {}) {
   const {
     allTrials = null,
-    showSocAlways = false,
+    socDisplayMode = 'hide',
+    cancerTypeFilters = [],
     excludeAdjuvant = false,
   } = options;
 
@@ -128,12 +136,20 @@ export function collectTrialPoints(trials, outcomeType, options = {}) {
   const addedSocKeys = new Set();
   const isORR = outcomeType === "ORR";
 
-  // If showSocAlways, first collect ALL SoC points from all trials
-  if (showSocAlways && allTrials) {
+  // Collect SoC points based on display mode
+  if (socDisplayMode !== 'hide' && allTrials) {
     allTrials.forEach((trial) => {
       if (excludeAdjuvant &&
           (trial.line_of_therapy === "ADJUVANT" || trial.line_of_therapy === "NEOADJUVANT")) {
         return;
+      }
+
+      // In 'filtered' mode, only include SoC from matching cancer types
+      if (socDisplayMode === 'filtered' && cancerTypeFilters.length > 0) {
+        const hasMatchingCancerType = cancerTypeFilters.some((ct) =>
+          (trial.cancer_types || []).includes(ct)
+        );
+        if (!hasMatchingCancerType) return;
       }
 
       if (!trial.completion_date) return;
@@ -183,7 +199,7 @@ export function collectTrialPoints(trials, outcomeType, options = {}) {
     });
   });
 
-  return showSocAlways ? [...socPoints, ...points] : points;
+  return socDisplayMode !== 'hide' ? [...socPoints, ...points] : points;
 }
 
 /**

@@ -37,6 +37,12 @@ export const LINE_OF_THERAPY_OPTIONS = [
   { label: 'Maintenance', value: 'MAINTENANCE' },
 ];
 
+export const SOC_DISPLAY_MODE_OPTIONS = [
+  { label: 'Hide', value: 'hide' },
+  { label: 'Filtered', value: 'filtered' },
+  { label: 'All', value: 'all' },
+];
+
 export const OUTCOME_TYPES = ['PFS', 'OS', 'ORR'];
 
 // Plot configuration constants
@@ -75,7 +81,7 @@ export const getDefaultFilterState = (includeCancerType = false, cancerType = ""
   priorTkiFilter: false,
   priorIoFilter: false,
   priorPlatinumFilter: false,
-  showSocAlways: false,
+  socDisplayMode: 'hide',
 });
 
 // Biomarker parsing helper
