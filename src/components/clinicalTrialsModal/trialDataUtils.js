@@ -196,9 +196,7 @@ export function trialMatchesBiomarkerFilter(trial, biomarkerFilters) {
 
   return queries.every((query) => {
     return trial.biomarkers?.some((b) => {
-      const targetMatch = b.target.toUpperCase().includes(query.target);
-      const detailsMatch = b.details && b.details.toUpperCase().includes(query.target);
-      if (!targetMatch && !detailsMatch) return false;
+      if (!b.target.toUpperCase().includes(query.target)) return false;
       if (query.status) {
         const effectiveStatus = b.status === "HIGH" || b.status === "LOW" ? "POSITIVE" : b.status;
         return effectiveStatus === query.status;
