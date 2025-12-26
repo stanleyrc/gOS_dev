@@ -411,6 +411,7 @@ export function filterTrials(trials, filters) {
     lineOfTherapyFilter,
     nctIdFilters,
     sponsorFilters,
+    drugFilters,
     treatmentClassFilters,
     cancerStageFilter,
     priorTkiFilter,
@@ -428,6 +429,19 @@ export function filterTrials(trials, filters) {
     // Sponsor filter (OR logic)
     if (sponsorFilters?.length > 0) {
       const matches = sponsorFilters.some((s) => trial.sponsor === s);
+      if (!matches) return false;
+    }
+
+    // Drug filter (OR logic - trial must contain at least one selected drug)
+    if (drugFilters?.length > 0) {
+      const trialDrugs = Object.values(trial.arm_drugs || {}).flatMap((drugs) =>
+        Array.isArray(drugs) ? drugs : [drugs]
+      );
+      const matches = drugFilters.some((drug) =>
+        trialDrugs.some((trialDrug) =>
+          trialDrug?.toLowerCase().includes(drug.toLowerCase())
+        )
+      );
       if (!matches) return false;
     }
 

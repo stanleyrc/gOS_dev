@@ -194,6 +194,7 @@ export const getDefaultFilterState = (includeCancerType = false, cancerType = ""
   lineOfTherapyFilter: null,
   nctIdFilters: [],
   sponsorFilters: [],
+  drugFilters: [],
   treatmentClassFilters: [],
   cancerStageFilter: null,
   priorTkiFilter: false,

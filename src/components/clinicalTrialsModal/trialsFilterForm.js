@@ -13,6 +13,7 @@ class TrialsFilterForm extends Component {
       lineOfTherapyFilter,
       nctIdFilters,
       sponsorFilters,
+      drugFilters,
       treatmentClassFilters,
       cancerStageFilter,
       priorTkiFilter,
@@ -25,6 +26,7 @@ class TrialsFilterForm extends Component {
       getCancerStageOptions,
       getNctIdOptions,
       getSponsorOptions,
+      getDrugOptions,
       // Handlers
       onCancerTypeChange,
       onBiomarkerChange,
@@ -33,6 +35,7 @@ class TrialsFilterForm extends Component {
       onLineOfTherapyChange,
       onNctIdChange,
       onSponsorChange,
+      onDrugChange,
       onTreatmentClassChange,
       onCancerStageChange,
       onPriorTkiChange,
@@ -110,6 +113,23 @@ class TrialsFilterForm extends Component {
           <Col flex="1">
             <div style={sectionLabel}>Treatment</div>
             <Row gutter={12}>
+              <Col flex="1">
+                <Form.Item label="Drug" style={fieldStyle}>
+                  <Select
+                    mode="multiple"
+                    value={drugFilters}
+                    options={getDrugOptions()}
+                    onChange={onDrugChange}
+                    placeholder="Pembrolizumab, Osimertinib..."
+                    allowClear
+                    showSearch
+                    maxTagCount="responsive"
+                    filterOption={(input, option) =>
+                      option.label.toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
               <Col flex="1">
                 <Form.Item label="Class" style={fieldStyle}>
                   <Select

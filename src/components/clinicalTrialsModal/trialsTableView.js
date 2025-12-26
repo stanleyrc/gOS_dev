@@ -1,9 +1,98 @@
 import React, { Component } from "react";
-import { Table, Tag, Typography, Space, Tooltip } from "antd";
+import { Table, Tag, Typography, Space, Tooltip, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 
 const { Link, Text } = Typography;
 
 class TrialsTableView extends Component {
+  exportToCSV = () => {
+    const { trials } = this.props;
+
+    // Define CSV headers
+    const headers = [
+      "NCT ID",
+      "Title",
+      "Phase",
+      "Status",
+      "Line of Therapy",
+      "Sponsor",
+      "Cancer Types",
+      "Cancer Stages",
+      "Biomarkers",
+      "Start Date",
+      "Completion Date",
+      "PFS (median, mo)",
+      "OS (median, mo)",
+      "ORR (%)",
+      "Drugs",
+      "URL"
+    ];
+
+    // Helper to escape CSV values
+    const escapeCSV = (value) => {
+      if (value == null) return "";
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // Helper to format outcomes for CSV
+    const formatOutcomes = (outcomes, type) => {
+      const filtered = outcomes?.filter((o) => o.outcome_type === type) || [];
+      if (filtered.length === 0) return "";
+      return filtered
+        .map((o) => `${o.arm_title}: ${o.value}`)
+        .join("; ");
+    };
+
+    // Helper to get all drugs from a trial
+    const getAllDrugs = (trial) => {
+      const drugs = Object.values(trial.arm_drugs || {}).flatMap((d) =>
+        Array.isArray(d) ? d : [d]
+      );
+      return [...new Set(drugs)].join("; ");
+    };
+
+    // Generate CSV rows
+    const rows = trials.map((trial) => [
+      trial.nct_id,
+      trial.brief_title,
+      trial.phase?.replace("PHASE", "Phase "),
+      trial.status,
+      trial.line_of_therapy,
+      trial.sponsor,
+      (trial.cancer_types || []).join("; "),
+      (trial.cancer_stages || []).join("; "),
+      (trial.biomarkers || []).map((b) => `${b.target}${b.status === "POSITIVE" ? "+" : b.status === "NEGATIVE" ? "-" : ""}`).join("; "),
+      trial.start_date,
+      trial.completion_date,
+      formatOutcomes(trial.outcomes, "PFS"),
+      formatOutcomes(trial.outcomes, "OS"),
+      formatOutcomes(trial.outcomes, "ORR"),
+      getAllDrugs(trial),
+      trial.url
+    ].map(escapeCSV));
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.map(escapeCSV).join(","),
+      ...rows.map((row) => row.join(","))
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `clinical_trials_export_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     try {
@@ -175,17 +264,28 @@ class TrialsTableView extends Component {
     const { trials, onTrialClick } = this.props;
 
     return (
-      <Table
-        columns={this.getColumns()}
-        dataSource={trials.map((t, i) => ({ ...t, key: t.nct_id || i }))}
-        pagination={{ pageSize: 20, showSizeChanger: true }}
-        scroll={{ x: 1600, y: 550 }}
-        size="small"
-        onRow={(record) => ({
-          onClick: () => onTrialClick?.(record),
-          style: { cursor: onTrialClick ? "pointer" : "default" },
-        })}
-      />
+      <div>
+        <div style={{ marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={this.exportToCSV}
+            disabled={trials.length === 0}
+          >
+            Export CSV ({trials.length} trials)
+          </Button>
+        </div>
+        <Table
+          columns={this.getColumns()}
+          dataSource={trials.map((t, i) => ({ ...t, key: t.nct_id || i }))}
+          pagination={{ pageSize: 20, showSizeChanger: true }}
+          scroll={{ x: 1600, y: 550 }}
+          size="small"
+          onRow={(record) => ({
+            onClick: () => onTrialClick?.(record),
+            style: { cursor: onTrialClick ? "pointer" : "default" },
+          })}
+        />
+      </div>
     );
   }
 }

@@ -33,6 +33,7 @@ class ClinicalTrialsModal extends Component {
       // New filter states
       nctIdFilters: [],
       sponsorFilters: [],
+      drugFilters: [],
       treatmentClassFilters: [],
       cancerStageFilter: null,
       priorTkiFilter: false,
@@ -114,6 +115,16 @@ class ClinicalTrialsModal extends Component {
     });
   };
 
+  getDrugOptions = () => {
+    return getUniqueOptionsFromTrials(this.state.trials, (trial, set) => {
+      Object.values(trial.arm_drugs || {}).forEach((drugs) => {
+        (Array.isArray(drugs) ? drugs : [drugs]).forEach((drug) => {
+          if (drug) set.add(drug);
+        });
+      });
+    });
+  };
+
   getFilteredTrials = () => {
     const { trials } = this.state;
     return filterTrials(trials, {
@@ -124,6 +135,7 @@ class ClinicalTrialsModal extends Component {
       lineOfTherapyFilter: this.state.lineOfTherapyFilter,
       nctIdFilters: this.state.nctIdFilters,
       sponsorFilters: this.state.sponsorFilters,
+      drugFilters: this.state.drugFilters,
       treatmentClassFilters: this.state.treatmentClassFilters,
       cancerStageFilter: this.state.cancerStageFilter,
       priorTkiFilter: this.state.priorTkiFilter,
@@ -174,6 +186,8 @@ class ClinicalTrialsModal extends Component {
   handleNctIdChange = this.createStateHandler('nctIdFilters');
 
   handleSponsorChange = this.createStateHandler('sponsorFilters');
+
+  handleDrugChange = this.createStateHandler('drugFilters');
 
   handleTreatmentClassChange = this.createStateHandler('treatmentClassFilters');
 
@@ -251,6 +265,7 @@ class ClinicalTrialsModal extends Component {
       activeTab,
       nctIdFilters,
       sponsorFilters,
+      drugFilters,
       treatmentClassFilters,
       cancerStageFilter,
       priorTkiFilter,
@@ -343,6 +358,7 @@ class ClinicalTrialsModal extends Component {
             lineOfTherapyFilter={lineOfTherapyFilter}
             nctIdFilters={nctIdFilters}
             sponsorFilters={sponsorFilters}
+            drugFilters={drugFilters}
             treatmentClassFilters={treatmentClassFilters}
             cancerStageFilter={cancerStageFilter}
             priorTkiFilter={priorTkiFilter}
@@ -354,6 +370,7 @@ class ClinicalTrialsModal extends Component {
             getCancerStageOptions={this.getCancerStageOptions}
             getNctIdOptions={this.getNctIdOptions}
             getSponsorOptions={this.getSponsorOptions}
+            getDrugOptions={this.getDrugOptions}
             onCancerTypeChange={this.handleCancerTypeChange}
             onBiomarkerChange={this.handleBiomarkerChange}
             onPhaseChange={this.handlePhaseChange}
@@ -361,6 +378,7 @@ class ClinicalTrialsModal extends Component {
             onLineOfTherapyChange={this.handleLineOfTherapyChange}
             onNctIdChange={this.handleNctIdChange}
             onSponsorChange={this.handleSponsorChange}
+            onDrugChange={this.handleDrugChange}
             onTreatmentClassChange={this.handleTreatmentClassChange}
             onCancerStageChange={this.handleCancerStageChange}
             onPriorTkiChange={(checked) => this.setState({ priorTkiFilter: checked })}
