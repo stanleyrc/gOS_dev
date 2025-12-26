@@ -1,49 +1,102 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Konva from "konva";
-import * as d3 from "d3";
-
-const normalizeAccessor = (accessor) => {
-  if (typeof accessor === "function") return accessor;
-  if (typeof accessor === "string") return (d) => d[accessor];
-  return () => null;
-};
-
-const normalizeNumericAccessor = (accessor, defaultValue) => {
-  if (typeof accessor === "function") return accessor;
-  if (typeof accessor === "number") return () => accessor;
-  return () => defaultValue;
-};
+import {
+  ERROR_BAR_CAP_WIDTH,
+  ZOOM_SCALE_BY,
+  ZOOM_DEBOUNCE_MS,
+  ZOOM_PRECISION,
+  HOVER_CLEAR_DELAY_MS,
+  CONNECTING_LINE_STROKE,
+  CONNECTING_LINE_WIDTH,
+  CONNECTING_LINE_DASH,
+  DEFAULT_RADIUS,
+  DEFAULT_COLOR,
+  DEFAULT_HIGHLIGHT_STROKE,
+  DEFAULT_HIGHLIGHT_STROKE_WIDTH,
+} from './constants';
+import {
+  normalizeAccessor,
+  normalizeNumericAccessor,
+  scalesChanged,
+  createScales,
+  saveStrokeState,
+  restoreStrokeState,
+} from './helpers';
+import {
+  createShape,
+  createErrorBarGroup,
+  createConnectingLine,
+} from './shapeFactory';
+import {
+  createTooltipElements,
+  calculateTooltipPosition,
+  updateTooltipContent,
+  formatTooltipContent,
+} from './tooltipManager';
+import {
+  clampDomain,
+  calculatePannedDomain,
+} from './zoomPanUtils';
+import {
+  setLayerDimming,
+  clearHoverLayerShapes,
+  createHoverShapes,
+  createHoverErrorBars,
+  updateConnectingLine,
+} from './hoverManager';
 
 class KonvaScatter extends Component {
+  // ============================================
+  // DOM & Konva References
+  // ============================================
   containerRef = null;
   stage = null;
+
+  // ============================================
+  // Konva Layers
+  // ============================================
   errorBarsLayer = null;
   circlesLayer = null;
   hoverLayer = null;
   tooltipLayer = null;
+
+  // ============================================
+  // Tooltip Elements
+  // ============================================
   tooltipGroup = null;
+  tooltipRect = null;
+  tooltipText = null;
+
+  // ============================================
+  // Hover State
+  // ============================================
   hoveredNode = null;
   hoveredGroupId = null;
-  isPanning = false;
-  lastPanPos = null;
-  pendingZoom = null;
-  zoomRafId = null;
-  // Track current data for position-only updates
-  currentData = null;
-  dataAccessors = null;
-  // For local zoom state during active zooming (bypass React)
-  localZoomDomain = null;
-  zoomEndTimeout = null;
-  // Pre-computed group memberships for fast hover (Phase 1)
+  activeHoverGroupId = null;
+  hoverClearTimeout = null;
+  cachedHoverLine = null;
   shapesByGroup = null;      // Map<groupId, shape[]>
   errorBarsByGroup = null;   // Map<groupId, errorBarGroup[]>
-  // Reusable hover line (Phase 4)
-  cachedHoverLine = null;
-  // Track the currently applied hover group (to skip redundant updates)
-  activeHoverGroupId = null;
-  // Timeout for delayed hover clear (to prevent flicker when moving between layers)
-  hoverClearTimeout = null;
+
+  // ============================================
+  // Pan State
+  // ============================================
+  isPanning = false;
+  lastPanPos = null;
+
+  // ============================================
+  // Zoom/Pan State (shared between zoom and pan)
+  // ============================================
+  positionUpdateRafId = null;
+  localDomain = null;
+  domainSyncTimeout = null;
+
+  // ============================================
+  // Data Cache (for fast position updates)
+  // ============================================
+  currentData = null;
+  dataAccessors = null;
 
   componentDidMount() {
     this.initializeStage();
@@ -63,16 +116,16 @@ class KonvaScatter extends Component {
     if (colorKey !== nextProps.colorKey) return true;
     if (xAccessor !== nextProps.xAccessor) return true;
     if (yAccessor !== nextProps.yAccessor) return true;
-    if (this.scalesChanged(this.props.xScale, nextProps.xScale)) return true;
-    if (this.scalesChanged(this.props.yScale, nextProps.yScale)) return true;
+    if (scalesChanged(this.props.xScale, nextProps.xScale)) return true;
+    if (scalesChanged(this.props.yScale, nextProps.yScale)) return true;
     return false;
   }
 
   componentDidUpdate(prevProps) {
     const { width, height, data, xScale, yScale, selectedId, selectedIds, colorAccessor, colorScale, xAccessor, yAccessor } = this.props;
 
-    const scalesChanged = this.scalesChanged(prevProps.xScale, xScale) ||
-                          this.scalesChanged(prevProps.yScale, yScale);
+    const hasScalesChanged = scalesChanged(prevProps.xScale, xScale) ||
+                             scalesChanged(prevProps.yScale, yScale);
 
     if (width !== prevProps.width || height !== prevProps.height) {
       this.handleResize();
@@ -81,7 +134,7 @@ class KonvaScatter extends Component {
 
     // Check if only scales changed (zoom/pan) - use fast position update
     const { colorKey } = this.props;
-    const onlyScalesChanged = scalesChanged &&
+    const onlyScalesChanged = hasScalesChanged &&
       data === prevProps.data &&
       selectedId === prevProps.selectedId &&
       selectedIds === prevProps.selectedIds &&
@@ -99,7 +152,7 @@ class KonvaScatter extends Component {
 
     if (
       data !== prevProps.data ||
-      scalesChanged ||
+      hasScalesChanged ||
       selectedId !== prevProps.selectedId ||
       selectedIds !== prevProps.selectedIds ||
       colorAccessor !== prevProps.colorAccessor ||
@@ -112,31 +165,12 @@ class KonvaScatter extends Component {
     }
   }
 
-  scalesChanged(prevScale, nextScale) {
-    if (prevScale === nextScale) return false;
-    if (!prevScale || !nextScale) return true;
-    
-    const prevDomain = prevScale.domain?.();
-    const nextDomain = nextScale.domain?.();
-    const prevRange = prevScale.range?.();
-    const nextRange = nextScale.range?.();
-    
-    if (!prevDomain || !nextDomain || !prevRange || !nextRange) return true;
-    
-    return (
-      prevDomain.length !== nextDomain.length ||
-      prevRange.length !== nextRange.length ||
-      prevDomain.some((v, i) => v !== nextDomain[i]) ||
-      prevRange.some((v, i) => v !== nextRange[i])
-    );
-  }
-
   componentWillUnmount() {
-    if (this.zoomRafId) {
-      cancelAnimationFrame(this.zoomRafId);
+    if (this.positionUpdateRafId) {
+      cancelAnimationFrame(this.positionUpdateRafId);
     }
-    if (this.zoomEndTimeout) {
-      clearTimeout(this.zoomEndTimeout);
+    if (this.domainSyncTimeout) {
+      clearTimeout(this.domainSyncTimeout);
     }
     if (this.hoverClearTimeout) {
       clearTimeout(this.hoverClearTimeout);
@@ -187,23 +221,10 @@ class KonvaScatter extends Component {
   }
 
   initializeTooltip() {
-    this.tooltipGroup = new Konva.Group({ visible: false });
-    
-    this.tooltipRect = new Konva.Rect({
-      fill: "rgba(97, 97, 97, 0.9)",
-      cornerRadius: 5,
-    });
-    
-    this.tooltipText = new Konva.Text({
-      fill: "#fff",
-      fontSize: 12,
-      padding: 8,
-      lineHeight: 1.4,
-    });
-    
-    this.tooltipGroup.add(this.tooltipRect);
-    this.tooltipGroup.add(this.tooltipText);
-    this.tooltipLayer.add(this.tooltipGroup);
+    const elements = createTooltipElements(this.tooltipLayer);
+    this.tooltipGroup = elements.tooltipGroup;
+    this.tooltipRect = elements.tooltipRect;
+    this.tooltipText = elements.tooltipText;
   }
 
   handleResize() {
@@ -251,8 +272,7 @@ class KonvaScatter extends Component {
       // applyHoverEffect does its own batchDraw, skip the one below
     } else {
       // No fade effect - just highlight this node
-      node._originalStroke = node.stroke();
-      node._originalStrokeWidth = node.strokeWidth();
+      saveStrokeState(node);
       node.stroke(hoverStroke);
       node.strokeWidth(hoverStrokeWidth);
       this.circlesLayer.batchDraw();
@@ -264,30 +284,25 @@ class KonvaScatter extends Component {
 
     if (!disableTooltip && this.tooltipGroup) {
       const mousePos = this.stage.getPointerPosition();
-      const getTooltipContent = tooltipAccessor
-        ? normalizeAccessor(tooltipAccessor)
-        : (d) =>
-            Object.keys(d)
-              .filter((k) => !k.startsWith("_"))
-              .slice(0, 8)
-              .map((k) => ({ label: k, value: d[k] }));
+      const content = formatTooltipContent(dataPoint, tooltipAccessor);
 
-      const content = getTooltipContent(dataPoint);
-      const textContent = content
-        .map((item) => `${item.label}: ${String(item.value)}`)
-        .join("\n");
-      
-      this.tooltipText.text(textContent);
-      const textWidth = this.tooltipText.width();
-      const textHeight = this.tooltipText.height();
-      this.tooltipRect.size({ width: textWidth, height: textHeight });
-      
+      updateTooltipContent({
+        tooltipText: this.tooltipText,
+        tooltipRect: this.tooltipRect,
+        content,
+      });
+
       this.updateTooltipPosition(mousePos, width);
       this.tooltipGroup.visible(true);
       this.tooltipLayer.batchDraw();
     }
   };
 
+  /**
+   * Apply hover effect to a group of related points.
+   * Uses CSS opacity trick for O(1) dimming instead of per-shape opacity.
+   * @param {string} groupId - The group identifier to highlight
+   */
   applyHoverEffect = (groupId) => {
     // Cancel any pending hover clear (prevents flicker when moving between layers)
     if (this.hoverClearTimeout) {
@@ -302,197 +317,73 @@ class KonvaScatter extends Component {
 
     if (!this.shapesByGroup || !this.dataAccessors) return;
 
-    const { getX, getY, getColor } = this.dataAccessors;
-    const getRadius = typeof radiusAccessor === 'function' ? radiusAccessor : () => radiusAccessor || 4;
+    const { getX, getY, getColor, getCiLower, getCiUpper } = this.dataAccessors;
+    const getRadius = typeof radiusAccessor === 'function' ? radiusAccessor : () => radiusAccessor || DEFAULT_RADIUS;
     const getShape = shapeAccessor ? normalizeAccessor(shapeAccessor) : () => "circle";
     const getHollow = hollowAccessor ? normalizeAccessor(hollowAccessor) : () => false;
-    const sameGroupPoints = [];
 
-    // Clear previous hover shapes from hoverLayer (except cachedHoverLine)
-    // Use slice() to avoid modifying array during iteration
-    this.hoverLayer.children.slice().forEach((child) => {
-      if (child !== this.cachedHoverLine) {
-        child.destroy();
-      }
-    });
+    // Clear previous hover shapes and apply dimming
+    clearHoverLayerShapes(this.hoverLayer, this.cachedHoverLine);
+    setLayerDimming(this.circlesLayer, this.errorBarsLayer, true);
 
     // O(1) lookup for hovered group shapes
     const hoveredShapes = this.shapesByGroup.get(groupId) || [];
     const hoveredErrorBars = this.errorBarsByGroup?.get(groupId) || [];
 
-    // Use CSS opacity on the canvas elements - instant, no Konva redraw needed
-    const circlesCanvas = this.circlesLayer.getCanvas()._canvas;
-    circlesCanvas.style.opacity = '0.2';
-    if (this.errorBarsLayer) {
-      const errorBarsCanvas = this.errorBarsLayer.getCanvas()._canvas;
-      errorBarsCanvas.style.opacity = '0.2';
-    }
-
-    // O(k): Create new shapes in hoverLayer for hovered group (avoids moving shapes)
-    hoveredShapes.forEach((originalShape) => {
-      const dp = originalShape.getAttr("dataPoint");
-      if (!dp) return;
-
-      const screenX = xScale(getX(dp));
-      const screenY = yScale(getY(dp));
-      const colorVal = getColor(dp);
-      const fill = colorScale ? colorScale(colorVal) : colorVal;
-      const radius = getRadius(dp);
-      const shapeType = getShape(dp);
-      const isHollow = getHollow(dp);
-
-      const shapeConfig = isHollow
-        ? { stroke: fill, strokeWidth: 2.5, fill: 'rgba(255,255,255,0.01)' }
-        : { fill };
-
-      let shape;
-      if (shapeType === "star") {
-        shape = new Konva.Star({
-          x: screenX,
-          y: screenY,
-          numPoints: 5,
-          innerRadius: radius * 0.5,
-          outerRadius: radius * 1.5,
-          ...shapeConfig,
-          stroke: hoverStroke,
-          strokeWidth: hoverStrokeWidth,
-        });
-      } else if (shapeType === "square") {
-        const size = radius * 2;
-        shape = new Konva.Rect({
-          x: screenX - radius,
-          y: screenY - radius,
-          width: size,
-          height: size,
-          ...shapeConfig,
-          stroke: hoverStroke,
-          strokeWidth: hoverStrokeWidth,
-        });
-      } else {
-        shape = new Konva.Circle({
-          x: screenX,
-          y: screenY,
-          radius,
-          ...shapeConfig,
-          stroke: hoverStroke,
-          strokeWidth: hoverStrokeWidth,
-        });
-      }
-
-      shape.setAttr("dataPoint", dp);
-      this.hoverLayer.add(shape);
-
-      sameGroupPoints.push({
-        x: screenX,
-        y: screenY,
-        color: fill,
-      });
+    // Create new shapes in hoverLayer for hovered group
+    const sameGroupPoints = createHoverShapes({
+      hoveredShapes,
+      hoverLayer: this.hoverLayer,
+      xScale,
+      yScale,
+      colorScale,
+      getX,
+      getY,
+      getColor,
+      getRadius,
+      getShape,
+      getHollow,
+      hoverStroke,
+      hoverStrokeWidth,
     });
 
-    // O(k): Create error bars in hoverLayer for hovered group
-    hoveredErrorBars.forEach((originalErrorBar) => {
-      const dp = originalErrorBar.getAttr("dataPoint");
-      if (!dp) return;
-
-      const { getCiLower, getCiUpper } = this.dataAccessors;
-      const screenX = xScale(getX(dp));
-      const screenY = yScale(getY(dp));
-      const colorVal = getColor(dp);
-      const fill = colorScale ? colorScale(colorVal) : colorVal;
-
-      const ciLower = getCiLower ? getCiLower(dp) : null;
-      const ciUpper = getCiUpper ? getCiUpper(dp) : null;
-      const hasLower = ciLower != null && !isNaN(ciLower);
-      const hasUpper = ciUpper != null && !isNaN(ciUpper);
-
-      if (!hasLower && !hasUpper) return;
-
-      const yLower = hasLower ? yScale(ciLower) : null;
-      const yUpper = hasUpper ? yScale(ciUpper) : null;
-      const capWidth = 3;
-
-      const errorBarGroup = new Konva.Group();
-      errorBarGroup.setAttr("dataPoint", dp);
-
-      if (hasLower && hasUpper) {
-        errorBarGroup.add(new Konva.Line({
-          points: [screenX, yLower, screenX, yUpper],
-          stroke: fill,
-          strokeWidth: 1.5,
-        }));
-      } else if (hasLower) {
-        errorBarGroup.add(new Konva.Line({
-          points: [screenX, screenY, screenX, yLower],
-          stroke: fill,
-          strokeWidth: 1.5,
-        }));
-      } else if (hasUpper) {
-        errorBarGroup.add(new Konva.Line({
-          points: [screenX, screenY, screenX, yUpper],
-          stroke: fill,
-          strokeWidth: 1.5,
-        }));
-      }
-
-      if (hasLower) {
-        errorBarGroup.add(new Konva.Line({
-          points: [screenX - capWidth, yLower, screenX + capWidth, yLower],
-          stroke: fill,
-          strokeWidth: 1.5,
-        }));
-      }
-      if (hasUpper) {
-        errorBarGroup.add(new Konva.Line({
-          points: [screenX - capWidth, yUpper, screenX + capWidth, yUpper],
-          stroke: fill,
-          strokeWidth: 1.5,
-        }));
-      }
-
-      this.hoverLayer.add(errorBarGroup);
+    // Create error bars in hoverLayer for hovered group
+    createHoverErrorBars({
+      hoveredErrorBars,
+      hoverLayer: this.hoverLayer,
+      xScale,
+      yScale,
+      colorScale,
+      getX,
+      getY,
+      getColor,
+      getCiLower,
+      getCiUpper,
     });
 
     this.activeHoverGroupId = groupId;
 
-    // Draw connecting line between same-group points
-    if (sameGroupPoints.length > 1) {
-      sameGroupPoints.sort((a, b) => a.y - b.y);
-
-      if (!this.cachedHoverLine) {
-        this.cachedHoverLine = new Konva.Line({
-          stroke: "#666",
-          strokeWidth: 2,
-          dash: [5, 5],
-        });
-        this.hoverLayer.add(this.cachedHoverLine);
-      }
-
-      this.cachedHoverLine.points(sameGroupPoints.flatMap((p) => [p.x, p.y]));
-      this.cachedHoverLine.visible(true);
-    } else if (this.cachedHoverLine) {
-      this.cachedHoverLine.visible(false);
+    // Ensure connecting line exists
+    if (!this.cachedHoverLine) {
+      this.cachedHoverLine = createConnectingLine({
+        stroke: CONNECTING_LINE_STROKE,
+        strokeWidth: CONNECTING_LINE_WIDTH,
+        dash: CONNECTING_LINE_DASH,
+      });
+      this.hoverLayer.add(this.cachedHoverLine);
     }
+
+    // Update connecting line between same-group points
+    updateConnectingLine(this.cachedHoverLine, sameGroupPoints);
 
     // Only need to draw hoverLayer - CSS opacity handles the dimming
     this.hoverLayer.batchDraw();
   };
 
   clearHoverEffect = () => {
-    // Restore CSS opacity on canvas elements - instant, no Konva redraw
-    const circlesCanvas = this.circlesLayer.getCanvas()._canvas;
-    circlesCanvas.style.opacity = '1';
-    if (this.errorBarsLayer) {
-      const errorBarsCanvas = this.errorBarsLayer.getCanvas()._canvas;
-      errorBarsCanvas.style.opacity = '1';
-    }
-
-    // Clear hover shapes from hoverLayer (except cachedHoverLine)
-    // Use slice() to avoid modifying array during iteration
-    this.hoverLayer.children.slice().forEach((child) => {
-      if (child !== this.cachedHoverLine) {
-        child.destroy();
-      }
-    });
+    // Restore CSS opacity and clear hover shapes
+    setLayerDimming(this.circlesLayer, this.errorBarsLayer, false);
+    clearHoverLayerShapes(this.hoverLayer, this.cachedHoverLine);
 
     this.activeHoverGroupId = null;
 
@@ -525,8 +416,11 @@ class KonvaScatter extends Component {
     }
 
     if (this.hoveredNode) {
-      this.hoveredNode.stroke(this.hoveredNode._originalStroke || null);
-      this.hoveredNode.strokeWidth(this.hoveredNode._originalStrokeWidth || 0);
+      // Only restore stroke if we're not using fadeOnHover
+      // (fadeOnHover uses hoverLayer and doesn't modify original shapes)
+      if (!fadeOnHover) {
+        restoreStrokeState(this.hoveredNode);
+      }
       this.hoveredNode = null;
     }
 
@@ -540,7 +434,7 @@ class KonvaScatter extends Component {
         this.hoverClearTimeout = null;
         this.clearHoverEffect();
         this.hoveredGroupId = null;
-      }, 10);
+      }, HOVER_CLEAR_DELAY_MS);
     } else {
       this.circlesLayer.batchDraw();
     }
@@ -552,21 +446,15 @@ class KonvaScatter extends Component {
   };
 
   updateTooltipPosition(mousePos, width) {
-    const tooltipWidth = this.tooltipRect.width();
-    const tooltipHeight = this.tooltipRect.height();
     const { height } = this.props;
-
-    // Horizontal: flip left if would overflow right
-    const xPos = mousePos.x + 10 + tooltipWidth > width 
-      ? mousePos.x - tooltipWidth - 10 
-      : mousePos.x + 10;
-
-    // Vertical: flip up if would overflow bottom
-    const yPos = mousePos.y + 10 + tooltipHeight > height
-      ? mousePos.y - tooltipHeight - 10
-      : mousePos.y + 10;
-
-    this.tooltipGroup.position({ x: xPos, y: yPos });
+    const position = calculateTooltipPosition({
+      mousePos,
+      tooltipWidth: this.tooltipRect.width(),
+      tooltipHeight: this.tooltipRect.height(),
+      canvasWidth: width,
+      canvasHeight: height,
+    });
+    this.tooltipGroup.position(position);
   }
 
   handleStageMouseLeave = () => {
@@ -587,8 +475,11 @@ class KonvaScatter extends Component {
     }
 
     if (this.hoveredNode) {
-      this.hoveredNode.stroke(this.hoveredNode._originalStroke || null);
-      this.hoveredNode.strokeWidth(this.hoveredNode._originalStrokeWidth || 0);
+      // Only restore stroke if we're not using fadeOnHover
+      // (fadeOnHover uses hoverLayer and doesn't modify original shapes)
+      if (!fadeOnHover) {
+        restoreStrokeState(this.hoveredNode);
+      }
       this.hoveredNode = null;
     }
 
@@ -645,19 +536,19 @@ class KonvaScatter extends Component {
     const minRange = minZoomRange || maxRange / 100;
 
     // Get current domain - use local zoom if active, otherwise props
-    const domain = this.localZoomDomain || xScale.domain();
+    const domain = this.localDomain || xScale.domain();
     const range = xScale.range();
     const currentMin = domain[0];
     const currentMax = domain[1];
     const currentRange = currentMax - currentMin;
 
     // Calculate zoom direction
-    const scaleBy = 1.1;
+    const scaleBy = ZOOM_SCALE_BY;
     const direction = evt.evt.deltaY > 0 ? 1 : -1; // 1 = zoom out, -1 = zoom in
 
     // Early exit if already at limits
-    const isAtMaxZoom = currentRange >= maxRange - 0.001; // Already fully zoomed out
-    const isAtMinZoom = currentRange <= minRange + 0.001; // Already fully zoomed in
+    const isAtMaxZoom = currentRange >= maxRange - ZOOM_PRECISION; // Already fully zoomed out
+    const isAtMinZoom = currentRange <= minRange + ZOOM_PRECISION; // Already fully zoomed in
 
     if (isAtMaxZoom && direction > 0) {
       // Already at max zoom out, can't zoom out further
@@ -682,9 +573,9 @@ class KonvaScatter extends Component {
     // Clamp range to limits
     if (newRange >= maxRange) {
       // Zooming out to or beyond max - reset to full view
-      this.localZoomDomain = null;
-      if (this.zoomEndTimeout) {
-        clearTimeout(this.zoomEndTimeout);
+      this.localDomain = null;
+      if (this.domainSyncTimeout) {
+        clearTimeout(this.domainSyncTimeout);
       }
       onZoomChange({ xMin: limitMin, xMax: limitMax });
       return;
@@ -699,40 +590,33 @@ class KonvaScatter extends Component {
     let newMax = mouseDataX + (1 - mouseRatio) * newRange;
 
     // Clamp to data bounds
-    if (newMin < limitMin) {
-      newMin = limitMin;
-      newMax = limitMin + newRange;
-    }
-    if (newMax > limitMax) {
-      newMax = limitMax;
-      newMin = limitMax - newRange;
-    }
+    [newMin, newMax] = clampDomain(newMin, newMax, limitMin, limitMax);
 
     // Store local zoom domain
-    this.localZoomDomain = [newMin, newMax];
+    this.localDomain = [newMin, newMax];
 
     // Immediately update positions locally (no React!) - using RAF for smooth animation
-    if (!this.zoomRafId) {
-      this.zoomRafId = requestAnimationFrame(() => {
-        this.zoomRafId = null;
-        if (this.localZoomDomain && this.currentData && this.dataAccessors) {
+    if (!this.positionUpdateRafId) {
+      this.positionUpdateRafId = requestAnimationFrame(() => {
+        this.positionUpdateRafId = null;
+        if (this.localDomain && this.currentData && this.dataAccessors) {
           // Create temporary scale with local domain
-          const tempXScale = xScale.copy().domain(this.localZoomDomain);
+          const tempXScale = xScale.copy().domain(this.localDomain);
           this.updatePositionsWithScale(tempXScale, yScale);
         }
       });
     }
 
-    // Debounce React sync - only fire after 100ms of no wheel events
-    if (this.zoomEndTimeout) {
-      clearTimeout(this.zoomEndTimeout);
+    // Debounce React sync - only fire after no wheel events for the debounce period
+    if (this.domainSyncTimeout) {
+      clearTimeout(this.domainSyncTimeout);
     }
-    this.zoomEndTimeout = setTimeout(() => {
-      if (this.localZoomDomain) {
-        onZoomChange({ xMin: this.localZoomDomain[0], xMax: this.localZoomDomain[1] });
-        this.localZoomDomain = null;
+    this.domainSyncTimeout = setTimeout(() => {
+      if (this.localDomain) {
+        onZoomChange({ xMin: this.localDomain[0], xMax: this.localDomain[1] });
+        this.localDomain = null;
       }
-    }, 100);
+    }, ZOOM_DEBOUNCE_MS);
   };
 
   handlePanStart = (evt) => {
@@ -797,44 +681,31 @@ class KonvaScatter extends Component {
     this.lastPanPos = { x: pointerX, y: this.lastPanPos.y };
 
     // Convert to data units - use local domain if active
-    const domain = this.localZoomDomain || xScale.domain();
+    const domain = this.localDomain || xScale.domain();
     const plotWidth = clipBounds ? clipBounds.width : (xScale.range()[1] - xScale.range()[0]);
-    const dataRange = domain[1] - domain[0];
-    const dataDelta = (deltaX / plotWidth) * dataRange;
 
     // Calculate new domain (pan is inverted - drag right = move left in data)
-    let newMin = domain[0] - dataDelta;
-    let newMax = domain[1] - dataDelta;
-
-    // Clamp to data bounds
-    if (newMin < limitMin) {
-      newMin = limitMin;
-      newMax = limitMin + dataRange;
-    }
-    if (newMax > limitMax) {
-      newMax = limitMax;
-      newMin = limitMax - dataRange;
-    }
+    const [newMin, newMax] = calculatePannedDomain(domain, deltaX, plotWidth, [limitMin, limitMax]);
 
     // Store local domain and update immediately
-    this.localZoomDomain = [newMin, newMax];
+    this.localDomain = [newMin, newMax];
 
     // Immediate local update (no React)
     if (this.currentData && this.dataAccessors) {
-      const tempXScale = xScale.copy().domain(this.localZoomDomain);
+      const tempXScale = xScale.copy().domain(this.localDomain);
       this.updatePositionsWithScale(tempXScale, yScale);
     }
 
     // Debounce React sync
-    if (this.zoomEndTimeout) {
-      clearTimeout(this.zoomEndTimeout);
+    if (this.domainSyncTimeout) {
+      clearTimeout(this.domainSyncTimeout);
     }
-    this.zoomEndTimeout = setTimeout(() => {
-      if (this.localZoomDomain) {
-        onZoomChange({ xMin: this.localZoomDomain[0], xMax: this.localZoomDomain[1] });
-        this.localZoomDomain = null;
+    this.domainSyncTimeout = setTimeout(() => {
+      if (this.localDomain) {
+        onZoomChange({ xMin: this.localDomain[0], xMax: this.localDomain[1] });
+        this.localDomain = null;
       }
-    }, 100);
+    }, ZOOM_DEBOUNCE_MS);
   };
 
   handlePanEnd = () => {
@@ -845,16 +716,16 @@ class KonvaScatter extends Component {
     }
 
     // Immediately sync to React when pan ends
-    if (this.zoomEndTimeout) {
-      clearTimeout(this.zoomEndTimeout);
-      this.zoomEndTimeout = null;
+    if (this.domainSyncTimeout) {
+      clearTimeout(this.domainSyncTimeout);
+      this.domainSyncTimeout = null;
     }
-    if (this.localZoomDomain) {
+    if (this.localDomain) {
       const { onZoomChange } = this.props;
       if (onZoomChange) {
-        onZoomChange({ xMin: this.localZoomDomain[0], xMax: this.localZoomDomain[1] });
+        onZoomChange({ xMin: this.localDomain[0], xMax: this.localDomain[1] });
       }
-      this.localZoomDomain = null;
+      this.localDomain = null;
     }
 
     window.removeEventListener("mousemove", this.handlePanMove);
@@ -865,29 +736,14 @@ class KonvaScatter extends Component {
 
   getScales() {
     const { width, height, data, xAccessor, yAccessor, xScale, yScale } = this.props;
-
-    const getX = normalizeAccessor(xAccessor);
-    const getY = normalizeAccessor(yAccessor);
-
-    const finalXScale =
-      xScale ||
-      d3
-        .scaleLinear()
-        .domain(d3.extent(data, getX))
-        .range([0, width])
-        .nice();
-
-    const finalYScale =
-      yScale ||
-      d3
-        .scaleLinear()
-        .domain(d3.extent(data, getY))
-        .range([height, 0])
-        .nice();
-
-    return { xScale: finalXScale, yScale: finalYScale, getX, getY };
+    return createScales({ width, height, data, xAccessor, yAccessor, xScale, yScale });
   }
 
+  /**
+   * Render all data points to the canvas.
+   * Creates Konva shapes for each point and error bars if enabled.
+   * Builds group membership maps for fast hover lookups.
+   */
   renderPoints() {
     if (!this.circlesLayer) {
       return;
@@ -935,8 +791,8 @@ class KonvaScatter extends Component {
       return;
     }
 
-    const getColor = colorAccessor ? normalizeAccessor(colorAccessor) : () => "#1890ff";
-    const getRadius = normalizeNumericAccessor(radiusAccessor, 4);
+    const getColor = colorAccessor ? normalizeAccessor(colorAccessor) : () => DEFAULT_COLOR;
+    const getRadius = normalizeNumericAccessor(radiusAccessor, DEFAULT_RADIUS);
     const getShape = shapeAccessor ? normalizeAccessor(shapeAccessor) : () => "circle";
     const getId = idAccessor ? normalizeAccessor(idAccessor) : (d, i) => i;
     const getCiLower = ciLowerAccessor ? normalizeAccessor(ciLowerAccessor) : null;
@@ -981,106 +837,33 @@ class KonvaScatter extends Component {
       if (showErrorBars && this.errorBarsLayer) {
         const ciLower = getCiLower ? getCiLower(d) : null;
         const ciUpper = getCiUpper ? getCiUpper(d) : null;
-        const hasLower = ciLower != null && !isNaN(ciLower);
-        const hasUpper = ciUpper != null && !isNaN(ciUpper);
+        const yLower = ciLower != null && !isNaN(ciLower) ? yScale(ciLower) : null;
+        const yUpper = ciUpper != null && !isNaN(ciUpper) ? yScale(ciUpper) : null;
 
-        // Draw error bars if at least one bound is available
-        if (hasLower || hasUpper) {
-          const yLower = hasLower ? yScale(ciLower) : null;
-          const yUpper = hasUpper ? yScale(ciUpper) : null;
-          const capWidth = 3;
+        const errorBarGroup = createErrorBarGroup({
+          screenX,
+          screenY,
+          yLower,
+          yUpper,
+          stroke: fill,
+        });
 
-          const errorBarGroup = new Konva.Group();
+        if (errorBarGroup) {
           errorBarGroup.setAttr("dataPoint", d);
-
-          // Draw vertical line from point to available bound(s)
-          if (hasLower && hasUpper) {
-            // Full interval
-            const verticalLine = new Konva.Line({
-              points: [screenX, yLower, screenX, yUpper],
-              stroke: fill,
-              strokeWidth: 1.5,
-            });
-            errorBarGroup.add(verticalLine);
-          } else if (hasLower) {
-            // Only lower bound - draw from point down
-            const verticalLine = new Konva.Line({
-              points: [screenX, screenY, screenX, yLower],
-              stroke: fill,
-              strokeWidth: 1.5,
-            });
-            errorBarGroup.add(verticalLine);
-          } else if (hasUpper) {
-            // Only upper bound - draw from point up
-            const verticalLine = new Konva.Line({
-              points: [screenX, screenY, screenX, yUpper],
-              stroke: fill,
-              strokeWidth: 1.5,
-            });
-            errorBarGroup.add(verticalLine);
-          }
-
-          // Draw caps for available bounds
-          if (hasLower) {
-            const lowerCap = new Konva.Line({
-              points: [screenX - capWidth, yLower, screenX + capWidth, yLower],
-              stroke: fill,
-              strokeWidth: 1.5,
-            });
-            errorBarGroup.add(lowerCap);
-          }
-
-          if (hasUpper) {
-            const upperCap = new Konva.Line({
-              points: [screenX - capWidth, yUpper, screenX + capWidth, yUpper],
-              stroke: fill,
-              strokeWidth: 1.5,
-            });
-            errorBarGroup.add(upperCap);
-          }
-
           this.errorBarsLayer.add(errorBarGroup);
         }
       }
 
-      let shape;
-
-      // For hollow points, use transparent fill (for hit detection) with colored stroke
-      const shapeConfig = isHollow
-        ? { stroke: fill, strokeWidth: 2.5, fill: 'rgba(255,255,255,0.01)' }
-        : { fill };
-
-      if (shapeType === "star") {
-        shape = new Konva.Star({
-          x: screenX,
-          y: screenY,
-          numPoints: 5,
-          innerRadius: radius * 0.5,
-          outerRadius: radius * 1.5,
-          ...shapeConfig,
-        });
-      } else if (shapeType === "square") {
-        const size = radius * 2;
-        shape = new Konva.Rect({
-          x: screenX - radius,
-          y: screenY - radius,
-          width: size,
-          height: size,
-          ...shapeConfig,
-        });
-      } else {
-        shape = new Konva.Circle({
-          x: screenX,
-          y: screenY,
-          radius,
-          ...shapeConfig,
-        });
-      }
-
-      if (isSelected) {
-        shape.stroke(highlightStroke);
-        shape.strokeWidth(highlightStrokeWidth);
-      }
+      const shape = createShape({
+        shapeType,
+        x: screenX,
+        y: screenY,
+        radius,
+        fill,
+        isHollow,
+        stroke: isSelected ? highlightStroke : undefined,
+        strokeWidth: isSelected ? highlightStrokeWidth : undefined,
+      });
 
       shape.setAttr("dataPoint", d);
       shape.setAttr("pointId", pointId);
@@ -1144,7 +927,12 @@ class KonvaScatter extends Component {
     this.updatePositionsWithScale(xScale, yScale);
   }
 
-  // Core position update with provided scales - for both React updates and local zoom
+  /**
+   * Fast position update without recreating shapes.
+   * Used during zoom/pan for smooth 60fps interactions.
+   * @param {Function} xScale - d3 scale for x axis
+   * @param {Function} yScale - d3 scale for y axis
+   */
   updatePositionsWithScale(xScale, yScale) {
     if (!this.circlesLayer || !this.currentData || !this.dataAccessors) {
       return;
@@ -1182,7 +970,6 @@ class KonvaScatter extends Component {
 
     // Update error bar positions
     if (showErrorBars && this.errorBarsLayer) {
-      const capWidth = 3;
       this.errorBarsLayer.children.forEach((errorGroup) => {
         const d = errorGroup.getAttr("dataPoint");
         if (!d) return;
@@ -1217,13 +1004,13 @@ class KonvaScatter extends Component {
 
         // Update lower cap if present
         if (hasLower && lines[lineIdx]) {
-          lines[lineIdx].points([screenX - capWidth, yLower, screenX + capWidth, yLower]);
+          lines[lineIdx].points([screenX - ERROR_BAR_CAP_WIDTH, yLower, screenX + ERROR_BAR_CAP_WIDTH, yLower]);
           lineIdx++;
         }
 
         // Update upper cap if present
         if (hasUpper && lines[lineIdx]) {
-          lines[lineIdx].points([screenX - capWidth, yUpper, screenX + capWidth, yUpper]);
+          lines[lineIdx].points([screenX - ERROR_BAR_CAP_WIDTH, yUpper, screenX + ERROR_BAR_CAP_WIDTH, yUpper]);
         }
       });
     }
@@ -1335,11 +1122,11 @@ KonvaScatter.propTypes = {
 };
 
 KonvaScatter.defaultProps = {
-  radiusAccessor: 4,
-  highlightStroke: "#ff7f0e",
-  highlightStrokeWidth: 3,
-  hoverStroke: "#ff7f0e",
-  hoverStrokeWidth: 3,
+  radiusAccessor: DEFAULT_RADIUS,
+  highlightStroke: DEFAULT_HIGHLIGHT_STROKE,
+  highlightStrokeWidth: DEFAULT_HIGHLIGHT_STROKE_WIDTH,
+  hoverStroke: DEFAULT_HIGHLIGHT_STROKE,
+  hoverStrokeWidth: DEFAULT_HIGHLIGHT_STROKE_WIDTH,
   disableTooltip: false,
   showErrorBars: false,
   fadeOnHover: false,
