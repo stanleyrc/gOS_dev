@@ -324,6 +324,7 @@ class ClinicalTrialsModal extends Component {
           <OutcomeHistogram
             trials={filteredTrials}
             availableOutcomes={availableOutcomes}
+            onTrialClick={this.handleTrialClick}
           />
         ),
       },

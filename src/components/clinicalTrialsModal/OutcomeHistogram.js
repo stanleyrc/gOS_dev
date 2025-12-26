@@ -20,7 +20,7 @@ class OutcomeHistogram extends Component {
     super(props);
     this.state = {
       outcomeType: "PFS",
-      hoveredBin: null,
+      selectedBin: null,
       containerWidth: null,
     };
     this.containerRef = React.createRef();
@@ -95,20 +95,18 @@ class OutcomeHistogram extends Component {
   };
 
   handleOutcomeTypeChange = (value) => {
-    this.setState({ outcomeType: value, hoveredBin: null });
+    this.setState({ outcomeType: value, selectedBin: null });
   };
 
-  handleBarMouseEnter = (bin) => {
-    this.setState({ hoveredBin: bin });
-  };
-
-  handleBarMouseLeave = () => {
-    this.setState({ hoveredBin: null });
+  handleBarClick = (bin) => {
+    if (bin.length > 0) {
+      this.setState({ selectedBin: bin });
+    }
   };
 
   render() {
-    const { outcomeType, hoveredBin, containerWidth } = this.state;
-    const { availableOutcomes } = this.props;
+    const { outcomeType, selectedBin, containerWidth } = this.state;
+    const { availableOutcomes, onTrialClick } = this.props;
 
     const values = this.getOutcomeValues();
     const stats = this.getStatistics(values);
@@ -276,7 +274,7 @@ class OutcomeHistogram extends Component {
                 {bins.map((bin, i) => {
                   const barWidth = Math.max(0, xScale(bin.x1) - xScale(bin.x0) - 2);
                   const barHeight = innerHeight - yScale(bin.length);
-                  const isHovered = hoveredBin === bin;
+                  const isSelected = selectedBin === bin;
 
                   return (
                     <rect
@@ -285,13 +283,12 @@ class OutcomeHistogram extends Component {
                       y={yScale(bin.length)}
                       width={barWidth}
                       height={barHeight}
-                      fill={isHovered ? BAR_HOVER_COLOR : BAR_COLOR}
+                      fill={isSelected ? BAR_HOVER_COLOR : BAR_COLOR}
                       stroke="white"
                       strokeWidth={1}
                       rx={2}
                       style={{ cursor: bin.length > 0 ? "pointer" : "default", transition: "fill 0.15s" }}
-                      onMouseEnter={() => bin.length > 0 && this.handleBarMouseEnter(bin)}
-                      onMouseLeave={this.handleBarMouseLeave}
+                      onClick={() => this.handleBarClick(bin)}
                     />
                   );
                 })}
@@ -371,28 +368,34 @@ class OutcomeHistogram extends Component {
               style={{ height: HEIGHT, overflow: "hidden" }}
               styles={{ body: { padding: 12, height: HEIGHT - 48, overflowY: "auto" } }}
             >
-              {hoveredBin && hoveredBin.length > 0 ? (
+              {selectedBin && selectedBin.length > 0 ? (
                 <>
                   <div style={{ marginBottom: 12 }}>
                     <Text strong style={{ fontSize: 14 }}>
-                      {outcomeType}: {hoveredBin.x0.toFixed(1)} - {hoveredBin.x1.toFixed(1)} {unit}
+                      {outcomeType}: {selectedBin.x0.toFixed(1)} - {selectedBin.x1.toFixed(1)} {unit}
                     </Text>
                     <br />
                     <Text type="secondary">
-                      {hoveredBin.length} trial arm{hoveredBin.length !== 1 ? "s" : ""}
+                      {selectedBin.length} trial arm{selectedBin.length !== 1 ? "s" : ""}
                     </Text>
                   </div>
                   <div>
-                    {hoveredBin.slice(0, 15).map((item, i) => (
+                    {selectedBin.map((item, i) => (
                       <div
                         key={i}
+                        onClick={() => onTrialClick?.(item.trial, item.outcome)}
                         style={{
                           fontSize: 12,
-                          padding: "4px 0",
-                          borderBottom: i < Math.min(hoveredBin.length, 15) - 1 ? "1px solid #f0f0f0" : "none",
+                          padding: "6px 4px",
+                          borderBottom: i < selectedBin.length - 1 ? "1px solid #f0f0f0" : "none",
+                          cursor: onTrialClick ? "pointer" : "default",
+                          borderRadius: 4,
+                          transition: "background-color 0.15s",
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                       >
-                        <Text style={{ fontFamily: "monospace", fontSize: 11 }}>
+                        <Text style={{ fontFamily: "monospace", fontSize: 11, color: "#1890ff" }}>
                           {item.trial.nct_id}
                         </Text>
                         <br />
@@ -401,16 +404,11 @@ class OutcomeHistogram extends Component {
                         </Text>
                       </div>
                     ))}
-                    {hoveredBin.length > 15 && (
-                      <Text type="secondary" style={{ fontSize: 11, display: "block", marginTop: 8 }}>
-                        ... and {hoveredBin.length - 15} more
-                      </Text>
-                    )}
                   </div>
                 </>
               ) : (
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Hover over a bar to see the trial arms in that range.
+                  Click a bar to see the trial arms in that range.
                 </Text>
               )}
             </Card>
