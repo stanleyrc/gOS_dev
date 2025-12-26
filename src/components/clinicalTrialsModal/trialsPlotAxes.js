@@ -28,7 +28,7 @@ class TrialsPlotAxes extends Component {
         value={axisType}
         onChange={onAxisChange}
         options={this.getAxisOptions()}
-        style={{ width: axis === 'y' ? 110 : 120 }}
+        style={{ width: axis === 'y' ? 130 : 120 }}
         dropdownMatchSelectWidth={false}
       />
     );

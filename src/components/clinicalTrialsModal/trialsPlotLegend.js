@@ -56,7 +56,7 @@ class TrialsPlotLegend extends Component {
     const useTwoColumns = colorBy === 'cancerType' && sortedKeys.length > 6;
 
     return (
-      <div style={{ width: 200, flexShrink: 0 }}>
+      <div style={{ width: 160, flexShrink: 0 }}>
         <div style={{ marginBottom: 12 }}>
           <Text strong style={{ marginBottom: 4, display: "block", fontSize: 12 }}>
             Color by
@@ -66,7 +66,7 @@ class TrialsPlotLegend extends Component {
             options={COLOR_BY_OPTIONS}
             onChange={onColorByChange}
             size="small"
-            style={{ width: "100%" }}
+            style={{ width: 140 }}
           />
         </div>
         <Text strong style={{ marginBottom: 8, display: "block" }}>
