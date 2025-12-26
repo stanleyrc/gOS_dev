@@ -7,6 +7,7 @@ import FilteredEventsListPanel from "../filteredEventsListPanel";
 import TrialsPlotView from "./trialsPlotView";
 import TrialsTableView from "./trialsTableView";
 import TrialDetailsPanel from "./TrialDetailsPanel";
+import OutcomeHistogram from "./OutcomeHistogram";
 import TrialsFilterForm from "./trialsFilterForm";
 import {
   getDefaultFilterState,
@@ -300,7 +301,7 @@ class ClinicalTrialsModal extends Component {
     const tabItems = [
       {
         key: "plot",
-        label: t("components.clinical-trials-modal.plot-tab") || "Plot",
+        label: t("components.clinical-trials-modal.scatterplot-tab") || "Scatterplot",
         children: (
           <TrialsPlotView
             trials={filteredTrials}
@@ -313,6 +314,16 @@ class ClinicalTrialsModal extends Component {
             onXAxisChange={this.handleXAxisChange}
             onYAxisChange={this.handleYAxisChange}
             onTrialClick={this.handleTrialClick}
+          />
+        ),
+      },
+      {
+        key: "histogram",
+        label: t("components.clinical-trials-modal.histogram-tab") || "Distribution",
+        children: (
+          <OutcomeHistogram
+            trials={filteredTrials}
+            availableOutcomes={availableOutcomes}
           />
         ),
       },

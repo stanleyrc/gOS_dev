@@ -433,7 +433,8 @@
     "cbioportal-modal": { "title": "cBioPortal" },
     "clinical-trials-modal": {
       "title": "Clinical Trials",
-      "plot-tab": "Plot",
+      "scatterplot-tab": "Scatterplot",
+      "histogram-tab": "Distribution",
       "table-tab": "Table",
       "cancer-type": "Cancer Type",
       "biomarkers": "Biomarkers",
