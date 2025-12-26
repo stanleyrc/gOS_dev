@@ -204,6 +204,142 @@ export function collectTrialPoints(trials, outcomeType, options = {}) {
 }
 
 /**
+ * Group outcomes by arm_id for arm-level aggregation
+ */
+function groupOutcomesByArm(outcomes) {
+  const grouped = {};
+  outcomes.forEach((outcome) => {
+    const armId = outcome.arm_id || '_default';
+    if (!grouped[armId]) grouped[armId] = [];
+    grouped[armId].push(outcome);
+  });
+  return grouped;
+}
+
+/**
+ * Find a valid outcome of specified type from outcomes array
+ */
+function findValidOutcome(outcomes, outcomeType) {
+  return outcomes.find((o) =>
+    o.outcome_type === outcomeType && isValidOutcome(o, outcomeType)
+  );
+}
+
+/**
+ * Create a point for outcome-vs-outcome plot
+ */
+function createDualOutcomePoint(trial, xOutcome, yOutcome, xOutcomeType, yOutcomeType) {
+  const isXORR = xOutcomeType === 'ORR';
+  const isYORR = yOutcomeType === 'ORR';
+
+  const xRaw = parseFloat(xOutcome.value);
+  const yRaw = parseFloat(yOutcome.value);
+  if (isNaN(xRaw) || isNaN(yRaw)) return null;
+
+  const xValue = isXORR ? xRaw : normalizeToMonths(xRaw, xOutcome.unit);
+  const yValue = isYORR ? yRaw : normalizeToMonths(yRaw, yOutcome.unit);
+
+  if (xValue < 0 || yValue < 0) return null;
+
+  const armId = xOutcome.arm_id || yOutcome.arm_id || '';
+  const armTitle = xOutcome.arm_title || yOutcome.arm_title || '';
+  const treatmentClass = trial.treatment_class_map?.[armId] || 'OTHER';
+
+  // CI only for Y-axis
+  const ciLower = isYORR ? yOutcome.ci_lower : normalizeToMonths(yOutcome.ci_lower, yOutcome.unit);
+  const ciUpper = isYORR ? yOutcome.ci_upper : normalizeToMonths(yOutcome.ci_upper, yOutcome.unit);
+
+  return {
+    x: xValue,
+    y: yValue,
+    trial,
+    xOutcome,
+    yOutcome,
+    outcome: yOutcome, // Backward compatibility
+    treatmentClass,
+    armTitle,
+    nctId: trial.nct_id,
+    ciLower: ciLower != null && ciLower >= 0 ? ciLower : null,
+    ciUpper: ciUpper != null && ciUpper >= 0 ? ciUpper : null,
+    xOutcomeType,
+    yOutcomeType,
+  };
+}
+
+/**
+ * Collect points where both X and Y are outcome measurements
+ */
+function collectOutcomeVsOutcomePoints(trials, xOutcomeType, yOutcomeType, options = {}) {
+  const { allTrials, socDisplayMode, cancerTypeFilters, excludeAdjuvant } = options;
+  const points = [];
+  const socPoints = [];
+  const addedSocKeys = new Set();
+
+  const processTrials = (trialList, isSocPass = false) => {
+    trialList.forEach((trial) => {
+      if (excludeAdjuvant &&
+          (trial.line_of_therapy === 'ADJUVANT' || trial.line_of_therapy === 'NEOADJUVANT')) {
+        return;
+      }
+
+      const outcomesByArm = groupOutcomesByArm(trial.outcomes || []);
+
+      for (const [armId, armOutcomes] of Object.entries(outcomesByArm)) {
+        const xOutcome = findValidOutcome(armOutcomes, xOutcomeType);
+        const yOutcome = findValidOutcome(armOutcomes, yOutcomeType);
+
+        if (!xOutcome || !yOutcome) continue;
+
+        const treatmentClass = trial.treatment_class_map?.[armId] || 'OTHER';
+
+        if (isSocPass && !isStandardOfCareTreatment(treatmentClass)) continue;
+
+        const key = `${trial.nct_id}|${armId}|${xOutcomeType}|${yOutcomeType}`;
+        if (addedSocKeys.has(key)) continue;
+        if (isSocPass) addedSocKeys.add(key);
+
+        const point = createDualOutcomePoint(trial, xOutcome, yOutcome, xOutcomeType, yOutcomeType);
+        if (point) {
+          (isSocPass ? socPoints : points).push(point);
+        }
+      }
+    });
+  };
+
+  // Process SoC from allTrials if applicable
+  if (socDisplayMode !== 'hide' && allTrials) {
+    const socTrials = allTrials.filter((trial) => {
+      if (socDisplayMode === 'filtered' && cancerTypeFilters.length > 0) {
+        return cancerTypeFilters.some((ct) => (trial.cancer_types || []).includes(ct));
+      }
+      return true;
+    });
+    processTrials(socTrials, true);
+  }
+
+  processTrials(trials, false);
+
+  return socDisplayMode !== 'hide' ? [...socPoints, ...points] : points;
+}
+
+/**
+ * Collect points for dual-axis scatter plot
+ * @param {Array} trials - Filtered trials
+ * @param {string} xAxisType - 'TIME', 'PFS', 'OS', or 'ORR'
+ * @param {string} yAxisType - 'PFS', 'OS', or 'ORR'
+ * @param {Object} options - Same as collectTrialPoints
+ */
+export function collectTrialPointsDualAxis(trials, xAxisType, yAxisType, options = {}) {
+  // If X is Time, use existing function
+  if (xAxisType === 'TIME') {
+    return collectTrialPoints(trials, yAxisType, options);
+  }
+
+  // Both axes are outcomes
+  return collectOutcomeVsOutcomePoints(trials, xAxisType, yAxisType, options);
+}
+
+/**
  * Check if a trial matches biomarker filter queries
  */
 export function trialMatchesBiomarkerFilter(trial, biomarkerFilters) {

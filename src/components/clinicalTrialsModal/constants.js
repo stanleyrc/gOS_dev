@@ -149,11 +149,25 @@ export const SOC_DISPLAY_MODE_OPTIONS = [
 
 export const OUTCOME_TYPES = ['PFS', 'OS', 'ORR'];
 
+// Axis type for time-based X-axis
+export const AXIS_TYPE_TIME = 'TIME';
+
+// Axis options for dropdown selectors
+export const AXIS_OPTIONS = [
+  { label: 'Time (year)', value: 'TIME' },
+  { label: 'PFS (months)', value: 'PFS' },
+  { label: 'OS (months)', value: 'OS' },
+  { label: 'ORR (%)', value: 'ORR' },
+];
+
+// Helper to check if axis type is an outcome
+export const isOutcomeAxis = (axisType) => OUTCOME_TYPES.includes(axisType);
+
 // Plot configuration constants
 export const PLOT_CONFIG = {
   HEIGHT: 550,
   MARGINS: { top: 20, right: 20, bottom: 40, left: 60 },
-  CONTAINER_OFFSET: 220,
+  CONTAINER_OFFSET: 200,
   MIN_WIDTH: 400,
   MIN_ZOOM_MONTHS: 1 / 12,
   Y_AXIS_PADDING: 1.15,

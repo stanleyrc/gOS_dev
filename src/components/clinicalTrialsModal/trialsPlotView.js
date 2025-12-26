@@ -12,7 +12,8 @@ import {
   STAGE_COLORS,
   getColorForValue,
 } from "./constants";
-import { isStandardOfCareTreatment, collectTrialPoints } from "./trialDataUtils";
+import { isStandardOfCareTreatment, collectTrialPointsDualAxis } from "./trialDataUtils";
+import { AXIS_TYPE_TIME } from "./constants";
 import TrialsPlotLegend from "./trialsPlotLegend";
 import TrialsPlotAxes from "./trialsPlotAxes";
 
@@ -34,7 +35,8 @@ class TrialsPlotView extends Component {
     this.cachedPlotData = null;
     this.cachedDataExtent = null;
     this.lastTrials = null;
-    this.lastOutcomeType = null;
+    this.lastXAxisType = null;
+    this.lastYAxisType = null;
     this.lastAllTrials = null;
     this.lastSocDisplayMode = null;
     this.lastCancerTypeFilters = null;
@@ -58,13 +60,14 @@ class TrialsPlotView extends Component {
 
   // Memoized data extent - only recalculates when data-affecting props change
   getDataXExtent = () => {
-    const { trials, outcomeType, allTrials, socDisplayMode, cancerTypeFilters } = this.props;
+    const { trials, xAxisType, yAxisType, allTrials, socDisplayMode, cancerTypeFilters } = this.props;
 
     // Use cached extent if data hasn't changed
     if (
       this.cachedDataExtent &&
       this.lastTrials === trials &&
-      this.lastOutcomeType === outcomeType &&
+      this.lastXAxisType === xAxisType &&
+      this.lastYAxisType === yAxisType &&
       this.lastAllTrials === allTrials &&
       this.lastSocDisplayMode === socDisplayMode &&
       this.lastCancerTypeFilters === cancerTypeFilters
@@ -74,7 +77,14 @@ class TrialsPlotView extends Component {
 
     const points = this.getPlotData();
     const xExtent = d3.extent(points, (d) => d.x);
-    this.cachedDataExtent = [Math.floor(xExtent[0] || 2015) - 1, Math.ceil(xExtent[1] || 2025) + 1];
+
+    if (xAxisType === AXIS_TYPE_TIME) {
+      this.cachedDataExtent = [Math.floor(xExtent[0] || 2015) - 1, Math.ceil(xExtent[1] || 2025) + 1];
+    } else {
+      // For outcome axes, start at 0
+      const xMax = xAxisType === 'ORR' ? 100 : (xExtent[1] || 50) * PLOT_CONFIG.Y_AXIS_PADDING;
+      this.cachedDataExtent = [0, xMax];
+    }
     return this.cachedDataExtent;
   };
 
@@ -127,13 +137,14 @@ class TrialsPlotView extends Component {
   };
 
   getPlotData = () => {
-    const { trials, outcomeType, allTrials, socDisplayMode, cancerTypeFilters } = this.props;
+    const { trials, xAxisType, yAxisType, allTrials, socDisplayMode, cancerTypeFilters } = this.props;
 
     // Return cached data if inputs haven't changed
     if (
       this.cachedPlotData &&
       this.lastTrials === trials &&
-      this.lastOutcomeType === outcomeType &&
+      this.lastXAxisType === xAxisType &&
+      this.lastYAxisType === yAxisType &&
       this.lastAllTrials === allTrials &&
       this.lastSocDisplayMode === socDisplayMode &&
       this.lastCancerTypeFilters === cancerTypeFilters
@@ -141,7 +152,7 @@ class TrialsPlotView extends Component {
       return this.cachedPlotData;
     }
 
-    const allPoints = collectTrialPoints(trials, outcomeType, {
+    const allPoints = collectTrialPointsDualAxis(trials, xAxisType, yAxisType, {
       allTrials,
       socDisplayMode,
       cancerTypeFilters,
@@ -151,7 +162,8 @@ class TrialsPlotView extends Component {
     // Cache the results
     this.cachedPlotData = allPoints;
     this.lastTrials = trials;
-    this.lastOutcomeType = outcomeType;
+    this.lastXAxisType = xAxisType;
+    this.lastYAxisType = yAxisType;
     this.lastAllTrials = allTrials;
     this.lastSocDisplayMode = socDisplayMode;
     this.lastCancerTypeFilters = cancerTypeFilters;
@@ -163,13 +175,22 @@ class TrialsPlotView extends Component {
 
   getScales = (points) => {
     const { containerWidth, zoomXMin, zoomXMax } = this.state;
-    const { outcomeType } = this.props;
+    const { xAxisType, yAxisType } = this.props;
     const plotHeight = PLOT_CONFIG.HEIGHT;
     const margins = PLOT_CONFIG.MARGINS;
 
-    const xExtent = d3.extent(points, (d) => d.x);
-    const dataXMin = Math.floor(xExtent[0] || 2015) - 1;
-    const dataXMax = Math.ceil(xExtent[1] || 2025) + 1;
+    // X-axis domain calculation
+    let dataXMin, dataXMax;
+    if (xAxisType === AXIS_TYPE_TIME) {
+      const xExtent = d3.extent(points, (d) => d.x);
+      dataXMin = Math.floor(xExtent[0] || 2015) - 1;
+      dataXMax = Math.ceil(xExtent[1] || 2025) + 1;
+    } else {
+      // Outcome axis
+      const xExtent = d3.extent(points, (d) => d.x);
+      dataXMin = 0;
+      dataXMax = xAxisType === 'ORR' ? 100 : (xExtent[1] || 50) * PLOT_CONFIG.Y_AXIS_PADDING;
+    }
 
     // Use zoomed range if available, otherwise full data range
     const visibleXMin = zoomXMin !== null ? zoomXMin : dataXMin;
@@ -179,16 +200,18 @@ class TrialsPlotView extends Component {
     const visiblePoints = points.filter((d) => d.x >= visibleXMin && d.x <= visibleXMax);
     const pointsForExtent = visiblePoints.length > 0 ? visiblePoints : points;
 
-    // Calculate y extent including CI upper bounds (not just point values)
+    // Calculate y extent - include CI upper bounds only when showing error bars (X=Time)
     const yValues = pointsForExtent.flatMap((d) => {
       const vals = [d.y];
-      if (d.ciUpper != null && !isNaN(d.ciUpper)) vals.push(d.ciUpper);
+      if (xAxisType === AXIS_TYPE_TIME && d.ciUpper != null && !isNaN(d.ciUpper)) {
+        vals.push(d.ciUpper);
+      }
       return vals;
     });
     const yExtent = d3.extent(yValues);
 
-    const isORR = outcomeType === "ORR";
-    const yMax = isORR ? 100 : (yExtent[1] || 50) * PLOT_CONFIG.Y_AXIS_PADDING;
+    const isYORR = yAxisType === 'ORR';
+    const yMax = isYORR ? 100 : (yExtent[1] || 50) * PLOT_CONFIG.Y_AXIS_PADDING;
 
     const xScale = d3
       .scaleLinear()
@@ -242,15 +265,29 @@ class TrialsPlotView extends Component {
   };
 
   tooltipAccessor = (d) => {
-    const { outcomeType } = this.props;
-    return [
+    const { xAxisType, yAxisType } = this.props;
+    const isTimeX = xAxisType === AXIS_TYPE_TIME;
+
+    const items = [
       { label: "NCT ID", value: d.nctId },
       { label: "Title", value: d.trial.brief_title?.substring(0, 40) + "..." },
       { label: "Arm", value: d.armTitle },
-      { label: outcomeType, value: `${d.y} ${d.outcome.unit || "mo"}` },
-      { label: "CI", value: `[${d.ciLower || "N/A"}, ${d.ciUpper || "N/A"}]` },
-      { label: "Treatment", value: d.treatmentClass },
     ];
+
+    if (isTimeX) {
+      items.push(
+        { label: yAxisType, value: `${d.y.toFixed(1)} ${d.outcome?.unit || "mo"}` },
+        { label: "CI", value: `[${d.ciLower?.toFixed(1) || "N/A"}, ${d.ciUpper?.toFixed(1) || "N/A"}]` }
+      );
+    } else {
+      items.push(
+        { label: xAxisType, value: `${d.x.toFixed(1)} ${d.xOutcome?.unit || "mo"}` },
+        { label: yAxisType, value: `${d.y.toFixed(1)} ${d.yOutcome?.unit || "mo"}` }
+      );
+    }
+
+    items.push({ label: "Treatment", value: d.treatmentClass });
+    return items;
   };
 
   handlePointClick = (point) => {
@@ -286,27 +323,40 @@ class TrialsPlotView extends Component {
     };
 
     return (
-      <div ref={this.containerRef} style={{ display: "flex", gap: 16, width: "100%" }}>
-        <div style={{ flex: 1, minWidth: 0, paddingLeft: 48 }}>
-          {isZoomed && (
-            <div style={{ marginBottom: 8 }}>
-              <Button
-                size="small"
-                icon={<ZoomOutOutlined />}
-                onClick={this.handleResetZoom}
-              >
-                Reset Zoom
-              </Button>
+      <div ref={this.containerRef} style={{ width: "100%" }}>
+        {isZoomed && (
+          <div style={{ marginBottom: 8 }}>
+            <Button
+              size="small"
+              icon={<ZoomOutOutlined />}
+              onClick={this.handleResetZoom}
+            >
+              Reset Zoom
+            </Button>
+          </div>
+        )}
+        {/* Row 1: Y-dropdown | Plot | Legend */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Y-axis dropdown (rotated) */}
+          <div style={{ width: 32, display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div style={{ transform: "rotate(-90deg)", whiteSpace: "nowrap" }}>
+              <TrialsPlotAxes
+                axis="y"
+                axisType={this.props.yAxisType}
+                availableOutcomes={this.props.availableOutcomes}
+                onAxisChange={this.props.onYAxisChange}
+                otherAxisType={this.props.xAxisType}
+              />
             </div>
-          )}
-          <div style={{ position: "relative", height: plotHeight, overflow: "visible" }}>
+          </div>
+          {/* Plot area */}
+          <div style={{ flex: 1, position: "relative", height: plotHeight }}>
             <TrialsPlotAxes
+              axis="plot"
               xScale={xScale}
               yScale={yScale}
               containerWidth={containerWidth}
-              outcomeType={this.props.outcomeType}
-              availableOutcomes={this.props.availableOutcomes}
-              onOutcomeChange={this.props.onOutcomeChange}
+              xAxisType={this.props.xAxisType}
             />
             <KonvaScatter
               data={points}
@@ -325,7 +375,7 @@ class TrialsPlotView extends Component {
               idAccessor={(d) => `${d.nctId}-${d.armTitle}`}
               ciLowerAccessor="ciLower"
               ciUpperAccessor="ciUpper"
-              showErrorBars={true}
+              showErrorBars={this.props.xAxisType === AXIS_TYPE_TIME}
               groupAccessor="nctId"
               fadeOnHover={true}
               hollowAccessor={this.isStandardOfCare}
@@ -337,17 +387,28 @@ class TrialsPlotView extends Component {
               minZoomRange={PLOT_CONFIG.MIN_ZOOM_MONTHS}
             />
           </div>
-          <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block" }}>
-            Scroll to zoom, drag to pan
-          </Text>
+          {/* Legend */}
+          <TrialsPlotLegend
+            points={points}
+            colorBy={this.state.colorBy}
+            onColorByChange={this.handleColorByChange}
+            colorScale={this.colorScale}
+            getColorValue={this.getColorValue}
+          />
         </div>
-        <TrialsPlotLegend
-          points={points}
-          colorBy={this.state.colorBy}
-          onColorByChange={this.handleColorByChange}
-          colorScale={this.colorScale}
-          getColorValue={this.getColorValue}
-        />
+        {/* Row 2: X-axis dropdown (centered) */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+          <TrialsPlotAxes
+            axis="x"
+            axisType={this.props.xAxisType}
+            availableOutcomes={this.props.availableOutcomes}
+            onAxisChange={this.props.onXAxisChange}
+            otherAxisType={this.props.yAxisType}
+          />
+        </div>
+        <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block", textAlign: "center" }}>
+          Scroll to zoom, drag to pan
+        </Text>
       </div>
     );
   }

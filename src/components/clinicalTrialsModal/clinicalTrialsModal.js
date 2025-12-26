@@ -27,7 +27,8 @@ class ClinicalTrialsModal extends Component {
       phaseFilters: [],
       statusFilter: null,
       lineOfTherapyFilter: null,
-      selectedOutcomeType: "PFS",
+      xAxisType: "TIME",
+      yAxisType: "PFS",
       activeTab: "plot",
       // New filter states
       nctIdFilters: [],
@@ -150,6 +151,26 @@ class ClinicalTrialsModal extends Component {
 
   handleOutcomeTypeChange = this.createStateHandler('selectedOutcomeType');
 
+  handleXAxisChange = (value) => {
+    const { yAxisType } = this.state;
+    if (value === yAxisType) {
+      // Swap axes
+      this.setState({ xAxisType: value, yAxisType: this.state.xAxisType });
+    } else {
+      this.setState({ xAxisType: value });
+    }
+  };
+
+  handleYAxisChange = (value) => {
+    const { xAxisType } = this.state;
+    if (value === xAxisType) {
+      // Swap axes
+      this.setState({ yAxisType: value, xAxisType: this.state.yAxisType });
+    } else {
+      this.setState({ yAxisType: value });
+    }
+  };
+
   handleNctIdChange = this.createStateHandler('nctIdFilters');
 
   handleSponsorChange = this.createStateHandler('sponsorFilters');
@@ -205,7 +226,8 @@ class ClinicalTrialsModal extends Component {
     const validCancerType = this.getValidCancerTypeFromReport();
     this.setState({
       ...getDefaultFilterState(true, validCancerType || ""),
-      selectedOutcomeType: "PFS",
+      xAxisType: "TIME",
+      yAxisType: "PFS",
       selectedTrial: null,
       selectedOutcome: null,
     });
@@ -224,7 +246,8 @@ class ClinicalTrialsModal extends Component {
       phaseFilters,
       statusFilter,
       lineOfTherapyFilter,
-      selectedOutcomeType,
+      xAxisType,
+      yAxisType,
       activeTab,
       nctIdFilters,
       sponsorFilters,
@@ -269,9 +292,11 @@ class ClinicalTrialsModal extends Component {
             allTrials={trials}
             socDisplayMode={socDisplayMode}
             cancerTypeFilters={cancerTypeFilters}
-            outcomeType={selectedOutcomeType}
+            xAxisType={xAxisType}
+            yAxisType={yAxisType}
             availableOutcomes={availableOutcomes}
-            onOutcomeChange={this.handleOutcomeTypeChange}
+            onXAxisChange={this.handleXAxisChange}
+            onYAxisChange={this.handleYAxisChange}
             onTrialClick={this.handleTrialClick}
           />
         ),
@@ -282,7 +307,7 @@ class ClinicalTrialsModal extends Component {
         children: (
           <TrialsTableView
             trials={filteredTrials}
-            outcomeType={selectedOutcomeType}
+            outcomeType={yAxisType}
             onTrialClick={this.handleTrialClick}
           />
         ),
