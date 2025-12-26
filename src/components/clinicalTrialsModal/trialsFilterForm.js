@@ -55,7 +55,7 @@ class TrialsFilterForm extends Component {
     const fieldStyle = { marginBottom: 0 };
 
     return (
-      <Form layout="vertical" style={{ marginBottom: 16 }}>
+      <Form layout="vertical" style={{ marginBottom: 16, overflow: "hidden" }}>
         {/* Row 1: Disease, Treatment, Eligibility */}
         <Row gutter={48} style={{ marginBottom: 20 }}>
           {/* Disease */}
@@ -178,8 +178,8 @@ class TrialsFilterForm extends Component {
         <div style={{ borderTop: "1px solid #e8e8e8", marginBottom: 20 }} />
 
         {/* Row 2: Trial Details + Actions */}
-        <Row gutter={48} align="bottom">
-          <Col flex="auto">
+        <Row gutter={48} align="bottom" style={{ flexWrap: "nowrap" }}>
+          <Col style={{ flex: "1 1 0", minWidth: 0 }}>
             <div style={sectionLabel}>Trial Details</div>
             <Row gutter={12} align="bottom">
               <Col flex="1">

@@ -331,7 +331,7 @@ class ClinicalTrialsModal extends Component {
         footer={null}
         width={1600}
         style={{ maxHeight: "98vh" }}
-        styles={{ body: { maxHeight: "calc(98vh - 120px)", overflowY: "auto" } }}
+        styles={{ body: { maxHeight: "calc(98vh - 120px)", overflowY: "auto", overflowX: "hidden" } }}
       >
         <Skeleton active loading={isLoading}>
           <TrialsFilterForm
