@@ -41,6 +41,7 @@ class ClinicalTrialsModal extends Component {
       priorIoFilter: false,
       priorPlatinumFilter: false,
       socDisplayMode: 'hide',
+      biomarkerDetailsSearch: "",
       // Trial details panel state
       selectedTrial: null,
       selectedOutcome: null,
@@ -131,6 +132,7 @@ class ClinicalTrialsModal extends Component {
     return filterTrials(trials, {
       cancerTypeFilters: this.state.cancerTypeFilters,
       biomarkerFilters: this.state.biomarkerFilters,
+      biomarkerDetailsSearch: this.state.biomarkerDetailsSearch,
       phaseFilters: this.state.phaseFilters,
       statusFilter: this.state.statusFilter,
       lineOfTherapyFilter: this.state.lineOfTherapyFilter,
@@ -193,6 +195,8 @@ class ClinicalTrialsModal extends Component {
   handleTreatmentClassChange = this.createStateHandler('treatmentClassFilters');
 
   handleCancerStageChange = this.createStateHandler('cancerStageFilter');
+
+  handleBiomarkerDetailsSearchChange = this.createStateHandler('biomarkerDetailsSearch');
 
   handleTrialClick = (trial, outcome = null) => {
     this.setState({ selectedTrial: trial, selectedOutcome: outcome });
@@ -273,6 +277,7 @@ class ClinicalTrialsModal extends Component {
       priorIoFilter,
       priorPlatinumFilter,
       socDisplayMode,
+      biomarkerDetailsSearch,
       selectedTrial,
       selectedOutcome,
     } = this.state;
@@ -365,6 +370,7 @@ class ClinicalTrialsModal extends Component {
             t={t}
             cancerTypeFilters={cancerTypeFilters}
             biomarkerInput={biomarkerInput}
+            biomarkerDetailsSearch={biomarkerDetailsSearch}
             phaseFilters={phaseFilters}
             statusFilter={statusFilter}
             lineOfTherapyFilter={lineOfTherapyFilter}
@@ -385,6 +391,7 @@ class ClinicalTrialsModal extends Component {
             getDrugOptions={this.getDrugOptions}
             onCancerTypeChange={this.handleCancerTypeChange}
             onBiomarkerChange={this.handleBiomarkerChange}
+            onBiomarkerDetailsSearchChange={this.handleBiomarkerDetailsSearchChange}
             onPhaseChange={this.handlePhaseChange}
             onStatusChange={this.handleStatusChange}
             onLineOfTherapyChange={this.handleLineOfTherapyChange}
