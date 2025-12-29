@@ -287,6 +287,9 @@ class TrialDetailsPanel extends Component {
           <Tag color="blue">{trial.status}</Tag>
           <Tag color="purple">{trial.phase}</Tag>
           <Text>Sponsor: {trial.sponsor}</Text>
+          {trial.enrollment != null && (
+            <Tag color="cyan">N={trial.enrollment.toLocaleString()}</Tag>
+          )}
           {trial.line_of_therapy && <Tag color="green">{trial.line_of_therapy}</Tag>}
         </Space>
 
