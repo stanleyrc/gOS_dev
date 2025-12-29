@@ -1,12 +1,38 @@
 import React, { Component } from "react";
 import { Card, Tabs, Tag, Space, Typography, Divider, Button, Tooltip } from "antd";
-import { CloseOutlined, LinkOutlined } from "@ant-design/icons";
+import { CloseOutlined, LinkOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { TREATMENT_COLORS, SOC_CLASSES } from "./constants";
 
 const { Text, Link } = Typography;
 
 class TrialDetailsPanel extends Component {
   isStandardOfCare = (treatmentClass) => SOC_CLASSES.includes(treatmentClass);
+
+  /**
+   * Calculate hazard ratio under exponential assumption.
+   * HR = median_reference / median_treatment
+   * (since λ = log(2)/median, HR = λ_treatment/λ_reference)
+   */
+  calculateHazardRatio = (outcomes, trial) => {
+    // Find reference arm (SoC arm with valid value)
+    const referenceOutcome = outcomes.find((o) => {
+      const treatmentClass = trial.treatment_class_map?.[o.arm_id] || "OTHER";
+      return this.isStandardOfCare(treatmentClass) && o.value != null && o.value > 0;
+    });
+
+    if (!referenceOutcome) return null;
+
+    // Calculate HR for each arm
+    const hrMap = {};
+    outcomes.forEach((o) => {
+      if (o.value != null && o.value > 0) {
+        // HR = median_reference / median_treatment
+        hrMap[o.arm_id] = referenceOutcome.value / o.value;
+      }
+    });
+
+    return { referenceArmId: referenceOutcome.arm_id, hrMap };
+  };
 
   renderBoxPlot = (outcome, scaleMin, scaleMax, treatmentClass) => {
     const color = TREATMENT_COLORS[treatmentClass] || TREATMENT_COLORS["OTHER"];
@@ -115,6 +141,13 @@ class TrialDetailsPanel extends Component {
     const scaleMin = Math.max(0, minVal - padding);
     const scaleMax = maxVal + padding;
 
+    // HR only applies to time-to-event outcomes (PFS, OS), not proportions (ORR)
+    const isTimeToEvent = outcomeType === "PFS" || outcomeType === "OS";
+    const hrData = isTimeToEvent && outcomes.length >= 2
+      ? this.calculateHazardRatio(outcomes, trial)
+      : null;
+    const showHRColumn = hrData != null;
+
     return (
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
@@ -122,6 +155,23 @@ class TrialDetailsPanel extends Component {
             <th style={{ padding: 8, textAlign: "left" }}>Arm Name</th>
             <th style={{ padding: 8, textAlign: "left" }}>Treatment Class</th>
             <th style={{ padding: 8, textAlign: "left" }}>Value</th>
+            {showHRColumn && (
+              <th style={{ padding: 8, textAlign: "left" }}>
+                <Tooltip
+                  title={
+                    <span>
+                      Hazard ratio estimated from median survival under <strong>exponential assumption</strong>.
+                      This is an approximation and may differ from Cox regression HR.
+                      HR &lt; 1 indicates reduced hazard (better outcome) vs. SoC reference arm.
+                    </span>
+                  }
+                >
+                  <span style={{ cursor: "help" }}>
+                    HR (est.) <InfoCircleOutlined style={{ fontSize: 12, color: "#888" }} />
+                  </span>
+                </Tooltip>
+              </th>
+            )}
             <th style={{ padding: 8, textAlign: "left", minWidth: 220 }}>Visualization</th>
           </tr>
         </thead>
@@ -129,6 +179,8 @@ class TrialDetailsPanel extends Component {
           {outcomes.map((outcome, i) => {
             const treatmentClass = trial.treatment_class_map?.[outcome.arm_id] || "OTHER";
             const isHighlighted = outcome.arm_title === clickedOutcome?.arm_title;
+            const hr = hrData?.hrMap?.[outcome.arm_id];
+            const isReference = hrData?.referenceArmId === outcome.arm_id;
             return (
               <tr
                 key={i}
@@ -160,6 +212,24 @@ class TrialDetailsPanel extends Component {
                     </Text>
                   )}
                 </td>
+                {showHRColumn && (
+                  <td style={{ padding: 8 }}>
+                    {isReference ? (
+                      <Text type="secondary">ref</Text>
+                    ) : hr != null ? (
+                      <Text
+                        style={{
+                          color: hr < 1 ? "#389e0d" : hr > 1 ? "#cf1322" : "inherit",
+                          fontWeight: hr !== 1 ? 500 : "normal",
+                        }}
+                      >
+                        {hr.toFixed(2)}
+                      </Text>
+                    ) : (
+                      <Text type="secondary">--</Text>
+                    )}
+                  </td>
+                )}
                 <td style={{ padding: 8 }}>
                   {this.renderBoxPlot(outcome, scaleMin, scaleMax, treatmentClass)}
                 </td>
