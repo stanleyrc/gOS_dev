@@ -406,6 +406,7 @@ export function filterTrials(trials, filters) {
   const {
     cancerTypeFilters,
     biomarkerFilters,
+    biomarkerDetailsSearch,
     phaseFilters,
     statusFilter,
     lineOfTherapyFilter,
@@ -461,6 +462,15 @@ export function filterTrials(trials, filters) {
       if (!trialMatchesBiomarkerFilter(trial, biomarkerFilters)) {
         return false;
       }
+    }
+
+    // Biomarker details search (free-text search in details field)
+    if (biomarkerDetailsSearch && biomarkerDetailsSearch.trim()) {
+      const searchTerm = biomarkerDetailsSearch.trim().toLowerCase();
+      const hasMatchingDetails = (trial.biomarkers || []).some((b) =>
+        b.details && b.details.toLowerCase().includes(searchTerm)
+      );
+      if (!hasMatchingDetails) return false;
     }
 
     // Phase filter (OR logic - any of selected phases)

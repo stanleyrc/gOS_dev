@@ -8,6 +8,7 @@ class TrialsFilterForm extends Component {
       t,
       cancerTypeFilters,
       biomarkerInput,
+      biomarkerDetailsSearch,
       phaseFilters,
       statusFilter,
       lineOfTherapyFilter,
@@ -30,6 +31,7 @@ class TrialsFilterForm extends Component {
       // Handlers
       onCancerTypeChange,
       onBiomarkerChange,
+      onBiomarkerDetailsSearchChange,
       onPhaseChange,
       onStatusChange,
       onLineOfTherapyChange,
@@ -103,6 +105,15 @@ class TrialsFilterForm extends Component {
                     value={biomarkerInput}
                     onChange={(e) => onBiomarkerChange(e.target.value)}
                     placeholder="KRAS+, EGFR-"
+                  />
+                </Form.Item>
+              </Col>
+              <Col flex="1">
+                <Form.Item label="Variant/Details" style={fieldStyle}>
+                  <Input
+                    value={biomarkerDetailsSearch}
+                    onChange={(e) => onBiomarkerDetailsSearchChange(e.target.value)}
+                    placeholder="exon 19, L858R, T790M..."
                   />
                 </Form.Item>
               </Col>
