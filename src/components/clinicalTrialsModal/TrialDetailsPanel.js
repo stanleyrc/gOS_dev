@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Card, Tabs, Tag, Space, Typography, Divider, Button, Tooltip } from "antd";
-import { CloseOutlined, LinkOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { CloseOutlined, LinkOutlined, WarningOutlined } from "@ant-design/icons";
 import { TREATMENT_COLORS, SOC_CLASSES } from "./constants";
 
 const { Text, Link } = Typography;
@@ -160,6 +160,8 @@ class TrialDetailsPanel extends Component {
                 <Tooltip
                   title={
                     <span>
+                      <strong>Estimated value - not reported HR.</strong>
+                      <br /><br />
                       Hazard ratio estimated from median survival under <strong>exponential assumption</strong>.
                       This is an approximation and may differ from Cox regression HR.
                       HR &lt; 1 indicates reduced hazard (better outcome) vs. SoC reference arm.
@@ -167,7 +169,18 @@ class TrialDetailsPanel extends Component {
                   }
                 >
                   <span style={{ cursor: "help" }}>
-                    HR (est.) <InfoCircleOutlined style={{ fontSize: 12, color: "#888" }} />
+                    HR{" "}
+                    <span style={{
+                      color: "#fa8c16",
+                      fontWeight: 600,
+                      backgroundColor: "#fff7e6",
+                      padding: "1px 4px",
+                      borderRadius: 3,
+                      border: "1px solid #ffd591"
+                    }}>
+                      <WarningOutlined style={{ fontSize: 11, marginRight: 2 }} />
+                      est.
+                    </span>
                   </span>
                 </Tooltip>
               </th>
