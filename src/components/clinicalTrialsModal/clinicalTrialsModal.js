@@ -19,6 +19,7 @@ import { filterTrials, hasAnyOutcomes, getAvailableOutcomeTypes } from "./trialD
 class ClinicalTrialsModal extends Component {
   constructor(props) {
     super(props);
+    this.trialDetailsPanelRef = React.createRef();
     this.state = {
       trials: [],
       isLoading: false,
@@ -199,7 +200,12 @@ class ClinicalTrialsModal extends Component {
   handleBiomarkerDetailsSearchChange = this.createStateHandler('biomarkerDetailsSearch');
 
   handleTrialClick = (trial, outcome = null) => {
-    this.setState({ selectedTrial: trial, selectedOutcome: outcome });
+    this.setState({ selectedTrial: trial, selectedOutcome: outcome }, () => {
+      // Scroll to the trial details panel after it renders
+      if (this.trialDetailsPanelRef.current) {
+        this.trialDetailsPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
   };
 
   handleCloseTrialDetails = () => {
@@ -429,11 +435,13 @@ class ClinicalTrialsModal extends Component {
           />
 
           {selectedTrial && (
-            <TrialDetailsPanel
-              trial={selectedTrial}
-              clickedOutcome={selectedOutcome}
-              onClose={this.handleCloseTrialDetails}
-            />
+            <div ref={this.trialDetailsPanelRef}>
+              <TrialDetailsPanel
+                trial={selectedTrial}
+                clickedOutcome={selectedOutcome}
+                onClose={this.handleCloseTrialDetails}
+              />
+            </div>
           )}
         </Skeleton>
       </Modal>
