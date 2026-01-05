@@ -362,7 +362,7 @@ class ClinicalTrialsModal extends Component {
         onCancel={onCancel}
         footer={null}
         width={1600}
-        style={{ maxHeight: "98vh" }}
+        style={{ top: 20, maxHeight: "98vh" }}
         styles={{ body: { maxHeight: "calc(98vh - 120px)", overflowY: "auto", overflowX: "hidden" } }}
       >
         <Skeleton active loading={isLoading}>

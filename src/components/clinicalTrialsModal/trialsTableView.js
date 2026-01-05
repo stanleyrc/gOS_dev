@@ -156,7 +156,7 @@ class TrialsTableView extends Component {
         title: "Status",
         dataIndex: "status",
         key: "status",
-        width: 150,
+        width: 190,
         sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
         render: (text) => {
           const color = text === "COMPLETED" ? "green" : text === "RECRUITING" ? "blue" : "default";
