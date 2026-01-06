@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
-import handleViewport from "react-in-viewport";
 import {
   Row,
   Col,
@@ -26,11 +25,7 @@ import { densityPlotVariables } from "../../helpers/sageQc";
 import { snakeCaseToHumanReadable } from "../../helpers/utility";
 import * as d3 from "d3";
 import * as htmlToImage from "html-to-image";
-import {
-  transitionStyle,
-  downloadCanvasAsPng,
-  dataRanges,
-} from "../../helpers/utility";
+import { downloadCanvasAsPng, dataRanges } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const { Option } = Select;
@@ -86,7 +81,6 @@ class TracksModal extends Component {
       genes,
       allelic,
       igv,
-      inViewport,
       chromoBins,
       modalTitle,
       genomePlotTitle,
@@ -165,7 +159,6 @@ class TracksModal extends Component {
     );
     let tracksContent = (
       <Row
-        style={transitionStyle(inViewport)}
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
       >
@@ -608,8 +601,4 @@ const mapStateToProps = (state) => ({
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(
-  withTranslation("common")(
-    handleViewport(TracksModal, { rootMargin: "-1.0px" })
-  )
-);
+)(withTranslation("common")(TracksModal));

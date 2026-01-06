@@ -111,7 +111,6 @@ class GenomePanel extends Component {
       zoomedByCmd,
       chromoBins,
       domains,
-      mutationsPlot,
       commonRangeY,
     } = this.props;
     if (!visible) return null;
