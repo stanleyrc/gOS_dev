@@ -43,18 +43,33 @@ class TrialsPlotView extends Component {
   }
 
   componentDidMount() {
-    this.updateContainerWidth();
-    window.addEventListener("resize", this.updateContainerWidth);
+    // Use ResizeObserver for reliable container width detection
+    // This handles Modal animation timing issues in production builds
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width - PLOT_CONFIG.CONTAINER_OFFSET;
+        if (width > 0) {
+          this.setState({ containerWidth: width });
+        }
+      }
+    });
+    if (this.containerRef.current) {
+      this.resizeObserver.observe(this.containerRef.current);
+    }
   }
 
   componentWillUnmount() {
-    window.removeEventListener("resize", this.updateContainerWidth);
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
   }
 
   updateContainerWidth = () => {
     if (this.containerRef.current) {
       const width = this.containerRef.current.offsetWidth - PLOT_CONFIG.CONTAINER_OFFSET;
-      this.setState({ containerWidth: Math.max(width, PLOT_CONFIG.MIN_WIDTH) });
+      if (width > 0) {
+        this.setState({ containerWidth: width });
+      }
     }
   };
 
