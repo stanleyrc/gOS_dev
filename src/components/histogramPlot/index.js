@@ -347,31 +347,35 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(density)}
                 />
-                {!isNaN(markValue) &&
-                  markValue >= 0 &&
-                  xScale(markValue) >= 0 &&
-                  xScale(markValue) <= panelWidth && (
+                {this.getMarkers().map((marker, idx) => {
+                  const markerX = xScale(marker.value);
+                  if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
+                    return null;
+                  }
+                  const labelY = idx % 2 === 0 ? 12 : 30;
+                  return (
                     <g
+                      key={`marker-${idx}`}
                       className="marker"
-                      transform={`translate(${[xScale(markValue), 0]})`}
+                      transform={`translate(${[markerX, 0]})`}
                     >
                       <line
                         y2={panelHeight}
-                        y1={0.33 * panelHeight}
-                        stroke="red"
+                        y1={0.16 * panelHeight}
+                        stroke={marker.color || "red"}
                         strokeWidth={3}
                       />
                       <text
+                        y={labelY}
                         textAnchor={"middle"}
-                        dy="-3"
-                        y={0.33 * panelHeight}
-                        fill={colorMarker}
+                        fill={marker.color || "red"}
                         className="marker"
                       >
-                        {markValueText}
+                        {marker.label}
                       </text>
                     </g>
-                  )}
+                  );
+                })}
                 {!isNaN(highlightedMarkValue) &&
                   highlightedMarkValue >= 0 &&
                   xScale(highlightedMarkValue) >= 0 &&
@@ -400,34 +404,6 @@ class HistogramPlot extends Component {
                       </text>
                     </g>
                   )}
-                {this.getMarkers().map((marker, idx) => {
-                  const markerX = xScale(marker.value);
-                  if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
-                    return null;
-                  }
-                  const labelY = idx % 2 === 0 ? 15 : 30;
-                  return (
-                    <g
-                      key={`marker-${idx}`}
-                      className="marker"
-                      transform={`translate(${[markerX, 0]})`}
-                    >
-                      <line
-                        y2={panelHeight}
-                        stroke={marker.color || "red"}
-                        strokeWidth={3}
-                      />
-                      <text
-                        y={labelY}
-                        textAnchor={"middle"}
-                        fill={marker.color || "red"}
-                        className="marker"
-                      >
-                        {marker.label}
-                      </text>
-                    </g>
-                  );
-                })}
               </g>
               <g
                 className="axis--y y-axis-container"
