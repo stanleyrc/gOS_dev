@@ -34,6 +34,8 @@ import {
 import Wrapper from "./index.style";
 import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
+import { ClinicalTrialsModal } from "../clinicalTrialsModal";
+import ctgovLogo from "../../assets/images/ctgov_logo.png";
 import { get } from "immutable";
 
 const { Text } = Typography;
@@ -43,6 +45,7 @@ class HeaderPanel extends Component {
     super(props);
     this.state = {
       cbioportalModalVisible: false,
+      clinicalTrialsModalVisible: false,
     };
   }
 
@@ -52,6 +55,14 @@ class HeaderPanel extends Component {
 
   handleCbioportalModalClose = () => {
     this.setState({ cbioportalModalVisible: false });
+  };
+
+  handleClinicalTrialsModalOpen = () => {
+    this.setState({ clinicalTrialsModalVisible: true });
+  };
+
+  handleClinicalTrialsModalClose = () => {
+    this.setState({ clinicalTrialsModalVisible: false });
   };
 
   render() {
@@ -269,6 +280,29 @@ class HeaderPanel extends Component {
                   }}
                 />
               </Button>
+              <Button
+                type="text"
+                onClick={this.handleClinicalTrialsModalOpen}
+                title={t("components.header-panel.clinical-trials-button") || "Clinical Trials"}
+                style={{
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={ctgovLogo}
+                  alt="ClinicalTrials.gov"
+                  title={t("components.header-panel.clinical-trials-button") || "Clinical Trials"}
+                  style={{
+                    height: "32px",
+                    width: "32px",
+                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))",
+                    cursor: "pointer",
+                  }}
+                />
+              </Button>
             </Space>
           }
           extra={
@@ -447,6 +481,10 @@ class HeaderPanel extends Component {
           visible={this.state.cbioportalModalVisible}
           onCancel={this.handleCbioportalModalClose}
           loading={this.props.loading}
+        />
+        <ClinicalTrialsModal
+          visible={this.state.clinicalTrialsModalVisible}
+          onCancel={this.handleClinicalTrialsModalClose}
         />
       </Wrapper>
     );
