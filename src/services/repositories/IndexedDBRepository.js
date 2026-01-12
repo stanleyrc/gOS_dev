@@ -15,15 +15,31 @@ const INDEX_BY_DATASET_CASE = "by_dataset_case";
 const INDEX_BY_GENE_VARIANT = "by_gene_variant";
 
 // Timeout for IndexedDB operations (prevents indefinite hangs)
-const DB_OPERATION_TIMEOUT = 10000; // 10 seconds
+const DB_OPERATION_TIMEOUT = 30000; // 30 seconds
+
+// Connection pooling to prevent "database locked" errors
+let dbInstance = null;
+let dbOpenPromise = null;
 
 function openDb() {
-  return new Promise((resolve, reject) => {
+  // If connection already exists and is open, reuse it
+  if (dbInstance) {
+    return Promise.resolve(dbInstance);
+  }
+
+  // If opening is in progress, wait for it
+  if (dbOpenPromise) {
+    return dbOpenPromise;
+  }
+
+  // Start the opening process
+  dbOpenPromise = new Promise((resolve, reject) => {
     let settled = false;
 
     const timeoutId = setTimeout(() => {
       if (!settled) {
         settled = true;
+        dbOpenPromise = null;
         console.error("IndexedDB open timeout - database may be locked or blocked");
         reject(new Error("IndexedDB open timeout - database may be locked"));
       }
@@ -66,7 +82,11 @@ function openDb() {
         if (!settled) {
           settled = true;
           clearTimeout(timeoutId);
-          resolve(req.result);
+          dbInstance = req.result;
+          dbInstance.onclose = () => {
+            dbInstance = null;
+          };
+          resolve(dbInstance);
         }
       };
 
@@ -74,6 +94,7 @@ function openDb() {
         if (!settled) {
           settled = true;
           clearTimeout(timeoutId);
+          dbOpenPromise = null;
           reject(req.error || new Error("IndexedDB open failed"));
         }
       };
@@ -81,10 +102,19 @@ function openDb() {
       if (!settled) {
         settled = true;
         clearTimeout(timeoutId);
+        dbOpenPromise = null;
         reject(e);
       }
     }
+  }).then(db => {
+    dbOpenPromise = null;
+    return db;
+  }).catch(err => {
+    dbOpenPromise = null;
+    throw err;
   });
+
+  return dbOpenPromise;
 }
 
 async function withStore(storeName, mode, fn) {
@@ -138,13 +168,8 @@ async function withStore(storeName, mode, fn) {
   } catch (e) {
     console.error("IndexedDB operation failed:", e.message);
     throw e;
-  } finally {
-    if (db) {
-      try {
-        db.close();
-      } catch (_) {}
-    }
   }
+  // Note: Do not close the database here - we're reusing the connection to prevent lock errors
 }
 
 export class IndexedDBRepository extends EventInterpretationRepository {
@@ -350,92 +375,107 @@ export class IndexedDBRepository extends EventInterpretationRepository {
   }
 
   try {
-  const results = await withStore(STORE_NAME, "readonly", (store) => {
-  return new Promise((resolve, reject) => {
-  const index = store.index(INDEX_BY_DATASET);
-  const req = index.getAll(datasetId);
+    // Categorize cases by tier change, author, and gene
+    const withTierChange = new Set();
+    const byAuthor = new Map();
+    const byGene = new Map();
+    const all = new Set();
 
-          req.onsuccess = () => resolve(req.result || []);
-          req.onerror = () => reject(req.error);
-        });
-      });
+    // Use cursor to iterate through results in chunks to avoid transaction timeout
+    await withStore(STORE_NAME, "readonly", (store) => {
+      return new Promise((resolve, reject) => {
+        const index = store.index(INDEX_BY_DATASET);
+        const req = index.openCursor(datasetId);
 
-      // Categorize cases by tier change, author, and gene
-      const withTierChange = new Set();
-      const byAuthor = new Map();
-      const byGene = new Map();
-      const all = new Set();
+        req.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            const item = cursor.value;
+            const caseId = item.caseId;
+            all.add(caseId);
+            
+            // Tier changes
+            if (item.hasTierChange) {
+              withTierChange.add(caseId);
+            }
+            
+            // By author
+            if (item.authorName) {
+              if (!byAuthor.has(item.authorName)) {
+                byAuthor.set(item.authorName, new Set());
+              }
+              byAuthor.get(item.authorName).add(caseId);
+            }
+            
+            // By gene
+            if (item.gene) {
+              if (!byGene.has(item.gene)) {
+                byGene.set(item.gene, new Set());
+              }
+              byGene.get(item.gene).add(caseId);
+            }
 
-      results.forEach(item => {
-        const caseId = item.caseId;
-        all.add(caseId);
-        
-        // Tier changes
-        if (item.hasTierChange) {
-          withTierChange.add(caseId);
-        }
-        
-        // By author
-        if (item.authorName) {
-          if (!byAuthor.has(item.authorName)) {
-            byAuthor.set(item.authorName, new Set());
+            cursor.continue();
+          } else {
+            resolve();
           }
-          byAuthor.get(item.authorName).add(caseId);
-        }
-        
-        // By gene
-        if (item.gene) {
-          if (!byGene.has(item.gene)) {
-            byGene.set(item.gene, new Set());
-          }
-          byGene.get(item.gene).add(caseId);
-        }
-      });
+        };
 
-      return {
-        withTierChange,
-        byAuthor,
-        byGene,
-        all,
-      };
-    } catch (e) {
-      console.error("Failed to get cases with interpretations:", e);
-      return {
-        withTierChange: new Set(),
-        byAuthor: new Map(),
-        byGene: new Map(),
-        all: new Set(),
-      };
-    }
+        req.onerror = () => reject(req.error);
+      });
+    });
+
+    return {
+      withTierChange,
+      byAuthor,
+      byGene,
+      all,
+    };
+  } catch (e) {
+    console.error("Failed to get cases with interpretations:", e);
+    return {
+      withTierChange: new Set(),
+      byAuthor: new Map(),
+      byGene: new Map(),
+      all: new Set(),
+    };
   }
+}
 
   async getCasesInterpretationsCount(datasetId) {
   if (!window.indexedDB || !datasetId) return new Map();
 
   try {
-  const results = await withStore(STORE_NAME, "readonly", (store) => {
-  return new Promise((resolve, reject) => {
-  const index = store.index(INDEX_BY_DATASET);
-  const req = index.getAll(datasetId);
+    const countMap = new Map();
 
-          req.onsuccess = () => resolve(req.result || []);
-          req.onerror = () => reject(req.error);
-        });
+    // Use cursor to iterate through results in chunks to avoid transaction timeout
+    await withStore(STORE_NAME, "readonly", (store) => {
+      return new Promise((resolve, reject) => {
+        const index = store.index(INDEX_BY_DATASET);
+        const req = index.openCursor(datasetId);
+
+        req.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            const item = cursor.value;
+            const caseId = item.caseId;
+            countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
+            cursor.continue();
+          } else {
+            resolve();
+          }
+        };
+
+        req.onerror = () => reject(req.error);
       });
+    });
 
-      // Count interpretations per case
-      const countMap = new Map();
-      results.forEach(item => {
-        const caseId = item.caseId;
-        countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
-      });
-
-      return countMap;
-    } catch (e) {
-      console.error("Failed to get cases interpretations count:", e);
-      return new Map();
-    }
+    return countMap;
+  } catch (e) {
+    console.error("Failed to get cases interpretations count:", e);
+    return new Map();
   }
+}
 
   async getTierCountsByGeneVariantType(gene, variantType) {
     if (!window.indexedDB || !gene || !variantType) {
