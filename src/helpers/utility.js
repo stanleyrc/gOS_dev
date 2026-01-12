@@ -213,7 +213,7 @@ export function dataToGenome(data, chromoBins) {
     frameConnections: [],
   };
   genome.intervalBins = {};
-data.intervals.forEach((d, i) => {
+  data.intervals.forEach((d, i) => {
     let interval = new Interval(d);
     if (chromoBins[`${interval.chromosome}`]) {
       interval.startPlace =
@@ -735,7 +735,7 @@ export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
-  usePercentile = false,
+  usePercentile = true,
   p = 0.99 // 99th percentile by default
 ) {
   return domains.map(([start, end]) => {
