@@ -118,8 +118,9 @@ class IgvPlot extends Component {
 
   componentWillUnmount() {
     if (this.igvBrowser) {
-      this.igvBrowser.dispose();
+      // Remove event handlers BEFORE disposing the browser
       this.igvBrowser.off("locuschange", this.handleLocusChange);
+      this.igvBrowser.dispose();
       this.igvBrowser = null;
       this.igvInitialized = false;
     }
