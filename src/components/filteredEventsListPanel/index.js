@@ -74,6 +74,9 @@ class FilteredEventsListPanel extends Component {
     selectedColumnKeys: [],
   };
 
+  // Track if a fetch is in progress to prevent concurrent calls
+  _isFetchingTierCounts = false;
+
   // add as a class field
 
   getDefaultColumnKeys = () => {
@@ -160,8 +163,19 @@ class FilteredEventsListPanel extends Component {
   };
 
   fetchTierCountsForRecords = async () => {
-    const { filteredEvents } = this.props;
+    // Prevent concurrent fetches
+    if (this._isFetchingTierCounts) {
+      return;
+    }
+
+    const { filteredEvents, dataset } = this.props;
     const { eventType } = this.state;
+
+    // Guard: don't fetch if no events or no dataset
+    if (!filteredEvents || filteredEvents.length === 0 || !dataset) {
+      return;
+    }
+
     let recordsHash = d3.group(
       filteredEvents.filter(
         (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
@@ -170,29 +184,59 @@ class FilteredEventsListPanel extends Component {
     );
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
-    const { dataset } = this.props;
+
+    // Guard: don't fetch if no records after filtering
+    if (records.length === 0) {
+      return;
+    }
+
     const map = {};
-    const promises = records.map(async (record) => {
-      if (!record.gene || !record.type) return;
+
+    // Deduplicate by gene-type key to avoid redundant fetches
+    const uniqueKeys = new Set();
+    const uniqueRecords = records.filter((record) => {
+      if (!record.gene || !record.type) return false;
       const key = `${record.gene}-${record.type}`;
-      if (map[key]) return; // already fetching
-      try {
-        const { getActiveRepository } = await import(
-          "../../services/repositories"
-        );
-        const repository = getActiveRepository({ dataset });
-        const counts = await repository.getTierCountsByGeneVariantType(
-          record.gene,
-          record.type
-        );
-        map[key] = counts;
-      } catch (error) {
-        console.error("Failed to fetch tier counts:", error);
-        map[key] = { 1: 0, 2: 0, 3: 0 };
-      }
+      if (uniqueKeys.has(key)) return false;
+      uniqueKeys.add(key);
+      return true;
     });
-    await Promise.all(promises);
-    this.setState({ tierCountsMap: map });
+
+    // Guard: nothing to fetch
+    if (uniqueRecords.length === 0) {
+      return;
+    }
+
+    this._isFetchingTierCounts = true;
+
+    try {
+      // Process in batches to avoid overwhelming IndexedDB/network
+      const BATCH_SIZE = 5;
+      const { getActiveRepository } = await import("../../services/repositories");
+      const repository = getActiveRepository({ dataset });
+
+      for (let i = 0; i < uniqueRecords.length; i += BATCH_SIZE) {
+        const batch = uniqueRecords.slice(i, i + BATCH_SIZE);
+        const batchPromises = batch.map(async (record) => {
+          const key = `${record.gene}-${record.type}`;
+          try {
+            const counts = await repository.getTierCountsByGeneVariantType(
+              record.gene,
+              record.type
+            );
+            map[key] = counts;
+          } catch (error) {
+            // Silently handle errors - tier counts are non-critical
+            map[key] = { 1: 0, 2: 0, 3: 0 };
+          }
+        });
+        await Promise.all(batchPromises);
+      }
+
+      this.setState({ tierCountsMap: map });
+    } finally {
+      this._isFetchingTierCounts = false;
+    }
   };
 
   getTierTooltipContent = (record) => {

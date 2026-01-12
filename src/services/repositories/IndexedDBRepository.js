@@ -14,22 +14,71 @@ const INDEX_BY_DATASET = "by_dataset";
 const INDEX_BY_DATASET_CASE = "by_dataset_case";
 const INDEX_BY_GENE_VARIANT = "by_gene_variant";
 
-// Timeout for IndexedDB operations (prevents indefinite hangs)
-const DB_OPERATION_TIMEOUT = 30000; // 30 seconds
+// Timeout for IndexedDB operations
+const DB_OPEN_TIMEOUT = 10000; // 10 seconds (increased for slow first-time creation)
+const DB_TRANSACTION_TIMEOUT = 10000; // 10 seconds for transactions
+const RETRY_COOLDOWN = 30000; // 30 seconds before allowing retry after failure
 
-// Connection pooling to prevent "database locked" errors
+// Connection state
 let dbInstance = null;
 let dbOpenPromise = null;
+let lastFailureTime = 0; // Track when we last failed, for cooldown
 
-function openDb() {
-  // If connection already exists and is open, reuse it
-  if (dbInstance) {
-    return Promise.resolve(dbInstance);
+/**
+ * Check if IndexedDB is available in this browser
+ */
+function isIndexedDBAvailable() {
+  try {
+    return typeof window !== 'undefined' &&
+           typeof window.indexedDB !== 'undefined' &&
+           window.indexedDB !== null;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Check if the cached connection is still valid
+ */
+function isConnectionValid() {
+  if (!dbInstance) return false;
+  try {
+    return dbInstance.objectStoreNames.contains(STORE_NAME);
+  } catch (e) {
+    dbInstance = null;
+    return false;
+  }
+}
+
+/**
+ * Open database
+ */
+async function openDb() {
+  // Check if IndexedDB is available
+  if (!isIndexedDBAvailable()) {
+    throw new Error("IndexedDB not supported");
+  }
+
+  // If connection already exists and is valid, reuse it
+  if (isConnectionValid()) {
+    return dbInstance;
   }
 
   // If opening is in progress, wait for it
   if (dbOpenPromise) {
     return dbOpenPromise;
+  }
+
+  // Check cooldown period after failure to prevent retry storms
+  if (lastFailureTime > 0) {
+    const timeSinceFailure = Date.now() - lastFailureTime;
+    if (timeSinceFailure < RETRY_COOLDOWN) {
+      const remainingSecs = Math.ceil((RETRY_COOLDOWN - timeSinceFailure) / 1000);
+      throw new Error(`IndexedDB in cooldown - retry in ${remainingSecs}s`);
+    }
+    // Cooldown expired, allow retry
+    console.log("IndexedDB cooldown expired, retrying...");
+    lastFailureTime = 0;
   }
 
   // Start the opening process
@@ -40,41 +89,48 @@ function openDb() {
       if (!settled) {
         settled = true;
         dbOpenPromise = null;
-        console.error("IndexedDB open timeout - database may be locked or blocked");
-        reject(new Error("IndexedDB open timeout - database may be locked"));
+        lastFailureTime = Date.now();
+        console.error(`IndexedDB open timeout after ${DB_OPEN_TIMEOUT/1000}s - entering cooldown`);
+        reject(new Error("IndexedDB open timeout"));
       }
-    }, DB_OPERATION_TIMEOUT);
+    }, DB_OPEN_TIMEOUT);
 
     try {
+      console.log(`Opening IndexedDB "${DB_NAME}" v${DB_VERSION}...`);
       const req = indexedDB.open(DB_NAME, DB_VERSION);
 
       req.onblocked = () => {
-        console.warn("IndexedDB open blocked - waiting for other connections to close. If this persists, try closing other tabs or restarting the browser.");
+        console.warn("IndexedDB blocked - close other tabs/connections using this database");
       };
 
       req.onupgradeneeded = (event) => {
-        const db = req.result;
-        const tx = event.target.transaction;
+        console.log("IndexedDB upgrade/create needed - creating schema");
+        try {
+          const db = req.result;
 
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          // Fresh database - create store with all indices
-          const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-          store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
-          store.createIndex(INDEX_BY_DATASET, "datasetId", { unique: false });
-          store.createIndex(INDEX_BY_DATASET_CASE, ["datasetId", "caseId"], { unique: false });
-          store.createIndex(INDEX_BY_GENE_VARIANT, ["gene", "variant_type"], { unique: false });
-        } else {
-          // Existing database - add any missing indices
-          const store = tx.objectStore(STORE_NAME);
-          if (!store.indexNames.contains(INDEX_BY_DATASET)) {
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+            store.createIndex(INDEX_BY_CASE, "caseId", { unique: false });
             store.createIndex(INDEX_BY_DATASET, "datasetId", { unique: false });
-          }
-          if (!store.indexNames.contains(INDEX_BY_DATASET_CASE)) {
             store.createIndex(INDEX_BY_DATASET_CASE, ["datasetId", "caseId"], { unique: false });
-          }
-          if (!store.indexNames.contains(INDEX_BY_GENE_VARIANT)) {
             store.createIndex(INDEX_BY_GENE_VARIANT, ["gene", "variant_type"], { unique: false });
+            console.log("IndexedDB schema created successfully");
+          } else {
+            const tx = event.target.transaction;
+            const store = tx.objectStore(STORE_NAME);
+            if (!store.indexNames.contains(INDEX_BY_DATASET)) {
+              store.createIndex(INDEX_BY_DATASET, "datasetId", { unique: false });
+            }
+            if (!store.indexNames.contains(INDEX_BY_DATASET_CASE)) {
+              store.createIndex(INDEX_BY_DATASET_CASE, ["datasetId", "caseId"], { unique: false });
+            }
+            if (!store.indexNames.contains(INDEX_BY_GENE_VARIANT)) {
+              store.createIndex(INDEX_BY_GENE_VARIANT, ["gene", "variant_type"], { unique: false });
+            }
+            console.log("IndexedDB schema upgraded successfully");
           }
+        } catch (upgradeError) {
+          console.error("IndexedDB upgrade error:", upgradeError);
         }
       };
 
@@ -82,10 +138,14 @@ function openDb() {
         if (!settled) {
           settled = true;
           clearTimeout(timeoutId);
+          lastFailureTime = 0; // Clear any previous failure
+          console.log("IndexedDB opened successfully");
           dbInstance = req.result;
           dbInstance.onclose = () => {
+            console.log("IndexedDB connection closed");
             dbInstance = null;
           };
+          dbOpenPromise = null;
           resolve(dbInstance);
         }
       };
@@ -95,6 +155,8 @@ function openDb() {
           settled = true;
           clearTimeout(timeoutId);
           dbOpenPromise = null;
+          lastFailureTime = Date.now();
+          console.error("IndexedDB open error:", req.error);
           reject(req.error || new Error("IndexedDB open failed"));
         }
       };
@@ -103,73 +165,47 @@ function openDb() {
         settled = true;
         clearTimeout(timeoutId);
         dbOpenPromise = null;
+        lastFailureTime = Date.now();
+        console.error("IndexedDB open exception:", e);
         reject(e);
       }
     }
-  }).then(db => {
-    dbOpenPromise = null;
-    return db;
-  }).catch(err => {
-    dbOpenPromise = null;
-    throw err;
   });
 
   return dbOpenPromise;
 }
 
 async function withStore(storeName, mode, fn) {
-  let db;
-  try {
-    db = await openDb();
-    const tx = db.transaction(storeName, mode);
-    const store = tx.objectStore(storeName);
+  const db = await openDb();
+  const tx = db.transaction(storeName, mode);
+  const store = tx.objectStore(storeName);
 
-    // Set up transaction completion handler BEFORE running fn
-    // This prevents a race condition where the transaction completes
-    // before we can attach the oncomplete handler
-    const txComplete = new Promise((resolve, reject) => {
-      let settled = false;
+  // For readonly operations, just execute and return
+  const result = await fn(store, tx);
 
+  // Only wait for transaction completion on write operations
+  if (mode === "readwrite") {
+    await new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          console.error("IndexedDB transaction timeout");
-          reject(new Error("IndexedDB transaction timeout"));
-        }
-      }, DB_OPERATION_TIMEOUT);
+        reject(new Error("IndexedDB transaction timeout"));
+      }, DB_TRANSACTION_TIMEOUT);
 
       tx.oncomplete = () => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timeoutId);
-          resolve();
-        }
+        clearTimeout(timeoutId);
+        resolve();
       };
       tx.onabort = () => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timeoutId);
-          reject(tx.error || new Error("Transaction aborted"));
-        }
+        clearTimeout(timeoutId);
+        reject(tx.error || new Error("Transaction aborted"));
       };
       tx.onerror = () => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timeoutId);
-          reject(tx.error || new Error("Transaction failed"));
-        }
+        clearTimeout(timeoutId);
+        reject(tx.error || new Error("Transaction failed"));
       };
     });
-
-    const result = await fn(store, tx);
-    await txComplete;
-
-    return result;
-  } catch (e) {
-    console.error("IndexedDB operation failed:", e.message);
-    throw e;
   }
-  // Note: Do not close the database here - we're reusing the connection to prevent lock errors
+
+  return result;
 }
 
 export class IndexedDBRepository extends EventInterpretationRepository {
@@ -375,55 +411,44 @@ export class IndexedDBRepository extends EventInterpretationRepository {
   }
 
   try {
-    // Categorize cases by tier change, author, and gene
+    // Use getAll instead of cursor for better reliability
+    const results = await withStore(STORE_NAME, "readonly", (store) => {
+      return new Promise((resolve, reject) => {
+        const index = store.index(INDEX_BY_DATASET);
+        const req = index.getAll(datasetId);
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    });
+
+    // Process results in memory
     const withTierChange = new Set();
     const byAuthor = new Map();
     const byGene = new Map();
     const all = new Set();
 
-    // Use cursor to iterate through results in chunks to avoid transaction timeout
-    await withStore(STORE_NAME, "readonly", (store) => {
-      return new Promise((resolve, reject) => {
-        const index = store.index(INDEX_BY_DATASET);
-        const req = index.openCursor(datasetId);
+    for (const item of results) {
+      const caseId = item.caseId;
+      all.add(caseId);
 
-        req.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            const item = cursor.value;
-            const caseId = item.caseId;
-            all.add(caseId);
-            
-            // Tier changes
-            if (item.hasTierChange) {
-              withTierChange.add(caseId);
-            }
-            
-            // By author
-            if (item.authorName) {
-              if (!byAuthor.has(item.authorName)) {
-                byAuthor.set(item.authorName, new Set());
-              }
-              byAuthor.get(item.authorName).add(caseId);
-            }
-            
-            // By gene
-            if (item.gene) {
-              if (!byGene.has(item.gene)) {
-                byGene.set(item.gene, new Set());
-              }
-              byGene.get(item.gene).add(caseId);
-            }
+      if (item.hasTierChange) {
+        withTierChange.add(caseId);
+      }
 
-            cursor.continue();
-          } else {
-            resolve();
-          }
-        };
+      if (item.authorName) {
+        if (!byAuthor.has(item.authorName)) {
+          byAuthor.set(item.authorName, new Set());
+        }
+        byAuthor.get(item.authorName).add(caseId);
+      }
 
-        req.onerror = () => reject(req.error);
-      });
-    });
+      if (item.gene) {
+        if (!byGene.has(item.gene)) {
+          byGene.set(item.gene, new Set());
+        }
+        byGene.get(item.gene).add(caseId);
+      }
+    }
 
     return {
       withTierChange,
@@ -446,29 +471,22 @@ export class IndexedDBRepository extends EventInterpretationRepository {
   if (!window.indexedDB || !datasetId) return new Map();
 
   try {
-    const countMap = new Map();
-
-    // Use cursor to iterate through results in chunks to avoid transaction timeout
-    await withStore(STORE_NAME, "readonly", (store) => {
+    // Use getAll instead of cursor for better reliability
+    const results = await withStore(STORE_NAME, "readonly", (store) => {
       return new Promise((resolve, reject) => {
         const index = store.index(INDEX_BY_DATASET);
-        const req = index.openCursor(datasetId);
-
-        req.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            const item = cursor.value;
-            const caseId = item.caseId;
-            countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
-            cursor.continue();
-          } else {
-            resolve();
-          }
-        };
-
+        const req = index.getAll(datasetId);
+        req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => reject(req.error);
       });
     });
+
+    // Process results in memory
+    const countMap = new Map();
+    for (const item of results) {
+      const caseId = item.caseId;
+      countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
+    }
 
     return countMap;
   } catch (e) {
