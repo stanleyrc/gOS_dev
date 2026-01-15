@@ -190,30 +190,45 @@ class FilteredEventsListPanel extends Component {
       return;
     }
 
-    const map = {};
-
-    // Deduplicate by gene-type key to avoid redundant fetches
-    const uniqueKeys = new Set();
-    const uniqueRecords = records.filter((record) => {
-      if (!record.gene || !record.type) return false;
-      const key = `${record.gene}-${record.type}`;
-      if (uniqueKeys.has(key)) return false;
-      uniqueKeys.add(key);
-      return true;
-    });
-
-    // Guard: nothing to fetch
-    if (uniqueRecords.length === 0) {
-      return;
-    }
-
     this._isFetchingTierCounts = true;
 
     try {
-      // Process in batches to avoid overwhelming IndexedDB/network
-      const BATCH_SIZE = 5;
       const { getActiveRepository } = await import("../../services/repositories");
       const repository = getActiveRepository({ dataset });
+
+      // OPTIMIZATION: First get gene-variants that have tier changes
+      const geneVariantsWithTiers = await repository.getGeneVariantsWithTierChanges();
+
+      // If no gene-variants have tier changes, nothing to fetch
+      if (geneVariantsWithTiers.size === 0) {
+        this.setState({ tierCountsMap: {} });
+        return;
+      }
+
+      const map = {};
+
+      // Deduplicate AND filter to only gene-variants with tier changes
+      const uniqueKeys = new Set();
+      const uniqueRecords = records.filter((record) => {
+        if (!record.gene || !record.type) return false;
+        const key = `${record.gene}-${record.type}`;
+        if (uniqueKeys.has(key)) return false;
+        // NEW: Only include if this gene-variant has tier changes
+        if (!geneVariantsWithTiers.has(key)) return false;
+        uniqueKeys.add(key);
+        return true;
+      });
+
+      // Guard: nothing to fetch after filtering
+      if (uniqueRecords.length === 0) {
+        this.setState({ tierCountsMap: {} });
+        return;
+      }
+
+      console.log(`Fetching tier counts for ${uniqueRecords.length} gene-variants (filtered from ${records.length} records)`);
+
+      // Process in batches to avoid overwhelming IndexedDB/network
+      const BATCH_SIZE = 5;
 
       for (let i = 0; i < uniqueRecords.length; i += BATCH_SIZE) {
         const batch = uniqueRecords.slice(i, i + BATCH_SIZE);

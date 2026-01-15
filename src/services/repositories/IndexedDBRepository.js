@@ -525,4 +525,33 @@ export class IndexedDBRepository extends EventInterpretationRepository {
       return { 1: 0, 2: 0, 3: 0 };
     }
   }
+
+  async getGeneVariantsWithTierChanges() {
+    if (!window.indexedDB) {
+      return new Set();
+    }
+
+    try {
+      const results = await withStore(STORE_NAME, "readonly", (store) => {
+        return new Promise((resolve, reject) => {
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      });
+
+      const geneVariants = new Set();
+      for (const item of results) {
+        // Only include items with tier changes AND valid gene/variant_type
+        if (item.hasTierChange && item.gene && item.variant_type) {
+          geneVariants.add(`${item.gene}-${item.variant_type}`);
+        }
+      }
+
+      return geneVariants;
+    } catch (e) {
+      console.error("Failed to get gene variants with tier changes:", e);
+      return new Set();
+    }
+  }
 }

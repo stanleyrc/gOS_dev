@@ -52,4 +52,9 @@ export class EventInterpretationRepository {
   async getTierCountsByGeneVariantType(gene, variantType) {
     throw new Error("getTierCountsByGeneVariantType must be implemented");
   }
+
+  async getGeneVariantsWithTierChanges() {
+    // Returns: Set<"gene-variantType"> - all gene-variant pairs with tier changes
+    throw new Error("getGeneVariantsWithTierChanges must be implemented");
+  }
 }
