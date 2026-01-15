@@ -538,4 +538,40 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       return { 1: 0, 2: 0, 3: 0 };
     }
   }
+
+  async getGeneVariantsWithTierChanges() {
+    try {
+      const geneVariants = new Set();
+      let lastEvaluatedKey = undefined;
+
+      do {
+        const command = new ScanCommand({
+          TableName: this.tableName,
+          FilterExpression: "hasTierChange = :hasTierChange",
+          ExpressionAttributeValues: marshall({
+            ":hasTierChange": "true",
+          }),
+          ProjectionExpression: "gene, variant_type",
+          ExclusiveStartKey: lastEvaluatedKey,
+        });
+
+        const response = await this.client.send(command);
+        const items = response.Items || [];
+
+        items.forEach(item => {
+          const data = unmarshall(item);
+          if (data.gene && data.variant_type) {
+            geneVariants.add(`${data.gene}-${data.variant_type}`);
+          }
+        });
+
+        lastEvaluatedKey = response.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      return geneVariants;
+    } catch (error) {
+      console.error("Failed to get gene variants with tier changes:", error);
+      return new Set();
+    }
+  }
 }
