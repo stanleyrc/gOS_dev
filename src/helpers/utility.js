@@ -171,6 +171,7 @@ export function datafilesArrowTableToJson(table) {
     "signatures",
     "deletionInsertion",
     "sv_types_count",
+    "summary_tag",
   ]);
 
   const result = [];
