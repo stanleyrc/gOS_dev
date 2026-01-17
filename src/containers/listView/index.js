@@ -56,6 +56,47 @@ class ListView extends Component {
     activeTab: "cases",
   };
 
+  renderCascaderOption = (option) => {
+    const { t } = this.props;
+    const labelText =
+      typeof option?.label === "string" || typeof option?.label === "number"
+        ? option.label
+        : undefined;
+    return (
+      <div className="filter-option-container">
+        <span className="filter-option-text" title={labelText}>
+          {option?.label}
+        </span>
+        {option?.count != null && option?.children == null && (
+          <span className="filter-option-count">
+            {t("containers.list-view.filters.case", {
+              count: option?.count,
+            })}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  renderSelectOption = (option) => {
+    const { t } = this.props;
+    const { label, count } = option.data || {};
+    return (
+      <div className="filter-option-container">
+        <span className="filter-option-text" title={label}>
+          {label}
+        </span>
+        {count != null && (
+          <span className="filter-option-count">
+            {t("containers.list-view.filters.case", {
+              count,
+            })}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   handleTabChange = (key) => {
     this.setState({ activeTab: key });
   };
@@ -208,28 +249,7 @@ class ListView extends Component {
                   d.options || generateCascaderOptions(d.records, d.frequencies)
                 }
                 displayRender={this.tagsDisplayRender}
-                optionRender={(option) => {
-                  return (
-                    <div className="filter-option-container">
-                      <span>
-                        <Text
-                          className="filter-option-text"
-                          ellipsis={{ tooltip: option?.label }}
-                        >
-                          {option?.label}
-                        </Text>
-                      </span>
-                      {option?.count != null && (
-                        <span className="filter-option-count">
-                          {option?.children == null &&
-                            t("containers.list-view.filters.case", {
-                              count: option?.count,
-                            })}
-                        </span>
-                      )}
-                    </div>
-                  );
-                }}
+                optionRender={this.renderCascaderOption}
                 multiple
                 showSearch={{
                   // PERFORMANCE OPTIMIZATION 1: Limit search results to 50 items
@@ -280,25 +300,7 @@ class ListView extends Component {
                 count: d.frequencies[e] || 0,
               }))}
               labelInValue={false}
-              optionRender={(option) => (
-                <div className="filter-option-container">
-                  <span>
-                    <Text
-                      className="filter-option-text"
-                      ellipsis={{ tooltip: option.data.label }}
-                    >
-                      {option.data.label}
-                    </Text>
-                  </span>
-                  {option.data.count != null && (
-                    <span className="filter-option-count">
-                      {t("containers.list-view.filters.case", {
-                        count: option.data.count,
-                      })}
-                    </span>
-                  )}
-                </div>
-              )}
+              optionRender={this.renderSelectOption}
             />
           </Item>
         );
@@ -679,26 +681,26 @@ class ListView extends Component {
                                         size={0}
                                         style={{ display: "flex" }}
                                       >
-                                        {generateCascaderOptions(d.tags).map(
-                                          (tag, i) => (
-                                            <div key={`tag-${tag.value}-${i}`}>
-                                              <Divider
-                                                plain
-                                                orientation="left"
-                                                size="small"
-                                              >
-                                                {tag.label}
-                                              </Divider>
-                                              <Flex gap="2px" wrap="wrap">
-                                                {tag.children.map((child) => (
-                                                  <Text key={child.value} code>
-                                                    {child.label}
-                                                  </Text>
-                                                ))}
-                                              </Flex>
-                                            </div>
-                                          )
-                                        )}
+                                        {generateCascaderOptions(
+                                          d.visibleTags
+                                        ).map((tag, i) => (
+                                          <div key={`tag-${tag.value}-${i}`}>
+                                            <Divider
+                                              plain
+                                              orientation="left"
+                                              size="small"
+                                            >
+                                              {tag.label}
+                                            </Divider>
+                                            <Flex gap="2px" wrap="wrap">
+                                              {tag.children.map((child) => (
+                                                <Text key={child.value} code>
+                                                  {child.label}
+                                                </Text>
+                                              ))}
+                                            </Flex>
+                                          </div>
+                                        ))}
                                       </Space>
                                     }
                                   />

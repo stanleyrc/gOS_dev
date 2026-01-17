@@ -42,11 +42,14 @@ function* fetchCaseReport(action) {
 
     let metadata = { ...responseReportMetadata.data[0] };
 
-    metadata.tags =
-      metadata.summary
-        ?.split("\n")
-        .map((e) => e.trim())
-        .filter((e) => e.length > 0) || [];
+    metadata.tags = metadata.summary_tag
+      ? metadata.summary_tag
+          .filter((e) => e.visible)
+          .map((e) => `${e.key.trim()}: ${e.value.trim()}`)
+      : metadata.summary
+          ?.split("\n")
+          .map((e) => e.trim())
+          .filter((e) => e.length > 0) || [];
 
     metadata.qcMetrics = metadata.qcMetrics || [];
     metadata.qcEvaluation = qcEvaluator(metadata.qcMetrics);

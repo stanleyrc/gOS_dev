@@ -1,11 +1,4 @@
-import {
-  all,
-  put,
-  call,
-  select,
-  take,
-  takeLatest,
-} from "redux-saga/effects";
+import { all, put, call, select, take, takeLatest } from "redux-saga/effects";
 import { END } from "redux-saga";
 import { getCurrentState } from "./selectors";
 import { tableFromIPC } from "apache-arrow";
@@ -69,12 +62,17 @@ function* fetchCaseReports(action) {
 
         datafiles.forEach(
           (d) => {
-            d.tags =
-              d.summary
-                ?.split("\n")
-                .map((e) => e.trim())
-                .filter((e) => e.length > 0) || [];
-
+            d.tags = d.summary_tag
+              ? d.summary_tag?.map((e) => `${e.key.trim()}: ${e.value.trim()}`)
+              : d.summary
+                  ?.split("\n")
+                  .map((e) => e.trim())
+                  .filter((e) => e.length > 0) || [];
+            d.visibleTags = d.summary_tag
+              ? d.summary_tag
+                  .filter((e) => e.visible)
+                  .map((e) => `${e.key.trim()}: ${e.value.trim()}`)
+              : d.tags;
             d.qcEvaluation = qcEvaluator(d.qcMetrics || []);
           } // Ensure qcEvaluation is set for each report
         );

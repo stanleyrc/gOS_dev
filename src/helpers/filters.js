@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import { plotTypes, reportAttributesMap } from "./utility";
-import common from '../translations/en/common.json';
+import common from "../translations/en/common.json";
 
 export function reportFilters() {
   return [
@@ -157,83 +157,106 @@ export function generateCascaderOptions(tags, frequencies = {}) {
   return options;
 }
 
-export function generateInterpretationsCascaderOptions(reports, casesWithInterpretations) {
+export function generateInterpretationsCascaderOptions(
+  reports,
+  casesWithInterpretations
+) {
   const options = [];
-  
+
   // Ensure casesWithInterpretations has the expected structure
   const withTierChange = casesWithInterpretations?.withTierChange || new Set();
   const byAuthor = casesWithInterpretations?.byAuthor || new Map();
   const byGene = casesWithInterpretations?.byGene || new Map();
   const all = casesWithInterpretations?.all || new Set();
-  
+
   // Tier Change option
-  const tierChangeCount = reports.filter(r => withTierChange.has(r.pair)).length;
+  const tierChangeCount = reports.filter((r) =>
+    withTierChange.has(r.pair)
+  ).length;
   options.push({
-  label: common.containers["list-view"].filters.interpretations_cascader_labels.tier_change,
-  value: "tier_change",
-  count: tierChangeCount,
+    label:
+      common.containers["list-view"].filters.interpretations_cascader_labels
+        .tier_change,
+    value: "tier_change",
+    count: tierChangeCount,
   });
 
-   // Other changes option
-   const otherChangesCount = reports.filter(r => all.has(r.pair) && !withTierChange.has(r.pair)).length;
-   options.push({
-     label: common.containers["list-view"].filters.interpretations_cascader_labels.other_changes,
-     value: "other_changes",
-     count: otherChangesCount,
-   });
-  
+  // Other changes option
+  const otherChangesCount = reports.filter(
+    (r) => all.has(r.pair) && !withTierChange.has(r.pair)
+  ).length;
+  options.push({
+    label:
+      common.containers["list-view"].filters.interpretations_cascader_labels
+        .other_changes,
+    value: "other_changes",
+    count: otherChangesCount,
+  });
+
   // Author option with children
   const authorChildren = [];
   byAuthor.forEach((cases, authorName) => {
-    const count = reports.filter(r => cases.has(r.pair)).length;
+    const count = reports.filter((r) => cases.has(r.pair)).length;
     authorChildren.push({
       label: authorName,
       value: authorName,
       count: count,
     });
   });
-  
+
   if (authorChildren.length > 0) {
     authorChildren.sort((a, b) => d3.descending(a.count, b.count));
-    const totalAuthorCount = authorChildren.reduce((sum, child) => sum + child.count, 0);
+    const totalAuthorCount = authorChildren.reduce(
+      (sum, child) => sum + child.count,
+      0
+    );
     options.push({
-      label: common.containers["list-view"].filters.interpretations_cascader_labels.author,
+      label:
+        common.containers["list-view"].filters.interpretations_cascader_labels
+          .author,
       value: "author",
       count: totalAuthorCount,
       children: authorChildren,
     });
   }
-  
+
   // Gene option with children
   const geneChildren = [];
   byGene.forEach((cases, geneName) => {
-    const count = reports.filter(r => cases.has(r.pair)).length;
+    const count = reports.filter((r) => cases.has(r.pair)).length;
     geneChildren.push({
       label: geneName,
       value: geneName,
       count: count,
     });
   });
-  
+
   if (geneChildren.length > 0) {
     geneChildren.sort((a, b) => d3.descending(a.count, b.count));
-    const totalGeneCount = geneChildren.reduce((sum, child) => sum + child.count, 0);
+    const totalGeneCount = geneChildren.reduce(
+      (sum, child) => sum + child.count,
+      0
+    );
     options.push({
-      label: common.containers["list-view"].filters.interpretations_cascader_labels.gene,
+      label:
+        common.containers["list-view"].filters.interpretations_cascader_labels
+          .gene,
       value: "gene",
       count: totalGeneCount,
       children: geneChildren,
     });
   }
-  
+
   // No interpretations option
-  const noInterpretationsCount = reports.filter(r => !all.has(r.pair)).length;
+  const noInterpretationsCount = reports.filter((r) => !all.has(r.pair)).length;
   options.push({
-    label: common.containers["list-view"].filters.interpretations_cascader_labels.without,
+    label:
+      common.containers["list-view"].filters.interpretations_cascader_labels
+        .without,
     value: "without",
     count: noInterpretationsCount,
   });
-  
+
   return options;
 }
 
@@ -262,71 +285,90 @@ export function getReportsFilters(fields, reports) {
   let reportsFilters = [];
 
   // Iterate through each filter (skip external filters as they need special handling)
-  fields.filter(field => !field.external).forEach((field) => {
-    let allValues = reports
-      .map((record) => {
-        try {
-          return eval(`record.${field.name}`);
-        } catch (err) {
-          return null;
-        }
-      })
-      .flat();
+  fields
+    .filter((field) => !field.external)
+    .forEach((field) => {
+      let allValues = reports
+        .map((record) => {
+          try {
+            return eval(`record.${field.name}`);
+          } catch (err) {
+            return null;
+          }
+        })
+        .flat();
 
-    let frequencyMap = d3.rollup(
-      allValues,
-      (v) => v.length,
-      (d) => d
-    );
+      let frequencyMap = d3.rollup(
+        allValues,
+        (v) => v.length,
+        (d) => d
+      );
 
-    // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
-    let distinctValues = Array.from(frequencyMap.entries())
-      .sort((a, b) => {
-        // First sort by frequency (descending)
-        const freqCompare = d3.descending(a[1], b[1]);
-        if (freqCompare !== 0) return freqCompare;
-        // If frequencies are equal, sort by value (ascending)
-        return d3.ascending(a[0], b[0]);
-      })
-      .map(([value, frequency]) => value);
+      // Extract distinct values and sort by frequency (descending), then by value (ascending) for ties
+      let distinctValues = Array.from(frequencyMap.entries())
+        .sort((a, b) => {
+          // First sort by frequency (descending)
+          const freqCompare = d3.descending(a[1], b[1]);
+          if (freqCompare !== 0) return freqCompare;
+          // If frequencies are equal, sort by value (ascending)
+          return d3.ascending(a[0], b[0]);
+        })
+        .map(([value, frequency]) => value);
 
-    // Add the filter information to the reportsFilters array
-    reportsFilters.push({
-      filter: field,
-      records: [...distinctValues],
-      frequencies: Object.fromEntries(frequencyMap),
-      extent: d3.extent(
-        distinctValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
-      ),
-      totalRecords: reports.length,
-      format: field.format,
+      // Add the filter information to the reportsFilters array
+      reportsFilters.push({
+        filter: field,
+        records: [...distinctValues],
+        frequencies: Object.fromEntries(frequencyMap),
+        extent: d3.extent(
+          distinctValues.filter(
+            (e) => !isNaN(e) && e !== null && e !== undefined
+          )
+        ),
+        totalRecords: reports.length,
+        format: field.format,
+      });
     });
-  });
   //console.log("reportsFilters", reportsFilters);
   return reportsFilters;
 }
 
-export function getInterpretationsFilter(reports, casesWithInterpretations = { all: new Set(), withTierChange: new Set(), byAuthor: new Map(), byGene: new Map() }, fields = null) {
+export function getInterpretationsFilter(
+  reports,
+  casesWithInterpretations = {
+    all: new Set(),
+    withTierChange: new Set(),
+    byAuthor: new Map(),
+    byGene: new Map(),
+  },
+  fields = null
+) {
   // Try to find the filter in the provided fields (from settings.json)
   // Fall back to hardcoded filter for backward compatibility
   let filter;
   if (fields && Array.isArray(fields)) {
-    filter = fields.find(f => f.id === "has_interpretations" || f.name === "has_interpretations");
+    filter = fields.find(
+      (f) => f.id === "has_interpretations" || f.name === "has_interpretations"
+    );
   }
   if (!filter) {
-    filter = reportFilters().find(f => f.name === "has_interpretations");
+    filter = reportFilters().find((f) => f.name === "has_interpretations");
   }
-  
-  const options = generateInterpretationsCascaderOptions(reports, casesWithInterpretations);
-  
+
+  const options = generateInterpretationsCascaderOptions(
+    reports,
+    casesWithInterpretations
+  );
+
   return {
     filter: filter,
     options: options,
     totalRecords: reports.length,
-    format: filter?.format || plotTypes()[reportAttributesMap()[filter?.name]]?.format
+    format:
+      filter?.format ||
+      plotTypes()[reportAttributesMap()[filter?.name]]?.format,
   };
 }
-
 
 const CASCADER_PATH_SEPARATOR = " / ";
 

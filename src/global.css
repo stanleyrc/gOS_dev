@@ -288,11 +288,19 @@ div.filter-option-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 span.filter-option-count {
   color: #999 !important;
   font-size: 12px !important;
+  flex-shrink: 0;
 }
 .filter-option-text {
   max-width: 190px !important;
+  flex: 1;
+  min-width: 0;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
