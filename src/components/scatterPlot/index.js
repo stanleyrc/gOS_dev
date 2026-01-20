@@ -48,7 +48,7 @@ class ScatterPlot extends Component {
 
   componentDidMount() {
     this.regl = require("regl")({
-      extensions: ["ANGLE_instanced_arrays", "OES_texture_float"],
+      extensions: ["ANGLE_instanced_arrays", "OES_texture_float", "OES_texture_float_linear"],
       container: this.container,
       pixelRatio: 2.0,
       attributes: {

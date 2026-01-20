@@ -20,8 +20,8 @@ class Points {
       height: 1,
       type: "float",
       format: "rgba",
-      min: "nearest",
-      mag: "nearest",
+      min: "linear",
+      mag: "linear",
     });
 
     this.densityFBO = regl.framebuffer({
@@ -44,7 +44,7 @@ class Points {
           if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
             discard;
           }
-          // Each point contributes 1.0 to density
+          // Each point contributes 1.0 to density (matches main branch behavior)
           gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
         }
       `,
@@ -164,15 +164,14 @@ class Points {
             discard;
           }
 
-          // Sample density from texture
-          float density = texture2D(densityTexture, vTexCoord).r;
+          // Sample density and emulate natural blending at alpha=0.5
+          // Natural blending result: final = pointColor * (1 - 0.5^n) + white * 0.5^n
+          // For canvas compositing over white: final = fb.rgb + (1 - fb.alpha) * white
+          // So we output: fb.rgb = pointColor * blend, fb.alpha = blend
+          float density = max(1.0, texture2D(densityTexture, vTexCoord).r);
+          float blend = 1.0 - pow(0.5, density);
 
-          // Map density to opacity: min 0.3, max 1.0
-          // Use log scale for better visualization of density range
-          float normalizedDensity = clamp(log(1.0 + density) / log(1.0 + maxDensity), 0.0, 1.0);
-          float alpha = 0.3 + 0.7 * normalizedDensity;
-
-          gl_FragColor = vec4(vColor.rgb, alpha);
+          gl_FragColor = vec4(vColor.rgb * blend, blend);
         }
       `,
 
@@ -276,16 +275,18 @@ class Points {
         maxDensity: regl.prop("maxDensity"),
       },
 
+      // Depth culling for performance - leftmost point per pixel wins
       depth: {
         enable: true,
         mask: true,
         func: "less",
         range: [0, 1],
       },
+      // Premultiplied alpha blending - shader outputs (color*blend, blend)
       blend: {
         enable: true,
         func: {
-          srcRGB: "src alpha",
+          srcRGB: "one",
           srcAlpha: "one",
           dstRGB: "one minus src alpha",
           dstAlpha: "one",
@@ -317,8 +318,8 @@ class Points {
         height: height,
         type: "float",
         format: "rgba",
-        min: "nearest",
-        mag: "nearest",
+        min: "linear",
+        mag: "linear",
       });
 
       this.densityFBO({
