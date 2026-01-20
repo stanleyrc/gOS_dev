@@ -10,13 +10,32 @@ class Points {
     this.dataY = null;
     this.color = null;
     this.instances = 0;
+    this.width = 1;
+    this.height = 1;
+
+    // Create density framebuffer (will be resized in updateDomains)
+    // Note: OES_texture_float extension is enabled in the parent regl context
+    this.densityTexture = regl.texture({
+      width: 1,
+      height: 1,
+      type: "float",
+      format: "rgba",
+      min: "nearest",
+      mag: "nearest",
+    });
+
+    this.densityFBO = regl.framebuffer({
+      color: this.densityTexture,
+      depth: false,
+      stencil: false,
+    });
 
     const positions = [[0.0, 0.0]];
 
-    this.drawCommand = regl({
+    // Pass 1: Accumulate density into float texture with additive blending
+    this.densityCommand = regl({
       frag: `
         precision highp float;
-        varying vec4 vColor;
         varying vec2 vPos;
         uniform float windowWidth;
         void main() {
@@ -25,17 +44,17 @@ class Points {
           if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
             discard;
           }
-          gl_FragColor = vColor;
+          // Each point contributes 1.0 to density
+          gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
         }
       `,
 
       vert: `
         precision highp float;
         attribute vec2 position;
-        attribute float dataY, color;
+        attribute float dataY;
         attribute float dataXHigh, dataXLow;
 
-        varying vec4 vColor;
         varying vec2 vPos;
 
         uniform float kxHigh, kxLow, ky;
@@ -45,14 +64,12 @@ class Points {
         uniform float pointSize;
         uniform float offsetX, offsetY;
 
-        // Multiply a (hi,lo) value by a (hi,lo) scale
         float mul64(float aHigh, float aLow, float bHigh, float bLow) {
           float high = aHigh * bHigh;
           float cross = aHigh * bLow + aLow * bHigh;
           return high + cross;
         }
 
-        // Subtract two doubles (hi,lo)
         void sub64(in float aHigh, in float aLow,
                    in float bHigh, in float bLow,
                    out float resHigh, out float resLow) {
@@ -64,11 +81,9 @@ class Points {
         }
 
         vec2 normalizeCoords(vec2 xy) {
-          float x = xy.x;
-          float y = xy.y;
           return vec2(
-            2.0 * ((x / stageWidth) - 0.5),
-            -(2.0 * ((y / stageHeight) - 0.5))
+            2.0 * ((xy.x / stageWidth) - 0.5),
+            -(2.0 * ((xy.y / stageHeight) - 0.5))
           );
         }
 
@@ -88,11 +103,147 @@ class Points {
 
           gl_PointSize = pointSize;
           gl_Position = vec4(clip, 0.0, 1.0);
+        }
+      `,
+
+      attributes: {
+        position: positions,
+        dataXHigh: { buffer: regl.prop("dataXHigh"), divisor: 1 },
+        dataXLow: { buffer: regl.prop("dataXLow"), divisor: 1 },
+        dataY: { buffer: regl.prop("dataY"), divisor: 1 },
+      },
+
+      primitive: "points",
+      count: positions.length,
+      instances: regl.prop("instances"),
+
+      uniforms: {
+        kxHigh: regl.prop("kxHigh"),
+        kxLow: regl.prop("kxLow"),
+        ky: regl.prop("ky"),
+        ty: regl.prop("ty"),
+        domainX0High: regl.prop("domainX0High"),
+        domainX0Low: regl.prop("domainX0Low"),
+        windowWidth: regl.prop("windowWidth"),
+        stageWidth: regl.prop("width"),
+        stageHeight: regl.prop("height"),
+        pointSize: regl.prop("pointSize"),
+        offsetX: regl.prop("offsetX"),
+        offsetY: regl.prop("offsetY"),
+      },
+
+      framebuffer: regl.prop("densityFBO"),
+
+      depth: { enable: false },
+      blend: {
+        enable: true,
+        func: {
+          srcRGB: "one",
+          srcAlpha: "one",
+          dstRGB: "one",
+          dstAlpha: "one",
+        },
+        equation: { rgb: "add", alpha: "add" },
+      },
+    });
+
+    // Pass 2: Render with depth culling, sampling density for opacity
+    this.drawCommand = regl({
+      frag: `
+        precision highp float;
+        varying vec4 vColor;
+        varying vec2 vPos;
+        varying vec2 vTexCoord;
+        uniform float windowWidth;
+        uniform sampler2D densityTexture;
+        uniform float maxDensity;
+        void main() {
+          vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+          float r = dot(cxy, cxy);
+          if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
+            discard;
+          }
+
+          // Sample density from texture
+          float density = texture2D(densityTexture, vTexCoord).r;
+
+          // Map density to opacity: min 0.3, max 1.0
+          // Use log scale for better visualization of density range
+          float normalizedDensity = clamp(log(1.0 + density) / log(1.0 + maxDensity), 0.0, 1.0);
+          float alpha = 0.3 + 0.7 * normalizedDensity;
+
+          gl_FragColor = vec4(vColor.rgb, alpha);
+        }
+      `,
+
+      vert: `
+        precision highp float;
+        attribute vec2 position;
+        attribute float dataY, color;
+        attribute float dataXHigh, dataXLow;
+
+        varying vec4 vColor;
+        varying vec2 vPos;
+        varying vec2 vTexCoord;
+
+        uniform float kxHigh, kxLow, ky;
+        uniform float domainX0High, domainX0Low;
+        uniform float ty;
+        uniform float stageWidth, stageHeight;
+        uniform float pointSize;
+        uniform float offsetX, offsetY;
+
+        float mul64(float aHigh, float aLow, float bHigh, float bLow) {
+          float high = aHigh * bHigh;
+          float cross = aHigh * bLow + aLow * bHigh;
+          return high + cross;
+        }
+
+        void sub64(in float aHigh, in float aLow,
+                   in float bHigh, in float bLow,
+                   out float resHigh, out float resLow) {
+          float s = aHigh - bHigh;
+          float v = s - aHigh;
+          float t = ((-bHigh - v) + (aHigh - (s - v))) + (aLow - bLow);
+          resHigh = s;
+          resLow  = t;
+        }
+
+        vec2 normalizeCoords(vec2 xy) {
+          return vec2(
+            2.0 * ((xy.x / stageWidth) - 0.5),
+            -(2.0 * ((xy.y / stageHeight) - 0.5))
+          );
+        }
+
+        void main() {
+          float diffHigh, diffLow;
+          sub64(dataXHigh, dataXLow, domainX0High, domainX0Low, diffHigh, diffLow);
+
+          float posX = mul64(diffHigh, diffLow, kxHigh, kxLow);
+          float posY = ky * dataY + ty;
+
+          float vecX = position.x + posX;
+          float vecY = position.y + posY;
+          vPos = vec2(vecX, vecY);
+
+          vec2 clip = normalizeCoords(vec2(vecX + offsetX, vecY - offsetY));
+          clip.y = clamp(clip.y, -1.0, 1.0);
+
+          // Texture coordinates for sampling density (0-1 range)
+          vTexCoord = vec2(clip.x * 0.5 + 0.5, clip.y * 0.5 + 0.5);
+
+          // Use normalized X position as Z for depth culling
+          // Lower Z wins with depth func 'less', so leftmost point per pixel survives
+          float z = clip.x * 0.5 + 0.5;
+
+          gl_PointSize = pointSize;
+          gl_Position = vec4(clip, z, 1.0);
 
           float red   = floor(color / 65536.0);
           float green = floor((color - red * 65536.0) / 256.0);
           float blue  = color - red * 65536.0 - green * 256.0;
-          vColor = vec4(red / 255.0, green / 255.0, blue / 255.0, 0.5);
+          vColor = vec4(red / 255.0, green / 255.0, blue / 255.0, 1.0);
         }
       `,
 
@@ -121,21 +272,30 @@ class Points {
         pointSize: regl.prop("pointSize"),
         offsetX: regl.prop("offsetX"),
         offsetY: regl.prop("offsetY"),
+        densityTexture: regl.prop("densityTexture"),
+        maxDensity: regl.prop("maxDensity"),
       },
 
-      depth: { enable: false },
+      depth: {
+        enable: true,
+        mask: true,
+        func: "less",
+        range: [0, 1],
+      },
       blend: {
         enable: true,
         func: {
           srcRGB: "src alpha",
-          srcAlpha: 1,
+          srcAlpha: "one",
           dstRGB: "one minus src alpha",
-          dstAlpha: 1,
+          dstAlpha: "one",
         },
         equation: { rgb: "add", alpha: "add" },
-        color: [0, 0, 0, 0],
       },
     });
+
+    // Configurable max density for opacity scaling
+    this.maxDensity = 50.0;
   }
 
   setData(dataPointsXHigh, dataPointsXLow, dataPointsY, dataPointsColor) {
@@ -147,6 +307,27 @@ class Points {
   }
 
   updateDomains(width, height, domains, maxYValues) {
+    // Resize density texture if dimensions changed
+    if (this.width !== width || this.height !== height) {
+      this.width = width;
+      this.height = height;
+
+      this.densityTexture({
+        width: width,
+        height: height,
+        type: "float",
+        format: "rgba",
+        min: "nearest",
+        mag: "nearest",
+      });
+
+      this.densityFBO({
+        color: this.densityTexture,
+        depth: false,
+        stencil: false,
+      });
+    }
+
     const windowWidth =
       (width - (domains.length - 1) * this.gap) / domains.length;
     const windowHeight = height;
@@ -178,21 +359,42 @@ class Points {
         pointSize: this.pointSize,
         offsetX: i * (this.gap + windowWidth),
         offsetY: this.offsetY,
+        densityFBO: this.densityFBO,
+        densityTexture: this.densityTexture,
+        maxDensity: this.maxDensity,
       };
     });
   }
 
   render() {
     try {
+      // Pass 1: Clear and render density accumulation
       this.regl.clear({
         color: [0, 0, 0, 0],
         depth: false,
+        stencil: false,
+        framebuffer: this.densityFBO,
+      });
+      this.densityCommand(this.dataBufferList);
+
+      // Pass 2: Clear screen and render final output with depth culling + density opacity
+      this.regl.clear({
+        color: [0, 0, 0, 0],
+        depth: 1,
         stencil: false,
       });
       this.regl.poll();
       this.drawCommand(this.dataBufferList);
     } catch (err) {
       console.error(`Scatterplot WebGL rendering failed: ${err}`);
+    }
+  }
+
+  // Allow configuring max density for opacity scaling
+  setMaxDensity(maxDensity) {
+    this.maxDensity = maxDensity;
+    if (this.dataBufferList) {
+      this.dataBufferList.forEach((d) => (d.maxDensity = maxDensity));
     }
   }
 }

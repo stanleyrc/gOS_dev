@@ -11,7 +11,26 @@ export function splitFloat64(x) {
   return [high, low];
 }
 
+// Cache for dataRanges to avoid creating new array references
+let _dataRangesCache = {
+  domains: null,
+  genome: null,
+  result: null,
+};
+
 export function dataRanges(domains, genome) {
+  // Check cache - return same reference if inputs haven't changed
+  if (
+    _dataRangesCache.genome === genome &&
+    _dataRangesCache.domains &&
+    _dataRangesCache.domains.length === domains.length &&
+    _dataRangesCache.domains.every(
+      (d, i) => d[0] === domains[i][0] && d[1] === domains[i][1]
+    )
+  ) {
+    return _dataRangesCache.result;
+  }
+
   function filterIntervalsByDomain(domain, intervals) {
     let filteredIntervals = intervals.filter(
       (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
@@ -34,7 +53,28 @@ export function dataRanges(domains, genome) {
     .domain([0, maxY || 1])
     .range([1, 0])
     .nice();
-  return yScale.domain();
+  const newResult = yScale.domain();
+
+  // If computed values match cached result, return cached reference to prevent re-renders
+  if (
+    _dataRangesCache.result &&
+    _dataRangesCache.result[0] === newResult[0] &&
+    _dataRangesCache.result[1] === newResult[1]
+  ) {
+    // Update domains cache but keep same result reference
+    _dataRangesCache.domains = domains.map((d) => [...d]);
+    _dataRangesCache.genome = genome;
+    return _dataRangesCache.result;
+  }
+
+  // Update cache with new result
+  _dataRangesCache = {
+    domains: domains.map((d) => [...d]),
+    genome,
+    result: newResult,
+  };
+
+  return newResult;
 }
 
 export function chunks(arr, size = 4) {
@@ -732,6 +772,19 @@ export function cluster(
 }
 
 // returns the maximum Y value within the domains array as applied to the dataPointsX
+// Cache for findMaxInRanges to avoid recomputation on same domains
+let _findMaxCache = {
+  domains: null,
+  dataPointsX: null,
+  dataPointsY: null,
+  result: null,
+};
+
+// TEST FLAGS for performance analysis (set to true for debugging)
+const BYPASS_FIND_MAX = false;
+const TIME_FIND_MAX = false;
+let _bypassResult = null;
+
 export function findMaxInRanges(
   domains,
   dataPointsX,
@@ -739,28 +792,39 @@ export function findMaxInRanges(
   usePercentile = true,
   p = 0.99 // 99th percentile by default
 ) {
-  return domains.map(([start, end]) => {
-    let left = 0,
-      right = dataPointsX.length - 1;
+  // PERF TEST: Return cached result to test if this function is a bottleneck
+  if (BYPASS_FIND_MAX && _bypassResult && _bypassResult.length === domains.length) {
+    return _bypassResult;
+  }
 
-    // // Binary search for the first element >= start
-    // while (left <= right) {
-    //   const mid = Math.floor((left + right) / 2);
-    //   if (dataPointsX[mid] < start) left = mid + 1;
-    //   else right = mid - 1;
-    // }
+  const startTime = TIME_FIND_MAX ? performance.now() : 0;
 
-    left = findIndexForNum(dataPointsX, start);
-    right = findIndexForNum(dataPointsX, end);
+  // Check cache - if same inputs, return cached result
+  if (
+    !usePercentile &&
+    _findMaxCache.dataPointsX === dataPointsX &&
+    _findMaxCache.dataPointsY === dataPointsY &&
+    _findMaxCache.domains &&
+    _findMaxCache.domains.length === domains.length &&
+    _findMaxCache.domains.every(
+      (d, i) => d[0] === domains[i][0] && d[1] === domains[i][1]
+    )
+  ) {
+    if (TIME_FIND_MAX) {
+      console.log(`findMaxInRanges: CACHE HIT`);
+    }
+    return _findMaxCache.result;
+  }
 
-    // Collect values within the specified range using slice
-    //const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
-    const valuesInRangeSlice = dataPointsY.slice(left, right);
+  const result = domains.map(([start, end]) => {
+    const left = findIndexForNum(dataPointsX, start);
+    const right = findIndexForNum(dataPointsX, end);
 
     // Calculate either max or 99th percentile
     let resultValue;
-    if (usePercentile && valuesInRangeSlice.length > 0) {
-      // After sorting:
+    if (usePercentile && right > left) {
+      // For percentile, we still need to sort, so we need a copy
+      const valuesInRangeSlice = dataPointsY.slice(left, right);
       valuesInRangeSlice.sort((a, b) => a - b);
 
       // "Continuous" approach with optional interpolation:
@@ -779,12 +843,41 @@ export function findMaxInRanges(
           valuesInRangeSlice[iHigh] * fraction;
       }
     } else {
-      resultValue =
-        valuesInRangeSlice.length > 0 ? d3.max(valuesInRangeSlice) : -Infinity;
+      // Find max in-place without copying the array
+      let maxValue = -Infinity;
+      for (let i = left; i < right; i++) {
+        if (dataPointsY[i] > maxValue) {
+          maxValue = dataPointsY[i];
+        }
+      }
+      resultValue = maxValue;
     }
 
     return resultValue;
   });
+
+  // Update cache (only for non-percentile case)
+  if (!usePercentile) {
+    _findMaxCache = {
+      domains: domains.map((d) => [...d]), // deep copy domains
+      dataPointsX,
+      dataPointsY,
+      result,
+    };
+  }
+
+  // Store for bypass mode testing
+  if (BYPASS_FIND_MAX) {
+    _bypassResult = result;
+  }
+
+  if (TIME_FIND_MAX) {
+    const elapsed = performance.now() - startTime;
+    const totalPoints = dataPointsX.length;
+    console.log(`findMaxInRanges: ${elapsed.toFixed(2)}ms for ${totalPoints} points, ${domains.length} domains`);
+  }
+
+  return result;
 }
 
 /**

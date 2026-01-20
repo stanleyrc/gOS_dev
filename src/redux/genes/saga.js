@@ -122,6 +122,11 @@ function* fetchHiglassGenesData(action) {
     currentState.Genes;
   const { domains, chromoBins } = currentState.Settings;
 
+  // Guard: Don't fetch if HiGlass info isn't ready yet (prevents race condition)
+  if (!tilesetId || !maxGenomeLength) {
+    return;
+  }
+
   let list = [];
   try {
     let newGeneTilesets = domains.map((d, i) => {

@@ -47,6 +47,40 @@ class GenomePanel extends Component {
     };
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    // Check state changes
+    if (nextState !== this.state) return true;
+
+    // Check domain changes (zoom/pan)
+    const domainsChanged =
+      nextProps.domains?.toString() !== this.props.domains?.toString();
+    if (domainsChanged) return true;
+
+    // Check commonRangeY by reference (memoized in utility.js)
+    if (nextProps.commonRangeY !== this.props.commonRangeY) return true;
+
+    // Check data changes
+    if (nextProps.genome !== this.props.genome) return true;
+
+    // Check visibility/loading state
+    if (
+      nextProps.loading !== this.props.loading ||
+      nextProps.visible !== this.props.visible ||
+      nextProps.inViewport !== this.props.inViewport ||
+      nextProps.error !== this.props.error
+    )
+      return true;
+
+    // Check dimension changes
+    if (
+      nextProps.height !== this.props.height ||
+      nextProps.chromoBins !== this.props.chromoBins
+    )
+      return true;
+
+    return false;
+  }
+
   componentDidMount() {
     this.updateWidth();
     window.addEventListener("resize", this.updateWidth);

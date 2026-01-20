@@ -47,6 +47,47 @@ class ScatterPlotPanel extends Component {
     };
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    // Check state changes
+    if (nextState !== this.state) return true;
+
+    // Check domain changes (zoom/pan)
+    const domainsChanged =
+      nextProps.domains?.toString() !== this.props.domains?.toString();
+    if (domainsChanged) return true;
+
+    // Check commonRangeY by reference (memoized in utility.js)
+    if (nextProps.commonRangeY !== this.props.commonRangeY) return true;
+
+    // Check data changes
+    if (
+      nextProps.dataPointsY1 !== this.props.dataPointsY1 ||
+      nextProps.dataPointsY2 !== this.props.dataPointsY2 ||
+      nextProps.dataPointsX !== this.props.dataPointsX ||
+      nextProps.dataPointsColor !== this.props.dataPointsColor
+    )
+      return true;
+
+    // Check visibility/loading state
+    if (
+      nextProps.loading !== this.props.loading ||
+      nextProps.visible !== this.props.visible ||
+      nextProps.inViewport !== this.props.inViewport ||
+      nextProps.error !== this.props.error
+    )
+      return true;
+
+    // Check dimension changes
+    if (
+      nextProps.height !== this.props.height ||
+      nextProps.chromoBins !== this.props.chromoBins
+    )
+      return true;
+
+    // Nothing relevant changed, skip render
+    return false;
+  }
+
   componentDidMount() {
     this.updateWidth();
     window.addEventListener("resize", this.updateWidth);
@@ -102,6 +143,7 @@ class ScatterPlotPanel extends Component {
   };
 
   render() {
+
     const {
       t,
       loading,

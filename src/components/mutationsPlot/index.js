@@ -2,12 +2,14 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { throttle } from "lodash";
 import * as d3 from "d3";
-import { Stage, Layer, Path } from "react-konva";
+import { Stage, Layer, Path, Group } from "react-konva";
 import Wrapper from "./index.style";
 import { measureText, merge } from "../../helpers/utility";
 import Grid from "../grid/index";
 import settingsActions from "../../redux/settings/actions";
+import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -26,19 +28,29 @@ class MutationsPlot extends Component {
     this.container = null;
     this.grid = null;
     this.konvaStage = null;
-    let currentTransform = null;
+    this.konvaLayer = null;
+
     this.state = {
-      currentTransform,
       showGrid: true,
-      tooltip: {
-        visible: false,
-        shapeId: -1,
-        x: -1000,
-        y: -1000,
-        text: "",
-      },
     };
-    this.updateDomains = this.props.updateDomains;
+
+    // For imperative tooltip (bypass React state)
+    this.tooltipShapeId = null;
+    this.tooltipElement = null;
+
+    // RAF-throttled dispatch to reduce Redux updates during zoom
+    this.rafId = null;
+    this.syncDomainsToRedux = (newDomains) => {
+      if (this.rafId) {
+        cancelAnimationFrame(this.rafId);
+      }
+      this.rafId = requestAnimationFrame(() => {
+        this.rafId = null;
+        this.props.updateDomains(newDomains);
+      });
+    };
+
+    this.pendingDomains = null;
   }
 
   updatePanels() {
@@ -138,15 +150,13 @@ class MutationsPlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
+    // Allow re-render for data changes and domain changes
+    // Domain changes need re-render because intervals are filtered per-viewport
     return (
       nextProps.genome.toString() !== this.props.genome.toString() ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
-      nextState.tooltip.shapeId !== this.state.tooltip.shapeId ||
       nextProps.width !== this.props.width ||
       nextProps.height !== this.props.height ||
-      nextProps.hoveredLocation !== this.props.hoveredLocation ||
-      nextProps.hoveredLocationPanelIndex !==
-        this.props.hoveredLocationPanelIndex ||
       nextProps.commonYScale !== this.props.commonYScale ||
       nextProps.commonRangeY !== this.props.commonRangeY
     );
@@ -179,41 +189,51 @@ class MutationsPlot extends Component {
             .translate(-s[0], 0)
         );
     });
+
+    // Subscribe to Redux store for hover updates (bypassing React)
+    this.unsubscribeHover = store.subscribe(() => {
+      const state = store.getState();
+      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
+      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
+    });
   }
 
-  componentDidUpdate() {
-    const {
-      domains,
-      hoveredLocationPanelIndex,
-      hoveredLocation,
-      chromoBins,
-      zoomedByCmd,
-    } = this.props;
-    this.panels.forEach((panel, index) => {
-      let domain = domains[index];
-      var s = [
-        panel.panelGenomeScale(domain[0]),
-        panel.panelGenomeScale(domain[1]),
-      ];
-      d3.select(this.container)
-        .select(`#panel-rect-${index}`)
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          )
-        );
-      d3.select(this.container)
-        .select(`#panel-rect-${index}`)
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          ).transform,
-          d3.zoomIdentity
-            .scale(panel.panelWidth / (s[1] - s[0]))
-            .translate(-s[0], 0)
-        );
-    });
+  componentDidUpdate(prevProps) {
+    const { domains, zoomedByCmd } = this.props;
+
+    // Update D3 zoom transforms when domains change
+    const domainsChanged = prevProps.domains.toString() !== domains.toString();
+    if (domainsChanged) {
+      this.panels.forEach((panel, index) => {
+        const domain = domains[index];
+        const s = [
+          panel.panelGenomeScale(domain[0]),
+          panel.panelGenomeScale(domain[1]),
+        ];
+        d3.select(this.container)
+          .select(`#panel-rect-${index}`)
+          .attr("preserveAspectRatio", "xMinYMin meet")
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            )
+          );
+        d3.select(this.container)
+          .select(`#panel-rect-${index}`)
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            ).transform,
+            d3.zoomIdentity
+              .scale(panel.panelWidth / (s[1] - s[0]))
+              .translate(-s[0], 0)
+          );
+      });
+    }
+  }
+
+  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
+    const { chromoBins } = this.props;
 
     if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.container)
@@ -247,6 +267,17 @@ class MutationsPlot extends Component {
               )
             )
         );
+    }
+  }
+
+  componentWillUnmount() {
+    // Cancel any pending RAF
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+    }
+    // Unsubscribe from hover updates
+    if (this.unsubscribeHover) {
+      this.unsubscribeHover();
     }
   }
 
@@ -291,83 +322,18 @@ class MutationsPlot extends Component {
 
     newDomains[index] = selection;
 
-    if (newDomains.toString() !== this.props.domains.toString()) {
-      this.setState({ domains: newDomains }, () => {
-        this.updateDomains(newDomains);
-      });
+    // RAF-throttled dispatch to Redux
+    const newDomainsStr = newDomains.toString();
+    const pendingDomainsStr = this.pendingDomains?.toString();
+    if (newDomainsStr !== pendingDomainsStr) {
+      this.pendingDomains = newDomains;
+      this.syncDomainsToRedux(newDomains);
     }
   }
 
   zoomEnded(event, index) {
     this.zooming(event, index);
   }
-
-  handleMouseMove = (e) => {
-    const { width, height, genome } = this.props;
-    const { intervals } = genome;
-
-    // Check if it's a Konva event (for path elements)
-    let primaryKey, shapeClass, shapeType;
-    if (e.target?.attrs) {
-      // Konva event
-      primaryKey = e.target.attrs.id;
-      shapeType = e.target.attrs.type;
-      shapeClass = e.target.attrs.className;
-    } else if (e.target) {
-      // SVG event
-      primaryKey = d3.select(e.target).attr("id");
-      shapeClass = d3.select(e.target).attr("class");
-      shapeType = d3.select(e.target).attr("type");
-    }
-
-    let shape = null;
-    if (primaryKey && shapeClass !== "zoom-background") {
-      if (shapeType === "interval") {
-        shape = intervals.find((e) => e.primaryKey === primaryKey);
-      }
-      if (shape) {
-        // Get position - works for both SVG and Konva
-        let offsetX, offsetY;
-        if (e.target?.getStage) {
-          // Konva event
-          const pos = e.target.getStage().getPointerPosition();
-          offsetX = pos.x;
-          offsetY = pos.y;
-        } else {
-          // SVG event
-          offsetX = e.nativeEvent.offsetX;
-          offsetY = e.nativeEvent.offsetY;
-        }
-
-        let diffY = d3.min([
-          0,
-          height - offsetY - shape.tooltipContent.length * 16 - 12,
-        ]);
-        let diffX = d3.min([
-          0,
-          width -
-            offsetX -
-            d3.max(shape.tooltipContent, (d) =>
-              measureText(`${d.label}: ${d.value}`, 12)
-            ) -
-            30,
-        ]);
-        this.state.tooltip.shapeId !== shape.primaryKey &&
-          this.setState({
-            tooltip: {
-              shapeId: shape.primaryKey,
-              visible: true,
-              x: offsetX + diffX,
-              y: offsetY + diffY,
-              text: shape.tooltipContent,
-            },
-          });
-      }
-    } else {
-      this.state.tooltip.visible &&
-        this.setState({ tooltip: { shapeId: null, visible: false } });
-    }
-  };
 
   handleIntervalClick(panelIndex, shape, padding = 1000) {
     // center this interval in the viewport
@@ -376,7 +342,7 @@ class MutationsPlot extends Component {
       shape.startPlace - padding,
       shape.endPlace + padding,
     ];
-    this.updateDomains(newDomains);
+    this.syncDomainsToRedux(newDomains);
   }
 
   handleMutationClick(panelIndex, shape, padding = 30) {
@@ -384,23 +350,67 @@ class MutationsPlot extends Component {
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
     newDomains[panelIndex] = [midPoint - padding - 2, midPoint + padding];
-    this.updateDomains(newDomains);
+    this.syncDomainsToRedux(newDomains);
+  }
+
+  throttledUpdateHoveredLocation = throttle((location, panelIndex) => {
+    this.props.updateHoveredLocation(location, panelIndex);
+  }, 16, { leading: true, trailing: false });
+
+  // Get mouse position in Konva coordinate space
+  getKonvaCoords(e, panelIndex) {
+    const panel = this.panels[panelIndex];
+    const pointerPos = d3.pointer(e);
+
+    // Coordinates relative to Stage
+    const konvaX = margins.gapX + panel.offset + pointerPos[0];
+    const konvaY = margins.gap + pointerPos[1];
+
+    return { konvaX, konvaY };
+  }
+
+  // Update tooltip imperatively (bypass React state)
+  updateTooltip(visible, x, y, text, shapeId) {
+    if (!this.tooltipElement) return;
+
+    if (visible && text) {
+      const tooltipWidth = d3.max(text, (d) => measureText(`${d.label}: ${d.value}`, 12) + 30);
+      const tooltipHeight = text.length * 16 + 12;
+
+      d3.select(this.tooltipElement)
+        .attr("transform", `translate(${x}, ${y})`)
+        .style("display", "block");
+
+      d3.select(this.tooltipElement).select("rect")
+        .attr("width", tooltipWidth)
+        .attr("height", tooltipHeight);
+
+      const textEl = d3.select(this.tooltipElement).select("text");
+      textEl.selectAll("tspan").remove();
+      text.forEach((d, i) => {
+        textEl.append("tspan")
+          .attr("x", 10)
+          .attr("y", 18 + i * 16)
+          .html(`<tspan style="font-weight:bold">${d.label}</tspan>: ${d.value}`);
+      });
+
+      this.tooltipShapeId = shapeId;
+    } else {
+      d3.select(this.tooltipElement).style("display", "none");
+      this.tooltipShapeId = null;
+    }
   }
 
   handlePanelMouseMove = (e, panelIndex) => {
     if (panelIndex > -1) {
-      this.props.updateHoveredLocation(
+      this.throttledUpdateHoveredLocation(
         this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
         panelIndex
       );
 
       // Check if there's a Konva shape at the mouse position for tooltip
       if (this.konvaStage) {
-        const panel = this.panels[panelIndex];
-        const pointerPos = d3.pointer(e);
-
-        const konvaX = margins.gapX + panel.offset + pointerPos[0];
-        const konvaY = margins.gap + pointerPos[1];
+        const { konvaX, konvaY } = this.getKonvaCoords(e, panelIndex);
 
         const shape = this.konvaStage.getIntersection({ x: konvaX, y: konvaY });
 
@@ -426,16 +436,14 @@ class MutationsPlot extends Component {
                 30,
             ]);
 
-            if (this.state.tooltip.shapeId !== interval.primaryKey) {
-              this.setState({
-                tooltip: {
-                  shapeId: interval.primaryKey,
-                  visible: true,
-                  x: e.nativeEvent.offsetX + diffX,
-                  y: e.nativeEvent.offsetY + diffY,
-                  text: interval.tooltipContent,
-                },
-              });
+            if (this.tooltipShapeId !== interval.primaryKey) {
+              this.updateTooltip(
+                true,
+                e.nativeEvent.offsetX + diffX,
+                e.nativeEvent.offsetY + diffY,
+                interval.tooltipContent,
+                interval.primaryKey
+              );
             }
             return;
           }
@@ -443,8 +451,8 @@ class MutationsPlot extends Component {
       }
 
       // No shape found, hide tooltip
-      if (this.state.tooltip.visible) {
-        this.setState({ tooltip: { shapeId: null, visible: false } });
+      if (this.tooltipShapeId) {
+        this.updateTooltip(false);
       }
     }
   };
@@ -453,18 +461,15 @@ class MutationsPlot extends Component {
     if (panelIndex > -1) {
       this.props.updateHoveredLocation(null, panelIndex);
       // Clear tooltip when mouse leaves panel
-      if (this.state.tooltip.visible) {
-        this.setState({ tooltip: { shapeId: null, visible: false } });
+      if (this.tooltipShapeId) {
+        this.updateTooltip(false);
       }
     }
   };
 
   handlePanelClick = (e, panelIndex) => {
     if (panelIndex > -1 && this.konvaStage) {
-      const panel = this.panels[panelIndex];
-      const pointerPos = d3.pointer(e);
-      const konvaX = margins.gapX + panel.offset + pointerPos[0];
-      const konvaY = margins.gap + pointerPos[1];
+      const { konvaX, konvaY } = this.getKonvaCoords(e, panelIndex);
 
       const shape = this.konvaStage.getIntersection({ x: konvaX, y: konvaY });
       if (shape && shape.attrs.id && shape.attrs.type === "interval") {
@@ -481,9 +486,12 @@ class MutationsPlot extends Component {
   render() {
     const { width, height, annotation, yAxisTitle, yAxis2Title, chromoBins } =
       this.props;
-    const { stageWidth, stageHeight, tooltip } = this.state;
     this.updatePanels();
     let randID = Math.random();
+
+    // Calculate stage dimensions for clip paths
+    const stageWidth = width - 2 * margins.gapX;
+    const stageHeight = height - 3 * margins.gap;
 
     return (
       <Wrapper className="ant-wrapper">
@@ -583,72 +591,58 @@ class MutationsPlot extends Component {
                 </g>
               ))}
             </g>
-            {tooltip.visible && (
-              <g
-                className="tooltip"
-                transform={`translate(${[tooltip.x, tooltip.y]})`}
-                pointerEvents="none"
-              >
-                <rect
-                  x="0"
-                  y="0"
-                  width={d3.max(
-                    tooltip.text,
-                    (d) => measureText(`${d.label}: ${d.value}`, 12) + 30
-                  )}
-                  height={tooltip.text.length * 16 + 12}
-                  rx="5"
-                  ry="5"
-                  fill="rgb(97, 97, 97)"
-                  fillOpacity="0.67"
-                />
-                <text x="10" y="28" fontSize="12" fill="#FFF">
-                  {tooltip.text.map((d, i) => (
-                    <tspan key={i} x={10} y={18 + i * 16}>
-                      <tspan fontWeight="bold">{d.label}</tspan>: {d.value}
-                    </tspan>
-                  ))}
-                </text>
-              </g>
-            )}
+            {/* Tooltip - always present, visibility controlled imperatively */}
+            <g
+              className="tooltip"
+              ref={(elem) => (this.tooltipElement = elem)}
+              style={{ display: "none" }}
+              pointerEvents="none"
+            >
+              <rect
+                x="0"
+                y="0"
+                width={100}
+                height={50}
+                rx="5"
+                ry="5"
+                fill="rgb(97, 97, 97)"
+                fillOpacity="0.67"
+              />
+              <text x="10" y="28" fontSize="12" fill="#FFF"></text>
+            </g>
           </svg>
 
-          {/* Konva layer ONLY for path elements (mutations) */}
+          {/* Konva layer for mutation path elements */}
           <Stage
             width={width}
             height={height}
             className="konva-stage"
             ref={(elem) => (this.konvaStage = elem)}
           >
-            <Layer>
-              {/* Mutation paths in Konva */}
+            <Layer ref={(elem) => (this.konvaLayer = elem)}>
               {this.panels.map((panel, panelIdx) => (
-                <React.Fragment key={`konva-panel-${panel.index}`}>
+                <Group
+                  key={`konva-panel-${panel.index}`}
+                  x={margins.gapX + panel.offset}
+                  y={margins.gap}
+                >
                   {panel.intervals.map((d, idx) => (
                     <Path
-                      key={idx}
+                      key={d.primaryKey || idx}
                       id={d.primaryKey}
                       type="interval"
                       data={d.mutationSymbol}
-                      x={
-                        margins.gapX +
-                        panel.offset +
-                        panel.xScale(
-                          Math.floor((d.startPlace + d.endPlace) / 2) - 1
-                        )
-                      }
-                      y={margins.gap + panel.yScale(d.y)}
-                      fill={
-                        d.primaryKey === tooltip.shapeId
-                          ? "#ff7f0e"
-                          : d.fill || d.color
-                      }
+                      x={panel.xScale(
+                        Math.floor((d.startPlace + d.endPlace) / 2) - 1
+                      )}
+                      y={panel.yScale(d.y)}
+                      fill={d.fill || d.color}
                       stroke={d.stroke}
-                      strokeWidth={d.primaryKey === tooltip.shapeId ? 1.5 : 1}
+                      strokeWidth={1}
                       opacity={d.isProteinCoded ? 1 : 0.33}
                     />
                   ))}
-                </React.Fragment>
+                </Group>
               ))}
             </Layer>
           </Stage>

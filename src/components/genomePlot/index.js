@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { throttle } from "lodash";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import Connection from "../../helpers/connection";
@@ -13,6 +14,7 @@ import {
 } from "../../helpers/utility";
 import Grid from "../grid/index";
 import settingsActions from "../../redux/settings/actions";
+import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -42,8 +44,20 @@ class GenomePlot extends Component {
         text: "",
       },
     };
-    //this.updateDomains = debounce(this.props.updateDomains, 100);
-    this.updateDomains = this.props.updateDomains;
+    // Use RAF-throttled dispatch to limit to one dispatch per frame
+    this.rafId = null;
+    this.updateDomains = (newDomains) => {
+      // Cancel any pending RAF to ensure only latest domains are dispatched
+      if (this.rafId) {
+        cancelAnimationFrame(this.rafId);
+      }
+      this.rafId = requestAnimationFrame(() => {
+        this.rafId = null;
+        this.props.updateDomains(newDomains);
+      });
+    };
+    // Track pending domains to avoid duplicate Redux dispatches
+    this.pendingDomains = null;
   }
 
   updatePanels() {
@@ -152,16 +166,19 @@ class GenomePlot extends Component {
             (!e.sink ||
               (e.sink.place <= domain[1] && e.sink.place >= domain[0]))
         )
-        .forEach((connection, j) => {
-          connection.fragment = panel;
+        .forEach((conn, j) => {
+          // Create copy preserving prototype (for getters like transform, render)
+          let connection = Object.create(
+            Object.getPrototypeOf(conn),
+            Object.getOwnPropertyDescriptors(conn)
+          );
           if (connection.source) {
-            connection.source.scale = scale;
-            connection.source.fragment = panel;
+            connection.source = { ...connection.source, scale, fragment: panel };
           }
           if (connection.sink) {
-            connection.sink.scale = scale;
-            connection.sink.fragment = panel;
+            connection.sink = { ...connection.sink, scale, fragment: panel };
           }
+          connection.fragment = panel;
           connection.touchScale = scale;
           connection.identifier = guid();
           this.connections.push(connection);
@@ -182,7 +199,14 @@ class GenomePlot extends Component {
                 e.sink.place <= pair[0].domain[1] &&
                 e.sink.place >= pair[0].domain[0]))
         )
-        .forEach((connection, j) => {
+        .forEach((conn, j) => {
+          // Create copy preserving prototype (for getters like transform, render)
+          let connection = Object.create(
+            Object.getPrototypeOf(conn),
+            Object.getOwnPropertyDescriptors(conn)
+          );
+          connection.source = { ...connection.source };
+          connection.sink = { ...connection.sink };
           if (
             connection.source.place <= pair[0].domain[1] &&
             connection.source.place >= pair[0].domain[0]
@@ -230,19 +254,18 @@ class GenomePlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    return (
-      nextProps.genome.toString() !== this.props.genome.toString() ||
-      nextProps.domains.toString() !== this.props.domains.toString() ||
-      nextState.tooltip.shapeId !== this.state.tooltip.shapeId ||
-      nextProps.annotation !== this.props.annotation ||
-      nextProps.width !== this.props.width ||
-      nextProps.height !== this.props.height ||
-      nextProps.hoveredLocation !== this.props.hoveredLocation ||
-      nextProps.hoveredLocationPanelIndex !==
-        this.props.hoveredLocationPanelIndex ||
-      nextProps.commonYScale !== this.props.commonYScale ||
-      nextProps.commonRangeY !== this.props.commonRangeY
-    );
+    const genomeChanged = nextProps.genome.toString() !== this.props.genome.toString();
+    const domainsChanged = nextProps.domains.toString() !== this.props.domains.toString();
+    const tooltipChanged = nextState.tooltip.shapeId !== this.state.tooltip.shapeId;
+    const annotationChanged = nextProps.annotation !== this.props.annotation;
+    const widthChanged = nextProps.width !== this.props.width;
+    const heightChanged = nextProps.height !== this.props.height;
+    const commonYScaleChanged = nextProps.commonYScale !== this.props.commonYScale;
+    const commonRangeYChanged = nextProps.commonRangeY !== this.props.commonRangeY;
+
+    return genomeChanged || domainsChanged || tooltipChanged ||
+      annotationChanged || widthChanged || heightChanged ||
+      commonYScaleChanged || commonRangeYChanged;
   }
 
   componentDidMount() {
@@ -272,41 +295,53 @@ class GenomePlot extends Component {
             .translate(-s[0], 0)
         );
     });
+
+    // Subscribe to Redux store for hover updates (bypassing React)
+    this.unsubscribeHover = store.subscribe(() => {
+      const state = store.getState();
+      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
+      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
+    });
   }
 
-  componentDidUpdate() {
-    const {
-      domains,
-      hoveredLocationPanelIndex,
-      hoveredLocation,
-      chromoBins,
-      zoomedByCmd,
-    } = this.props;
-    this.panels.forEach((panel, index) => {
-      let domain = domains[index];
-      var s = [
-        panel.panelGenomeScale(domain[0]),
-        panel.panelGenomeScale(domain[1]),
-      ];
-      d3.select(this.container)
-        .select(`#panel-rect-${index}`)
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          )
-        );
-      d3.select(this.container)
-        .select(`#panel-rect-${index}`)
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          ).transform,
-          d3.zoomIdentity
-            .scale(panel.panelWidth / (s[1] - s[0]))
-            .translate(-s[0], 0)
-        );
-    });
+  componentDidUpdate(prevProps) {
+    const { domains, zoomedByCmd } = this.props;
+
+    // Only run expensive zoom transforms if domains changed
+    const domainsChanged = prevProps.domains.toString() !== domains.toString();
+    if (domainsChanged) {
+      // Clear pending flag - Redux has processed our dispatch
+      this.pendingDomains = null;
+      this.panels.forEach((panel, index) => {
+        let domain = domains[index];
+        var s = [
+          panel.panelGenomeScale(domain[0]),
+          panel.panelGenomeScale(domain[1]),
+        ];
+        d3.select(this.container)
+          .select(`#panel-rect-${index}`)
+          .attr("preserveAspectRatio", "xMinYMin meet")
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            )
+          );
+        d3.select(this.container)
+          .select(`#panel-rect-${index}`)
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            ).transform,
+            d3.zoomIdentity
+              .scale(panel.panelWidth / (s[1] - s[0]))
+              .translate(-s[0], 0)
+          );
+      });
+    }
+  }
+
+  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
+    const { chromoBins } = this.props;
 
     if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.container)
@@ -340,6 +375,17 @@ class GenomePlot extends Component {
               )
             )
         );
+    }
+  }
+
+  componentWillUnmount() {
+    // Unsubscribe from hover updates
+    if (this.unsubscribeHover) {
+      this.unsubscribeHover();
+    }
+    // Cancel any pending RAF
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
     }
   }
 
@@ -384,14 +430,20 @@ class GenomePlot extends Component {
 
     newDomains[index] = selection;
 
-    if (newDomains.toString() !== this.props.domains.toString()) {
-      this.setState({ domains: newDomains }, () => {
-        this.updateDomains(newDomains);
-      });
+    const newDomainsStr = newDomains.toString();
+    const propsDomainsStr = this.props.domains.toString();
+    const pendingDomainsStr = this.pendingDomains?.toString();
+
+    // Skip if domains match current props OR if we've already dispatched these domains
+    if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
+      this.pendingDomains = newDomains;
+      this.updateDomains(newDomains);
     }
   }
 
   zoomEnded(event, index) {
+    // Just ensure final position is dispatched - don't clear pending flag here
+    // The flag will be cleared when componentDidUpdate confirms Redux processed it
     this.zooming(event, index);
   }
 
@@ -479,14 +531,14 @@ class GenomePlot extends Component {
     this.updateDomains(newDomains);
   }
 
-  handlePanelMouseMove = (e, panelIndex) => {
+  handlePanelMouseMove = throttle((e, panelIndex) => {
     if (panelIndex > -1) {
       this.props.updateHoveredLocation(
         this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
         panelIndex
       );
     }
-  };
+  }, 16, { leading: true, trailing: false });
 
   handlePanelMouseOut = (e, panelIndex) => {
     if (panelIndex > -1) {
@@ -501,7 +553,7 @@ class GenomePlot extends Component {
     this.updatePanels();
     let randID = Math.random();
 
-    return (
+    const result = (
       <Wrapper className="ant-wrapper">
         <svg
           width={width}
@@ -622,7 +674,13 @@ class GenomePlot extends Component {
                   }}
                 />
                 <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
-                  {panel.intervals.map((d, i) => (
+                  {panel.intervals
+                    .filter((d) => {
+                      // Cull elements smaller than 1px - invisible when zoomed out
+                      const width = panel.xScale(d.endPlace) - panel.xScale(d.startPlace);
+                      return width >= 1;
+                    })
+                    .map((d, i) => (
                     <rect
                       id={d.primaryKey}
                       type="interval"
@@ -667,7 +725,21 @@ class GenomePlot extends Component {
               </g>
             ))}
             <g clipPath="url(#cuttOffViewPaneii)">
-              {this.connections.map((d, i) => (
+              {this.connections
+                .filter((d) => {
+                  // Always show ANCHOR connections (one end is off-screen)
+                  if (d.kind === "ANCHOR") return true;
+                  // For regular connections, check if endpoints are far enough apart to see
+                  if (d.source?.scale && d.sink?.scale) {
+                    const sourceX = d.source.scale(d.source.place);
+                    const sinkX = d.sink.scale(d.sink.place);
+                    const pixelDistance = Math.abs(sinkX - sourceX);
+                    // Cull connections smaller than 3 pixels
+                    return pixelDistance >= 3;
+                  }
+                  return true;
+                })
+                .map((d, i) => (
                 <path
                   id={d.primaryKey}
                   type="connection"
@@ -725,6 +797,7 @@ class GenomePlot extends Component {
         </svg>
       </Wrapper>
     );
+    return result;
   }
 }
 GenomePlot.propTypes = {
