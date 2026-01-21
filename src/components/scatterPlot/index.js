@@ -27,6 +27,10 @@ class ScatterPlot extends Component {
   extentDataPointsY2 = null;
   maxY2Values = null;
 
+  // Debounced percentile computation
+  _maxY2ComputeTimer = null;
+  _cachedMaxY2Domains = null;
+
   constructor(props) {
     super(props);
 
@@ -214,6 +218,10 @@ class ScatterPlot extends Component {
       cancelAnimationFrame(this.rafId);
     }
 
+    if (this._maxY2ComputeTimer) {
+      clearTimeout(this._maxY2ComputeTimer);
+    }
+
     if (this.unsubscribeHover) {
       this.unsubscribeHover();
     }
@@ -366,14 +374,35 @@ class ScatterPlot extends Component {
     let panelHeight = stageHeight;
     this.panels = [];
 
-    if (!commonRangeY) {
-      this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
-    }
-
     this.extentDataPointsY1 =
       this.extentDataPointsY1 || d3.extent(dataPointsY1);
     this.extentDataPointsY2 =
       this.extentDataPointsY2 || d3.extent(dataPointsY2);
+
+    if (!commonRangeY) {
+      const domainsKey = domains.map((d) => `${d[0]}-${d[1]}`).join("|");
+      const domainsChanged = this._cachedMaxY2Domains !== domainsKey;
+
+      if (domainsChanged) {
+        // Use fallback immediately (global max) for responsive interaction
+        if (!this.maxY2Values) {
+          this.maxY2Values = domains.map(() => this.extentDataPointsY2[1]);
+        }
+
+        // Cancel pending computation
+        if (this._maxY2ComputeTimer) {
+          clearTimeout(this._maxY2ComputeTimer);
+        }
+
+        // Schedule accurate computation after interaction settles
+        this._maxY2ComputeTimer = setTimeout(() => {
+          this._maxY2ComputeTimer = null;
+          this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+          this._cachedMaxY2Domains = domainsKey;
+          this.updateStage(false);
+        }, 150);
+      }
+    }
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);
