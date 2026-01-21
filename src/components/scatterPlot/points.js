@@ -13,8 +13,6 @@ class Points {
     this.width = 1;
     this.height = 1;
 
-    // Create density framebuffer (will be resized in updateDomains)
-    // Note: OES_texture_float extension is enabled in the parent regl context
     this.densityTexture = regl.texture({
       width: 1,
       height: 1,
@@ -32,7 +30,6 @@ class Points {
 
     const positions = [[0.0, 0.0]];
 
-    // Pass 1: Accumulate density into float texture with additive blending
     this.densityCommand = regl({
       frag: `
         precision highp float;
@@ -44,7 +41,6 @@ class Points {
           if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
             discard;
           }
-          // Each point contributes 1.0 to density (matches main branch behavior)
           gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
         }
       `,
@@ -147,7 +143,6 @@ class Points {
       },
     });
 
-    // Pass 2: Render with depth culling, sampling density for opacity
     this.drawCommand = regl({
       frag: `
         precision highp float;
@@ -164,10 +159,6 @@ class Points {
             discard;
           }
 
-          // Sample density and emulate natural blending at alpha=0.5
-          // Natural blending result: final = pointColor * (1 - 0.5^n) + white * 0.5^n
-          // For canvas compositing over white: final = fb.rgb + (1 - fb.alpha) * white
-          // So we output: fb.rgb = pointColor * blend, fb.alpha = blend
           float density = max(1.0, texture2D(densityTexture, vTexCoord).r);
           float blend = 1.0 - pow(0.5, density);
 
@@ -229,11 +220,8 @@ class Points {
           vec2 clip = normalizeCoords(vec2(vecX + offsetX, vecY - offsetY));
           clip.y = clamp(clip.y, -1.0, 1.0);
 
-          // Texture coordinates for sampling density (0-1 range)
           vTexCoord = vec2(clip.x * 0.5 + 0.5, clip.y * 0.5 + 0.5);
 
-          // Use normalized X position as Z for depth culling
-          // Lower Z wins with depth func 'less', so leftmost point per pixel survives
           float z = clip.x * 0.5 + 0.5;
 
           gl_PointSize = pointSize;
@@ -275,14 +263,12 @@ class Points {
         maxDensity: regl.prop("maxDensity"),
       },
 
-      // Depth culling for performance - leftmost point per pixel wins
       depth: {
         enable: true,
         mask: true,
         func: "less",
         range: [0, 1],
       },
-      // Premultiplied alpha blending - shader outputs (color*blend, blend)
       blend: {
         enable: true,
         func: {
@@ -295,7 +281,6 @@ class Points {
       },
     });
 
-    // Configurable max density for opacity scaling
     this.maxDensity = 50.0;
   }
 
@@ -308,7 +293,6 @@ class Points {
   }
 
   updateDomains(width, height, domains, maxYValues) {
-    // Resize density texture if dimensions changed
     if (this.width !== width || this.height !== height) {
       this.width = width;
       this.height = height;
@@ -369,7 +353,6 @@ class Points {
 
   render() {
     try {
-      // Pass 1: Clear and render density accumulation
       this.regl.clear({
         color: [0, 0, 0, 0],
         depth: false,
@@ -378,7 +361,6 @@ class Points {
       });
       this.densityCommand(this.dataBufferList);
 
-      // Pass 2: Clear screen and render final output with depth culling + density opacity
       this.regl.clear({
         color: [0, 0, 0, 0],
         depth: 1,
@@ -391,7 +373,6 @@ class Points {
     }
   }
 
-  // Allow configuring max density for opacity scaling
   setMaxDensity(maxDensity) {
     this.maxDensity = maxDensity;
     if (this.dataBufferList) {

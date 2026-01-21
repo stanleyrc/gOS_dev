@@ -30,7 +30,6 @@ class ScatterPlot extends Component {
   constructor(props) {
     super(props);
 
-    // RAF-throttled dispatch to limit to one dispatch per frame
     this.rafId = null;
     this.updateDomains = (newDomains) => {
       if (this.rafId) {
@@ -42,7 +41,6 @@ class ScatterPlot extends Component {
       });
     };
 
-    // Track pending domains to avoid duplicate dispatches
     this.pendingDomains = null;
   }
 
@@ -100,7 +98,6 @@ class ScatterPlot extends Component {
 
     this.updateStage(true);
 
-    // Subscribe to Redux store for hover updates (bypassing React)
     this.unsubscribeHover = store.subscribe(() => {
       const state = store.getState();
       const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
@@ -127,10 +124,8 @@ class ScatterPlot extends Component {
   componentDidUpdate(prevProps, prevState) {
     const { domains, zoomedByCmd } = this.props;
 
-    // Only run expensive zoom transforms if domains changed
     const domainsChanged = prevProps.domains.toString() !== domains.toString();
     if (domainsChanged) {
-      // Clear pending flag - Redux has processed our dispatch
       this.pendingDomains = null;
       this.panels.forEach((panel, index) => {
         let domain = domains[index];
@@ -215,12 +210,10 @@ class ScatterPlot extends Component {
   }
 
   componentWillUnmount() {
-    // Cancel any pending RAF
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
 
-    // Unsubscribe from hover updates
     if (this.unsubscribeHover) {
       this.unsubscribeHover();
     }
@@ -237,7 +230,6 @@ class ScatterPlot extends Component {
     }
   }
 
-  // GPU depth buffer handles culling - just pass through data
   getPointsData() {
     const {
       dataPointsXHigh,
@@ -269,7 +261,6 @@ class ScatterPlot extends Component {
     const stageWidth = width - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gapY;
 
-    // GPU depth buffer handles culling - just pass all data
     if (reloadData) {
       const pointsData = this.getPointsData();
       this.points.setData(
@@ -308,7 +299,6 @@ class ScatterPlot extends Component {
         .map((d, i) => d[1])
     );
 
-    // calculate the upper allowed selection edge this brush can move
     let upperEdge = d3.min(
       otherSelections
         .filter(
@@ -317,13 +307,11 @@ class ScatterPlot extends Component {
         .map((d, i) => d[0])
     );
 
-    // if there is an upper edge, then set this to be the upper bound of the current selection
     if (upperEdge !== undefined && selection[1] >= upperEdge) {
       selection[1] = upperEdge;
       selection[0] = d3.min([selection[0], upperEdge - 1]);
     }
 
-    // if there is a lower edge, then set this to the be the lower bound of the current selection
     if (lowerEdge !== undefined && selection[0] <= lowerEdge) {
       selection[0] = lowerEdge;
       selection[1] = d3.max([selection[1], lowerEdge + 1]);
@@ -335,7 +323,6 @@ class ScatterPlot extends Component {
     const propsDomainsStr = this.props.domains.toString();
     const pendingDomainsStr = this.pendingDomains?.toString();
 
-    // Skip if domains match current props OR already pending dispatch
     if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
       this.pendingDomains = newDomains;
       this.updateDomains(newDomains);
@@ -379,7 +366,6 @@ class ScatterPlot extends Component {
     let panelHeight = stageHeight;
     this.panels = [];
 
-    // Only compute maxY2Values when commonRangeY is not set (expensive operation)
     if (!commonRangeY) {
       this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
     }

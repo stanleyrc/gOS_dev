@@ -34,11 +34,9 @@ class MutationsPlot extends Component {
       showGrid: true,
     };
 
-    // For imperative tooltip (bypass React state)
     this.tooltipShapeId = null;
     this.tooltipElement = null;
 
-    // RAF-throttled dispatch to reduce Redux updates during zoom
     this.rafId = null;
     this.syncDomainsToRedux = (newDomains) => {
       if (this.rafId) {
@@ -150,8 +148,6 @@ class MutationsPlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    // Allow re-render for data changes and domain changes
-    // Domain changes need re-render because intervals are filtered per-viewport
     return (
       nextProps.genome.toString() !== this.props.genome.toString() ||
       nextProps.domains.toString() !== this.props.domains.toString() ||
@@ -190,7 +186,6 @@ class MutationsPlot extends Component {
         );
     });
 
-    // Subscribe to Redux store for hover updates (bypassing React)
     this.unsubscribeHover = store.subscribe(() => {
       const state = store.getState();
       const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
@@ -201,7 +196,6 @@ class MutationsPlot extends Component {
   componentDidUpdate(prevProps) {
     const { domains, zoomedByCmd } = this.props;
 
-    // Update D3 zoom transforms when domains change
     const domainsChanged = prevProps.domains.toString() !== domains.toString();
     if (domainsChanged) {
       this.panels.forEach((panel, index) => {
@@ -271,11 +265,9 @@ class MutationsPlot extends Component {
   }
 
   componentWillUnmount() {
-    // Cancel any pending RAF
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
-    // Unsubscribe from hover updates
     if (this.unsubscribeHover) {
       this.unsubscribeHover();
     }
@@ -299,7 +291,6 @@ class MutationsPlot extends Component {
         .map((d, i) => d[1])
     );
 
-    // calculate the upper allowed selection edge this brush can move
     let upperEdge = d3.min(
       otherSelections
         .filter(
@@ -308,13 +299,11 @@ class MutationsPlot extends Component {
         .map((d, i) => d[0])
     );
 
-    // if there is an upper edge, then set this to be the upper bound of the current selection
     if (upperEdge !== undefined && selection[1] >= upperEdge) {
       selection[1] = upperEdge;
       selection[0] = d3.min([selection[0], upperEdge - 1]);
     }
 
-    // if there is a lower edge, then set this to the be the lower bound of the current selection
     if (lowerEdge !== undefined && selection[0] <= lowerEdge) {
       selection[0] = lowerEdge;
       selection[1] = d3.max([selection[1], lowerEdge + 1]);
@@ -322,7 +311,6 @@ class MutationsPlot extends Component {
 
     newDomains[index] = selection;
 
-    // RAF-throttled dispatch to Redux
     const newDomainsStr = newDomains.toString();
     const pendingDomainsStr = this.pendingDomains?.toString();
     if (newDomainsStr !== pendingDomainsStr) {
@@ -336,7 +324,6 @@ class MutationsPlot extends Component {
   }
 
   handleIntervalClick(panelIndex, shape, padding = 1000) {
-    // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     newDomains[panelIndex] = [
       shape.startPlace - padding,
@@ -346,7 +333,6 @@ class MutationsPlot extends Component {
   }
 
   handleMutationClick(panelIndex, shape, padding = 30) {
-    // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
     newDomains[panelIndex] = [midPoint - padding - 2, midPoint + padding];
@@ -357,19 +343,16 @@ class MutationsPlot extends Component {
     this.props.updateHoveredLocation(location, panelIndex);
   }, 16, { leading: true, trailing: false });
 
-  // Get mouse position in Konva coordinate space
   getKonvaCoords(e, panelIndex) {
     const panel = this.panels[panelIndex];
     const pointerPos = d3.pointer(e);
 
-    // Coordinates relative to Stage
     const konvaX = margins.gapX + panel.offset + pointerPos[0];
     const konvaY = margins.gap + pointerPos[1];
 
     return { konvaX, konvaY };
   }
 
-  // Update tooltip imperatively (bypass React state)
   updateTooltip(visible, x, y, text, shapeId) {
     if (!this.tooltipElement) return;
 
@@ -408,7 +391,6 @@ class MutationsPlot extends Component {
         panelIndex
       );
 
-      // Check if there's a Konva shape at the mouse position for tooltip
       if (this.konvaStage) {
         const { konvaX, konvaY } = this.getKonvaCoords(e, panelIndex);
 
@@ -450,7 +432,6 @@ class MutationsPlot extends Component {
         }
       }
 
-      // No shape found, hide tooltip
       if (this.tooltipShapeId) {
         this.updateTooltip(false);
       }
@@ -460,7 +441,6 @@ class MutationsPlot extends Component {
   handlePanelMouseOut = (e, panelIndex) => {
     if (panelIndex > -1) {
       this.props.updateHoveredLocation(null, panelIndex);
-      // Clear tooltip when mouse leaves panel
       if (this.tooltipShapeId) {
         this.updateTooltip(false);
       }
@@ -489,14 +469,12 @@ class MutationsPlot extends Component {
     this.updatePanels();
     let randID = Math.random();
 
-    // Calculate stage dimensions for clip paths
     const stageWidth = width - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gap;
 
     return (
       <Wrapper className="ant-wrapper">
         <div style={{ position: "relative" }}>
-          {/* SVG layer for grid, tooltips, zoom backgrounds, etc. */}
           <svg
             width={width}
             height={height}
@@ -591,7 +569,6 @@ class MutationsPlot extends Component {
                 </g>
               ))}
             </g>
-            {/* Tooltip - always present, visibility controlled imperatively */}
             <g
               className="tooltip"
               ref={(elem) => (this.tooltipElement = elem)}
@@ -612,7 +589,6 @@ class MutationsPlot extends Component {
             </g>
           </svg>
 
-          {/* Konva layer for mutation path elements */}
           <Stage
             width={width}
             height={height}

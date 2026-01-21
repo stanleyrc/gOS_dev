@@ -44,10 +44,8 @@ class GenomePlot extends Component {
         text: "",
       },
     };
-    // Use RAF-throttled dispatch to limit to one dispatch per frame
     this.rafId = null;
     this.updateDomains = (newDomains) => {
-      // Cancel any pending RAF to ensure only latest domains are dispatched
       if (this.rafId) {
         cancelAnimationFrame(this.rafId);
       }
@@ -56,7 +54,6 @@ class GenomePlot extends Component {
         this.props.updateDomains(newDomains);
       });
     };
-    // Track pending domains to avoid duplicate Redux dispatches
     this.pendingDomains = null;
   }
 
@@ -157,7 +154,6 @@ class GenomePlot extends Component {
 
     this.panels.forEach((panel, i) => {
       let { domain, scale } = panel;
-      // filter the connections on same panel
       frameConnections
         .filter(
           (e, j) =>
@@ -167,7 +163,6 @@ class GenomePlot extends Component {
               (e.sink.place <= domain[1] && e.sink.place >= domain[0]))
         )
         .forEach((conn, j) => {
-          // Create copy preserving prototype (for getters like transform, render)
           let connection = Object.create(
             Object.getPrototypeOf(conn),
             Object.getOwnPropertyDescriptors(conn)
@@ -184,7 +179,6 @@ class GenomePlot extends Component {
           this.connections.push(connection);
         });
     });
-    // filter the connections between the visible fragments
     k_combinations(this.panels, 2).forEach((pair, i) => {
       frameConnections
         .filter(
@@ -200,7 +194,6 @@ class GenomePlot extends Component {
                 e.sink.place >= pair[0].domain[0]))
         )
         .forEach((conn, j) => {
-          // Create copy preserving prototype (for getters like transform, render)
           let connection = Object.create(
             Object.getPrototypeOf(conn),
             Object.getOwnPropertyDescriptors(conn)
@@ -231,7 +224,6 @@ class GenomePlot extends Component {
           this.connections.push(connection);
         });
     });
-    // filter the anchor connections
     let visibleConnections = this.connections.map((d, i) => d.cid);
     this.panels.forEach((fragment, i) => {
       frameConnections
@@ -296,7 +288,6 @@ class GenomePlot extends Component {
         );
     });
 
-    // Subscribe to Redux store for hover updates (bypassing React)
     this.unsubscribeHover = store.subscribe(() => {
       const state = store.getState();
       const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
@@ -307,10 +298,8 @@ class GenomePlot extends Component {
   componentDidUpdate(prevProps) {
     const { domains, zoomedByCmd } = this.props;
 
-    // Only run expensive zoom transforms if domains changed
     const domainsChanged = prevProps.domains.toString() !== domains.toString();
     if (domainsChanged) {
-      // Clear pending flag - Redux has processed our dispatch
       this.pendingDomains = null;
       this.panels.forEach((panel, index) => {
         let domain = domains[index];
@@ -379,11 +368,9 @@ class GenomePlot extends Component {
   }
 
   componentWillUnmount() {
-    // Unsubscribe from hover updates
     if (this.unsubscribeHover) {
       this.unsubscribeHover();
     }
-    // Cancel any pending RAF
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
@@ -407,7 +394,6 @@ class GenomePlot extends Component {
         .map((d, i) => d[1])
     );
 
-    // calculate the upper allowed selection edge this brush can move
     let upperEdge = d3.min(
       otherSelections
         .filter(
@@ -416,13 +402,11 @@ class GenomePlot extends Component {
         .map((d, i) => d[0])
     );
 
-    // if there is an upper edge, then set this to be the upper bound of the current selection
     if (upperEdge !== undefined && selection[1] >= upperEdge) {
       selection[1] = upperEdge;
       selection[0] = d3.min([selection[0], upperEdge - 1]);
     }
 
-    // if there is a lower edge, then set this to the be the lower bound of the current selection
     if (lowerEdge !== undefined && selection[0] <= lowerEdge) {
       selection[0] = lowerEdge;
       selection[1] = d3.max([selection[1], lowerEdge + 1]);
@@ -434,7 +418,6 @@ class GenomePlot extends Component {
     const propsDomainsStr = this.props.domains.toString();
     const pendingDomainsStr = this.pendingDomains?.toString();
 
-    // Skip if domains match current props OR if we've already dispatched these domains
     if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
       this.pendingDomains = newDomains;
       this.updateDomains(newDomains);
@@ -442,8 +425,6 @@ class GenomePlot extends Component {
   }
 
   zoomEnded(event, index) {
-    // Just ensure final position is dispatched - don't clear pending flag here
-    // The flag will be cleared when componentDidUpdate confirms Redux processed it
     this.zooming(event, index);
   }
 
@@ -514,7 +495,6 @@ class GenomePlot extends Component {
   }
 
   handleIntervalClick(panelIndex, shape, padding = 1000) {
-    // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     newDomains[panelIndex] = [
       shape.startPlace - padding,
@@ -524,7 +504,6 @@ class GenomePlot extends Component {
   }
 
   handleMutationClick(panelIndex, shape, padding = 30) {
-    // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
     newDomains[panelIndex] = [midPoint - padding - 2, midPoint + padding];

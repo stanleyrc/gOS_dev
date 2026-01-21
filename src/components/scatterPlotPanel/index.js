@@ -48,18 +48,14 @@ class ScatterPlotPanel extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    // Check state changes
     if (nextState !== this.state) return true;
 
-    // Check domain changes (zoom/pan)
     const domainsChanged =
       nextProps.domains?.toString() !== this.props.domains?.toString();
     if (domainsChanged) return true;
 
-    // Check commonRangeY by reference (memoized in utility.js)
     if (nextProps.commonRangeY !== this.props.commonRangeY) return true;
 
-    // Check data changes
     if (
       nextProps.dataPointsY1 !== this.props.dataPointsY1 ||
       nextProps.dataPointsY2 !== this.props.dataPointsY2 ||
@@ -68,7 +64,6 @@ class ScatterPlotPanel extends Component {
     )
       return true;
 
-    // Check visibility/loading state
     if (
       nextProps.loading !== this.props.loading ||
       nextProps.visible !== this.props.visible ||
@@ -77,14 +72,12 @@ class ScatterPlotPanel extends Component {
     )
       return true;
 
-    // Check dimension changes
     if (
       nextProps.height !== this.props.height ||
       nextProps.chromoBins !== this.props.chromoBins
     )
       return true;
 
-    // Nothing relevant changed, skip render
     return false;
   }
 
@@ -94,7 +87,6 @@ class ScatterPlotPanel extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Check if the parent width has changed after the update
     if (prevState.parentWidth !== this.state.parentWidth) {
       this.updateWidth();
     }
@@ -112,7 +104,6 @@ class ScatterPlotPanel extends Component {
     }
   };
 
-  // On top layout
   onFirstBoxResize = (event, { element, size, handle }) => {
     this.setState({
       width: size.width,
@@ -168,7 +159,6 @@ class ScatterPlotPanel extends Component {
     if (!visible) return null;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
-    //if (!data) return null;
     let w = parentWidth || this.container?.getBoundingClientRect().width;
     let h = height;
     return (

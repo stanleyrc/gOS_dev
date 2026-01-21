@@ -4,14 +4,12 @@ import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
 
-// Split a float64 number into high and low float32 components
 export function splitFloat64(x) {
   const high = Math.fround(x); // nearest float32
   const low = x - high;
   return [high, low];
 }
 
-// Cache for dataRanges to avoid creating new array references
 let _dataRangesCache = {
   domains: null,
   genome: null,
@@ -55,19 +53,16 @@ export function dataRanges(domains, genome) {
     .nice();
   const newResult = yScale.domain();
 
-  // If computed values match cached result, return cached reference to prevent re-renders
   if (
     _dataRangesCache.result &&
     _dataRangesCache.result[0] === newResult[0] &&
     _dataRangesCache.result[1] === newResult[1]
   ) {
-    // Update domains cache but keep same result reference
     _dataRangesCache.domains = domains.map((d) => [...d]);
     _dataRangesCache.genome = genome;
     return _dataRangesCache.result;
   }
 
-  // Update cache with new result
   _dataRangesCache = {
     domains: domains.map((d) => [...d]),
     genome,
@@ -771,8 +766,6 @@ export function cluster(
   ]);
 }
 
-// returns the maximum Y value within the domains array as applied to the dataPointsX
-// Cache for findMaxInRanges to avoid recomputation on same domains
 let _findMaxCache = {
   domains: null,
   dataPointsX: null,
@@ -780,26 +773,13 @@ let _findMaxCache = {
   result: null,
 };
 
-// TEST FLAGS for performance analysis (set to true for debugging)
-const BYPASS_FIND_MAX = false;
-const TIME_FIND_MAX = false;
-let _bypassResult = null;
-
 export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
   usePercentile = true,
-  p = 0.99 // 99th percentile by default
+  p = 0.99
 ) {
-  // PERF TEST: Return cached result to test if this function is a bottleneck
-  if (BYPASS_FIND_MAX && _bypassResult && _bypassResult.length === domains.length) {
-    return _bypassResult;
-  }
-
-  const startTime = TIME_FIND_MAX ? performance.now() : 0;
-
-  // Check cache - if same inputs, return cached result
   if (
     !usePercentile &&
     _findMaxCache.dataPointsX === dataPointsX &&
@@ -810,9 +790,6 @@ export function findMaxInRanges(
       (d, i) => d[0] === domains[i][0] && d[1] === domains[i][1]
     )
   ) {
-    if (TIME_FIND_MAX) {
-      console.log(`findMaxInRanges: CACHE HIT`);
-    }
     return _findMaxCache.result;
   }
 
@@ -827,23 +804,19 @@ export function findMaxInRanges(
       const valuesInRangeSlice = dataPointsY.slice(left, right);
       valuesInRangeSlice.sort((a, b) => a - b);
 
-      // "Continuous" approach with optional interpolation:
       const n = valuesInRangeSlice.length;
       const i = (n - 1) * p; // fractional index
       const iLow = Math.floor(i);
       const iHigh = Math.ceil(i);
       if (iLow === iHigh) {
-        // If i is an integer, no interpolation needed
         resultValue = valuesInRangeSlice[iLow];
       } else {
-        // Linear interpolation (optional, for a more precise percentile):
         const fraction = i - iLow;
         resultValue =
           valuesInRangeSlice[iLow] * (1 - fraction) +
           valuesInRangeSlice[iHigh] * fraction;
       }
     } else {
-      // Find max in-place without copying the array
       let maxValue = -Infinity;
       for (let i = left; i < right; i++) {
         if (dataPointsY[i] > maxValue) {
@@ -856,25 +829,13 @@ export function findMaxInRanges(
     return resultValue;
   });
 
-  // Update cache (only for non-percentile case)
   if (!usePercentile) {
     _findMaxCache = {
-      domains: domains.map((d) => [...d]), // deep copy domains
+      domains: domains.map((d) => [...d]),
       dataPointsX,
       dataPointsY,
       result,
     };
-  }
-
-  // Store for bypass mode testing
-  if (BYPASS_FIND_MAX) {
-    _bypassResult = result;
-  }
-
-  if (TIME_FIND_MAX) {
-    const elapsed = performance.now() - startTime;
-    const totalPoints = dataPointsX.length;
-    console.log(`findMaxInRanges: ${elapsed.toFixed(2)}ms for ${totalPoints} points, ${domains.length} domains`);
   }
 
   return result;
