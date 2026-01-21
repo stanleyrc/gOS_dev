@@ -3,11 +3,13 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { throttle } from "lodash";
 import { findMaxInRanges } from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
 import settingsActions from "../../redux/settings/actions";
+import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -27,18 +29,29 @@ class ScatterPlot extends Component {
 
   constructor(props) {
     super(props);
-    //this.updateDomains = debounce(this.props.updateDomains, 1);
-    this.updateDomains = this.props.updateDomains;
+
+    this.rafId = null;
+    this.updateDomains = (newDomains) => {
+      if (this.rafId) {
+        cancelAnimationFrame(this.rafId);
+      }
+      this.rafId = requestAnimationFrame(() => {
+        this.rafId = null;
+        this.props.updateDomains(newDomains);
+      });
+    };
+
+    this.pendingDomains = null;
   }
 
   componentDidMount() {
     this.regl = require("regl")({
-      extensions: ["ANGLE_instanced_arrays"],
+      extensions: ["ANGLE_instanced_arrays", "OES_texture_float", "OES_texture_float_linear"],
       container: this.container,
       pixelRatio: 2.0,
       attributes: {
         antialias: true,
-        depth: false,
+        depth: true,
         stencil: false,
         preserveDrawingBuffer: false,
       },
@@ -84,55 +97,83 @@ class ScatterPlot extends Component {
     });
 
     this.updateStage(true);
+
+    this.unsubscribeHover = store.subscribe(() => {
+      const state = store.getState();
+      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
+      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
+    });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
+    const dataPointsColorChanged = nextProps.dataPointsColor.length !== this.props.dataPointsColor.length;
+    const domainsChanged = nextProps.domains.toString() !== this.props.domains.toString();
+    const widthChanged = nextProps.width !== this.props.width;
+    const heightChanged = nextProps.height !== this.props.height;
+    const commonRangeYChanged = nextProps.commonRangeY !== this.props.commonRangeY;
+
     return (
-      nextProps.dataPointsColor.length !== this.props.dataPointsColor.length ||
-      nextProps.domains.toString() !== this.props.domains.toString() ||
-      nextProps.width !== this.props.width ||
-      nextProps.height !== this.props.height ||
-      nextProps.hoveredLocation !== this.props.hoveredLocation ||
-      nextProps.hoveredLocationPanelIndex !==
-        this.props.hoveredLocationPanelIndex ||
-      nextProps.commonRangeY !== this.props.commonRangeY
+      dataPointsColorChanged ||
+      domainsChanged ||
+      widthChanged ||
+      heightChanged ||
+      commonRangeYChanged
     );
   }
 
   componentDidUpdate(prevProps, prevState) {
-    const {
-      domains,
-      hoveredLocationPanelIndex,
-      hoveredLocation,
-      chromoBins,
-      zoomedByCmd,
-    } = this.props;
+    const { domains, zoomedByCmd } = this.props;
 
-    this.panels.forEach((panel, index) => {
-      let domain = domains[index];
-      var s = [
-        panel.panelGenomeScale(domain[0]),
-        panel.panelGenomeScale(domain[1]),
-      ];
-      d3.select(this.plotContainer)
-        .select(`#panel-rect-${index}`)
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          )
-        );
-      d3.select(this.plotContainer)
-        .select(`#panel-rect-${index}`)
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          ).transform,
-          d3.zoomIdentity
-            .scale(panel.panelWidth / (s[1] - s[0]))
-            .translate(-s[0], 0)
-        );
-    });
+    const domainsChanged = prevProps.domains.toString() !== domains.toString();
+    if (domainsChanged) {
+      this.pendingDomains = null;
+      this.panels.forEach((panel, index) => {
+        let domain = domains[index];
+        var s = [
+          panel.panelGenomeScale(domain[0]),
+          panel.panelGenomeScale(domain[1]),
+        ];
+        d3.select(this.plotContainer)
+          .select(`#panel-rect-${index}`)
+          .attr("preserveAspectRatio", "xMinYMin meet")
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            )
+          );
+        d3.select(this.plotContainer)
+          .select(`#panel-rect-${index}`)
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            ).transform,
+            d3.zoomIdentity
+              .scale(panel.panelWidth / (s[1] - s[0]))
+              .translate(-s[0], 0)
+          );
+      });
+    }
+
+    if (
+      prevProps?.width !== this.props.width ||
+      prevProps?.height !== this.props.height
+    ) {
+      this.componentWillUnmount();
+      this.componentDidMount();
+    } else {
+      this.updateStage(
+        prevProps.dataPointsColor.length !==
+          this.props.dataPointsColor.length ||
+          (prevProps.commonRangeY === null &&
+            this.props.commonRangeY !== null) ||
+          (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
+      );
+    }
+  }
+
+  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
+    const { chromoBins } = this.props;
+
     if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.plotContainer)
         .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
@@ -166,24 +207,17 @@ class ScatterPlot extends Component {
             )
         );
     }
-    if (
-      prevProps?.width !== this.props.width ||
-      prevProps?.height !== this.props.height
-    ) {
-      this.componentWillUnmount();
-      this.componentDidMount();
-    } else {
-      this.updateStage(
-        prevProps.dataPointsColor.length !==
-          this.props.dataPointsColor.length ||
-          (prevProps.commonRangeY === null &&
-            this.props.commonRangeY !== null) ||
-          (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
-      );
-    }
   }
 
   componentWillUnmount() {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+    }
+
+    if (this.unsubscribeHover) {
+      this.unsubscribeHover();
+    }
+
     try {
       if (this.regl) {
         this.regl.destroy();
@@ -196,16 +230,31 @@ class ScatterPlot extends Component {
     }
   }
 
+  getPointsData() {
+    const {
+      dataPointsXHigh,
+      dataPointsXLow,
+      dataPointsY1,
+      dataPointsY2,
+      dataPointsColor,
+      commonRangeY,
+    } = this.props;
+
+    const dataY = commonRangeY ? dataPointsY1 : dataPointsY2;
+
+    return {
+      xHigh: dataPointsXHigh,
+      xLow: dataPointsXLow,
+      y: dataY,
+      color: dataPointsColor,
+    };
+  }
+
   updateStage(reloadData = false) {
     const {
       domains,
       width,
       height,
-      dataPointsY1,
-      dataPointsY2,
-      dataPointsXHigh,
-      dataPointsXLow,
-      dataPointsColor,
       commonRangeY,
     } = this.props;
 
@@ -213,12 +262,12 @@ class ScatterPlot extends Component {
     const stageHeight = height - 3 * margins.gapY;
 
     if (reloadData) {
-      console.log("Reloading data");
+      const pointsData = this.getPointsData();
       this.points.setData(
-        dataPointsXHigh,
-        dataPointsXLow,
-        commonRangeY ? dataPointsY1 : dataPointsY2,
-        dataPointsColor
+        pointsData.xHigh,
+        pointsData.xLow,
+        pointsData.y,
+        pointsData.color
       );
     }
 
@@ -228,6 +277,7 @@ class ScatterPlot extends Component {
       domains,
       commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values
     );
+
     this.points.render();
   }
 
@@ -249,7 +299,6 @@ class ScatterPlot extends Component {
         .map((d, i) => d[1])
     );
 
-    // calculate the upper allowed selection edge this brush can move
     let upperEdge = d3.min(
       otherSelections
         .filter(
@@ -258,13 +307,11 @@ class ScatterPlot extends Component {
         .map((d, i) => d[0])
     );
 
-    // if there is an upper edge, then set this to be the upper bound of the current selection
     if (upperEdge !== undefined && selection[1] >= upperEdge) {
       selection[1] = upperEdge;
       selection[0] = d3.min([selection[0], upperEdge - 1]);
     }
 
-    // if there is a lower edge, then set this to the be the lower bound of the current selection
     if (lowerEdge !== undefined && selection[0] <= lowerEdge) {
       selection[0] = lowerEdge;
       selection[1] = d3.max([selection[1], lowerEdge + 1]);
@@ -272,10 +319,13 @@ class ScatterPlot extends Component {
 
     newDomains[index] = selection;
 
-    if (newDomains.toString() !== this.props.domains.toString()) {
-      this.setState({ domains: newDomains }, () => {
-        this.updateDomains(newDomains);
-      });
+    const newDomainsStr = newDomains.toString();
+    const propsDomainsStr = this.props.domains.toString();
+    const pendingDomainsStr = this.pendingDomains?.toString();
+
+    if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
+      this.pendingDomains = newDomains;
+      this.updateDomains(newDomains);
     }
   }
 
@@ -283,12 +333,12 @@ class ScatterPlot extends Component {
     this.zooming(event, index);
   }
 
-  handleMouseMove = (e, panelIndex) => {
+  handleMouseMove = throttle((e, panelIndex) => {
     this.props.updateHoveredLocation(
       this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
       panelIndex
     );
-  };
+  }, 16, { leading: true, trailing: false });
 
   handleMouseOut = (e, panelIndex) => {
     this.props.updateHoveredLocation(null, panelIndex);
@@ -315,7 +365,11 @@ class ScatterPlot extends Component {
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.panels = [];
-    this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+
+    if (!commonRangeY) {
+      this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+    }
+
     this.extentDataPointsY1 =
       this.extentDataPointsY1 || d3.extent(dataPointsY1);
     this.extentDataPointsY2 =
@@ -382,7 +436,7 @@ class ScatterPlot extends Component {
         panelGenomeScale,
       });
     });
-    return (
+    const result = (
       <Wrapper className="ant-wrapper" margins={margins} height={height}>
         <div
           className="scatterplot"
@@ -459,6 +513,7 @@ class ScatterPlot extends Component {
         </svg>
       </Wrapper>
     );
+    return result;
   }
 }
 ScatterPlot.propTypes = {

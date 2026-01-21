@@ -47,13 +47,46 @@ class ScatterPlotPanel extends Component {
     };
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    if (nextState !== this.state) return true;
+
+    const domainsChanged =
+      nextProps.domains?.toString() !== this.props.domains?.toString();
+    if (domainsChanged) return true;
+
+    if (nextProps.commonRangeY !== this.props.commonRangeY) return true;
+
+    if (
+      nextProps.dataPointsY1 !== this.props.dataPointsY1 ||
+      nextProps.dataPointsY2 !== this.props.dataPointsY2 ||
+      nextProps.dataPointsX !== this.props.dataPointsX ||
+      nextProps.dataPointsColor !== this.props.dataPointsColor
+    )
+      return true;
+
+    if (
+      nextProps.loading !== this.props.loading ||
+      nextProps.visible !== this.props.visible ||
+      nextProps.inViewport !== this.props.inViewport ||
+      nextProps.error !== this.props.error
+    )
+      return true;
+
+    if (
+      nextProps.height !== this.props.height ||
+      nextProps.chromoBins !== this.props.chromoBins
+    )
+      return true;
+
+    return false;
+  }
+
   componentDidMount() {
     this.updateWidth();
     window.addEventListener("resize", this.updateWidth);
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Check if the parent width has changed after the update
     if (prevState.parentWidth !== this.state.parentWidth) {
       this.updateWidth();
     }
@@ -71,7 +104,6 @@ class ScatterPlotPanel extends Component {
     }
   };
 
-  // On top layout
   onFirstBoxResize = (event, { element, size, handle }) => {
     this.setState({
       width: size.width,
@@ -102,6 +134,7 @@ class ScatterPlotPanel extends Component {
   };
 
   render() {
+
     const {
       t,
       loading,
@@ -126,7 +159,6 @@ class ScatterPlotPanel extends Component {
     if (!visible) return null;
     const { parentWidth, height } = this.state;
     let { gap } = margins;
-    //if (!data) return null;
     let w = parentWidth || this.container?.getBoundingClientRect().width;
     let h = height;
     return (

@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { throttle } from "lodash";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import Connection from "../../helpers/connection";
@@ -13,6 +14,7 @@ import {
 } from "../../helpers/utility";
 import Grid from "../grid/index";
 import settingsActions from "../../redux/settings/actions";
+import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -42,8 +44,17 @@ class GenomePlot extends Component {
         text: "",
       },
     };
-    //this.updateDomains = debounce(this.props.updateDomains, 100);
-    this.updateDomains = this.props.updateDomains;
+    this.rafId = null;
+    this.updateDomains = (newDomains) => {
+      if (this.rafId) {
+        cancelAnimationFrame(this.rafId);
+      }
+      this.rafId = requestAnimationFrame(() => {
+        this.rafId = null;
+        this.props.updateDomains(newDomains);
+      });
+    };
+    this.pendingDomains = null;
   }
 
   updatePanels() {
@@ -143,7 +154,6 @@ class GenomePlot extends Component {
 
     this.panels.forEach((panel, i) => {
       let { domain, scale } = panel;
-      // filter the connections on same panel
       frameConnections
         .filter(
           (e, j) =>
@@ -152,22 +162,23 @@ class GenomePlot extends Component {
             (!e.sink ||
               (e.sink.place <= domain[1] && e.sink.place >= domain[0]))
         )
-        .forEach((connection, j) => {
-          connection.fragment = panel;
+        .forEach((conn, j) => {
+          let connection = Object.create(
+            Object.getPrototypeOf(conn),
+            Object.getOwnPropertyDescriptors(conn)
+          );
           if (connection.source) {
-            connection.source.scale = scale;
-            connection.source.fragment = panel;
+            connection.source = { ...connection.source, scale, fragment: panel };
           }
           if (connection.sink) {
-            connection.sink.scale = scale;
-            connection.sink.fragment = panel;
+            connection.sink = { ...connection.sink, scale, fragment: panel };
           }
+          connection.fragment = panel;
           connection.touchScale = scale;
           connection.identifier = guid();
           this.connections.push(connection);
         });
     });
-    // filter the connections between the visible fragments
     k_combinations(this.panels, 2).forEach((pair, i) => {
       frameConnections
         .filter(
@@ -182,7 +193,13 @@ class GenomePlot extends Component {
                 e.sink.place <= pair[0].domain[1] &&
                 e.sink.place >= pair[0].domain[0]))
         )
-        .forEach((connection, j) => {
+        .forEach((conn, j) => {
+          let connection = Object.create(
+            Object.getPrototypeOf(conn),
+            Object.getOwnPropertyDescriptors(conn)
+          );
+          connection.source = { ...connection.source };
+          connection.sink = { ...connection.sink };
           if (
             connection.source.place <= pair[0].domain[1] &&
             connection.source.place >= pair[0].domain[0]
@@ -207,7 +224,6 @@ class GenomePlot extends Component {
           this.connections.push(connection);
         });
     });
-    // filter the anchor connections
     let visibleConnections = this.connections.map((d, i) => d.cid);
     this.panels.forEach((fragment, i) => {
       frameConnections
@@ -230,19 +246,18 @@ class GenomePlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    return (
-      nextProps.genome.toString() !== this.props.genome.toString() ||
-      nextProps.domains.toString() !== this.props.domains.toString() ||
-      nextState.tooltip.shapeId !== this.state.tooltip.shapeId ||
-      nextProps.annotation !== this.props.annotation ||
-      nextProps.width !== this.props.width ||
-      nextProps.height !== this.props.height ||
-      nextProps.hoveredLocation !== this.props.hoveredLocation ||
-      nextProps.hoveredLocationPanelIndex !==
-        this.props.hoveredLocationPanelIndex ||
-      nextProps.commonYScale !== this.props.commonYScale ||
-      nextProps.commonRangeY !== this.props.commonRangeY
-    );
+    const genomeChanged = nextProps.genome.toString() !== this.props.genome.toString();
+    const domainsChanged = nextProps.domains.toString() !== this.props.domains.toString();
+    const tooltipChanged = nextState.tooltip.shapeId !== this.state.tooltip.shapeId;
+    const annotationChanged = nextProps.annotation !== this.props.annotation;
+    const widthChanged = nextProps.width !== this.props.width;
+    const heightChanged = nextProps.height !== this.props.height;
+    const commonYScaleChanged = nextProps.commonYScale !== this.props.commonYScale;
+    const commonRangeYChanged = nextProps.commonRangeY !== this.props.commonRangeY;
+
+    return genomeChanged || domainsChanged || tooltipChanged ||
+      annotationChanged || widthChanged || heightChanged ||
+      commonYScaleChanged || commonRangeYChanged;
   }
 
   componentDidMount() {
@@ -272,41 +287,50 @@ class GenomePlot extends Component {
             .translate(-s[0], 0)
         );
     });
+
+    this.unsubscribeHover = store.subscribe(() => {
+      const state = store.getState();
+      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
+      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
+    });
   }
 
-  componentDidUpdate() {
-    const {
-      domains,
-      hoveredLocationPanelIndex,
-      hoveredLocation,
-      chromoBins,
-      zoomedByCmd,
-    } = this.props;
-    this.panels.forEach((panel, index) => {
-      let domain = domains[index];
-      var s = [
-        panel.panelGenomeScale(domain[0]),
-        panel.panelGenomeScale(domain[1]),
-      ];
-      d3.select(this.container)
-        .select(`#panel-rect-${index}`)
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          )
-        );
-      d3.select(this.container)
-        .select(`#panel-rect-${index}`)
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          ).transform,
-          d3.zoomIdentity
-            .scale(panel.panelWidth / (s[1] - s[0]))
-            .translate(-s[0], 0)
-        );
-    });
+  componentDidUpdate(prevProps) {
+    const { domains, zoomedByCmd } = this.props;
+
+    const domainsChanged = prevProps.domains.toString() !== domains.toString();
+    if (domainsChanged) {
+      this.pendingDomains = null;
+      this.panels.forEach((panel, index) => {
+        let domain = domains[index];
+        var s = [
+          panel.panelGenomeScale(domain[0]),
+          panel.panelGenomeScale(domain[1]),
+        ];
+        d3.select(this.container)
+          .select(`#panel-rect-${index}`)
+          .attr("preserveAspectRatio", "xMinYMin meet")
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            )
+          );
+        d3.select(this.container)
+          .select(`#panel-rect-${index}`)
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            ).transform,
+            d3.zoomIdentity
+              .scale(panel.panelWidth / (s[1] - s[0]))
+              .translate(-s[0], 0)
+          );
+      });
+    }
+  }
+
+  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
+    const { chromoBins } = this.props;
 
     if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.container)
@@ -343,6 +367,15 @@ class GenomePlot extends Component {
     }
   }
 
+  componentWillUnmount() {
+    if (this.unsubscribeHover) {
+      this.unsubscribeHover();
+    }
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+    }
+  }
+
   zooming(event, index) {
     let panel = this.panels[index];
     let newDomain = event.transform
@@ -361,7 +394,6 @@ class GenomePlot extends Component {
         .map((d, i) => d[1])
     );
 
-    // calculate the upper allowed selection edge this brush can move
     let upperEdge = d3.min(
       otherSelections
         .filter(
@@ -370,13 +402,11 @@ class GenomePlot extends Component {
         .map((d, i) => d[0])
     );
 
-    // if there is an upper edge, then set this to be the upper bound of the current selection
     if (upperEdge !== undefined && selection[1] >= upperEdge) {
       selection[1] = upperEdge;
       selection[0] = d3.min([selection[0], upperEdge - 1]);
     }
 
-    // if there is a lower edge, then set this to the be the lower bound of the current selection
     if (lowerEdge !== undefined && selection[0] <= lowerEdge) {
       selection[0] = lowerEdge;
       selection[1] = d3.max([selection[1], lowerEdge + 1]);
@@ -384,10 +414,13 @@ class GenomePlot extends Component {
 
     newDomains[index] = selection;
 
-    if (newDomains.toString() !== this.props.domains.toString()) {
-      this.setState({ domains: newDomains }, () => {
-        this.updateDomains(newDomains);
-      });
+    const newDomainsStr = newDomains.toString();
+    const propsDomainsStr = this.props.domains.toString();
+    const pendingDomainsStr = this.pendingDomains?.toString();
+
+    if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
+      this.pendingDomains = newDomains;
+      this.updateDomains(newDomains);
     }
   }
 
@@ -462,7 +495,6 @@ class GenomePlot extends Component {
   }
 
   handleIntervalClick(panelIndex, shape, padding = 1000) {
-    // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     newDomains[panelIndex] = [
       shape.startPlace - padding,
@@ -472,21 +504,20 @@ class GenomePlot extends Component {
   }
 
   handleMutationClick(panelIndex, shape, padding = 30) {
-    // center this interval in the viewport
     let newDomains = JSON.parse(JSON.stringify(this.props.domains));
     let midPoint = Math.floor((shape.startPlace + shape.endPlace) / 2);
     newDomains[panelIndex] = [midPoint - padding - 2, midPoint + padding];
     this.updateDomains(newDomains);
   }
 
-  handlePanelMouseMove = (e, panelIndex) => {
+  handlePanelMouseMove = throttle((e, panelIndex) => {
     if (panelIndex > -1) {
       this.props.updateHoveredLocation(
         this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
         panelIndex
       );
     }
-  };
+  }, 16, { leading: true, trailing: false });
 
   handlePanelMouseOut = (e, panelIndex) => {
     if (panelIndex > -1) {
@@ -501,7 +532,7 @@ class GenomePlot extends Component {
     this.updatePanels();
     let randID = Math.random();
 
-    return (
+    const result = (
       <Wrapper className="ant-wrapper">
         <svg
           width={width}
@@ -725,6 +756,7 @@ class GenomePlot extends Component {
         </svg>
       </Wrapper>
     );
+    return result;
   }
 }
 GenomePlot.propTypes = {

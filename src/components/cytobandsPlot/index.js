@@ -3,10 +3,12 @@ import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
+import { throttle } from "lodash";
 import { measureText } from "../../helpers/utility";
 import { createChromosomePaths } from "../../helpers/cytobandsUtil";
 import Wrapper from "./index.style";
 import settingsActions from "../../redux/settings/actions";
+import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -46,10 +48,7 @@ class CytobandsPlot extends Component {
       nextProps.height !== this.props.height ||
       nextState.selectedCytoband?.id !== this.state.selectedCytoband?.id ||
       nextState.tooltip.x !== this.state.tooltip.x ||
-      nextState.tooltip.y !== this.state.tooltip.y ||
-      nextProps.hoveredLocation !== this.props.hoveredLocation ||
-      nextProps.hoveredLocationPanelIndex !==
-        this.props.hoveredLocationPanelIndex
+      nextState.tooltip.y !== this.state.tooltip.y
     );
   }
 
@@ -80,42 +79,51 @@ class CytobandsPlot extends Component {
             .translate(-s[0], 0)
         );
     });
+
+    // Subscribe to Redux store for hover updates (bypassing React)
+    this.unsubscribeHover = store.subscribe(() => {
+      const state = store.getState();
+      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
+      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
+    });
   }
 
   componentDidUpdate(prevProps, prevState) {
-    const {
-      domains,
-      hoveredLocationPanelIndex,
-      hoveredLocation,
-      chromoBins,
-      zoomedByCmd,
-    } = this.props;
+    const { domains, zoomedByCmd } = this.props;
 
-    this.panels.forEach((panel, index) => {
-      let domain = domains[index];
-      var s = [
-        panel.panelGenomeScale(domain[0]),
-        panel.panelGenomeScale(domain[1]),
-      ];
-      d3.select(this.plotContainer)
-        .select(`#panel-rect-${index}`)
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          )
-        );
-      d3.select(this.plotContainer)
-        .select(`#panel-rect-${index}`)
-        .call(
-          panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          ).transform,
-          d3.zoomIdentity
-            .scale(panel.panelWidth / (s[1] - s[0]))
-            .translate(-s[0], 0)
-        );
-    });
+    // Only run expensive zoom transforms if domains changed
+    const domainsChanged = prevProps.domains.toString() !== domains.toString();
+    if (domainsChanged) {
+      this.panels.forEach((panel, index) => {
+        let domain = domains[index];
+        var s = [
+          panel.panelGenomeScale(domain[0]),
+          panel.panelGenomeScale(domain[1]),
+        ];
+        d3.select(this.plotContainer)
+          .select(`#panel-rect-${index}`)
+          .attr("preserveAspectRatio", "xMinYMin meet")
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            )
+          );
+        d3.select(this.plotContainer)
+          .select(`#panel-rect-${index}`)
+          .call(
+            panel.zoom.filter(
+              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            ).transform,
+            d3.zoomIdentity
+              .scale(panel.panelWidth / (s[1] - s[0]))
+              .translate(-s[0], 0)
+          );
+      });
+    }
+  }
+
+  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
+    const { chromoBins } = this.props;
 
     if (this.panels[hoveredLocationPanelIndex]) {
       d3.select(this.plotContainer)
@@ -149,6 +157,13 @@ class CytobandsPlot extends Component {
               )
             )
         );
+    }
+  }
+
+  componentWillUnmount() {
+    // Unsubscribe from hover updates
+    if (this.unsubscribeHover) {
+      this.unsubscribeHover();
     }
   }
 
@@ -204,12 +219,12 @@ class CytobandsPlot extends Component {
     this.zooming(event, index);
   }
 
-  handleMouseMove = (e, panelIndex) => {
+  handleMouseMove = throttle((e, panelIndex) => {
     this.props.updateHoveredLocation(
       this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
       panelIndex
     );
-  };
+  }, 16, { leading: true, trailing: false });
 
   handleMouseOut = (e, panelIndex) => {
     this.props.updateHoveredLocation(null, panelIndex);

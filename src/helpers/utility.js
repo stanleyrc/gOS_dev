@@ -4,14 +4,31 @@ import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
 
-// Split a float64 number into high and low float32 components
 export function splitFloat64(x) {
   const high = Math.fround(x); // nearest float32
   const low = x - high;
   return [high, low];
 }
 
+let _dataRangesCache = {
+  domains: null,
+  genome: null,
+  result: null,
+};
+
 export function dataRanges(domains, genome) {
+  // Check cache - return same reference if inputs haven't changed
+  if (
+    _dataRangesCache.genome === genome &&
+    _dataRangesCache.domains &&
+    _dataRangesCache.domains.length === domains.length &&
+    _dataRangesCache.domains.every(
+      (d, i) => d[0] === domains[i][0] && d[1] === domains[i][1]
+    )
+  ) {
+    return _dataRangesCache.result;
+  }
+
   function filterIntervalsByDomain(domain, intervals) {
     let filteredIntervals = intervals.filter(
       (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
@@ -34,7 +51,25 @@ export function dataRanges(domains, genome) {
     .domain([0, maxY || 1])
     .range([1, 0])
     .nice();
-  return yScale.domain();
+  const newResult = yScale.domain();
+
+  if (
+    _dataRangesCache.result &&
+    _dataRangesCache.result[0] === newResult[0] &&
+    _dataRangesCache.result[1] === newResult[1]
+  ) {
+    _dataRangesCache.domains = domains.map((d) => [...d]);
+    _dataRangesCache.genome = genome;
+    return _dataRangesCache.result;
+  }
+
+  _dataRangesCache = {
+    domains: domains.map((d) => [...d]),
+    genome,
+    result: newResult,
+  };
+
+  return newResult;
 }
 
 export function chunks(arr, size = 4) {
@@ -731,60 +766,79 @@ export function cluster(
   ]);
 }
 
-// returns the maximum Y value within the domains array as applied to the dataPointsX
+let _findMaxCache = {
+  domains: null,
+  dataPointsX: null,
+  dataPointsY: null,
+  result: null,
+};
+
 export function findMaxInRanges(
   domains,
   dataPointsX,
   dataPointsY,
   usePercentile = true,
-  p = 0.99 // 99th percentile by default
+  p = 0.99
 ) {
-  return domains.map(([start, end]) => {
-    let left = 0,
-      right = dataPointsX.length - 1;
+  if (
+    !usePercentile &&
+    _findMaxCache.dataPointsX === dataPointsX &&
+    _findMaxCache.dataPointsY === dataPointsY &&
+    _findMaxCache.domains &&
+    _findMaxCache.domains.length === domains.length &&
+    _findMaxCache.domains.every(
+      (d, i) => d[0] === domains[i][0] && d[1] === domains[i][1]
+    )
+  ) {
+    return _findMaxCache.result;
+  }
 
-    // // Binary search for the first element >= start
-    // while (left <= right) {
-    //   const mid = Math.floor((left + right) / 2);
-    //   if (dataPointsX[mid] < start) left = mid + 1;
-    //   else right = mid - 1;
-    // }
-
-    left = findIndexForNum(dataPointsX, start);
-    right = findIndexForNum(dataPointsX, end);
-
-    // Collect values within the specified range using slice
-    //const sliceEnd = dataPointsX.findIndex((d) => d > end); // Find first index greater than end
-    const valuesInRangeSlice = dataPointsY.slice(left, right);
+  const result = domains.map(([start, end]) => {
+    const left = findIndexForNum(dataPointsX, start);
+    const right = findIndexForNum(dataPointsX, end);
 
     // Calculate either max or 99th percentile
     let resultValue;
-    if (usePercentile && valuesInRangeSlice.length > 0) {
-      // After sorting:
+    if (usePercentile && right > left) {
+      // For percentile, we still need to sort, so we need a copy
+      const valuesInRangeSlice = dataPointsY.slice(left, right);
       valuesInRangeSlice.sort((a, b) => a - b);
 
-      // "Continuous" approach with optional interpolation:
       const n = valuesInRangeSlice.length;
       const i = (n - 1) * p; // fractional index
       const iLow = Math.floor(i);
       const iHigh = Math.ceil(i);
       if (iLow === iHigh) {
-        // If i is an integer, no interpolation needed
         resultValue = valuesInRangeSlice[iLow];
       } else {
-        // Linear interpolation (optional, for a more precise percentile):
         const fraction = i - iLow;
         resultValue =
           valuesInRangeSlice[iLow] * (1 - fraction) +
           valuesInRangeSlice[iHigh] * fraction;
       }
     } else {
-      resultValue =
-        valuesInRangeSlice.length > 0 ? d3.max(valuesInRangeSlice) : -Infinity;
+      let maxValue = -Infinity;
+      for (let i = left; i < right; i++) {
+        if (dataPointsY[i] > maxValue) {
+          maxValue = dataPointsY[i];
+        }
+      }
+      resultValue = maxValue;
     }
 
     return resultValue;
   });
+
+  if (!usePercentile) {
+    _findMaxCache = {
+      domains: domains.map((d) => [...d]),
+      dataPointsX,
+      dataPointsY,
+      result,
+    };
+  }
+
+  return result;
 }
 
 /**

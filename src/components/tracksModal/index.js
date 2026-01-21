@@ -11,6 +11,7 @@ import {
   Affix,
   Tabs,
   Select,
+  Typography,
 } from "antd";
 import { withTranslation } from "react-i18next";
 import GenomePanel from "../genomePanel";
@@ -41,6 +42,49 @@ class TracksModal extends Component {
     colorVariable: null,
   };
 
+  shouldComponentUpdate(nextProps, nextState) {
+    // Check state changes
+    if (nextState !== this.state) return true;
+
+    // Check domain changes (zoom/pan)
+    const domainsChanged =
+      nextProps.domains?.toString() !== this.props.domains?.toString();
+    if (domainsChanged) return true;
+
+    // Check modal visibility
+    if (nextProps.open !== this.props.open) return true;
+
+    // Check loading states
+    if (
+      nextProps.genome?.loading !== this.props.genome?.loading ||
+      nextProps.genomeCoverage?.loading !== this.props.genomeCoverage?.loading ||
+      nextProps.mutations?.loading !== this.props.mutations?.loading ||
+      nextProps.allelic?.loading !== this.props.allelic?.loading
+    )
+      return true;
+
+    // Check data changes (reference equality - data objects change when reloaded)
+    if (
+      nextProps.genome?.data !== this.props.genome?.data ||
+      nextProps.genomeCoverage?.dataPointsX !== this.props.genomeCoverage?.dataPointsX ||
+      nextProps.mutations?.data !== this.props.mutations?.data ||
+      nextProps.allelic?.data !== this.props.allelic?.data ||
+      nextProps.genes?.list !== this.props.genes?.list ||
+      nextProps.genes?.loading !== this.props.genes?.loading
+    )
+      return true;
+
+    // Check viewport/visibility
+    if (
+      nextProps.inViewport !== this.props.inViewport ||
+      nextProps.width !== this.props.width ||
+      nextProps.height !== this.props.height
+    )
+      return true;
+
+    return false;
+  }
+
   onDownloadButtonClicked = () => {
     htmlToImage
       .toCanvas(this.container, { pixelRatio: 2 })
@@ -60,6 +104,7 @@ class TracksModal extends Component {
   };
 
   render() {
+
     const {
       t,
       domains,
@@ -346,7 +391,7 @@ class TracksModal extends Component {
                     ? methylationBetaCoverageYAxis2Title
                     : methylationBetaCoverageYAxisTitle,
                 yAxis2Title: methylationBetaCoverageYAxis2Title,
-                commonRangeY: false, // This plot keeps its own Y-axis range
+                commonRangeY: [0, 1], // Beta values are always 0-1, skip findMaxInRanges
               }}
             />
           </Col>
