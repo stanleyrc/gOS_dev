@@ -25,11 +25,12 @@ class ScatterPlot extends Component {
   zoom = null;
   extentDataPointsY1 = null;
   extentDataPointsY2 = null;
+  maxY1Values = null;
   maxY2Values = null;
 
   // Debounced percentile computation
-  _maxY2ComputeTimer = null;
-  _cachedMaxY2Domains = null;
+  _maxYComputeTimer = null;
+  _cachedMaxYDomains = null;
 
   constructor(props) {
     super(props);
@@ -218,8 +219,8 @@ class ScatterPlot extends Component {
       cancelAnimationFrame(this.rafId);
     }
 
-    if (this._maxY2ComputeTimer) {
-      clearTimeout(this._maxY2ComputeTimer);
+    if (this._maxYComputeTimer) {
+      clearTimeout(this._maxYComputeTimer);
     }
 
     if (this.unsubscribeHover) {
@@ -283,7 +284,7 @@ class ScatterPlot extends Component {
       stageWidth,
       stageHeight,
       domains,
-      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values
+      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values.map(v => Math.ceil(v))
     );
 
     this.points.render();
@@ -381,27 +382,39 @@ class ScatterPlot extends Component {
 
     if (!commonRangeY) {
       const domainsKey = domains.map((d) => `${d[0]}-${d[1]}`).join("|");
-      const domainsChanged = this._cachedMaxY2Domains !== domainsKey;
 
-      if (domainsChanged) {
-        // Use fallback immediately (global max) for responsive interaction
-        if (!this.maxY2Values) {
-          this.maxY2Values = domains.map(() => this.extentDataPointsY2[1]);
+      // Need sync compute if: no values, wrong length, or no cached domains (fresh start/mode switch)
+      const needsSyncCompute =
+        !this.maxY1Values ||
+        !this.maxY2Values ||
+        this.maxY2Values.length !== domains.length ||
+        !this._cachedMaxYDomains;
+
+      // Only debounce if we have a valid cache AND domains actually changed
+      const domainsChanged =
+        this._cachedMaxYDomains && this._cachedMaxYDomains !== domainsKey;
+
+      if (needsSyncCompute) {
+        this.maxY1Values = findMaxInRanges(domains, dataPointsX, dataPointsY1);
+        this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
+        this._cachedMaxYDomains = domainsKey;
+      } else if (domainsChanged) {
+        // During zoom/pan: keep using cached values, schedule debounced update
+        if (this._maxYComputeTimer) {
+          clearTimeout(this._maxYComputeTimer);
         }
 
-        // Cancel pending computation
-        if (this._maxY2ComputeTimer) {
-          clearTimeout(this._maxY2ComputeTimer);
-        }
-
-        // Schedule accurate computation after interaction settles
-        this._maxY2ComputeTimer = setTimeout(() => {
-          this._maxY2ComputeTimer = null;
+        this._maxYComputeTimer = setTimeout(() => {
+          this._maxYComputeTimer = null;
+          this.maxY1Values = findMaxInRanges(domains, dataPointsX, dataPointsY1);
           this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
-          this._cachedMaxY2Domains = domainsKey;
-          this.updateStage(false);
-        }, 150);
+          this._cachedMaxYDomains = domainsKey;
+          this.forceUpdate(); // Trigger React re-render to update Y-axis
+        }, 50);
       }
+    } else {
+      // In common mode: reset cache so we recompute when switching back to individual
+      this._cachedMaxYDomains = null;
     }
 
     domains.forEach((xDomain, index) => {
@@ -439,13 +452,8 @@ class ScatterPlot extends Component {
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
         yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
       } else {
-        let yExtent2 = [0, this.maxY2Values[index]];
-        let yExtent1 = yExtent2.map((d) =>
-          d3
-            .scaleLinear()
-            .domain(this.extentDataPointsY2)
-            .range(this.extentDataPointsY1)(d)
-        );
+        let yExtent1 = [0, Math.ceil(this.maxY1Values[index])];
+        let yExtent2 = [0, Math.ceil(this.maxY2Values[index])];
 
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
         yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
