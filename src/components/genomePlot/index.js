@@ -674,13 +674,7 @@ class GenomePlot extends Component {
                   }}
                 />
                 <g clipPath={`url(#cuttOffViewPane-${randID}-${panel.index})`}>
-                  {panel.intervals
-                    .filter((d) => {
-                      // Cull elements smaller than 1px - invisible when zoomed out
-                      const width = panel.xScale(d.endPlace) - panel.xScale(d.startPlace);
-                      return width >= 1;
-                    })
-                    .map((d, i) => (
+                  {panel.intervals.map((d, i) => (
                     <rect
                       id={d.primaryKey}
                       type="interval"
@@ -725,21 +719,7 @@ class GenomePlot extends Component {
               </g>
             ))}
             <g clipPath="url(#cuttOffViewPaneii)">
-              {this.connections
-                .filter((d) => {
-                  // Always show ANCHOR connections (one end is off-screen)
-                  if (d.kind === "ANCHOR") return true;
-                  // For regular connections, check if endpoints are far enough apart to see
-                  if (d.source?.scale && d.sink?.scale) {
-                    const sourceX = d.source.scale(d.source.place);
-                    const sinkX = d.sink.scale(d.sink.place);
-                    const pixelDistance = Math.abs(sinkX - sourceX);
-                    // Cull connections smaller than 3 pixels
-                    return pixelDistance >= 3;
-                  }
-                  return true;
-                })
-                .map((d, i) => (
+              {this.connections.map((d, i) => (
                 <path
                   id={d.primaryKey}
                   type="connection"

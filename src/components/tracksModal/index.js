@@ -391,7 +391,7 @@ class TracksModal extends Component {
                     ? methylationBetaCoverageYAxis2Title
                     : methylationBetaCoverageYAxisTitle,
                 yAxis2Title: methylationBetaCoverageYAxis2Title,
-                commonRangeY: false, // This plot keeps its own Y-axis range
+                commonRangeY: [0, 1], // Beta values are always 0-1, skip findMaxInRanges
               }}
             />
           </Col>
