@@ -28,9 +28,32 @@ class ScatterPlot extends Component {
   maxY1Values = null;
   maxY2Values = null;
 
-  // Debounced percentile computation
-  _maxYComputeTimer = null;
-  _cachedMaxYDomains = null;
+  // Global outlier thresholds (computed once per dataset)
+  _globalOutlierThresholdY1 = null;
+  _globalOutlierThresholdY2 = null;
+  _outlierThresholdDataY1 = null; // Track which data the threshold was computed for
+  _outlierThresholdDataY2 = null;
+
+  // Compute global 99th percentile threshold (once per dataset)
+  computeGlobalOutlierThreshold(dataPointsY, cachedData, cachedThreshold, p = 0.99) {
+    // Return cached threshold if data hasn't changed
+    if (cachedData === dataPointsY && cachedThreshold !== null) {
+      return cachedThreshold;
+    }
+
+    // Sort a copy to find percentile
+    const sorted = [...dataPointsY].sort((a, b) => a - b);
+    const n = sorted.length;
+    const i = (n - 1) * p;
+    const iLow = Math.floor(i);
+    const iHigh = Math.ceil(i);
+
+    if (iLow === iHigh) {
+      return sorted[iLow];
+    }
+    const fraction = i - iLow;
+    return sorted[iLow] * (1 - fraction) + sorted[iHigh] * fraction;
+  }
 
   constructor(props) {
     super(props);
@@ -219,10 +242,6 @@ class ScatterPlot extends Component {
       cancelAnimationFrame(this.rafId);
     }
 
-    if (this._maxYComputeTimer) {
-      clearTimeout(this._maxYComputeTimer);
-    }
-
     if (this.unsubscribeHover) {
       this.unsubscribeHover();
     }
@@ -381,40 +400,27 @@ class ScatterPlot extends Component {
       this.extentDataPointsY2 || d3.extent(dataPointsY2);
 
     if (!commonRangeY) {
-      const domainsKey = domains.map((d) => `${d[0]}-${d[1]}`).join("|");
-
-      // Need sync compute if: no values, wrong length, or no cached domains (fresh start/mode switch)
-      const needsSyncCompute =
-        !this.maxY1Values ||
-        !this.maxY2Values ||
-        this.maxY2Values.length !== domains.length ||
-        !this._cachedMaxYDomains;
-
-      // Only debounce if we have a valid cache AND domains actually changed
-      const domainsChanged =
-        this._cachedMaxYDomains && this._cachedMaxYDomains !== domainsKey;
-
-      if (needsSyncCompute) {
-        this.maxY1Values = findMaxInRanges(domains, dataPointsX, dataPointsY1);
-        this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
-        this._cachedMaxYDomains = domainsKey;
-      } else if (domainsChanged) {
-        // During zoom/pan: keep using cached values, schedule debounced update
-        if (this._maxYComputeTimer) {
-          clearTimeout(this._maxYComputeTimer);
-        }
-
-        this._maxYComputeTimer = setTimeout(() => {
-          this._maxYComputeTimer = null;
-          this.maxY1Values = findMaxInRanges(domains, dataPointsX, dataPointsY1);
-          this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
-          this._cachedMaxYDomains = domainsKey;
-          this.forceUpdate(); // Trigger React re-render to update Y-axis
-        }, 50);
+      // Compute global outlier thresholds once per dataset (O(n log n) one time)
+      if (this._outlierThresholdDataY1 !== dataPointsY1) {
+        this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
+          dataPointsY1, this._outlierThresholdDataY1, this._globalOutlierThresholdY1
+        );
+        this._outlierThresholdDataY1 = dataPointsY1;
       }
-    } else {
-      // In common mode: reset cache so we recompute when switching back to individual
-      this._cachedMaxYDomains = null;
+      if (this._outlierThresholdDataY2 !== dataPointsY2) {
+        this._globalOutlierThresholdY2 = this.computeGlobalOutlierThreshold(
+          dataPointsY2, this._outlierThresholdDataY2, this._globalOutlierThresholdY2
+        );
+        this._outlierThresholdDataY2 = dataPointsY2;
+      }
+
+      // Get actual max in each range (cached when usePercentile=false)
+      const rawMaxY1 = findMaxInRanges(domains, dataPointsX, dataPointsY1, false);
+      const rawMaxY2 = findMaxInRanges(domains, dataPointsX, dataPointsY2, false);
+
+      // Cap at global outlier threshold
+      this.maxY1Values = rawMaxY1.map(v => Math.min(v, this._globalOutlierThresholdY1));
+      this.maxY2Values = rawMaxY2.map(v => Math.min(v, this._globalOutlierThresholdY2));
     }
 
     domains.forEach((xDomain, index) => {
