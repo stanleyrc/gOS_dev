@@ -39,7 +39,11 @@ class Grid extends Component {
           .map((d) => Math.floor(d))
       ),
     ];
-    tickValues[tickValues.length - 1] = scaleY.domain()[1];
+    const domainMax = scaleY.domain()[1];
+    const ceilMax = Math.ceil(domainMax);
+    if (ceilMax > tickValues[tickValues.length - 1]) {
+      tickValues.push(ceilMax);
+    }
 
     let yAxis = d3
       .axisLeft(scaleY)
@@ -72,7 +76,10 @@ class Grid extends Component {
         ].map((d) => scaleYtoY2(d))
       : scaleY2.ticks();
 
-    tickValues[tickValues.length - 1] = scaleYtoY2(scaleY.domain()[1]);
+    const domainMaxY2 = scaleYtoY2(Math.ceil(scaleY.domain()[1]));
+    if (domainMaxY2 > tickValues[tickValues.length - 1]) {
+      tickValues.push(domainMaxY2);
+    }
 
     const yAxis2Container = d3
       .select(this.container)
