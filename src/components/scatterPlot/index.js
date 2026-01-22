@@ -25,7 +25,31 @@ class ScatterPlot extends Component {
   zoom = null;
   extentDataPointsY1 = null;
   extentDataPointsY2 = null;
+  maxY1Values = null;
   maxY2Values = null;
+
+  _globalOutlierThresholdY1 = null;
+  _globalOutlierThresholdY2 = null;
+  _outlierThresholdDataY1 = null;
+  _outlierThresholdDataY2 = null;
+
+  computeGlobalOutlierThreshold(dataPointsY, cachedData, cachedThreshold, p = 0.99) {
+    if (cachedData === dataPointsY && cachedThreshold !== null) {
+      return cachedThreshold;
+    }
+
+    const sorted = [...dataPointsY].sort((a, b) => a - b);
+    const n = sorted.length;
+    const i = (n - 1) * p;
+    const iLow = Math.floor(i);
+    const iHigh = Math.ceil(i);
+
+    if (iLow === iHigh) {
+      return sorted[iLow];
+    }
+    const fraction = i - iLow;
+    return sorted[iLow] * (1 - fraction) + sorted[iHigh] * fraction;
+  }
 
   constructor(props) {
     super(props);
@@ -275,7 +299,7 @@ class ScatterPlot extends Component {
       stageWidth,
       stageHeight,
       domains,
-      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values
+      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values.map(v => Math.ceil(v))
     );
 
     this.points.render();
@@ -366,14 +390,31 @@ class ScatterPlot extends Component {
     let panelHeight = stageHeight;
     this.panels = [];
 
-    if (!commonRangeY) {
-      this.maxY2Values = findMaxInRanges(domains, dataPointsX, dataPointsY2);
-    }
-
     this.extentDataPointsY1 =
       this.extentDataPointsY1 || d3.extent(dataPointsY1);
     this.extentDataPointsY2 =
       this.extentDataPointsY2 || d3.extent(dataPointsY2);
+
+    if (!commonRangeY) {
+      if (this._outlierThresholdDataY1 !== dataPointsY1) {
+        this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
+          dataPointsY1, this._outlierThresholdDataY1, this._globalOutlierThresholdY1
+        );
+        this._outlierThresholdDataY1 = dataPointsY1;
+      }
+      if (this._outlierThresholdDataY2 !== dataPointsY2) {
+        this._globalOutlierThresholdY2 = this.computeGlobalOutlierThreshold(
+          dataPointsY2, this._outlierThresholdDataY2, this._globalOutlierThresholdY2
+        );
+        this._outlierThresholdDataY2 = dataPointsY2;
+      }
+
+      const rawMaxY1 = findMaxInRanges(domains, dataPointsX, dataPointsY1, false);
+      const rawMaxY2 = findMaxInRanges(domains, dataPointsX, dataPointsY2, false);
+
+      this.maxY1Values = rawMaxY1.map(v => Math.min(v, this._globalOutlierThresholdY1));
+      this.maxY2Values = rawMaxY2.map(v => Math.min(v, this._globalOutlierThresholdY2));
+    }
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);
@@ -410,13 +451,8 @@ class ScatterPlot extends Component {
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
         yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
       } else {
-        let yExtent2 = [0, this.maxY2Values[index]];
-        let yExtent1 = yExtent2.map((d) =>
-          d3
-            .scaleLinear()
-            .domain(this.extentDataPointsY2)
-            .range(this.extentDataPointsY1)(d)
-        );
+        let yExtent1 = [0, Math.ceil(this.maxY1Values[index])];
+        let yExtent2 = [0, Math.ceil(this.maxY2Values[index])];
 
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
         yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
