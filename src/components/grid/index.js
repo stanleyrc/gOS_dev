@@ -39,7 +39,6 @@ class Grid extends Component {
           .map((d) => Math.floor(d))
       ),
     ];
-    // Add ceiling of domain max to ensure tick coverage without losing integer ticks
     const domainMax = scaleY.domain()[1];
     const ceilMax = Math.ceil(domainMax);
     if (ceilMax > tickValues[tickValues.length - 1]) {
@@ -77,7 +76,6 @@ class Grid extends Component {
         ].map((d) => scaleYtoY2(d))
       : scaleY2.ticks();
 
-    // Add ceiling of domain max (mapped to Y2) to ensure tick coverage
     const domainMaxY2 = scaleYtoY2(Math.ceil(scaleY.domain()[1]));
     if (domainMaxY2 > tickValues[tickValues.length - 1]) {
       tickValues.push(domainMaxY2);

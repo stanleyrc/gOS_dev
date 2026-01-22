@@ -28,20 +28,16 @@ class ScatterPlot extends Component {
   maxY1Values = null;
   maxY2Values = null;
 
-  // Global outlier thresholds (computed once per dataset)
   _globalOutlierThresholdY1 = null;
   _globalOutlierThresholdY2 = null;
-  _outlierThresholdDataY1 = null; // Track which data the threshold was computed for
+  _outlierThresholdDataY1 = null;
   _outlierThresholdDataY2 = null;
 
-  // Compute global 99th percentile threshold (once per dataset)
   computeGlobalOutlierThreshold(dataPointsY, cachedData, cachedThreshold, p = 0.99) {
-    // Return cached threshold if data hasn't changed
     if (cachedData === dataPointsY && cachedThreshold !== null) {
       return cachedThreshold;
     }
 
-    // Sort a copy to find percentile
     const sorted = [...dataPointsY].sort((a, b) => a - b);
     const n = sorted.length;
     const i = (n - 1) * p;
@@ -400,7 +396,6 @@ class ScatterPlot extends Component {
       this.extentDataPointsY2 || d3.extent(dataPointsY2);
 
     if (!commonRangeY) {
-      // Compute global outlier thresholds once per dataset (O(n log n) one time)
       if (this._outlierThresholdDataY1 !== dataPointsY1) {
         this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
           dataPointsY1, this._outlierThresholdDataY1, this._globalOutlierThresholdY1
@@ -414,11 +409,9 @@ class ScatterPlot extends Component {
         this._outlierThresholdDataY2 = dataPointsY2;
       }
 
-      // Get actual max in each range (cached when usePercentile=false)
       const rawMaxY1 = findMaxInRanges(domains, dataPointsX, dataPointsY1, false);
       const rawMaxY2 = findMaxInRanges(domains, dataPointsX, dataPointsY2, false);
 
-      // Cap at global outlier threshold
       this.maxY1Values = rawMaxY1.map(v => Math.min(v, this._globalOutlierThresholdY1));
       this.maxY2Values = rawMaxY2.map(v => Math.min(v, this._globalOutlierThresholdY2));
     }
