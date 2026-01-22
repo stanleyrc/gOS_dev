@@ -199,6 +199,8 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   loading: state.PopulationStatistics.loading,
   id: state.CaseReport.id,
+  CaseReport: state.CaseReport,
+  Interpretations: state.Interpretations,
   mergedEvents: require("../../redux/interpretations/selectors").selectMergedEvents(state),
 });
 
