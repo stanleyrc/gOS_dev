@@ -14,7 +14,6 @@ import {
   Avatar,
   Typography,
   Tabs,
-  Input,
 } from "antd";
 import NotesModal from "../notesModal";
 import { withTranslation } from "react-i18next";
