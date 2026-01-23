@@ -318,6 +318,16 @@ class FilteredEventsListPanel extends Component {
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
+    // Build filter values object for controlled filter state
+    const filterValues = {
+      gene: this.state.geneFilters,
+      tier: this.state.tierFilters,
+      type: this.state.typeFilters,
+      role: this.state.roleFilters,
+      effect: this.state.effectFilters,
+      variant: this.state.variantFilters,
+    };
+
     // Build columns from settings.json and dataset configuration
     const columns = buildColumnsFromSettings(
       data?.filteredEventsColumns || [],
@@ -327,7 +337,8 @@ class FilteredEventsListPanel extends Component {
         t,
         selectFilteredEvent,
         getTierTooltipContent: this.getTierTooltipContent,
-      }
+      },
+      filterValues
     );
 
     return (
