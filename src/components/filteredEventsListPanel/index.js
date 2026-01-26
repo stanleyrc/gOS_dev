@@ -14,6 +14,7 @@ import {
   Skeleton,
   Typography,
   Select,
+  Checkbox,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, transitionStyle } from "../../helpers/utility";
@@ -62,6 +63,21 @@ class FilteredEventsListPanel extends Component {
       selectedColumnKeys: defaultKeys,
     });
   };
+
+  handleCheckboxChange = (record, checked) => {
+    const { selectedEventUids } = this.state;
+    console.log("Checkbox toggled:", { record, checked, uid: record.uid });
+    
+    if (checked) {
+      this.setState({ selectedEventUids: [...selectedEventUids, record.uid] });
+    } else {
+      this.setState({ selectedEventUids: selectedEventUids.filter((uid) => uid !== record.uid) });
+    }
+  };
+
+  isEventSelected = (record) => {
+    return this.state.selectedEventUids.includes(record.uid);
+  };
   state = {
     eventType: "all",
     tierFilters: [1, 2], // start with tiers 1 & 2 checked
@@ -72,6 +88,7 @@ class FilteredEventsListPanel extends Component {
     geneFilters: [],
     tierCountsMap: {},
     selectedColumnKeys: [],
+    selectedEventUids: [],
   };
 
   // Track if a fetch is in progress to prevent concurrent calls
@@ -341,6 +358,21 @@ class FilteredEventsListPanel extends Component {
       filterValues
     );
 
+    // Checkbox column for selecting events
+    const checkboxColumn = {
+      title: "",
+      key: "select",
+      width: 50,
+      fixed: "left",
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={this.isEventSelected(record)}
+          onChange={(e) => this.handleCheckboxChange(record, e.target.checked)}
+        />
+      ),
+    };
+
     return (
       <Wrapper>
         {error ? (
@@ -459,9 +491,10 @@ class FilteredEventsListPanel extends Component {
                   <Skeleton active loading={loading}>
                     <Table
                       columns={[
+                        checkboxColumn,
                         ...(additionalColumns || []),
                         ...columns,
-                      ].filter((col) => selectedColumnKeys.includes(col.key))}
+                      ].filter((col) => col.key === "select" || selectedColumnKeys.includes(col.key))}
                       dataSource={records}
                       pagination={{ pageSize: 50 }}
                       showSorterTooltip={false}
