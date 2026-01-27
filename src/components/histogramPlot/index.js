@@ -283,13 +283,9 @@ class HistogramPlot extends Component {
       q1,
       q3,
       density,
-      markValue,
-      colorMarker,
-      markValueText,
       highlightedMarkValue,
       highlightedMarkValueText,
       highlightedPair,
-      updateCaseReport,
       margins,
       dataset,
     } = this.getPlotConfiguration();

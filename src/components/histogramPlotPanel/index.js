@@ -90,12 +90,22 @@ class HistogramPlotPanel extends Component {
                   ellipsis={
                     true
                       ? {
-                          tooltip: title,
+                          tooltip: (
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: title,
+                              }}
+                            />
+                          ),
                         }
                       : false
                   }
                 >
-                  {title}
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: title,
+                    }}
+                  />
                 </Text>
               </span>
             </Space>
@@ -123,7 +133,7 @@ class HistogramPlotPanel extends Component {
               <ContainerDimensions>
                 {({ width, height }) => {
                   return (
-                    (inViewport) && (
+                    inViewport && (
                       <Row style={{ width }} gutter={[margins.gap, 0]}>
                         <Col flex={1}>
                           <HistogramPlot
@@ -166,8 +176,7 @@ HistogramPlotPanel.defaultProps = {
   data: [],
 };
 const mapDispatchToProps = () => ({});
-const mapStateToProps = (state) => ({
-});
+const mapStateToProps = (state) => ({});
 export default connect(
   mapStateToProps,
   mapDispatchToProps
