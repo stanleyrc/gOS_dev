@@ -66,7 +66,6 @@ class FilteredEventsListPanel extends Component {
 
   handleCheckboxChange = (record, checked) => {
     const { toggleEventUidSelection } = this.props;
-    console.log("Checkbox toggled:", { record, checked, uid: record.uid });
     toggleEventUidSelection(record.uid, checked);
   };
 
@@ -84,12 +83,6 @@ class FilteredEventsListPanel extends Component {
       selectedEventUids.includes(uid)
     );
     const allSelected = selectedTier1And2.length === tier1And2Uids.length && tier1And2Uids.length > 0;
-    
-    console.log("Header checkbox toggled:", {
-      allSelected,
-      tier1And2Count: tier1And2Uids.length,
-      selectedCount: selectedTier1And2.length,
-    });
     
     if (allSelected) {
       // Deselect all tier 1 and 2
@@ -148,8 +141,6 @@ class FilteredEventsListPanel extends Component {
 
   // Track if a fetch is in progress to prevent concurrent calls
   _isFetchingTierCounts = false;
-
-  // add as a class field
 
   getDefaultColumnKeys = () => {
     const { data: settingsData, dataset } = this.props;
