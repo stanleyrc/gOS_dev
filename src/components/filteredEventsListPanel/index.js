@@ -136,6 +136,7 @@ class FilteredEventsListPanel extends Component {
     variantFilters: [],
     geneFilters: [],
     tierCountsMap: {},
+    geneVariantsWithTierChanges: null, // Set of gene-variant keys that have tier changes
     selectedColumnKeys: [],
   };
 
@@ -264,7 +265,7 @@ class FilteredEventsListPanel extends Component {
 
       // If no gene-variants have tier changes, nothing to fetch
       if (geneVariantsWithTiers.size === 0) {
-        this.setState({ tierCountsMap: {} });
+        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
         return;
       }
 
@@ -284,7 +285,7 @@ class FilteredEventsListPanel extends Component {
 
       // Guard: nothing to fetch after filtering
       if (uniqueRecords.length === 0) {
-        this.setState({ tierCountsMap: {} });
+        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
         return;
       }
 
@@ -311,7 +312,7 @@ class FilteredEventsListPanel extends Component {
         await Promise.all(batchPromises);
       }
 
-      this.setState({ tierCountsMap: map });
+      this.setState({ tierCountsMap: map, geneVariantsWithTierChanges: geneVariantsWithTiers });
     } finally {
       this._isFetchingTierCounts = false;
     }
@@ -319,7 +320,14 @@ class FilteredEventsListPanel extends Component {
 
   getTierTooltipContent = (record) => {
     const key = `${record.gene}-${record.type}`;
-    const tierCounts = this.state.tierCountsMap[key];
+    const { tierCountsMap, geneVariantsWithTierChanges } = this.state;
+    
+    // Check if this gene-variant has no tier changes
+    if (geneVariantsWithTierChanges && !geneVariantsWithTierChanges.has(key)) {
+      return "No tier change";
+    }
+    
+    const tierCounts = tierCountsMap[key];
     if (!tierCounts) return "Loading tier distribution...";
     const total =
       (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
