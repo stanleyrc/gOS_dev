@@ -30,7 +30,7 @@ import { buildColumnsFromSettings } from "./columnBuilders";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent } = filteredEventsActions;
+const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection } = filteredEventsActions;
 
 const EVENT_TYPES = ["all", "snv", "cna", "fusion", "complexsv"];
 
@@ -65,18 +65,13 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleCheckboxChange = (record, checked) => {
-    const { selectedEventUids } = this.state;
+    const { toggleEventUidSelection } = this.props;
     console.log("Checkbox toggled:", { record, checked, uid: record.uid });
-    
-    if (checked) {
-      this.setState({ selectedEventUids: [...selectedEventUids, record.uid] });
-    } else {
-      this.setState({ selectedEventUids: selectedEventUids.filter((uid) => uid !== record.uid) });
-    }
+    toggleEventUidSelection(record.uid, checked);
   };
 
   handleHeaderCheckboxChange = (records) => {
-    const { selectedEventUids } = this.state;
+    const { selectedEventUids, setSelectedEventUids } = this.props;
     
     // Get all tier 1 and 2 records from current view
     const tier1And2Records = records.filter(
@@ -98,20 +93,19 @@ class FilteredEventsListPanel extends Component {
     
     if (allSelected) {
       // Deselect all tier 1 and 2
-      this.setState({
-        selectedEventUids: selectedEventUids.filter(
-          (uid) => !tier1And2Uids.includes(uid)
-        ),
-      });
+      const newUids = selectedEventUids.filter(
+        (uid) => !tier1And2Uids.includes(uid)
+      );
+      setSelectedEventUids(newUids);
     } else {
       // Select all tier 1 and 2
       const newSelectedUids = [...new Set([...selectedEventUids, ...tier1And2Uids])];
-      this.setState({ selectedEventUids: newSelectedUids });
+      setSelectedEventUids(newSelectedUids);
     }
   };
 
   getHeaderCheckboxState = (records) => {
-    const { selectedEventUids } = this.state;
+    const { selectedEventUids } = this.props;
     
     // Get all tier 1 and 2 records from current view
     const tier1And2Records = records.filter(
@@ -137,7 +131,8 @@ class FilteredEventsListPanel extends Component {
   };
 
   isEventSelected = (record) => {
-    return this.state.selectedEventUids.includes(record.uid);
+    const { selectedEventUids } = this.props;
+    return selectedEventUids.includes(record.uid);
   };
   state = {
     eventType: "all",
@@ -149,7 +144,6 @@ class FilteredEventsListPanel extends Component {
     geneFilters: [],
     tierCountsMap: {},
     selectedColumnKeys: [],
-    selectedEventUids: [],
   };
 
   // Track if a fetch is in progress to prevent concurrent calls
@@ -722,6 +716,10 @@ FilteredEventsListPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
+  setSelectedEventUids: (uids) =>
+    dispatch(setSelectedEventUids(uids)),
+  toggleEventUidSelection: (uid, selected) =>
+    dispatch(toggleEventUidSelection(uid, selected)),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
@@ -731,6 +729,7 @@ const mapStateToProps = (state) => {
     filteredEvents: mergedEvents.filteredEvents,
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
+    selectedEventUids: state.FilteredEvents.selectedEventUids || [],
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
     id: state.CaseReport.id,

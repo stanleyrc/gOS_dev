@@ -8,6 +8,9 @@ const actions = {
   RESET_TIER_OVERRIDES: "RESET_TIER_OVERRIDES",
   REVERT_FILTERED_EVENT: "REVERT_FILTERED_EVENT",
 
+  SET_SELECTED_EVENT_UIDS: "SET_SELECTED_EVENT_UIDS",
+  TOGGLE_EVENT_UID_SELECTION: "TOGGLE_EVENT_UID_SELECTION",
+
   fetchFilteredEvents: () => ({
     type: actions.FETCH_FILTERED_EVENTS_REQUEST,
   }),
@@ -23,6 +26,15 @@ const actions = {
     type: actions.REVERT_FILTERED_EVENT,
     alterationId,
     originalEvent,
+  }),
+  setSelectedEventUids: (uids) => ({
+    type: actions.SET_SELECTED_EVENT_UIDS,
+    uids,
+  }),
+  toggleEventUidSelection: (uid, selected) => ({
+    type: actions.TOGGLE_EVENT_UID_SELECTION,
+    uid,
+    selected,
   }),
 };
 
