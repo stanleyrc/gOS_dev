@@ -132,6 +132,33 @@ const Wrapper = styled.div`
   .filter-slider-space {
     width: 100%;
   }
+  .filter-slider-inputs {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .filter-slider-input {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .filter-slider-input-label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+    text-align: left;
+  }
+  .filter-slider-input .align-right {
+    text-align: right;
+  }
+  .filter-slider-input:first-child {
+    align-items: flex-start;
+  }
+  .filter-slider-input:last-child {
+    align-items: flex-end;
+    text-align: right;
+  }
 `;
 
 export default Wrapper;
