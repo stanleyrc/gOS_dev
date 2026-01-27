@@ -75,6 +75,67 @@ class FilteredEventsListPanel extends Component {
     }
   };
 
+  handleHeaderCheckboxChange = (records) => {
+    const { selectedEventUids } = this.state;
+    
+    // Get all tier 1 and 2 records from current view
+    const tier1And2Records = records.filter(
+      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
+    );
+    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
+    
+    // Check current state
+    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+      selectedEventUids.includes(uid)
+    );
+    const allSelected = selectedTier1And2.length === tier1And2Uids.length && tier1And2Uids.length > 0;
+    
+    console.log("Header checkbox toggled:", {
+      allSelected,
+      tier1And2Count: tier1And2Uids.length,
+      selectedCount: selectedTier1And2.length,
+    });
+    
+    if (allSelected) {
+      // Deselect all tier 1 and 2
+      this.setState({
+        selectedEventUids: selectedEventUids.filter(
+          (uid) => !tier1And2Uids.includes(uid)
+        ),
+      });
+    } else {
+      // Select all tier 1 and 2
+      const newSelectedUids = [...new Set([...selectedEventUids, ...tier1And2Uids])];
+      this.setState({ selectedEventUids: newSelectedUids });
+    }
+  };
+
+  getHeaderCheckboxState = (records) => {
+    const { selectedEventUids } = this.state;
+    
+    // Get all tier 1 and 2 records from current view
+    const tier1And2Records = records.filter(
+      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
+    );
+    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
+    
+    if (tier1And2Uids.length === 0) {
+      return { checked: false, indeterminate: false };
+    }
+    
+    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+      selectedEventUids.includes(uid)
+    );
+    
+    if (selectedTier1And2.length === 0) {
+      return { checked: false, indeterminate: false };
+    } else if (selectedTier1And2.length === tier1And2Uids.length) {
+      return { checked: true, indeterminate: false };
+    } else {
+      return { checked: false, indeterminate: true };
+    }
+  };
+
   isEventSelected = (record) => {
     return this.state.selectedEventUids.includes(record.uid);
   };
@@ -359,8 +420,15 @@ class FilteredEventsListPanel extends Component {
     );
 
     // Checkbox column for selecting events
+    const headerCheckboxState = this.getHeaderCheckboxState(records);
     const checkboxColumn = {
-      title: "",
+      title: (
+        <Checkbox
+          checked={headerCheckboxState.checked}
+          indeterminate={headerCheckboxState.indeterminate}
+          onChange={() => this.handleHeaderCheckboxChange(records)}
+        />
+      ),
       key: "select",
       width: 50,
       fixed: "left",
