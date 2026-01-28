@@ -9,7 +9,6 @@ import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
 import settingsActions from "../../redux/settings/actions";
-import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -33,7 +32,12 @@ class ScatterPlot extends Component {
   _outlierThresholdDataY1 = null;
   _outlierThresholdDataY2 = null;
 
-  computeGlobalOutlierThreshold(dataPointsY, cachedData, cachedThreshold, p = 0.99) {
+  computeGlobalOutlierThreshold(
+    dataPointsY,
+    cachedData,
+    cachedThreshold,
+    p = 0.99
+  ) {
     if (cachedData === dataPointsY && cachedThreshold !== null) {
       return cachedThreshold;
     }
@@ -70,7 +74,11 @@ class ScatterPlot extends Component {
 
   componentDidMount() {
     this.regl = require("regl")({
-      extensions: ["ANGLE_instanced_arrays", "OES_texture_float", "OES_texture_float_linear"],
+      extensions: [
+        "ANGLE_instanced_arrays",
+        "OES_texture_float",
+        "OES_texture_float_linear",
+      ],
       container: this.container,
       pixelRatio: 2.0,
       attributes: {
@@ -121,20 +129,17 @@ class ScatterPlot extends Component {
     });
 
     this.updateStage(true);
-
-    this.unsubscribeHover = store.subscribe(() => {
-      const state = store.getState();
-      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
-      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
-    });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    const dataPointsColorChanged = nextProps.dataPointsColor.length !== this.props.dataPointsColor.length;
-    const domainsChanged = nextProps.domains.toString() !== this.props.domains.toString();
+    const dataPointsColorChanged =
+      nextProps.dataPointsColor.length !== this.props.dataPointsColor.length;
+    const domainsChanged =
+      nextProps.domains.toString() !== this.props.domains.toString();
     const widthChanged = nextProps.width !== this.props.width;
     const heightChanged = nextProps.height !== this.props.height;
-    const commonRangeYChanged = nextProps.commonRangeY !== this.props.commonRangeY;
+    const commonRangeYChanged =
+      nextProps.commonRangeY !== this.props.commonRangeY;
 
     return (
       dataPointsColorChanged ||
@@ -195,51 +200,9 @@ class ScatterPlot extends Component {
     }
   }
 
-  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
-    const { chromoBins } = this.props;
-
-    if (this.panels[hoveredLocationPanelIndex]) {
-      d3.select(this.plotContainer)
-        .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
-        .classed("hidden", !hoveredLocation)
-        .attr(
-          "transform",
-          `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
-              -10000,
-            0,
-          ]})`
-        );
-      d3.select(this.plotContainer)
-        .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
-        .attr(
-          "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
-            -10000
-        )
-        .text(
-          Object.values(chromoBins)
-            .filter(
-              (chromo) =>
-                hoveredLocation < chromo.endPlace &&
-                hoveredLocation >= chromo.startPlace
-            )
-            .map((chromo) =>
-              d3.format(",")(
-                Math.floor(chromo.scaleToGenome.invert(hoveredLocation))
-              )
-            )
-        );
-    }
-  }
-
   componentWillUnmount() {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
-    }
-
-    if (this.unsubscribeHover) {
-      this.unsubscribeHover();
     }
 
     try {
@@ -275,12 +238,7 @@ class ScatterPlot extends Component {
   }
 
   updateStage(reloadData = false) {
-    const {
-      domains,
-      width,
-      height,
-      commonRangeY,
-    } = this.props;
+    const { domains, width, height, commonRangeY } = this.props;
 
     const stageWidth = width - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gapY;
@@ -299,7 +257,9 @@ class ScatterPlot extends Component {
       stageWidth,
       stageHeight,
       domains,
-      commonRangeY ? domains.map((d) => commonRangeY[1]) : this.maxY2Values.map(v => Math.ceil(v))
+      commonRangeY
+        ? domains.map((d) => commonRangeY[1])
+        : this.maxY2Values.map((v) => Math.ceil(v))
     );
 
     this.points.render();
@@ -347,7 +307,10 @@ class ScatterPlot extends Component {
     const propsDomainsStr = this.props.domains.toString();
     const pendingDomainsStr = this.pendingDomains?.toString();
 
-    if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
+    if (
+      newDomainsStr !== propsDomainsStr &&
+      newDomainsStr !== pendingDomainsStr
+    ) {
       this.pendingDomains = newDomains;
       this.updateDomains(newDomains);
     }
@@ -357,12 +320,16 @@ class ScatterPlot extends Component {
     this.zooming(event, index);
   }
 
-  handleMouseMove = throttle((e, panelIndex) => {
-    this.props.updateHoveredLocation(
-      this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
-      panelIndex
-    );
-  }, 16, { leading: true, trailing: false });
+  handleMouseMove = throttle(
+    (e, panelIndex) => {
+      this.props.updateHoveredLocation(
+        this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
+        panelIndex
+      );
+    },
+    16,
+    { leading: true, trailing: false }
+  );
 
   handleMouseOut = (e, panelIndex) => {
     this.props.updateHoveredLocation(null, panelIndex);
@@ -398,22 +365,40 @@ class ScatterPlot extends Component {
     if (!commonRangeY) {
       if (this._outlierThresholdDataY1 !== dataPointsY1) {
         this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
-          dataPointsY1, this._outlierThresholdDataY1, this._globalOutlierThresholdY1
+          dataPointsY1,
+          this._outlierThresholdDataY1,
+          this._globalOutlierThresholdY1
         );
         this._outlierThresholdDataY1 = dataPointsY1;
       }
       if (this._outlierThresholdDataY2 !== dataPointsY2) {
         this._globalOutlierThresholdY2 = this.computeGlobalOutlierThreshold(
-          dataPointsY2, this._outlierThresholdDataY2, this._globalOutlierThresholdY2
+          dataPointsY2,
+          this._outlierThresholdDataY2,
+          this._globalOutlierThresholdY2
         );
         this._outlierThresholdDataY2 = dataPointsY2;
       }
 
-      const rawMaxY1 = findMaxInRanges(domains, dataPointsX, dataPointsY1, false);
-      const rawMaxY2 = findMaxInRanges(domains, dataPointsX, dataPointsY2, false);
+      const rawMaxY1 = findMaxInRanges(
+        domains,
+        dataPointsX,
+        dataPointsY1,
+        false
+      );
+      const rawMaxY2 = findMaxInRanges(
+        domains,
+        dataPointsX,
+        dataPointsY2,
+        false
+      );
 
-      this.maxY1Values = rawMaxY1.map(v => Math.min(v, this._globalOutlierThresholdY1));
-      this.maxY2Values = rawMaxY2.map(v => Math.min(v, this._globalOutlierThresholdY2));
+      this.maxY1Values = rawMaxY1.map((v) =>
+        Math.min(v, this._globalOutlierThresholdY1)
+      );
+      this.maxY2Values = rawMaxY2.map((v) =>
+        Math.min(v, this._globalOutlierThresholdY2)
+      );
     }
 
     domains.forEach((xDomain, index) => {
@@ -514,19 +499,6 @@ class ScatterPlot extends Component {
                   axisHeight={panelHeight}
                   chromoBins={chromoBins}
                 />
-                <line
-                  className="hovered-location-line hidden"
-                  id={`hovered-location-line-${panel.index}`}
-                  y1={0}
-                  y2={panel.panelHeight}
-                />
-                <text
-                  className="hovered-location-text"
-                  id={`hovered-location-text-${panel.index}`}
-                  x={-1000}
-                  dx={5}
-                  dy={10}
-                ></text>
                 <rect
                   className="zoom-background"
                   id={`panel-rect-${panel.index}`}
@@ -569,8 +541,6 @@ const mapDispatchToProps = (dispatch) => ({
 const mapStateToProps = (state) => ({
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
-  hoveredLocation: state.Settings.hoveredLocation,
-  hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
   zoomedByCmd: state.Settings.zoomedByCmd,
 });
 export default connect(

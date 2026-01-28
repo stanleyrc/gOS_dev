@@ -28,6 +28,7 @@ import genesActions from "../../redux/genes/actions";
 import CytobandsPlot from "../cytobandsPlot";
 import LegendMultiBrush from "./legend-multi-brush";
 import GenomeRangePanel from "./genomeRangePanel";
+import HoverLine from "../hoverLine";
 
 const { updateDomains } = settingsActions;
 const { locateGenes } = genesActions;
@@ -215,37 +216,49 @@ class TracksLegendPanel extends Component {
               ref={(elem) => (this.container = elem)}
             >
               <ContainerDimensions>
-                {({ width, height }) => {
-                  return (
-                    <Row style={{ width }} gutter={[margins.gap, 0]}>
-                      <Col span={24}>
-                        <LegendMultiBrush
-                          className="ant-wrapper-legend"
+                  {({ width, height }) => {
+                    const genesHeight = height / 2.5;
+                    const cytobandsHeight = height / 2;
+                    return (
+                      <Row style={{ width }} gutter={[margins.gap, 0]}>
+                        <Col span={24}>
+                          <LegendMultiBrush
+                            className="ant-wrapper-legend"
                           {...{ width: width - 2 * margins.padding }}
                         />
                       </Col>
-                      <Col span={24}>
-                        <GenesPlot
-                          {...{
-                            width,
-                            height: height / 2.5,
-                            domains,
-                            genesList,
-                          }}
-                        />
-                      </Col>
-                      <Col span={24}>
-                        <CytobandsPlot
-                          {...{
-                            width,
-                            height: height / 2,
-                            domains,
-                          }}
-                        />
-                      </Col>
-                    </Row>
-                  );
-                }}
+                        <Col span={24}>
+                          <GenesPlot
+                            {...{
+                              width,
+                              height: genesHeight,
+                              domains,
+                              genesList,
+                            }}
+                          />
+                          <HoverLine
+                            width={width}
+                            height={genesHeight}
+                            margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }}
+                          />
+                        </Col>
+                        <Col span={24}>
+                          <CytobandsPlot
+                            {...{
+                              width,
+                              height: cytobandsHeight,
+                              domains,
+                            }}
+                          />
+                          <HoverLine
+                            width={width}
+                            height={cytobandsHeight}
+                            margins={{ gapX: 50, gapY: 24, gapYUnits: 2 }}
+                          />
+                        </Col>
+                      </Row>
+                    );
+                  }}
               </ContainerDimensions>
             </div>
           }
