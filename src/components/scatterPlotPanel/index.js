@@ -27,6 +27,7 @@ import {
 import * as htmlToImage from "html-to-image";
 import ScatterPlot from "../scatterPlot";
 import ErrorPanel from "../errorPanel";
+import HoverLine from "../hoverLine";
 
 const { Text } = Typography;
 
@@ -134,7 +135,6 @@ class ScatterPlotPanel extends Component {
   };
 
   render() {
-
     const {
       t,
       loading,
@@ -270,7 +270,7 @@ class ScatterPlotPanel extends Component {
                     height: this.state.height + "px",
                   }}
                 >
-                  {(inViewport) && (
+                  {inViewport && (
                     <Row>
                       <Col flex={1}>
                         <ScatterPlot
@@ -289,6 +289,7 @@ class ScatterPlotPanel extends Component {
                             commonRangeY,
                           }}
                         />
+                        <HoverLine width={w - gap} height={h} />
                       </Col>
                     </Row>
                   )}

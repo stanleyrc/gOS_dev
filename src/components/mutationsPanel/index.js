@@ -25,8 +25,8 @@ import {
 import * as htmlToImage from "html-to-image";
 import ErrorPanel from "../errorPanel";
 import Wrapper from "./index.style";
-// import MutationsPlot from "../mutationsPlot";
 import MutationsPlot from "../mutationsPlotWebGL";
+import HoverLine from "../hoverLine";
 
 const { Text } = Typography;
 
@@ -243,15 +243,21 @@ class MutationsPanel extends Component {
                     }}
                   >
                     {(inViewport) && (
-                      <MutationsPlot
-                        {...{
-                          width: w - gap - 2 * margins.padding,
-                          height,
-                          genome,
-                          yAxisTitle,
-                          commonRangeY,
-                        }}
-                      />
+                      <>
+                        <MutationsPlot
+                          {...{
+                            width: w - gap - 2 * margins.padding,
+                            height,
+                            genome,
+                            yAxisTitle,
+                            commonRangeY,
+                          }}
+                        />
+                        <HoverLine
+                          width={w - gap - 2 * margins.padding}
+                          height={height}
+                        />
+                      </>
                     )}
                   </div>
                 </Resizable>

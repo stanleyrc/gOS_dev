@@ -17,6 +17,7 @@ import {
   Cascader,
   Flex,
   Divider,
+  InputNumber,
   Slider,
   Collapse,
   Tag,
@@ -387,6 +388,67 @@ class ListView extends Component {
                     formatter: (value) => d3.format(d.format)(value),
                   }}
                 />
+              </Item>
+              <Item
+                noStyle
+                shouldUpdate={(prev, cur) =>
+                  prev?.[d.filter.name]?.toString() !==
+                  cur?.[d.filter.name]?.toString()
+                }
+              >
+                {({ getFieldValue, setFieldsValue }) => {
+                  const current = getFieldValue(d.filter.name) || [];
+                  const [currentMin, currentMax] = current;
+                  const updateValue = (nextMin, nextMax) => {
+                    const minValue =
+                      nextMin ?? filtersExtents[d.filter.name]?.[0];
+                    const maxValue =
+                      nextMax ?? filtersExtents[d.filter.name]?.[1];
+                    setFieldsValue({
+                      [d.filter.name]: [minValue, maxValue],
+                    });
+                    // Trigger search just like the slider change does
+                    this.onValuesChange({
+                      [d.filter.name]: [minValue, maxValue],
+                    });
+                  };
+                  const step =
+                    (filtersExtents[d.filter.name]?.[1] -
+                      filtersExtents[d.filter.name]?.[0]) /
+                    100;
+                  return (
+                    <div className="filter-slider-inputs">
+                      <div className="filter-slider-input">
+                        <Text className="filter-slider-input-label">
+                          {t("containers.list-view.filters.slider.min")}
+                        </Text>
+                        <InputNumber
+                          size="small"
+                          value={currentMin}
+                          min={+filtersExtents[d.filter.name]?.[0]}
+                          max={currentMax}
+                          step={step}
+                          precision={2}
+                          onChange={(value) => updateValue(value, currentMax)}
+                        />
+                      </div>
+                      <div className="filter-slider-input">
+                        <Text className="filter-slider-input-label align-right">
+                          {t("containers.list-view.filters.slider.max")}
+                        </Text>
+                        <InputNumber
+                          size="small"
+                          value={currentMax}
+                          min={currentMin}
+                          max={+filtersExtents[d.filter.name]?.[1]}
+                          step={step}
+                          precision={2}
+                          onChange={(value) => updateValue(currentMin, value)}
+                        />
+                      </div>
+                    </div>
+                  );
+                }}
               </Item>
             </Space>
           </Item>

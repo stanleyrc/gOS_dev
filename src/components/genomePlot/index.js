@@ -14,7 +14,6 @@ import {
 } from "../../helpers/utility";
 import Grid from "../grid/index";
 import settingsActions from "../../redux/settings/actions";
-import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -288,11 +287,6 @@ class GenomePlot extends Component {
         );
     });
 
-    this.unsubscribeHover = store.subscribe(() => {
-      const state = store.getState();
-      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
-      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
-    });
   }
 
   componentDidUpdate(prevProps) {
@@ -329,48 +323,7 @@ class GenomePlot extends Component {
     }
   }
 
-  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
-    const { chromoBins } = this.props;
-
-    if (this.panels[hoveredLocationPanelIndex]) {
-      d3.select(this.container)
-        .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
-        .classed("hidden", !hoveredLocation)
-        .attr(
-          "transform",
-          `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
-              -10000,
-            0,
-          ]})`
-        );
-      d3.select(this.container)
-        .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
-        .attr(
-          "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
-            -10000
-        )
-        .text(
-          Object.values(chromoBins)
-            .filter(
-              (chromo) =>
-                hoveredLocation < chromo.endPlace &&
-                hoveredLocation >= chromo.startPlace
-            )
-            .map((chromo) =>
-              d3.format(",")(
-                Math.floor(chromo.scaleToGenome.invert(hoveredLocation))
-              )
-            )
-        );
-    }
-  }
-
   componentWillUnmount() {
-    if (this.unsubscribeHover) {
-      this.unsubscribeHover();
-    }
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
@@ -622,19 +575,6 @@ class GenomePlot extends Component {
                     axisHeight={panel.panelHeight}
                     chromoBins={chromoBins}
                   />
-                  <line
-                    className="hovered-location-line hidden"
-                    id={`hovered-location-line-${panel.index}`}
-                    y1={0}
-                    y2={panel.panelHeight}
-                  />
-                  <text
-                    className="hovered-location-text"
-                    id={`hovered-location-text-${panel.index}`}
-                    x={-1000}
-                    dx={5}
-                    dy={10}
-                  ></text>
                 </g>
                 <rect
                   className="zoom-background"

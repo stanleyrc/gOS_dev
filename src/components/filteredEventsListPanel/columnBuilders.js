@@ -162,7 +162,7 @@ function computeRangeBounds(records, dataIndex) {
  * @param {Object} rendererProps - Additional props to pass to the renderer, plus t() function
  * @returns {Object} Complete Ant Design column config
  */
-export function buildColumnConfig(columnDef, records, rendererProps = {}) {
+export function buildColumnConfig(columnDef, records, rendererProps = {}, filteredValue = null) {
   const {
     id,
     title,
@@ -237,6 +237,10 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}) {
         columnConfig.filterSearch = true;
       }
     }
+    // Apply controlled filteredValue if provided (enables programmatic filter reset)
+    if (filteredValue !== null) {
+      columnConfig.filteredValue = filteredValue;
+    }
   }
 
   // Add sorter if enabled
@@ -262,7 +266,8 @@ export function buildColumnsFromSettings(
   settingsColumns = [],
   datasetColumns = [],
   records = [],
-  rendererProps = {}
+  rendererProps = {},
+  filterValues = {}
 ) {
   // Merge settings and dataset columns, dataset takes precedence
   const allColumns = [...settingsColumns];
@@ -281,6 +286,6 @@ export function buildColumnsFromSettings(
 
   // Build column configs
   return allColumns.map((columnDef) =>
-    buildColumnConfig(columnDef, records, rendererProps)
+    buildColumnConfig(columnDef, records, rendererProps, filterValues[columnDef.id] ?? null)
   );
 }

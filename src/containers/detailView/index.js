@@ -5,6 +5,7 @@ import { withRouter } from "react-router-dom";
 import { Skeleton, Affix, Tabs } from "antd";
 import HeaderPanel from "../../components/headerPanel";
 import SummaryTab from "../../tabs/summaryTab";
+import FilteredEventsTab from "../../tabs/filteredEventsTab";
 import TracksTab from "../../tabs/tracksTab";
 import Wrapper from "./index.style";
 import PopulationTab from "../../tabs/populationTab";
@@ -26,14 +27,16 @@ class DetailView extends Component {
     if (!pair) {
       return null;
     }
-    const tabs = [
-      <SummaryTab />,
-      <TracksTab />,
-      <PopulationTab />,
-      <SageQcTab />,
-      <BinQCTab />,
-      <SignaturesTab />,
-    ];
+    const tabs = {
+      0: <SummaryTab />,
+      1: <FilteredEventsTab />,
+      2: <TracksTab />,
+      3: <PopulationTab />,
+      4: <SageQcTab />,
+      5: <BinQCTab />,
+      6: <SignaturesTab />,
+    };
+    let tabsOrder = [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
@@ -44,14 +47,14 @@ class DetailView extends Component {
           </Affix>
           <div className="ant-home-content-container">
             <Tabs
-                defaultActiveKey="1"
-                activeKey={tab.toString()}
-                onChange={(tab) => this.handleTabChanged(tab)}
-                items={tabs.map((Component, i) => ({
-                  key: (i + 1).toString(),
-                  label: t(`containers.detail-view.tabs.tab${i + 1}`),
-                  children: Component,
-                }))}
+              defaultActiveKey="1"
+              activeKey={tab.toString()}
+              onChange={(tab) => this.handleTabChanged(tab)}
+              items={tabsOrder.map((key) => ({
+                key: key.toString(),
+                label: t(`containers.detail-view.tabs.tab${key}`),
+                children: tabs[key],
+              }))}
             />
           </div>
         </Skeleton>

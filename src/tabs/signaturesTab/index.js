@@ -90,6 +90,7 @@ class SignaturesTab extends Component {
       mutationFilter === "sbs"
         ? sigprofiler_sbs_cosine_similarity
         : sigprofiler_indel_cosine_similarity;
+
     return (
       <Wrapper>
         <Skeleton active loading={loading}>

@@ -65,6 +65,7 @@ class LegendMultiBrush extends Component {
   }
 
   createDefaults(domain) {
+    let { hoveredLocationPanelIndex } = this.props;
     this.createBrush();
     let fragment = this.fragments[this.fragments.length - 1];
     this.update();
@@ -226,7 +227,13 @@ class LegendMultiBrush extends Component {
   };
 
   renderBrushes = () => {
+    let { hoveredLocationPanelIndex } = this.props;
+
     var self = this;
+
+    self.activeId =
+      this.fragments?.filter((e) => e.selection)[hoveredLocationPanelIndex]
+        ?.id || self.activeId;
 
     let brushSelection = d3
       .select(this.container)
@@ -456,5 +463,6 @@ const mapStateToProps = (state) => ({
   domains: state.Settings.domains,
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
+  hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
 });
 export default connect(mapStateToProps, mapDispatchToProps)(LegendMultiBrush);

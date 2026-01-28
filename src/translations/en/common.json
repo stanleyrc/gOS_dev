@@ -308,6 +308,10 @@
         "export": "Export CSV"
       },
       "filters": {
+        "slider": {
+          "min": "Min",
+          "max": "Max"
+        },
         "title": "Search Filters",
         "placeholder": "select one or many",
         "empty": "(empty)",
@@ -373,7 +377,8 @@
     },
     "detail-view": {
       "tabs": {
-        "tab1": "Overall",
+        "tab0": "Overall",
+        "tab1": "Filtered Events",
         "tab2": "Genome View",
         "tab3": "Population View",
         "tab4": "Variant QC",
