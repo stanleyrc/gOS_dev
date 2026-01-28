@@ -308,6 +308,10 @@
         "export": "Export CSV"
       },
       "filters": {
+        "slider": {
+          "min": "Min",
+          "max": "Max"
+        },
         "title": "Search Filters",
         "placeholder": "select one or many",
         "empty": "(empty)",

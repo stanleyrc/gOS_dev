@@ -7,7 +7,6 @@ import { throttle } from "lodash";
 import { filterGenesByOverlap, measureText } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import settingsActions from "../../redux/settings/actions";
-import { store } from "../../redux/store";
 
 const { updateDomains, updateHoveredLocation } = settingsActions;
 
@@ -74,12 +73,6 @@ class GenesPlot extends Component {
         );
     });
 
-    // Subscribe to Redux store for hover updates (bypassing React)
-    this.unsubscribeHover = store.subscribe(() => {
-      const state = store.getState();
-      const { hoveredLocation, hoveredLocationPanelIndex } = state.Settings;
-      this.updateHoverLine(hoveredLocation, hoveredLocationPanelIndex);
-    });
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -116,49 +109,7 @@ class GenesPlot extends Component {
     }
   }
 
-  updateHoverLine(hoveredLocation, hoveredLocationPanelIndex) {
-    const { chromoBins } = this.props;
-
-    if (this.panels[hoveredLocationPanelIndex]) {
-      d3.select(this.plotContainer)
-        .select(`#hovered-location-line-${hoveredLocationPanelIndex}`)
-        .classed("hidden", !hoveredLocation)
-        .attr(
-          "transform",
-          `translate(${[
-            this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
-              -10000,
-            0,
-          ]})`
-        );
-      d3.select(this.plotContainer)
-        .select(`#hovered-location-text-${hoveredLocationPanelIndex}`)
-        .attr(
-          "x",
-          this.panels[hoveredLocationPanelIndex].xScale(hoveredLocation) ||
-            -10000
-        )
-        .text(
-          Object.values(chromoBins)
-            .filter(
-              (chromo) =>
-                hoveredLocation < chromo.endPlace &&
-                hoveredLocation >= chromo.startPlace
-            )
-            .map((chromo) =>
-              d3.format(",")(
-                Math.floor(chromo.scaleToGenome.invert(hoveredLocation))
-              )
-            )
-        );
-    }
-  }
-
   componentWillUnmount() {
-    // Unsubscribe from hover updates
-    if (this.unsubscribeHover) {
-      this.unsubscribeHover();
-    }
   }
 
   zooming(event, index) {
@@ -522,19 +473,6 @@ class GenesPlot extends Component {
                     </g>
                   ))}
                 </g>
-                <line
-                  className="hovered-location-line hidden"
-                  id={`hovered-location-line-${panel.index}`}
-                  y1={0}
-                  y2={panel.panelHeight}
-                />
-                <text
-                  className="hovered-location-text"
-                  id={`hovered-location-text-${panel.index}`}
-                  x={-1000}
-                  dx={5}
-                  dy={10}
-                ></text>
               </g>
             ))}
           </g>

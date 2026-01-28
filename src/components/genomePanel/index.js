@@ -26,6 +26,7 @@ import * as htmlToImage from "html-to-image";
 import ErrorPanel from "../errorPanel";
 import Wrapper from "./index.style";
 import GenomePlot from "../genomePlot";
+import HoverLine from "../hoverLine";
 
 const { Text } = Typography;
 
@@ -240,15 +241,21 @@ class GenomePanel extends Component {
                     }}
                   >
                     {inViewport && (
-                      <GenomePlot
-                        {...{
-                          width: w - gap - 2 * margins.padding,
-                          height,
-                          genome,
-                          yAxisTitle,
-                          commonRangeY,
-                        }}
-                      />
+                      <>
+                        <GenomePlot
+                          {...{
+                            width: w - gap - 2 * margins.padding,
+                            height,
+                            genome,
+                            yAxisTitle,
+                            commonRangeY,
+                          }}
+                        />
+                        <HoverLine
+                          width={w - gap - 2 * margins.padding}
+                          height={height}
+                        />
+                      </>
                     )}
                   </div>
                 </Resizable>
