@@ -428,6 +428,7 @@ class ListView extends Component {
                           min={+filtersExtents[d.filter.name]?.[0]}
                           max={currentMax}
                           step={step}
+                          precision={2}
                           onChange={(value) => updateValue(value, currentMax)}
                         />
                       </div>
@@ -441,6 +442,7 @@ class ListView extends Component {
                           min={currentMin}
                           max={+filtersExtents[d.filter.name]?.[1]}
                           step={step}
+                          precision={2}
                           onChange={(value) => updateValue(currentMin, value)}
                         />
                       </div>
