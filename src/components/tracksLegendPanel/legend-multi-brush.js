@@ -62,6 +62,7 @@ class LegendMultiBrush extends Component {
     this.state = {
       hoveredChromo: null,
     };
+    this.prevOverlayCursor = null;
   }
 
   createDefaults(domain) {
@@ -286,46 +287,66 @@ class LegendMultiBrush extends Component {
     // Add global click handler on SVG to detect chromosome clicks based on X position (overlay-friendly)
     d3.select(this.container).on("click", (event) => {
       const { chromoBins } = this.props;
-      const [mouseX] = d3.pointer(event, this.container);
+      // Temporarily disable brush overlays/selections to see what is under the cursor
+      const overlays = Array.from(
+        this.container.querySelectorAll(".overlay, .selection")
+      );
+      const prevPointers = overlays.map((n) => n.style.pointerEvents);
+      overlays.forEach((n) => (n.style.pointerEvents = "none"));
+      const hitElement = document.elementFromPoint(
+        event.clientX,
+        event.clientY
+      );
+      overlays.forEach((n, i) => (n.style.pointerEvents = prevPointers[i]));
 
-      const stageX = mouseX - margins.legend.padding;
-      if (stageX < 0 || stageX > this.stageWidth) return;
-
-      // Find the chromosome under this X
-      const clickedChromo = Object.values(chromoBins).find((d) => {
-        const start = this.genomeScale(d.startPlace);
-        const width =
-          this.genomeScale(d.endPlace) - this.genomeScale(d.startPlace);
-        return stageX >= start && stageX <= start + width;
-      });
-
+      const clickedChromo =
+        hitElement && chromoBins[d3.select(hitElement).attr("id")];
       if (clickedChromo) {
         this.handleChromosomeClick(clickedChromo);
+        return;
       }
     });
 
     d3.select(this.container).on("mousemove", (event) => {
       const { chromoBins } = this.props;
-      const [mouseX] = d3.pointer(event, this.container);
 
-      const stageX = mouseX - margins.legend.padding;
-      if (stageX < 0 || stageX > this.stageWidth) {
-        if (this.state.hoveredChromo !== null) {
-          this.setState({ hoveredChromo: null });
-        }
-        return;
+      // Temporarily disable brush overlays/selections to see what is under the cursor
+      const overlays = Array.from(
+        this.container.querySelectorAll(".overlay, .selection")
+      );
+      const prevPointers = overlays.map((n) => n.style.pointerEvents);
+      overlays.forEach((n) => (n.style.pointerEvents = "none"));
+      const hitElement = document.elementFromPoint(
+        event.clientX,
+        event.clientY
+      );
+      overlays.forEach((n, i) => (n.style.pointerEvents = prevPointers[i]));
+
+      const hitSel = d3.select(hitElement);
+      const chromoId = hitSel.attr("id");
+      const newHover =
+        chromoId && hitSel?.classed("chromo-text")
+          ? chromoBins[chromoId]?.chromosome || null
+          : null;
+
+      if (this.state.hoveredChromo !== newHover) {
+        this.setState({ hoveredChromo: newHover });
       }
 
-      const hovered = Object.values(chromoBins).find((d) => {
-        const start = this.genomeScale(d.startPlace);
-        const width =
-          this.genomeScale(d.endPlace) - this.genomeScale(d.startPlace);
-        return stageX >= start && stageX <= start + width;
-      });
-
-      const current = hovered ? hovered.chromosome : null;
-      if (this.state.hoveredChromo !== current) {
-        this.setState({ hoveredChromo: current });
+      if (overlays.length) {
+        if (newHover) {
+          overlays.forEach((overlayNode) => {
+            if (this.prevOverlayCursor === null) {
+              this.prevOverlayCursor = overlayNode.style.cursor || "";
+            }
+            overlayNode.style.cursor = "pointer";
+          });
+        } else {
+          overlays.forEach((overlayNode) => {
+            overlayNode.style.cursor = this.prevOverlayCursor || "";
+          });
+          this.prevOverlayCursor = null;
+        }
       }
     });
   }
@@ -422,6 +443,7 @@ class LegendMultiBrush extends Component {
                       {...margins.chromoBox}
                     />
                     <text
+                      id={d.chromosome}
                       className={`chromo-text${
                         hoveredChromo === d.chromosome
                           ? " chromosome-highlighted"
