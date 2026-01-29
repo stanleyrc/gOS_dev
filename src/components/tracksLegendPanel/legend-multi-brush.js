@@ -65,7 +65,6 @@ class LegendMultiBrush extends Component {
   }
 
   createDefaults(domain) {
-    let { hoveredLocationPanelIndex } = this.props;
     this.createBrush();
     let fragment = this.fragments[this.fragments.length - 1];
     this.update();
@@ -335,7 +334,9 @@ class LegendMultiBrush extends Component {
     return (
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextProps.width !== this.props.width ||
-      nextState.hoveredChromo !== this.state.hoveredChromo
+      nextState.hoveredChromo !== this.state.hoveredChromo ||
+      nextProps.hoveredLocationPanelIndex !==
+        this.props.hoveredLocationPanelIndex
     );
   }
 
