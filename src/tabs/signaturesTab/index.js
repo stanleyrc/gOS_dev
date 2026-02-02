@@ -245,7 +245,13 @@ class SignaturesTab extends Component {
                             <span>
                               {t("components.mutation-catalog-panel.title")}
                             </span>
-                            <span>{d.id}</span>
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: t(`metadata.${d.id}.full`, {
+                                  ns: "signatures",
+                                }),
+                              }}
+                            />
                             <span
                               dangerouslySetInnerHTML={{
                                 __html: t(`general.mutation`, {
