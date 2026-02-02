@@ -54,10 +54,7 @@ class FilteredEventsListPanel extends Component {
     const additionalKeys = (additionalColumns || []).map((col) => col.key);
     const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
 
-    // Reset column filters via Redux
     resetColumnFilters();
-
-    // Reset column visibility (remains in local state)
     this.setState({
       selectedColumnKeys: defaultKeys,
     });
@@ -207,10 +204,8 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleTableChange = (pagination, filters) => {
-    // Dynamically capture all filter values from Ant Design Table
     const columnFilters = {};
     Object.keys(filters).forEach((key) => {
-      // Only store non-empty filter arrays
       if (filters[key] && filters[key].length > 0) {
         columnFilters[key] = filters[key];
       }
@@ -381,7 +376,6 @@ class FilteredEventsListPanel extends Component {
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
-    // Build filterValues from Redux columnFilters state
     const { columnFilters } = this.props;
     const filterValues = { ...columnFilters };
 

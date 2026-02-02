@@ -9,7 +9,7 @@ const initState = {
   error: null,
   selectedEventUids: [],
   columnFilters: {
-    tier: [1, 2], // Pre-initialize tier filter per existing UX
+    tier: [1, 2],
   },
 };
 
@@ -23,7 +23,7 @@ export default function appReducer(state = initState, action) {
         originalFilteredEvents: [],
         loading: true,
         columnFilters: {
-          tier: [1, 2], // Reset to defaults when loading new case
+          tier: [1, 2],
         },
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
@@ -131,7 +131,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         columnFilters: {
-          tier: [1, 2], // Preserve tier default per existing UX
+          tier: [1, 2],
         },
       };
     }

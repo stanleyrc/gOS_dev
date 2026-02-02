@@ -241,8 +241,6 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
         columnConfig.filterSearch = true;
       }
     }
-    // Always set filteredValue for controlled filter state
-    // This ensures filters can be programmatically reset (null = no filter applied)
     columnConfig.filteredValue = filteredValue;
   }
 
