@@ -11,6 +11,9 @@ const actions = {
   SET_SELECTED_EVENT_UIDS: "SET_SELECTED_EVENT_UIDS",
   TOGGLE_EVENT_UID_SELECTION: "TOGGLE_EVENT_UID_SELECTION",
 
+  SET_COLUMN_FILTERS: "SET_COLUMN_FILTERS",
+  RESET_COLUMN_FILTERS: "RESET_COLUMN_FILTERS",
+
   fetchFilteredEvents: () => ({
     type: actions.FETCH_FILTERED_EVENTS_REQUEST,
   }),
@@ -35,6 +38,13 @@ const actions = {
     type: actions.TOGGLE_EVENT_UID_SELECTION,
     uid,
     selected,
+  }),
+  setColumnFilters: (columnFilters) => ({
+    type: actions.SET_COLUMN_FILTERS,
+    columnFilters,
+  }),
+  resetColumnFilters: () => ({
+    type: actions.RESET_COLUMN_FILTERS,
   }),
 };
 

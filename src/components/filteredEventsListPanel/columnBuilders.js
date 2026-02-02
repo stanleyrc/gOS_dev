@@ -241,10 +241,9 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
         columnConfig.filterSearch = true;
       }
     }
-    // Apply controlled filteredValue if provided (enables programmatic filter reset)
-    if (filteredValue !== null) {
-      columnConfig.filteredValue = filteredValue;
-    }
+    // Always set filteredValue for controlled filter state
+    // This ensures filters can be programmatically reset (null = no filter applied)
+    columnConfig.filteredValue = filteredValue;
   }
 
   // Add sorter if enabled

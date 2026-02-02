@@ -30,7 +30,7 @@ import { buildColumnsFromSettings } from "./columnBuilders";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection } = filteredEventsActions;
+const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
 const EVENT_TYPES = ["all", "snv", "cna", "fusion", "complexsv"];
 
@@ -49,17 +49,16 @@ const getColumnTitle = (title) => {
 
 class FilteredEventsListPanel extends Component {
   handleResetFilters = () => {
-    const { additionalColumns } = this.props;
+    const { additionalColumns, resetColumnFilters } = this.props;
     const defaultColumnKeys = this.getDefaultColumnKeys();
     const additionalKeys = (additionalColumns || []).map((col) => col.key);
     const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
+
+    // Reset column filters via Redux
+    resetColumnFilters();
+
+    // Reset column visibility (remains in local state)
     this.setState({
-      geneFilters: [],
-      tierFilters: [],
-      typeFilters: [],
-      roleFilters: [],
-      effectFilters: [],
-      variantFilters: [],
       selectedColumnKeys: defaultKeys,
     });
   };
@@ -129,14 +128,8 @@ class FilteredEventsListPanel extends Component {
   };
   state = {
     eventType: "all",
-    tierFilters: [1, 2], // start with tiers 1 & 2 checked
-    typeFilters: [],
-    roleFilters: [],
-    effectFilters: [],
-    variantFilters: [],
-    geneFilters: [],
     tierCountsMap: {},
-    geneVariantsWithTierChanges: null, // Set of gene-variant keys that have tier changes
+    geneVariantsWithTierChanges: null,
     selectedColumnKeys: [],
   };
 
@@ -214,16 +207,15 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleTableChange = (pagination, filters) => {
-    // When the user changes filters (e.g. checks tier 3),
-    // update tierFilters in the state:
-    this.setState({
-      geneFilters: filters.gene || [],
-      tierFilters: filters.tier || [],
-      typeFilters: filters.type || [],
-      roleFilters: filters.role || [],
-      effectFilters: filters.effect || [],
-      variantFilters: filters.variant || [],
+    // Dynamically capture all filter values from Ant Design Table
+    const columnFilters = {};
+    Object.keys(filters).forEach((key) => {
+      // Only store non-empty filter arrays
+      if (filters[key] && filters[key].length > 0) {
+        columnFilters[key] = filters[key];
+      }
     });
+    this.props.setColumnFilters(columnFilters);
   };
 
   fetchTierCountsForRecords = async () => {
@@ -389,15 +381,9 @@ class FilteredEventsListPanel extends Component {
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
-    // Build filter values object for controlled filter state
-    const filterValues = {
-      gene: this.state.geneFilters,
-      tier: this.state.tierFilters,
-      type: this.state.typeFilters,
-      role: this.state.roleFilters,
-      effect: this.state.effectFilters,
-      variant: this.state.variantFilters,
-    };
+    // Build filterValues from Redux columnFilters state
+    const { columnFilters } = this.props;
+    const filterValues = { ...columnFilters };
 
     // Build columns from settings.json and dataset configuration
     const columns = buildColumnsFromSettings(
@@ -719,6 +705,10 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(setSelectedEventUids(uids)),
   toggleEventUidSelection: (uid, selected) =>
     dispatch(toggleEventUidSelection(uid, selected)),
+  setColumnFilters: (columnFilters) =>
+    dispatch(setColumnFilters(columnFilters)),
+  resetColumnFilters: () =>
+    dispatch(resetColumnFilters()),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
@@ -729,6 +719,7 @@ const mapStateToProps = (state) => {
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
     selectedEventUids: state.FilteredEvents.selectedEventUids || [],
+    columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2] },
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
     id: state.CaseReport.id,

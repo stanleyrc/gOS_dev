@@ -8,6 +8,9 @@ const initState = {
   viewMode: "tracks",
   error: null,
   selectedEventUids: [],
+  columnFilters: {
+    tier: [1, 2], // Pre-initialize tier filter per existing UX
+  },
 };
 
 export default function appReducer(state = initState, action) {
@@ -19,6 +22,9 @@ export default function appReducer(state = initState, action) {
         filteredEvents: [],
         originalFilteredEvents: [],
         loading: true,
+        columnFilters: {
+          tier: [1, 2], // Reset to defaults when loading new case
+        },
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
       return {
@@ -114,6 +120,20 @@ export default function appReducer(state = initState, action) {
         };
       }
       return state;
+    }
+    case actions.SET_COLUMN_FILTERS: {
+      return {
+        ...state,
+        columnFilters: action.columnFilters,
+      };
+    }
+    case actions.RESET_COLUMN_FILTERS: {
+      return {
+        ...state,
+        columnFilters: {
+          tier: [1, 2], // Preserve tier default per existing UX
+        },
+      };
     }
     default:
       return state;
