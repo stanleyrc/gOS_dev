@@ -222,17 +222,15 @@ class ScatterPlot extends Component {
       dataPointsXHigh,
       dataPointsXLow,
       dataPointsY1,
-      dataPointsY2,
       dataPointsColor,
-      commonRangeY,
     } = this.props;
 
-    const dataY = commonRangeY ? dataPointsY1 : dataPointsY2;
-
+    // Always use Y1 (Est. CN) data for consistent point rendering
+    // The second Y-axis (Base Coverage) is just for reference
     return {
       xHigh: dataPointsXHigh,
       xLow: dataPointsXLow,
-      y: dataY,
+      y: dataPointsY1,
       color: dataPointsColor,
     };
   }
@@ -259,7 +257,7 @@ class ScatterPlot extends Component {
       domains,
       commonRangeY
         ? domains.map((d) => commonRangeY[1])
-        : this.maxY2Values.map((v) => Math.ceil(v))
+        : this.maxY1Values.map((v) => Math.ceil(v))
     );
 
     this.points.render();
@@ -426,12 +424,12 @@ class ScatterPlot extends Component {
       if (commonRangeY) {
         d3.scaleLinear().domain(commonRangeY).ticks();
         let yExtent1 = commonRangeY;
-        let yExtent2 = yExtent1.map((d) =>
-          d3
-            .scaleLinear()
-            .domain(this.extentDataPointsY1)
-            .range(this.extentDataPointsY2)(d)
-        );
+        // Map Y1 extent to Y2 using [0, max] ranges so both axes start from 0
+        let maxY2 = d3
+          .scaleLinear()
+          .domain([0, this.extentDataPointsY1[1]])
+          .range([0, this.extentDataPointsY2[1]])(commonRangeY[1]);
+        let yExtent2 = [0, maxY2];
 
         yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
         yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
