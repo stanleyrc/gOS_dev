@@ -25,7 +25,7 @@ import {
 import * as htmlToImage from "html-to-image";
 import ErrorPanel from "../errorPanel";
 import Wrapper from "./index.style";
-import MutationsPlot from "../mutationsPlot";
+import MutationsPlot from "../mutationsPlotWebGL";
 import HoverLine from "../hoverLine";
 
 const { Text } = Typography;
