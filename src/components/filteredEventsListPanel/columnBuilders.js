@@ -168,16 +168,20 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
     title,
     dataIndex,
     viewType = "string-basic",
-    type = "string",
     width = 120,
     filterable = false,
     sortable = false,
-    filterType = type === "numeric" ? "numeric" : type === "object" ? "object" : "string",
     filterSearch = false,
     ellipsis = false,
     rendererProps: columnRendererProps = {},
     fields,
   } = columnDef;
+
+  // Auto-detect type for class-icon viewType (expects object with {class, score, desc})
+  const type = columnDef.type || (viewType === "class-icon" ? "object" : "string");
+  
+  // Derive filterType from type if not explicitly specified
+  const filterType = columnDef.filterType || (type === "numeric" ? "numeric" : type === "object" ? "object" : "string");
 
   // Extract the t function from rendererProps (if provided by component)
   const { t, ...otherProps } = rendererProps;
@@ -237,10 +241,7 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
         columnConfig.filterSearch = true;
       }
     }
-    // Apply controlled filteredValue if provided (enables programmatic filter reset)
-    if (filteredValue !== null) {
-      columnConfig.filteredValue = filteredValue;
-    }
+    columnConfig.filteredValue = filteredValue;
   }
 
   // Add sorter if enabled
