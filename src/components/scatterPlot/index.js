@@ -360,44 +360,55 @@ class ScatterPlot extends Component {
     this.extentDataPointsY2 =
       this.extentDataPointsY2 || d3.extent(dataPointsY2);
 
-    if (!commonRangeY) {
-      if (this._outlierThresholdDataY1 !== dataPointsY1) {
-        this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
-          dataPointsY1,
-          this._outlierThresholdDataY1,
-          this._globalOutlierThresholdY1
-        );
-        this._outlierThresholdDataY1 = dataPointsY1;
-      }
-      if (this._outlierThresholdDataY2 !== dataPointsY2) {
-        this._globalOutlierThresholdY2 = this.computeGlobalOutlierThreshold(
-          dataPointsY2,
-          this._outlierThresholdDataY2,
-          this._globalOutlierThresholdY2
-        );
-        this._outlierThresholdDataY2 = dataPointsY2;
-      }
-
-      const rawMaxY1 = findMaxInRanges(
-        domains,
-        dataPointsX,
+    // Always compute outlier thresholds and max values for both axes
+    // Y2 (Base Coverage) axis is independent of common/individual mode
+    if (this._outlierThresholdDataY1 !== dataPointsY1) {
+      this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
         dataPointsY1,
-        false
+        this._outlierThresholdDataY1,
+        this._globalOutlierThresholdY1
       );
-      const rawMaxY2 = findMaxInRanges(
-        domains,
-        dataPointsX,
-        dataPointsY2,
-        false
-      );
-
-      this.maxY1Values = rawMaxY1.map((v) =>
-        Math.min(v, this._globalOutlierThresholdY1)
-      );
-      this.maxY2Values = rawMaxY2.map((v) =>
-        Math.min(v, this._globalOutlierThresholdY2)
-      );
+      this._outlierThresholdDataY1 = dataPointsY1;
     }
+    if (this._outlierThresholdDataY2 !== dataPointsY2) {
+      this._globalOutlierThresholdY2 = this.computeGlobalOutlierThreshold(
+        dataPointsY2,
+        this._outlierThresholdDataY2,
+        this._globalOutlierThresholdY2
+      );
+      this._outlierThresholdDataY2 = dataPointsY2;
+    }
+
+    const rawMaxY1 = findMaxInRanges(
+      domains,
+      dataPointsX,
+      dataPointsY1,
+      false
+    );
+    const rawMaxY2 = findMaxInRanges(
+      domains,
+      dataPointsX,
+      dataPointsY2,
+      false
+    );
+
+    this.maxY1Values = rawMaxY1.map((v) =>
+      Math.min(v, this._globalOutlierThresholdY1)
+    );
+    this.maxY2Values = rawMaxY2.map((v) =>
+      Math.min(v, this._globalOutlierThresholdY2)
+    );
+
+    // Derive Y2 (Base Coverage) axis from Y1 (Est. CN) axis using the
+    // linear relationship between the two datasets. This ensures that at
+    // every pixel position, the right axis shows the correct base coverage
+    // value corresponding to the CN value on the left axis.
+    // The relationship is: CN = count * slope + intercept, so we use the
+    // data extents to reconstruct the mapping.
+    let cnToCount = d3
+      .scaleLinear()
+      .domain(this.extentDataPointsY1)
+      .range(this.extentDataPointsY2);
 
     domains.forEach((xDomain, index) => {
       let offset = index * (panelWidth + margins.gapX);
@@ -421,25 +432,17 @@ class ScatterPlot extends Component {
         .range([0, panelWidth]);
 
       let yScale1, yScale2;
+      let yExtent1;
       if (commonRangeY) {
-        d3.scaleLinear().domain(commonRangeY).ticks();
-        let yExtent1 = commonRangeY;
-        // Map Y1 extent to Y2 using [0, max] ranges so both axes start from 0
-        let maxY2 = d3
-          .scaleLinear()
-          .domain([0, this.extentDataPointsY1[1]])
-          .range([0, this.extentDataPointsY2[1]])(commonRangeY[1]);
-        let yExtent2 = [0, maxY2];
-
-        yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
-        yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+        yExtent1 = commonRangeY;
       } else {
-        let yExtent1 = [0, Math.ceil(this.maxY1Values[index])];
-        let yExtent2 = [0, Math.ceil(this.maxY2Values[index])];
-
-        yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
-        yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
+        yExtent1 = [0, Math.ceil(this.maxY1Values[index])];
       }
+
+      let yExtent2 = yExtent1.map((d) => cnToCount(d));
+
+      yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
+      yScale2 = d3.scaleLinear().domain(yExtent2).range([panelHeight, 0]);
 
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
 
