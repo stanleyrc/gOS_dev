@@ -7,6 +7,10 @@ const initState = {
   selectedFilteredEvent: null,
   viewMode: "tracks",
   error: null,
+  selectedEventUids: [],
+  columnFilters: {
+    tier: [1, 2],
+  },
 };
 
 export default function appReducer(state = initState, action) {
@@ -18,6 +22,9 @@ export default function appReducer(state = initState, action) {
         filteredEvents: [],
         originalFilteredEvents: [],
         loading: true,
+        columnFilters: {
+          tier: [1, 2],
+        },
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:
       return {
@@ -87,6 +94,45 @@ export default function appReducer(state = initState, action) {
         ...state,
         filteredEvents: nextFiltered,
         selectedFilteredEvent: nextSelected,
+      };
+    }
+    case actions.SET_SELECTED_EVENT_UIDS: {
+      return {
+        ...state,
+        selectedEventUids: action.uids || [],
+      };
+    }
+    case actions.TOGGLE_EVENT_UID_SELECTION: {
+      const { uid, selected } = action;
+      const currentUids = state.selectedEventUids || [];
+      
+      if (selected) {
+        if (!currentUids.includes(uid)) {
+          return {
+            ...state,
+            selectedEventUids: [...currentUids, uid],
+          };
+        }
+      } else {
+        return {
+          ...state,
+          selectedEventUids: currentUids.filter((u) => u !== uid),
+        };
+      }
+      return state;
+    }
+    case actions.SET_COLUMN_FILTERS: {
+      return {
+        ...state,
+        columnFilters: action.columnFilters,
+      };
+    }
+    case actions.RESET_COLUMN_FILTERS: {
+      return {
+        ...state,
+        columnFilters: {
+          tier: [1, 2],
+        },
       };
     }
     default:
