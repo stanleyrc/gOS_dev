@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { createPortal } from "react-dom";
 import { withTranslation } from "react-i18next";
 import { withRouter } from "react-router-dom";
 import handleViewport from "react-in-viewport";
@@ -14,6 +15,7 @@ import {
   Skeleton,
   Typography,
   Select,
+  Checkbox,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, transitionStyle } from "../../helpers/utility";
@@ -29,7 +31,7 @@ import { buildColumnsFromSettings } from "./columnBuilders";
 
 const { Text } = Typography;
 
-const { selectFilteredEvent } = filteredEventsActions;
+const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
 const EVENT_TYPES = ["all", "snv", "cna", "fusion", "complexsv"];
 
@@ -48,36 +50,89 @@ const getColumnTitle = (title) => {
 
 class FilteredEventsListPanel extends Component {
   handleResetFilters = () => {
-    const { additionalColumns } = this.props;
+    const { additionalColumns, resetColumnFilters } = this.props;
     const defaultColumnKeys = this.getDefaultColumnKeys();
     const additionalKeys = (additionalColumns || []).map((col) => col.key);
     const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
+
+    resetColumnFilters();
     this.setState({
-      geneFilters: [],
-      tierFilters: [],
-      typeFilters: [],
-      roleFilters: [],
-      effectFilters: [],
-      variantFilters: [],
       selectedColumnKeys: defaultKeys,
     });
   };
+
+  handleCheckboxChange = (record, checked) => {
+    const { toggleEventUidSelection } = this.props;
+    toggleEventUidSelection(record.uid, checked);
+  };
+
+  handleHeaderCheckboxChange = (records) => {
+    const { selectedEventUids, setSelectedEventUids } = this.props;
+    
+    // Get all tier 1 and 2 records from current view
+    const tier1And2Records = records.filter(
+      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
+    );
+    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
+    
+    // Check current state
+    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+      selectedEventUids.includes(uid)
+    );
+    const allSelected = selectedTier1And2.length === tier1And2Uids.length && tier1And2Uids.length > 0;
+    
+    if (allSelected) {
+      // Deselect all tier 1 and 2
+      const newUids = selectedEventUids.filter(
+        (uid) => !tier1And2Uids.includes(uid)
+      );
+      setSelectedEventUids(newUids);
+    } else {
+      // Select all tier 1 and 2
+      const newSelectedUids = [...new Set([...selectedEventUids, ...tier1And2Uids])];
+      setSelectedEventUids(newSelectedUids);
+    }
+  };
+
+  getHeaderCheckboxState = (records) => {
+    const { selectedEventUids } = this.props;
+    
+    // Get all tier 1 and 2 records from current view
+    const tier1And2Records = records.filter(
+      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
+    );
+    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
+    
+    if (tier1And2Uids.length === 0) {
+      return { checked: false, indeterminate: false };
+    }
+    
+    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+      selectedEventUids.includes(uid)
+    );
+    
+    if (selectedTier1And2.length === 0) {
+      return { checked: false, indeterminate: false };
+    } else if (selectedTier1And2.length === tier1And2Uids.length) {
+      return { checked: true, indeterminate: false };
+    } else {
+      return { checked: false, indeterminate: true };
+    }
+  };
+
+  isEventSelected = (record) => {
+    const { selectedEventUids } = this.props;
+    return selectedEventUids.includes(record.uid);
+  };
   state = {
     eventType: "all",
-    tierFilters: [1, 2], // start with tiers 1 & 2 checked
-    typeFilters: [],
-    roleFilters: [],
-    effectFilters: [],
-    variantFilters: [],
-    geneFilters: [],
     tierCountsMap: {},
+    geneVariantsWithTierChanges: null,
     selectedColumnKeys: [],
   };
 
   // Track if a fetch is in progress to prevent concurrent calls
   _isFetchingTierCounts = false;
-
-  // add as a class field
 
   getDefaultColumnKeys = () => {
     const { data: settingsData, dataset } = this.props;
@@ -150,16 +205,13 @@ class FilteredEventsListPanel extends Component {
   };
 
   handleTableChange = (pagination, filters) => {
-    // When the user changes filters (e.g. checks tier 3),
-    // update tierFilters in the state:
-    this.setState({
-      geneFilters: filters.gene || [],
-      tierFilters: filters.tier || [],
-      typeFilters: filters.type || [],
-      roleFilters: filters.role || [],
-      effectFilters: filters.effect || [],
-      variantFilters: filters.variant || [],
+    const columnFilters = {};
+    Object.keys(filters).forEach((key) => {
+      if (filters[key] && filters[key].length > 0) {
+        columnFilters[key] = filters[key];
+      }
     });
+    this.props.setColumnFilters(columnFilters);
   };
 
   fetchTierCountsForRecords = async () => {
@@ -201,7 +253,7 @@ class FilteredEventsListPanel extends Component {
 
       // If no gene-variants have tier changes, nothing to fetch
       if (geneVariantsWithTiers.size === 0) {
-        this.setState({ tierCountsMap: {} });
+        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
         return;
       }
 
@@ -221,7 +273,7 @@ class FilteredEventsListPanel extends Component {
 
       // Guard: nothing to fetch after filtering
       if (uniqueRecords.length === 0) {
-        this.setState({ tierCountsMap: {} });
+        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
         return;
       }
 
@@ -248,7 +300,7 @@ class FilteredEventsListPanel extends Component {
         await Promise.all(batchPromises);
       }
 
-      this.setState({ tierCountsMap: map });
+      this.setState({ tierCountsMap: map, geneVariantsWithTierChanges: geneVariantsWithTiers });
     } finally {
       this._isFetchingTierCounts = false;
     }
@@ -256,7 +308,14 @@ class FilteredEventsListPanel extends Component {
 
   getTierTooltipContent = (record) => {
     const key = `${record.gene}-${record.type}`;
-    const tierCounts = this.state.tierCountsMap[key];
+    const { tierCountsMap, geneVariantsWithTierChanges } = this.state;
+    
+    // Check if this gene-variant has no tier changes
+    if (geneVariantsWithTierChanges && !geneVariantsWithTierChanges.has(key)) {
+      return "No tier change";
+    }
+    
+    const tierCounts = tierCountsMap[key];
     if (!tierCounts) return "Loading tier distribution...";
     const total =
       (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
@@ -318,15 +377,8 @@ class FilteredEventsListPanel extends Component {
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
-    // Build filter values object for controlled filter state
-    const filterValues = {
-      gene: this.state.geneFilters,
-      tier: this.state.tierFilters,
-      type: this.state.typeFilters,
-      role: this.state.roleFilters,
-      effect: this.state.effectFilters,
-      variant: this.state.variantFilters,
-    };
+    const { columnFilters } = this.props;
+    const filterValues = { ...columnFilters };
 
     // Build columns from settings.json and dataset configuration
     const columns = buildColumnsFromSettings(
@@ -340,6 +392,28 @@ class FilteredEventsListPanel extends Component {
       },
       filterValues
     );
+
+    // Checkbox column for selecting events
+    const headerCheckboxState = this.getHeaderCheckboxState(records);
+    const checkboxColumn = {
+      title: (
+        <Checkbox
+          checked={headerCheckboxState.checked}
+          indeterminate={headerCheckboxState.indeterminate}
+          onChange={() => this.handleHeaderCheckboxChange(records)}
+        />
+      ),
+      key: "select",
+      width: 50,
+      fixed: "left",
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={this.isEventSelected(record)}
+          onChange={(e) => this.handleCheckboxChange(record, e.target.checked)}
+        />
+      ),
+    };
 
     return (
       <Wrapper>
@@ -450,43 +524,32 @@ class FilteredEventsListPanel extends Component {
                 </Col>
               )}
             </Row>
-            <Row
-              className="ant-panel-container ant-home-plot-container"
-              style={transitionStyle(inViewport)}
-            >
-              {inViewport && (
-                <Col className="gutter-row table-container" span={24}>
-                  <Skeleton active loading={loading}>
-                    <Table
-                      columns={[
-                        ...(additionalColumns || []),
-                        ...columns,
-                      ].filter((col) => selectedColumnKeys.includes(col.key))}
-                      dataSource={records}
-                      pagination={{ pageSize: 50 }}
-                      showSorterTooltip={false}
-                      onChange={this.handleTableChange}
-                      scroll={{ x: "100%", y: 500 }}
-                      tableLayout="fixed"
-                    />
-                    {selectedFilteredEvent && viewMode === "tracks" && (
-                      <TracksModal
-                        {...{
-                          showVariants: true,
-                          selectedVariantId: selectedFilteredEvent.uid,
-                          loading,
-                          genome,
-                          mutations,
-                          genomeCoverage,
-                          methylationBetaCoverage,
-                          methylationIntensityCoverage,
-                          hetsnps,
-                          genes,
-                          igv,
-                          chromoBins,
-                          allelic,
-                          modalTitleText: selectedFilteredEvent.gene,
-                          modalTitle: (
+            {/* Hide table when TracksModal is open to prevent performance issues */}
+            {!(selectedFilteredEvent && viewMode === "tracks") && (
+              <Row
+                className="ant-panel-container ant-home-plot-container"
+                style={transitionStyle(inViewport)}
+              >
+                {inViewport && (
+                  <Col className="gutter-row table-container" span={24}>
+                    <Skeleton active loading={loading}>
+                      <Table
+                        columns={[
+                          ...(additionalColumns || []),
+                          ...columns,
+                        ].filter((col) => selectedColumnKeys.includes(col.key))}
+                        dataSource={records}
+                        pagination={{ pageSize: 50 }}
+                        showSorterTooltip={false}
+                        onChange={this.handleTableChange}
+                        scroll={{ x: "100%", y: 500 }}
+                        tableLayout="fixed"
+                      />
+                      {selectedFilteredEvent && viewMode === "detail" && (
+                        <ReportModal
+                          open
+                          onClose={this.handleCloseReportModal}
+                          title={
                             <Space>
                               {selectedFilteredEvent.gene}
                               {selectedFilteredEvent.name}
@@ -504,112 +567,127 @@ class FilteredEventsListPanel extends Component {
                               {selectedFilteredEvent.tier}
                               {selectedFilteredEvent.location}
                             </Space>
-                          ),
-                          genomePlotTitle: t(
-                            "components.tracks-modal.genome-plot"
-                          ),
-                          genomePlotYAxisTitle: t(
-                            "components.tracks-modal.genome-y-axis-title"
-                          ),
-                          coveragePlotTitle: t(
-                            "components.tracks-modal.coverage-plot"
-                          ),
-                          coverageYAxisTitle: t(
-                            "components.tracks-modal.coverage-copy-number"
-                          ),
-                          coverageYAxis2Title: t(
-                            "components.tracks-modal.coverage-count"
-                          ),
-                          methylationBetaCoveragePlotTitle: t(
-                            "components.tracks-modal.methylation-beta-coverage-plot"
-                          ),
-                          methylationBetaCoverageYAxisTitle: t(
-                            "components.tracks-modal.methylation-beta-coverage-y-axis-title"
-                          ),
-                          methylationBetaCoverageYAxis2Title: t(
-                            "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
-                          ),
-                          methylationIntensityCoveragePlotTitle: t(
-                            "components.tracks-modal.methylation-intensity-coverage-plot"
-                          ),
-                          methylationIntensityCoverageYAxisTitle: t(
-                            "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
-                          ),
-                          methylationIntensityCoverageYAxis2Title: t(
-                            "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
-                          ),
-                          hetsnpPlotTitle: t(
-                            "components.tracks-modal.hetsnp-plot"
-                          ),
-                          hetsnpPlotYAxisTitle: t(
-                            "components.tracks-modal.hetsnp-copy-number"
-                          ),
-                          hetsnpPlotYAxis2Title: t(
-                            "components.tracks-modal.hetsnps-count"
-                          ),
-                          mutationsPlotTitle: t(
-                            "components.tracks-modal.mutations-plot"
-                          ),
-                          mutationsPlotYAxisTitle: t(
-                            "components.tracks-modal.mutations-plot-y-axis-title"
-                          ),
-                          allelicPlotTitle: t(
-                            "components.tracks-modal.allelic-plot"
-                          ),
-                          allelicPlotYAxisTitle: t(
-                            "components.tracks-modal.allelic-plot-y-axis-title"
-                          ),
-                          handleOkClicked: () => selectFilteredEvent(null),
-                          handleCancelClicked: () => selectFilteredEvent(null),
-                          open,
-                        }}
-                      />
-                    )}
-                    {selectedFilteredEvent && viewMode === "detail" && (
-                      <ReportModal
-                        open
-                        onClose={this.handleCloseReportModal}
-                        title={
-                          <Space>
-                            {selectedFilteredEvent.gene}
-                            {selectedFilteredEvent.name}
-                            {selectedFilteredEvent.type}
-                            {selectedFilteredEvent.role
-                              ?.split(",")
-                              .map((tag) => (
-                                <Tag
-                                  color={roleColorMap()[tag.trim()]}
-                                  key={tag.trim()}
-                                >
-                                  {tag.trim()}
-                                </Tag>
-                              ))}
-                            {selectedFilteredEvent.tier}
-                            {selectedFilteredEvent.location}
-                          </Space>
-                        }
-                        loading={loading}
-                        genome={genome}
-                        mutations={mutations}
-                        genomeCoverage={genomeCoverage}
-                        methylationBetaCoverage={methylationBetaCoverage}
-                        methylationIntensityCoverage={
-                          methylationIntensityCoverage
-                        }
-                        hetsnps={hetsnps}
-                        genes={genes}
-                        igv={igv}
-                        chromoBins={chromoBins}
-                        allelic={allelic}
-                        selectedVariantId={selectedFilteredEvent?.uid}
-                        showVariants
-                        record={selectedFilteredEvent}
-                      />
-                    )}
-                  </Skeleton>
-                </Col>
-              )}
-            </Row>
+                          }
+                          loading={loading}
+                          genome={genome}
+                          mutations={mutations}
+                          genomeCoverage={genomeCoverage}
+                          methylationBetaCoverage={methylationBetaCoverage}
+                          methylationIntensityCoverage={
+                            methylationIntensityCoverage
+                          }
+                          hetsnps={hetsnps}
+                          genes={genes}
+                          igv={igv}
+                          chromoBins={chromoBins}
+                          allelic={allelic}
+                          selectedVariantId={selectedFilteredEvent?.uid}
+                          showVariants
+                          record={selectedFilteredEvent}
+                        />
+                      )}
+                    </Skeleton>
+                  </Col>
+                )}
+              </Row>
+            )}
+            {selectedFilteredEvent && viewMode === "tracks" && createPortal(
+              <TracksModal
+                {...{
+                  showVariants: true,
+                  selectedVariantId: selectedFilteredEvent.uid,
+                  loading,
+                  genome,
+                  mutations,
+                  genomeCoverage,
+                  methylationBetaCoverage,
+                  methylationIntensityCoverage,
+                  hetsnps,
+                  genes,
+                  igv,
+                  chromoBins,
+                  allelic,
+                  modalTitleText: selectedFilteredEvent.gene,
+                  modalTitle: (
+                    <Space>
+                      {selectedFilteredEvent.gene}
+                      {selectedFilteredEvent.name}
+                      {selectedFilteredEvent.type}
+                      {selectedFilteredEvent.role
+                        ?.split(",")
+                        .map((tag) => (
+                          <Tag
+                            color={roleColorMap()[tag.trim()]}
+                            key={tag.trim()}
+                          >
+                            {tag.trim()}
+                          </Tag>
+                        ))}
+                      {selectedFilteredEvent.tier}
+                      {selectedFilteredEvent.location}
+                    </Space>
+                  ),
+                  genomePlotTitle: t(
+                    "components.tracks-modal.genome-plot"
+                  ),
+                  genomePlotYAxisTitle: t(
+                    "components.tracks-modal.genome-y-axis-title"
+                  ),
+                  coveragePlotTitle: t(
+                    "components.tracks-modal.coverage-plot"
+                  ),
+                  coverageYAxisTitle: t(
+                    "components.tracks-modal.coverage-copy-number"
+                  ),
+                  coverageYAxis2Title: t(
+                    "components.tracks-modal.coverage-count"
+                  ),
+                  methylationBetaCoveragePlotTitle: t(
+                    "components.tracks-modal.methylation-beta-coverage-plot"
+                  ),
+                  methylationBetaCoverageYAxisTitle: t(
+                    "components.tracks-modal.methylation-beta-coverage-y-axis-title"
+                  ),
+                  methylationBetaCoverageYAxis2Title: t(
+                    "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
+                  ),
+                  methylationIntensityCoveragePlotTitle: t(
+                    "components.tracks-modal.methylation-intensity-coverage-plot"
+                  ),
+                  methylationIntensityCoverageYAxisTitle: t(
+                    "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
+                  ),
+                  methylationIntensityCoverageYAxis2Title: t(
+                    "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
+                  ),
+                  hetsnpPlotTitle: t(
+                    "components.tracks-modal.hetsnp-plot"
+                  ),
+                  hetsnpPlotYAxisTitle: t(
+                    "components.tracks-modal.hetsnp-copy-number"
+                  ),
+                  hetsnpPlotYAxis2Title: t(
+                    "components.tracks-modal.hetsnps-count"
+                  ),
+                  mutationsPlotTitle: t(
+                    "components.tracks-modal.mutations-plot"
+                  ),
+                  mutationsPlotYAxisTitle: t(
+                    "components.tracks-modal.mutations-plot-y-axis-title"
+                  ),
+                  allelicPlotTitle: t(
+                    "components.tracks-modal.allelic-plot"
+                  ),
+                  allelicPlotYAxisTitle: t(
+                    "components.tracks-modal.allelic-plot-y-axis-title"
+                  ),
+                  handleOkClicked: () => selectFilteredEvent(null),
+                  handleCancelClicked: () => selectFilteredEvent(null),
+                  open,
+                }}
+              />,
+              document.body
+            )}
           </div>
         )}
       </Wrapper>
@@ -621,6 +699,14 @@ FilteredEventsListPanel.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
+  setSelectedEventUids: (uids) =>
+    dispatch(setSelectedEventUids(uids)),
+  toggleEventUidSelection: (uid, selected) =>
+    dispatch(toggleEventUidSelection(uid, selected)),
+  setColumnFilters: (columnFilters) =>
+    dispatch(setColumnFilters(columnFilters)),
+  resetColumnFilters: () =>
+    dispatch(resetColumnFilters()),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
@@ -630,6 +716,8 @@ const mapStateToProps = (state) => {
     filteredEvents: mergedEvents.filteredEvents,
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
+    selectedEventUids: state.FilteredEvents.selectedEventUids || [],
+    columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2] },
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
     id: state.CaseReport.id,
