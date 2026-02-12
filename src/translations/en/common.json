@@ -270,7 +270,8 @@
       "tabs": {
         "cases": "Case Reports",
         "aggregations": "Aggregations",
-        "cohorts": "Population Stats"
+        "cohorts": "Population Stats",
+        "parallel-coordinates": "Parallel Coordinates"
       },
       "aggregations": {
         "title": "Cohort Level Aggregations",
@@ -692,6 +693,9 @@
           "title": "The request has failed with the following error:"
         }
       }
+    },
+    "parallel-coordinates-panel": {
+      "title": "Parallel Coordinates Plot"
     },
     "mutations-panel": {
       "mutation": "<strong>{{countText}}</strong> mutation",

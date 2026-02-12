@@ -40,6 +40,7 @@ import InterpretationsAvatar from "../../components/interpretationsAvatar";
 import AggregationsPanel from "./aggregationsPanel";
 import CohortsPanel from "./cohortsPanel";
 import HistogramPlot from "../../components/histogramPlot";
+import ParallelCoordinatesPanel from "../../components/parallelCoordinatesPanel";
 
 const { SHOW_CHILD } = Cascader;
 
@@ -215,7 +216,7 @@ class ListView extends Component {
                 d.filter.external ? `${d.filter.name}-operator` : `operator`
               }
               label={t(
-                `containers.list-view.filters.${d.filter.name}-operator`
+                `containers.list-view.filters.${d.filter.name}-operator`,
               )}
               initialValue={cascaderOperators[0]}
               rules={[
@@ -319,7 +320,7 @@ class ListView extends Component {
             key={`containers.list-view.filters.${d.filter.name}`}
             label={t(
               `containers.list-view.filters.${d.filter.name}`,
-              d.filter.title || d.filter.name
+              d.filter.title || d.filter.name,
             )}
           >
             <Space direction="vertical" className="filter-slider-space">
@@ -378,10 +379,10 @@ class ListView extends Component {
                   }
                   marks={{
                     [+filtersExtents[d.filter.name]?.[0]]: d3.format(d.format)(
-                      filtersExtents[d.filter.name]?.[0]
+                      filtersExtents[d.filter.name]?.[0],
                     ),
                     [+filtersExtents[d.filter.name]?.[1]]: d3.format(d.format)(
-                      filtersExtents[d.filter.name]?.[1]
+                      filtersExtents[d.filter.name]?.[1],
                     ),
                   }}
                   tooltip={{
@@ -486,14 +487,14 @@ class ListView extends Component {
                     items={d3
                       .groups(
                         filters.filter((d) => d.filter.group != null),
-                        (d) => d.filter.group
+                        (d) => d.filter.group,
                       )
                       .filter(
                         ([group, groupedItems]) =>
                           !groupedItems
                             .map((d) => d.records || d.options)
                             .flat()
-                            .every((e) => e == null)
+                            .every((e) => e == null),
                       )
                       .map(([group, filteredGroups]) => {
                         return {
@@ -502,7 +503,7 @@ class ListView extends Component {
                           children: (
                             <>
                               {filteredGroups.map((e) =>
-                                filterFormItemRenderer(e)
+                                filterFormItemRenderer(e),
                               )}
                             </>
                           ),
@@ -566,10 +567,10 @@ class ListView extends Component {
                                             "containers.list-view.ordering",
                                             {
                                               attribute: t(
-                                                `components.header-panel.metadata.${d.attribute}.short`
+                                                `components.header-panel.metadata.${d.attribute}.short`,
                                               ),
                                               sort: d.sort,
-                                            }
+                                            },
                                           ),
                                         }}
                                       />
@@ -658,7 +659,7 @@ class ListView extends Component {
                                     <Statistic
                                       className="stats"
                                       title={t(
-                                        `components.header-panel.metadata.sv_count.short`
+                                        `components.header-panel.metadata.sv_count.short`,
                                       )}
                                       value={
                                         d.sv_count != null
@@ -669,7 +670,7 @@ class ListView extends Component {
                                     <Statistic
                                       className="stats"
                                       title={t(
-                                        `components.header-panel.metadata.tmb.short`
+                                        `components.header-panel.metadata.tmb.short`,
                                       )}
                                       value={
                                         d.tmb != null
@@ -680,7 +681,7 @@ class ListView extends Component {
                                     <Statistic
                                       className="stats"
                                       title={t(
-                                        `components.header-panel.metadata.tumor_median_coverage.shorter`
+                                        `components.header-panel.metadata.tumor_median_coverage.shorter`,
                                       )}
                                       value={`${
                                         d["tumor_median_coverage"] != null
@@ -695,7 +696,7 @@ class ListView extends Component {
                                     <Statistic
                                       className="stats"
                                       title={t(
-                                        "components.header-panel.purity-ploidy-title"
+                                        "components.header-panel.purity-ploidy-title",
                                       )}
                                       value={
                                         d.purity != null
@@ -722,7 +723,7 @@ class ListView extends Component {
                                             <Text type="secondary">
                                               <br />
                                               {snakeCaseToHumanReadable(
-                                                d.primary_site
+                                                d.primary_site,
                                               )}
                                             </Text>
                                           )}
@@ -730,7 +731,7 @@ class ListView extends Component {
                                             <Text type="secondary">
                                               <br />
                                               {snakeCaseToHumanReadable(
-                                                d.tumor_details
+                                                d.tumor_details,
                                               )}
                                             </Text>
                                           )}
@@ -744,7 +745,7 @@ class ListView extends Component {
                                         style={{ display: "flex" }}
                                       >
                                         {generateCascaderOptions(
-                                          d.visibleTags
+                                          d.visibleTags,
                                         ).map((tag, i) => (
                                           <div key={`tag-${tag.value}-${i}`}>
                                             <Divider
@@ -816,6 +817,18 @@ class ListView extends Component {
                       label: t("containers.list-view.tabs.cohorts"),
                       children: <CohortsPanel />,
                     },
+                    {
+                      key: "parallelCoordinates",
+                      label: t(
+                        "containers.list-view.tabs.parallel-coordinates",
+                      ),
+                      children: (
+                        <ParallelCoordinatesPanel
+                          data={plots}
+                          handleCardClick={handleCardClick}
+                        />
+                      ),
+                    },
                   ]}
                 />
               </Col>
@@ -839,5 +852,5 @@ const mapStateToProps = (state) => ({
 });
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  mapDispatchToProps,
 )(withTranslation("common")(ListView));
