@@ -65,7 +65,7 @@ class TracksLegendPanel extends Component {
           `${this.props
             .t("components.genes-panel.header")
             .replace(/\s+/g, "_")
-            .toLowerCase()}.png`
+            .toLowerCase()}.png`,
         );
       })
       .catch((error) => {
@@ -93,9 +93,7 @@ class TracksLegendPanel extends Component {
 
     let locationString =
       this.state.locationString ||
-      domains
-        .map((domain) => locateGenomeRange(chromoBins, domain))
-        .join(" | ");
+      domains.map((domain) => locateGenomeRange(chromoBins, domain)).join("|");
     return (
       <Wrapper>
         <Card
@@ -116,7 +114,7 @@ class TracksLegendPanel extends Component {
                   onChange={this.handleLocationChange}
                   onPressEnter={this.handleLocationKeyPress}
                   placeholder={t(
-                    "components.tracks-legend-panel.location-placeholder"
+                    "components.tracks-legend-panel.location-placeholder",
                   )}
                 />
               </Tooltip>
@@ -150,7 +148,7 @@ class TracksLegendPanel extends Component {
                       <Tooltip
                         placement="leftTop"
                         title={t(
-                          "components.tracks-legend-panel.commonYscale-help"
+                          "components.tracks-legend-panel.commonYscale-help",
                         )}
                       >
                         <Space>
@@ -165,7 +163,7 @@ class TracksLegendPanel extends Component {
                       <Tooltip
                         placement="leftTop"
                         title={t(
-                          "components.tracks-legend-panel.individualYscale-help"
+                          "components.tracks-legend-panel.individualYscale-help",
                         )}
                       >
                         <Space>
@@ -189,7 +187,7 @@ class TracksLegendPanel extends Component {
                 optionFilterProp="children"
                 filterOption={(input, option) =>
                   (option?.label.toLowerCase() ?? "").includes(
-                    input.toLowerCase()
+                    input.toLowerCase(),
                   )
                 }
                 filterSort={(optionA, optionB) =>
@@ -216,49 +214,49 @@ class TracksLegendPanel extends Component {
               ref={(elem) => (this.container = elem)}
             >
               <ContainerDimensions>
-                  {({ width, height }) => {
-                    const genesHeight = height / 2.5;
-                    const cytobandsHeight = height / 2;
-                    return (
-                      <Row style={{ width }} gutter={[margins.gap, 0]}>
-                        <Col span={24}>
-                          <LegendMultiBrush
-                            className="ant-wrapper-legend"
+                {({ width, height }) => {
+                  const genesHeight = height / 2.5;
+                  const cytobandsHeight = height / 2;
+                  return (
+                    <Row style={{ width }} gutter={[margins.gap, 0]}>
+                      <Col span={24}>
+                        <LegendMultiBrush
+                          className="ant-wrapper-legend"
                           {...{ width: width - 2 * margins.padding }}
                         />
                       </Col>
-                        <Col span={24}>
-                          <GenesPlot
-                            {...{
-                              width,
-                              height: genesHeight,
-                              domains,
-                              genesList,
-                            }}
-                          />
-                          <HoverLine
-                            width={width}
-                            height={genesHeight}
-                            margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }}
-                          />
-                        </Col>
-                        <Col span={24}>
-                          <CytobandsPlot
-                            {...{
-                              width,
-                              height: cytobandsHeight,
-                              domains,
-                            }}
-                          />
-                          <HoverLine
-                            width={width}
-                            height={cytobandsHeight}
-                            margins={{ gapX: 50, gapY: 24, gapYUnits: 2 }}
-                          />
-                        </Col>
-                      </Row>
-                    );
-                  }}
+                      <Col span={24}>
+                        <GenesPlot
+                          {...{
+                            width,
+                            height: genesHeight,
+                            domains,
+                            genesList,
+                          }}
+                        />
+                        <HoverLine
+                          width={width}
+                          height={genesHeight}
+                          margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }}
+                        />
+                      </Col>
+                      <Col span={24}>
+                        <CytobandsPlot
+                          {...{
+                            width,
+                            height: cytobandsHeight,
+                            domains,
+                          }}
+                        />
+                        <HoverLine
+                          width={width}
+                          height={cytobandsHeight}
+                          margins={{ gapX: 50, gapY: 24, gapYUnits: 2 }}
+                        />
+                      </Col>
+                    </Row>
+                  );
+                }}
               </ContainerDimensions>
             </div>
           }
@@ -281,9 +279,9 @@ const mapStateToProps = (state) => ({
 });
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  mapDispatchToProps,
 )(
   withTranslation("common")(
-    handleViewport(TracksLegendPanel, { rootMargin: "-1.0px" })
-  )
+    handleViewport(TracksLegendPanel, { rootMargin: "-1.0px" }),
+  ),
 );
