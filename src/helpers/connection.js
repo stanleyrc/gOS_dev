@@ -104,6 +104,14 @@ class Connection {
       this.source && this.sink
         ? d3.format(",")(Math.abs(this.sink.place - this.source.place))
         : "-";
+    this.origin = d3.min([
+      this.source ? this.source.place : Infinity,
+      this.sink ? this.sink.place : Infinity,
+    ]);
+    this.target = d3.max([
+      this.source ? this.source.place : -Infinity,
+      this.sink ? this.sink.place : -Infinity,
+    ]);
   }
 
   locateAnchor(fragment) {
@@ -240,13 +248,15 @@ class Connection {
           [
             origin + Math.sign(originSign) * 25,
             originYScale(
-              originY + Math.sign(targetY - originY) * (originY < 10 ? 0.25 : 2)
+              originY +
+                Math.sign(targetY - originY) * (originY < 10 ? 0.25 : 2),
             ),
           ],
           [
             target + Math.sign(targetSign) * 25,
             targetYScale(
-              targetY - Math.sign(targetY - originY) * (targetY < 10 ? 0.25 : 2)
+              targetY -
+                Math.sign(targetY - originY) * (targetY < 10 ? 0.25 : 2),
             ),
           ],
           [target + Math.sign(targetSign) * 5, targetYScale(targetY)],

@@ -75,7 +75,7 @@ class GenomePlot extends Component {
     this.connections = [];
     this.panels = domains.map((domain, index) => {
       let filteredIntervals = intervals.filter(
-        (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0]
+        (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0],
       );
       const xScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
       let offset = index * (panelWidth + margins.gapX);
@@ -128,7 +128,7 @@ class GenomePlot extends Component {
         panelGenomeScale,
         offset,
         intervals: filteredIntervals.sort((a, b) =>
-          d3.ascending(a.weight, b.weight)
+          d3.ascending(a.weight, b.weight),
         ),
         domainWidth,
         range,
@@ -159,15 +159,19 @@ class GenomePlot extends Component {
             (!e.source ||
               (e.source.place <= domain[1] && e.source.place >= domain[0])) &&
             (!e.sink ||
-              (e.sink.place <= domain[1] && e.sink.place >= domain[0]))
+              (e.sink.place <= domain[1] && e.sink.place >= domain[0])),
         )
         .forEach((conn, j) => {
           let connection = Object.create(
             Object.getPrototypeOf(conn),
-            Object.getOwnPropertyDescriptors(conn)
+            Object.getOwnPropertyDescriptors(conn),
           );
           if (connection.source) {
-            connection.source = { ...connection.source, scale, fragment: panel };
+            connection.source = {
+              ...connection.source,
+              scale,
+              fragment: panel,
+            };
           }
           if (connection.sink) {
             connection.sink = { ...connection.sink, scale, fragment: panel };
@@ -190,12 +194,12 @@ class GenomePlot extends Component {
               (e.source.place <= pair[1].domain[1] &&
                 e.source.place >= pair[1].domain[0] &&
                 e.sink.place <= pair[0].domain[1] &&
-                e.sink.place >= pair[0].domain[0]))
+                e.sink.place >= pair[0].domain[0])),
         )
         .forEach((conn, j) => {
           let connection = Object.create(
             Object.getPrototypeOf(conn),
-            Object.getOwnPropertyDescriptors(conn)
+            Object.getOwnPropertyDescriptors(conn),
           );
           connection.source = { ...connection.source };
           connection.sink = { ...connection.sink };
@@ -245,18 +249,30 @@ class GenomePlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    const genomeChanged = nextProps.genome.toString() !== this.props.genome.toString();
-    const domainsChanged = nextProps.domains.toString() !== this.props.domains.toString();
-    const tooltipChanged = nextState.tooltip.shapeId !== this.state.tooltip.shapeId;
+    const genomeChanged =
+      nextProps.genome.toString() !== this.props.genome.toString();
+    const domainsChanged =
+      nextProps.domains.toString() !== this.props.domains.toString();
+    const tooltipChanged =
+      nextState.tooltip.shapeId !== this.state.tooltip.shapeId;
     const annotationChanged = nextProps.annotation !== this.props.annotation;
     const widthChanged = nextProps.width !== this.props.width;
     const heightChanged = nextProps.height !== this.props.height;
-    const commonYScaleChanged = nextProps.commonYScale !== this.props.commonYScale;
-    const commonRangeYChanged = nextProps.commonRangeY !== this.props.commonRangeY;
+    const commonYScaleChanged =
+      nextProps.commonYScale !== this.props.commonYScale;
+    const commonRangeYChanged =
+      nextProps.commonRangeY !== this.props.commonRangeY;
 
-    return genomeChanged || domainsChanged || tooltipChanged ||
-      annotationChanged || widthChanged || heightChanged ||
-      commonYScaleChanged || commonRangeYChanged;
+    return (
+      genomeChanged ||
+      domainsChanged ||
+      tooltipChanged ||
+      annotationChanged ||
+      widthChanged ||
+      heightChanged ||
+      commonYScaleChanged ||
+      commonRangeYChanged
+    );
   }
 
   componentDidMount() {
@@ -272,21 +288,20 @@ class GenomePlot extends Component {
         .attr("preserveAspectRatio", "xMinYMin meet")
         .call(
           panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
-          )
+            (event) => !zoomedByCmd || (!event.button && event.metaKey),
+          ),
         );
       d3.select(this.container)
         .select(`#panel-rect-${index}`)
         .call(
           panel.zoom.filter(
-            (event) => !zoomedByCmd || (!event.button && event.metaKey)
+            (event) => !zoomedByCmd || (!event.button && event.metaKey),
           ).transform,
           d3.zoomIdentity
             .scale(panel.panelWidth / (s[1] - s[0]))
-            .translate(-s[0], 0)
+            .translate(-s[0], 0),
         );
     });
-
   }
 
   componentDidUpdate(prevProps) {
@@ -306,18 +321,18 @@ class GenomePlot extends Component {
           .attr("preserveAspectRatio", "xMinYMin meet")
           .call(
             panel.zoom.filter(
-              (event) => !zoomedByCmd || (!event.button && event.metaKey)
-            )
+              (event) => !zoomedByCmd || (!event.button && event.metaKey),
+            ),
           );
         d3.select(this.container)
           .select(`#panel-rect-${index}`)
           .call(
             panel.zoom.filter(
-              (event) => !zoomedByCmd || (!event.button && event.metaKey)
+              (event) => !zoomedByCmd || (!event.button && event.metaKey),
             ).transform,
             d3.zoomIdentity
               .scale(panel.panelWidth / (s[1] - s[0]))
-              .translate(-s[0], 0)
+              .translate(-s[0], 0),
           );
       });
     }
@@ -342,17 +357,17 @@ class GenomePlot extends Component {
     let lowerEdge = d3.max(
       otherSelections
         .filter(
-          (d, i) => selection && d[0] <= selection[0] && selection[0] <= d[1]
+          (d, i) => selection && d[0] <= selection[0] && selection[0] <= d[1],
         )
-        .map((d, i) => d[1])
+        .map((d, i) => d[1]),
     );
 
     let upperEdge = d3.min(
       otherSelections
         .filter(
-          (d, i) => selection && d[1] >= selection[0] && selection[1] <= d[1]
+          (d, i) => selection && d[1] >= selection[0] && selection[1] <= d[1],
         )
-        .map((d, i) => d[0])
+        .map((d, i) => d[0]),
     );
 
     if (upperEdge !== undefined && selection[1] >= upperEdge) {
@@ -371,7 +386,10 @@ class GenomePlot extends Component {
     const propsDomainsStr = this.props.domains.toString();
     const pendingDomainsStr = this.pendingDomains?.toString();
 
-    if (newDomainsStr !== propsDomainsStr && newDomainsStr !== pendingDomainsStr) {
+    if (
+      newDomainsStr !== propsDomainsStr &&
+      newDomainsStr !== pendingDomainsStr
+    ) {
       this.pendingDomains = newDomains;
       this.updateDomains(newDomains);
     }
@@ -407,7 +425,7 @@ class GenomePlot extends Component {
           width -
             e.nativeEvent.offsetX -
             d3.max(shape.tooltipContent, (d) =>
-              measureText(`${d.label}: ${d.value}`, 12)
+              measureText(`${d.label}: ${d.value}`, 12),
             ) -
             30,
         ]);
@@ -428,11 +446,11 @@ class GenomePlot extends Component {
     }
   };
 
-  handleConnectionClick(event, connection) {
+  handleConnectionClick(event, connection, padding = 100, padWidth = 5) {
     if (connection.kind === "ANCHOR") {
       let newDomain = [
-        Math.floor(connection.otherEnd.place - 1e3),
-        Math.floor(connection.otherEnd.place + 1e3),
+        Math.floor(connection.otherEnd.place - padding),
+        Math.floor(connection.otherEnd.place + padding),
       ];
       let newDomains = [...this.props.domains];
       newDomains.push(newDomain);
@@ -441,7 +459,20 @@ class GenomePlot extends Component {
           .map((d) => {
             return { startPlace: d[0], endPlace: d[1] };
           })
-          .sort((a, b) => d3.ascending(a.startPlace, b.startPlace))
+          .sort((a, b) => d3.ascending(a.startPlace, b.startPlace)),
+      );
+      this.updateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
+    } else if (connection.type !== "LOOSE") {
+      let newDomains = [
+        [connection.origin - padding, connection.origin + padding],
+        [connection.target - padding, connection.target + padding],
+      ];
+      let merged = merge(
+        newDomains
+          .map((d) => {
+            return { startPlace: d[0], endPlace: d[1] };
+          })
+          .sort((a, b) => d3.ascending(a.startPlace, b.startPlace)),
       );
       this.updateDomains(merged.map((d) => [d.startPlace, d.endPlace]));
     }
@@ -463,14 +494,18 @@ class GenomePlot extends Component {
     this.updateDomains(newDomains);
   }
 
-  handlePanelMouseMove = throttle((e, panelIndex) => {
-    if (panelIndex > -1) {
-      this.props.updateHoveredLocation(
-        this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
-        panelIndex
-      );
-    }
-  }, 16, { leading: true, trailing: false });
+  handlePanelMouseMove = throttle(
+    (e, panelIndex) => {
+      if (panelIndex > -1) {
+        this.props.updateHoveredLocation(
+          this.panels[panelIndex].xScale.invert(d3.pointer(e)[0]),
+          panelIndex,
+        );
+      }
+    },
+    16,
+    { leading: true, trailing: false },
+  );
 
   handlePanelMouseOut = (e, panelIndex) => {
     if (panelIndex > -1) {
@@ -619,7 +654,7 @@ class GenomePlot extends Component {
                       data-end-pos={panel.xScale(d.endPlace)}
                       data-x={Math.floor(panel.xScale(d.startPlace))}
                       data-width={Math.floor(
-                        panel.xScale(d.endPlace) - panel.xScale(d.startPlace)
+                        panel.xScale(d.endPlace) - panel.xScale(d.startPlace),
                       )}
                       height={margins.bar}
                       style={{
@@ -676,7 +711,7 @@ class GenomePlot extends Component {
                 y="0"
                 width={d3.max(
                   tooltip.text,
-                  (d) => measureText(`${d.label}: ${d.value}`, 12) + 30
+                  (d) => measureText(`${d.label}: ${d.value}`, 12) + 30,
                 )}
                 height={tooltip.text.length * 16 + 12}
                 rx="5"
@@ -733,5 +768,5 @@ const mapStateToProps = (state) => ({
 });
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  mapDispatchToProps,
 )(withTranslation("common")(GenomePlot));
