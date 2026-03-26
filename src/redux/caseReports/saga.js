@@ -5,6 +5,7 @@ import { tableFromIPC } from "apache-arrow";
 import * as d3 from "d3";
 import {
   defaultSearchFilters,
+  getValueByPath,
   orderListViewFilters,
   datafilesArrowTableToJson,
 } from "../../helpers/utility";
@@ -115,37 +116,21 @@ function* fetchCaseReports(action) {
         dataset.kpiFields.forEach((d, i) => {
           populations[d.id] = datafiles
             .map((e) => {
-              try {
-                return {
-                  pair: e.pair,
-                  value: eval(`e.${d.id}`),
-                  tumor_type: e.tumor_type,
-                };
-              } catch (error) {
-                return {
-                  pair: e.pair,
-                  value: null,
-                  tumor_type: e.tumor_type,
-                };
-              }
+              return {
+                pair: e.pair,
+                value: getValueByPath(e, d.id),
+                tumor_type: e.tumor_type,
+              };
             })
             .filter((item) => item.value != null && !isNaN(item.value));
 
           cohortPopulations[d.id] = records
             .map((e) => {
-              try {
-                return {
-                  pair: e.pair,
-                  value: eval(`e.${d.id}`),
-                  tumor_type: e.tumor_type,
-                };
-              } catch (error) {
-                return {
-                  pair: e.pair,
-                  value: null,
-                  tumor_type: e.tumor_type,
-                };
-              }
+              return {
+                pair: e.pair,
+                value: getValueByPath(e, d.id),
+                tumor_type: e.tumor_type,
+              };
             })
             .filter((item) => item.value != null && !isNaN(item.value));
         });
@@ -348,12 +333,8 @@ function* searchReports({ searchFilters }) {
             .includes(actualSearchFilters[key].toLowerCase())
         )
         .sort((a, b) => {
-          let aValue = null;
-          let bValue = null;
-          try {
-            aValue = eval(`a.${attribute}`);
-            bValue = eval(`b.${attribute}`);
-          } catch (err) {}
+          let aValue = getValueByPath(a, attribute);
+          let bValue = getValueByPath(b, attribute);
           if (aValue == null) return 1;
           if (bValue == null) return -1;
           return sort === "ascending"
@@ -362,10 +343,7 @@ function* searchReports({ searchFilters }) {
         });
     } else if (keyRenderer === "slider") {
       records = records.filter((d) => {
-        let value = null;
-        try {
-          value = eval(`d.${key}`);
-        } catch (err) {}
+        let value = getValueByPath(d, key);
         if (value == null) return true;
         return (
           value >= actualSearchFilters[key][0] &&
@@ -411,12 +389,8 @@ function* searchReports({ searchFilters }) {
   });
 
   records = records.sort((a, b) => {
-    let aValue = null;
-    let bValue = null;
-    try {
-      aValue = eval(`a.${attribute}`);
-      bValue = eval(`b.${attribute}`);
-    } catch (err) {}
+    let aValue = getValueByPath(a, attribute);
+    let bValue = getValueByPath(b, attribute);
     if (aValue == null) return 1;
     if (bValue == null) return -1;
     return sort === "ascending"
@@ -437,19 +411,11 @@ function* searchReports({ searchFilters }) {
   dataset.kpiFields.forEach((d, i) => {
     cohortPopulations[d.id] = records
       .map((e) => {
-        try {
-          return {
-            pair: e.pair,
-            value: eval(`e.${d.id}`),
-            tumor_type: e.tumor_type,
-          };
-        } catch (error) {
-          return {
-            pair: e.pair,
-            value: null,
-            tumor_type: e.tumor_type,
-          };
-        }
+        return {
+          pair: e.pair,
+          value: getValueByPath(e, d.id),
+          tumor_type: e.tumor_type,
+        };
       })
       .filter((item) => item.value != null && !isNaN(item.value));
   });

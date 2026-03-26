@@ -10,6 +10,23 @@ export function splitFloat64(x) {
   return [high, low];
 }
 
+export function getValueByPath(record, path) {
+  if (record == null || path == null) {
+    return undefined;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(record, path)) {
+    return record[path];
+  }
+
+  return String(path)
+    .split(".")
+    .reduce(
+      (value, key) => (value == null ? undefined : value[key]),
+      record
+    );
+}
+
 let _dataRangesCache = {
   domains: null,
   genome: null,

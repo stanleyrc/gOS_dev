@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { plotTypes, reportAttributesMap } from "./utility";
+import { getValueByPath, plotTypes, reportAttributesMap } from "./utility";
 import common from "../translations/en/common.json";
 
 export function reportFilters() {
@@ -266,13 +266,7 @@ export function getReportFilterExtents(reports) {
   let extents = {};
   reportFilters().forEach((filter) => {
     let allValues = reports
-      .map((record) => {
-        try {
-          return eval(`record.${filter.name}`);
-        } catch (err) {
-          return null;
-        }
-      })
+      .map((record) => getValueByPath(record, filter.name))
       .flat();
     extents[filter.name] = d3.extent(
       allValues.filter((e) => !isNaN(e) && e !== null && e !== undefined)
@@ -289,13 +283,7 @@ export function getReportsFilters(fields, reports) {
     .filter((field) => !field.external)
     .forEach((field) => {
       let allValues = reports
-        .map((record) => {
-          try {
-            return eval(`record.${field.name}`);
-          } catch (err) {
-            return null;
-          }
-        })
+        .map((record) => getValueByPath(record, field.name))
         .flat();
 
       let frequencyMap = d3.rollup(
