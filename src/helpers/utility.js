@@ -773,6 +773,13 @@ let _findMaxCache = {
   result: null,
 };
 
+let _findMinCache = {
+  domains: null,
+  dataPointsX: null,
+  dataPointsY: null,
+  result: null,
+};
+
 export function findMaxInRanges(
   domains,
   dataPointsX,
@@ -839,6 +846,86 @@ export function findMaxInRanges(
   }
 
   return result;
+}
+
+export function findMinInRanges(
+  domains,
+  dataPointsX,
+  dataPointsY,
+  usePercentile = true,
+  p = 0.01
+) {
+  if (
+    !usePercentile &&
+    _findMinCache.dataPointsX === dataPointsX &&
+    _findMinCache.dataPointsY === dataPointsY &&
+    _findMinCache.domains &&
+    _findMinCache.domains.length === domains.length &&
+    _findMinCache.domains.every(
+      (d, i) => d[0] === domains[i][0] && d[1] === domains[i][1]
+    )
+  ) {
+    return _findMinCache.result;
+  }
+
+  const result = domains.map(([start, end]) => {
+    const left = findIndexForNum(dataPointsX, start);
+    const right = findIndexForNum(dataPointsX, end);
+
+    let resultValue;
+    if (usePercentile && right > left) {
+      const valuesInRangeSlice = dataPointsY.slice(left, right);
+      valuesInRangeSlice.sort((a, b) => a - b);
+
+      const n = valuesInRangeSlice.length;
+      const i = (n - 1) * p;
+      const iLow = Math.floor(i);
+      const iHigh = Math.ceil(i);
+      if (iLow === iHigh) {
+        resultValue = valuesInRangeSlice[iLow];
+      } else {
+        const fraction = i - iLow;
+        resultValue =
+          valuesInRangeSlice[iLow] * (1 - fraction) +
+          valuesInRangeSlice[iHigh] * fraction;
+      }
+    } else {
+      let minValue = Infinity;
+      for (let i = left; i < right; i++) {
+        if (dataPointsY[i] < minValue) {
+          minValue = dataPointsY[i];
+        }
+      }
+      resultValue = minValue;
+    }
+
+    return resultValue;
+  });
+
+  if (!usePercentile) {
+    _findMinCache = {
+      domains: domains.map((d) => [...d]),
+      dataPointsX,
+      dataPointsY,
+      result,
+    };
+  }
+
+  return result;
+}
+
+export function computeQuantileThreshold(sorted, p = 0.99) {
+  const n = sorted.length;
+  const i = (n - 1) * p;
+  const iLow = Math.floor(i);
+  const iHigh = Math.ceil(i);
+
+  if (iLow === iHigh) {
+    return sorted[iLow];
+  }
+
+  const fraction = i - iLow;
+  return sorted[iLow] * (1 - fraction) + sorted[iHigh] * fraction;
 }
 
 /**

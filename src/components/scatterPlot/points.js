@@ -292,7 +292,7 @@ class Points {
     this.instances = dataPointsColor.length;
   }
 
-  updateDomains(width, height, domains, maxYValues) {
+  updateDomains(width, height, domains, yDomains) {
     if (this.width !== width || this.height !== height) {
       this.width = width;
       this.height = height;
@@ -318,7 +318,7 @@ class Points {
     const windowHeight = height;
 
     this.dataBufferList = domains.map((domainX, i) => {
-      const domainY = [0, maxYValues[i]];
+      const domainY = yDomains[i];
       const kx = windowWidth / (domainX[1] - domainX[0]);
       const ky = -windowHeight / (domainY[1] - domainY[0]);
       const ty = windowHeight - ky * domainY[0];

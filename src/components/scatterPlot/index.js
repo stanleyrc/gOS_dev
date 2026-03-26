@@ -4,7 +4,11 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { throttle } from "lodash";
-import { findMaxInRanges } from "../../helpers/utility";
+import {
+  computeQuantileThreshold,
+  findMaxInRanges,
+  findMinInRanges,
+} from "../../helpers/utility";
 import Grid from "../grid/index";
 import Points from "./points";
 import Wrapper from "./index.style";
@@ -24,36 +28,15 @@ class ScatterPlot extends Component {
   zoom = null;
   extentDataPointsY1 = null;
   extentDataPointsY2 = null;
+  minY1Values = null;
   maxY1Values = null;
   maxY2Values = null;
 
+  _globalLowerOutlierThresholdY1 = null;
   _globalOutlierThresholdY1 = null;
   _globalOutlierThresholdY2 = null;
   _outlierThresholdDataY1 = null;
   _outlierThresholdDataY2 = null;
-
-  computeGlobalOutlierThreshold(
-    dataPointsY,
-    cachedData,
-    cachedThreshold,
-    p = 0.99
-  ) {
-    if (cachedData === dataPointsY && cachedThreshold !== null) {
-      return cachedThreshold;
-    }
-
-    const sorted = [...dataPointsY].sort((a, b) => a - b);
-    const n = sorted.length;
-    const i = (n - 1) * p;
-    const iLow = Math.floor(i);
-    const iHigh = Math.ceil(i);
-
-    if (iLow === iHigh) {
-      return sorted[iLow];
-    }
-    const fraction = i - iLow;
-    return sorted[iLow] * (1 - fraction) + sorted[iHigh] * fraction;
-  }
 
   constructor(props) {
     super(props);
@@ -256,8 +239,11 @@ class ScatterPlot extends Component {
       stageHeight,
       domains,
       commonRangeY
-        ? domains.map((d) => commonRangeY[1])
-        : this.maxY1Values.map((v) => Math.ceil(v))
+        ? domains.map(() => commonRangeY)
+        : domains.map((d, index) => [
+            Math.floor(this.minY1Values[index]),
+            Math.ceil(this.maxY1Values[index]),
+          ])
     );
 
     this.points.render();
@@ -363,22 +349,31 @@ class ScatterPlot extends Component {
     // Always compute outlier thresholds and max values for both axes
     // Y2 (Base Coverage) axis is independent of common/individual mode
     if (this._outlierThresholdDataY1 !== dataPointsY1) {
-      this._globalOutlierThresholdY1 = this.computeGlobalOutlierThreshold(
-        dataPointsY1,
-        this._outlierThresholdDataY1,
-        this._globalOutlierThresholdY1
+      const sortedY1 = [...dataPointsY1].sort((a, b) => a - b);
+      this._globalLowerOutlierThresholdY1 = computeQuantileThreshold(
+        sortedY1,
+        0
+      );
+      this._globalOutlierThresholdY1 = computeQuantileThreshold(
+        sortedY1,
+        1
       );
       this._outlierThresholdDataY1 = dataPointsY1;
     }
     if (this._outlierThresholdDataY2 !== dataPointsY2) {
-      this._globalOutlierThresholdY2 = this.computeGlobalOutlierThreshold(
-        dataPointsY2,
-        this._outlierThresholdDataY2,
-        this._globalOutlierThresholdY2
+      this._globalOutlierThresholdY2 = computeQuantileThreshold(
+        [...dataPointsY2].sort((a, b) => a - b),
+        1
       );
       this._outlierThresholdDataY2 = dataPointsY2;
     }
 
+    const rawMinY1 = findMinInRanges(
+      domains,
+      dataPointsX,
+      dataPointsY1,
+      false
+    );
     const rawMaxY1 = findMaxInRanges(
       domains,
       dataPointsX,
@@ -392,6 +387,9 @@ class ScatterPlot extends Component {
       false
     );
 
+    this.minY1Values = rawMinY1.map((v) =>
+      Math.max(v, this._globalLowerOutlierThresholdY1)
+    );
     this.maxY1Values = rawMaxY1.map((v) =>
       Math.min(v, this._globalOutlierThresholdY1)
     );
@@ -436,7 +434,10 @@ class ScatterPlot extends Component {
       if (commonRangeY) {
         yExtent1 = commonRangeY;
       } else {
-        yExtent1 = [0, Math.ceil(this.maxY1Values[index])];
+        yExtent1 = [
+          Math.floor(this.minY1Values[index]),
+          Math.ceil(this.maxY1Values[index]),
+        ];
       }
 
       let yExtent2 = yExtent1.map((d) => cnToCount(d));
