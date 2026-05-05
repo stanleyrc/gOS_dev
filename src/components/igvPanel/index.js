@@ -72,8 +72,14 @@ class IgvPanel extends Component {
       filenameTumorIndex,
       filenameNormal,
       filenameNormalIndex,
+      filenameTumorRna,
+      filenameTumorRnaIndex,
+      filenameNormalRna,
+      filenameNormalRnaIndex,
       filenameTumorPresent,
       filenameNormalPresent,
+      filenameTumorRnaPresent,
+      filenameNormalRnaPresent,
       format,
       inViewport,
       error,
@@ -87,6 +93,10 @@ class IgvPanel extends Component {
     let indexTumorURL = `${dataset.dataPath}${id}/${filenameTumorIndex}`;
     let urlNormal = `${dataset.dataPath}${id}/${filenameNormal}`;
     let indexNormalURL = `${dataset.dataPath}${id}/${filenameNormalIndex}`;
+    let urlTumorRna = `${dataset.dataPath}${id}/${filenameTumorRna}`;
+    let indexTumorRnaURL = `${dataset.dataPath}${id}/${filenameTumorRnaIndex}`;
+    let urlNormalRna = `${dataset.dataPath}${id}/${filenameNormalRna}`;
+    let indexNormalRnaURL = `${dataset.dataPath}${id}/${filenameNormalRnaIndex}`;
     return (
       <Wrapper>
         {error ? (
@@ -182,8 +192,14 @@ class IgvPanel extends Component {
                             indexTumorURL,
                             urlNormal,
                             indexNormalURL,
+                            urlTumorRna,
+                            indexTumorRnaURL,
+                            urlNormalRna,
+                            indexNormalRnaURL,
                             filenameTumorPresent,
                             filenameNormalPresent,
+                            filenameTumorRnaPresent,
+                            filenameNormalRnaPresent,
                             format,
                             chromoBins,
                             domain,

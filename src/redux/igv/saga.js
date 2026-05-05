@@ -12,6 +12,10 @@ function* fetchData(action) {
     filenameTumorIndex,
     filenameNormal,
     filenameNormalIndex,
+    filenameTumorRna,
+    filenameTumorRnaIndex,
+    filenameNormalRna,
+    filenameNormalRnaIndex,
   } = currentState.Igv;
   const { id } = currentState.CaseReport;
 
@@ -36,6 +40,10 @@ function* fetchData(action) {
     call(checkFile, filenameTumorIndex),
     call(checkFile, filenameNormal),
     call(checkFile, filenameNormalIndex),
+    call(checkFile, filenameTumorRna),
+    call(checkFile, filenameTumorRnaIndex),
+    call(checkFile, filenameNormalRna),
+    call(checkFile, filenameNormalRnaIndex),
   ]);
 
   // Check if all files are missing
@@ -47,12 +55,14 @@ function* fetchData(action) {
       missing: true,
     });
   } else {
-    yield put({
-      type: actions.FETCH_IGV_DATA_SUCCESS,
-      filenameTumorPresent: results[0].present && results[1].present,
-      filenameNormalPresent: results[2].present && results[3].present,
-      missingFiles: results.filter((result) => !result.present),
-    });
+      yield put({
+        type: actions.FETCH_IGV_DATA_SUCCESS,
+        filenameTumorPresent: results[0].present && results[1].present,
+        filenameNormalPresent: results[2].present && results[3].present,
+        filenameTumorRnaPresent: results[4].present && results[5].present,
+        filenameNormalRnaPresent: results[6].present && results[7].present,
+        missingFiles: results.filter((result) => !result.present),
+      });
   }
 }
 
