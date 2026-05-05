@@ -84,7 +84,7 @@ else
 fi
 
 if [[ "${SKIP_SERVER:-0}" != "1" ]]; then
-  need_cmd python3
+  need_cmd node
 fi
 
 AUTH_HEADER=""
@@ -202,4 +202,4 @@ if [[ "${SKIP_SERVER:-0}" == "1" ]]; then
   exit 0
 fi
 echo "Press Ctrl+C to stop the server."
-python3 -m http.server "$PORT" --directory "$DEPLOY_DIR"
+node "$APP_ROOT/serve.js" "$DEPLOY_DIR"
