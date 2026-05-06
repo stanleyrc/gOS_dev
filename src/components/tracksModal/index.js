@@ -496,10 +496,16 @@ class TracksModal extends Component {
               missingFiles: igv.missingFiles,
               filenameTumorPresent: igv.filenameTumorPresent,
               filenameNormalPresent: igv.filenameNormalPresent,
+              filenameTumorRnaPresent: igv.filenameTumorRnaPresent,
+              filenameNormalRnaPresent: igv.filenameNormalRnaPresent,
               filenameTumor: igv.filenameTumor,
               filenameTumorIndex: igv.filenameTumorIndex,
               filenameNormal: igv.filenameNormal,
               filenameNormalIndex: igv.filenameNormalIndex,
+              filenameTumorRna: igv.filenameTumorRna,
+              filenameTumorRnaIndex: igv.filenameTumorRnaIndex,
+              filenameNormalRna: igv.filenameNormalRna,
+              filenameNormalRnaIndex: igv.filenameNormalRnaIndex,
               format: igv.format,
             }}
           />

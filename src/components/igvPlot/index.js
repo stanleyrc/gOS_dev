@@ -34,8 +34,14 @@ class IgvPlot extends Component {
       indexTumorURL,
       urlNormal,
       indexNormalURL,
+      urlTumorRna,
+      indexTumorRnaURL,
+      urlNormalRna,
+      indexNormalRnaURL,
       filenameTumorPresent,
       filenameNormalPresent,
+      filenameTumorRnaPresent,
+      filenameNormalRnaPresent,
       format,
     } = this.props;
     let locus = domainToLoci(chromoBins, domain);
@@ -63,6 +69,28 @@ class IgvPlot extends Component {
         sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
+    if (filenameTumorRnaPresent) {
+      tracks.push({
+        id: "Tumor RNA",
+        name: "Tumor RNA",
+        url: urlTumorRna,
+        indexURL: indexTumorRnaURL,
+        format,
+        type: "alignment",
+        sort: [{ chr, position, option: "BASE", direction: "ASC" }],
+      });
+    }
+    if (filenameNormalRnaPresent) {
+      tracks.push({
+        id: "Normal RNA",
+        name: "Normal RNA",
+        url: urlNormalRna,
+        indexURL: indexNormalRnaURL,
+        format,
+        type: "alignment",
+        sort: [{ chr, position, option: "BASE", direction: "ASC" }],
+      });
+    }
     const igvOptions = {
       genome: "hg19",
       locus,
@@ -83,7 +111,8 @@ class IgvPlot extends Component {
   shouldComponentUpdate(nextProps, nextState) {
     return (
       nextProps.domain.toString() !== this.props.domain.toString() ||
-      nextProps.urlTumor?.toString() !== this.props.urlTumor?.toString()
+      nextProps.urlTumor?.toString() !== this.props.urlTumor?.toString() ||
+      nextProps.urlTumorRna?.toString() !== this.props.urlTumorRna?.toString()
     );
   }
 
