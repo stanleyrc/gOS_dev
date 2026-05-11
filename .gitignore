@@ -70,9 +70,10 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 .env.test.local
 .env.production.local
 .prettierrc
-AGENT.md
+AGENT*.md
 *SPEC.md
 thoughts/
+.htdp/
 
 *.rb
 *.arrow

@@ -41,8 +41,15 @@ class LegendMultiBrush extends Component {
 
     // Execute the delete operation
     d3.select("html").on("keyup", (e) => {
+      if (this.shouldIgnoreDeleteKey(e)) {
+        return;
+      }
+
       if (
-        (e.keyCode === 46 || e.keyCode === 8) &&
+        (e.key === "Delete" ||
+          e.key === "Backspace" ||
+          e.keyCode === 46 ||
+          e.keyCode === 8) &&
         this.fragments.filter((d) => d.selection).length > 1
       ) {
         this.fragments = this.fragments.filter(
@@ -225,6 +232,31 @@ class LegendMultiBrush extends Component {
   handleChromosomeClick = (chromosome) => {
     this.updateDomains([[chromosome.startPlace, chromosome.endPlace]]);
   };
+
+  shouldIgnoreDeleteKey(event) {
+    const target = event?.target;
+
+    if (!target) {
+      return false;
+    }
+
+    if (target.isContentEditable) {
+      return true;
+    }
+
+    const tagName = target.tagName?.toLowerCase();
+    if (["input", "textarea", "select", "button"].includes(tagName)) {
+      return true;
+    }
+
+    if (typeof target.closest !== "function") {
+      return false;
+    }
+
+    return !!target.closest(
+      "input, textarea, select, button, [contenteditable], .ant-modal, .ant-input-number"
+    );
+  }
 
   renderBrushes = () => {
     let { hoveredLocationPanelIndex } = this.props;
