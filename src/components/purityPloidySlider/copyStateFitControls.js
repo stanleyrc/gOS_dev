@@ -19,8 +19,7 @@ class CopyStateFitControls extends Component {
   }
 
   render() {
-    const { hasFitSession, hasPreview, onApply, onPreview, onReset } =
-      this.props;
+    const { hasFitSession, hasPreview, onApply, onReset } = this.props;
 
     return (
       <Wrapper className="copy-state-fit-controls">
@@ -28,9 +27,6 @@ class CopyStateFitControls extends Component {
           <div className="copy-state-fit-header">
             <div className="copy-state-fit-title">Fit adjustment</div>
             <Space className="copy-state-fit-toolbar" size="small" wrap>
-              <Button size="small" onClick={onPreview}>
-                Preview
-              </Button>
               <Button
                 size="small"
                 type="primary"
@@ -70,7 +66,6 @@ CopyStateFitControls.propTypes = {
   hasFitSession: PropTypes.bool.isRequired,
   hasPreview: PropTypes.bool.isRequired,
   onApply: PropTypes.func.isRequired,
-  onPreview: PropTypes.func.isRequired,
   onReset: PropTypes.func.isRequired,
 };
 

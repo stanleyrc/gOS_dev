@@ -146,7 +146,6 @@ class BinPlotPanel extends Component {
         hasFitSession={hasFitSession}
         hasPreview={hasPreview}
         onApply={this.handleApplyCopyStateFit}
-        onPreview={() => this.handleCopyStateFitPreview()}
         onReset={this.handleResetCopyStateFit}
       />
     );
