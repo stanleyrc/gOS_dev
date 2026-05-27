@@ -35,10 +35,17 @@ class Points {
         precision highp float;
         varying vec2 vPos;
         uniform float windowWidth;
+        uniform float stageHeight;
+        uniform float filterYDomain;
         void main() {
           vec2 cxy = 2.0 * gl_PointCoord - 1.0;
           float r = dot(cxy, cxy);
-          if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
+          if (
+            vPos.x < 0.0 ||
+            vPos.x > windowWidth ||
+            (filterYDomain > 0.5 && (vPos.y < 0.0 || vPos.y > stageHeight)) ||
+            r > 1.0
+          ) {
             discard;
           }
           gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
@@ -126,6 +133,7 @@ class Points {
         pointSize: regl.prop("pointSize"),
         offsetX: regl.prop("offsetX"),
         offsetY: regl.prop("offsetY"),
+        filterYDomain: regl.prop("filterYDomain"),
       },
 
       framebuffer: regl.prop("densityFBO"),
@@ -150,12 +158,19 @@ class Points {
         varying vec2 vPos;
         varying vec2 vTexCoord;
         uniform float windowWidth;
+        uniform float stageHeight;
+        uniform float filterYDomain;
         uniform sampler2D densityTexture;
         uniform float maxDensity;
         void main() {
           vec2 cxy = 2.0 * gl_PointCoord - 1.0;
           float r = dot(cxy, cxy);
-          if (vPos.x < 0.0 || vPos.x > windowWidth || r > 1.0) {
+          if (
+            vPos.x < 0.0 ||
+            vPos.x > windowWidth ||
+            (filterYDomain > 0.5 && (vPos.y < 0.0 || vPos.y > stageHeight)) ||
+            r > 1.0
+          ) {
             discard;
           }
 
@@ -259,6 +274,7 @@ class Points {
         pointSize: regl.prop("pointSize"),
         offsetX: regl.prop("offsetX"),
         offsetY: regl.prop("offsetY"),
+        filterYDomain: regl.prop("filterYDomain"),
         densityTexture: regl.prop("densityTexture"),
         maxDensity: regl.prop("maxDensity"),
       },
@@ -292,7 +308,7 @@ class Points {
     this.instances = dataPointsColor.length;
   }
 
-  updateDomains(width, height, domains, yDomains) {
+  updateDomains(width, height, domains, yDomains, filterYDomain = false) {
     if (this.width !== width || this.height !== height) {
       this.width = width;
       this.height = height;
@@ -347,6 +363,7 @@ class Points {
         densityFBO: this.densityFBO,
         densityTexture: this.densityTexture,
         maxDensity: this.maxDensity,
+        filterYDomain: filterYDomain ? 1 : 0,
       };
     });
   }

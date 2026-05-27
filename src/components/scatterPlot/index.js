@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { throttle } from "lodash";
+import { Button, Form, InputNumber, Modal, Space, Typography } from "antd";
 import {
   computeQuantileThreshold,
   findMaxInRanges,
@@ -28,6 +29,8 @@ class ScatterPlot extends Component {
   zoom = null;
   extentDataPointsY1 = null;
   extentDataPointsY2 = null;
+  _extentDataPointsY1Data = null;
+  _extentDataPointsY2Data = null;
   minY1Values = null;
   maxY1Values = null;
   maxY2Values = null;
@@ -37,6 +40,7 @@ class ScatterPlot extends Component {
   _globalOutlierThresholdY2 = null;
   _outlierThresholdDataY1 = null;
   _outlierThresholdDataY2 = null;
+  yBoundsFormRef = React.createRef();
 
   constructor(props) {
     super(props);
@@ -53,6 +57,12 @@ class ScatterPlot extends Component {
     };
 
     this.pendingDomains = null;
+    this.state = {
+      manualYBounds: null,
+      yBoundsModalVisible: false,
+      yBoundsInitialValues: { lower: null, upper: null },
+      yBoundsModalKey: 0,
+    };
   }
 
   componentDidMount() {
@@ -115,8 +125,17 @@ class ScatterPlot extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
+    if (nextState !== this.state) return true;
+
     const dataPointsColorChanged =
       nextProps.dataPointsColor.length !== this.props.dataPointsColor.length;
+    const dataPointsChanged =
+      nextProps.dataPointsY1 !== this.props.dataPointsY1 ||
+      nextProps.dataPointsY2 !== this.props.dataPointsY2 ||
+      nextProps.dataPointsX !== this.props.dataPointsX ||
+      nextProps.dataPointsXHigh !== this.props.dataPointsXHigh ||
+      nextProps.dataPointsXLow !== this.props.dataPointsXLow ||
+      nextProps.dataPointsColor !== this.props.dataPointsColor;
     const domainsChanged =
       nextProps.domains.toString() !== this.props.domains.toString();
     const widthChanged = nextProps.width !== this.props.width;
@@ -126,6 +145,7 @@ class ScatterPlot extends Component {
 
     return (
       dataPointsColorChanged ||
+      dataPointsChanged ||
       domainsChanged ||
       widthChanged ||
       heightChanged ||
@@ -135,6 +155,17 @@ class ScatterPlot extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     const { domains, zoomedByCmd } = this.props;
+    const dataPointsChanged =
+      prevProps.dataPointsY1 !== this.props.dataPointsY1 ||
+      prevProps.dataPointsY2 !== this.props.dataPointsY2 ||
+      prevProps.dataPointsX !== this.props.dataPointsX ||
+      prevProps.dataPointsXHigh !== this.props.dataPointsXHigh ||
+      prevProps.dataPointsXLow !== this.props.dataPointsXLow ||
+      prevProps.dataPointsColor !== this.props.dataPointsColor;
+
+    if (dataPointsChanged && this.state.manualYBounds) {
+      this.setState({ manualYBounds: null, yBoundsModalVisible: false });
+    }
 
     const domainsChanged = prevProps.domains.toString() !== domains.toString();
     if (domainsChanged) {
@@ -174,8 +205,7 @@ class ScatterPlot extends Component {
       this.componentDidMount();
     } else {
       this.updateStage(
-        prevProps.dataPointsColor.length !==
-          this.props.dataPointsColor.length ||
+        dataPointsChanged ||
           (prevProps.commonRangeY === null &&
             this.props.commonRangeY !== null) ||
           (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
@@ -200,6 +230,184 @@ class ScatterPlot extends Component {
     }
   }
 
+  getActiveManualYBounds() {
+    return this.props.commonRangeY ? null : this.state.manualYBounds;
+  }
+
+  getDefaultYExtent(index) {
+    const lower = this.minY1Values?.[index];
+    const upper = this.maxY1Values?.[index];
+
+    if (Number.isFinite(lower) && Number.isFinite(upper)) {
+      return [Math.floor(lower), Math.ceil(upper)];
+    }
+
+    return [0, 1];
+  }
+
+  getYDomains(domains) {
+    const { commonRangeY } = this.props;
+    const manualYBounds = this.getActiveManualYBounds();
+
+    if (commonRangeY) {
+      return domains.map(() => commonRangeY);
+    }
+
+    if (manualYBounds) {
+      return domains.map(() => manualYBounds);
+    }
+
+    return domains.map((d, index) => this.getDefaultYExtent(index));
+  }
+
+  getPanelYExtent(index) {
+    const { commonRangeY } = this.props;
+    const manualYBounds = this.getActiveManualYBounds();
+
+    if (commonRangeY) return commonRangeY;
+    if (manualYBounds) return manualYBounds;
+
+    return this.getDefaultYExtent(index);
+  }
+
+  getModalInitialYBounds(panelIndex) {
+    const manualYBounds = this.state.manualYBounds;
+    if (manualYBounds) return manualYBounds;
+
+    const panelDomain = this.panels?.[panelIndex]?.yScale1?.domain?.();
+    if (panelDomain?.every((d) => Number.isFinite(d))) {
+      return panelDomain;
+    }
+
+    return this.getDefaultYExtent(panelIndex);
+  }
+
+  handleYAxisClick = (panelIndex) => {
+    if (this.props.commonRangeY) return;
+
+    const [lower, upper] = this.getModalInitialYBounds(panelIndex);
+
+    this.setState({
+      yBoundsModalVisible: true,
+      yBoundsInitialValues: { lower, upper },
+      yBoundsModalKey: Date.now(),
+    });
+  };
+
+  handleYBoundsModalCancel = () => {
+    this.setState({ yBoundsModalVisible: false });
+  };
+
+  handleYBoundsSubmit = ({ lower, upper }) => {
+    this.setState({
+      manualYBounds: [Number(lower), Number(upper)],
+      yBoundsModalVisible: false,
+    });
+  };
+
+  handleYBoundsReset = () => {
+    this.setState({
+      manualYBounds: null,
+      yBoundsModalVisible: false,
+    });
+  };
+
+  validateYBound = (fieldName, otherFieldName) => (_, value) => {
+    const fieldLabel = fieldName === "lower" ? "Lower bound" : "Upper bound";
+
+    if (value === null || value === undefined || value === "") {
+      return Promise.reject(new Error(`${fieldLabel} is required.`));
+    }
+
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return Promise.reject(new Error(`${fieldLabel} must be a finite number.`));
+    }
+
+    const otherValue = this.yBoundsFormRef.current?.getFieldValue(otherFieldName);
+    const hasOtherValue =
+      otherValue !== null && otherValue !== undefined && otherValue !== "";
+
+    if (hasOtherValue) {
+      const numericOtherValue = Number(otherValue);
+      if (Number.isFinite(numericOtherValue)) {
+        if (fieldName === "lower" && numericValue >= numericOtherValue) {
+          return Promise.reject(
+            new Error("Lower bound must be less than upper bound.")
+          );
+        }
+
+        if (fieldName === "upper" && numericValue <= numericOtherValue) {
+          return Promise.reject(
+            new Error("Upper bound must be greater than lower bound.")
+          );
+        }
+      }
+    }
+
+    return Promise.resolve();
+  };
+
+  renderYBoundsModal() {
+    const { yAxisTitle } = this.props;
+    const { manualYBounds, yBoundsInitialValues, yBoundsModalKey } = this.state;
+
+    return (
+      <Modal
+        title={`Set ${yAxisTitle || "Y-axis"} bounds`}
+        open={this.state.yBoundsModalVisible}
+        onCancel={this.handleYBoundsModalCancel}
+        destroyOnClose
+        width={360}
+        footer={
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button disabled={!manualYBounds} onClick={this.handleYBoundsReset}>
+              Reset to default
+            </Button>
+            <Space>
+              <Button onClick={this.handleYBoundsModalCancel}>Cancel</Button>
+              <Button
+                type="primary"
+                onClick={() => this.yBoundsFormRef.current?.submit()}
+              >
+                Apply
+              </Button>
+            </Space>
+          </div>
+        }
+      >
+        <Typography.Paragraph type="secondary">
+          Manual bounds apply to all visible panes for this track. Points outside
+          the selected interval will be hidden.
+        </Typography.Paragraph>
+        <Form
+          key={yBoundsModalKey}
+          ref={this.yBoundsFormRef}
+          layout="vertical"
+          initialValues={yBoundsInitialValues}
+          onFinish={this.handleYBoundsSubmit}
+        >
+          <Form.Item
+            label="Lower bound"
+            name="lower"
+            dependencies={["upper"]}
+            rules={[{ validator: this.validateYBound("lower", "upper") }]}
+          >
+            <InputNumber style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item
+            label="Upper bound"
+            name="upper"
+            dependencies={["lower"]}
+            rules={[{ validator: this.validateYBound("upper", "lower") }]}
+          >
+            <InputNumber style={{ width: "100%" }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    );
+  }
+
   getPointsData() {
     const {
       dataPointsXHigh,
@@ -219,7 +427,7 @@ class ScatterPlot extends Component {
   }
 
   updateStage(reloadData = false) {
-    const { domains, width, height, commonRangeY } = this.props;
+    const { domains, width, height } = this.props;
 
     const stageWidth = width - 2 * margins.gapX;
     const stageHeight = height - 3 * margins.gapY;
@@ -238,12 +446,8 @@ class ScatterPlot extends Component {
       stageWidth,
       stageHeight,
       domains,
-      commonRangeY
-        ? domains.map(() => commonRangeY)
-        : domains.map((d, index) => [
-            Math.floor(this.minY1Values[index]),
-            Math.ceil(this.maxY1Values[index]),
-          ])
+      this.getYDomains(domains),
+      !!this.getActiveManualYBounds()
     );
 
     this.points.render();
@@ -341,10 +545,14 @@ class ScatterPlot extends Component {
     let panelHeight = stageHeight;
     this.panels = [];
 
-    this.extentDataPointsY1 =
-      this.extentDataPointsY1 || d3.extent(dataPointsY1);
-    this.extentDataPointsY2 =
-      this.extentDataPointsY2 || d3.extent(dataPointsY2);
+    if (this._extentDataPointsY1Data !== dataPointsY1) {
+      this.extentDataPointsY1 = d3.extent(dataPointsY1);
+      this._extentDataPointsY1Data = dataPointsY1;
+    }
+    if (this._extentDataPointsY2Data !== dataPointsY2) {
+      this.extentDataPointsY2 = d3.extent(dataPointsY2);
+      this._extentDataPointsY2Data = dataPointsY2;
+    }
 
     // Always compute outlier thresholds and max values for both axes
     // Y2 (Base Coverage) axis is independent of common/individual mode
@@ -430,16 +638,7 @@ class ScatterPlot extends Component {
         .range([0, panelWidth]);
 
       let yScale1, yScale2;
-      let yExtent1;
-      if (commonRangeY) {
-        yExtent1 = commonRangeY;
-      } else {
-        yExtent1 = [
-          Math.floor(this.minY1Values[index]),
-          Math.ceil(this.maxY1Values[index]),
-        ];
-      }
-
+      let yExtent1 = this.getPanelYExtent(index);
       let yExtent2 = yExtent1.map((d) => cnToCount(d));
 
       yScale1 = d3.scaleLinear().domain(yExtent1).range([panelHeight, 0]);
@@ -478,6 +677,23 @@ class ScatterPlot extends Component {
           >
             {yAxisTitle}
           </text>
+          {!commonRangeY && (
+            <rect
+              className="y-axis-title-click-target"
+              x={0}
+              y={0}
+              width={margins.gapX + 8}
+              height={margins.gapY}
+              onClick={() => this.handleYAxisClick(0)}
+              style={{
+                fill: "transparent",
+                cursor: "pointer",
+                pointerEvents: "all",
+              }}
+            >
+              <title>Set y-axis bounds</title>
+            </rect>
+          )}
           <text
             className="y-axis-title"
             transform={`translate(${[width, margins.gapY / 3]})`}
@@ -517,10 +733,28 @@ class ScatterPlot extends Component {
                     pointerEvents: "all",
                   }}
                 />
+                {!commonRangeY && (
+                  <rect
+                    className="y-axis-click-target"
+                    x={-margins.gapX}
+                    y={0}
+                    width={margins.gapX + 8}
+                    height={panelHeight}
+                    onClick={() => this.handleYAxisClick(panel.index)}
+                    style={{
+                      fill: "transparent",
+                      cursor: "pointer",
+                      pointerEvents: "all",
+                    }}
+                  >
+                    <title>Set y-axis bounds</title>
+                  </rect>
+                )}
               </g>
             ))}
           </g>
         </svg>
+        {this.renderYBoundsModal()}
       </Wrapper>
     );
     return result;
