@@ -17,10 +17,19 @@ import * as htmlToImage from "html-to-image";
 import * as d3 from "d3";
 import Wrapper from "./index.style";
 import BinPlot from "../binPlot";
+import CopyStateFitControls from "../purityPloidySlider/copyStateFitControls";
 import TracksModal from "../tracksModal";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import ErrorPanel from "../../components/errorPanel";
 import settingsActions from "../../redux/settings/actions";
+import {
+  applyPreviewCopyStateFit,
+  createCopyStateFitUiState,
+  metadataToCopyStateFit,
+  previewCopyStateFitDrag,
+  resetCopyStateFitUiState,
+  selectActiveCopyStateFit,
+} from "../purityPloidySlider/copyStateFit";
 
 const { updateDomains } = settingsActions;
 
@@ -35,6 +44,10 @@ class BinPlotPanel extends Component {
   state = {
     segment: null,
     open: false,
+    // CopyStateFitUiState template: { metadataFit, previewFit, appliedOverrideFit }.
+    // Gamma is intentionally still unused for copy-state separator math in issue-0001;
+    // BinPlotPanel only validates its presence to preserve existing behavior.
+    copyStateFitUiState: null,
   };
 
   onDownloadButtonClicked = () => {
@@ -72,6 +85,72 @@ class BinPlotPanel extends Component {
     this.setState({ open: false });
   };
 
+  handleCopyStateFitPreview = (drag) => {
+    if (drag == null) {
+      return;
+    }
+
+    this.setState((state, props) => {
+      const metadata = props.metadata || {};
+      const uiState =
+        state.copyStateFitUiState ||
+        createCopyStateFitUiState(
+          metadataToCopyStateFit({
+            beta: metadata.beta,
+            purity: metadata.purity,
+            meanSegmentValue: metadata.meanSegmentValue,
+          })
+        );
+
+      return {
+        copyStateFitUiState: previewCopyStateFitDrag(uiState, drag),
+      };
+    });
+  };
+
+  transformCopyStateFitUiState = (transformUiState) => {
+    if (this.state.copyStateFitUiState == null) {
+      return;
+    }
+
+    this.setState((state) => ({
+      copyStateFitUiState: transformUiState(state.copyStateFitUiState),
+    }));
+  };
+
+  handleApplyCopyStateFit = () => {
+    this.transformCopyStateFitUiState(applyPreviewCopyStateFit);
+  };
+
+  handleResetCopyStateFit = () => {
+    this.transformCopyStateFitUiState(resetCopyStateFitUiState);
+  };
+
+  renderCopyStateFitControls = () => {
+    const { copyStateFitUiState } = this.state;
+    const { metadata = {} } = this.props;
+    const activeCopyStateFit =
+      copyStateFitUiState == null
+        ? metadataToCopyStateFit({
+            beta: metadata.beta,
+            purity: metadata.purity,
+            meanSegmentValue: metadata.meanSegmentValue,
+          })
+        : selectActiveCopyStateFit(copyStateFitUiState);
+    const hasPreview = copyStateFitUiState?.previewFit != null;
+    const hasFitSession = copyStateFitUiState != null;
+
+    return (
+      <CopyStateFitControls
+        activeCopyStateFit={activeCopyStateFit}
+        hasFitSession={hasFitSession}
+        hasPreview={hasPreview}
+        onApply={this.handleApplyCopyStateFit}
+        onReset={this.handleResetCopyStateFit}
+      />
+    );
+  };
+
   render() {
     const {
       t,
@@ -91,8 +170,10 @@ class BinPlotPanel extends Component {
     } = this.props;
 
     const { beta, gamma, purity } = metadata;
+    const hasPpfitData = ppfit.data.intervals.length > 0;
+    const shouldDisplayPanel = visible && (loading || hasPpfitData || inViewport !== false);
 
-    if (!metadata.pair || ppfit.data.intervals.length < 1) {
+    if (!metadata.pair || (!loading && !hasPpfitData)) {
       return null;
     }
     const { segment, open } = this.state;
@@ -122,7 +203,7 @@ class BinPlotPanel extends Component {
           />
         ) : (
           <Card
-            style={transitionStyle(inViewport)}
+            style={transitionStyle(shouldDisplayPanel)}
             loading={loading}
             size="small"
             title={
@@ -141,7 +222,7 @@ class BinPlotPanel extends Component {
                   <Button
                     type="default"
                     shape="circle"
-                    disabled={!visible}
+                    disabled={!shouldDisplayPanel}
                     icon={<AiOutlineDownload style={{ marginTop: 4 }} />}
                     size="small"
                     onClick={() => this.onDownloadButtonClicked()}
@@ -150,7 +231,7 @@ class BinPlotPanel extends Component {
               </Space>
             }
           >
-            {visible && (
+            {shouldDisplayPanel && hasPpfitData && (
               <div
                 className="ant-wrapper"
                 ref={(elem) => (this.container = elem)}
@@ -225,9 +306,10 @@ class BinPlotPanel extends Component {
                 <ContainerDimensions>
                   {({ width, height }) => {
                     return (
-                      (inViewport) && (
+                      shouldDisplayPanel && (
                         <Row style={{ width }} gutter={[margins.gap, 0]}>
                           <Col flex={1}>
+                            {this.renderCopyStateFitControls()}
                             <BinPlot
                               {...{
                                 width,
@@ -242,6 +324,13 @@ class BinPlotPanel extends Component {
                                 selectSegment: (e) =>
                                   this.handleSelectSegment(e),
                                 separatorsConfig: { beta, purity },
+                                activeCopyStateFit:
+                                  this.state.copyStateFitUiState?.previewFit ||
+                                  this.state.copyStateFitUiState
+                                    ?.appliedOverrideFit ||
+                                  this.state.copyStateFitUiState?.metadataFit,
+                                onCopyStateFitPreview: (drag) =>
+                                  this.handleCopyStateFitPreview(drag),
                               }}
                             />
                           </Col>
