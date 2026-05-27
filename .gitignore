@@ -73,7 +73,10 @@ packages/react-devtools-scheduling-profiler/dist# See https://help.github.com/ar
 AGENT*.md
 *SPEC.md
 thoughts/
-.htdp/
+docs/
+.memory/
+.handoffs/
+.gitignore
 
 *.rb
 *.arrow

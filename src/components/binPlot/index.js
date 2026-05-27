@@ -5,6 +5,12 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { measureText, segmentAttributes } from "../../helpers/utility";
 import { maxSeparatorsCount } from "../../helpers/segmentWidth";
+import {
+  generateCopyStateSeparators,
+  metadataToCopyStateFit,
+  selectActiveCopyStateFit,
+} from "../purityPloidySlider/copyStateFit";
+import PurityPloidySlider from "../purityPloidySlider";
 import Wrapper from "./index.style";
 
 const margins = {
@@ -60,6 +66,22 @@ class BinPlot extends Component {
     this.renderZoom();
   }
 
+  getActiveCopyStateFit(metadataFit = metadataToCopyStateFit(this.props.separatorsConfig)) {
+    const { activeCopyStateFit } = this.props;
+    const fitUiState = {
+      metadataFit:
+        activeCopyStateFit?.source === "metadata" ? activeCopyStateFit : metadataFit,
+      previewFit:
+        activeCopyStateFit?.source === "preview" ? activeCopyStateFit : null,
+      appliedOverrideFit:
+        activeCopyStateFit?.source === "appliedOverride"
+          ? activeCopyStateFit
+          : null,
+    };
+
+    return selectActiveCopyStateFit(fitUiState);
+  }
+
   getPlotConfiguration() {
     const {
       width,
@@ -80,26 +102,29 @@ class BinPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    const { beta, purity } = separatorsConfig;
-    let a = (2 * (1 - purity)) / purity;
-    let b = 1 / beta;
-    let ppfit_intercept = a / b;
-    let ppfit_slope = beta;
-
-    let finalMaxMean = ppfit_intercept + maxSeparatorsCount * ppfit_slope;
+    const metadataFit = metadataToCopyStateFit(separatorsConfig);
+    const activeFit = this.getActiveCopyStateFit(metadataFit);
+    const separators = generateCopyStateSeparators(
+      activeFit,
+      maxSeparatorsCount
+    );
+    const metadataSeparators = generateCopyStateSeparators(
+      metadataFit,
+      maxSeparatorsCount
+    );
+    let finalMaxMean = metadataSeparators[maxSeparatorsCount].segmentMean;
 
     let filteredData = data
       .filter((d) => d.metadata.mean)
-      .map((d) => {
-        d.metadata.mean = d3.min([d.metadata.mean, finalMaxMean]);
-        return d;
-      });
+      .map((d) => ({
+        ...d,
+        metadata: {
+          ...d.metadata,
+          mean: d3.min([d.metadata.mean, finalMaxMean]),
+        },
+      }));
 
     let extent = [0, finalMaxMean];
-
-    let separators = d3
-      .range(0, maxSeparatorsCount + 1)
-      .map((i) => ppfit_slope * i + ppfit_intercept);
 
     let num = Math.ceil(panelWidth / minBarWidth);
     let step = (extent[1] - extent[0]) / num;
@@ -201,6 +226,7 @@ class BinPlot extends Component {
       chromoBins,
       selectSegment,
       separators,
+      activeCopyStateFit: activeFit,
     };
   }
 
@@ -306,6 +332,7 @@ class BinPlot extends Component {
       chromoBins,
       selectSegment,
       separators,
+      activeCopyStateFit,
     } = this.getPlotConfiguration();
 
     const { tooltip, segmentId, currentTransform } = this.state;
@@ -359,61 +386,34 @@ class BinPlot extends Component {
               }}
             />
             <g key={`panel`} id={`panel`} transform={`translate(${[0, 0]})`}>
-              <g clipPath="url(#cuttOffViewPane1)">
-                {separators.map((d, i) => (
-                  <g key={i}>
-                    <line
-                      transform={`translate(${[xScale(d), 0]})`}
-                      y2={panelHeight + 15}
-                      stroke="#FFD6D6"
-                      strokeDasharray="4 1"
+              <PurityPloidySlider
+                activeCopyStateFit={activeCopyStateFit}
+                clipPath="url(#cuttOffViewPane1)"
+                onCopyStateFitPreview={this.props.onCopyStateFitPreview}
+                panelHeight={panelHeight}
+                separators={separators}
+                xScale={xScale}
+              >
+                <g clipPath="url(#cuttOffViewPane2)">
+                  {series.map((d, i) => (
+                    <rect
+                      key={i}
+                      fill={chromoBins[d.chromosome]?.color}
+                      x={xScale(d.xPos)}
+                      width={xScale(d.xPosTo) - xScale(d.xPos)}
+                      y={d.cumulativeWidthPixels}
+                      height={d.widthPixels}
+                      onMouseMove={(e) => this.handleMouseMove(e, d, i)}
+                      onMouseOut={(e) => this.handleMouseOut(e, d)}
+                      onClick={(e) => selectSegment(d)}
+                      stroke="#FFF"
+                      strokeWidth={0.5}
+                      rx={1}
+                      opacity={!segmentId || d.iid === segmentId ? 1 : 0.13}
                     />
-                    <text
-                      transform={`translate(${[xScale(d), 0]})`}
-                      textAnchor="middle"
-                      fill={d3.rgb("#FFD6D6").darker()}
-                      dy="-3"
-                      fontSize="10"
-                      opacity={
-                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
-                      }
-                    >
-                      {i}
-                    </text>
-                    <text
-                      transform={`translate(${[xScale(d), panelHeight + 20]})`}
-                      textAnchor="middle"
-                      fill={d3.rgb("#FFD6D6").darker()}
-                      dy="5"
-                      fontSize="10"
-                      opacity={
-                        xScale(d) - xScale(separators[i - 1]) < 30 ? i % 2 : 1
-                      }
-                    >
-                      {d3.format(".3f")(d)}
-                    </text>
-                  </g>
-                ))}
-              </g>
-              <g clipPath="url(#cuttOffViewPane2)">
-                {series.map((d, i) => (
-                  <rect
-                    key={i}
-                    fill={chromoBins[d.chromosome]?.color}
-                    x={xScale(d.xPos)}
-                    width={xScale(d.xPosTo) - xScale(d.xPos)}
-                    y={d.cumulativeWidthPixels}
-                    height={d.widthPixels}
-                    onMouseMove={(e) => this.handleMouseMove(e, d, i)}
-                    onMouseOut={(e) => this.handleMouseOut(e, d)}
-                    onClick={(e) => selectSegment(d)}
-                    stroke="#FFF"
-                    strokeWidth={0.5}
-                    rx={1}
-                    opacity={!segmentId || d.iid === segmentId ? 1 : 0.13}
-                  />
-                ))}
-              </g>
+                  ))}
+                </g>
+              </PurityPloidySlider>
               <g
                 className="axis--y y-axis-container"
                 transform={`translate(${[margins.gap, 0]})`}
@@ -483,6 +483,16 @@ BinPlot.propTypes = {
   height: PropTypes.number.isRequired,
   data: PropTypes.array,
   markValue: PropTypes.number,
+  activeCopyStateFit: PropTypes.shape({
+    slope: PropTypes.number.isRequired,
+    intercept: PropTypes.number.isRequired,
+    spacing: PropTypes.number.isRequired,
+    zeroCopyOffset: PropTypes.number.isRequired,
+    purity: PropTypes.number.isRequired,
+    ploidy: PropTypes.number.isRequired,
+    source: PropTypes.oneOf(["metadata", "preview", "appliedOverride"]).isRequired,
+  }),
+  onCopyStateFitPreview: PropTypes.func,
 };
 BinPlot.defaultProps = {
   data: [],
