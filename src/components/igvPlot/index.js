@@ -1,7 +1,7 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
+import igvGenomes from "./igvGenomes.json";
 import { withTranslation } from "react-i18next";
 import {
   parseCenterFromLocus,
@@ -93,6 +93,8 @@ class IgvPlot extends Component {
     }
     const igvOptions = {
       genome: "hg19",
+      genomeList: igvGenomes,
+      loadDefaultGenomes: false,
       locus,
       minimumBases: 1,
       tracks,
