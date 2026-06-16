@@ -2,6 +2,7 @@ import actions from "./actions";
 
 const initState = {
   loading: false,
+  genomeList: null,
   filenameTumor: "tumor.bam",
   filenameTumorIndex: "tumor.bam.bai",
   filenameNormal: "normal.bam",
@@ -32,6 +33,7 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_IGV_DATA_SUCCESS:
       return {
         ...state,
+        genomeList: action.genomeList,
         filenameTumorPresent: action.filenameTumorPresent,
         filenameNormalPresent: action.filenameNormalPresent,
         filenameTumorRnaPresent: action.filenameTumorRnaPresent,
@@ -50,6 +52,7 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_IGV_DATA_MISSING:
       return {
         ...state,
+        genomeList: action.genomeList,
         filenameTumorPresent: false,
         filenameNormalPresent: false,
         filenameTumorRnaPresent: false,

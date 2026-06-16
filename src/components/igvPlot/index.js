@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
-import igvGenomes from "./igvGenomes.json";
 import { withTranslation } from "react-i18next";
 import {
   parseCenterFromLocus,
@@ -24,7 +23,13 @@ class IgvPlot extends Component {
   }
 
   componentDidMount() {
-    if (this.igvInitialized) return;
+    this.initializeBrowser();
+  }
+
+  initializeBrowser() {
+    const { genomeList } = this.props;
+    if (this.igvInitialized || !genomeList?.length) return;
+
     this.igvInitialized = true;
 
     const {
@@ -93,7 +98,7 @@ class IgvPlot extends Component {
     }
     const igvOptions = {
       genome: "hg19",
-      genomeList: igvGenomes,
+      genomeList,
       loadDefaultGenomes: false,
       locus,
       minimumBases: 1,
@@ -101,17 +106,24 @@ class IgvPlot extends Component {
       showCenterGuide: true,
     };
 
-    igv.createBrowser(this.container, igvOptions).then((browser) => {
-      this.igvBrowser = browser;
-      // Add location change listener
-      this.igvBrowser.on("locuschange", this.handleLocusChange);
-      // Initial sort on mount by center base
-      this.sortAlignmentTracksByCenter(chr, position);
-    });
+    igv
+      .createBrowser(this.container, igvOptions)
+      .then((browser) => {
+        this.igvBrowser = browser;
+        // Add location change listener
+        this.igvBrowser.on("locuschange", this.handleLocusChange);
+        // Initial sort on mount by center base
+        this.sortAlignmentTracksByCenter(chr, position);
+      })
+      .catch((error) => {
+        this.igvInitialized = false;
+        console.error("Error creating IGV browser:", error);
+      });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return (
+      nextProps.genomeList !== this.props.genomeList ||
       nextProps.domain.toString() !== this.props.domain.toString() ||
       nextProps.urlTumor?.toString() !== this.props.urlTumor?.toString() ||
       nextProps.urlTumorRna?.toString() !== this.props.urlTumorRna?.toString()
@@ -119,7 +131,12 @@ class IgvPlot extends Component {
   }
 
   componentDidUpdate() {
-    const { domain, chromoBins } = this.props;
+    const { domain, chromoBins, genomeList } = this.props;
+    if (!this.igvBrowser && !this.igvInitialized && genomeList?.length) {
+      this.initializeBrowser();
+      return;
+    }
+
     if (this.igvBrowser && domain.toString() !== this.domain.toString()) {
       let locus = domainToLoci(chromoBins, domain);
       this.igvBrowser.search(locus);
@@ -153,8 +170,8 @@ class IgvPlot extends Component {
       this.igvBrowser.off("locuschange", this.handleLocusChange);
       this.igvBrowser.dispose();
       this.igvBrowser = null;
-      this.igvInitialized = false;
     }
+    this.igvInitialized = false;
   }
 
   handleLocusChange = async () => {
@@ -181,7 +198,9 @@ class IgvPlot extends Component {
 IgvPlot.propTypes = {};
 IgvPlot.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({});
-const mapStateToProps = (state) => ({});
+const mapStateToProps = (state) => ({
+  genomeList: state.Igv.genomeList,
+});
 
 // Prevent Hot Module Replacement for this component
 if (module.hot) {
@@ -190,5 +209,5 @@ if (module.hot) {
 
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  mapDispatchToProps,
 )(withTranslation("common")(IgvPlot));
