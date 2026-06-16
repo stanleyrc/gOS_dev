@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
+import igvGenomes from "./igvGenomes.json";
 import { withTranslation } from "react-i18next";
 import {
   parseCenterFromLocus,
@@ -10,57 +11,6 @@ import {
 import Wrapper from "./index.style";
 
 const margins = {};
-
-const hg19Reference = {
-  id: "hg19",
-  name: "Human (GRCh37/hg19)",
-  fastaURL: "https://igv.org/genomes/data/hg19/hg19.fasta",
-  indexURL: "https://igv.org/genomes/data/hg19/hg19.fasta.fai",
-  twoBitURL: "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.2bit",
-  wholeGenomeView: true,
-  cytobandURL:
-    "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/cytoBand.txt.gz",
-  aliasURL: "https://igv.org/data/hg19/hg19_alias.tab",
-  chromSizesURL:
-    "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.chrom.sizes",
-  chromosomeOrder: [
-    "chr1",
-    "chr2",
-    "chr3",
-    "chr4",
-    "chr5",
-    "chr6",
-    "chr7",
-    "chr8",
-    "chr9",
-    "chr10",
-    "chr11",
-    "chr12",
-    "chr13",
-    "chr14",
-    "chr15",
-    "chr16",
-    "chr17",
-    "chr18",
-    "chr19",
-    "chr20",
-    "chr21",
-    "chr22",
-    "chrX",
-    "chrY",
-  ],
-  tracks: [
-    {
-      id: "refseqAll",
-      name: "Refseq All",
-      url:
-        "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/ncbiRefSeq.txt.gz",
-      format: "refgene",
-      html: "https://www.ncbi.nlm.nih.gov/refseq/",
-      order: 100000,
-    },
-  ],
-};
 
 class IgvPlot extends Component {
   container = null;
@@ -142,7 +92,8 @@ class IgvPlot extends Component {
       });
     }
     const igvOptions = {
-      reference: hg19Reference,
+      genome: "hg19",
+      genomeList: igvGenomes,
       loadDefaultGenomes: false,
       locus,
       minimumBases: 1,
