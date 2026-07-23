@@ -1,4 +1,10 @@
 import { parseDriverGenes } from "../../helpers/geneAggregations";
+import {
+  allDatasetsBrowseScope,
+  buildCaseReportUrl,
+  datasetBrowseScope,
+  getSourceCaseIdentity,
+} from "../../helpers/browseScope";
 import { measureText } from "../../helpers/utility";
 
 export const margins = {
@@ -260,19 +266,36 @@ export function evaluateGeneExpression(ast, genes) {
 
 export const allColumns = [...numericColumns, ...categoricalColumns, pairColumn];
 
-/**
- * Opens a case report in a new browser tab with proper dataset context.
- * @param {string} pair - The case/pair ID to open
- * @param {object} dataset - The dataset object containing the id
- */
-export const openCaseInNewTab = (pair, dataset) => {
-  if (!pair) return;
-  const url = new URL(window.location.pathname, window.location.origin);
-  url.searchParams.set("report", pair);
-  if (dataset?.id) {
-    url.searchParams.set("dataset", dataset.id);
-  }
-  window.open(url.toString(), "_blank");
+/** Open a concrete source case while retaining its originating browse scope. */
+export const openCaseInNewTab = (
+  caseReport,
+  dataset,
+  browseScopeOverride = null,
+) => {
+  const fallbackCaseReportId =
+    caseReport && typeof caseReport === "object"
+      ? caseReport.caseReportId ?? caseReport.id ?? caseReport.pair
+      : caseReport;
+  const sourceCase = getSourceCaseIdentity(caseReport)
+    ? caseReport
+    : {
+        datasetId: dataset?.id,
+        caseReportId: fallbackCaseReportId,
+      };
+  const identity = getSourceCaseIdentity(sourceCase);
+  if (!identity) return;
+
+  const browseScope =
+    browseScopeOverride ||
+    (dataset?.isAllDatasets
+      ? allDatasetsBrowseScope()
+      : datasetBrowseScope(identity.datasetId));
+  const url = buildCaseReportUrl(
+    window.location.href,
+    identity,
+    browseScope,
+  );
+  window.open(url.toString(), "_blank", "noopener,noreferrer");
 };
 
 export const getColumnType = (dataIndex, dynamicColumns = null) => {

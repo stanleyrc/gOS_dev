@@ -63,6 +63,7 @@ class HistogramPlotPanel extends Component {
       colorMarker,
       format,
       title,
+      overlays,
       inViewport,
       visible,
     } = this.props;
@@ -153,6 +154,7 @@ class HistogramPlotPanel extends Component {
                               markValueText,
                               colorMarker,
                               format,
+                              overlays,
                             }}
                           />
                         </Col>
@@ -170,10 +172,12 @@ class HistogramPlotPanel extends Component {
 }
 HistogramPlotPanel.propTypes = {
   data: PropTypes.array,
+  overlays: PropTypes.array,
   markValue: PropTypes.number,
 };
 HistogramPlotPanel.defaultProps = {
   data: [],
+  overlays: [],
 };
 const mapDispatchToProps = () => ({});
 const mapStateToProps = (state) => ({});

@@ -1,9 +1,8 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { withTranslation } from "react-i18next";
-import { Layout, Space, Spin, Select, Avatar, Progress } from "antd";
+import { Layout, Space, Spin, Select, Avatar, Progress, Typography } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
 import SignInButton from "./signInButton";
@@ -11,16 +10,75 @@ import { siteConfig } from "../../settings";
 import logo from "../../assets/images/logo.png";
 import caseReportsActions from "../../redux/caseReports/actions";
 import settingsActions from "../../redux/settings/actions";
+import datasetsActions from "../../redux/datasets/actions";
+import {
+  ALL_DATASETS_SCOPE_VALUE,
+  getSourceCaseIdentity,
+  hasBrowseScope,
+  isAllDatasetsBrowseScope,
+  sourceCaseIdentityKey,
+} from "../../helpers/browseScope";
 
 const { Header } = Layout;
 const { Option } = Select;
+const { Text } = Typography;
 
 const { searchCaseReports } = caseReportsActions;
-const { updateCaseReport, updateDataset } = settingsActions;
+const { updateCaseReport } = settingsActions;
+const { openCaseReport, selectAllDatasets, selectDataset } = datasetsActions;
 
-class Topbar extends Component {
-  state = {
-    dropdownOpen: false,
+export class Topbar extends Component {
+  state = { dropdownOpen: false };
+
+  getSelectedBrowseScopeValue = () =>
+    isAllDatasetsBrowseScope(this.props.browseScope)
+      ? ALL_DATASETS_SCOPE_VALUE
+      : this.props.browseScope?.datasetId || this.props.dataset?.id;
+
+  handleDatasetSelect = (datasetId) => {
+    if (datasetId === ALL_DATASETS_SCOPE_VALUE) {
+      this.props.selectAllDatasets();
+    } else {
+      this.props.selectDataset(datasetId);
+    }
+  };
+
+  getDatasetCaseCount = (dataset) => {
+    const cachedRecords = this.props.manifestRecordsByDataset?.[dataset.id];
+    if (Array.isArray(cachedRecords)) {
+      return cachedRecords.filter((record) => record.visible !== false).length;
+    }
+    const configuredCount = Number(dataset.caseReportsCount);
+    return Number.isFinite(configuredCount) ? configuredCount : null;
+  };
+
+  getAllDatasetsCaseCount = () => {
+    const counts = this.props.datasets.map((dataset) =>
+      this.getDatasetCaseCount(dataset),
+    );
+    return counts.every((count) => count != null)
+      ? counts.reduce((total, count) => total + count, 0)
+      : null;
+  };
+
+  getReportOptionValue = (report) => sourceCaseIdentityKey(report);
+
+  handleReportSelect = (optionValue) => {
+    const report = this.props.reports.find(
+      (candidate) => this.getReportOptionValue(candidate) === optionValue,
+    );
+    const identity = getSourceCaseIdentity(report);
+    if (identity) {
+      this.props.openCaseReport(identity.datasetId, identity.caseReportId);
+    }
+  };
+
+  handleLogoClick = () => {
+    if (this.props.report) {
+      this.props.updateCaseReport(null);
+      return;
+    }
+    this.props.searchCaseReports(this.props.searchFilters);
   };
 
   render() {
@@ -29,15 +87,15 @@ class Topbar extends Component {
       loading,
       reports,
       totalReportsCount,
-      updateCaseReport,
-      updateDataset,
       searchCaseReports,
       searchFilters,
       datasets,
-      dataset,
+      browseScope,
       loadingDatasets,
       loadingPercentage,
     } = this.props;
+    const hasSelectedBrowseScope = hasBrowseScope(browseScope);
+
     return (
       <TopbarWrapper>
         <Header className="ant-pro-top-menu">
@@ -48,7 +106,7 @@ class Topbar extends Component {
                   <div
                     className="ant-pro-top-nav-header-logo"
                     id="logo"
-                    onClick={() => searchCaseReports(searchFilters)}
+                    onClick={this.handleLogoClick}
                   >
                     <img src={logo} alt="logo" />
                     <h1>{siteConfig.siteName}</h1>
@@ -56,25 +114,56 @@ class Topbar extends Component {
                   <Select
                     className="datasets-select"
                     loading={loadingDatasets}
-                    value={dataset.id}
+                    value={this.getSelectedBrowseScopeValue()}
+                    placeholder={t("topbar.select-dataset")}
                     variant="borderless"
-                    onSelect={(datasetId) => {
-                      updateDataset(datasets.find((d) => d.id === datasetId));
-                    }}
+                    optionLabelProp="label"
+                    popupMatchSelectWidth={false}
+                    onSelect={this.handleDatasetSelect}
                   >
-                    {datasets.map((d) => (
-                      <Option key={d.id} value={d.id}>
-                        {d.title}
+                    <Option
+                      key={ALL_DATASETS_SCOPE_VALUE}
+                      value={ALL_DATASETS_SCOPE_VALUE}
+                      label={t("topbar.all-accessible-datasets")}
+                    >
+                      <Space>
+                        <Text strong>{t("topbar.all-accessible-datasets")}</Text>
+                        {this.getAllDatasetsCaseCount() != null ? (
+                          <Text type="secondary">
+                            {t("topbar.dataset-cases", {
+                              count: this.getAllDatasetsCaseCount(),
+                            })}
+                          </Text>
+                        ) : null}
+                      </Space>
+                    </Option>
+                    {datasets.map((dataset) => (
+                      <Option
+                        key={dataset.id}
+                        value={dataset.id}
+                        label={dataset.title}
+                      >
+                        <Space>
+                          <span>{dataset.title}</span>
+                          {this.getDatasetCaseCount(dataset) != null ? (
+                            <Text type="secondary">
+                              {t("topbar.dataset-cases", {
+                                count: this.getDatasetCaseCount(dataset),
+                              })}
+                            </Text>
+                          ) : null}
+                        </Space>
                       </Option>
                     ))}
                   </Select>
                   <Select
-                    showSearch={true}
+                    showSearch
                     value={searchFilters.texts}
                     className="reports-select"
-                    allowClear={true}
+                    allowClear
+                    disabled={!hasSelectedBrowseScope}
                     loading={loading}
-                    optionLabelProp="value"
+                    optionLabelProp="label"
                     popupMatchSelectWidth={false}
                     optionFilterProp="children"
                     placeholder={t("topbar.browse-case-reports")}
@@ -95,15 +184,17 @@ class Topbar extends Component {
                     filterSort={false}
                     notFoundContent={null}
                     autoClearSearchValue={false}
-                    onSelect={(report) => {
-                      updateCaseReport(report);
-                    }}
-                    onClear={(e) =>
+                    onSelect={this.handleReportSelect}
+                    onClear={() =>
                       searchCaseReports({ ...searchFilters, texts: "" })
                     }
                   >
-                    {reports.map((d) => (
-                      <Option key={d.pair} value={d.pair} label={d.pair}>
+                    {reports.map((report) => (
+                      <Option
+                        key={this.getReportOptionValue(report)}
+                        value={this.getReportOptionValue(report)}
+                        label={report.pair}
+                      >
                         <div className="demo-option-label-item">
                           <Space>
                             <Avatar
@@ -113,10 +204,15 @@ class Topbar extends Component {
                                 color: "#f56a00",
                               }}
                             >
-                              {d.tumor_type}
+                              {report.tumor_type}
                             </Avatar>
-                            {d.pair}
-                            {d.inferred_sex}
+                            {report.pair}
+                            {isAllDatasetsBrowseScope(browseScope) ? (
+                              <Text type="secondary">
+                                {report.sourceDatasetTitle || report.datasetId}
+                              </Text>
+                            ) : null}
+                            {report.inferred_sex}
                           </Space>
                         </div>
                       </Option>
@@ -124,26 +220,22 @@ class Topbar extends Component {
                   </Select>
                   {loading ? (
                     <Spin
-                      indicator={
-                        <LoadingOutlined style={{ fontSize: 16 }} spin />
-                      }
+                      indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />}
                     />
-                  ) : (
+                  ) : hasSelectedBrowseScope ? (
                     <Space>
-                      {
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: t("topbar.report", {
-                              count: totalReportsCount,
-                            }),
-                          }}
-                        />
-                      }
+                      <span
+                        dangerouslySetInnerHTML={{
+                          __html: t("topbar.report", {
+                            count: totalReportsCount,
+                          }),
+                        }}
+                      />
                     </Space>
-                  )}
+                  ) : null}
                 </Space>
               </div>
-              <div className="ant-pro-top-nav-header-menu"></div>
+              <div className="ant-pro-top-nav-header-menu" />
               <div className="ant-pro-top-nav-header-main-right">
                 <div className="ant-pro-top-nav-header-main-right-container">
                   <Space>
@@ -174,25 +266,31 @@ class Topbar extends Component {
     );
   }
 }
-Topbar.propTypes = {};
-Topbar.defaultProps = {};
+
 const mapDispatchToProps = (dispatch) => ({
   updateCaseReport: (report) => dispatch(updateCaseReport(report)),
-  updateDataset: (dataset) => dispatch(updateDataset(dataset)),
-  searchCaseReports: (texts) => dispatch(searchCaseReports(texts)),
+  selectDataset: (datasetId) => dispatch(selectDataset(datasetId)),
+  selectAllDatasets: () => dispatch(selectAllDatasets()),
+  openCaseReport: (datasetId, caseReportId) =>
+    dispatch(openCaseReport(datasetId, caseReportId)),
+  searchCaseReports: (filters) => dispatch(searchCaseReports(filters)),
 });
+
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,
   loadingDatasets: state.Datasets.loading,
   dataset: state.Settings.dataset,
+  browseScope: state.Settings.browseScope,
   datasets: state.Datasets.records,
-  report: state.CaseReports.report,
+  manifestRecordsByDataset: state.CaseReports.manifestRecordsByDataset,
+  report: state.Settings.report,
   reports: state.CaseReports.reports,
   searchFilters: state.CaseReports.searchFilters,
   loadingPercentage: state.CaseReports.loadingPercentage,
   totalReportsCount: state.CaseReports.totalReports.length,
 });
+
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  mapDispatchToProps,
 )(withRouter(withTranslation("common")(Topbar)));

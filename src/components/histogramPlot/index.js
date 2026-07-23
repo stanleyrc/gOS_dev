@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors, kde, epanechnikov } from "../../helpers/utility";
 import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
-import { getNestedValue } from "../../helpers/metadata";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import Wrapper from "./index.style";
 import caseReportsActions from "../../redux/caseReports/actions";
 import settingsActions from "../../redux/settings/actions";
@@ -89,11 +89,11 @@ class HistogramPlot extends Component {
       bandwidth,
       format,
       dataset,
+      overlays,
       id,
       highlightedCaseReport,
       updateHighlightedCaseReport,
       updateCaseReport,
-      datafiles,
       margins,
       niceX,
     } = this.props;
@@ -104,21 +104,64 @@ class HistogramPlot extends Component {
     let panelWidth = stageWidth;
     let panelHeight = stageHeight;
 
-    let thresholds = d3.ticks(...d3.nice(...d3.extent(data), 10), 140);
-    let density = kde(epanechnikov(bandwidth), thresholds, data);
-    if (scaleX === "log" && density.length > 0) {
-      density[0][0] = 0.1;
-    }
-
-    let extentToQ99 = [
-      d3.min([range[0], markValue]),
-      d3.max([range[1], markValue]),
+    const currentData = (data || [])
+      .map(Number)
+      .filter(Number.isFinite)
+      .filter((value) => scaleX !== "log" || value > 0);
+    const normalizedOverlays = (overlays || [])
+      .map((overlay) => ({
+        ...overlay,
+        data: (overlay.data || [])
+          .map(Number)
+          .filter(Number.isFinite)
+          .filter((value) => scaleX !== "log" || value > 0),
+      }))
+      .filter((overlay) => overlay.data.length > 0);
+    const allValues = [
+      ...currentData,
+      ...normalizedOverlays.map((overlay) => overlay.data).flat(),
     ];
+    const extent = d3.extent(allValues);
+    const thresholds =
+      allValues.length > 1 && extent[0] !== extent[1]
+        ? d3.ticks(...d3.nice(...extent, 10), 140)
+        : allValues;
+    const density = thresholds.length
+      ? kde(epanechnikov(bandwidth || 1), thresholds, currentData)
+      : [];
+    const overlayDensities = normalizedOverlays.map((overlay) => ({
+      ...overlay,
+      density: kde(
+        epanechnikov(overlay.bandwidth || bandwidth || 1),
+        thresholds,
+        overlay.data,
+      ),
+    }));
+
+    const domainCandidates = [
+      ...(range || []),
+      markValue,
+      ...normalizedOverlays.map((overlay) => overlay.range || []).flat(),
+    ].filter((value) => value != null && Number.isFinite(+value));
+    let extentToQ99 = d3.extent(domainCandidates);
 
     let plotScale = d3.scaleLinear();
     if (scaleX === "log") {
       plotScale = d3.scaleLog();
-      extentToQ99[0] = d3.max([extentToQ99[0], markValue, 1]);
+      const positiveExtent = d3.extent(
+        domainCandidates.filter((value) => +value > 0),
+      );
+      extentToQ99 =
+        positiveExtent[0] == null || positiveExtent[1] == null
+          ? [1, 10]
+          : positiveExtent;
+      if (extentToQ99[0] === extentToQ99[1]) {
+        extentToQ99[1] = extentToQ99[0] * 10;
+      }
+    } else if (extentToQ99[0] == null || extentToQ99[1] == null) {
+      extentToQ99 = [0, 1];
+    } else if (extentToQ99[0] === extentToQ99[1]) {
+      extentToQ99 = [extentToQ99[0] - 1, extentToQ99[1] + 1];
     }
 
     const xScale = this.state.zoomTransform.rescaleX(
@@ -128,18 +171,31 @@ class HistogramPlot extends Component {
     // Create a scale for the y-axis
     const yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(density, (d) => d[1])])
+      .domain([
+        0,
+        d3.max([
+          d3.max(density, (point) => point[1]),
+          ...overlayDensities.map((overlay) =>
+            d3.max(overlay.density, (point) => point[1]),
+          ),
+        ]) || 1,
+      ])
       .range([panelHeight, 0])
       .nice();
 
-    let highlightedMarkValue = getNestedValue(
-      datafiles.find((d) => d.pair === highlightedCaseReport?.pair),
-      id
-    );
-    let highlightedMarkValueText = highlightedMarkValue
-      ? d3.format(format)(highlightedMarkValue)
-      : null;
-    let highlightedPair = highlightedCaseReport?.pair;
+    const highlightedIdentity = sourceCaseIdentityKey(highlightedCaseReport);
+    const highlightedRecord = (dataset || []).find((record) => {
+      const recordIdentity = sourceCaseIdentityKey(record);
+      return highlightedIdentity
+        ? recordIdentity === highlightedIdentity
+        : record.pair === highlightedCaseReport?.pair;
+    });
+    let highlightedMarkValue = highlightedRecord?.value;
+    let highlightedMarkValueText =
+      highlightedMarkValue != null
+        ? d3.format(format)(highlightedMarkValue)
+        : null;
+    let highlightedPair = highlightedRecord?.pair;
 
     return {
       width,
@@ -155,6 +211,7 @@ class HistogramPlot extends Component {
       q3,
       scaleX,
       density,
+      overlayDensities,
       format,
       dataset,
       data,
@@ -253,7 +310,13 @@ class HistogramPlot extends Component {
         invertedX
       );
       const closestDataPoint = dataset[bisect];
-      if (closestDataPoint?.pair !== highlightedCaseReport?.pair) {
+      const closestIdentity = sourceCaseIdentityKey(closestDataPoint);
+      const highlightedIdentity = sourceCaseIdentityKey(highlightedCaseReport);
+      if (
+        closestIdentity
+          ? closestIdentity !== highlightedIdentity
+          : closestDataPoint?.pair !== highlightedCaseReport?.pair
+      ) {
         updateHighlightedCaseReport(closestDataPoint);
       }
     }
@@ -283,9 +346,11 @@ class HistogramPlot extends Component {
       q1,
       q3,
       density,
+      overlayDensities,
       highlightedMarkValue,
       highlightedMarkValueText,
       highlightedPair,
+      highlightedCaseReport,
       margins,
       dataset,
     } = this.getPlotConfiguration();
@@ -343,6 +408,33 @@ class HistogramPlot extends Component {
                     .y0(yScale(0))
                     .curve(d3.curveBasis)(density)}
                 />
+                {overlayDensities.map((overlay) => (
+                  <g key={`overlay-${overlay.id || overlay.label}`}>
+                    <path
+                      clipPath={`url(#${clipId})`}
+                      fill={overlay.color || "#4e79a7"}
+                      fillOpacity={0.18}
+                      stroke="none"
+                      d={d3
+                        .area()
+                        .x((point) => xScale(point[0]))
+                        .y1((point) => yScale(point[1]))
+                        .y0(yScale(0))
+                        .curve(d3.curveBasis)(overlay.density)}
+                    />
+                    <path
+                      clipPath={`url(#${clipId})`}
+                      fill="none"
+                      stroke={overlay.color || "#4e79a7"}
+                      strokeWidth="1.4"
+                      d={d3
+                        .line()
+                        .x((point) => xScale(point[0]))
+                        .y((point) => yScale(point[1]))
+                        .curve(d3.curveBasis)(overlay.density)}
+                    />
+                  </g>
+                ))}
                 {this.getMarkers().map((marker, idx) => {
                   const markerX = xScale(marker.value);
                   if (marker.value < 0 || markerX < 0 || markerX > panelWidth) {
@@ -458,8 +550,12 @@ class HistogramPlot extends Component {
                       className="clickable-marker"
                       dy="-15"
                       y={0.33 * panelHeight}
-                      onClick={(e) =>
-                        openCaseInNewTab(highlightedPair, dataset)
+                      onClick={() =>
+                        openCaseInNewTab(
+                          highlightedCaseReport,
+                          dataset,
+                          this.props.browseScope,
+                        )
                       }
                     >
                       {highlightedPair}
@@ -476,7 +572,9 @@ class HistogramPlot extends Component {
 HistogramPlot.propTypes = {
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
+  browseScope: PropTypes.object,
   data: PropTypes.array,
+  overlays: PropTypes.array,
   markValue: PropTypes.number,
   markers: PropTypes.arrayOf(
     PropTypes.shape({
@@ -488,6 +586,7 @@ HistogramPlot.propTypes = {
 };
 HistogramPlot.defaultProps = {
   data: [],
+  overlays: [],
   showAxisY: false,
   format: "0.2f",
   niceX: true,
@@ -505,8 +604,8 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(updateHighlightedCaseReport(report)),
 });
 const mapStateToProps = (state) => ({
+  browseScope: state.Settings.browseScope,
   highlightedCaseReport: state.CaseReports.highlightedCaseReport,
-  datafiles: state.CaseReports.datafiles,
 });
 export default connect(
   mapStateToProps,

@@ -14,6 +14,7 @@ import DensityPlot from "./densityPlot";
 import OncoPrintPlot from "./oncoPrintPlot";
 import PlotTooltip from "./plotTooltip";
 import signatureMetadata from "../../translations/en/signatures.json";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import {
   margins,
   calculateDynamicMargins,
@@ -85,12 +86,13 @@ class AggregationsVisualization extends Component {
     return this._cachedDynamicColumns;
   }
 
-  scatterIdAccessor = (d) => d.pair;
+  scatterIdAccessor = (record) =>
+    sourceCaseIdentityKey(record) || record.pair;
 
   handlePointClick = (dataPoint) => {
     const { dataset } = this.props;
     if (dataPoint?.pair) {
-      openCaseInNewTab(dataPoint.pair, dataset);
+      openCaseInNewTab(dataPoint, dataset);
     }
   };
 
@@ -463,7 +465,12 @@ class AggregationsVisualization extends Component {
       const bandwidth = 1.06 * stdDev * Math.pow(values.length, -0.2);
 
       const dataset = filteredRecords
-        .map((d) => ({ pair: d.pair, value: getValue(d, yVariable) }))
+        .map((d) => ({
+          datasetId: d.datasetId,
+          caseReportId: d.caseReportId,
+          pair: d.pair,
+          value: getValue(d, yVariable),
+        }))
         .filter((d) => d.value != null && !isNaN(d.value))
         .sort((a, b) => d3.ascending(a.value, b.value));
 
@@ -792,15 +799,19 @@ class AggregationsVisualization extends Component {
     const { q1, q3, format } = config;
 
     return selectedPairs
-      .map((pair) => {
-        const record = filteredRecords.find((d) => d.pair === pair);
+      .map((caseIdentityKey) => {
+        const record = filteredRecords.find(
+          (candidate) =>
+            (sourceCaseIdentityKey(candidate) || candidate.pair) ===
+            caseIdentityKey,
+        );
         if (!record) return null;
         const value = getValue(record, yVariable);
         if (value == null || isNaN(value)) return null;
         const formattedValue = d3.format(format || ",.2f")(value);
         return {
           value,
-          label: `${pair}: ${formattedValue}`,
+          label: `${record.pair}: ${formattedValue}`,
           color: getColorMarker(value, q1, q3),
         };
       })

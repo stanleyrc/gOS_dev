@@ -5,6 +5,36 @@ const Wrapper = styled.div`
     background: white;
     padding: 16px 0px;
     margin: 0px 24px;
+    .detail-title-breadcrumb {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .detail-title-breadcrumb-link {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      color: rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.4;
+    }
+    .detail-title-breadcrumb-link:hover,
+    .detail-title-breadcrumb-link:focus {
+      color: #27496b;
+      text-decoration: underline;
+    }
+    .detail-title-breadcrumb-separator {
+      color: rgba(0, 0, 0, 0.3);
+      font-size: 14px;
+      font-weight: 400;
+    }
+    .detail-title-current {
+      color: inherit;
+    }
     .quality-report-link {
       font-weight: bold;
     }

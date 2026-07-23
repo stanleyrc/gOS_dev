@@ -40,6 +40,9 @@
   "topbar": {
     "report": "<strong>{{count}}</strong> case report in total",
     "report_plural": "<strong>{{count}}</strong> case reports in total",
+    "select-dataset": "Select Dataset",
+    "all-accessible-datasets": "All accessible datasets",
+    "dataset-cases": "{{count}} cases",
     "browse-case-reports": "Browse Case Reports",
     "no-case-report-selected": "Select a Case Report to get started!"
   },
@@ -374,9 +377,50 @@
           "NOT": "Not"
         }
       },
+      "favorites": {
+        "save-tooltip": "Save current query",
+        "open-tooltip": "Show saved queries",
+        "menu-title": "Saved queries",
+        "empty": "No saved queries",
+        "edit-tooltip": "Edit saved query",
+        "delete-tooltip": "Delete saved query",
+        "modal-title": "Save Query",
+        "edit-modal-title": "Edit Query",
+        "name-placeholder": "Query name",
+        "default-name": "Search {{timestamp}}",
+        "operation-failed": "Saved query operation failed: {{error}}",
+        "description": {
+          "selected-dataset": "Selected dataset",
+          "text-contains": "text contains \"{{text}}\"",
+          "range-min": "{{field}} ≥ {{value}}",
+          "range-max": "{{field}} ≤ {{value}}",
+          "includes": "{{field}} in ({{values}})",
+          "tags": "{{operator}} tags in ({{tags}})",
+          "prefix": "{{dataset}} case reports",
+          "with-filters": "{{prefix}} with {{clauses}}.",
+          "without-filters": "{{prefix}} without additional filters.",
+          "count-only": "{{count}} case report",
+          "count-only_plural": "{{count}} case reports",
+          "count-only-noun": "case report",
+          "count-only-noun_plural": "case reports",
+          "operators": {
+            "OR": "Any",
+            "AND": "All",
+            "NOT": "No"
+          }
+        }
+      },
+      "cohorts": {
+        "compare-label": "Compare with",
+        "compare-placeholder": "Select saved queries",
+        "current-query": "Current query"
+      },
       "ordering": "Sorting by <strong>{{attribute}}</strong> in <strong>{{sort}}</strong> order"
     },
     "detail-view": {
+      "breadcrumb": {
+        "results": "Search Results"
+      },
       "tabs": {
         "tab0": "Overall",
         "tab1": "Filtered Events",
@@ -448,6 +492,18 @@
       "phase": "Phase",
       "status": "Status",
       "outcome-type": "Outcome"
+    },
+    "patient-case-switcher": {
+      "trigger": "Patient cases ({{count}})",
+      "trigger-partial": "Patient cases ({{count}}, partial)",
+      "partial-description": "{{count}} dataset manifest could not be loaded, so this list may be incomplete.",
+      "partial-description_plural": "{{count}} dataset manifests could not be loaded, so this list may be incomplete.",
+      "loading": "Loading patient cases…",
+      "current": "Current case",
+      "specimen-date": "Specimen date: {{date}}",
+      "empty": "No related cases found",
+      "failure": "Patient cases unavailable",
+      "failure-description": "Related patient cases could not be loaded. Click to retry."
     },
     "header-panel": {
       "view-report": "View Report",

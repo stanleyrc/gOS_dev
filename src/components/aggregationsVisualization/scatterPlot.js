@@ -3,10 +3,12 @@ import KonvaScatter from "../konvaScatter";
 import KonvaContour from "../konvaContour";
 import { getValue, getColumnLabel } from "./helpers";
 import { hasGene } from "../../helpers/geneAggregations";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import * as d3 from "d3";
 
 class ScatterPlot extends Component {
-  scatterIdAccessor = (d) => d.pair;
+  scatterIdAccessor = (record) =>
+    sourceCaseIdentityKey(record) || record.pair;
   _cachedContours = null;
   _contourCacheKey = null;
 

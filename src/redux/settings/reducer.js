@@ -1,10 +1,56 @@
 import actions from "./actions";
-import { updateChromoBins, domainsToLocation } from "../../helpers/utility";
+import {
+  updateChromoBins,
+  domainsToLocation,
+  locationToDomains,
+} from "../../helpers/utility";
+import {
+  ALL_DATASETS_ROUTE_VALUE,
+  datasetBrowseScope,
+  hasBrowseScope,
+  isAllDatasetsBrowseScope,
+} from "../../helpers/browseScope";
+
+const isLocationWithinChromosomes = (location, chromoBins) =>
+  `${location}`.split("|").every((range) => {
+    const endpoints = range.split("-");
+    return (
+      endpoints.length === 2 &&
+      endpoints.every((endpoint) => {
+        const parts = endpoint.split(":");
+        const chromosome = parts[0];
+        const position = Number(parts[1]);
+        const chromosomeBin = chromoBins[chromosome];
+        return (
+          parts.length === 2 &&
+          chromosomeBin &&
+          Number.isFinite(position) &&
+          position >= chromosomeBin.startPoint &&
+          position <= chromosomeBin.endPoint
+        );
+      })
+    );
+  });
+
+const areValidDomains = (domains, genomeLength) =>
+  Array.isArray(domains) &&
+  domains.length > 0 &&
+  domains.every(
+    (domain) =>
+      Array.isArray(domain) &&
+      domain.length === 2 &&
+      Number.isFinite(domain[0]) &&
+      Number.isFinite(domain[1]) &&
+      domain[0] >= 1 &&
+      domain[1] >= domain[0] &&
+      domain[1] <= genomeLength,
+  );
 
 const initState = {
   loading: false,
   data: {},
   report: null,
+  datasetInitialized: false,
   dataset: {
     id: "demo",
     title: "Demo Dataset",
@@ -13,6 +59,7 @@ const initState = {
     dataPath: "data/",
     reference: "hg19",
   },
+  browseScope: null,
   tab: 1,
   hoveredLocation: null,
   hoveredLocationPanelIndex: null,
@@ -55,10 +102,12 @@ export default function appReducer(state = initState, action) {
       };
     case actions.FETCH_SETTINGS_DATA_SUCCESS:
       let url = new URL(decodeURI(document.location));
-      url.searchParams.set(
-        "location",
-        domainsToLocation(action.chromoBins, action.domains)
-      );
+      if (!url.searchParams.get("location")) {
+        url.searchParams.set(
+          "location",
+          domainsToLocation(action.chromoBins, action.domains)
+        );
+      }
       window.history.replaceState(
         unescape(url.toString()),
         "Case Report",
@@ -124,6 +173,9 @@ export default function appReducer(state = initState, action) {
         url0.searchParams.delete("report");
         url0.searchParams.delete("gene");
         url0.searchParams.delete("tab");
+        if (isAllDatasetsBrowseScope(state.browseScope)) {
+          url0.searchParams.delete("dataset");
+        }
       }
       window.history.replaceState(
         unescape(url0.toString()),
@@ -131,37 +183,108 @@ export default function appReducer(state = initState, action) {
         unescape(url0.toString())
       );
       return { ...state, report: action.report };
+    case actions.UPDATE_BROWSE_SCOPE:
+      const browseReport = action.report || null;
+      url0 = new URL(decodeURI(document.location));
+      if (isAllDatasetsBrowseScope(action.browseScope)) {
+        url0.searchParams.set("scope", ALL_DATASETS_ROUTE_VALUE);
+        if (!browseReport) {
+          url0.searchParams.delete("dataset");
+          url0.searchParams.delete("report");
+          url0.searchParams.delete("gene");
+          url0.searchParams.delete("tab");
+        }
+      }
+      window.history.replaceState(
+        unescape(url0.toString()),
+        "Case Report",
+        unescape(url0.toString())
+      );
+      return {
+        ...state,
+        browseScope: action.browseScope,
+        report: browseReport,
+      };
     case actions.UPDATE_DATASET:
       let dataset = action.dataset;
-      let selectedCoordinate = dataset.reference;
       let rep = action.report;
+      if (!dataset) {
+        return { ...state, dataset: null, report: rep };
+      }
+
+      const nextBrowseScope =
+        action.preserveBrowseScope && hasBrowseScope(state.browseScope)
+          ? state.browseScope
+          : datasetBrowseScope(dataset.id);
+      let selectedCoordinate = dataset.reference;
       url0 = new URL(decodeURI(document.location));
-      if (dataset) {
-        url0.searchParams.set("dataset", dataset.id);
+      if (isAllDatasetsBrowseScope(nextBrowseScope)) {
+        url0.searchParams.set("scope", ALL_DATASETS_ROUTE_VALUE);
+        if (rep) {
+          url0.searchParams.set("dataset", dataset.id);
+        } else {
+          url0.searchParams.delete("dataset");
+        }
       } else {
-        url0.searchParams.delete("dataset");
+        url0.searchParams.delete("scope");
+        url0.searchParams.set("dataset", dataset.id);
       }
       if (rep) {
         url0.searchParams.set("report", rep);
       } else {
         url0.searchParams.delete("report");
       }
-      // if all selected files are have the same reference
       url0.searchParams.delete("gene");
+      let { genomeLength, chromoBins } = updateChromoBins(
+        state.data.coordinates.sets[selectedCoordinate]
+      );
+      const defaultDomains = [[1, genomeLength]];
+      const referenceChanged =
+        state.dataset?.reference &&
+        state.dataset.reference !== selectedCoordinate;
+      let nextDomains = state.domains;
+      let replaceLocation = false;
+      if (!state.datasetInitialized && url0.searchParams.get("location")) {
+        try {
+          const bookmarkedLocation = url0.searchParams.get("location");
+          if (!isLocationWithinChromosomes(bookmarkedLocation, chromoBins)) {
+            throw new Error("Invalid genomic location");
+          }
+          nextDomains = locationToDomains(
+            chromoBins,
+            bookmarkedLocation,
+          );
+          if (!areValidDomains(nextDomains, genomeLength)) {
+            throw new Error("Invalid genomic location");
+          }
+        } catch (error) {
+          nextDomains = defaultDomains;
+          replaceLocation = true;
+        }
+      } else if (referenceChanged || !state.domains?.length) {
+        nextDomains = defaultDomains;
+        replaceLocation = true;
+      }
+      if (replaceLocation) {
+        url0.searchParams.set(
+          "location",
+          domainsToLocation(chromoBins, nextDomains),
+        );
+      }
       window.history.replaceState(
         unescape(url0.toString()),
         "Case Report",
         unescape(url0.toString())
       );
-      let { genomeLength, chromoBins } = updateChromoBins(
-        state.data.coordinates.sets[selectedCoordinate]
-      );
       return {
         ...state,
         dataset: action.dataset,
+        datasetInitialized: true,
+        browseScope: nextBrowseScope,
         report: rep,
         genomeLength,
         chromoBins,
+        domains: nextDomains,
         defaultDomain: [1, genomeLength],
       };
     default:

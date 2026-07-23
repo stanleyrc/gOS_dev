@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { Select, Cascader, Input, message } from "antd";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 
 class AxisSelectors extends Component {
   state = {
@@ -257,9 +258,11 @@ class AxisSelectors extends Component {
   renderPairSelector = () => {
     const { filteredRecords = [], selectedPairs, onPairsChange } = this.props;
 
-    const pairOptions = filteredRecords.map((d) => ({
-      value: d.pair,
-      label: d.pair,
+    const pairOptions = filteredRecords.map((record) => ({
+      value: sourceCaseIdentityKey(record) || record.pair,
+      label: record.sourceDatasetTitle
+        ? `${record.pair} — ${record.sourceDatasetTitle}`
+        : record.pair,
     }));
 
     return (

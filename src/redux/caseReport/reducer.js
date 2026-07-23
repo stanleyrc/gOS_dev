@@ -32,6 +32,14 @@ export default function appReducer(state = initState, action) {
         error: action.error,
         loading: false,
       };
+    case actions.CLEAR_CASE_REPORT:
+      return {
+        ...state,
+        id: null,
+        metadata: {},
+        error: null,
+        loading: false,
+      };
     default:
       return state;
   }

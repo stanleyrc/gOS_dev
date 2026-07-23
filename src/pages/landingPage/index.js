@@ -8,29 +8,38 @@ import { LoadingOutlined } from "@ant-design/icons";
 import Wrapper from "./index.style";
 import ListView from "../../containers/listView";
 import caseReportsActions from "../../redux/caseReports/actions";
-import settingsActions from "../../redux/settings/actions";
+import datasetsActions from "../../redux/datasets/actions";
+import {
+  buildCaseReportUrl,
+  getSourceCaseIdentity,
+  resolveBrowseDataset,
+} from "../../helpers/browseScope";
 
 const { searchCaseReports } = caseReportsActions;
-const { updateCaseReport } = settingsActions;
+const { openCaseReport } = datasetsActions;
 
-const twoColors = {
-  "0%": "#108ee9",
-  "100%": "#87d068",
-};
+const twoColors = { "0%": "#108ee9", "100%": "#87d068" };
 
-class LandingPage extends Component {
+export class LandingPage extends Component {
   handleCardClick = (event, report) => {
-    const { updateCaseReport } = this.props;
+    const identity = getSourceCaseIdentity(report);
     event.stopPropagation();
-    if (event.metaKey) {
+    if (!identity) return;
+
+    if (event.metaKey || event.ctrlKey) {
+      const url = buildCaseReportUrl(
+        document.location,
+        identity,
+        this.props.browseScope,
+      );
       const newWindow = window.open(
-        `/?report=${report}`,
+        url.toString(),
         "_blank",
-        "noopener,noreferrer"
+        "noopener,noreferrer",
       );
       if (newWindow) newWindow.opener = null;
     } else {
-      updateCaseReport(report);
+      this.props.openCaseReport(identity.datasetId, identity.caseReportId);
     }
   };
 
@@ -47,6 +56,7 @@ class LandingPage extends Component {
       datafiles,
       dataset,
     } = this.props;
+
     return (
       <Wrapper>
         {loading && (
@@ -81,12 +91,13 @@ class LandingPage extends Component {
     );
   }
 }
-LandingPage.propTypes = {};
-LandingPage.defaultProps = {};
+
 const mapDispatchToProps = (dispatch) => ({
   searchCaseReports: (filters) => dispatch(searchCaseReports(filters)),
-  updateCaseReport: (report) => dispatch(updateCaseReport(report)),
+  openCaseReport: (datasetId, caseReportId) =>
+    dispatch(openCaseReport(datasetId, caseReportId)),
 });
+
 const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,
   loadingPercentage: state.CaseReports.loadingPercentage,
@@ -96,9 +107,11 @@ const mapStateToProps = (state) => ({
   searchFilters: state.CaseReports.searchFilters,
   totalReportsCount: state.CaseReports.totalReports.length,
   datafiles: state.CaseReports.datafiles,
-  dataset: state.Settings.dataset,
+  browseScope: state.Settings.browseScope,
+  dataset: resolveBrowseDataset(state),
 });
+
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  mapDispatchToProps,
 )(withRouter(withTranslation("common")(ScrollToHOC(LandingPage))));
