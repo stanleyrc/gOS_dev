@@ -69,9 +69,11 @@ function* fetchSettingsData(action) {
 
 function* updateCaseReportFollowUp(action) {
   cancelAllRequests();
-  yield put({
-    type: caseReportActions.FETCH_CASE_REPORT_REQUEST,
-  });
+  if (!action.report) {
+    yield put(caseReportActions.clearCaseReport());
+    return;
+  }
+  yield put(caseReportActions.fetchCaseReport());
 }
 
 function* settingsFetchedFollowUp(action) {
@@ -88,6 +90,10 @@ function* updateDomainsFollowUp(action) {
 }
 
 function* updateDatasetFollowUp(action) {
+  if (!action.report) {
+    cancelAllRequests();
+    yield put(caseReportActions.clearCaseReport());
+  }
   let actionTypes = [
     caseReportsActions.FETCH_CASE_REPORTS_REQUEST,
     biomarkersActions.FETCH_BIOMARKERS_REQUEST,

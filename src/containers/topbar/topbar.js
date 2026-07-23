@@ -103,7 +103,11 @@ class Topbar extends Component {
                     }
                   >
                     {reports.map((d) => (
-                      <Option key={d.pair} value={d.pair} label={d.pair}>
+                      <Option
+                        key={d.caseReportId || d.pair}
+                        value={d.caseReportId || d.pair}
+                        label={d.pair}
+                      >
                         <div className="demo-option-label-item">
                           <Space>
                             <Avatar

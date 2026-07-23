@@ -262,17 +262,26 @@ export const allColumns = [...numericColumns, ...categoricalColumns, pairColumn]
 
 /**
  * Opens a case report in a new browser tab with proper dataset context.
- * @param {string} pair - The case/pair ID to open
+ * @param {string|object} caseReport - The source case identity or report ID
  * @param {object} dataset - The dataset object containing the id
  */
-export const openCaseInNewTab = (pair, dataset) => {
-  if (!pair) return;
+export const openCaseInNewTab = (caseReport, dataset) => {
+  const caseReportId =
+    caseReport && typeof caseReport === "object"
+      ? caseReport.caseReportId || caseReport.pair
+      : caseReport;
+  const datasetId =
+    caseReport && typeof caseReport === "object"
+      ? caseReport.datasetId || dataset?.id
+      : dataset?.id;
+  if (!caseReportId) return;
+
   const url = new URL(window.location.pathname, window.location.origin);
-  url.searchParams.set("report", pair);
-  if (dataset?.id) {
-    url.searchParams.set("dataset", dataset.id);
+  url.searchParams.set("report", caseReportId);
+  if (datasetId) {
+    url.searchParams.set("dataset", datasetId);
   }
-  window.open(url.toString(), "_blank");
+  window.open(url.toString(), "_blank", "noopener,noreferrer");
 };
 
 export const getColumnType = (dataIndex, dynamicColumns = null) => {

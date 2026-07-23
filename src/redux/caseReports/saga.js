@@ -16,8 +16,13 @@ import {
 } from "../../helpers/filters";
 import { getActiveRepository } from "../../services/repositories";
 import { qcEvaluator } from "../../helpers/metadata";
+import {
+  canonicalizeInterpretationCounts,
+  canonicalizeInterpretationSummary,
+} from "../../helpers/interpretationCaseIds";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
+import interpretationsActions from "../interpretations/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
 
 function* fetchCaseReports(action) {
@@ -63,6 +68,15 @@ function* fetchCaseReports(action) {
 
         datafiles.forEach(
           (d) => {
+            const caseReportId =
+              d.caseReportId ||
+              d.case_id_clean ||
+              d.case_id ||
+              d.pair ||
+              d.id;
+            d.datasetId = `${dataset.id}`;
+            d.caseReportId =
+              caseReportId == null ? null : `${caseReportId}`;
             d.tags = d.summary_tag
               ? d.summary_tag?.map((e) => `${e.key.trim()}: ${e.value.trim()}`)
               : d.summary
@@ -79,13 +93,19 @@ function* fetchCaseReports(action) {
         );
 
         const repository = getActiveRepository({ dataset });
-        const casesWithInterpretations = yield call(
+        const interpretationSummary = yield call(
           repository.getCasesWithInterpretations.bind(repository),
           dataset.id
         );
-        const interpretationsCounts = yield call(
+        const interpretationCountMap = yield call(
           repository.getCasesInterpretationsCount.bind(repository),
           dataset.id
+        );
+        const casesWithInterpretations =
+          canonicalizeInterpretationSummary(interpretationSummary, datafiles);
+        const interpretationsCounts = canonicalizeInterpretationCounts(
+          interpretationCountMap,
+          datafiles
         );
 
         let reportsFilters = [];
@@ -118,6 +138,8 @@ function* fetchCaseReports(action) {
             .map((e) => {
               return {
                 pair: e.pair,
+                datasetId: e.datasetId,
+                caseReportId: e.caseReportId,
                 value: getValueByPath(e, d.id),
                 tumor_type: e.tumor_type,
               };
@@ -128,6 +150,8 @@ function* fetchCaseReports(action) {
             .map((e) => {
               return {
                 pair: e.pair,
+                datasetId: e.datasetId,
+                caseReportId: e.caseReportId,
                 value: getValueByPath(e, d.id),
                 tumor_type: e.tumor_type,
               };
@@ -181,11 +205,43 @@ function* fetchCaseReports(action) {
   }
 }
 
+const buildCaseReportInterpretationIds = (records) => {
+  const sourceIds = new Set(
+    records.map((record) => record.caseReportId).filter(Boolean)
+  );
+  const pairCounts = records.reduce((counts, record) => {
+    if (record.pair) {
+      counts.set(record.pair, (counts.get(record.pair) || 0) + 1);
+    }
+    return counts;
+  }, new Map());
+
+  return (record = {}) => {
+    const canonicalId = record.caseReportId || record.pair;
+    const ids = canonicalId ? [canonicalId] : [];
+    if (
+      record.pair &&
+      record.pair !== canonicalId &&
+      !sourceIds.has(record.pair) &&
+      pairCounts.get(record.pair) === 1
+    ) {
+      ids.push(record.pair);
+    }
+    return ids;
+  };
+};
+
+const caseReportKey = (record) => record.caseReportId || record.pair;
+
 /**
  * Apply filters based on external data sources (not stored on records)
  */
 function applyExternalFilters(records, searchFilters, externalData) {
   const { casesWithInterpretations } = externalData;
+  const caseReportInterpretationIds =
+    buildCaseReportInterpretationIds(records);
+  const interpretationSetHasRecord = (set, record) =>
+    caseReportInterpretationIds(record).some((caseId) => set?.has(caseId));
 
   // Handle has_interpretations filter
   if (
@@ -204,34 +260,53 @@ function applyExternalFilters(records, searchFilters, externalData) {
       const specificValue = value.length > 1 ? value[1] : null;
 
       if (category === "tier_change") {
-        records.forEach((r) => {
-          if (casesWithInterpretations.withTierChange.has(r.pair)) {
-            matchingRecords.add(r.pair);
+        records.forEach((record) => {
+          if (
+            interpretationSetHasRecord(
+              casesWithInterpretations.withTierChange,
+              record
+            )
+          ) {
+            matchingRecords.add(caseReportKey(record));
+          }
+        });
+      } else if (category === "other_changes") {
+        records.forEach((record) => {
+          if (
+            interpretationSetHasRecord(casesWithInterpretations.all, record) &&
+            !interpretationSetHasRecord(
+              casesWithInterpretations.withTierChange,
+              record
+            )
+          ) {
+            matchingRecords.add(caseReportKey(record));
           }
         });
       } else if (category === "author" && specificValue) {
         const authorCases =
           casesWithInterpretations.byAuthor.get(specificValue);
         if (authorCases) {
-          records.forEach((r) => {
-            if (authorCases.has(r.pair)) {
-              matchingRecords.add(r.pair);
+          records.forEach((record) => {
+            if (interpretationSetHasRecord(authorCases, record)) {
+              matchingRecords.add(caseReportKey(record));
             }
           });
         }
       } else if (category === "gene" && specificValue) {
         const geneCases = casesWithInterpretations.byGene.get(specificValue);
         if (geneCases) {
-          records.forEach((r) => {
-            if (geneCases.has(r.pair)) {
-              matchingRecords.add(r.pair);
+          records.forEach((record) => {
+            if (interpretationSetHasRecord(geneCases, record)) {
+              matchingRecords.add(caseReportKey(record));
             }
           });
         }
       } else if (category === "without") {
-        records.forEach((r) => {
-          if (!casesWithInterpretations.all.has(r.pair)) {
-            matchingRecords.add(r.pair);
+        records.forEach((record) => {
+          if (
+            !interpretationSetHasRecord(casesWithInterpretations.all, record)
+          ) {
+            matchingRecords.add(caseReportKey(record));
           }
         });
       }
@@ -246,12 +321,14 @@ function applyExternalFilters(records, searchFilters, externalData) {
       matchingSets.forEach((set) => {
         set.forEach((pair) => unionSet.add(pair));
       });
-      records = records.filter((r) => unionSet.has(r.pair));
+      records = records.filter((record) =>
+        unionSet.has(caseReportKey(record))
+      );
     } else if (operator === "AND") {
       // Intersection: include only if in ALL sets
       if (matchingSets.length > 0) {
         records = records.filter((r) => {
-          return matchingSets.every((set) => set.has(r.pair));
+          return matchingSets.every((set) => set.has(caseReportKey(r)));
         });
       }
     } else if (operator === "NOT") {
@@ -260,7 +337,9 @@ function applyExternalFilters(records, searchFilters, externalData) {
       matchingSets.forEach((set) => {
         set.forEach((pair) => unionSet.add(pair));
       });
-      records = records.filter((r) => !unionSet.has(r.pair));
+      records = records.filter((record) =>
+        !unionSet.has(caseReportKey(record))
+      );
     }
   }
 
@@ -274,13 +353,21 @@ function* searchReports({ searchFilters }) {
 
   // Always fetch fresh casesWithInterpretations and interpretationsCounts to ensure filters are up to date
   const repository = getActiveRepository({ dataset });
-  casesWithInterpretations = yield call(
+  const interpretationSummary = yield call(
     repository.getCasesWithInterpretations.bind(repository),
     dataset.id
   );
-  const interpretationsCounts = yield call(
+  const interpretationCountMap = yield call(
     repository.getCasesInterpretationsCount.bind(repository),
     dataset.id
+  );
+  casesWithInterpretations = canonicalizeInterpretationSummary(
+    interpretationSummary,
+    datafiles
+  );
+  const interpretationsCounts = canonicalizeInterpretationCounts(
+    interpretationCountMap,
+    datafiles
   );
 
   let records = datafiles.filter((d) => d.visible !== false);
@@ -413,6 +500,8 @@ function* searchReports({ searchFilters }) {
       .map((e) => {
         return {
           pair: e.pair,
+          datasetId: e.datasetId,
+          caseReportId: e.caseReportId,
           value: getValueByPath(e, d.id),
           tumor_type: e.tumor_type,
         };
@@ -438,9 +527,21 @@ function* followUpCaseReportsMatched(action) {
   });
 }
 
+function* refreshDetailInterpretationsAfterManifestLoad() {
+  const currentState = yield select(getCurrentState);
+  const report = currentState.Settings.report;
+  if (report) {
+    yield put(interpretationsActions.fetchInterpretationsForCase(report));
+  }
+}
+
 function* actionWatcher() {
   yield takeLatest(actions.FETCH_CASE_REPORTS_REQUEST, fetchCaseReports);
   yield takeLatest(actions.SEARCH_CASE_REPORTS, searchReports);
+  yield takeLatest(
+    actions.FETCH_CASE_REPORTS_SUCCESS,
+    refreshDetailInterpretationsAfterManifestLoad
+  );
   yield takeLatest(actions.CASE_REPORTS_MATCHED, followUpCaseReportsMatched);
 }
 export default function* rootSaga() {

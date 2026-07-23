@@ -35,8 +35,8 @@ import Wrapper from "./index.style";
 import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import { ClinicalTrialsModal } from "../clinicalTrialsModal";
+import PatientCaseSwitcher from "../patientCaseSwitcher";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
-import { get } from "immutable";
 
 const { Text } = Typography;
 
@@ -253,7 +253,12 @@ class HeaderPanel extends Component {
       <Wrapper>
         <PageHeader
           className="site-page-header"
-          title={pair}
+          title={
+            <Space size="small" wrap>
+              {pair}
+              <PatientCaseSwitcher />
+            </Space>
+          }
           subTitle={
             <Space>
               <span>{inferred_sex}</span> {qcMetricsComponent}

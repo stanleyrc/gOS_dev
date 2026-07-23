@@ -20,11 +20,14 @@ const twoColors = {
 
 class LandingPage extends Component {
   handleCardClick = (event, report) => {
-    const { updateCaseReport } = this.props;
+    const { dataset, updateCaseReport } = this.props;
     event.stopPropagation();
-    if (event.metaKey) {
+    if (event.metaKey || event.ctrlKey) {
+      const url = new URL(window.location.pathname, window.location.origin);
+      url.searchParams.set("report", report);
+      if (dataset?.id) url.searchParams.set("dataset", dataset.id);
       const newWindow = window.open(
-        `/?report=${report}`,
+        url.toString(),
         "_blank",
         "noopener,noreferrer"
       );

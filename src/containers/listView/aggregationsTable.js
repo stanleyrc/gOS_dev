@@ -168,10 +168,10 @@ class AggregationsTable extends PureComponent {
     document.body.removeChild(link);
   };
 
-  handlePairClick = (event, pair) => {
+  handlePairClick = (event, caseReport) => {
     const { dataset } = this.props;
     event.preventDefault();
-    openCaseInNewTab(pair, dataset);
+    openCaseInNewTab(caseReport, dataset);
   };
 
 
@@ -361,13 +361,16 @@ class AggregationsTable extends PureComponent {
            
            // Make pair column a clickable link
            if (col.renderLink) {
-             const datasetParam = dataset?.id ? `&dataset=${dataset.id}` : "";
+             const datasetParam = dataset?.id
+               ? `&dataset=${encodeURIComponent(dataset.id)}`
+               : "";
+             const caseReportId = record.caseReportId || value;
              return (
                <a
-                 href={`/?report=${value}${datasetParam}`}
+                 href={`/?report=${encodeURIComponent(caseReportId)}${datasetParam}`}
                  onClick={(e) => {
                    e.preventDefault();
-                   this.handlePairClick(e, value);
+                   this.handlePairClick(e, record);
                  }}
                  style={{ color: "#1890ff", cursor: "pointer" }}
                  target="_blank"

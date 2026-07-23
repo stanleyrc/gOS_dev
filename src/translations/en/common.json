@@ -449,6 +449,18 @@
       "status": "Status",
       "outcome-type": "Outcome"
     },
+    "patient-case-switcher": {
+      "trigger": "Patient cases ({{count}})",
+      "trigger-partial": "Patient cases ({{count}}, partial)",
+      "partial-description": "{{count}} dataset manifest could not be loaded, so this list may be incomplete.",
+      "partial-description_plural": "{{count}} dataset manifests could not be loaded, so this list may be incomplete.",
+      "loading": "Loading patient cases…",
+      "current": "Current case",
+      "specimen-date": "Specimen date: {{date}}",
+      "empty": "No related cases found",
+      "failure": "Patient cases unavailable",
+      "failure-description": "Related patient cases could not be loaded. Click to retry."
+    },
     "header-panel": {
       "view-report": "View Report",
       "qcMetrics": "Quality Control Metrics",

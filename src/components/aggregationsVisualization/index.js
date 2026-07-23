@@ -90,7 +90,7 @@ class AggregationsVisualization extends Component {
   handlePointClick = (dataPoint) => {
     const { dataset } = this.props;
     if (dataPoint?.pair) {
-      openCaseInNewTab(dataPoint.pair, dataset);
+      openCaseInNewTab(dataPoint, dataset);
     }
   };
 
@@ -463,7 +463,12 @@ class AggregationsVisualization extends Component {
       const bandwidth = 1.06 * stdDev * Math.pow(values.length, -0.2);
 
       const dataset = filteredRecords
-        .map((d) => ({ pair: d.pair, value: getValue(d, yVariable) }))
+        .map((d) => ({
+          pair: d.pair,
+          datasetId: d.datasetId,
+          caseReportId: d.caseReportId,
+          value: getValue(d, yVariable),
+        }))
         .filter((d) => d.value != null && !isNaN(d.value))
         .sort((a, b) => d3.ascending(a.value, b.value));
 

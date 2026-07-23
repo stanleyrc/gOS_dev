@@ -39,8 +39,16 @@ class ParallelCoordinatesPlot extends Component {
         .clamp(true);
 
       d.dataset.forEach((item) => {
-        dataMap[item.pair] = dataMap[item.pair] || {};
-        dataMap[item.pair][d.id] = item.value;
+        const identityKey = item.caseReportId
+          ? JSON.stringify([item.datasetId || null, item.caseReportId])
+          : `${item.pair}`;
+        dataMap[identityKey] = dataMap[identityKey] || {
+          pair: item.pair,
+          datasetId: item.datasetId,
+          caseReportId: item.caseReportId,
+          values: {},
+        };
+        dataMap[identityKey].values[d.id] = item.value;
       });
 
       return {
@@ -53,8 +61,8 @@ class ParallelCoordinatesPlot extends Component {
     plotData.forEach((d) => {
       plotDataMap[d.id] = d;
     });
-    let lineData = Object.keys(dataMap).map((pair, i) => {
-      let pairData = dataMap[pair];
+    let lineData = Object.entries(dataMap).map(([identityKey, record]) => {
+      let pairData = record.values;
       let segments = keys
         .map((key, i) => {
           const value = pairData[key];
@@ -68,7 +76,10 @@ class ParallelCoordinatesPlot extends Component {
         .filter((d) => d.x !== null);
 
       return {
-        pair,
+        identityKey,
+        pair: record.pair,
+        datasetId: record.datasetId,
+        caseReportId: record.caseReportId,
         segments,
       };
     });
@@ -200,7 +211,7 @@ class ParallelCoordinatesPlot extends Component {
 
     let lines = linesLayer
       .selectAll(".data-line")
-      .data(lineData, (d) => d.pair);
+      .data(lineData, (d) => d.identityKey);
 
     lines
       .enter()
@@ -213,7 +224,7 @@ class ParallelCoordinatesPlot extends Component {
       .style("cursor", "pointer")
       .attr("d", (d) => lineGenerator(d.segments))
       .on("click", (event, d) => {
-        handleCardClick(event, d.pair);
+        handleCardClick(event, d.caseReportId || d.pair);
       })
       .on("mouseover", function (event, d) {
         resetLines();
@@ -241,7 +252,7 @@ class ParallelCoordinatesPlot extends Component {
       .attr("stroke-opacity", 1)
       .style("cursor", "pointer")
       .on("click", (event, d) => {
-        handleCardClick(event, d.pair);
+        handleCardClick(event, d.caseReportId || d.pair);
       })
       .on("mouseover", function (event, d) {
         resetLines();

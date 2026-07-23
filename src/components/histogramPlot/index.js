@@ -132,13 +132,17 @@ class HistogramPlot extends Component {
       .range([panelHeight, 0])
       .nice();
 
-    let highlightedMarkValue = getNestedValue(
-      datafiles.find((d) => d.pair === highlightedCaseReport?.pair),
-      id
+    const highlightedSourceId = highlightedCaseReport?.caseReportId;
+    const highlightedRecord = datafiles.find((record) =>
+      highlightedSourceId
+        ? record.caseReportId === highlightedSourceId
+        : record.pair === highlightedCaseReport?.pair
     );
-    let highlightedMarkValueText = highlightedMarkValue
-      ? d3.format(format)(highlightedMarkValue)
-      : null;
+    let highlightedMarkValue = getNestedValue(highlightedRecord, id);
+    let highlightedMarkValueText =
+      highlightedMarkValue != null
+        ? d3.format(format)(highlightedMarkValue)
+        : null;
     let highlightedPair = highlightedCaseReport?.pair;
 
     return {
@@ -253,7 +257,10 @@ class HistogramPlot extends Component {
         invertedX
       );
       const closestDataPoint = dataset[bisect];
-      if (closestDataPoint?.pair !== highlightedCaseReport?.pair) {
+      if (
+        (closestDataPoint?.caseReportId || closestDataPoint?.pair) !==
+        (highlightedCaseReport?.caseReportId || highlightedCaseReport?.pair)
+      ) {
         updateHighlightedCaseReport(closestDataPoint);
       }
     }
@@ -286,6 +293,7 @@ class HistogramPlot extends Component {
       highlightedMarkValue,
       highlightedMarkValueText,
       highlightedPair,
+      highlightedCaseReport,
       margins,
       dataset,
     } = this.getPlotConfiguration();
@@ -458,8 +466,8 @@ class HistogramPlot extends Component {
                       className="clickable-marker"
                       dy="-15"
                       y={0.33 * panelHeight}
-                      onClick={(e) =>
-                        openCaseInNewTab(highlightedPair, dataset)
+                      onClick={() =>
+                        openCaseInNewTab(highlightedCaseReport, dataset)
                       }
                     >
                       {highlightedPair}

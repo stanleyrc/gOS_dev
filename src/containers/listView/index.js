@@ -584,7 +584,7 @@ class ListView extends Component {
                           <Row gutter={[16, 16]}>
                             {records.map((d) => (
                               <Col
-                                key={d.pair}
+                                key={d.caseReportId || d.pair}
                                 className="gutter-row"
                                 span={6}
                                 style={{ display: "flex" }}
@@ -603,7 +603,12 @@ class ListView extends Component {
                                     display: "flex",
                                     flexDirection: "column",
                                   }}
-                                  onClick={(e) => handleCardClick(e, d.pair)}
+                                  onClick={(e) =>
+                                    handleCardClick(
+                                      e,
+                                      d.caseReportId || d.pair
+                                    )
+                                  }
                                   hoverable
                                   title={
                                     <Space>
@@ -635,7 +640,7 @@ class ListView extends Component {
                                   extra={
                                     <Space>
                                       <InterpretationsAvatar
-                                        pair={d.pair}
+                                        pair={d.caseReportId || d.pair}
                                         casesWithInterpretations={
                                           casesWithInterpretations
                                         }
