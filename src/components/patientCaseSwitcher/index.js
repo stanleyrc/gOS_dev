@@ -12,6 +12,7 @@ import {
   isSamePatientCase,
   normalizePatientId,
   patientCaseIdentityKey,
+  sortPatientCases,
 } from "./helpers";
 import Wrapper, { PatientCaseMenuStyle } from "./index.style";
 
@@ -41,11 +42,16 @@ const defaultLoadPatientCases = async (
       datasets,
       cachedRecordsByDataset,
     );
+  const casesByIdentity = new Map();
+  Object.values(recordsByDataset).forEach((records) => {
+    findPatientCases(records, patientId).forEach((patientCase) => {
+      const key = patientCaseIdentityKey(patientCase.identity);
+      if (!casesByIdentity.has(key)) casesByIdentity.set(key, patientCase);
+    });
+  });
+
   const result = {
-    cases: findPatientCases(
-      Object.values(recordsByDataset).flat(),
-      patientId,
-    ),
+    cases: sortPatientCases(Array.from(casesByIdentity.values())),
     failedDatasetCount,
   };
   if (failedDatasetCount === 0) {

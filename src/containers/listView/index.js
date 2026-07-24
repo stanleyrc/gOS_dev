@@ -58,6 +58,7 @@ const {
 } = caseReportsActions;
 
 const { SHOW_CHILD } = Cascader;
+const PATIENT_FILTER_OPTIONS_LIMIT = 100;
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -67,6 +68,8 @@ const { Item } = Form;
 
 export class ListView extends Component {
   formRef = React.createRef();
+  cascaderOptionsCache = {};
+  selectOptionsCache = {};
 
   state = {
     isChatOpen: false,
@@ -75,6 +78,7 @@ export class ListView extends Component {
     favoriteName: "",
     editingFavoriteSearch: null,
     favoriteSavePending: false,
+    selectSearchTextByFilter: {},
   };
 
   componentDidMount() {
@@ -133,6 +137,132 @@ export class ListView extends Component {
         )}
       </div>
     );
+  };
+
+  getCascaderOptions = (filterState) => {
+    if (filterState.options) return filterState.options;
+
+    const filterName = filterState.filter.name;
+    const cache = this.cascaderOptionsCache[filterName];
+    if (
+      cache &&
+      cache.records === filterState.records &&
+      cache.frequencies === filterState.frequencies
+    ) {
+      return cache.options;
+    }
+
+    const options = generateCascaderOptions(
+      filterState.records || [],
+      filterState.frequencies || {},
+    );
+    this.cascaderOptionsCache[filterName] = {
+      records: filterState.records,
+      frequencies: filterState.frequencies,
+      options,
+    };
+    return options;
+  };
+
+  filterSelectOption = (input, option = {}) =>
+    this.selectOptionMatchesSearch(option, (input || "").toLowerCase());
+
+  selectOptionMatchesSearch = (option = {}, searchText = "") =>
+    (option.searchText || option.label || option.value || "")
+      .toString()
+      .toLowerCase()
+      .includes(searchText);
+
+  getSelectOptions = (filterState) => {
+    const filterName = filterState.filter.name;
+    const emptyLabel = this.props.t("containers.list-view.filters.empty");
+    const cache = this.selectOptionsCache[filterName];
+    if (
+      cache &&
+      cache.records === filterState.records &&
+      cache.frequencies === filterState.frequencies &&
+      cache.emptyLabel === emptyLabel
+    ) {
+      return cache.options;
+    }
+
+    const options = (filterState.records || []).map((value) => {
+      const label = value
+        ? snakeCaseToHumanReadable(value)
+        : emptyLabel;
+      const valueText = value == null ? "" : value.toString();
+      return {
+        label,
+        value: value || "null",
+        count: filterState.frequencies?.[value] || 0,
+        searchText: `${label} ${valueText}`,
+      };
+    });
+    this.selectOptionsCache[filterName] = {
+      records: filterState.records,
+      frequencies: filterState.frequencies,
+      emptyLabel,
+      options,
+    };
+    return options;
+  };
+
+  getSelectedSelectValues = (filterName) => {
+    const selectedValue = this.props.searchFilters?.[filterName];
+    if (Array.isArray(selectedValue)) return selectedValue;
+    if (selectedValue == null || selectedValue === "") return [];
+    return [selectedValue];
+  };
+
+  getVisibleSelectOptions = (filterState) => {
+    const options = this.getSelectOptions(filterState);
+    const filterName = filterState.filter.name;
+    if (filterName !== "patient_id") return options;
+
+    const searchText = (
+      this.state.selectSearchTextByFilter[filterName] || ""
+    ).trim().toLowerCase();
+    let visibleOptions = searchText
+      ? options
+        .filter((option) => this.selectOptionMatchesSearch(option, searchText))
+        .slice(0, PATIENT_FILTER_OPTIONS_LIMIT)
+      : options.slice(0, PATIENT_FILTER_OPTIONS_LIMIT);
+
+    const visibleValues = new Set(
+      visibleOptions.map((option) => option.value?.toString()),
+    );
+    this.getSelectedSelectValues(filterName).forEach((selectedValue) => {
+      const selectedKey = selectedValue?.toString();
+      if (visibleValues.has(selectedKey)) return;
+      const selectedOption = options.find(
+        (option) => option.value?.toString() === selectedKey,
+      );
+      if (selectedOption) {
+        visibleOptions = [selectedOption, ...visibleOptions];
+        visibleValues.add(selectedKey);
+      }
+    });
+
+    return visibleOptions;
+  };
+
+  handleSelectSearch = (filterName, value) => {
+    this.setState((prevState) => ({
+      selectSearchTextByFilter: {
+        ...prevState.selectSearchTextByFilter,
+        [filterName]: value || "",
+      },
+    }));
+  };
+
+  handleSelectOpenChange = (filterName, open) => {
+    if (open || !this.state.selectSearchTextByFilter[filterName]) return;
+    this.setState((prevState) => ({
+      selectSearchTextByFilter: {
+        ...prevState.selectSearchTextByFilter,
+        [filterName]: "",
+      },
+    }));
   };
 
   handleTabChange = (key) => {
@@ -542,9 +672,7 @@ export class ListView extends Component {
               <Cascader
                 placeholder={t("containers.list-view.filters.placeholder")}
                 className="tags-cascader"
-                options={
-                  d.options || generateCascaderOptions(d.records, d.frequencies)
-                }
+                options={this.getCascaderOptions(d)}
                 displayRender={this.tagsDisplayRender}
                 optionRender={this.renderCascaderOption}
                 multiple
@@ -628,15 +756,22 @@ export class ListView extends Component {
               style={{ width: "100%" }}
               maxTagCount="responsive"
               maxTagTextLength={8}
-              options={d.records.map((e) => ({
-                label: e
-                  ? snakeCaseToHumanReadable(e)
-                  : t("containers.list-view.filters.empty"),
-                value: e || "null",
-                count: d.frequencies[e] || 0,
-              }))}
+              options={this.getVisibleSelectOptions(d)}
               labelInValue={false}
+              optionFilterProp="label"
               optionRender={this.renderSelectOption}
+              filterOption={
+                d.filter.name === "patient_id"
+                  ? false
+                  : this.filterSelectOption
+              }
+              onSearch={(value) => this.handleSelectSearch(d.filter.name, value)}
+              onOpenChange={(open) =>
+                this.handleSelectOpenChange(d.filter.name, open)
+              }
+              showSearch
+              virtual
+              listHeight={256}
             />
           </Item>
         );

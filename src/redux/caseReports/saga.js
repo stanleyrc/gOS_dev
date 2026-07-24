@@ -134,6 +134,62 @@ const buildFilterState = (
   };
 };
 
+const getReusableStaticReportsFilters = (
+  previousReportsFilters = [],
+  fields = [],
+) => {
+  const staticFilterNames = fields
+    .filter((field) => !field.external)
+    .map((field) => field.name);
+  const previousStaticFilters = previousReportsFilters.filter(
+    (item) => !item?.filter?.external,
+  );
+
+  if (previousStaticFilters.length !== staticFilterNames.length) {
+    return null;
+  }
+
+  const hasSameFilters = staticFilterNames.every(
+    (name, index) => previousStaticFilters[index]?.filter?.name === name,
+  );
+  return hasSameFilters ? previousStaticFilters : null;
+};
+
+const buildSearchFilterState = (
+  dataset,
+  datafiles,
+  casesWithInterpretations,
+  globalScope,
+  previousReportsFilters,
+) => {
+  const staticReportsFilters = getReusableStaticReportsFilters(
+    previousReportsFilters,
+    dataset.fields || [],
+  );
+
+  if (!staticReportsFilters) {
+    return buildFilterState(
+      dataset,
+      datafiles,
+      casesWithInterpretations,
+      globalScope,
+    );
+  }
+
+  const reportsFilters = [...staticReportsFilters];
+  if (!globalScope) {
+    reportsFilters.push(
+      getInterpretationsFilter(
+        datafiles,
+        casesWithInterpretations,
+        dataset.fields,
+      ),
+    );
+  }
+
+  return { reportsFilters };
+};
+
 export function* fetchCaseReports(action = {}) {
   const currentState = yield select(getCurrentState);
   const browseDataset = resolveBrowseDataset(currentState);
@@ -255,11 +311,12 @@ export function* searchReports({ searchFilters }) {
       browseDataset.fields || [],
       { casesWithInterpretations },
     );
-    const { reportsFilters } = buildFilterState(
+    const { reportsFilters } = buildSearchFilterState(
       browseDataset,
       datafiles,
       casesWithInterpretations,
       globalScope,
+      currentState.CaseReports.reportsFilters,
     );
 
     yield put({
