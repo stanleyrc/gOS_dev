@@ -13,6 +13,7 @@ import settingsActions from "../../redux/settings/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import {
   ALL_DATASETS_SCOPE_VALUE,
+  distinctCaseRecords,
   getSourceCaseIdentity,
   hasBrowseScope,
   isAllDatasetsBrowseScope,
@@ -53,6 +54,15 @@ export class Topbar extends Component {
   };
 
   getAllDatasetsCaseCount = () => {
+    const cachedRecordLists = this.props.datasets.map(
+      (dataset) => this.props.manifestRecordsByDataset?.[dataset.id],
+    );
+    if (cachedRecordLists.every(Array.isArray)) {
+      return distinctCaseRecords(cachedRecordLists.flat()).filter(
+        (record) => record.visible !== false,
+      ).length;
+    }
+
     const counts = this.props.datasets.map((dataset) =>
       this.getDatasetCaseCount(dataset),
     );

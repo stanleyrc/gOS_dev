@@ -132,6 +132,54 @@ export const sourceCaseIdentityKey = (record) => {
     : null;
 };
 
+const caseIdentityKey = (record = {}) =>
+  normalizeIdentityPart(record.caseReportId ?? record.pair ?? record.id);
+
+const mergeUniqueValues = (left, right) => {
+  const values = [];
+  [left, right].flat().forEach((value) => {
+    const normalized = normalizeIdentityPart(value);
+    if (normalized && !values.includes(normalized)) values.push(normalized);
+  });
+  return values.length <= 1 ? values[0] || null : values;
+};
+
+const withDatasetTitleFallback = (record = {}) => ({
+  ...record,
+  sourceDatasetTitle: record.sourceDatasetTitle || record.datasetId,
+});
+
+export const distinctCaseRecords = (records = []) => {
+  const recordsByCase = new Map();
+
+  records.forEach((record, index) => {
+    const recordWithFallback = withDatasetTitleFallback(record);
+    const key =
+      caseIdentityKey(recordWithFallback) ||
+      sourceCaseIdentityKey(recordWithFallback) ||
+      `__row_${index}`;
+    const existing = recordsByCase.get(key);
+    if (!existing) {
+      recordsByCase.set(key, recordWithFallback);
+      return;
+    }
+
+    const preferredRecord =
+      existing.visible === false && recordWithFallback.visible !== false
+        ? recordWithFallback
+        : existing;
+    recordsByCase.set(key, {
+      ...preferredRecord,
+      sourceDatasetTitle: mergeUniqueValues(
+        existing.sourceDatasetTitle,
+        recordWithFallback.sourceDatasetTitle,
+      ),
+    });
+  });
+
+  return Array.from(recordsByCase.values());
+};
+
 export const buildCaseReportUrl = (
   currentLocation,
   sourceCase,

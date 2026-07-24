@@ -777,7 +777,7 @@
   "fields": [
     { "id": "tags", "title": "Tags", "type": "pair" },
     { "id": "pair", "title": "Pair", "type": "string" },
-    { "id": "datasetId", "title": "Dataset ID", "type": "string" },
+    { "id": "sourceDatasetTitle", "title": "Dataset", "type": "string" },
     { "id": "patient_id", "title": "Patient ID", "type": "string" },
     { "id": "specimen_date", "title": "Specimen Date", "type": "string", "renderer": "date-range" },
     { "id": "tumor_type", "title": "Tumor Type", "type": "string" },
