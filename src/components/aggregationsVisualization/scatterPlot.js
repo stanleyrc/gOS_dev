@@ -3,10 +3,12 @@ import KonvaScatter from "../konvaScatter";
 import KonvaContour from "../konvaContour";
 import { getValue, getColumnLabel } from "./helpers";
 import { hasGene } from "../../helpers/geneAggregations";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import * as d3 from "d3";
 
 class ScatterPlot extends Component {
-  scatterIdAccessor = (d) => d.pair;
+  scatterIdAccessor = (record) =>
+    sourceCaseIdentityKey(record) || record.pair;
   _cachedContours = null;
   _contourCacheKey = null;
 
@@ -53,6 +55,7 @@ class ScatterPlot extends Component {
       yVariable,
       colorByVariable,
       selectedGene,
+      selectedPatientId,
       onPointClick,
       scatterPlotType = "scatter",
     } = this.props;
@@ -74,6 +77,11 @@ class ScatterPlot extends Component {
         items.push({
           label: selectedGene,
           value: hasGene(d, selectedGene) ? "Mutated" : "Wild-type",
+        });
+      } else if (colorByVariable === "patient_id" && selectedPatientId) {
+        items.push({
+          label: getColumnLabel(colorByVariable),
+          value: d.patient_id || "N/A",
         });
       } else if (colorByVariable && colorAccessor) {
         const colorVal = colorAccessor(d);

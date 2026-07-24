@@ -6,6 +6,7 @@ const actions = {
   FETCH_SETTINGS_DATA_FAILED: "FETCH_SETTINGS_DATA_FAILED",
 
   UPDATE_DATASET: "UPDATE_DATASET",
+  UPDATE_BROWSE_SCOPE: "UPDATE_BROWSE_SCOPE",
 
   UPDATE_DOMAINS: "UPDATE_DOMAINS",
 
@@ -38,10 +39,23 @@ const actions = {
     report,
   }),
 
-  updateDataset: (dataset, report) => ({
+  updateDataset: (dataset, report, options = {}) => ({
     type: actions.UPDATE_DATASET,
     dataset,
     report,
+    preserveBrowseScope: options.preserveBrowseScope === true,
+    refreshBrowseResults: options.refreshBrowseResults,
+    cancelBrowseWork: options.cancelBrowseWork !== false,
+    searchFilters: options.searchFilters,
+  }),
+
+  updateBrowseScope: (browseScope, options = {}) => ({
+    type: actions.UPDATE_BROWSE_SCOPE,
+    browseScope,
+    report: options.report || null,
+    refreshBrowseResults: options.refreshBrowseResults,
+    cancelBrowseWork: options.cancelBrowseWork !== false,
+    searchFilters: options.searchFilters,
   }),
   updateHoveredLocation: (hoveredLocation, hoveredLocationPanelIndex) => ({
     type: actions.HOVERED_LOCATION_UPDATED,

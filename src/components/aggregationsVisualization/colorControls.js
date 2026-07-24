@@ -4,13 +4,25 @@ import * as d3 from "d3";
 import { categoricalColumns, getValue, getColumnLabel, MAX_COLOR_CATEGORIES, parseGeneExpression, evaluateGeneExpression } from "./helpers";
 import { hasGene, parseDriverGenes } from "../../helpers/geneAggregations";
 
+const PATIENT_OPTIONS_LIMIT = 100;
+
 class ColorControls extends Component {
   expressionInputRef = React.createRef();
+  colorableColumnsCache = null;
+  geneFrequenciesCache = null;
+  patientOptionsCache = null;
+
+  state = {
+    patientSearchText: "",
+  };
 
   getColorableColumns = () => {
     const { filteredRecords = [] } = this.props;
+    if (this.colorableColumnsCache?.filteredRecords === filteredRecords) {
+      return this.colorableColumnsCache.columns;
+    }
 
-    return categoricalColumns.filter((col) => {
+    const columns = categoricalColumns.filter((col) => {
       if (col.dataIndex === "alteration_type") return false;
       if (col.dataIndex === "driver_gene") return false;
       return filteredRecords.some((record) => {
@@ -18,10 +30,77 @@ class ColorControls extends Component {
         return val != null && (Array.isArray(val) ? val.length > 0 : true);
       });
     });
+
+    this.colorableColumnsCache = { filteredRecords, columns };
+    return columns;
+  };
+
+  getPatientOptions = () => {
+    const { filteredRecords = [] } = this.props;
+    if (this.patientOptionsCache?.filteredRecords === filteredRecords) {
+      return this.patientOptionsCache.options;
+    }
+
+    const patientCounts = new Map();
+
+    filteredRecords.forEach((record) => {
+      const patientId = record.patient_id;
+      if (!patientId) return;
+      const patientKey = patientId.toString();
+      patientCounts.set(patientKey, (patientCounts.get(patientKey) || 0) + 1);
+    });
+
+    const options = Array.from(patientCounts.entries())
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .map(([patientId, count]) => {
+        const label = `${patientId} (${count} ${count === 1 ? "case" : "cases"})`;
+        return {
+          patientId,
+          count,
+          value: patientId,
+          label,
+          searchText: patientId.toLowerCase(),
+        };
+      });
+
+    this.patientOptionsCache = { filteredRecords, options };
+    return options;
+  };
+
+  getVisiblePatientOptions = (patientOptions) => {
+    const { selectedPatientId } = this.props;
+    const searchText = this.state.patientSearchText.trim().toLowerCase();
+    let visibleOptions = searchText
+      ? patientOptions
+        .filter((option) => option.searchText.includes(searchText))
+        .slice(0, PATIENT_OPTIONS_LIMIT)
+      : patientOptions.slice(0, PATIENT_OPTIONS_LIMIT);
+
+    if (
+      selectedPatientId &&
+      !visibleOptions.some((option) => option.value === selectedPatientId)
+    ) {
+      const selectedOption = patientOptions.find(
+        (option) => option.value === selectedPatientId,
+      );
+      if (selectedOption) {
+        visibleOptions = [selectedOption, ...visibleOptions];
+      }
+    }
+
+    return visibleOptions.map(({ value, label, searchText }) => ({
+      value,
+      label,
+      searchText,
+    }));
   };
 
   getGeneFrequencies = () => {
     const { filteredRecords = [] } = this.props;
+    if (this.geneFrequenciesCache?.filteredRecords === filteredRecords) {
+      return this.geneFrequenciesCache.geneFrequencies;
+    }
+
     const geneFrequencies = {};
 
     filteredRecords.forEach((record) => {
@@ -33,6 +112,7 @@ class ColorControls extends Component {
       }
     });
 
+    this.geneFrequenciesCache = { filteredRecords, geneFrequencies };
     return geneFrequencies;
   };
 
@@ -47,10 +127,10 @@ class ColorControls extends Component {
     }
 
     const geneSetGenes = pathwayMap[geneSetKey] || [];
-    const geneSetUpper = geneSetGenes.map((g) => g.toUpperCase());
+    const geneSetUpper = new Set(geneSetGenes.map((g) => g.toUpperCase()));
 
     return Object.entries(geneFrequencies)
-      .filter(([gene]) => geneSetUpper.includes(gene.toUpperCase()))
+      .filter(([gene]) => geneSetUpper.has(gene.toUpperCase()))
       .sort((a, b) => b[1] - a[1])
       .map(([gene]) => gene);
   };
@@ -60,6 +140,20 @@ class ColorControls extends Component {
 
     if (!colorByVariable) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
+    }
+
+    if (colorByVariable === "patient_id") {
+      const { selectedPatientId } = this.props;
+      if (!selectedPatientId) {
+        return { colorAccessor: null, colorScale: null, colorCategories: [] };
+      }
+      const categories = ["Selected patient", "Background"];
+      const colorScale = d3.scaleOrdinal()
+        .domain(categories)
+        .range(["#e41a1c", "#999999"]);
+      const colorAccessor = (d) =>
+        d.patient_id === selectedPatientId ? "Selected patient" : "Background";
+      return { colorAccessor, colorScale, colorCategories: categories };
     }
 
     if (colorByVariable === "driver_gene") {
@@ -176,12 +270,20 @@ class ColorControls extends Component {
   };
 
   handleCascaderChange = (values) => {
-    const { onColorChange, onGeneChange, onGeneSetChange } = this.props;
+    const {
+      onColorChange,
+      onGeneChange,
+      onGeneSetChange,
+      onPatientIdChange,
+    } = this.props;
+
+    this.setState({ patientSearchText: "" });
 
     if (!values || values.length === 0 || values[0] === "none") {
       onColorChange(null);
       onGeneChange(null);
       if (onGeneSetChange) onGeneSetChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
       return;
     }
 
@@ -190,10 +292,17 @@ class ColorControls extends Component {
       const geneSet = values.length >= 2 ? values[1] : "top20";
       if (onGeneSetChange) onGeneSetChange(geneSet);
       onGeneChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
+    } else if (values[0] === "patient_id") {
+      onColorChange("patient_id");
+      onGeneChange(null);
+      if (onGeneSetChange) onGeneSetChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
     } else {
       onColorChange(values[0]);
       onGeneChange(null);
       if (onGeneSetChange) onGeneSetChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
     }
   };
 
@@ -204,12 +313,37 @@ class ColorControls extends Component {
     }
   };
 
+  handlePatientSearch = (value) => {
+    this.setState({ patientSearchText: value || "" });
+  };
+
+  handlePatientDropdownOpenChange = (open) => {
+    if (!open && this.state.patientSearchText) {
+      this.setState({ patientSearchText: "" });
+    }
+  };
+
   renderColorBySelector = () => {
-    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange, appliedGeneExpression } = this.props;
+    const {
+      colorByVariable,
+      selectedGene,
+      selectedGeneSet,
+      selectedPatientId,
+      onGeneChange,
+      onPatientIdChange,
+      appliedGeneExpression,
+    } = this.props;
     const options = this.buildCascaderOptions();
     const value = this.getCascaderValue();
-    const geneFrequencies = this.getGeneFrequencies();
-    const genesInSet = this.getGenesForSet(selectedGeneSet, geneFrequencies);
+    const geneFrequencies = colorByVariable === "driver_gene"
+      ? this.getGeneFrequencies()
+      : {};
+    const genesInSet = colorByVariable === "driver_gene" && selectedGeneSet !== "custom"
+      ? this.getGenesForSet(selectedGeneSet, geneFrequencies)
+      : [];
+    const patientOptions = colorByVariable === "patient_id"
+      ? this.getVisiblePatientOptions(this.getPatientOptions())
+      : [];
 
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -260,6 +394,28 @@ class ColorControls extends Component {
             ))}
           </Select>
         )}
+        {colorByVariable === "patient_id" && (
+          <Select
+            size="small"
+            value={selectedPatientId}
+            onChange={(value) => {
+              this.setState({ patientSearchText: "" });
+              onPatientIdChange(value);
+            }}
+            onSearch={this.handlePatientSearch}
+            onOpenChange={this.handlePatientDropdownOpenChange}
+            style={{ width: 180 }}
+            dropdownMatchSelectWidth={false}
+            optionFilterProp="label"
+            filterOption={false}
+            placeholder="Patient..."
+            allowClear
+            showSearch
+            virtual
+            listHeight={256}
+            options={patientOptions}
+          />
+        )}
       </div>
     );
   };
@@ -279,6 +435,8 @@ class ColorControls extends Component {
       } else {
         label = selectedGene;
       }
+    } else if (colorByVariable === "patient_id") {
+      label = this.props.selectedPatientId || "Patient ID";
     } else {
       label = getColumnLabel(colorByVariable);
     }
@@ -310,7 +468,7 @@ class ColorControls extends Component {
 
   render() {
     const { showLegend = false } = this.props;
-    const colorConfig = this.getScatterColorConfig();
+    const colorConfig = showLegend ? this.getScatterColorConfig() : null;
 
     return (
       <>

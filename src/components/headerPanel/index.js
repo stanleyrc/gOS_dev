@@ -35,8 +35,8 @@ import Wrapper from "./index.style";
 import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import { ClinicalTrialsModal } from "../clinicalTrialsModal";
+import PatientCaseSwitcher from "../patientCaseSwitcher";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
-import { get } from "immutable";
 
 const { Text } = Typography;
 
@@ -65,6 +65,27 @@ class HeaderPanel extends Component {
     this.setState({ clinicalTrialsModalVisible: false });
   };
 
+  renderTitle = () => {
+    const { t, metadata, canReturnToResults, onBackToResults } = this.props;
+    const pair = metadata?.pair;
+
+    if (!pair || !canReturnToResults) return pair;
+
+    return (
+      <span className="detail-title-breadcrumb">
+        <button
+          type="button"
+          className="detail-title-breadcrumb-link"
+          onClick={onBackToResults}
+        >
+          {t("containers.detail-view.breadcrumb.results")}
+        </button>
+        <span className="detail-title-breadcrumb-separator">/</span>
+        <span className="detail-title-current">{pair}</span>
+      </span>
+    );
+  };
+
   render() {
     const { t, report, metadata, plots } = this.props;
     if (!report) return null;
@@ -72,7 +93,6 @@ class HeaderPanel extends Component {
       tumor_type,
       purity,
       ploidy,
-      pair,
       inferred_sex,
       disease,
       primary_site,
@@ -253,7 +273,12 @@ class HeaderPanel extends Component {
       <Wrapper>
         <PageHeader
           className="site-page-header"
-          title={pair}
+          title={
+            <Space size="small" wrap>
+              {this.renderTitle()}
+              <PatientCaseSwitcher />
+            </Space>
+          }
           subTitle={
             <Space>
               <span>{inferred_sex}</span> {qcMetricsComponent}
@@ -491,9 +516,14 @@ class HeaderPanel extends Component {
   }
 }
 HeaderPanel.propTypes = {
+  canReturnToResults: PropTypes.bool,
+  onBackToResults: PropTypes.func,
   selectedCase: PropTypes.object,
 };
-HeaderPanel.defaultProps = {};
+HeaderPanel.defaultProps = {
+  canReturnToResults: false,
+  onBackToResults: null,
+};
 const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,

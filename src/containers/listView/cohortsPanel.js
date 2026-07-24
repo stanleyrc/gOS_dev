@@ -2,13 +2,140 @@ import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import * as d3 from "d3";
-import { Row, Col, Divider, Skeleton, Card, Empty } from "antd";
+import {
+  Row,
+  Col,
+  Divider,
+  Skeleton,
+  Card,
+  Empty,
+  Space,
+  Spin,
+  Typography,
+} from "antd";
 import HistogramPlotPanel from "../../components/histogramPlotPanel";
+import SavedQuerySelector from "../../components/savedQuerySelector";
 import Wrapper from "./index.style";
+import populationStatisticsActions from "../../redux/populationStatistics/actions";
+
+const { fetchCohortStatistics } = populationStatisticsActions;
+
+const { Text } = Typography;
 
 class CohortsPanel extends Component {
+  state = {
+    selectedFavoriteIds: [],
+  };
+
+  handleFavoriteSelectionChange = (selectedFavoriteIds) => {
+    this.setState({ selectedFavoriteIds });
+    this.fetchComparisonCohorts(selectedFavoriteIds);
+  };
+
+  fetchComparisonCohorts = (selectedFavoriteIds = this.state.selectedFavoriteIds) => {
+    const { favoriteSearches, fetchCohortStatistics } = this.props;
+
+    selectedFavoriteIds
+      .map((favoriteId) =>
+        favoriteSearches.find((favoriteSearch) => favoriteSearch.id === favoriteId)
+      )
+      .filter((favoriteSearch) => favoriteSearch?.searchId)
+      .forEach((favoriteSearch) => {
+        fetchCohortStatistics(favoriteSearch.searchId, {
+          comparison: true,
+          label: favoriteSearch.name,
+        });
+      });
+  };
+
+  getSelectedFavorites = () =>
+    this.state.selectedFavoriteIds
+      .map((favoriteId) =>
+        this.props.favoriteSearches.find(
+          (favoriteSearch) => favoriteSearch.id === favoriteId
+        )
+      )
+      .filter((favoriteSearch) => favoriteSearch?.searchId);
+
+  getComparisonOverlays = (plot, selectedFavorites, colorScale) => {
+    const { comparisonCohorts } = this.props;
+
+    return selectedFavorites
+      .map((favoriteSearch) => {
+        const comparisonPlot = comparisonCohorts?.[
+          favoriteSearch.searchId
+        ]?.cohort?.find((candidatePlot) => candidatePlot.id === plot.id);
+
+        if (!comparisonPlot?.data?.length) {
+          return null;
+        }
+
+        return {
+          id: favoriteSearch.id,
+          label: favoriteSearch.name,
+          color: colorScale(favoriteSearch.id),
+          data: comparisonPlot.data,
+          dataset: comparisonPlot.dataset,
+          bandwidth: comparisonPlot.bandwidth,
+          range: comparisonPlot.range,
+        };
+      })
+      .filter(Boolean);
+  };
+
+  renderComparisonControls = (selectedFavorites, colorScale) => {
+    const { t, favoriteSearches, comparisonCohortsLoading } = this.props;
+    const comparisonLoading = selectedFavorites.some(
+      (favoriteSearch) => comparisonCohortsLoading?.[favoriteSearch.searchId]
+    );
+
+    return (
+      <div className="cohort-comparison-toolbar">
+        <div className="cohort-comparison-controls">
+          <Text type="secondary">
+            {t("containers.list-view.cohorts.compare-label")}
+          </Text>
+          <div className="cohort-comparison-select-wrap">
+            <SavedQuerySelector
+              favoriteSearches={favoriteSearches}
+              selectedFavoriteIds={this.state.selectedFavoriteIds}
+              onChange={this.handleFavoriteSelectionChange}
+            />
+          </div>
+          {comparisonLoading && <Spin size="small" />}
+        </div>
+        {selectedFavorites.length > 0 && (
+          <Space wrap size={[12, 4]} className="cohort-comparison-legend">
+            <span className="cohort-comparison-legend-item">
+              <span className="cohort-comparison-legend-swatch current" />
+              <Text type="secondary">
+                {t("containers.list-view.cohorts.current-query")}
+              </Text>
+            </span>
+            {selectedFavorites.map((favoriteSearch) => (
+              <span
+                key={favoriteSearch.id}
+                className="cohort-comparison-legend-item"
+              >
+                <span
+                  className="cohort-comparison-legend-swatch"
+                  style={{ backgroundColor: colorScale(favoriteSearch.id) }}
+                />
+                <Text type="secondary">{favoriteSearch.name}</Text>
+              </span>
+            ))}
+          </Space>
+        )}
+      </div>
+    );
+  };
+
   render() {
     const { t, loading, plots } = this.props;
+    const selectedFavorites = this.getSelectedFavorites();
+    const colorScale = d3
+      .scaleOrdinal(d3.schemeTableau10)
+      .domain(selectedFavorites.map((favoriteSearch) => favoriteSearch.id));
 
     let plotGroups = d3.groups(
       plots.filter((d) => d.data && d.data.length > 0),
@@ -38,6 +165,11 @@ class CohortsPanel extends Component {
                 order: d.order,
                 visible: d.data,
                 format: d.format,
+                overlays: this.getComparisonOverlays(
+                  d,
+                  selectedFavorites,
+                  colorScale
+                ),
                 loading,
               }}
             />
@@ -54,7 +186,9 @@ class CohortsPanel extends Component {
     });
 
     return (
-      <Wrapper>
+      <>
+        <Wrapper>
+        {this.renderComparisonControls(selectedFavorites, colorScale)}
         <Skeleton active loading={loading}>
           {plotGroups.length > 0 ? (
             plotTuples.map(({ groupTitle, tuples }, groupIndex) => (
@@ -88,17 +222,25 @@ class CohortsPanel extends Component {
             </Card>
           )}
         </Skeleton>
-      </Wrapper>
+        </Wrapper>
+      </>
     );
   }
 }
 
 CohortsPanel.propTypes = {};
 CohortsPanel.defaultProps = {};
-const mapDispatchToProps = (dispatch) => ({});
+const mapDispatchToProps = (dispatch) => ({
+  fetchCohortStatistics: (searchId, options) =>
+    dispatch(fetchCohortStatistics(searchId, options)),
+});
 const mapStateToProps = (state) => ({
   plots: state.PopulationStatistics.cohort,
   loading: state.PopulationStatistics.cohortsLoading,
+  currentSearchId: state.CaseReports.currentSearchId,
+  favoriteSearches: state.CaseReports.favoriteSearches,
+  comparisonCohorts: state.PopulationStatistics.comparisonCohorts,
+  comparisonCohortsLoading: state.PopulationStatistics.comparisonCohortsLoading,
 });
 export default connect(
   mapStateToProps,

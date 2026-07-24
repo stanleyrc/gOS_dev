@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { getValueByPath, plotTypes, reportAttributesMap } from "./utility";
+import { getSpecimenDateExtent } from "./specimenDate";
 import common from "../translations/en/common.json";
 
 export function reportFilters() {
@@ -157,6 +158,30 @@ export function generateCascaderOptions(tags, frequencies = {}) {
   return options;
 }
 
+const buildInterpretationSetHasReport = (reports) => {
+  const sourceIds = new Set(
+    reports.map((report) => report.caseReportId).filter(Boolean)
+  );
+  const pairCounts = reports.reduce((counts, report) => {
+    if (report.pair) {
+      counts.set(report.pair, (counts.get(report.pair) || 0) + 1);
+    }
+    return counts;
+  }, new Map());
+
+  return (set, report = {}) => {
+    const canonicalId = report.caseReportId || report.pair;
+    if (canonicalId != null && set?.has(canonicalId)) return true;
+    return Boolean(
+      report.pair &&
+        report.pair !== canonicalId &&
+        !sourceIds.has(report.pair) &&
+        pairCounts.get(report.pair) === 1 &&
+        set?.has(report.pair)
+    );
+  };
+};
+
 export function generateInterpretationsCascaderOptions(
   reports,
   casesWithInterpretations
@@ -168,10 +193,12 @@ export function generateInterpretationsCascaderOptions(
   const byAuthor = casesWithInterpretations?.byAuthor || new Map();
   const byGene = casesWithInterpretations?.byGene || new Map();
   const all = casesWithInterpretations?.all || new Set();
+  const interpretationSetHasReport =
+    buildInterpretationSetHasReport(reports);
 
   // Tier Change option
-  const tierChangeCount = reports.filter((r) =>
-    withTierChange.has(r.pair)
+  const tierChangeCount = reports.filter((report) =>
+    interpretationSetHasReport(withTierChange, report)
   ).length;
   options.push({
     label:
@@ -183,7 +210,9 @@ export function generateInterpretationsCascaderOptions(
 
   // Other changes option
   const otherChangesCount = reports.filter(
-    (r) => all.has(r.pair) && !withTierChange.has(r.pair)
+    (report) =>
+      interpretationSetHasReport(all, report) &&
+      !interpretationSetHasReport(withTierChange, report)
   ).length;
   options.push({
     label:
@@ -196,7 +225,9 @@ export function generateInterpretationsCascaderOptions(
   // Author option with children
   const authorChildren = [];
   byAuthor.forEach((cases, authorName) => {
-    const count = reports.filter((r) => cases.has(r.pair)).length;
+    const count = reports.filter((report) =>
+      interpretationSetHasReport(cases, report)
+    ).length;
     authorChildren.push({
       label: authorName,
       value: authorName,
@@ -223,7 +254,9 @@ export function generateInterpretationsCascaderOptions(
   // Gene option with children
   const geneChildren = [];
   byGene.forEach((cases, geneName) => {
-    const count = reports.filter((r) => cases.has(r.pair)).length;
+    const count = reports.filter((report) =>
+      interpretationSetHasReport(cases, report)
+    ).length;
     geneChildren.push({
       label: geneName,
       value: geneName,
@@ -248,7 +281,9 @@ export function generateInterpretationsCascaderOptions(
   }
 
   // No interpretations option
-  const noInterpretationsCount = reports.filter((r) => !all.has(r.pair)).length;
+  const noInterpretationsCount = reports.filter(
+    (report) => !interpretationSetHasReport(all, report)
+  ).length;
   options.push({
     label:
       common.containers["list-view"].filters.interpretations_cascader_labels
@@ -285,6 +320,18 @@ export function getReportsFilters(fields, reports) {
       let allValues = reports
         .map((record) => getValueByPath(record, field.name))
         .flat();
+
+      if (field.renderer === "date-range") {
+        reportsFilters.push({
+          filter: field,
+          records: [],
+          frequencies: {},
+          extent: getSpecimenDateExtent(allValues),
+          totalRecords: reports.length,
+          format: field.format,
+        });
+        return;
+      }
 
       let frequencyMap = d3.rollup(
         allValues,

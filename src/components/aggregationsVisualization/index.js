@@ -14,6 +14,7 @@ import DensityPlot from "./densityPlot";
 import OncoPrintPlot from "./oncoPrintPlot";
 import PlotTooltip from "./plotTooltip";
 import signatureMetadata from "../../translations/en/signatures.json";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import {
   margins,
   calculateDynamicMargins,
@@ -34,9 +35,13 @@ class AggregationsVisualization extends Component {
   plotContainer = null;
   cachedConfig = null;
   cachedConfigKey = null;
+  cachedConfigRecords = null;
   colorControlsRef = null;
   _cachedRecords = null;
   _cachedDynamicColumns = null;
+  _cachedScatterColorConfig = null;
+  _cachedScatterColorConfigKey = null;
+  _cachedScatterColorConfigRecords = null;
 
   constructor(props) {
     super(props);
@@ -59,6 +64,7 @@ class AggregationsVisualization extends Component {
       colorVariable: colorVarDefault,
       colorByVariable: null,
       selectedGene: null,
+      selectedPatientId: null,
       selectedGeneSet: "top20",
       appliedGeneExpression: "",
       tooltip: {
@@ -85,12 +91,13 @@ class AggregationsVisualization extends Component {
     return this._cachedDynamicColumns;
   }
 
-  scatterIdAccessor = (d) => d.pair;
+  scatterIdAccessor = (record) =>
+    sourceCaseIdentityKey(record) || record.pair;
 
   handlePointClick = (dataPoint) => {
     const { dataset } = this.props;
     if (dataPoint?.pair) {
-      openCaseInNewTab(dataPoint.pair, dataset);
+      openCaseInNewTab(dataPoint, dataset);
     }
   };
 
@@ -306,10 +313,10 @@ class AggregationsVisualization extends Component {
     }
 
     const geneSetGenes = pathwayMap[selectedGeneSet] || [];
-    const geneSetUpper = geneSetGenes.map((g) => g.toUpperCase());
+    const geneSetUpper = new Set(geneSetGenes.map((g) => g.toUpperCase()));
 
     return Object.entries(allGeneFrequencies)
-      .filter(([gene]) => geneSetUpper.includes(gene.toUpperCase()))
+      .filter(([gene]) => geneSetUpper.has(gene.toUpperCase()))
       .sort((a, b) => b[1] - a[1])
       .map(([gene]) => gene);
   }
@@ -335,7 +342,11 @@ class AggregationsVisualization extends Component {
     const { pathwayMap } = this.props;
     const pathwayHash = Object.keys(pathwayMap || {}).length;
     const cacheKey = `${xVariable}-${yVariable}-${colorVariable}-${selectedGeneSet}-${containerWidth}-${filteredRecords.length}-${pathwayHash}`;
-    if (this.cachedConfig && this.cachedConfigKey === cacheKey) {
+    if (
+      this.cachedConfig &&
+      this.cachedConfigKey === cacheKey &&
+      this.cachedConfigRecords === filteredRecords
+    ) {
       return this.cachedConfig;
     }
 
@@ -445,6 +456,7 @@ class AggregationsVisualization extends Component {
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
+      this.cachedConfigRecords = filteredRecords;
       return config;
     } else if (plotType === "density") {
       const { yVariable } = this.state;
@@ -463,7 +475,12 @@ class AggregationsVisualization extends Component {
       const bandwidth = 1.06 * stdDev * Math.pow(values.length, -0.2);
 
       const dataset = filteredRecords
-        .map((d) => ({ pair: d.pair, value: getValue(d, yVariable) }))
+        .map((d) => ({
+          datasetId: d.datasetId,
+          caseReportId: d.caseReportId,
+          pair: d.pair,
+          value: getValue(d, yVariable),
+        }))
         .filter((d) => d.value != null && !isNaN(d.value))
         .sort((a, b) => d3.ascending(a.value, b.value));
 
@@ -488,6 +505,7 @@ class AggregationsVisualization extends Component {
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
+      this.cachedConfigRecords = filteredRecords;
       return config;
     } else if (plotType === "categorical-scatter") {
       const xType = this.getColumnTypeForVariable(xVariable);
@@ -582,6 +600,7 @@ class AggregationsVisualization extends Component {
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
+      this.cachedConfigRecords = filteredRecords;
       return config;
       } else {
       const xValues = filteredRecords.map((d) => getValue(d, xVariable)).filter((v) => v != null && !isNaN(v));
@@ -614,6 +633,7 @@ class AggregationsVisualization extends Component {
       };
       this.cachedConfig = config;
       this.cachedConfigKey = cacheKey;
+      this.cachedConfigRecords = filteredRecords;
       return config;
       }
       }
@@ -792,15 +812,19 @@ class AggregationsVisualization extends Component {
     const { q1, q3, format } = config;
 
     return selectedPairs
-      .map((pair) => {
-        const record = filteredRecords.find((d) => d.pair === pair);
+      .map((caseIdentityKey) => {
+        const record = filteredRecords.find(
+          (candidate) =>
+            (sourceCaseIdentityKey(candidate) || candidate.pair) ===
+            caseIdentityKey,
+        );
         if (!record) return null;
         const value = getValue(record, yVariable);
         if (value == null || isNaN(value)) return null;
         const formattedValue = d3.format(format || ",.2f")(value);
         return {
           value,
-          label: `${pair}: ${formattedValue}`,
+          label: `${record.pair}: ${formattedValue}`,
           color: getColorMarker(value, q1, q3),
         };
       })
@@ -863,11 +887,13 @@ class AggregationsVisualization extends Component {
                       filteredRecords={filteredRecords}
                       colorByVariable={this.state.colorByVariable}
                       selectedGene={this.state.selectedGene}
+                      selectedPatientId={this.state.selectedPatientId}
                       selectedGeneSet={this.state.selectedGeneSet}
                       appliedGeneExpression={this.state.appliedGeneExpression}
                       pathwayMap={this.props.pathwayMap}
                       onColorChange={(val) => this.setState({ colorByVariable: val })}
                       onGeneChange={(val) => this.setState({ selectedGene: val })}
+                      onPatientIdChange={(val) => this.setState({ selectedPatientId: val })}
                       onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
                       onApplyExpression={(val) => this.setState({ appliedGeneExpression: val })}
                     />
@@ -978,6 +1004,7 @@ class AggregationsVisualization extends Component {
                         yVariable={this.state.yVariable}
                         colorByVariable={this.state.colorByVariable}
                         selectedGene={this.state.selectedGene}
+                        selectedPatientId={this.state.selectedPatientId}
                         onPointClick={this.handlePointClick}
                         scatterPlotType={this.state.scatterPlotType}
                       />
@@ -1011,25 +1038,67 @@ class AggregationsVisualization extends Component {
 
   getColorConfigForScatter() {
     const { filteredRecords = [] } = this.props;
-    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.state;
+    const {
+      colorByVariable,
+      selectedGene,
+      selectedPatientId,
+      selectedGeneSet,
+      appliedGeneExpression,
+    } = this.state;
+    const cacheKey = [
+      colorByVariable || "",
+      selectedGene || "",
+      selectedPatientId || "",
+      selectedGeneSet || "",
+      appliedGeneExpression || "",
+      filteredRecords.length,
+    ].join("|");
+
+    if (
+      this._cachedScatterColorConfig &&
+      this._cachedScatterColorConfigKey === cacheKey &&
+      this._cachedScatterColorConfigRecords === filteredRecords
+    ) {
+      return this._cachedScatterColorConfig;
+    }
+
+    const cacheColorConfig = (config) => {
+      this._cachedScatterColorConfig = config;
+      this._cachedScatterColorConfigKey = cacheKey;
+      this._cachedScatterColorConfigRecords = filteredRecords;
+      return config;
+    };
 
     if (!colorByVariable) {
-      return { colorAccessor: null, colorScale: null, colorCategories: [] };
+      return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [] });
+    }
+
+    if (colorByVariable === "patient_id") {
+      if (!selectedPatientId) {
+        return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [] });
+      }
+      const categories = ["Selected patient", "Background"];
+      const colorScale = d3.scaleOrdinal()
+        .domain(categories)
+        .range(["#e41a1c", "#999999"]);
+      const colorAccessor = (d) =>
+        d.patient_id === selectedPatientId ? "Selected patient" : "Background";
+      return cacheColorConfig({ colorAccessor, colorScale, colorCategories: categories });
     }
 
     if (colorByVariable === "driver_gene") {
       if (selectedGeneSet === "custom") {
         if (!appliedGeneExpression) {
-          return { colorAccessor: null, colorScale: null, colorCategories: [] };
+          return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [] });
         }
         let ast;
         try {
           ast = parseGeneExpression(appliedGeneExpression);
         } catch (e) {
-          return { colorAccessor: null, colorScale: null, colorCategories: [], error: e.message };
+          return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [], error: e.message });
         }
         if (!ast) {
-          return { colorAccessor: null, colorScale: null, colorCategories: [] };
+          return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [] });
         }
         const categories = ["True", "False"];
         const colorScale = d3.scaleOrdinal()
@@ -1039,18 +1108,18 @@ class AggregationsVisualization extends Component {
           const genes = parseDriverGenes(d.summary).map(g => g.gene);
           return evaluateGeneExpression(ast, genes) ? "True" : "False";
         };
-        return { colorAccessor, colorScale, colorCategories: categories };
+        return cacheColorConfig({ colorAccessor, colorScale, colorCategories: categories });
       }
 
       if (!selectedGene) {
-        return { colorAccessor: null, colorScale: null, colorCategories: [] };
+        return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [] });
       }
       const categories = ["Mutated", "Wild-type"];
       const colorScale = d3.scaleOrdinal()
         .domain(categories)
         .range(["#e41a1c", "#999999"]);
       const colorAccessor = (d) => hasGene(d, selectedGene) ? "Mutated" : "Wild-type";
-      return { colorAccessor, colorScale, colorCategories: categories };
+      return cacheColorConfig({ colorAccessor, colorScale, colorCategories: categories });
     }
 
     const expandableCategories = ["alteration_type", "driver_gene"];
@@ -1066,7 +1135,7 @@ class AggregationsVisualization extends Component {
     const uniqueValues = [...new Set(allValues)].sort();
 
     if (uniqueValues.length === 0) {
-      return { colorAccessor: null, colorScale: null, colorCategories: [] };
+      return cacheColorConfig({ colorAccessor: null, colorScale: null, colorCategories: [] });
     }
 
     const colorScheme = uniqueValues.length <= 10
@@ -1081,11 +1150,17 @@ class AggregationsVisualization extends Component {
       return val;
     };
 
-    return { colorAccessor, colorScale, colorCategories: uniqueValues };
+    return cacheColorConfig({ colorAccessor, colorScale, colorCategories: uniqueValues });
   }
 
   renderColorLegend() {
-    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.state;
+    const {
+      colorByVariable,
+      selectedGene,
+      selectedPatientId,
+      selectedGeneSet,
+      appliedGeneExpression,
+    } = this.state;
     const colorConfig = this.getColorConfigForScatter();
     const { colorScale, colorCategories } = colorConfig;
 
@@ -1100,6 +1175,8 @@ class AggregationsVisualization extends Component {
       } else {
         label = selectedGene;
       }
+    } else if (colorByVariable === "patient_id") {
+      label = selectedPatientId || "Patient ID";
     } else {
       label = getColumnLabel(colorByVariable);
     }

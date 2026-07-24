@@ -1,6 +1,5 @@
 import { all, takeEvery, put, call, select } from "redux-saga/effects";
 import axios from "axios";
-import { reportAttributesMap } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import allelicActions from "../allelic/actions";
@@ -22,7 +21,7 @@ import interpretationsActions from "../interpretations/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 import { qcEvaluator } from "../../helpers/metadata";
 
-function* fetchCaseReport(action) {
+export function* fetchCaseReport(action) {
   cancelAllRequests();
 
   const currentState = yield select(getCurrentState);
@@ -40,7 +39,11 @@ function* fetchCaseReport(action) {
       { cancelToken: getCancelToken() }
     );
 
-    let metadata = { ...responseReportMetadata.data[0] };
+    let metadata = {
+      ...responseReportMetadata.data[0],
+      datasetId: dataset.id,
+      caseReportId: report,
+    };
 
     metadata.tags = metadata.summary_tag
       ? metadata.summary_tag
@@ -57,7 +60,7 @@ function* fetchCaseReport(action) {
     yield put({
       type: actions.FETCH_CASE_REPORT_SUCCESS,
       metadata,
-      id: metadata.pair,
+      id: report,
     });
   } catch (error) {
     if (axios.isCancel(error)) {

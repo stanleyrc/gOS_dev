@@ -1,4 +1,11 @@
-import { all, takeEvery, put, call, select } from "redux-saga/effects";
+import {
+  all,
+  takeEvery,
+  takeLatest,
+  put,
+  call,
+  select,
+} from "redux-saga/effects";
 import { getCurrentState } from "./selectors";
 import { getActiveRepository } from "../../services/repositories";
 import EventInterpretation from "../../helpers/EventInterpretation";
@@ -7,7 +14,27 @@ import filteredEventsActions from "../filteredEvents/actions";
 import { getCurrentUserId, getUser } from "../../helpers/userAuth";
 import { signInterpretation } from "../../services/signatures/SignatureService";
 
+const getAcceptedCaseIds = (state, caseId) => {
+  const datasetId = state.Settings?.dataset?.id;
+  const records = (state.CaseReports?.datafiles || []).filter(
+    (record) =>
+      record.datasetId == null || `${record.datasetId}` === `${datasetId}`
+  );
+  const sourceIds = new Set(
+    records.map((record) => record.caseReportId).filter(Boolean)
+  );
+  const currentRecord = records.find(
+    (record) => `${record.caseReportId}` === `${caseId}`
+  );
+  const legacyPair = currentRecord?.pair;
+  const legacyPairIsSafe =
+    legacyPair &&
+    `${legacyPair}` !== `${caseId}` &&
+    !sourceIds.has(legacyPair) &&
+    records.filter((record) => record.pair === legacyPair).length === 1;
 
+  return new Set([caseId, ...(legacyPairIsSafe ? [legacyPair] : [])]);
+};
 
 function* fetchInterpretationsForCase(action) {
   const { caseId } = action;
@@ -26,12 +53,18 @@ function* fetchInterpretationsForCase(action) {
     const state = yield select();
     const dataset = state.Settings?.dataset;
     const datasetId = dataset?.id;
+    const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
     const repository = getActiveRepository({ dataset });
     const allInterpretations = yield call([repository, repository.getAll]);
-    const interpretationsForCase = allInterpretations.filter(i => i.caseId === caseId && i.datasetId === datasetId);
+    const interpretationsForCase = allInterpretations.filter(
+      (interpretation) =>
+        acceptedCaseIds.has(interpretation.caseId) &&
+        interpretation.datasetId === datasetId
+    );
     
     const byId = {};
     const selected = {};
+    const priorities = {};
     
     const currentUserId = getCurrentUserId();
     
@@ -40,11 +73,16 @@ function* fetchInterpretationsForCase(action) {
       
       const json = interp.toJSON ? interp.toJSON() : interp;
       const authorId = json.authorId || "currentUser";
-      const key = `${json.alterationId}___${authorId}___${json.caseId}`;
+      const key = `${json.alterationId}___${authorId}___${caseId}`;
+      const priority = `${json.caseId}` === `${caseId}` ? 2 : 1;
+      if ((priorities[key] || 0) > priority) continue;
       const isCurrentUser = !currentUserId || authorId === currentUserId || authorId === "currentUser";
       
+      priorities[key] = priority;
       byId[key] = {
         ...json,
+        caseId,
+        storageCaseId: json.caseId,
         isCurrentUser,
       };
       
@@ -74,6 +112,7 @@ function* updateInterpretation(action) {
   try {
     const state = yield select(getCurrentState);
     const caseId = interpretation.caseId || state.CaseReport?.id;
+    let storageCaseId = interpretation.storageCaseId || caseId;
     
     if (!caseId || !interpretation.alterationId) {
       throw new Error("Missing caseId or alterationId");
@@ -84,7 +123,25 @@ function* updateInterpretation(action) {
     console.log(datasetId);
     const repository = getActiveRepository({ dataset });
 
-    const existing = yield call([repository, repository.get], datasetId, caseId, interpretation.alterationId, interpretation.authorId);
+    let existing = yield call([repository, repository.get], datasetId, storageCaseId, interpretation.alterationId, interpretation.authorId);
+    if (!existing && `${storageCaseId}` === `${caseId}`) {
+      const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
+      for (const candidateCaseId of acceptedCaseIds) {
+        if (`${candidateCaseId}` === `${caseId}`) continue;
+        const legacyInterpretation = yield call(
+          [repository, repository.get],
+          datasetId,
+          candidateCaseId,
+          interpretation.alterationId,
+          interpretation.authorId
+        );
+        if (legacyInterpretation) {
+          storageCaseId = candidateCaseId;
+          existing = legacyInterpretation;
+          break;
+        }
+      }
+    }
     
     const existingData = existing ? (existing.toJSON ? existing.toJSON() : existing) : {};
     
@@ -124,7 +181,16 @@ function* updateInterpretation(action) {
 
     if (shouldDelete) {
       // Delete interpretation
-      yield call([repository, repository.delete], datasetId, caseId, interpretation.alterationId, interpretation.authorId);
+      yield call([repository, repository.delete], datasetId, storageCaseId, interpretation.alterationId, interpretation.authorId);
+      if (`${storageCaseId}` !== `${caseId}`) {
+        yield call(
+          [repository, repository.delete],
+          datasetId,
+          caseId,
+          interpretation.alterationId,
+          interpretation.authorId
+        );
+      }
 
       const currentUserId = getCurrentUserId();
 
@@ -160,6 +226,15 @@ function* updateInterpretation(action) {
     }
     
     yield call([repository, repository.save], repoInterpretation);
+    if (`${storageCaseId}` !== `${caseId}`) {
+      yield call(
+        [repository, repository.delete],
+        datasetId,
+        storageCaseId,
+        interpretation.alterationId,
+        interpretation.authorId
+      );
+    }
     
     const currentUserId = getCurrentUserId();
     const savedJson = repoInterpretation.toJSON();
@@ -195,14 +270,26 @@ function* clearCaseInterpretations(action) {
     const dataset = state.Settings?.dataset;
     const datasetId = state.Settings?.dataset?.id;
     const repository = getActiveRepository({ dataset });
-    const interpretations = yield call([repository, repository.getForCase], datasetId, caseId);
-
+    const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
     const currentUserId = getCurrentUserId();
 
-    for (const interp of interpretations || []) {
-      const authorId = interp.authorId || "currentUser";
-      if (authorId === currentUserId) {
-        yield call([repository, repository.delete], datasetId, caseId, interp.alterationId, interp.authorId);
+    for (const storedCaseId of acceptedCaseIds) {
+      const interpretations = yield call(
+        [repository, repository.getForCase],
+        datasetId,
+        storedCaseId
+      );
+      for (const interp of interpretations || []) {
+        const authorId = interp.authorId || "currentUser";
+        if (authorId === currentUserId) {
+          yield call(
+            [repository, repository.delete],
+            datasetId,
+            storedCaseId,
+            interp.alterationId,
+            interp.authorId
+          );
+        }
       }
     }
 
@@ -283,7 +370,10 @@ function* updateAuthorName(action) {
 }
 
 function* actionWatcher() {
-  yield takeEvery(actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST, fetchInterpretationsForCase);
+  yield takeLatest(
+    actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST,
+    fetchInterpretationsForCase
+  );
   yield takeEvery(actions.UPDATE_INTERPRETATION_REQUEST, updateInterpretation);
   yield takeEvery(actions.CLEAR_CASE_INTERPRETATIONS_REQUEST, clearCaseInterpretations);
   yield takeEvery(actions.UPDATE_AUTHOR_NAME_REQUEST, updateAuthorName);

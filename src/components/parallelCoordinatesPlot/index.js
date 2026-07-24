@@ -4,10 +4,21 @@ import * as d3 from "d3";
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors } from "../../helpers/utility";
+import {
+  getSourceCaseIdentity,
+  sourceCaseIdentityKey,
+} from "../../helpers/browseScope";
 import Wrapper from "./index.style";
 
-class ParallelCoordinatesPlot extends Component {
+export class ParallelCoordinatesPlot extends Component {
   plotContainer = null;
+
+  getAxisLabel = (axis = {}) =>
+    axis?.metadata?.shortTitle ||
+    axis?.metadata?.title ||
+    axis?.title ||
+    axis?.id ||
+    "";
 
   componentDidMount() {
     this.renderXAxis();
@@ -18,64 +29,149 @@ class ParallelCoordinatesPlot extends Component {
   }
 
   getPlotConfiguration() {
-    const { width, data, margins, style } = this.props;
+    const { width, data, margins, style, comparisonGroups, t } = this.props;
 
-    let keys = data.map((d) => d.id);
-    let height = keys.length * margins.vSpace + margins.gapY * 2;
-    let stageWidth = width - 2 * margins.gapX;
-    let stageHeight = height - 2 * margins.gapY;
+    const keys = data.map((axis) => axis.id);
+    const height = keys.length * margins.vSpace + margins.gapY * 2;
+    const panelWidth = width - 2 * margins.gapX;
+    const panelHeight = height - 2 * margins.gapY;
+    const yScale = d3.scalePoint().domain(keys).range([0, panelHeight]);
 
-    let panelWidth = stageWidth;
-    let panelHeight = stageHeight;
-    let yScale = d3.scalePoint().domain(keys).range([0, panelHeight]);
+    const plotData = data.map((axis) => {
+      const comparisonAxes = (comparisonGroups || [])
+        .map((group) => group.data?.find((candidate) => candidate.id === axis.id))
+        .filter(Boolean);
+      const domainCandidates = [
+        ...(Array.isArray(axis.range) ? axis.range : []),
+        ...comparisonAxes
+          .map((candidate) =>
+            Array.isArray(candidate.range) ? candidate.range : [],
+          )
+          .flat(),
+        ...(axis.dataset || []).map((item) => item.value),
+        ...comparisonAxes
+          .map((candidate) => candidate.dataset || [])
+          .flat()
+          .map((item) => item.value),
+      ].filter((value) => value != null && Number.isFinite(+value));
+      let domain = d3.extent(domainCandidates);
+      const plotScale =
+        axis.scaleX === "log" ? d3.scaleLog() : d3.scaleLinear();
 
-    let dataMap = {};
-    let plotData = data.map((d) => {
-      let plotScale = d.scaleX === "log" ? d3.scaleLog() : d3.scaleLinear();
-      let xScale = plotScale
-        .domain(d.range)
-        .range([0, panelWidth])
-        .nice()
-        .clamp(true);
-
-      d.dataset.forEach((item) => {
-        dataMap[item.pair] = dataMap[item.pair] || {};
-        dataMap[item.pair][d.id] = item.value;
-      });
+      if (axis.scaleX === "log") {
+        const positiveDomain = d3.extent(
+          domainCandidates.filter((value) => +value > 0),
+        );
+        domain =
+          positiveDomain[0] == null || positiveDomain[1] == null
+            ? [1, 10]
+            : positiveDomain;
+        if (domain[0] === domain[1]) domain = [domain[0], domain[0] * 10];
+      } else if (domain[0] == null || domain[1] == null) {
+        domain = [0, 1];
+      } else if (domain[0] === domain[1]) {
+        domain = [domain[0] - 1, domain[1] + 1];
+      }
 
       return {
-        ...d,
-        xScale,
+        ...axis,
+        xScale: plotScale
+          .domain(domain)
+          .range([0, panelWidth])
+          .nice()
+          .clamp(true),
         yScale,
       };
     });
-    let plotDataMap = {};
-    plotData.forEach((d) => {
-      plotDataMap[d.id] = d;
-    });
-    let lineData = Object.keys(dataMap).map((pair, i) => {
-      let pairData = dataMap[pair];
-      let segments = keys
-        .map((key, i) => {
-          const value = pairData[key];
-          return {
-            axis: key,
-            value,
-            x: value !== undefined ? plotDataMap[key].xScale(value) : null,
-            y: yScale(key),
-          };
-        })
-        .filter((d) => d.x !== null);
-
-      return {
-        pair,
-        segments,
-      };
-    });
+    const plotDataMap = Object.fromEntries(
+      plotData.map((axis) => [axis.id, axis]),
+    );
     const mergedStyle = {
       ...(ParallelCoordinatesPlot.defaultProps.style || {}),
       ...(style || {}),
     };
+
+    const buildLineData = ({
+      groupId,
+      label,
+      color,
+      hoverStroke,
+      axes,
+      lineWidth,
+      strokeOpacity,
+    }) => {
+      const recordsByIdentity = new Map();
+
+      (axes || []).forEach((axis) => {
+        (axis.dataset || []).forEach((item) => {
+          const identityKey = sourceCaseIdentityKey(item) || `${item.pair}`;
+          if (!recordsByIdentity.has(identityKey)) {
+            recordsByIdentity.set(identityKey, {
+              identity: getSourceCaseIdentity(item),
+              pair: item.pair,
+              values: {},
+            });
+          }
+          recordsByIdentity.get(identityKey).values[axis.id] = item.value;
+        });
+      });
+
+      return Array.from(recordsByIdentity.entries()).map(
+        ([identityKey, record]) => {
+          const segments = keys
+            .map((key) => {
+              const value = record.values[key];
+              return {
+                axis: key,
+                value,
+                x:
+                  value !== undefined
+                    ? plotDataMap[key].xScale(value)
+                    : null,
+                y: yScale(key),
+              };
+            })
+            .filter((segment) => segment.x !== null);
+
+          return {
+            ...record.identity,
+            id: `${groupId}-${identityKey}`,
+            groupId,
+            identityKey,
+            label,
+            pair: record.pair,
+            color,
+            hoverStroke,
+            lineWidth,
+            strokeOpacity,
+            segments,
+          };
+        },
+      );
+    };
+
+    const lineData = [
+      ...buildLineData({
+        groupId: "current",
+        label: t("containers.list-view.cohorts.current-query"),
+        color: mergedStyle.defaultLineStroke,
+        hoverStroke: mergedStyle.highlightStroke,
+        axes: plotData,
+        lineWidth: mergedStyle.defaultLineWidth,
+        strokeOpacity: mergedStyle.defaultLineOpacity,
+      }),
+      ...(comparisonGroups || []).flatMap((group) =>
+        buildLineData({
+          groupId: group.id,
+          label: group.label,
+          color: group.color,
+          hoverStroke: group.color,
+          axes: group.data,
+          lineWidth: mergedStyle.comparisonLineWidth,
+          strokeOpacity: mergedStyle.comparisonLineOpacity,
+        }),
+      ),
+    ];
 
     return {
       width,
@@ -152,15 +248,18 @@ class ParallelCoordinatesPlot extends Component {
     const resetLines = () =>
       linesLayer
         .selectAll(".data-line")
-        .attr("stroke", defaultLineStroke)
-        .attr("stroke-width", defaultLineWidth)
-        .attr("stroke-opacity", 1);
+        .attr("stroke", (line) => line.color || defaultLineStroke)
+        .attr(
+          "stroke-width",
+          (line) => line.lineWidth ?? defaultLineWidth,
+        )
+        .attr("stroke-opacity", (line) => line.strokeOpacity ?? 1);
     const showTooltip = (event, d) => {
       const [x, y] = d3.pointer(event, this.plotContainer);
       tooltip
         .attr("x", x + tooltipOffsetX)
         .attr("y", y)
-        .text(d.pair)
+        .text(d.label ? `${d.label}: ${d.pair}` : d.pair)
         .attr("opacity", 1);
     };
     const hideTooltip = () => tooltip.attr("opacity", 0);
@@ -173,7 +272,7 @@ class ParallelCoordinatesPlot extends Component {
         .attr("cx", (s) => s.x)
         .attr("cy", (s) => s.y)
         .attr("r", hoverPointRadius)
-        .attr("fill", highlightStroke)
+        .attr("fill", d.hoverStroke || d.color || highlightStroke)
         .attr("stroke", hoverPointStroke)
         .attr("stroke-width", hoverPointStrokeWidth)
         .attr("pointer-events", "none");
@@ -200,26 +299,26 @@ class ParallelCoordinatesPlot extends Component {
 
     let lines = linesLayer
       .selectAll(".data-line")
-      .data(lineData, (d) => d.pair);
+      .data(lineData, (d) => d.id);
 
     lines
       .enter()
       .append("path")
       .attr("class", "data-line")
       .attr("fill", "none")
-      .attr("stroke", defaultLineStroke)
-      .attr("stroke-width", defaultLineWidth)
-      .attr("stroke-opacity", 1)
+      .attr("stroke", (d) => d.color || defaultLineStroke)
+      .attr("stroke-width", (d) => d.lineWidth ?? defaultLineWidth)
+      .attr("stroke-opacity", (d) => d.strokeOpacity ?? 1)
       .style("cursor", "pointer")
       .attr("d", (d) => lineGenerator(d.segments))
       .on("click", (event, d) => {
-        handleCardClick(event, d.pair);
+        handleCardClick(event, d);
       })
       .on("mouseover", function (event, d) {
         resetLines();
         d3.select(this)
           .raise()
-          .attr("stroke", highlightStroke)
+          .attr("stroke", d.hoverStroke || d.color || highlightStroke)
           .attr("stroke-width", highlightWidth);
         showTooltip(event, d);
         showPoints(d);
@@ -236,18 +335,18 @@ class ParallelCoordinatesPlot extends Component {
 
     lines
       .attr("d", (d) => lineGenerator(d.segments))
-      .attr("stroke", defaultLineStroke)
-      .attr("stroke-width", defaultLineWidth)
-      .attr("stroke-opacity", 1)
+      .attr("stroke", (d) => d.color || defaultLineStroke)
+      .attr("stroke-width", (d) => d.lineWidth ?? defaultLineWidth)
+      .attr("stroke-opacity", (d) => d.strokeOpacity ?? 1)
       .style("cursor", "pointer")
       .on("click", (event, d) => {
-        handleCardClick(event, d.pair);
+        handleCardClick(event, d);
       })
       .on("mouseover", function (event, d) {
         resetLines();
         d3.select(this)
           .raise()
-          .attr("stroke", highlightStroke)
+          .attr("stroke", d.hoverStroke || d.color || highlightStroke)
           .attr("stroke-width", highlightWidth);
         showTooltip(event, d);
         showPoints(d);
@@ -355,9 +454,9 @@ class ParallelCoordinatesPlot extends Component {
       .attr("class", "legend")
       .attr("text-anchor", "start")
       .attr("dy", -5)
-      .text((d) => d.metadata.shortTitle);
+      .text((d) => this.getAxisLabel(d));
 
-    axisLegend.text((d) => d.metadata.shortTitle);
+    axisLegend.text((d) => this.getAxisLabel(d));
 
     axisLegend.exit().remove();
   }
@@ -388,6 +487,7 @@ class ParallelCoordinatesPlot extends Component {
   }
 }
 ParallelCoordinatesPlot.propTypes = {
+  comparisonGroups: PropTypes.array,
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   data: PropTypes.array,
@@ -395,6 +495,9 @@ ParallelCoordinatesPlot.propTypes = {
   style: PropTypes.shape({
     defaultLineStroke: PropTypes.string,
     defaultLineWidth: PropTypes.number,
+    defaultLineOpacity: PropTypes.number,
+    comparisonLineWidth: PropTypes.number,
+    comparisonLineOpacity: PropTypes.number,
     highlightStroke: PropTypes.string,
     highlightWidth: PropTypes.number,
     tooltipOffsetX: PropTypes.number,
@@ -405,6 +508,7 @@ ParallelCoordinatesPlot.propTypes = {
   }),
 };
 ParallelCoordinatesPlot.defaultProps = {
+  comparisonGroups: [],
   data: [],
   margins: {
     gap: 0,
@@ -417,6 +521,9 @@ ParallelCoordinatesPlot.defaultProps = {
   style: {
     defaultLineStroke: "lightgray",
     defaultLineWidth: 1,
+    defaultLineOpacity: 0.22,
+    comparisonLineWidth: 1.25,
+    comparisonLineOpacity: 0.6,
     highlightStroke: "#ff7f0e",
     highlightWidth: 3,
     tooltipOffsetX: 10,

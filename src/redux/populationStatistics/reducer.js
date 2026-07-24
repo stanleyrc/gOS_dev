@@ -6,6 +6,11 @@ const initState = {
   general: [],
   tumor: [],
   cohort: [],
+  cohortSearchId: null,
+  requestedCohortSearchId: null,
+  latestCohortSearchId: null,
+  comparisonCohorts: {},
+  comparisonCohortsLoading: {},
   error: null,
 };
 
@@ -17,7 +22,6 @@ export default function appReducer(state = initState, action) {
         error: null,
         general: [],
         tumor: [],
-        cohort: [],
         loading: true,
       };
     case actions.FETCH_POPULATION_STATISTICS_SUCCESS:
@@ -38,22 +42,106 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_COHORT_STATISTICS_REQUEST:
       return {
         ...state,
+        requestedCohortSearchId: action.comparison
+          ? state.requestedCohortSearchId
+          : action.searchId || null,
+        latestCohortSearchId: action.comparison
+          ? state.latestCohortSearchId
+          : action.searchId || state.latestCohortSearchId,
         error: null,
-        cohort: [],
-        cohortsLoading: true,
+        comparisonCohortsLoading:
+          action.comparison && action.searchId
+            ? {
+                ...state.comparisonCohortsLoading,
+                [action.searchId]: true,
+              }
+            : state.comparisonCohortsLoading,
+        cohortsLoading: action.comparison ? state.cohortsLoading : true,
       };
     case actions.FETCH_COHORT_STATISTICS_SUCCESS:
+      if (
+        !action.comparison &&
+        (state.requestedCohortSearchId ||
+          state.latestCohortSearchId ||
+          state.cohortSearchId) &&
+        action.searchId !==
+          (state.requestedCohortSearchId ||
+            state.latestCohortSearchId ||
+            state.cohortSearchId)
+      ) {
+        return state;
+      }
       return {
         ...state,
-        cohort: action.cohort,
-        cohortsLoading: false,
+        cohort: action.comparison ? state.cohort : action.cohort,
+        cohortSearchId: action.comparison
+          ? state.cohortSearchId
+          : action.searchId || state.cohortSearchId,
+        requestedCohortSearchId: action.comparison
+          ? state.requestedCohortSearchId
+          : null,
+        latestCohortSearchId: action.comparison
+          ? state.latestCohortSearchId
+          : action.searchId || state.latestCohortSearchId,
+        comparisonCohorts:
+          action.comparison && action.searchId
+            ? {
+                ...state.comparisonCohorts,
+                [action.searchId]: {
+                  label: action.label,
+                  cohort: action.cohort || [],
+                },
+              }
+            : state.comparisonCohorts,
+        comparisonCohortsLoading:
+          action.comparison && action.searchId
+            ? {
+                ...state.comparisonCohortsLoading,
+                [action.searchId]: false,
+              }
+            : state.comparisonCohortsLoading,
+        cohortsLoading: action.comparison ? state.cohortsLoading : false,
       };
     case actions.FETCH_COHORT_STATISTICS_FAILED:
+      if (
+        !action.comparison &&
+        (state.requestedCohortSearchId ||
+          state.latestCohortSearchId ||
+          state.cohortSearchId) &&
+        action.searchId !==
+          (state.requestedCohortSearchId ||
+            state.latestCohortSearchId ||
+            state.cohortSearchId)
+      ) {
+        return state;
+      }
       return {
         ...state,
-        cohort: [],
+        cohort: action.comparison ? state.cohort : [],
+        cohortSearchId: action.comparison ? state.cohortSearchId : null,
+        requestedCohortSearchId: action.comparison
+          ? state.requestedCohortSearchId
+          : null,
+        latestCohortSearchId: action.comparison
+          ? state.latestCohortSearchId
+          : action.searchId || state.latestCohortSearchId,
         error: action.error,
-        cohortsLoading: false,
+        comparisonCohorts:
+          action.comparison && action.searchId
+            ? Object.fromEntries(
+                Object.entries(state.comparisonCohorts).filter(
+                  ([searchId]) => searchId !== action.searchId,
+                ),
+              )
+            : state.comparisonCohorts,
+        comparisonCohortsLoading:
+          action.comparison && action.searchId
+            ? {
+                ...state.comparisonCohortsLoading,
+                [action.searchId]: false,
+              }
+            : state.comparisonCohortsLoading,
+        cohortsLoading: action.comparison ? state.cohortsLoading : false,
       };
     default:
       return state;

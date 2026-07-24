@@ -41,12 +41,54 @@ const Wrapper = styled.div`
   .filters-box .ant-form-item-label {
     padding: 0px !important;
   }
+  .filters-box .ant-card-head-title {
+    min-width: 0;
+    white-space: normal;
+  }
+  .filters-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
   .results-top-box,
   .results-bottom-box {
     margin: 24px 0px;
   }
   .results-top-box .order-selector-container {
     text-align: right;
+  }
+
+  .cohort-comparison-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .cohort-comparison-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+  .cohort-comparison-select-wrap {
+    flex: 0 1 640px;
+    min-width: 0;
+  }
+  .cohort-comparison-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cohort-comparison-legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    background: #4e79a7;
+  }
+  .cohort-comparison-legend-swatch.current {
+    background: #999999;
   }
 
   .order-select {

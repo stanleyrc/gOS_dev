@@ -69,9 +69,11 @@ function* fetchSettingsData(action) {
 
 function* updateCaseReportFollowUp(action) {
   cancelAllRequests();
-  yield put({
-    type: caseReportActions.FETCH_CASE_REPORT_REQUEST,
-  });
+  if (!action.report) {
+    yield put(caseReportActions.clearCaseReport());
+    return;
+  }
+  yield put(caseReportActions.fetchCaseReport());
 }
 
 function* settingsFetchedFollowUp(action) {
@@ -87,16 +89,46 @@ function* updateDomainsFollowUp(action) {
   });
 }
 
-function* updateDatasetFollowUp(action) {
+export function* updateBrowseScopeFollowUp(action) {
+  cancelAllRequests();
+  yield put(caseReportActions.clearCaseReport());
+  if (action.refreshBrowseResults === false) {
+    if (action.cancelBrowseWork !== false) {
+      yield put(caseReportsActions.cancelCaseReportsFetch());
+    }
+    return;
+  }
+  yield put(caseReportsActions.fetchCaseReports(action.searchFilters));
+}
+
+export function* updateDatasetFollowUp(action) {
+  if (!action.report) {
+    cancelAllRequests();
+    yield put(caseReportActions.clearCaseReport());
+  }
+  if (
+    action.refreshBrowseResults === false &&
+    action.cancelBrowseWork !== false
+  ) {
+    yield put(caseReportsActions.cancelCaseReportsFetch());
+  }
   let actionTypes = [
-    caseReportsActions.FETCH_CASE_REPORTS_REQUEST,
     biomarkersActions.FETCH_BIOMARKERS_REQUEST,
     curatedGenesActions.FETCH_CURATED_GENES_REQUEST,
     genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
     genesActions.FETCH_GENES_DATA_REQUEST,
     cytobandsActions.FETCH_CYTOBANDS_REQUEST,
   ];
-  yield all(actionTypes.map((type) => put({ type })));
+  if (action.refreshBrowseResults !== false) {
+    actionTypes.unshift(caseReportsActions.FETCH_CASE_REPORTS_REQUEST);
+  }
+  yield all(
+    actionTypes.map((type) =>
+      type === caseReportsActions.FETCH_CASE_REPORTS_REQUEST
+        ? put(caseReportsActions.fetchCaseReports(action.searchFilters))
+        : put({ type }),
+    ),
+  );
   if (action.report) {
     cancelAllRequests();
     yield put({
@@ -114,6 +146,7 @@ function* actionWatcher() {
     settingsFetchedFollowUp
   );
   yield takeLatest(actions.UPDATE_CASE_REPORT, updateCaseReportFollowUp);
+  yield takeLatest(actions.UPDATE_BROWSE_SCOPE, updateBrowseScopeFollowUp);
   yield takeLatest(actions.UPDATE_DATASET, updateDatasetFollowUp);
   yield takeLatest(actions.UPDATE_DOMAINS, updateDomainsFollowUp);
 }

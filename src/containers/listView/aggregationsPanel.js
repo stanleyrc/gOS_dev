@@ -5,15 +5,10 @@ import { Card, Spin, Empty, Tabs, Typography } from "antd";
 import { debounce } from "lodash";
 import AggregationsTable from "./aggregationsTable";
 import AggregationsVisualization from "../../components/aggregationsVisualization";
-import { reportFilters } from "../../helpers/filters";
 import { loadPathways } from "../../helpers/geneAggregations";
+import { filterCaseReportRecords } from "../../helpers/caseReportsSearch";
 
 const { Text } = Typography;
-
-// Safe nested property accessor (e.g., "hrd.hrd_score" -> record.hrd.hrd_score)
-const getValue = (record, fieldId) => {
-  return fieldId.split(".").reduce((obj, key) => obj?.[key], record);
-};
 
 class AggregationsPanel extends Component {
   state = {
@@ -41,7 +36,9 @@ class AggregationsPanel extends Component {
     }
     if (
       prevProps.searchFilters !== this.props.searchFilters ||
-      prevProps.datafiles !== this.props.datafiles
+      prevProps.datafiles !== this.props.datafiles ||
+      prevProps.casesWithInterpretations !==
+        this.props.casesWithInterpretations
     ) {
       this.debouncedCalculate();
     }
@@ -58,90 +55,15 @@ class AggregationsPanel extends Component {
     });
   };
 
-  applyFilters = () => {
-    const { datafiles, searchFilters, dataset } = this.props;
-
-    if (!datafiles || datafiles.length === 0) {
-      return [];
-    }
-
-    let records = datafiles.filter((d) => d.visible !== false);
-
-    const actualSearchFilters = Object.fromEntries(
-      Object.entries(searchFilters || {}).filter(
-        ([key, value]) =>
-          key !== "page" &&
-          key !== "per_page" &&
-          key !== "orderId" &&
-          key !== "operator" &&
-          !key.endsWith("-operator") &&
-          value !== null &&
-          value !== undefined &&
-          !(Array.isArray(value) && value.length === 0)
-      )
+  applyFilters = () =>
+    filterCaseReportRecords(
+      this.props.datafiles || [],
+      this.props.searchFilters || {},
+      this.props.dataset?.fields || [],
+      {
+        casesWithInterpretations: this.props.casesWithInterpretations,
+      },
     );
-
-    const allReportFilters = reportFilters();
-
-    Object.keys(actualSearchFilters).forEach((key) => {
-      const fieldDef = dataset?.fields?.find((d) => d.name === key);
-      const reportFilter = allReportFilters.find((d) => d.name === key);
-      // Fallback to reportFilters() if renderer not defined in dataset.fields
-      const keyRenderer = fieldDef?.renderer || reportFilter?.renderer;
-
-      if (reportFilter?.external) {
-        return;
-      }
-
-      if (keyRenderer === "slider") {
-        records = records.filter((d) => {
-          const value = getValue(d, key);
-          if (value == null) return true;
-          return (
-            value >= actualSearchFilters[key][0] &&
-            value <= actualSearchFilters[key][1]
-          );
-        });
-      } else if (keyRenderer === "select") {
-        records = records.filter((d) => {
-          return actualSearchFilters[key].some((item) => {
-            if (item === "null") {
-              return d[key] == null;
-            }
-            const itemArr = Array.isArray(item) ? item : [item];
-            const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
-            return itemArr.some((i) => dKeyArr.includes(i));
-          });
-        });
-      } else if (keyRenderer === "cascader") {
-        const operator = (searchFilters?.operator || "OR").toUpperCase();
-        const selectedItems = actualSearchFilters[key];
-        const normalize = (value) => (Array.isArray(value) ? value : [value]);
-        const matchesItem = (record, item) => {
-          if (item === "null") {
-            return record[key] == null;
-          }
-          const recordValues = normalize(record[key]);
-          return normalize(item).some((value) => recordValues.includes(value));
-        };
-
-        const cascaderPredicates = {
-          AND: (record) =>
-            selectedItems.every((item) => matchesItem(record, item)),
-          OR: (record) =>
-            selectedItems.some((item) => matchesItem(record, item)),
-          NOT: (record) =>
-            selectedItems.every((item) => !matchesItem(record, item)),
-        };
-
-        const applyPredicate =
-          cascaderPredicates[operator] || cascaderPredicates.OR;
-        records = records.filter(applyPredicate);
-      }
-    });
-
-    return records;
-  };
 
   render() {
     const { t, dataset } = this.props;
@@ -205,6 +127,7 @@ class AggregationsPanel extends Component {
 }
 
 const mapStateToProps = (state) => ({
+  casesWithInterpretations: state.CaseReports.casesWithInterpretations,
   settingsData: state.Settings.data,
 });
 

@@ -1,448 +1,536 @@
-import { all, put, call, select, take, takeLatest } from "redux-saga/effects";
+import {
+  all,
+  put,
+  call,
+  select,
+  take,
+  takeLatest,
+} from "redux-saga/effects";
 import { END } from "redux-saga";
 import { getCurrentState } from "./selectors";
-import { tableFromIPC } from "apache-arrow";
-import * as d3 from "d3";
-import {
-  defaultSearchFilters,
-  getValueByPath,
-  orderListViewFilters,
-  datafilesArrowTableToJson,
-} from "../../helpers/utility";
+import { defaultSearchFilters } from "../../helpers/utility";
 import {
   getReportsFilters,
   getInterpretationsFilter,
-  reportFilters,
 } from "../../helpers/filters";
 import { getActiveRepository } from "../../services/repositories";
-import { qcEvaluator } from "../../helpers/metadata";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
+import datasetsActions from "../datasets/actions";
+import interpretationsActions from "../interpretations/actions";
 import { createProgressChannel } from "../../helpers/progressChannel";
+import {
+  createLocalSearchId,
+  emptyInterpretationSummary,
+  buildPopulationMaps,
+  searchCaseReportRecords,
+} from "../../helpers/caseReportsSearch";
+import {
+  getBrowseScopeDatasetId,
+  isAllDatasetsBrowseScope,
+  resolveBrowseDataset,
+  resolveBrowseDatasets,
+} from "../../helpers/browseScope";
+import {
+  getManifestRequestConfig,
+  parseManifestResponse,
+} from "../../helpers/staticManifests";
+import {
+  deleteSavedSearch,
+  getBrowserStorage,
+  readSavedSearches,
+  upsertSavedSearch,
+  writeSavedSearches,
+} from "../../helpers/savedSearches";
+import { getCurrentUserId } from "../../helpers/userAuth";
+import {
+  canonicalizeInterpretationCounts,
+  canonicalizeInterpretationSummary,
+} from "../../helpers/interpretationCaseIds";
 
-function* fetchCaseReports(action) {
-  const currentState = yield select(getCurrentState);
-  let { dataset } = currentState.Settings;
-
-  // Set up the channel configuration
-  const channelConfig = {
+export function* fetchManifestWithProgress(dataset, index, datasetCount) {
+  const channel = yield call(createProgressChannel, {
     url: dataset.datafilesPath,
-    responseType: dataset.datafilesPath.endsWith(".arrow")
-      ? "arraybuffer" // Ensure the response is in binary format
-      : "json",
-  };
-  // Create the progress channel
-  const progressChannel = yield call(createProgressChannel, channelConfig);
+    ...getManifestRequestConfig(dataset),
+  });
 
   try {
     while (true) {
-      const result = yield take(progressChannel);
-
-      // Channel was closed (END) – exit the loop
-      if (result === END) {
-        break;
-      }
+      const result = yield take(channel);
+      if (result === END) break;
 
       if (result.response) {
-        // The request completed successfully
-        let datafiles = result.response.data;
-        if (dataset.datafilesPath.endsWith(".arrow")) {
-          try {
-            const arrowBuffer = new Uint8Array(result.response.data);
-            const table = yield call(tableFromIPC, arrowBuffer);
-            datafiles = datafilesArrowTableToJson(table);
-          } catch (err) {
-            console.error("Failed to parse Arrow data:", err);
-            yield put({
-              type: actions.FETCH_CASE_REPORTS_FAILED,
-              error: err,
-            });
-            return;
-          }
-        }
-
-        datafiles.forEach(
-          (d) => {
-            d.tags = d.summary_tag
-              ? d.summary_tag?.map((e) => `${e.key.trim()}: ${e.value.trim()}`)
-              : d.summary
-                  ?.split("\n")
-                  .map((e) => e.trim())
-                  .filter((e) => e.length > 0) || [];
-            d.visibleTags = d.summary_tag
-              ? d.summary_tag
-                  .filter((e) => e.visible)
-                  .map((e) => `${e.key.trim()}: ${e.value.trim()}`)
-              : d.tags;
-            d.qcEvaluation = qcEvaluator(d.qcMetrics || []);
-          } // Ensure qcEvaluation is set for each report
-        );
-
-        const repository = getActiveRepository({ dataset });
-        const casesWithInterpretations = yield call(
-          repository.getCasesWithInterpretations.bind(repository),
-          dataset.id
-        );
-        const interpretationsCounts = yield call(
-          repository.getCasesInterpretationsCount.bind(repository),
-          dataset.id
-        );
-
-        let reportsFilters = [];
-
-        reportsFilters = getReportsFilters(dataset.fields, datafiles);
-
-        const interpretationsFilter = getInterpretationsFilter(
-          datafiles,
-          casesWithInterpretations,
-          dataset.fields
-        );
-        reportsFilters.push(interpretationsFilter);
-
-        // let reportsFiltersExtents = getReportFilterExtents(datafiles);
-        let reportsFiltersExtents = reportsFilters.reduce((acc, item) => {
-          acc[item.filter.name] = item.extent;
-          return acc;
-        }, {});
-
-        let { page, per_page } = defaultSearchFilters();
-        let records = datafiles
-          .filter((d) => d.visible !== false)
-          .sort((a, b) => d3.ascending(a.pair, b.pair));
-
-        let populations = {};
-        let cohortPopulations = {};
-
-        dataset.kpiFields.forEach((d, i) => {
-          populations[d.id] = datafiles
-            .map((e) => {
-              return {
-                pair: e.pair,
-                value: getValueByPath(e, d.id),
-                tumor_type: e.tumor_type,
-              };
-            })
-            .filter((item) => item.value != null && !isNaN(item.value));
-
-          cohortPopulations[d.id] = records
-            .map((e) => {
-              return {
-                pair: e.pair,
-                value: getValueByPath(e, d.id),
-                tumor_type: e.tumor_type,
-              };
-            })
-            .filter((item) => item.value != null && !isNaN(item.value));
-        });
-
-        yield put({
-          type: actions.FETCH_CASE_REPORTS_SUCCESS,
-          datafiles,
-          populations,
-          cohortPopulations,
-          reportsFilters,
-          casesWithInterpretations,
-          interpretationsCounts,
-          reports: records.slice((page - 1) * per_page, page * per_page),
-          totalReports: records,
-          reportsFiltersExtents,
-        });
-      } else if (result.error) {
-        // The request failed
-        console.error(result.error);
-        yield put({
-          type: actions.FETCH_CASE_REPORTS_FAILED,
-          error: result.error,
-        });
-      } else {
-        // Intermediate progress updates
-        yield put({
-          type: actions.FETCH_CASE_REPORTS_REQUEST_LOADING,
-          loadingPercentage: result,
-        });
+        return yield call(parseManifestResponse, result.response.data, dataset);
       }
+      if (result.error) throw result.error;
+
+      const manifestProgress = Number(result);
+      const loadingPercentage = Number.isFinite(manifestProgress)
+        ? Math.round(
+            ((index + manifestProgress / 100) / datasetCount) * 100,
+          )
+        : Infinity;
+      yield put({
+        type: actions.FETCH_CASE_REPORTS_REQUEST_LOADING,
+        loadingPercentage,
+      });
     }
+  } finally {
+    try {
+      channel.close();
+    } catch (error) {
+      // The progress channel may already be closed by the request.
+    }
+  }
+
+  return [];
+}
+
+function* loadInterpretationState(dataset, globalScope, records = []) {
+  if (globalScope) {
+    return [emptyInterpretationSummary(), new Map()];
+  }
+
+  const repository = getActiveRepository({ dataset });
+  const [summary, counts] = yield all([
+    call(
+      repository.getCasesWithInterpretations.bind(repository),
+      dataset.id,
+    ),
+    call(
+      repository.getCasesInterpretationsCount.bind(repository),
+      dataset.id,
+    ),
+  ]);
+  return [
+    canonicalizeInterpretationSummary(summary, records),
+    canonicalizeInterpretationCounts(counts, records),
+  ];
+}
+
+const buildFilterState = (
+  dataset,
+  datafiles,
+  casesWithInterpretations,
+  globalScope,
+) => {
+  const reportsFilters = getReportsFilters(dataset.fields || [], datafiles);
+  if (!globalScope) {
+    reportsFilters.push(
+      getInterpretationsFilter(
+        datafiles,
+        casesWithInterpretations,
+        dataset.fields,
+      ),
+    );
+  }
+
+  return {
+    reportsFilters,
+    reportsFiltersExtents: reportsFilters.reduce((acc, item) => {
+      if (item?.filter?.name) acc[item.filter.name] = item.extent;
+      return acc;
+    }, {}),
+  };
+};
+
+const getReusableStaticReportsFilters = (
+  previousReportsFilters = [],
+  fields = [],
+) => {
+  const staticFilterNames = fields
+    .filter((field) => !field.external)
+    .map((field) => field.name);
+  const previousStaticFilters = previousReportsFilters.filter(
+    (item) => !item?.filter?.external,
+  );
+
+  if (previousStaticFilters.length !== staticFilterNames.length) {
+    return null;
+  }
+
+  const hasSameFilters = staticFilterNames.every(
+    (name, index) => previousStaticFilters[index]?.filter?.name === name,
+  );
+  return hasSameFilters ? previousStaticFilters : null;
+};
+
+const buildSearchFilterState = (
+  dataset,
+  datafiles,
+  casesWithInterpretations,
+  globalScope,
+  previousReportsFilters,
+) => {
+  const staticReportsFilters = getReusableStaticReportsFilters(
+    previousReportsFilters,
+    dataset.fields || [],
+  );
+
+  if (!staticReportsFilters) {
+    return buildFilterState(
+      dataset,
+      datafiles,
+      casesWithInterpretations,
+      globalScope,
+    );
+  }
+
+  const reportsFilters = [...staticReportsFilters];
+  if (!globalScope) {
+    reportsFilters.push(
+      getInterpretationsFilter(
+        datafiles,
+        casesWithInterpretations,
+        dataset.fields,
+      ),
+    );
+  }
+
+  return { reportsFilters };
+};
+
+export function* fetchCaseReports(action = {}) {
+  const currentState = yield select(getCurrentState);
+  const browseDataset = resolveBrowseDataset(currentState);
+  const datasets = resolveBrowseDatasets(currentState);
+  const globalScope = isAllDatasetsBrowseScope(
+    currentState.Settings.browseScope,
+  );
+  const searchFilters =
+    action.searchFilters ||
+    currentState.CaseReports.searchFilters ||
+    defaultSearchFilters();
+
+  if (!browseDataset || datasets.length === 0) {
+    yield put({
+      type: actions.FETCH_CASE_REPORTS_FAILED,
+      error: new Error("NO_BROWSE_SCOPE_SELECTED"),
+      searchFilters,
+    });
+    return;
+  }
+
+  try {
+    const manifestRecordsByDataset = {};
+    for (let index = 0; index < datasets.length; index += 1) {
+      const dataset = datasets[index];
+      const cachedRecords =
+        currentState.CaseReports.manifestRecordsByDataset?.[dataset.id];
+      manifestRecordsByDataset[dataset.id] = Array.isArray(cachedRecords)
+        ? cachedRecords
+        : yield call(
+            fetchManifestWithProgress,
+            dataset,
+            index,
+            datasets.length,
+          );
+    }
+
+    const datafiles = datasets
+      .map((dataset) => manifestRecordsByDataset[dataset.id] || [])
+      .flat();
+    const [casesWithInterpretations, interpretationsCounts] = yield call(
+      loadInterpretationState,
+      datasets[0],
+      globalScope,
+      datafiles,
+    );
+    const { matchedRecords, pageRecords } = searchCaseReportRecords(
+      datafiles,
+      searchFilters,
+      browseDataset.fields || [],
+      { casesWithInterpretations },
+    );
+    const { reportsFilters, reportsFiltersExtents } = buildFilterState(
+      browseDataset,
+      datafiles,
+      casesWithInterpretations,
+      globalScope,
+    );
+
+    yield put({
+      type: actions.FETCH_CASE_REPORTS_SUCCESS,
+      searchId: createLocalSearchId(),
+      datafiles,
+      manifestRecordsByDataset,
+      populations: buildPopulationMaps(
+        datafiles,
+        browseDataset.kpiFields || [],
+      ),
+      cohortPopulations: buildPopulationMaps(
+        matchedRecords,
+        browseDataset.kpiFields || [],
+      ),
+      reportsFilters,
+      casesWithInterpretations,
+      interpretationsCounts,
+      reports: pageRecords,
+      totalReports: matchedRecords,
+      totalReportsCount: matchedRecords.length,
+      reportsFiltersExtents,
+    });
   } catch (error) {
-    // This catch only handles saga-level errors (e.g., from yield call/tableFromIPC),
-    // not the Axios cancellation (which is handled inside the channel).
-    console.log(error);
     yield put({
       type: actions.FETCH_CASE_REPORTS_FAILED,
       error,
+      searchFilters,
     });
-  } finally {
-    // Ensure the channel is closed on both normal completion and cancellation.
-    // Closing the channel triggers the Axios cancellation via the unsubscribe.
-    try {
-      progressChannel.close();
-    } catch (e) {
-      // no-op; channel may already be closed
-    }
   }
 }
 
-/**
- * Apply filters based on external data sources (not stored on records)
- */
-function applyExternalFilters(records, searchFilters, externalData) {
-  const { casesWithInterpretations } = externalData;
-
-  // Handle has_interpretations filter
-  if (
-    searchFilters.has_interpretations &&
-    searchFilters.has_interpretations.length > 0
-  ) {
-    const selectedValues = searchFilters.has_interpretations;
-    const operator = searchFilters["has_interpretations-operator"] || "OR";
-
-    // Build sets of matching records for each selected criterion
-    const matchingSets = selectedValues.map((value) => {
-      const matchingRecords = new Set();
-
-      // value is an array representing the cascader path
-      const category = value[0];
-      const specificValue = value.length > 1 ? value[1] : null;
-
-      if (category === "tier_change") {
-        records.forEach((r) => {
-          if (casesWithInterpretations.withTierChange.has(r.pair)) {
-            matchingRecords.add(r.pair);
-          }
-        });
-      } else if (category === "author" && specificValue) {
-        const authorCases =
-          casesWithInterpretations.byAuthor.get(specificValue);
-        if (authorCases) {
-          records.forEach((r) => {
-            if (authorCases.has(r.pair)) {
-              matchingRecords.add(r.pair);
-            }
-          });
-        }
-      } else if (category === "gene" && specificValue) {
-        const geneCases = casesWithInterpretations.byGene.get(specificValue);
-        if (geneCases) {
-          records.forEach((r) => {
-            if (geneCases.has(r.pair)) {
-              matchingRecords.add(r.pair);
-            }
-          });
-        }
-      } else if (category === "without") {
-        records.forEach((r) => {
-          if (!casesWithInterpretations.all.has(r.pair)) {
-            matchingRecords.add(r.pair);
-          }
-        });
-      }
-
-      return matchingRecords;
-    });
-
-    // Apply operator logic
-    if (operator === "OR") {
-      // Union: include if in ANY of the sets
-      const unionSet = new Set();
-      matchingSets.forEach((set) => {
-        set.forEach((pair) => unionSet.add(pair));
-      });
-      records = records.filter((r) => unionSet.has(r.pair));
-    } else if (operator === "AND") {
-      // Intersection: include only if in ALL sets
-      if (matchingSets.length > 0) {
-        records = records.filter((r) => {
-          return matchingSets.every((set) => set.has(r.pair));
-        });
-      }
-    } else if (operator === "NOT") {
-      // Exclusion: include if NOT in any of the sets
-      const unionSet = new Set();
-      matchingSets.forEach((set) => {
-        set.forEach((pair) => unionSet.add(pair));
-      });
-      records = records.filter((r) => !unionSet.has(r.pair));
-    }
-  }
-
-  return records;
-}
-
-function* searchReports({ searchFilters }) {
+export function* searchReports({ searchFilters }) {
   const currentState = yield select(getCurrentState);
-  let { datafiles, casesWithInterpretations } = currentState.CaseReports;
-  let { dataset } = currentState.Settings;
-
-  // Always fetch fresh casesWithInterpretations and interpretationsCounts to ensure filters are up to date
-  const repository = getActiveRepository({ dataset });
-  casesWithInterpretations = yield call(
-    repository.getCasesWithInterpretations.bind(repository),
-    dataset.id
-  );
-  const interpretationsCounts = yield call(
-    repository.getCasesInterpretationsCount.bind(repository),
-    dataset.id
+  const { datafiles } = currentState.CaseReports;
+  const browseDataset = resolveBrowseDataset(currentState);
+  const datasets = resolveBrowseDatasets(currentState);
+  const globalScope = isAllDatasetsBrowseScope(
+    currentState.Settings.browseScope,
   );
 
-  let records = datafiles.filter((d) => d.visible !== false);
+  if (!browseDataset || datasets.length === 0) {
+    yield put({
+      type: actions.FETCH_CASE_REPORTS_FAILED,
+      error: new Error("NO_BROWSE_SCOPE_SELECTED"),
+      searchFilters,
+      preserveBrowseData: true,
+    });
+    return;
+  }
 
-  let page = searchFilters?.page || defaultSearchFilters().page;
-  let perPage = searchFilters?.per_page || defaultSearchFilters().per_page;
-  let orderId = searchFilters?.orderId || defaultSearchFilters().orderId;
-  let { attribute, sort } = orderListViewFilters.find((d) => d.id === orderId);
+  try {
+    const [casesWithInterpretations, interpretationsCounts] = yield call(
+      loadInterpretationState,
+      datasets[0],
+      globalScope,
+      datafiles,
+    );
+    const { matchedRecords, pageRecords } = searchCaseReportRecords(
+      datafiles,
+      searchFilters,
+      browseDataset.fields || [],
+      { casesWithInterpretations },
+    );
+    const { reportsFilters } = buildSearchFilterState(
+      browseDataset,
+      datafiles,
+      casesWithInterpretations,
+      globalScope,
+      currentState.CaseReports.reportsFilters,
+    );
 
-  // Apply external filters first
-  records = applyExternalFilters(records, searchFilters, {
-    casesWithInterpretations,
-  });
-
-  // Apply record-based filters
-  let actualSearchFilters = Object.fromEntries(
-    Object.entries(searchFilters || {}).filter(
-      ([key, value]) =>
-        key !== "page" &&
-        key !== "per_page" &&
-        key !== "orderId" &&
-        key !== "operator" &&
-        !key.endsWith("-operator") &&
-        value !== null &&
-        value !== undefined &&
-        !(Array.isArray(value) && value.length === 0)
-    )
-  );
-
-  Object.keys(actualSearchFilters).forEach((key) => {
-    const reportFilter = reportFilters().find((d) => d.name === key);
-    // Fallback to reportFilters() if renderer not defined in dataset.fields
-    let keyRenderer =
-      dataset.fields.find((d) => d.name === key)?.renderer ||
-      reportFilter?.renderer;
-
-    // Skip external filters (handled separately)
-    if (reportFilter?.external) {
-      return;
-    }
-
-    if (key === "texts") {
-      records = records
-        .filter((record) =>
-          dataset.fields
-            .filter((e) => e.renderer === "select")
-            .map((attr) => record[attr.name] || "")
-            .join(",")
-            .toLowerCase()
-            .includes(actualSearchFilters[key].toLowerCase())
-        )
-        .sort((a, b) => {
-          let aValue = getValueByPath(a, attribute);
-          let bValue = getValueByPath(b, attribute);
-          if (aValue == null) return 1;
-          if (bValue == null) return -1;
-          return sort === "ascending"
-            ? d3.ascending(aValue, bValue)
-            : d3.descending(aValue, bValue);
-        });
-    } else if (keyRenderer === "slider") {
-      records = records.filter((d) => {
-        let value = getValueByPath(d, key);
-        if (value == null) return true;
-        return (
-          value >= actualSearchFilters[key][0] &&
-          value <= actualSearchFilters[key][1]
-        );
-      });
-    } else if (keyRenderer === "select") {
-      records = records.filter((d) => {
-        return actualSearchFilters[key].some((item) => {
-          // If the filter value is the string "null", match records where d[key] is null or undefined
-          if (item === "null") {
-            return d[key] == null;
-          }
-          const itemArr = Array.isArray(item) ? item : [item];
-          const dKeyArr = Array.isArray(d[key]) ? d[key] : [d[key]];
-          return itemArr.some((i) => dKeyArr.includes(i));
-        });
-      });
-    } else if (keyRenderer === "cascader") {
-      const operator = (searchFilters?.operator || "OR").toUpperCase();
-      const selectedItems = actualSearchFilters[key];
-      const normalize = (value) => (Array.isArray(value) ? value : [value]);
-      const matchesItem = (record, item) => {
-        if (item === "null") {
-          return record[key] == null;
-        }
-        const recordValues = normalize(record[key]);
-        return normalize(item).some((value) => recordValues.includes(value));
-      };
-
-      const cascaderPredicates = {
-        AND: (record) =>
-          selectedItems.every((item) => matchesItem(record, item)),
-        OR: (record) => selectedItems.some((item) => matchesItem(record, item)),
-        NOT: (record) =>
-          selectedItems.every((item) => !matchesItem(record, item)),
-      };
-
-      const applyPredicate =
-        cascaderPredicates[operator] || cascaderPredicates.OR;
-      records = records.filter(applyPredicate);
-    }
-  });
-
-  records = records.sort((a, b) => {
-    let aValue = getValueByPath(a, attribute);
-    let bValue = getValueByPath(b, attribute);
-    if (aValue == null) return 1;
-    if (bValue == null) return -1;
-    return sort === "ascending"
-      ? d3.ascending(aValue, bValue)
-      : d3.descending(aValue, bValue);
-  });
-
-  const reportsFilters = getReportsFilters(dataset.fields, datafiles);
-  const interpretationsFilter = getInterpretationsFilter(
-    datafiles,
-    casesWithInterpretations,
-    dataset.fields
-  );
-  reportsFilters.push(interpretationsFilter);
-
-  let cohortPopulations = {};
-
-  dataset.kpiFields.forEach((d, i) => {
-    cohortPopulations[d.id] = records
-      .map((e) => {
-        return {
-          pair: e.pair,
-          value: getValueByPath(e, d.id),
-          tumor_type: e.tumor_type,
-        };
-      })
-      .filter((item) => item.value != null && !isNaN(item.value));
-  });
-
-  yield put({
-    type: actions.CASE_REPORTS_MATCHED,
-    reports: records.slice((page - 1) * perPage, page * perPage),
-    totalReports: records,
-    cohortPopulations: cohortPopulations,
-    reportsFilters: reportsFilters,
-    casesWithInterpretations,
-    interpretationsCounts,
-  });
+    yield put({
+      type: actions.CASE_REPORTS_MATCHED,
+      searchId: createLocalSearchId(),
+      reports: pageRecords,
+      totalReports: matchedRecords,
+      totalReportsCount: matchedRecords.length,
+      cohortPopulations: buildPopulationMaps(
+        matchedRecords,
+        browseDataset.kpiFields || [],
+      ),
+      reportsFilters,
+      casesWithInterpretations,
+      interpretationsCounts,
+    });
+  } catch (error) {
+    yield put({
+      type: actions.FETCH_CASE_REPORTS_FAILED,
+      error,
+      searchFilters,
+      preserveBrowseData: true,
+    });
+  }
 }
 
-function* followUpCaseReportsMatched(action) {
-  yield put({
-    type: settingsActions.UPDATE_CASE_REPORT,
-    report: null,
-  });
+export function* fetchFavoriteSearches() {
+  try {
+    const ownerId = yield call(getCurrentUserId);
+    const favoriteSearches = yield call(
+      readSavedSearches,
+      undefined,
+      ownerId,
+    );
+    yield put({
+      type: actions.FETCH_FAVORITE_SEARCHES_SUCCESS,
+      favoriteSearches,
+    });
+  } catch (error) {
+    yield put({
+      type: actions.FETCH_FAVORITE_SEARCHES_FAILED,
+      error,
+    });
+  }
 }
+
+export function* saveFavoriteSearch(action) {
+  const currentState = yield select(getCurrentState);
+  const { browseScope } = currentState.Settings;
+  const {
+    currentSearchId,
+    favoriteSearches,
+    searchFilters: currentSearchFilters,
+    totalReportsCount,
+  } = currentState.CaseReports;
+  const searchId = action.searchId || currentSearchId;
+
+  if (!searchId) {
+    yield put({
+      type: actions.SAVE_FAVORITE_SEARCH_FAILED,
+      error: new Error("NO_SEARCH_ID_AVAILABLE"),
+    });
+    return;
+  }
+
+  try {
+    const ownerId = yield call(getCurrentUserId);
+    const storage = yield call(getBrowserStorage);
+    const persistedFavoriteSearches = storage
+      ? yield call(readSavedSearches, storage, ownerId)
+      : favoriteSearches;
+    const result = upsertSavedSearch(
+      {
+        id: action.id,
+        searchId,
+        name: action.name,
+        description: action.description,
+        resultCount: action.resultCount ?? totalReportsCount,
+        searchFilters: action.searchFilters || currentSearchFilters,
+        datasetId:
+          action.datasetId === undefined
+            ? getBrowseScopeDatasetId(browseScope)
+            : action.datasetId,
+        createdAt: action.createdAt,
+      },
+      persistedFavoriteSearches,
+    );
+    yield call(
+      writeSavedSearches,
+      result.savedSearches,
+      storage,
+      ownerId,
+    );
+    yield put({
+      type: actions.SAVE_FAVORITE_SEARCH_SUCCESS,
+      favoriteSearch: result.savedSearch,
+      favoriteSearches: result.savedSearches,
+    });
+  } catch (error) {
+    yield put({
+      type: actions.SAVE_FAVORITE_SEARCH_FAILED,
+      error,
+    });
+  }
+}
+
+export function* deleteFavoriteSearch({ favoriteId }) {
+  const currentState = yield select(getCurrentState);
+
+  try {
+    const ownerId = yield call(getCurrentUserId);
+    const storage = yield call(getBrowserStorage);
+    const existingFavoriteSearches = storage
+      ? yield call(readSavedSearches, storage, ownerId)
+      : currentState.CaseReports.favoriteSearches;
+    const favoriteSearches = deleteSavedSearch(
+      existingFavoriteSearches,
+      favoriteId,
+    );
+    yield call(writeSavedSearches, favoriteSearches, storage, ownerId);
+    yield put({
+      type: actions.DELETE_FAVORITE_SEARCH_SUCCESS,
+      favoriteId,
+      favoriteSearches,
+    });
+  } catch (error) {
+    yield put({
+      type: actions.DELETE_FAVORITE_SEARCH_FAILED,
+      error,
+    });
+  }
+}
+
+export function* applyFavoriteSearch({ favoriteId }) {
+  const currentState = yield select(getCurrentState);
+  const favoriteSearch = currentState.CaseReports.favoriteSearches.find(
+    (candidate) => candidate.id === favoriteId,
+  );
+  if (!favoriteSearch) return;
+
+  const searchFilters = {
+    ...favoriteSearch.searchFilters,
+    page: 1,
+    per_page: favoriteSearch.searchFilters?.per_page || 10,
+    orderId:
+      favoriteSearch.searchFilters?.orderId ||
+      defaultSearchFilters().orderId,
+  };
+
+  if (favoriteSearch.datasetId == null) {
+    yield put(datasetsActions.selectAllDatasets({ searchFilters }));
+  } else {
+    yield put(
+      datasetsActions.selectDataset(favoriteSearch.datasetId, null, {
+        searchFilters,
+      }),
+    );
+  }
+}
+
+function* followUpCaseReportsMatched() {
+  yield put(settingsActions.updateCaseReport(null));
+}
+
+function* refreshDetailInterpretationsAfterManifestLoad() {
+  const currentState = yield select(getCurrentState);
+  const report = currentState.Settings.report;
+  if (report) {
+    yield put(interpretationsActions.fetchInterpretationsForCase(report));
+  }
+}
+
+export function* fetchOrCancelCaseReports(action) {
+  if (action.type !== actions.FETCH_CASE_REPORTS_REQUEST) return;
+  yield call(fetchCaseReports, action);
+}
+
+export function* searchOrCancelCaseReports(action) {
+  if (action.type !== actions.SEARCH_CASE_REPORTS) return;
+  const currentState = yield select(getCurrentState);
+  if (currentState.CaseReports.loading) return;
+  yield call(searchReports, action);
+}
+
+const fetchWorkActions = [
+  actions.FETCH_CASE_REPORTS_REQUEST,
+  actions.CANCEL_CASE_REPORTS_FETCH,
+];
+const searchWorkActions = [
+  actions.SEARCH_CASE_REPORTS,
+  actions.FETCH_CASE_REPORTS_REQUEST,
+  actions.CANCEL_CASE_REPORTS_FETCH,
+];
 
 function* actionWatcher() {
-  yield takeLatest(actions.FETCH_CASE_REPORTS_REQUEST, fetchCaseReports);
-  yield takeLatest(actions.SEARCH_CASE_REPORTS, searchReports);
+  yield takeLatest(fetchWorkActions, fetchOrCancelCaseReports);
+  yield takeLatest(searchWorkActions, searchOrCancelCaseReports);
+  yield takeLatest(
+    actions.FETCH_FAVORITE_SEARCHES_REQUEST,
+    fetchFavoriteSearches,
+  );
+  yield takeLatest(actions.SAVE_FAVORITE_SEARCH_REQUEST, saveFavoriteSearch);
+  yield takeLatest(
+    actions.DELETE_FAVORITE_SEARCH_REQUEST,
+    deleteFavoriteSearch,
+  );
+  yield takeLatest(actions.APPLY_FAVORITE_SEARCH, applyFavoriteSearch);
+  yield takeLatest(
+    actions.FETCH_CASE_REPORTS_SUCCESS,
+    refreshDetailInterpretationsAfterManifestLoad,
+  );
   yield takeLatest(actions.CASE_REPORTS_MATCHED, followUpCaseReportsMatched);
 }
+
 export default function* rootSaga() {
   yield all([actionWatcher()]);
 }

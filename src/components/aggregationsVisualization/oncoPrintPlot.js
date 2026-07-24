@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Konva from "konva";
 import { parseDriverGenes } from "../../helpers/geneAggregations";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import signatureMetadata from "../../translations/en/signatures.json";
 
 const ALTERATION_COLORS = {
@@ -23,7 +24,7 @@ const CELL_GAP = 1;
 const MARGINS = { top: 30, right: 20, bottom: 60, left: 150 };
 const VIRTUALIZATION_BUFFER = 50;
 
-class OncoPrintPlot extends Component {
+export class OncoPrintPlot extends Component {
   containerRef = null;
   scrollContainerRef = null;
   stage = null;
@@ -233,6 +234,13 @@ class OncoPrintPlot extends Component {
     this.heatmapLayer.batchDraw();
   }
 
+  getRecordKey = (record) =>
+    sourceCaseIdentityKey(record) ||
+    record?.caseReportId ||
+    record?.id ||
+    record?.pair ||
+    null;
+
   isSignatureValue = (value) => {
     if (!value || typeof value !== 'string') return false;
     return /^(SBS|ID)\d+[a-z]?$/i.test(value);
@@ -266,7 +274,16 @@ class OncoPrintPlot extends Component {
     if (!this.layoutParams) return null;
 
     const scrollLeft = this.currentScrollLeft;
-    const { cellWidth, cellHeight, genes, pairs, matrix, isNumeric } = this.layoutParams;
+    const {
+      cellWidth,
+      cellHeight,
+      genes,
+      pairs,
+      matrix,
+      isNumeric,
+      pairLabels,
+      recordsByPair,
+    } = this.layoutParams;
 
     const adjustedMouseX = mouseX + scrollLeft;
 
@@ -283,16 +300,36 @@ class OncoPrintPlot extends Component {
     }
 
     const gene = genes[geneIdx];
-    const pair = pairs[pairIdx];
+    const pairKey = pairs[pairIdx];
+    const pair = pairLabels.get(pairKey) || pairKey;
+    const sourceRecord = recordsByPair.get(pairKey) || {};
 
     if (isNumeric) {
-      const key = `${gene},${pair}`;
+      const key = `${gene},${pairKey}`;
       const value = matrix.get(key);
-      return { gene, pair, value, isNumeric: true, geneIdx, pairIdx };
+      return {
+        ...sourceRecord,
+        gene,
+        pair,
+        pairKey,
+        value,
+        isNumeric: true,
+        geneIdx,
+        pairIdx,
+      };
     } else {
-      const key = `${gene.toUpperCase()},${pair}`;
+      const key = `${gene.toUpperCase()},${pairKey}`;
       const alterations = matrix.get(key) || [];
-      return { gene, pair, alterations, isNumeric: false, geneIdx, pairIdx };
+      return {
+        ...sourceRecord,
+        gene,
+        pair,
+        pairKey,
+        alterations,
+        isNumeric: false,
+        geneIdx,
+        pairIdx,
+      };
     }
   }
 
@@ -449,7 +486,14 @@ class OncoPrintPlot extends Component {
     }
 
     if (!geneSet || geneSet.length === 0) {
-      return { genes: [], pairs: [], matrix: new Map(), isNumeric: false };
+      return {
+        genes: [],
+        pairs: [],
+        matrix: new Map(),
+        pairLabels: new Map(),
+        recordsByPair: new Map(),
+        isNumeric: false,
+      };
     }
 
     if (
@@ -463,16 +507,26 @@ class OncoPrintPlot extends Component {
     }
 
     const genes = geneSet.slice(0, MAX_ROWS);
-    const pairs = filteredRecords.map((r) => r.pair).filter(Boolean);
+    const recordsByPair = new Map();
+    const pairLabels = new Map();
+    filteredRecords.forEach((record) => {
+      const recordKey = this.getRecordKey(record);
+      if (!recordKey) return;
+      recordsByPair.set(recordKey, record);
+      pairLabels.set(recordKey, record.pair || recordKey);
+    });
+    const pairs = Array.from(recordsByPair.keys());
     const matrix = new Map();
 
     const geneSetUpper = new Set(genes.map((g) => g.toUpperCase()));
 
     filteredRecords.forEach((record) => {
+      const recordKey = this.getRecordKey(record);
+      if (!recordKey) return;
       const parsedGenes = this.getParsedGenes(record);
       parsedGenes.forEach(({ gene, type }) => {
         if (geneSetUpper.has(gene)) {
-          const key = `${gene},${record.pair}`;
+          const key = `${gene},${recordKey}`;
           if (!matrix.has(key)) {
             matrix.set(key, []);
           }
@@ -481,8 +535,10 @@ class OncoPrintPlot extends Component {
       });
     });
 
-    const pairsWithAlterations = pairs.filter((pair) => {
-      return genes.some((gene) => matrix.has(`${gene.toUpperCase()},${pair}`));
+    const pairsWithAlterations = pairs.filter((pairKey) => {
+      return genes.some((gene) =>
+        matrix.has(`${gene.toUpperCase()},${pairKey}`),
+      );
     });
 
     let finalGenes = genes;
@@ -494,7 +550,14 @@ class OncoPrintPlot extends Component {
       finalPairs = orderedPairs;
     }
 
-    this.cachedOncoPrintData = { genes: finalGenes, pairs: finalPairs, matrix, isNumeric: false };
+    this.cachedOncoPrintData = {
+      genes: finalGenes,
+      pairs: finalPairs,
+      matrix,
+      pairLabels,
+      recordsByPair,
+      isNumeric: false,
+    };
     this.cachedFilteredRecords = filteredRecords;
     this.cachedGeneSet = geneSet;
     this.cachedEnableMemoSort = enableMemoSort;
@@ -530,24 +593,34 @@ class OncoPrintPlot extends Component {
     });
 
     const keys = Array.from(allKeys).sort().slice(0, MAX_ROWS);
-    const pairs = filteredRecords.map((r) => r.pair).filter(Boolean);
+    const recordsByPair = new Map();
+    const pairLabels = new Map();
+    filteredRecords.forEach((record) => {
+      const recordKey = this.getRecordKey(record);
+      if (!recordKey) return;
+      recordsByPair.set(recordKey, record);
+      pairLabels.set(recordKey, record.pair || recordKey);
+    });
+    const pairs = Array.from(recordsByPair.keys());
     const matrix = new Map();
 
     filteredRecords.forEach((record) => {
+      const recordKey = this.getRecordKey(record);
+      if (!recordKey) return;
       const objValue = record[objectAttribute];
       if (objValue && typeof objValue === 'object') {
         keys.forEach((key) => {
           const val = objValue[key];
           if (typeof val === 'number' && val !== 0) {
-            const matrixKey = `${key},${record.pair}`;
+            const matrixKey = `${key},${recordKey}`;
             matrix.set(matrixKey, val);
           }
         });
       }
     });
 
-    const pairsWithData = pairs.filter((pair) => {
-      return keys.some((key) => matrix.has(`${key},${pair}`));
+    const pairsWithData = pairs.filter((pairKey) => {
+      return keys.some((key) => matrix.has(`${key},${pairKey}`));
     });
 
     let finalKeys = keys;
@@ -559,7 +632,14 @@ class OncoPrintPlot extends Component {
       finalPairs = orderedPairs;
     }
 
-    this.cachedOncoPrintData = { genes: finalKeys, pairs: finalPairs, matrix, isNumeric: true };
+    this.cachedOncoPrintData = {
+      genes: finalKeys,
+      pairs: finalPairs,
+      matrix,
+      pairLabels,
+      recordsByPair,
+      isNumeric: true,
+    };
     this.cachedFilteredRecords = filteredRecords;
     this.cachedObjectAttribute = objectAttribute;
     this.cachedEnableMemoSort = enableMemoSort;
@@ -678,7 +758,16 @@ class OncoPrintPlot extends Component {
 
     const { width } = this.props;
     const scrollLeft = this.currentScrollLeft;
-    const { genes, pairs, matrix, isNumeric, cellWidth, cellHeight, colorScale } = this.layoutParams;
+    const {
+      genes,
+      pairs,
+      matrix,
+      isNumeric,
+      cellWidth,
+      cellHeight,
+      colorScale,
+      pairLabels,
+    } = this.layoutParams;
     const { startCol, endCol } = this.getVisibleColumnRange(scrollLeft);
 
     const ctx = context._context;
@@ -741,7 +830,7 @@ class OncoPrintPlot extends Component {
         ctx.save();
         ctx.translate(viewportX, textY);
         ctx.rotate(Math.PI / 4);
-        ctx.fillText(pair, 0, 0);
+        ctx.fillText(pairLabels.get(pair) || pair, 0, 0);
         ctx.restore();
       }
     }
@@ -755,7 +844,14 @@ class OncoPrintPlot extends Component {
     }
 
     const { width } = this.props;
-    const { genes, pairs, matrix, isNumeric } = this.computeOncoPrintData();
+    const {
+      genes,
+      pairs,
+      matrix,
+      pairLabels,
+      recordsByPair,
+      isNumeric,
+    } = this.computeOncoPrintData();
 
     this.labelsLayer.destroyChildren();
 
@@ -806,6 +902,8 @@ class OncoPrintPlot extends Component {
       genes,
       pairs,
       matrix,
+      pairLabels,
+      recordsByPair,
       isNumeric,
       colorScale,
     };

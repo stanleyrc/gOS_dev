@@ -11,9 +11,11 @@ const actions = {
     type: actions.FETCH_POPULATION_STATISTICS_REQUEST,
   }),
 
-  fetchCohortStatistics: (cohort) => ({
+  fetchCohortStatistics: (searchId, options = {}) => ({
     type: actions.FETCH_COHORT_STATISTICS_REQUEST,
-    cohort,
+    searchId,
+    comparison: options.comparison === true,
+    label: options.label,
   }),
 };
 

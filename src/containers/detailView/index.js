@@ -14,7 +14,7 @@ import BinQCTab from "../../tabs/binQCTab";
 import SignaturesTab from "../../tabs/signaturesTab";
 import settingsActions from "../../redux/settings/actions";
 
-const { updateTab, updateDomains } = settingsActions;
+const { updateTab, updateDomains, updateCaseReport } = settingsActions;
 
 class DetailView extends Component {
   handleTabChanged = (tab) => {
@@ -22,8 +22,12 @@ class DetailView extends Component {
     updateTab(tab);
   };
 
+  handleBackToResults = () => {
+    this.props.updateCaseReport(null);
+  };
+
   render() {
-    const { t, loading, pair, tab } = this.props;
+    const { t, loading, pair, tab, canReturnToResults } = this.props;
     if (!pair) {
       return null;
     }
@@ -42,7 +46,10 @@ class DetailView extends Component {
         <Skeleton active loading={loading}>
           <Affix offsetTop={0}>
             <div className="ant-home-header-container">
-              <HeaderPanel />
+              <HeaderPanel
+                canReturnToResults={canReturnToResults}
+                onBackToResults={this.handleBackToResults}
+              />
             </div>
           </Affix>
           <div className="ant-home-content-container">
@@ -65,10 +72,12 @@ class DetailView extends Component {
 DetailView.propTypes = {};
 DetailView.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
+  updateCaseReport: (report) => dispatch(updateCaseReport(report)),
   updateTab: (tab) => dispatch(updateTab(tab)),
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({
+  canReturnToResults: (state.CaseReports.reports || []).length > 0,
   loading: state.CaseReport.loading,
   pair: state.CaseReport.metadata?.pair,
   tab: state.Settings.tab,

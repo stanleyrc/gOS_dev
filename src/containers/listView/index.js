@@ -17,11 +17,13 @@ import {
   Cascader,
   Flex,
   Divider,
+  Input,
   InputNumber,
   Slider,
   Collapse,
   Tag,
   Tabs,
+  message,
 } from "antd";
 import * as d3 from "d3";
 import {
@@ -34,6 +36,7 @@ import {
   cascaderOperators,
   cascaderSearchFilter,
 } from "../../helpers/filters";
+import { normalizeSpecimenDateRangeFilter } from "../../helpers/specimenDate";
 import Wrapper from "./index.style";
 import ContainerDimensions from "react-container-dimensions";
 import InterpretationsAvatar from "../../components/interpretationsAvatar";
@@ -41,8 +44,21 @@ import AggregationsPanel from "./aggregationsPanel";
 import CohortsPanel from "./cohortsPanel";
 import HistogramPlot from "../../components/histogramPlot";
 import ParallelCoordinatesPanel from "../../components/parallelCoordinatesPanel";
+import SavedQueryButton from "../../components/savedQueryButton";
+import SavedQueryEditModal from "../../components/savedQueryEditModal";
+import caseReportsActions from "../../redux/caseReports/actions";
+import { sourceCaseIdentityKey } from "../../helpers/browseScope";
+import { userAuthRepository } from "../../helpers/userAuth";
+
+const {
+  applyFavoriteSearch,
+  deleteFavoriteSearch,
+  fetchFavoriteSearches,
+  saveFavoriteSearch,
+} = caseReportsActions;
 
 const { SHOW_CHILD } = Cascader;
+const PATIENT_FILTER_OPTIONS_LIMIT = 100;
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -50,13 +66,37 @@ const { Text, Paragraph } = Typography;
 const { Compact } = Space;
 const { Item } = Form;
 
-class ListView extends Component {
+export class ListView extends Component {
   formRef = React.createRef();
+  cascaderOptionsCache = {};
+  selectOptionsCache = {};
 
   state = {
     isChatOpen: false,
     activeTab: "cases",
+    favoriteModalOpen: false,
+    favoriteName: "",
+    editingFavoriteSearch: null,
+    favoriteSavePending: false,
+    selectSearchTextByFilter: {},
   };
+
+  componentDidMount() {
+    this.handleSavedSearchUserChanged = () =>
+      this.props.fetchFavoriteSearches();
+    userAuthRepository.emitter.on(
+      "userChanged",
+      this.handleSavedSearchUserChanged,
+    );
+    this.props.fetchFavoriteSearches();
+  }
+
+  componentWillUnmount() {
+    userAuthRepository.emitter.off(
+      "userChanged",
+      this.handleSavedSearchUserChanged,
+    );
+  }
 
   renderCascaderOption = (option) => {
     const { t } = this.props;
@@ -99,6 +139,132 @@ class ListView extends Component {
     );
   };
 
+  getCascaderOptions = (filterState) => {
+    if (filterState.options) return filterState.options;
+
+    const filterName = filterState.filter.name;
+    const cache = this.cascaderOptionsCache[filterName];
+    if (
+      cache &&
+      cache.records === filterState.records &&
+      cache.frequencies === filterState.frequencies
+    ) {
+      return cache.options;
+    }
+
+    const options = generateCascaderOptions(
+      filterState.records || [],
+      filterState.frequencies || {},
+    );
+    this.cascaderOptionsCache[filterName] = {
+      records: filterState.records,
+      frequencies: filterState.frequencies,
+      options,
+    };
+    return options;
+  };
+
+  filterSelectOption = (input, option = {}) =>
+    this.selectOptionMatchesSearch(option, (input || "").toLowerCase());
+
+  selectOptionMatchesSearch = (option = {}, searchText = "") =>
+    (option.searchText || option.label || option.value || "")
+      .toString()
+      .toLowerCase()
+      .includes(searchText);
+
+  getSelectOptions = (filterState) => {
+    const filterName = filterState.filter.name;
+    const emptyLabel = this.props.t("containers.list-view.filters.empty");
+    const cache = this.selectOptionsCache[filterName];
+    if (
+      cache &&
+      cache.records === filterState.records &&
+      cache.frequencies === filterState.frequencies &&
+      cache.emptyLabel === emptyLabel
+    ) {
+      return cache.options;
+    }
+
+    const options = (filterState.records || []).map((value) => {
+      const label = value
+        ? snakeCaseToHumanReadable(value)
+        : emptyLabel;
+      const valueText = value == null ? "" : value.toString();
+      return {
+        label,
+        value: value || "null",
+        count: filterState.frequencies?.[value] || 0,
+        searchText: `${label} ${valueText}`,
+      };
+    });
+    this.selectOptionsCache[filterName] = {
+      records: filterState.records,
+      frequencies: filterState.frequencies,
+      emptyLabel,
+      options,
+    };
+    return options;
+  };
+
+  getSelectedSelectValues = (filterName) => {
+    const selectedValue = this.props.searchFilters?.[filterName];
+    if (Array.isArray(selectedValue)) return selectedValue;
+    if (selectedValue == null || selectedValue === "") return [];
+    return [selectedValue];
+  };
+
+  getVisibleSelectOptions = (filterState) => {
+    const options = this.getSelectOptions(filterState);
+    const filterName = filterState.filter.name;
+    if (filterName !== "patient_id") return options;
+
+    const searchText = (
+      this.state.selectSearchTextByFilter[filterName] || ""
+    ).trim().toLowerCase();
+    let visibleOptions = searchText
+      ? options
+        .filter((option) => this.selectOptionMatchesSearch(option, searchText))
+        .slice(0, PATIENT_FILTER_OPTIONS_LIMIT)
+      : options.slice(0, PATIENT_FILTER_OPTIONS_LIMIT);
+
+    const visibleValues = new Set(
+      visibleOptions.map((option) => option.value?.toString()),
+    );
+    this.getSelectedSelectValues(filterName).forEach((selectedValue) => {
+      const selectedKey = selectedValue?.toString();
+      if (visibleValues.has(selectedKey)) return;
+      const selectedOption = options.find(
+        (option) => option.value?.toString() === selectedKey,
+      );
+      if (selectedOption) {
+        visibleOptions = [selectedOption, ...visibleOptions];
+        visibleValues.add(selectedKey);
+      }
+    });
+
+    return visibleOptions;
+  };
+
+  handleSelectSearch = (filterName, value) => {
+    this.setState((prevState) => ({
+      selectSearchTextByFilter: {
+        ...prevState.selectSearchTextByFilter,
+        [filterName]: value || "",
+      },
+    }));
+  };
+
+  handleSelectOpenChange = (filterName, open) => {
+    if (open || !this.state.selectSearchTextByFilter[filterName]) return;
+    this.setState((prevState) => ({
+      selectSearchTextByFilter: {
+        ...prevState.selectSearchTextByFilter,
+        [filterName]: "",
+      },
+    }));
+  };
+
   handleTabChange = (key) => {
     this.setState({ activeTab: key });
   };
@@ -121,11 +287,13 @@ class ListView extends Component {
 
   onReset = () => {
     const { filters, filtersExtents } = this.props;
-    // Build reset values: sliders use their extent, others empty array
+    // Build reset values: sliders use their extent, date ranges clear their bounds, others empty array
     const resetValues = filters.reduce((acc, d) => {
       const name = d.filter.name;
       if (d.filter.renderer === "slider") {
         acc[name] = filtersExtents[name];
+      } else if (d.filter.renderer === "date-range") {
+        acc[name] = { from: undefined, to: undefined };
       } else {
         acc[name] = [];
       }
@@ -154,7 +322,255 @@ class ListView extends Component {
     if (prevProps.searchFilters !== this.props.searchFilters) {
       this.formRef.current.setFieldsValue(this.props.searchFilters);
     }
+
+    const saveFinished =
+      this.state.favoriteSavePending &&
+      !this.props.favoriteSearchesSaving &&
+      (prevProps.favoriteSearchesSaving ||
+        prevProps.favoriteSearches !== this.props.favoriteSearches ||
+        Boolean(this.props.favoriteSearchesError));
+    if (saveFinished) {
+      if (this.props.favoriteSearchesError) {
+        message.error(
+          this.props.t("containers.list-view.favorites.operation-failed", {
+            error:
+              this.props.favoriteSearchesError?.message ||
+              `${this.props.favoriteSearchesError}`,
+          }),
+        );
+        this.setState({ favoriteSavePending: false });
+      } else {
+        this.setState(
+          { favoriteSavePending: false },
+          this.closeFavoriteModal,
+        );
+      }
+    } else if (
+      this.props.favoriteSearchesError &&
+      prevProps.favoriteSearchesError !== this.props.favoriteSearchesError
+    ) {
+      message.error(
+        this.props.t("containers.list-view.favorites.operation-failed", {
+          error:
+            this.props.favoriteSearchesError?.message ||
+            `${this.props.favoriteSearchesError}`,
+        }),
+      );
+    }
   }
+
+  getCurrentSearchFiltersForFavorite = () => ({
+    ...this.props.searchFilters,
+    ...(this.formRef.current?.getFieldsValue?.() || {}),
+    page: 1,
+    per_page: this.props.searchFilters?.per_page || 10,
+    orderId: this.props.searchFilters?.orderId || 1,
+  });
+
+  getOperatorLabel = (operator) => {
+    const normalizedOperator = (operator || "OR").toUpperCase();
+    return this.props.t(
+      `containers.list-view.favorites.description.operators.${normalizedOperator}`,
+    );
+  };
+
+  formatFavoriteFilterValue = (filter, value) => {
+    if (value == null) return "";
+    if (filter?.renderer === "slider" && !isNaN(value)) {
+      return d3.format(filter.format || ",.2f")(value);
+    }
+    if (Array.isArray(value)) return value[value.length - 1];
+    return `${value}`;
+  };
+
+  isFavoriteSliderApplied = (filterName, value) => {
+    const extent = this.props.filtersExtents?.[filterName];
+    return (
+      Array.isArray(value) &&
+      value.length >= 2 &&
+      Array.isArray(extent) &&
+      (Number(value[0]) !== Number(extent[0]) ||
+        Number(value[1]) !== Number(extent[1]))
+    );
+  };
+
+  openFavoriteModal = () => {
+    this.setState({
+      favoriteModalOpen: true,
+      favoriteName: this.props.t(
+        "containers.list-view.favorites.default-name",
+        { timestamp: new Date().toLocaleString() },
+      ),
+      editingFavoriteSearch: null,
+    });
+  };
+
+  openFavoriteEditModal = (event, favoriteSearch) => {
+    event?.stopPropagation?.();
+    this.setState({
+      favoriteModalOpen: true,
+      favoriteName: favoriteSearch.name,
+      editingFavoriteSearch: favoriteSearch,
+    });
+  };
+
+  closeFavoriteModal = () => {
+    this.setState({
+      favoriteModalOpen: false,
+      favoriteName: "",
+      editingFavoriteSearch: null,
+    });
+  };
+
+  buildFavoriteDescription = (searchFilters = {}) => {
+    const { dataset, filters, t } = this.props;
+    const clauses = [];
+
+    if (searchFilters.texts) {
+      clauses.push(
+        t("containers.list-view.favorites.description.text-contains", {
+          text: searchFilters.texts,
+        }),
+      );
+    }
+
+    (filters || []).forEach(({ filter }) => {
+      const value = searchFilters[filter.name];
+      if (
+        value == null ||
+        value === "" ||
+        (Array.isArray(value) && value.length === 0) ||
+        filter.name === "tags"
+      ) {
+        return;
+      }
+
+      const field = filter.title || snakeCaseToHumanReadable(filter.name);
+      if (filter.renderer === "date-range") {
+        const range = normalizeSpecimenDateRangeFilter(value);
+        if (!range) return;
+        if (range.from) {
+          clauses.push(
+            t("containers.list-view.favorites.description.range-min", {
+              field,
+              value: range.from,
+            }),
+          );
+        }
+        if (range.to) {
+          clauses.push(
+            t("containers.list-view.favorites.description.range-max", {
+              field,
+              value: range.to,
+            }),
+          );
+        }
+        return;
+      }
+
+      if (filter.renderer === "slider") {
+        if (!this.isFavoriteSliderApplied(filter.name, value)) return;
+        clauses.push(
+          t("containers.list-view.favorites.description.range-min", {
+            field,
+            value: this.formatFavoriteFilterValue(filter, value[0]),
+          }),
+          t("containers.list-view.favorites.description.range-max", {
+            field,
+            value: this.formatFavoriteFilterValue(filter, value[1]),
+          }),
+        );
+        return;
+      }
+
+      const values = (Array.isArray(value) ? value : [value])
+        .map((item) => this.formatFavoriteFilterValue(filter, item))
+        .filter(Boolean);
+      if (values.length > 0) {
+        clauses.push(
+          t("containers.list-view.favorites.description.includes", {
+            field,
+            values: values.join(", "),
+          }),
+        );
+      }
+    });
+
+    const tags = (searchFilters.tags || [])
+      .map((tag) =>
+        this.formatFavoriteFilterValue({ renderer: "cascader" }, tag),
+      )
+      .filter(Boolean);
+    if (tags.length > 0) {
+      clauses.push(
+        t("containers.list-view.favorites.description.tags", {
+          operator: this.getOperatorLabel(searchFilters.operator),
+          tags: tags.join(", "),
+        }),
+      );
+    }
+
+    const prefix = t("containers.list-view.favorites.description.prefix", {
+      dataset:
+        dataset?.title ||
+        dataset?.id ||
+        t("containers.list-view.favorites.description.selected-dataset"),
+    });
+    return clauses.length > 0
+      ? t("containers.list-view.favorites.description.with-filters", {
+          prefix,
+          clauses: clauses.join(", "),
+        })
+      : t("containers.list-view.favorites.description.without-filters", {
+          prefix,
+        });
+  };
+
+  saveFavoriteSearch = () => {
+    const { editingFavoriteSearch, favoriteName } = this.state;
+    if (!favoriteName.trim()) return;
+    const searchFilters =
+      editingFavoriteSearch?.searchFilters ||
+      this.getCurrentSearchFiltersForFavorite();
+
+    this.setState({ favoriteSavePending: true });
+    this.props.saveFavoriteSearch({
+      id: editingFavoriteSearch?.id,
+      searchId: editingFavoriteSearch?.searchId,
+      datasetId: editingFavoriteSearch?.datasetId,
+      createdAt: editingFavoriteSearch?.createdAt,
+      name: favoriteName.trim(),
+      description:
+        editingFavoriteSearch?.description ||
+        this.buildFavoriteDescription(searchFilters),
+      resultCount:
+        editingFavoriteSearch?.resultCount ?? this.props.totalReportsCount,
+      searchFilters,
+    });
+  };
+
+  handleDeleteFavoriteSearch = (event, favoriteId) => {
+    event?.stopPropagation?.();
+    this.props.deleteFavoriteSearch(favoriteId);
+  };
+
+  renderFiltersTitle = () => (
+    <div className="filters-card-title">
+      <span>{this.props.t("containers.list-view.filters.title")}</span>
+      <SavedQueryButton
+        currentSearchId={this.props.currentSearchId}
+        favoriteSearchDeletingId={this.props.favoriteSearchDeletingId}
+        favoriteSearches={this.props.favoriteSearches}
+        favoriteSearchesLoading={this.props.favoriteSearchesLoading}
+        favoriteSearchesSaving={this.props.favoriteSearchesSaving}
+        loading={this.props.searchPending}
+        onApplyFavoriteSearch={this.props.applyFavoriteSearch}
+        onDeleteFavoriteSearch={this.handleDeleteFavoriteSearch}
+        onEditFavoriteSearch={this.openFavoriteEditModal}
+        onOpenFavoriteModal={this.openFavoriteModal}
+      />
+    </div>
+  );
 
   onPageChanged = (page, per_page) => {
     let fieldValues = this.formRef.current.getFieldsValue();
@@ -199,7 +615,16 @@ class ListView extends Component {
       datafiles,
       dataset,
       plots,
+      favoriteSearchesSaving,
     } = this.props;
+    const {
+      favoriteModalOpen,
+      favoriteName,
+      editingFavoriteSearch,
+    } = this.state;
+    const modalSearchFilters =
+      editingFavoriteSearch?.searchFilters ||
+      this.getCurrentSearchFiltersForFavorite();
 
     const initialValues = {
       ...searchFilters,
@@ -247,9 +672,7 @@ class ListView extends Component {
               <Cascader
                 placeholder={t("containers.list-view.filters.placeholder")}
                 className="tags-cascader"
-                options={
-                  d.options || generateCascaderOptions(d.records, d.frequencies)
-                }
+                options={this.getCascaderOptions(d)}
                 displayRender={this.tagsDisplayRender}
                 optionRender={this.renderCascaderOption}
                 multiple
@@ -267,6 +690,45 @@ class ListView extends Component {
               />
             </Item>
           </Compact>
+        );
+      }
+
+      if (d.filter.renderer === "date-range") {
+        const extent = filtersExtents[d.filter.name] || d.extent || [];
+        return (
+          <Item
+            key={`containers.list-view.filters.${d.filter.name}`}
+            label={d.filter.title}
+          >
+            <div className="filter-slider-inputs">
+              <div className="filter-slider-input">
+                <Text className="filter-slider-input-label">
+                  {t("containers.list-view.filters.date-range.from")}
+                </Text>
+                <Item name={[d.filter.name, "from"]} noStyle>
+                  <Input
+                    type="date"
+                    size="small"
+                    min={extent?.[0]}
+                    max={extent?.[1]}
+                  />
+                </Item>
+              </div>
+              <div className="filter-slider-input">
+                <Text className="filter-slider-input-label align-right">
+                  {t("containers.list-view.filters.date-range.to")}
+                </Text>
+                <Item name={[d.filter.name, "to"]} noStyle>
+                  <Input
+                    type="date"
+                    size="small"
+                    min={extent?.[0]}
+                    max={extent?.[1]}
+                  />
+                </Item>
+              </div>
+            </div>
+          </Item>
         );
       }
 
@@ -294,15 +756,22 @@ class ListView extends Component {
               style={{ width: "100%" }}
               maxTagCount="responsive"
               maxTagTextLength={8}
-              options={d.records.map((e) => ({
-                label: e
-                  ? snakeCaseToHumanReadable(e)
-                  : t("containers.list-view.filters.empty"),
-                value: e || "null",
-                count: d.frequencies[e] || 0,
-              }))}
+              options={this.getVisibleSelectOptions(d)}
               labelInValue={false}
+              optionFilterProp="label"
               optionRender={this.renderSelectOption}
+              filterOption={
+                d.filter.name === "patient_id"
+                  ? false
+                  : this.filterSelectOption
+              }
+              onSearch={(value) => this.handleSelectSearch(d.filter.name, value)}
+              onOpenChange={(open) =>
+                this.handleSelectOpenChange(d.filter.name, open)
+              }
+              showSearch
+              virtual
+              listHeight={256}
             />
           </Item>
         );
@@ -460,6 +929,24 @@ class ListView extends Component {
 
     return (
       <Wrapper>
+        <SavedQueryEditModal
+          open={favoriteModalOpen}
+          favoriteName={favoriteName}
+          favoriteSearchesSaving={favoriteSearchesSaving}
+          isEditing={Boolean(editingFavoriteSearch)}
+          description={
+            editingFavoriteSearch?.description ||
+            this.buildFavoriteDescription(modalSearchFilters)
+          }
+          resultCount={
+            editingFavoriteSearch?.resultCount ?? totalRecords
+          }
+          onFavoriteNameChange={(nextName) =>
+            this.setState({ favoriteName: nextName })
+          }
+          onSave={this.saveFavoriteSearch}
+          onCancel={this.closeFavoriteModal}
+        />
         <Form
           layout="vertical"
           initialValues={initialValues}
@@ -472,7 +959,7 @@ class ListView extends Component {
               <Col className="gutter-row" span={4} style={{ display: "flex" }}>
                 <Card
                   className="filters-box"
-                  title={t("containers.list-view.filters.title")}
+                  title={this.renderFiltersTitle()}
                   style={{ flex: 1, display: "flex", flexDirection: "column" }}
                 >
                   <>
@@ -584,7 +1071,7 @@ class ListView extends Component {
                           <Row gutter={[16, 16]}>
                             {records.map((d) => (
                               <Col
-                                key={d.pair}
+                                key={sourceCaseIdentityKey(d) || d.pair}
                                 className="gutter-row"
                                 span={6}
                                 style={{ display: "flex" }}
@@ -603,7 +1090,7 @@ class ListView extends Component {
                                     display: "flex",
                                     flexDirection: "column",
                                   }}
-                                  onClick={(e) => handleCardClick(e, d.pair)}
+                                  onClick={(e) => handleCardClick(e, d)}
                                   hoverable
                                   title={
                                     <Space>
@@ -635,7 +1122,7 @@ class ListView extends Component {
                                   extra={
                                     <Space>
                                       <InterpretationsAvatar
-                                        pair={d.pair}
+                                        pair={d.caseReportId || d.pair}
                                         casesWithInterpretations={
                                           casesWithInterpretations
                                         }
@@ -844,8 +1331,24 @@ ListView.defaultProps = {
   searchFilters: { per_page: 10, page: 1, orderId: 1 },
   filtersExtents: {},
 };
-const mapDispatchToProps = (dispatch) => ({});
+const mapDispatchToProps = (dispatch) => ({
+  applyFavoriteSearch: (favoriteId) =>
+    dispatch(applyFavoriteSearch(favoriteId)),
+  deleteFavoriteSearch: (favoriteId) =>
+    dispatch(deleteFavoriteSearch(favoriteId)),
+  fetchFavoriteSearches: () => dispatch(fetchFavoriteSearches()),
+  saveFavoriteSearch: (favoriteSearch) =>
+    dispatch(saveFavoriteSearch(favoriteSearch)),
+});
 const mapStateToProps = (state) => ({
+  currentSearchId: state.CaseReports.currentSearchId,
+  favoriteSearchDeletingId: state.CaseReports.favoriteSearchDeletingId,
+  favoriteSearches: state.CaseReports.favoriteSearches,
+  favoriteSearchesError: state.CaseReports.favoriteSearchesError,
+  favoriteSearchesLoading: state.CaseReports.favoriteSearchesLoading,
+  favoriteSearchesSaving: state.CaseReports.favoriteSearchesSaving,
+  searchPending: state.CaseReports.searchPending,
+  totalReportsCount: state.CaseReports.totalReportsCount,
   casesWithInterpretations: state.CaseReports.casesWithInterpretations,
   interpretationsCounts: state.CaseReports.interpretationsCounts,
   plots: state.PopulationStatistics.cohort,

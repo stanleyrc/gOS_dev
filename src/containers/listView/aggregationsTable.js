@@ -4,6 +4,12 @@ import { Table, Typography, Select, Tooltip, Row, Col, Button } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
+import {
+  allDatasetsBrowseScope,
+  buildCaseReportUrl,
+  datasetBrowseScope,
+  sourceCaseIdentityKey,
+} from "../../helpers/browseScope";
 
 const { Text } = Typography;
 
@@ -168,10 +174,9 @@ class AggregationsTable extends PureComponent {
     document.body.removeChild(link);
   };
 
-  handlePairClick = (event, pair) => {
-    const { dataset } = this.props;
+  handlePairClick = (event, caseReport) => {
     event.preventDefault();
-    openCaseInNewTab(pair, dataset);
+    openCaseInNewTab(caseReport, this.props.dataset);
   };
 
 
@@ -361,13 +366,20 @@ class AggregationsTable extends PureComponent {
            
            // Make pair column a clickable link
            if (col.renderLink) {
-             const datasetParam = dataset?.id ? `&dataset=${dataset.id}` : "";
+             const browseScope = dataset?.isAllDatasets
+               ? allDatasetsBrowseScope()
+               : datasetBrowseScope(dataset?.id);
+             const caseReportUrl = buildCaseReportUrl(
+               document.location,
+               record,
+               browseScope,
+             );
              return (
                <a
-                 href={`/?report=${value}${datasetParam}`}
+                 href={caseReportUrl?.toString() || "#"}
                  onClick={(e) => {
                    e.preventDefault();
-                   this.handlePairClick(e, value);
+                   this.handlePairClick(e, record);
                  }}
                  style={{ color: "#1890ff", cursor: "pointer" }}
                  target="_blank"
@@ -473,7 +485,9 @@ class AggregationsTable extends PureComponent {
         <Table
           columns={visibleColumns}
           dataSource={filteredRecords}
-          rowKey={(record, index) => record.pair || index}
+          rowKey={(record, index) =>
+            sourceCaseIdentityKey(record) || record.pair || index
+          }
           pagination={{
             pageSize: 10,
             hideOnSinglePage: true,
