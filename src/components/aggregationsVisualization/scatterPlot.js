@@ -55,6 +55,7 @@ class ScatterPlot extends Component {
       yVariable,
       colorByVariable,
       selectedGene,
+      selectedPatientId,
       onPointClick,
       scatterPlotType = "scatter",
     } = this.props;
@@ -76,6 +77,11 @@ class ScatterPlot extends Component {
         items.push({
           label: selectedGene,
           value: hasGene(d, selectedGene) ? "Mutated" : "Wild-type",
+        });
+      } else if (colorByVariable === "patient_id" && selectedPatientId) {
+        items.push({
+          label: getColumnLabel(colorByVariable),
+          value: d.patient_id || "N/A",
         });
       } else if (colorByVariable && colorAccessor) {
         const colorVal = colorAccessor(d);

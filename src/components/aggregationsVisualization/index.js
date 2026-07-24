@@ -60,6 +60,7 @@ class AggregationsVisualization extends Component {
       colorVariable: colorVarDefault,
       colorByVariable: null,
       selectedGene: null,
+      selectedPatientId: null,
       selectedGeneSet: "top20",
       appliedGeneExpression: "",
       tooltip: {
@@ -874,11 +875,13 @@ class AggregationsVisualization extends Component {
                       filteredRecords={filteredRecords}
                       colorByVariable={this.state.colorByVariable}
                       selectedGene={this.state.selectedGene}
+                      selectedPatientId={this.state.selectedPatientId}
                       selectedGeneSet={this.state.selectedGeneSet}
                       appliedGeneExpression={this.state.appliedGeneExpression}
                       pathwayMap={this.props.pathwayMap}
                       onColorChange={(val) => this.setState({ colorByVariable: val })}
                       onGeneChange={(val) => this.setState({ selectedGene: val })}
+                      onPatientIdChange={(val) => this.setState({ selectedPatientId: val })}
                       onGeneSetChange={(val) => this.setState({ selectedGeneSet: val })}
                       onApplyExpression={(val) => this.setState({ appliedGeneExpression: val })}
                     />
@@ -989,6 +992,7 @@ class AggregationsVisualization extends Component {
                         yVariable={this.state.yVariable}
                         colorByVariable={this.state.colorByVariable}
                         selectedGene={this.state.selectedGene}
+                        selectedPatientId={this.state.selectedPatientId}
                         onPointClick={this.handlePointClick}
                         scatterPlotType={this.state.scatterPlotType}
                       />
@@ -1022,10 +1026,29 @@ class AggregationsVisualization extends Component {
 
   getColorConfigForScatter() {
     const { filteredRecords = [] } = this.props;
-    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.state;
+    const {
+      colorByVariable,
+      selectedGene,
+      selectedPatientId,
+      selectedGeneSet,
+      appliedGeneExpression,
+    } = this.state;
 
     if (!colorByVariable) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
+    }
+
+    if (colorByVariable === "patient_id") {
+      if (!selectedPatientId) {
+        return { colorAccessor: null, colorScale: null, colorCategories: [] };
+      }
+      const categories = ["Selected patient", "Background"];
+      const colorScale = d3.scaleOrdinal()
+        .domain(categories)
+        .range(["#e41a1c", "#999999"]);
+      const colorAccessor = (d) =>
+        d.patient_id === selectedPatientId ? "Selected patient" : "Background";
+      return { colorAccessor, colorScale, colorCategories: categories };
     }
 
     if (colorByVariable === "driver_gene") {
@@ -1096,7 +1119,13 @@ class AggregationsVisualization extends Component {
   }
 
   renderColorLegend() {
-    const { colorByVariable, selectedGene, selectedGeneSet, appliedGeneExpression } = this.state;
+    const {
+      colorByVariable,
+      selectedGene,
+      selectedPatientId,
+      selectedGeneSet,
+      appliedGeneExpression,
+    } = this.state;
     const colorConfig = this.getColorConfigForScatter();
     const { colorScale, colorCategories } = colorConfig;
 
@@ -1111,6 +1140,8 @@ class AggregationsVisualization extends Component {
       } else {
         label = selectedGene;
       }
+    } else if (colorByVariable === "patient_id") {
+      label = selectedPatientId || "Patient ID";
     } else {
       label = getColumnLabel(colorByVariable);
     }

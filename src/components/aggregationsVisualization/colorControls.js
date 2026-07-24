@@ -20,6 +20,21 @@ class ColorControls extends Component {
     });
   };
 
+  getPatientOptions = () => {
+    const { filteredRecords = [] } = this.props;
+    const patientCounts = new Map();
+
+    filteredRecords.forEach((record) => {
+      const patientId = record.patient_id;
+      if (!patientId) return;
+      patientCounts.set(patientId, (patientCounts.get(patientId) || 0) + 1);
+    });
+
+    return Array.from(patientCounts.entries())
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .map(([patientId, count]) => ({ patientId, count }));
+  };
+
   getGeneFrequencies = () => {
     const { filteredRecords = [] } = this.props;
     const geneFrequencies = {};
@@ -60,6 +75,20 @@ class ColorControls extends Component {
 
     if (!colorByVariable) {
       return { colorAccessor: null, colorScale: null, colorCategories: [] };
+    }
+
+    if (colorByVariable === "patient_id") {
+      const { selectedPatientId } = this.props;
+      if (!selectedPatientId) {
+        return { colorAccessor: null, colorScale: null, colorCategories: [] };
+      }
+      const categories = ["Selected patient", "Background"];
+      const colorScale = d3.scaleOrdinal()
+        .domain(categories)
+        .range(["#e41a1c", "#999999"]);
+      const colorAccessor = (d) =>
+        d.patient_id === selectedPatientId ? "Selected patient" : "Background";
+      return { colorAccessor, colorScale, colorCategories: categories };
     }
 
     if (colorByVariable === "driver_gene") {
@@ -176,12 +205,18 @@ class ColorControls extends Component {
   };
 
   handleCascaderChange = (values) => {
-    const { onColorChange, onGeneChange, onGeneSetChange } = this.props;
+    const {
+      onColorChange,
+      onGeneChange,
+      onGeneSetChange,
+      onPatientIdChange,
+    } = this.props;
 
     if (!values || values.length === 0 || values[0] === "none") {
       onColorChange(null);
       onGeneChange(null);
       if (onGeneSetChange) onGeneSetChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
       return;
     }
 
@@ -190,10 +225,17 @@ class ColorControls extends Component {
       const geneSet = values.length >= 2 ? values[1] : "top20";
       if (onGeneSetChange) onGeneSetChange(geneSet);
       onGeneChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
+    } else if (values[0] === "patient_id") {
+      onColorChange("patient_id");
+      onGeneChange(null);
+      if (onGeneSetChange) onGeneSetChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
     } else {
       onColorChange(values[0]);
       onGeneChange(null);
       if (onGeneSetChange) onGeneSetChange(null);
+      if (onPatientIdChange) onPatientIdChange(null);
     }
   };
 
@@ -205,11 +247,20 @@ class ColorControls extends Component {
   };
 
   renderColorBySelector = () => {
-    const { colorByVariable, selectedGene, selectedGeneSet, onGeneChange, appliedGeneExpression } = this.props;
+    const {
+      colorByVariable,
+      selectedGene,
+      selectedGeneSet,
+      selectedPatientId,
+      onGeneChange,
+      onPatientIdChange,
+      appliedGeneExpression,
+    } = this.props;
     const options = this.buildCascaderOptions();
     const value = this.getCascaderValue();
     const geneFrequencies = this.getGeneFrequencies();
     const genesInSet = this.getGenesForSet(selectedGeneSet, geneFrequencies);
+    const patientOptions = this.getPatientOptions();
 
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -260,6 +311,28 @@ class ColorControls extends Component {
             ))}
           </Select>
         )}
+        {colorByVariable === "patient_id" && (
+          <Select
+            size="small"
+            value={selectedPatientId}
+            onChange={onPatientIdChange}
+            style={{ width: 180 }}
+            dropdownMatchSelectWidth={false}
+            optionFilterProp="label"
+            placeholder="Patient..."
+            allowClear
+            showSearch
+          >
+            {patientOptions.map(({ patientId, count }) => {
+              const label = `${patientId} (${count} ${count === 1 ? "case" : "cases"})`;
+              return (
+                <Select.Option key={patientId} value={patientId} label={label}>
+                  {label}
+                </Select.Option>
+              );
+            })}
+          </Select>
+        )}
       </div>
     );
   };
@@ -279,6 +352,8 @@ class ColorControls extends Component {
       } else {
         label = selectedGene;
       }
+    } else if (colorByVariable === "patient_id") {
+      label = this.props.selectedPatientId || "Patient ID";
     } else {
       label = getColumnLabel(colorByVariable);
     }

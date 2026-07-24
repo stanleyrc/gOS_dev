@@ -111,6 +111,8 @@ export const numericColumns = [
 ];
 
 export const categoricalColumns = [
+  { key: "datasetId", dataIndex: "datasetId", label: "Dataset ID", type: "categorical" },
+  { key: "patient_id", dataIndex: "patient_id", label: "Patient ID", type: "categorical" },
   { key: "disease", dataIndex: "disease", label: "Disease", type: "categorical" },
   { key: "primary_site", dataIndex: "primary_site", label: "Primary Site", type: "categorical" },
   { key: "tumor_type", dataIndex: "tumor_type", label: "Tumor Type", type: "categorical" },
