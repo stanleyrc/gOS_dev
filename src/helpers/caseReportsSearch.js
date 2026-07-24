@@ -6,6 +6,10 @@ import {
 } from "./utility";
 import { reportFilters } from "./filters";
 import { sourceCaseIdentityKey } from "./browseScope";
+import {
+  normalizeSpecimenDateRangeFilter,
+  specimenDateMatchesRangeFilter,
+} from "./specimenDate";
 
 export const emptyInterpretationSummary = () => ({
   all: new Set(),
@@ -188,6 +192,15 @@ export const filterCaseReportRecords = (
           .join(",")
           .toLowerCase()
           .includes(searchText),
+      );
+      return;
+    }
+
+    if (renderer === "date-range") {
+      const range = normalizeSpecimenDateRangeFilter(selectedValue);
+      if (!range) return;
+      records = records.filter((record) =>
+        specimenDateMatchesRangeFilter(getValueByPath(record, key), range),
       );
       return;
     }

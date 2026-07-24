@@ -316,6 +316,10 @@
           "min": "Min",
           "max": "Max"
         },
+        "date-range": {
+          "from": "From",
+          "to": "To"
+        },
         "title": "Search Filters",
         "placeholder": "select one or many",
         "empty": "(empty)",

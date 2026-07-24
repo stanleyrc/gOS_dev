@@ -1,5 +1,11 @@
-const ISO_DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-const DAYS_PER_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+import {
+  formatSpecimenDate,
+  parseSpecimenDate,
+  specimenDateEndKey,
+  specimenDateSortKey,
+} from "../../helpers/specimenDate";
+
+export { formatSpecimenDate, parseSpecimenDate };
 
 const compareText = (left, right) => {
   const leftText = `${left ?? ""}`;
@@ -12,25 +18,7 @@ const normalizeNonEmptyString = (value) => {
   return value.trim() || null;
 };
 
-const isLeapYear = (year) =>
-  year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0);
-
 export const normalizePatientId = normalizeNonEmptyString;
-
-export const parseSpecimenDate = (value) => {
-  if (typeof value !== "string") return null;
-  const match = ISO_DATE_ONLY_PATTERN.exec(value);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (year < 1 || month < 1 || month > 12 || day < 1) return null;
-
-  const daysInMonth =
-    month === 2 && isLeapYear(year) ? 29 : DAYS_PER_MONTH[month - 1];
-  return day <= daysInMonth ? value : null;
-};
 
 export const patientCaseIdentityKey = (identity = {}) =>
   JSON.stringify([identity?.datasetId ?? null, identity?.caseReportId ?? null]);
@@ -57,11 +45,19 @@ export const normalizePatientCase = (record = {}) => {
 
 export const sortPatientCases = (cases = []) =>
   [...cases].sort((left, right) => {
-    if (left.specimenDate && !right.specimenDate) return -1;
-    if (!left.specimenDate && right.specimenDate) return 1;
-    if (left.specimenDate && right.specimenDate) {
-      const dateOrder = compareText(right.specimenDate, left.specimenDate);
+    const leftDate = specimenDateSortKey(left.specimenDate);
+    const rightDate = specimenDateSortKey(right.specimenDate);
+    if (leftDate && !rightDate) return -1;
+    if (!leftDate && rightDate) return 1;
+    if (leftDate && rightDate) {
+      const dateOrder = compareText(rightDate, leftDate);
       if (dateOrder !== 0) return dateOrder;
+
+      const endOrder = compareText(
+        specimenDateEndKey(right.specimenDate),
+        specimenDateEndKey(left.specimenDate),
+      );
+      if (endOrder !== 0) return endOrder;
     }
     return (
       compareText(left.pair, right.pair) ||

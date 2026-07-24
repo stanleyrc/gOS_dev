@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { getValueByPath, plotTypes, reportAttributesMap } from "./utility";
+import { getSpecimenDateExtent } from "./specimenDate";
 import common from "../translations/en/common.json";
 
 export function reportFilters() {
@@ -319,6 +320,18 @@ export function getReportsFilters(fields, reports) {
       let allValues = reports
         .map((record) => getValueByPath(record, field.name))
         .flat();
+
+      if (field.renderer === "date-range") {
+        reportsFilters.push({
+          filter: field,
+          records: [],
+          frequencies: {},
+          extent: getSpecimenDateExtent(allValues),
+          totalRecords: reports.length,
+          format: field.format,
+        });
+        return;
+      }
 
       let frequencyMap = d3.rollup(
         allValues,

@@ -17,6 +17,7 @@ import {
   Cascader,
   Flex,
   Divider,
+  Input,
   InputNumber,
   Slider,
   Collapse,
@@ -35,6 +36,7 @@ import {
   cascaderOperators,
   cascaderSearchFilter,
 } from "../../helpers/filters";
+import { normalizeSpecimenDateRangeFilter } from "../../helpers/specimenDate";
 import Wrapper from "./index.style";
 import ContainerDimensions from "react-container-dimensions";
 import InterpretationsAvatar from "../../components/interpretationsAvatar";
@@ -155,11 +157,13 @@ export class ListView extends Component {
 
   onReset = () => {
     const { filters, filtersExtents } = this.props;
-    // Build reset values: sliders use their extent, others empty array
+    // Build reset values: sliders use their extent, date ranges clear their bounds, others empty array
     const resetValues = filters.reduce((acc, d) => {
       const name = d.filter.name;
       if (d.filter.renderer === "slider") {
         acc[name] = filtersExtents[name];
+      } else if (d.filter.renderer === "date-range") {
+        acc[name] = { from: undefined, to: undefined };
       } else {
         acc[name] = [];
       }
@@ -312,6 +316,28 @@ export class ListView extends Component {
       }
 
       const field = filter.title || snakeCaseToHumanReadable(filter.name);
+      if (filter.renderer === "date-range") {
+        const range = normalizeSpecimenDateRangeFilter(value);
+        if (!range) return;
+        if (range.from) {
+          clauses.push(
+            t("containers.list-view.favorites.description.range-min", {
+              field,
+              value: range.from,
+            }),
+          );
+        }
+        if (range.to) {
+          clauses.push(
+            t("containers.list-view.favorites.description.range-max", {
+              field,
+              value: range.to,
+            }),
+          );
+        }
+        return;
+      }
+
       if (filter.renderer === "slider") {
         if (!this.isFavoriteSliderApplied(filter.name, value)) return;
         clauses.push(
@@ -536,6 +562,45 @@ export class ListView extends Component {
               />
             </Item>
           </Compact>
+        );
+      }
+
+      if (d.filter.renderer === "date-range") {
+        const extent = filtersExtents[d.filter.name] || d.extent || [];
+        return (
+          <Item
+            key={`containers.list-view.filters.${d.filter.name}`}
+            label={d.filter.title}
+          >
+            <div className="filter-slider-inputs">
+              <div className="filter-slider-input">
+                <Text className="filter-slider-input-label">
+                  {t("containers.list-view.filters.date-range.from")}
+                </Text>
+                <Item name={[d.filter.name, "from"]} noStyle>
+                  <Input
+                    type="date"
+                    size="small"
+                    min={extent?.[0]}
+                    max={extent?.[1]}
+                  />
+                </Item>
+              </div>
+              <div className="filter-slider-input">
+                <Text className="filter-slider-input-label align-right">
+                  {t("containers.list-view.filters.date-range.to")}
+                </Text>
+                <Item name={[d.filter.name, "to"]} noStyle>
+                  <Input
+                    type="date"
+                    size="small"
+                    min={extent?.[0]}
+                    max={extent?.[1]}
+                  />
+                </Item>
+              </div>
+            </div>
+          </Item>
         );
       }
 

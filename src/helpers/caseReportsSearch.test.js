@@ -31,6 +31,7 @@ const fields = [
   { id: "pair", name: "pair", renderer: "select" },
   { id: "disease", name: "disease", renderer: "select" },
   { id: "tags", name: "tags", renderer: "cascader" },
+  { id: "specimen_date", name: "specimen_date", renderer: "date-range" },
   { id: "tmb", name: "tmb", renderer: "slider" },
   { id: "hrd.hrd_score", name: "hrd.hrd_score", renderer: "slider" },
 ];
@@ -42,6 +43,7 @@ const records = [
     pair: "PAIR-1",
     disease: "AML",
     tags: ["Gene: TP53", "Type: SNV"],
+    specimen_date: "2024-01-15",
     tmb: 8,
     hrd: { hrd_score: 0.2 },
   },
@@ -51,6 +53,7 @@ const records = [
     pair: "PAIR-1",
     disease: "Breast cancer",
     tags: ["Gene: BRCA1"],
+    specimen_date: "2024-02-01/2024-02-10",
     tmb: 3,
     hrd: { hrd_score: 0.8 },
   },
@@ -60,6 +63,7 @@ const records = [
     pair: "PAIR-3",
     disease: "AML",
     tags: ["Gene: TP53"],
+    specimen_date: null,
     tmb: 12,
     hrd: { hrd_score: 0.5 },
   },
@@ -82,6 +86,21 @@ describe("static case-report search", () => {
     expect(matched.map(({ caseReportId }) => caseReportId)).toEqual([
       "case-1",
       "case-3",
+    ]);
+  });
+
+  it("filters specimen point/range dates by overlapping from/to dates", () => {
+    const matched = filterCaseReportRecords(
+      records,
+      {
+        specimen_date: { from: "2024-02-05", to: "2024-02-20" },
+        orderId: 1,
+      },
+      fields,
+    );
+
+    expect(matched.map(({ caseReportId }) => caseReportId)).toEqual([
+      "case-2",
     ]);
   });
 

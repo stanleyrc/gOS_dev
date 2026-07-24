@@ -8,6 +8,7 @@ import datasetsActions from "../../redux/datasets/actions";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
 import {
   findPatientCases,
+  formatSpecimenDate,
   isSamePatientCase,
   normalizePatientId,
   patientCaseIdentityKey,
@@ -134,6 +135,9 @@ export class PatientCaseSwitcher extends Component {
         patientCase.identity,
         currentIdentity,
       );
+      const specimenDateLabel = formatSpecimenDate(
+        patientCase.specimenDate,
+      );
       return {
         key: patientCaseIdentityKey(patientCase.identity),
         disabled: isCurrent,
@@ -154,10 +158,10 @@ export class PatientCaseSwitcher extends Component {
             <Text type="secondary" className="patient-case-switcher-option-context">
               {this.getDatasetTitle(patientCase.identity.datasetId)}
             </Text>
-            {patientCase.specimenDate ? (
+            {specimenDateLabel ? (
               <Text type="secondary" className="patient-case-switcher-option-context">
                 {t("components.patient-case-switcher.specimen-date", {
-                  date: patientCase.specimenDate,
+                  date: specimenDateLabel,
                 })}
               </Text>
             ) : null}
