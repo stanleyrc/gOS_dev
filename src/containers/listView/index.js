@@ -187,10 +187,12 @@ export class ListView extends Component {
     }
 
     const options = (filterState.records || []).map((value) => {
-      const label = value
-        ? snakeCaseToHumanReadable(value)
-        : emptyLabel;
       const valueText = value == null ? "" : value.toString();
+      const label = value
+        ? filterName === "sourceDatasetTitle"
+          ? valueText
+          : snakeCaseToHumanReadable(value)
+        : emptyLabel;
       return {
         label,
         value: value || "null",

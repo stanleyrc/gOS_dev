@@ -124,7 +124,7 @@ describe("static browse sagas", () => {
     }));
   });
 
-  it("loads every configured JSON manifest and preserves source identity", async () => {
+  it("loads every configured JSON manifest and returns distinct global cases", async () => {
     const dispatched = await runWorker(
       fetchCaseReports,
       {
@@ -138,13 +138,14 @@ describe("static browse sagas", () => {
     );
 
     expect(createProgressChannel).toHaveBeenCalledTimes(2);
-    expect(success.datafiles).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ datasetId: "a", caseReportId: "PAIR-1" }),
-        expect.objectContaining({ datasetId: "b", caseReportId: "PAIR-1" }),
-      ]),
-    );
-    expect(success.totalReportsCount).toBe(2);
+    expect(success.datafiles).toEqual([
+      expect.objectContaining({
+        datasetId: "a",
+        caseReportId: "PAIR-1",
+        sourceDatasetTitle: ["A", "B"],
+      }),
+    ]);
+    expect(success.totalReportsCount).toBe(1);
     expect(Object.keys(success.manifestRecordsByDataset)).toEqual(["a", "b"]);
   });
 

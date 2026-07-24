@@ -20,6 +20,7 @@ import {
   allDatasetsBrowseScope,
   buildCaseReportUrl,
   datasetBrowseScope,
+  distinctCaseRecords,
   getBrowseScopeDatasetId,
   getSourceCaseIdentity,
   resolveBrowseDataset,
@@ -73,6 +74,53 @@ describe("browse scope", () => {
     });
 
     expect(metadata.fields).toEqual([]);
+  });
+
+  it("deduplicates global records by case ID while retaining dataset-title membership", () => {
+    expect(
+      distinctCaseRecords([
+        {
+          datasetId: "a",
+          caseReportId: "case-1",
+          sourceDatasetTitle: "Dataset A",
+        },
+        {
+          datasetId: "a",
+          caseReportId: "case-1",
+          sourceDatasetTitle: "Dataset A",
+        },
+        {
+          datasetId: "b",
+          caseReportId: "case-1",
+          sourceDatasetTitle: "Dataset B",
+        },
+        {
+          datasetId: "b",
+          caseReportId: "case-2",
+          sourceDatasetTitle: "Dataset B",
+        },
+        {
+          datasetId: "dataset-c",
+          caseReportId: "case-3",
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        datasetId: "a",
+        caseReportId: "case-1",
+        sourceDatasetTitle: ["Dataset A", "Dataset B"],
+      }),
+      expect.objectContaining({
+        datasetId: "b",
+        caseReportId: "case-2",
+        sourceDatasetTitle: "Dataset B",
+      }),
+      expect.objectContaining({
+        datasetId: "dataset-c",
+        caseReportId: "case-3",
+        sourceDatasetTitle: "dataset-c",
+      }),
+    ]);
   });
 
   it("keeps source dataset and case-report identity together", () => {

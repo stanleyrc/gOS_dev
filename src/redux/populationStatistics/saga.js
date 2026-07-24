@@ -13,6 +13,7 @@ import actions from "./actions";
 import caseReportsActions from "../caseReports/actions";
 import {
   buildAllDatasetsMetadata,
+  distinctCaseRecords,
   resolveBrowseDataset,
 } from "../../helpers/browseScope";
 import {
@@ -107,10 +108,14 @@ function* getFavoriteRecords(state, favorite) {
     );
   }
 
+  const searchableRecords = favorite.datasetId == null
+    ? distinctCaseRecords(records)
+    : records;
+
   return {
     metadata,
     records: filterCaseReportRecords(
-      records,
+      searchableRecords,
       favorite.searchFilters || {},
       metadata.fields || [],
       { casesWithInterpretations },

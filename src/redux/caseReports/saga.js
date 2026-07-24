@@ -26,6 +26,7 @@ import {
   searchCaseReportRecords,
 } from "../../helpers/caseReportsSearch";
 import {
+  distinctCaseRecords,
   getBrowseScopeDatasetId,
   isAllDatasetsBrowseScope,
   resolveBrowseDataset,
@@ -227,9 +228,12 @@ export function* fetchCaseReports(action = {}) {
           );
     }
 
-    const datafiles = datasets
+    const manifestRecords = datasets
       .map((dataset) => manifestRecordsByDataset[dataset.id] || [])
       .flat();
+    const datafiles = globalScope
+      ? distinctCaseRecords(manifestRecords)
+      : manifestRecords;
     const [casesWithInterpretations, interpretationsCounts] = yield call(
       loadInterpretationState,
       datasets[0],

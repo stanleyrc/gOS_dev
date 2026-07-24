@@ -81,4 +81,22 @@ describe("Topbar browse scope", () => {
       "case-1",
     );
   });
+
+  it("counts all accessible datasets by distinct global cases", () => {
+    const component = makeComponent({
+      datasets: [
+        { id: "dataset-a", title: "Dataset A" },
+        { id: "dataset-b", title: "Dataset B" },
+      ],
+      manifestRecordsByDataset: {
+        "dataset-a": [
+          { datasetId: "dataset-a", caseReportId: "case-1" },
+          { datasetId: "dataset-a", caseReportId: "case-1" },
+        ],
+        "dataset-b": [{ datasetId: "dataset-b", caseReportId: "case-1" }],
+      },
+    });
+
+    expect(component.getAllDatasetsCaseCount()).toBe(1);
+  });
 });
