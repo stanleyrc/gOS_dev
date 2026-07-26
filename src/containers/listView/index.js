@@ -17,7 +17,7 @@ import {
   Cascader,
   Flex,
   Divider,
-  Input,
+  DatePicker,
   InputNumber,
   Slider,
   Collapse,
@@ -26,6 +26,7 @@ import {
   message,
 } from "antd";
 import * as d3 from "d3";
+import dayjs from "dayjs";
 import {
   snakeCaseToHumanReadable,
   orderListViewFilters,
@@ -65,6 +66,7 @@ const { Option } = Select;
 const { Text, Paragraph } = Typography;
 const { Compact } = Space;
 const { Item } = Form;
+const { RangePicker } = DatePicker;
 
 export class ListView extends Component {
   formRef = React.createRef();
@@ -697,39 +699,49 @@ export class ListView extends Component {
 
       if (d.filter.renderer === "date-range") {
         const extent = filtersExtents[d.filter.name] || d.extent || [];
+        const minDate = extent?.[0] ? dayjs(extent[0]) : null;
+        const maxDate = extent?.[1] ? dayjs(extent[1]) : null;
         return (
           <Item
             key={`containers.list-view.filters.${d.filter.name}`}
             label={d.filter.title}
           >
-            <div className="filter-slider-inputs">
-              <div className="filter-slider-input">
-                <Text className="filter-slider-input-label">
-                  {t("containers.list-view.filters.date-range.from")}
-                </Text>
-                <Item name={[d.filter.name, "from"]} noStyle>
-                  <Input
-                    type="date"
-                    size="small"
-                    min={extent?.[0]}
-                    max={extent?.[1]}
-                  />
-                </Item>
-              </div>
-              <div className="filter-slider-input">
-                <Text className="filter-slider-input-label align-right">
-                  {t("containers.list-view.filters.date-range.to")}
-                </Text>
-                <Item name={[d.filter.name, "to"]} noStyle>
-                  <Input
-                    type="date"
-                    size="small"
-                    min={extent?.[0]}
-                    max={extent?.[1]}
-                  />
-                </Item>
-              </div>
-            </div>
+            <Item
+              name={d.filter.name}
+              noStyle
+              getValueFromEvent={(_, dateStrings) => ({
+                from: dateStrings?.[0] || undefined,
+                to: dateStrings?.[1] || undefined,
+              })}
+              getValueProps={(value) => {
+                const normalizedRange =
+                  normalizeSpecimenDateRangeFilter(value) || {};
+                return {
+                  value: [
+                    normalizedRange.from ? dayjs(normalizedRange.from) : null,
+                    normalizedRange.to ? dayjs(normalizedRange.to) : null,
+                  ],
+                };
+              }}
+            >
+              <RangePicker
+                size="small"
+                style={{ width: "100%" }}
+                format="YYYY-MM-DD"
+                allowClear
+                allowEmpty={[true, true]}
+                placeholder={[
+                  t("containers.list-view.filters.date-range.from"),
+                  t("containers.list-view.filters.date-range.to"),
+                ]}
+                disabledDate={(current) => {
+                  if (!current) return false;
+                  if (minDate && current.isBefore(minDate, "day")) return true;
+                  if (maxDate && current.isAfter(maxDate, "day")) return true;
+                  return false;
+                }}
+              />
+            </Item>
           </Item>
         );
       }
