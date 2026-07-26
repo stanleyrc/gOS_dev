@@ -514,6 +514,10 @@
       "qcMetrics": "Quality Control Metrics",
       "cbioportal-button": "cBioPortal",
       "clinical-trials-button": "Clinical Trials",
+      "copy-tooltip-default": "Click to copy to clipboard",
+      "copy-tooltip-success": "Copied!",
+      "copy-tooltip-failure": "Unable to copy",
+      "copy-pair-aria-label": "Copy pair to clipboard",
       "purity-ploidy-title": "Purity/Ploidy",
       "metadata": {
         "pair": {

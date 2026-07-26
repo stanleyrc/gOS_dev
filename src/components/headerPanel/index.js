@@ -19,6 +19,7 @@ import {
   coverageQCFields,
   getColorMarker,
   orderListViewFilters,
+  copyTextToClipboard,
 } from "../../helpers/utility";
 import { getNestedValue } from "../../helpers/metadata";
 import {
@@ -39,6 +40,9 @@ import PatientCaseSwitcher from "../patientCaseSwitcher";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
 
 const { Text } = Typography;
+const COPY_TOOLTIP_DEFAULT_KEY = "components.header-panel.copy-tooltip-default";
+const COPY_TOOLTIP_SUCCESS_KEY = "components.header-panel.copy-tooltip-success";
+const COPY_TOOLTIP_FAILURE_KEY = "components.header-panel.copy-tooltip-failure";
 
 class HeaderPanel extends Component {
   constructor(props) {
@@ -46,7 +50,9 @@ class HeaderPanel extends Component {
     this.state = {
       cbioportalModalVisible: false,
       clinicalTrialsModalVisible: false,
+      pairCopyTooltipKey: COPY_TOOLTIP_DEFAULT_KEY,
     };
+    this.pairCopyResetTimeout = null;
   }
 
   handleCbioportalModalOpen = () => {
@@ -65,11 +71,54 @@ class HeaderPanel extends Component {
     this.setState({ clinicalTrialsModalVisible: false });
   };
 
+  componentWillUnmount() {
+    if (this.pairCopyResetTimeout) {
+      clearTimeout(this.pairCopyResetTimeout);
+      this.pairCopyResetTimeout = null;
+    }
+  }
+
+  resetPairCopyTooltip = () => {
+    this.setState({ pairCopyTooltipKey: COPY_TOOLTIP_DEFAULT_KEY });
+  };
+
+  handlePairCopy = async () => {
+    const pair = this.props.metadata?.pair;
+    if (!pair) return;
+
+    const copied = await copyTextToClipboard(`${pair}`);
+    this.setState({
+      pairCopyTooltipKey: copied ? COPY_TOOLTIP_SUCCESS_KEY : COPY_TOOLTIP_FAILURE_KEY,
+    });
+
+    if (this.pairCopyResetTimeout) {
+      clearTimeout(this.pairCopyResetTimeout);
+    }
+    this.pairCopyResetTimeout = setTimeout(this.resetPairCopyTooltip, 1500);
+  };
+
+  renderPairTitle = (pair) => (
+    <Tooltip title={this.props.t(this.state.pairCopyTooltipKey)}>
+      <button
+        type="button"
+        className="detail-title-copy-trigger"
+        onClick={this.handlePairCopy}
+        aria-label={this.props.t("components.header-panel.copy-pair-aria-label")}
+      >
+        {pair}
+      </button>
+    </Tooltip>
+  );
+
   renderTitle = () => {
     const { t, metadata, canReturnToResults, onBackToResults } = this.props;
     const pair = metadata?.pair;
 
-    if (!pair || !canReturnToResults) return pair;
+    if (!pair) return null;
+
+    if (!canReturnToResults) {
+      return this.renderPairTitle(pair);
+    }
 
     return (
       <span className="detail-title-breadcrumb">
@@ -81,7 +130,7 @@ class HeaderPanel extends Component {
           {t("containers.detail-view.breadcrumb.results")}
         </button>
         <span className="detail-title-breadcrumb-separator">/</span>
-        <span className="detail-title-current">{pair}</span>
+        <span className="detail-title-current">{this.renderPairTitle(pair)}</span>
       </span>
     );
   };

@@ -35,6 +35,31 @@ const Wrapper = styled.div`
     .detail-title-current {
       color: inherit;
     }
+    .ant-page-header-heading,
+    .ant-page-header-heading-left,
+    .ant-page-header-heading-title {
+      cursor: default;
+    }
+    .detail-title-copy-trigger {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      display: inline-flex;
+      align-items: baseline;
+      width: auto;
+      color: inherit;
+      font: inherit;
+      line-height: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .detail-title-copy-trigger:hover,
+    .detail-title-copy-trigger:focus {
+      color: #27496b;
+      text-decoration: none;
+    }
     .quality-report-link {
       font-weight: bold;
     }
@@ -147,7 +172,6 @@ const Wrapper = styled.div`
     .tags-container {
       max-width: 60%;
     }
-    ,
     .qc-evaluation-tag {
       cursor: pointer;
       user-select: none;
