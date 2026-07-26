@@ -622,7 +622,7 @@
     },
     "filtered-events-panel": {
       "select-columns": "Select Columns",
-      "reset-filters": "Reset Filters",
+      "reset-filters": "Reset All Filters",
       "export": {
         "notes": "Export Report",
         "error": "Error exporting notes",

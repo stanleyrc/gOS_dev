@@ -18,6 +18,11 @@ const Wrapper = styled.div`
   .ant-panel-list-container {
     margin: 24px;
   }
+  .ant-home-content-container .ant-tabs-tab-btn:focus,
+  .ant-home-content-container .ant-tabs-tab-btn:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
   .stats .ant-statistic-content-value,
   .stats .ant-statistic-content-suffix {
     font-size: 16px;

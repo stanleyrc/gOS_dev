@@ -13,9 +13,7 @@ import {
   Col,
   Segmented,
   Skeleton,
-  Typography,
   Select,
-  Checkbox,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, transitionStyle } from "../../helpers/utility";
@@ -28,8 +26,6 @@ import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
-
-const { Text } = Typography;
 
 const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
@@ -129,6 +125,10 @@ class FilteredEventsListPanel extends Component {
     tierCountsMap: {},
     geneVariantsWithTierChanges: null,
     selectedColumnKeys: [],
+    sortState: {
+      columnKey: null,
+      order: null,
+    },
   };
 
   // Track if a fetch is in progress to prevent concurrent calls
@@ -204,14 +204,21 @@ class FilteredEventsListPanel extends Component {
     this.setState({ selectedColumnKeys: selectedKeys });
   };
 
-  handleTableChange = (pagination, filters) => {
+  handleTableChange = (pagination, filters, sorter) => {
     const columnFilters = {};
     Object.keys(filters).forEach((key) => {
       if (filters[key] && filters[key].length > 0) {
         columnFilters[key] = filters[key];
       }
     });
+
+    const sortState = {
+      columnKey: sorter?.columnKey || null,
+      order: sorter?.order || null,
+    };
+
     this.props.setColumnFilters(columnFilters);
+    this.setState({ sortState });
   };
 
   fetchTierCountsForRecords = async () => {
@@ -366,7 +373,7 @@ class FilteredEventsListPanel extends Component {
 
     let open = selectedFilteredEvent?.id;
 
-    let { eventType, selectedColumnKeys } = this.state;
+    let { eventType, selectedColumnKeys, sortState } = this.state;
 
     let recordsHash = d3.group(
       filteredEvents.filter(
@@ -393,27 +400,13 @@ class FilteredEventsListPanel extends Component {
       filterValues
     );
 
-    // Checkbox column for selecting events
-    const headerCheckboxState = this.getHeaderCheckboxState(records);
-    const checkboxColumn = {
-      title: (
-        <Checkbox
-          checked={headerCheckboxState.checked}
-          indeterminate={headerCheckboxState.indeterminate}
-          onChange={() => this.handleHeaderCheckboxChange(records)}
-        />
-      ),
-      key: "select",
-      width: 50,
-      fixed: "left",
-      align: "center",
-      render: (_, record) => (
-        <Checkbox
-          checked={this.isEventSelected(record)}
-          onChange={(e) => this.handleCheckboxChange(record, e.target.checked)}
-        />
-      ),
-    };
+    const columnsWithSortState = columns.map((col) => {
+      if (!col.sorter) return col;
+      return {
+        ...col,
+        sortOrder: sortState.columnKey === col.key ? sortState.order : null,
+      };
+    });
 
     return (
       <Wrapper>
@@ -536,7 +529,7 @@ class FilteredEventsListPanel extends Component {
                       <Table
                         columns={[
                           ...(additionalColumns || []),
-                          ...columns,
+                          ...columnsWithSortState,
                         ].filter((col) => selectedColumnKeys.includes(col.key))}
                         dataSource={records}
                         pagination={{ pageSize: 50 }}

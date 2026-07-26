@@ -130,9 +130,7 @@ export default function appReducer(state = initState, action) {
     case actions.RESET_COLUMN_FILTERS: {
       return {
         ...state,
-        columnFilters: {
-          tier: [1, 2],
-        },
+        columnFilters: {},
       };
     }
     default:
