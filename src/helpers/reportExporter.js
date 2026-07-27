@@ -5,10 +5,9 @@ import { getUser } from './userAuth';
  * Builds a report structure from Redux state with merged interpretations
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations from selectMergedEvents selector
- * @param {Array} selectedEventUids - Array of UIDs for events to include in report (if empty, no alterations included)
  * @returns {Object} Report structure suitable for HtmlRenderer
  */
-function buildReportFromMergedState(state, mergedEvents, selectedEventUids = []) {
+function buildReportFromMergedState(state, mergedEvents) {
   const ce = state?.CaseReport || {};
   const m = ce?.metadata || {};
   
@@ -26,11 +25,9 @@ function buildReportFromMergedState(state, mergedEvents, selectedEventUids = [])
   // Use merged events which already have interpretations applied
   const alterationsRaw = Array.isArray(mergedEvents?.filteredEvents) ? mergedEvents.filteredEvents : [];
   const alterationsMapped = alterationsRaw.map(mapEvent);
-  
-  // Filter alterations: only include those that are selected via checkboxes
-  // If no UIDs selected, no alterations are included (empty report)
-  const selectedUidsSet = new Set(selectedEventUids || []);
-  const alterations = alterationsMapped.filter((a) => selectedUidsSet.has(a.id));
+  const alterations = alterationsMapped.filter(
+    (alteration) => alteration.tier === '1' || alteration.tier === '2'
+  );
 
   // Get global notes from interpretations
   const globalNotesInterp = state?.Interpretations?.selected?.['GLOBAL_NOTES'];
@@ -111,15 +108,14 @@ function buildTherapiesFromAlterations(alterations) {
  * Generates the HTML report without downloading
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations
- * @param {Array} selectedEventUids - Array of UIDs for events to include in report
  * @returns {Promise<string>} The generated HTML string
  */
-export async function previewReport(state, mergedEvents, selectedEventUids = []) {
+export async function previewReport(state, mergedEvents) {
   try {
     const gos_user = getUser();
     const caseId = String(state?.CaseReport?.id || '');
     const interpretationsFiltered = Object.values(state.Interpretations?.byId || {}).filter(i => i.authorId === gos_user?.userId && i.caseId === caseId);
-    const report = buildReportFromMergedState(state, mergedEvents, selectedEventUids);
+    const report = buildReportFromMergedState(state, mergedEvents);
     report.author = gos_user ? gos_user.displayName : 'Unknown Author';
     report.interpretations = interpretationsFiltered;
     const renderer = new HtmlRenderer();
@@ -136,15 +132,14 @@ export async function previewReport(state, mergedEvents, selectedEventUids = [])
  * Exports the clinical report as a static HTML file
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations
- * @param {Array} selectedEventUids - Array of UIDs for events to include in report
  * @returns {Promise<void>}
  */
-export async function exportReport(state, mergedEvents, selectedEventUids = []) {
+export async function exportReport(state, mergedEvents) {
   try {
     const gos_user = getUser();
     const caseId = String(state?.CaseReport?.id || '');
     const interpretationsFiltered = Object.values(state.Interpretations?.byId || {}).filter(i => i.authorId === gos_user?.userId && i.caseId === caseId);
-    const report = buildReportFromMergedState(state, mergedEvents, selectedEventUids);
+    const report = buildReportFromMergedState(state, mergedEvents);
     report.author = gos_user ? gos_user.displayName : 'Unknown Author';
     report.interpretations = interpretationsFiltered;
     const renderer = new HtmlRenderer();
