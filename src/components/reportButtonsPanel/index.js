@@ -31,11 +31,11 @@ class ReportButtonsPanel extends Component {
   };
 
   handleExportNotes = async () => {
-    const { mergedEvents, selectedEventUids } = this.props;
+    const { mergedEvents } = this.props;
     try {
       this.setState({ exporting: true });
       const state = this.props;
-      await exportReport(state, mergedEvents, selectedEventUids);
+      await exportReport(state, mergedEvents);
     } catch (err) {
       console.error("Report export failed:", err);
     } finally {
@@ -44,11 +44,11 @@ class ReportButtonsPanel extends Component {
   };
 
   handlePreviewReport = async () => {
-    const { mergedEvents, selectedEventUids } = this.props;
+    const { mergedEvents } = this.props;
     try {
       this.setState({ previewLoading: true, previewVisible: true });
       const state = this.props;
-      const html = await previewReport(state, mergedEvents, selectedEventUids);
+      const html = await previewReport(state, mergedEvents);
       this.setState({ previewHtml: html });
     } catch (err) {
       console.error("Report preview failed:", err);
@@ -202,7 +202,6 @@ const mapStateToProps = (state) => ({
   CaseReport: state.CaseReport,
   Interpretations: state.Interpretations,
   mergedEvents: require("../../redux/interpretations/selectors").selectMergedEvents(state),
-  selectedEventUids: state.FilteredEvents.selectedEventUids || [],
 });
 
 export default connect(
