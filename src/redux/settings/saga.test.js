@@ -28,6 +28,26 @@ describe("Settings saga browse transitions", () => {
     expect(dispatched).toEqual([caseReportActions.clearCaseReport()]);
   });
 
+  it("forwards the patient-level destination into a refreshed browse", async () => {
+    const dispatched = [];
+    const searchFilters = { patient_id: ["PATIENT-1"] };
+    const listViewTarget = {
+      tab: "aggregations",
+      aggregationsTab: "visualization",
+    };
+
+    await runSaga(
+      { dispatch: (action) => dispatched.push(action) },
+      updateBrowseScopeFollowUp,
+      { searchFilters, listViewTarget },
+    ).toPromise();
+
+    expect(dispatched).toEqual([
+      caseReportActions.clearCaseReport(),
+      caseReportsActions.fetchCaseReports(searchFilters, { listViewTarget }),
+    ]);
+  });
+
   it("cancels an in-flight manifest load when browse results are retained", async () => {
     const dispatched = [];
 

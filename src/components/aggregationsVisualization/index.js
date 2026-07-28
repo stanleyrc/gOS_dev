@@ -57,10 +57,11 @@ class AggregationsVisualization extends Component {
     const colorVarDefault = dynamicColumns.categoricalColumns.length > 0 
       ? dynamicColumns.categoricalColumns[0].dataIndex 
       : categoricalColumns[0].dataIndex;
+    const showTopGenes = props.visualizationPreset === "topGenes";
 
     this.state = {
-      xVariable: xVarDefault,
-      yVariable: yVarDefault,
+      xVariable: showTopGenes ? "driver_gene" : xVarDefault,
+      yVariable: showTopGenes ? "pair" : yVarDefault,
       colorVariable: colorVarDefault,
       colorByVariable: null,
       selectedGene: null,

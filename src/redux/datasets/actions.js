@@ -21,6 +21,7 @@ const actions = {
   selectAllDatasets: (options = {}) => ({
     type: actions.SELECT_ALL_DATASETS_REQUEST,
     searchFilters: options.searchFilters,
+    listViewTarget: options.listViewTarget || null,
   }),
 
   openCaseReport: (datasetId, caseReportId, options = {}) => ({

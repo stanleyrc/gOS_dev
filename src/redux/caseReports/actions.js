@@ -21,18 +21,20 @@ const actions = {
   DELETE_FAVORITE_SEARCH_FAILED: "DELETE_FAVORITE_SEARCH_FAILED",
   APPLY_FAVORITE_SEARCH: "APPLY_FAVORITE_SEARCH",
 
-  fetchCaseReports: (searchFilters) => ({
+  fetchCaseReports: (searchFilters, options = {}) => ({
     type: actions.FETCH_CASE_REPORTS_REQUEST,
     searchFilters,
+    listViewTarget: options.listViewTarget || null,
   }),
 
   cancelCaseReportsFetch: () => ({
     type: actions.CANCEL_CASE_REPORTS_FETCH,
   }),
 
-  searchCaseReports: (searchFilters) => ({
+  searchCaseReports: (searchFilters, options = {}) => ({
     type: actions.SEARCH_CASE_REPORTS,
     searchFilters,
+    listViewTarget: options.listViewTarget || null,
   }),
 
   fetchFavoriteSearches: () => ({

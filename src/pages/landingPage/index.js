@@ -55,6 +55,7 @@ export class LandingPage extends Component {
       searchFilters,
       datafiles,
       dataset,
+      listViewTarget,
     } = this.props;
 
     return (
@@ -85,6 +86,7 @@ export class LandingPage extends Component {
             totalRecords={totalReportsCount}
             datafiles={datafiles}
             dataset={dataset}
+            listViewTarget={listViewTarget}
           />
         )}
       </Wrapper>
@@ -107,6 +109,7 @@ const mapStateToProps = (state) => ({
   searchFilters: state.CaseReports.searchFilters,
   totalReportsCount: state.CaseReports.totalReports.length,
   datafiles: state.CaseReports.datafiles,
+  listViewTarget: state.CaseReports.listViewTarget,
   browseScope: state.Settings.browseScope,
   dataset: resolveBrowseDataset(state),
 });

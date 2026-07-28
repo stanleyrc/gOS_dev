@@ -112,6 +112,7 @@ export function* selectAllDatasets(action) {
   yield put(
     settingsActions.updateBrowseScope(allDatasetsBrowseScope(), {
       searchFilters: action.searchFilters,
+      listViewTarget: action.listViewTarget,
     }),
   );
 }

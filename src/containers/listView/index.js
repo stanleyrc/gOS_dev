@@ -69,19 +69,22 @@ const { Item } = Form;
 const { RangePicker } = DatePicker;
 
 export class ListView extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      isChatOpen: false,
+      activeTab: props.listViewTarget?.tab || "cases",
+      favoriteModalOpen: false,
+      favoriteName: "",
+      editingFavoriteSearch: null,
+      favoriteSavePending: false,
+      selectSearchTextByFilter: {},
+    };
+  }
+
   formRef = React.createRef();
   cascaderOptionsCache = {};
   selectOptionsCache = {};
-
-  state = {
-    isChatOpen: false,
-    activeTab: "cases",
-    favoriteModalOpen: false,
-    favoriteName: "",
-    editingFavoriteSearch: null,
-    favoriteSavePending: false,
-    selectSearchTextByFilter: {},
-  };
 
   componentDidMount() {
     this.handleSavedSearchUserChanged = () =>
@@ -1310,6 +1313,15 @@ export class ListView extends Component {
                           datafiles={datafiles}
                           searchFilters={searchFilters}
                           dataset={dataset}
+                          initialActiveTab={
+                            this.props.listViewTarget?.aggregationsTab
+                          }
+                          visualizationPreset={
+                            this.props.listViewTarget?.visualizationPreset
+                          }
+                          focusVisualization={
+                            this.props.listViewTarget?.focusVisualization === true
+                          }
                         />
                       ),
                     },
