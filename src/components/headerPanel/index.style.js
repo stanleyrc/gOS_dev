@@ -40,25 +40,28 @@ const Wrapper = styled.div`
     .ant-page-header-heading-title {
       cursor: default;
     }
-    .detail-title-copy-trigger {
+    .detail-title-copy-button {
       appearance: none;
       border: 0;
+      border-radius: 4px;
       background: transparent;
       padding: 0;
       margin: 0;
       display: inline-flex;
-      align-items: baseline;
-      width: auto;
-      color: inherit;
-      font: inherit;
-      line-height: inherit;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      color: rgba(0, 0, 0, 0.45);
       cursor: pointer;
-      text-decoration: none;
+      font-size: 14px;
+      line-height: 1;
     }
-    .detail-title-copy-trigger:hover,
-    .detail-title-copy-trigger:focus {
-      color: #27496b;
-      text-decoration: none;
+    .detail-title-copy-button:hover,
+    .detail-title-copy-button:focus-visible {
+      background: rgba(0, 0, 0, 0.04);
+      color: #1677ff;
+      outline: none;
     }
     .quality-report-link {
       font-weight: bold;

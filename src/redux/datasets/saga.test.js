@@ -7,7 +7,7 @@ jest.mock("../../helpers/field", () => {
 
 import { runSaga } from "redux-saga";
 import settingsActions from "../settings/actions";
-import { openCaseReport } from "./saga";
+import { openCaseReport, selectAllDatasets } from "./saga";
 
 const dataset = { id: "a", datafilesPath: "a.json" };
 
@@ -33,6 +33,28 @@ const runOpen = async (caseReports, actionOptions = {}) => {
 };
 
 describe("dataset detail routing", () => {
+  it("selects all datasets with the requested filters and destination", async () => {
+    const dispatched = [];
+    const searchFilters = { patient_id: ["PATIENT-1"] };
+    const listViewTarget = {
+      tab: "aggregations",
+      aggregationsTab: "visualization",
+    };
+
+    await runSaga(
+      { dispatch: (action) => dispatched.push(action) },
+      selectAllDatasets,
+      { searchFilters, listViewTarget },
+    ).toPromise();
+
+    expect(dispatched).toEqual([
+      settingsActions.updateBrowseScope(
+        { kind: "all" },
+        { searchFilters, listViewTarget },
+      ),
+    ]);
+  });
+
   it("keeps the initial global manifest fetch alive for a deep link", async () => {
     const dispatched = await runOpen(
       { loading: false, datafiles: [] },

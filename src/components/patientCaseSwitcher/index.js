@@ -3,9 +3,17 @@ import PropTypes from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { Button, Dropdown, Tooltip, Typography } from "antd";
-import { CheckOutlined, DownOutlined } from "@ant-design/icons";
+import {
+  CheckOutlined,
+  DownOutlined,
+  LoadingOutlined,
+} from "@ant-design/icons";
 import datasetsActions from "../../redux/datasets/actions";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
+import {
+  buildPatientLevelSearchFilters,
+  PATIENT_LEVEL_VIEW_TARGET,
+} from "../../helpers/patientLevelView";
 import {
   findPatientCases,
   formatSpecimenDate,
@@ -17,7 +25,7 @@ import {
 import Wrapper, { PatientCaseMenuStyle } from "./index.style";
 
 const { Text } = Typography;
-const { openCaseReport } = datasetsActions;
+const { openCaseReport, selectAllDatasets } = datasetsActions;
 const patientCaseSearchCache = new Map();
 const MAX_PATIENT_SEARCH_CACHE_ENTRIES = 20;
 
@@ -148,7 +156,6 @@ export class PatientCaseSwitcher extends Component {
         key: patientCaseIdentityKey(patientCase.identity),
         disabled: isCurrent,
         className: isCurrent ? "patient-case-switcher-current" : undefined,
-        icon: isCurrent ? <CheckOutlined /> : null,
         label: (
           <div className="patient-case-switcher-option">
             <div className="patient-case-switcher-option-heading">
@@ -156,21 +163,28 @@ export class PatientCaseSwitcher extends Component {
                 {patientCase.pair}
               </Text>
               {isCurrent ? (
-                <Text type="secondary">
-                  {t("components.patient-case-switcher.current")}
+                <CheckOutlined
+                  className="patient-case-switcher-current-check"
+                  aria-label={t("components.patient-case-switcher.current")}
+                />
+              ) : null}
+            </div>
+            <div className="patient-case-switcher-option-context-row">
+              <Text
+                type="secondary"
+                className="patient-case-switcher-option-context patient-case-switcher-option-dataset"
+              >
+                {this.getDatasetTitle(patientCase.identity.datasetId)}
+              </Text>
+              {specimenDateLabel ? (
+                <Text
+                  type="secondary"
+                  className="patient-case-switcher-option-context patient-case-switcher-option-date"
+                >
+                  {specimenDateLabel}
                 </Text>
               ) : null}
             </div>
-            <Text type="secondary" className="patient-case-switcher-option-context">
-              {this.getDatasetTitle(patientCase.identity.datasetId)}
-            </Text>
-            {specimenDateLabel ? (
-              <Text type="secondary" className="patient-case-switcher-option-context">
-                {t("components.patient-case-switcher.specimen-date", {
-                  date: specimenDateLabel,
-                })}
-              </Text>
-            ) : null}
           </div>
         ),
       };
@@ -245,29 +259,54 @@ export class PatientCaseSwitcher extends Component {
     );
   };
 
+  handlePatientLevelView = () => {
+    const patientId = this.getPatientId();
+    if (patientId) this.props.showPatientLevelView(patientId);
+  };
+
+  renderPairTrigger = (
+    extraProps = {},
+    suffix = <DownOutlined className="patient-case-switcher-chevron" />,
+  ) => (
+    <button
+      type="button"
+      className="patient-case-switcher-trigger"
+      {...extraProps}
+    >
+      <span className="patient-case-switcher-pair">{this.props.pair}</span>
+      {suffix}
+    </button>
+  );
+
   renderControl = () => {
     const { t } = this.props;
     if (this.state.kind === "loading") {
-      return (
-        <Button className="patient-case-switcher-trigger" size="small" loading disabled>
-          {t("components.patient-case-switcher.loading")}
-        </Button>
+      return this.renderPairTrigger(
+        {
+          disabled: true,
+          "aria-busy": true,
+          "aria-label": t("components.patient-case-switcher.loading"),
+        },
+        <LoadingOutlined spin className="patient-case-switcher-chevron" />,
       );
     }
     if (this.state.kind === "failed") {
       return (
         <Tooltip title={t("components.patient-case-switcher.failure-description")}>
-          <Button
-            className="patient-case-switcher-trigger"
-            size="small"
-            onClick={this.loadPatientCases}
-          >
-            {t("components.patient-case-switcher.failure")}
-          </Button>
+          {this.renderPairTrigger({
+            onClick: this.loadPatientCases,
+            "aria-label": t("components.patient-case-switcher.failure"),
+          })}
         </Tooltip>
       );
     }
-    if (this.state.kind !== "ready") return null;
+    if (this.state.kind !== "ready") {
+      return (
+        <span className="patient-case-switcher-static-title">
+          {this.props.pair}
+        </span>
+      );
+    }
 
     const dropdown = (
       <Dropdown
@@ -281,15 +320,11 @@ export class PatientCaseSwitcher extends Component {
         placement="bottomLeft"
         trigger={["click"]}
       >
-        <Button className="patient-case-switcher-trigger" size="small">
-          {t(
-            this.state.failedDatasetCount > 0
-              ? "components.patient-case-switcher.trigger-partial"
-              : "components.patient-case-switcher.trigger",
-            { count: this.state.cases.length },
-          )}
-          <DownOutlined />
-        </Button>
+        {this.renderPairTrigger({
+          "aria-label": t("components.patient-case-switcher.switch-aria-label", {
+            count: this.state.cases.length,
+          }),
+        })}
       </Dropdown>
     );
 
@@ -307,14 +342,43 @@ export class PatientCaseSwitcher extends Component {
   };
 
   render() {
-    if (!this.getPatientId()) return null;
-    const control = this.renderControl();
-    if (!control) return null;
+    const { copyControl, pair, t } = this.props;
+    if (!pair) return null;
 
+    const patientId = this.getPatientId();
+    if (!patientId) {
+      return (
+        <Wrapper>
+          <span className="patient-case-switcher-static-title">{pair}</span>
+          {copyControl}
+        </Wrapper>
+      );
+    }
+
+    const control = this.renderControl();
     return (
       <>
         <PatientCaseMenuStyle />
-        <Wrapper>{control}</Wrapper>
+        <Wrapper>
+          {control}
+          {copyControl}
+          <Tooltip
+            title={t("components.patient-case-switcher.patient-level-description")}
+          >
+            <Button
+              type="link"
+              size="small"
+              className="patient-level-view-link"
+              onClick={this.handlePatientLevelView}
+              aria-label={t(
+                "components.patient-case-switcher.patient-level-aria-label",
+                { patientId },
+              )}
+            >
+              {t("components.patient-case-switcher.patient-level")}
+            </Button>
+          </Tooltip>
+        </Wrapper>
       </>
     );
   }
@@ -322,21 +386,26 @@ export class PatientCaseSwitcher extends Component {
 
 PatientCaseSwitcher.propTypes = {
   cachedRecordsByDataset: PropTypes.object,
+  copyControl: PropTypes.node,
   dataset: PropTypes.object,
   datasets: PropTypes.arrayOf(PropTypes.object),
   loadPatientCases: PropTypes.func,
   metadata: PropTypes.object,
   openCaseReport: PropTypes.func.isRequired,
+  pair: PropTypes.string,
   report: PropTypes.string,
+  showPatientLevelView: PropTypes.func.isRequired,
   t: PropTypes.func.isRequired,
 };
 
 PatientCaseSwitcher.defaultProps = {
   cachedRecordsByDataset: {},
+  copyControl: null,
   dataset: null,
   datasets: [],
   loadPatientCases: defaultLoadPatientCases,
   metadata: {},
+  pair: null,
   report: null,
 };
 
@@ -351,6 +420,13 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   openCaseReport: (datasetId, caseReportId) =>
     dispatch(openCaseReport(datasetId, caseReportId)),
+  showPatientLevelView: (patientId) =>
+    dispatch(
+      selectAllDatasets({
+        searchFilters: buildPatientLevelSearchFilters(patientId),
+        listViewTarget: PATIENT_LEVEL_VIEW_TARGET,
+      }),
+    ),
 });
 
 export default connect(

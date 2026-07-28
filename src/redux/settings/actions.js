@@ -56,6 +56,7 @@ const actions = {
     refreshBrowseResults: options.refreshBrowseResults,
     cancelBrowseWork: options.cancelBrowseWork !== false,
     searchFilters: options.searchFilters,
+    listViewTarget: options.listViewTarget || null,
   }),
   updateHoveredLocation: (hoveredLocation, hoveredLocationPanelIndex) => ({
     type: actions.HOVERED_LOCATION_UPDATED,

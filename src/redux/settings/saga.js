@@ -98,7 +98,11 @@ export function* updateBrowseScopeFollowUp(action) {
     }
     return;
   }
-  yield put(caseReportsActions.fetchCaseReports(action.searchFilters));
+  yield put(
+    caseReportsActions.fetchCaseReports(action.searchFilters, {
+      listViewTarget: action.listViewTarget,
+    }),
+  );
 }
 
 export function* updateDatasetFollowUp(action) {

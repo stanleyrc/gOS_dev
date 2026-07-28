@@ -11,11 +11,19 @@ import { filterCaseReportRecords } from "../../helpers/caseReportsSearch";
 const { Text } = Typography;
 
 class AggregationsPanel extends Component {
-  state = {
-    filteredRecords: [],
-    loading: false,
-    pathwayMap: {},
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      activeTab:
+        props.initialActiveTab === "visualization" ? "visualization" : "table",
+      filteredRecords: [],
+      loading: false,
+      pathwayMap: {},
+    };
+    this.visualizationRef = React.createRef();
+    this.focusFrame = null;
+    this.hasFocusedVisualization = false;
+  }
 
   debouncedCalculate = debounce(() => {
     this.applyFiltersAndCalculate();
@@ -46,12 +54,49 @@ class AggregationsPanel extends Component {
 
   componentWillUnmount() {
     this.debouncedCalculate.cancel();
+    if (
+      this.focusFrame != null &&
+      typeof window !== "undefined" &&
+      typeof window.cancelAnimationFrame === "function"
+    ) {
+      window.cancelAnimationFrame(this.focusFrame);
+    }
   }
+
+  focusVisualization = () => {
+    this.focusFrame = null;
+    this.visualizationRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  focusRequestedVisualization = () => {
+    if (
+      !this.props.focusVisualization ||
+      this.hasFocusedVisualization ||
+      this.state.activeTab !== "visualization"
+    ) {
+      return;
+    }
+
+    this.hasFocusedVisualization = true;
+    if (
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function"
+    ) {
+      this.focusFrame = window.requestAnimationFrame(this.focusVisualization);
+    } else {
+      this.focusVisualization();
+    }
+  };
 
   applyFiltersAndCalculate = () => {
     this.setState({ loading: true }, () => {
       const filteredRecords = this.applyFilters();
-      this.setState({ loading: false, filteredRecords });
+      this.setState({ loading: false, filteredRecords }, () => {
+        this.focusRequestedVisualization();
+      });
     });
   };
 
@@ -81,7 +126,8 @@ class AggregationsPanel extends Component {
         </div>
 
         <Tabs
-          defaultActiveKey="table"
+          activeKey={this.state.activeTab}
+          onChange={(activeTab) => this.setState({ activeTab })}
           items={[
             {
               key: "table",
@@ -102,7 +148,10 @@ class AggregationsPanel extends Component {
               key: "visualization",
               label: t("containers.list-view.aggregations.visualization_tab"),
               children: (
-                <div style={{ position: "relative" }}>
+                <div
+                  ref={this.visualizationRef}
+                  style={{ position: "relative", scrollMarginTop: 16 }}
+                >
                   {loading && (
                     <div className="aggregation-loading" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.8)", zIndex: 1 }}>
                       <Spin />
@@ -114,7 +163,12 @@ class AggregationsPanel extends Component {
                     />
                   )}
                   <div style={{ visibility: loading || filteredRecords.length === 0 ? "hidden" : "visible" }}>
-                    <AggregationsVisualization filteredRecords={filteredRecords} dataset={dataset} pathwayMap={pathwayMap} />
+                    <AggregationsVisualization
+                      filteredRecords={filteredRecords}
+                      dataset={dataset}
+                      pathwayMap={pathwayMap}
+                      visualizationPreset={this.props.visualizationPreset}
+                    />
                   </div>
                 </div>
               ),

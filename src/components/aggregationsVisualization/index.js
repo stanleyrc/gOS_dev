@@ -31,7 +31,7 @@ import {
   discoverAttributes,
 } from "./helpers";
 
-class AggregationsVisualization extends Component {
+export class AggregationsVisualization extends Component {
   plotContainer = null;
   cachedConfig = null;
   cachedConfigKey = null;
@@ -57,10 +57,11 @@ class AggregationsVisualization extends Component {
     const colorVarDefault = dynamicColumns.categoricalColumns.length > 0 
       ? dynamicColumns.categoricalColumns[0].dataIndex 
       : categoricalColumns[0].dataIndex;
+    const showTopGenes = props.visualizationPreset === "topGenes";
 
     this.state = {
-      xVariable: xVarDefault,
-      yVariable: yVarDefault,
+      xVariable: showTopGenes ? "pair" : xVarDefault,
+      yVariable: showTopGenes ? "driver_gene" : yVarDefault,
       colorVariable: colorVarDefault,
       colorByVariable: null,
       selectedGene: null,
@@ -785,7 +786,7 @@ class AggregationsVisualization extends Component {
     const yLabel = yVariable === "driver_gene"
       ? this.getGeneSetLabelForKey(selectedGeneSet)
       : getColumnLabel(yVariable);
-    return `${xLabel} vs. ${yLabel}`;
+    return `${yLabel} vs. ${xLabel}`;
   }
 
   getGeneSetOptions() {

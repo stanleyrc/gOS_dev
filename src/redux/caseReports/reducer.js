@@ -23,6 +23,7 @@ const initState = {
   casesWithInterpretations: new Set(),
   interpretationsCounts: new Map(),
   searchFilters: defaultFilters(),
+  listViewTarget: null,
   reports: [],
   totalReports: [],
   totalReportsCount: 0,
@@ -50,6 +51,7 @@ export default function appReducer(state = initState, action) {
         casesWithInterpretations: new Set(),
         interpretationsCounts: new Map(),
         searchFilters: action.searchFilters || defaultFilters(),
+        listViewTarget: action.listViewTarget || null,
         reportsFilters: [],
         reports: [],
         totalReports: [],
@@ -127,6 +129,7 @@ export default function appReducer(state = initState, action) {
         ...state,
         searchPending: true,
         searchFilters: action.searchFilters || defaultFilters(),
+        listViewTarget: action.listViewTarget || null,
         highlightedCaseReport: null,
       };
     case actions.CASE_REPORTS_MATCHED:

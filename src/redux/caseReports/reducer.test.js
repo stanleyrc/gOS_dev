@@ -69,6 +69,49 @@ describe("CaseReports reducer", () => {
     expect(matched.searchPending).toBe(false);
   });
 
+  it("carries a requested patient-level destination through matching", () => {
+    const listViewTarget = {
+      tab: "aggregations",
+      aggregationsTab: "visualization",
+      visualizationPreset: "topGenes",
+    };
+    const pending = reducer(
+      undefined,
+      actions.searchCaseReports(
+        { patient_id: ["PATIENT-1"] },
+        { listViewTarget },
+      ),
+    );
+    const matched = reducer(pending, {
+      type: actions.CASE_REPORTS_MATCHED,
+      reports: [],
+      totalReports: [],
+      reportsFilters: [],
+      cohortPopulations: {},
+    });
+
+    expect(matched.searchFilters.patient_id).toEqual(["PATIENT-1"]);
+    expect(matched.listViewTarget).toBe(listViewTarget);
+  });
+
+  it("carries a patient-level destination through a global manifest load", () => {
+    const listViewTarget = {
+      tab: "aggregations",
+      aggregationsTab: "visualization",
+      visualizationPreset: "topGenes",
+    };
+    const loading = reducer(
+      undefined,
+      actions.fetchCaseReports(
+        { patient_id: ["PATIENT-1"] },
+        { listViewTarget },
+      ),
+    );
+
+    expect(loading.searchFilters.patient_id).toEqual(["PATIENT-1"]);
+    expect(loading.listViewTarget).toBe(listViewTarget);
+  });
+
   it("preserves loaded manifests when only a local search fails", () => {
     const datafiles = [{ caseReportId: "case-1" }];
     const loaded = {
