@@ -500,14 +500,17 @@
     "patient-case-switcher": {
       "trigger": "Patient cases ({{count}})",
       "trigger-partial": "Patient cases ({{count}}, partial)",
+      "switch-aria-label": "Switch case for this patient ({{count}} cases available)",
       "partial-description": "{{count}} dataset manifest could not be loaded, so this list may be incomplete.",
       "partial-description_plural": "{{count}} dataset manifests could not be loaded, so this list may be incomplete.",
       "loading": "Loading patient cases…",
       "current": "Current case",
-      "specimen-date": "Specimen date: {{date}}",
       "empty": "No related cases found",
       "failure": "Patient cases unavailable",
-      "failure-description": "Related patient cases could not be loaded. Click to retry."
+      "failure-description": "Related patient cases could not be loaded. Click to retry.",
+      "patient-level": "View Patient Aggregations",
+      "patient-level-description": "Filter case reports to this patient and compare gene sets in Aggregations.",
+      "patient-level-aria-label": "View patient-level gene comparison for {{patientId}}"
     },
     "header-panel": {
       "view-report": "View Report",

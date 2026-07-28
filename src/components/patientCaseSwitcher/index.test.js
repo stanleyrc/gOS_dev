@@ -14,9 +14,22 @@ jest.mock("antd", () => ({
 jest.mock("@ant-design/icons", () => ({
   CheckOutlined: "check",
   DownOutlined: "down",
+  LoadingOutlined: "loading",
 }));
 jest.mock("../../helpers/staticManifests", () => ({
   loadConfiguredManifestsWithStatus: jest.fn(),
+}));
+jest.mock("../../helpers/patientLevelView", () => ({
+  buildPatientLevelSearchFilters: (patientId) => ({
+    page: 1,
+    patient_id: [patientId],
+  }),
+  PATIENT_LEVEL_VIEW_TARGET: {
+    tab: "aggregations",
+    aggregationsTab: "visualization",
+    visualizationPreset: "topGenes",
+    focusVisualization: true,
+  },
 }));
 jest.mock("./index.style", () => ({
   __esModule: true,
@@ -27,14 +40,12 @@ jest.mock("./index.style", () => ({
 import { PatientCaseSwitcher } from "./index";
 import { patientCaseIdentityKey } from "./helpers";
 
-const t = (key, options = {}) =>
-  key === "components.patient-case-switcher.specimen-date"
-    ? `Specimen date: ${options.date}`
-    : key;
+const t = (key) => key;
 
 const createComponent = (overrides = {}) => {
   const props = {
     cachedRecordsByDataset: {},
+    copyControl: "copy-control",
     dataset: { id: "a" },
     datasets: [
       { id: "a", title: "Dataset A" },
@@ -58,7 +69,9 @@ const createComponent = (overrides = {}) => {
       caseReportId: "case-1",
     },
     openCaseReport: jest.fn(),
+    pair: "PAIR-1",
     report: "case-1",
+    showPatientLevelView: jest.fn(),
     t,
     ...overrides,
   };
@@ -84,10 +97,41 @@ describe("PatientCaseSwitcher", () => {
       {},
     );
     expect(component.state.kind).toBe("ready");
-    expect(component.getMenuItems()[0]).toMatchObject({
+    const currentItem = component.getMenuItems()[0];
+    const currentHeading = currentItem.label.props.children[0];
+    const currentContext = currentItem.label.props.children[1];
+
+    expect(currentItem).toMatchObject({
       disabled: true,
       className: "patient-case-switcher-current",
     });
+    expect(currentItem).not.toHaveProperty("icon");
+    expect(currentHeading.props.children[1]).toMatchObject({
+      type: "check",
+      props: {
+        className: "patient-case-switcher-current-check",
+        "aria-label": "components.patient-case-switcher.current",
+      },
+    });
+    expect(currentContext.props.className).toBe(
+      "patient-case-switcher-option-context-row",
+    );
+    expect(currentContext.props.children[0].props.children).toBe("Dataset A");
+    expect(currentContext.props.children[1].props.children).toBe("2025-01-01");
+  });
+
+  it("uses the current case ID as the dropdown trigger", async () => {
+    const component = createComponent();
+    await component.componentDidMount();
+
+    const rendered = component.render();
+    const wrapper = rendered.props.children[1];
+    const dropdown = wrapper.props.children[0];
+    const trigger = dropdown.props.children;
+
+    expect(trigger.type).toBe("button");
+    expect(trigger.props.children[0].props.children).toBe("PAIR-1");
+    expect(wrapper.props.children[1]).toBe("copy-control");
   });
 
   it("opens a related case using its source dataset and case-report ID", async () => {
@@ -102,11 +146,25 @@ describe("PatientCaseSwitcher", () => {
     expect(component.props.openCaseReport).toHaveBeenCalledWith("b", "case-2");
   });
 
-  it("stays hidden when metadata has no patient ID", async () => {
+  it("opens the patient-level comparison for the current patient", () => {
+    const component = createComponent();
+
+    component.handlePatientLevelView();
+
+    expect(component.props.showPatientLevelView).toHaveBeenCalledWith(
+      "PATIENT-1",
+    );
+  });
+
+  it("renders a static case ID when metadata has no patient ID", async () => {
     const component = createComponent({ metadata: {} });
     await component.componentDidMount();
 
+    const rendered = component.render();
+
     expect(component.props.loadPatientCases).not.toHaveBeenCalled();
-    expect(component.render()).toBeNull();
+    expect(rendered.type).toBe("patient-switcher");
+    expect(rendered.props.children[0].props.children).toBe("PAIR-1");
+    expect(rendered.props.children[1]).toBe("copy-control");
   });
 });

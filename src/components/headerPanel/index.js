@@ -37,6 +37,7 @@ import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import { ClinicalTrialsModal } from "../clinicalTrialsModal";
 import PatientCaseSwitcher from "../patientCaseSwitcher";
+import { CopyOutlined } from "@ant-design/icons";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
 
 const { Text } = Typography;
@@ -98,16 +99,23 @@ class HeaderPanel extends Component {
   };
 
   renderPairTitle = (pair) => (
-    <Tooltip title={this.props.t(this.state.pairCopyTooltipKey)}>
-      <button
-        type="button"
-        className="detail-title-copy-trigger"
-        onClick={this.handlePairCopy}
-        aria-label={this.props.t("components.header-panel.copy-pair-aria-label")}
-      >
-        {pair}
-      </button>
-    </Tooltip>
+    <PatientCaseSwitcher
+      pair={pair}
+      copyControl={
+        <Tooltip title={this.props.t(this.state.pairCopyTooltipKey)}>
+          <button
+            type="button"
+            className="detail-title-copy-button"
+            onClick={this.handlePairCopy}
+            aria-label={this.props.t(
+              "components.header-panel.copy-pair-aria-label",
+            )}
+          >
+            <CopyOutlined />
+          </button>
+        </Tooltip>
+      }
+    />
   );
 
   renderTitle = () => {
@@ -325,7 +333,6 @@ class HeaderPanel extends Component {
           title={
             <Space size="small" wrap>
               {this.renderTitle()}
-              <PatientCaseSwitcher />
             </Space>
           }
           subTitle={
