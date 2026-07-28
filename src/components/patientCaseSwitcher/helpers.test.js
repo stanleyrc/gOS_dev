@@ -1,5 +1,7 @@
 /** @jest-environment node */
 
+import fs from "fs";
+import path from "path";
 import {
   findPatientCases,
   parseSpecimenDate,
@@ -80,6 +82,55 @@ describe("patient case manifest scan", () => {
           sortKey: "2024-01-01",
           label: "2024-01-01",
         },
+      },
+    ]);
+  });
+
+  it("finds the bundled cases whose patient IDs power filters and case switching", () => {
+    const manifests = [
+      {
+        datasetId: "filtered-events-refactor",
+        path: "public/data_filtered_events_test/datafiles.json",
+      },
+      {
+        datasetId: "demo-solid-2",
+        path: "public/data2/datafiles.json",
+      },
+    ];
+    const records = manifests.flatMap((manifest) =>
+      JSON.parse(
+        fs.readFileSync(path.join(process.cwd(), manifest.path), "utf8"),
+      ).map((record) => ({
+        ...record,
+        datasetId: manifest.datasetId,
+        caseReportId: record.pair,
+      })),
+    );
+
+    expect(
+      findPatientCases(records, "patient 1").map(
+        ({ identity, pair, specimenDate }) => ({
+          identity,
+          pair,
+          specimenDate: specimenDate?.label,
+        }),
+      ),
+    ).toEqual([
+      {
+        identity: {
+          datasetId: "filtered-events-refactor",
+          caseReportId: "B24-1267___B23-2915",
+        },
+        pair: "B24-1267___B23-2915",
+        specimenDate: "2025-02-14",
+      },
+      {
+        identity: {
+          datasetId: "demo-solid-2",
+          caseReportId: "A_DIFFERENT_CASE",
+        },
+        pair: "A_DIFFERENT_CASE",
+        specimenDate: "2024-06-03",
       },
     ]);
   });
