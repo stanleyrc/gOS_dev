@@ -362,22 +362,18 @@ export class PatientCaseSwitcher extends Component {
         <Wrapper>
           {control}
           {copyControl}
-          <Tooltip
-            title={t("components.patient-case-switcher.patient-level-description")}
+          <Button
+            type="link"
+            size="small"
+            className="patient-level-view-link"
+            onClick={this.handlePatientLevelView}
+            aria-label={t(
+              "components.patient-case-switcher.patient-level-aria-label",
+              { patientId },
+            )}
           >
-            <Button
-              type="link"
-              size="small"
-              className="patient-level-view-link"
-              onClick={this.handlePatientLevelView}
-              aria-label={t(
-                "components.patient-case-switcher.patient-level-aria-label",
-                { patientId },
-              )}
-            >
-              {t("components.patient-case-switcher.patient-level")}
-            </Button>
-          </Tooltip>
+            {t("components.patient-case-switcher.patient-level")}
+          </Button>
         </Wrapper>
       </>
     );
