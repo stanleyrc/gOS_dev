@@ -1,7 +1,7 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 const Wrapper = styled.div`
-  /* Add any styles if needed */
+  display: inline-flex;
 `;
 
 export default Wrapper;

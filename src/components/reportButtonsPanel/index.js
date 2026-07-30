@@ -1,13 +1,8 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import {
-  Row,
-  Col,
-  Space,
-  Button,
-} from "antd";
-import { EyeOutlined, FileTextOutlined } from "@ant-design/icons";
+import { Button, Tooltip } from "antd";
+import { FileTextOutlined } from "@ant-design/icons";
 import ReportPreviewModal from "../reportPreviewModal";
 import { exportReport, previewReport } from "../../helpers/reportExporter";
 import interpretationsActions from "../../redux/interpretations/actions";
@@ -98,6 +93,7 @@ class ReportButtonsPanel extends Component {
       }
 
       alert(`Successfully imported ${interpretationsData.length} interpretations`);
+      this.handleClosePreview();
     } catch (error) {
       console.error('Error importing report:', error);
       alert(`Failed to import report: ${error.message}`);
@@ -133,6 +129,7 @@ class ReportButtonsPanel extends Component {
     // Reset Redux state
     resetTierOverrides();
     selectFilteredEvent(null);
+    this.handleClosePreview();
   };
 
   render() {
@@ -140,47 +137,44 @@ class ReportButtonsPanel extends Component {
 
     return (
       <Wrapper>
-        <Row className="ant-panel-container ant-home-plot-container">
-          <Col flex="none">
-            <Space>
-              <Button
-                icon={<EyeOutlined />}
-                onClick={this.handlePreviewReport}
-                disabled={loading || this.state.previewLoading}
-              >
-                Preview Report
-              </Button>
-              <Button
-                onClick={this.handleLoadReport}
-              >
-                {t("components.filtered-events-panel.load-report")}
-              </Button>
-              <Button
-                type="primary"
-                icon={<FileTextOutlined />}
-                onClick={this.handleExportNotes}
-                disabled={loading || this.state.exporting}
-              >
-                {t("components.filtered-events-panel.export.notes")}
-              </Button>
-              <input type="file" ref={this.fileInputRef} accept=".html" style={{display: 'none'}} onChange={this.handleFileChange} />
-            </Space>
-          </Col>
-          <Col flex="auto" />
-          <Col style={{ textAlign: "right" }} flex="none">
-            <Button
-              danger
-              onClick={this.handleResetReportState}
-            >
-              {t("components.filtered-events-panel.reset-state")}
-            </Button>
-          </Col>
-        </Row>
+        <Tooltip
+          title={t("components.header-panel.view-report")}
+          placement="bottom"
+          color="#27496b"
+        >
+          <Button
+            type="text"
+            className="header-badge-button"
+            icon={
+              <span className="report-badge-icon">
+                <FileTextOutlined />
+              </span>
+            }
+            onClick={this.handlePreviewReport}
+            disabled={loading}
+            loading={this.state.previewLoading}
+            aria-label={t("components.header-panel.view-report")}
+          />
+        </Tooltip>
+        <input
+          type="file"
+          ref={this.fileInputRef}
+          accept=".html"
+          style={{ display: "none" }}
+          onChange={this.handleFileChange}
+        />
         <ReportPreviewModal
           visible={this.state.previewVisible}
           onCancel={this.handleClosePreview}
           loading={this.state.previewLoading}
           html={this.state.previewHtml}
+          onImport={this.handleLoadReport}
+          onExport={this.handleExportNotes}
+          onReset={this.handleResetReportState}
+          importLabel={t("components.filtered-events-panel.load-report")}
+          exportLabel={t("components.filtered-events-panel.export.notes")}
+          resetLabel={t("components.filtered-events-panel.reset-state")}
+          exporting={this.state.exporting}
         />
       </Wrapper>
     );

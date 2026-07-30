@@ -63,6 +63,38 @@ const Wrapper = styled.div`
       color: #1677ff;
       outline: none;
     }
+    .header-badge-button.ant-btn {
+      width: 40px;
+      height: 40px;
+      padding: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+    .header-badge-button.ant-btn:hover,
+    .header-badge-button.ant-btn:focus-visible {
+      background: rgba(39, 73, 107, 0.08);
+    }
+    .header-badge-image {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+    }
+    .report-badge-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      color: rgba(0, 0, 0, 0.65);
+      border: 1px solid #d9d9d9;
+      font-size: 24px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+    }
     .quality-report-link {
       font-weight: bold;
     }
