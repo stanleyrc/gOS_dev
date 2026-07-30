@@ -5,6 +5,10 @@ import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { splitFloat64 } from "../../helpers/utility.js";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path, getCancelToken())
@@ -25,15 +29,18 @@ function* fetchData(action) {
     const filePath = `${dataset.dataPath}${id}/${filename}`;
 
     try {
-      // Check if file exists using HEAD request
-      yield call(axios.head, filePath);
+      const availabilityResponse = yield call(axios.head, filePath);
+      if (isMissingDataResponse(availabilityResponse)) {
+        yield put({ type: actions.FETCH_METHYLATION_BETA_DATA_MISSING });
+        return;
+      }
     } catch (error) {
-      // File doesn't exist or can't be accessed
+      if (!isMissingDataError(error)) throw error;
+
       yield put({
         type: actions.FETCH_METHYLATION_BETA_DATA_MISSING,
-        missing: true,
       });
-      return; // Exit early
+      return;
     }
 
     let plot = {

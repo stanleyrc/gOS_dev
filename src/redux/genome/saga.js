@@ -4,17 +4,28 @@ import actions from "./actions";
 import { dataToGenome } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
   const { dataset, chromoBins } = currentState.Settings;
   const { id } = currentState.CaseReport;
+  const filePath = `${dataset.dataPath}${id}/complex.json`;
   try {
-    let responseGenomeData = yield call(
-      axios.get,
-      `${dataset.dataPath}${id}/complex.json`,
-      { cancelToken: getCancelToken() }
-    );
+    const availabilityResponse = yield call(axios.head, filePath, {
+      cancelToken: getCancelToken(),
+    });
+    if (isMissingDataResponse(availabilityResponse)) {
+      yield put({ type: actions.FETCH_GENOME_DATA_MISSING });
+      return;
+    }
+
+    let responseGenomeData = yield call(axios.get, filePath, {
+      cancelToken: getCancelToken(),
+    });
 
     let data = responseGenomeData.data || {
       settings: {},
@@ -34,6 +45,10 @@ function* fetchData(action) {
         `fetch ${dataset.dataPath}${id}/complex.json request canceled`,
         error.message
       );
+    } else if (isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_GENOME_DATA_MISSING,
+      });
     } else {
       yield put({
         type: actions.FETCH_GENOME_DATA_FAILED,

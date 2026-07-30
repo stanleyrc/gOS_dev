@@ -3,6 +3,10 @@ import axios from "axios";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
@@ -25,17 +29,21 @@ function* fetchData(action) {
 
     const checkFile = function* (file) {
       try {
-        yield call(axios.head, `${dataset.dataPath}${id}/${file}`, {
-          cancelToken: getCancelToken(),
-        });
-        return { file, present: true };
+        const availabilityResponse = yield call(
+          axios.head,
+          `${dataset.dataPath}${id}/${file}`,
+          {
+            cancelToken: getCancelToken(),
+          }
+        );
+        return {
+          file,
+          present: !isMissingDataResponse(availabilityResponse),
+        };
       } catch (err) {
-        if (axios.isCancel(err)) {
-          console.log(`Request canceled for ${file}:`, err.message);
-        } else {
-          console.error(`Error checking ${file}:`, err.message);
-        }
-        return { file, present: false, error: err.message || "Unknown error" };
+        if (axios.isCancel(err)) throw err;
+        if (isMissingDataError(err)) return { file, present: false };
+        throw err;
       }
     };
 
@@ -50,8 +58,16 @@ function* fetchData(action) {
       call(checkFile, filenameNormalRnaIndex),
     ]);
 
-    // Check if all files are missing
-    const allMissing = results.every((result) => !result.present);
+    const filenameTumorPresent = results[0].present && results[1].present;
+    const filenameNormalPresent = results[2].present && results[3].present;
+    const filenameTumorRnaPresent = results[4].present && results[5].present;
+    const filenameNormalRnaPresent = results[6].present && results[7].present;
+    const allMissing = ![
+      filenameTumorPresent,
+      filenameNormalPresent,
+      filenameTumorRnaPresent,
+      filenameNormalRnaPresent,
+    ].some(Boolean);
 
     if (allMissing) {
       yield put({
@@ -63,10 +79,10 @@ function* fetchData(action) {
       yield put({
         type: actions.FETCH_IGV_DATA_SUCCESS,
         genomeList,
-        filenameTumorPresent: results[0].present && results[1].present,
-        filenameNormalPresent: results[2].present && results[3].present,
-        filenameTumorRnaPresent: results[4].present && results[5].present,
-        filenameNormalRnaPresent: results[6].present && results[7].present,
+        filenameTumorPresent,
+        filenameNormalPresent,
+        filenameTumorRnaPresent,
+        filenameNormalRnaPresent,
         missingFiles: results.filter((result) => !result.present),
       });
     }

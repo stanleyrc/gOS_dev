@@ -5,6 +5,10 @@ import { createProgressChannel } from "../../helpers/progressChannel";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
@@ -15,15 +19,23 @@ function* fetchData(action) {
   const filePath = `${dataset.dataPath}${id}/${filename}`;
 
   try {
-    // Check if file exists using HEAD request
-    yield call(axios.head, filePath);
+    const availabilityResponse = yield call(axios.head, filePath);
+    if (isMissingDataResponse(availabilityResponse)) {
+      yield put({ type: actions.FETCH_MUTATIONS_DATA_MISSING });
+      return;
+    }
   } catch (error) {
-    // File doesn't exist or can't be accessed
-    yield put({
-      type: actions.FETCH_MUTATIONS_DATA_MISSING,
-      missing: true,
-    });
-    return; // Exit early
+    if (isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_MUTATIONS_DATA_MISSING,
+      });
+    } else if (!axios.isCancel(error)) {
+      yield put({
+        type: actions.FETCH_MUTATIONS_DATA_FAILED,
+        error,
+      });
+    }
+    return;
   }
 
   // Set up the channel configuration

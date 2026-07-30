@@ -11,6 +11,7 @@ const initState = {
     frameConnections: [],
   },
   error: null,
+  missing: false,
 };
 
 export default function appReducer(state = initState, action) {
@@ -27,12 +28,14 @@ export default function appReducer(state = initState, action) {
           frameConnections: [],
         },
         loading: true,
+        missing: false,
       };
     case actions.FETCH_ALLELIC_DATA_SUCCESS:
       return {
         ...state,
         data: action.data,
         loading: false,
+        missing: false,
       };
     case actions.FETCH_ALLELIC_DATA_FAILED:
       return {
@@ -46,6 +49,21 @@ export default function appReducer(state = initState, action) {
         },
         error: action.error,
         loading: false,
+        missing: false,
+      };
+    case actions.FETCH_ALLELIC_DATA_MISSING:
+      return {
+        ...state,
+        data: {
+          settings: {},
+          intervals: [],
+          connections: [],
+          intervalBins: {},
+          frameConnections: [],
+        },
+        error: null,
+        loading: false,
+        missing: true,
       };
     default:
       return state;
