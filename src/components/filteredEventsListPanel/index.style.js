@@ -1,6 +1,37 @@
 import styled from "styled-components";
 
 const Wrapper = styled.div`
+  .tier-selector {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .tier-selector-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .tier-selector-button:hover,
+  .tier-selector-button:focus-visible {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+
+  .tier-selector-button:focus-visible {
+    border-radius: 50%;
+    outline: 2px solid #1677ff;
+    outline-offset: 2px;
+  }
+
   .filtered-events-header-text {
     max-width: 160px;
     display: block;
