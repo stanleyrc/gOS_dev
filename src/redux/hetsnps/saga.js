@@ -4,6 +4,11 @@ import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { splitFloat64 } from "../../helpers/utility.js";
+import axios from "axios";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path, getCancelToken())
@@ -19,9 +24,18 @@ function* fetchData(action) {
     const currentState = yield select(getCurrentState);
     const { dataset } = currentState.Settings;
     const { id, metadata } = currentState.CaseReport;
+    const filePath = `${dataset.dataPath}${id}/hetsnps.arrow`;
+
+    const availabilityResponse = yield call(axios.head, filePath, {
+      cancelToken: getCancelToken(),
+    });
+    if (isMissingDataResponse(availabilityResponse)) {
+      yield put({ type: actions.FETCH_HETSNPS_DATA_MISSING });
+      return;
+    }
 
     let hetsnpsPlot = {
-      path: `${dataset.dataPath}${id}/hetsnps.arrow`,
+      path: filePath,
       data: null,
     };
 
@@ -51,10 +65,16 @@ function* fetchData(action) {
       dataPointsColor,
     });
   } catch (error) {
-    yield put({
-      type: actions.FETCH_HETSNPS_DATA_FAILED,
-      error,
-    });
+    if (isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_HETSNPS_DATA_MISSING,
+      });
+    } else {
+      yield put({
+        type: actions.FETCH_HETSNPS_DATA_FAILED,
+        error,
+      });
+    }
   }
 }
 

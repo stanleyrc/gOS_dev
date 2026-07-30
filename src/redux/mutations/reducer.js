@@ -75,6 +75,7 @@ export default function appReducer(state = initState, action) {
         },
         error: action.error,
         loading: false,
+        missing: false,
       };
     default:
       return state;

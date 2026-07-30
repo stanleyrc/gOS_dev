@@ -32,7 +32,7 @@ import Wrapper from "./index.style";
 const { Option } = Select;
 const { updateHoveredLocation } = settingsActions;
 
-class TracksModal extends Component {
+export class TracksModal extends Component {
   container = null;
 
   state = {
@@ -60,6 +60,21 @@ class TracksModal extends Component {
       nextProps.genomeCoverage?.loading !== this.props.genomeCoverage?.loading ||
       nextProps.mutations?.loading !== this.props.mutations?.loading ||
       nextProps.allelic?.loading !== this.props.allelic?.loading
+    )
+      return true;
+
+    // Check track availability
+    if (
+      nextProps.genome?.missing !== this.props.genome?.missing ||
+      nextProps.genomeCoverage?.missing !== this.props.genomeCoverage?.missing ||
+      nextProps.methylationBetaCoverage?.missing !==
+        this.props.methylationBetaCoverage?.missing ||
+      nextProps.methylationIntensityCoverage?.missing !==
+        this.props.methylationIntensityCoverage?.missing ||
+      nextProps.hetsnps?.missing !== this.props.hetsnps?.missing ||
+      nextProps.mutations?.missing !== this.props.mutations?.missing ||
+      nextProps.allelic?.missing !== this.props.allelic?.missing ||
+      nextProps.igv?.missing !== this.props.igv?.missing
     )
       return true;
 
@@ -214,24 +229,26 @@ class TracksModal extends Component {
             tracksLegend
           )}
         </Col>
-        <Col className="gutter-row" span={24}>
-          <GenomePanel
-            {...{
-              loading: genome.loading,
-              genome: genome.data,
-              error: genome.error,
-              filename: genome.filename,
-              title: genomePlotTitle,
-              yAxisTitle: genomePlotYAxisTitle,
-              chromoBins,
-              visible: true,
-              index: 0,
-              height,
-              commonRangeY,
-            }}
-          />
-        </Col>
-        {genomeCoverage && (
+        {!genome.missing && (
+          <Col className="gutter-row" span={24}>
+            <GenomePanel
+              {...{
+                loading: genome.loading,
+                genome: genome.data,
+                error: genome.error,
+                filename: genome.filename,
+                title: genomePlotTitle,
+                yAxisTitle: genomePlotYAxisTitle,
+                chromoBins,
+                visible: true,
+                index: 0,
+                height,
+                commonRangeY,
+              }}
+            />
+          </Col>
+        )}
+        {genomeCoverage && !genomeCoverage.missing && (
           <Col className="gutter-row" span={24}>
             <ScatterPlotPanel
               {...{
@@ -396,7 +413,7 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {hetsnps && (
+        {hetsnps && !hetsnps.missing && (
           <Col className="gutter-row" span={24}>
             <ScatterPlotPanel
               {...{
@@ -449,7 +466,7 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        {allelic && (
+        {allelic && !allelic.missing && (
           <Col className="gutter-row" span={24}>
             <GenomePanel
               {...{
@@ -488,28 +505,30 @@ class TracksModal extends Component {
             />
           </Col>
         )}
-        <Col className="gutter-row" span={24}>
-          <IgvPanel
-            {...{
-              loading: igv.loading,
-              error: igv.error,
-              missingFiles: igv.missingFiles,
-              filenameTumorPresent: igv.filenameTumorPresent,
-              filenameNormalPresent: igv.filenameNormalPresent,
-              filenameTumorRnaPresent: igv.filenameTumorRnaPresent,
-              filenameNormalRnaPresent: igv.filenameNormalRnaPresent,
-              filenameTumor: igv.filenameTumor,
-              filenameTumorIndex: igv.filenameTumorIndex,
-              filenameNormal: igv.filenameNormal,
-              filenameNormalIndex: igv.filenameNormalIndex,
-              filenameTumorRna: igv.filenameTumorRna,
-              filenameTumorRnaIndex: igv.filenameTumorRnaIndex,
-              filenameNormalRna: igv.filenameNormalRna,
-              filenameNormalRnaIndex: igv.filenameNormalRnaIndex,
-              format: igv.format,
-            }}
-          />
-        </Col>
+        {!igv.missing && (
+          <Col className="gutter-row" span={24}>
+            <IgvPanel
+              {...{
+                loading: igv.loading,
+                error: igv.error,
+                missingFiles: igv.missingFiles,
+                filenameTumorPresent: igv.filenameTumorPresent,
+                filenameNormalPresent: igv.filenameNormalPresent,
+                filenameTumorRnaPresent: igv.filenameTumorRnaPresent,
+                filenameNormalRnaPresent: igv.filenameNormalRnaPresent,
+                filenameTumor: igv.filenameTumor,
+                filenameTumorIndex: igv.filenameTumorIndex,
+                filenameNormal: igv.filenameNormal,
+                filenameNormalIndex: igv.filenameNormalIndex,
+                filenameTumorRna: igv.filenameTumorRna,
+                filenameTumorRnaIndex: igv.filenameTumorRnaIndex,
+                filenameNormalRna: igv.filenameNormalRna,
+                filenameNormalRnaIndex: igv.filenameNormalRnaIndex,
+                format: igv.format,
+              }}
+            />
+          </Col>
+        )}
       </Row>
     );
 

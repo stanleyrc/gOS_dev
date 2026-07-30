@@ -5,17 +5,28 @@ import { dataToGenome } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchData(action) {
   const currentState = yield select(getCurrentState);
   const { dataset, chromoBins } = currentState.Settings;
   const { id } = currentState.CaseReport;
+  const filePath = `${dataset.dataPath}${id}/allelic.json`;
   try {
-    let responseAllelicData = yield call(
-      axios.get,
-      `${dataset.dataPath}${id}/allelic.json`,
-      { cancelToken: getCancelToken() }
-    );
+    const availabilityResponse = yield call(axios.head, filePath, {
+      cancelToken: getCancelToken(),
+    });
+    if (isMissingDataResponse(availabilityResponse)) {
+      yield put({ type: actions.FETCH_ALLELIC_DATA_MISSING });
+      return;
+    }
+
+    let responseAllelicData = yield call(axios.get, filePath, {
+      cancelToken: getCancelToken(),
+    });
     let data = allelicToGenome(
       responseAllelicData.data || {
         settings: {},
@@ -31,12 +42,15 @@ function* fetchData(action) {
       data: dataToGenome(data, chromoBins),
     });
   } catch (error) {
-    console.log(error);
     if (axios.isCancel(error)) {
       console.log(
         `fetch ${dataset.dataPath}${id}/allelic.json request canceled`,
         error.message
       );
+    } else if (isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_ALLELIC_DATA_MISSING,
+      });
     } else {
       yield put({
         type: actions.FETCH_ALLELIC_DATA_FAILED,

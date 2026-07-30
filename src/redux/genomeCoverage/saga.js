@@ -4,6 +4,11 @@ import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { splitFloat64 } from "../../helpers/utility.js";
+import axios from "axios";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchArrowData(plot) {
   yield loadArrowTable(plot.path, getCancelToken())
@@ -20,9 +25,18 @@ function* fetchData(action) {
     const { filename } = currentState.GenomeCoverage;
     const { dataset } = currentState.Settings;
     const { id, metadata } = currentState.CaseReport;
+    const filePath = `${dataset.dataPath}${id}/${filename}`;
+
+    const availabilityResponse = yield call(axios.head, filePath, {
+      cancelToken: getCancelToken(),
+    });
+    if (isMissingDataResponse(availabilityResponse)) {
+      yield put({ type: actions.FETCH_COVERAGE_DATA_MISSING });
+      return;
+    }
 
     let plot = {
-      path: `${dataset.dataPath}${id}/${filename}`,
+      path: filePath,
       data: null,
     };
     yield call(fetchArrowData, plot);
@@ -51,10 +65,16 @@ function* fetchData(action) {
       dataPointsColor,
     });
   } catch (error) {
-    yield put({
-      type: actions.FETCH_COVERAGE_DATA_FAILED,
-      error,
-    });
+    if (isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_COVERAGE_DATA_MISSING,
+      });
+    } else {
+      yield put({
+        type: actions.FETCH_COVERAGE_DATA_FAILED,
+        error,
+      });
+    }
   }
 }
 

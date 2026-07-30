@@ -10,6 +10,7 @@ const initState = {
   dataPointsXLow: [],
   dataPointsColor: [],
   error: null,
+  missing: false,
 };
 
 export default function appReducer(state = initState, action) {
@@ -25,6 +26,7 @@ export default function appReducer(state = initState, action) {
         dataPointsColor: [],
         error: null,
         loading: true,
+        missing: false,
       };
     case actions.FETCH_COVERAGE_DATA_SUCCESS:
       return {
@@ -36,6 +38,7 @@ export default function appReducer(state = initState, action) {
         dataPointsXLow: action.dataPointsXLow,
         dataPointsColor: action.dataPointsColor,
         loading: false,
+        missing: false,
       };
     case actions.FETCH_COVERAGE_DATA_FAILED:
       return {
@@ -48,6 +51,20 @@ export default function appReducer(state = initState, action) {
         dataPointsColor: [],
         error: action.error,
         loading: false,
+        missing: false,
+      };
+    case actions.FETCH_COVERAGE_DATA_MISSING:
+      return {
+        ...state,
+        dataPointsCount: [],
+        dataPointsCopyNumber: [],
+        dataPointsX: [],
+        dataPointsXHigh: [],
+        dataPointsXLow: [],
+        dataPointsColor: [],
+        error: null,
+        loading: false,
+        missing: true,
       };
     default:
       return state;
