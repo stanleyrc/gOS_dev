@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Button, Tooltip } from "antd";
-import { FileTextOutlined } from "@ant-design/icons";
+import { Button } from "antd";
+import { FaFileMedical } from "react-icons/fa6";
 import ReportPreviewModal from "../reportPreviewModal";
 import { exportReport, previewReport } from "../../helpers/reportExporter";
 import interpretationsActions from "../../redux/interpretations/actions";
@@ -137,25 +137,16 @@ class ReportButtonsPanel extends Component {
 
     return (
       <Wrapper>
-        <Tooltip
-          title={t("components.header-panel.view-report")}
-          placement="bottom"
-          color="#27496b"
+        <Button
+          className="report-view-button"
+          icon={<FaFileMedical size={16} />}
+          onClick={this.handlePreviewReport}
+          disabled={loading}
+          loading={this.state.previewLoading}
+          aria-label={t("components.header-panel.view-report")}
         >
-          <Button
-            type="text"
-            className="header-badge-button"
-            icon={
-              <span className="report-badge-icon">
-                <FileTextOutlined />
-              </span>
-            }
-            onClick={this.handlePreviewReport}
-            disabled={loading}
-            loading={this.state.previewLoading}
-            aria-label={t("components.header-panel.view-report")}
-          />
-        </Tooltip>
+          {t("components.header-panel.view-report")}
+        </Button>
         <input
           type="file"
           ref={this.fileInputRef}
