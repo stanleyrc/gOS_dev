@@ -3,8 +3,8 @@
 
 const mockRender = jest.fn();
 
-jest.mock("./htmlRenderer", () => ({
-  HtmlRenderer: class MockHtmlRenderer {
+jest.mock("./myeloSeqHtmlRenderer", () => ({
+  MyeloSeqHtmlRenderer: class MockMyeloSeqHtmlRenderer {
     render(report) {
       return mockRender(report);
     }
@@ -54,5 +54,38 @@ describe("reportExporter", () => {
       "tier-1",
       "tier-2",
     ]);
+  });
+
+  it("maps available filtered-event report fields without inventing values", async () => {
+    const mergedEvents = {
+      filteredEvents: [
+        {
+          uid: "tier-1",
+          gene: "JAK2",
+          variant: "p.V617F",
+          tier: 1,
+          type: "SNV",
+          eventType: "snv",
+          VAF: 0.477,
+          altCounts: 954,
+          refCounts: 1046,
+          transcript: "NM_004972.4",
+          Genome_Location: "9:5073770-5073771",
+          effect_description: "Mapped to comments",
+        },
+      ],
+    };
+
+    await previewReport(state, mergedEvents);
+
+    expect(mockRender.mock.calls[0][0].alterations[0]).toMatchObject({
+      type: "SNV",
+      eventType: "snv",
+      VAF: 0.477,
+      depth: 2000,
+      transcript: "NM_004972.4",
+      locus: "9:5073770-5073771",
+      effect_description: "Mapped to comments",
+    });
   });
 });
