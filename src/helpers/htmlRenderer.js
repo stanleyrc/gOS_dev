@@ -486,6 +486,27 @@ function buildToc(report, logoDataUrl) {
   return toc;
 }
 
+function buildTocNavigationScript() {
+  return `<script>
+(function () {
+  var toc = document.getElementById("toc-root");
+  if (!toc) return;
+
+  toc.addEventListener("click", function (event) {
+    var link = event.target.closest('a[href^="#"]');
+    if (!link || !toc.contains(link)) return;
+
+    var targetId = link.getAttribute("href").slice(1);
+    var target = document.getElementById(targetId);
+    if (!target) return;
+
+    event.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+})();
+</script>`;
+}
+
 // Inline static CSS for the report
 function getInlineCSS() {
   return `
@@ -906,6 +927,7 @@ ${getInlineCSS()}
     ${sections}
   </div>
   ${interpretationsScript}
+  ${buildTocNavigationScript()}
 </body>
 </html>`.trim();
 

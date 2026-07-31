@@ -21,7 +21,9 @@ import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
+import interpretationsActions from "../../redux/interpretations/actions";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
+import EventInterpretation from "../../helpers/EventInterpretation";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
@@ -171,6 +173,29 @@ class FilteredEventsListPanel extends Component {
 
   handleColumnSelectionChange = (selectedKeys) => {
     this.setState({ selectedColumnKeys: selectedKeys });
+  };
+
+  handleTierChange = async (record, tier) => {
+    const { id, dataset, updateInterpretation } = this.props;
+    const { ensureUser } = await import("../../helpers/userAuth");
+
+    try {
+      await ensureUser();
+    } catch (error) {
+      return;
+    }
+
+    const interpretation = new EventInterpretation({
+      datasetId: dataset?.id,
+      caseId: id || record?.id || "UNKNOWN",
+      alterationId: record?.uid || "UNKNOWN",
+      gene: record?.gene,
+      variant: record?.variant,
+      variant_type: record?.type,
+      data: { tier: String(tier) },
+    });
+
+    updateInterpretation(interpretation.toJSON());
   };
 
   componentDidMount() {
@@ -396,6 +421,7 @@ class FilteredEventsListPanel extends Component {
         t,
         selectFilteredEvent,
         getTierTooltipContent: this.getTierTooltipContent,
+        onTierChange: this.handleTierChange,
       },
       filterValues
     );
@@ -700,6 +726,8 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(setColumnFilters(columnFilters)),
   resetColumnFilters: () =>
     dispatch(resetColumnFilters()),
+  updateInterpretation: (interpretation) =>
+    dispatch(interpretationsActions.updateInterpretation(interpretation)),
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);

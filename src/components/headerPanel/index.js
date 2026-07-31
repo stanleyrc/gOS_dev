@@ -37,6 +37,7 @@ import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import { ClinicalTrialsModal } from "../clinicalTrialsModal";
 import PatientCaseSwitcher from "../patientCaseSwitcher";
+import ReportButtonsPanel from "../reportButtonsPanel";
 import { CopyOutlined } from "@ant-design/icons";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
 
@@ -336,54 +337,53 @@ class HeaderPanel extends Component {
             </Space>
           }
           subTitle={
-            <Space>
+            <Space size="small">
               <span>{inferred_sex}</span> {qcMetricsComponent}
-              <Button
-                type="text"
-                onClick={this.handleCbioportalModalOpen}
+              <Tooltip
                 title={t("components.header-panel.cbioportal-button") || "cBioPortal"}
-                style={{
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                placement="bottom"
+                color="#27496b"
               >
-                <img
-                  src={cbioportalIcon}
-                  alt="cBioPortal"
-                  title={t("components.header-panel.cbioportal-button") || "cBioPortal"}
-                  style={{
-                    height: "32px",
-                    width: "32px",
-                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))",
-                    cursor: "pointer",
-                  }}
-                />
-              </Button>
-              <Button
-                type="text"
-                onClick={this.handleClinicalTrialsModalOpen}
-                title={t("components.header-panel.clinical-trials-button") || "Clinical Trials"}
-                style={{
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                <Button
+                  type="text"
+                  className="header-badge-button"
+                  onClick={this.handleCbioportalModalOpen}
+                  aria-label={
+                    t("components.header-panel.cbioportal-button") || "cBioPortal"
+                  }
+                >
+                  <img
+                    src={cbioportalIcon}
+                    alt=""
+                    className="header-badge-image"
+                  />
+                </Button>
+              </Tooltip>
+              <Tooltip
+                title={
+                  t("components.header-panel.clinical-trials-button") ||
+                  "Clinical Trials"
+                }
+                placement="bottom"
+                color="#27496b"
               >
-                <img
-                  src={ctgovLogo}
-                  alt="ClinicalTrials.gov"
-                  title={t("components.header-panel.clinical-trials-button") || "Clinical Trials"}
-                  style={{
-                    height: "32px",
-                    width: "32px",
-                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))",
-                    cursor: "pointer",
-                  }}
-                />
-              </Button>
+                <Button
+                  type="text"
+                  className="header-badge-button"
+                  onClick={this.handleClinicalTrialsModalOpen}
+                  aria-label={
+                    t("components.header-panel.clinical-trials-button") ||
+                    "Clinical Trials"
+                  }
+                >
+                  <img
+                    src={ctgovLogo}
+                    alt=""
+                    className="header-badge-image"
+                  />
+                </Button>
+              </Tooltip>
+              <ReportButtonsPanel />
             </Space>
           }
           extra={

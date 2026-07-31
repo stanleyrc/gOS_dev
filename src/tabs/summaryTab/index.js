@@ -22,7 +22,6 @@ import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
 import HighlightsPanel from "../../components/highlightsPanel";
 import GlobalNotesPanel from "../../components/globalNotesPanel";
-import ReportButtonsPanel from "../../components/reportButtonsPanel";
 import * as d3 from "d3";
 
 const { Text } = Typography;
@@ -183,7 +182,6 @@ class SummaryTab extends Component {
             ]}
           />
         </Skeleton>
-        <ReportButtonsPanel />
         <GlobalNotesPanel />
         <FilteredEventsListPanel />
       </Wrapper>

@@ -1,4 +1,4 @@
-import { HtmlRenderer } from './htmlRenderer';
+import { MyeloSeqHtmlRenderer as HtmlRenderer } from './myeloSeqHtmlRenderer';
 import { getUser } from './userAuth';
 
 /**
@@ -14,6 +14,8 @@ function buildReportFromMergedState(state, mergedEvents) {
   const patient = {
     caseId: String(ce?.id ?? m?.pair ?? ''),
     tumorType: String(m?.tumor_type ?? m?.tumorType ?? m?.tumor ?? ''),
+    tumorDetails: String(m?.tumor_details ?? m?.tumorDetails ?? ''),
+    disease: String(m?.disease ?? ''),
     primarySite: String(m?.primary_site ?? m?.primarySite ?? ''),
     tmb: parseNumber(m?.tmb?.score ?? m?.tmbScore ?? m?.tmb),
     msisensor: {
@@ -71,11 +73,22 @@ function mapEvent(ev) {
   const gene = ev?.gene ?? ev?.Gene ?? '';
   const variant = ev?.variant ?? ev?.Variant ?? '';
   const tier = ev?.tier ?? ev?.Tier;
+  const alt = ev?.alt ?? ev?.altCounts ?? ev?.tumorAlt ?? ev?.tumor_alt ?? ev?.alt_count;
+  const ref = ev?.ref ?? ev?.refCounts ?? ev?.tumorRef ?? ev?.tumor_ref ?? ev?.ref_count;
+  const explicitDepth = parseNumber(ev?.depth ?? ev?.Depth ?? ev?.coverage);
+  const altCount = parseNumber(alt);
+  const refCount = parseNumber(ref);
+  const derivedDepth = altCount !== undefined && refCount !== undefined
+    ? altCount + refCount
+    : undefined;
+
   return {
     id: ev?.uid ?? ev?.id,
     gene,
     variant,
     tier: tier != null ? String(tier) : undefined,
+    type: ev?.type ?? ev?.vartype ?? ev?.variant_type,
+    eventType: ev?.eventType,
     role: ev?.role,
     effect: ev?.effect,
     gene_summary: ev?.gene_summary,
@@ -85,9 +98,12 @@ function mapEvent(ev) {
     resistances: toArray(ev?.resistances),
     notes: ev?.notes || '',
     VAF: ev?.VAF ?? ev?.vaf,
+    depth: explicitDepth ?? derivedDepth,
+    transcript: ev?.transcript ?? ev?.Transcript ?? ev?.transcript_id,
+    locus: ev?.locus ?? ev?.fusion_gene_coords ?? ev?.location ?? ev?.Genome_Location,
     estimated_altered_copies: ev?.estimated_altered_copies ?? ev?.estimatedAlteredCopies,
-    alt: ev?.alt ?? ev?.altCounts ?? ev?.tumorAlt ?? ev?.tumor_alt ?? ev?.alt_count,
-    ref: ev?.ref ?? ev?.refCounts ?? ev?.tumorRef ?? ev?.tumor_ref ?? ev?.ref_count,
+    alt,
+    ref,
   };
 }
 
