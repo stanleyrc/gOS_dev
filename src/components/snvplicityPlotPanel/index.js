@@ -28,6 +28,8 @@ import {
 import * as htmlToImage from "html-to-image";
 import Wrapper from "./index.style";
 import SnvplicityPlot from "../snvplicityPlot";
+import ErrorPanel from "../errorPanel";
+import { CgArrowsBreakeH } from "react-icons/cg";
 
 const margins = {
   padding: 16,
@@ -56,11 +58,32 @@ class SnvplicityPlotPanel extends Component {
   };
 
   render() {
-    const { t, loading, inViewport, visible, data } =
+    const { t, loading, inViewport, visible, data, error, missing } =
       this.props;
 
-    if (!visible || (data && Object.values(data).flat().length === 0)) {
+    if (
+      !visible ||
+      missing ||
+      (!loading && data && Object.values(data).flat().length === 0)
+    ) {
       return null;
+    }
+
+    if (error) {
+      return (
+        <ErrorPanel
+          avatar={<CgArrowsBreakeH />}
+          header={t("components.snvplicity-panel.header")}
+          title={t("general.error", {
+            error: t("components.snvplicity-panel.header"),
+          })}
+          subtitle={error.toString()}
+          explanationTitle={t("general.error", {
+            error: t("components.snvplicity-panel.header"),
+          })}
+          explanationDescription={error.stack || error.toString()}
+        />
+      );
     }
 
     let distinctCopyNumbers = data
@@ -233,6 +256,8 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   data: state.Snvplicity.data,
   loading: state.Snvplicity.loading,
+  error: state.Snvplicity.error,
+  missing: state.Snvplicity.missing,
 });
 export default connect(
   mapStateToProps,

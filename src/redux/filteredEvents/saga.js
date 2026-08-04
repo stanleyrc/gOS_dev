@@ -10,6 +10,10 @@ import actions from "./actions";
 import interpretationsActions from "../interpretations/actions";
 import settingsActions from "../settings/actions";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchFilteredEvents(action) {
   const currentState = yield select(getCurrentState);
@@ -21,6 +25,11 @@ function* fetchFilteredEvents(action) {
       `${dataset.dataPath}${id}/filtered.events.json`,
       { cancelToken: getCancelToken() }
     );
+
+    if (isMissingDataResponse(responseReportFilteredEvents)) {
+      yield put({ type: actions.FETCH_FILTERED_EVENTS_MISSING });
+      return;
+    }
 
     let filteredEvents = transformFilteredEventAttributes(
       responseReportFilteredEvents.data || []
@@ -47,6 +56,8 @@ function* fetchFilteredEvents(action) {
         `fetch ${dataset.dataPath}${id}/filtered.events.json request canceled`,
         error.message
       );
+    } else if (isMissingDataError(error)) {
+      yield put({ type: actions.FETCH_FILTERED_EVENTS_MISSING });
     } else {
       yield put({
         type: actions.FETCH_FILTERED_EVENTS_FAILED,

@@ -5,6 +5,8 @@ import { connect } from "react-redux";
 import { Segmented, Skeleton } from "antd";
 import PopulationPanel from "../../components/populationPanel";
 import Wrapper from "./index.style";
+import ErrorPanel from "../../components/errorPanel";
+import { CgArrowsBreakeH } from "react-icons/cg";
 
 class PopulationTab extends Component {
   state = {
@@ -20,11 +22,35 @@ class PopulationTab extends Component {
   };
 
   render() {
-    const { t, loading, metadata, plots, tumorPlots } = this.props;
+    const {
+      t,
+      loading,
+      metadata,
+      plots,
+      tumorPlots,
+      error,
+      missing,
+    } = this.props;
     const { populationKPIMode } = this.state;
+
+    if (missing) return null;
 
     return (
       <Wrapper>
+        {error ? (
+          <ErrorPanel
+            avatar={<CgArrowsBreakeH />}
+            header={t("containers.detail-view.tabs.tab3")}
+            title={t("general.error", {
+              error: t("containers.detail-view.tabs.tab3"),
+            })}
+            subtitle={error.toString()}
+            explanationTitle={t("general.error", {
+              error: t("containers.detail-view.tabs.tab3"),
+            })}
+            explanationDescription={error.stack || error.toString()}
+          />
+        ) : (
         <Skeleton active loading={loading}>
           <Segmented
             size="small"
@@ -60,6 +86,7 @@ class PopulationTab extends Component {
             }}
           />
         </Skeleton>
+        )}
       </Wrapper>
     );
   }
@@ -72,6 +99,8 @@ const mapStateToProps = (state) => ({
   metadata: state.CaseReport.metadata,
   plots: state.PopulationStatistics.general,
   tumorPlots: state.PopulationStatistics.tumor,
+  error: state.PopulationStatistics.error,
+  missing: state.PopulationStatistics.missing,
 });
 export default connect(
   mapStateToProps,

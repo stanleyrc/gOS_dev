@@ -23,8 +23,33 @@ class SageQcTab extends Component {
       xVariable: null,
       yVariable: null,
       colorVariable: null,
+      coverageOriginalRenderError: null,
+      coverageDenoisedRenderError: null,
     };
   }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.id !== this.props.id) {
+      this.setState({
+        coverageOriginalRenderError: null,
+        coverageDenoisedRenderError: null,
+      });
+    }
+  }
+
+  renderAssetError = (filename, error) => {
+    const { t } = this.props;
+    return (
+      <ErrorPanel
+        avatar={<GiBubbles />}
+        header={filename}
+        title={t("general.error", { error: filename })}
+        subtitle={error.toString()}
+        explanationTitle={t("general.error", { error: filename })}
+        explanationDescription={error.stack || error.toString()}
+      />
+    );
+  };
 
   render() {
     const {
@@ -32,6 +57,11 @@ class SageQcTab extends Component {
       loading,
       loadingPercentage,
       error,
+      missing,
+      coverageOriginalPresent,
+      coverageOriginalError,
+      coverageDenoisedPresent,
+      coverageDenoisedError,
       dataPoints,
       sageQcFields,
       metadata,
@@ -70,6 +100,10 @@ class SageQcTab extends Component {
     );
 
     let open = selectedVariant?.id;
+    const originalImageError =
+      coverageOriginalError || this.state.coverageOriginalRenderError;
+    const denoisedImageError =
+      coverageDenoisedError || this.state.coverageDenoisedRenderError;
 
     return (
       <Wrapper>
@@ -84,7 +118,7 @@ class SageQcTab extends Component {
             explanationTitle={t("components.sageQc.error.explanation.title")}
             explanationDescription={error.stack}
           />
-        ) : (
+        ) : !missing ? (
           <>
             <Row
               className="ant-panel-container ant-home-plot-container"
@@ -151,26 +185,6 @@ class SageQcTab extends Component {
                       ?.type
                   }
                   handlePointClicked={selectVariant}
-                />
-              </Col>
-            </Row>
-            <Row
-              className="ant-panel-container ant-home-plot-container"
-              gutter={16}
-              key="2"
-            >
-              <Col className="gutter-row" span={12}>
-                <Image
-                  src={`${dataset.dataPath}${id}/coverage_cn_boxplot_original.png`}
-                  preview={false}
-                  fallback="https://placehold.co/600x400?text=Coverage+cn+boxplot+original+not+found"
-                />
-              </Col>
-              <Col className="gutter-row" span={12}>
-                <Image
-                  src={`${dataset.dataPath}${id}/coverage_cn_boxplot_denoised.png`}
-                  preview={false}
-                  fallback="https://placehold.co/600x400?text=Coverage+cn+boxplot+denoised+not+found"
                 />
               </Col>
             </Row>
@@ -256,6 +270,61 @@ class SageQcTab extends Component {
               />
             )}
           </>
+        ) : null}
+        {(coverageOriginalPresent ||
+          originalImageError ||
+          coverageDenoisedPresent ||
+          denoisedImageError) && (
+          <Row
+            className="ant-panel-container ant-home-plot-container"
+            gutter={16}
+            key="2"
+          >
+            {(coverageOriginalPresent || originalImageError) && (
+              <Col className="gutter-row" span={12}>
+                {originalImageError ? (
+                  this.renderAssetError(
+                    "coverage_cn_boxplot_original.png",
+                    originalImageError
+                  )
+                ) : (
+                  <Image
+                    src={`${dataset.dataPath}${id}/coverage_cn_boxplot_original.png`}
+                    preview={false}
+                    onError={() =>
+                      this.setState({
+                        coverageOriginalRenderError: new Error(
+                          "Failed to load coverage_cn_boxplot_original.png"
+                        ),
+                      })
+                    }
+                  />
+                )}
+              </Col>
+            )}
+            {(coverageDenoisedPresent || denoisedImageError) && (
+              <Col className="gutter-row" span={12}>
+                {denoisedImageError ? (
+                  this.renderAssetError(
+                    "coverage_cn_boxplot_denoised.png",
+                    denoisedImageError
+                  )
+                ) : (
+                  <Image
+                    src={`${dataset.dataPath}${id}/coverage_cn_boxplot_denoised.png`}
+                    preview={false}
+                    onError={() =>
+                      this.setState({
+                        coverageDenoisedRenderError: new Error(
+                          "Failed to load coverage_cn_boxplot_denoised.png"
+                        ),
+                      })
+                    }
+                  />
+                )}
+              </Col>
+            )}
+          </Row>
         )}
       </Wrapper>
     );
@@ -274,6 +343,11 @@ const mapStateToProps = (state) => ({
   dataPoints: state.SageQc.records,
   sageQcFields: state.SageQc.properties,
   error: state.SageQc.error,
+  missing: state.SageQc.missing,
+  coverageOriginalPresent: state.SageQc.coverageOriginalPresent,
+  coverageOriginalError: state.SageQc.coverageOriginalError,
+  coverageDenoisedPresent: state.SageQc.coverageDenoisedPresent,
+  coverageDenoisedError: state.SageQc.coverageDenoisedError,
   dataset: state.Settings.dataset,
   id: state.CaseReport.id,
   selectedVariant: state.SageQc.selectedVariant,

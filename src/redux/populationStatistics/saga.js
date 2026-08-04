@@ -29,18 +29,34 @@ const populationWorkerUrl = () =>
     .split("?")[0]
     .replace(/\/[^/]*$/, "")}/workers/populationStatistics.worker.js`;
 
-function* fetchPopulationStatistics() {
+export function* fetchPopulationStatistics() {
   try {
     const currentState = yield select(getCurrentState);
     const { metadata } = currentState.CaseReport;
     const { populations } = currentState.CaseReports;
     const dataset = resolveBrowseDataset(currentState);
     const fields = dataset?.kpiFields || [];
+
+    if (fields.length === 0) {
+      yield put({ type: actions.FETCH_POPULATION_STATISTICS_MISSING });
+      return;
+    }
+
     const result = yield call(
       processDataInWorker,
       { populations, metadata, fields },
       populationWorkerUrl(),
     );
+    const plots = [...(result.general || []), ...(result.tumor || [])];
+    const hasRenderablePlot = plots.some(
+      (plot) =>
+        plot?.markValue != null && Number.isFinite(Number(plot.markValue)),
+    );
+
+    if (!hasRenderablePlot) {
+      yield put({ type: actions.FETCH_POPULATION_STATISTICS_MISSING });
+      return;
+    }
 
     yield put({
       type: actions.FETCH_POPULATION_STATISTICS_SUCCESS,

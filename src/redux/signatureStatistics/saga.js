@@ -5,6 +5,10 @@ import { getCurrentState } from "./selectors";
 import actions from "./actions";
 import caseReportActions from "../caseReport/actions";
 import signatureProfilesActions from "../signatureProfiles/actions";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchData(action) {
   let errors = [];
@@ -31,8 +35,13 @@ function* fetchData(action) {
     let missing = false;
     for (let file of requiredFiles) {
       try {
-        yield call(axios.head, file);
-      } catch (e) {
+        const availabilityResponse = yield call(axios.head, file);
+        if (isMissingDataResponse(availabilityResponse)) {
+          missing = true;
+          break;
+        }
+      } catch (error) {
+        if (!isMissingDataError(error)) throw error;
         missing = true;
         break;
       }

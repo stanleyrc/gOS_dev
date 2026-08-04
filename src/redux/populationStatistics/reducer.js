@@ -12,6 +12,7 @@ const initState = {
   comparisonCohorts: {},
   comparisonCohortsLoading: {},
   error: null,
+  missing: false,
 };
 
 export default function appReducer(state = initState, action) {
@@ -23,6 +24,7 @@ export default function appReducer(state = initState, action) {
         general: [],
         tumor: [],
         loading: true,
+        missing: false,
       };
     case actions.FETCH_POPULATION_STATISTICS_SUCCESS:
       return {
@@ -30,6 +32,16 @@ export default function appReducer(state = initState, action) {
         general: action.general,
         tumor: action.tumor,
         loading: false,
+        missing: false,
+      };
+    case actions.FETCH_POPULATION_STATISTICS_MISSING:
+      return {
+        ...state,
+        general: [],
+        tumor: [],
+        error: null,
+        loading: false,
+        missing: true,
       };
     case actions.FETCH_POPULATION_STATISTICS_FAILED:
       return {
@@ -38,6 +50,7 @@ export default function appReducer(state = initState, action) {
         tumor: [],
         error: action.error,
         loading: false,
+        missing: false,
       };
     case actions.FETCH_COHORT_STATISTICS_REQUEST:
       return {

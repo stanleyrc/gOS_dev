@@ -32,7 +32,10 @@ import { runSaga } from "redux-saga";
 import { processDataInWorker } from "../../helpers/workers";
 import { getActiveRepository } from "../../services/repositories";
 import actions from "./actions";
-import { fetchCohortStatistics } from "./saga";
+import {
+  fetchCohortStatistics,
+  fetchPopulationStatistics,
+} from "./saga";
 
 const tmbField = {
   id: "tmb",
@@ -49,6 +52,7 @@ describe("saved-query cohort comparisons", () => {
     getActiveRepository.mockReturnValue({
       getCasesWithInterpretations: mockGetCasesWithInterpretations,
     });
+    processDataInWorker.mockReset();
     processDataInWorker.mockImplementation(({ populations, fields }) =>
       Promise.resolve({
         general: fields.map((field) => ({
@@ -151,6 +155,58 @@ describe("saved-query cohort comparisons", () => {
         comparison: true,
         cohort: [expect.objectContaining({ id: "tmb", data: [8] })],
       }),
+    ]);
+  });
+
+  it("marks the detail population plots missing when no KPI fields are configured", async () => {
+    const state = {
+      Settings: { browseScope: { kind: "dataset", datasetId: "a" } },
+      Datasets: { records: [] },
+      CaseReport: { metadata: {} },
+      CaseReports: { populations: {} },
+    };
+    const dispatched = [];
+
+    await runSaga(
+      {
+        dispatch: (action) => dispatched.push(action),
+        getState: () => state,
+      },
+      fetchPopulationStatistics,
+    ).toPromise();
+
+    expect(processDataInWorker).not.toHaveBeenCalled();
+    expect(dispatched).toEqual([
+      { type: actions.FETCH_POPULATION_STATISTICS_MISSING },
+    ]);
+  });
+
+  it("marks successfully processed but non-renderable population plots missing", async () => {
+    const state = {
+      Settings: {
+        browseScope: { kind: "dataset", datasetId: "a" },
+        dataset: { id: "a", fields: [tmbField], kpiFields: [tmbField] },
+      },
+      Datasets: { records: [] },
+      CaseReport: { metadata: {} },
+      CaseReports: { populations: { tmb: [] } },
+    };
+    const dispatched = [];
+    processDataInWorker.mockResolvedValue({
+      general: [{ id: "tmb", data: [] }],
+      tumor: [],
+    });
+
+    await runSaga(
+      {
+        dispatch: (action) => dispatched.push(action),
+        getState: () => state,
+      },
+      fetchPopulationStatistics,
+    ).toPromise();
+
+    expect(dispatched).toEqual([
+      { type: actions.FETCH_POPULATION_STATISTICS_MISSING },
     ]);
   });
 

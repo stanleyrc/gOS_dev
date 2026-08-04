@@ -379,6 +379,7 @@ class FilteredEventsListPanel extends Component {
       viewMode,
       loading,
       error,
+      missing,
       genome,
       mutations,
       chromoBins,
@@ -395,6 +396,8 @@ class FilteredEventsListPanel extends Component {
       dataset,
       inViewport,
     } = this.props;
+
+    if (missing) return null;
 
     let open = selectedFilteredEvent?.id;
 
@@ -741,6 +744,7 @@ const mapStateToProps = (state) => {
     columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2] },
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
+    missing: state.FilteredEvents.missing,
     id: state.CaseReport.id,
     report: state.CaseReport.metadata,
     genome: state.Genome,

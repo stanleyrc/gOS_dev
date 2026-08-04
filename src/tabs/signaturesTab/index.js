@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Skeleton, Affix, Segmented, Space, Tag, Empty, Card } from "antd";
+import { Skeleton, Affix, Segmented, Space, Tag } from "antd";
 import * as d3 from "d3";
 import BarPlotPanel from "../../components/barPlotPanel";
 import PopulationPanel from "../../components/populationPanel";
@@ -10,7 +10,6 @@ import {
   mutationsColorPalette,
   mutationsGroups,
 } from "../../helpers/utility";
-import { FaRegChartBar } from "react-icons/fa";
 import { cosineSimilarityClass } from "../../helpers/metadata";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import ErrorPanel from "../../components/errorPanel";
@@ -63,6 +62,8 @@ class SignaturesTab extends Component {
       mutationFilter,
     } = this.state;
 
+    if (missing) return null;
+
     let legend = (mutationFilterTypes()[mutationFilter] || []).map((key) => {
       return {
         id: key,
@@ -94,25 +95,7 @@ class SignaturesTab extends Component {
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
-          {missing ? (
-            <Card
-              size="small"
-              title={
-                <Space>
-                  <span role="img" className="anticon anticon-dashboard">
-                    <FaRegChartBar />
-                  </span>
-                  <span className="ant-pro-menu-item-title">
-                    {t("components.mutation-catalog-panel.title")}
-                  </span>
-                </Space>
-              }
-            >
-              <Empty
-                description={t("components.mutation-catalog-panel.empty")}
-              />
-            </Card>
-          ) : error ? (
+          {error ? (
             <ErrorPanel
               avatar={<CgArrowsBreakeH />}
               header={t("components.mutation-catalog-panel.header")}

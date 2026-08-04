@@ -4,81 +4,102 @@ import actions from "./actions";
 import { snvplicityGroups, binDataByCopyNumber } from "../../helpers/utility";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
+
+export function* checkOptionalAsset(url) {
+  try {
+    const response = yield call(axios.head, url);
+    return {
+      present: !isMissingDataResponse(response),
+      error: null,
+    };
+  } catch (error) {
+    if (axios.isCancel(error)) throw error;
+    if (isMissingDataError(error)) {
+      return { present: false, error: null };
+    }
+    return { present: false, error };
+  }
+}
+
+function* fetchOptionalHistogram(url) {
+  try {
+    const response = yield call(axios.get, url, {
+      cancelToken: getCancelToken(),
+    });
+    return isMissingDataResponse(response) ? [] : response.data || [];
+  } catch (error) {
+    if (axios.isCancel(error) || !isMissingDataError(error)) throw error;
+    return [];
+  }
+}
 
 export function* fetchSnvplicityData(action) {
-  // 1) Get necessary info from Redux state
   const currentState = yield select(getCurrentState);
   const { dataset } = currentState.Settings;
   const { id } = currentState.CaseReport;
   const { imageFile } = currentState.Snvplicity;
+  const baseUrl = `${dataset.dataPath}${id}/`;
 
-  // 2) Check if the image file is present
-  const imageUrl = `${dataset.dataPath}${id}/${imageFile}`;
+  let assetAction = {};
   try {
-    yield call(axios.head, imageUrl);
-    // If present, dispatch success with imagePresent: true and return
-    yield put({
-      type: actions.FETCH_SNVPLICITY_DATA_SUCCESS,
-      data: null,
-      imagePresent: true,
-    });
-    return;
-  } catch (e) {
-    // If not present, continue with the rest of the saga as before
-  }
+    const [multiplicity, purpleSunrise, hetsnpsImage] = yield all([
+      call(checkOptionalAsset, `${baseUrl}${imageFile}`),
+      call(checkOptionalAsset, `${baseUrl}purple_sunrise_pp.png`),
+      call(checkOptionalAsset, `${baseUrl}hetsnps_major_minor.png`),
+    ]);
+    assetAction = {
+      imagePresent: multiplicity.present,
+      imageError: multiplicity.error,
+      purpleSunrisePresent: purpleSunrise.present,
+      purpleSunriseError: purpleSunrise.error,
+      hetsnpsImagePresent: hetsnpsImage.present,
+      hetsnpsImageError: hetsnpsImage.error,
+    };
 
-  try {
-    // 2) Prepare parallel requests
-    //    - Each .get is wrapped in a .catch to return an object with data: [] if it fails
-    const requests = snvplicityGroups().map(({ type, mode }) =>
-      axios
-        .get(`${dataset.dataPath}${id}/${type}_${mode}_hist.json`, {
-          cancelToken: getCancelToken(),
-        })
-        // If the request fails (e.g. file not found), return a dummy response
-        .catch((error) => {
-          // You can log the error if desired:
-          // console.log(`Missing file for ${type}_${mode}`, error);
-          return { data: [] };
-        })
+    if (multiplicity.present) {
+      yield put({
+        type: actions.FETCH_SNVPLICITY_DATA_SUCCESS,
+        data: null,
+        ...assetAction,
+      });
+      return;
+    }
+
+    const groups = snvplicityGroups();
+    const responses = yield all(
+      groups.map(({ type, mode }) =>
+        call(fetchOptionalHistogram, `${baseUrl}${type}_${mode}_hist.json`)
+      )
     );
+    const binnedData = {};
 
-    // 3) Run all requests in parallel; does NOT reject if one fails,
-    //    because each request has its own .catch() that returns { data: [] }.
-    const responses = yield call(axios.all, requests);
-
-    // 4) Build the data object from the successful (or dummy) responses.
-    //    Using the same index in snvplicityGroups for the response.
-    let data = {};
-    snvplicityGroups().forEach(({ type, mode }, i) => {
-      const response = responses[i];
-      data[`${type}_${mode}`] = (response.data || []).filter(
-        (e) => e.jabba_cn != null && e.mult_cn != null && +e.count > 0
-      ); // either the real data or []
+    groups.forEach(({ type, mode }, index) => {
+      const key = `${type}_${mode}`;
+      const records = (responses[index] || []).filter(
+        (record) =>
+          record.jabba_cn != null &&
+          record.mult_cn != null &&
+          +record.count > 0
+      );
+      binnedData[key] =
+        records.length > 0 ? binDataByCopyNumber(records, 0.05) : [];
     });
 
-    // 5) For each of the keys, bin the data
-    let binnedData = {};
-    Object.keys(data).forEach((key) => {
-      // data[key] might be an empty array if the file was missing
-      if (Array.isArray(data[key]) && data[key].length > 0) {
-        binnedData[key] = binDataByCopyNumber(data[key], 0.05);
-      } else {
-        // If no data or missing file, store empty array
-        binnedData[key] = [];
-      }
-    });
-
-    // 5) Dispatch success with the assembled data object
+    const hasData = Object.values(binnedData).some(
+      (records) => records.length > 0
+    );
     yield put({
-      type: actions.FETCH_SNVPLICITY_DATA_SUCCESS,
-      data: binnedData,
-      imagePresent: false,
+      type: hasData
+        ? actions.FETCH_SNVPLICITY_DATA_SUCCESS
+        : actions.FETCH_SNVPLICITY_DATA_MISSING,
+      data: hasData ? binnedData : null,
+      ...assetAction,
     });
   } catch (error) {
-    // This catch block typically only runs if there was a fatal error
-    // or request cancellation outside the per-request .catch blocks.
-    console.error(error);
     if (axios.isCancel(error)) {
       console.log(
         `fetch ${dataset.dataPath}${id}/snvplicity request canceled`,
@@ -88,6 +109,7 @@ export function* fetchSnvplicityData(action) {
       yield put({
         type: actions.FETCH_SNVPLICITY_DATA_FAILED,
         error,
+        ...assetAction,
       });
     }
   }

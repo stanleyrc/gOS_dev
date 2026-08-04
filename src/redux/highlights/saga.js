@@ -3,6 +3,10 @@ import axios from "axios";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchHighlightsData(action) {
   const currentState = yield select(getCurrentState);
@@ -12,10 +16,24 @@ function* fetchHighlightsData(action) {
   const highlightsUrl = `${dataset.dataPath}${id}/${filename}`;
   
   try {
-    yield call(axios.head, highlightsUrl);
-    // File exists, proceed to fetch as before
-  } catch (e) {
-    // File is missing, break and dispatch highlightsMissing: true
+    const availabilityResponse = yield call(axios.head, highlightsUrl);
+    if (isMissingDataResponse(availabilityResponse)) {
+      yield put({
+        type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
+        data: null,
+        highlightsMissing: true,
+      });
+      return;
+    }
+  } catch (error) {
+    if (!isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_HIGHLIGHTS_DATA_FAILED,
+        error,
+      });
+      return;
+    }
+
     yield put({
       type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
       data: null,
@@ -29,6 +47,15 @@ function* fetchHighlightsData(action) {
       cancelToken: getCancelToken(),
     });
 
+    if (isMissingDataResponse(responseData)) {
+      yield put({
+        type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
+        data: null,
+        highlightsMissing: true,
+      });
+      return;
+    }
+
     yield put({
       type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
       data: responseData.data,
@@ -41,6 +68,12 @@ function* fetchHighlightsData(action) {
         `fetch ${dataset.dataPath}${id}/${filename} request canceled`,
         error.message
       );
+    } else if (isMissingDataError(error)) {
+      yield put({
+        type: actions.FETCH_HIGHLIGHTS_DATA_SUCCESS,
+        data: null,
+        highlightsMissing: true,
+      });
     } else {
       yield put({
         type: actions.FETCH_HIGHLIGHTS_DATA_FAILED,
