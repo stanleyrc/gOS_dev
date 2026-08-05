@@ -18,6 +18,13 @@ jest.mock("./userAuth", () => ({
   })),
 }));
 
+jest.mock("./browseScope", () => ({
+  datasetHasField: (dataset, fieldId) =>
+    (dataset?.fields || []).some(
+      (field) => (field.id || field.name) === fieldId,
+    ),
+}));
+
 import { previewReport } from "./reportExporter";
 
 const state = {
@@ -86,6 +93,40 @@ describe("reportExporter", () => {
       transcript: "NM_004972.4",
       locus: "9:5073770-5073771",
       effect_description: "Mapped to comments",
+    });
+  });
+
+  it("does not map raw patient values omitted by the active dataset", async () => {
+    const dataset = {
+      id: "schema-test",
+      schema: [{ id: "purity" }],
+      fields: [{ id: "purity" }],
+    };
+    const schemaState = {
+      ...state,
+      dataset,
+      CaseReport: {
+        id: "case-schema",
+        metadata: {
+          tumor_type: "SCHEMA-OMITTED-TYPE",
+          tumor_details: "SCHEMA-OMITTED-DETAILS",
+          tmb: 999,
+          purity: 0.37,
+          ploidy: 4.8,
+        },
+      },
+    };
+
+    await previewReport(schemaState, { filteredEvents: [] });
+
+    expect(mockRender.mock.calls[0][0]).toMatchObject({
+      dataset,
+      patient: {
+        caseId: "case-schema",
+        tumorType: "",
+        tumorDetails: "",
+        tmb: undefined,
+      },
     });
   });
 });

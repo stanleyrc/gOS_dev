@@ -5,7 +5,12 @@ import {
   orderListViewFilters,
 } from "./utility";
 import { reportFilters } from "./filters";
-import { sourceCaseIdentityKey } from "./browseScope";
+import {
+  datasetHasField,
+  getSourceScopedFieldValue,
+  sourceCaseIdentityKey,
+  sourceDatasetHasField,
+} from "./browseScope";
 import {
   normalizeSpecimenDateRangeFilter,
   specimenDateMatchesRangeFilter,
@@ -172,6 +177,28 @@ export const filterCaseReportRecords = (
     searchFilters,
     externalData.casesWithInterpretations,
   );
+  const hasFieldContext =
+    externalData.dataset != null || (externalData.datasets || []).length > 0;
+  const recordHasField = (record, field) =>
+    !hasFieldContext ||
+    (datasetHasField(externalData.dataset, field) &&
+      sourceDatasetHasField(
+        record,
+        externalData.datasets,
+        field,
+        externalData.dataset,
+      ));
+  const recordFieldValue = (record, field) =>
+    hasFieldContext
+      ? recordHasField(record, field)
+        ? getSourceScopedFieldValue(
+            record,
+            externalData.datasets,
+            field,
+            externalData.dataset,
+          )
+        : undefined
+      : getValueByPath(record, field);
 
   nonEmptyFilterEntries(searchFilters).forEach(([key, selectedValue]) => {
     const fallbackFilter = reportFilters().find((filter) => filter.name === key);
@@ -187,7 +214,7 @@ export const filterCaseReportRecords = (
       );
       records = records.filter((record) =>
         searchableFields
-          .map((candidate) => getValueByPath(record, candidate.name) ?? "")
+          .map((candidate) => recordFieldValue(record, candidate.name) ?? "")
           .flat()
           .join(",")
           .toLowerCase()
@@ -199,15 +226,18 @@ export const filterCaseReportRecords = (
     if (renderer === "date-range") {
       const range = normalizeSpecimenDateRangeFilter(selectedValue);
       if (!range) return;
-      records = records.filter((record) =>
-        specimenDateMatchesRangeFilter(getValueByPath(record, key), range),
+      records = records.filter(
+        (record) =>
+          recordHasField(record, key) &&
+          specimenDateMatchesRangeFilter(recordFieldValue(record, key), range),
       );
       return;
     }
 
     if (renderer === "slider" && Array.isArray(selectedValue)) {
       records = records.filter((record) => {
-        const value = getValueByPath(record, key);
+        if (!recordHasField(record, key)) return false;
+        const value = recordFieldValue(record, key);
         return (
           value == null ||
           (value >= selectedValue[0] && value <= selectedValue[1])
@@ -218,10 +248,12 @@ export const filterCaseReportRecords = (
 
     if (renderer === "select") {
       const selectedValues = normalizeValues(selectedValue);
-      records = records.filter((record) =>
-        selectedValues.some((item) =>
-          recordMatchesSelection(getValueByPath(record, key), item),
-        ),
+      records = records.filter(
+        (record) =>
+          recordHasField(record, key) &&
+          selectedValues.some((item) =>
+            recordMatchesSelection(recordFieldValue(record, key), item),
+          ),
       );
       return;
     }
@@ -230,7 +262,8 @@ export const filterCaseReportRecords = (
       const selectedValues = normalizeValues(selectedValue);
       const operator = (searchFilters.operator || "OR").toUpperCase();
       const matches = (record, item) =>
-        recordMatchesSelection(getValueByPath(record, key), item);
+        recordHasField(record, key) &&
+        recordMatchesSelection(recordFieldValue(record, key), item);
 
       records = records.filter((record) => {
         if (operator === "AND") {
@@ -250,9 +283,13 @@ export const filterCaseReportRecords = (
     orderListViewFilters[0];
 
   return records.sort((left, right) => {
+    const orderingValue = (record) =>
+      ordering.attribute === "pair"
+        ? getValueByPath(record, ordering.attribute)
+        : recordFieldValue(record, ordering.attribute);
     const result = compareNullable(
-      getValueByPath(left, ordering.attribute),
-      getValueByPath(right, ordering.attribute),
+      orderingValue(left),
+      orderingValue(right),
       ordering.sort,
     );
     if (result !== 0) return result;
@@ -285,8 +322,14 @@ export const searchCaseReportRecords = (
   };
 };
 
-export const buildPopulationMaps = (records = [], kpiFields = []) => {
+export const buildPopulationMaps = (
+  records = [],
+  kpiFields = [],
+  fieldContext = {},
+) => {
   const populations = {};
+  const hasFieldContext =
+    fieldContext.dataset != null || (fieldContext.datasets || []).length > 0;
 
   kpiFields.forEach((field) => {
     populations[field.id] = records
@@ -294,8 +337,22 @@ export const buildPopulationMaps = (records = [], kpiFields = []) => {
         pair: record.pair,
         datasetId: record.datasetId,
         caseReportId: record.caseReportId,
-        value: getValueByPath(record, field.id),
-        tumor_type: record.tumor_type,
+        value: hasFieldContext
+          ? getSourceScopedFieldValue(
+              record,
+              fieldContext.datasets,
+              field.id,
+              fieldContext.dataset,
+            )
+          : getValueByPath(record, field.id),
+        tumor_type: hasFieldContext
+          ? getSourceScopedFieldValue(
+              record,
+              fieldContext.datasets,
+              "tumor_type",
+              fieldContext.dataset,
+            )
+          : record.tumor_type,
       }))
       .filter((item) => item.value != null && !isNaN(item.value));
   });

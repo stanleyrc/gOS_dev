@@ -14,6 +14,7 @@ import { cosineSimilarityClass } from "../../helpers/metadata";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import ErrorPanel from "../../components/errorPanel";
 import Wrapper from "./index.style";
+import { datasetHasField } from "../../helpers/browseScope";
 
 class SignaturesTab extends Component {
   state = {
@@ -54,13 +55,20 @@ class SignaturesTab extends Component {
       signatureTumorPlots,
       error,
       missing,
+      dataset,
     } = this.props;
     const {
-      signatureKPIMode,
+      signatureKPIMode: selectedSignatureKPIMode,
       signatureFractionMode,
       signatureDistributionMode,
       mutationFilter,
     } = this.state;
+    const hasTumorPopulation =
+      datasetHasField(dataset, "tumor_type") &&
+      metadata.tumor_type != null;
+    const signatureKPIMode = hasTumorPopulation
+      ? selectedSignatureKPIMode
+      : "total";
 
     if (missing) return null;
 
@@ -149,13 +157,15 @@ class SignaturesTab extends Component {
                       label: t("components.segmented-filter.total"),
                       value: "total",
                     },
-                    {
-                      label: t("components.segmented-filter.tumor", {
-                        tumor: metadata.tumor_type,
-                      }),
-                      value: "byTumor",
-                    },
-                  ]}
+                    hasTumorPopulation
+                      ? {
+                          label: t("components.segmented-filter.tumor", {
+                            tumor: metadata.tumor_type,
+                          }),
+                          value: "byTumor",
+                        }
+                      : null,
+                  ].filter(Boolean)}
                   onChange={(d) =>
                     this.handleSignatureKPIsTumourSegmentedChange(d)
                   }
@@ -309,17 +319,19 @@ class SignaturesTab extends Component {
                       visible: signatureKPIMode === "total",
                     }}
                   />
-                  <PopulationPanel
-                    {...{
-                      loading,
-                      metadata,
-                      plots:
-                        signatureTumorPlots[mutationFilter][
-                          signatureFractionMode
-                        ],
-                      visible: signatureKPIMode === "byTumor",
-                    }}
-                  />
+                  {hasTumorPopulation && (
+                    <PopulationPanel
+                      {...{
+                        loading,
+                        metadata,
+                        plots:
+                          signatureTumorPlots[mutationFilter][
+                            signatureFractionMode
+                          ],
+                        visible: signatureKPIMode === "byTumor",
+                      }}
+                    />
+                  )}
                 </Space>
               )}
             </>
@@ -343,6 +355,7 @@ const mapStateToProps = (state) => ({
   signaturePlots: state.SignatureStatistics.signatureMetrics,
   signatureTumorPlots: state.SignatureStatistics.tumorSignatureMetrics,
   missing: state.SignatureStatistics.missing,
+  dataset: state.Settings.dataset,
 });
 export default connect(
   mapStateToProps,

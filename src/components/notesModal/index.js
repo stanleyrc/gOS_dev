@@ -28,7 +28,8 @@ const NotesModal = ({
   genomeCoverage,
   hetsnps,
   genes,
-  igv 
+  igv,
+  dataset,
 }) => {
   const [notes, setNotes] = React.useState('');
   const [scratchpadNotes, setScratchpadNotes] = React.useState('');
@@ -38,6 +39,10 @@ const NotesModal = ({
   const [memoryItems, setMemoryItems] = React.useState([]);
   const [activeTabKey, setActiveTabKey] = React.useState("notes");
   const performNotesUpdate = useNotesUpdater();
+  const schemaScopedReport = React.useMemo(
+    () => (report ? filterReportAttributes(report, dataset) : null),
+    [report, dataset],
+  );
 
   const getNotesStorageKey = (record) => {
     return `event_notes_${record.gene}_${record.location}`;
@@ -72,8 +77,8 @@ const NotesModal = ({
         selectedForContext: true, // Default to selected
       });
     }
-    if (report) {
-      const reportData = filterReportAttributes(report);
+    if (schemaScopedReport) {
+      const reportData = schemaScopedReport;
       initialMemoryItems.push({
         id: 'event-report-current', // Assuming one report context at a time
         type: 'eventReport',
@@ -149,7 +154,7 @@ const NotesModal = ({
       return updatedItems;
     });
 
-  }, [record, report, notes, scratchpadNotes, t]); // Added 'scratchpadNotes', 'notes' and 't' to dependency array
+  }, [record, schemaScopedReport, notes, scratchpadNotes, t]); // Added 'scratchpadNotes', 'notes' and 't' to dependency array
 
   const handleNotesChange = (e) => {
     const newNotes = e.target.value;
@@ -266,7 +271,7 @@ const NotesModal = ({
           userRequest,
           notes, // Pass the current notes from state
           record, // Main genomic event record for the note
-          report, // Main case metadata for the note
+          schemaScopedReport, // Schema-supported case metadata for the note
           selectedPapersAndTrials, // Additional context from memory (papers, trials)
           includeChatHistory ? chatMessages : [] // Pass chat messages if selected
         );
@@ -385,7 +390,7 @@ const NotesModal = ({
             style={{ height: '500px' }} // Match notes card height
             t={t}
             record={record} // Kept for potential direct use or if NotesChat needs it for other reasons
-            report={report} // Kept for potential direct use
+            report={schemaScopedReport} // Kept for potential direct use
             memoryItems={memoryItems}
             onToggleMemoryItemSelection={handleToggleMemoryItemSelection}
             onClearChatMemory={handleClearChatMemory}
@@ -414,7 +419,7 @@ const NotesModal = ({
               <ClinicalTrialsWizard 
                 t={t} 
                 record={record}
-                report={report} 
+                report={schemaScopedReport}
                 onAddCitation={handleAddCitation}
               />
             </Collapse.Panel>
@@ -436,6 +441,7 @@ const mapStateToProps = (state) => ({
   hetsnps: state.Hetsnps,
   genes: state.Genes,
   igv: state.Igv,
+  dataset: state.Settings.dataset,
 });
 
 NotesModal.propTypes = {
@@ -454,6 +460,7 @@ NotesModal.propTypes = {
   hetsnps: PropTypes.object,
   genes: PropTypes.object,
   igv: PropTypes.object,
+  dataset: PropTypes.object,
 };
 
 export default connect(mapStateToProps)(withTranslation("common")(NotesModal));

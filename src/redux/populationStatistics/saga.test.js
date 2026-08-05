@@ -181,6 +181,97 @@ describe("saved-query cohort comparisons", () => {
     ]);
   });
 
+  it("uses the active source dataset fields for a detail opened from global scope", async () => {
+    const purityField = {
+      id: "purity",
+      name: "purity",
+      title: "Purity",
+      type: "numeric",
+      kpiPlot: true,
+    };
+    const state = {
+      Settings: {
+        browseScope: { kind: "all" },
+        dataset: {
+          id: "a",
+          fields: [purityField],
+          kpiFields: [purityField],
+        },
+      },
+      Datasets: {
+        records: [
+          { id: "a", fields: [purityField], kpiFields: [purityField] },
+          { id: "b", fields: [tmbField], kpiFields: [tmbField] },
+        ],
+      },
+      CaseReport: { metadata: { purity: 0.4, tmb: 999 } },
+      CaseReports: { populations: { purity: [], tmb: [] } },
+    };
+
+    await runSaga(
+      { dispatch: jest.fn(), getState: () => state },
+      fetchPopulationStatistics,
+    ).toPromise();
+
+    expect(processDataInWorker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: [purityField],
+        metadata: { purity: 0.4 },
+      }),
+      expect.any(String),
+    );
+  });
+
+  it("rebuilds detail populations from the source manifest when the global union excludes a KPI", async () => {
+    const sourceDataset = {
+      id: "a",
+      fields: [tmbField],
+      kpiFields: [tmbField],
+    };
+    const state = {
+      Settings: { browseScope: { kind: "all" }, dataset: sourceDataset },
+      Datasets: {
+        records: [
+          sourceDataset,
+          {
+            id: "b",
+            fields: [{ ...tmbField, type: "string" }],
+            kpiFields: [],
+          },
+        ],
+      },
+      CaseReport: { metadata: { tmb: 8 } },
+      CaseReports: {
+        populations: {},
+        manifestRecordsByDataset: {
+          a: [
+            {
+              datasetId: "a",
+              caseReportId: "case-1",
+              pair: "PAIR-1",
+              tmb: 8,
+            },
+          ],
+        },
+      },
+    };
+
+    await runSaga(
+      { dispatch: jest.fn(), getState: () => state },
+      fetchPopulationStatistics,
+    ).toPromise();
+
+    expect(processDataInWorker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: [tmbField],
+        populations: {
+          tmb: [expect.objectContaining({ value: 8, datasetId: "a" })],
+        },
+      }),
+      expect.any(String),
+    );
+  });
+
   it("marks successfully processed but non-renderable population plots missing", async () => {
     const state = {
       Settings: {

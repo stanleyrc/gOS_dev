@@ -24,12 +24,32 @@ import {
   evaluateGeneExpression,
   getValue,
   getColumnLabel,
-  numericColumns,
-  categoricalColumns,
-  allColumns,
   openCaseInNewTab,
   discoverAttributes,
 } from "./helpers";
+
+const getInitialVariables = (dynamicColumns, visualizationPreset) => {
+  const hasNumericColumns = dynamicColumns.numericColumns.length > 0;
+  const xVariable = hasNumericColumns
+    ? dynamicColumns.numericColumns[0].dataIndex
+    : dynamicColumns.categoricalColumns[0]?.dataIndex ||
+      dynamicColumns.pairColumn.dataIndex;
+  const yVariable = hasNumericColumns
+    ? dynamicColumns.numericColumns[1]?.dataIndex ||
+      dynamicColumns.numericColumns[0].dataIndex
+    : dynamicColumns.categoricalColumns[1]?.dataIndex ||
+      dynamicColumns.categoricalColumns[0]?.dataIndex;
+  const colorVariable =
+    dynamicColumns.categoricalColumns[0]?.dataIndex || null;
+
+  return visualizationPreset === "topGenes"
+    ? {
+        xVariable: "pair",
+        yVariable: "driver_gene",
+        colorVariable,
+      }
+    : { xVariable, yVariable, colorVariable };
+};
 
 export class AggregationsVisualization extends Component {
   plotContainer = null;
@@ -48,21 +68,13 @@ export class AggregationsVisualization extends Component {
     
     // Initialize with dynamic columns
     const dynamicColumns = discoverAttributes(props.filteredRecords || []);
-    const xVarDefault = dynamicColumns.numericColumns.length > 0 
-      ? dynamicColumns.numericColumns[0].dataIndex 
-      : numericColumns[0].dataIndex;
-    const yVarDefault = dynamicColumns.numericColumns.length > 1 
-      ? dynamicColumns.numericColumns[1].dataIndex 
-      : numericColumns[1].dataIndex;
-    const colorVarDefault = dynamicColumns.categoricalColumns.length > 0 
-      ? dynamicColumns.categoricalColumns[0].dataIndex 
-      : categoricalColumns[0].dataIndex;
-    const showTopGenes = props.visualizationPreset === "topGenes";
+    const initialVariables = getInitialVariables(
+      dynamicColumns,
+      props.visualizationPreset,
+    );
 
     this.state = {
-      xVariable: showTopGenes ? "pair" : xVarDefault,
-      yVariable: showTopGenes ? "driver_gene" : yVarDefault,
-      colorVariable: colorVarDefault,
+      ...initialVariables,
       colorByVariable: null,
       selectedGene: null,
       selectedPatientId: null,
@@ -150,7 +162,43 @@ export class AggregationsVisualization extends Component {
     }
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
+    if (prevProps.filteredRecords !== this.props.filteredRecords) {
+      const dynamicColumns = this.getDynamicColumns();
+      const availableVariables = new Set(
+        dynamicColumns.allColumns.map(({ dataIndex }) => dataIndex),
+      );
+      const initialVariables = getInitialVariables(
+        dynamicColumns,
+        this.props.visualizationPreset,
+      );
+      const recordsBecameAvailable =
+        (prevProps.filteredRecords || []).length === 0 &&
+        (this.props.filteredRecords || []).length > 0;
+      const nextVariables = {};
+
+      ["xVariable", "yVariable"].forEach((variable) => {
+        if (
+          recordsBecameAvailable ||
+          !availableVariables.has(this.state[variable])
+        ) {
+          nextVariables[variable] = initialVariables[variable];
+        }
+      });
+      if (
+        recordsBecameAvailable ||
+        (this.state.colorVariable != null &&
+          !availableVariables.has(this.state.colorVariable))
+      ) {
+        nextVariables.colorVariable = initialVariables.colorVariable;
+      }
+
+      if (Object.keys(nextVariables).length > 0) {
+        this.setState(nextVariables);
+        return;
+      }
+    }
+
     this.renderAxes();
   }
 
@@ -740,10 +788,15 @@ export class AggregationsVisualization extends Component {
   handleVariableChange = (variable, value) => {
     if (variable === "xVariable" && value === "pair") {
       const currentYType = this.getColumnTypeForVariable(this.state.yVariable);
-      if (currentYType === "categorical" || currentYType === "pair") {
+      const numericDefault =
+        this.getDynamicColumns().numericColumns[0]?.dataIndex;
+      if (
+        numericDefault &&
+        (currentYType === "categorical" || currentYType === "pair")
+      ) {
         this.setState({
           xVariable: value,
-          yVariable: numericColumns[0].dataIndex,
+          yVariable: numericDefault,
         });
         return;
       }
@@ -765,17 +818,18 @@ export class AggregationsVisualization extends Component {
 
   getColumnsForVariable(variable) {
     const { xVariable } = this.state;
+    const dynamicColumns = this.getDynamicColumns();
 
     if (variable === "yVariable") {
       if (xVariable === "pair") {
-        return numericColumns;
+        return dynamicColumns.numericColumns;
       }
-      return allColumns;
+      return dynamicColumns.allColumns;
     }
     if (variable === "colorVariable") {
-      return categoricalColumns;
+      return dynamicColumns.categoricalColumns;
     }
-    return allColumns;
+    return dynamicColumns.allColumns;
   }
 
   getTitleText() {
@@ -1241,7 +1295,7 @@ export class AggregationsVisualization extends Component {
 
   getColorableColumns() {
     const { filteredRecords = [] } = this.props;
-    return categoricalColumns.filter((col) => {
+    return this.getDynamicColumns().categoricalColumns.filter((col) => {
       return filteredRecords.some((record) => {
         const val = getValue(record, col.dataIndex);
         return val != null && (Array.isArray(val) ? val.length > 0 : true);

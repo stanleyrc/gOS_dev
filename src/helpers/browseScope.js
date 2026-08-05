@@ -30,7 +30,17 @@ export const getBrowseScopeDatasetId = (browseScope) =>
       ? browseScope.datasetId
       : null;
 
-const fieldIdentifier = (field = {}) => field.id || field.name;
+export const fieldIdentifier = (field = {}) =>
+  typeof field === "string" ? field : field?.id || field?.name;
+
+export const datasetHasField = (dataset, field) => {
+  const id = fieldIdentifier(field);
+  if (!dataset || !id) return false;
+  if (!Array.isArray(dataset.fields)) return true;
+  return dataset.fields.some(
+    (candidate) => fieldIdentifier(candidate) === id,
+  );
+};
 
 export const buildAllDatasetsMetadata = (datasets = []) => {
   const fieldsById = new Map();
@@ -114,6 +124,124 @@ export const resolveBrowseDatasets = (state = {}) => {
 const normalizeIdentityPart = (value) => {
   if (value == null || `${value}`.trim() === "") return null;
   return `${value}`;
+};
+
+export const resolveSourceDataset = (
+  record = {},
+  datasets = [],
+  fallbackDataset = null,
+) => {
+  const datasetId = normalizeIdentityPart(record?.datasetId);
+  const sourceDataset = (datasets || []).find(
+    (dataset) => `${dataset?.id}` === datasetId,
+  );
+  if (sourceDataset) return sourceDataset;
+
+  if (
+    fallbackDataset &&
+    fallbackDataset.isAllDatasets !== true &&
+    (!datasetId || `${fallbackDataset.id}` === datasetId)
+  ) {
+    return fallbackDataset;
+  }
+
+  if (!datasetId && (datasets || []).length === 1) {
+    return datasets[0];
+  }
+
+  return null;
+};
+
+export const sourceDatasetHasField = (
+  record,
+  datasets,
+  field,
+  fallbackDataset = null,
+) =>
+  datasetHasField(
+    resolveSourceDataset(record, datasets, fallbackDataset),
+    field,
+  );
+
+const getValueByPath = (record, path) =>
+  `${path}`
+    .split(".")
+    .reduce((value, key) => (value == null ? value : value[key]), record);
+
+export const getSourceScopedFieldValue = (
+  record,
+  datasets,
+  field,
+  fallbackDataset = null,
+) => {
+  const id = fieldIdentifier(field);
+  return id &&
+    sourceDatasetHasField(record, datasets, id, fallbackDataset)
+    ? getValueByPath(record, id)
+    : undefined;
+};
+
+const ALWAYS_PROJECTED_RECORD_FIELDS = [
+  "datasetId",
+  "caseReportId",
+  "id",
+  "pair",
+  "summary",
+  "qcEvaluation",
+];
+
+const PRESENTATION_FIELD_CONSTITUENTS = {
+  tumor_median_coverage: ["normal_median_coverage"],
+};
+
+const setValueByPath = (target, path, value) => {
+  const parts = `${path}`.split(".");
+  const leaf = parts.pop();
+  const parent = parts.reduce((current, part) => {
+    if (!current[part] || typeof current[part] !== "object") {
+      current[part] = {};
+    }
+    return current[part];
+  }, target);
+  parent[leaf] = value;
+};
+
+export const projectSourceRecordFields = (
+  record = {},
+  datasets = [],
+  fallbackDataset = null,
+) => {
+  const sourceDataset = resolveSourceDataset(
+    record,
+    datasets,
+    fallbackDataset,
+  );
+  if (sourceDataset && !Array.isArray(sourceDataset.fields)) {
+    return { ...record };
+  }
+
+  const projected = {};
+  ALWAYS_PROJECTED_RECORD_FIELDS.forEach((path) => {
+    const value = getValueByPath(record, path);
+    if (value !== undefined) setValueByPath(projected, path, value);
+  });
+  (sourceDataset?.fields || []).forEach((field) => {
+    const id = fieldIdentifier(field);
+    if (
+      fallbackDataset?.isAllDatasets === true &&
+      !datasetHasField(fallbackDataset, id)
+    ) {
+      return;
+    }
+    const paths = id
+      ? [id, ...(PRESENTATION_FIELD_CONSTITUENTS[id] || [])]
+      : [];
+    paths.forEach((path) => {
+      const value = getValueByPath(record, path);
+      if (value !== undefined) setValueByPath(projected, path, value);
+    });
+  });
+  return projected;
 };
 
 export const getSourceCaseIdentity = (record = {}) => {

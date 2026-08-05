@@ -186,6 +186,7 @@ const mapStateToProps = (state) => ({
   id: state.CaseReport.id,
   CaseReport: state.CaseReport,
   Interpretations: state.Interpretations,
+  dataset: state.Settings.dataset,
   mergedEvents: require("../../redux/interpretations/selectors").selectMergedEvents(state),
 });
 

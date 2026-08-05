@@ -7,6 +7,7 @@ import PopulationPanel from "../../components/populationPanel";
 import Wrapper from "./index.style";
 import ErrorPanel from "../../components/errorPanel";
 import { CgArrowsBreakeH } from "react-icons/cg";
+import { datasetHasField } from "../../helpers/browseScope";
 
 class PopulationTab extends Component {
   state = {
@@ -30,8 +31,15 @@ class PopulationTab extends Component {
       tumorPlots,
       error,
       missing,
+      dataset,
     } = this.props;
-    const { populationKPIMode } = this.state;
+    const hasTumorPopulation =
+      datasetHasField(dataset, "tumor_type") &&
+      metadata.tumor_type != null &&
+      tumorPlots.length > 0;
+    const populationKPIMode = hasTumorPopulation
+      ? this.state.populationKPIMode
+      : "total";
 
     if (missing) return null;
 
@@ -59,13 +67,15 @@ class PopulationTab extends Component {
                 label: t("components.segmented-filter.total"),
                 value: "total",
               },
-              {
-                label: t("components.segmented-filter.tumor", {
-                  tumor: metadata.tumor_type,
-                }),
-                value: "byTumor",
-              },
-            ]}
+              hasTumorPopulation
+                ? {
+                    label: t("components.segmented-filter.tumor", {
+                      tumor: metadata.tumor_type,
+                    }),
+                    value: "byTumor",
+                  }
+                : null,
+            ].filter(Boolean)}
             onChange={(d) => this.handlePopulationKPIsSegmentedChange(d)}
           />
           <PopulationPanel
@@ -77,14 +87,16 @@ class PopulationTab extends Component {
   
             }}
           />
-          <PopulationPanel
-            {...{
-              loading,
-              metadata,
-              plots: tumorPlots,
-              visible: populationKPIMode === "byTumor",
-            }}
-          />
+          {hasTumorPopulation && (
+            <PopulationPanel
+              {...{
+                loading,
+                metadata,
+                plots: tumorPlots,
+                visible: populationKPIMode === "byTumor",
+              }}
+            />
+          )}
         </Skeleton>
         )}
       </Wrapper>
@@ -101,6 +113,7 @@ const mapStateToProps = (state) => ({
   tumorPlots: state.PopulationStatistics.tumor,
   error: state.PopulationStatistics.error,
   missing: state.PopulationStatistics.missing,
+  dataset: state.Settings.dataset,
 });
 export default connect(
   mapStateToProps,

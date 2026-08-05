@@ -344,7 +344,12 @@ export const getValue = (record, path, dynamicColumns = null) => {
 // ============================================================================
 
 // Attributes to exclude from dropdowns
-const EXCLUDED_ATTRIBUTES = ['visible', 'summary'];
+const EXCLUDED_ATTRIBUTES = [
+  'visible',
+  'summary',
+  'id',
+  'caseReportId',
+];
 
 // Deprecated attributes to hide from axis dropdowns
 const BLACKLISTED_ATTRIBUTES = [

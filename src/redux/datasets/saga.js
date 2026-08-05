@@ -10,7 +10,7 @@ import {
   isAllDatasetsBrowseScope,
 } from "../../helpers/browseScope";
 
-const normalizeDataset = (dataset, settings) => {
+export const normalizeDataset = (dataset, settings) => {
   const reference = dataset.reference || "hg19";
   const fields = dataset.schema
     ? (dataset.schema || [])

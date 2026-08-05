@@ -191,4 +191,100 @@ describe("static case-report search", () => {
       ]),
     );
   });
+
+  it("does not filter, search, or sort with values omitted by a source schema", () => {
+    const mixedFields = [
+      { id: "disease", name: "disease", renderer: "select" },
+      { id: "tmb", name: "tmb", renderer: "slider" },
+    ];
+    const datasets = [
+      { id: "a", fields: [] },
+      { id: "b", fields: mixedFields },
+    ];
+    const sourceRecords = [
+      {
+        datasetId: "a",
+        caseReportId: "hidden-values",
+        pair: "A",
+        disease: "SCHEMA SECRET",
+        tmb: 1,
+      },
+      {
+        datasetId: "b",
+        caseReportId: "enabled-tmb",
+        pair: "B",
+        disease: "RAW BUT OMITTED",
+        tmb: 2,
+      },
+    ];
+    const fieldContext = {
+      datasets,
+      dataset: { isAllDatasets: true, fields: mixedFields },
+    };
+
+    expect(
+      filterCaseReportRecords(
+        sourceRecords,
+        { texts: "schema secret", orderId: 1 },
+        mixedFields,
+        fieldContext,
+      ),
+    ).toEqual([]);
+    expect(
+      filterCaseReportRecords(
+        sourceRecords,
+        { tmb: [1, 1], orderId: 1 },
+        mixedFields,
+        fieldContext,
+      ),
+    ).toEqual([]);
+    expect(
+      filterCaseReportRecords(
+        sourceRecords,
+        { orderId: 7 },
+        mixedFields,
+        fieldContext,
+      ).map(({ caseReportId }) => caseReportId),
+    ).toEqual(["enabled-tmb", "hidden-values"]);
+  });
+
+  it("does not use stale fields excluded from the compatible global union", () => {
+    const tmbField = { id: "tmb", name: "tmb", renderer: "slider" };
+    const datasets = [{ id: "a", fields: [tmbField] }];
+    const sourceRecords = [
+      { datasetId: "a", caseReportId: "case-1", pair: "A", tmb: 999 },
+    ];
+
+    expect(
+      filterCaseReportRecords(
+        sourceRecords,
+        { tmb: [999, 999], orderId: 7 },
+        [tmbField],
+        {
+          datasets,
+          dataset: { isAllDatasets: true, fields: [] },
+        },
+      ),
+    ).toEqual([]);
+  });
+
+  it("excludes source-omitted KPI values from global populations", () => {
+    const datasets = [
+      { id: "a", fields: [{ id: "purity" }] },
+      { id: "b", fields: [{ id: "tmb" }] },
+    ];
+    const sourceRecords = [
+      { datasetId: "a", caseReportId: "hidden-tmb", pair: "A", tmb: 999 },
+      { datasetId: "b", caseReportId: "enabled-tmb", pair: "B", tmb: 4 },
+    ];
+
+    expect(
+      buildPopulationMaps(sourceRecords, [{ id: "tmb" }], {
+        datasets,
+        dataset: { isAllDatasets: true, fields: [{ id: "tmb" }] },
+      }).tmb,
+    ).toEqual([
+      expect.objectContaining({ caseReportId: "enabled-tmb", value: 4 }),
+    ]);
+  });
 });

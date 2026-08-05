@@ -15,6 +15,7 @@ import {
   getNctIdOptionsFromTrials,
 } from "./constants";
 import { filterTrials, hasAnyOutcomes, getAvailableOutcomeTypes } from "./trialDataUtils";
+import { datasetHasField } from "../../helpers/browseScope";
 
 class ClinicalTrialsModal extends Component {
   constructor(props) {
@@ -75,9 +76,15 @@ class ClinicalTrialsModal extends Component {
   }
 
   getValidCancerTypeFromReport = () => {
-    const { report } = this.props;
+    const { report, dataset } = this.props;
     const { trials } = this.state;
-    const reportCancerType = report?.tumor_details || report?.disease || "";
+    const tumorDetails = datasetHasField(dataset, "tumor_details")
+      ? report?.tumor_details
+      : "";
+    const disease = datasetHasField(dataset, "disease")
+      ? report?.disease
+      : "";
+    const reportCancerType = tumorDetails || disease || "";
     if (!reportCancerType || trials.length === 0) return null;
 
     // Get all valid cancer type codes from trials
@@ -451,6 +458,7 @@ class ClinicalTrialsModal extends Component {
 
 const mapStateToProps = (state) => ({
   report: state.CaseReport.metadata,
+  dataset: state.Settings.dataset,
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(ClinicalTrialsModal));

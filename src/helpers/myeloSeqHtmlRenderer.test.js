@@ -1,4 +1,12 @@
 /** @jest-environment node */
+/* eslint-disable import/first */
+
+jest.mock("./browseScope", () => ({
+  datasetHasField: (dataset, fieldId) =>
+    (dataset?.fields || []).some(
+      (field) => (field.id || field.name) === fieldId,
+    ),
+}));
 
 import { MyeloSeqHtmlRenderer } from "./myeloSeqHtmlRenderer";
 
@@ -107,5 +115,37 @@ describe("MyeloSeqHtmlRenderer", () => {
 
     expect(result.html).not.toContain("<script>alert('unsafe')</script>");
     expect(result.html).toContain("&lt;script&gt;alert(&#39;unsafe&#39;)&lt;/script&gt;");
+  });
+
+  it("omits raw report values disabled by the normalized dataset fields", async () => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      ...report,
+      dataset: {
+        schema: [{ id: "purity" }],
+        fields: [{ id: "purity" }],
+      },
+      patient: {
+        ...report.patient,
+        tumorType: "SCHEMA-OMITTED-TYPE",
+        tumorDetails: "SCHEMA-OMITTED-DETAILS",
+        tmb: 999,
+      },
+      metadata: {
+        ...report.metadata,
+        tumor_details: "SCHEMA-OMITTED-DETAILS",
+        specimen_type: "SCHEMA-OMITTED-SPECIMEN",
+        clinical_history: "SCHEMA-OMITTED-HISTORY",
+        purity: 0.42,
+        ploidy: 4.8,
+        tmb: 999,
+        tumor_median_coverage: 888,
+      },
+    });
+
+    expect(result.html).toContain("<th>Purity</th><td>0.42</td>");
+    expect(result.html).not.toContain("<th>Ploidy</th>");
+    expect(result.html).not.toContain("Tumor Mutational Burden");
+    expect(result.html).not.toContain("Tumor Median Coverage");
+    expect(result.html).not.toContain("SCHEMA-OMITTED");
   });
 });

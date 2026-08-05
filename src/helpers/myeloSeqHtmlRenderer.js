@@ -1,4 +1,5 @@
 import { escapeHtml } from "./format";
+import { datasetHasField } from "./browseScope";
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
@@ -6,6 +7,20 @@ function hasValue(value) {
 
 function firstValue(...values) {
   return values.find(hasValue);
+}
+
+function reportHasField(
+  report,
+  field,
+  allowWithoutExplicitSchema = false,
+) {
+  const dataset = report?.dataset;
+  return (
+    !dataset ||
+    !Array.isArray(dataset.fields) ||
+    (allowWithoutExplicitSchema && !Array.isArray(dataset.schema)) ||
+    datasetHasField(dataset, field)
+  );
 }
 
 function formatNumber(value, maximumFractionDigits = 2) {
@@ -73,13 +88,31 @@ function buildSpecimenSection(report) {
   const metadata = report?.metadata || {};
   const facts = [
     ["Tumor sample", patient.caseId],
-    ["Tumor Type", patient.tumorType],
-    ["Tumor Details", firstValue(patient.tumorDetails, metadata.tumor_details)],
-    ["Disease", firstValue(patient.disease, metadata.disease)],
-    ["Primary Site", patient.primarySite],
-    ["Specimen Type", firstValue(metadata.specimen_type, metadata.specimenType)],
-    ["Clinical History", firstValue(metadata.clinical_history, metadata.clinicalHistory)],
-  ];
+    ["Tumor Type", patient.tumorType, "tumor_type"],
+    [
+      "Tumor Details",
+      firstValue(patient.tumorDetails, metadata.tumor_details),
+      "tumor_details",
+    ],
+    ["Disease", firstValue(patient.disease, metadata.disease), "disease"],
+    ["Primary Site", patient.primarySite, "primary_site"],
+    [
+      "Specimen Type",
+      firstValue(metadata.specimen_type, metadata.specimenType),
+      "specimen_type",
+      true,
+    ],
+    [
+      "Clinical History",
+      firstValue(metadata.clinical_history, metadata.clinicalHistory),
+      "clinical_history",
+      true,
+    ],
+  ].filter(
+    ([, , field, allowWithoutExplicitSchema]) =>
+      !field ||
+      reportHasField(report, field, allowWithoutExplicitSchema),
+  );
 
   return `${renderSectionBar("SPECIMEN")}
   <section class="specimen-facts">${facts
@@ -127,15 +160,47 @@ function buildGosFindings(report) {
   const msi = patient.msisensor || {};
   const hrd = metadata.hrd || {};
   const findings = [
-    ["Tumor Mutational Burden", firstValue(patient.tmb, metadata.tmb?.score, metadata.tmb)],
-    ["Microsatellite Status", firstValue(msi.msi_status, metadata.msiLabel, metadata.msisensor?.label)],
-    ["MSIsensor Score", firstValue(msi.score, metadata.msiScore, metadata.msisensor?.score)],
-    ["HRD B1+2 Score", firstValue(hrd.b1_2_score, metadata.hrd_b1_2_score)],
-    ["Purity", firstValue(coverage.purity, metadata.purity)],
-    ["Ploidy", firstValue(coverage.ploidy, metadata.ploidy)],
-    ["Tumor Median Coverage", firstValue(coverage.tumor_median_coverage, metadata.tumor_median_coverage)],
-    ["Normal Median Coverage", firstValue(coverage.normal_median_coverage, metadata.normal_median_coverage)],
-  ].filter(([, value]) => hasValue(value));
+    [
+      "Tumor Mutational Burden",
+      firstValue(patient.tmb, metadata.tmb?.score, metadata.tmb),
+      "tmb",
+    ],
+    [
+      "Microsatellite Status",
+      firstValue(msi.msi_status, metadata.msiLabel, metadata.msisensor?.label),
+      "msisensor.score",
+    ],
+    [
+      "MSIsensor Score",
+      firstValue(msi.score, metadata.msiScore, metadata.msisensor?.score),
+      "msisensor.score",
+    ],
+    [
+      "HRD B1+2 Score",
+      firstValue(hrd.b1_2_score, metadata.hrd_b1_2_score),
+      "hrd.b1_2_score",
+    ],
+    ["Purity", firstValue(coverage.purity, metadata.purity), "purity"],
+    ["Ploidy", firstValue(coverage.ploidy, metadata.ploidy), "ploidy"],
+    [
+      "Tumor Median Coverage",
+      firstValue(
+        coverage.tumor_median_coverage,
+        metadata.tumor_median_coverage,
+      ),
+      "tumor_median_coverage",
+    ],
+    [
+      "Normal Median Coverage",
+      firstValue(
+        coverage.normal_median_coverage,
+        metadata.normal_median_coverage,
+      ),
+      "tumor_median_coverage",
+    ],
+  ].filter(
+    ([, value, field]) => reportHasField(report, field) && hasValue(value),
+  );
 
   const summary = firstValue(report?.summary, metadata.originalSummary);
   if (!findings.length && !hasValue(summary)) return "";

@@ -111,11 +111,15 @@ function* loadInterpretationState(dataset, globalScope, records = []) {
 
 const buildFilterState = (
   dataset,
+  datasets,
   datafiles,
   casesWithInterpretations,
   globalScope,
 ) => {
-  const reportsFilters = getReportsFilters(dataset.fields || [], datafiles);
+  const reportsFilters = getReportsFilters(dataset.fields || [], datafiles, {
+    dataset,
+    datasets,
+  });
   if (!globalScope) {
     reportsFilters.push(
       getInterpretationsFilter(
@@ -158,6 +162,7 @@ const getReusableStaticReportsFilters = (
 
 const buildSearchFilterState = (
   dataset,
+  datasets,
   datafiles,
   casesWithInterpretations,
   globalScope,
@@ -171,6 +176,7 @@ const buildSearchFilterState = (
   if (!staticReportsFilters) {
     return buildFilterState(
       dataset,
+      datasets,
       datafiles,
       casesWithInterpretations,
       globalScope,
@@ -240,14 +246,20 @@ export function* fetchCaseReports(action = {}) {
       globalScope,
       datafiles,
     );
+    const fieldContext = {
+      casesWithInterpretations,
+      dataset: browseDataset,
+      datasets,
+    };
     const { matchedRecords, pageRecords } = searchCaseReportRecords(
       datafiles,
       searchFilters,
       browseDataset.fields || [],
-      { casesWithInterpretations },
+      fieldContext,
     );
     const { reportsFilters, reportsFiltersExtents } = buildFilterState(
       browseDataset,
+      datasets,
       datafiles,
       casesWithInterpretations,
       globalScope,
@@ -261,10 +273,12 @@ export function* fetchCaseReports(action = {}) {
       populations: buildPopulationMaps(
         datafiles,
         browseDataset.kpiFields || [],
+        fieldContext,
       ),
       cohortPopulations: buildPopulationMaps(
         matchedRecords,
         browseDataset.kpiFields || [],
+        fieldContext,
       ),
       reportsFilters,
       casesWithInterpretations,
@@ -309,14 +323,20 @@ export function* searchReports({ searchFilters }) {
       globalScope,
       datafiles,
     );
+    const fieldContext = {
+      casesWithInterpretations,
+      dataset: browseDataset,
+      datasets,
+    };
     const { matchedRecords, pageRecords } = searchCaseReportRecords(
       datafiles,
       searchFilters,
       browseDataset.fields || [],
-      { casesWithInterpretations },
+      fieldContext,
     );
     const { reportsFilters } = buildSearchFilterState(
       browseDataset,
+      datasets,
       datafiles,
       casesWithInterpretations,
       globalScope,
@@ -332,6 +352,7 @@ export function* searchReports({ searchFilters }) {
       cohortPopulations: buildPopulationMaps(
         matchedRecords,
         browseDataset.kpiFields || [],
+        fieldContext,
       ),
       reportsFilters,
       casesWithInterpretations,

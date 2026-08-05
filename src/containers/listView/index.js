@@ -48,7 +48,12 @@ import ParallelCoordinatesPanel from "../../components/parallelCoordinatesPanel"
 import SavedQueryButton from "../../components/savedQueryButton";
 import SavedQueryEditModal from "../../components/savedQueryEditModal";
 import caseReportsActions from "../../redux/caseReports/actions";
-import { sourceCaseIdentityKey } from "../../helpers/browseScope";
+import {
+  datasetHasField,
+  getSourceScopedFieldValue,
+  sourceCaseIdentityKey,
+  sourceDatasetHasField,
+} from "../../helpers/browseScope";
 import { userAuthRepository } from "../../helpers/userAuth";
 
 const {
@@ -85,6 +90,25 @@ export class ListView extends Component {
   formRef = React.createRef();
   cascaderOptionsCache = {};
   selectOptionsCache = {};
+
+  recordHasField = (record, field) =>
+    datasetHasField(this.props.dataset, field) &&
+    sourceDatasetHasField(
+      record,
+      this.props.datasets,
+      field,
+      this.props.dataset,
+    );
+
+  recordFieldValue = (record, field) =>
+    this.recordHasField(record, field)
+      ? getSourceScopedFieldValue(
+          record,
+          this.props.datasets,
+          field,
+          this.props.dataset,
+        )
+      : undefined;
 
   componentDidMount() {
     this.handleSavedSearchUserChanged = () =>
@@ -1063,7 +1087,13 @@ export class ListView extends Component {
                                   onSelect={this.onOrderChanged}
                                   variant="borderless"
                                 >
-                                  {orderListViewFilters.map((d) => (
+                                  {orderListViewFilters
+                                    .filter(
+                                      ({ attribute }) =>
+                                        attribute === "pair" ||
+                                        datasetHasField(dataset, attribute),
+                                    )
+                                    .map((d) => (
                                     <Option key={d.id} value={d.id}>
                                       <span
                                         dangerouslySetInnerHTML={{
@@ -1118,9 +1148,17 @@ export class ListView extends Component {
                                       >
                                         {d.pair}
                                       </Text>
-                                      <Text type="secondary">
-                                        {d.inferred_sex}
-                                      </Text>
+                                      {this.recordHasField(
+                                        d,
+                                        "inferred_sex",
+                                      ) && (
+                                        <Text type="secondary">
+                                          {this.recordFieldValue(
+                                            d,
+                                            "inferred_sex",
+                                          )}
+                                        </Text>
+                                      )}
                                       {d.qcEvaluation && (
                                         <Tag
                                           color={
@@ -1147,95 +1185,172 @@ export class ListView extends Component {
                                           interpretationsCounts
                                         }
                                       />
-                                      {d.tumor_type ? (
+                                      {this.recordFieldValue(
+                                        d,
+                                        "tumor_type",
+                                      ) ? (
                                         <Avatar
                                           style={{
                                             backgroundColor: "#fde3cf",
                                             color: "#f56a00",
                                           }}
                                         >
-                                          {d.tumor_type}
+                                          {this.recordFieldValue(
+                                            d,
+                                            "tumor_type",
+                                          )}
                                         </Avatar>
                                       ) : null}
                                     </Space>
                                   }
                                   actions={[
-                                    <Statistic
-                                      className="stats"
-                                      title={t(
-                                        `components.header-panel.metadata.sv_count.short`,
-                                      )}
-                                      value={
-                                        d.sv_count != null
-                                          ? d3.format(",")(d.sv_count)
-                                          : t("general.not-applicable")
-                                      }
-                                    />,
-                                    <Statistic
-                                      className="stats"
-                                      title={t(
-                                        `components.header-panel.metadata.tmb.short`,
-                                      )}
-                                      value={
-                                        d.tmb != null
-                                          ? d3.format(",")(d.tmb)
-                                          : t("general.not-applicable")
-                                      }
-                                    />,
-                                    <Statistic
-                                      className="stats"
-                                      title={t(
-                                        `components.header-panel.metadata.tumor_median_coverage.shorter`,
-                                      )}
-                                      value={`${
-                                        d["tumor_median_coverage"] != null
-                                          ? `${d["tumor_median_coverage"]}X`
-                                          : t("general.not-applicable")
-                                      } / ${
-                                        d["normal_median_coverage"] != null
-                                          ? `${d["normal_median_coverage"]}X`
-                                          : t("general.not-applicable")
-                                      }`}
-                                    />,
-                                    <Statistic
-                                      className="stats"
-                                      title={t(
-                                        "components.header-panel.purity-ploidy-title",
-                                      )}
-                                      value={
-                                        d.purity != null
-                                          ? d3.format(".1%")(d.purity)
-                                          : t("general.not-applicable")
-                                      }
-                                      suffix={`/ ${
-                                        d.ploidy != null
-                                          ? d3.format(".2f")(d.ploidy)
-                                          : t("general.not-applicable")
-                                      }`}
-                                    />,
-                                  ]}
+                                    this.recordHasField(d, "sv_count") ? (
+                                      <Statistic
+                                        className="stats"
+                                        title={t(
+                                          `components.header-panel.metadata.sv_count.short`,
+                                        )}
+                                        value={
+                                          this.recordFieldValue(
+                                            d,
+                                            "sv_count",
+                                          ) != null
+                                            ? d3.format(",")(
+                                                this.recordFieldValue(
+                                                  d,
+                                                  "sv_count",
+                                                ),
+                                              )
+                                            : t("general.not-applicable")
+                                        }
+                                      />
+                                    ) : null,
+                                    this.recordHasField(d, "tmb") ? (
+                                      <Statistic
+                                        className="stats"
+                                        title={t(
+                                          `components.header-panel.metadata.tmb.short`,
+                                        )}
+                                        value={
+                                          this.recordFieldValue(d, "tmb") !=
+                                          null
+                                            ? d3.format(",")(
+                                                this.recordFieldValue(
+                                                  d,
+                                                  "tmb",
+                                                ),
+                                              )
+                                            : t("general.not-applicable")
+                                        }
+                                      />
+                                    ) : null,
+                                    this.recordHasField(
+                                      d,
+                                      "tumor_median_coverage",
+                                    ) ? (
+                                      <Statistic
+                                        className="stats"
+                                        title={t(
+                                          `components.header-panel.metadata.tumor_median_coverage.shorter`,
+                                        )}
+                                        value={`${
+                                          this.recordFieldValue(
+                                            d,
+                                            "tumor_median_coverage",
+                                          ) != null
+                                            ? `${this.recordFieldValue(
+                                                d,
+                                                "tumor_median_coverage",
+                                              )}X`
+                                            : t("general.not-applicable")
+                                        } / ${
+                                          d["normal_median_coverage"] != null
+                                            ? `${d["normal_median_coverage"]}X`
+                                            : t("general.not-applicable")
+                                        }`}
+                                      />
+                                    ) : null,
+                                    this.recordHasField(d, "purity") ||
+                                    this.recordHasField(d, "ploidy") ? (
+                                      <Statistic
+                                        className="stats"
+                                        title={t(
+                                          "components.header-panel.purity-ploidy-title",
+                                        )}
+                                        value={
+                                          this.recordFieldValue(d, "purity") !=
+                                          null
+                                            ? d3.format(".1%")(
+                                                this.recordFieldValue(
+                                                  d,
+                                                  "purity",
+                                                ),
+                                              )
+                                            : t("general.not-applicable")
+                                        }
+                                        suffix={`/ ${
+                                          this.recordFieldValue(d, "ploidy") !=
+                                          null
+                                            ? d3.format(".2f")(
+                                                this.recordFieldValue(
+                                                  d,
+                                                  "ploidy",
+                                                ),
+                                              )
+                                            : t("general.not-applicable")
+                                        }`}
+                                      />
+                                    ) : null,
+                                  ].filter(Boolean)}
                                 >
                                   <Meta
                                     title={
-                                      d.disease &&
-                                      d.primary_site && (
+                                      [
+                                        "disease",
+                                        "primary_site",
+                                        "tumor_details",
+                                      ].some(
+                                        (field) =>
+                                          this.recordFieldValue(d, field) !=
+                                          null,
+                                      ) && (
                                         <Paragraph>
-                                          <Text type="primary">
-                                            {d.disease}
-                                          </Text>
-                                          {d.primary_site && (
-                                            <Text type="secondary">
-                                              <br />
-                                              {snakeCaseToHumanReadable(
-                                                d.primary_site,
+                                          {this.recordFieldValue(
+                                            d,
+                                            "disease",
+                                          ) != null && (
+                                            <Text type="primary">
+                                              {this.recordFieldValue(
+                                                d,
+                                                "disease",
                                               )}
                                             </Text>
                                           )}
-                                          {d.tumor_details && (
+                                          {this.recordFieldValue(
+                                            d,
+                                            "primary_site",
+                                          ) != null && (
                                             <Text type="secondary">
                                               <br />
                                               {snakeCaseToHumanReadable(
-                                                d.tumor_details,
+                                                this.recordFieldValue(
+                                                  d,
+                                                  "primary_site",
+                                                ),
+                                              )}
+                                            </Text>
+                                          )}
+                                          {this.recordFieldValue(
+                                            d,
+                                            "tumor_details",
+                                          ) != null && (
+                                            <Text type="secondary">
+                                              <br />
+                                              {snakeCaseToHumanReadable(
+                                                this.recordFieldValue(
+                                                  d,
+                                                  "tumor_details",
+                                                ),
                                               )}
                                             </Text>
                                           )}
@@ -1243,32 +1358,34 @@ export class ListView extends Component {
                                       )
                                     }
                                     description={
-                                      <Space
-                                        direction="vertical"
-                                        size={0}
-                                        style={{ display: "flex" }}
-                                      >
-                                        {generateCascaderOptions(
-                                          d.visibleTags,
-                                        ).map((tag, i) => (
-                                          <div key={`tag-${tag.value}-${i}`}>
-                                            <Divider
-                                              plain
-                                              orientation="left"
-                                              size="small"
-                                            >
-                                              {tag.label}
-                                            </Divider>
-                                            <Flex gap="2px" wrap="wrap">
-                                              {tag.children.map((child) => (
-                                                <Text key={child.value} code>
-                                                  {child.label}
-                                                </Text>
-                                              ))}
-                                            </Flex>
-                                          </div>
-                                        ))}
-                                      </Space>
+                                      this.recordHasField(d, "tags") ? (
+                                        <Space
+                                          direction="vertical"
+                                          size={0}
+                                          style={{ display: "flex" }}
+                                        >
+                                          {generateCascaderOptions(
+                                            d.visibleTags,
+                                          ).map((tag, i) => (
+                                            <div key={`tag-${tag.value}-${i}`}>
+                                              <Divider
+                                                plain
+                                                orientation="left"
+                                                size="small"
+                                              >
+                                                {tag.label}
+                                              </Divider>
+                                              <Flex gap="2px" wrap="wrap">
+                                                {tag.children.map((child) => (
+                                                  <Text key={child.value} code>
+                                                    {child.label}
+                                                  </Text>
+                                                ))}
+                                              </Flex>
+                                            </div>
+                                          ))}
+                                        </Space>
+                                      ) : null
                                     }
                                   />
                                 </Card>
@@ -1378,6 +1495,7 @@ const mapStateToProps = (state) => ({
   casesWithInterpretations: state.CaseReports.casesWithInterpretations,
   interpretationsCounts: state.CaseReports.interpretationsCounts,
   plots: state.PopulationStatistics.cohort,
+  datasets: state.Datasets.records,
 });
 export default connect(
   mapStateToProps,
