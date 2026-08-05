@@ -22,6 +22,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         data: action.data,
+        error: null,
         highlightsMissing: action.highlightsMissing,
         loading: false,
       };
@@ -29,7 +30,7 @@ export default function appReducer(state = initState, action) {
       return {
         ...state,
         error: action.error,
-        highlightsMissing: true,
+        highlightsMissing: false,
         data: null,
         loading: false,
       };

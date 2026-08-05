@@ -13,10 +13,38 @@ import SageQcTab from "../../tabs/sageQcTab";
 import BinQCTab from "../../tabs/binQCTab";
 import SignaturesTab from "../../tabs/signaturesTab";
 import settingsActions from "../../redux/settings/actions";
+import {
+  firstEnabledDetailTab,
+  getDetailTabAvailability,
+} from "../../helpers/detailTabAvailability";
 
 const { updateTab, updateDomains, updateCaseReport } = settingsActions;
 
-class DetailView extends Component {
+export class DetailView extends Component {
+  componentDidMount() {
+    this.redirectDisabledTab();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.tab !== this.props.tab ||
+      prevProps.tabAvailability !== this.props.tabAvailability
+    ) {
+      this.redirectDisabledTab();
+    }
+  }
+
+  redirectDisabledTab = () => {
+    const { tab, tabAvailability, updateTab } = this.props;
+    const activeTab = tab.toString();
+    if (tabAvailability[activeTab] !== false) return;
+
+    const firstEnabledTab = firstEnabledDetailTab(tabAvailability);
+    if (firstEnabledTab && firstEnabledTab !== activeTab) {
+      updateTab(firstEnabledTab);
+    }
+  };
+
   handleTabChanged = (tab) => {
     const { updateTab } = this.props;
     updateTab(tab);
@@ -27,7 +55,14 @@ class DetailView extends Component {
   };
 
   render() {
-    const { t, loading, pair, tab, canReturnToResults } = this.props;
+    const {
+      t,
+      loading,
+      pair,
+      tab,
+      tabAvailability,
+      canReturnToResults,
+    } = this.props;
     if (!pair) {
       return null;
     }
@@ -61,6 +96,7 @@ class DetailView extends Component {
                 key: key.toString(),
                 label: t(`containers.detail-view.tabs.tab${key}`),
                 children: tabs[key],
+                disabled: tabAvailability[key] === false,
               }))}
             />
           </div>
@@ -83,6 +119,7 @@ const mapStateToProps = (state) => ({
   tab: state.Settings.tab,
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
+  tabAvailability: getDetailTabAvailability(state),
 });
 export default connect(
   mapStateToProps,

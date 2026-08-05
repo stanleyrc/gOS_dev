@@ -1,5 +1,6 @@
 import { MyeloSeqHtmlRenderer as HtmlRenderer } from './myeloSeqHtmlRenderer';
 import { getUser } from './userAuth';
+import { datasetHasField } from './browseScope';
 
 /**
  * Builds a report structure from Redux state with merged interpretations
@@ -10,17 +11,39 @@ import { getUser } from './userAuth';
 function buildReportFromMergedState(state, mergedEvents) {
   const ce = state?.CaseReport || {};
   const m = ce?.metadata || {};
+  const dataset = state?.Settings?.dataset || state?.dataset || null;
+  const hasField = (field) =>
+    !dataset || !Array.isArray(dataset.fields) || datasetHasField(dataset, field);
+  const fieldString = (field, value) =>
+    hasField(field) ? String(value ?? '') : '';
+  const fieldNumber = (field, value) =>
+    hasField(field) ? parseNumber(value) : undefined;
   
   const patient = {
     caseId: String(ce?.id ?? m?.pair ?? ''),
-    tumorType: String(m?.tumor_type ?? m?.tumorType ?? m?.tumor ?? ''),
-    tumorDetails: String(m?.tumor_details ?? m?.tumorDetails ?? ''),
-    disease: String(m?.disease ?? ''),
-    primarySite: String(m?.primary_site ?? m?.primarySite ?? ''),
-    tmb: parseNumber(m?.tmb?.score ?? m?.tmbScore ?? m?.tmb),
+    tumorType: fieldString(
+      'tumor_type',
+      m?.tumor_type ?? m?.tumorType ?? m?.tumor,
+    ),
+    tumorDetails: fieldString(
+      'tumor_details',
+      m?.tumor_details ?? m?.tumorDetails,
+    ),
+    disease: fieldString('disease', m?.disease),
+    primarySite: fieldString(
+      'primary_site',
+      m?.primary_site ?? m?.primarySite,
+    ),
+    tmb: fieldNumber('tmb', m?.tmb?.score ?? m?.tmbScore ?? m?.tmb),
     msisensor: {
-      msi_status: String(m?.msiLabel ?? m?.msisensor?.label ?? ''),
-      score: parseNumber(m?.msiScore ?? m?.msisensor?.score),
+      msi_status: fieldString(
+        'msisensor.score',
+        m?.msiLabel ?? m?.msisensor?.label,
+      ),
+      score: fieldNumber(
+        'msisensor.score',
+        m?.msiScore ?? m?.msisensor?.score,
+      ),
     },
   };
 
@@ -38,6 +61,7 @@ function buildReportFromMergedState(state, mergedEvents) {
 
   const report = {
     patient,
+    dataset,
     metadata: m,
     summary: String(m?.summary ?? ''),
     notes: globalNotes,

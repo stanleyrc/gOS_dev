@@ -23,6 +23,7 @@ import * as d3 from "d3";
 import { FaDna } from "react-icons/fa";
 import Wrapper from "./index.style";
 import * as htmlToImage from "html-to-image";
+import ErrorPanel from "../errorPanel";
 
 const { Text } = Typography;
 
@@ -44,9 +45,20 @@ class HighlightsPanel extends Component {
   };
 
   render() {
-    const { t, loading, title, data, inViewport } = this.props;
-    if (!data) {
-      return null;
+    const { t, loading, title, data, error, inViewport } = this.props;
+    if (!data && !error) return null;
+
+    if (error) {
+      return (
+        <ErrorPanel
+          avatar={<FaDna />}
+          header={title}
+          title={t("general.error", { error: title })}
+          subtitle={error.toString()}
+          explanationTitle={t("general.error", { error: title })}
+          explanationDescription={error.stack || error.toString()}
+        />
+      );
     }
 
     const { karyotype, risk_score, gene_mutations } = data;
@@ -170,6 +182,7 @@ const mapDispatchToProps = (dispatch) => ({});
 const mapStateToProps = (state) => ({
   loading: state.Highlights.loading,
   data: state.Highlights.data,
+  error: state.Highlights.error,
 });
 export default connect(
   mapStateToProps,

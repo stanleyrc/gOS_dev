@@ -7,6 +7,7 @@ const initState = {
   selectedFilteredEvent: null,
   viewMode: "tracks",
   error: null,
+  missing: false,
   selectedEventUids: [],
   columnFilters: {
     tier: [1, 2],
@@ -22,6 +23,7 @@ export default function appReducer(state = initState, action) {
         filteredEvents: [],
         originalFilteredEvents: [],
         loading: true,
+        missing: false,
         columnFilters: {
           tier: [1, 2],
         },
@@ -33,6 +35,17 @@ export default function appReducer(state = initState, action) {
         originalFilteredEvents: (action.filteredEvents || []).map((d) => ({ ...d })),
         selectedFilteredEvent: action.selectedFilteredEvent,
         loading: false,
+        missing: false,
+      };
+    case actions.FETCH_FILTERED_EVENTS_MISSING:
+      return {
+        ...state,
+        filteredEvents: [],
+        originalFilteredEvents: [],
+        selectedFilteredEvent: null,
+        error: null,
+        loading: false,
+        missing: true,
       };
     case actions.FETCH_FILTERED_EVENTS_FAILED:
       return {
@@ -42,6 +55,7 @@ export default function appReducer(state = initState, action) {
         selectedFilteredEvent: null,
         error: action.error,
         loading: false,
+        missing: false,
       };
     case actions.SELECT_FILTERED_EVENT:
       return {

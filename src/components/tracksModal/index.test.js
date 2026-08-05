@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import React from "react";
 import { TextDecoder, TextEncoder } from "util";
 

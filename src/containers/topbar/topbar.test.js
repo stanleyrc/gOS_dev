@@ -82,6 +82,34 @@ describe("Topbar browse scope", () => {
     );
   });
 
+  it("suppresses report-option values omitted by their source dataset", () => {
+    const component = makeComponent({
+      browseDataset: {
+        isAllDatasets: true,
+        fields: [{ id: "tumor_type" }, { id: "inferred_sex" }],
+      },
+      datasets: [
+        {
+          id: "dataset-a",
+          title: "Dataset A",
+          fields: [{ id: "tumor_type" }],
+        },
+      ],
+    });
+    const schemaReport = {
+      ...report,
+      tumor_type: "AML",
+      inferred_sex: "SCHEMA-OMITTED",
+    };
+
+    expect(component.reportFieldValue(schemaReport, "tumor_type")).toBe(
+      "AML",
+    );
+    expect(
+      component.reportFieldValue(schemaReport, "inferred_sex"),
+    ).toBeUndefined();
+  });
+
   it("counts all accessible datasets by distinct global cases", () => {
     const component = makeComponent({
       datasets: [

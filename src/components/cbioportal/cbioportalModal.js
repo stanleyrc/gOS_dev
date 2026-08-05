@@ -7,6 +7,7 @@ import FilteredEventsListPanel from "../filteredEventsListPanel";
 import ClinicalAttributesPanel from "./ClinicalAttributesPanel";
 import { cbioportalService } from "../../services/cbioportalService";
 import { convertVariantToSingleLetterCode } from "../../helpers/utility";
+import { datasetHasField } from "../../helpers/browseScope";
 
 class CbioportalModal extends Component {
   constructor(props) {
@@ -44,17 +45,26 @@ class CbioportalModal extends Component {
   componentDidUpdate(prevProps, prevState) {
     const { report } = this.props;
     const { cancerTypes, tumorDetails, allStudies } = this.state;
+    const reportTumorDetails = datasetHasField(
+      this.props.dataset,
+      "tumor_details",
+    )
+      ? report?.tumor_details
+      : "";
 
     if (report !== prevProps.report || cancerTypes !== prevState.cancerTypes) {
       if (report && cancerTypes.length > 0) {
-        const matchedTumorDetails = this.findClosestMatch(report.tumor_details, cancerTypes);
-        const finalTumorDetails = matchedTumorDetails || report.tumor_details || "";
+        const matchedTumorDetails = this.findClosestMatch(
+          reportTumorDetails,
+          cancerTypes,
+        );
+        const finalTumorDetails = matchedTumorDetails || reportTumorDetails || "";
         this.setState({
           tumorDetails: finalTumorDetails,
           initialTumorDetails: finalTumorDetails,
         });
       } else if (report) {
-        const initialValue = report.tumor_details || "";
+        const initialValue = reportTumorDetails || "";
         this.setState({
           tumorDetails: initialValue,
           initialTumorDetails: initialValue,
@@ -465,6 +475,7 @@ class CbioportalModal extends Component {
 
 const mapStateToProps = (state) => ({
   report: state.CaseReport.metadata,
+  dataset: state.Settings.dataset,
 });
 
 export default connect(mapStateToProps)(withTranslation("common")(CbioportalModal));

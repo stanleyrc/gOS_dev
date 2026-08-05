@@ -173,32 +173,32 @@ class BinPlotPanel extends Component {
     const hasPpfitData = ppfit.data.intervals.length > 0;
     const shouldDisplayPanel = visible && (loading || hasPpfitData || inViewport !== false);
 
-    if (!metadata.pair || (!loading && !hasPpfitData)) {
+    if (
+      !metadata.pair ||
+      ppfit.missing ||
+      (!loading && !ppfit.error && !hasPpfitData) ||
+      (!ppfit.error && (!isNumeric(beta) || !isNumeric(gamma)))
+    ) {
       return null;
     }
     const { segment, open } = this.state;
     return (
       <Wrapper visible={visible}>
-        {!isNumeric(beta) || !isNumeric(gamma) ? (
+        {ppfit.error ? (
           <ErrorPanel
             avatar={<CgArrowsBreakeH />}
             header={t(`components.binQc-panel.binplot.title`)}
             title={t("components.binQc-panel.error.title", {
               id,
             })}
-            subtitle={t("components.binQc-panel.error.subtitle")}
+            subtitle={t("components.genome-panel.error.subtitle", {
+              filename: ppfit.filename,
+            })}
             explanationTitle={t(
               "components.binQc-panel.error.explanation.title"
             )}
             explanationDescription={
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: t("components.binQc-panel.missing_beta_gamma", {
-                    beta: beta || "null",
-                    gamma: gamma || "null",
-                  }),
-                }}
-              />
+              ppfit.error.stack || ppfit.error.toString()
             }
           />
         ) : (

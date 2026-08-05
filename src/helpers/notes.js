@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import "jspdf/dist/polyfills.es.js";
 import { marked } from "marked";
+import { projectSourceRecordFields } from "./browseScope";
 
 function renderMarkdownToPDF(
   markdown,
@@ -178,9 +179,13 @@ export function extractNCTIDs(text) {
  * @param {Object} report - The report object to filter.
  * @returns {Object} A new object containing only the specified attributes from the report.
  */
-export function filterReportAttributes(report) {
+export function filterReportAttributes(report, dataset = null) {
   if (!report || typeof report !== "object") {
     return {};
+  }
+
+  if (dataset) {
+    return projectSourceRecordFields(report, [dataset], dataset);
   }
 
   const attributesToExtract = [

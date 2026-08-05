@@ -14,6 +14,7 @@ import caseReportsActions from "../caseReports/actions";
 import {
   buildAllDatasetsMetadata,
   distinctCaseRecords,
+  projectSourceRecordFields,
   resolveBrowseDataset,
 } from "../../helpers/browseScope";
 import {
@@ -29,18 +30,46 @@ const populationWorkerUrl = () =>
     .split("?")[0]
     .replace(/\/[^/]*$/, "")}/workers/populationStatistics.worker.js`;
 
-function* fetchPopulationStatistics() {
+export function* fetchPopulationStatistics() {
   try {
     const currentState = yield select(getCurrentState);
     const { metadata } = currentState.CaseReport;
-    const { populations } = currentState.CaseReports;
-    const dataset = resolveBrowseDataset(currentState);
+    const dataset = currentState.Settings.dataset;
     const fields = dataset?.kpiFields || [];
+
+    if (fields.length === 0) {
+      yield put({ type: actions.FETCH_POPULATION_STATISTICS_MISSING });
+      return;
+    }
+
+    const sourceRecords =
+      currentState.CaseReports.manifestRecordsByDataset?.[dataset.id];
+    const populations = Array.isArray(sourceRecords)
+      ? buildPopulationMaps(sourceRecords, fields, {
+          dataset,
+          datasets: [dataset],
+        })
+      : currentState.CaseReports.populations;
+    const sourceMetadata = projectSourceRecordFields(
+      metadata,
+      [dataset],
+      dataset,
+    );
     const result = yield call(
       processDataInWorker,
-      { populations, metadata, fields },
+      { populations, metadata: sourceMetadata, fields },
       populationWorkerUrl(),
     );
+    const plots = [...(result.general || []), ...(result.tumor || [])];
+    const hasRenderablePlot = plots.some(
+      (plot) =>
+        plot?.markValue != null && Number.isFinite(Number(plot.markValue)),
+    );
+
+    if (!hasRenderablePlot) {
+      yield put({ type: actions.FETCH_POPULATION_STATISTICS_MISSING });
+      return;
+    }
 
     yield put({
       type: actions.FETCH_POPULATION_STATISTICS_SUCCESS,
@@ -113,12 +142,17 @@ function* getFavoriteRecords(state, favorite) {
     : records;
 
   return {
+    datasets: targetDatasets,
     metadata,
     records: filterCaseReportRecords(
       searchableRecords,
       favorite.searchFilters || {},
       metadata.fields || [],
-      { casesWithInterpretations },
+      {
+        casesWithInterpretations,
+        dataset: metadata,
+        datasets: targetDatasets,
+      },
     ),
   };
 }
@@ -128,6 +162,7 @@ export function* fetchCohortStatistics(action) {
     const currentState = yield select(getCurrentState);
     const searchId = action.searchId || currentState.CaseReports.currentSearchId;
     let dataset = resolveBrowseDataset(currentState);
+    let datasets = currentState.Datasets.records || [];
     let records = currentState.CaseReports.totalReports || [];
 
     if (action.comparison) {
@@ -135,6 +170,7 @@ export function* fetchCohortStatistics(action) {
       if (!favorite) throw new Error("SAVED_SEARCH_NOT_AVAILABLE");
       const savedResult = yield call(getFavoriteRecords, currentState, favorite);
       dataset = savedResult.metadata;
+      datasets = savedResult.datasets;
       records = savedResult.records;
     }
 
@@ -145,13 +181,21 @@ export function* fetchCohortStatistics(action) {
     const populations = buildPopulationMaps(
       records,
       dataset.kpiFields || [],
+      { dataset, datasets },
     );
     const fields = dataset.kpiFields || [];
+    const cohortMetadata = action.comparison
+      ? {}
+      : projectSourceRecordFields(
+          currentState.CaseReport.metadata,
+          datasets,
+          dataset,
+        );
     const result = yield call(
       processDataInWorker,
       {
         populations,
-        metadata: action.comparison ? {} : currentState.CaseReport.metadata,
+        metadata: cohortMetadata,
         fields,
       },
       populationWorkerUrl(),

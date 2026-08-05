@@ -7,6 +7,7 @@ import AggregationsTable from "./aggregationsTable";
 import AggregationsVisualization from "../../components/aggregationsVisualization";
 import { loadPathways } from "../../helpers/geneAggregations";
 import { filterCaseReportRecords } from "../../helpers/caseReportsSearch";
+import { projectSourceRecordFields } from "../../helpers/browseScope";
 
 const { Text } = Typography;
 
@@ -45,6 +46,8 @@ class AggregationsPanel extends Component {
     if (
       prevProps.searchFilters !== this.props.searchFilters ||
       prevProps.datafiles !== this.props.datafiles ||
+      prevProps.dataset !== this.props.dataset ||
+      prevProps.datasets !== this.props.datasets ||
       prevProps.casesWithInterpretations !==
         this.props.casesWithInterpretations
     ) {
@@ -107,7 +110,15 @@ class AggregationsPanel extends Component {
       this.props.dataset?.fields || [],
       {
         casesWithInterpretations: this.props.casesWithInterpretations,
+        dataset: this.props.dataset,
+        datasets: this.props.datasets,
       },
+    ).map((record) =>
+      projectSourceRecordFields(
+        record,
+        this.props.datasets,
+        this.props.dataset,
+      ),
     );
 
   render() {
@@ -182,6 +193,7 @@ class AggregationsPanel extends Component {
 
 const mapStateToProps = (state) => ({
   casesWithInterpretations: state.CaseReports.casesWithInterpretations,
+  datasets: state.Datasets.records,
   settingsData: state.Settings.data,
 });
 

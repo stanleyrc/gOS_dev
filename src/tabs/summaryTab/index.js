@@ -17,6 +17,7 @@ import { chunks } from "../../helpers/utility";
 import { FaInfoCircle } from "react-icons/fa";
 import { generateCascaderOptions } from "../../helpers/filters";
 import { getNestedValue } from "../../helpers/metadata";
+import { datasetHasField } from "../../helpers/browseScope";
 import Wrapper from "./index.style";
 import ViolinPlotPanel from "../../components/violinPlotPanel";
 import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
@@ -67,7 +68,10 @@ class SummaryTab extends Component {
     } = this.props;
 
     const plotGroups = this.processPlotGroups(plots, metadata);
-    const tumorPlotGroups = this.processPlotGroups(tumorPlots, metadata);
+    const tumorPlotGroups =
+      datasetHasField(dataset, "tumor_type") && metadata.tumor_type != null
+        ? this.processPlotGroups(tumorPlots, metadata)
+        : [];
 
     let fields = dataset.fields
       .map((field) => {
@@ -149,34 +153,43 @@ class SummaryTab extends Component {
                   <Space>{t("components.violin-panel.header.common")}</Space>
                 ),
                 children: plotGroups.map(({ groupTitle, plotsList }, j) =>
-                  plotsList.map((d, i) => (
-                    <Row
-                      key={i}
-                      id={`row-${i}}`}
-                      className="ant-panel-container ant-home-plot-container"
-                      gutter={16}
-                    >
-                      <Col className="gutter-row" span={12}>
-                        {this.renderViolinPlotPanel(
-                          plotsList[i],
-                          t("components.violin-panel.header.total", {
-                            scope: groupTitle,
-                          }),
-                          metadata
+                  plotsList.map((_, i) => {
+                    const tumorPlotsList =
+                      tumorPlotGroups[j]?.plotsList?.[i];
+                    return (
+                      <Row
+                        key={i}
+                        id={`row-${i}}`}
+                        className="ant-panel-container ant-home-plot-container"
+                        gutter={16}
+                      >
+                        <Col
+                          className="gutter-row"
+                          span={tumorPlotsList ? 12 : 24}
+                        >
+                          {this.renderViolinPlotPanel(
+                            plotsList[i],
+                            t("components.violin-panel.header.total", {
+                              scope: groupTitle,
+                            }),
+                            metadata
+                          )}
+                        </Col>
+                        {tumorPlotsList && (
+                          <Col className="gutter-row" span={12}>
+                            {this.renderViolinPlotPanel(
+                              tumorPlotsList,
+                              t("components.violin-panel.header.tumor", {
+                                tumor: metadata.tumor_type,
+                                scope: groupTitle,
+                              }),
+                              metadata
+                            )}
+                          </Col>
                         )}
-                      </Col>
-                      <Col className="gutter-row" span={12}>
-                        {this.renderViolinPlotPanel(
-                          tumorPlotGroups[j].plotsList[i],
-                          t("components.violin-panel.header.tumor", {
-                            tumor: metadata.tumor_type,
-                            scope: groupTitle,
-                          }),
-                          metadata
-                        )}
-                      </Col>
-                    </Row>
-                  ))
+                      </Row>
+                    );
+                  })
                 ),
               },
             ]}

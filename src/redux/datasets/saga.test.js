@@ -2,14 +2,34 @@
 /* eslint-disable import/first */
 
 jest.mock("../../helpers/field", () => {
-  return class TestField {};
+  return class TestField {
+    constructor(field = {}) {
+      Object.assign(this, field);
+      this.id = field.id || field.name;
+      this.name = field.name || this.id;
+      this.kpiPlot = field.kpiPlot === true;
+      this.isValid = Boolean(this.id && field.type);
+    }
+  };
 });
 
 import { runSaga } from "redux-saga";
 import settingsActions from "../settings/actions";
-import { openCaseReport, selectAllDatasets } from "./saga";
+import {
+  normalizeDataset,
+  openCaseReport,
+  selectAllDatasets,
+} from "./saga";
 
 const dataset = { id: "a", datafilesPath: "a.json" };
+
+const settings = {
+  coordinates: { higlassMap: { hg19: "hg19" } },
+  fields: [
+    { id: "purity", type: "numeric", kpiPlot: true },
+    { id: "ploidy", type: "numeric", kpiPlot: true },
+  ],
+};
 
 const runOpen = async (caseReports, actionOptions = {}) => {
   const dispatched = [];
@@ -31,6 +51,31 @@ const runOpen = async (caseReports, actionOptions = {}) => {
   ).toPromise();
   return dispatched;
 };
+
+describe("dataset schema normalization", () => {
+  it("treats an explicit schema as a complete field override", () => {
+    const normalized = normalizeDataset(
+      {
+        id: "schema-test",
+        schema: [{ id: "purity", type: "numeric", kpiPlot: true }],
+      },
+      settings,
+    );
+
+    expect(normalized.fields.map(({ id }) => id)).toEqual(["purity"]);
+    expect(normalized.kpiFields.map(({ id }) => id)).toEqual(["purity"]);
+  });
+
+  it("allows an explicit empty schema to disable every default field", () => {
+    const normalized = normalizeDataset(
+      { id: "schema-empty", schema: [] },
+      settings,
+    );
+
+    expect(normalized.fields).toEqual([]);
+    expect(normalized.kpiFields).toEqual([]);
+  });
+});
 
 describe("dataset detail routing", () => {
   it("selects all datasets with the requested filters and destination", async () => {

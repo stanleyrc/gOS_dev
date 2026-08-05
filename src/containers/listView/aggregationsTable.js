@@ -8,6 +8,7 @@ import {
   allDatasetsBrowseScope,
   buildCaseReportUrl,
   datasetBrowseScope,
+  datasetHasField,
   sourceCaseIdentityKey,
 } from "../../helpers/browseScope";
 
@@ -51,7 +52,7 @@ const calculateStats = (records, dataIndex) => {
   return { mean, median, std, count: values.length };
 };
 
-class AggregationsTable extends PureComponent {
+export class AggregationsTable extends PureComponent {
    state = {
       selectedColumnKeys: [],
       columnStats: {},
@@ -63,7 +64,10 @@ class AggregationsTable extends PureComponent {
    }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.filteredRecords !== this.props.filteredRecords) {
+    if (
+      prevProps.filteredRecords !== this.props.filteredRecords ||
+      prevProps.dataset !== this.props.dataset
+    ) {
       this.initializeSelectedColumns();
       this.recalculateStats();
     }
@@ -76,18 +80,9 @@ class AggregationsTable extends PureComponent {
       return;
     }
 
-    const numericColumns = [
-      { key: "sv_count", dataIndex: "sv_count" },
-      { key: "tmb", dataIndex: "tmb" },
-      { key: "tumor_median_coverage", dataIndex: "tumor_median_coverage" },
-      { key: "normal_median_coverage", dataIndex: "normal_median_coverage" },
-      { key: "purity", dataIndex: "purity" },
-      { key: "ploidy", dataIndex: "ploidy" },
-      { key: "HRDetect", dataIndex: "hrd.hrd_score" },
-      { key: "B1+2", dataIndex: "hrd.b1_2_score" },
-      { key: "B1", dataIndex: "hrd.b1_score" },
-      { key: "B2", dataIndex: "hrd.b2_score" },
-    ];
+    const numericColumns = this.buildColumns().filter(
+      ({ type }) => type === "numeric",
+    );
     const columnStats = {};
 
     numericColumns.forEach(({ key, dataIndex }) => {
@@ -97,27 +92,7 @@ class AggregationsTable extends PureComponent {
     this.setState({ columnStats });
   };
 
-  getColumnKeys = () => {
-    return [
-      "pair",
-      "disease",
-      "primary_site",
-      "tumor_details",
-      "inferred_sex",
-      "qcEvaluation",
-      "sv_count",
-      "tmb",
-      "tumor_median_coverage",
-      "normal_median_coverage",
-      "purity",
-      "ploidy",
-      "HRDetect",
-      "B1+2",
-      "B1",
-      "B2",
-      "summary",
-    ];
-  };
+  getColumnKeys = () => this.buildColumns().map(({ key }) => key);
 
   initializeSelectedColumns = () => {
     // Select all columns by default
@@ -199,6 +174,7 @@ class AggregationsTable extends PureComponent {
         title:
           t("containers.list-view.aggregations.disease_column") || "Disease",
         dataIndex: "disease",
+        fieldId: "disease",
         type: "string",
       },
       {
@@ -207,6 +183,7 @@ class AggregationsTable extends PureComponent {
           t("containers.list-view.aggregations.primary_site_column") ||
           "Primary Site",
         dataIndex: "primary_site",
+        fieldId: "primary_site",
         type: "string",
       },
       {
@@ -215,12 +192,14 @@ class AggregationsTable extends PureComponent {
           t("containers.list-view.aggregations.tumor_details_column") ||
           "Tumor Details",
         dataIndex: "tumor_details",
+        fieldId: "tumor_details",
         type: "string",
       },
       {
         key: "inferred_sex",
         title: t("containers.list-view.aggregations.inferred_sex_column") || "Sex",
         dataIndex: "inferred_sex",
+        fieldId: "inferred_sex",
         type: "string",
       },
       {
@@ -236,12 +215,14 @@ class AggregationsTable extends PureComponent {
         title:
           t("containers.list-view.aggregations.sv_count_column") || "SV Count",
         dataIndex: "sv_count",
+        fieldId: "sv_count",
         type: "numeric",
       },
       {
         key: "tmb",
         title: t("containers.list-view.aggregations.tmb_column") || "TMB",
         dataIndex: "tmb",
+        fieldId: "tmb",
         type: "numeric",
       },
       {
@@ -250,6 +231,7 @@ class AggregationsTable extends PureComponent {
           t("containers.list-view.aggregations.tumor_median_coverage_column") ||
           "Tumor Coverage",
         dataIndex: "tumor_median_coverage",
+        fieldId: "tumor_median_coverage",
         type: "numeric",
       },
       {
@@ -258,18 +240,21 @@ class AggregationsTable extends PureComponent {
           t("containers.list-view.aggregations.normal_median_coverage_column") ||
           "Normal Coverage",
         dataIndex: "normal_median_coverage",
+        fieldId: "tumor_median_coverage",
         type: "numeric",
       },
       {
         key: "purity",
         title: t("containers.list-view.aggregations.purity_column") || "Purity",
         dataIndex: "purity",
+        fieldId: "purity",
         type: "numeric",
       },
       {
         key: "ploidy",
         title: t("containers.list-view.aggregations.ploidy_column") || "Ploidy",
         dataIndex: "ploidy",
+        fieldId: "ploidy",
         type: "numeric",
       },
       {
@@ -277,6 +262,7 @@ class AggregationsTable extends PureComponent {
         title:
           t("containers.list-view.aggregations.HRDetect_column") || "HRDetect",
         dataIndex: "hrd.hrd_score",
+        fieldId: "hrd.hrd_score",
         type: "numeric",
       },
       {
@@ -284,6 +270,7 @@ class AggregationsTable extends PureComponent {
         title:
           t("containers.list-view.aggregations.B1+2_column") || "B1+2",
         dataIndex: "hrd.b1_2_score",
+        fieldId: "hrd.b1_2_score",
         type: "numeric",
       },
       {
@@ -291,6 +278,7 @@ class AggregationsTable extends PureComponent {
         title:
           t("containers.list-view.aggregations.B1_column") || "B1",
         dataIndex: "hrd.b1_score",
+        fieldId: "hrd.b1_score",
         type: "numeric",
       },
       {
@@ -298,6 +286,7 @@ class AggregationsTable extends PureComponent {
         title:
           t("containers.list-view.aggregations.B2_column") || "B2",
         dataIndex: "hrd.b2_score",
+        fieldId: "hrd.b2_score",
         type: "numeric",
       },
       {
@@ -310,7 +299,12 @@ class AggregationsTable extends PureComponent {
        },
     ];
 
-    return columnDefs.map((col) => {
+    return columnDefs
+      .filter(
+        (column) =>
+          !column.fieldId || datasetHasField(dataset, column.fieldId),
+      )
+      .map((col) => {
       const isNumeric = col.type === "numeric";
       const stats = isNumeric ? columnStats[col.key] : null;
 
@@ -339,6 +333,7 @@ class AggregationsTable extends PureComponent {
           title: headerTitle,
           label: col.title,
           dataIndex: col.dataIndex,
+          type: col.type,
           width: isSummary ? 800 : 150,
           sorter: (a, b) => {
             const aVal = getValue(a, col.dataIndex);

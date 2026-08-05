@@ -18,13 +18,20 @@ import Field from "./field";
 import {
   ALL_DATASETS_SCOPE_VALUE,
   allDatasetsBrowseScope,
+  buildAllDatasetsMetadata,
   buildCaseReportUrl,
   datasetBrowseScope,
+  datasetHasField,
   distinctCaseRecords,
+  fieldIdentifier,
   getBrowseScopeDatasetId,
   getSourceCaseIdentity,
+  getSourceScopedFieldValue,
+  projectSourceRecordFields,
   resolveBrowseDataset,
+  resolveSourceDataset,
   sourceCaseIdentityKey,
+  sourceDatasetHasField,
 } from "./browseScope";
 
 const field = (definition) => new Field(definition);
@@ -155,5 +162,123 @@ describe("browse scope", () => {
     expect(globalUrl.searchParams.get("report")).toBe("case-1");
     expect(datasetUrl.searchParams.has("scope")).toBe(false);
     expect(datasetUrl.searchParams.get("dataset")).toBe("b");
+  });
+});
+
+describe("dataset field membership", () => {
+  const datasets = [
+    {
+      id: "a",
+      fields: [
+        field({ id: "purity", type: "numeric" }),
+        field({ id: "hrd.hrd_score", type: "numeric" }),
+        field({ id: "tumor_median_coverage", type: "numeric" }),
+      ],
+    },
+    {
+      id: "b",
+      fields: [field({ id: "ploidy", type: "numeric" })],
+    },
+  ];
+
+  it("normalizes identifiers and resolves the record's source dataset", () => {
+    const record = { datasetId: "a", purity: 0.4, ploidy: 4.2 };
+
+    expect(fieldIdentifier("purity")).toBe("purity");
+    expect(fieldIdentifier({ name: "ploidy" })).toBe("ploidy");
+    expect(resolveSourceDataset(record, datasets)).toBe(datasets[0]);
+    expect(datasetHasField(datasets[0], "purity")).toBe(true);
+    expect(datasetHasField(datasets[0], "ploidy")).toBe(false);
+    expect(sourceDatasetHasField(record, datasets, "purity")).toBe(true);
+    expect(sourceDatasetHasField(record, datasets, "ploidy")).toBe(false);
+  });
+
+  it("suppresses raw omitted and unknown-source values", () => {
+    const record = {
+      datasetId: "a",
+      purity: 0.4,
+      ploidy: 4.2,
+      hrd: { hrd_score: 0.7 },
+    };
+    const allDatasets = buildAllDatasetsMetadata(datasets);
+
+    expect(
+      getSourceScopedFieldValue(record, datasets, "hrd.hrd_score"),
+    ).toBe(0.7);
+    expect(getSourceScopedFieldValue(record, datasets, "ploidy")).toBeUndefined();
+    expect(
+      getSourceScopedFieldValue(
+        { ...record, datasetId: "unknown" },
+        datasets,
+        "purity",
+        allDatasets,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("keeps legacy datasets without normalized fields permissive", () => {
+    const legacyDataset = { id: "legacy" };
+    const record = { datasetId: "legacy", purity: 0.5 };
+
+    expect(datasetHasField(legacyDataset, "purity")).toBe(true);
+    expect(
+      getSourceScopedFieldValue(record, [legacyDataset], "purity"),
+    ).toBe(0.5);
+  });
+
+  it("does not project fields excluded from the compatible global union", () => {
+    const incompatibleDatasets = [
+      {
+        id: "string-source",
+        fields: [field({ id: "ambiguous", type: "string" })],
+      },
+      {
+        id: "numeric-source",
+        fields: [field({ id: "ambiguous", type: "numeric" })],
+      },
+    ];
+    const allDatasets = buildAllDatasetsMetadata(incompatibleDatasets);
+
+    expect(
+      projectSourceRecordFields(
+        {
+          datasetId: "string-source",
+          caseReportId: "case-1",
+          ambiguous: "must not leak",
+        },
+        incompatibleDatasets,
+        allDatasets,
+      ),
+    ).toEqual({
+      datasetId: "string-source",
+      caseReportId: "case-1",
+    });
+  });
+
+  it("projects only source-enabled fields without mutating the record", () => {
+    const record = {
+      datasetId: "a",
+      caseReportId: "case-1",
+      pair: "PAIR-1",
+      summary: "SNV: TP53",
+      purity: 0.4,
+      ploidy: 4.2,
+      tumor_median_coverage: 100,
+      normal_median_coverage: 80,
+      hrd: { hrd_score: 0.7, b1_score: 0.9 },
+    };
+    const before = JSON.parse(JSON.stringify(record));
+
+    expect(projectSourceRecordFields(record, datasets)).toEqual({
+      datasetId: "a",
+      caseReportId: "case-1",
+      pair: "PAIR-1",
+      summary: "SNV: TP53",
+      purity: 0.4,
+      tumor_median_coverage: 100,
+      normal_median_coverage: 80,
+      hrd: { hrd_score: 0.7 },
+    });
+    expect(record).toEqual(before);
   });
 });

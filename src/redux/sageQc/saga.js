@@ -11,135 +11,167 @@ import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { tableFromIPC } from "apache-arrow";
 import settingsActions from "../settings/actions";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
-function* fetchSageQc(action) {
+export function* checkOptionalAsset(url) {
+  try {
+    const response = yield call(axios.head, url);
+    return {
+      present: !isMissingDataResponse(response),
+      error: null,
+    };
+  } catch (error) {
+    if (axios.isCancel(error)) throw error;
+    if (isMissingDataError(error)) {
+      return { present: false, error: null };
+    }
+    return { present: false, error };
+  }
+}
+
+export function* fetchSageQc(action) {
   const currentState = yield select(getCurrentState);
   const { filename } = currentState.SageQc;
   const { dataset } = currentState.Settings;
   const { id } = currentState.CaseReport;
-
   const fileBase = `${dataset.dataPath}${id}/${filename}`;
   const arrowUrl = `${fileBase}.arrow`;
   const jsonUrl = `${fileBase}.json`;
-  let url;
-  try {
-    yield call(axios.head, arrowUrl);
-    url = arrowUrl;
-  } catch (error) {
-    url = jsonUrl;
-  }
-
-  // Set up the channel configuration
-
-  const channelConfig = {
-    url,
-    cancelToken: getCancelToken(),
-    responseType: url.endsWith(".arrow")
-      ? "arraybuffer" // Ensure the response is in binary format
-      : "json",
-  };
-
-  // Create the progress channel
-  const progressChannel = yield call(createProgressChannel, channelConfig);
+  const caseBase = `${dataset.dataPath}${id}/`;
+  let assetAction = {};
 
   try {
+    const [coverageOriginal, coverageDenoised] = yield all([
+      call(checkOptionalAsset, `${caseBase}coverage_cn_boxplot_original.png`),
+      call(checkOptionalAsset, `${caseBase}coverage_cn_boxplot_denoised.png`),
+    ]);
+    assetAction = {
+      coverageOriginalPresent: coverageOriginal.present,
+      coverageOriginalError: coverageOriginal.error,
+      coverageDenoisedPresent: coverageDenoised.present,
+      coverageDenoisedError: coverageDenoised.error,
+    };
+
+    const arrow = yield call(checkOptionalAsset, arrowUrl);
+    if (arrow.error) throw arrow.error;
+
+    let url = arrow.present ? arrowUrl : null;
+    if (!url) {
+      const json = yield call(checkOptionalAsset, jsonUrl);
+      if (json.error) throw json.error;
+      if (!json.present) {
+        yield put({
+          type: actions.FETCH_SAGEQC_MISSING,
+          ...assetAction,
+        });
+        return;
+      }
+      url = jsonUrl;
+    }
+
+    const progressChannel = yield call(createProgressChannel, {
+      url,
+      cancelToken: getCancelToken(),
+      responseType: url.endsWith(".arrow") ? "arraybuffer" : "json",
+    });
+
     while (true) {
       const result = yield take(progressChannel);
       if (result.response) {
-        // The request completed successfully
+        if (isMissingDataResponse(result.response)) {
+          yield put({
+            type: actions.FETCH_SAGEQC_MISSING,
+            ...assetAction,
+          });
+          return;
+        }
+
         let records;
         if (url.endsWith(".arrow")) {
-          // Parse Arrow data to JSON array
-          try {
-            const arrowBuffer = new Uint8Array(result.response.data);
-            const table = yield call(tableFromIPC, arrowBuffer);
-            records = sageQcArrowTableToJson(table);
-          } catch (err) {
-            console.error("Failed to parse Arrow data:", err);
-            yield put({
-              type: actions.FETCH_CASE_REPORTS_FAILED,
-              error: err,
-            });
-            return;
-          }
+          const arrowBuffer = new Uint8Array(result.response.data);
+          const table = yield call(tableFromIPC, arrowBuffer);
+          records = sageQcArrowTableToJson(table);
         } else {
           records = result.response.data;
         }
+        if (!Array.isArray(records)) {
+          throw new Error("Invalid Sage QC response");
+        }
 
-        records.forEach((d, i) => {
-          d.id = i + 1;
-          d.oncogenicity =
-            (typeof d.oncogenic === "boolean" && d.oncogenic) ||
-            (typeof d.oncogenic === "string" &&
-              d.oncogenic.toLowerCase() === "true");
-          d.uid = `${d.chromosome}:${d.position}-${d.chromosome}:${d.end}`;
-          d.actualLocation = d.end
-            ? `${d.chromosome}:${Math.floor(0.999 * +d.position)}-${
-                d.chromosome
-              }:${Math.floor(1.001 * +d.end)}`
-            : `${d.chromosome}:${Math.floor(0.999 * +d.position)}-${
-                d.chromosome
-              }:${Math.floor(1.001 * +d.position)}`;
-          return d;
+        records.forEach((record, index) => {
+          record.id = index + 1;
+          record.oncogenicity =
+            (typeof record.oncogenic === "boolean" && record.oncogenic) ||
+            (typeof record.oncogenic === "string" &&
+              record.oncogenic.toLowerCase() === "true");
+          record.uid = `${record.chromosome}:${record.position}-${record.chromosome}:${record.end}`;
+          record.actualLocation = record.end
+            ? `${record.chromosome}:${Math.floor(0.999 * +record.position)}-${
+                record.chromosome
+              }:${Math.floor(1.001 * +record.end)}`
+            : `${record.chromosome}:${Math.floor(0.999 * +record.position)}-${
+                record.chromosome
+              }:${Math.floor(1.001 * +record.position)}`;
         });
 
-        // Find properties that exist in at least one record
-        let sageQcProperties = [
-          ...new Set(records.map((d) => Object.keys(d)).flat()),
-        ];
-
-        // Filter out properties that are undefined or null in all records
-        sageQcProperties = sageQcProperties.filter((prop) =>
+        const sageQcProperties = [
+          ...new Set(records.map((record) => Object.keys(record)).flat()),
+        ].filter((property) =>
           records.some(
-            (record) => record[prop] !== undefined && record[prop] !== null
+            (record) =>
+              record[property] !== undefined && record[property] !== null
           )
         );
-
-        let properties = densityPlotFields.filter((d) =>
-          sageQcProperties.includes(d.name)
+        let properties = densityPlotFields.filter((field) =>
+          sageQcProperties.includes(field.name)
         );
 
         if (dataset.variant_qc_dropdown_schema) {
-          // First filter the schema keys to only include properties that exist in records
-          const existingProperties = Object.keys(
-            dataset.variant_qc_dropdown_schema
-          ).filter((prop) =>
-            records.some(
-              (record) => record[prop] !== undefined && record[prop] !== null
+          properties = Object.keys(dataset.variant_qc_dropdown_schema)
+            .filter((property) =>
+              records.some(
+                (record) =>
+                  record[property] !== undefined && record[property] !== null
+              )
             )
-          );
-
-          properties = existingProperties.map((d) => {
-            return {
-              name: d,
-              type: dataset.variant_qc_dropdown_schema[d],
+            .map((property) => ({
+              name: property,
+              type: dataset.variant_qc_dropdown_schema[property],
               format:
-                dataset.variant_qc_dropdown_schema[d] === "float"
+                dataset.variant_qc_dropdown_schema[property] === "float"
                   ? "0.3f"
                   : "0.1f",
-            };
-          });
+            }));
         }
 
         yield put({
           type: actions.FETCH_SAGEQC_SUCCESS,
           records,
           properties,
+          ...assetAction,
         });
-      } else if (result.error) {
-        // The request failed
-        console.error(result.error);
-        yield put({
-          type: actions.FETCH_SAGEQC_FAILED,
-          error: result.error,
-        });
-      } else {
-        // Intermediate progress updates
-        yield put({
-          type: actions.FETCH_SAGEQC_REQUEST_LOADING,
-          loadingPercentage: result,
-        });
+        return;
       }
+
+      if (result.error) {
+        const missing = isMissingDataError(result.error);
+        yield put({
+          type: missing
+            ? actions.FETCH_SAGEQC_MISSING
+            : actions.FETCH_SAGEQC_FAILED,
+          error: missing ? undefined : result.error,
+          ...assetAction,
+        });
+        return;
+      }
+
+      yield put({
+        type: actions.FETCH_SAGEQC_REQUEST_LOADING,
+        loadingPercentage: result,
+      });
     }
   } catch (error) {
     if (axios.isCancel(error)) {
@@ -151,6 +183,7 @@ function* fetchSageQc(action) {
       yield put({
         type: actions.FETCH_SAGEQC_FAILED,
         error,
+        ...assetAction,
       });
     }
   }

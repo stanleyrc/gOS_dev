@@ -13,11 +13,15 @@ import settingsActions from "../../redux/settings/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import {
   ALL_DATASETS_SCOPE_VALUE,
+  datasetHasField,
   distinctCaseRecords,
   getSourceCaseIdentity,
+  getSourceScopedFieldValue,
   hasBrowseScope,
   isAllDatasetsBrowseScope,
+  resolveBrowseDataset,
   sourceCaseIdentityKey,
+  sourceDatasetHasField,
 } from "../../helpers/browseScope";
 
 const { Header } = Layout;
@@ -30,6 +34,25 @@ const { openCaseReport, selectAllDatasets, selectDataset } = datasetsActions;
 
 export class Topbar extends Component {
   state = { dropdownOpen: false };
+
+  reportHasField = (report, field) =>
+    datasetHasField(this.props.browseDataset, field) &&
+    sourceDatasetHasField(
+      report,
+      this.props.datasets,
+      field,
+      this.props.browseDataset,
+    );
+
+  reportFieldValue = (report, field) =>
+    this.reportHasField(report, field)
+      ? getSourceScopedFieldValue(
+          report,
+          this.props.datasets,
+          field,
+          this.props.browseDataset,
+        )
+      : undefined;
 
   getSelectedBrowseScopeValue = () =>
     isAllDatasetsBrowseScope(this.props.browseScope)
@@ -207,22 +230,33 @@ export class Topbar extends Component {
                       >
                         <div className="demo-option-label-item">
                           <Space>
-                            <Avatar
-                              size="small"
-                              style={{
-                                backgroundColor: "#fde3cf",
-                                color: "#f56a00",
-                              }}
-                            >
-                              {report.tumor_type}
-                            </Avatar>
+                            {this.reportFieldValue(
+                              report,
+                              "tumor_type",
+                            ) != null && (
+                              <Avatar
+                                size="small"
+                                style={{
+                                  backgroundColor: "#fde3cf",
+                                  color: "#f56a00",
+                                }}
+                              >
+                                {this.reportFieldValue(
+                                  report,
+                                  "tumor_type",
+                                )}
+                              </Avatar>
+                            )}
                             {report.pair}
                             {isAllDatasetsBrowseScope(browseScope) ? (
                               <Text type="secondary">
                                 {report.sourceDatasetTitle || report.datasetId}
                               </Text>
                             ) : null}
-                            {report.inferred_sex}
+                            {this.reportFieldValue(
+                              report,
+                              "inferred_sex",
+                            )}
                           </Space>
                         </div>
                       </Option>
@@ -290,6 +324,7 @@ const mapStateToProps = (state) => ({
   loading: state.CaseReports.loading,
   loadingDatasets: state.Datasets.loading,
   dataset: state.Settings.dataset,
+  browseDataset: resolveBrowseDataset(state),
   browseScope: state.Settings.browseScope,
   datasets: state.Datasets.records,
   manifestRecordsByDataset: state.CaseReports.manifestRecordsByDataset,

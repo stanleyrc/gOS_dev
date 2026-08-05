@@ -22,6 +22,7 @@ import {
   copyTextToClipboard,
 } from "../../helpers/utility";
 import { getNestedValue } from "../../helpers/metadata";
+import { datasetHasField } from "../../helpers/browseScope";
 import {
   valueFormat,
   hrdFields,
@@ -46,7 +47,7 @@ const COPY_TOOLTIP_DEFAULT_KEY = "components.header-panel.copy-tooltip-default";
 const COPY_TOOLTIP_SUCCESS_KEY = "components.header-panel.copy-tooltip-success";
 const COPY_TOOLTIP_FAILURE_KEY = "components.header-panel.copy-tooltip-failure";
 
-class HeaderPanel extends Component {
+export class HeaderPanel extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -145,59 +146,71 @@ class HeaderPanel extends Component {
   };
 
   render() {
-    const { t, report, metadata, plots } = this.props;
+    const { t, report, metadata, plots, dataset } = this.props;
     if (!report) return null;
-    const {
-      tumor_type,
-      purity,
-      ploidy,
-      inferred_sex,
-      disease,
-      primary_site,
-      tumor_details,
-      treatment,
-      treatment_type,
-      treatment_best_response,
-      treatment_duration,
-      qcMetrics,
-      qcEvaluation,
-    } = metadata;
+    const fieldValue = (field, path = field) =>
+      datasetHasField(dataset, field)
+        ? getNestedValue(metadata, path)
+        : undefined;
+    const tumor_type = fieldValue("tumor_type");
+    const purity = fieldValue("purity");
+    const ploidy = fieldValue("ploidy");
+    const inferred_sex = fieldValue("inferred_sex");
+    const disease = fieldValue("disease");
+    const primary_site = fieldValue("primary_site");
+    const tumor_details = fieldValue("tumor_details");
+    const treatment = fieldValue("treatment");
+    const treatment_type = fieldValue("treatment_type");
+    const treatment_best_response = fieldValue("treatment_best_response");
+    const treatment_duration = fieldValue("treatment_duration");
+    const { qcMetrics, qcEvaluation } = metadata;
 
-    let qcMetricsComponent = qcEvaluation ? (
-      <Popover
-        placement="bottomLeft"
-        title={
-          <Space>
-            <Text>{t(`components.header-panel.qcMetrics`)}:</Text>
-            <Text type={qcMetricsClasses[qcEvaluation.toLowerCase()]}>
-              <strong>{qcEvaluation}</strong>
-            </Text>
-          </Space>
-        }
-        content={
-          <Space direction="vertical">
-            {qcMetrics.map((d, i) => (
-              <Text key={i} type={qcMetricsClasses[d.code.toLowerCase()]}>
-                {d.title}
-              </Text>
-            ))}
-          </Space>
-        }
+    const qcEvaluationTag = qcEvaluation ? (
+      <Tag
+        color={qcMetricsClasses[qcEvaluation.toLowerCase()]}
+        className="qc-evaluation-tag"
       >
-        <Tag
-          color={qcMetricsClasses[qcEvaluation.toLowerCase()]}
-          className="qc-evaluation-tag"
-        >
-          {qcEvaluation}
-        </Tag>
-      </Popover>
+        {qcEvaluation}
+      </Tag>
     ) : null;
+    const canShowQcMetricDetails =
+      !Array.isArray(dataset?.schema) ||
+      datasetHasField(dataset, "qcMetrics");
+    let qcMetricsComponent =
+      qcEvaluation && canShowQcMetricDetails ? (
+        <Popover
+          placement="bottomLeft"
+          title={
+            <Space>
+              <Text>{t(`components.header-panel.qcMetrics`)}:</Text>
+              <Text type={qcMetricsClasses[qcEvaluation.toLowerCase()]}>
+                <strong>{qcEvaluation}</strong>
+              </Text>
+            </Space>
+          }
+          content={
+            <Space direction="vertical">
+              {qcMetrics.map((d, i) => (
+                <Text key={i} type={qcMetricsClasses[d.code.toLowerCase()]}>
+                  {d.title}
+                </Text>
+              ))}
+            </Space>
+          }
+        >
+          {qcEvaluationTag}
+        </Popover>
+      ) : (
+        qcEvaluationTag
+      );
 
     let colorMarkers = { ...msiLabels };
 
     orderListViewFilters.forEach((d) => {
       let plot = plots.find((e) => e.id === d.attribute);
-      let markValue = getNestedValue(metadata, d.attribute);
+      let markValue = datasetHasField(dataset, d.attribute)
+        ? getNestedValue(metadata, d.attribute)
+        : null;
       colorMarkers[`${d.attribute}`] =
         markValue != null
           ? getColorMarker(markValue, plot?.q1, plot?.q3)
@@ -265,7 +278,9 @@ class HeaderPanel extends Component {
         <span>
           {hrdFields
             .filter(
-              (field, index) =>
+              (field) =>
+                (!Array.isArray(dataset?.schema) ||
+                  datasetHasField(dataset, `hrd.${field}`)) &&
                 getNestedValue(metadata, `hrd.${field}`) !== null
             )
             .map((field, index) => {
@@ -295,10 +310,16 @@ class HeaderPanel extends Component {
       "msisensor.label": (
         <Space direction="vertical" size="small">
           {msiFields
-            .filter(
-              (field, index) =>
+            .filter((field) => {
+              const fieldId = ["score", "label"].includes(field)
+                ? "msisensor.score"
+                : `msisensor.${field}`;
+              return (
+                (!Array.isArray(dataset?.schema) ||
+                  datasetHasField(dataset, fieldId)) &&
                 getNestedValue(metadata, `msisensor.${field}`) !== null
-            )
+              );
+            })
             .map((field, index) => {
               const tooltip = createTooltip(
                 `metadata.msisensor.${field}`,
@@ -338,7 +359,7 @@ class HeaderPanel extends Component {
           }
           subTitle={
             <Space size="small">
-              <span>{inferred_sex}</span> {qcMetricsComponent}
+              {inferred_sex != null && <span>{inferred_sex}</span>} {qcMetricsComponent}
               <Tooltip
                 title={t("components.header-panel.cbioportal-button") || "cBioPortal"}
                 placement="bottom"
@@ -453,14 +474,11 @@ class HeaderPanel extends Component {
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
                     {headerList
-                      .filter(
-                        (d) =>
-                          !(
-                            getNestedValue(metadata, d) === null ||
-                            getNestedValue(metadata, d) === undefined ||
-                            getNestedValue(metadata, d) === ""
-                          )
-                      )
+                      .filter((d) => {
+                        const field =
+                          d === "msisensor.label" ? "msisensor.score" : d;
+                        return datasetHasField(dataset, field);
+                      })
                       .map((d) => (
                         <Tooltip
                           key={`components.header-panel.metadata.${d}.short`}
@@ -516,42 +534,45 @@ class HeaderPanel extends Component {
                         </Tooltip>
                       ))}
 
-                    <div className="stat-item">
-                      <div className="ant-statistic">
-                        <div className="ant-statistic-title">
-                          {t("components.header-panel.purity-ploidy-title")}
-                        </div>
-                        <div className="ant-statistic-content">
-                          <span className="ant-statistic-content-value">
-                            <span
-                              className="ant-statistic-content-value-int"
-                              style={{
-                                color: colorMarkers["purity"],
-                              }}
-                            >
-                              {purity != null
-                                ? d3.format(valueFormat("purity"))(+purity)
-                                : t("general.not-applicable")}
+                    {(datasetHasField(dataset, "purity") ||
+                      datasetHasField(dataset, "ploidy")) && (
+                      <div className="stat-item">
+                        <div className="ant-statistic">
+                          <div className="ant-statistic-title">
+                            {t("components.header-panel.purity-ploidy-title")}
+                          </div>
+                          <div className="ant-statistic-content">
+                            <span className="ant-statistic-content-value">
+                              <span
+                                className="ant-statistic-content-value-int"
+                                style={{
+                                  color: colorMarkers["purity"],
+                                }}
+                              >
+                                {purity != null
+                                  ? d3.format(valueFormat("purity"))(+purity)
+                                  : t("general.not-applicable")}
+                              </span>
                             </span>
-                          </span>
-                          <span className="ant-statistic-content-suffix">
-                            {" "}
-                            <span className="purity-ploidy-separator">
-                              /
-                            </span>{" "}
-                            <span
-                              style={{
-                                color: colorMarkers["ploidy"],
-                              }}
-                            >
-                              {ploidy != null
-                                ? d3.format(valueFormat("ploidy"))(+ploidy)
-                                : t("general.not-applicable")}
+                            <span className="ant-statistic-content-suffix">
+                              {" "}
+                              <span className="purity-ploidy-separator">
+                                /
+                              </span>{" "}
+                              <span
+                                style={{
+                                  color: colorMarkers["ploidy"],
+                                }}
+                              >
+                                {ploidy != null
+                                  ? d3.format(valueFormat("ploidy"))(+ploidy)
+                                  : t("general.not-applicable")}
+                              </span>
                             </span>
-                          </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -2,6 +2,10 @@ import * as d3 from "d3";
 import { getValueByPath, plotTypes, reportAttributesMap } from "./utility";
 import { getSpecimenDateExtent } from "./specimenDate";
 import common from "../translations/en/common.json";
+import {
+  getSourceScopedFieldValue,
+  sourceDatasetHasField,
+} from "./browseScope";
 
 export function reportFilters() {
   return [
@@ -310,15 +314,36 @@ export function getReportFilterExtents(reports) {
   return extents;
 }
 
-export function getReportsFilters(fields, reports) {
+export function getReportsFilters(fields, reports, fieldContext = {}) {
   let reportsFilters = [];
+  const hasFieldContext =
+    fieldContext.dataset != null || (fieldContext.datasets || []).length > 0;
 
   // Iterate through each filter (skip external filters as they need special handling)
   fields
     .filter((field) => !field.external)
     .forEach((field) => {
-      let allValues = reports
-        .map((record) => getValueByPath(record, field.name))
+      const applicableReports = hasFieldContext
+        ? reports.filter((record) =>
+            sourceDatasetHasField(
+              record,
+              fieldContext.datasets,
+              field.name,
+              fieldContext.dataset,
+            ),
+          )
+        : reports;
+      let allValues = applicableReports
+        .map((record) =>
+          hasFieldContext
+            ? getSourceScopedFieldValue(
+                record,
+                fieldContext.datasets,
+                field.name,
+                fieldContext.dataset,
+              )
+            : getValueByPath(record, field.name),
+        )
         .flat();
 
       if (field.renderer === "date-range") {
@@ -327,7 +352,7 @@ export function getReportsFilters(fields, reports) {
           records: [],
           frequencies: {},
           extent: getSpecimenDateExtent(allValues),
-          totalRecords: reports.length,
+          totalRecords: applicableReports.length,
           format: field.format,
         });
         return;
@@ -360,7 +385,7 @@ export function getReportsFilters(fields, reports) {
             (e) => !isNaN(e) && e !== null && e !== undefined
           )
         ),
-        totalRecords: reports.length,
+        totalRecords: applicableReports.length,
         format: field.format,
       });
     });

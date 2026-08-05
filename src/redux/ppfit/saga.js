@@ -4,6 +4,10 @@ import { sequencesToGenome, dataToGenome } from "../../helpers/utility";
 import actions from "./actions";
 import { getCurrentState } from "./selectors";
 import { getCancelToken } from "../../helpers/cancelToken";
+import {
+  isMissingDataError,
+  isMissingDataResponse,
+} from "../../helpers/dataAvailability";
 
 function* fetchPpfitData(action) {
   const currentState = yield select(getCurrentState);
@@ -16,6 +20,11 @@ function* fetchPpfitData(action) {
       { cancelToken: getCancelToken() }
     );
 
+    if (isMissingDataResponse(responseData)) {
+      yield put({ type: actions.FETCH_PPFIT_DATA_MISSING });
+      return;
+    }
+
     let data = responseData.data
       ? sequencesToGenome(responseData.data)
       : {
@@ -23,10 +32,16 @@ function* fetchPpfitData(action) {
           intervals: [],
           connections: [],
         };
+    const genomeData = dataToGenome(data, chromoBins);
+
+    if (!genomeData?.intervals?.length) {
+      yield put({ type: actions.FETCH_PPFIT_DATA_MISSING });
+      return;
+    }
 
     yield put({
       type: actions.FETCH_PPFIT_DATA_SUCCESS,
-      data: dataToGenome(data, chromoBins),
+      data: genomeData,
     });
   } catch (error) {
     console.log(error);
@@ -35,6 +50,8 @@ function* fetchPpfitData(action) {
         `fetch ${dataset.dataPath}${id}/ppfit.json request canceled`,
         error.message
       );
+    } else if (isMissingDataError(error)) {
+      yield put({ type: actions.FETCH_PPFIT_DATA_MISSING });
     } else {
       yield put({
         type: actions.FETCH_PPFIT_DATA_FAILED,
