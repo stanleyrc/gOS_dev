@@ -78,7 +78,8 @@ describe("reportExporter", () => {
           refCounts: 1046,
           transcript: "NM_004972.4",
           Genome_Location: "9:5073770-5073771",
-          effect_description: "Mapped to comments",
+          variant_summary: "Mapped to comments",
+          effect_description: "Must not be comments",
         },
       ],
     };
@@ -92,7 +93,8 @@ describe("reportExporter", () => {
       depth: 2000,
       transcript: "NM_004972.4",
       locus: "9:5073770-5073771",
-      effect_description: "Mapped to comments",
+      variant_summary: "Mapped to comments",
+      effect_description: "Must not be comments",
     });
   });
 

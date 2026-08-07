@@ -14,10 +14,15 @@ const report = {
   patient: {
     caseId: "CASE-001",
     tumorType: "AML",
+    tumorDetails: "Acute myeloid leukemia",
+    disease: "Myeloid neoplasm",
     primarySite: "Bone marrow",
   },
   metadata: {
+    specimen_type: "Peripheral blood",
+    clinical_history: "MPN",
     tumor_details: "Acute myeloid leukemia",
+    disease: "Myeloid neoplasm",
     purity: 0.42,
     ploidy: 2.1,
     tmb: 3.5,
@@ -50,6 +55,7 @@ const report = {
       type: "Fusion",
       eventType: "fusion",
       locus: "chr22:23632600::chr9:133729451",
+      variant_summary: "BCR::ABL1 variant summary",
       effect_description: "Fusion effect description",
     },
   ],
@@ -62,23 +68,98 @@ const report = {
 };
 
 describe("MyeloSeqHtmlRenderer", () => {
-  it("renders available gOS content in the reference report structure", async () => {
+  it("renders only the reference report's dynamic labels and fields", async () => {
     const result = await new MyeloSeqHtmlRenderer().render(report);
 
     expect(result.mimeType).toBe("text/html");
     expect(result.filename).toContain("CASE-001");
     expect(result.html).toContain("SPECIMEN");
+    expect(result.html).toContain("<strong>Tumor sample:</strong> CASE-001");
+    expect(result.html).toContain(
+      "<strong>Specimen Type:</strong> Peripheral blood",
+    );
+    expect(result.html).toContain("<strong>Clinical History:</strong> MPN");
+    expect(result.html).not.toContain("<strong>Tumor Type:</strong>");
+    expect(result.html).not.toContain("<strong>Tumor Details:</strong>");
+    expect(result.html).not.toContain("<strong>Disease:</strong>");
+    expect(result.html).not.toContain("<strong>Primary Site:</strong>");
+
     expect(result.html).toContain("DNA Sequencing results");
-    expect(result.html).toContain("Fusion results");
-    expect(result.html).toContain("CASE-001");
-    expect(result.html).toContain("Acute myeloid leukemia");
+    expect(result.html).toContain(
+      "<th>Gene</th><th>Variant</th><th>Tier</th><th>Variant Type</th>",
+    );
+    expect(result.html).toContain("Targeted RNA Sequencing results");
+    expect(result.html).toContain(
+      "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
+    );
+    expect(result.html).not.toContain("Fusion results");
     expect(result.html).toContain("NM_004972.4");
     expect(result.html).toContain("chr22:23632600::chr9:133729451");
-    expect(result.html).toContain("<strong>Comments:</strong> JAK2 effect description");
-    expect(result.html).toContain("<strong>Comments:</strong> Fusion effect description");
-    expect(result.html).toContain("JAK2 gene summary");
-    expect(result.html).toContain("Ruxolitinib");
-    expect(result.html).toContain("Case-level note");
+
+    expect(result.html).toContain(
+      "<strong>Variant:</strong> JAK2, c.1849G&gt;T, p.V617F",
+    );
+    expect(result.html).toContain(
+      "<strong>Gene Fusion:</strong> BCR(14)::ABL1(2)",
+    );
+    expect(result.html).toContain(
+      "<strong>Breakpoint:</strong> chr22:23632600::chr9:133729451",
+    );
+    expect(result.html).toContain(
+      "<strong>Comments:</strong> JAK2 variant summary",
+    );
+    expect(result.html).toContain(
+      "<strong>Comments:</strong> BCR::ABL1 variant summary",
+    );
+    expect(result.html).not.toContain("JAK2 effect description");
+    expect(result.html).not.toContain("Fusion effect description");
+    expect(result.html).not.toContain("<strong>Variant Type:</strong>");
+    expect(result.html).not.toContain("<strong>Effect:</strong>");
+    expect(result.html).not.toContain("<strong>Gene Summary:</strong>");
+    expect(result.html).not.toContain("<strong>Variant Summary:</strong>");
+    expect(result.html).not.toContain("<strong>Notes:</strong>");
+    expect(result.html).not.toContain("<strong>Therapeutics:</strong>");
+    expect(result.html).not.toContain("<strong>Resistances:</strong>");
+    expect(result.html).not.toContain("Additional gOS results");
+    expect(result.html).not.toContain("Case-level note");
+    expect(result.html).not.toContain(">NOTES<");
+  });
+
+  it.each([
+    [
+      "explicit clinical history",
+      {
+        clinical_history: "Explicit history",
+        disease: "Disease",
+        tumor_type: "Type",
+        tumor_details: "Details",
+      },
+      "Explicit history",
+    ],
+    [
+      "disease",
+      { disease: "Disease", tumor_type: "Type", tumor_details: "Details" },
+      "Disease",
+    ],
+    [
+      "tumor type",
+      { tumor_type: "Type", tumor_details: "Details" },
+      "Type",
+    ],
+    ["tumor details", { tumor_details: "Details" }, "Details"],
+  ])("uses %s as the Clinical History value", async (_source, metadata, expected) => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      patient: {
+        caseId: "CASE-HISTORY",
+        disease: metadata.disease,
+        tumorType: metadata.tumor_type,
+        tumorDetails: metadata.tumor_details,
+      },
+      metadata,
+      alterations: [],
+    });
+
+    expect(result.html).toContain(`<strong>Clinical History:</strong> ${expected}`);
   });
 
   it("includes fixed report boilerplate and embedded interpretation data", async () => {
@@ -87,7 +168,10 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).toContain("Variants are categorized into three tiers");
     expect(result.html).toContain("The NYU Oncomine Myeloid panel");
     expect(result.html).toContain("Analysis is performed using Ion Reporter Software 5.18");
-    expect(result.html).toContain("This test is not designed for detection of germline mutations");
+    expect(result.html).toContain(
+      "This test is not designed for detection of germline mutations",
+    );
+    expect(result.html).toMatch(/^<!DOCTYPE html>[\s\S]*<\/html>$/);
     expect(result.html).toContain('id="interpretations-data"');
     expect(result.html).toContain("\\u003c/script>");
   });
@@ -102,7 +186,8 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("<th>VAF(%)</th>");
     expect(result.html).not.toContain("<th>Depth</th>");
     expect(result.html).not.toContain("<th>Transcript</th>");
-    expect(result.html).not.toContain("Fusion results");
+    expect(result.html).not.toContain("Targeted RNA Sequencing results");
+    expect(result.html).toContain("<h3>Tier 2:</h3>");
     expect(result.html).not.toContain("Clinical History");
     expect(result.html).not.toContain("N/A");
   });
@@ -110,42 +195,47 @@ describe("MyeloSeqHtmlRenderer", () => {
   it("escapes case-specific content", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,
-      notes: "<script>alert('unsafe')</script>",
+      alterations: [
+        {
+          ...report.alterations[0],
+          variant_summary: "<script>alert('unsafe')</script>",
+        },
+      ],
     });
 
     expect(result.html).not.toContain("<script>alert('unsafe')</script>");
-    expect(result.html).toContain("&lt;script&gt;alert(&#39;unsafe&#39;)&lt;/script&gt;");
+    expect(result.html).toContain(
+      "&lt;script&gt;alert(&#39;unsafe&#39;)&lt;/script&gt;",
+    );
   });
 
-  it("omits raw report values disabled by the normalized dataset fields", async () => {
+  it("omits specimen values disabled by the normalized dataset fields", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,
       dataset: {
-        schema: [{ id: "purity" }],
-        fields: [{ id: "purity" }],
+        schema: [{ id: "disease" }],
+        fields: [{ id: "disease" }],
       },
       patient: {
         ...report.patient,
         tumorType: "SCHEMA-OMITTED-TYPE",
         tumorDetails: "SCHEMA-OMITTED-DETAILS",
-        tmb: 999,
+        disease: "Allowed disease",
       },
       metadata: {
         ...report.metadata,
+        tumor_type: "SCHEMA-OMITTED-TYPE",
         tumor_details: "SCHEMA-OMITTED-DETAILS",
         specimen_type: "SCHEMA-OMITTED-SPECIMEN",
         clinical_history: "SCHEMA-OMITTED-HISTORY",
-        purity: 0.42,
-        ploidy: 4.8,
-        tmb: 999,
-        tumor_median_coverage: 888,
+        disease: "Allowed disease",
       },
     });
 
-    expect(result.html).toContain("<th>Purity</th><td>0.42</td>");
-    expect(result.html).not.toContain("<th>Ploidy</th>");
-    expect(result.html).not.toContain("Tumor Mutational Burden");
-    expect(result.html).not.toContain("Tumor Median Coverage");
+    expect(result.html).toContain(
+      "<strong>Clinical History:</strong> Allowed disease",
+    );
     expect(result.html).not.toContain("SCHEMA-OMITTED");
+    expect(result.html).not.toContain("<strong>Specimen Type:</strong>");
   });
 });
