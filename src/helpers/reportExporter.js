@@ -107,7 +107,7 @@ function mapEvent(ev) {
     : undefined;
 
   return {
-    id: ev?.uid ?? ev?.id,
+    uid: ev?.uid,
     gene,
     variant,
     tier: tier != null ? String(tier) : undefined,

@@ -162,7 +162,7 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       return this._fromDynamoDBItem(response.Item);
     } catch (error) {
       console.error("Failed to get interpretation:", error);
-      return null;
+      throw error;
     }
   }
 
@@ -184,7 +184,7 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       return items.map(item => this._fromDynamoDBItem(item));
     } catch (error) {
       console.error("Failed to get interpretations for case:", error);
-      return [];
+      throw error;
     }
   }
 

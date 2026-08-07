@@ -57,10 +57,23 @@ describe("reportExporter", () => {
     await previewReport(state, mergedEvents);
 
     const report = mockRender.mock.calls[0][0];
-    expect(report.alterations.map(({ id }) => id)).toEqual([
+    expect(report.alterations.map(({ uid }) => uid)).toEqual([
       "tier-1",
       "tier-2",
     ]);
+  });
+
+  it("does not promote a noncanonical event id to an editable uid", async () => {
+    await previewReport(state, {
+      filteredEvents: [
+        { id: "fallback-id", gene: "TP53", variant: "p.R175H", tier: 1 },
+      ],
+    });
+
+    expect(mockRender.mock.calls[0][0].alterations[0]).toMatchObject({
+      uid: undefined,
+      gene: "TP53",
+    });
   });
 
   it("maps available filtered-event report fields without inventing values", async () => {

@@ -32,6 +32,7 @@ const report = {
   notes: "Case-level note",
   alterations: [
     {
+      uid: "finding-jak2",
       gene: "JAK2",
       variant: "c.1849G>T, p.V617F",
       tier: "1",
@@ -49,6 +50,7 @@ const report = {
       resistances: ["Example resistance"],
     },
     {
+      uid: "finding-bcr-abl1",
       gene: "BCR::ABL1",
       variant: "BCR(14)::ABL1(2)",
       tier: "1",
@@ -106,11 +108,12 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<strong>Breakpoint:</strong> chr22:23632600::chr9:133729451",
     );
     expect(result.html).toContain(
-      "<strong>Comments:</strong> JAK2 variant summary",
+      '<strong>Comments:</strong> <span class="report-comment-value" data-editable-comment="true" data-alteration-id="finding-jak2">JAK2 variant summary</span>',
     );
     expect(result.html).toContain(
-      "<strong>Comments:</strong> BCR::ABL1 variant summary",
+      '<strong>Comments:</strong> <span class="report-comment-value" data-editable-comment="true" data-alteration-id="finding-bcr-abl1">BCR::ABL1 variant summary</span>',
     );
+    expect(result.html).not.toContain("contenteditable");
     expect(result.html).not.toContain("JAK2 effect description");
     expect(result.html).not.toContain("Fusion effect description");
     expect(result.html).not.toContain("<strong>Variant Type:</strong>");
@@ -190,6 +193,49 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).toContain("<h3>Tier 2:</h3>");
     expect(result.html).not.toContain("Clinical History");
     expect(result.html).not.toContain("N/A");
+  });
+
+  it("marks an empty summary editable only when it has a canonical uid", async () => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      patient: { caseId: "CASE-EMPTY-COMMENT" },
+      alterations: [
+        {
+          uid: 'finding-"quoted"',
+          gene: "TP53",
+          variant: "p.R175H",
+          tier: "2",
+          type: "SNV",
+          variant_summary: "",
+        },
+      ],
+    });
+
+    expect(result.html).toContain(
+      '<strong>Comments:</strong> <span class="report-comment-value" data-editable-comment="true" data-alteration-id="finding-&quot;quoted&quot;"></span>',
+    );
+    expect(result.html).not.toContain("contenteditable");
+  });
+
+  it("leaves uid-less comments noneditable", async () => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      patient: { caseId: "CASE-NO-UID" },
+      alterations: [
+        {
+          id: "noncanonical-id",
+          gene: "TP53",
+          variant: "p.R175H",
+          tier: "2",
+          type: "SNV",
+          variant_summary: "Visible but not editable",
+        },
+      ],
+    });
+
+    expect(result.html).toContain(
+      '<strong>Comments:</strong> <span class="report-comment-value">Visible but not editable</span>',
+    );
+    expect(result.html).not.toContain("data-editable-comment");
+    expect(result.html).not.toContain("data-alteration-id");
   });
 
   it("escapes case-specific content", async () => {

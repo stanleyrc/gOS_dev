@@ -23,14 +23,59 @@ class ReportButtonsPanel extends Component {
     previewVisible: false,
     previewHtml: null,
     previewLoading: false,
+    previewContext: null,
   };
 
-  handleExportNotes = async () => {
+  componentDidUpdate(prevProps) {
+    const caseChanged = String(prevProps.id ?? "") !== String(this.props.id ?? "");
+    const datasetChanged =
+      String(prevProps.dataset?.id ?? "") !==
+      String(this.props.dataset?.id ?? "");
+
+    if ((caseChanged || datasetChanged) && this.state.previewVisible) {
+      this.handleClosePreview();
+    }
+  }
+
+  getActiveReportContext = () => {
+    const caseId = this.props.id;
+    const datasetId = this.props.dataset?.id;
+    if (!caseId || datasetId == null) return null;
+    return { caseId, datasetId };
+  };
+
+  reportContextsMatch = (left, right) =>
+    Boolean(
+      left &&
+        right &&
+        String(left.caseId) === String(right.caseId) &&
+        String(left.datasetId) === String(right.datasetId),
+    );
+
+  isPreviewContextActive = (previewContext) =>
+    this.state.previewVisible &&
+    this.state.previewContext === previewContext &&
+    this.reportContextsMatch(previewContext, this.getActiveReportContext());
+
+  handleExportNotes = async (commentOverrides = {}) => {
     const { mergedEvents } = this.props;
+    const filteredEvents = (mergedEvents?.filteredEvents || []).map((event) => {
+      const uid = event?.uid;
+      const key = uid == null ? null : String(uid);
+      if (
+        key == null ||
+        !Object.prototype.hasOwnProperty.call(commentOverrides, key)
+      ) {
+        return event;
+      }
+      return { ...event, variant_summary: commentOverrides[key] };
+    });
+    const exportEvents = { ...mergedEvents, filteredEvents };
+
     try {
       this.setState({ exporting: true });
       const state = this.props;
-      await exportReport(state, mergedEvents);
+      await exportReport(state, exportEvents);
     } catch (err) {
       console.error("Report export failed:", err);
     } finally {
@@ -40,21 +85,112 @@ class ReportButtonsPanel extends Component {
 
   handlePreviewReport = async () => {
     const { mergedEvents } = this.props;
+    const previewContext = this.getActiveReportContext();
+    if (!previewContext) return;
+
     try {
-      this.setState({ previewLoading: true, previewVisible: true });
+      this.setState({
+        previewLoading: true,
+        previewVisible: true,
+        previewHtml: null,
+        previewContext: null,
+      });
       const state = this.props;
       const html = await previewReport(state, mergedEvents);
-      this.setState({ previewHtml: html });
+      if (!this.reportContextsMatch(previewContext, this.getActiveReportContext())) {
+        this.handleClosePreview();
+        return;
+      }
+      this.setState({ previewHtml: html, previewContext });
     } catch (err) {
       console.error("Report preview failed:", err);
-      this.setState({ previewVisible: false });
+      this.handleClosePreview();
     } finally {
       this.setState({ previewLoading: false });
     }
   };
 
   handleClosePreview = () => {
-    this.setState({ previewVisible: false, previewHtml: null });
+    this.setState({
+      previewVisible: false,
+      previewHtml: null,
+      previewContext: null,
+    });
+  };
+
+  getCurrentInterpretation = (alterationId, user, reportContext) => {
+    const { Interpretations = {} } = this.props;
+    const userId = user?.userId;
+    const caseId = reportContext?.caseId;
+    const datasetId = reportContext?.datasetId;
+    if (!alterationId || !userId || !caseId || datasetId == null) return null;
+
+    const matchesActiveContext = (interpretation) =>
+      interpretation &&
+      String(interpretation.alterationId) === String(alterationId) &&
+      String(interpretation.authorId) === String(userId) &&
+      String(interpretation.caseId) === String(caseId) &&
+      String(interpretation.datasetId) === String(datasetId);
+
+    const selectedKey = Interpretations.selected?.[alterationId];
+    const selectedInterpretation = selectedKey
+      ? Interpretations.byId?.[selectedKey]
+      : null;
+    if (matchesActiveContext(selectedInterpretation)) {
+      return selectedInterpretation;
+    }
+
+    return (
+      Object.values(Interpretations.byId || {}).find(matchesActiveContext) ||
+      null
+    );
+  };
+
+  handleSaveReportComment = async (
+    alterationId,
+    variantSummary,
+    commentSaveContext,
+  ) => {
+    if (!alterationId || typeof this.props.updateInterpretation !== "function") {
+      throw new Error("Report comment cannot be saved.");
+    }
+
+    if (!this.isPreviewContextActive(commentSaveContext)) {
+      throw new Error("The report preview context is no longer active.");
+    }
+
+    const { ensureUser } = await import("../../helpers/userAuth");
+    const user = await ensureUser();
+    if (!this.isPreviewContextActive(commentSaveContext)) {
+      throw new Error("The report preview context is no longer active.");
+    }
+    if (!user?.userId) throw new Error("Sign-in is required to save comments.");
+
+    const { mergedEvents, updateInterpretation } = this.props;
+
+    const record = (mergedEvents?.filteredEvents || []).find(
+      (event) =>
+        event?.uid != null && String(event.uid) === String(alterationId),
+    );
+    if (!record) throw new Error("The report finding is no longer active.");
+
+    const existingInterpretation = this.getCurrentInterpretation(
+      alterationId,
+      user,
+      commentSaveContext,
+    );
+    const interpretation = new EventInterpretation({
+      datasetId: commentSaveContext.datasetId,
+      caseId: commentSaveContext.caseId,
+      alterationId: record.uid,
+      gene: record.gene ?? existingInterpretation?.gene,
+      variant: record.variant ?? existingInterpretation?.variant,
+      variant_type: record.type ?? existingInterpretation?.variant_type,
+      authorId: user.userId,
+      authorName: user.displayName,
+      data: { variant_summary: variantSummary },
+    });
+    return updateInterpretation(interpretation.toJSON());
   };
 
   handleLoadReport = async () => {
@@ -89,7 +225,7 @@ class ReportButtonsPanel extends Component {
       // Create EventInterpretation objects and dispatch
       for (const interpData of interpretationsData) {
         const interpretation = new EventInterpretation(interpData);
-        this.props.updateInterpretation(interpretation);
+        await this.props.updateInterpretation(interpretation);
       }
 
       alert(`Successfully imported ${interpretationsData.length} interpretations`);
@@ -103,9 +239,17 @@ class ReportButtonsPanel extends Component {
     }
   };
 
-  handleResetReportState = async () => {
-    const { id, resetTierOverrides, selectFilteredEvent } = this.props;
-    const caseId = id ? String(id) : "";
+  handleResetReportState = async (prepareReset) => {
+    const previewContext = this.state.previewContext;
+    const dataset = this.props.dataset;
+    const resetContextIsActive = () =>
+      this.isPreviewContextActive(previewContext) &&
+      this.props.dataset === dataset;
+
+    if (!resetContextIsActive()) return;
+
+    const { resetTierOverrides, selectFilteredEvent } = this.props;
+    const caseId = String(previewContext.caseId ?? "");
     if (!caseId) {
       alert(
         this.props.t(
@@ -123,8 +267,16 @@ class ReportButtonsPanel extends Component {
     );
     if (!c2) return;
 
-    // Clear interpretations from IndexedDB
-    this.props.clearCaseInterpretations(caseId);
+    if (typeof prepareReset === "function") {
+      await prepareReset();
+    }
+
+    if (!resetContextIsActive()) return;
+
+    // Clear interpretations from the captured dataset after report edits settle.
+    await this.props.clearCaseInterpretations(caseId, dataset);
+
+    if (!resetContextIsActive()) return;
 
     // Reset Redux state
     resetTierOverrides();
@@ -159,6 +311,8 @@ class ReportButtonsPanel extends Component {
           onCancel={this.handleClosePreview}
           loading={this.state.previewLoading}
           html={this.state.previewHtml}
+          previewContext={this.state.previewContext}
+          onSaveComment={this.handleSaveReportComment}
           onImport={this.handleLoadReport}
           onExport={this.handleExportNotes}
           onReset={this.handleResetReportState}
@@ -178,8 +332,31 @@ const mapDispatchToProps = (dispatch) => ({
   selectFilteredEvent: (filteredEvent, viewMode) =>
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   resetTierOverrides: () => dispatch(resetTierOverrides()),
-  clearCaseInterpretations: (caseId) => dispatch(interpretationsActions.clearCaseInterpretations(caseId)),
-  updateInterpretation: (interpretation) => dispatch(interpretationsActions.updateInterpretation(interpretation)),
+  clearCaseInterpretations: (caseId, dataset) =>
+    new Promise((resolve, reject) => {
+      dispatch(
+        interpretationsActions.clearCaseInterpretations(
+          caseId,
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          },
+          dataset,
+        ),
+      );
+    }),
+  updateInterpretation: (interpretation) =>
+    new Promise((resolve, reject) => {
+      dispatch(
+        interpretationsActions.updateInterpretation(
+          interpretation,
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          },
+        ),
+      );
+    }),
 });
 const mapStateToProps = (state) => ({
   loading: state.PopulationStatistics.loading,
@@ -190,6 +367,7 @@ const mapStateToProps = (state) => ({
   mergedEvents: require("../../redux/interpretations/selectors").selectMergedEvents(state),
 });
 
+export { mapDispatchToProps, ReportButtonsPanel };
 export default connect(
   mapStateToProps,
   mapDispatchToProps

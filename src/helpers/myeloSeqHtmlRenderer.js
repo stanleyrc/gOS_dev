@@ -166,6 +166,13 @@ function renderInterpretationLine(label, value) {
   return `<p><strong>${text(label)}:</strong> ${text(value)}</p>`;
 }
 
+function renderComments(finding) {
+  const editableAttributes = hasValue(finding?.uid)
+    ? ` data-editable-comment="true" data-alteration-id="${text(finding.uid)}"`
+    : "";
+  return `<p><strong>Comments:</strong> <span class="report-comment-value"${editableAttributes}>${text(finding?.variant_summary)}</span></p>`;
+}
+
 function renderFinding(finding) {
   const fusion = isFusion(finding);
   const heading = fusion
@@ -180,10 +187,7 @@ function renderFinding(finding) {
   const breakpoint = fusion
     ? renderInterpretationLine("Breakpoint", finding.locus)
     : "";
-  const comments = renderInterpretationLine(
-    "Comments",
-    finding.variant_summary,
-  );
+  const comments = renderComments(finding);
 
   return `<article class="finding-interpretation">${heading}${breakpoint}${comments}</article>`;
 }
@@ -341,6 +345,25 @@ function getInlineCss() {
     .tier-section { margin: 0 0 0.28in; }
     .finding-interpretation { margin: 0 0 0.24in; }
     .finding-interpretation p { margin: 0; white-space: pre-wrap; }
+    .report-comment-value {
+      display: inline-block;
+      min-width: 0.5em;
+      min-height: 1em;
+      vertical-align: top;
+      white-space: pre-wrap;
+    }
+    .report-comment-value[data-report-editing="true"] {
+      outline: 1px dashed #8c8c8c;
+      outline-offset: 1px;
+      cursor: text;
+    }
+    .report-comment-value[data-report-editing="true"]:focus {
+      outline: 2px solid #0563c1;
+    }
+    .report-comment-value[data-report-editing="true"]:empty::before {
+      color: #8c8c8c;
+      content: attr(aria-placeholder);
+    }
     .tier-guide { margin: 0.28in 0 0.12in; }
     section > p { orphans: 3; widows: 3; }
     .gene-list { margin: 0.16in 0 0.04in; }

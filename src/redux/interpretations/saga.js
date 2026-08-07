@@ -14,8 +14,11 @@ import filteredEventsActions from "../filteredEvents/actions";
 import { getCurrentUserId, getUser } from "../../helpers/userAuth";
 import { signInterpretation } from "../../services/signatures/SignatureService";
 
-const getAcceptedCaseIds = (state, caseId) => {
-  const datasetId = state.Settings?.dataset?.id;
+const getAcceptedCaseIds = (
+  state,
+  caseId,
+  datasetId = state.Settings?.dataset?.id,
+) => {
   const records = (state.CaseReports?.datafiles || []).filter(
     (record) =>
       record.datasetId == null || `${record.datasetId}` === `${datasetId}`
@@ -106,8 +109,18 @@ function* fetchInterpretationsForCase(action) {
   }
 }
 
-function* updateInterpretation(action) {
-  const { interpretation } = action;
+function acknowledgeCompletion(completion, error, result) {
+  if (typeof completion !== "function") return;
+
+  try {
+    completion(error, result);
+  } catch (completionError) {
+    console.error("Interpretation completion callback failed:", completionError);
+  }
+}
+
+export function* updateInterpretation(action) {
+  const { interpretation, completion } = action;
   
   try {
     const state = yield select(getCurrentState);
@@ -195,15 +208,17 @@ function* updateInterpretation(action) {
       const currentUserId = getCurrentUserId();
 
       // Update interpretations state
+      const deletedInterpretation = {
+        alterationId: interpretation.alterationId,
+        authorId: interpretation.authorId || currentUserId,
+        caseId: interpretation.caseId || caseId,
+        isCurrentUser: true,
+      };
+
       yield put({
         type: actions.UPDATE_INTERPRETATION_SUCCESS,
         interpretation: null,
-        deletedInterpretation: {
-          alterationId: interpretation.alterationId,
-          authorId: interpretation.authorId || currentUserId,
-          caseId: interpretation.caseId || caseId,
-          isCurrentUser: true,
-        },
+        deletedInterpretation,
       });
 
       // Revert filtered event to original (only for alterations)
@@ -214,6 +229,11 @@ function* updateInterpretation(action) {
         yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
       }
 
+      yield call(acknowledgeCompletion, completion, null, {
+        deleted: true,
+        interpretation: null,
+        deletedInterpretation,
+      });
       return;
     }
     
@@ -249,17 +269,26 @@ function* updateInterpretation(action) {
       type: actions.UPDATE_INTERPRETATION_SUCCESS,
       interpretation: updatedInterpretation,
     });
+    yield call(acknowledgeCompletion, completion, null, {
+      deleted: false,
+      interpretation: updatedInterpretation,
+    });
   } catch (error) {
-    console.error("Error updating interpretation:", error);
+    const updateError =
+      error instanceof Error
+        ? error
+        : new Error(error?.message || "Failed to update interpretation");
+    console.error("Error updating interpretation:", updateError);
     yield put({
       type: actions.UPDATE_INTERPRETATION_FAILED,
-      error: error.message || "Failed to update interpretation",
+      error: updateError.message || "Failed to update interpretation",
     });
+    yield call(acknowledgeCompletion, completion, updateError, null);
   }
 }
 
-function* clearCaseInterpretations(action) {
-  const { caseId } = action;
+export function* clearCaseInterpretations(action) {
+  const { caseId, completion, dataset: capturedDataset } = action;
 
   try {
     if (!caseId) {
@@ -267,10 +296,10 @@ function* clearCaseInterpretations(action) {
     }
 
     const state = yield select();
-    const dataset = state.Settings?.dataset;
-    const datasetId = state.Settings?.dataset?.id;
+    const dataset = capturedDataset || state.Settings?.dataset;
+    const datasetId = dataset?.id;
     const repository = getActiveRepository({ dataset });
-    const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
+    const acceptedCaseIds = getAcceptedCaseIds(state, caseId, datasetId);
     const currentUserId = getCurrentUserId();
 
     for (const storedCaseId of acceptedCaseIds) {
@@ -297,12 +326,18 @@ function* clearCaseInterpretations(action) {
       type: actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS,
       caseId,
     });
+    yield call(acknowledgeCompletion, completion, null, { caseId });
   } catch (error) {
-    console.error("Error clearing case interpretations:", error);
+    const clearError =
+      error instanceof Error
+        ? error
+        : new Error(error?.message || "Failed to clear case interpretations");
+    console.error("Error clearing case interpretations:", clearError);
     yield put({
       type: actions.CLEAR_CASE_INTERPRETATIONS_FAILED,
-      error: error.message || "Failed to clear case interpretations",
+      error: clearError.message || "Failed to clear case interpretations",
     });
+    yield call(acknowledgeCompletion, completion, clearError, null);
   }
 }
 

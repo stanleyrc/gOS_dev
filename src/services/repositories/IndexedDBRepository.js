@@ -257,7 +257,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
       return data ? new EventInterpretation(data) : null;
     } catch (e) {
       console.error("Failed to get interpretation:", e);
-      return null;
+      throw e;
     }
   }
 
@@ -279,7 +279,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
   return results.map((data) => new EventInterpretation(data));
   } catch (e) {
   console.error("Failed to get interpretations for case:", e);
-  return [];
+  throw e;
   }
   }
 
@@ -298,6 +298,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
       });
     } catch (e) {
       console.error("Failed to delete interpretation:", e);
+      throw e;
     }
   }
 
