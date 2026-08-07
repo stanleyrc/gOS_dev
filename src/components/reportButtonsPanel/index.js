@@ -13,11 +13,6 @@ import Wrapper from "./index.style";
 const { selectFilteredEvent, resetTierOverrides } = filteredEventsActions;
 
 class ReportButtonsPanel extends Component {
-  constructor(props) {
-    super(props);
-    this.fileInputRef = React.createRef();
-  }
-
   state = {
     exporting: false,
     previewVisible: false,
@@ -193,52 +188,6 @@ class ReportButtonsPanel extends Component {
     return updateInterpretation(interpretation.toJSON());
   };
 
-  handleLoadReport = async () => {
-    this.fileInputRef.current.click();
-  };
-
-  handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      const script = doc.getElementById('interpretations-data');
-      if (!script) {
-        throw new Error('No interpretations-data script found in HTML');
-      }
-      const interpretationsData = JSON.parse(script.textContent);
-
-      // Validate caseId
-      const currentCaseId = this.props.id;
-      if (!currentCaseId) {
-        throw new Error('No current case loaded');
-      }
-      for (const interp of interpretationsData) {
-        if (interp.caseId !== currentCaseId) {
-          throw new Error(`Case ID mismatch: expected ${currentCaseId}, got ${interp.caseId}`);
-        }
-      }
-
-      // Create EventInterpretation objects and dispatch
-      for (const interpData of interpretationsData) {
-        const interpretation = new EventInterpretation(interpData);
-        await this.props.updateInterpretation(interpretation);
-      }
-
-      alert(`Successfully imported ${interpretationsData.length} interpretations`);
-      this.handleClosePreview();
-    } catch (error) {
-      console.error('Error importing report:', error);
-      alert(`Failed to import report: ${error.message}`);
-    } finally {
-      // Reset the input
-      event.target.value = '';
-    }
-  };
-
   handleResetReportState = async (prepareReset) => {
     const previewContext = this.state.previewContext;
     const dataset = this.props.dataset;
@@ -299,13 +248,6 @@ class ReportButtonsPanel extends Component {
         >
           {t("components.header-panel.view-report")}
         </Button>
-        <input
-          type="file"
-          ref={this.fileInputRef}
-          accept=".html"
-          style={{ display: "none" }}
-          onChange={this.handleFileChange}
-        />
         <ReportPreviewModal
           visible={this.state.previewVisible}
           onCancel={this.handleClosePreview}
@@ -313,10 +255,8 @@ class ReportButtonsPanel extends Component {
           html={this.state.previewHtml}
           previewContext={this.state.previewContext}
           onSaveComment={this.handleSaveReportComment}
-          onImport={this.handleLoadReport}
           onExport={this.handleExportNotes}
           onReset={this.handleResetReportState}
-          importLabel={t("components.filtered-events-panel.load-report")}
           exportLabel={t("components.filtered-events-panel.export.notes")}
           resetLabel={t("components.filtered-events-panel.reset-state")}
           exporting={this.state.exporting}

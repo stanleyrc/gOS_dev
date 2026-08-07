@@ -403,12 +403,6 @@ function getInlineCss() {
   `.trim();
 }
 
-function serializeInterpretations(interpretations) {
-  if (!Array.isArray(interpretations) || interpretations.length === 0) return "";
-  const json = JSON.stringify(interpretations).replace(/</g, "\\u003c");
-  return `<script type="application/json" id="interpretations-data">${json}</script>`;
-}
-
 class MyeloSeqHtmlRenderer {
   async render(report, options = {}) {
     const patient = report?.patient || {};
@@ -432,7 +426,6 @@ class MyeloSeqHtmlRenderer {
     ${buildMethods()}
     ${buildDisclaimers()}
   </main>
-  ${serializeInterpretations(report?.interpretations)}
 </body>
 </html>`;
 

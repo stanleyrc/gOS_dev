@@ -20,7 +20,6 @@ jest.mock("@ant-design/icons", () => ({
   CopyOutlined: "CopyOutlined",
   DownloadOutlined: "DownloadOutlined",
   UndoOutlined: "UndoOutlined",
-  UploadOutlined: "UploadOutlined",
 }));
 
 jest.mock("../../helpers/copyReportDocument", () => ({
@@ -58,11 +57,9 @@ const defaultProps = {
   loading: false,
   html: '<main class="report-document">Report</main>',
   previewContext: defaultPreviewContext,
-  onImport: jest.fn(),
   onExport: jest.fn(),
   onReset: jest.fn(),
   onSaveComment: jest.fn().mockResolvedValue({ saved: true }),
-  importLabel: "Import",
   exportLabel: "Export",
   resetLabel: "Reset",
   exporting: false,
@@ -573,29 +570,6 @@ describe("ReportPreviewModal comment editing", () => {
     });
   });
 
-  it("flushes and awaits pending saves before legacy import", async () => {
-    jest.useFakeTimers({ legacyFakeTimers: true });
-    const acknowledgment = deferred();
-    const calls = [];
-    const onSaveComment = jest.fn(() => {
-      calls.push("save");
-      return acknowledgment.promise;
-    });
-    const onImport = jest.fn(() => calls.push("import"));
-    const component = createComponent({ onImport, onSaveComment });
-    const editor = loadReportDocument(component, createReportDocument());
-
-    inputText(editor, "Imported edit");
-    const importing = component.handleImport();
-    await settlePromises();
-
-    expect(calls).toEqual(["save"]);
-    acknowledgment.resolve({ saved: true });
-    await importing;
-
-    expect(calls).toEqual(["save", "import"]);
-  });
-
   it("resets the unmount guard when mounted", () => {
     const component = createComponent();
     component.isUnmounting = true;
@@ -704,6 +678,18 @@ describe("ReportPreviewModal comment editing", () => {
       unmountComponent.props.previewContext,
     );
     expect(unmountEditor.hasAttribute("contenteditable")).toBe(false);
+  });
+});
+
+describe("ReportPreviewModal toolbar", () => {
+  it("keeps Copy, Undo, Export, and Reset without a legacy Import control", () => {
+    const component = createComponent();
+
+    expect(getButton(component, "Copy Report")).not.toBeNull();
+    expect(getButton(component, "Undo")).not.toBeNull();
+    expect(getButton(component, "Export")).not.toBeNull();
+    expect(getButton(component, "Reset")).not.toBeNull();
+    expect(getButton(component, "Import")).toBeNull();
   });
 });
 

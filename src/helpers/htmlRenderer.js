@@ -908,8 +908,6 @@ class HtmlRenderer {
       buildAlterationsSection(report)
     ].filter(Boolean).join('\n\n');
 
-    const interpretationsScript = report.interpretations && report.interpretations.length > 0 ? `<script type="application/json" id="interpretations-data">${JSON.stringify(report.interpretations)}</script>` : '';
-
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -926,7 +924,6 @@ ${getInlineCSS()}
   <div class="container">
     ${sections}
   </div>
-  ${interpretationsScript}
   ${buildTocNavigationScript()}
 </body>
 </html>`.trim();

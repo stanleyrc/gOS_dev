@@ -4,7 +4,6 @@ import {
   CopyOutlined,
   DownloadOutlined,
   UndoOutlined,
-  UploadOutlined,
 } from "@ant-design/icons";
 import { copyReportDocument } from "../../helpers/copyReportDocument";
 import {
@@ -693,18 +692,6 @@ class ReportPreviewModal extends Component {
     }
   };
 
-  handleImport = async (...args) => {
-    try {
-      await this.flushPendingCommentChanges();
-    } catch (error) {
-      return;
-    }
-
-    if (typeof this.props.onImport === "function") {
-      return this.props.onImport(...args);
-    }
-  };
-
   handleExport = async () => {
     try {
       await this.flushPendingCommentChanges();
@@ -761,7 +748,6 @@ class ReportPreviewModal extends Component {
       visible,
       loading,
       html,
-      importLabel,
       exportLabel,
       resetLabel,
       exporting,
@@ -782,13 +768,6 @@ class ReportPreviewModal extends Component {
         <PreviewLayout>
           <ReportToolbar>
             <Space>
-              <Button
-                icon={<UploadOutlined />}
-                onClick={this.handleImport}
-                disabled={loading}
-              >
-                {importLabel}
-              </Button>
               <Button
                 icon={<CopyOutlined />}
                 onClick={this.handleCopyReport}

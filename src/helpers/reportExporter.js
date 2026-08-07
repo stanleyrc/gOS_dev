@@ -1,4 +1,5 @@
-import { MyeloSeqHtmlRenderer as HtmlRenderer } from './myeloSeqHtmlRenderer';
+import { MyeloSeqDocxRenderer } from "./myeloSeqDocxRenderer";
+import { MyeloSeqHtmlRenderer } from "./myeloSeqHtmlRenderer";
 import { getUser } from './userAuth';
 import { datasetHasField } from './browseScope';
 
@@ -6,7 +7,7 @@ import { datasetHasField } from './browseScope';
  * Builds a report structure from Redux state with merged interpretations
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations from selectMergedEvents selector
- * @returns {Object} Report structure suitable for HtmlRenderer
+ * @returns {Object} Report structure suitable for the report renderers
  */
 function buildReportFromMergedState(state, mergedEvents) {
   const ce = state?.CaseReport || {};
@@ -144,6 +145,13 @@ function buildTherapiesFromAlterations(alterations) {
     .filter(v => v.variant.therapies.length || v.variant.resistances.length);
 }
 
+function buildAuthoredReport(state, mergedEvents, user) {
+  return {
+    ...buildReportFromMergedState(state, mergedEvents),
+    author: user ? user.displayName : "Unknown Author",
+  };
+}
+
 /**
  * Generates the HTML report without downloading
  * @param {Object} state - Redux state
@@ -152,51 +160,46 @@ function buildTherapiesFromAlterations(alterations) {
  */
 export async function previewReport(state, mergedEvents) {
   try {
-    const gos_user = getUser();
-    const caseId = String(state?.CaseReport?.id || '');
-    const interpretationsFiltered = Object.values(state.Interpretations?.byId || {}).filter(i => i.authorId === gos_user?.userId && i.caseId === caseId);
-    const report = buildReportFromMergedState(state, mergedEvents);
-    report.author = gos_user ? gos_user.displayName : 'Unknown Author';
-    report.interpretations = interpretationsFiltered;
-    const renderer = new HtmlRenderer();
+    const report = buildAuthoredReport(state, mergedEvents, getUser());
+    const renderer = new MyeloSeqHtmlRenderer();
     const result = await renderer.render(report);
-    
+
     return result.html;
   } catch (error) {
-    console.error('Failed to preview report:', error);
+    console.error("Failed to preview report:", error);
     throw error;
   }
 }
 
 /**
- * Exports the clinical report as a static HTML file
+ * Exports the clinical report as a semantic DOCX file.
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations
- * @returns {Promise<void>}
+ * @returns {Promise<Object>} DOCX renderer result
  */
 export async function exportReport(state, mergedEvents) {
-  try {
-    const gos_user = getUser();
-    const caseId = String(state?.CaseReport?.id || '');
-    const interpretationsFiltered = Object.values(state.Interpretations?.byId || {}).filter(i => i.authorId === gos_user?.userId && i.caseId === caseId);
-    const report = buildReportFromMergedState(state, mergedEvents);
-    report.author = gos_user ? gos_user.displayName : 'Unknown Author';
-    report.interpretations = interpretationsFiltered;
-    const renderer = new HtmlRenderer();
-    const result = await renderer.render(report);
+  let anchor = null;
+  let url = null;
 
-    // Download the HTML file
-    const blob = new Blob([result.html], { type: result.mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = result.filename || 'report.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  try {
+    const report = buildAuthoredReport(state, mergedEvents, getUser());
+    const renderer = new MyeloSeqDocxRenderer();
+    const result = await renderer.render(report);
+    url = URL.createObjectURL(result.blob);
+    anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = result.filename || "report.docx";
+    document.body.appendChild(anchor);
+    anchor.click();
+    return result;
   } catch (error) {
-    console.error('Failed to export report:', error);
+    console.error("Failed to export report:", error);
     throw error;
+  } finally {
+    try {
+      if (anchor?.parentNode) anchor.parentNode.removeChild(anchor);
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+    }
   }
 }

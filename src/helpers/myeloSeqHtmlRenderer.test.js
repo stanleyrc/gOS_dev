@@ -165,7 +165,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).toContain(`<strong>Clinical History:</strong> ${expected}`);
   });
 
-  it("includes fixed report boilerplate and embedded interpretation data", async () => {
+  it("includes fixed report boilerplate without legacy embedded interpretation data", async () => {
     const result = await new MyeloSeqHtmlRenderer().render(report);
 
     expect(result.html).toContain("Variants are categorized into three tiers");
@@ -175,8 +175,8 @@ describe("MyeloSeqHtmlRenderer", () => {
       "This test is not designed for detection of germline mutations",
     );
     expect(result.html).toMatch(/^<!DOCTYPE html>[\s\S]*<\/html>$/);
-    expect(result.html).toContain('id="interpretations-data"');
-    expect(result.html).toContain("\\u003c/script>");
+    expect(result.html).not.toContain("interpretations-data");
+    expect(result.html).not.toContain("Legacy embedded value");
   });
 
   it("omits dynamic fields and sections that are unavailable", async () => {

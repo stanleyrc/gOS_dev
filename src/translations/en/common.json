@@ -686,14 +686,7 @@
           "title": "The request has failed with the following error:"
         }
       },
-      "load-report": "Import Report",
       "reset-state": "Clear Report Cache",
-      "import": {
-        "mismatch-case": "Uploaded report does not match the current case ID. Import aborted.",
-        "missing-state": "Could not find embedded report state in the uploaded file.",
-        "loaded": "Report loaded.",
-        "failed": "Failed to load report."
-      },
       "reset-prompts": {
         "no-case-id": "No case ID available to reset.",
         "confirm1": "Reset all local changes to this report (tiers and edited fields)?",
