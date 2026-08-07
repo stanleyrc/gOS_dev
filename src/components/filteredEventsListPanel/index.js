@@ -29,6 +29,10 @@ import ReportModal from "../reportModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
 import getDefaultVisibleFilteredEventsColumnKeys from "./defaultVisibleFilteredEventsColumns";
+import ResizableTitle, {
+  clampColumnWidth,
+  makeColumnsResizable,
+} from "./resizableTitle";
 
 const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
@@ -129,6 +133,7 @@ export class FilteredEventsListPanel extends Component {
       columnKey: null,
       order: null,
     },
+    columnWidths: {},
   };
 
   // Track if a fetch is in progress to prevent concurrent calls
@@ -250,6 +255,17 @@ export class FilteredEventsListPanel extends Component {
 
   initializeSelectedColumns = () => {
     this.setState({ selectedColumnKeys: this.getDefaultColumnKeys() });
+  };
+
+  handleColumnResize = (columnKey) => (_, { size }) => {
+    if (!Number.isFinite(size?.width)) return;
+
+    this.setState(({ columnWidths }) => ({
+      columnWidths: {
+        ...columnWidths,
+        [columnKey]: clampColumnWidth(size.width),
+      },
+    }));
   };
 
   handleTableChange = (pagination, filters, sorter) => {
@@ -424,7 +440,12 @@ export class FilteredEventsListPanel extends Component {
 
     let open = selectedFilteredEvent?.id;
 
-    let { eventType, selectedColumnKeys, sortState } = this.state;
+    let {
+      eventType,
+      selectedColumnKeys,
+      sortState,
+      columnWidths,
+    } = this.state;
 
     let recordsHash = d3.group(
       filteredEvents.filter(
@@ -459,6 +480,18 @@ export class FilteredEventsListPanel extends Component {
         sortOrder: sortState.columnKey === col.key ? sortState.order : null,
       };
     });
+
+    const visibleColumns = makeColumnsResizable(
+      [...(additionalColumns || []), ...columnsWithSortState].filter((col) =>
+        selectedColumnKeys.includes(col.key)
+      ),
+      columnWidths,
+      this.handleColumnResize
+    );
+    const tableScrollWidth = visibleColumns.reduce(
+      (total, column) => total + (Number(column.width) || 0),
+      0
+    );
 
     return (
       <Wrapper>
@@ -579,15 +612,13 @@ export class FilteredEventsListPanel extends Component {
                   <Col className="gutter-row table-container" span={24}>
                     <Skeleton active loading={loading}>
                       <Table
-                        columns={[
-                          ...(additionalColumns || []),
-                          ...columnsWithSortState,
-                        ].filter((col) => selectedColumnKeys.includes(col.key))}
+                        components={{ header: { cell: ResizableTitle } }}
+                        columns={visibleColumns}
                         dataSource={records}
                         pagination={{ pageSize: 50 }}
                         showSorterTooltip={false}
                         onChange={this.handleTableChange}
-                        scroll={{ x: "100%", y: 500 }}
+                        scroll={{ x: tableScrollWidth || "100%", y: 500 }}
                         tableLayout="fixed"
                       />
                       {selectedFilteredEvent && viewMode === "detail" && (

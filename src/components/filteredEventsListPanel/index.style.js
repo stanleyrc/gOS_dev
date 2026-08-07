@@ -70,6 +70,39 @@ const Wrapper = styled.div`
     text-overflow: ellipsis;
   }
 
+  .filtered-events-resizable-header {
+    position: relative;
+    overflow: visible;
+    background-clip: padding-box;
+  }
+
+  .filtered-events-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    bottom: 0;
+    z-index: 2;
+    width: 10px;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .filtered-events-resize-handle::after {
+    position: absolute;
+    top: 25%;
+    right: 4px;
+    bottom: 25%;
+    width: 1px;
+    background: rgba(0, 0, 0, 0.2);
+    content: "";
+    transition: background 0.2s ease;
+  }
+
+  .filtered-events-resize-handle:hover::after {
+    background: #1677ff;
+  }
+
   .table-container {
     .ant-table {
       .ant-table-container {
