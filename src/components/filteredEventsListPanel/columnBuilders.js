@@ -19,20 +19,36 @@ function resolvePath(obj, path) {
  * buildFilters
  * Dynamically generate filter options from record data
  */
+function normalizeNumericFilterValue(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value !== "string" || value.trim() === "") {
+    return undefined;
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
 function buildFilters(records, dataIndex, filterType = "string") {
   if (!records.length) return [];
 
-  const values = [...new Set(records.map((d) => resolvePath(d, dataIndex)))];
-  
   if (filterType === "numeric") {
-    return values
-      .filter((v) => v != null && !isNaN(v))
-      .sort((a, b) => a - b)
-      .map((v) => ({
-        text: v,
-        value: v,
-      }));
+    const values = [
+      ...new Set(
+        records
+          .map((d) => normalizeNumericFilterValue(resolvePath(d, dataIndex)))
+          .filter((v) => v !== undefined)
+      ),
+    ];
+    return values.sort((a, b) => a - b).map((v) => ({
+      text: v,
+      value: v,
+    }));
   }
+
+  const values = [...new Set(records.map((d) => resolvePath(d, dataIndex)))];
 
   if (filterType === "object") {
     // For object types, filter by class property if available
@@ -111,7 +127,11 @@ function buildSorter(dataIndex, dataType = "string") {
  */
 function buildFilter(dataIndex, filterType = "string") {
   if (filterType === "numeric") {
-    return (value, record) => +resolvePath(record, dataIndex) === +value;
+    return (value, record) => {
+      const expected = normalizeNumericFilterValue(value);
+      const actual = normalizeNumericFilterValue(resolvePath(record, dataIndex));
+      return expected !== undefined && actual !== undefined && actual === expected;
+    };
   }
 
   if (filterType === "object") {
