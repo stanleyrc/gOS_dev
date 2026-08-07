@@ -3,6 +3,91 @@ import * as d3 from "d3";
 import { getColumnRenderer } from "./columnRegistry";
 import SliderFilterDropdown from "./SliderFilterDropdown";
 
+const DEFAULT_COLUMN_WIDTH = 120;
+const HEADER_NARROW_GLYPH_WIDTH = 6;
+const HEADER_ORDINARY_GLYPH_WIDTH = 9;
+const HEADER_WIDE_GLYPH_WIDTH = 13;
+const HEADER_NON_ASCII_GLYPH_WIDTH = 16;
+const HEADER_TEXT_SAFETY_ALLOWANCE = 12;
+const ANT_HEADER_HORIZONTAL_PADDING = 32;
+const ANT_HEADER_CONTROL_WIDTH = 16;
+const UNMEASURABLE_HEADER_TEXT_WIDTH =
+  DEFAULT_COLUMN_WIDTH -
+  ANT_HEADER_HORIZONTAL_PADDING -
+  HEADER_TEXT_SAFETY_ALLOWANCE;
+const NARROW_HEADER_GLYPHS = " !\"'(),.:;I[]`fijlrt|";
+const WIDE_HEADER_GLYPHS = "ABCDEFGHJKLMNOPQRSTUVWXYZmw@#%&";
+
+function getHeaderText(title) {
+  if (typeof title === "string" || typeof title === "number") {
+    return String(title);
+  }
+  if (Array.isArray(title)) {
+    return title.map(getHeaderText).join("");
+  }
+  if (React.isValidElement(title)) {
+    return getHeaderText(title.props.children);
+  }
+  return "";
+}
+
+function normalizeColumnWidth(width) {
+  if (typeof width === "number" && Number.isFinite(width) && width > 0) {
+    return width;
+  }
+
+  if (typeof width === "string") {
+    const pixelWidth = width.match(/^\s*(\d+(?:\.\d+)?|\.\d+)px\s*$/i);
+    if (pixelWidth) {
+      const numericWidth = Number(pixelWidth[1]);
+      if (Number.isFinite(numericWidth) && numericWidth > 0) {
+        return numericWidth;
+      }
+    }
+  }
+
+  return DEFAULT_COLUMN_WIDTH;
+}
+
+function getHeaderGlyphWidth(glyph) {
+  if (glyph.codePointAt(0) > 0x7f) {
+    return HEADER_NON_ASCII_GLYPH_WIDTH;
+  }
+  if (NARROW_HEADER_GLYPHS.includes(glyph)) {
+    return HEADER_NARROW_GLYPH_WIDTH;
+  }
+  if (WIDE_HEADER_GLYPHS.includes(glyph)) {
+    return HEADER_WIDE_GLYPH_WIDTH;
+  }
+  return HEADER_ORDINARY_GLYPH_WIDTH;
+}
+
+function estimateHeaderTextWidth(title) {
+  const text = getHeaderText(title).replace(/\s+/g, " ").trim();
+  if (!text) {
+    return UNMEASURABLE_HEADER_TEXT_WIDTH;
+  }
+
+  return Array.from(text).reduce(
+    (width, glyph) => width + getHeaderGlyphWidth(glyph),
+    0
+  );
+}
+
+function getEffectiveColumnWidth(width, title, filterEnabled, sorterEnabled) {
+  const normalizedWidth = normalizeColumnWidth(width);
+  const controlsWidth =
+    (filterEnabled ? ANT_HEADER_CONTROL_WIDTH : 0) +
+    (sorterEnabled ? ANT_HEADER_CONTROL_WIDTH : 0);
+  const minimumWidth =
+    estimateHeaderTextWidth(title) +
+    HEADER_TEXT_SAFETY_ALLOWANCE +
+    ANT_HEADER_HORIZONTAL_PADDING +
+    controlsWidth;
+
+  return Math.max(normalizedWidth, minimumWidth);
+}
+
 /**
  * resolvePath
  * Safely access nested object properties using dot notation
@@ -188,7 +273,7 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
     title,
     dataIndex,
     viewType = "string-basic",
-    width = 120,
+    width = DEFAULT_COLUMN_WIDTH,
     filterable = false,
     sortable = false,
     filterSearch = false,
@@ -268,6 +353,13 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
   if (sortable) {
     columnConfig.sorter = buildSorter(dataIndex, type);
   }
+
+  columnConfig.width = getEffectiveColumnWidth(
+    width,
+    translatedTitle,
+    Boolean(columnConfig.filters || columnConfig.filterDropdown),
+    Boolean(columnConfig.sorter)
+  );
 
   return columnConfig;
 }
