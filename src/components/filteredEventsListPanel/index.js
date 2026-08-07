@@ -28,6 +28,7 @@ import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
+import getDefaultVisibleFilteredEventsColumnKeys from "./defaultVisibleFilteredEventsColumns";
 
 const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
@@ -46,16 +47,13 @@ const getColumnTitle = (title) => {
   return "Column";
 };
 
-class FilteredEventsListPanel extends Component {
+export class FilteredEventsListPanel extends Component {
   handleResetFilters = () => {
-    const { additionalColumns, resetColumnFilters } = this.props;
-    const defaultColumnKeys = this.getDefaultColumnKeys();
-    const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
+    const { resetColumnFilters } = this.props;
 
     resetColumnFilters();
     this.setState({
-      selectedColumnKeys: defaultKeys,
+      selectedColumnKeys: this.getDefaultColumnKeys(),
     });
   };
 
@@ -136,8 +134,8 @@ class FilteredEventsListPanel extends Component {
   // Track if a fetch is in progress to prevent concurrent calls
   _isFetchingTierCounts = false;
 
-  getDefaultColumnKeys = () => {
-    const { data: settingsData, dataset } = this.props;
+  getDefaultColumnKeys = (props = this.props) => {
+    const { additionalColumns, data: settingsData, dataset } = props;
 
     // Get columns from settings.json
     const settingsColumns = settingsData?.filteredEventsColumns || [];
@@ -160,7 +158,39 @@ class FilteredEventsListPanel extends Component {
     const mergedColumnIds = [
       ...new Set([...settingsColumnIds, ...datasetColumnIds]),
     ];
-    return mergedColumnIds;
+    const additionalColumnIds = (additionalColumns || []).map(
+      (column) => column.key,
+    );
+
+    return getDefaultVisibleFilteredEventsColumnKeys(
+      mergedColumnIds,
+      dataset?.defaultVisibleFilteredEventsColumns,
+      additionalColumnIds,
+    );
+  };
+
+  getColumnConfigurationSignature = (props = this.props) => {
+    const settingsColumnIds = (props.data?.filteredEventsColumns || [])
+      .map((column) => column?.id)
+      .filter(Boolean);
+    const datasetColumnIds = (props.dataset?.optionalFilteredEventsColumns || [])
+      .map((column) => column?.id)
+      .filter(Boolean);
+    const defaultVisibleColumnIds = Array.isArray(
+      props.dataset?.defaultVisibleFilteredEventsColumns,
+    )
+      ? props.dataset.defaultVisibleFilteredEventsColumns
+      : null;
+    const additionalColumnIds = (props.additionalColumns || [])
+      .map((column) => column?.key)
+      .filter(Boolean);
+
+    return JSON.stringify([
+      settingsColumnIds,
+      datasetColumnIds,
+      defaultVisibleColumnIds,
+      additionalColumnIds,
+    ]);
   };
 
   handleCloseReportModal = async () => {
@@ -211,22 +241,15 @@ class FilteredEventsListPanel extends Component {
       this.fetchTierCountsForRecords();
     }
     if (
-      prevProps.additionalColumns !== this.props.additionalColumns ||
-      prevProps.data !== this.props.data ||
-      prevProps.dataset !== this.props.dataset
+      this.getColumnConfigurationSignature(prevProps) !==
+      this.getColumnConfigurationSignature(this.props)
     ) {
       this.initializeSelectedColumns();
     }
   }
 
   initializeSelectedColumns = () => {
-    const { additionalColumns } = this.props;
-    const defaultColumnKeys = this.getDefaultColumnKeys();
-    const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const selectedKeys = [
-      ...new Set([...defaultColumnKeys, ...additionalKeys]),
-    ];
-    this.setState({ selectedColumnKeys: selectedKeys });
+    this.setState({ selectedColumnKeys: this.getDefaultColumnKeys() });
   };
 
   handleTableChange = (pagination, filters, sorter) => {
