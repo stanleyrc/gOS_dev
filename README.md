@@ -47,6 +47,7 @@ The `datasets.json` file defines available datasets and their configuration. Eac
   "commonPath": "common/",
   "dataPath": "data/",
   "reference": "hg19",
+  "defaultVisibleFilteredEventsColumns": ["gene", "tier", "custom-col"],
   "optionalFilteredEventsColumns": [
     {
       "id": "custom-col",
@@ -65,7 +66,9 @@ The `datasets.json` file defines available datasets and their configuration. Eac
 }
 ```
 
-**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Available `viewType` renderers:
+**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Use the optional `defaultVisibleFilteredEventsColumns` array as an exact allow-list of merged settings and dataset column IDs to select when the Filtered Events panel first mounts and when **Reset All Filters** is clicked. Omit the property to show every available column. Unknown IDs are ignored, and an empty array is valid. Columns supplied directly by a panel caller remain selected.
+
+Available `viewType` renderers:
 - `"gene-link"` – renders gene names as clickable links
 - `"tier-badge"` – renders tier/category badges
 - `"formatted-number"` – renders formatted numeric values

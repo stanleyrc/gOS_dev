@@ -1,6 +1,7 @@
 import React, { Component } from "react";
-import { Button, Modal, Skeleton, Space } from "antd";
-import { DownloadOutlined, UploadOutlined } from "@ant-design/icons";
+import { Button, message, Modal, Skeleton, Space } from "antd";
+import { CopyOutlined, DownloadOutlined } from "@ant-design/icons";
+import { copyReportDocument } from "../../helpers/copyReportDocument";
 import {
   LoadingContainer,
   PreviewContainer,
@@ -10,26 +11,52 @@ import {
 } from "./index.style";
 
 class ReportPreviewModal extends Component {
+  state = {
+    copying: false,
+  };
+
+  previewIframeRef = React.createRef();
+
+  handleCopyReport = async () => {
+    const { html, loading } = this.props;
+    const reportDocument = this.previewIframeRef.current?.contentDocument;
+    if (
+      loading ||
+      !html ||
+      !reportDocument?.querySelector(".report-document")
+    ) {
+      message.error("Report unavailable.");
+      return;
+    }
+
+    try {
+      this.setState({ copying: true });
+      await copyReportDocument(reportDocument);
+      message.success("Report copied.");
+    } catch (error) {
+      console.error("Report copy failed:", error);
+      message.error("Unable to copy report.");
+    } finally {
+      this.setState({ copying: false });
+    }
+  };
+
   render() {
     const {
       visible,
-      onCancel,
       loading,
       html,
-      onImport,
-      onExport,
-      onReset,
-      importLabel,
       exportLabel,
       resetLabel,
       exporting,
     } = this.props;
+    const copyDisabled = loading || !html || this.state.copying;
 
     return (
       <Modal
         title="Report Preview"
         open={visible}
-        onCancel={onCancel}
+        onCancel={this.props.onCancel}
         footer={null}
         width="90%"
         style={{ top: 20 }}
@@ -39,23 +66,29 @@ class ReportPreviewModal extends Component {
           <ReportToolbar>
             <Space>
               <Button
-                icon={<UploadOutlined />}
-                onClick={onImport}
-                disabled={loading}
+                icon={<CopyOutlined />}
+                onClick={this.handleCopyReport}
+                disabled={copyDisabled}
+                loading={this.state.copying}
+                aria-label="Copy Report"
               >
-                {importLabel}
+                Copy Report
               </Button>
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
-                onClick={onExport}
+                onClick={this.props.onExport}
                 disabled={loading}
                 loading={exporting}
               >
                 {exportLabel}
               </Button>
             </Space>
-            <Button danger onClick={onReset} disabled={loading}>
+            <Button
+              danger
+              onClick={this.props.onReset}
+              disabled={loading}
+            >
               {resetLabel}
             </Button>
           </ReportToolbar>
@@ -65,7 +98,11 @@ class ReportPreviewModal extends Component {
                 <Skeleton active />
               </LoadingContainer>
             ) : (
-              <PreviewIframe srcDoc={html} title="Report Preview" />
+              <PreviewIframe
+                ref={this.previewIframeRef}
+                srcDoc={html}
+                title="Report Preview"
+              />
             )}
           </PreviewContainer>
         </PreviewLayout>
@@ -74,4 +111,5 @@ class ReportPreviewModal extends Component {
   }
 }
 
+export { ReportPreviewModal };
 export default ReportPreviewModal;

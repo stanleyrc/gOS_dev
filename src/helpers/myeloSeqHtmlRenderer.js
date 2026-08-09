@@ -86,33 +86,37 @@ function renderTable(title, columns, rows) {
 function buildSpecimenSection(report) {
   const patient = report?.patient || {};
   const metadata = report?.metadata || {};
+  const specimenType = reportHasField(report, "specimen_type", true)
+    ? firstValue(metadata.specimen_type, metadata.specimenType)
+    : "";
+  const clinicalHistory = firstValue(
+    reportHasField(report, "clinical_history", true)
+      ? firstValue(metadata.clinical_history, metadata.clinicalHistory)
+      : "",
+    reportHasField(report, "disease")
+      ? firstValue(patient.disease, metadata.disease)
+      : "",
+    reportHasField(report, "tumor_type")
+      ? firstValue(
+          patient.tumorType,
+          metadata.tumor_type,
+          metadata.tumorType,
+          metadata.tumor,
+        )
+      : "",
+    reportHasField(report, "tumor_details")
+      ? firstValue(
+          patient.tumorDetails,
+          metadata.tumor_details,
+          metadata.tumorDetails,
+        )
+      : "",
+  );
   const facts = [
     ["Tumor sample", patient.caseId],
-    ["Tumor Type", patient.tumorType, "tumor_type"],
-    [
-      "Tumor Details",
-      firstValue(patient.tumorDetails, metadata.tumor_details),
-      "tumor_details",
-    ],
-    ["Disease", firstValue(patient.disease, metadata.disease), "disease"],
-    ["Primary Site", patient.primarySite, "primary_site"],
-    [
-      "Specimen Type",
-      firstValue(metadata.specimen_type, metadata.specimenType),
-      "specimen_type",
-      true,
-    ],
-    [
-      "Clinical History",
-      firstValue(metadata.clinical_history, metadata.clinicalHistory),
-      "clinical_history",
-      true,
-    ],
-  ].filter(
-    ([, , field, allowWithoutExplicitSchema]) =>
-      !field ||
-      reportHasField(report, field, allowWithoutExplicitSchema),
-  );
+    ["Specimen Type", specimenType],
+    ["Clinical History", clinicalHistory],
+  ];
 
   return `${renderSectionBar("SPECIMEN")}
   <section class="specimen-facts">${facts
@@ -138,8 +142,12 @@ function buildSequenceTables(report) {
     { label: "Transcript", value: (finding) => finding.transcript },
   ];
   const fusionColumns = [
-    { label: "Gene", required: true, value: (finding) => finding.gene, className: "gene-cell" },
-    { label: "Variant", value: (finding) => finding.variant },
+    {
+      label: "Gene(Exon)",
+      required: true,
+      value: (finding) => firstValue(finding.variant, finding.gene),
+      className: "gene-cell",
+    },
     { label: "Tier", required: true, value: (finding) => finding.tier },
     { label: "Variant Type", required: true, value: (finding) => finding.type },
     { label: "Locus", value: (finding) => finding.locus },
@@ -147,77 +155,10 @@ function buildSequenceTables(report) {
 
   return [
     renderTable("DNA Sequencing results", sequenceColumns, sequenceFindings),
-    renderTable("Fusion results", fusionColumns, fusionFindings),
+    renderTable("Targeted RNA Sequencing results", fusionColumns, fusionFindings),
   ]
     .filter(Boolean)
     .join("");
-}
-
-function buildGosFindings(report) {
-  const patient = report?.patient || {};
-  const metadata = report?.metadata || {};
-  const coverage = metadata.coverage_qc || {};
-  const msi = patient.msisensor || {};
-  const hrd = metadata.hrd || {};
-  const findings = [
-    [
-      "Tumor Mutational Burden",
-      firstValue(patient.tmb, metadata.tmb?.score, metadata.tmb),
-      "tmb",
-    ],
-    [
-      "Microsatellite Status",
-      firstValue(msi.msi_status, metadata.msiLabel, metadata.msisensor?.label),
-      "msisensor.score",
-    ],
-    [
-      "MSIsensor Score",
-      firstValue(msi.score, metadata.msiScore, metadata.msisensor?.score),
-      "msisensor.score",
-    ],
-    [
-      "HRD B1+2 Score",
-      firstValue(hrd.b1_2_score, metadata.hrd_b1_2_score),
-      "hrd.b1_2_score",
-    ],
-    ["Purity", firstValue(coverage.purity, metadata.purity), "purity"],
-    ["Ploidy", firstValue(coverage.ploidy, metadata.ploidy), "ploidy"],
-    [
-      "Tumor Median Coverage",
-      firstValue(
-        coverage.tumor_median_coverage,
-        metadata.tumor_median_coverage,
-      ),
-      "tumor_median_coverage",
-    ],
-    [
-      "Normal Median Coverage",
-      firstValue(
-        coverage.normal_median_coverage,
-        metadata.normal_median_coverage,
-      ),
-      "tumor_median_coverage",
-    ],
-  ].filter(
-    ([, value, field]) => reportHasField(report, field) && hasValue(value),
-  );
-
-  const summary = firstValue(report?.summary, metadata.originalSummary);
-  if (!findings.length && !hasValue(summary)) return "";
-
-  const findingsTable = findings.length
-    ? `<table class="facts-table"><tbody>${findings
-        .map(
-          ([label, value]) =>
-            `<tr><th>${text(label)}</th><td>${text(formatNumber(value) || value)}</td></tr>`
-        )
-        .join("")}</tbody></table>`
-    : "";
-  const summaryBlock = hasValue(summary)
-    ? `<div class="summary-block"><strong>Genomic Findings:</strong><div>${text(summary)}</div></div>`
-    : "";
-
-  return `<section class="gos-findings"><h3>Additional gOS results</h3>${findingsTable}${summaryBlock}</section>`;
 }
 
 function renderInterpretationLine(label, value) {
@@ -225,28 +166,27 @@ function renderInterpretationLine(label, value) {
   return `<p><strong>${text(label)}:</strong> ${text(value)}</p>`;
 }
 
+function renderComments(finding) {
+  return `<p><strong>Comments:</strong> <span class="report-comment-value">${text(finding?.variant_summary)}</span></p>`;
+}
+
 function renderFinding(finding) {
   const fusion = isFusion(finding);
   const heading = fusion
-    ? renderInterpretationLine("Gene Fusion", finding.gene)
-    : renderInterpretationLine("Variant", [finding.gene, finding.variant].filter(hasValue).join(", "));
-  const details = [
-    fusion ? renderInterpretationLine("Variant", finding.variant) : "",
-    fusion ? renderInterpretationLine("Breakpoint", finding.locus) : "",
-    renderInterpretationLine("Variant Type", finding.type),
-    renderInterpretationLine("Role", finding.role),
-    renderInterpretationLine("Effect", finding.effect),
-    renderInterpretationLine("Comments", finding.effect_description),
-    renderInterpretationLine("Gene Summary", finding.gene_summary),
-    renderInterpretationLine("Variant Summary", finding.variant_summary),
-    renderInterpretationLine("Notes", finding.notes),
-    renderInterpretationLine("Therapeutics", (finding.therapeutics || []).join(", ")),
-    renderInterpretationLine("Resistances", (finding.resistances || []).join(", ")),
-  ]
-    .filter(Boolean)
-    .join("");
+    ? renderInterpretationLine(
+        "Gene Fusion",
+        firstValue(finding.variant, finding.gene),
+      )
+    : renderInterpretationLine(
+        "Variant",
+        [finding.gene, finding.variant].filter(hasValue).join(", "),
+      );
+  const breakpoint = fusion
+    ? renderInterpretationLine("Breakpoint", finding.locus)
+    : "";
+  const comments = renderComments(finding);
 
-  return `<article class="finding-interpretation">${heading}${details}</article>`;
+  return `<article class="finding-interpretation">${heading}${breakpoint}${comments}</article>`;
 }
 
 function buildTierInterpretations(report) {
@@ -263,11 +203,6 @@ function buildTierInterpretations(report) {
     })
     .filter(Boolean)
     .join("");
-}
-
-function buildNotesSection(report) {
-  if (!hasValue(report?.notes)) return "";
-  return `${renderSectionBar("NOTES")}<section class="notes-section">${text(report.notes)}</section>`;
 }
 
 function buildTierGuide() {
@@ -404,21 +339,29 @@ function getInlineCss() {
     }
     .result-table th { font-weight: 700; }
     .result-table .gene-cell { font-style: italic; }
-    .gos-findings { margin: 0 0 0.24in; }
-    .facts-table { width: auto; margin-top: 2px; }
-    .facts-table th,
-    .facts-table td {
-      border: 0.75pt solid #000;
-      padding: 2px 7px;
-      text-align: left;
-      font-size: 9.5pt;
-    }
-    .summary-block { margin-top: 0.12in; white-space: pre-wrap; }
     .tier-section { margin: 0 0 0.28in; }
     .finding-interpretation { margin: 0 0 0.24in; }
     .finding-interpretation p { margin: 0; white-space: pre-wrap; }
+    .report-comment-value {
+      display: inline-block;
+      min-width: 0.5em;
+      min-height: 1em;
+      vertical-align: top;
+      white-space: pre-wrap;
+    }
+    .report-comment-value[data-report-editing="true"] {
+      outline: 1px dashed #8c8c8c;
+      outline-offset: 1px;
+      cursor: text;
+    }
+    .report-comment-value[data-report-editing="true"]:focus {
+      outline: 2px solid #0563c1;
+    }
+    .report-comment-value[data-report-editing="true"]:empty::before {
+      color: #8c8c8c;
+      content: attr(aria-placeholder);
+    }
     .tier-guide { margin: 0.28in 0 0.12in; }
-    .notes-section { margin: -0.18in 0 0.25in; white-space: pre-wrap; }
     section > p { orphans: 3; widows: 3; }
     .gene-list { margin: 0.16in 0 0.04in; }
     .gene-list table { width: 62%; table-layout: fixed; }
@@ -457,18 +400,12 @@ function getInlineCss() {
   `.trim();
 }
 
-function serializeInterpretations(interpretations) {
-  if (!Array.isArray(interpretations) || interpretations.length === 0) return "";
-  const json = JSON.stringify(interpretations).replace(/</g, "\\u003c");
-  return `<script type="application/json" id="interpretations-data">${json}</script>`;
-}
-
 class MyeloSeqHtmlRenderer {
   async render(report, options = {}) {
     const patient = report?.patient || {};
     const caseId = hasValue(patient.caseId) ? String(patient.caseId) : "";
     const author = hasValue(report?.author) ? String(report.author) : "";
-    const results = `${buildSequenceTables(report)}${buildGosFindings(report)}${buildTierInterpretations(report)}`;
+    const results = `${buildSequenceTables(report)}${buildTierInterpretations(report)}`;
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -481,13 +418,11 @@ class MyeloSeqHtmlRenderer {
   <main class="report-document">
     ${buildSpecimenSection(report)}
     ${results ? `${renderSectionBar("RESULTS")}${results}` : ""}
-    ${buildNotesSection(report)}
     ${buildTierGuide()}
     ${buildBackground()}
     ${buildMethods()}
     ${buildDisclaimers()}
   </main>
-  ${serializeInterpretations(report?.interpretations)}
 </body>
 </html>`;
 

@@ -1,5 +1,11 @@
 import { createSelector } from "reselect";
 import { getCurrentUserId } from "../../helpers/userAuth";
+import {
+  createExactEventKey,
+  deduplicateGlobalImportedInterpretations,
+  getExactEventInterpretations,
+  getTierCountsForInterpretations,
+} from "../../helpers/interpretationHistory";
 
 export const getCurrentState = (state) => state;
 
@@ -16,7 +22,14 @@ export const getInterpretationForAlteration = (state, alterationId) => {
   const selected = state.Interpretations?.selected || {};
   const byId = state.Interpretations?.byId || {};
   const selectedKey = selected[alterationId];
-  return selectedKey ? byId[selectedKey] : null;
+  const interpretation = selectedKey ? byId[selectedKey] : null;
+  if (!interpretation) return null;
+
+  const caseMatches =
+    `${interpretation.caseId}` === `${state.CaseReport?.id}`;
+  const datasetMatches =
+    `${interpretation.datasetId}` === `${state.Settings?.dataset?.id}`;
+  return caseMatches && datasetMatches ? interpretation : null;
 };
 
 export const getAllInterpretationsForAlteration = (state, alterationId) => {
@@ -29,6 +42,50 @@ export const getAllInterpretationsForAlteration = (state, alterationId) => {
 export const getAllInterpretationsForGene = (state, gene) => {
   const byGene = state.Interpretations?.byGene || {};
   return Object.values(byGene[gene] || {});
+};
+
+export const getAllInterpretationsForEvent = (state, event) => {
+  const byGene = state.Interpretations?.byGene || {};
+  const normalizedGene = String(event?.gene || "").trim();
+  const geneInterpretations = Object.entries(byGene)
+    .filter(([gene]) => String(gene).trim() === normalizedGene)
+    .flatMap(([, interpretations]) => Object.values(interpretations || {}));
+  return getExactEventInterpretations(geneInterpretations, event);
+};
+
+export const getTierCountsForEvent = (state, event) =>
+  getTierCountsForInterpretations(getAllInterpretationsForEvent(state, event));
+
+const selectInterpretationsByGene = (state) =>
+  state.Interpretations?.byGene || {};
+
+export const getTierCountsByExactEventKey = createSelector(
+  [selectInterpretationsByGene],
+  (byGene) => {
+    const grouped = {};
+    Object.values(byGene).forEach((interpretations) => {
+      Object.values(interpretations || {}).forEach((interpretation) => {
+        const eventKey = createExactEventKey(interpretation);
+        if (!eventKey) return;
+        if (!grouped[eventKey]) grouped[eventKey] = [];
+        grouped[eventKey].push(interpretation);
+      });
+    });
+
+    return Object.fromEntries(
+      Object.entries(grouped).map(([eventKey, interpretations]) => [
+        eventKey,
+        getTierCountsForInterpretations(
+          deduplicateGlobalImportedInterpretations(interpretations),
+        ),
+      ]),
+    );
+  },
+);
+
+export const hasTierHistoryForEvent = (state, event) => {
+  const counts = getTierCountsForEvent(state, event);
+  return counts[1] + counts[2] + counts[3] > 0;
 };
 
 export const getGlobalNotesInterpretation = (state) => {

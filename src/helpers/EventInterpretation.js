@@ -10,9 +10,11 @@ class EventInterpretation {
     variant_type = null,
     authorId = null,
     authorName = null,
-    lastModified = null,
+    lastModified,
     data = {},
-    signature = null
+    signature = null,
+    frequency = null,
+    source = null
   } = {}) {
     this.caseId = caseId;
     this.datasetId = datasetId;
@@ -38,9 +40,22 @@ class EventInterpretation {
       this.authorName = authorName;
     }
     
-    this.lastModified = lastModified || new Date().toISOString();
+    this.lastModified = lastModified === undefined
+      ? new Date().toISOString()
+      : lastModified;
     this.data = data;
     this.signature = signature || null;
+
+    if (frequency !== null && frequency !== undefined) {
+      if (!Number.isInteger(frequency) || frequency <= 0) {
+        throw new Error('EventInterpretation frequency must be a positive integer');
+      }
+      this.frequency = frequency;
+    } else {
+      this.frequency = null;
+    }
+
+    this.source = source || null;
     this.hasTierChange = 'tier' in this.data;
   }
 
@@ -109,6 +124,14 @@ class EventInterpretation {
 
     if (this.signature) {
       result.signature = this.signature;
+    }
+
+    if (this.frequency !== null) {
+      result.frequency = this.frequency;
+    }
+
+    if (this.source) {
+      result.source = this.source;
     }
 
     return result;

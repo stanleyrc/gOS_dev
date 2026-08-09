@@ -24,6 +24,7 @@ import highlightsSagas from "./highlights/saga";
 import snvplicitySagas from "./snvplicity/saga";
 import cytobandsSagas from "./cytobands/saga";
 import interpretationsSagas from "./interpretations/saga";
+import caseInterpretationImportSagas from "./caseInterpretationImport/saga";
 
 export default function* rootSaga(getState) {
   yield all([
@@ -52,5 +53,6 @@ export default function* rootSaga(getState) {
     snvplicitySagas(),
     cytobandsSagas(),
     interpretationsSagas(),
+    caseInterpretationImportSagas(),
   ]);
 }

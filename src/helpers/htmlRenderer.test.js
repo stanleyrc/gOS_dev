@@ -23,10 +23,15 @@ describe("HtmlRenderer table of contents", () => {
       alterations: [
         { gene: "TP53", variant: "p.R175H", tier: "1" },
       ],
+      interpretations: [
+        { caseId: "CASE-001", data: { notes: "Legacy embedded value" } },
+      ],
     });
 
     expect(result.html).toContain("event.preventDefault()");
     expect(result.html).toContain("target.scrollIntoView");
     expect(result.html).toContain('closest(\'a[href^="#"]\')');
+    expect(result.html).not.toContain("interpretations-data");
+    expect(result.html).not.toContain("Legacy embedded value");
   });
 });

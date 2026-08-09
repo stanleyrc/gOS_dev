@@ -36,7 +36,7 @@ export default function ClassIconRenderer({ value }) {
       label: "Pathogenic",
     },
     na: {
-      icon: <BsQuestionCircle style={{ color: "#d9d9d9", fontSize: "24px" }} />,
+      icon: <BsQuestionCircle style={{ color: "#faad14", fontSize: "24px" }} />,
       label: "Not Available",
     },
   };

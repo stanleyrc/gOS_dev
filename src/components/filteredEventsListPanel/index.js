@@ -14,6 +14,7 @@ import {
   Segmented,
   Skeleton,
   Select,
+  Checkbox,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, transitionStyle } from "../../helpers/utility";
@@ -22,18 +23,24 @@ import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
-import { selectMergedEvents } from "../../redux/interpretations/selectors";
+import {
+  getTierCountsByExactEventKey,
+  selectMergedEvents,
+} from "../../redux/interpretations/selectors";
+import { createExactEventKey } from "../../helpers/interpretationHistory";
+import { selectReportEventUids } from "../../redux/filteredEvents/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
+import getDefaultVisibleFilteredEventsColumnKeys from "./defaultVisibleFilteredEventsColumns";
 import ResizableTitle, {
   clampColumnWidth,
   makeColumnsResizable,
 } from "./resizableTitle";
 
-const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
+const { selectFilteredEvent, setSelectedEventUids, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
 const EVENT_TYPES = ["all", "snv", "cna", "fusion", "complexsv"];
 
@@ -50,86 +57,108 @@ const getColumnTitle = (title) => {
   return "Column";
 };
 
-class FilteredEventsListPanel extends Component {
+export class FilteredEventsListPanel extends Component {
   handleResetFilters = () => {
-    const { additionalColumns, resetColumnFilters } = this.props;
-    const defaultColumnKeys = this.getDefaultColumnKeys();
-    const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const defaultKeys = [...new Set([...defaultColumnKeys, ...additionalKeys])];
+    const { resetColumnFilters } = this.props;
 
     resetColumnFilters();
     this.setState({
-      selectedColumnKeys: defaultKeys,
+      selectedColumnKeys: this.getDefaultColumnKeys(),
     });
   };
 
   handleCheckboxChange = (record, checked) => {
-    const { toggleEventUidSelection } = this.props;
-    toggleEventUidSelection(record.uid, checked);
+    if (record?.uid == null) return;
+
+    const { selectedEventUids, setSelectedEventUids } = this.props;
+    if (checked) {
+      setSelectedEventUids([
+        ...new Set([...selectedEventUids, record.uid]),
+      ]);
+      return;
+    }
+
+    setSelectedEventUids(
+      selectedEventUids.filter((uid) => uid !== record.uid)
+    );
+  };
+
+  getSelectableEventUids = (records) => [
+    ...new Set(
+      (records || [])
+        .filter((record) => record?.uid != null)
+        .map((record) => record.uid)
+    ),
+  ];
+
+  getRecordsMatchingColumnFilters = (records, columns) => {
+    const activeFilters = (columns || []).filter(
+      (column) =>
+        Array.isArray(column.filteredValue) &&
+        column.filteredValue.length > 0 &&
+        typeof column.onFilter === "function"
+    );
+
+    return (records || []).filter((record) =>
+      activeFilters.every((column) =>
+        column.filteredValue.some((value) => column.onFilter(value, record))
+      )
+    );
   };
 
   handleHeaderCheckboxChange = (records) => {
     const { selectedEventUids, setSelectedEventUids } = this.props;
-    
-    // Get all tier 1 and 2 records from current view
-    const tier1And2Records = records.filter(
-      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
-    );
-    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
-    
-    // Check current state
-    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+    const selectableUids = this.getSelectableEventUids(records);
+    if (selectableUids.length === 0) return;
+
+    const selectedUids = selectableUids.filter((uid) =>
       selectedEventUids.includes(uid)
     );
-    const allSelected = selectedTier1And2.length === tier1And2Uids.length && tier1And2Uids.length > 0;
-    
+    const allSelected =
+      selectedUids.length === selectableUids.length &&
+      selectableUids.length > 0;
+
     if (allSelected) {
-      // Deselect all tier 1 and 2
-      const newUids = selectedEventUids.filter(
-        (uid) => !tier1And2Uids.includes(uid)
+      setSelectedEventUids(
+        selectedEventUids.filter((uid) => !selectableUids.includes(uid))
       );
-      setSelectedEventUids(newUids);
-    } else {
-      // Select all tier 1 and 2
-      const newSelectedUids = [...new Set([...selectedEventUids, ...tier1And2Uids])];
-      setSelectedEventUids(newSelectedUids);
+      return;
     }
+
+    setSelectedEventUids([
+      ...new Set([...selectedEventUids, ...selectableUids]),
+    ]);
   };
 
   getHeaderCheckboxState = (records) => {
     const { selectedEventUids } = this.props;
-    
-    // Get all tier 1 and 2 records from current view
-    const tier1And2Records = records.filter(
-      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
-    );
-    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
-    
-    if (tier1And2Uids.length === 0) {
+    const selectableUids = this.getSelectableEventUids(records);
+
+    if (selectableUids.length === 0) {
       return { checked: false, indeterminate: false };
     }
-    
-    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+
+    const selectedUids = selectableUids.filter((uid) =>
       selectedEventUids.includes(uid)
     );
-    
-    if (selectedTier1And2.length === 0) {
+
+    if (selectedUids.length === 0) {
       return { checked: false, indeterminate: false };
-    } else if (selectedTier1And2.length === tier1And2Uids.length) {
-      return { checked: true, indeterminate: false };
-    } else {
-      return { checked: false, indeterminate: true };
     }
+    if (selectedUids.length === selectableUids.length) {
+      return { checked: true, indeterminate: false };
+    }
+    return { checked: false, indeterminate: true };
   };
 
   isEventSelected = (record) => {
+    if (record?.uid == null) return false;
+
     const { selectedEventUids } = this.props;
     return selectedEventUids.includes(record.uid);
   };
   state = {
     eventType: "all",
-    tierCountsMap: {},
-    geneVariantsWithTierChanges: null,
     selectedColumnKeys: [],
     sortState: {
       columnKey: null,
@@ -138,11 +167,8 @@ class FilteredEventsListPanel extends Component {
     columnWidths: {},
   };
 
-  // Track if a fetch is in progress to prevent concurrent calls
-  _isFetchingTierCounts = false;
-
-  getDefaultColumnKeys = () => {
-    const { data: settingsData, dataset } = this.props;
+  getDefaultColumnKeys = (props = this.props) => {
+    const { additionalColumns, data: settingsData, dataset } = props;
 
     // Get columns from settings.json
     const settingsColumns = settingsData?.filteredEventsColumns || [];
@@ -165,7 +191,39 @@ class FilteredEventsListPanel extends Component {
     const mergedColumnIds = [
       ...new Set([...settingsColumnIds, ...datasetColumnIds]),
     ];
-    return mergedColumnIds;
+    const additionalColumnIds = (additionalColumns || []).map(
+      (column) => column.key,
+    );
+
+    return getDefaultVisibleFilteredEventsColumnKeys(
+      mergedColumnIds,
+      dataset?.defaultVisibleFilteredEventsColumns,
+      additionalColumnIds,
+    );
+  };
+
+  getColumnConfigurationSignature = (props = this.props) => {
+    const settingsColumnIds = (props.data?.filteredEventsColumns || [])
+      .map((column) => column?.id)
+      .filter(Boolean);
+    const datasetColumnIds = (props.dataset?.optionalFilteredEventsColumns || [])
+      .map((column) => column?.id)
+      .filter(Boolean);
+    const defaultVisibleColumnIds = Array.isArray(
+      props.dataset?.defaultVisibleFilteredEventsColumns,
+    )
+      ? props.dataset.defaultVisibleFilteredEventsColumns
+      : null;
+    const additionalColumnIds = (props.additionalColumns || [])
+      .map((column) => column?.key)
+      .filter(Boolean);
+
+    return JSON.stringify([
+      settingsColumnIds,
+      datasetColumnIds,
+      defaultVisibleColumnIds,
+      additionalColumnIds,
+    ]);
   };
 
   handleCloseReportModal = async () => {
@@ -204,34 +262,20 @@ class FilteredEventsListPanel extends Component {
   };
 
   componentDidMount() {
-    this.fetchTierCountsForRecords();
     this.initializeSelectedColumns();
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps) {
     if (
-      prevProps.filteredEvents !== this.props.filteredEvents ||
-      prevState.eventType !== this.state.eventType
-    ) {
-      this.fetchTierCountsForRecords();
-    }
-    if (
-      prevProps.additionalColumns !== this.props.additionalColumns ||
-      prevProps.data !== this.props.data ||
-      prevProps.dataset !== this.props.dataset
+      this.getColumnConfigurationSignature(prevProps) !==
+      this.getColumnConfigurationSignature(this.props)
     ) {
       this.initializeSelectedColumns();
     }
   }
 
   initializeSelectedColumns = () => {
-    const { additionalColumns } = this.props;
-    const defaultColumnKeys = this.getDefaultColumnKeys();
-    const additionalKeys = (additionalColumns || []).map((col) => col.key);
-    const selectedKeys = [
-      ...new Set([...defaultColumnKeys, ...additionalKeys]),
-    ];
-    this.setState({ selectedColumnKeys: selectedKeys });
+    this.setState({ selectedColumnKeys: this.getDefaultColumnKeys() });
   };
 
   handleColumnResize = (columnKey) => (_, { size }) => {
@@ -262,109 +306,14 @@ class FilteredEventsListPanel extends Component {
     this.setState({ sortState });
   };
 
-  fetchTierCountsForRecords = async () => {
-    // Prevent concurrent fetches
-    if (this._isFetchingTierCounts) {
-      return;
-    }
-
-    const { filteredEvents, dataset } = this.props;
-    const { eventType } = this.state;
-
-    // Guard: don't fetch if no events or no dataset
-    if (!filteredEvents || filteredEvents.length === 0 || !dataset) {
-      return;
-    }
-
-    let recordsHash = d3.group(
-      filteredEvents.filter(
-        (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
-      ),
-      (d) => d.eventType
-    );
-    let records =
-      (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
-
-    // Guard: don't fetch if no records after filtering
-    if (records.length === 0) {
-      return;
-    }
-
-    this._isFetchingTierCounts = true;
-
-    try {
-      const { getActiveRepository } = await import("../../services/repositories");
-      const repository = getActiveRepository({ dataset });
-
-      // OPTIMIZATION: First get gene-variants that have tier changes
-      const geneVariantsWithTiers = await repository.getGeneVariantsWithTierChanges();
-
-      // If no gene-variants have tier changes, nothing to fetch
-      if (geneVariantsWithTiers.size === 0) {
-        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
-        return;
-      }
-
-      const map = {};
-
-      // Deduplicate AND filter to only gene-variants with tier changes
-      const uniqueKeys = new Set();
-      const uniqueRecords = records.filter((record) => {
-        if (!record.gene || !record.type) return false;
-        const key = `${record.gene}-${record.type}`;
-        if (uniqueKeys.has(key)) return false;
-        // NEW: Only include if this gene-variant has tier changes
-        if (!geneVariantsWithTiers.has(key)) return false;
-        uniqueKeys.add(key);
-        return true;
-      });
-
-      // Guard: nothing to fetch after filtering
-      if (uniqueRecords.length === 0) {
-        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
-        return;
-      }
-
-      console.log(`Fetching tier counts for ${uniqueRecords.length} gene-variants (filtered from ${records.length} records)`);
-
-      // Process in batches to avoid overwhelming IndexedDB/network
-      const BATCH_SIZE = 5;
-
-      for (let i = 0; i < uniqueRecords.length; i += BATCH_SIZE) {
-        const batch = uniqueRecords.slice(i, i + BATCH_SIZE);
-        const batchPromises = batch.map(async (record) => {
-          const key = `${record.gene}-${record.type}`;
-          try {
-            const counts = await repository.getTierCountsByGeneVariantType(
-              record.gene,
-              record.type
-            );
-            map[key] = counts;
-          } catch (error) {
-            // Silently handle errors - tier counts are non-critical
-            map[key] = { 1: 0, 2: 0, 3: 0 };
-          }
-        });
-        await Promise.all(batchPromises);
-      }
-
-      this.setState({ tierCountsMap: map, geneVariantsWithTierChanges: geneVariantsWithTiers });
-    } finally {
-      this._isFetchingTierCounts = false;
-    }
-  };
-
   getTierTooltipContent = (record) => {
-    const key = `${record.gene}-${record.type}`;
-    const { tierCountsMap, geneVariantsWithTierChanges } = this.state;
-    
-    // Check if this gene-variant has no tier changes
-    if (geneVariantsWithTierChanges && !geneVariantsWithTierChanges.has(key)) {
-      return "No tier change";
+    const { interpretationsStatus, tierCountsByEvent = {} } = this.props;
+    if (interpretationsStatus === "pending") {
+      return "Loading tier distribution...";
     }
-    
-    const tierCounts = tierCountsMap[key];
-    if (!tierCounts) return "Loading tier distribution...";
+
+    const eventKey = createExactEventKey(record);
+    const tierCounts = tierCountsByEvent[eventKey] || { 1: 0, 2: 0, 3: 0 };
     const total =
       (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
     if (total === 0) {
@@ -382,6 +331,7 @@ class FilteredEventsListPanel extends Component {
         originalTier={originalTier}
         gene={record.gene}
         variantType={record.type}
+        variant={record.variant}
       />
     );
   };
@@ -424,12 +374,7 @@ class FilteredEventsListPanel extends Component {
       columnWidths,
     } = this.state;
 
-    let recordsHash = d3.group(
-      filteredEvents.filter(
-        (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
-      ),
-      (d) => d.eventType
-    );
+    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
@@ -458,13 +403,46 @@ class FilteredEventsListPanel extends Component {
       };
     });
 
-    const visibleColumns = makeColumnsResizable(
-      [...(additionalColumns || []), ...columnsWithSortState].filter((col) =>
-        selectedColumnKeys.includes(col.key)
+    const selectedDataColumns = [
+      ...(additionalColumns || []),
+      ...columnsWithSortState,
+    ].filter((column) => selectedColumnKeys.includes(column.key));
+    const filteredRecords = this.getRecordsMatchingColumnFilters(
+      records,
+      selectedDataColumns
+    );
+    const headerCheckboxState = this.getHeaderCheckboxState(filteredRecords);
+    const checkboxColumn = {
+      title: (
+        <Checkbox
+          checked={headerCheckboxState.checked}
+          disabled={this.getSelectableEventUids(filteredRecords).length === 0}
+          indeterminate={headerCheckboxState.indeterminate}
+          onChange={() => this.handleHeaderCheckboxChange(filteredRecords)}
+        >
+          {t("components.filtered-events-panel.add-to-report")}
+        </Checkbox>
       ),
+      key: "select",
+      width: 150,
+      fixed: "left",
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={this.isEventSelected(record)}
+          disabled={record?.uid == null}
+          onChange={(event) =>
+            this.handleCheckboxChange(record, event.target.checked)
+          }
+        />
+      ),
+    };
+    const resizableColumns = makeColumnsResizable(
+      selectedDataColumns,
       columnWidths,
       this.handleColumnResize
     );
+    const visibleColumns = [checkboxColumn, ...resizableColumns];
     const tableScrollWidth = visibleColumns.reduce(
       (total, column) => total + (Number(column.width) || 0),
       0
@@ -754,8 +732,6 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   setSelectedEventUids: (uids) =>
     dispatch(setSelectedEventUids(uids)),
-  toggleEventUidSelection: (uid, selected) =>
-    dispatch(toggleEventUidSelection(uid, selected)),
   setColumnFilters: (columnFilters) =>
     dispatch(setColumnFilters(columnFilters)),
   resetColumnFilters: () =>
@@ -765,13 +741,14 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
+  const tierCountsByEvent = getTierCountsByExactEventKey(state);
 
   return {
     loading: state.FilteredEvents.loading,
     filteredEvents: mergedEvents.filteredEvents,
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
-    selectedEventUids: state.FilteredEvents.selectedEventUids || [],
+    selectedEventUids: selectReportEventUids(state),
     columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2] },
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
@@ -789,7 +766,8 @@ const mapStateToProps = (state) => {
     genes: state.Genes,
     igv: state.Igv,
     CaseReport: state.CaseReport,
-    Interpretations: state.Interpretations,
+    interpretationsStatus: state.Interpretations?.status,
+    tierCountsByEvent,
     dataset: state?.Settings?.dataset,
     data: state?.Settings?.data,
   };

@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Tooltip, Typography } from "antd";
 import { BsDashLg } from "react-icons/bs";
 import InterpretationsAvatar from "../../interpretationsAvatar";
-import { getAllInterpretationsForAlteration } from "../../../redux/interpretations/selectors";
+import { getAllInterpretationsForEvent } from "../../../redux/interpretations/selectors";
 import { store } from "../../../redux/store";
 
 const { Text } = Typography;
@@ -25,10 +25,9 @@ export default function GeneRenderer({ value, record, selectFilteredEvent }) {
     );
   }
 
-  const alterationId = record.uid;
-  const count = getAllInterpretationsForAlteration(
+  const count = getAllInterpretationsForEvent(
     store.getState(),
-    alterationId
+    record,
   ).length;
 
   return (

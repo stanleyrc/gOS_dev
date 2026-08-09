@@ -1,0 +1,5 @@
+pair	match_key	match_key_readable	variant_key	variant_key_readable	onco_vkey	onco_vkey_kind	onco_variant_p	onco_fusion_genes	match_confidence	gene	hgvsc	myeloseq_tier	user	tier	freq
+ACTN01020001T	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C|p.Asp760Ala	1 3329040 A C	vcf_coord	p.Asp760Ala		exact	PRDM16	c.2279A>C	3	mock-reviewer-a	3	5
+ACTN01020001T	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C|p.Asp760Ala	1 3329040 A C	vcf_coord	p.Asp760Ala		exact	PRDM16	c.2279A>C	3	mock-reviewer-a	2	1
+ACTN01020001T	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C|p.Asp760Ala	1 3329040 A C	vcf_coord	p.Asp760Ala		exact	PRDM16	c.2279A>C	3	mock-reviewer-b	3	2
+ACTN01020001T	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C	PRDM16 mock c.2279A>C	PRDM16|c.2279A>C|p.Asp760Ala	1 3329040 A C	vcf_coord	p.Asp760Ala		exact	PRDM16	c.2279A>C	3	""	1	1

@@ -21,13 +21,16 @@ const actions = {
     type: actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST,
     caseId,
   }),
-  updateInterpretation: (interpretation) => ({
+  updateInterpretation: (interpretation, completion) => ({
     type: actions.UPDATE_INTERPRETATION_REQUEST,
     interpretation,
+    ...(typeof completion === "function" ? { completion } : {}),
   }),
-  clearCaseInterpretations: (caseId) => ({
+  clearCaseInterpretations: (caseId, completion, dataset) => ({
     type: actions.CLEAR_CASE_INTERPRETATIONS_REQUEST,
     caseId,
+    ...(typeof completion === "function" ? { completion } : {}),
+    ...(dataset ? { dataset } : {}),
   }),
   updateAuthorName: (authorId, newAuthorName) => ({
     type: actions.UPDATE_AUTHOR_NAME_REQUEST,
