@@ -7,9 +7,10 @@ import { datasetHasField } from './browseScope';
  * Builds a report structure from Redux state with merged interpretations
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations from selectMergedEvents selector
+ * @param {Array} selectedEventUids - Canonical event UIDs to include in the report
  * @returns {Object} Report structure suitable for the report renderers
  */
-function buildReportFromMergedState(state, mergedEvents) {
+function buildReportFromMergedState(state, mergedEvents, selectedEventUids = []) {
   const ce = state?.CaseReport || {};
   const m = ce?.metadata || {};
   const dataset = state?.Settings?.dataset || state?.dataset || null;
@@ -51,8 +52,11 @@ function buildReportFromMergedState(state, mergedEvents) {
   // Use merged events which already have interpretations applied
   const alterationsRaw = Array.isArray(mergedEvents?.filteredEvents) ? mergedEvents.filteredEvents : [];
   const alterationsMapped = alterationsRaw.map(mapEvent);
+  const selectedUids = new Set(
+    Array.isArray(selectedEventUids) ? selectedEventUids : []
+  );
   const alterations = alterationsMapped.filter(
-    (alteration) => alteration.tier === '1' || alteration.tier === '2'
+    (alteration) => alteration.uid != null && selectedUids.has(alteration.uid)
   );
 
   // Get global notes from interpretations
@@ -145,9 +149,9 @@ function buildTherapiesFromAlterations(alterations) {
     .filter(v => v.variant.therapies.length || v.variant.resistances.length);
 }
 
-function buildAuthoredReport(state, mergedEvents, user) {
+function buildAuthoredReport(state, mergedEvents, user, selectedEventUids = []) {
   return {
-    ...buildReportFromMergedState(state, mergedEvents),
+    ...buildReportFromMergedState(state, mergedEvents, selectedEventUids),
     author: user ? user.displayName : "Unknown Author",
   };
 }
@@ -156,11 +160,17 @@ function buildAuthoredReport(state, mergedEvents, user) {
  * Generates the HTML report without downloading
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations
+ * @param {Array} selectedEventUids - Canonical event UIDs to include
  * @returns {Promise<string>} The generated HTML string
  */
-export async function previewReport(state, mergedEvents) {
+export async function previewReport(state, mergedEvents, selectedEventUids = []) {
   try {
-    const report = buildAuthoredReport(state, mergedEvents, getUser());
+    const report = buildAuthoredReport(
+      state,
+      mergedEvents,
+      getUser(),
+      selectedEventUids,
+    );
     const renderer = new MyeloSeqHtmlRenderer();
     const result = await renderer.render(report);
 
@@ -175,14 +185,20 @@ export async function previewReport(state, mergedEvents) {
  * Exports the clinical report as a semantic DOCX file.
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations
+ * @param {Array} selectedEventUids - Canonical event UIDs to include
  * @returns {Promise<Object>} DOCX renderer result
  */
-export async function exportReport(state, mergedEvents) {
+export async function exportReport(state, mergedEvents, selectedEventUids = []) {
   let anchor = null;
   let url = null;
 
   try {
-    const report = buildAuthoredReport(state, mergedEvents, getUser());
+    const report = buildAuthoredReport(
+      state,
+      mergedEvents,
+      getUser(),
+      selectedEventUids,
+    );
     const renderer = new MyeloSeqDocxRenderer();
     const result = await renderer.render(report);
     url = URL.createObjectURL(result.blob);

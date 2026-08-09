@@ -108,10 +108,10 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<strong>Breakpoint:</strong> chr22:23632600::chr9:133729451",
     );
     expect(result.html).toContain(
-      '<strong>Comments:</strong> <span class="report-comment-value" data-editable-comment="true" data-alteration-id="finding-jak2">JAK2 variant summary</span>',
+      '<strong>Comments:</strong> <span class="report-comment-value">JAK2 variant summary</span>',
     );
     expect(result.html).toContain(
-      '<strong>Comments:</strong> <span class="report-comment-value" data-editable-comment="true" data-alteration-id="finding-bcr-abl1">BCR::ABL1 variant summary</span>',
+      '<strong>Comments:</strong> <span class="report-comment-value">BCR::ABL1 variant summary</span>',
     );
     expect(result.html).not.toContain("contenteditable");
     expect(result.html).not.toContain("JAK2 effect description");
@@ -195,7 +195,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("N/A");
   });
 
-  it("marks an empty summary editable only when it has a canonical uid", async () => {
+  it("renders an empty summary without report editing metadata", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       patient: { caseId: "CASE-EMPTY-COMMENT" },
       alterations: [
@@ -211,12 +211,12 @@ describe("MyeloSeqHtmlRenderer", () => {
     });
 
     expect(result.html).toContain(
-      '<strong>Comments:</strong> <span class="report-comment-value" data-editable-comment="true" data-alteration-id="finding-&quot;quoted&quot;"></span>',
+      '<strong>Comments:</strong> <span class="report-comment-value"></span>',
     );
     expect(result.html).not.toContain("contenteditable");
   });
 
-  it("leaves uid-less comments noneditable", async () => {
+  it("renders comments without report editing metadata", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       patient: { caseId: "CASE-NO-UID" },
       alterations: [

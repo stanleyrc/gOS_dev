@@ -76,7 +76,7 @@ describe("reportExporter", () => {
     global.URL = originalUrl;
   });
 
-  it("automatically includes all merged Tier 1 and Tier 2 events", async () => {
+  it("includes only events selected by canonical uid", async () => {
     const mergedEvents = {
       filteredEvents: [
         { uid: "tier-1", gene: "TP53", variant: "p.R175H", tier: 1 },
@@ -86,26 +86,37 @@ describe("reportExporter", () => {
       ],
     };
 
-    await previewReport(state, mergedEvents);
+    await previewReport(state, mergedEvents, ["tier-2", "tier-3"]);
 
     const report = mockHtmlRender.mock.calls[0][0];
     expect(report.alterations.map(({ uid }) => uid)).toEqual([
-      "tier-1",
       "tier-2",
+      "tier-3",
     ]);
   });
 
-  it("does not promote a noncanonical event id to an editable uid", async () => {
+  it("leaves report alterations empty when no events are selected", async () => {
     await previewReport(state, {
       filteredEvents: [
-        { id: "fallback-id", gene: "TP53", variant: "p.R175H", tier: 1 },
+        { uid: "tier-1", gene: "TP53", variant: "p.R175H", tier: 1 },
       ],
     });
 
-    expect(mockHtmlRender.mock.calls[0][0].alterations[0]).toMatchObject({
-      uid: undefined,
-      gene: "TP53",
-    });
+    expect(mockHtmlRender.mock.calls[0][0].alterations).toEqual([]);
+  });
+
+  it("does not promote a noncanonical event id to a selected uid", async () => {
+    await previewReport(
+      state,
+      {
+        filteredEvents: [
+          { id: "fallback-id", gene: "TP53", variant: "p.R175H", tier: 1 },
+        ],
+      },
+      ["fallback-id"],
+    );
+
+    expect(mockHtmlRender.mock.calls[0][0].alterations).toEqual([]);
   });
 
   it("maps available filtered-event report fields without inventing values", async () => {
@@ -129,7 +140,7 @@ describe("reportExporter", () => {
       ],
     };
 
-    await previewReport(state, mergedEvents);
+    await previewReport(state, mergedEvents, ["tier-1"]);
 
     expect(mockHtmlRender.mock.calls[0][0].alterations[0]).toMatchObject({
       type: "SNV",
@@ -228,7 +239,7 @@ describe("reportExporter", () => {
       ],
     };
 
-    const result = await exportReport(state, mergedEvents);
+    const result = await exportReport(state, mergedEvents, ["tier-1"]);
 
     expect(mockDocxRender).toHaveBeenCalledTimes(1);
     expect(mockHtmlRender).not.toHaveBeenCalled();

@@ -167,10 +167,7 @@ function renderInterpretationLine(label, value) {
 }
 
 function renderComments(finding) {
-  const editableAttributes = hasValue(finding?.uid)
-    ? ` data-editable-comment="true" data-alteration-id="${text(finding.uid)}"`
-    : "";
-  return `<p><strong>Comments:</strong> <span class="report-comment-value"${editableAttributes}>${text(finding?.variant_summary)}</span></p>`;
+  return `<p><strong>Comments:</strong> <span class="report-comment-value">${text(finding?.variant_summary)}</span></p>`;
 }
 
 function renderFinding(finding) {

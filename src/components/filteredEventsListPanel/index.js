@@ -14,6 +14,7 @@ import {
   Segmented,
   Skeleton,
   Select,
+  Checkbox,
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, transitionStyle } from "../../helpers/utility";
@@ -23,6 +24,7 @@ import { CgArrowsBreakeH } from "react-icons/cg";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
+import { selectReportEventUids } from "../../redux/filteredEvents/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
@@ -34,7 +36,7 @@ import ResizableTitle, {
   makeColumnsResizable,
 } from "./resizableTitle";
 
-const { selectFilteredEvent, setSelectedEventUids, toggleEventUidSelection, setColumnFilters, resetColumnFilters } = filteredEventsActions;
+const { selectFilteredEvent, setSelectedEventUids, setColumnFilters, resetColumnFilters } = filteredEventsActions;
 
 const EVENT_TYPES = ["all", "snv", "cna", "fusion", "complexsv"];
 
@@ -62,65 +64,92 @@ export class FilteredEventsListPanel extends Component {
   };
 
   handleCheckboxChange = (record, checked) => {
-    const { toggleEventUidSelection } = this.props;
-    toggleEventUidSelection(record.uid, checked);
+    if (record?.uid == null) return;
+
+    const { selectedEventUids, setSelectedEventUids } = this.props;
+    if (checked) {
+      setSelectedEventUids([
+        ...new Set([...selectedEventUids, record.uid]),
+      ]);
+      return;
+    }
+
+    setSelectedEventUids(
+      selectedEventUids.filter((uid) => uid !== record.uid)
+    );
+  };
+
+  getSelectableEventUids = (records) => [
+    ...new Set(
+      (records || [])
+        .filter((record) => record?.uid != null)
+        .map((record) => record.uid)
+    ),
+  ];
+
+  getRecordsMatchingColumnFilters = (records, columns) => {
+    const activeFilters = (columns || []).filter(
+      (column) =>
+        Array.isArray(column.filteredValue) &&
+        column.filteredValue.length > 0 &&
+        typeof column.onFilter === "function"
+    );
+
+    return (records || []).filter((record) =>
+      activeFilters.every((column) =>
+        column.filteredValue.some((value) => column.onFilter(value, record))
+      )
+    );
   };
 
   handleHeaderCheckboxChange = (records) => {
     const { selectedEventUids, setSelectedEventUids } = this.props;
-    
-    // Get all tier 1 and 2 records from current view
-    const tier1And2Records = records.filter(
-      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
-    );
-    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
-    
-    // Check current state
-    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+    const selectableUids = this.getSelectableEventUids(records);
+    if (selectableUids.length === 0) return;
+
+    const selectedUids = selectableUids.filter((uid) =>
       selectedEventUids.includes(uid)
     );
-    const allSelected = selectedTier1And2.length === tier1And2Uids.length && tier1And2Uids.length > 0;
-    
+    const allSelected =
+      selectedUids.length === selectableUids.length &&
+      selectableUids.length > 0;
+
     if (allSelected) {
-      // Deselect all tier 1 and 2
-      const newUids = selectedEventUids.filter(
-        (uid) => !tier1And2Uids.includes(uid)
+      setSelectedEventUids(
+        selectedEventUids.filter((uid) => !selectableUids.includes(uid))
       );
-      setSelectedEventUids(newUids);
-    } else {
-      // Select all tier 1 and 2
-      const newSelectedUids = [...new Set([...selectedEventUids, ...tier1And2Uids])];
-      setSelectedEventUids(newSelectedUids);
+      return;
     }
+
+    setSelectedEventUids([
+      ...new Set([...selectedEventUids, ...selectableUids]),
+    ]);
   };
 
   getHeaderCheckboxState = (records) => {
     const { selectedEventUids } = this.props;
-    
-    // Get all tier 1 and 2 records from current view
-    const tier1And2Records = records.filter(
-      (r) => r.tier && (+r.tier === 1 || +r.tier === 2)
-    );
-    const tier1And2Uids = tier1And2Records.map((r) => r.uid);
-    
-    if (tier1And2Uids.length === 0) {
+    const selectableUids = this.getSelectableEventUids(records);
+
+    if (selectableUids.length === 0) {
       return { checked: false, indeterminate: false };
     }
-    
-    const selectedTier1And2 = tier1And2Uids.filter((uid) =>
+
+    const selectedUids = selectableUids.filter((uid) =>
       selectedEventUids.includes(uid)
     );
-    
-    if (selectedTier1And2.length === 0) {
+
+    if (selectedUids.length === 0) {
       return { checked: false, indeterminate: false };
-    } else if (selectedTier1And2.length === tier1And2Uids.length) {
-      return { checked: true, indeterminate: false };
-    } else {
-      return { checked: false, indeterminate: true };
     }
+    if (selectedUids.length === selectableUids.length) {
+      return { checked: true, indeterminate: false };
+    }
+    return { checked: false, indeterminate: true };
   };
 
   isEventSelected = (record) => {
+    if (record?.uid == null) return false;
+
     const { selectedEventUids } = this.props;
     return selectedEventUids.includes(record.uid);
   };
@@ -299,12 +328,7 @@ export class FilteredEventsListPanel extends Component {
       return;
     }
 
-    let recordsHash = d3.group(
-      filteredEvents.filter(
-        (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
-      ),
-      (d) => d.eventType
-    );
+    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
@@ -447,12 +471,7 @@ export class FilteredEventsListPanel extends Component {
       columnWidths,
     } = this.state;
 
-    let recordsHash = d3.group(
-      filteredEvents.filter(
-        (d) => (d.tier && +d.tier < 3) || d.eventType === "complexsv"
-      ),
-      (d) => d.eventType
-    );
+    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
 
@@ -481,13 +500,46 @@ export class FilteredEventsListPanel extends Component {
       };
     });
 
-    const visibleColumns = makeColumnsResizable(
-      [...(additionalColumns || []), ...columnsWithSortState].filter((col) =>
-        selectedColumnKeys.includes(col.key)
+    const selectedDataColumns = [
+      ...(additionalColumns || []),
+      ...columnsWithSortState,
+    ].filter((column) => selectedColumnKeys.includes(column.key));
+    const filteredRecords = this.getRecordsMatchingColumnFilters(
+      records,
+      selectedDataColumns
+    );
+    const headerCheckboxState = this.getHeaderCheckboxState(filteredRecords);
+    const checkboxColumn = {
+      title: (
+        <Checkbox
+          checked={headerCheckboxState.checked}
+          disabled={this.getSelectableEventUids(filteredRecords).length === 0}
+          indeterminate={headerCheckboxState.indeterminate}
+          onChange={() => this.handleHeaderCheckboxChange(filteredRecords)}
+        >
+          {t("components.filtered-events-panel.add-to-report")}
+        </Checkbox>
       ),
+      key: "select",
+      width: 150,
+      fixed: "left",
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={this.isEventSelected(record)}
+          disabled={record?.uid == null}
+          onChange={(event) =>
+            this.handleCheckboxChange(record, event.target.checked)
+          }
+        />
+      ),
+    };
+    const resizableColumns = makeColumnsResizable(
+      selectedDataColumns,
       columnWidths,
       this.handleColumnResize
     );
+    const visibleColumns = [checkboxColumn, ...resizableColumns];
     const tableScrollWidth = visibleColumns.reduce(
       (total, column) => total + (Number(column.width) || 0),
       0
@@ -777,8 +829,6 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch(selectFilteredEvent(filteredEvent, viewMode)),
   setSelectedEventUids: (uids) =>
     dispatch(setSelectedEventUids(uids)),
-  toggleEventUidSelection: (uid, selected) =>
-    dispatch(toggleEventUidSelection(uid, selected)),
   setColumnFilters: (columnFilters) =>
     dispatch(setColumnFilters(columnFilters)),
   resetColumnFilters: () =>
@@ -794,7 +844,7 @@ const mapStateToProps = (state) => {
     filteredEvents: mergedEvents.filteredEvents,
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
-    selectedEventUids: state.FilteredEvents.selectedEventUids || [],
+    selectedEventUids: selectReportEventUids(state),
     columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2] },
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,

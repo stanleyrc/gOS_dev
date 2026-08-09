@@ -626,6 +626,7 @@
     "filtered-events-panel": {
       "select-columns": "Select Columns",
       "reset-filters": "Reset All Filters",
+      "add-to-report": "Add To Report",
       "export": {
         "notes": "Export Report",
         "error": "Error exporting notes",
