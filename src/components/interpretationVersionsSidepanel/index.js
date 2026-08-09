@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { Input, Table, Drawer } from "antd";
 import { withTranslation } from 'react-i18next';
 import { getInterpretationSourceDatasetId } from '../../helpers/interpretationHistory';
+import orderInterpretationVersionColumns from './columnOrder';
 
 const defaultFilterFunction = (searchTerm, data) => {
   if (!searchTerm) return data;
@@ -33,7 +34,7 @@ class InterpretationVersionsSidepanel extends Component {
 
     const filteredData = filterFunction(searchTerm, tableData);
 
-    const tableColumns = [
+    const tableColumns = orderInterpretationVersionColumns([
       {
         title: () => <span style={{ whiteSpace: 'nowrap' }}>{this.props.t('components.interpretationVersionsSidepanel.authorColumn')}</span>,
         dataIndex: 'authorName',
@@ -73,7 +74,7 @@ class InterpretationVersionsSidepanel extends Component {
         ...col,
         title: typeof col.title === 'string' ? () => <span style={{ whiteSpace: 'nowrap' }}>{col.title}</span> : col.title,
       })),
-    ];
+    ]);
 
     return (
       <Drawer
