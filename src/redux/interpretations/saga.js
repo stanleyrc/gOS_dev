@@ -13,6 +13,11 @@ import actions from "./actions";
 import filteredEventsActions from "../filteredEvents/actions";
 import { getCurrentUserId, getUser } from "../../helpers/userAuth";
 import { signInterpretation } from "../../services/signatures/SignatureService";
+import { isCaseInterpretationImport } from "../../helpers/interpretationHistory";
+
+const isActiveCaseDataset = (state, caseId, datasetId) =>
+  `${state.CaseReport?.id}` === `${caseId}` &&
+  `${state.Settings?.dataset?.id}` === `${datasetId}`;
 
 const getAcceptedCaseIds = (
   state,
@@ -39,8 +44,9 @@ const getAcceptedCaseIds = (
   return new Set([caseId, ...(legacyPairIsSafe ? [legacyPair] : [])]);
 };
 
-function* fetchInterpretationsForCase(action) {
+export function* fetchInterpretationsForCase(action) {
   const { caseId } = action;
+  let datasetId;
 
   try {
     if (!caseId) {
@@ -55,7 +61,7 @@ function* fetchInterpretationsForCase(action) {
 
     const state = yield select();
     const dataset = state.Settings?.dataset;
-    const datasetId = dataset?.id;
+    datasetId = dataset?.id;
     const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
     const repository = getActiveRepository({ dataset });
     const allInterpretations = yield call([repository, repository.getAll]);
@@ -79,7 +85,12 @@ function* fetchInterpretationsForCase(action) {
       const key = `${json.alterationId}___${authorId}___${caseId}`;
       const priority = `${json.caseId}` === `${caseId}` ? 2 : 1;
       if ((priorities[key] || 0) > priority) continue;
-      const isCurrentUser = !currentUserId || authorId === currentUserId || authorId === "currentUser";
+      const isImported = isCaseInterpretationImport(json);
+      const isCurrentUser = !isImported && (
+        !currentUserId ||
+        authorId === currentUserId ||
+        authorId === "currentUser"
+      );
       
       priorities[key] = priority;
       byId[key] = {
@@ -89,10 +100,17 @@ function* fetchInterpretationsForCase(action) {
         isCurrentUser,
       };
       
-      if (currentUserId && (authorId === currentUserId || authorId === "currentUser")) {
+      if (
+        !isImported &&
+        currentUserId &&
+        (authorId === currentUserId || authorId === "currentUser")
+      ) {
         selected[json.alterationId] = key;
       }
     }
+
+    const latestState = yield select();
+    if (!isActiveCaseDataset(latestState, caseId, datasetId)) return;
 
     yield put({
       type: actions.FETCH_INTERPRETATIONS_FOR_CASE_SUCCESS,
@@ -102,10 +120,13 @@ function* fetchInterpretationsForCase(action) {
     });
   } catch (error) {
     console.error("Error fetching interpretations for case:", error);
-    yield put({
-      type: actions.FETCH_INTERPRETATIONS_FOR_CASE_FAILED,
-      error: error.message || "Failed to fetch interpretations",
-    });
+    const latestState = yield select();
+    if (isActiveCaseDataset(latestState, caseId, datasetId)) {
+      yield put({
+        type: actions.FETCH_INTERPRETATIONS_FOR_CASE_FAILED,
+        error: error.message || "Failed to fetch interpretations",
+      });
+    }
   }
 }
 
@@ -121,38 +142,44 @@ function acknowledgeCompletion(completion, error, result) {
 
 export function* updateInterpretation(action) {
   const { interpretation, completion } = action;
-  
+  let caseId;
+  let datasetId;
+
   try {
     const state = yield select(getCurrentState);
-    const caseId = interpretation.caseId || state.CaseReport?.id;
-    let storageCaseId = interpretation.storageCaseId || caseId;
-    
+    caseId = interpretation.caseId || state.CaseReport?.id;
+    const requestedStorageCaseId = interpretation.storageCaseId || caseId;
+
     if (!caseId || !interpretation.alterationId) {
       throw new Error("Missing caseId or alterationId");
     }
 
     const dataset = state.Settings?.dataset;
-    const datasetId = state.Settings?.dataset.id;
-    console.log(datasetId);
+    datasetId = state.Settings?.dataset.id;
     const repository = getActiveRepository({ dataset });
 
-    let existing = yield call([repository, repository.get], datasetId, storageCaseId, interpretation.alterationId, interpretation.authorId);
-    if (!existing && `${storageCaseId}` === `${caseId}`) {
-      const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
-      for (const candidateCaseId of acceptedCaseIds) {
-        if (`${candidateCaseId}` === `${caseId}`) continue;
-        const legacyInterpretation = yield call(
-          [repository, repository.get],
-          datasetId,
-          candidateCaseId,
-          interpretation.alterationId,
-          interpretation.authorId
-        );
-        if (legacyInterpretation) {
-          storageCaseId = candidateCaseId;
-          existing = legacyInterpretation;
-          break;
-        }
+    const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
+    const candidateStorageCaseIds = Array.from(new Set([
+      caseId,
+      requestedStorageCaseId,
+      ...acceptedCaseIds,
+    ]));
+    const legacyStorageCaseIds = [];
+    let existing = null;
+    for (const candidateCaseId of candidateStorageCaseIds) {
+      const candidate = yield call(
+        [repository, repository.get],
+        datasetId,
+        candidateCaseId,
+        interpretation.alterationId,
+        interpretation.authorId,
+      );
+      if (!candidate) continue;
+      if (`${candidateCaseId}` === `${caseId}`) {
+        existing = candidate;
+      } else {
+        legacyStorageCaseIds.push(candidateCaseId);
+        if (!existing) existing = candidate;
       }
     }
     
@@ -194,14 +221,13 @@ export function* updateInterpretation(action) {
 
     if (shouldDelete) {
       // Delete interpretation
-      yield call([repository, repository.delete], datasetId, storageCaseId, interpretation.alterationId, interpretation.authorId);
-      if (`${storageCaseId}` !== `${caseId}`) {
+      for (const storedCaseId of [caseId, ...legacyStorageCaseIds]) {
         yield call(
           [repository, repository.delete],
           datasetId,
-          caseId,
+          storedCaseId,
           interpretation.alterationId,
-          interpretation.authorId
+          interpretation.authorId,
         );
       }
 
@@ -211,22 +237,34 @@ export function* updateInterpretation(action) {
       const deletedInterpretation = {
         alterationId: interpretation.alterationId,
         authorId: interpretation.authorId || currentUserId,
-        caseId: interpretation.caseId || caseId,
+        caseId,
+        datasetId,
         isCurrentUser: true,
       };
-
-      yield put({
-        type: actions.UPDATE_INTERPRETATION_SUCCESS,
-        interpretation: null,
+      const deletedInterpretations = [
         deletedInterpretation,
-      });
+        ...legacyStorageCaseIds.map((storedCaseId) => ({
+          ...deletedInterpretation,
+          caseId: storedCaseId,
+        })),
+      ];
 
-      // Revert filtered event to original (only for alterations)
-      if (interpretation.alterationId !== "GLOBAL_NOTES") {
-        const filteredEventsState = yield select(state => state.FilteredEvents);
-        const originalFilteredEvents = filteredEventsState?.originalFilteredEvents || [];
-        const originalEvent = originalFilteredEvents.find(e => e.uid === interpretation.alterationId);
-        yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
+      const latestState = yield select(getCurrentState);
+      if (isActiveCaseDataset(latestState, caseId, datasetId)) {
+        yield put({
+          type: actions.UPDATE_INTERPRETATION_SUCCESS,
+          interpretation: null,
+          deletedInterpretation,
+          deletedInterpretations,
+        });
+
+        // Revert filtered event to original (only for alterations)
+        if (interpretation.alterationId !== "GLOBAL_NOTES") {
+          const filteredEventsState = latestState.FilteredEvents;
+          const originalFilteredEvents = filteredEventsState?.originalFilteredEvents || [];
+          const originalEvent = originalFilteredEvents.find(e => e.uid === interpretation.alterationId);
+          yield put(filteredEventsActions.revertFilteredEvent(interpretation.alterationId, originalEvent));
+        }
       }
 
       yield call(acknowledgeCompletion, completion, null, {
@@ -246,13 +284,13 @@ export function* updateInterpretation(action) {
     }
     
     yield call([repository, repository.save], repoInterpretation);
-    if (`${storageCaseId}` !== `${caseId}`) {
+    for (const storedCaseId of legacyStorageCaseIds) {
       yield call(
         [repository, repository.delete],
         datasetId,
-        storageCaseId,
+        storedCaseId,
         interpretation.alterationId,
-        interpretation.authorId
+        interpretation.authorId,
       );
     }
     
@@ -265,10 +303,27 @@ export function* updateInterpretation(action) {
       isCurrentUser,
     };
     
-    yield put({
-      type: actions.UPDATE_INTERPRETATION_SUCCESS,
-      interpretation: updatedInterpretation,
-    });
+    const latestState = yield select(getCurrentState);
+    if (isActiveCaseDataset(latestState, caseId, datasetId)) {
+      const replacedInterpretations = legacyStorageCaseIds.map(
+        (storedCaseId) => ({
+          datasetId,
+          caseId: storedCaseId,
+          alterationId: interpretation.alterationId,
+          authorId: interpretation.authorId,
+        }),
+      );
+      yield put({
+        type: actions.UPDATE_INTERPRETATION_SUCCESS,
+        interpretation: updatedInterpretation,
+        ...(replacedInterpretations.length > 0
+          ? {
+              replacedInterpretation: replacedInterpretations[0],
+              replacedInterpretations,
+            }
+          : {}),
+      });
+    }
     yield call(acknowledgeCompletion, completion, null, {
       deleted: false,
       interpretation: updatedInterpretation,
@@ -279,16 +334,24 @@ export function* updateInterpretation(action) {
         ? error
         : new Error(error?.message || "Failed to update interpretation");
     console.error("Error updating interpretation:", updateError);
-    yield put({
-      type: actions.UPDATE_INTERPRETATION_FAILED,
-      error: updateError.message || "Failed to update interpretation",
-    });
+    const latestState = yield select(getCurrentState);
+    if (
+      !caseId ||
+      !datasetId ||
+      isActiveCaseDataset(latestState, caseId, datasetId)
+    ) {
+      yield put({
+        type: actions.UPDATE_INTERPRETATION_FAILED,
+        error: updateError.message || "Failed to update interpretation",
+      });
+    }
     yield call(acknowledgeCompletion, completion, updateError, null);
   }
 }
 
 export function* clearCaseInterpretations(action) {
   const { caseId, completion, dataset: capturedDataset } = action;
+  let datasetId;
 
   try {
     if (!caseId) {
@@ -297,7 +360,7 @@ export function* clearCaseInterpretations(action) {
 
     const state = yield select();
     const dataset = capturedDataset || state.Settings?.dataset;
-    const datasetId = dataset?.id;
+    datasetId = dataset?.id;
     const repository = getActiveRepository({ dataset });
     const acceptedCaseIds = getAcceptedCaseIds(state, caseId, datasetId);
     const currentUserId = getCurrentUserId();
@@ -322,10 +385,14 @@ export function* clearCaseInterpretations(action) {
       }
     }
 
-    yield put({
-      type: actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS,
-      caseId,
-    });
+    const latestState = yield select();
+    if (isActiveCaseDataset(latestState, caseId, datasetId)) {
+      yield put({
+        type: actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS,
+        caseId,
+      });
+      yield put(actions.fetchInterpretationsForCase(caseId));
+    }
     yield call(acknowledgeCompletion, completion, null, { caseId });
   } catch (error) {
     const clearError =
@@ -333,10 +400,13 @@ export function* clearCaseInterpretations(action) {
         ? error
         : new Error(error?.message || "Failed to clear case interpretations");
     console.error("Error clearing case interpretations:", clearError);
-    yield put({
-      type: actions.CLEAR_CASE_INTERPRETATIONS_FAILED,
-      error: clearError.message || "Failed to clear case interpretations",
-    });
+    const latestState = yield select();
+    if (isActiveCaseDataset(latestState, caseId, datasetId)) {
+      yield put({
+        type: actions.CLEAR_CASE_INTERPRETATIONS_FAILED,
+        error: clearError.message || "Failed to clear case interpretations",
+      });
+    }
     yield call(acknowledgeCompletion, completion, clearError, null);
   }
 }

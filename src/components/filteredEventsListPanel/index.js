@@ -23,7 +23,11 @@ import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import interpretationsActions from "../../redux/interpretations/actions";
-import { selectMergedEvents } from "../../redux/interpretations/selectors";
+import {
+  getTierCountsByExactEventKey,
+  selectMergedEvents,
+} from "../../redux/interpretations/selectors";
+import { createExactEventKey } from "../../helpers/interpretationHistory";
 import { selectReportEventUids } from "../../redux/filteredEvents/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import ErrorPanel from "../errorPanel";
@@ -155,8 +159,6 @@ export class FilteredEventsListPanel extends Component {
   };
   state = {
     eventType: "all",
-    tierCountsMap: {},
-    geneVariantsWithTierChanges: null,
     selectedColumnKeys: [],
     sortState: {
       columnKey: null,
@@ -164,9 +166,6 @@ export class FilteredEventsListPanel extends Component {
     },
     columnWidths: {},
   };
-
-  // Track if a fetch is in progress to prevent concurrent calls
-  _isFetchingTierCounts = false;
 
   getDefaultColumnKeys = (props = this.props) => {
     const { additionalColumns, data: settingsData, dataset } = props;
@@ -263,17 +262,10 @@ export class FilteredEventsListPanel extends Component {
   };
 
   componentDidMount() {
-    this.fetchTierCountsForRecords();
     this.initializeSelectedColumns();
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevProps.filteredEvents !== this.props.filteredEvents ||
-      prevState.eventType !== this.state.eventType
-    ) {
-      this.fetchTierCountsForRecords();
-    }
+  componentDidUpdate(prevProps) {
     if (
       this.getColumnConfigurationSignature(prevProps) !==
       this.getColumnConfigurationSignature(this.props)
@@ -314,104 +306,14 @@ export class FilteredEventsListPanel extends Component {
     this.setState({ sortState });
   };
 
-  fetchTierCountsForRecords = async () => {
-    // Prevent concurrent fetches
-    if (this._isFetchingTierCounts) {
-      return;
-    }
-
-    const { filteredEvents, dataset } = this.props;
-    const { eventType } = this.state;
-
-    // Guard: don't fetch if no events or no dataset
-    if (!filteredEvents || filteredEvents.length === 0 || !dataset) {
-      return;
-    }
-
-    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
-    let records =
-      (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
-
-    // Guard: don't fetch if no records after filtering
-    if (records.length === 0) {
-      return;
-    }
-
-    this._isFetchingTierCounts = true;
-
-    try {
-      const { getActiveRepository } = await import("../../services/repositories");
-      const repository = getActiveRepository({ dataset });
-
-      // OPTIMIZATION: First get gene-variants that have tier changes
-      const geneVariantsWithTiers = await repository.getGeneVariantsWithTierChanges();
-
-      // If no gene-variants have tier changes, nothing to fetch
-      if (geneVariantsWithTiers.size === 0) {
-        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
-        return;
-      }
-
-      const map = {};
-
-      // Deduplicate AND filter to only gene-variants with tier changes
-      const uniqueKeys = new Set();
-      const uniqueRecords = records.filter((record) => {
-        if (!record.gene || !record.type) return false;
-        const key = `${record.gene}-${record.type}`;
-        if (uniqueKeys.has(key)) return false;
-        // NEW: Only include if this gene-variant has tier changes
-        if (!geneVariantsWithTiers.has(key)) return false;
-        uniqueKeys.add(key);
-        return true;
-      });
-
-      // Guard: nothing to fetch after filtering
-      if (uniqueRecords.length === 0) {
-        this.setState({ tierCountsMap: {}, geneVariantsWithTierChanges: geneVariantsWithTiers });
-        return;
-      }
-
-      console.log(`Fetching tier counts for ${uniqueRecords.length} gene-variants (filtered from ${records.length} records)`);
-
-      // Process in batches to avoid overwhelming IndexedDB/network
-      const BATCH_SIZE = 5;
-
-      for (let i = 0; i < uniqueRecords.length; i += BATCH_SIZE) {
-        const batch = uniqueRecords.slice(i, i + BATCH_SIZE);
-        const batchPromises = batch.map(async (record) => {
-          const key = `${record.gene}-${record.type}`;
-          try {
-            const counts = await repository.getTierCountsByGeneVariantType(
-              record.gene,
-              record.type
-            );
-            map[key] = counts;
-          } catch (error) {
-            // Silently handle errors - tier counts are non-critical
-            map[key] = { 1: 0, 2: 0, 3: 0 };
-          }
-        });
-        await Promise.all(batchPromises);
-      }
-
-      this.setState({ tierCountsMap: map, geneVariantsWithTierChanges: geneVariantsWithTiers });
-    } finally {
-      this._isFetchingTierCounts = false;
-    }
-  };
-
   getTierTooltipContent = (record) => {
-    const key = `${record.gene}-${record.type}`;
-    const { tierCountsMap, geneVariantsWithTierChanges } = this.state;
-    
-    // Check if this gene-variant has no tier changes
-    if (geneVariantsWithTierChanges && !geneVariantsWithTierChanges.has(key)) {
-      return "No tier change";
+    const { interpretationsStatus, tierCountsByEvent = {} } = this.props;
+    if (interpretationsStatus === "pending") {
+      return "Loading tier distribution...";
     }
-    
-    const tierCounts = tierCountsMap[key];
-    if (!tierCounts) return "Loading tier distribution...";
+
+    const eventKey = createExactEventKey(record);
+    const tierCounts = tierCountsByEvent[eventKey] || { 1: 0, 2: 0, 3: 0 };
     const total =
       (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
     if (total === 0) {
@@ -429,6 +331,7 @@ export class FilteredEventsListPanel extends Component {
         originalTier={originalTier}
         gene={record.gene}
         variantType={record.type}
+        variant={record.variant}
       />
     );
   };
@@ -838,6 +741,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 const mapStateToProps = (state) => {
   const mergedEvents = selectMergedEvents(state);
+  const tierCountsByEvent = getTierCountsByExactEventKey(state);
 
   return {
     loading: state.FilteredEvents.loading,
@@ -862,7 +766,8 @@ const mapStateToProps = (state) => {
     genes: state.Genes,
     igv: state.Igv,
     CaseReport: state.CaseReport,
-    Interpretations: state.Interpretations,
+    interpretationsStatus: state.Interpretations?.status,
+    tierCountsByEvent,
     dataset: state?.Settings?.dataset,
     data: state?.Settings?.data,
   };

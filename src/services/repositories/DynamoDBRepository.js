@@ -268,7 +268,7 @@ export class DynamoDBRepository extends EventInterpretationRepository {
       }
 
       for (const batch of batches) {
-        const putRequests = batch.map(interpretation => ({
+        let pendingRequests = batch.map(interpretation => ({
           PutRequest: {
             Item: marshall(this._toDynamoDBItem(interpretation), {
               removeUndefinedValues: true,
@@ -276,13 +276,23 @@ export class DynamoDBRepository extends EventInterpretationRepository {
           },
         }));
 
-        const command = new BatchWriteItemCommand({
-          RequestItems: {
-            [this.tableName]: putRequests,
-          },
-        });
+        const maxAttempts = 5;
+        for (let attempt = 0; pendingRequests.length > 0; attempt += 1) {
+          if (attempt >= maxAttempts) {
+            throw new Error(`DynamoDB left ${pendingRequests.length} unprocessed interpretations`);
+          }
+          if (attempt > 0) {
+            await new Promise(resolve => setTimeout(resolve, 25 * (2 ** attempt)));
+          }
 
-        await this.client.send(command);
+          const command = new BatchWriteItemCommand({
+            RequestItems: {
+              [this.tableName]: pendingRequests,
+            },
+          });
+          const response = await this.client.send(command);
+          pendingRequests = response.UnprocessedItems?.[this.tableName] || [];
+        }
       }
 
       return normalized;
@@ -307,17 +317,23 @@ export class DynamoDBRepository extends EventInterpretationRepository {
 
   async getAll() {
     try {
-      const command = new ScanCommand({
-        TableName: this.tableName,
-      });
-
-      const response = await this.client.send(command);
-      const items = response.Items || [];
+      const items = [];
+      let exclusiveStartKey;
+      do {
+        const command = new ScanCommand({
+          TableName: this.tableName,
+          ConsistentRead: true,
+          ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+        });
+        const response = await this.client.send(command);
+        items.push(...(response.Items || []));
+        exclusiveStartKey = response.LastEvaluatedKey;
+      } while (exclusiveStartKey);
 
       return items.map(item => this._fromDynamoDBItem(item));
     } catch (error) {
       console.error("Failed to get all interpretations:", error);
-      return [];
+      throw error;
     }
   }
 

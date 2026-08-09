@@ -384,3 +384,32 @@ describe("FilteredEventsListPanel report selection", () => {
     ]);
   });
 });
+
+describe("FilteredEventsListPanel exact-event histogram", () => {
+  it("renders weighted history without a current-user retier", () => {
+    const record = {
+      uid: "1:100-1:100",
+      gene: "TP53",
+      variant: "p.Arg1Gly / c.1A>G",
+      type: "Missense",
+    };
+    const panel = new FilteredEventsListPanel({
+      filteredEvents: [record],
+      originalFilteredEvents: [{ ...record, tier: 2 }],
+      tierCountsByEvent: {
+        '["1:100-1:100","TP53","p.Arg1Gly / c.1A>G","Missense"]': {
+          1: 7,
+          2: 1,
+          3: 0,
+        },
+      },
+      interpretationsStatus: "succeeded",
+    });
+
+    const tooltip = panel.getTierTooltipContent(record);
+
+    expect(tooltip.type).toBe("TierDistributionBarChart");
+    expect(tooltip.props.tierCounts).toEqual({ 1: 7, 2: 1, 3: 0 });
+    expect(tooltip.props.variant).toBe("p.Arg1Gly / c.1A>G");
+  });
+});

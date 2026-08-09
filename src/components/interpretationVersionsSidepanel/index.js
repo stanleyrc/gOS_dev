@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { Input, Table, Drawer } from "antd";
 import { withTranslation } from 'react-i18next';
+import { getInterpretationSourceDatasetId } from '../../helpers/interpretationHistory';
 
 const defaultFilterFunction = (searchTerm, data) => {
   if (!searchTerm) return data;
@@ -56,12 +57,15 @@ class InterpretationVersionsSidepanel extends Component {
         key: 'dataset',
         minWidth: 100,
         render: (text, record) => {
-          const dataset = datasets.find(d => String(d.id) === String(record.datasetId));
-          return dataset ? dataset.title : (record.datasetId || '');
+          const datasetId = getInterpretationSourceDatasetId(record);
+          const dataset = datasets.find(d => String(d.id) === String(datasetId));
+          return dataset ? dataset.title : (datasetId || '');
         },
         sorter: (a, b) => {
-          const datasetA = datasets.find(d => String(d.id) === String(a.datasetId))?.title || '';
-          const datasetB = datasets.find(d => String(d.id) === String(b.datasetId))?.title || '';
+          const datasetIdA = getInterpretationSourceDatasetId(a);
+          const datasetIdB = getInterpretationSourceDatasetId(b);
+          const datasetA = datasets.find(d => String(d.id) === String(datasetIdA))?.title || datasetIdA || '';
+          const datasetB = datasets.find(d => String(d.id) === String(datasetIdB))?.title || datasetIdB || '';
           return datasetA.localeCompare(datasetB);
         },
       },
@@ -90,7 +94,7 @@ class InterpretationVersionsSidepanel extends Component {
           <Table
             columns={tableColumns}
             dataSource={filteredData}
-            rowKey={(record) => `${record.alterationId}___${record.authorId}___${record.caseId}`}
+            rowKey={(record) => `${record.datasetId}___${record.alterationId}___${record.authorId}___${record.caseId}`}
             pagination={{ pageSize: 10 }}
             size="small"
             onRow={(record) => ({

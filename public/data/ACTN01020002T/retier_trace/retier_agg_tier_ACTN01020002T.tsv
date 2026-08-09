@@ -1,0 +1,7 @@
+pair	match_key	match_key_readable	variant_key	variant_key_readable	onco_vkey	onco_vkey_kind	onco_variant_p	onco_fusion_genes	match_confidence	gene	hgvsc	myeloseq_tier	tier	freq
+ACTN01020002T	CASZ1 mock c.*2285_*2286delTT	CASZ1|c.*2285_*2286delTT	CASZ1 mock c.*2285_*2286delTT	CASZ1|c.*2285_*2286delTT	1 10696713 CAA C	vcf_coord			exact	CASZ1	c.*2285_*2286delTT	3	1	3
+ACTN01020002T	CASZ1 mock c.*2285_*2286delTT	CASZ1|c.*2285_*2286delTT	CASZ1 mock c.*2285_*2286delTT	CASZ1|c.*2285_*2286delTT	1 10696713 CAA C	vcf_coord			exact	CASZ1	c.*2285_*2286delTT	3	2	2
+ACTN01020002T	CASZ1 mock c.*2285_*2286delTT	CASZ1|c.*2285_*2286delTT	CASZ1 mock c.*2285_*2286delTT	CASZ1|c.*2285_*2286delTT	1 10696713 CAA C	vcf_coord			exact	CASZ1	c.*2285_*2286delTT	3	3	4
+ACTN01020002T	CLCA3P mock n.1543-7C>T	CLCA3P|n.1543-7C>T	CLCA3P mock n.1543-7C>T	CLCA3P|n.1543-7C>T	1 87113456 C T	vcf_coord			exact	CLCA3P	n.1543-7C>T	3	1	1
+ACTN01020002T	CLCA3P mock n.1543-7C>T	CLCA3P|n.1543-7C>T	CLCA3P mock n.1543-7C>T	CLCA3P|n.1543-7C>T	1 87113456 C T	vcf_coord			exact	CLCA3P	n.1543-7C>T	3	2	3
+ACTN01020002T	CLCA3P mock n.1543-7C>T	CLCA3P|n.1543-7C>T	CLCA3P mock n.1543-7C>T	CLCA3P|n.1543-7C>T	1 87113456 C T	vcf_coord			exact	CLCA3P	n.1543-7C>T	3	3	2

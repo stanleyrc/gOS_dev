@@ -17,16 +17,20 @@ import EditableTextBlock from "../editableTextBlock";
 import EditablePillsBlock from "../editablePillsBlock";
 import { withTranslation } from "react-i18next";
 import EventInterpretation from "../../helpers/EventInterpretation";
+import {
+  getInterpretationSourceCaseId,
+  getTierCountsForInterpretations,
+} from "../../helpers/interpretationHistory";
 
 import InterpretationVersionsSidepanel from "../interpretationVersionsSidepanel";
 import {
   getInterpretationForAlteration,
-  getAllInterpretationsForAlteration,
-  getAllInterpretationsForGene,
+  getAllInterpretationsForEvent,
   getBaseEvent,
 } from "../../redux/interpretations/selectors";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import InterpretationsAvatar from "../interpretationsAvatar";
+import createFrequencyColumn from "./frequencyColumn";
 
 const { Title, Text } = Typography;
 
@@ -48,8 +52,20 @@ class AlterationCard extends Component {
   state = {
     showVersions: false,
     selectedInterpretation: null, // When set, overrides the current one
-    tierCounts: null,
   };
+
+  componentDidUpdate(prevProps) {
+    const eventChanged = prevProps.record?.uid !== this.props.record?.uid;
+    const caseChanged = prevProps.caseId !== this.props.caseId;
+    const datasetChanged =
+      prevProps.dataset?.id !== this.props.dataset?.id;
+    if (
+      this.state.selectedInterpretation &&
+      (eventChanged || caseChanged || datasetChanged)
+    ) {
+      this.setState({ selectedInterpretation: null });
+    }
+  }
 
   updateFields = async (changes) => {
     const { record, caseId, dataset } = this.props;
@@ -106,28 +122,6 @@ class AlterationCard extends Component {
     );
   };
 
-  fetchTierCounts = async () => {
-    const { dataset, record } = this.props;
-    if (!dataset || !record || !record.gene || !record.type) {
-      this.setState({ tierCounts: { 1: 0, 2: 0, 3: 0 } });
-      return;
-    }
-    try {
-      const { getActiveRepository } = await import(
-        "../../services/repositories"
-      );
-      const repository = getActiveRepository({ dataset });
-      const counts = await repository.getTierCountsByGeneVariantType(
-        record.gene,
-        record.type
-      );
-      this.setState({ tierCounts: counts });
-    } catch (error) {
-      console.error("Failed to fetch tier counts:", error);
-      this.setState({ tierCounts: { 1: 0, 2: 0, 3: 0 } });
-    }
-  };
-
   handleCopyVersion = async () => {
     const confirmed = window.confirm(
       "Are you sure you want to overwrite your version with this one?"
@@ -163,30 +157,11 @@ class AlterationCard extends Component {
     this.setState({ selectedInterpretation: null });
   };
 
-  componentDidMount() {
-    this.fetchTierCounts();
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    // Reset editing state when switching interpretations
-    if (
-      prevState.selectedInterpretation !== this.state.selectedInterpretation
-    ) {
-      // EditableTextBlock handles its own reset via props.value change
-    }
-    // Refetch tier counts if record or dataset changes
-    if (
-      prevProps.record !== this.props.record ||
-      prevProps.dataset !== this.props.dataset
-    ) {
-      this.fetchTierCounts();
-    }
-  }
-
   getTierTooltipContent() {
-    const { tierCounts } = this.state;
-    const { baseRecord, record } = this.props;
-    if (!tierCounts) return "Loading tier distribution...";
+    const { baseRecord, interpretationsStatus, record, tierCounts } = this.props;
+    if (interpretationsStatus === "pending") {
+      return "Loading tier distribution...";
+    }
 
     const total =
       (tierCounts[1] || 0) + (tierCounts[2] || 0) + (tierCounts[3] || 0);
@@ -204,6 +179,7 @@ class AlterationCard extends Component {
         originalTier={originalTier}
         gene={record.gene}
         variantType={record.type}
+        variant={record.variant}
       />
     );
   }
@@ -524,6 +500,7 @@ class AlterationCard extends Component {
               dataIndex: "caseId",
               key: "caseId",
               width: 100,
+              render: (text, record) => getInterpretationSourceCaseId(record),
             },
             {
               title: "Gene",
@@ -562,6 +539,7 @@ class AlterationCard extends Component {
               },
               sorter: (a, b) => (a.data?.tier || 3) - (b.data?.tier || 3),
             },
+            createFrequencyColumn(),
             {
               title: "Variant",
               dataIndex: "variant",
@@ -575,17 +553,22 @@ class AlterationCard extends Component {
   }
 }
 
-const mapStateToProps = (state, ownProps) => ({
-  caseId: state?.CaseReport?.id,
-  interpretation: getInterpretationForAlteration(state, ownProps.record?.uid),
-  allInterpretations: getAllInterpretationsForGene(
+const mapStateToProps = (state, ownProps) => {
+  const allInterpretations = getAllInterpretationsForEvent(
     state,
-    ownProps.record?.gene
-  ),
-  baseRecord: getBaseEvent(state, ownProps.record?.uid),
-  dataset: state?.Settings?.dataset,
-  datasets: state?.Datasets?.records || [],
-});
+    ownProps.record,
+  );
+  return {
+    caseId: state?.CaseReport?.id,
+    interpretation: getInterpretationForAlteration(state, ownProps.record?.uid),
+    allInterpretations,
+    tierCounts: getTierCountsForInterpretations(allInterpretations),
+    interpretationsStatus: state.Interpretations?.status,
+    baseRecord: getBaseEvent(state, ownProps.record?.uid),
+    dataset: state?.Settings?.dataset,
+    datasets: state?.Datasets?.records || [],
+  };
+};
 
 export default connect(mapStateToProps)(
   withTranslation("common")(AlterationCard)

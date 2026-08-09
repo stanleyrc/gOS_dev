@@ -7,7 +7,6 @@ import {
   getEventType,
 } from "../../helpers/utility";
 import actions from "./actions";
-import interpretationsActions from "../interpretations/actions";
 import settingsActions from "../settings/actions";
 import { getCancelToken } from "../../helpers/cancelToken";
 import {
@@ -44,10 +43,20 @@ function* fetchFilteredEvents(action) {
         new URL(decodeURI(document.location)).searchParams.get("gene")
     );
 
+    const latestState = yield select(getCurrentState);
+    if (
+      `${latestState.Settings?.dataset?.id}` !== `${dataset.id}` ||
+      `${latestState.CaseReport?.id}` !== `${id}`
+    ) {
+      return;
+    }
+
     yield put({
       type: actions.FETCH_FILTERED_EVENTS_SUCCESS,
       filteredEvents,
       selectedFilteredEvent,
+      datasetId: dataset.id,
+      caseId: id,
     });
   } catch (error) {
     console.log(error);

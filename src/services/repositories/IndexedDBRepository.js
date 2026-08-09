@@ -390,7 +390,7 @@ export class IndexedDBRepository extends EventInterpretationRepository {
       return results.map((data) => new EventInterpretation(data));
     } catch (e) {
       console.error("Failed to get all interpretations:", e);
-      return [];
+      throw e;
     }
   }
 

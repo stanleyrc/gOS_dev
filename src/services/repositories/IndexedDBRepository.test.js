@@ -10,6 +10,7 @@ function failingRequest(error) {
 
 const store = {
   get: jest.fn(),
+  getAll: jest.fn(),
   index: jest.fn(),
   delete: jest.fn(),
 };
@@ -85,6 +86,17 @@ describe("IndexedDBRepository read and delete error contracts", () => {
     );
     expect(consoleError).toHaveBeenCalledWith(
       "Failed to get interpretations for case:",
+      readError,
+    );
+  });
+
+  it("logs and rethrows getAll failures instead of hiding an incomplete global lookup", async () => {
+    const readError = new Error("indexed all read failed");
+    store.getAll.mockImplementation(() => failingRequest(readError));
+
+    await expect(repository.getAll()).rejects.toBe(readError);
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to get all interpretations:",
       readError,
     );
   });

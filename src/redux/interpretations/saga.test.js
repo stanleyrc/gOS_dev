@@ -22,7 +22,11 @@ jest.mock("../../services/signatures/SignatureService", () => ({
 }));
 
 import actions from "./actions";
-import { clearCaseInterpretations, updateInterpretation } from "./saga";
+import {
+  clearCaseInterpretations,
+  fetchInterpretationsForCase,
+  updateInterpretation,
+} from "./saga";
 
 function createState(
   originalEvent = { uid: "alteration-1" },
@@ -53,13 +57,14 @@ async function runUpdate({
   completion,
   originalEvent,
   state,
+  getState = () => state || createState(originalEvent),
 }) {
   const dispatched = [];
   mockGetActiveRepository.mockReturnValue(repository);
   await runSaga(
     {
       dispatch: (action) => dispatched.push(action),
-      getState: () => state || createState(originalEvent),
+      getState,
     },
     updateInterpretation,
     actions.updateInterpretation(
@@ -82,19 +87,85 @@ async function runClear({
   completion,
   dataset,
   state = createState(),
+  getState = () => state,
 }) {
   const dispatched = [];
   mockGetActiveRepository.mockReturnValue(repository);
   await runSaga(
     {
       dispatch: (action) => dispatched.push(action),
-      getState: () => state,
+      getState,
     },
     clearCaseInterpretations,
     actions.clearCaseInterpretations("case-1", completion, dataset),
   ).toPromise();
   return dispatched;
 }
+
+describe("imported interpretation loading", () => {
+  it("ignores a completed fetch after the active context changes", async () => {
+    const repository = createRepository({
+      getAll: jest.fn().mockResolvedValue([]),
+    });
+    const dispatched = [];
+    const caseA = createState();
+    const caseB = createState(undefined, { CaseReport: { id: "case-2" } });
+    let selections = 0;
+    mockGetActiveRepository.mockReturnValue(repository);
+
+    await runSaga(
+      {
+        dispatch: (action) => dispatched.push(action),
+        getState: () => {
+          selections += 1;
+          return selections === 1 ? caseA : caseB;
+        },
+      },
+      fetchInterpretationsForCase,
+      actions.fetchInterpretationsForCase("case-1"),
+    ).toPromise();
+
+    expect(dispatched).toEqual([]);
+  });
+
+  it("never selects imported history as the current user", async () => {
+    const importedJson = {
+      datasetId: "dataset-1",
+      caseId: "case-1",
+      alterationId: "alteration-1",
+      authorId: "user-1",
+      authorName: "User One",
+      data: { tier: "1" },
+      source: { kind: "case-interpretation-import", aggregateId: "aggregate-1" },
+    };
+    const repository = createRepository({
+      getAll: jest.fn().mockResolvedValue([
+        {
+          ...importedJson,
+          gene: "TP53",
+          hasOverrides: () => true,
+          toJSON: () => ({ ...importedJson, gene: "TP53" }),
+        },
+      ]),
+    });
+    const dispatched = [];
+    mockGetActiveRepository.mockReturnValue(repository);
+
+    await runSaga(
+      {
+        dispatch: (action) => dispatched.push(action),
+        getState: () => createState(undefined, {
+          CaseReports: { datafiles: [] },
+        }),
+      },
+      fetchInterpretationsForCase,
+      actions.fetchInterpretationsForCase("case-1"),
+    ).toPromise();
+
+    expect(dispatched[0].selected).toEqual({});
+    expect(Object.values(dispatched[0].byId)[0].isCurrentUser).toBe(false);
+  });
+});
 
 describe("updateInterpretation completion acknowledgment", () => {
   let consoleError;
@@ -141,7 +212,7 @@ describe("updateInterpretation completion acknowledgment", () => {
       },
     );
 
-    await runUpdate({
+    const dispatched = await runUpdate({
       data: { variant_summary: "Report-only update" },
       repository,
       state,
@@ -166,6 +237,17 @@ describe("updateInterpretation completion acknowledgment", () => {
       "legacy-pair",
       "alteration-1",
       "user-1",
+    );
+    expect(dispatched).toContainEqual(
+      expect.objectContaining({
+        type: actions.UPDATE_INTERPRETATION_SUCCESS,
+        replacedInterpretation: expect.objectContaining({
+          datasetId: "dataset-1",
+          caseId: "legacy-pair",
+          alterationId: "alteration-1",
+          authorId: "user-1",
+        }),
+      }),
     );
   });
 
@@ -221,6 +303,28 @@ describe("updateInterpretation completion acknowledgment", () => {
       expect.objectContaining({
         deleted: true,
         interpretation: null,
+      }),
+    );
+  });
+
+  it("does not publish an update after the active context changes", async () => {
+    const repository = createRepository();
+    const caseA = createState();
+    const caseB = createState(undefined, { CaseReport: { id: "case-2" } });
+    let selections = 0;
+    const dispatched = await runUpdate({
+      data: { variant_summary: "Edited" },
+      repository,
+      getState: () => {
+        selections += 1;
+        return selections < 3 ? caseA : caseB;
+      },
+    });
+
+    expect(repository.save).toHaveBeenCalled();
+    expect(dispatched).not.toContainEqual(
+      expect.objectContaining({
+        type: actions.UPDATE_INTERPRETATION_SUCCESS,
       }),
     );
   });
@@ -336,6 +440,34 @@ describe("clearCaseInterpretations completion acknowledgment", () => {
       ["dataset-1", "case-1"],
       ["dataset-1", "legacy-pair-1"],
     ]);
+  });
+
+  it("does not clear or refetch stale state after the active context changes", async () => {
+    const completion = jest.fn();
+    const caseA = createState();
+    const caseB = createState(undefined, { CaseReport: { id: "case-2" } });
+    let selections = 0;
+
+    const dispatched = await runClear({
+      repository: createRepository(),
+      completion,
+      getState: () => {
+        selections += 1;
+        return selections === 1 ? caseA : caseB;
+      },
+    });
+
+    expect(dispatched).not.toContainEqual(
+      expect.objectContaining({
+        type: actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS,
+      }),
+    );
+    expect(dispatched).not.toContainEqual(
+      expect.objectContaining({
+        type: actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST,
+      }),
+    );
+    expect(completion).toHaveBeenCalledWith(null, { caseId: "case-1" });
   });
 
   it("acknowledges delete failure without reporting clear success", async () => {
