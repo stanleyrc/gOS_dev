@@ -43,6 +43,36 @@ const Wrapper = styled.div`
     white-space: nowrap;
   }
 
+  .filtered-events-gene-link.ant-btn {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  .filtered-events-gene-content {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    gap: 4px;
+  }
+
+  .filtered-events-gene-content .ant-avatar {
+    flex: none;
+  }
+
+  .filtered-events-gene-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .filtered-events-location-cell {
     display: flex;
     align-items: center;
