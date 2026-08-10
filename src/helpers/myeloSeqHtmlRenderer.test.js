@@ -179,6 +179,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("<th>Transcript</th>");
     expect(result.html).not.toContain("Targeted RNA Sequencing results");
     expect(result.html).toContain("<h3>Tier 2:</h3>");
+    expect(result.html).toContain("<strong>Specimen Type:</strong> NA");
     expect(result.html).toContain("<strong>Clinical History:</strong> NA");
     expect(result.html).not.toContain("N/A");
   });
@@ -266,7 +267,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     );
   });
 
-  it("omits specimen values disabled by the normalized dataset fields", async () => {
+  it("uses NA for specimen type when primary site is disabled", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,
       dataset: {
@@ -289,9 +290,9 @@ describe("MyeloSeqHtmlRenderer", () => {
       },
     });
 
+    expect(result.html).toContain("<strong>Specimen Type:</strong> NA");
     expect(result.html).toContain("<strong>Clinical History:</strong> NA");
     expect(result.html).not.toContain("Allowed disease");
     expect(result.html).not.toContain("SCHEMA-OMITTED");
-    expect(result.html).not.toContain("<strong>Specimen Type:</strong>");
   });
 });

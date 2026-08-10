@@ -27,7 +27,7 @@ describe("MyeloSeq specimen facts", () => {
     ]);
   });
 
-  it("omits a schema-disabled primary site but always includes NA history", () => {
+  it("uses NA when primary site is schema-disabled", () => {
     expect(
       getMyeloSeqSpecimenFacts({
         dataset: {
@@ -36,6 +36,9 @@ describe("MyeloSeq specimen facts", () => {
         patient: { primarySite: "Schema-disabled site" },
         metadata: { primary_site: "Schema-disabled metadata site" },
       }),
-    ).toEqual([{ label: "Clinical History", value: "NA" }]);
+    ).toEqual([
+      { label: "Specimen Type", value: "NA" },
+      { label: "Clinical History", value: "NA" },
+    ]);
   });
 });

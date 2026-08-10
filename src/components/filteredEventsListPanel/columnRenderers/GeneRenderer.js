@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Component } from "react";
 import { Button, Tooltip, Typography } from "antd";
 import { BsDashLg } from "react-icons/bs";
 import InterpretationsAvatar from "../../interpretationsAvatar";
@@ -16,31 +16,45 @@ const { Text } = Typography;
  * @param {Function} selectFilteredEvent - Function to handle selection
  * @returns {JSX}
  */
-export default function GeneRenderer({ value, record, selectFilteredEvent }) {
-  if (value == null) {
+export default class GeneRenderer extends Component {
+  handleOpenGene = () => {
+    const { record, selectFilteredEvent } = this.props;
+    selectFilteredEvent(record, "detail");
+  };
+
+  render() {
+    const { value, record } = this.props;
+    if (value == null) {
+      return (
+        <Text italic disabled>
+          <BsDashLg />
+        </Text>
+      );
+    }
+
+    const count = getAllInterpretationsForEvent(
+      store.getState(),
+      record,
+    ).length;
+
     return (
-      <Text italic disabled>
-        <BsDashLg />
-      </Text>
+      <Button
+        type="link"
+        className="filtered-events-gene-link"
+        onClick={this.handleOpenGene}
+      >
+        <Tooltip placement="topLeft" title={value}>
+          <span className="filtered-events-gene-content">
+            {count > 0 && (
+              <InterpretationsAvatar
+                tooltipText={`Found ${count} interpretation(s)`}
+                size={18}
+              />
+            )}
+            <span className="filtered-events-gene-text">{value}</span>
+          </span>
+        </Tooltip>
+      </Button>
     );
   }
-
-  const count = getAllInterpretationsForEvent(
-    store.getState(),
-    record,
-  ).length;
-
-  return (
-    <Button type="link" onClick={() => selectFilteredEvent(record, "detail")}>
-      <Tooltip placement="topLeft" title={value}>
-        {count > 0 && (
-          <InterpretationsAvatar
-            tooltipText={`Found ${count} interpretation(s)`}
-            size={18}
-          />
-        )}{" "}
-        {value}
-      </Tooltip>
-    </Button>
-  );
 }

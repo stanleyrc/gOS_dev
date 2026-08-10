@@ -25,8 +25,8 @@ export function getMyeloSeqSpecimenFacts(report) {
         patient.primarySite,
         metadata.primary_site,
         metadata.primarySite,
-      )
-    : "";
+      ) ?? "NA"
+    : "NA";
 
   return [
     ["Tumor sample", patient.caseId],

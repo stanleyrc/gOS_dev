@@ -135,7 +135,7 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(JSON.stringify(model)).not.toContain("Ruxolitinib");
   });
 
-  it("honors primary-site visibility and keeps Clinical History unmapped", () => {
+  it("uses NA when primary site is disabled and keeps Clinical History unmapped", () => {
     const model = buildMyeloSeqDocxModel({
       ...report,
       dataset: {
@@ -158,6 +158,7 @@ describe("MyeloSeqDocxRenderer model", () => {
 
     expect(model.specimenFacts).toEqual([
       { label: "Tumor sample", value: "CASE-001" },
+      { label: "Specimen Type", value: "NA" },
       { label: "Clinical History", value: "NA" },
     ]);
     expect(model.resultTables).toEqual([]);
@@ -177,6 +178,7 @@ describe("MyeloSeqDocxRenderer model", () => {
 
     expect(model.specimenFacts).toEqual([
       { label: "Tumor sample", value: "CASE-EMPTY" },
+      { label: "Specimen Type", value: "NA" },
       { label: "Clinical History", value: "NA" },
     ]);
     expect(model.resultTables).toHaveLength(1);
