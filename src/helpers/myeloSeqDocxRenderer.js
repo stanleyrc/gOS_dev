@@ -299,7 +299,7 @@ function buildTierSections(report) {
     ? report.alterations
     : [];
 
-  return ["1", "2"]
+  return ["1", "2", "3"]
     .map((tier) => ({
       tier,
       findings: alterations

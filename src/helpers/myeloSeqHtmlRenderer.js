@@ -191,7 +191,7 @@ function renderFinding(finding) {
 
 function buildTierInterpretations(report) {
   const alterations = Array.isArray(report?.alterations) ? report.alterations : [];
-  const tiers = ["1", "2"];
+  const tiers = ["1", "2", "3"];
 
   return tiers
     .map((tier) => {

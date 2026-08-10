@@ -184,6 +184,34 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(JSON.stringify(model)).not.toContain("N/A");
   });
 
+  it("includes Tier 3 findings explicitly included in the report", () => {
+    const model = buildMyeloSeqDocxModel({
+      alterations: [
+        {
+          gene: "TET2",
+          variant: "p.Gln548Ter",
+          tier: "3",
+          type: "SNV",
+          variant_summary: "Selected Tier 3 interpretation",
+        },
+      ],
+    });
+
+    expect(model.tierSections).toEqual([
+      {
+        tier: "3",
+        findings: [
+          {
+            lines: [
+              { label: "Variant", value: "TET2, p.Gln548Ter" },
+              { label: "Comments", value: "Selected Tier 3 interpretation" },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("omits an unavailable finding identity while retaining Comments", () => {
     const model = buildMyeloSeqDocxModel({
       alterations: [
