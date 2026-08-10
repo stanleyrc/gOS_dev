@@ -7,6 +7,7 @@ import {
   Modal,
   message,
   Space,
+  Spin,
   Button,
   Affix,
   Tabs,
@@ -30,6 +31,7 @@ import { downloadCanvasAsPng, dataRanges } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
 const { Option } = Select;
+const { Text } = Typography;
 const { updateHoveredLocation } = settingsActions;
 
 export class TracksModal extends Component {
@@ -40,6 +42,7 @@ export class TracksModal extends Component {
     xVariable: null,
     yVariable: null,
     colorVariable: null,
+    contentReady: false,
   };
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -99,6 +102,25 @@ export class TracksModal extends Component {
 
     return false;
   }
+
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.open &&
+      !this.props.open &&
+      this.state.contentReady
+    ) {
+      this.setState({ contentReady: false });
+    }
+  }
+
+  handleModalOpenChange = (presented) => {
+    if (presented !== this.state.contentReady) {
+      this.setState({ contentReady: presented });
+    }
+    if (this.props.afterOpenChange) {
+      this.props.afterOpenChange(presented);
+    }
+  };
 
   onDownloadButtonClicked = () => {
     htmlToImage
@@ -169,6 +191,55 @@ export class TracksModal extends Component {
     } = this.props;
 
     if (!open) return null;
+
+    const renderModal = (modalContent) => (
+      <Wrapper visible={open}>
+        <Modal
+          title={
+            <Space>
+              {modalTitle}
+              <Button
+                type="default"
+                shape="circle"
+                icon={<AiOutlineDownload />}
+                size="small"
+                disabled={!this.state.contentReady}
+                onClick={() => this.onDownloadButtonClicked()}
+              />
+            </Space>
+          }
+          centered
+          open={open}
+          onOk={handleOkClicked}
+          onCancel={handleCancelClicked}
+          afterOpenChange={this.handleModalOpenChange}
+          width={width}
+          footer={null}
+          forceRender={true}
+        >
+          <div ref={(elem) => (this.container = elem)}>{modalContent}</div>
+        </Modal>
+      </Wrapper>
+    );
+
+    if (viewType === "modal" && !this.state.contentReady) {
+      return renderModal(
+        <div
+          style={{
+            minHeight: "320px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Space direction="vertical" align="center" size="middle">
+            <Spin size="large" />
+            <Text>{t("components.tracks-modal.loading")}</Text>
+          </Space>
+        </div>,
+      );
+    }
+
     const {
       cov_slope,
       cov_intercept,
@@ -610,37 +681,15 @@ export class TracksModal extends Component {
     ) : (
       tracksContent
     );
+    if (viewType === "modal") {
+      return renderModal(content);
+    }
+
     return (
       <Wrapper visible={open}>
-        {viewType === "modal" ? (
-          <Modal
-            title={
-              <Space>
-                {modalTitle}
-                <Button
-                  type="default"
-                  shape="circle"
-                  icon={<AiOutlineDownload />}
-                  size="small"
-                  onClick={() => this.onDownloadButtonClicked()}
-                />
-              </Space>
-            }
-            centered
-            open={open}
-            onOk={handleOkClicked}
-            onCancel={handleCancelClicked}
-            width={width}
-            footer={null}
-            forceRender={true}
-          >
-            <div ref={(elem) => (this.container = elem)}>{content}</div>
-          </Modal>
-        ) : (
-          <div style={{ height: `${height}px; width: ${width}px` }}>
-            {tracksContent}
-          </div>
-        )}
+        <div style={{ height: `${height}px; width: ${width}px` }}>
+          {tracksContent}
+        </div>
       </Wrapper>
     );
   }

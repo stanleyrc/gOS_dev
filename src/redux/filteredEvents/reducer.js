@@ -10,7 +10,7 @@ const initState = {
   missing: false,
   selectedEventUids: null,
   columnFilters: {
-    tier: [1, 2],
+    tier: [1, 2, 3],
   },
 };
 
@@ -26,7 +26,7 @@ export default function appReducer(state = initState, action) {
         missing: false,
         selectedEventUids: null,
         columnFilters: {
-          tier: [1, 2],
+          tier: [1, 2, 3],
         },
       };
     case actions.FETCH_FILTERED_EVENTS_SUCCESS:

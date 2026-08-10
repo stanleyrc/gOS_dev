@@ -40,7 +40,7 @@ const Wrapper = styled.div`
     .ant-page-header-heading-title {
       cursor: default;
     }
-    .detail-title-copy-button {
+    .detail-title-copy-button.ant-btn {
       appearance: none;
       border: 0;
       border-radius: 4px;
@@ -57,8 +57,8 @@ const Wrapper = styled.div`
       font-size: 14px;
       line-height: 1;
     }
-    .detail-title-copy-button:hover,
-    .detail-title-copy-button:focus-visible {
+    .detail-title-copy-button.ant-btn:hover,
+    .detail-title-copy-button.ant-btn:focus-visible {
       background: rgba(0, 0, 0, 0.04);
       color: #1677ff;
       outline: none;

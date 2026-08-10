@@ -66,7 +66,7 @@ The `datasets.json` file defines available datasets and their configuration. Eac
 }
 ```
 
-**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Use the optional `defaultVisibleFilteredEventsColumns` array as an exact allow-list of merged settings and dataset column IDs to select when the Filtered Events panel first mounts and when **Reset All Filters** is clicked. Omit the property to show every available column. Unknown IDs are ignored, and an empty array is valid. Columns supplied directly by a panel caller remain selected.
+**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Use the optional `defaultVisibleFilteredEventsColumns` array as an ordered, exact allow-list of merged settings and dataset column IDs to select when the Filtered Events panel first mounts and when **Reset All Filters** is clicked. Listed IDs determine their left-to-right order in the table. Omit the property to show every available column. Unknown IDs are ignored, duplicate IDs use their first position, and an empty array is valid. Columns supplied directly by a panel caller remain selected in their panel-defined position.
 
 Available `viewType` renderers:
 - `"gene-link"` – renders gene names as clickable links

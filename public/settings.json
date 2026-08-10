@@ -998,6 +998,15 @@
       "sortable": true
     },
     {
+      "id": "location",
+      "title": "components.filtered-events-panel.location",
+      "dataIndex": "location",
+      "type": "string",
+      "viewType": "location-link",
+      "width": 260,
+      "sortable": true
+    },
+    {
       "id": "role",
       "title": "components.filtered-events-panel.role",
       "dataIndex": "role",
@@ -1131,15 +1140,6 @@
       "rendererProps": {
         "format": ".3f"
       }
-    },
-    {
-      "id": "location",
-      "title": "components.filtered-events-panel.location",
-      "dataIndex": "location",
-      "type": "string",
-      "viewType": "location-link",
-      "width": 260,
-      "sortable": true
     }
   ]
 }

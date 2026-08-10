@@ -9,6 +9,15 @@ import reducer from "./reducer";
 import { selectReportEventUids } from "./selectors";
 
 describe("FilteredEvents report selection", () => {
+  it("shows all tiers by default and restores that default for a new fetch", () => {
+    const initial = reducer(undefined, { type: "@@INIT" });
+    expect(initial.columnFilters).toEqual({ tier: [1, 2, 3] });
+
+    const changed = reducer(initial, actions.setColumnFilters({ tier: [1] }));
+    const next = reducer(changed, actions.fetchFilteredEvents());
+    expect(next.columnFilters).toEqual({ tier: [1, 2, 3] });
+  });
+
   it("tracks canonical event UIDs selected for the report", () => {
     const selected = reducer(
       undefined,

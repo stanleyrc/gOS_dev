@@ -7,6 +7,7 @@ export default function createFrequencyColumn() {
     key: "frequency",
     width: 100,
     minWidth: 100,
+    defaultSortOrder: "descend",
     render: (value, record) => getEffectiveFrequency(record),
     sorter: (a, b) => getEffectiveFrequency(a) - getEffectiveFrequency(b),
   };

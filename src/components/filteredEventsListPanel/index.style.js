@@ -49,9 +49,34 @@ const Wrapper = styled.div`
     gap: 4px;
   }
 
-  .filtered-events-location-text {
+  .filtered-events-location-link.ant-btn {
     flex: 1;
     min-width: 0;
+    text-align: left;
+  }
+
+  .filtered-events-location-copy-button.ant-btn {
+    flex: none;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0;
+    color: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: color 0.2s, opacity 0.2s;
+  }
+
+  .filtered-events-event-row:hover
+    .filtered-events-location-copy-button.ant-btn,
+  .filtered-events-location-copy-button.ant-btn:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filtered-events-location-copy-button.ant-btn:hover,
+  .filtered-events-location-copy-button.ant-btn:focus-visible {
+    color: #1677ff;
   }
 
   .filtered-events-variant-cell {
