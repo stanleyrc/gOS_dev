@@ -19,7 +19,6 @@ import {
   coverageQCFields,
   getColorMarker,
   orderListViewFilters,
-  copyTextToClipboard,
 } from "../../helpers/utility";
 import { getNestedValue } from "../../helpers/metadata";
 import { datasetHasField } from "../../helpers/browseScope";
@@ -38,14 +37,17 @@ import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import { ClinicalTrialsModal } from "../clinicalTrialsModal";
 import PatientCaseSwitcher from "../patientCaseSwitcher";
+import CopyIconButton from "../copyIconButton";
 import ReportButtonsPanel from "../reportButtonsPanel";
-import { CopyOutlined } from "@ant-design/icons";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
 
 const { Text } = Typography;
-const COPY_TOOLTIP_DEFAULT_KEY = "components.header-panel.copy-tooltip-default";
+const COPY_CASE_ID_TOOLTIP_KEY =
+  "components.header-panel.copy-case-id-tooltip";
 const COPY_TOOLTIP_SUCCESS_KEY = "components.header-panel.copy-tooltip-success";
 const COPY_TOOLTIP_FAILURE_KEY = "components.header-panel.copy-tooltip-failure";
+const COPY_CASE_ID_ARIA_LABEL_KEY =
+  "components.header-panel.copy-case-id-aria-label";
 
 export class HeaderPanel extends Component {
   constructor(props) {
@@ -53,9 +55,7 @@ export class HeaderPanel extends Component {
     this.state = {
       cbioportalModalVisible: false,
       clinicalTrialsModalVisible: false,
-      pairCopyTooltipKey: COPY_TOOLTIP_DEFAULT_KEY,
     };
-    this.pairCopyResetTimeout = null;
   }
 
   handleCbioportalModalOpen = () => {
@@ -74,48 +74,18 @@ export class HeaderPanel extends Component {
     this.setState({ clinicalTrialsModalVisible: false });
   };
 
-  componentWillUnmount() {
-    if (this.pairCopyResetTimeout) {
-      clearTimeout(this.pairCopyResetTimeout);
-      this.pairCopyResetTimeout = null;
-    }
-  }
-
-  resetPairCopyTooltip = () => {
-    this.setState({ pairCopyTooltipKey: COPY_TOOLTIP_DEFAULT_KEY });
-  };
-
-  handlePairCopy = async () => {
-    const pair = this.props.metadata?.pair;
-    if (!pair) return;
-
-    const copied = await copyTextToClipboard(`${pair}`);
-    this.setState({
-      pairCopyTooltipKey: copied ? COPY_TOOLTIP_SUCCESS_KEY : COPY_TOOLTIP_FAILURE_KEY,
-    });
-
-    if (this.pairCopyResetTimeout) {
-      clearTimeout(this.pairCopyResetTimeout);
-    }
-    this.pairCopyResetTimeout = setTimeout(this.resetPairCopyTooltip, 1500);
-  };
-
   renderPairTitle = (pair) => (
     <PatientCaseSwitcher
       pair={pair}
       copyControl={
-        <Tooltip title={this.props.t(this.state.pairCopyTooltipKey)}>
-          <button
-            type="button"
-            className="detail-title-copy-button"
-            onClick={this.handlePairCopy}
-            aria-label={this.props.t(
-              "components.header-panel.copy-pair-aria-label",
-            )}
-          >
-            <CopyOutlined />
-          </button>
-        </Tooltip>
+        <CopyIconButton
+          value={pair}
+          tooltipTitle={this.props.t(COPY_CASE_ID_TOOLTIP_KEY)}
+          copiedTooltipTitle={this.props.t(COPY_TOOLTIP_SUCCESS_KEY)}
+          failureTooltipTitle={this.props.t(COPY_TOOLTIP_FAILURE_KEY)}
+          className="detail-title-copy-button"
+          ariaLabel={this.props.t(COPY_CASE_ID_ARIA_LABEL_KEY)}
+        />
       }
     />
   );

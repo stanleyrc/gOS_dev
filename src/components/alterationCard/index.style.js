@@ -24,6 +24,18 @@ export default styled.div`
     gap: 12px;
   }
 
+  .variant-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .copy-version-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+  }
+
   .gene-title {
     margin: 0;
     display: inline;
@@ -37,6 +49,26 @@ export default styled.div`
     font-size: 1.05rem;
     color: #343a40;
     margin-top: 0;        /* remove top spacing for inline layout */
+  }
+
+  .tier-history-button.ant-btn {
+    height: 24px;
+    margin-left: 12px;
+    padding: 0 10px;
+    border-color: #91caff;
+    border-radius: 999px;
+    background: #e6f4ff;
+    color: #0958d9;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  .tier-history-button.ant-btn:hover,
+  .tier-history-button.ant-btn:focus-visible {
+    border-color: #1677ff;
+    background: #bae0ff;
+    color: #003eb3;
   }
 
   .gene-right {

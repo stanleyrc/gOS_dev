@@ -517,10 +517,10 @@
       "qcMetrics": "Quality Control Metrics",
       "cbioportal-button": "cBioPortal",
       "clinical-trials-button": "Clinical Trials",
-      "copy-tooltip-default": "Click to copy to clipboard",
+      "copy-case-id-tooltip": "Copy case ID",
       "copy-tooltip-success": "Copied!",
       "copy-tooltip-failure": "Unable to copy",
-      "copy-pair-aria-label": "Copy pair to clipboard",
+      "copy-case-id-aria-label": "Copy case ID to clipboard",
       "purity-ploidy-title": "Purity/Ploidy",
       "metadata": {
         "pair": {
@@ -832,6 +832,7 @@
     "alteration-card": {
       "unknown": "Unknown",
       "no-alteration": "No alteration selected.",
+      "tier-history": "Tier History",
       "labels": {
         "gene-summary": "Gene Summary",
         "variant-summary": "Variant Summary",
@@ -861,6 +862,7 @@
       }
     },
     "tracks-modal": {
+      "loading": "Loading tracks…",
       "genome-plot": "Total CN Graph",
       "genome-y-axis-title": "↑ CN",
       "coverage-plot": "Coverage",

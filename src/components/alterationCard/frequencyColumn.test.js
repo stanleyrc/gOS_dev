@@ -9,6 +9,10 @@ const imported = (frequency) => ({
 });
 
 describe("Event Versions Frequency column", () => {
+  it("sorts descending by frequency when Event Versions opens", () => {
+    expect(column.defaultSortOrder).toBe("descend");
+  });
+
   it("displays supplied aggregate frequency", () => {
     expect(column.render(8, imported(8))).toBe(8);
   });

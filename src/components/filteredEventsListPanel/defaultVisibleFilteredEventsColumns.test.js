@@ -1,8 +1,17 @@
 /** @jest-environment node */
 
-import getDefaultVisibleFilteredEventsColumnKeys from "./defaultVisibleFilteredEventsColumns";
+import settings from "../../../public/settings.json";
+import getDefaultVisibleFilteredEventsColumnKeys, {
+  orderFilteredEventsColumns,
+} from "./defaultVisibleFilteredEventsColumns";
 
 describe("getDefaultVisibleFilteredEventsColumnKeys", () => {
+  it("places Location next to Gene in the application default columns", () => {
+    const columnKeys = settings.filteredEventsColumns.map(({ id }) => id);
+
+    expect(columnKeys.indexOf("location")).toBe(columnKeys.indexOf("gene") + 1);
+  });
+
   it("shows every available column when the dataset default is absent", () => {
     expect(
       getDefaultVisibleFilteredEventsColumnKeys(
@@ -13,14 +22,14 @@ describe("getDefaultVisibleFilteredEventsColumnKeys", () => {
     ).toEqual(["gene", "tier", "dataset-column", "caller-column"]);
   });
 
-  it("uses the configured IDs as an exact allow-list of available columns", () => {
+  it("uses the configured IDs as an ordered exact allow-list", () => {
     expect(
       getDefaultVisibleFilteredEventsColumnKeys(
         ["gene", "tier", "dataset-column"],
-        ["dataset-column", "unknown-column"],
+        ["dataset-column", "tier", "unknown-column", "tier"],
         ["caller-column"],
       ),
-    ).toEqual(["dataset-column", "caller-column"]);
+    ).toEqual(["dataset-column", "tier", "caller-column"]);
   });
 
   it("accepts an empty allow-list while preserving caller-owned columns", () => {
@@ -31,5 +40,22 @@ describe("getDefaultVisibleFilteredEventsColumnKeys", () => {
         ["caller-column"],
       ),
     ).toEqual(["caller-column"]);
+  });
+
+  it("orders configured columns first and leaves other columns stable", () => {
+    const columns = [
+      { key: "gene" },
+      { key: "tier" },
+      { key: "dataset-column" },
+      { key: "other" },
+    ];
+
+    expect(
+      orderFilteredEventsColumns(columns, [
+        "dataset-column",
+        "gene",
+        "unknown-column",
+      ]).map(({ key }) => key),
+    ).toEqual(["dataset-column", "gene", "tier", "other"]);
   });
 });

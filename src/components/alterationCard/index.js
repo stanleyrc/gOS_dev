@@ -48,7 +48,7 @@ function toList(value) {
     .filter(Boolean);
 }
 
-class AlterationCard extends Component {
+export class AlterationCard extends Component {
   state = {
     showVersions: false,
     selectedInterpretation: null, // When set, overrides the current one
@@ -271,27 +271,19 @@ class AlterationCard extends Component {
     const isCurrentUser =
       !selectedInterpretation || displayInterpretation?.isCurrentUser;
 
-    // Format author and date for watermark button
-    const authorName = displayInterpretation?.authorName || "Switch Version";
+    const historyLabel = t("components.alteration-card.tier-history");
+    const authorName = displayInterpretation?.authorName;
     const lastModified = displayInterpretation?.lastModified;
     const dateStr = lastModified ? getTimeAgo(new Date(lastModified)) : "";
-    const watermarkText =
-      authorName === "Switch Version"
-        ? authorName
-        : `last modified by ${authorName} ${dateStr}`;
+    const historyTooltip = authorName
+      ? `Last modified by ${authorName}${dateStr ? ` ${dateStr}` : ""}`
+      : historyLabel;
 
     return (
       <Wrapper>
         <Card className="variant-card" bordered bodyStyle={{ padding: "16px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: "0px",
-              marginBottom: "16px",
-            }}
-          >
-            {!isCurrentUser && (
+          {!isCurrentUser && (
+            <div className="copy-version-actions">
               <Button
                 type="primary"
                 size="small"
@@ -300,28 +292,12 @@ class AlterationCard extends Component {
                   fontSize: "12px",
                   height: "auto",
                   lineHeight: "1",
-                  marginRight: "8px",
                 }}
               >
                 Copy to My Version
               </Button>
-            )}
-            <Button
-              type="text"
-              size="small"
-              onClick={this.handleShowVersions}
-              style={{
-                fontSize: "12px",
-                color: "#999",
-                border: "none",
-                padding: "2px 8px",
-                height: "auto",
-                lineHeight: "1",
-              }}
-            >
-              {watermarkText}
-            </Button>
-          </div>
+            </div>
+          )}
           <div className="variant-header">
             <div className="gene-left">
               {currentTierStr && (
@@ -368,7 +344,7 @@ class AlterationCard extends Component {
                   </div>
                 </Tooltip>
               )}
-              <div>
+              <div className="variant-heading">
                 <Title
                   level={4}
                   className="gene-title"
@@ -377,8 +353,19 @@ class AlterationCard extends Component {
                   {geneLabel}
                 </Title>
                 {variantTitle ? (
-                  <div className="variant-title">{variantTitle}</div>
+                  <span className="variant-title">{variantTitle}</span>
                 ) : null}
+                <Tooltip title={historyTooltip} placement="bottom">
+                  <Button
+                    type="default"
+                    shape="round"
+                    size="small"
+                    className="tier-history-button"
+                    onClick={this.handleShowVersions}
+                  >
+                    {historyLabel}
+                  </Button>
+                </Tooltip>
               </div>
             </div>
             <div className="gene-right">

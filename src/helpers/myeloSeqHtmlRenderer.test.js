@@ -195,6 +195,29 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("N/A");
   });
 
+  it("renders Tier 3 findings explicitly included in the report", async () => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      patient: { caseId: "CASE-TIER-3" },
+      alterations: [
+        {
+          uid: "finding-tier-3",
+          gene: "TET2",
+          variant: "p.Gln548Ter",
+          tier: "3",
+          type: "SNV",
+          variant_summary: "Selected Tier 3 interpretation",
+        },
+      ],
+    });
+
+    expect(result.html).toContain("DNA Sequencing results");
+    expect(result.html).toContain("<h3>Tier 3:</h3>");
+    expect(result.html).toContain("<strong>Variant:</strong> TET2, p.Gln548Ter");
+    expect(result.html).toContain(
+      '<strong>Comments:</strong> <span class="report-comment-value">Selected Tier 3 interpretation</span>',
+    );
+  });
+
   it("renders an empty summary without report editing metadata", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       patient: { caseId: "CASE-EMPTY-COMMENT" },

@@ -24,6 +24,7 @@ jest.mock("d3", () => ({
 }));
 jest.mock("html-to-image", () => ({}));
 
+const { Modal, Spin } = require("antd");
 const { TracksModal } = require("./index");
 
 function countElements(node, type) {
@@ -35,6 +36,17 @@ function countElements(node, type) {
   return (
     (node.type === type ? 1 : 0) + countElements(node.props.children, type)
   );
+}
+
+function findElementByType(node, type) {
+  if (!React.isValidElement(node)) return null;
+  if (node.type === type) return node;
+
+  for (const child of React.Children.toArray(node.props.children)) {
+    const match = findElementByType(child, type);
+    if (match) return match;
+  }
+  return null;
 }
 
 function trackState(overrides = {}) {
@@ -127,5 +139,37 @@ describe("TracksModal missing tracks", () => {
     expect(countElements(view, "ScatterPlotPanel")).toBe(1);
     expect(countElements(view, "MutationsPanel")).toBe(1);
     expect(countElements(view, "IgvPanel")).toBe(1);
+  });
+
+  it("commits a loading shell before rendering heavy modal content", () => {
+    const afterOpenChange = jest.fn();
+    const modalComponent = new TracksModal(
+      props({ viewType: "modal", afterOpenChange }),
+    );
+    modalComponent.setState = (update) => {
+      const nextState =
+        typeof update === "function"
+          ? update(modalComponent.state, modalComponent.props)
+          : update;
+      modalComponent.state = { ...modalComponent.state, ...nextState };
+    };
+
+    const loadingView = modalComponent.render();
+    const modal = findElementByType(loadingView, Modal);
+
+    expect(modal).not.toBeNull();
+    expect(countElements(loadingView, Spin)).toBe(1);
+    expect(countElements(loadingView, "TracksLegendPanel")).toBe(0);
+
+    modal.props.afterOpenChange(true);
+
+    expect(afterOpenChange).toHaveBeenCalledWith(true);
+    expect(modalComponent.state.contentReady).toBe(true);
+    expect(countElements(modalComponent.render(), "TracksLegendPanel")).toBe(1);
+
+    const openProps = modalComponent.props;
+    modalComponent.props = { ...openProps, open: false };
+    modalComponent.componentDidUpdate(openProps);
+    expect(modalComponent.state.contentReady).toBe(false);
   });
 });

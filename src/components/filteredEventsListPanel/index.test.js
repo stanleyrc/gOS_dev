@@ -67,6 +67,7 @@ jest.mock("../tierDistributionBarChart", () => "TierDistributionBarChart");
 jest.mock("./columnBuilders", () => ({ buildColumnsFromSettings: jest.fn() }));
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { buildColumnsFromSettings } from "./columnBuilders";
 import { FilteredEventsListPanel } from "./index";
 
@@ -175,6 +176,67 @@ describe("FilteredEventsListPanel default visible columns", () => {
     panel.componentDidUpdate(previousProps, previousState);
 
     expect(panel.initializeSelectedColumns).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders dataset columns in the configured default order", () => {
+    buildColumnsFromSettings.mockReturnValue([
+      { key: "gene", title: "Gene", width: 120 },
+      { key: "tier", title: "Tier", width: 120 },
+      { key: "dataset-column", title: "Dataset", width: 120 },
+    ]);
+    const panel = new FilteredEventsListPanel({
+      t: (key) => key,
+      id: "case-1",
+      filteredEvents: [],
+      originalFilteredEvents: [],
+      selectedFilteredEvent: null,
+      selectedEventUids: [],
+      columnFilters: {},
+      viewMode: "detail",
+      loading: false,
+      error: null,
+      missing: false,
+      selectFilteredEvent: jest.fn(),
+      setSelectedEventUids: jest.fn(),
+      additionalColumns: [
+        { key: "caller-column", title: "Caller", width: 120 },
+      ],
+      data: {
+        filteredEventsColumns: [
+          { id: "gene" },
+          { id: "tier" },
+          { id: "dataset-column" },
+        ],
+      },
+      dataset: {
+        id: "dataset-1",
+        defaultVisibleFilteredEventsColumns: [
+          "dataset-column",
+          "tier",
+          "gene",
+        ],
+      },
+      inViewport: true,
+    });
+    panel.state = {
+      ...panel.state,
+      selectedColumnKeys: [
+        "dataset-column",
+        "tier",
+        "gene",
+        "caller-column",
+      ],
+    };
+
+    const table = findElementByType(panel.render(), "Table");
+
+    expect(table.props.columns.map(({ key }) => key)).toEqual([
+      "select",
+      "caller-column",
+      "dataset-column",
+      "tier",
+      "gene",
+    ]);
   });
 });
 
@@ -382,6 +444,72 @@ describe("FilteredEventsListPanel report selection", () => {
     expect(setSelectedEventUids).toHaveBeenLastCalledWith([
       outsideSelected.uid,
     ]);
+  });
+});
+
+describe("FilteredEventsListPanel Tracks presentation", () => {
+  it("keeps the event table until an id-less selection's modal is visible", () => {
+    const selectedEvent = {
+      uid: "17:7577568-17:7577568",
+      gene: "TP53",
+      location: "17:7577568-7577568 C>A",
+      eventType: "snv",
+    };
+    const selectFilteredEvent = jest.fn();
+    buildColumnsFromSettings.mockReturnValue([]);
+    createPortal.mockClear();
+    const previousDocument = global.document;
+    global.document = { body: {} };
+
+    const panel = new FilteredEventsListPanel({
+      t: (key) => key,
+      id: "case-1",
+      filteredEvents: [selectedEvent],
+      originalFilteredEvents: [selectedEvent],
+      selectedFilteredEvent: selectedEvent,
+      selectedEventUids: [],
+      columnFilters: {},
+      viewMode: "tracks",
+      loading: false,
+      error: null,
+      missing: false,
+      selectFilteredEvent,
+      setSelectedEventUids: jest.fn(),
+      setColumnFilters: jest.fn(),
+      resetColumnFilters: jest.fn(),
+      additionalColumns: [],
+      data: { filteredEventsColumns: [] },
+      dataset: { id: "dataset-1" },
+      inViewport: true,
+    });
+    panel.setState = (update) => {
+      const nextState =
+        typeof update === "function"
+          ? update(panel.state, panel.props)
+          : update;
+      panel.state = { ...panel.state, ...nextState };
+    };
+
+    const openingView = panel.render();
+    const openingTable = findElementByType(openingView, "Table");
+    const tracksModal = createPortal.mock.calls[0][0];
+
+    expect(openingTable).not.toBeNull();
+    expect(openingTable.props.rowClassName).toBe("filtered-events-event-row");
+    expect(tracksModal.type).toBe("TracksModal");
+    expect(tracksModal.props.open).toBe(true);
+
+    tracksModal.props.afterOpenChange(true);
+
+    expect(panel.state.tracksModalPresented).toBe(true);
+    expect(findElementByType(panel.render(), "Table")).toBeNull();
+
+    const previousProps = panel.props;
+    panel.props = { ...panel.props, selectedFilteredEvent: null };
+    panel.componentDidUpdate(previousProps);
+
+    expect(panel.state.tracksModalPresented).toBe(false);
+    global.document = previousDocument;
   });
 });
 

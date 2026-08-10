@@ -26,7 +26,6 @@ jest.mock("../../helpers/utility", () => ({
   coverageQCFields: () => [],
   getColorMarker: () => "gray",
   orderListViewFilters: [],
-  copyTextToClipboard: jest.fn(),
 }));
 jest.mock("../../helpers/metadata", () => ({
   getNestedValue: (record, path) =>
@@ -56,6 +55,7 @@ jest.mock("../clinicalTrialsModal", () => ({
   ClinicalTrialsModal: "ClinicalTrialsModal",
 }));
 jest.mock("../patientCaseSwitcher", () => "PatientCaseSwitcher");
+jest.mock("../copyIconButton", () => "CopyIconButton");
 jest.mock("../reportButtonsPanel", () => "ReportButtonsPanel");
 jest.mock("../../assets/images/cbioportal_icon.png", () => "cbioportal.png");
 jest.mock("../../assets/images/ctgov_logo.png", () => "ctgov.png");
@@ -173,5 +173,31 @@ describe("HeaderPanel schema metadata", () => {
     expect(text).toContain("purity-ploidy-title");
     expect(text).toContain("metadata.tumor_median_coverage.short");
     expect(text).toContain("N/A");
+  });
+
+  it("delegates case-ID copy with case-specific initial guidance", () => {
+    const labels = {
+      "components.header-panel.copy-case-id-tooltip": "Copy case ID",
+      "components.header-panel.copy-tooltip-success": "Copied!",
+      "components.header-panel.copy-tooltip-failure": "Unable to copy",
+      "components.header-panel.copy-case-id-aria-label":
+        "Copy case ID to clipboard",
+    };
+    const panel = new HeaderPanel({
+      t: (key) => labels[key] || key,
+      metadata: { pair: "CASE-42" },
+    });
+
+    const pairTitle = panel.renderPairTitle("CASE-42");
+    const copyControl = pairTitle.props.copyControl;
+
+    expect(copyControl.type).toBe("CopyIconButton");
+    expect(copyControl.props.value).toBe("CASE-42");
+    expect(copyControl.props.tooltipTitle).toBe("Copy case ID");
+    expect(copyControl.props.copiedTooltipTitle).toBe("Copied!");
+    expect(copyControl.props.failureTooltipTitle).toBe("Unable to copy");
+    expect(copyControl.props["ariaLabel"]).toBe(
+      "Copy case ID to clipboard",
+    );
   });
 });

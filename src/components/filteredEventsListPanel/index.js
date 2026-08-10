@@ -34,7 +34,9 @@ import ErrorPanel from "../errorPanel";
 import ReportModal from "../reportModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
-import getDefaultVisibleFilteredEventsColumnKeys from "./defaultVisibleFilteredEventsColumns";
+import getDefaultVisibleFilteredEventsColumnKeys, {
+  orderFilteredEventsColumns,
+} from "./defaultVisibleFilteredEventsColumns";
 import ResizableTitle, {
   clampColumnWidth,
   makeColumnsResizable,
@@ -165,6 +167,7 @@ export class FilteredEventsListPanel extends Component {
       order: null,
     },
     columnWidths: {},
+    tracksModalPresented: false,
   };
 
   getDefaultColumnKeys = (props = this.props) => {
@@ -272,7 +275,20 @@ export class FilteredEventsListPanel extends Component {
     ) {
       this.initializeSelectedColumns();
     }
+
+    const hasTracksSelection = Boolean(
+      this.props.selectedFilteredEvent && this.props.viewMode === "tracks",
+    );
+    if (!hasTracksSelection && this.state.tracksModalPresented) {
+      this.setState({ tracksModalPresented: false });
+    }
   }
+
+  handleTracksModalOpenChange = (presented) => {
+    if (presented !== this.state.tracksModalPresented) {
+      this.setState({ tracksModalPresented: presented });
+    }
+  };
 
   initializeSelectedColumns = () => {
     this.setState({ selectedColumnKeys: this.getDefaultColumnKeys() });
@@ -365,13 +381,17 @@ export class FilteredEventsListPanel extends Component {
 
     if (missing) return null;
 
-    let open = selectedFilteredEvent?.id;
+    const tracksSelected = Boolean(
+      selectedFilteredEvent && viewMode === "tracks",
+    );
+    const open = tracksSelected;
 
     let {
       eventType,
       selectedColumnKeys,
       sortState,
       columnWidths,
+      tracksModalPresented,
     } = this.state;
 
     let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
@@ -395,7 +415,11 @@ export class FilteredEventsListPanel extends Component {
       filterValues
     );
 
-    const columnsWithSortState = columns.map((col) => {
+    const orderedColumns = orderFilteredEventsColumns(
+      columns,
+      dataset?.defaultVisibleFilteredEventsColumns,
+    );
+    const columnsWithSortState = orderedColumns.map((col) => {
       if (!col.sorter) return col;
       return {
         ...col,
@@ -543,7 +567,7 @@ export class FilteredEventsListPanel extends Component {
                     size="small"
                     maxTagCount="responsive"
                   >
-                    {columns.map((col) => (
+                    {orderedColumns.map((col) => (
                       <Select.Option key={col.key} value={col.key}>
                         {getColumnTitle(col.title)}
                       </Select.Option>
@@ -558,7 +582,7 @@ export class FilteredEventsListPanel extends Component {
               )}
             </Row>
             {/* Hide table when TracksModal is open to prevent performance issues */}
-            {!(selectedFilteredEvent && viewMode === "tracks") && (
+            {!(tracksSelected && tracksModalPresented) && (
               <Row
                 className="ant-panel-container ant-home-plot-container"
                 style={transitionStyle(inViewport)}
@@ -570,6 +594,7 @@ export class FilteredEventsListPanel extends Component {
                         components={{ header: { cell: ResizableTitle } }}
                         columns={visibleColumns}
                         dataSource={records}
+                        rowClassName="filtered-events-event-row"
                         pagination={{ pageSize: 50 }}
                         showSorterTooltip={false}
                         onChange={this.handleTableChange}
@@ -622,7 +647,7 @@ export class FilteredEventsListPanel extends Component {
                 )}
               </Row>
             )}
-            {selectedFilteredEvent && viewMode === "tracks" && createPortal(
+            {tracksSelected && createPortal(
               <TracksModal
                 {...{
                   showVariants: true,
@@ -712,8 +737,9 @@ export class FilteredEventsListPanel extends Component {
                   allelicPlotYAxisTitle: t(
                     "components.tracks-modal.allelic-plot-y-axis-title"
                   ),
-                  handleOkClicked: () => selectFilteredEvent(null),
-                  handleCancelClicked: () => selectFilteredEvent(null),
+                  handleOkClicked: this.handleCloseReportModal,
+                  handleCancelClicked: this.handleCloseReportModal,
+                  afterOpenChange: this.handleTracksModalOpenChange,
                   open,
                 }}
               />,
@@ -749,7 +775,7 @@ const mapStateToProps = (state) => {
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
     selectedEventUids: selectReportEventUids(state),
-    columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2] },
+    columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2, 3] },
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
     missing: state.FilteredEvents.missing,
