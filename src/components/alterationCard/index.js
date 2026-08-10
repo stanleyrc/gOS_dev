@@ -475,7 +475,7 @@ export class AlterationCard extends Component {
 
         <InterpretationVersionsSidepanel
           tableData={allInterpretations}
-          title="Event Versions"
+          title={t("components.interpretationVersionsSidepanel.tierHistoryTitle")}
           isOpen={showVersions}
           onOpen={this.handleRefreshVersions}
           onClose={this.handleCloseVersions}

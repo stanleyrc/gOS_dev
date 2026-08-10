@@ -993,6 +993,7 @@
       }
     },
     "interpretationVersionsSidepanel": {
+      "tierHistoryTitle": "Tier History",
       "searchPlaceholder": "Search interpretations...",
       "authorColumn": "Author",
       "dateColumn": "Date"

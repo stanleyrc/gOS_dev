@@ -106,6 +106,17 @@ describe("ReportButtonsPanel report preview", () => {
     previewReport.mockResolvedValue("<html>Report</html>");
   });
 
+  it("renders View Report as a round pill button", () => {
+    const component = createComponent();
+    const children = React.Children.toArray(component.render().props.children);
+    const viewReportButton = children.find((child) => child.type === "Button");
+
+    expect(viewReportButton.props).toMatchObject({
+      shape: "round",
+      className: "report-view-button",
+    });
+  });
+
   it("passes selected event UIDs to report preview", async () => {
     const component = createComponent({
       selectedEventUids: ["alteration-1", "alteration-2"],

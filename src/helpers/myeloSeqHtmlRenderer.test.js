@@ -78,9 +78,11 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).toContain("SPECIMEN");
     expect(result.html).toContain("<strong>Tumor sample:</strong> CASE-001");
     expect(result.html).toContain(
-      "<strong>Specimen Type:</strong> Peripheral blood",
+      "<strong>Specimen Type:</strong> Bone marrow",
     );
-    expect(result.html).toContain("<strong>Clinical History:</strong> MPN");
+    expect(result.html).toContain("<strong>Clinical History:</strong> NA");
+    expect(result.html).not.toContain("Peripheral blood");
+    expect(result.html).not.toContain("<strong>Clinical History:</strong> MPN");
     expect(result.html).not.toContain("<strong>Tumor Type:</strong>");
     expect(result.html).not.toContain("<strong>Tumor Details:</strong>");
     expect(result.html).not.toContain("<strong>Disease:</strong>");
@@ -128,41 +130,27 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain(">NOTES<");
   });
 
-  it.each([
-    [
-      "explicit clinical history",
-      {
-        clinical_history: "Explicit history",
-        disease: "Disease",
-        tumor_type: "Type",
-        tumor_details: "Details",
-      },
-      "Explicit history",
-    ],
-    [
-      "disease",
-      { disease: "Disease", tumor_type: "Type", tumor_details: "Details" },
-      "Disease",
-    ],
-    [
-      "tumor type",
-      { tumor_type: "Type", tumor_details: "Details" },
-      "Type",
-    ],
-    ["tumor details", { tumor_details: "Details" }, "Details"],
-  ])("uses %s as the Clinical History value", async (_source, metadata, expected) => {
+  it("always renders Clinical History as NA without mapping metadata", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       patient: {
         caseId: "CASE-HISTORY",
-        disease: metadata.disease,
-        tumorType: metadata.tumor_type,
-        tumorDetails: metadata.tumor_details,
+        disease: "Patient disease",
+        tumorType: "Patient type",
+        tumorDetails: "Patient details",
       },
-      metadata,
+      metadata: {
+        clinical_history: "Explicit history",
+        disease: "Metadata disease",
+        tumor_type: "Metadata type",
+        tumor_details: "Metadata details",
+      },
       alterations: [],
     });
 
-    expect(result.html).toContain(`<strong>Clinical History:</strong> ${expected}`);
+    expect(result.html).toContain("<strong>Clinical History:</strong> NA");
+    expect(result.html).not.toContain("Explicit history");
+    expect(result.html).not.toContain("Patient disease");
+    expect(result.html).not.toContain("Metadata disease");
   });
 
   it("includes fixed report boilerplate without legacy embedded interpretation data", async () => {
@@ -191,7 +179,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("<th>Transcript</th>");
     expect(result.html).not.toContain("Targeted RNA Sequencing results");
     expect(result.html).toContain("<h3>Tier 2:</h3>");
-    expect(result.html).not.toContain("Clinical History");
+    expect(result.html).toContain("<strong>Clinical History:</strong> NA");
     expect(result.html).not.toContain("N/A");
   });
 
@@ -301,9 +289,8 @@ describe("MyeloSeqHtmlRenderer", () => {
       },
     });
 
-    expect(result.html).toContain(
-      "<strong>Clinical History:</strong> Allowed disease",
-    );
+    expect(result.html).toContain("<strong>Clinical History:</strong> NA");
+    expect(result.html).not.toContain("Allowed disease");
     expect(result.html).not.toContain("SCHEMA-OMITTED");
     expect(result.html).not.toContain("<strong>Specimen Type:</strong>");
   });

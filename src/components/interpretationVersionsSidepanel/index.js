@@ -3,6 +3,7 @@ import { Input, Table, Drawer } from "antd";
 import { withTranslation } from 'react-i18next';
 import { getInterpretationSourceDatasetId } from '../../helpers/interpretationHistory';
 import orderInterpretationVersionColumns from './columnOrder';
+import { withLabelBasedColumnWidth } from './columnWidth';
 
 const defaultFilterFunction = (searchTerm, data) => {
   if (!searchTerm) return data;
@@ -12,7 +13,7 @@ const defaultFilterFunction = (searchTerm, data) => {
   );
 };
 
-class InterpretationVersionsSidepanel extends Component {
+export class InterpretationVersionsSidepanel extends Component {
   state = {
     searchTerm: "",
   };
@@ -33,47 +34,88 @@ class InterpretationVersionsSidepanel extends Component {
     const { searchTerm } = this.state;
 
     const filteredData = filterFunction(searchTerm, tableData);
+    const authorLabel = this.props.t(
+      'components.interpretationVersionsSidepanel.authorColumn',
+    );
+    const dateLabel = this.props.t(
+      'components.interpretationVersionsSidepanel.dateColumn',
+    );
+    const columnTitle = (label) => () => (
+      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+    );
+    const labeledColumn = (column, label) =>
+      withLabelBasedColumnWidth(
+        {
+          ...column,
+          title:
+            typeof column.title === 'string'
+              ? columnTitle(column.title)
+              : column.title,
+        },
+        label,
+      );
 
     const tableColumns = orderInterpretationVersionColumns([
-      {
-        title: () => <span style={{ whiteSpace: 'nowrap' }}>{this.props.t('components.interpretationVersionsSidepanel.authorColumn')}</span>,
-        dataIndex: 'authorName',
-        key: 'authorName',
-        width: 120,
-        minWidth: 120,
-        sorter: (a, b) => (a.authorName || '').localeCompare(b.authorName || ''),
-      },
-      {
-        title: () => <span style={{ whiteSpace: 'nowrap' }}>{this.props.t('components.interpretationVersionsSidepanel.dateColumn')}</span>,
-        dataIndex: 'lastModified',
-        key: 'lastModified',
-        width: 120,
-        minWidth: 120,
-        render: (date) => date ? new Date(date).toLocaleString() : '',
-        sorter: (a, b) => new Date(a.lastModified || 0) - new Date(b.lastModified || 0),
-      },
-      {
-        title: () => <span style={{ whiteSpace: 'nowrap' }}>Dataset</span>,
-        dataIndex: 'dataset',
-        key: 'dataset',
-        minWidth: 100,
-        render: (text, record) => {
-          const datasetId = getInterpretationSourceDatasetId(record);
-          const dataset = datasets.find(d => String(d.id) === String(datasetId));
-          return dataset ? dataset.title : (datasetId || '');
+      labeledColumn(
+        {
+          title: columnTitle(authorLabel),
+          dataIndex: 'authorName',
+          key: 'authorName',
+          width: 120,
+          minWidth: 120,
+          sorter: (a, b) =>
+            (a.authorName || '').localeCompare(b.authorName || ''),
         },
-        sorter: (a, b) => {
-          const datasetIdA = getInterpretationSourceDatasetId(a);
-          const datasetIdB = getInterpretationSourceDatasetId(b);
-          const datasetA = datasets.find(d => String(d.id) === String(datasetIdA))?.title || datasetIdA || '';
-          const datasetB = datasets.find(d => String(d.id) === String(datasetIdB))?.title || datasetIdB || '';
-          return datasetA.localeCompare(datasetB);
+        authorLabel,
+      ),
+      labeledColumn(
+        {
+          title: columnTitle(dateLabel),
+          dataIndex: 'lastModified',
+          key: 'lastModified',
+          width: 120,
+          minWidth: 120,
+          render: (date) => date ? new Date(date).toLocaleString() : '',
+          sorter: (a, b) =>
+            new Date(a.lastModified || 0) - new Date(b.lastModified || 0),
         },
-      },
-      ...additionalColumns.map(col => ({
-        ...col,
-        title: typeof col.title === 'string' ? () => <span style={{ whiteSpace: 'nowrap' }}>{col.title}</span> : col.title,
-      })),
+        dateLabel,
+      ),
+      labeledColumn(
+        {
+          title: columnTitle('Dataset'),
+          dataIndex: 'dataset',
+          key: 'dataset',
+          minWidth: 100,
+          render: (text, record) => {
+            const datasetId = getInterpretationSourceDatasetId(record);
+            const dataset = datasets.find(
+              d => String(d.id) === String(datasetId),
+            );
+            return dataset ? dataset.title : (datasetId || '');
+          },
+          sorter: (a, b) => {
+            const datasetIdA = getInterpretationSourceDatasetId(a);
+            const datasetIdB = getInterpretationSourceDatasetId(b);
+            const datasetA = datasets.find(
+              d => String(d.id) === String(datasetIdA),
+            )?.title || datasetIdA || '';
+            const datasetB = datasets.find(
+              d => String(d.id) === String(datasetIdB),
+            )?.title || datasetIdB || '';
+            return datasetA.localeCompare(datasetB);
+          },
+        },
+        'Dataset',
+      ),
+      ...additionalColumns.map((column) =>
+        labeledColumn(
+          column,
+          typeof column.title === 'string'
+            ? column.title
+            : String(column.key || column.dataIndex || ''),
+        ),
+      ),
     ]);
 
     return (
@@ -83,8 +125,9 @@ class InterpretationVersionsSidepanel extends Component {
         width={600}
         onClose={onClose}
         open={isOpen}
+        styles={{ body: { overflow: "hidden" } }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           <Input
             placeholder={this.props.t('components.interpretationVersionsSidepanel.searchPlaceholder')}
             value={searchTerm}
@@ -102,7 +145,7 @@ class InterpretationVersionsSidepanel extends Component {
               onClick: () => onSelect(record),
               style: { cursor: 'pointer' },
             })}
-            scroll={{ x: 'max-content', y: 'calc(100vh - 200px)' }}
+            scroll={{ x: 'max-content', y: 'calc(100vh - 280px)' }}
           />
         </div>
       </Drawer>
