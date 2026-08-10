@@ -194,6 +194,11 @@ export default styled.div`
   .editable-field:hover .edit-btn {
     opacity: 1;
   }
+  .editable-field-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
 
   /* Notes display/edit */
   .note-display {

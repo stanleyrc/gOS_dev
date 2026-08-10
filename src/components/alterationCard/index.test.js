@@ -67,6 +67,17 @@ function findElementByClassName(node, className) {
   return null;
 }
 
+function findElementByType(node, type) {
+  if (!React.isValidElement(node)) return null;
+  if (node.type === type) return node;
+
+  for (const child of React.Children.toArray(node.props.children)) {
+    const match = findElementByType(child, type);
+    if (match) return match;
+  }
+  return null;
+}
+
 function collectText(node) {
   if (node == null || typeof node === "boolean") return [];
   if (typeof node === "string" || typeof node === "number") {
@@ -81,7 +92,10 @@ describe("AlterationCard Tier History control", () => {
   it("renders a badge button beside the variant name", () => {
     const card = new AlterationCard({
       t: (key) =>
-        key === "components.alteration-card.tier-history"
+        [
+          "components.alteration-card.tier-history",
+          "components.interpretationVersionsSidepanel.tierHistoryTitle",
+        ].includes(key)
           ? "Tier History"
           : key,
       record: {
@@ -115,6 +129,12 @@ describe("AlterationCard Tier History control", () => {
       className: "tier-history-button",
     });
     expect(collectText(rendered)).not.toContain("Switch Version");
+
+    const historySidepanel = findElementByType(
+      rendered,
+      "InterpretationVersionsSidepanel",
+    );
+    expect(historySidepanel.props.title).toBe("Tier History");
 
     historyButton.props.onClick();
     expect(card.state.showVersions).toBe(true);

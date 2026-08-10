@@ -1,5 +1,5 @@
 import { escapeHtml } from "./format";
-import { datasetHasField } from "./browseScope";
+import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
@@ -7,20 +7,6 @@ function hasValue(value) {
 
 function firstValue(...values) {
   return values.find(hasValue);
-}
-
-function reportHasField(
-  report,
-  field,
-  allowWithoutExplicitSchema = false,
-) {
-  const dataset = report?.dataset;
-  return (
-    !dataset ||
-    !Array.isArray(dataset.fields) ||
-    (allowWithoutExplicitSchema && !Array.isArray(dataset.schema)) ||
-    datasetHasField(dataset, field)
-  );
 }
 
 function formatNumber(value, maximumFractionDigits = 2) {
@@ -84,44 +70,11 @@ function renderTable(title, columns, rows) {
 }
 
 function buildSpecimenSection(report) {
-  const patient = report?.patient || {};
-  const metadata = report?.metadata || {};
-  const specimenType = reportHasField(report, "specimen_type", true)
-    ? firstValue(metadata.specimen_type, metadata.specimenType)
-    : "";
-  const clinicalHistory = firstValue(
-    reportHasField(report, "clinical_history", true)
-      ? firstValue(metadata.clinical_history, metadata.clinicalHistory)
-      : "",
-    reportHasField(report, "disease")
-      ? firstValue(patient.disease, metadata.disease)
-      : "",
-    reportHasField(report, "tumor_type")
-      ? firstValue(
-          patient.tumorType,
-          metadata.tumor_type,
-          metadata.tumorType,
-          metadata.tumor,
-        )
-      : "",
-    reportHasField(report, "tumor_details")
-      ? firstValue(
-          patient.tumorDetails,
-          metadata.tumor_details,
-          metadata.tumorDetails,
-        )
-      : "",
-  );
-  const facts = [
-    ["Tumor sample", patient.caseId],
-    ["Specimen Type", specimenType],
-    ["Clinical History", clinicalHistory],
-  ];
+  const facts = getMyeloSeqSpecimenFacts(report);
 
   return `${renderSectionBar("SPECIMEN")}
   <section class="specimen-facts">${facts
-    .map(([label, value]) => renderFact(label, value))
-    .filter(Boolean)
+    .map(({ label, value }) => renderFact(label, value))
     .join("")}</section>`;
 }
 

@@ -80,8 +80,8 @@ describe("MyeloSeqDocxRenderer model", () => {
 
     expect(model.specimenFacts).toEqual([
       { label: "Tumor sample", value: "CASE-001" },
-      { label: "Specimen Type", value: "Peripheral blood" },
-      { label: "Clinical History", value: "MPN" },
+      { label: "Specimen Type", value: "Bone marrow" },
+      { label: "Clinical History", value: "NA" },
     ]);
     expect(model.resultTables.map(({ title, columns }) => ({ title, columns })))
       .toEqual([
@@ -135,7 +135,7 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(JSON.stringify(model)).not.toContain("Ruxolitinib");
   });
 
-  it("honors schema visibility and the approved Clinical History fallback", () => {
+  it("honors primary-site visibility and keeps Clinical History unmapped", () => {
     const model = buildMyeloSeqDocxModel({
       ...report,
       dataset: {
@@ -158,10 +158,11 @@ describe("MyeloSeqDocxRenderer model", () => {
 
     expect(model.specimenFacts).toEqual([
       { label: "Tumor sample", value: "CASE-001" },
-      { label: "Clinical History", value: "Allowed disease" },
+      { label: "Clinical History", value: "NA" },
     ]);
     expect(model.resultTables).toEqual([]);
     expect(model.tierSections).toEqual([]);
+    expect(JSON.stringify(model)).not.toContain("Allowed disease");
     expect(JSON.stringify(model)).not.toContain("SCHEMA-OMITTED");
   });
 
@@ -174,6 +175,10 @@ describe("MyeloSeqDocxRenderer model", () => {
       ],
     });
 
+    expect(model.specimenFacts).toEqual([
+      { label: "Tumor sample", value: "CASE-EMPTY" },
+      { label: "Clinical History", value: "NA" },
+    ]);
     expect(model.resultTables).toHaveLength(1);
     expect(model.resultTables[0].columns).toEqual([
       "Gene",

@@ -159,6 +159,7 @@ class ReportButtonsPanel extends Component {
       <Wrapper>
         <Button
           className="report-view-button"
+          shape="round"
           icon={<FaFileMedical size={16} />}
           onClick={this.handlePreviewReport}
           disabled={loading}

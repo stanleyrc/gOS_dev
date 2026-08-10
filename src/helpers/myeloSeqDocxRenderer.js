@@ -13,7 +13,7 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
-import { datasetHasField } from "./browseScope";
+import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
 const DOCX_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -131,16 +131,6 @@ function firstValue(...values) {
   return values.find(hasValue);
 }
 
-function reportHasField(report, field, allowWithoutExplicitSchema = false) {
-  const dataset = report?.dataset;
-  return (
-    !dataset ||
-    !Array.isArray(dataset.fields) ||
-    (allowWithoutExplicitSchema && !Array.isArray(dataset.schema)) ||
-    datasetHasField(dataset, field)
-  );
-}
-
 function formatNumber(value, maximumFractionDigits = 2) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
@@ -163,45 +153,6 @@ function isFusion(finding) {
 
 function stringValue(value) {
   return hasValue(value) ? String(value) : "";
-}
-
-function buildSpecimenFacts(report) {
-  const patient = report?.patient || {};
-  const metadata = report?.metadata || {};
-  const specimenType = reportHasField(report, "specimen_type", true)
-    ? firstValue(metadata.specimen_type, metadata.specimenType)
-    : "";
-  const clinicalHistory = firstValue(
-    reportHasField(report, "clinical_history", true)
-      ? firstValue(metadata.clinical_history, metadata.clinicalHistory)
-      : "",
-    reportHasField(report, "disease")
-      ? firstValue(patient.disease, metadata.disease)
-      : "",
-    reportHasField(report, "tumor_type")
-      ? firstValue(
-          patient.tumorType,
-          metadata.tumor_type,
-          metadata.tumorType,
-          metadata.tumor,
-        )
-      : "",
-    reportHasField(report, "tumor_details")
-      ? firstValue(
-          patient.tumorDetails,
-          metadata.tumor_details,
-          metadata.tumorDetails,
-        )
-      : "",
-  );
-
-  return [
-    ["Tumor sample", patient.caseId],
-    ["Specimen Type", specimenType],
-    ["Clinical History", clinicalHistory],
-  ]
-    .filter(([, value]) => hasValue(value))
-    .map(([label, value]) => ({ label, value: String(value) }));
 }
 
 function buildResultTable(title, columnDefinitions, findings) {
@@ -313,7 +264,7 @@ function buildMyeloSeqDocxModel(report) {
   return {
     caseId: stringValue(report?.patient?.caseId),
     author: stringValue(report?.author),
-    specimenFacts: buildSpecimenFacts(report),
+    specimenFacts: getMyeloSeqSpecimenFacts(report),
     resultTables: buildResultTables(report),
     tierSections: buildTierSections(report),
     tierGuide: [...TIER_GUIDE],

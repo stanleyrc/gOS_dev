@@ -6,7 +6,7 @@ const Wrapper = styled.div`
 
   .report-view-button.ant-btn {
     height: 36px;
-    border-radius: 6px;
+    border-radius: 999px;
     color: #27496b;
     font-weight: 500;
   }

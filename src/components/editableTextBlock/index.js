@@ -1,6 +1,6 @@
 import React, { Component } from "react";
-import { Input, Collapse } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { Button, Input, Collapse } from "antd";
+import { EditOutlined, SaveOutlined } from "@ant-design/icons";
 import { linkPmids } from "../../helpers/format";
 
 class EditableTextBlock extends Component {
@@ -25,11 +25,29 @@ class EditableTextBlock extends Component {
     }
   }
 
-  handleBlur = () => {
+  handleSave = () => {
+    if (!this.state.editing) return;
+
     const { onChange } = this.props;
     const { draft } = this.state;
     onChange(draft || "");
     this.setState({ editing: false });
+  };
+
+  handleBlur = () => {
+    this.handleSave();
+  };
+
+  handleKeyDown = (event) => {
+    if (event.key !== "Escape") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.handleSave();
+  };
+
+  handleSaveMouseDown = (event) => {
+    event.preventDefault();
   };
 
   setEditing = (editing) => {
@@ -42,7 +60,14 @@ class EditableTextBlock extends Component {
   };
 
   render() {
-    const { title, value, useCollapse, minRows = 3, readOnly = false } = this.props;
+    const {
+      title,
+      value,
+      useCollapse,
+      minRows = 3,
+      readOnly = false,
+      saveLabel = "Save",
+    } = this.props;
     const { editing, draft } = this.state;
 
     if (editing) {
@@ -53,10 +78,23 @@ class EditableTextBlock extends Component {
             ref={this.textAreaRef}
             value={draft}
             onChange={this.handleChange}
+            onKeyDown={this.handleKeyDown}
             autoSize={{ minRows }}
             onBlur={this.handleBlur}
             style={{ marginTop: 8 }}
           />
+          <div className="editable-field-actions">
+            <Button
+              type="primary"
+              size="small"
+              icon={<SaveOutlined />}
+              onMouseDown={this.handleSaveMouseDown}
+              onClick={this.handleSave}
+              aria-label={`${saveLabel} ${title}`}
+            >
+              {saveLabel}
+            </Button>
+          </div>
         </div>
       );
     }
