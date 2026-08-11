@@ -3,6 +3,7 @@ import { PropTypes } from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { PageHeader } from "@ant-design/pro-components";
+import { BarChartOutlined } from "@ant-design/icons";
 import {
   Space,
   Tag,
@@ -23,6 +24,10 @@ import {
 import { getNestedValue } from "../../helpers/metadata";
 import { datasetHasField } from "../../helpers/browseScope";
 import {
+  buildPatientLevelSearchFilters,
+  PATIENT_LEVEL_VIEW_TARGET,
+} from "../../helpers/patientLevelView";
+import {
   valueFormat,
   hrdFields,
   sv_countFields,
@@ -37,11 +42,14 @@ import { CbioportalModal } from "../cbioportal";
 import cbioportalIcon from "../../assets/images/cbioportal_icon.png";
 import { ClinicalTrialsModal } from "../clinicalTrialsModal";
 import PatientCaseSwitcher from "../patientCaseSwitcher";
+import { normalizePatientId } from "../patientCaseSwitcher/helpers";
 import CopyIconButton from "../copyIconButton";
 import ReportButtonsPanel from "../reportButtonsPanel";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
+import datasetsActions from "../../redux/datasets/actions";
 
 const { Text } = Typography;
+const { selectAllDatasets } = datasetsActions;
 const COPY_CASE_ID_TOOLTIP_KEY =
   "components.header-panel.copy-case-id-tooltip";
 const COPY_TOOLTIP_SUCCESS_KEY = "components.header-panel.copy-tooltip-success";
@@ -72,6 +80,33 @@ export class HeaderPanel extends Component {
 
   handleClinicalTrialsModalClose = () => {
     this.setState({ clinicalTrialsModalVisible: false });
+  };
+
+  handlePatientLevelView = () => {
+    const patientId = normalizePatientId(this.props.metadata?.patient_id);
+    if (patientId) this.props.showPatientLevelView(patientId);
+  };
+
+  renderPatientLevelViewButton = () => {
+    const { metadata, t } = this.props;
+    const patientId = normalizePatientId(metadata?.patient_id);
+    if (!patientId) return null;
+
+    return (
+      <Button
+        type="link"
+        size="small"
+        className="patient-level-view-link"
+        icon={<BarChartOutlined />}
+        onClick={this.handlePatientLevelView}
+        aria-label={t(
+          "components.patient-case-switcher.patient-level-aria-label",
+          { patientId },
+        )}
+      >
+        {t("components.patient-case-switcher.patient-level")}
+      </Button>
+    );
   };
 
   renderPairTitle = (pair) => (
@@ -318,6 +353,9 @@ export class HeaderPanel extends Component {
         return acc;
       }, {});
 
+    const hasMetadataBadges =
+      inferred_sex != null || Boolean(qcMetricsComponent);
+
     return (
       <Wrapper>
         <PageHeader
@@ -328,53 +366,82 @@ export class HeaderPanel extends Component {
             </Space>
           }
           subTitle={
-            <Space size="small">
-              {inferred_sex != null && <span>{inferred_sex}</span>} {qcMetricsComponent}
-              <Tooltip
-                title={t("components.header-panel.cbioportal-button") || "cBioPortal"}
-                placement="bottom"
-                color="#27496b"
-              >
-                <Button
-                  type="text"
-                  className="header-badge-button"
-                  onClick={this.handleCbioportalModalOpen}
-                  aria-label={
-                    t("components.header-panel.cbioportal-button") || "cBioPortal"
+            <Space
+              size={hasMetadataBadges ? 24 : 0}
+              className="metadata-header-toolbar"
+            >
+              {hasMetadataBadges ? (
+                <Space size="small" className="metadata-header-badges">
+                  {inferred_sex != null ? (
+                    <Tooltip
+                      title={t("components.header-panel.patient-sex-tooltip")}
+                      placement="bottom"
+                      color="#27496b"
+                    >
+                      <Tag
+                        className="patient-sex-badge"
+                        aria-label={`${t(
+                          "components.header-panel.patient-sex-tooltip",
+                        )}: ${inferred_sex}`}
+                      >
+                        {inferred_sex}
+                      </Tag>
+                    </Tooltip>
+                  ) : null}
+                  {qcMetricsComponent}
+                </Space>
+              ) : null}
+              <Space size="small" className="metadata-header-actions">
+                {this.renderPatientLevelViewButton()}
+                <ReportButtonsPanel />
+                <Tooltip
+                  title={
+                    t("components.header-panel.cbioportal-button") ||
+                    "cBioPortal"
                   }
+                  placement="bottom"
+                  color="#27496b"
                 >
-                  <img
-                    src={cbioportalIcon}
-                    alt=""
-                    className="header-badge-image"
-                  />
-                </Button>
-              </Tooltip>
-              <Tooltip
-                title={
-                  t("components.header-panel.clinical-trials-button") ||
-                  "Clinical Trials"
-                }
-                placement="bottom"
-                color="#27496b"
-              >
-                <Button
-                  type="text"
-                  className="header-badge-button"
-                  onClick={this.handleClinicalTrialsModalOpen}
-                  aria-label={
+                  <Button
+                    type="text"
+                    className="header-badge-button"
+                    onClick={this.handleCbioportalModalOpen}
+                    aria-label={
+                      t("components.header-panel.cbioportal-button") || "cBioPortal"
+                    }
+                  >
+                    <img
+                      src={cbioportalIcon}
+                      alt=""
+                      className="header-badge-image"
+                    />
+                  </Button>
+                </Tooltip>
+                <Tooltip
+                  title={
                     t("components.header-panel.clinical-trials-button") ||
                     "Clinical Trials"
                   }
+                  placement="bottom"
+                  color="#27496b"
                 >
-                  <img
-                    src={ctgovLogo}
-                    alt=""
-                    className="header-badge-image"
-                  />
-                </Button>
-              </Tooltip>
-              <ReportButtonsPanel />
+                  <Button
+                    type="text"
+                    className="header-badge-button"
+                    onClick={this.handleClinicalTrialsModalOpen}
+                    aria-label={
+                      t("components.header-panel.clinical-trials-button") ||
+                      "Clinical Trials"
+                    }
+                  >
+                    <img
+                      src={ctgovLogo}
+                      alt=""
+                      className="header-badge-image"
+                    />
+                  </Button>
+                </Tooltip>
+              </Space>
             </Space>
           }
           extra={
@@ -566,12 +633,21 @@ HeaderPanel.propTypes = {
   canReturnToResults: PropTypes.bool,
   onBackToResults: PropTypes.func,
   selectedCase: PropTypes.object,
+  showPatientLevelView: PropTypes.func.isRequired,
 };
 HeaderPanel.defaultProps = {
   canReturnToResults: false,
   onBackToResults: null,
 };
-const mapDispatchToProps = (dispatch) => ({});
+const mapDispatchToProps = (dispatch) => ({
+  showPatientLevelView: (patientId) =>
+    dispatch(
+      selectAllDatasets({
+        searchFilters: buildPatientLevelSearchFilters(patientId),
+        listViewTarget: PATIENT_LEVEL_VIEW_TARGET,
+      }),
+    ),
+});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,
   dataset: state.Settings.dataset,

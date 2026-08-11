@@ -2,12 +2,13 @@ import styled from "styled-components";
 
 const Wrapper = styled.div`
   display: inline-flex;
-  margin-left: 8px;
 
   .report-view-button.ant-btn {
-    height: 36px;
+    height: 32px;
+    padding: 0 14px;
     border-radius: 999px;
     color: #27496b;
+    font-size: 14px;
     font-weight: 500;
   }
 `;
