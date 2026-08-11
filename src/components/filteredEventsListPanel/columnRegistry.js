@@ -2,7 +2,7 @@ import {
   TierBadgeRenderer,
   FormattedNumberRenderer,
   StringRenderer,
-  GeneRenderer,
+  EventDetailRenderer,
   LocationRenderer,
   ClassIconRenderer,
 } from "./columnRenderers";
@@ -20,7 +20,8 @@ import {
  *   }
  */
 export const filteredEventsColumnRegistry = {
-  "gene-link": GeneRenderer,
+  "gene-link": EventDetailRenderer,
+  "event-detail-link": EventDetailRenderer,
   "tier-badge": TierBadgeRenderer,
   "formatted-number": FormattedNumberRenderer,
   "string-basic": StringRenderer,

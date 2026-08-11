@@ -47,6 +47,7 @@ jest.mock("../../helpers/metadata", () => ({
   qcMetricsClasses: {},
 }));
 jest.mock("../../helpers/browseScope", () => ({
+  ALL_DATASETS_ROUTE_VALUE: "all",
   datasetHasField: (dataset, fieldId) =>
     (dataset?.fields || []).some(
       (field) => (field.id || field.name) === fieldId,
@@ -64,6 +65,12 @@ jest.mock("../../assets/images/cbioportal_icon.png", () => "cbioportal.png");
 jest.mock("../../assets/images/ctgov_logo.png", () => "ctgov.png");
 
 import { HeaderPanel } from "./index";
+
+const originalWindow = global.window;
+afterEach(() => {
+  if (originalWindow === undefined) delete global.window;
+  else global.window = originalWindow;
+});
 
 const collectText = (node) => {
   if (node == null || typeof node === "boolean") return [];
@@ -115,6 +122,59 @@ describe("HeaderPanel schema metadata", () => {
     expect(text).not.toContain("4.8");
     expect(text).not.toContain("999");
     expect(text).not.toContain("SCHEMA-OMITTED");
+  });
+
+  it("shows QC metric details when qcMetrics is included in the dataset schema", () => {
+    const qcMetricsField = {
+      id: "qcMetrics",
+      title: "Quality Control Metrics",
+      type: "string",
+      external: true,
+    };
+    const qcMetrics = [
+      {
+        code: "PASS",
+        title: "Fraction of reads aligned (1) >= 90%",
+      },
+      {
+        code: "WARN",
+        title: "Percent on target (0.0065) < 80%",
+      },
+      {
+        code: "FAIL",
+        title: "Mean target depth (1.41) < 500X",
+      },
+    ];
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-qc-failure",
+      dataset: {
+        schema: [qcMetricsField],
+        fields: [qcMetricsField],
+      },
+      metadata: {
+        pair: "PAIR-QC-FAILURE",
+        qcMetrics,
+        qcEvaluation: "FAIL",
+      },
+      plots: [],
+    });
+
+    const pageHeader = panel.render().props.children[0];
+    const toolbarGroups = React.Children.toArray(
+      pageHeader.props.subTitle.props.children,
+    );
+    const badges = React.Children.toArray(
+      toolbarGroups[0].props.children,
+    );
+    const qcPopover = badges[0];
+
+    expect(qcPopover.type).toBe("Popover");
+    expect(qcPopover.props.children.type).toBe("Tag");
+    expect(qcPopover.props.children.props.children).toBe("FAIL");
+    expect(collectText(qcPopover.props.content)).toEqual(
+      qcMetrics.map(({ title }) => title),
+    );
   });
 
   it("hides the paired metadata component when both fields are omitted", () => {
@@ -189,7 +249,11 @@ describe("HeaderPanel schema metadata", () => {
       "components.patient-case-switcher.patient-level-aria-label":
         "View patient aggregations",
     };
-    const showPatientLevelView = jest.fn();
+    global.window = {
+      location: {
+        href: "https://gos.test/app?dataset=dataset-1&report=case-1&tab=2",
+      },
+    };
     const panel = new HeaderPanel({
       t: (key) => labels[key] || key,
       report: "case-1",
@@ -205,7 +269,6 @@ describe("HeaderPanel schema metadata", () => {
         qcEvaluation: null,
       },
       plots: [],
-      showPatientLevelView,
     });
 
     const pageHeader = panel.render().props.children[0];
@@ -238,8 +301,18 @@ describe("HeaderPanel schema metadata", () => {
       "Clinical Trials",
     );
 
-    actions[0].props.onClick();
-    expect(showPatientLevelView).toHaveBeenCalledWith("PATIENT-1");
+    const patientLevelUrl = new URL(actions[0].props.href);
+    expect(actions[0].props.target).toBe("_blank");
+    expect(actions[0].props.rel).toBe("noopener noreferrer");
+    expect(actions[0].props.onClick).toBeUndefined();
+    expect(patientLevelUrl.searchParams.get("scope")).toBe("all");
+    expect(patientLevelUrl.searchParams.get("view")).toBe(
+      "patient-aggregations",
+    );
+    expect(patientLevelUrl.searchParams.get("patient_id")).toBe("PATIENT-1");
+    expect(patientLevelUrl.searchParams.has("dataset")).toBe(false);
+    expect(patientLevelUrl.searchParams.has("report")).toBe(false);
+    expect(patientLevelUrl.searchParams.has("tab")).toBe(false);
   });
 
   it("delegates case-ID copy with case-specific initial guidance", () => {

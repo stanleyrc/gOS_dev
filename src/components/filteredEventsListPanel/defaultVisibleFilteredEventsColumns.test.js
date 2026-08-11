@@ -6,6 +6,26 @@ import getDefaultVisibleFilteredEventsColumnKeys, {
 } from "./defaultVisibleFilteredEventsColumns";
 
 describe("getDefaultVisibleFilteredEventsColumnKeys", () => {
+  it("gives Gene a 164-pixel default width", () => {
+    const geneColumn = settings.filteredEventsColumns.find(
+      ({ id }) => id === "gene",
+    );
+
+    expect(geneColumn.width).toBe(164);
+  });
+
+  it("assigns the event detail action to Variant instead of Gene", () => {
+    const geneColumn = settings.filteredEventsColumns.find(
+      ({ id }) => id === "gene",
+    );
+    const variantColumn = settings.filteredEventsColumns.find(
+      ({ id }) => id === "variant",
+    );
+
+    expect(geneColumn.viewType).toBe("string-basic");
+    expect(variantColumn.viewType).toBe("event-detail-link");
+  });
+
   it("places Location next to Gene in the application default columns", () => {
     const columnKeys = settings.filteredEventsColumns.map(({ id }) => id);
 

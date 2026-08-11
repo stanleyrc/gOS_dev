@@ -8,16 +8,17 @@ import { store } from "../../../redux/store";
 const { Text } = Typography;
 
 /**
- * GeneRenderer
- * Renders gene name with interpretations avatar and link to open detail view
+ * EventDetailRenderer
+ * Renders an event value with its interpretations avatar and a detail-view link.
+ * Used by event-detail-link columns and the legacy gene-link view type.
  *
- * @param {*} value - The gene value
+ * @param {*} value - The displayed event value
  * @param {Object} record - The complete record object
  * @param {Function} selectFilteredEvent - Function to handle selection
  * @returns {JSX}
  */
-export default class GeneRenderer extends Component {
-  handleOpenGene = () => {
+export default class EventDetailRenderer extends Component {
+  handleOpenDetails = () => {
     const { record, selectFilteredEvent } = this.props;
     selectFilteredEvent(record, "detail");
   };
@@ -40,18 +41,18 @@ export default class GeneRenderer extends Component {
     return (
       <Button
         type="link"
-        className="filtered-events-gene-link"
-        onClick={this.handleOpenGene}
+        className="filtered-events-detail-link"
+        onClick={this.handleOpenDetails}
       >
         <Tooltip placement="topLeft" title={value}>
-          <span className="filtered-events-gene-content">
+          <span className="filtered-events-detail-content">
             {count > 0 && (
               <InterpretationsAvatar
                 tooltipText={`Found ${count} interpretation(s)`}
                 size={18}
               />
             )}
-            <span className="filtered-events-gene-text">{value}</span>
+            <span className="filtered-events-detail-text">{value}</span>
           </span>
         </Tooltip>
       </Button>
