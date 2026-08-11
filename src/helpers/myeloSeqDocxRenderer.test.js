@@ -99,9 +99,19 @@ describe("MyeloSeqDocxRenderer model", () => {
         },
         {
           title: "Targeted RNA Sequencing results",
-          columns: ["Gene", "Variant", "Tier", "Variant Type", "Locus"],
+          columns: ["Gene(Exon)", "Tier", "Variant Type", "Locus"],
         },
       ]);
+    expect(model.resultTables[1]).toMatchObject({
+      width: 10800,
+      columnWidths: [3132, 864, 2268, 4536],
+    });
+    expect(model.resultTables[1].rows[0].map(({ value }) => value)).toEqual([
+      "BCR(14)::ABL1(2)",
+      "2",
+      "Fusion",
+      "chr22:23632600::chr9:133729451",
+    ]);
     expect(model.tierSections).toEqual([
       {
         tier: "1",
@@ -155,19 +165,23 @@ describe("MyeloSeqDocxRenderer model", () => {
     });
 
     expect(model.resultTables[0].columns).toEqual([
-      "Gene",
-      "Variant",
+      "Gene(Exon)",
       "Tier",
       "Variant Type",
       "Locus",
     ]);
     expect(
       model.resultTables[0].rows.map((row) =>
-        row.slice(0, 2).map((cell) => cell.value),
+        row.map((cell) => cell.value),
       ),
     ).toEqual([
-      ["RUNX1::RUNX1T1", "In-Frame Fusion Exon 3::Exon 3"],
-      ["", "Legacy Fusion Exon 1::Exon 2"],
+      [
+        "RUNX1(3)::RUNX1T1(3)",
+        "1",
+        "Fusion",
+        "21:36159848-37377215,8:92966953-93115764",
+      ],
+      ["Legacy Fusion Exon 1::Exon 2", "2", "Fusion", ""],
     ]);
     expect(model.tierSections[0].findings[0].lines[0]).toEqual({
       label: "Gene Fusion",

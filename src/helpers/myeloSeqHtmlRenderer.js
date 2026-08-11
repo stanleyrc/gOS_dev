@@ -1,5 +1,8 @@
 import { escapeHtml } from "./format";
-import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
+import {
+  getMyeloSeqFusionGeneExons,
+  getMyeloSeqFusionName,
+} from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
 function hasValue(value) {
@@ -37,7 +40,7 @@ function renderFact(label, value) {
   return `<p class="fact"><strong>${text(label)}:</strong> ${text(value)}</p>`;
 }
 
-function renderTable(title, columns, rows) {
+function renderTable(title, columns, rows, options = {}) {
   if (!rows.length) return "";
   const availableColumns = columns.filter(
     (column) => column.required || rows.some((row) => hasValue(column.value(row)))
@@ -45,6 +48,15 @@ function renderTable(title, columns, rows) {
   const header = availableColumns
     .map((column) => `<th>${text(column.label)}</th>`)
     .join("");
+  const colgroup = availableColumns.some((column) => column.width)
+    ? `<colgroup>${availableColumns
+        .map((column) =>
+          column.width
+            ? `<col style="width: ${text(column.width)}">`
+            : "<col>",
+        )
+        .join("")}</colgroup>`
+    : "";
   const body = rows
     .map(
       (row) => `<tr>${availableColumns
@@ -56,11 +68,14 @@ function renderTable(title, columns, rows) {
         .join("")}</tr>`
     )
     .join("");
+  const sectionClassName = ["result-table", options.className]
+    .filter(Boolean)
+    .join(" ");
 
-  return `<section class="result-table">
+  return `<section class="${sectionClassName}">
     <h3>${text(title)}</h3>
     <table>
-      <thead><tr>${header}</tr></thead>
+      ${colgroup}<thead><tr>${header}</tr></thead>
       <tbody>${body}</tbody>
     </table>
   </section>`;
@@ -93,24 +108,40 @@ function buildSequenceTables(report) {
   ];
   const fusionColumns = [
     {
-      label: "Gene",
+      label: "Gene(Exon)",
       required: true,
-      value: (finding) => finding.gene,
+      value: getMyeloSeqFusionGeneExons,
       className: "gene-cell",
+      width: "29%",
     },
     {
-      label: "Variant",
+      label: "Tier",
       required: true,
-      value: (finding) => finding.variant,
+      value: (finding) => finding.tier,
+      width: "8%",
     },
-    { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: (finding) => finding.type },
-    { label: "Locus", value: (finding) => finding.locus },
+    {
+      label: "Variant Type",
+      required: true,
+      value: (finding) => finding.type,
+      width: "21%",
+    },
+    {
+      label: "Locus",
+      required: true,
+      value: (finding) => finding.locus,
+      width: "42%",
+    },
   ];
 
   return [
     renderTable("DNA Sequencing results", sequenceColumns, sequenceFindings),
-    renderTable("Targeted RNA Sequencing results", fusionColumns, fusionFindings),
+    renderTable(
+      "Targeted RNA Sequencing results",
+      fusionColumns,
+      fusionFindings,
+      { className: "fusion-result-table" },
+    ),
   ]
     .filter(Boolean)
     .join("");
@@ -284,6 +315,10 @@ function getInlineCss() {
     }
     table { border-collapse: collapse; }
     .result-table table { width: 86%; }
+    .fusion-result-table table {
+      width: 100%;
+      table-layout: fixed;
+    }
     .result-table th,
     .result-table td {
       border: 0.75pt solid #000;

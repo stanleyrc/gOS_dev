@@ -13,7 +13,10 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
-import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
+import {
+  getMyeloSeqFusionGeneExons,
+  getMyeloSeqFusionName,
+} from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
 const DOCX_MIME_TYPE =
@@ -24,6 +27,10 @@ const PAGE_HEIGHT = 15840;
 const PAGE_MARGIN = 720;
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
 const RESULT_TABLE_WIDTH = Math.round(CONTENT_WIDTH * 0.86);
+const FUSION_RESULT_TABLE_WIDTH = CONTENT_WIDTH;
+const FUSION_RESULT_COLUMN_WIDTHS = [0.29, 0.08, 0.21, 0.42].map(
+  (ratio) => Math.round(FUSION_RESULT_TABLE_WIDTH * ratio),
+);
 const GENE_TABLE_WIDTH = Math.round(CONTENT_WIDTH * 0.62);
 const TABLE_BORDER = {
   style: BorderStyle.SINGLE,
@@ -152,7 +159,7 @@ function stringValue(value) {
   return hasValue(value) ? String(value) : "";
 }
 
-function buildResultTable(title, columnDefinitions, findings) {
+function buildResultTable(title, columnDefinitions, findings, options = {}) {
   if (!findings.length) return null;
   const availableColumns = columnDefinitions.filter(
     (column) =>
@@ -168,6 +175,7 @@ function buildResultTable(title, columnDefinitions, findings) {
         italics: Boolean(column.italics),
       })),
     ),
+    ...options,
   };
 }
 
@@ -202,15 +210,10 @@ function buildResultTables(report) {
       "Targeted RNA Sequencing results",
       [
         {
-          label: "Gene",
+          label: "Gene(Exon)",
           required: true,
-          value: (finding) => finding.gene,
+          value: getMyeloSeqFusionGeneExons,
           italics: true,
-        },
-        {
-          label: "Variant",
-          required: true,
-          value: (finding) => finding.variant,
         },
         { label: "Tier", required: true, value: (finding) => finding.tier },
         {
@@ -218,9 +221,17 @@ function buildResultTables(report) {
           required: true,
           value: (finding) => finding.type,
         },
-        { label: "Locus", value: (finding) => finding.locus },
+        {
+          label: "Locus",
+          required: true,
+          value: (finding) => finding.locus,
+        },
       ],
       fusionFindings,
+      {
+        width: FUSION_RESULT_TABLE_WIDTH,
+        columnWidths: FUSION_RESULT_COLUMN_WIDTHS,
+      },
     ),
   ].filter(Boolean);
 }
@@ -370,7 +381,8 @@ function createBorderedTable(rows, width, options = {}) {
   const columnCount = rows[0]?.length || 1;
   return new Table({
     width: { size: width, type: WidthType.DXA },
-    columnWidths: equalColumnWidths(width, columnCount),
+    columnWidths:
+      options.columnWidths || equalColumnWidths(width, columnCount),
     layout: TableLayoutType.FIXED,
     borders: TABLE_BORDERS,
     margins: { top: 20, bottom: 20, left: 80, right: 80 },
@@ -398,9 +410,10 @@ function createResultTable(tableModel) {
     tableModel.columns.map((value) => ({ value })),
     ...tableModel.rows,
   ];
-  return createBorderedTable(rows, RESULT_TABLE_WIDTH, {
+  return createBorderedTable(rows, tableModel.width || RESULT_TABLE_WIDTH, {
     center: true,
     header: true,
+    columnWidths: tableModel.columnWidths,
   });
 }
 

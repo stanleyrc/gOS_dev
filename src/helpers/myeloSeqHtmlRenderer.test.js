@@ -94,7 +94,16 @@ describe("MyeloSeqHtmlRenderer", () => {
     );
     expect(result.html).toContain("Targeted RNA Sequencing results");
     expect(result.html).toContain(
-      "<th>Gene</th><th>Variant</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
+      "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
+    );
+    expect(result.html).toContain(
+      '<td class="gene-cell">BCR(14)::ABL1(2)</td><td>1</td><td>Fusion</td><td>chr22:23632600::chr9:133729451</td>',
+    );
+    expect(result.html).toContain(
+      '<section class="result-table fusion-result-table">',
+    );
+    expect(result.html).toContain(
+      '<colgroup><col style="width: 29%"><col style="width: 8%"><col style="width: 21%"><col style="width: 42%"></colgroup>',
     );
     expect(result.html).not.toContain("Fusion results");
     expect(result.html).toContain("NM_004972.4");
@@ -151,10 +160,10 @@ describe("MyeloSeqHtmlRenderer", () => {
     });
 
     expect(result.html).toContain(
-      "<th>Gene</th><th>Variant</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
+      "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
     );
     expect(result.html).toContain(
-      '<td class="gene-cell">RUNX1::RUNX1T1</td><td>In-Frame Fusion Exon 3::Exon 3</td><td>1</td><td>Fusion</td>',
+      '<td class="gene-cell">RUNX1(3)::RUNX1T1(3)</td><td>1</td><td>Fusion</td><td>21:36159848-37377215,8:92966953-93115764</td>',
     );
     expect(result.html).toContain(
       "<strong>Gene Fusion:</strong> RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",
@@ -163,7 +172,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       '<td class="gene-cell">RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3</td>',
     );
     expect(result.html).toContain(
-      '<td class="gene-cell"></td><td>Legacy Fusion Exon 1::Exon 2</td>',
+      '<td class="gene-cell">Legacy Fusion Exon 1::Exon 2</td><td>2</td><td>Fusion</td><td></td>',
     );
   });
 
