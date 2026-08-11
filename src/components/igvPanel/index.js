@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { PropTypes } from "prop-types";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import handleViewport from "react-in-viewport";
 import { Card, Space, Tooltip, Button, message, Row, Col } from "antd";
@@ -28,12 +28,12 @@ const margins = {
   gap: 0,
 };
 
-class IgvPanel extends Component {
+export class IgvPanel extends Component {
   container = null;
   domains = [];
 
   state = {
-    visible: false,
+    visible: Boolean(this.props.defaultVisible),
   };
 
   onDownloadButtonClicked = () => {
@@ -218,8 +218,12 @@ class IgvPanel extends Component {
     );
   }
 }
-IgvPanel.propTypes = {};
-IgvPanel.defaultProps = {};
+IgvPanel.propTypes = {
+  defaultVisible: PropTypes.bool,
+};
+IgvPanel.defaultProps = {
+  defaultVisible: false,
+};
 const mapDispatchToProps = (dispatch) => ({
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
