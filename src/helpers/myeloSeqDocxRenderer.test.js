@@ -99,7 +99,7 @@ describe("MyeloSeqDocxRenderer model", () => {
         },
         {
           title: "Targeted RNA Sequencing results",
-          columns: ["Gene(Exon)", "Tier", "Variant Type", "Locus"],
+          columns: ["Gene", "Variant", "Tier", "Variant Type", "Locus"],
         },
       ]);
     expect(model.tierSections).toEqual([
@@ -133,6 +133,50 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(JSON.stringify(model)).not.toContain("Must not become Comments");
     expect(JSON.stringify(model)).not.toContain("Extra gOS note");
     expect(JSON.stringify(model)).not.toContain("Ruxolitinib");
+  });
+
+  it("uses the fusion gene field when Variant only describes the fusion", () => {
+    const model = buildMyeloSeqDocxModel({
+      alterations: [
+        {
+          gene: "RUNX1::RUNX1T1",
+          variant: "In-Frame Fusion Exon 3::Exon 3",
+          tier: "1",
+          type: "Fusion",
+          locus: "21:36159848-37377215,8:92966953-93115764",
+        },
+        {
+          gene: "",
+          variant: "Legacy Fusion Exon 1::Exon 2",
+          tier: "2",
+          type: "Fusion",
+        },
+      ],
+    });
+
+    expect(model.resultTables[0].columns).toEqual([
+      "Gene",
+      "Variant",
+      "Tier",
+      "Variant Type",
+      "Locus",
+    ]);
+    expect(
+      model.resultTables[0].rows.map((row) =>
+        row.slice(0, 2).map((cell) => cell.value),
+      ),
+    ).toEqual([
+      ["RUNX1::RUNX1T1", "In-Frame Fusion Exon 3::Exon 3"],
+      ["", "Legacy Fusion Exon 1::Exon 2"],
+    ]);
+    expect(model.tierSections[0].findings[0].lines[0]).toEqual({
+      label: "Gene Fusion",
+      value: "RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",
+    });
+    expect(model.tierSections[1].findings[0].lines[0]).toEqual({
+      label: "Gene Fusion",
+      value: "Legacy Fusion Exon 1::Exon 2",
+    });
   });
 
   it("uses NA when primary site is disabled and keeps Clinical History unmapped", () => {

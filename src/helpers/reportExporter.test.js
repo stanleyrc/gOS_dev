@@ -154,6 +154,54 @@ describe("reportExporter", () => {
     });
   });
 
+  it("preserves fusion gene identity independently of the Variant field", async () => {
+    const mergedEvents = {
+      filteredEvents: [
+        {
+          uid: "gene-field",
+          gene: "RUNX1::RUNX1T1",
+          fusion_genes: "IGNORED::FALLBACK",
+          Variant: "In-Frame Fusion Exon 3::Exon 3",
+          type: "Fusion",
+        },
+        {
+          uid: "legacy-gene-field",
+          Gene: "PML::RARA",
+          Variant: "In-Frame Fusion Exon 6::Exon 3",
+          type: "Fusion",
+        },
+        {
+          uid: "fusion-genes-field",
+          gene: "",
+          fusion_genes: "KMT2A::MLLT3",
+          Variant: "In-Frame Fusion Exon 8::Exon 6",
+          type: "Fusion",
+        },
+        {
+          uid: "missing-gene",
+          Variant: "Fusion with unavailable genes",
+          type: "Fusion",
+        },
+      ],
+    };
+
+    await previewReport(state, mergedEvents, [
+      "gene-field",
+      "legacy-gene-field",
+      "fusion-genes-field",
+      "missing-gene",
+    ]);
+
+    expect(
+      mockHtmlRender.mock.calls[0][0].alterations.map(({ gene }) => gene),
+    ).toEqual([
+      "RUNX1::RUNX1T1",
+      "PML::RARA",
+      "KMT2A::MLLT3",
+      "",
+    ]);
+  });
+
   it("does not map raw patient values omitted by the active dataset", async () => {
     const dataset = {
       id: "schema-test",

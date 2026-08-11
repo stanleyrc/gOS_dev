@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import * as d3 from "d3";
 import { Row, Col, Divider } from "antd";
 import HistogramPlotPanel from "../histogramPlotPanel";
+import { formatHistogramValue } from "../histogramPlot/tickFormat";
 import { getColorMarker } from "../../helpers/utility";
 import Wrapper from "./index.style";
 
@@ -41,7 +42,7 @@ class PopulationPanel extends Component {
                 order: d.order,
                 visible: d.data,
                 markValue: d.markValue,
-                markValueText: d3.format(d.markValueFormat)(d.markValue),
+                markValueText: formatHistogramValue(d.markValue, d.format),
                 colorMarker: getColorMarker(d.markValue, d.q1, d.q3),
                 format: d.format,
                 loading,

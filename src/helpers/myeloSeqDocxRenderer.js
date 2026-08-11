@@ -13,6 +13,7 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
+import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
 const DOCX_MIME_TYPE =
@@ -127,10 +128,6 @@ function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
 }
 
-function firstValue(...values) {
-  return values.find(hasValue);
-}
-
 function formatNumber(value, maximumFractionDigits = 2) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
@@ -205,10 +202,15 @@ function buildResultTables(report) {
       "Targeted RNA Sequencing results",
       [
         {
-          label: "Gene(Exon)",
+          label: "Gene",
           required: true,
-          value: (finding) => firstValue(finding.variant, finding.gene),
+          value: (finding) => finding.gene,
           italics: true,
+        },
+        {
+          label: "Variant",
+          required: true,
+          value: (finding) => finding.variant,
         },
         { label: "Tier", required: true, value: (finding) => finding.tier },
         {
@@ -226,7 +228,7 @@ function buildResultTables(report) {
 function buildFindingModel(finding) {
   const fusion = isFusion(finding);
   const identity = fusion
-    ? firstValue(finding.variant, finding.gene)
+    ? getMyeloSeqFusionName(finding)
     : [finding.gene, finding.variant].filter(hasValue).join(", ");
   const lines = [];
   if (hasValue(identity)) {
