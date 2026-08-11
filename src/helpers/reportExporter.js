@@ -98,8 +98,15 @@ function splitPillsList(val) {
   return str.split(/[,;]/).map(s => s.trim()).filter(Boolean);
 }
 
+function firstNonBlankString(...values) {
+  const value = values.find(
+    (candidate) => candidate != null && String(candidate).trim() !== ''
+  );
+  return value == null ? '' : String(value);
+}
+
 function mapEvent(ev) {
-  const gene = ev?.gene ?? ev?.Gene ?? '';
+  const gene = firstNonBlankString(ev?.gene, ev?.Gene, ev?.fusion_genes);
   const variant = ev?.variant ?? ev?.Variant ?? '';
   const tier = ev?.tier ?? ev?.Tier;
   const alt = ev?.alt ?? ev?.altCounts ?? ev?.tumorAlt ?? ev?.tumor_alt ?? ev?.alt_count;

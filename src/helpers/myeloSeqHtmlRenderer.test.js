@@ -94,7 +94,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     );
     expect(result.html).toContain("Targeted RNA Sequencing results");
     expect(result.html).toContain(
-      "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
+      "<th>Gene</th><th>Variant</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
     );
     expect(result.html).not.toContain("Fusion results");
     expect(result.html).toContain("NM_004972.4");
@@ -128,6 +128,43 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("Additional gOS results");
     expect(result.html).not.toContain("Case-level note");
     expect(result.html).not.toContain(">NOTES<");
+  });
+
+  it("uses the fusion gene field when Variant only describes the fusion", async () => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      patient: { caseId: "CASE-RUNX1-FUSION" },
+      alterations: [
+        {
+          gene: "RUNX1::RUNX1T1",
+          variant: "In-Frame Fusion Exon 3::Exon 3",
+          tier: "1",
+          type: "Fusion",
+          locus: "21:36159848-37377215,8:92966953-93115764",
+        },
+        {
+          gene: "",
+          variant: "Legacy Fusion Exon 1::Exon 2",
+          tier: "2",
+          type: "Fusion",
+        },
+      ],
+    });
+
+    expect(result.html).toContain(
+      "<th>Gene</th><th>Variant</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
+    );
+    expect(result.html).toContain(
+      '<td class="gene-cell">RUNX1::RUNX1T1</td><td>In-Frame Fusion Exon 3::Exon 3</td><td>1</td><td>Fusion</td>',
+    );
+    expect(result.html).toContain(
+      "<strong>Gene Fusion:</strong> RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",
+    );
+    expect(result.html).not.toContain(
+      '<td class="gene-cell">RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3</td>',
+    );
+    expect(result.html).toContain(
+      '<td class="gene-cell"></td><td>Legacy Fusion Exon 1::Exon 2</td>',
+    );
   });
 
   it("always renders Clinical History as NA without mapping metadata", async () => {

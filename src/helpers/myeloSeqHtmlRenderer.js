@@ -1,12 +1,9 @@
 import { escapeHtml } from "./format";
+import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
-}
-
-function firstValue(...values) {
-  return values.find(hasValue);
 }
 
 function formatNumber(value, maximumFractionDigits = 2) {
@@ -96,10 +93,15 @@ function buildSequenceTables(report) {
   ];
   const fusionColumns = [
     {
-      label: "Gene(Exon)",
+      label: "Gene",
       required: true,
-      value: (finding) => firstValue(finding.variant, finding.gene),
+      value: (finding) => finding.gene,
       className: "gene-cell",
+    },
+    {
+      label: "Variant",
+      required: true,
+      value: (finding) => finding.variant,
     },
     { label: "Tier", required: true, value: (finding) => finding.tier },
     { label: "Variant Type", required: true, value: (finding) => finding.type },
@@ -128,7 +130,7 @@ function renderFinding(finding) {
   const heading = fusion
     ? renderInterpretationLine(
         "Gene Fusion",
-        firstValue(finding.variant, finding.gene),
+        getMyeloSeqFusionName(finding),
       )
     : renderInterpretationLine(
         "Variant",
