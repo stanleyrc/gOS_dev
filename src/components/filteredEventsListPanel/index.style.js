@@ -43,7 +43,7 @@ const Wrapper = styled.div`
     white-space: nowrap;
   }
 
-  .filtered-events-gene-link.ant-btn {
+  .filtered-events-detail-link.ant-btn {
     display: flex;
     justify-content: flex-start;
     width: 100%;
@@ -52,7 +52,7 @@ const Wrapper = styled.div`
     text-align: left;
   }
 
-  .filtered-events-gene-content {
+  .filtered-events-detail-content {
     display: flex;
     flex: 1;
     align-items: center;
@@ -61,11 +61,11 @@ const Wrapper = styled.div`
     gap: 4px;
   }
 
-  .filtered-events-gene-content .ant-avatar {
+  .filtered-events-detail-content .ant-avatar {
     flex: none;
   }
 
-  .filtered-events-gene-text {
+  .filtered-events-detail-text {
     flex: 1;
     min-width: 0;
     overflow: hidden;

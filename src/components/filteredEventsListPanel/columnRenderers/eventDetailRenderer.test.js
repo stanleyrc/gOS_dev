@@ -17,7 +17,7 @@ jest.mock("../../../redux/store", () => ({
 
 import InterpretationsAvatar from "../../interpretationsAvatar";
 import { getAllInterpretationsForEvent } from "../../../redux/interpretations/selectors";
-import GeneRenderer from "./GeneRenderer";
+import EventDetailRenderer from "./eventDetailRenderer";
 
 const record = {
   uid: "1:100-1:100",
@@ -26,10 +26,24 @@ const record = {
   type: "UTR",
 };
 
-describe("GeneRenderer interpretation glyph", () => {
+describe("EventDetailRenderer", () => {
+  it("opens the selected event in detail mode", () => {
+    getAllInterpretationsForEvent.mockReturnValue([]);
+    const selectFilteredEvent = jest.fn();
+    const renderer = new EventDetailRenderer({
+      value: "c.*2285_*2286delTT",
+      record,
+      selectFilteredEvent,
+    }).render();
+
+    renderer.props.onClick();
+
+    expect(selectFilteredEvent).toHaveBeenCalledWith(record, "detail");
+  });
+
   it("uses repository-wide exact-event history, including imported records", () => {
     getAllInterpretationsForEvent.mockReturnValue([{ authorId: "imported" }]);
-    const renderer = new GeneRenderer({
+    const renderer = new EventDetailRenderer({
       value: "CASZ1",
       record,
       selectFilteredEvent: jest.fn(),
@@ -46,34 +60,34 @@ describe("GeneRenderer interpretation glyph", () => {
     expect(avatar.props.tooltipText).toBe("Found 1 interpretation(s)");
   });
 
-  it("truncates long gene names inside their column", () => {
+  it("truncates long event values inside their column", () => {
     getAllInterpretationsForEvent.mockReturnValue([]);
-    const renderer = new GeneRenderer({
+    const renderer = new EventDetailRenderer({
       value: "RUNX1::RUNX1T1",
       record,
       selectFilteredEvent: jest.fn(),
     }).render();
     const tooltip = renderer.props.children;
     const content = tooltip.props.children;
-    const [geneText] = React.Children.toArray(content.props.children);
+    const [detailText] = React.Children.toArray(content.props.children);
     const styles = fs.readFileSync(
       path.resolve(__dirname, "../index.style.js"),
       "utf8",
     );
-    const geneLinkStyles = styles.match(
-      /\.filtered-events-gene-link\.ant-btn \{([^}]*)\}/,
+    const detailLinkStyles = styles.match(
+      /\.filtered-events-detail-link\.ant-btn \{([^}]*)\}/,
     )[1];
-    const geneTextStyles = styles.match(
-      /\.filtered-events-gene-text \{([^}]*)\}/,
+    const detailTextStyles = styles.match(
+      /\.filtered-events-detail-text \{([^}]*)\}/,
     )[1];
 
-    expect(renderer.props.className).toBe("filtered-events-gene-link");
-    expect(content.props.className).toBe("filtered-events-gene-content");
-    expect(geneText.props.className).toBe("filtered-events-gene-text");
-    expect(geneText.props.children).toBe("RUNX1::RUNX1T1");
-    expect(geneLinkStyles).toContain("width: 100%");
-    expect(geneLinkStyles).toContain("overflow: hidden");
-    expect(geneTextStyles).toContain("text-overflow: ellipsis");
-    expect(geneTextStyles).toContain("white-space: nowrap");
+    expect(renderer.props.className).toBe("filtered-events-detail-link");
+    expect(content.props.className).toBe("filtered-events-detail-content");
+    expect(detailText.props.className).toBe("filtered-events-detail-text");
+    expect(detailText.props.children).toBe("RUNX1::RUNX1T1");
+    expect(detailLinkStyles).toContain("width: 100%");
+    expect(detailLinkStyles).toContain("overflow: hidden");
+    expect(detailTextStyles).toContain("text-overflow: ellipsis");
+    expect(detailTextStyles).toContain("white-space: nowrap");
   });
 });
