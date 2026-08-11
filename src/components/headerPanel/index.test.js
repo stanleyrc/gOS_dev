@@ -124,6 +124,59 @@ describe("HeaderPanel schema metadata", () => {
     expect(text).not.toContain("SCHEMA-OMITTED");
   });
 
+  it("shows QC metric details when qcMetrics is included in the dataset schema", () => {
+    const qcMetricsField = {
+      id: "qcMetrics",
+      title: "Quality Control Metrics",
+      type: "string",
+      external: true,
+    };
+    const qcMetrics = [
+      {
+        code: "PASS",
+        title: "Fraction of reads aligned (1) >= 90%",
+      },
+      {
+        code: "WARN",
+        title: "Percent on target (0.0065) < 80%",
+      },
+      {
+        code: "FAIL",
+        title: "Mean target depth (1.41) < 500X",
+      },
+    ];
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-qc-failure",
+      dataset: {
+        schema: [qcMetricsField],
+        fields: [qcMetricsField],
+      },
+      metadata: {
+        pair: "PAIR-QC-FAILURE",
+        qcMetrics,
+        qcEvaluation: "FAIL",
+      },
+      plots: [],
+    });
+
+    const pageHeader = panel.render().props.children[0];
+    const toolbarGroups = React.Children.toArray(
+      pageHeader.props.subTitle.props.children,
+    );
+    const badges = React.Children.toArray(
+      toolbarGroups[0].props.children,
+    );
+    const qcPopover = badges[0];
+
+    expect(qcPopover.type).toBe("Popover");
+    expect(qcPopover.props.children.type).toBe("Tag");
+    expect(qcPopover.props.children.props.children).toBe("FAIL");
+    expect(collectText(qcPopover.props.content)).toEqual(
+      qcMetrics.map(({ title }) => title),
+    );
+  });
+
   it("hides the paired metadata component when both fields are omitted", () => {
     const panel = new HeaderPanel({
       t: (key) => (key === "general.not-applicable" ? "N/A" : key),
