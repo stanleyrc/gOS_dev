@@ -6,6 +6,14 @@ import getDefaultVisibleFilteredEventsColumnKeys, {
 } from "./defaultVisibleFilteredEventsColumns";
 
 describe("getDefaultVisibleFilteredEventsColumnKeys", () => {
+  it("gives Gene a 164-pixel default width", () => {
+    const geneColumn = settings.filteredEventsColumns.find(
+      ({ id }) => id === "gene",
+    );
+
+    expect(geneColumn.width).toBe(164);
+  });
+
   it("places Location next to Gene in the application default columns", () => {
     const columnKeys = settings.filteredEventsColumns.map(({ id }) => id);
 

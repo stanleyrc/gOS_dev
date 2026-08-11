@@ -992,7 +992,7 @@
       "dataIndex": "gene",
       "type": "string",
       "viewType": "gene-link",
-      "width": 100,
+      "width": 164,
       "filterable": true,
       "filterSearch": true,
       "sortable": true
