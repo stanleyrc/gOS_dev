@@ -1,6 +1,15 @@
 /** @jest-environment node */
 /* eslint-disable import/first */
 
+jest.mock("../../helpers/utility", () => ({
+  defaultSearchFilters: () => ({
+    page: 1,
+    per_page: 10,
+    texts: "",
+    orderId: 1,
+  }),
+}));
+
 jest.mock("../../helpers/field", () => {
   return class TestField {
     constructor(field = {}) {
@@ -15,7 +24,9 @@ jest.mock("../../helpers/field", () => {
 
 import { runSaga } from "redux-saga";
 import settingsActions from "../settings/actions";
+import datasetsActions from "./actions";
 import {
+  followUpDatasetsFetched,
   normalizeDataset,
   openCaseReport,
   selectAllDatasets,
@@ -78,6 +89,44 @@ describe("dataset schema normalization", () => {
 });
 
 describe("dataset detail routing", () => {
+  it("restores a patient-aggregation deep link during initial routing", async () => {
+    const previousDocument = global.document;
+    const dispatched = [];
+    global.document = {
+      location:
+        "https://gos.test/app?scope=all&view=patient-aggregations&patient_id=PATIENT-1",
+    };
+
+    try {
+      await runSaga(
+        { dispatch: (action) => dispatched.push(action) },
+        followUpDatasetsFetched,
+        { records: [dataset] },
+      ).toPromise();
+    } finally {
+      if (previousDocument === undefined) delete global.document;
+      else global.document = previousDocument;
+    }
+
+    expect(dispatched).toEqual([
+      datasetsActions.selectAllDatasets({
+        searchFilters: {
+          page: 1,
+          per_page: 10,
+          texts: "",
+          orderId: 1,
+          patient_id: ["PATIENT-1"],
+        },
+        listViewTarget: {
+          tab: "aggregations",
+          aggregationsTab: "visualization",
+          visualizationPreset: "topGenes",
+          focusVisualization: true,
+        },
+      }),
+    ]);
+  });
+
   it("selects all datasets with the requested filters and destination", async () => {
     const dispatched = [];
     const searchFilters = { patient_id: ["PATIENT-1"] };

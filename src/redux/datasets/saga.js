@@ -9,6 +9,7 @@ import {
   ALL_DATASETS_ROUTE_VALUE,
   isAllDatasetsBrowseScope,
 } from "../../helpers/browseScope";
+import { getPatientLevelViewOptions } from "../../helpers/patientLevelView";
 
 export const normalizeDataset = (dataset, settings) => {
   const reference = dataset.reference || "hg19";
@@ -55,7 +56,8 @@ function* fetchDatasets() {
 
 export function* followUpDatasetsFetched(action) {
   const records = action.records || [];
-  const searchParams = new URL(decodeURI(document.location)).searchParams;
+  const currentUrl = new URL(decodeURI(document.location));
+  const searchParams = currentUrl.searchParams;
   const datasetId = searchParams.get("dataset");
   const requestedReport = searchParams.get("report");
   const requestedDataset = records.find(
@@ -71,7 +73,8 @@ export function* followUpDatasetsFetched(action) {
   }
 
   if (searchParams.get("scope") === ALL_DATASETS_ROUTE_VALUE) {
-    yield put(actions.selectAllDatasets());
+    const patientLevelViewOptions = getPatientLevelViewOptions(currentUrl);
+    yield put(actions.selectAllDatasets(patientLevelViewOptions || {}));
     if (requestedDataset && requestedReport) {
       yield put(
         actions.openCaseReport(requestedDataset.id, requestedReport, {

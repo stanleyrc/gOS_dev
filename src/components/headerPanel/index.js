@@ -23,10 +23,7 @@ import {
 } from "../../helpers/utility";
 import { getNestedValue } from "../../helpers/metadata";
 import { datasetHasField } from "../../helpers/browseScope";
-import {
-  buildPatientLevelSearchFilters,
-  PATIENT_LEVEL_VIEW_TARGET,
-} from "../../helpers/patientLevelView";
+import { buildPatientLevelViewUrl } from "../../helpers/patientLevelView";
 import {
   valueFormat,
   hrdFields,
@@ -46,10 +43,8 @@ import { normalizePatientId } from "../patientCaseSwitcher/helpers";
 import CopyIconButton from "../copyIconButton";
 import ReportButtonsPanel from "../reportButtonsPanel";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
-import datasetsActions from "../../redux/datasets/actions";
 
 const { Text } = Typography;
-const { selectAllDatasets } = datasetsActions;
 const COPY_CASE_ID_TOOLTIP_KEY =
   "components.header-panel.copy-case-id-tooltip";
 const COPY_TOOLTIP_SUCCESS_KEY = "components.header-panel.copy-tooltip-success";
@@ -82,15 +77,13 @@ export class HeaderPanel extends Component {
     this.setState({ clinicalTrialsModalVisible: false });
   };
 
-  handlePatientLevelView = () => {
-    const patientId = normalizePatientId(this.props.metadata?.patient_id);
-    if (patientId) this.props.showPatientLevelView(patientId);
-  };
-
   renderPatientLevelViewButton = () => {
     const { metadata, t } = this.props;
     const patientId = normalizePatientId(metadata?.patient_id);
-    if (!patientId) return null;
+    const patientLevelViewUrl = patientId
+      ? buildPatientLevelViewUrl(window.location.href, patientId)
+      : null;
+    if (!patientLevelViewUrl) return null;
 
     return (
       <Button
@@ -98,7 +91,9 @@ export class HeaderPanel extends Component {
         size="small"
         className="patient-level-view-link"
         icon={<BarChartOutlined />}
-        onClick={this.handlePatientLevelView}
+        href={patientLevelViewUrl.toString()}
+        target="_blank"
+        rel="noopener noreferrer"
         aria-label={t(
           "components.patient-case-switcher.patient-level-aria-label",
           { patientId },
@@ -633,21 +628,11 @@ HeaderPanel.propTypes = {
   canReturnToResults: PropTypes.bool,
   onBackToResults: PropTypes.func,
   selectedCase: PropTypes.object,
-  showPatientLevelView: PropTypes.func.isRequired,
 };
 HeaderPanel.defaultProps = {
   canReturnToResults: false,
   onBackToResults: null,
 };
-const mapDispatchToProps = (dispatch) => ({
-  showPatientLevelView: (patientId) =>
-    dispatch(
-      selectAllDatasets({
-        searchFilters: buildPatientLevelSearchFilters(patientId),
-        listViewTarget: PATIENT_LEVEL_VIEW_TARGET,
-      }),
-    ),
-});
 const mapStateToProps = (state) => ({
   report: state.CaseReport.id,
   dataset: state.Settings.dataset,
@@ -655,7 +640,6 @@ const mapStateToProps = (state) => ({
   plots: state.PopulationStatistics.general,
   loading: state.FilteredEvents?.loading || false,
 });
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(withTranslation("common")(HeaderPanel));
+export default connect(mapStateToProps)(
+  withTranslation("common")(HeaderPanel),
+);
