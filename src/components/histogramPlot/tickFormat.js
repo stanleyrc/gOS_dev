@@ -55,9 +55,7 @@ function formatCompactDecimal(value) {
 
 export function getHistogramTickFormatter(format = "~s") {
   const type = d3.formatSpecifier(format).type;
-  return ["s", "%", "p"].includes(type)
-    ? formatCompactDecimal
-    : d3.format(format);
+  return type === "s" ? formatCompactDecimal : d3.format(format);
 }
 
 export function formatHistogramValue(value, format = "~s") {

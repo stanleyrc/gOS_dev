@@ -12,6 +12,9 @@ jest.mock("d3", () => {
     }),
     format: (format) => {
       if (format === ",.2~f") return (value) => decimal.format(value);
+      if (format === ".0%") {
+        return (value) => `${(Number(value) * 100).toFixed(0)}%`;
+      }
       if (format === ".1%") {
         return (value) => `${(Number(value) * 100).toFixed(1)}%`;
       }
@@ -50,9 +53,13 @@ describe("getHistogramTickFormatter", () => {
     expect(format(999999)).toBe("1M");
   });
 
-  it("uses raw decimals instead of configured percentages", () => {
-    expect(formatHistogramValue(0.063, ".1%")).toBe("0.06");
-    expect(formatHistogramValue(0.1, "0.2%")).toBe("0.1");
+  it("preserves configured percentage formats", () => {
+    const format = getHistogramTickFormatter(".0%");
+
+    expect(format(0)).toBe("0%");
+    expect(format(0.1)).toBe("10%");
+    expect(format(1)).toBe("100%");
+    expect(formatHistogramValue(0.063, ".1%")).toBe("6.3%");
   });
 
   it("preserves configured fixed-point formats", () => {
