@@ -1012,7 +1012,7 @@
       "dataIndex": "variant",
       "type": "string",
       "viewType": "event-detail-link",
-      "width": 120,
+      "width": 240,
       "filterable": true,
       "sortable": true,
       "ellipsis": true
