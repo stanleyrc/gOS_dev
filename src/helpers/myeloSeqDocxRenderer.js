@@ -13,8 +13,16 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
-import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
+import {
+  getMyeloSeqFusionGeneExons,
+  getMyeloSeqFusionName,
+} from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
+import {
+  hasFailedMyeloSeqQc,
+  MYELOSEQ_QC_FAILURE_MESSAGE,
+  MYELOSEQ_QC_FAILURE_NOTE,
+} from "./myeloSeqQcFailure";
 
 const DOCX_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -24,6 +32,10 @@ const PAGE_HEIGHT = 15840;
 const PAGE_MARGIN = 720;
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
 const RESULT_TABLE_WIDTH = Math.round(CONTENT_WIDTH * 0.86);
+const FUSION_RESULT_TABLE_WIDTH = CONTENT_WIDTH;
+const FUSION_RESULT_COLUMN_WIDTHS = [0.29, 0.08, 0.21, 0.42].map(
+  (ratio) => Math.round(FUSION_RESULT_TABLE_WIDTH * ratio),
+);
 const GENE_TABLE_WIDTH = Math.round(CONTENT_WIDTH * 0.62);
 const TABLE_BORDER = {
   style: BorderStyle.SINGLE,
@@ -152,7 +164,7 @@ function stringValue(value) {
   return hasValue(value) ? String(value) : "";
 }
 
-function buildResultTable(title, columnDefinitions, findings) {
+function buildResultTable(title, columnDefinitions, findings, options = {}) {
   if (!findings.length) return null;
   const availableColumns = columnDefinitions.filter(
     (column) =>
@@ -168,6 +180,7 @@ function buildResultTable(title, columnDefinitions, findings) {
         italics: Boolean(column.italics),
       })),
     ),
+    ...options,
   };
 }
 
@@ -202,15 +215,10 @@ function buildResultTables(report) {
       "Targeted RNA Sequencing results",
       [
         {
-          label: "Gene",
+          label: "Gene(Exon)",
           required: true,
-          value: (finding) => finding.gene,
+          value: getMyeloSeqFusionGeneExons,
           italics: true,
-        },
-        {
-          label: "Variant",
-          required: true,
-          value: (finding) => finding.variant,
         },
         { label: "Tier", required: true, value: (finding) => finding.tier },
         {
@@ -218,9 +226,17 @@ function buildResultTables(report) {
           required: true,
           value: (finding) => finding.type,
         },
-        { label: "Locus", value: (finding) => finding.locus },
+        {
+          label: "Locus",
+          required: true,
+          value: (finding) => finding.locus,
+        },
       ],
       fusionFindings,
+      {
+        width: FUSION_RESULT_TABLE_WIDTH,
+        columnWidths: FUSION_RESULT_COLUMN_WIDTHS,
+      },
     ),
   ].filter(Boolean);
 }
@@ -263,12 +279,20 @@ function buildTierSections(report) {
 }
 
 function buildMyeloSeqDocxModel(report) {
+  const qcFailed = hasFailedMyeloSeqQc(report);
+
   return {
     caseId: stringValue(report?.patient?.caseId),
     author: stringValue(report?.author),
     specimenFacts: getMyeloSeqSpecimenFacts(report),
-    resultTables: buildResultTables(report),
-    tierSections: buildTierSections(report),
+    qcFailure: qcFailed
+      ? {
+          message: MYELOSEQ_QC_FAILURE_MESSAGE,
+          note: MYELOSEQ_QC_FAILURE_NOTE,
+        }
+      : null,
+    resultTables: qcFailed ? [] : buildResultTables(report),
+    tierSections: qcFailed ? [] : buildTierSections(report),
     tierGuide: [...TIER_GUIDE],
     backgroundParagraphs: [...BACKGROUND_PARAGRAPHS],
     methods: {
@@ -370,7 +394,8 @@ function createBorderedTable(rows, width, options = {}) {
   const columnCount = rows[0]?.length || 1;
   return new Table({
     width: { size: width, type: WidthType.DXA },
-    columnWidths: equalColumnWidths(width, columnCount),
+    columnWidths:
+      options.columnWidths || equalColumnWidths(width, columnCount),
     layout: TableLayoutType.FIXED,
     borders: TABLE_BORDERS,
     margins: { top: 20, bottom: 20, left: 80, right: 80 },
@@ -398,9 +423,10 @@ function createResultTable(tableModel) {
     tableModel.columns.map((value) => ({ value })),
     ...tableModel.rows,
   ];
-  return createBorderedTable(rows, RESULT_TABLE_WIDTH, {
+  return createBorderedTable(rows, tableModel.width || RESULT_TABLE_WIDTH, {
     center: true,
     header: true,
+    columnWidths: tableModel.columnWidths,
   });
 }
 
@@ -437,48 +463,67 @@ function createDocumentChildren(model) {
     );
   });
 
-  if (model.resultTables.length || model.tierSections.length) {
+  if (
+    model.qcFailure ||
+    model.resultTables.length ||
+    model.tierSections.length
+  ) {
     children.push(createSectionBar("RESULTS"));
-    model.resultTables.forEach((table) => {
+    if (model.qcFailure) {
       children.push(
-        createParagraph(table.title, {
+        createParagraph(model.qcFailure.message, {
           keepNext: true,
-          spacing: { after: 0, line: 307 },
+          spacing: { after: 432, line: 307 },
           run: { bold: true },
         }),
-        createResultTable(table),
-        createParagraph("", { spacing: { after: 403 } }),
-      );
-    });
-    model.tierSections.forEach(({ tier, findings }) => {
-      children.push(
-        createParagraph(`Tier ${tier}:`, {
-          keepNext: true,
-          spacing: { after: 0, line: 307 },
-          run: { bold: true },
+        createLabeledParagraph("Note", model.qcFailure.note, {
+          spacing: { after: 403, line: 307 },
         }),
       );
-      findings.forEach(({ lines }) => {
-        lines.forEach(({ label, value }) => {
-          children.push(createLabeledParagraph(label, value));
-        });
-        children.push(createParagraph("", { spacing: { after: 346 } }));
+    } else {
+      model.resultTables.forEach((table) => {
+        children.push(
+          createParagraph(table.title, {
+            keepNext: true,
+            spacing: { after: 0, line: 307 },
+            run: { bold: true },
+          }),
+          createResultTable(table),
+          createParagraph("", { spacing: { after: 403 } }),
+        );
       });
-    });
+      model.tierSections.forEach(({ tier, findings }) => {
+        children.push(
+          createParagraph(`Tier ${tier}:`, {
+            keepNext: true,
+            spacing: { after: 0, line: 307 },
+            run: { bold: true },
+          }),
+        );
+        findings.forEach(({ lines }) => {
+          lines.forEach(({ label, value }) => {
+            children.push(createLabeledParagraph(label, value));
+          });
+          children.push(createParagraph("", { spacing: { after: 346 } }));
+        });
+      });
+    }
   }
 
-  children.push(
-    new Paragraph({
-      spacing: { before: 403, after: 173, line: 307 },
-      children: [
-        new TextRun({ text: "Note:", bold: true }),
-        new TextRun({ text: " Variants are categorized into three tiers:" }),
-      ],
-    }),
-  );
-  model.tierGuide.forEach((line) => {
-    children.push(createParagraph(line, { spacing: { after: 0, line: 307 } }));
-  });
+  if (!model.qcFailure) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 403, after: 173, line: 307 },
+        children: [
+          new TextRun({ text: "Note:", bold: true }),
+          new TextRun({ text: " Variants are categorized into three tiers:" }),
+        ],
+      }),
+    );
+    model.tierGuide.forEach((line) => {
+      children.push(createParagraph(line, { spacing: { after: 0, line: 307 } }));
+    });
+  }
 
   children.push(createSectionBar("BACKGROUND"));
   model.backgroundParagraphs.forEach((paragraph) => {

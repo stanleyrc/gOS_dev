@@ -126,6 +126,16 @@ describe("TracksModal missing tracks", () => {
     ).toBe(true);
   });
 
+  it("opens the IGV track by default in event plots", () => {
+    const view = renderTracks({
+      igv: trackState({ missing: false, missingFiles: [] }),
+    });
+    const igvPanel = findElementByType(view, "IgvPanel");
+
+    expect(igvPanel).not.toBeNull();
+    expect(igvPanel.props.defaultVisible).toBe(true);
+  });
+
   it("keeps genuine track errors visible", () => {
     const error = new Error("failed");
     const view = renderTracks({

@@ -99,9 +99,19 @@ describe("MyeloSeqDocxRenderer model", () => {
         },
         {
           title: "Targeted RNA Sequencing results",
-          columns: ["Gene", "Variant", "Tier", "Variant Type", "Locus"],
+          columns: ["Gene(Exon)", "Tier", "Variant Type", "Locus"],
         },
       ]);
+    expect(model.resultTables[1]).toMatchObject({
+      width: 10800,
+      columnWidths: [3132, 864, 2268, 4536],
+    });
+    expect(model.resultTables[1].rows[0].map(({ value }) => value)).toEqual([
+      "BCR(14)::ABL1(2)",
+      "2",
+      "Fusion",
+      "chr22:23632600::chr9:133729451",
+    ]);
     expect(model.tierSections).toEqual([
       {
         tier: "1",
@@ -135,6 +145,20 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(JSON.stringify(model)).not.toContain("Ruxolitinib");
   });
 
+  it("replaces all result models with the insufficient-quality message when QC fails", () => {
+    const model = buildMyeloSeqDocxModel({
+      ...report,
+      metadata: { ...report.metadata, qcEvaluation: "FAIL" },
+    });
+
+    expect(model.qcFailure).toEqual({
+      message: "DNA/RNA QUANTITY/QUALITY NOT SUFFICIENT",
+      note: "Please refer to peripheral blood NGS findings.",
+    });
+    expect(model.resultTables).toEqual([]);
+    expect(model.tierSections).toEqual([]);
+  });
+
   it("uses the fusion gene field when Variant only describes the fusion", () => {
     const model = buildMyeloSeqDocxModel({
       alterations: [
@@ -155,19 +179,23 @@ describe("MyeloSeqDocxRenderer model", () => {
     });
 
     expect(model.resultTables[0].columns).toEqual([
-      "Gene",
-      "Variant",
+      "Gene(Exon)",
       "Tier",
       "Variant Type",
       "Locus",
     ]);
     expect(
       model.resultTables[0].rows.map((row) =>
-        row.slice(0, 2).map((cell) => cell.value),
+        row.map((cell) => cell.value),
       ),
     ).toEqual([
-      ["RUNX1::RUNX1T1", "In-Frame Fusion Exon 3::Exon 3"],
-      ["", "Legacy Fusion Exon 1::Exon 2"],
+      [
+        "RUNX1(3)::RUNX1T1(3)",
+        "1",
+        "Fusion",
+        "21:36159848-37377215,8:92966953-93115764",
+      ],
+      ["Legacy Fusion Exon 1::Exon 2", "2", "Fusion", ""],
     ]);
     expect(model.tierSections[0].findings[0].lines[0]).toEqual({
       label: "Gene Fusion",
@@ -323,6 +351,29 @@ describe("MyeloSeqDocxRenderer output", () => {
     expect(documentXml).not.toContain("Extra gOS note");
     expect(documentXml).not.toContain("Ruxolitinib");
     expect(documentXml).not.toContain("interpretations-data");
+  });
+
+  it("renders the insufficient-quality message instead of result details when QC fails", async () => {
+    const failedReport = {
+      ...report,
+      metadata: { ...report.metadata, qcEvaluation: "FAIL" },
+    };
+    const result = await new MyeloSeqDocxRenderer().render(failedReport);
+    const { documentXml } = await unpackDocumentXml(result.blob);
+
+    expect(documentXml).toContain("RESULTS");
+    expect(documentXml).toContain(
+      "DNA/RNA QUANTITY/QUALITY NOT SUFFICIENT",
+    );
+    expect(documentXml).toContain(
+      "Please refer to peripheral blood NGS findings.",
+    );
+    expect(documentXml).not.toContain("DNA Sequencing results");
+    expect(documentXml).not.toContain("Targeted RNA Sequencing results");
+    expect(documentXml).not.toContain("Variants are categorized into three tiers");
+    expect(documentXml).not.toContain("JAK2 variant summary");
+    expect(documentXml).not.toContain("BCR::ABL1 variant summary");
+    expect(documentXml).toContain("BACKGROUND");
   });
 
   it("accepts an explicit DOCX filename", async () => {

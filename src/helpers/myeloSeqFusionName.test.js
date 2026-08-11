@@ -1,6 +1,45 @@
 /** @jest-environment node */
 
-import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
+import {
+  getMyeloSeqFusionGeneExons,
+  getMyeloSeqFusionName,
+} from "./myeloSeqFusionName";
+
+describe("getMyeloSeqFusionGeneExons", () => {
+  it("preserves an existing GENE(EXON)::GENE(EXON) value", () => {
+    expect(
+      getMyeloSeqFusionGeneExons({
+        gene: "BCR::ABL1",
+        variant: "BCR(14)::ABL1(2)",
+      }),
+    ).toBe("BCR(14)::ABL1(2)");
+  });
+
+  it("combines fusion genes with exon numbers from a descriptive Variant", () => {
+    expect(
+      getMyeloSeqFusionGeneExons({
+        gene: "RUNX1::RUNX1T1",
+        variant: "In-Frame Fusion Exon 3::Exon 3",
+      }),
+    ).toBe("RUNX1(3)::RUNX1T1(3)");
+    expect(
+      getMyeloSeqFusionGeneExons({
+        fusion_genes: "FUS::CREB3L2",
+        Variant: "Out-of-Frame Fusion Exon 6 (p.526)::Exon 5 (p.174)",
+      }),
+    ).toBe("FUS(6)::CREB3L2(5)");
+  });
+
+  it("preserves the best available fusion identity when exons cannot be paired", () => {
+    expect(
+      getMyeloSeqFusionGeneExons({
+        gene: "PML::RARA",
+        variant: "Fusion breakpoints unavailable",
+      }),
+    ).toBe("PML::RARA Fusion breakpoints unavailable");
+    expect(getMyeloSeqFusionGeneExons({})).toBeUndefined();
+  });
+});
 
 describe("getMyeloSeqFusionName", () => {
   it("prefixes a descriptive fusion Variant with its gene identity", () => {

@@ -596,6 +596,7 @@ export class TracksModal extends Component {
                 filenameNormalRna: igv.filenameNormalRna,
                 filenameNormalRnaIndex: igv.filenameNormalRnaIndex,
                 format: igv.format,
+                defaultVisible: true,
               }}
             />
           </Col>

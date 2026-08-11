@@ -1,6 +1,14 @@
 import { escapeHtml } from "./format";
-import { getMyeloSeqFusionName } from "./myeloSeqFusionName";
+import {
+  getMyeloSeqFusionGeneExons,
+  getMyeloSeqFusionName,
+} from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
+import {
+  hasFailedMyeloSeqQc,
+  MYELOSEQ_QC_FAILURE_MESSAGE,
+  MYELOSEQ_QC_FAILURE_NOTE,
+} from "./myeloSeqQcFailure";
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
@@ -37,7 +45,7 @@ function renderFact(label, value) {
   return `<p class="fact"><strong>${text(label)}:</strong> ${text(value)}</p>`;
 }
 
-function renderTable(title, columns, rows) {
+function renderTable(title, columns, rows, options = {}) {
   if (!rows.length) return "";
   const availableColumns = columns.filter(
     (column) => column.required || rows.some((row) => hasValue(column.value(row)))
@@ -45,6 +53,15 @@ function renderTable(title, columns, rows) {
   const header = availableColumns
     .map((column) => `<th>${text(column.label)}</th>`)
     .join("");
+  const colgroup = availableColumns.some((column) => column.width)
+    ? `<colgroup>${availableColumns
+        .map((column) =>
+          column.width
+            ? `<col style="width: ${text(column.width)}">`
+            : "<col>",
+        )
+        .join("")}</colgroup>`
+    : "";
   const body = rows
     .map(
       (row) => `<tr>${availableColumns
@@ -56,11 +73,14 @@ function renderTable(title, columns, rows) {
         .join("")}</tr>`
     )
     .join("");
+  const sectionClassName = ["result-table", options.className]
+    .filter(Boolean)
+    .join(" ");
 
-  return `<section class="result-table">
+  return `<section class="${sectionClassName}">
     <h3>${text(title)}</h3>
     <table>
-      <thead><tr>${header}</tr></thead>
+      ${colgroup}<thead><tr>${header}</tr></thead>
       <tbody>${body}</tbody>
     </table>
   </section>`;
@@ -93,27 +113,47 @@ function buildSequenceTables(report) {
   ];
   const fusionColumns = [
     {
-      label: "Gene",
+      label: "Gene(Exon)",
       required: true,
-      value: (finding) => finding.gene,
+      value: getMyeloSeqFusionGeneExons,
       className: "gene-cell",
+      width: "29%",
     },
     {
-      label: "Variant",
+      label: "Tier",
       required: true,
-      value: (finding) => finding.variant,
+      value: (finding) => finding.tier,
+      width: "8%",
     },
-    { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: (finding) => finding.type },
-    { label: "Locus", value: (finding) => finding.locus },
+    {
+      label: "Variant Type",
+      required: true,
+      value: (finding) => finding.type,
+      width: "21%",
+    },
+    {
+      label: "Locus",
+      required: true,
+      value: (finding) => finding.locus,
+      width: "42%",
+    },
   ];
 
   return [
     renderTable("DNA Sequencing results", sequenceColumns, sequenceFindings),
-    renderTable("Targeted RNA Sequencing results", fusionColumns, fusionFindings),
+    renderTable(
+      "Targeted RNA Sequencing results",
+      fusionColumns,
+      fusionFindings,
+      { className: "fusion-result-table" },
+    ),
   ]
     .filter(Boolean)
     .join("");
+}
+
+function buildQcFailureResults() {
+  return `<section class="qc-failure-results"><h3>${text(MYELOSEQ_QC_FAILURE_MESSAGE)}</h3><p><strong>Note:</strong> ${text(MYELOSEQ_QC_FAILURE_NOTE)}</p></section>`;
 }
 
 function renderInterpretationLine(label, value) {
@@ -284,6 +324,10 @@ function getInlineCss() {
     }
     table { border-collapse: collapse; }
     .result-table table { width: 86%; }
+    .fusion-result-table table {
+      width: 100%;
+      table-layout: fixed;
+    }
     .result-table th,
     .result-table td {
       border: 0.75pt solid #000;
@@ -294,6 +338,9 @@ function getInlineCss() {
     }
     .result-table th { font-weight: 700; }
     .result-table .gene-cell { font-style: italic; }
+    .qc-failure-results { margin: 0 0 0.28in; }
+    .qc-failure-results h3 { margin: 0 0 0.26in; }
+    .qc-failure-results p { margin: 0; }
     .tier-section { margin: 0 0 0.28in; }
     .finding-interpretation { margin: 0 0 0.24in; }
     .finding-interpretation p { margin: 0; white-space: pre-wrap; }
@@ -360,7 +407,10 @@ class MyeloSeqHtmlRenderer {
     const patient = report?.patient || {};
     const caseId = hasValue(patient.caseId) ? String(patient.caseId) : "";
     const author = hasValue(report?.author) ? String(report.author) : "";
-    const results = `${buildSequenceTables(report)}${buildTierInterpretations(report)}`;
+    const qcFailed = hasFailedMyeloSeqQc(report);
+    const results = qcFailed
+      ? buildQcFailureResults()
+      : `${buildSequenceTables(report)}${buildTierInterpretations(report)}`;
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -373,7 +423,7 @@ class MyeloSeqHtmlRenderer {
   <main class="report-document">
     ${buildSpecimenSection(report)}
     ${results ? `${renderSectionBar("RESULTS")}${results}` : ""}
-    ${buildTierGuide()}
+    ${qcFailed ? "" : buildTierGuide()}
     ${buildBackground()}
     ${buildMethods()}
     ${buildDisclaimers()}
