@@ -26,6 +26,7 @@ jest.mock("@aws-sdk/client-dynamodb", () => {
   };
 });
 
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { DynamoDBRepository } from "./DynamoDBRepository";
 
 describe("DynamoDBRepository read and delete error contracts", () => {
@@ -132,5 +133,56 @@ describe("DynamoDBRepository read and delete error contracts", () => {
       "Failed to delete interpretation:",
       deleteError,
     );
+  });
+
+  it("includes globally stored imports under their source case", async () => {
+    const importedItem = marshall(
+      repository._toDynamoDBItem({
+        datasetId: "__case-interpretation-import__",
+        caseId: "__global__",
+        alterationId: "event-imported",
+        authorId: "imported-author",
+        authorName: "Imported Author",
+        gene: "TP53",
+        data: { tier: "2" },
+        hasTierChange: true,
+        source: {
+          kind: "case-interpretation-import",
+          datasetId: "dataset-1",
+          caseId: "case-imported",
+        },
+      }),
+    );
+    mockSend.mockImplementation((command) =>
+      Promise.resolve(
+        command.input.FilterExpression
+          ? { Items: [importedItem] }
+          : { Items: [] },
+      ),
+    );
+
+    const summary = await repository.getCasesWithInterpretations(
+      "dataset-1",
+    );
+    const counts = await repository.getCasesInterpretationsCount(
+      "dataset-1",
+    );
+    const importedQuery = mockSend.mock.calls
+      .map(([command]) => command.input)
+      .find((input) => input.FilterExpression);
+
+    expect(summary.all).toEqual(new Set(["case-imported"]));
+    expect(summary.withTierChange).toEqual(new Set(["case-imported"]));
+    expect(summary.byAuthor.get("Imported Author")).toEqual(
+      new Set(["case-imported"]),
+    );
+    expect(summary.byGene.get("TP53")).toEqual(
+      new Set(["case-imported"]),
+    );
+    expect(counts).toEqual(new Map([["case-imported", 1]]));
+    expect(unmarshall(importedQuery.ExpressionAttributeValues)).toMatchObject({
+      ":datasetIdCaseId": "__case-interpretation-import__::__global__",
+      ":sourceDatasetId": "dataset-1",
+    });
   });
 });

@@ -368,6 +368,44 @@ export function* searchReports({ searchFilters }) {
   }
 }
 
+export function* refreshInterpretationFilters() {
+  const currentState = yield select(getCurrentState);
+  const browseDataset = resolveBrowseDataset(currentState);
+  const datasets = resolveBrowseDatasets(currentState);
+  const globalScope = isAllDatasetsBrowseScope(
+    currentState.Settings.browseScope,
+  );
+  const datafiles = currentState.CaseReports.datafiles || [];
+
+  if (globalScope || !browseDataset || datasets.length === 0) return;
+
+  try {
+    const [casesWithInterpretations, interpretationsCounts] = yield call(
+      loadInterpretationState,
+      datasets[0],
+      false,
+      datafiles,
+    );
+    const { reportsFilters } = buildSearchFilterState(
+      browseDataset,
+      datasets,
+      datafiles,
+      casesWithInterpretations,
+      false,
+      currentState.CaseReports.reportsFilters,
+    );
+
+    yield put({
+      type: actions.INTERPRETATION_FILTERS_REFRESHED,
+      reportsFilters,
+      casesWithInterpretations,
+      interpretationsCounts,
+    });
+  } catch (error) {
+    console.error("Failed to refresh interpretation filters:", error);
+  }
+}
+
 export function* fetchFavoriteSearches() {
   try {
     const ownerId = yield call(getCurrentUserId);
@@ -539,6 +577,10 @@ const searchWorkActions = [
 function* actionWatcher() {
   yield takeLatest(fetchWorkActions, fetchOrCancelCaseReports);
   yield takeLatest(searchWorkActions, searchOrCancelCaseReports);
+  yield takeLatest(
+    actions.REFRESH_INTERPRETATION_FILTERS,
+    refreshInterpretationFilters,
+  );
   yield takeLatest(
     actions.FETCH_FAVORITE_SEARCHES_REQUEST,
     fetchFavoriteSearches,

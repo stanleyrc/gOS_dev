@@ -8,6 +8,12 @@ function failingRequest(error) {
   return request;
 }
 
+function successfulRequest(result) {
+  const request = { result };
+  Promise.resolve().then(() => request.onsuccess());
+  return request;
+}
+
 const store = {
   get: jest.fn(),
   getAll: jest.fn(),
@@ -116,6 +122,62 @@ describe("IndexedDBRepository read and delete error contracts", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "Failed to delete interpretation:",
       deleteError,
+    );
+  });
+
+  it("includes globally stored imports under their source case", async () => {
+    const imported = {
+      datasetId: "__case-interpretation-import__",
+      caseId: "__global__",
+      alterationId: "event-imported",
+      authorName: "Imported Author",
+      gene: "TP53",
+      data: { tier: "2" },
+      hasTierChange: true,
+      source: {
+        kind: "case-interpretation-import",
+        datasetId: "dataset-1",
+        caseId: "case-imported",
+      },
+    };
+    const ordinary = {
+      datasetId: "dataset-1",
+      caseId: "case-ordinary",
+      alterationId: "event-ordinary",
+      hasTierChange: false,
+    };
+    const index = {
+      getAll: jest.fn((datasetId) =>
+        successfulRequest(
+          datasetId === "dataset-1" ? [ordinary] : [imported],
+        ),
+      ),
+    };
+    store.index.mockReturnValue(index);
+
+    const summary = await repository.getCasesWithInterpretations(
+      "dataset-1",
+    );
+    const counts = await repository.getCasesInterpretationsCount(
+      "dataset-1",
+    );
+
+    expect(index.getAll).toHaveBeenCalledWith("dataset-1");
+    expect(index.getAll).toHaveBeenCalledWith(
+      "__case-interpretation-import__",
+    );
+    expect(summary.all).toEqual(
+      new Set(["case-ordinary", "case-imported"]),
+    );
+    expect(summary.withTierChange).toEqual(new Set(["case-imported"]));
+    expect(summary.byAuthor.get("Imported Author")).toEqual(
+      new Set(["case-imported"]),
+    );
+    expect(counts).toEqual(
+      new Map([
+        ["case-ordinary", 1],
+        ["case-imported", 1],
+      ]),
     );
   });
 });

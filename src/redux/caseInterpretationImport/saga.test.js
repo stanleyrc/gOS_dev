@@ -35,6 +35,7 @@ jest.mock("../../helpers/cancelToken", () => ({
 }));
 
 import interpretationsActions from "../interpretations/actions";
+import caseReportsActions from "../caseReports/actions";
 import { importCaseInterpretations } from "./saga";
 
 const state = {
@@ -124,6 +125,7 @@ describe("Case Interpretation Import saga", () => {
     });
 
     expect(await runImport()).toEqual([
+      caseReportsActions.refreshInterpretationFilters(),
       interpretationsActions.fetchInterpretationsForCase("CASE-1"),
     ]);
     expect(mockBulkSave).toHaveBeenCalledWith(interpretations);

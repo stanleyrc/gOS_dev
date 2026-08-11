@@ -150,6 +150,15 @@ export default function appReducer(state = initState, action) {
         loading: false,
         highlightedCaseReport: null,
       };
+    case actions.INTERPRETATION_FILTERS_REFRESHED:
+      return {
+        ...state,
+        reportsFilters: action.reportsFilters,
+        casesWithInterpretations:
+          action.casesWithInterpretations || state.casesWithInterpretations,
+        interpretationsCounts:
+          action.interpretationsCounts || state.interpretationsCounts,
+      };
     case actions.FETCH_FAVORITE_SEARCHES_REQUEST:
       return {
         ...state,
