@@ -987,17 +987,6 @@
   ],
   "filteredEventsColumns": [
     {
-      "id": "gene",
-      "title": "components.filtered-events-panel.gene",
-      "dataIndex": "gene",
-      "type": "string",
-      "viewType": "string-basic",
-      "width": 164,
-      "filterable": true,
-      "filterSearch": true,
-      "sortable": true
-    },
-    {
       "id": "location",
       "title": "components.filtered-events-panel.location",
       "dataIndex": "location",
@@ -1007,13 +996,14 @@
       "sortable": true
     },
     {
-      "id": "role",
-      "title": "components.filtered-events-panel.role",
-      "dataIndex": "role",
+      "id": "gene",
+      "title": "components.filtered-events-panel.gene",
+      "dataIndex": "gene",
       "type": "string",
       "viewType": "string-basic",
-      "width": 160,
+      "width": 164,
       "filterable": true,
+      "filterSearch": true,
       "sortable": true
     },
     {
@@ -1026,6 +1016,16 @@
       "filterable": true,
       "sortable": true,
       "ellipsis": true
+    },
+    {
+      "id": "role",
+      "title": "components.filtered-events-panel.role",
+      "dataIndex": "role",
+      "type": "string",
+      "viewType": "string-basic",
+      "width": 160,
+      "filterable": true,
+      "sortable": true
     },
     {
       "id": "type",
