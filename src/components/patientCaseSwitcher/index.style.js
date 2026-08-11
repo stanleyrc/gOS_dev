@@ -102,21 +102,6 @@ const Wrapper = styled.span`
     line-height: inherit;
   }
 
-  .patient-level-view-link {
-    height: 24px;
-    padding: 0 8px;
-    border: 1px solid #91caff;
-    border-radius: 12px;
-    background: #e6f4ff;
-    font-size: 12px;
-    line-height: 22px;
-  }
-
-  .patient-level-view-link:hover,
-  .patient-level-view-link:focus-visible {
-    border-color: #4096ff;
-    background: #bae0ff;
-  }
 `;
 
 export default Wrapper;

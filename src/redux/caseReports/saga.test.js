@@ -47,11 +47,13 @@ jest.mock("../../services/repositories", () => ({
 
 import { runSaga } from "redux-saga";
 import { createProgressChannel } from "../../helpers/progressChannel";
+import { getActiveRepository } from "../../services/repositories";
 import datasetsActions from "../datasets/actions";
 import actions from "./actions";
 import {
   applyFavoriteSearch,
   fetchCaseReports,
+  refreshInterpretationFilters,
   saveFavoriteSearch,
 } from "./saga";
 
@@ -147,6 +149,67 @@ describe("static browse sagas", () => {
     ]);
     expect(success.totalReportsCount).toBe(1);
     expect(Object.keys(success.manifestRecordsByDataset)).toEqual(["a", "b"]);
+  });
+
+  it("refreshes interpretation filters without closing the active detail", async () => {
+    const casesWithInterpretations = {
+      all: new Set(["PAIR-1"]),
+      withTierChange: new Set(["PAIR-1"]),
+      byAuthor: new Map(),
+      byGene: new Map(),
+    };
+    const interpretationsCounts = new Map([["PAIR-1", 2]]);
+    getActiveRepository.mockReturnValue({
+      getCasesWithInterpretations: jest
+        .fn()
+        .mockResolvedValue(casesWithInterpretations),
+      getCasesInterpretationsCount: jest
+        .fn()
+        .mockResolvedValue(interpretationsCounts),
+    });
+    const dataset = globalState().Datasets.records[0];
+    const datafiles = [
+      {
+        datasetId: "a",
+        caseReportId: "PAIR-1",
+        pair: "PAIR-1",
+        disease: "AML",
+        tmb: 8,
+      },
+    ];
+    const state = {
+      ...globalState(),
+      Settings: {
+        browseScope: { kind: "dataset", datasetId: "a" },
+        dataset,
+        report: "PAIR-1",
+      },
+      CaseReports: {
+        ...globalState().CaseReports,
+        datafiles,
+        reportsFilters: [],
+      },
+    };
+
+    const dispatched = await runWorker(
+      refreshInterpretationFilters,
+      actions.refreshInterpretationFilters(),
+      state,
+    );
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0]).toMatchObject({
+      type: actions.INTERPRETATION_FILTERS_REFRESHED,
+      casesWithInterpretations,
+      interpretationsCounts,
+      reportsFilters: [
+        { filter: { name: "has_interpretations" } },
+      ],
+    });
+    expect(dispatched[0]).not.toHaveProperty("reports");
+    expect(dispatched).not.toContainEqual(
+      expect.objectContaining({ type: "UPDATE_CASE_REPORT" }),
+    );
   });
 
   it("persists a global saved query with null dataset scope", async () => {

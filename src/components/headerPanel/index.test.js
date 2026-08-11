@@ -10,6 +10,9 @@ jest.mock("react-i18next", () => ({
   withTranslation: () => (Component) => Component,
 }));
 jest.mock("@ant-design/pro-components", () => ({ PageHeader: "PageHeader" }));
+jest.mock("@ant-design/icons", () => ({
+  BarChartOutlined: "BarChartOutlined",
+}));
 jest.mock("antd", () => ({
   Space: "Space",
   Tag: "Tag",
@@ -173,6 +176,70 @@ describe("HeaderPanel schema metadata", () => {
     expect(text).toContain("purity-ploidy-title");
     expect(text).toContain("metadata.tumor_median_coverage.short");
     expect(text).toContain("N/A");
+  });
+
+  it("orders uniformly sized metadata actions after a labeled sex badge", () => {
+    const labels = {
+      "components.header-panel.patient-sex-tooltip": "Patient's sex",
+      "components.header-panel.view-report": "View Report",
+      "components.header-panel.cbioportal-button": "cBioPortal",
+      "components.header-panel.clinical-trials-button": "Clinical Trials",
+      "components.patient-case-switcher.patient-level":
+        "View Patient Aggregations",
+      "components.patient-case-switcher.patient-level-aria-label":
+        "View patient aggregations",
+    };
+    const showPatientLevelView = jest.fn();
+    const panel = new HeaderPanel({
+      t: (key) => labels[key] || key,
+      report: "case-1",
+      dataset: {
+        schema: [{ id: "inferred_sex" }],
+        fields: [{ id: "inferred_sex" }],
+      },
+      metadata: {
+        pair: "PAIR-1",
+        patient_id: "PATIENT-1",
+        inferred_sex: "Female",
+        qcMetrics: [],
+        qcEvaluation: null,
+      },
+      plots: [],
+      showPatientLevelView,
+    });
+
+    const pageHeader = panel.render().props.children[0];
+    const toolbar = pageHeader.props.subTitle;
+    const toolbarGroups = React.Children.toArray(toolbar.props.children);
+    const badges = React.Children.toArray(
+      toolbarGroups[0].props.children,
+    );
+    const actions = React.Children.toArray(
+      toolbarGroups[1].props.children,
+    );
+
+    expect(badges[0].type).toBe("Tooltip");
+    expect(badges[0].props.title).toBe("Patient's sex");
+    expect(badges[0].props.children.props).toMatchObject({
+      className: "patient-sex-badge",
+      "aria-label": "Patient's sex: Female",
+      children: "Female",
+    });
+    expect(actions.map((action) => action.type)).toEqual([
+      "Button",
+      "ReportButtonsPanel",
+      "Tooltip",
+      "Tooltip",
+    ]);
+    expect(actions[0].props.className).toBe("patient-level-view-link");
+    expect(actions[0].props.icon.type).toBe("BarChartOutlined");
+    expect(actions[2].props.children.props["aria-label"]).toBe("cBioPortal");
+    expect(actions[3].props.children.props["aria-label"]).toBe(
+      "Clinical Trials",
+    );
+
+    actions[0].props.onClick();
+    expect(showPatientLevelView).toHaveBeenCalledWith("PATIENT-1");
   });
 
   it("delegates case-ID copy with case-specific initial guidance", () => {

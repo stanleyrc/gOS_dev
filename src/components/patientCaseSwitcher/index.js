@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
-import { Button, Dropdown, Tooltip, Typography } from "antd";
+import { Dropdown, Tooltip, Typography } from "antd";
 import {
   CheckOutlined,
   DownOutlined,
@@ -10,10 +10,6 @@ import {
 } from "@ant-design/icons";
 import datasetsActions from "../../redux/datasets/actions";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
-import {
-  buildPatientLevelSearchFilters,
-  PATIENT_LEVEL_VIEW_TARGET,
-} from "../../helpers/patientLevelView";
 import {
   findPatientCases,
   formatSpecimenDate,
@@ -25,7 +21,7 @@ import {
 import Wrapper, { PatientCaseMenuStyle } from "./index.style";
 
 const { Text } = Typography;
-const { openCaseReport, selectAllDatasets } = datasetsActions;
+const { openCaseReport } = datasetsActions;
 const patientCaseSearchCache = new Map();
 const MAX_PATIENT_SEARCH_CACHE_ENTRIES = 20;
 
@@ -259,11 +255,6 @@ export class PatientCaseSwitcher extends Component {
     );
   };
 
-  handlePatientLevelView = () => {
-    const patientId = this.getPatientId();
-    if (patientId) this.props.showPatientLevelView(patientId);
-  };
-
   renderPairTrigger = (
     extraProps = {},
     suffix = <DownOutlined className="patient-case-switcher-chevron" />,
@@ -342,7 +333,7 @@ export class PatientCaseSwitcher extends Component {
   };
 
   render() {
-    const { copyControl, pair, t } = this.props;
+    const { copyControl, pair } = this.props;
     if (!pair) return null;
 
     const patientId = this.getPatientId();
@@ -362,18 +353,6 @@ export class PatientCaseSwitcher extends Component {
         <Wrapper>
           {control}
           {copyControl}
-          <Button
-            type="link"
-            size="small"
-            className="patient-level-view-link"
-            onClick={this.handlePatientLevelView}
-            aria-label={t(
-              "components.patient-case-switcher.patient-level-aria-label",
-              { patientId },
-            )}
-          >
-            {t("components.patient-case-switcher.patient-level")}
-          </Button>
         </Wrapper>
       </>
     );
@@ -390,7 +369,6 @@ PatientCaseSwitcher.propTypes = {
   openCaseReport: PropTypes.func.isRequired,
   pair: PropTypes.string,
   report: PropTypes.string,
-  showPatientLevelView: PropTypes.func.isRequired,
   t: PropTypes.func.isRequired,
 };
 
@@ -416,13 +394,6 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   openCaseReport: (datasetId, caseReportId) =>
     dispatch(openCaseReport(datasetId, caseReportId)),
-  showPatientLevelView: (patientId) =>
-    dispatch(
-      selectAllDatasets({
-        searchFilters: buildPatientLevelSearchFilters(patientId),
-        listViewTarget: PATIENT_LEVEL_VIEW_TARGET,
-      }),
-    ),
 });
 
 export default connect(

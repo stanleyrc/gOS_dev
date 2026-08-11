@@ -63,24 +63,63 @@ const Wrapper = styled.div`
       color: #1677ff;
       outline: none;
     }
+    .metadata-header-toolbar,
+    .metadata-header-badges,
+    .metadata-header-actions {
+      display: inline-flex;
+      align-items: center;
+    }
+    .metadata-header-actions > .ant-space-item {
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .patient-sex-badge.ant-tag {
+      height: 24px;
+      margin: 0;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 0;
+      font-size: 12px;
+      line-height: 22px;
+      cursor: default;
+    }
+    .patient-level-view-link.ant-btn {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 16px;
+      background: #ffffff;
+      color: #27496b;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 30px;
+    }
+    .patient-level-view-link.ant-btn:hover,
+    .patient-level-view-link.ant-btn:focus-visible {
+      border-color: #4096ff;
+      background: #ffffff;
+      color: #1677ff;
+    }
     .header-badge-button.ant-btn {
-      width: 40px;
-      height: 40px;
-      padding: 4px;
+      width: 32px;
+      height: 32px;
+      padding: 2px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 8px;
+      border-radius: 6px;
     }
     .header-badge-button.ant-btn:hover,
     .header-badge-button.ant-btn:focus-visible {
       background: rgba(39, 73, 107, 0.08);
     }
     .header-badge-image {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       object-fit: contain;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
     }
     .report-badge-icon {
       width: 32px;

@@ -19,18 +19,6 @@ jest.mock("@ant-design/icons", () => ({
 jest.mock("../../helpers/staticManifests", () => ({
   loadConfiguredManifestsWithStatus: jest.fn(),
 }));
-jest.mock("../../helpers/patientLevelView", () => ({
-  buildPatientLevelSearchFilters: (patientId) => ({
-    page: 1,
-    patient_id: [patientId],
-  }),
-  PATIENT_LEVEL_VIEW_TARGET: {
-    tab: "aggregations",
-    aggregationsTab: "visualization",
-    visualizationPreset: "topGenes",
-    focusVisualization: true,
-  },
-}));
 jest.mock("./index.style", () => ({
   __esModule: true,
   default: "patient-switcher",
@@ -71,7 +59,6 @@ const createComponent = (overrides = {}) => {
     openCaseReport: jest.fn(),
     pair: "PAIR-1",
     report: "case-1",
-    showPatientLevelView: jest.fn(),
     t,
     ...overrides,
   };
@@ -144,16 +131,6 @@ describe("PatientCaseSwitcher", () => {
     });
 
     expect(component.props.openCaseReport).toHaveBeenCalledWith("b", "case-2");
-  });
-
-  it("opens the patient-level comparison for the current patient", () => {
-    const component = createComponent();
-
-    component.handlePatientLevelView();
-
-    expect(component.props.showPatientLevelView).toHaveBeenCalledWith(
-      "PATIENT-1",
-    );
   });
 
   it("renders a static case ID when metadata has no patient ID", async () => {

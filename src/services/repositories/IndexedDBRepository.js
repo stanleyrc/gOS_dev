@@ -5,6 +5,13 @@
 
 import { EventInterpretationRepository } from "./EventInterpretationRepository";
 import EventInterpretation from "../../helpers/EventInterpretation";
+import {
+  CASE_INTERPRETATION_IMPORT_STORAGE_DATASET_ID,
+} from "../../helpers/interpretationHistory";
+import {
+  countInterpretationsForDataset,
+  summarizeInterpretationsForDataset,
+} from "../../helpers/interpretationSummary";
 
 const DB_NAME = "gOS_Interpretations";
 const STORE_NAME = "interpretations";
@@ -401,100 +408,57 @@ export class IndexedDBRepository extends EventInterpretationRepository {
     return interpretation?.data?.notes ?? null;
   }
 
-  async getCasesWithInterpretations(datasetId) {
-  if (!window.indexedDB || !datasetId) {
-    return {
-      withTierChange: new Set(),
-      byAuthor: new Map(),
-      byGene: new Map(),
-      all: new Set(),
-    };
-  }
-
-  try {
-    // Use getAll instead of cursor for better reliability
-    const results = await withStore(STORE_NAME, "readonly", (store) => {
-      return new Promise((resolve, reject) => {
-        const index = store.index(INDEX_BY_DATASET);
-        const req = index.getAll(datasetId);
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
-    });
-
-    // Process results in memory
-    const withTierChange = new Set();
-    const byAuthor = new Map();
-    const byGene = new Map();
-    const all = new Set();
-
-    for (const item of results) {
-      const caseId = item.caseId;
-      all.add(caseId);
-
-      if (item.hasTierChange) {
-        withTierChange.add(caseId);
-      }
-
-      if (item.authorName) {
-        if (!byAuthor.has(item.authorName)) {
-          byAuthor.set(item.authorName, new Set());
-        }
-        byAuthor.get(item.authorName).add(caseId);
-      }
-
-      if (item.gene) {
-        if (!byGene.has(item.gene)) {
-          byGene.set(item.gene, new Set());
-        }
-        byGene.get(item.gene).add(caseId);
-      }
+  async _getBrowseInterpretations(datasetId) {
+    const storageDatasetIds = [datasetId];
+    if (`${datasetId}` !== CASE_INTERPRETATION_IMPORT_STORAGE_DATASET_ID) {
+      storageDatasetIds.push(
+        CASE_INTERPRETATION_IMPORT_STORAGE_DATASET_ID,
+      );
     }
 
-    return {
-      withTierChange,
-      byAuthor,
-      byGene,
-      all,
-    };
-  } catch (e) {
-    console.error("Failed to get cases with interpretations:", e);
-    return {
-      withTierChange: new Set(),
-      byAuthor: new Map(),
-      byGene: new Map(),
-      all: new Set(),
-    };
+    return withStore(STORE_NAME, "readonly", (store) => {
+      const index = store.index(INDEX_BY_DATASET);
+      return Promise.all(
+        storageDatasetIds.map(
+          (storageDatasetId) =>
+            new Promise((resolve, reject) => {
+              const req = index.getAll(storageDatasetId);
+              req.onsuccess = () => resolve(req.result || []);
+              req.onerror = () => reject(req.error);
+            }),
+        ),
+      ).then((results) => results.flat());
+    });
   }
-}
+
+  async getCasesWithInterpretations(datasetId) {
+    if (!window.indexedDB || !datasetId) {
+      return summarizeInterpretationsForDataset([], datasetId);
+    }
+
+    try {
+      const interpretations = await this._getBrowseInterpretations(datasetId);
+      return summarizeInterpretationsForDataset(
+        interpretations,
+        datasetId,
+      );
+    } catch (e) {
+      console.error("Failed to get cases with interpretations:", e);
+      return summarizeInterpretationsForDataset([], datasetId);
+    }
+  }
 
   async getCasesInterpretationsCount(datasetId) {
-  if (!window.indexedDB || !datasetId) return new Map();
+    if (!window.indexedDB || !datasetId) return new Map();
 
-  try {
-    // Use getAll instead of cursor for better reliability
-    const results = await withStore(STORE_NAME, "readonly", (store) => {
-      return new Promise((resolve, reject) => {
-        const index = store.index(INDEX_BY_DATASET);
-        const req = index.getAll(datasetId);
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
-    });
-
-    // Process results in memory
-    const countMap = new Map();
-    for (const item of results) {
-      const caseId = item.caseId;
-      countMap.set(caseId, (countMap.get(caseId) || 0) + 1);
+    try {
+      const interpretations = await this._getBrowseInterpretations(datasetId);
+      return countInterpretationsForDataset(interpretations, datasetId);
+    } catch (e) {
+      console.error("Failed to get cases interpretations count:", e);
+      return new Map();
     }
-
-    return countMap;
-  } catch (e) {
-    console.error("Failed to get cases interpretations count:", e);
-    return new Map();
   }
-}
 
   async getTierCountsByGeneVariantType(gene, variantType) {
     if (!window.indexedDB || !gene || !variantType) {

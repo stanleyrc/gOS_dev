@@ -8,6 +8,16 @@ import EventInterpretation from "../../helpers/EventInterpretation";
 import { getUser } from "../../helpers/userAuth";
 import { verifyOwnInterpretation } from "../signatures/SignatureService";
 import {
+  CASE_INTERPRETATION_IMPORT_STORAGE_CASE_ID,
+  CASE_INTERPRETATION_IMPORT_STORAGE_DATASET_ID,
+} from "../../helpers/interpretationHistory";
+import {
+  countInterpretationsForDataset,
+  mergeInterpretationCounts,
+  mergeInterpretationSummaries,
+  summarizeInterpretationsForDataset,
+} from "../../helpers/interpretationSummary";
+import {
   DynamoDBClient,
   PutItemCommand,
   GetItemCommand,
@@ -347,6 +357,40 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   return interpretation?.data?.notes ?? null;
   }
 
+  async _getImportedInterpretations(datasetId) {
+    try {
+      const items = [];
+      let lastEvaluatedKey;
+
+      do {
+        const command = new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "datasetIdCaseId = :datasetIdCaseId",
+          FilterExpression: "#source.#datasetId = :sourceDatasetId",
+          ExpressionAttributeNames: {
+            "#source": "source",
+            "#datasetId": "datasetId",
+          },
+          ExpressionAttributeValues: marshall({
+            ":datasetIdCaseId": `${CASE_INTERPRETATION_IMPORT_STORAGE_DATASET_ID}::${CASE_INTERPRETATION_IMPORT_STORAGE_CASE_ID}`,
+            ":sourceDatasetId": datasetId,
+          }),
+          ...(lastEvaluatedKey
+            ? { ExclusiveStartKey: lastEvaluatedKey }
+            : {}),
+        });
+        const response = await this.client.send(command);
+        items.push(...(response.Items || []));
+        lastEvaluatedKey = response.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      return items.map((item) => this._fromDynamoDBItem(item));
+    } catch (error) {
+      console.error("Failed to get imported interpretations:", error);
+      return [];
+    }
+  }
+
   async getCasesWithInterpretations(datasetId) {
     if (!datasetId) {
       return {
@@ -392,11 +436,17 @@ export class DynamoDBRepository extends EventInterpretationRepository {
         ProjectionExpression: "datasetIdCaseId, gene",
       });
 
-      // Execute all queries in parallel
-      const [withTierChangeResponse, byAuthorResponse, byGeneResponse] = await Promise.all([
+      // Execute stored-case and globally imported lookups in parallel.
+      const [
+        withTierChangeResponse,
+        byAuthorResponse,
+        byGeneResponse,
+        importedInterpretations,
+      ] = await Promise.all([
         this.client.send(withTierChangeCommand),
         this.client.send(byAuthorCommand),
         this.client.send(byGeneCommand),
+        this._getImportedInterpretations(datasetId),
       ]);
 
       const withTierChangeItems = withTierChangeResponse.Items || [];
@@ -446,12 +496,18 @@ export class DynamoDBRepository extends EventInterpretationRepository {
         }
       });
 
-      return {
-        withTierChange,
-        byAuthor,
-        byGene,
-        all: allCases,
-      };
+      return mergeInterpretationSummaries(
+        {
+          withTierChange,
+          byAuthor,
+          byGene,
+          all: allCases,
+        },
+        summarizeInterpretationsForDataset(
+          importedInterpretations,
+          datasetId,
+        ),
+      );
     } catch (error) {
       console.error("Failed to get cases with interpretations:", error);
       return {
@@ -464,7 +520,24 @@ export class DynamoDBRepository extends EventInterpretationRepository {
   }
 
   async getCasesInterpretationsCount(datasetId) {
-  return this._getCasesData(datasetId, "count"); // "count" for Map mode
+    if (!datasetId) return new Map();
+
+    try {
+      const [storedCounts, importedInterpretations] = await Promise.all([
+        this._getCasesData(datasetId, "count"),
+        this._getImportedInterpretations(datasetId),
+      ]);
+      return mergeInterpretationCounts(
+        storedCounts,
+        countInterpretationsForDataset(
+          importedInterpretations,
+          datasetId,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to get cases interpretations count:", error);
+      return new Map();
+    }
   }
 
   async _getCasesData(datasetId, returnType) {

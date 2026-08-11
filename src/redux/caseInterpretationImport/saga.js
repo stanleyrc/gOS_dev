@@ -2,6 +2,7 @@ import { all, call, put, select, takeLatest } from "redux-saga/effects";
 import axios from "axios";
 import filteredEventsActions from "../filteredEvents/actions";
 import interpretationsActions from "../interpretations/actions";
+import caseReportsActions from "../caseReports/actions";
 import { getActiveRepository } from "../../services/repositories";
 import {
   createCaseInterpretationImportUrls,
@@ -98,6 +99,7 @@ export function* importCaseInterpretations(action) {
     );
 
     const latestState = yield select();
+    yield put(caseReportsActions.refreshInterpretationFilters());
     const caseRemainsActive = `${latestState.CaseReport?.id}` === `${caseId}`;
     const datasetRemainsActive =
       `${latestState.Settings?.dataset?.id}` === `${dataset.id}`;

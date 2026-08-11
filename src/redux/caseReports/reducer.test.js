@@ -112,6 +112,43 @@ describe("CaseReports reducer", () => {
     expect(loading.listViewTarget).toBe(listViewTarget);
   });
 
+  it("refreshes interpretation results without resetting browse context", () => {
+    const records = [{ caseReportId: "case-1" }];
+    const loaded = {
+      ...reducer(undefined, { type: "@@INIT" }),
+      currentSearchId: "search-1",
+      datafiles: records,
+      reports: records,
+      totalReports: records,
+      totalReportsCount: 1,
+      searchFilters: { has_interpretations: [["tier_change"]] },
+      listViewTarget: { tab: "case-reports" },
+    };
+    const casesWithInterpretations = {
+      all: new Set(["case-1"]),
+      withTierChange: new Set(["case-1"]),
+      byAuthor: new Map(),
+      byGene: new Map(),
+    };
+    const refreshed = reducer(loaded, {
+      type: actions.INTERPRETATION_FILTERS_REFRESHED,
+      reportsFilters: [{ filter: { name: "has_interpretations" } }],
+      casesWithInterpretations,
+      interpretationsCounts: new Map([["case-1", 2]]),
+    });
+
+    expect(refreshed.currentSearchId).toBe("search-1");
+    expect(refreshed.datafiles).toBe(loaded.datafiles);
+    expect(refreshed.reports).toBe(loaded.reports);
+    expect(refreshed.totalReports).toBe(loaded.totalReports);
+    expect(refreshed.searchFilters).toBe(loaded.searchFilters);
+    expect(refreshed.listViewTarget).toBe(loaded.listViewTarget);
+    expect(refreshed.casesWithInterpretations).toBe(
+      casesWithInterpretations,
+    );
+    expect(refreshed.totalReportsCount).toBe(1);
+  });
+
   it("preserves loaded manifests when only a local search fails", () => {
     const datafiles = [{ caseReportId: "case-1" }];
     const loaded = {

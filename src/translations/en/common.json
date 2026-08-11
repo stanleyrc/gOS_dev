@@ -517,6 +517,7 @@
       "qcMetrics": "Quality Control Metrics",
       "cbioportal-button": "cBioPortal",
       "clinical-trials-button": "Clinical Trials",
+      "patient-sex-tooltip": "Patient's sex",
       "copy-case-id-tooltip": "Copy case ID",
       "copy-tooltip-success": "Copied!",
       "copy-tooltip-failure": "Unable to copy",
