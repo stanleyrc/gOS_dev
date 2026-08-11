@@ -4,6 +4,11 @@ import {
   getMyeloSeqFusionName,
 } from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
+import {
+  hasFailedMyeloSeqQc,
+  MYELOSEQ_QC_FAILURE_MESSAGE,
+  MYELOSEQ_QC_FAILURE_NOTE,
+} from "./myeloSeqQcFailure";
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
@@ -145,6 +150,10 @@ function buildSequenceTables(report) {
   ]
     .filter(Boolean)
     .join("");
+}
+
+function buildQcFailureResults() {
+  return `<section class="qc-failure-results"><h3>${text(MYELOSEQ_QC_FAILURE_MESSAGE)}</h3><p><strong>Note:</strong> ${text(MYELOSEQ_QC_FAILURE_NOTE)}</p></section>`;
 }
 
 function renderInterpretationLine(label, value) {
@@ -329,6 +338,9 @@ function getInlineCss() {
     }
     .result-table th { font-weight: 700; }
     .result-table .gene-cell { font-style: italic; }
+    .qc-failure-results { margin: 0 0 0.28in; }
+    .qc-failure-results h3 { margin: 0 0 0.26in; }
+    .qc-failure-results p { margin: 0; }
     .tier-section { margin: 0 0 0.28in; }
     .finding-interpretation { margin: 0 0 0.24in; }
     .finding-interpretation p { margin: 0; white-space: pre-wrap; }
@@ -395,7 +407,10 @@ class MyeloSeqHtmlRenderer {
     const patient = report?.patient || {};
     const caseId = hasValue(patient.caseId) ? String(patient.caseId) : "";
     const author = hasValue(report?.author) ? String(report.author) : "";
-    const results = `${buildSequenceTables(report)}${buildTierInterpretations(report)}`;
+    const qcFailed = hasFailedMyeloSeqQc(report);
+    const results = qcFailed
+      ? buildQcFailureResults()
+      : `${buildSequenceTables(report)}${buildTierInterpretations(report)}`;
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -408,7 +423,7 @@ class MyeloSeqHtmlRenderer {
   <main class="report-document">
     ${buildSpecimenSection(report)}
     ${results ? `${renderSectionBar("RESULTS")}${results}` : ""}
-    ${buildTierGuide()}
+    ${qcFailed ? "" : buildTierGuide()}
     ${buildBackground()}
     ${buildMethods()}
     ${buildDisclaimers()}

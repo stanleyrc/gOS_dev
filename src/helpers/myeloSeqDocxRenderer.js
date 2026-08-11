@@ -18,6 +18,11 @@ import {
   getMyeloSeqFusionName,
 } from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
+import {
+  hasFailedMyeloSeqQc,
+  MYELOSEQ_QC_FAILURE_MESSAGE,
+  MYELOSEQ_QC_FAILURE_NOTE,
+} from "./myeloSeqQcFailure";
 
 const DOCX_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -274,12 +279,20 @@ function buildTierSections(report) {
 }
 
 function buildMyeloSeqDocxModel(report) {
+  const qcFailed = hasFailedMyeloSeqQc(report);
+
   return {
     caseId: stringValue(report?.patient?.caseId),
     author: stringValue(report?.author),
     specimenFacts: getMyeloSeqSpecimenFacts(report),
-    resultTables: buildResultTables(report),
-    tierSections: buildTierSections(report),
+    qcFailure: qcFailed
+      ? {
+          message: MYELOSEQ_QC_FAILURE_MESSAGE,
+          note: MYELOSEQ_QC_FAILURE_NOTE,
+        }
+      : null,
+    resultTables: qcFailed ? [] : buildResultTables(report),
+    tierSections: qcFailed ? [] : buildTierSections(report),
     tierGuide: [...TIER_GUIDE],
     backgroundParagraphs: [...BACKGROUND_PARAGRAPHS],
     methods: {
@@ -450,48 +463,67 @@ function createDocumentChildren(model) {
     );
   });
 
-  if (model.resultTables.length || model.tierSections.length) {
+  if (
+    model.qcFailure ||
+    model.resultTables.length ||
+    model.tierSections.length
+  ) {
     children.push(createSectionBar("RESULTS"));
-    model.resultTables.forEach((table) => {
+    if (model.qcFailure) {
       children.push(
-        createParagraph(table.title, {
+        createParagraph(model.qcFailure.message, {
           keepNext: true,
-          spacing: { after: 0, line: 307 },
+          spacing: { after: 432, line: 307 },
           run: { bold: true },
         }),
-        createResultTable(table),
-        createParagraph("", { spacing: { after: 403 } }),
-      );
-    });
-    model.tierSections.forEach(({ tier, findings }) => {
-      children.push(
-        createParagraph(`Tier ${tier}:`, {
-          keepNext: true,
-          spacing: { after: 0, line: 307 },
-          run: { bold: true },
+        createLabeledParagraph("Note", model.qcFailure.note, {
+          spacing: { after: 403, line: 307 },
         }),
       );
-      findings.forEach(({ lines }) => {
-        lines.forEach(({ label, value }) => {
-          children.push(createLabeledParagraph(label, value));
-        });
-        children.push(createParagraph("", { spacing: { after: 346 } }));
+    } else {
+      model.resultTables.forEach((table) => {
+        children.push(
+          createParagraph(table.title, {
+            keepNext: true,
+            spacing: { after: 0, line: 307 },
+            run: { bold: true },
+          }),
+          createResultTable(table),
+          createParagraph("", { spacing: { after: 403 } }),
+        );
       });
-    });
+      model.tierSections.forEach(({ tier, findings }) => {
+        children.push(
+          createParagraph(`Tier ${tier}:`, {
+            keepNext: true,
+            spacing: { after: 0, line: 307 },
+            run: { bold: true },
+          }),
+        );
+        findings.forEach(({ lines }) => {
+          lines.forEach(({ label, value }) => {
+            children.push(createLabeledParagraph(label, value));
+          });
+          children.push(createParagraph("", { spacing: { after: 346 } }));
+        });
+      });
+    }
   }
 
-  children.push(
-    new Paragraph({
-      spacing: { before: 403, after: 173, line: 307 },
-      children: [
-        new TextRun({ text: "Note:", bold: true }),
-        new TextRun({ text: " Variants are categorized into three tiers:" }),
-      ],
-    }),
-  );
-  model.tierGuide.forEach((line) => {
-    children.push(createParagraph(line, { spacing: { after: 0, line: 307 } }));
-  });
+  if (!model.qcFailure) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 403, after: 173, line: 307 },
+        children: [
+          new TextRun({ text: "Note:", bold: true }),
+          new TextRun({ text: " Variants are categorized into three tiers:" }),
+        ],
+      }),
+    );
+    model.tierGuide.forEach((line) => {
+      children.push(createParagraph(line, { spacing: { after: 0, line: 307 } }));
+    });
+  }
 
   children.push(createSectionBar("BACKGROUND"));
   model.backgroundParagraphs.forEach((paragraph) => {

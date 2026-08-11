@@ -139,6 +139,30 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain(">NOTES<");
   });
 
+  it("replaces all results with the insufficient-quality message when QC fails", async () => {
+    const result = await new MyeloSeqHtmlRenderer().render({
+      ...report,
+      metadata: { ...report.metadata, qcEvaluation: "FAIL" },
+    });
+
+    expect(result.html).toContain('<h2 class="section-bar">RESULTS</h2>');
+    expect(result.html).toContain(
+      '<section class="qc-failure-results"><h3>DNA/RNA QUANTITY/QUALITY NOT SUFFICIENT</h3>',
+    );
+    expect(result.html).toContain(
+      "<p><strong>Note:</strong> Please refer to peripheral blood NGS findings.</p>",
+    );
+    expect(result.html).not.toContain("DNA Sequencing results");
+    expect(result.html).not.toContain("Targeted RNA Sequencing results");
+    expect(result.html).not.toContain('<section class="tier-section">');
+    expect(result.html).not.toContain(
+      "Variants are categorized into three tiers",
+    );
+    expect(result.html).not.toContain("JAK2 variant summary");
+    expect(result.html).not.toContain("BCR::ABL1 variant summary");
+    expect(result.html).toContain("BACKGROUND");
+  });
+
   it("uses the fusion gene field when Variant only describes the fusion", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       patient: { caseId: "CASE-RUNX1-FUSION" },

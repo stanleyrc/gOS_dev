@@ -145,6 +145,20 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(JSON.stringify(model)).not.toContain("Ruxolitinib");
   });
 
+  it("replaces all result models with the insufficient-quality message when QC fails", () => {
+    const model = buildMyeloSeqDocxModel({
+      ...report,
+      metadata: { ...report.metadata, qcEvaluation: "FAIL" },
+    });
+
+    expect(model.qcFailure).toEqual({
+      message: "DNA/RNA QUANTITY/QUALITY NOT SUFFICIENT",
+      note: "Please refer to peripheral blood NGS findings.",
+    });
+    expect(model.resultTables).toEqual([]);
+    expect(model.tierSections).toEqual([]);
+  });
+
   it("uses the fusion gene field when Variant only describes the fusion", () => {
     const model = buildMyeloSeqDocxModel({
       alterations: [
@@ -337,6 +351,29 @@ describe("MyeloSeqDocxRenderer output", () => {
     expect(documentXml).not.toContain("Extra gOS note");
     expect(documentXml).not.toContain("Ruxolitinib");
     expect(documentXml).not.toContain("interpretations-data");
+  });
+
+  it("renders the insufficient-quality message instead of result details when QC fails", async () => {
+    const failedReport = {
+      ...report,
+      metadata: { ...report.metadata, qcEvaluation: "FAIL" },
+    };
+    const result = await new MyeloSeqDocxRenderer().render(failedReport);
+    const { documentXml } = await unpackDocumentXml(result.blob);
+
+    expect(documentXml).toContain("RESULTS");
+    expect(documentXml).toContain(
+      "DNA/RNA QUANTITY/QUALITY NOT SUFFICIENT",
+    );
+    expect(documentXml).toContain(
+      "Please refer to peripheral blood NGS findings.",
+    );
+    expect(documentXml).not.toContain("DNA Sequencing results");
+    expect(documentXml).not.toContain("Targeted RNA Sequencing results");
+    expect(documentXml).not.toContain("Variants are categorized into three tiers");
+    expect(documentXml).not.toContain("JAK2 variant summary");
+    expect(documentXml).not.toContain("BCR::ABL1 variant summary");
+    expect(documentXml).toContain("BACKGROUND");
   });
 
   it("accepts an explicit DOCX filename", async () => {
