@@ -5,6 +5,10 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { legendColors, kde, epanechnikov } from "../../helpers/utility";
 import { openCaseInNewTab } from "../../components/aggregationsVisualization/helpers";
+import {
+  formatHistogramValue,
+  getHistogramTickFormatter,
+} from "./tickFormat";
 import { sourceCaseIdentityKey } from "../../helpers/browseScope";
 import Wrapper from "./index.style";
 import caseReportsActions from "../../redux/caseReports/actions";
@@ -193,7 +197,7 @@ class HistogramPlot extends Component {
     let highlightedMarkValue = highlightedRecord?.value;
     let highlightedMarkValueText =
       highlightedMarkValue != null
-        ? d3.format(format)(highlightedMarkValue)
+        ? formatHistogramValue(highlightedMarkValue, format)
         : null;
     let highlightedPair = highlightedRecord?.pair;
 
@@ -251,7 +255,7 @@ class HistogramPlot extends Component {
       .axisBottom(xScale)
       .tickSize(4)
       .tickValues(tickValues)
-      .tickFormat(d3.format(format));
+      .tickFormat(getHistogramTickFormatter(format));
 
     xAxisContainer.call(axisX);
 
