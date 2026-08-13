@@ -36,15 +36,38 @@ describe("ClinvarIconRenderer", () => {
     );
   });
 
-  test("keeps annotations without an allele ID non-clickable", () => {
-    const clinvarIcon = renderClinvar({
-      class: "na",
-      desc: "Not in ClinVar",
-    });
+  test.each([
+    ["pathogenic", "Pathogenic", "3:37053348-37053348 TA>T"],
+    ["benign", "Benign", "17:59770785-59770785 T>A"],
+    ["na", "Conflicting pathogenicity", "5:235414-235414 A>G"],
+  ])(
+    "links a %s ClinVar badge by variant when its allele ID is unavailable",
+    (classValue, desc, variantG) => {
+      const clinvarIcon = renderClinvar(
+        { class: classValue, score: -1, desc },
+        { Variant_g: variantG },
+      );
+
+      expect(clinvarIcon.props.href).toBe(
+        `https://www.ncbi.nlm.nih.gov/clinvar/?term=${encodeURIComponent(
+          variantG,
+        )}`,
+      );
+      expect(clinvarIcon.props.linkAriaLabel).toBe(
+        `Open ${variantG} in ClinVar`,
+      );
+      expect(clinvarIcon.props.tooltipHint).toBe("Click to open ClinVar.");
+    },
+  );
+
+  test("keeps only Not in ClinVar badges non-clickable", () => {
+    const clinvarIcon = renderClinvar(
+      { class: "na", desc: "Not in ClinVar" },
+      { Variant_g: "17:7577538-7577538 C>T" },
+    );
 
     expect(clinvarIcon.props.href).toBeUndefined();
     expect(clinvarIcon.props.linkAriaLabel).toBeUndefined();
     expect(clinvarIcon.props.tooltipHint).toBeUndefined();
   });
-
 });
