@@ -37,12 +37,27 @@ describe("ClinvarIconRenderer", () => {
   });
 
   test.each([
-    ["pathogenic", "Pathogenic", "3:37053348-37053348 TA>T"],
-    ["benign", "Benign", "17:59770785-59770785 T>A"],
-    ["na", "Conflicting pathogenicity", "5:235414-235414 A>G"],
+    [
+      "pathogenic",
+      "Pathogenic",
+      "3:37053348-37053348 TA>T",
+      "3:37053347:TA:T(GRCh37)",
+    ],
+    [
+      "benign",
+      "Benign",
+      "17:59770785-59770785 T>A",
+      "17:59770785:T:A(GRCh37)",
+    ],
+    [
+      "na",
+      "Conflicting pathogenicity",
+      "5:235414-235414 A>G",
+      "5:235414:A:G(GRCh37)",
+    ],
   ])(
     "links a %s ClinVar badge by variant when its allele ID is unavailable",
-    (classValue, desc, variantG) => {
+    (classValue, desc, variantG, searchTerm) => {
       const clinvarIcon = renderClinvar(
         { class: classValue, score: -1, desc },
         { Variant_g: variantG },
@@ -50,7 +65,7 @@ describe("ClinvarIconRenderer", () => {
 
       expect(clinvarIcon.props.href).toBe(
         `https://www.ncbi.nlm.nih.gov/clinvar/?term=${encodeURIComponent(
-          variantG,
+          searchTerm,
         )}`,
       );
       expect(clinvarIcon.props.linkAriaLabel).toBe(

@@ -1,7 +1,10 @@
 const CLINVAR_URL = "https://www.ncbi.nlm.nih.gov/clinvar/";
 const ALLELE_ID_FIELDS = ["alleleId", "alleleid", "ALLELEID", "AlleleID"];
 const NOT_IN_CLINVAR_DESC = "not in clinvar";
-const HGVS_C_PATTERN = /\bc\.[^\s/]+/i;
+const HGVS_PATTERN = /\b[cp]\.[^\s/]+/gi;
+const GENOMIC_VARIANT_PATTERN =
+  /^(?:chr)?([1-9]|1\d|2[0-2]|X|Y|M|MT):(\d+)(?:-\d+)?\s+([ACGTN]+)>([ACGTN]+)$/i;
+const CLINVAR_GENOME_ASSEMBLY = "GRCh37";
 
 /**
  * Return the normalized numeric allele ID carried by a ClinVar annotation.
@@ -30,6 +33,26 @@ export function getClinvarAlleleUrl(annotation) {
     : null;
 }
 
+/** Parse Variant_g into the VCF-like fields accepted by ClinVar search. */
+export function getClinvarGenomicVariant(record) {
+  if (!record || typeof record.Variant_g !== "string") {
+    return null;
+  }
+
+  const variant = record.Variant_g.trim().match(GENOMIC_VARIANT_PATTERN);
+  if (!variant) {
+    return null;
+  }
+
+  const chromosome = variant[1].toUpperCase();
+  return {
+    chromosome: chromosome === "M" ? "MT" : chromosome,
+    start: variant[2],
+    reference: variant[3].toUpperCase(),
+    alternate: variant[4].toUpperCase(),
+  };
+}
+
 /** Return whether a populated badge represents an entry in ClinVar. */
 export function isClinvarAnnotation(annotation) {
   if (!annotation || typeof annotation !== "object") {
@@ -45,26 +68,38 @@ export function isClinvarAnnotation(annotation) {
   return hasBadge && desc !== NOT_IN_CLINVAR_DESC;
 }
 
-function getClinvarSearchTerm(record) {
+/** Build ClinVar's documented chromosome:position:ref:alt search term. */
+export function getClinvarSearchTerm(record) {
   if (!record || typeof record !== "object") {
     return null;
   }
 
-  if (typeof record.Variant_g === "string" && record.Variant_g.trim()) {
-    return record.Variant_g.trim();
+  const genomicVariant = getClinvarGenomicVariant(record);
+  if (genomicVariant) {
+    const { chromosome, start, reference, alternate } = genomicVariant;
+    // Variant_g deletion ranges begin at the first deleted base, while their
+    // reference allele includes the preceding VCF anchor base.
+    const position =
+      Number(start) - (reference.length > alternate.length ? 1 : 0);
+
+    if (position > 0) {
+      return `${chromosome}:${position}:${reference}:${alternate}(${CLINVAR_GENOME_ASSEMBLY})`;
+    }
   }
 
-  const codingVariant =
-    typeof record.Variant === "string"
-      ? record.Variant.match(HGVS_C_PATTERN)
-      : null;
   const gene = typeof record.gene === "string" ? record.gene.trim() : "";
+  const hgvsTerms =
+    typeof record.Variant === "string"
+      ? record.Variant.match(HGVS_PATTERN) || []
+      : [];
+  const codingVariant = hgvsTerms.find((term) => /^c\./i.test(term));
+  const hgvsVariant = codingVariant || hgvsTerms[0];
 
-  if (codingVariant && gene) {
-    return `${gene} ${codingVariant[0]}`;
+  if (gene && hgvsVariant) {
+    return `${gene} ${hgvsVariant}`;
   }
 
-  return gene || null;
+  return gene || hgvsVariant || null;
 }
 
 /**
