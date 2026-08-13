@@ -1,0 +1,506 @@
+[
+    {
+        "id": "filtered-events-refactor",
+        "title": "Filtered Events Refactor Demo",
+        "datafilesPath": "./data_filtered_events_test/datafiles.json",
+        "dataPath": "./data_filtered_events_test/",
+        "optionalFilteredEventsColumns": [
+            {
+              "id": "alphamissense",
+              "title": "AlphaMissense",
+              "dataIndex": "AlphaMissense",
+              "type": "object",
+              "viewType": "class-icon",
+              "width": 150,
+              "sortable": true,
+              "filterable": true,
+              "type": "object"
+            },
+            {
+              "id": "sift",
+              "title": "SIFT",
+              "dataIndex": "SIFT",
+              "type": "object",
+              "viewType": "class-icon",
+              "width": 150,
+              "sortable": true,
+              "filterable": true
+            },
+            {
+              "id": "polyphen2",
+              "title": "PolyPhen2 HVAR",
+              "dataIndex": "Polyphen2_HVAR",
+              "type": "object",
+              "viewType": "class-icon",
+              "width": 150,
+              "sortable": true,
+              "filterable": true
+            },
+            {
+              "id": "clinvar",
+              "title": "Clinvar",
+              "dataIndex": "Clinvar",
+              "type": "object",
+              "viewType": "clinvar-icon",
+              "width": 150,
+              "sortable": true,
+              "filterable": true
+            },
+            {
+              "id": "gnomad_af",
+              "title": "gnomAD AF",
+              "dataIndex": "gnomad_af",
+              "type": "numeric",
+              "viewType": "gnomad-af-link",
+              "width": 150,
+              "sortable": true,
+              "filterable": true,
+              "filterType": "range",
+              "rendererProps": {
+                "format": ".3g"
+              }
+            }
+        ]
+    },
+    {
+        "id": "hmf_audit_logging_demo",
+        "title": "HMF Audit Logging Demo",
+        "datafilesPath": "./data/datafiles.json",
+        "dataPath": "./data/",
+        "schema": [
+    { "id": "tags", "title": "Tags", "type": "pair" },
+    { "id": "pair", "title": "Pair", "type": "string" },
+    { "id": "sourceDatasetTitle", "title": "Dataset", "type": "string" },
+    { "id": "patient_id", "title": "Patient ID", "type": "string" },
+    { "id": "specimen_date", "title": "Specimen Date", "type": "string", "renderer": "date-range" },
+    { "id": "tumor_type", "title": "Tumor Type", "type": "string" },
+    { "id": "tumor_details", "title": "Tumor Details", "type": "string" },
+    { "id": "disease", "title": "Disease", "type": "string" },
+    { "id": "primary_site", "title": "Primary Site", "type": "string" },
+    { "id": "inferred_sex", "title": "Inferred Sex", "type": "string" },
+    {
+      "id": "treatment",
+      "type": "string",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "treatment_type",
+      "type": "string",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "treatment_best_response",
+      "type": "string",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "treatment_duration",
+      "type": "numeric",
+      "group": "treatment-metrics",
+      "groupTitle": "Treatment Metrics",
+      "groupOrder": 2
+    },
+    {
+      "id": "tumor_median_coverage",
+      "title": "Coverage Tumor/Normal",
+      "type": "numeric",
+      "shortTitle": "Coverage T/N",
+      "description": "The median sequencing coverage across the tumor genome.",
+      "kpiPlot": true,
+      "format": ",",
+      "minValue": 0,
+      "group": "quality-metrics",
+      "groupTitle": "Quality Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "snv_count",
+      "title": "SNV Count",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ",",
+      "scale": "log",
+      "minValue": 1,
+      "group": "event-metrics",
+      "groupTitle": "Event Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "sv_count",
+      "title": "SV Count",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ",",
+      "scale": "log",
+      "minValue": 1,
+      "group": "event-metrics",
+      "groupTitle": "Event Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "loh_fraction",
+      "title": "Fraction of Genome Altered (FGA)",
+      "shortTitle": "FGA",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ".3",
+      "scale": "linear",
+      "minValue": 0,
+      "group": "event-metrics",
+      "groupTitle": "Event Metrics",
+      "groupOrder": 4
+    },
+    {
+      "id": "tmb",
+      "title": "Tumor Mutational Burden (TMB)",
+      "shortTitle": "TMB",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ",",
+      "scale": "log",
+      "minValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.hrd_score",
+      "title": "HRDetect",
+      "shortTitle": "HRD",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "msisensor.score",
+      "title": "MSI Score",
+      "shortTitle": "MSI",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": ".2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.b1_2_score",
+      "title": "B1+B2 Score",
+      "shortTitle": "B1+B2",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.b1_score",
+      "title": "B1 Score",
+      "shortTitle": "B1",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "maxValueY": null,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "hrd.b2_score",
+      "title": "B2 Score",
+      "shortTitle": "B2",
+      "type": "numeric",
+      "kpiPlot": true,
+      "format": "0.2%",
+      "scale": "linear",
+      "minValue": 0,
+      "maxValue": 1,
+      "maxValueY": null,
+      "group": "biomarker-metrics",
+      "groupTitle": "Biomarker Metrics",
+      "groupOrder": 5
+    },
+    {
+      "id": "qcMetrics",
+      "title": "Quality Control Metrics",
+      "type": "string",
+      "external": true
+    },
+    {
+      "id": "has_interpretations",
+      "title": "Criteria",
+      "type": "string",
+      "renderer": "cascader",
+      "group": "interpretations",
+      "groupTitle": "Interpretations",
+      "groupOrder": 6,
+      "external": true
+    }
+  ]
+    },
+    {
+        "id": "tab_schema_demo",
+        "title": "Tab Availability + Dataset Schema Demo",
+        "datafilesPath": "./data/tab-schema-demo-datafiles.json",
+        "dataPath": "./data/",
+        "schema": [
+            {
+                "id": "tags",
+                "title": "Tags",
+                "type": "pair"
+            },
+            {
+                "id": "pair",
+                "title": "Pair",
+                "type": "string"
+            },
+            {
+                "id": "sourceDatasetTitle",
+                "title": "Dataset",
+                "type": "string"
+            },
+            {
+                "id": "patient_id",
+                "title": "Patient ID",
+                "type": "string"
+            },
+            {
+                "id": "specimen_date",
+                "title": "Specimen Date",
+                "type": "string",
+                "renderer": "date-range"
+            },
+            {
+                "id": "tumor_type",
+                "title": "Tumor Type",
+                "type": "string"
+            },
+            {
+                "id": "tumor_details",
+                "title": "Tumor Details",
+                "type": "string"
+            },
+            {
+                "id": "disease",
+                "title": "Disease",
+                "type": "string"
+            },
+            {
+                "id": "primary_site",
+                "title": "Primary Site",
+                "type": "string"
+            },
+            {
+                "id": "inferred_sex",
+                "title": "Inferred Sex",
+                "type": "string"
+            },
+            {
+                "id": "treatment",
+                "type": "string",
+                "group": "treatment-metrics",
+                "groupTitle": "Treatment Metrics",
+                "groupOrder": 2
+            },
+            {
+                "id": "treatment_type",
+                "type": "string",
+                "group": "treatment-metrics",
+                "groupTitle": "Treatment Metrics",
+                "groupOrder": 2
+            },
+            {
+                "id": "treatment_best_response",
+                "type": "string",
+                "group": "treatment-metrics",
+                "groupTitle": "Treatment Metrics",
+                "groupOrder": 2
+            },
+            {
+                "id": "treatment_duration",
+                "type": "numeric",
+                "group": "treatment-metrics",
+                "groupTitle": "Treatment Metrics",
+                "groupOrder": 2
+            },
+            {
+                "id": "tumor_median_coverage",
+                "title": "Coverage Tumor/Normal",
+                "type": "numeric",
+                "shortTitle": "Coverage T/N",
+                "description": "The median sequencing coverage across the tumor genome.",
+                "kpiPlot": true,
+                "format": ",",
+                "minValue": 0,
+                "group": "quality-metrics",
+                "groupTitle": "Quality Metrics",
+                "groupOrder": 4
+            },
+            {
+                "id": "snv_count",
+                "title": "SNV Count",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": ",",
+                "scale": "log",
+                "minValue": 1,
+                "group": "event-metrics",
+                "groupTitle": "Event Metrics",
+                "groupOrder": 4
+            },
+            {
+                "id": "sv_count",
+                "title": "SV Count",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": ",",
+                "scale": "log",
+                "minValue": 1,
+                "group": "event-metrics",
+                "groupTitle": "Event Metrics",
+                "groupOrder": 4
+            },
+            {
+                "id": "loh_fraction",
+                "title": "Fraction of Genome Altered (FGA)",
+                "shortTitle": "FGA",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": ".3",
+                "scale": "linear",
+                "minValue": 0,
+                "group": "event-metrics",
+                "groupTitle": "Event Metrics",
+                "groupOrder": 4
+            },
+            {
+                "id": "tmb",
+                "title": "Tumor Mutational Burden (TMB)",
+                "shortTitle": "TMB",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": ",",
+                "scale": "log",
+                "minValue": 1,
+                "group": "biomarker-metrics",
+                "groupTitle": "Biomarker Metrics",
+                "groupOrder": 5
+            },
+            {
+                "id": "hrd.hrd_score",
+                "title": "HRDetect",
+                "shortTitle": "HRD",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": "0.2%",
+                "scale": "linear",
+                "minValue": 0,
+                "maxValue": 1,
+                "group": "biomarker-metrics",
+                "groupTitle": "Biomarker Metrics",
+                "groupOrder": 5
+            },
+            {
+                "id": "msisensor.score",
+                "title": "MSI Score",
+                "shortTitle": "MSI",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": ".2%",
+                "scale": "linear",
+                "minValue": 0,
+                "maxValue": 1,
+                "group": "biomarker-metrics",
+                "groupTitle": "Biomarker Metrics",
+                "groupOrder": 5
+            },
+            {
+                "id": "hrd.b1_2_score",
+                "title": "B1+B2 Score",
+                "shortTitle": "B1+B2",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": "0.2%",
+                "scale": "linear",
+                "minValue": 0,
+                "maxValue": 1,
+                "group": "biomarker-metrics",
+                "groupTitle": "Biomarker Metrics",
+                "groupOrder": 5
+            },
+            {
+                "id": "hrd.b1_score",
+                "title": "B1 Score",
+                "shortTitle": "B1",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": "0.2%",
+                "scale": "linear",
+                "minValue": 0,
+                "maxValue": 1,
+                "maxValueY": null,
+                "group": "biomarker-metrics",
+                "groupTitle": "Biomarker Metrics",
+                "groupOrder": 5
+            },
+            {
+                "id": "hrd.b2_score",
+                "title": "B2 Score",
+                "shortTitle": "B2",
+                "type": "numeric",
+                "kpiPlot": true,
+                "format": "0.2%",
+                "scale": "linear",
+                "minValue": 0,
+                "maxValue": 1,
+                "maxValueY": null,
+                "group": "biomarker-metrics",
+                "groupTitle": "Biomarker Metrics",
+                "groupOrder": 5
+            },
+            {
+                "id": "has_interpretations",
+                "title": "Criteria",
+                "type": "string",
+                "renderer": "cascader",
+                "group": "interpretations",
+                "groupTitle": "Interpretations",
+                "groupOrder": 6,
+                "external": true
+            }
+        ]
+    },
+    {
+        "id": "demo-solid-2",
+        "title": "Demo Solid 2",
+        "datafilesPath": "./data2/datafiles.json",
+        "dataPath": "./data2/"
+    },
+    {
+        "id": "methylation-debug",
+        "title": "DEBUG Methylation",
+        "datafilesPath": "./data_methylation_test/datafiles.json",
+        "dataPath": "./data_methylation_test/"
+    }
+]
