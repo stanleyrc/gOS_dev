@@ -18,7 +18,6 @@ import {
 } from "antd";
 import * as d3 from "d3";
 import { roleColorMap, transitionStyle } from "../../helpers/utility";
-import TracksModal from "../tracksModal";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
@@ -167,7 +166,7 @@ export class FilteredEventsListPanel extends Component {
       order: null,
     },
     columnWidths: {},
-    tracksModalPresented: false,
+    eventModalPresented: false,
   };
 
   getDefaultColumnKeys = (props = this.props) => {
@@ -276,17 +275,15 @@ export class FilteredEventsListPanel extends Component {
       this.initializeSelectedColumns();
     }
 
-    const hasTracksSelection = Boolean(
-      this.props.selectedFilteredEvent && this.props.viewMode === "tracks",
-    );
-    if (!hasTracksSelection && this.state.tracksModalPresented) {
-      this.setState({ tracksModalPresented: false });
+    const hasEventSelection = Boolean(this.props.selectedFilteredEvent);
+    if (!hasEventSelection && this.state.eventModalPresented) {
+      this.setState({ eventModalPresented: false });
     }
   }
 
-  handleTracksModalOpenChange = (presented) => {
-    if (presented !== this.state.tracksModalPresented) {
-      this.setState({ tracksModalPresented: presented });
+  handleEventModalOpenChange = (presented) => {
+    if (presented !== this.state.eventModalPresented) {
+      this.setState({ eventModalPresented: presented });
     }
   };
 
@@ -381,17 +378,14 @@ export class FilteredEventsListPanel extends Component {
 
     if (missing) return null;
 
-    const tracksSelected = Boolean(
-      selectedFilteredEvent && viewMode === "tracks",
-    );
-    const open = tracksSelected;
+    const eventModalSelected = Boolean(selectedFilteredEvent);
 
     let {
       eventType,
       selectedColumnKeys,
       sortState,
       columnWidths,
-      tracksModalPresented,
+      eventModalPresented,
     } = this.state;
 
     let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
@@ -581,8 +575,8 @@ export class FilteredEventsListPanel extends Component {
                 </Col>
               )}
             </Row>
-            {/* Hide table when TracksModal is open to prevent performance issues */}
-            {!(tracksSelected && tracksModalPresented) && (
+            {/* Keep the table through the modal entrance, then release its heavy rows. */}
+            {!(eventModalSelected && eventModalPresented) && (
               <Row
                 className="ant-panel-container ant-home-plot-container"
                 style={transitionStyle(inViewport)}
@@ -601,70 +595,19 @@ export class FilteredEventsListPanel extends Component {
                         scroll={{ x: tableScrollWidth || "100%", y: 500 }}
                         tableLayout="fixed"
                       />
-                      {selectedFilteredEvent && viewMode === "detail" && (
-                        <ReportModal
-                          open
-                          onClose={this.handleCloseReportModal}
-                          title={
-                            <Space>
-                              {selectedFilteredEvent.gene}
-                              {selectedFilteredEvent.name}
-                              {selectedFilteredEvent.type}
-                              {selectedFilteredEvent.role
-                                ?.split(",")
-                                .map((tag) => (
-                                  <Tag
-                                    color={roleColorMap()[tag.trim()]}
-                                    key={tag.trim()}
-                                  >
-                                    {tag.trim()}
-                                  </Tag>
-                                ))}
-                              {selectedFilteredEvent.tier}
-                              {selectedFilteredEvent.location}
-                            </Space>
-                          }
-                          loading={loading}
-                          genome={genome}
-                          mutations={mutations}
-                          genomeCoverage={genomeCoverage}
-                          methylationBetaCoverage={methylationBetaCoverage}
-                          methylationIntensityCoverage={
-                            methylationIntensityCoverage
-                          }
-                          hetsnps={hetsnps}
-                          genes={genes}
-                          igv={igv}
-                          chromoBins={chromoBins}
-                          allelic={allelic}
-                          selectedVariantId={selectedFilteredEvent?.uid}
-                          showVariants
-                          record={selectedFilteredEvent}
-                        />
-                      )}
                     </Skeleton>
                   </Col>
                 )}
               </Row>
             )}
-            {tracksSelected && createPortal(
-              <TracksModal
-                {...{
-                  showVariants: true,
-                  selectedVariantId: selectedFilteredEvent.uid,
-                  loading,
-                  genome,
-                  mutations,
-                  genomeCoverage,
-                  methylationBetaCoverage,
-                  methylationIntensityCoverage,
-                  hetsnps,
-                  genes,
-                  igv,
-                  chromoBins,
-                  allelic,
-                  modalTitleText: selectedFilteredEvent.gene,
-                  modalTitle: (
+            {eventModalSelected &&
+              createPortal(
+                <ReportModal
+                  open
+                  onClose={this.handleCloseReportModal}
+                  afterOpenChange={this.handleEventModalOpenChange}
+                  initialTab={viewMode}
+                  title={
                     <Space>
                       {selectedFilteredEvent.gene}
                       {selectedFilteredEvent.name}
@@ -682,69 +625,25 @@ export class FilteredEventsListPanel extends Component {
                       {selectedFilteredEvent.tier}
                       {selectedFilteredEvent.location}
                     </Space>
-                  ),
-                  genomePlotTitle: t(
-                    "components.tracks-modal.genome-plot"
-                  ),
-                  genomePlotYAxisTitle: t(
-                    "components.tracks-modal.genome-y-axis-title"
-                  ),
-                  coveragePlotTitle: t(
-                    "components.tracks-modal.coverage-plot"
-                  ),
-                  coverageYAxisTitle: t(
-                    "components.tracks-modal.coverage-copy-number"
-                  ),
-                  coverageYAxis2Title: t(
-                    "components.tracks-modal.coverage-count"
-                  ),
-                  methylationBetaCoveragePlotTitle: t(
-                    "components.tracks-modal.methylation-beta-coverage-plot"
-                  ),
-                  methylationBetaCoverageYAxisTitle: t(
-                    "components.tracks-modal.methylation-beta-coverage-y-axis-title"
-                  ),
-                  methylationBetaCoverageYAxis2Title: t(
-                    "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
-                  ),
-                  methylationIntensityCoveragePlotTitle: t(
-                    "components.tracks-modal.methylation-intensity-coverage-plot"
-                  ),
-                  methylationIntensityCoverageYAxisTitle: t(
-                    "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
-                  ),
-                  methylationIntensityCoverageYAxis2Title: t(
-                    "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
-                  ),
-                  hetsnpPlotTitle: t(
-                    "components.tracks-modal.hetsnp-plot"
-                  ),
-                  hetsnpPlotYAxisTitle: t(
-                    "components.tracks-modal.hetsnp-copy-number"
-                  ),
-                  hetsnpPlotYAxis2Title: t(
-                    "components.tracks-modal.hetsnps-count"
-                  ),
-                  mutationsPlotTitle: t(
-                    "components.tracks-modal.mutations-plot"
-                  ),
-                  mutationsPlotYAxisTitle: t(
-                    "components.tracks-modal.mutations-plot-y-axis-title"
-                  ),
-                  allelicPlotTitle: t(
-                    "components.tracks-modal.allelic-plot"
-                  ),
-                  allelicPlotYAxisTitle: t(
-                    "components.tracks-modal.allelic-plot-y-axis-title"
-                  ),
-                  handleOkClicked: this.handleCloseReportModal,
-                  handleCancelClicked: this.handleCloseReportModal,
-                  afterOpenChange: this.handleTracksModalOpenChange,
-                  open,
-                }}
-              />,
-              document.body
-            )}
+                  }
+                  loading={loading}
+                  genome={genome}
+                  mutations={mutations}
+                  genomeCoverage={genomeCoverage}
+                  methylationBetaCoverage={methylationBetaCoverage}
+                  methylationIntensityCoverage={
+                    methylationIntensityCoverage
+                  }
+                  hetsnps={hetsnps}
+                  genes={genes}
+                  igv={igv}
+                  chromoBins={chromoBins}
+                  allelic={allelic}
+                  selectedVariantId={selectedFilteredEvent.uid}
+                  record={selectedFilteredEvent}
+                />,
+                document.body,
+              )}
           </div>
         )}
       </Wrapper>

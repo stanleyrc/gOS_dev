@@ -447,70 +447,77 @@ describe("FilteredEventsListPanel report selection", () => {
   });
 });
 
-describe("FilteredEventsListPanel Tracks presentation", () => {
-  it("keeps the event table until an id-less selection's modal is visible", () => {
-    const selectedEvent = {
-      uid: "17:7577568-17:7577568",
-      gene: "TP53",
-      location: "17:7577568-7577568 C>A",
-      eventType: "snv",
-    };
-    const selectFilteredEvent = jest.fn();
-    buildColumnsFromSettings.mockReturnValue([]);
-    createPortal.mockClear();
-    const previousDocument = global.document;
-    global.document = { body: {} };
+describe("FilteredEventsListPanel unified modal presentation", () => {
+  it.each(["tracks", "detail"])(
+    "routes an id-less %s selection through ReportModal after the table handoff",
+    (viewMode) => {
+      const selectedEvent = {
+        uid: "17:7577568-17:7577568",
+        gene: "TP53",
+        location: "17:7577568-7577568 C>A",
+        eventType: "snv",
+      };
+      const selectFilteredEvent = jest.fn();
+      buildColumnsFromSettings.mockReturnValue([]);
+      createPortal.mockClear();
+      const previousDocument = global.document;
+      global.document = { body: {} };
 
-    const panel = new FilteredEventsListPanel({
-      t: (key) => key,
-      id: "case-1",
-      filteredEvents: [selectedEvent],
-      originalFilteredEvents: [selectedEvent],
-      selectedFilteredEvent: selectedEvent,
-      selectedEventUids: [],
-      columnFilters: {},
-      viewMode: "tracks",
-      loading: false,
-      error: null,
-      missing: false,
-      selectFilteredEvent,
-      setSelectedEventUids: jest.fn(),
-      setColumnFilters: jest.fn(),
-      resetColumnFilters: jest.fn(),
-      additionalColumns: [],
-      data: { filteredEventsColumns: [] },
-      dataset: { id: "dataset-1" },
-      inViewport: true,
-    });
-    panel.setState = (update) => {
-      const nextState =
-        typeof update === "function"
-          ? update(panel.state, panel.props)
-          : update;
-      panel.state = { ...panel.state, ...nextState };
-    };
+      const panel = new FilteredEventsListPanel({
+        t: (key) => key,
+        id: "case-1",
+        filteredEvents: [selectedEvent],
+        originalFilteredEvents: [selectedEvent],
+        selectedFilteredEvent: selectedEvent,
+        selectedEventUids: [],
+        columnFilters: {},
+        viewMode,
+        loading: false,
+        error: null,
+        missing: false,
+        selectFilteredEvent,
+        setSelectedEventUids: jest.fn(),
+        setColumnFilters: jest.fn(),
+        resetColumnFilters: jest.fn(),
+        additionalColumns: [],
+        data: { filteredEventsColumns: [] },
+        dataset: { id: "dataset-1" },
+        inViewport: true,
+      });
+      panel.setState = (update) => {
+        const nextState =
+          typeof update === "function"
+            ? update(panel.state, panel.props)
+            : update;
+        panel.state = { ...panel.state, ...nextState };
+      };
 
-    const openingView = panel.render();
-    const openingTable = findElementByType(openingView, "Table");
-    const tracksModal = createPortal.mock.calls[0][0];
+      const openingView = panel.render();
+      const openingTable = findElementByType(openingView, "Table");
+      const eventModal = createPortal.mock.calls[0][0];
 
-    expect(openingTable).not.toBeNull();
-    expect(openingTable.props.rowClassName).toBe("filtered-events-event-row");
-    expect(tracksModal.type).toBe("TracksModal");
-    expect(tracksModal.props.open).toBe(true);
+      expect(openingTable).not.toBeNull();
+      expect(openingTable.props.rowClassName).toBe(
+        "filtered-events-event-row",
+      );
+      expect(eventModal.type).toBe("ReportModal");
+      expect(eventModal.props.open).toBe(true);
+      expect(eventModal.props.initialTab).toBe(viewMode);
+      expect(eventModal.props.record).toBe(selectedEvent);
 
-    tracksModal.props.afterOpenChange(true);
+      eventModal.props.afterOpenChange(true);
 
-    expect(panel.state.tracksModalPresented).toBe(true);
-    expect(findElementByType(panel.render(), "Table")).toBeNull();
+      expect(panel.state.eventModalPresented).toBe(true);
+      expect(findElementByType(panel.render(), "Table")).toBeNull();
 
-    const previousProps = panel.props;
-    panel.props = { ...panel.props, selectedFilteredEvent: null };
-    panel.componentDidUpdate(previousProps);
+      const previousProps = panel.props;
+      panel.props = { ...panel.props, selectedFilteredEvent: null };
+      panel.componentDidUpdate(previousProps);
 
-    expect(panel.state.tracksModalPresented).toBe(false);
-    global.document = previousDocument;
-  });
+      expect(panel.state.eventModalPresented).toBe(false);
+      global.document = previousDocument;
+    },
+  );
 });
 
 describe("FilteredEventsListPanel exact-event histogram", () => {
