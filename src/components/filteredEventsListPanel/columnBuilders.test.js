@@ -5,10 +5,8 @@ jest.mock("d3", () => ({
   ascending: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
 }));
 
-const mockGetColumnRenderer = jest.fn(() => "span");
-
 jest.mock("./columnRegistry", () => ({
-  getColumnRenderer: (...args) => mockGetColumnRenderer(...args),
+  getColumnRenderer: () => "span",
 }));
 
 jest.mock("./SliderFilterDropdown", () => "SliderFilterDropdown");
@@ -17,9 +15,6 @@ import React from "react";
 import { buildColumnConfig } from "./columnBuilders";
 
 describe("buildColumnConfig", () => {
-  beforeEach(() => {
-    mockGetColumnRenderer.mockReturnValue("span");
-  });
   const getWidthForTitle = (title, width = 1) =>
     buildColumnConfig(
       { id: "value", title, dataIndex: "value", width },
@@ -107,23 +102,6 @@ describe("buildColumnConfig", () => {
     );
     expect(column.title).toBe("Translated AlphaMissense Label");
     expect(column.width).toBe(306);
-  });
-
-  test("selects a renderer by view type and semantic column ID", () => {
-    buildColumnConfig(
-      {
-        id: "gnomad_af",
-        title: "gnomAD AF",
-        dataIndex: "gnomad_af",
-        viewType: "formatted-number",
-      },
-      [],
-    );
-
-    expect(mockGetColumnRenderer).toHaveBeenLastCalledWith(
-      "formatted-number",
-      "gnomad_af",
-    );
   });
 
   test("allows separately for Ant filter and sorter header controls", () => {

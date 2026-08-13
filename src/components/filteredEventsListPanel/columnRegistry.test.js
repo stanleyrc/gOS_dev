@@ -8,8 +8,6 @@ jest.mock("./columnRenderers", () => ({
   EventDetailRenderer: "EventDetailRenderer",
   LocationRenderer: "LocationRenderer",
   ClassIconRenderer: "ClassIconRenderer",
-  ClinvarIconRenderer: "ClinvarIconRenderer",
-  GnomadAfRenderer: "GnomadAfRenderer",
 }));
 
 import {
@@ -24,21 +22,6 @@ describe("filteredEventsColumnRegistry", () => {
     );
     expect(getColumnRenderer("event-detail-link")).toBe(
       "EventDetailRenderer",
-    );
-  });
-
-  it("maps external annotations to their dedicated renderers", () => {
-    expect(filteredEventsColumnRegistry["clinvar-icon"]).toBe(
-      "ClinvarIconRenderer",
-    );
-    expect(filteredEventsColumnRegistry["gnomad-af-link"]).toBe(
-      "GnomadAfRenderer",
-    );
-    expect(getColumnRenderer("formatted-number", "gnomad_af")).toBe(
-      "GnomadAfRenderer",
-    );
-    expect(getColumnRenderer("class-icon", "clinvar")).toBe(
-      "ClinvarIconRenderer",
     );
   });
 

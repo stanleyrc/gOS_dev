@@ -5,8 +5,6 @@ import {
   EventDetailRenderer,
   LocationRenderer,
   ClassIconRenderer,
-  ClinvarIconRenderer,
-  GnomadAfRenderer,
 } from "./columnRenderers";
 
 /**
@@ -29,24 +27,12 @@ export const filteredEventsColumnRegistry = {
   "string-basic": StringRenderer,
   "location-link": LocationRenderer,
   "class-icon": ClassIconRenderer,
-  "clinvar-icon": ClinvarIconRenderer,
-  "gnomad-af-link": GnomadAfRenderer,
-};
-
-const filteredEventsColumnIdRegistry = {
-  clinvar: ClinvarIconRenderer,
-  gnomad_af: GnomadAfRenderer,
 };
 
 /**
- * Get a renderer for a column definition. Semantic annotation IDs override
- * legacy view types so externally supplied dataset configurations gain their
- * expected links without requiring a synchronized configuration update.
+ * Get a renderer for a column definition
+ * Falls back to StringRenderer if viewType not found
  */
-export function getColumnRenderer(viewType, columnId) {
-  return (
-    filteredEventsColumnIdRegistry[columnId] ||
-    filteredEventsColumnRegistry[viewType] ||
-    StringRenderer
-  );
+export function getColumnRenderer(viewType) {
+  return filteredEventsColumnRegistry[viewType] || StringRenderer;
 }

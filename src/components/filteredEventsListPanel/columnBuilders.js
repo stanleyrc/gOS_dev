@@ -297,7 +297,7 @@ export function buildColumnConfig(columnDef, records, rendererProps = {}, filter
     : title;
 
   // Get the renderer component
-  const RendererComponent = getColumnRenderer(viewType, id);
+  const RendererComponent = getColumnRenderer(viewType);
 
   // Merge renderer-specific props with general props
   const mergedRendererProps = { ...otherProps, ...columnRendererProps };
