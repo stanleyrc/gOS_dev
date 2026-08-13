@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import {
   getClinvarAlleleId,
-  getClinvarAlleleUrl,
+  getClinvarUrl,
 } from "../../../helpers/clinvar";
 import ClassIconRenderer from "./ClassIconRenderer";
 
@@ -9,16 +9,23 @@ import ClassIconRenderer from "./ClassIconRenderer";
 export default class ClinvarIconRenderer extends Component {
   render() {
     const { value, record } = this.props;
-    const annotationWithAlleleId = getClinvarAlleleId(value) ? value : record;
-    const alleleId = getClinvarAlleleId(annotationWithAlleleId);
-    const href = getClinvarAlleleUrl(annotationWithAlleleId);
+    const alleleId =
+      getClinvarAlleleId(value) || getClinvarAlleleId(record);
+    const variant =
+      record && typeof record.Variant_g === "string"
+        ? record.Variant_g.trim()
+        : "";
+    const href = getClinvarUrl(value, record);
+    const linkTargetLabel = alleleId
+      ? `allele ${alleleId}`
+      : variant || "variant";
 
     return (
       <ClassIconRenderer
         value={value}
         href={href || undefined}
         linkAriaLabel={
-          alleleId ? `Open allele ${alleleId} in ClinVar` : undefined
+          href ? `Open ${linkTargetLabel} in ClinVar` : undefined
         }
         tooltipHint={href ? "Click to open ClinVar." : undefined}
       />
