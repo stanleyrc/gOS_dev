@@ -892,8 +892,10 @@
     "report-modal": {
       "tabs": {
         "alteration": "Alteration",
-        "plots": "Plots"
+        "plots": "Plots",
+        "variantQc": "Variant QC"
       },
+      "loading": "Loading event details...",
       "no-selection": "No alteration selected"
     },
     "notes-modal": {

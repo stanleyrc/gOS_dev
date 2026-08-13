@@ -7,8 +7,8 @@ import { getCoordinateCopyValue } from "../../../helpers/genomicLocation";
 const { Text } = Typography;
 
 /**
- * Renders a coordinate link that opens the tracks view plus an independent
- * control for copying the displayed coordinates.
+ * Renders a coordinate link that opens the unified modal's Plots tab plus an
+ * independent control for copying the displayed coordinates.
  */
 export default class LocationRenderer extends Component {
   handleOpenLocation = (event) => {
@@ -36,7 +36,7 @@ export default class LocationRenderer extends Component {
             type="link"
             className="filtered-events-location-link filtered-events-ellipsis-text"
             onClick={this.handleOpenLocation}
-            aria-label={`Open coordinates ${value} in tracks view`}
+            aria-label={`Open coordinates ${value} in Plots`}
           >
             {value}
           </Button>

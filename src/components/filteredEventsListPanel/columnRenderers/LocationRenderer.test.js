@@ -43,6 +43,9 @@ describe("LocationRenderer", () => {
 
     expect(copyButton.type).toBe("CopyIconButton");
     expect(locationButton.props.children).toBe("17:7577568-7577568 C>A");
+    expect(locationButton.props["aria-label"]).toBe(
+      "Open coordinates 17:7577568-7577568 C>A in Plots",
+    );
     expect(copyButton.props.value).toBe("17:7577568-7577568");
     expect(copyButton.props.tooltipTitle).toBe("Copy coordinates");
     expect(copyButton.props.copiedTooltipTitle).toBe("Copied!");

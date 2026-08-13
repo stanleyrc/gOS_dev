@@ -182,4 +182,23 @@ describe("TracksModal missing tracks", () => {
     modalComponent.componentDidUpdate(openProps);
     expect(modalComponent.state.contentReady).toBe(false);
   });
+
+  it("exposes Variant QC as standalone inline content", () => {
+    const view = renderTracks({ contentView: "variantQc" });
+
+    expect(countElements(view, "DensityPlotPanel")).toBe(1);
+    expect(countElements(view, "TracksLegendPanel")).toBe(0);
+  });
+
+  it("updates when the requested inline content changes", () => {
+    const initialProps = props({ contentView: "plots" });
+    const modal = new TracksModal(initialProps);
+
+    expect(
+      modal.shouldComponentUpdate(
+        { ...initialProps, contentView: "variantQc" },
+        modal.state,
+      ),
+    ).toBe(true);
+  });
 });

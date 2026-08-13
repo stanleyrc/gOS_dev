@@ -65,10 +65,18 @@ const Wrapper = styled.div`
     flex-direction: column;
   }
 
+  .filtered-event-tab-content,
   .plots-container {
     flex: 1;
     min-height: 0;
     overflow: auto;
+  }
+
+  .filtered-event-modal-loading {
+    min-height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .report-container {

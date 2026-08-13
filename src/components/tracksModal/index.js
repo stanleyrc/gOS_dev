@@ -54,8 +54,13 @@ export class TracksModal extends Component {
       nextProps.domains?.toString() !== this.props.domains?.toString();
     if (domainsChanged) return true;
 
-    // Check modal visibility
-    if (nextProps.open !== this.props.open) return true;
+    // Check modal visibility and selected inline view
+    if (
+      nextProps.open !== this.props.open ||
+      nextProps.contentView !== this.props.contentView ||
+      nextProps.selectedVariantId !== this.props.selectedVariantId
+    )
+      return true;
 
     // Check loading states
     if (
@@ -89,6 +94,16 @@ export class TracksModal extends Component {
       nextProps.allelic?.data !== this.props.allelic?.data ||
       nextProps.genes?.list !== this.props.genes?.list ||
       nextProps.genes?.loading !== this.props.genes?.loading
+    )
+      return true;
+
+    // Check Variant QC data
+    if (
+      nextProps.loadingSageQc !== this.props.loadingSageQc ||
+      nextProps.loadingPercentageSageQc !==
+        this.props.loadingPercentageSageQc ||
+      nextProps.dataPoints !== this.props.dataPoints ||
+      nextProps.sageQcFields !== this.props.sageQcFields
     )
       return true;
 
@@ -188,6 +203,7 @@ export class TracksModal extends Component {
       loadingSageQc,
       loadingPercentageSageQc,
       selectedVariantId,
+      contentView,
     } = this.props;
 
     if (!open) return null;
@@ -686,10 +702,13 @@ export class TracksModal extends Component {
       return renderModal(content);
     }
 
+    const inlineContent =
+      contentView === "variantQc" ? variantQcContent : tracksContent;
+
     return (
       <Wrapper visible={open}>
         <div style={{ height: `${height}px; width: ${width}px` }}>
-          {tracksContent}
+          {inlineContent}
         </div>
       </Wrapper>
     );
@@ -704,6 +723,7 @@ TracksModal.defaultProps = {
   viewType: "modal",
   legendPanelPinned: false,
   showVariants: false,
+  contentView: "plots",
 };
 const mapDispatchToProps = (dispatch) => ({
   updateHoveredLocation: (hoveredLocation, panelIndex) =>
