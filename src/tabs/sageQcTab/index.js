@@ -116,8 +116,8 @@ export class SageQcTab extends Component {
             >
               <Col className="gutter-row" span={24} key="0">
                 <Space>
-                  {densityPlotVariables.map((variable, i) => (
-                    <>
+                  {densityPlotVariables.map((variable) => (
+                    <React.Fragment key={variable.name}>
                       {t(`components.sageQc-panel.${variable.name}`)}:
                       <Select
                         className="variables-select"
@@ -136,7 +136,7 @@ export class SageQcTab extends Component {
                           </Option>
                         ))}
                       </Select>
-                    </>
+                    </React.Fragment>
                   ))}
                 </Space>
               </Col>

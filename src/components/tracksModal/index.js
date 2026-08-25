@@ -627,8 +627,8 @@ export class TracksModal extends Component {
       >
         <Col className="gutter-row" span={24}>
           <Space>
-            {densityPlotVariables.map((variable, i) => (
-              <>
+            {densityPlotVariables.map((variable) => (
+              <React.Fragment key={variable.name}>
                 {t(`components.sageQc-panel.${variable.name}`)}:
                 <Select
                   className="variables-select"
@@ -647,7 +647,7 @@ export class TracksModal extends Component {
                     </Option>
                   ))}
                 </Select>
-              </>
+              </React.Fragment>
             ))}
           </Space>
         </Col>
