@@ -17,10 +17,8 @@ jest.mock("antd", () => {
   Select.Option = "SelectOption";
 
   return {
-    Tag: "Tag",
     Table: "Table",
     Button: "Button",
-    Space: "Space",
     Row: "Row",
     Col: "Col",
     Segmented: "Segmented",
@@ -39,7 +37,6 @@ jest.mock("d3", () => ({
 }));
 jest.mock("react-icons/cg", () => ({ CgArrowsBreakeH: "Icon" }));
 jest.mock("../../helpers/utility", () => ({
-  roleColorMap: () => ({}),
   transitionStyle: () => ({}),
 }));
 jest.mock("../../redux/filteredEvents/actions", () => ({
@@ -59,7 +56,6 @@ jest.mock("../../redux/interpretations/selectors", () => ({
   selectMergedEvents: jest.fn(),
 }));
 jest.mock("../../helpers/EventInterpretation", () => jest.fn());
-jest.mock("../tracksModal", () => "TracksModal");
 jest.mock("./index.style", () => "Wrapper");
 jest.mock("../errorPanel", () => "ErrorPanel");
 jest.mock(
@@ -509,6 +505,10 @@ describe("FilteredEventsListPanel filtered event details presentation", () => {
       expect(filteredEventDetailsModal.props.open).toBe(true);
       expect(filteredEventDetailsModal.props.initialTab).toBe(viewMode);
       expect(filteredEventDetailsModal.props.record).toBe(selectedEvent);
+      expect(filteredEventDetailsModal.props).not.toHaveProperty("title");
+      expect(filteredEventDetailsModal.props).not.toHaveProperty(
+        "selectedVariantId",
+      );
 
       filteredEventDetailsModal.props.afterOpenChange(true);
 

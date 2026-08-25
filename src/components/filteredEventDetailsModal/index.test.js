@@ -10,18 +10,19 @@ jest.mock("antd", () => ({
   Space: "Space",
   Spin: "Spin",
   Tabs: "Tabs",
+  Tag: "Tag",
   Typography: { Text: "Text" },
 }));
 jest.mock("../tracksModal", () => "TracksModal");
 jest.mock("../alterationCard", () => "AlterationCard");
+jest.mock("../../helpers/utility", () => ({
+  roleColorMap: () => ({ oncogenic: "red", resistance: "blue" }),
+}));
 jest.mock("./index.style", () => "Wrapper");
 
 import React from "react";
 import { Modal, Spin, Tabs } from "antd";
-import {
-  FilteredEventDetailsModal,
-  getFilteredEventDetailsTab,
-} from "./index";
+import { FilteredEventDetailsModal } from "./index";
 
 function findElementByType(node, type) {
   if (!React.isValidElement(node)) return null;
@@ -40,10 +41,8 @@ function modalProps(overrides = {}) {
     open: true,
     onClose: jest.fn(),
     afterOpenChange: jest.fn(),
-    title: "TP53",
     initialTab: "detail",
     record: { uid: "event-1", gene: "TP53" },
-    selectedVariantId: "event-1",
     genome: { loading: false },
     ...overrides,
   };
@@ -60,20 +59,6 @@ function createModal(overrides = {}) {
   };
   return modal;
 }
-
-describe("getFilteredEventDetailsTab", () => {
-  it.each([
-    ["detail", "alteration"],
-    ["alteration", "alteration"],
-    ["tracks", "plots"],
-    ["plots", "plots"],
-    ["variantQc", "variantQc"],
-    [undefined, "alteration"],
-    ["unknown", "alteration"],
-  ])("maps %p to %s", (viewMode, expectedTab) => {
-    expect(getFilteredEventDetailsTab(viewMode)).toBe(expectedTab);
-  });
-});
 
 describe("FilteredEventDetailsModal", () => {
   it("commits one lightweight shell before opening Plots", () => {
@@ -110,8 +95,55 @@ describe("FilteredEventDetailsModal", () => {
       ({ key }) => key === "plots",
     ).children;
     const tracks = findElementByType(plotsContent, "TracksModal");
-    expect(tracks.props.contentView).toBe("plots");
-    expect(tracks.props.selectedVariantId).toBe("event-1");
+    expect(tracks.props).toMatchObject({
+      open: true,
+      viewType: "inline",
+      contentView: "plots",
+      genome: { loading: false },
+      selectedVariantId: "event-1",
+    });
+    expect(tracks.props).not.toHaveProperty("handleOkClicked");
+    expect(tracks.props).not.toHaveProperty("handleCancelClicked");
+    expect(tracks.props).not.toHaveProperty("modalTitle");
+    expect(tracks.props).not.toHaveProperty("loading");
+  });
+
+  it("derives the ordered heading and role colors from the record", () => {
+    const modalComponent = createModal({
+      record: {
+        uid: "event-1",
+        gene: "TP53",
+        name: "p.R248Q",
+        type: "Missense",
+        role: " oncogenic, resistance ",
+        tier: 1,
+        location: "17:7577539-7577539 G>A",
+      },
+    });
+
+    const modal = findElementByType(modalComponent.render(), Modal);
+    const headingParts = React.Children.toArray(
+      modal.props.title.props.children,
+    ).map((part) =>
+      React.isValidElement(part)
+        ? {
+            type: part.type,
+            label: part.props.children,
+            color: part.props.color,
+          }
+        : part,
+    );
+
+    expect(headingParts).toEqual([
+      "TP53",
+      "p.R248Q",
+      "Missense",
+      { type: "Tag", label: "oncogenic", color: "red" },
+      { type: "Tag", label: "resistance", color: "blue" },
+      1,
+      "17:7577539-7577539 G>A",
+    ]);
+    expect(modal.props.title).not.toBe("Report");
   });
 
   it("opens Alteration from detail mode and switches to Variant QC", () => {
@@ -150,7 +182,6 @@ describe("FilteredEventDetailsModal", () => {
       open: false,
       initialTab: "detail",
       record: { uid: "event-2", gene: "KRAS" },
-      selectedVariantId: "event-2",
     };
     modalComponent.componentDidUpdate(previousProps);
 

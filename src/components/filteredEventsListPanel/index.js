@@ -5,10 +5,8 @@ import { withRouter } from "react-router-dom";
 import handleViewport from "react-in-viewport";
 import { connect } from "react-redux";
 import {
-  Tag,
   Table,
   Button,
-  Space,
   Row,
   Col,
   Segmented,
@@ -17,7 +15,7 @@ import {
   Checkbox,
 } from "antd";
 import * as d3 from "d3";
-import { roleColorMap, transitionStyle } from "../../helpers/utility";
+import { transitionStyle } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
@@ -615,26 +613,6 @@ export class FilteredEventsListPanel extends Component {
                     this.handleFilteredEventDetailsModalOpenChange
                   }
                   initialTab={viewMode}
-                  title={
-                    <Space>
-                      {selectedFilteredEvent.gene}
-                      {selectedFilteredEvent.name}
-                      {selectedFilteredEvent.type}
-                      {selectedFilteredEvent.role
-                        ?.split(",")
-                        .map((tag) => (
-                          <Tag
-                            color={roleColorMap()[tag.trim()]}
-                            key={tag.trim()}
-                          >
-                            {tag.trim()}
-                          </Tag>
-                        ))}
-                      {selectedFilteredEvent.tier}
-                      {selectedFilteredEvent.location}
-                    </Space>
-                  }
-                  loading={loading}
                   genome={genome}
                   mutations={mutations}
                   genomeCoverage={genomeCoverage}
@@ -647,7 +625,6 @@ export class FilteredEventsListPanel extends Component {
                   igv={igv}
                   chromoBins={chromoBins}
                   allelic={allelic}
-                  selectedVariantId={selectedFilteredEvent.uid}
                   record={selectedFilteredEvent}
                 />,
                 document.body,

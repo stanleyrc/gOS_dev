@@ -21,26 +21,11 @@ const Wrapper = styled.div`
     overflow: hidden;
   }
 
-  .filtered-event-details-modal-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
-  }
-
   .filtered-event-details-tabs {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
-  }
-
-  .filtered-event-details-toolbar {
-    padding: 8px 0 12px;
-    display: flex;
-    justify-content: flex-start;
-    gap: 12px;
   }
 
   .filtered-event-details-tabs .ant-tabs-content-holder {
@@ -65,8 +50,7 @@ const Wrapper = styled.div`
     flex-direction: column;
   }
 
-  .filtered-event-tab-content,
-  .plots-container {
+  .filtered-event-tab-content {
     flex: 1;
     min-height: 0;
     overflow: auto;
@@ -79,31 +63,6 @@ const Wrapper = styled.div`
     justify-content: center;
   }
 
-  .filtered-event-details-container {
-    position: relative;
-    width: 100%;
-    background: #fff;
-    flex: 1;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .filtered-event-details-loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    background: rgba(255, 255, 255, 0.6);
-  }
-
-  .filtered-event-details-iframe {
-    width: 100%;
-    height: 75vh;
-    display: block;
-    border: 0;
-  }
 `;
 
 export default Wrapper;

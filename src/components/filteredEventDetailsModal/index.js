@@ -1,37 +1,26 @@
 import React, { Component } from "react";
-import { Modal, Tabs, Alert, Space, Spin, Typography } from "antd";
+import { Modal, Tabs, Alert, Space, Spin, Tag, Typography } from "antd";
 import Wrapper from "./index.style";
 
 import TracksModal from "../tracksModal";
 import AlterationCard from "../alterationCard";
 import { withTranslation } from "react-i18next";
+import { roleColorMap } from "../../helpers/utility";
+import {
+  FILTERED_EVENT_DETAILS_TAB_ORDER,
+  FILTERED_EVENT_DETAILS_TABS,
+  getFilteredEventDetailsHeading,
+  getInlineTracksProps,
+  normalizeFilteredEventDetailsTab,
+} from "./model";
 
 const { Text } = Typography;
-
-export const FILTERED_EVENT_DETAILS_TABS = {
-  ALTERATION: "alteration",
-  PLOTS: "plots",
-  VARIANT_QC: "variantQc",
-};
-
-export function getFilteredEventDetailsTab(viewMode) {
-  if (
-    viewMode === FILTERED_EVENT_DETAILS_TABS.PLOTS ||
-    viewMode === "tracks"
-  ) {
-    return FILTERED_EVENT_DETAILS_TABS.PLOTS;
-  }
-  if (viewMode === FILTERED_EVENT_DETAILS_TABS.VARIANT_QC) {
-    return FILTERED_EVENT_DETAILS_TABS.VARIANT_QC;
-  }
-  return FILTERED_EVENT_DETAILS_TABS.ALTERATION;
-}
 
 export class FilteredEventDetailsModal extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      activeTab: getFilteredEventDetailsTab(props.initialTab),
+      activeTab: normalizeFilteredEventDetailsTab(props.initialTab),
       contentReady: false,
     };
   }
@@ -45,7 +34,7 @@ export class FilteredEventDetailsModal extends Component {
     if (!selectionChanged && !closed) return;
 
     const nextState = {};
-    const nextTab = getFilteredEventDetailsTab(this.props.initialTab);
+    const nextTab = normalizeFilteredEventDetailsTab(this.props.initialTab);
     if (this.state.activeTab !== nextTab) {
       nextState.activeTab = nextTab;
     }
@@ -67,80 +56,32 @@ export class FilteredEventDetailsModal extends Component {
   };
 
   handleTabChange = (activeTab) => {
-    this.setState({ activeTab: getFilteredEventDetailsTab(activeTab) });
+    this.setState({
+      activeTab: normalizeFilteredEventDetailsTab(activeTab),
+    });
   };
 
-  getTracksProps = (contentView) => {
-    const {
-      t,
-      loading,
-      genome,
-      mutations,
-      chromoBins,
-      genomeCoverage,
-      methylationBetaCoverage,
-      methylationIntensityCoverage,
-      hetsnps,
-      genes,
-      igv,
-      allelic,
-      selectedVariantId,
-    } = this.props;
+  getTracksProps = (contentView) =>
+    getInlineTracksProps({ ...this.props, contentView });
 
-    return {
-      loading: genome?.loading ?? loading,
-      genome,
-      mutations,
-      genomeCoverage,
-      methylationBetaCoverage,
-      methylationIntensityCoverage,
-      hetsnps,
-      genes,
-      igv,
-      chromoBins,
-      allelic,
-      modalTitle: "",
-      genomePlotTitle: t("components.tracks-modal.genome-plot"),
-      genomePlotYAxisTitle: t("components.tracks-modal.genome-y-axis-title"),
-      coveragePlotTitle: t("components.tracks-modal.coverage-plot"),
-      coverageYAxisTitle: t("components.tracks-modal.coverage-copy-number"),
-      coverageYAxis2Title: t("components.tracks-modal.coverage-count"),
-      methylationBetaCoveragePlotTitle: t(
-        "components.tracks-modal.methylation-beta-coverage-plot"
-      ),
-      methylationBetaCoverageYAxisTitle: t(
-        "components.tracks-modal.methylation-beta-coverage-y-axis-title"
-      ),
-      methylationBetaCoverageYAxis2Title: t(
-        "components.tracks-modal.methylation-beta-coverage-y-axis2-title"
-      ),
-      methylationIntensityCoveragePlotTitle: t(
-        "components.tracks-modal.methylation-intensity-coverage-plot"
-      ),
-      methylationIntensityCoverageYAxisTitle: t(
-        "components.tracks-modal.methylation-intensity-coverage-y-axis-title"
-      ),
-      methylationIntensityCoverageYAxis2Title: t(
-        "components.tracks-modal.methylation-intensity-coverage-y-axis2-title"
-      ),
-      hetsnpPlotTitle: t("components.tracks-modal.hetsnp-plot"),
-      hetsnpPlotYAxisTitle: t("components.tracks-modal.hetsnp-copy-number"),
-      hetsnpPlotYAxis2Title: t("components.tracks-modal.hetsnps-count"),
-      mutationsPlotTitle: t("components.tracks-modal.mutations-plot"),
-      mutationsPlotYAxisTitle: t(
-        "components.tracks-modal.mutations-plot-y-axis-title"
-      ),
-      allelicPlotTitle: t("components.tracks-modal.allelic-plot"),
-      allelicPlotYAxisTitle: t(
-        "components.tracks-modal.allelic-plot-y-axis-title"
-      ),
-      handleOkClicked: () => {},
-      handleCancelClicked: () => {},
-      open: true,
-      viewType: "inline",
-      contentView,
-      selectedVariantId,
-    };
+  renderHeading = () => {
+    const heading = getFilteredEventDetailsHeading(this.props.record);
+    const roleColors = roleColorMap();
+
+    return (
+      <Space>
+        {heading.gene}
+        {heading.name}
+        {heading.type}
+        {heading.roles.map((role, index) => (
+          <Tag color={roleColors[role]} key={`${role}-${index}`}>
+            {role}
+          </Tag>
+        ))}
+        {heading.tier}
+        {heading.location}
+      </Space>
+    );
   };
 
   renderTabContent = (tab) => {
@@ -168,13 +109,7 @@ export class FilteredEventDetailsModal extends Component {
   getTabItems = () => {
     const { t } = this.props;
     const { activeTab } = this.state;
-    const tabs = [
-      FILTERED_EVENT_DETAILS_TABS.PLOTS,
-      FILTERED_EVENT_DETAILS_TABS.ALTERATION,
-      FILTERED_EVENT_DETAILS_TABS.VARIANT_QC,
-    ];
-
-    return tabs.map((tab) => ({
+    return FILTERED_EVENT_DETAILS_TAB_ORDER.map((tab) => ({
       key: tab,
       label: t(`components.filtered-event-details-modal.tabs.${tab}`),
       children: activeTab === tab ? this.renderTabContent(tab) : null,
@@ -206,7 +141,7 @@ export class FilteredEventDetailsModal extends Component {
   };
 
   render() {
-    const { open, onClose, title = "Report" } = this.props;
+    const { open, onClose } = this.props;
     if (!open) return null;
 
     return (
@@ -216,7 +151,7 @@ export class FilteredEventDetailsModal extends Component {
           onCancel={onClose}
           afterOpenChange={this.handleModalOpenChange}
           footer={null}
-          title={title}
+          title={this.renderHeading()}
           width="95vw"
           getContainer={false}
           forceRender
