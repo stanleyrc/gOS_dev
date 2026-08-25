@@ -19,8 +19,8 @@ jest.mock("./index.style", () => "Wrapper");
 import React from "react";
 import { Modal, Spin, Tabs } from "antd";
 import {
-  getFilteredEventModalTab,
-  ReportModal,
+  FilteredEventDetailsModal,
+  getFilteredEventDetailsTab,
 } from "./index";
 
 function findElementByType(node, type) {
@@ -50,7 +50,7 @@ function modalProps(overrides = {}) {
 }
 
 function createModal(overrides = {}) {
-  const modal = new ReportModal(modalProps(overrides));
+  const modal = new FilteredEventDetailsModal(modalProps(overrides));
   modal.setState = (update) => {
     const nextState =
       typeof update === "function"
@@ -61,7 +61,7 @@ function createModal(overrides = {}) {
   return modal;
 }
 
-describe("getFilteredEventModalTab", () => {
+describe("getFilteredEventDetailsTab", () => {
   it.each([
     ["detail", "alteration"],
     ["alteration", "alteration"],
@@ -71,11 +71,11 @@ describe("getFilteredEventModalTab", () => {
     [undefined, "alteration"],
     ["unknown", "alteration"],
   ])("maps %p to %s", (viewMode, expectedTab) => {
-    expect(getFilteredEventModalTab(viewMode)).toBe(expectedTab);
+    expect(getFilteredEventDetailsTab(viewMode)).toBe(expectedTab);
   });
 });
 
-describe("ReportModal unified filtered-event inspection", () => {
+describe("FilteredEventDetailsModal", () => {
   it("commits one lightweight shell before opening Plots", () => {
     const afterOpenChange = jest.fn();
     const modalComponent = createModal({
@@ -101,9 +101,9 @@ describe("ReportModal unified filtered-event inspection", () => {
       "variantQc",
     ]);
     expect(tabs.props.items.map(({ label }) => label)).toEqual([
-      "components.report-modal.tabs.plots",
-      "components.report-modal.tabs.alteration",
-      "components.report-modal.tabs.variantQc",
+      "components.filtered-event-details-modal.tabs.plots",
+      "components.filtered-event-details-modal.tabs.alteration",
+      "components.filtered-event-details-modal.tabs.variantQc",
     ]);
 
     const plotsContent = tabs.props.items.find(

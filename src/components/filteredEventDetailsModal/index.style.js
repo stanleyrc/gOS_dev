@@ -21,7 +21,7 @@ const Wrapper = styled.div`
     overflow: hidden;
   }
 
-  .report-modal-title {
+  .filtered-event-details-modal-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -29,21 +29,21 @@ const Wrapper = styled.div`
     width: 100%;
   }
 
-  .report-tabs {
+  .filtered-event-details-tabs {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
   }
 
-  .report-toolbar {
+  .filtered-event-details-toolbar {
     padding: 8px 0 12px;
     display: flex;
     justify-content: flex-start;
     gap: 12px;
   }
 
-  .report-tabs .ant-tabs-content-holder {
+  .filtered-event-details-tabs .ant-tabs-content-holder {
     flex: 1;
     overflow: auto;       /* allow scrolling */
     display: flex;
@@ -51,16 +51,16 @@ const Wrapper = styled.div`
     min-height: 0;        /* allow children to shrink */
   }
 
-  .report-tabs .ant-tabs-content {
+  .filtered-event-details-tabs .ant-tabs-content {
     height: 100%;
   }
 
-  .report-tabs .ant-tabs-tabpane {
+  .filtered-event-details-tabs .ant-tabs-tabpane {
     height: 100%;
     min-height: 0;        /* critical for flex children scrolling */
   }
 
-  .report-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
+  .filtered-event-details-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
     display: flex;
     flex-direction: column;
   }
@@ -72,14 +72,14 @@ const Wrapper = styled.div`
     overflow: auto;
   }
 
-  .filtered-event-modal-loading {
+  .filtered-event-details-modal-loading {
     min-height: 320px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .report-container {
+  .filtered-event-details-container {
     position: relative;
     width: 100%;
     background: #fff;
@@ -88,7 +88,7 @@ const Wrapper = styled.div`
     min-height: 0;
   }
 
-  .report-loading {
+  .filtered-event-details-loading {
     position: absolute;
     inset: 0;
     display: flex;
@@ -98,7 +98,7 @@ const Wrapper = styled.div`
     background: rgba(255, 255, 255, 0.6);
   }
 
-  .report-iframe {
+  .filtered-event-details-iframe {
     width: 100%;
     height: 75vh;
     display: block;

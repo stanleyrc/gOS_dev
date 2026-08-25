@@ -30,7 +30,7 @@ import { createExactEventKey } from "../../helpers/interpretationHistory";
 import { selectReportEventUids } from "../../redux/filteredEvents/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import ErrorPanel from "../errorPanel";
-import ReportModal from "../reportModal";
+import FilteredEventDetailsModal from "../filteredEventDetailsModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
 import { buildColumnsFromSettings } from "./columnBuilders";
 import getDefaultVisibleFilteredEventsColumnKeys, {
@@ -166,7 +166,7 @@ export class FilteredEventsListPanel extends Component {
       order: null,
     },
     columnWidths: {},
-    eventModalPresented: false,
+    filteredEventDetailsModalPresented: false,
   };
 
   getDefaultColumnKeys = (props = this.props) => {
@@ -228,7 +228,7 @@ export class FilteredEventsListPanel extends Component {
     ]);
   };
 
-  handleCloseReportModal = async () => {
+  handleCloseFilteredEventDetailsModal = async () => {
     this.props.selectFilteredEvent(null);
   };
 
@@ -276,14 +276,17 @@ export class FilteredEventsListPanel extends Component {
     }
 
     const hasEventSelection = Boolean(this.props.selectedFilteredEvent);
-    if (!hasEventSelection && this.state.eventModalPresented) {
-      this.setState({ eventModalPresented: false });
+    if (
+      !hasEventSelection &&
+      this.state.filteredEventDetailsModalPresented
+    ) {
+      this.setState({ filteredEventDetailsModalPresented: false });
     }
   }
 
-  handleEventModalOpenChange = (presented) => {
-    if (presented !== this.state.eventModalPresented) {
-      this.setState({ eventModalPresented: presented });
+  handleFilteredEventDetailsModalOpenChange = (presented) => {
+    if (presented !== this.state.filteredEventDetailsModalPresented) {
+      this.setState({ filteredEventDetailsModalPresented: presented });
     }
   };
 
@@ -378,14 +381,14 @@ export class FilteredEventsListPanel extends Component {
 
     if (missing) return null;
 
-    const eventModalSelected = Boolean(selectedFilteredEvent);
+    const filteredEventDetailsSelected = Boolean(selectedFilteredEvent);
 
     let {
       eventType,
       selectedColumnKeys,
       sortState,
       columnWidths,
-      eventModalPresented,
+      filteredEventDetailsModalPresented,
     } = this.state;
 
     let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
@@ -576,7 +579,10 @@ export class FilteredEventsListPanel extends Component {
               )}
             </Row>
             {/* Keep the table through the modal entrance, then release its heavy rows. */}
-            {!(eventModalSelected && eventModalPresented) && (
+            {!(
+              filteredEventDetailsSelected &&
+              filteredEventDetailsModalPresented
+            ) && (
               <Row
                 className="ant-panel-container ant-home-plot-container"
                 style={transitionStyle(inViewport)}
@@ -600,12 +606,14 @@ export class FilteredEventsListPanel extends Component {
                 )}
               </Row>
             )}
-            {eventModalSelected &&
+            {filteredEventDetailsSelected &&
               createPortal(
-                <ReportModal
+                <FilteredEventDetailsModal
                   open
-                  onClose={this.handleCloseReportModal}
-                  afterOpenChange={this.handleEventModalOpenChange}
+                  onClose={this.handleCloseFilteredEventDetailsModal}
+                  afterOpenChange={
+                    this.handleFilteredEventDetailsModalOpenChange
+                  }
                   initialTab={viewMode}
                   title={
                     <Space>

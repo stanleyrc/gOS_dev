@@ -889,7 +889,7 @@
       "methylation-intensity-coverage-y-axis-title": "Est. CN ↑",
       "methylation-intensity-coverage-y-axis2-title": "↑ Count"
     },
-    "report-modal": {
+    "filtered-event-details-modal": {
       "tabs": {
         "alteration": "Alteration",
         "plots": "Plots",

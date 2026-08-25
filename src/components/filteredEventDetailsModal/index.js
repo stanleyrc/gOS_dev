@@ -8,30 +8,30 @@ import { withTranslation } from "react-i18next";
 
 const { Text } = Typography;
 
-export const FILTERED_EVENT_MODAL_TABS = {
+export const FILTERED_EVENT_DETAILS_TABS = {
   ALTERATION: "alteration",
   PLOTS: "plots",
   VARIANT_QC: "variantQc",
 };
 
-export function getFilteredEventModalTab(viewMode) {
+export function getFilteredEventDetailsTab(viewMode) {
   if (
-    viewMode === FILTERED_EVENT_MODAL_TABS.PLOTS ||
+    viewMode === FILTERED_EVENT_DETAILS_TABS.PLOTS ||
     viewMode === "tracks"
   ) {
-    return FILTERED_EVENT_MODAL_TABS.PLOTS;
+    return FILTERED_EVENT_DETAILS_TABS.PLOTS;
   }
-  if (viewMode === FILTERED_EVENT_MODAL_TABS.VARIANT_QC) {
-    return FILTERED_EVENT_MODAL_TABS.VARIANT_QC;
+  if (viewMode === FILTERED_EVENT_DETAILS_TABS.VARIANT_QC) {
+    return FILTERED_EVENT_DETAILS_TABS.VARIANT_QC;
   }
-  return FILTERED_EVENT_MODAL_TABS.ALTERATION;
+  return FILTERED_EVENT_DETAILS_TABS.ALTERATION;
 }
 
-export class ReportModal extends Component {
+export class FilteredEventDetailsModal extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      activeTab: getFilteredEventModalTab(props.initialTab),
+      activeTab: getFilteredEventDetailsTab(props.initialTab),
       contentReady: false,
     };
   }
@@ -45,7 +45,7 @@ export class ReportModal extends Component {
     if (!selectionChanged && !closed) return;
 
     const nextState = {};
-    const nextTab = getFilteredEventModalTab(this.props.initialTab);
+    const nextTab = getFilteredEventDetailsTab(this.props.initialTab);
     if (this.state.activeTab !== nextTab) {
       nextState.activeTab = nextTab;
     }
@@ -67,7 +67,7 @@ export class ReportModal extends Component {
   };
 
   handleTabChange = (activeTab) => {
-    this.setState({ activeTab: getFilteredEventModalTab(activeTab) });
+    this.setState({ activeTab: getFilteredEventDetailsTab(activeTab) });
   };
 
   getTracksProps = (contentView) => {
@@ -146,13 +146,13 @@ export class ReportModal extends Component {
   renderTabContent = (tab) => {
     const { record, t } = this.props;
 
-    if (tab === FILTERED_EVENT_MODAL_TABS.ALTERATION) {
+    if (tab === FILTERED_EVENT_DETAILS_TABS.ALTERATION) {
       return record ? (
         <AlterationCard record={record} />
       ) : (
         <Alert
           type="info"
-          message={t("components.report-modal.no-selection")}
+          message={t("components.filtered-event-details-modal.no-selection")}
           showIcon
         />
       );
@@ -169,14 +169,14 @@ export class ReportModal extends Component {
     const { t } = this.props;
     const { activeTab } = this.state;
     const tabs = [
-      FILTERED_EVENT_MODAL_TABS.PLOTS,
-      FILTERED_EVENT_MODAL_TABS.ALTERATION,
-      FILTERED_EVENT_MODAL_TABS.VARIANT_QC,
+      FILTERED_EVENT_DETAILS_TABS.PLOTS,
+      FILTERED_EVENT_DETAILS_TABS.ALTERATION,
+      FILTERED_EVENT_DETAILS_TABS.VARIANT_QC,
     ];
 
     return tabs.map((tab) => ({
       key: tab,
-      label: t(`components.report-modal.tabs.${tab}`),
+      label: t(`components.filtered-event-details-modal.tabs.${tab}`),
       children: activeTab === tab ? this.renderTabContent(tab) : null,
     }));
   };
@@ -184,10 +184,12 @@ export class ReportModal extends Component {
   renderModalContent = () => {
     if (!this.state.contentReady) {
       return (
-        <div className="filtered-event-modal-loading">
+        <div className="filtered-event-details-modal-loading">
           <Space direction="vertical" align="center" size="middle">
             <Spin size="large" />
-            <Text>{this.props.t("components.report-modal.loading")}</Text>
+            <Text>
+              {this.props.t("components.filtered-event-details-modal.loading")}
+            </Text>
           </Space>
         </div>
       );
@@ -195,7 +197,7 @@ export class ReportModal extends Component {
 
     return (
       <Tabs
-        className="report-tabs"
+        className="filtered-event-details-tabs"
         activeKey={this.state.activeTab}
         onChange={this.handleTabChange}
         items={this.getTabItems()}
@@ -226,8 +228,8 @@ export class ReportModal extends Component {
   }
 }
 
-ReportModal.defaultProps = {
-  initialTab: FILTERED_EVENT_MODAL_TABS.ALTERATION,
+FilteredEventDetailsModal.defaultProps = {
+  initialTab: FILTERED_EVENT_DETAILS_TABS.ALTERATION,
 };
 
-export default withTranslation("common")(ReportModal);
+export default withTranslation("common")(FilteredEventDetailsModal);
