@@ -143,6 +143,36 @@ describe("Case Interpretation Import", () => {
     ]);
   });
 
+  it("normalizes chr prefixes while preserving exact allele matching", () => {
+    const userRow = {
+      ...common,
+      onco_vkey: "chr1 100 A G",
+      user: "alice",
+      tier: 1,
+      freq: 1,
+    };
+    const sources = {
+      userTierText: toTsv(headers.userTier, [userRow]),
+      tierText: toTsv(headers.tier, [{ ...userRow, user: undefined }]),
+    };
+    const matching = parseCaseInterpretationImport({
+      ...sources,
+      events: [{ ...event, Variant_g: "CHR1:100-100 A>G" }],
+      datasetId: "dataset-1",
+      caseId: "CASE-1",
+    });
+    const mismatching = parseCaseInterpretationImport({
+      ...sources,
+      events: [{ ...event, Variant_g: "CHR1:100-100 a>g" }],
+      datasetId: "dataset-1",
+      caseId: "CASE-1",
+    });
+
+    expect(matching.state).toBe("ready");
+    expect(mismatching.state).toBe("rejected");
+    expect(mismatching.issues.join(" ")).toContain("exactly one event");
+  });
+
   it("uses one global aggregate identity across source cases and datasets", () => {
     const first = parseCaseInterpretationImport({
       ...validSources(),

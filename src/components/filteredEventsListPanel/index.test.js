@@ -17,10 +17,8 @@ jest.mock("antd", () => {
   Select.Option = "SelectOption";
 
   return {
-    Tag: "Tag",
     Table: "Table",
     Button: "Button",
-    Space: "Space",
     Row: "Row",
     Col: "Col",
     Segmented: "Segmented",
@@ -39,7 +37,6 @@ jest.mock("d3", () => ({
 }));
 jest.mock("react-icons/cg", () => ({ CgArrowsBreakeH: "Icon" }));
 jest.mock("../../helpers/utility", () => ({
-  roleColorMap: () => ({}),
   transitionStyle: () => ({}),
 }));
 jest.mock("../../redux/filteredEvents/actions", () => ({
@@ -59,10 +56,12 @@ jest.mock("../../redux/interpretations/selectors", () => ({
   selectMergedEvents: jest.fn(),
 }));
 jest.mock("../../helpers/EventInterpretation", () => jest.fn());
-jest.mock("../tracksModal", () => "TracksModal");
 jest.mock("./index.style", () => "Wrapper");
 jest.mock("../errorPanel", () => "ErrorPanel");
-jest.mock("../reportModal", () => "ReportModal");
+jest.mock(
+  "../filteredEventDetailsModal",
+  () => "FilteredEventDetailsModal",
+);
 jest.mock("../tierDistributionBarChart", () => "TierDistributionBarChart");
 jest.mock("./columnBuilders", () => ({ buildColumnsFromSettings: jest.fn() }));
 
@@ -447,9 +446,9 @@ describe("FilteredEventsListPanel report selection", () => {
   });
 });
 
-describe("FilteredEventsListPanel unified modal presentation", () => {
+describe("FilteredEventsListPanel filtered event details presentation", () => {
   it.each(["tracks", "detail"])(
-    "routes an id-less %s selection through ReportModal after the table handoff",
+    "routes an id-less %s selection through FilteredEventDetailsModal after the table handoff",
     (viewMode) => {
       const selectedEvent = {
         uid: "17:7577568-17:7577568",
@@ -494,27 +493,33 @@ describe("FilteredEventsListPanel unified modal presentation", () => {
 
       const openingView = panel.render();
       const openingTable = findElementByType(openingView, "Table");
-      const eventModal = createPortal.mock.calls[0][0];
+      const filteredEventDetailsModal = createPortal.mock.calls[0][0];
 
       expect(openingTable).not.toBeNull();
       expect(openingTable.props.rowClassName).toBe(
         "filtered-events-event-row",
       );
-      expect(eventModal.type).toBe("ReportModal");
-      expect(eventModal.props.open).toBe(true);
-      expect(eventModal.props.initialTab).toBe(viewMode);
-      expect(eventModal.props.record).toBe(selectedEvent);
+      expect(filteredEventDetailsModal.type).toBe(
+        "FilteredEventDetailsModal",
+      );
+      expect(filteredEventDetailsModal.props.open).toBe(true);
+      expect(filteredEventDetailsModal.props.initialTab).toBe(viewMode);
+      expect(filteredEventDetailsModal.props.record).toBe(selectedEvent);
+      expect(filteredEventDetailsModal.props).not.toHaveProperty("title");
+      expect(filteredEventDetailsModal.props).not.toHaveProperty(
+        "selectedVariantId",
+      );
 
-      eventModal.props.afterOpenChange(true);
+      filteredEventDetailsModal.props.afterOpenChange(true);
 
-      expect(panel.state.eventModalPresented).toBe(true);
+      expect(panel.state.filteredEventDetailsModalPresented).toBe(true);
       expect(findElementByType(panel.render(), "Table")).toBeNull();
 
       const previousProps = panel.props;
       panel.props = { ...panel.props, selectedFilteredEvent: null };
       panel.componentDidUpdate(previousProps);
 
-      expect(panel.state.eventModalPresented).toBe(false);
+      expect(panel.state.filteredEventDetailsModalPresented).toBe(false);
       global.document = previousDocument;
     },
   );

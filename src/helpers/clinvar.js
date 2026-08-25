@@ -1,9 +1,12 @@
+import { parseVariantG } from "./genomicLocation";
+
 const CLINVAR_URL = "https://www.ncbi.nlm.nih.gov/clinvar/";
 const ALLELE_ID_FIELDS = ["alleleId", "alleleid", "ALLELEID", "AlleleID"];
 const NOT_IN_CLINVAR_DESC = "not in clinvar";
 const HGVS_PATTERN = /\b[cp]\.[^\s/]+/gi;
-const GENOMIC_VARIANT_PATTERN =
-  /^(?:chr)?([1-9]|1\d|2[0-2]|X|Y|M|MT):(\d+)(?:-\d+)?\s+([ACGTN]+)>([ACGTN]+)$/i;
+const CLINVAR_CHROMOSOME_PATTERN = /^(?:[1-9]|1\d|2[0-2]|X|Y|M|MT)$/i;
+const CLINVAR_ALLELE_PATTERN = /^[ACGTN]+$/i;
+const CLINVAR_ALLELE_CHANGE_PATTERN = /\s+[ACGTN]+>[ACGTN]+$/i;
 const CLINVAR_GENOME_ASSEMBLY = "GRCh37";
 
 /**
@@ -24,13 +27,15 @@ export function getClinvarAlleleId(annotation) {
   return /^\d+$/.test(alleleId) ? alleleId : null;
 }
 
+function buildClinvarAlleleUrl(alleleId) {
+  return `${CLINVAR_URL}?term=${alleleId}[alleleid]`;
+}
+
 /** Build the NCBI ClinVar allele search URL for an annotation when possible. */
 export function getClinvarAlleleUrl(annotation) {
   const alleleId = getClinvarAlleleId(annotation);
 
-  return alleleId
-    ? `${CLINVAR_URL}?term=${alleleId}[alleleid]`
-    : null;
+  return alleleId ? buildClinvarAlleleUrl(alleleId) : null;
 }
 
 /** Parse Variant_g into the VCF-like fields accepted by ClinVar search. */
@@ -39,17 +44,24 @@ export function getClinvarGenomicVariant(record) {
     return null;
   }
 
-  const variant = record.Variant_g.trim().match(GENOMIC_VARIANT_PATTERN);
-  if (!variant) {
+  const variantG = record.Variant_g.trim();
+  const variant = parseVariantG(variantG);
+  if (
+    !variant ||
+    !CLINVAR_CHROMOSOME_PATTERN.test(variant.chromosome) ||
+    !CLINVAR_ALLELE_PATTERN.test(variant.reference) ||
+    !CLINVAR_ALLELE_PATTERN.test(variant.alternate) ||
+    !CLINVAR_ALLELE_CHANGE_PATTERN.test(variantG)
+  ) {
     return null;
   }
 
-  const chromosome = variant[1].toUpperCase();
+  const chromosome = variant.chromosome.toUpperCase();
   return {
     chromosome: chromosome === "M" ? "MT" : chromosome,
-    start: variant[2],
-    reference: variant[3].toUpperCase(),
-    alternate: variant[4].toUpperCase(),
+    start: variant.start,
+    reference: variant.reference.toUpperCase(),
+    alternate: variant.alternate.toUpperCase(),
   };
 }
 
@@ -103,11 +115,10 @@ export function getClinvarSearchTerm(record) {
 }
 
 /**
- * Build a link for every represented ClinVar annotation. Prefer the stable
- * allele ID and fall back to the record's genomic or coding variant because
- * older event files omit allele IDs from otherwise populated annotations.
+ * Decide the complete link for a represented ClinVar annotation. Stable
+ * allele IDs take precedence over genomic, HGVS, and gene search fallbacks.
  */
-export function getClinvarUrl(annotation, record) {
+export function getClinvarLinkModel(annotation, record) {
   if (!isClinvarAnnotation(annotation)) {
     return null;
   }
@@ -115,11 +126,31 @@ export function getClinvarUrl(annotation, record) {
   const alleleId =
     getClinvarAlleleId(annotation) || getClinvarAlleleId(record);
   if (alleleId) {
-    return `${CLINVAR_URL}?term=${alleleId}[alleleid]`;
+    return {
+      href: buildClinvarAlleleUrl(alleleId),
+      kind: "allele",
+      targetLabel: `allele ${alleleId}`,
+    };
   }
 
   const searchTerm = getClinvarSearchTerm(record);
-  return searchTerm
-    ? `${CLINVAR_URL}?term=${encodeURIComponent(searchTerm)}`
-    : null;
+  if (!searchTerm) {
+    return null;
+  }
+
+  const variantG =
+    record && typeof record.Variant_g === "string"
+      ? record.Variant_g.trim()
+      : "";
+  return {
+    href: `${CLINVAR_URL}?term=${encodeURIComponent(searchTerm)}`,
+    kind: "variant",
+    targetLabel: variantG || "variant",
+  };
+}
+
+/** Backward-compatible URL projection for existing callers. */
+export function getClinvarUrl(annotation, record) {
+  const linkModel = getClinvarLinkModel(annotation, record);
+  return linkModel ? linkModel.href : null;
 }

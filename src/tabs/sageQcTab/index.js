@@ -4,10 +4,12 @@ import { connect } from "react-redux";
 import { Row, Col, Image, Space, Select, Tag } from "antd";
 import { GiBubbles } from "react-icons/gi";
 import { snakeCaseToHumanReadable } from "../../helpers/utility";
-import * as d3 from "d3";
 import DensityPlotPanel from "../../components/densityPlotPanel";
 import TracksModal from "../../components/tracksModal";
-import { densityPlotVariables } from "../../helpers/sageQc";
+import {
+  densityPlotVariables,
+  getDensityPlotVariableSelection,
+} from "../../helpers/sageQc";
 import ErrorPanel from "../../components/errorPanel";
 import sageQcActions from "../../redux/sageQc/actions";
 import Wrapper from "./index.style";
@@ -16,7 +18,7 @@ const { selectVariant } = sageQcActions;
 
 const { Option } = Select;
 
-class SageQcTab extends Component {
+export class SageQcTab extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -81,22 +83,9 @@ class SageQcTab extends Component {
       igv,
     } = this.props;
 
-    let variables = {};
-    let options = {};
-    densityPlotVariables.forEach((variable, i) => {
-      options[variable.name] = sageQcFields
-        .filter((d) => variable.allows.includes(d.type))
-        .sort((a, b) =>
-          i % 2 === 0
-            ? d3.ascending(a.name, b.name)
-            : d3.descending(a.name, b.name)
-        );
-    });
-
-    densityPlotVariables.forEach(
-      (x, i) =>
-        (variables[`${x.name}`] =
-          this.state[`${x.name}`] || options[x.name][0]?.name)
+    const { variables, options } = getDensityPlotVariableSelection(
+      sageQcFields,
+      this.state
     );
 
     let open = selectedVariant?.id;
@@ -127,8 +116,8 @@ class SageQcTab extends Component {
             >
               <Col className="gutter-row" span={24} key="0">
                 <Space>
-                  {densityPlotVariables.map((variable, i) => (
-                    <>
+                  {densityPlotVariables.map((variable) => (
+                    <React.Fragment key={variable.name}>
                       {t(`components.sageQc-panel.${variable.name}`)}:
                       <Select
                         className="variables-select"
@@ -147,7 +136,7 @@ class SageQcTab extends Component {
                           </Option>
                         ))}
                       </Select>
-                    </>
+                    </React.Fragment>
                   ))}
                 </Space>
               </Col>

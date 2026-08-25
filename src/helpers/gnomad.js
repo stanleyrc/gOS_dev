@@ -1,7 +1,10 @@
+import { parseVariantG } from "./genomicLocation";
+
 const GNOMAD_VARIANT_URL = "https://gnomad.broadinstitute.org/variant/";
 const GNOMAD_DATASET = "gnomad_r2_1";
-const VARIANT_G_PATTERN =
-  /^(?:chr)?([0-9]+|X|Y|M|MT):(\d+)-\d+\s+([A-Z*.-]+)\s*>\s*([A-Z*.-]+)$/i;
+const GNOMAD_CHROMOSOME_PATTERN = /^(?:[0-9]+|X|Y|M|MT)$/i;
+const GNOMAD_ALLELE_PATTERN = /^[A-Z*.-]+$/i;
+const GNOMAD_RANGE_PATTERN = /:\d+-\d+\s/;
 
 /** Parse the chromosome, start position, reference, and alternate allele. */
 export function getGnomadVariant(record) {
@@ -9,16 +12,23 @@ export function getGnomadVariant(record) {
     return null;
   }
 
-  const match = VARIANT_G_PATTERN.exec(record.Variant_g.trim());
-  if (!match) {
+  const variantG = record.Variant_g.trim();
+  const variant = parseVariantG(variantG);
+  if (
+    !variant ||
+    !GNOMAD_RANGE_PATTERN.test(variantG) ||
+    !GNOMAD_CHROMOSOME_PATTERN.test(variant.chromosome) ||
+    !GNOMAD_ALLELE_PATTERN.test(variant.reference) ||
+    !GNOMAD_ALLELE_PATTERN.test(variant.alternate)
+  ) {
     return null;
   }
 
   return {
-    chromosome: match[1].toUpperCase(),
-    position: match[2],
-    referenceAllele: match[3].toUpperCase(),
-    alternateAllele: match[4].toUpperCase(),
+    chromosome: variant.chromosome.toUpperCase(),
+    position: variant.start,
+    referenceAllele: variant.reference.toUpperCase(),
+    alternateAllele: variant.alternate.toUpperCase(),
   };
 }
 

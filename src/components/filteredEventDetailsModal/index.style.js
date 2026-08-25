@@ -21,29 +21,14 @@ const Wrapper = styled.div`
     overflow: hidden;
   }
 
-  .report-modal-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
-  }
-
-  .report-tabs {
+  .filtered-event-details-tabs {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
   }
 
-  .report-toolbar {
-    padding: 8px 0 12px;
-    display: flex;
-    justify-content: flex-start;
-    gap: 12px;
-  }
-
-  .report-tabs .ant-tabs-content-holder {
+  .filtered-event-details-tabs .ant-tabs-content-holder {
     flex: 1;
     overflow: auto;       /* allow scrolling */
     display: flex;
@@ -51,59 +36,33 @@ const Wrapper = styled.div`
     min-height: 0;        /* allow children to shrink */
   }
 
-  .report-tabs .ant-tabs-content {
+  .filtered-event-details-tabs .ant-tabs-content {
     height: 100%;
   }
 
-  .report-tabs .ant-tabs-tabpane {
+  .filtered-event-details-tabs .ant-tabs-tabpane {
     height: 100%;
     min-height: 0;        /* critical for flex children scrolling */
   }
 
-  .report-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
+  .filtered-event-details-tabs .ant-tabs-tabpane:not(.ant-tabs-tabpane-hidden) {
     display: flex;
     flex-direction: column;
   }
 
-  .filtered-event-tab-content,
-  .plots-container {
+  .filtered-event-tab-content {
     flex: 1;
     min-height: 0;
     overflow: auto;
   }
 
-  .filtered-event-modal-loading {
+  .filtered-event-details-modal-loading {
     min-height: 320px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .report-container {
-    position: relative;
-    width: 100%;
-    background: #fff;
-    flex: 1;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .report-loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    background: rgba(255, 255, 255, 0.6);
-  }
-
-  .report-iframe {
-    width: 100%;
-    height: 75vh;
-    display: block;
-    border: 0;
-  }
 `;
 
 export default Wrapper;

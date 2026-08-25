@@ -12,19 +12,15 @@ jest.mock("../scatterPlotPanel", () => "ScatterPlotPanel");
 jest.mock("../igvPanel/index", () => "IgvPanel");
 jest.mock("../tracksLegendPanel", () => "TracksLegendPanel");
 jest.mock("../densityPlotPanel", () => "DensityPlotPanel");
-jest.mock("../../helpers/sageQc", () => ({ densityPlotVariables: [] }));
 jest.mock("../../helpers/utility", () => ({
   dataRanges: () => [0, 1],
   downloadCanvasAsPng: jest.fn(),
   snakeCaseToHumanReadable: (value) => value,
 }));
-jest.mock("d3", () => ({
-  ascending: jest.fn(),
-  descending: jest.fn(),
-}));
 jest.mock("html-to-image", () => ({}));
 
-const { Modal, Spin } = require("antd");
+const { Modal, Spin, Tabs } = require("antd");
+const jsxRuntime = require("react/jsx-dev-runtime");
 const { TracksModal } = require("./index");
 
 function countElements(node, type) {
@@ -98,6 +94,16 @@ function props(overrides = {}) {
 
 function renderTracks(overrides) {
   return new TracksModal(props(overrides)).render();
+}
+
+function constructedElementTypes(overrides) {
+  const jsxSpy = jest.spyOn(jsxRuntime, "jsxDEV");
+  try {
+    renderTracks(overrides);
+    return jsxSpy.mock.calls.map(([type]) => type);
+  } finally {
+    jsxSpy.mockRestore();
+  }
 }
 
 describe("TracksModal missing tracks", () => {
@@ -183,11 +189,57 @@ describe("TracksModal missing tracks", () => {
     expect(modalComponent.state.contentReady).toBe(false);
   });
 
-  it("exposes Variant QC as standalone inline content", () => {
-    const view = renderTracks({ contentView: "variantQc" });
+  it("preserves both presented modal tabs", () => {
+    const modalComponent = new TracksModal(
+      props({ viewType: "modal", showVariants: true }),
+    );
+    modalComponent.state = { ...modalComponent.state, contentReady: true };
 
-    expect(countElements(view, "DensityPlotPanel")).toBe(1);
+    const view = modalComponent.render();
+    const tabs = findElementByType(view, Tabs);
+
+    expect(tabs.props.items.map(({ key }) => key)).toEqual([
+      "tracks",
+      "variantQc",
+    ]);
+    expect(countElements(tabs.props.items[0].children, "TracksLegendPanel")).toBe(
+      1,
+    );
+    expect(countElements(tabs.props.items[1].children, "DensityPlotPanel")).toBe(
+      1,
+    );
+  });
+
+  it("exposes Variant QC as standalone inline content", () => {
+    const view = renderTracks({
+      contentView: "variantQc",
+      sageQcFields: [
+        { name: "z_numeric", type: "int" },
+        { name: "a_numeric", type: "float" },
+        { name: "status", type: "enum" },
+      ],
+    });
+    const densityPlot = findElementByType(view, "DensityPlotPanel");
+
+    expect(densityPlot).not.toBeNull();
+    expect(densityPlot.props.xVariable).toBe("a_numeric");
+    expect(densityPlot.props.yVariable).toBe("z_numeric");
+    expect(densityPlot.props.colorVariable).toBe("a_numeric");
     expect(countElements(view, "TracksLegendPanel")).toBe(0);
+  });
+
+  it("does not construct Variant QC children in inline Plots mode", () => {
+    const types = constructedElementTypes({ contentView: "plots" });
+
+    expect(types).toContain("TracksLegendPanel");
+    expect(types).not.toContain("DensityPlotPanel");
+  });
+
+  it("does not construct tracks children in inline Variant QC mode", () => {
+    const types = constructedElementTypes({ contentView: "variantQc" });
+
+    expect(types).toContain("DensityPlotPanel");
+    expect(types).not.toContain("TracksLegendPanel");
   });
 
   it("updates when the requested inline content changes", () => {
