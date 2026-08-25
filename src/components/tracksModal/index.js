@@ -23,9 +23,11 @@ import settingsActions from "../../redux/settings/actions";
 import TracksLegendPanel from "../tracksLegendPanel";
 import { AiOutlineDownload } from "react-icons/ai";
 import DensityPlotPanel from "../densityPlotPanel";
-import { densityPlotVariables } from "../../helpers/sageQc";
+import {
+  densityPlotVariables,
+  getDensityPlotVariableSelection,
+} from "../../helpers/sageQc";
 import { snakeCaseToHumanReadable } from "../../helpers/utility";
-import * as d3 from "d3";
 import * as htmlToImage from "html-to-image";
 import { downloadCanvasAsPng, dataRanges } from "../../helpers/utility";
 import Wrapper from "./index.style";
@@ -269,22 +271,9 @@ export class TracksModal extends Component {
 
     const { yScaleMode } = this.state;
 
-    let variables = {};
-    let options = {};
-    densityPlotVariables.forEach((variable, i) => {
-      options[variable.name] = sageQcFields
-        .filter((d) => variable.allows.includes(d.type))
-        .sort((a, b) =>
-          i % 2 === 0
-            ? d3.ascending(a.name, b.name)
-            : d3.descending(a.name, b.name)
-        );
-    });
-
-    densityPlotVariables.forEach(
-      (x, i) =>
-        (variables[`${x.name}`] =
-          this.state[`${x.name}`] || options[x.name][0]?.name)
+    const { variables, options } = getDensityPlotVariableSelection(
+      sageQcFields,
+      this.state
     );
 
     let commonRangeY =

@@ -12,15 +12,10 @@ jest.mock("../scatterPlotPanel", () => "ScatterPlotPanel");
 jest.mock("../igvPanel/index", () => "IgvPanel");
 jest.mock("../tracksLegendPanel", () => "TracksLegendPanel");
 jest.mock("../densityPlotPanel", () => "DensityPlotPanel");
-jest.mock("../../helpers/sageQc", () => ({ densityPlotVariables: [] }));
 jest.mock("../../helpers/utility", () => ({
   dataRanges: () => [0, 1],
   downloadCanvasAsPng: jest.fn(),
   snakeCaseToHumanReadable: (value) => value,
-}));
-jest.mock("d3", () => ({
-  ascending: jest.fn(),
-  descending: jest.fn(),
 }));
 jest.mock("html-to-image", () => ({}));
 
@@ -184,9 +179,20 @@ describe("TracksModal missing tracks", () => {
   });
 
   it("exposes Variant QC as standalone inline content", () => {
-    const view = renderTracks({ contentView: "variantQc" });
+    const view = renderTracks({
+      contentView: "variantQc",
+      sageQcFields: [
+        { name: "z_numeric", type: "int" },
+        { name: "a_numeric", type: "float" },
+        { name: "status", type: "enum" },
+      ],
+    });
+    const densityPlot = findElementByType(view, "DensityPlotPanel");
 
-    expect(countElements(view, "DensityPlotPanel")).toBe(1);
+    expect(densityPlot).not.toBeNull();
+    expect(densityPlot.props.xVariable).toBe("a_numeric");
+    expect(densityPlot.props.yVariable).toBe("z_numeric");
+    expect(densityPlot.props.colorVariable).toBe("a_numeric");
     expect(countElements(view, "TracksLegendPanel")).toBe(0);
   });
 

@@ -6,6 +6,35 @@ export const densityPlotVariables = [
   { name: "colorVariable", allows: ["enum", "int", "float"] },
 ];
 
+function compareFieldNames(left, right) {
+  if (left == null || right == null) return Number.NaN;
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return left >= right ? 0 : Number.NaN;
+}
+
+export function getDensityPlotVariableSelection(
+  sageQcFields,
+  selectedVariables = {}
+) {
+  const options = {};
+  const variables = {};
+
+  densityPlotVariables.forEach((variable, index) => {
+    const sortDirection = index % 2 === 0 ? 1 : -1;
+    options[variable.name] = sageQcFields
+      .filter((field) => variable.allows.includes(field.type))
+      .sort(
+        (left, right) =>
+          sortDirection * compareFieldNames(left.name, right.name)
+      );
+    variables[variable.name] =
+      selectedVariables[variable.name] || options[variable.name][0]?.name;
+  });
+
+  return { options, variables };
+}
+
 export const densityPlotFields = [
   { name: "tumor_depth", format: ".1f", type: "int" },
   { name: "normal_depth", format: ".1f", type: "int" },
