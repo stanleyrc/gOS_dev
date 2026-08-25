@@ -1,9 +1,12 @@
+import { parseVariantG } from "./genomicLocation";
+
 const CLINVAR_URL = "https://www.ncbi.nlm.nih.gov/clinvar/";
 const ALLELE_ID_FIELDS = ["alleleId", "alleleid", "ALLELEID", "AlleleID"];
 const NOT_IN_CLINVAR_DESC = "not in clinvar";
 const HGVS_PATTERN = /\b[cp]\.[^\s/]+/gi;
-const GENOMIC_VARIANT_PATTERN =
-  /^(?:chr)?([1-9]|1\d|2[0-2]|X|Y|M|MT):(\d+)(?:-\d+)?\s+([ACGTN]+)>([ACGTN]+)$/i;
+const CLINVAR_CHROMOSOME_PATTERN = /^(?:[1-9]|1\d|2[0-2]|X|Y|M|MT)$/i;
+const CLINVAR_ALLELE_PATTERN = /^[ACGTN]+$/i;
+const CLINVAR_ALLELE_CHANGE_PATTERN = /\s+[ACGTN]+>[ACGTN]+$/i;
 const CLINVAR_GENOME_ASSEMBLY = "GRCh37";
 
 /**
@@ -39,17 +42,24 @@ export function getClinvarGenomicVariant(record) {
     return null;
   }
 
-  const variant = record.Variant_g.trim().match(GENOMIC_VARIANT_PATTERN);
-  if (!variant) {
+  const variantG = record.Variant_g.trim();
+  const variant = parseVariantG(variantG);
+  if (
+    !variant ||
+    !CLINVAR_CHROMOSOME_PATTERN.test(variant.chromosome) ||
+    !CLINVAR_ALLELE_PATTERN.test(variant.reference) ||
+    !CLINVAR_ALLELE_PATTERN.test(variant.alternate) ||
+    !CLINVAR_ALLELE_CHANGE_PATTERN.test(variantG)
+  ) {
     return null;
   }
 
-  const chromosome = variant[1].toUpperCase();
+  const chromosome = variant.chromosome.toUpperCase();
   return {
     chromosome: chromosome === "M" ? "MT" : chromosome,
-    start: variant[2],
-    reference: variant[3].toUpperCase(),
-    alternate: variant[4].toUpperCase(),
+    start: variant.start,
+    reference: variant.reference.toUpperCase(),
+    alternate: variant.alternate.toUpperCase(),
   };
 }
 

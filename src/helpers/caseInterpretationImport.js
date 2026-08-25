@@ -1,4 +1,5 @@
 import EventInterpretation from "./EventInterpretation";
+import { parseVariantG } from "./genomicLocation";
 import {
   CASE_INTERPRETATION_IMPORT_STORAGE_CASE_ID,
   CASE_INTERPRETATION_IMPORT_STORAGE_DATASET_ID,
@@ -10,6 +11,8 @@ const currentSourceContract = {
   userTierPrefix: "retier_agg_user_tier_",
   tierPrefix: "retier_agg_tier_",
 };
+
+const EVENT_VCF_KEY_PATTERN = /^[^:]+:\d+-\d+\s+[^>\s]+>\S+$/;
 
 const commonRequiredColumns = [
   "onco_vkey",
@@ -41,20 +44,6 @@ function parseSourceVcfKey(value) {
   };
 }
 
-function parseEventVcfKey(value) {
-  const match = /^([^:]+):(\d+)-(\d+)\s+([^>\s]+)>(\S+)$/.exec(
-    normalize(value),
-  );
-  if (!match) return null;
-  return {
-    chromosome: normalizeChromosome(match[1]),
-    position: match[2],
-    end: match[3],
-    reference: match[4],
-    alternate: match[5],
-  };
-}
-
 function rowMatchesEvent(row, event) {
   const sourceGene = normalize(row.gene);
   const eventGene = normalize(event.gene);
@@ -67,12 +56,15 @@ function rowMatchesEvent(row, event) {
   if (!eventVariants.includes(hgvsc)) return false;
 
   const sourceKey = parseSourceVcfKey(row.onco_vkey);
-  const eventKey = parseEventVcfKey(event.Variant_g);
+  const variantG = normalize(event.Variant_g);
+  const eventKey = EVENT_VCF_KEY_PATTERN.test(variantG)
+    ? parseVariantG(variantG)
+    : null;
   return Boolean(
     sourceKey &&
       eventKey &&
       sourceKey.chromosome === eventKey.chromosome &&
-      sourceKey.position === eventKey.position &&
+      sourceKey.position === eventKey.start &&
       sourceKey.reference === eventKey.reference &&
       sourceKey.alternate === eventKey.alternate,
   );

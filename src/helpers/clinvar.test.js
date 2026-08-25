@@ -66,6 +66,23 @@ describe("ClinVar allele links", () => {
     expect(getClinvarGenomicVariant({})).toBeNull();
   });
 
+  test("keeps ClinVar chromosome, allele, and shorthand normalization", () => {
+    expect(
+      getClinvarGenomicVariant({ Variant_g: "chrm:100 a>g" }),
+    ).toEqual({
+      chromosome: "MT",
+      start: "100",
+      reference: "A",
+      alternate: "G",
+    });
+    expect(
+      getClinvarGenomicVariant({ Variant_g: "1:100-100 A > G" }),
+    ).toBeNull();
+    expect(
+      getClinvarGenomicVariant({ Variant_g: "23:100-100 A>G" }),
+    ).toBeNull();
+  });
+
   test.each([
     ["9:5073770-5073770 G>T", "9:5073770:G:T(GRCh37)"],
     ["1:16262679-16262680 A>AC", "1:16262679:A:AC(GRCh37)"],

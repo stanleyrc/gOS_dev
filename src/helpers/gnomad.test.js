@@ -22,6 +22,15 @@ describe("gnomAD variant links", () => {
         alternateAllele: "A",
       },
     ],
+    [
+      "chrM:100-101 a > g",
+      {
+        chromosome: "M",
+        position: "100",
+        referenceAllele: "A",
+        alternateAllele: "G",
+      },
+    ],
   ])("reads the gnomAD variant from %s", (variantG, expected) => {
     expect(getGnomadVariant({ Variant_g: variantG })).toEqual(expected);
   });
@@ -40,6 +49,7 @@ describe("gnomAD variant links", () => {
     { Variant_g: null },
     { Variant_g: "" },
     { Variant_g: "1:100-100" },
+    { Variant_g: "1:100 G>T" },
     { Variant_g: "1:100-100 G>" },
     { Variant_g: "1:100-100 G>T extra" },
   ])("does not link a record without a valid genomic variant", (record) => {
