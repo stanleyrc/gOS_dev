@@ -258,6 +258,11 @@ export class TracksModal extends Component {
       );
     }
 
+    const inlineVariantQc =
+      viewType !== "modal" && contentView === "variantQc";
+    const buildTracksContent = viewType === "modal" || !inlineVariantQc;
+    const buildVariantQcContent = viewType === "modal" || inlineVariantQc;
+
     const {
       cov_slope,
       cov_intercept,
@@ -271,15 +276,21 @@ export class TracksModal extends Component {
 
     const { yScaleMode } = this.state;
 
-    const { variables, options } = getDensityPlotVariableSelection(
-      sageQcFields,
-      this.state
-    );
+    let variables = {};
+    let options = {};
+    if (buildVariantQcContent) {
+      ({ variables, options } = getDensityPlotVariableSelection(
+        sageQcFields,
+        this.state
+      ));
+    }
 
     let commonRangeY =
-      yScaleMode === "common" ? dataRanges(domains, genome.data) : null;
+      buildTracksContent && yScaleMode === "common"
+        ? dataRanges(domains, genome.data)
+        : null;
 
-    let tracksLegend = (
+    let tracksLegend = buildTracksContent ? (
       <TracksLegendPanel
         {...{
           loading: genes.loading,
@@ -292,8 +303,8 @@ export class TracksModal extends Component {
           yScaleMode,
         }}
       />
-    );
-    let tracksContent = (
+    ) : null;
+    let tracksContent = buildTracksContent ? (
       <Row
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 24]}
@@ -607,9 +618,9 @@ export class TracksModal extends Component {
           </Col>
         )}
       </Row>
-    );
+    ) : null;
 
-    let variantQcContent = (
+    let variantQcContent = buildVariantQcContent ? (
       <Row
         className="ant-panel-container ant-home-plot-container"
         gutter={[16, 16]}
@@ -668,7 +679,7 @@ export class TracksModal extends Component {
           />
         </Col>
       </Row>
-    );
+    ) : null;
     let content = showVariants ? (
       <Tabs
         items={[
