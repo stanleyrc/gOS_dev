@@ -4,6 +4,7 @@ import {
   getClinvarAlleleId,
   getClinvarAlleleUrl,
   getClinvarGenomicVariant,
+  getClinvarLinkModel,
   getClinvarSearchTerm,
   getClinvarUrl,
   isClinvarAnnotation,
@@ -181,5 +182,82 @@ describe("ClinVar allele links", () => {
   ])("does not link an annotation without a valid allele ID", (annotation) => {
     expect(getClinvarAlleleId(annotation)).toBeNull();
     expect(getClinvarAlleleUrl(annotation)).toBeNull();
+  });
+});
+
+describe("ClinVar link model", () => {
+  test.each([
+    [
+      "annotation allele ID precedence",
+      { class: "pathogenic", desc: "Pathogenic", ALLELEID: 12345 },
+      { ALLELEID: 67890, Variant_g: "17:7577538-7577538 C>T" },
+      {
+        href: "https://www.ncbi.nlm.nih.gov/clinvar/?term=12345[alleleid]",
+        kind: "allele",
+        targetLabel: "allele 12345",
+      },
+    ],
+    [
+      "record allele ID fallback",
+      { class: "benign", desc: "Benign" },
+      { ALLELEID: 67890 },
+      {
+        href: "https://www.ncbi.nlm.nih.gov/clinvar/?term=67890[alleleid]",
+        kind: "allele",
+        targetLabel: "allele 67890",
+      },
+    ],
+    [
+      "exact genomic fallback",
+      { class: "na", desc: "Conflicting pathogenicity" },
+      { Variant_g: "17:7577538-7577538 C>T" },
+      {
+        href:
+          "https://www.ncbi.nlm.nih.gov/clinvar/?term=17%3A7577538%3AC%3AT(GRCh37)",
+        kind: "variant",
+        targetLabel: "17:7577538-7577538 C>T",
+      },
+    ],
+    [
+      "HGVS fallback",
+      { class: "pathogenic", desc: "Pathogenic" },
+      { gene: "TP53", Variant: "p.Arg248Gln / c.743G>A" },
+      {
+        href:
+          "https://www.ncbi.nlm.nih.gov/clinvar/?term=TP53%20c.743G%3EA",
+        kind: "variant",
+        targetLabel: "variant",
+      },
+    ],
+    [
+      "gene fallback",
+      { class: "benign", desc: "Benign" },
+      { gene: "SDHA" },
+      {
+        href: "https://www.ncbi.nlm.nih.gov/clinvar/?term=SDHA",
+        kind: "variant",
+        targetLabel: "variant",
+      },
+    ],
+    [
+      "Not in ClinVar",
+      { class: "na", desc: "Not in ClinVar", ALLELEID: 12345 },
+      { Variant_g: "17:7577538-7577538 C>T" },
+      null,
+    ],
+    [
+      "empty annotation",
+      {},
+      { ALLELEID: 12345, Variant_g: "17:7577538-7577538 C>T" },
+      null,
+    ],
+    [
+      "represented annotation without a target",
+      { class: "na", desc: "Conflicting pathogenicity" },
+      {},
+      null,
+    ],
+  ])("decides %s", (_case, annotation, record, expected) => {
+    expect(getClinvarLinkModel(annotation, record)).toEqual(expected);
   });
 });

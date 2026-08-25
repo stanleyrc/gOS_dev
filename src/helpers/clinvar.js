@@ -27,13 +27,15 @@ export function getClinvarAlleleId(annotation) {
   return /^\d+$/.test(alleleId) ? alleleId : null;
 }
 
+function buildClinvarAlleleUrl(alleleId) {
+  return `${CLINVAR_URL}?term=${alleleId}[alleleid]`;
+}
+
 /** Build the NCBI ClinVar allele search URL for an annotation when possible. */
 export function getClinvarAlleleUrl(annotation) {
   const alleleId = getClinvarAlleleId(annotation);
 
-  return alleleId
-    ? `${CLINVAR_URL}?term=${alleleId}[alleleid]`
-    : null;
+  return alleleId ? buildClinvarAlleleUrl(alleleId) : null;
 }
 
 /** Parse Variant_g into the VCF-like fields accepted by ClinVar search. */
@@ -113,11 +115,10 @@ export function getClinvarSearchTerm(record) {
 }
 
 /**
- * Build a link for every represented ClinVar annotation. Prefer the stable
- * allele ID and fall back to the record's genomic or coding variant because
- * older event files omit allele IDs from otherwise populated annotations.
+ * Decide the complete link for a represented ClinVar annotation. Stable
+ * allele IDs take precedence over genomic, HGVS, and gene search fallbacks.
  */
-export function getClinvarUrl(annotation, record) {
+export function getClinvarLinkModel(annotation, record) {
   if (!isClinvarAnnotation(annotation)) {
     return null;
   }
@@ -125,11 +126,31 @@ export function getClinvarUrl(annotation, record) {
   const alleleId =
     getClinvarAlleleId(annotation) || getClinvarAlleleId(record);
   if (alleleId) {
-    return `${CLINVAR_URL}?term=${alleleId}[alleleid]`;
+    return {
+      href: buildClinvarAlleleUrl(alleleId),
+      kind: "allele",
+      targetLabel: `allele ${alleleId}`,
+    };
   }
 
   const searchTerm = getClinvarSearchTerm(record);
-  return searchTerm
-    ? `${CLINVAR_URL}?term=${encodeURIComponent(searchTerm)}`
-    : null;
+  if (!searchTerm) {
+    return null;
+  }
+
+  const variantG =
+    record && typeof record.Variant_g === "string"
+      ? record.Variant_g.trim()
+      : "";
+  return {
+    href: `${CLINVAR_URL}?term=${encodeURIComponent(searchTerm)}`,
+    kind: "variant",
+    targetLabel: variantG || "variant",
+  };
+}
+
+/** Backward-compatible URL projection for existing callers. */
+export function getClinvarUrl(annotation, record) {
+  const linkModel = getClinvarLinkModel(annotation, record);
+  return linkModel ? linkModel.href : null;
 }
