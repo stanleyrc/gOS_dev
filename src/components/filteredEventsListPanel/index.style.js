@@ -125,6 +125,55 @@ const Wrapper = styled.div`
     text-overflow: ellipsis;
   }
 
+  .filtered-events-column-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+  }
+
+  .ant-table-thead th.ant-table-column-has-sorters {
+    cursor: default;
+  }
+
+  .ant-table-thead th[draggable="true"] {
+    cursor: grab;
+  }
+
+  .ant-table-column-sorters {
+    cursor: inherit;
+  }
+
+  /* AntD's full-header hit area otherwise covers the chevron button. */
+  .ant-table-column-sorters::after {
+    content: none;
+  }
+
+  .filtered-events-sort-control {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 6px;
+    line-height: 1;
+    cursor: pointer;
+    flex: none;
+    border-radius: 4px;
+  }
+
+  .filtered-events-sort-control:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .filtered-events-sort-control:focus-visible {
+    outline: 2px solid #1677ff;
+    outline-offset: 1px;
+  }
+
+  .ant-table-thead th.filtered-events-column-drop-target {
+    box-shadow: inset 3px 0 #1677ff;
+    background: #e6f4ff;
+  }
+
   .filtered-events-resizable-header {
     position: relative;
     overflow: visible;
@@ -163,9 +212,37 @@ const Wrapper = styled.div`
       .ant-table-container {
         .ant-table-body,
         .ant-table-content {
-          scrollbar-width: thin;
-          scrollbar-color: #eaeaea transparent;
+          overflow-x: scroll !important;
           scrollbar-gutter: stable;
+          /* Non-auto values override the WebKit rules in newer Chromium. */
+          scrollbar-width: auto;
+          scrollbar-color: auto;
+
+          /* Explicit dimensions opt out of macOS overlay auto-hiding. A stable
+             gutter alone does not keep an overlay scrollbar visible at rest. */
+          &::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+          }
+
+          &::-webkit-scrollbar-track,
+          &::-webkit-scrollbar-corner {
+            background: #f0f0f0;
+          }
+
+          &::-webkit-scrollbar-thumb {
+            background: #8c8c8c;
+            border: 2px solid #f0f0f0;
+            border-radius: 6px;
+          }
+
+          &::-webkit-scrollbar-thumb:hover {
+            background: #595959;
+          }
+        }
+
+        .ant-table-body {
+          overflow-y: scroll !important;
         }
       }
     }

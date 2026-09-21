@@ -25,6 +25,7 @@ jest.mock("antd", () => {
     Skeleton: "Skeleton",
     Select,
     Checkbox: "Checkbox",
+    Slider: "Slider",
   };
 });
 jest.mock("d3", () => ({
@@ -69,10 +70,12 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { buildColumnsFromSettings } from "./columnBuilders";
 import { FilteredEventsListPanel } from "./index";
+import ResizableTitle, { ColumnSortControl } from "./resizableTitle";
 
 function findElementByType(node, type) {
   if (!React.isValidElement(node)) return null;
   if (node.type === type) return node;
+  if (node.type === "Skeleton" && node.props.loading) return null;
 
   for (const child of React.Children.toArray(node.props.children)) {
     const match = findElementByType(child, type);
@@ -239,6 +242,336 @@ describe("FilteredEventsListPanel default visible columns", () => {
   });
 });
 
+describe("FilteredEventsListPanel header interactions", () => {
+  beforeEach(() => jest.useFakeTimers({ doNotFake: ["performance"] }));
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+  });
+
+  function makePanel() {
+    buildColumnsFromSettings.mockReturnValue([
+      { key: "gene", title: "Gene", width: 164, sorter: true },
+      { key: "tier", title: "Tier", width: 120, sorter: true },
+      { key: "pinned", title: "Pinned", width: 120, fixed: "left" },
+      { key: "location", title: "Location", width: 200 },
+    ]);
+    const panel = new FilteredEventsListPanel({
+      t: (key) => key,
+      filteredEvents: [], originalFilteredEvents: [], selectedEventUids: [],
+      additionalColumns: [{ key: "caller", title: "Caller", width: 120, sorter: true }],
+      data: { filteredEventsColumns: ["gene", "tier", "pinned", "location"].map((id) => ({ id })) },
+      dataset: {}, inViewport: true, columnFilters: {},
+      resetColumnFilters: jest.fn(), setColumnFilters: jest.fn(),
+    });
+    panel.setState = (update) => {
+      panel.state = { ...panel.state, ...(typeof update === "function" ? update(panel.state) : update) };
+    };
+    panel.componentDidMount();
+    return panel;
+  }
+
+  const table = (panel) => findElementByType(panel.render(), "Table");
+  const keys = (panel) => table(panel).props.columns.map((column) => column.key);
+  const header = (panel, key) => {
+    const column = table(panel).props.columns.find((item) => item.key === key);
+    return column.onHeaderCell?.(column) || {};
+  };
+
+  it("moves real data headers while report, caller, and pinned columns stay put", () => {
+    const panel = makePanel();
+    expect(keys(panel)).toEqual(["select", "caller", "gene", "tier", "pinned", "location"]);
+    for (const key of ["select", "caller", "pinned"]) {
+      expect(header(panel, key).onColumnDragStart).toBeUndefined();
+    }
+    header(panel, "gene").onColumnDragStart("gene");
+    expect(header(panel, "location").draggingColumnKey).toBe("gene");
+    header(panel, "location").onColumnDrop("location");
+    expect(keys(panel)).toEqual(["select", "caller", "tier", "location", "pinned", "gene"]);
+    expect(panel.state.draggingColumnKey).toBeNull();
+  });
+
+  it("preserves order, widths, sorting and page size across hide/show and equivalent props", () => {
+    const panel = makePanel();
+    header(panel, "location").onColumnDragStart("location");
+    header(panel, "gene").onColumnDrop("gene");
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 290 } });
+    panel.handleTableChange({ pageSize: 10 }, { tier: [1] }, { columnKey: "gene", order: "descend" });
+    panel.handleColumnSelectionChange(["gene", "caller", "pinned", "location"]);
+    panel.handleColumnSelectionChange(["gene", "tier", "caller", "pinned", "location"]);
+    panel.componentDidUpdate({ ...panel.props });
+    expect(keys(panel)).toEqual(["select", "caller", "location", "gene", "pinned", "tier"]);
+    const gene = table(panel).props.columns.find((column) => column.key === "gene");
+    expect(gene.width).toBe(290);
+    expect(gene.sortOrder).toBe("descend");
+    expect(table(panel).props.pagination).toMatchObject({ pageSize: 10 });
+    expect(panel.props.setColumnFilters).toHaveBeenCalledWith({ tier: [1] });
+  });
+
+  it("resets user order and drag state with defaults/configuration without losing pagination", () => {
+    const panel = makePanel();
+    header(panel, "gene").onColumnDragStart("gene");
+    header(panel, "location").onColumnDrop("location");
+    panel.state.pageSize = 10;
+    panel.handleResetFilters();
+    expect(keys(panel)).toEqual(["select", "caller", "gene", "tier", "pinned", "location"]);
+    expect(panel.state.columnOrderKeys).toEqual([]);
+    header(panel, "gene").onColumnDragStart("gene");
+    const previousProps = panel.props;
+    panel.props = { ...panel.props, dataset: { defaultVisibleFilteredEventsColumns: ["location", "gene"] } };
+    panel.componentDidUpdate(previousProps);
+    expect(keys(panel)).toEqual(["select", "caller", "location", "gene"]);
+    expect(panel.state.draggingColumnKey).toBeNull();
+    expect(panel.state.pageSize).toBe(10);
+  });
+
+  it("installs chevron-only sorting even on caller columns and independent resize handlers", () => {
+    const panel = makePanel();
+    for (const key of ["gene", "tier", "caller"]) {
+      const column = table(panel).props.columns.find((item) => item.key === key);
+      expect(header(panel, key).sortControlOnly).toBe(true);
+      const control = column.sortIcon({ sortOrder: "ascend" });
+      expect(control.type).toBe(ColumnSortControl);
+      expect(control.props.sortOrder).toBe("ascend");
+      expect(control.props.title).toBe(column.title);
+    }
+    expect(header(panel, "location").sortControlOnly).toBe(false);
+    header(panel, "gene").onResize(null, { size: { width: 310 } });
+    expect(panel.state.sortState).toEqual({ columnKey: null, order: null });
+    header(panel, "gene").onColumnDragStart("gene");
+    header(panel, "gene").onColumnDragEnd();
+    expect(panel.state.draggingColumnKey).toBeNull();
+    expect(keys(panel)).toEqual(["select", "caller", "gene", "tier", "pinned", "location"]);
+  });
+
+  const dragEvent = () => ({
+    target: { closest: () => null },
+    preventDefault: jest.fn(),
+    stopPropagation: jest.fn(),
+    dataTransfer: { setData: jest.fn(), getData: jest.fn(() => "gene") },
+  });
+  const makeHeader = (panel, key) => {
+    const title = new ResizableTitle(header(panel, key));
+    title.setState = (update) => { title.state = { ...title.state, ...update }; };
+    title.componentDidMount();
+    return title;
+  };
+  const expectForeignDropIgnored = (panel, previousOrder) => {
+    const target = makeHeader(panel, "location");
+    const event = dragEvent();
+    target.handleDragOver(event);
+    target.handleDrop(event);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(event.dataTransfer.getData).not.toHaveBeenCalled();
+    expect(keys(panel)).toEqual(previousOrder);
+    target.componentWillUnmount();
+  };
+
+  it("cancels a removed source header so a foreign drop after remount cannot reorder", () => {
+    const panel = makePanel();
+    const previousOrder = keys(panel);
+    const source = makeHeader(panel, "gene");
+    source.handleDragStart(dragEvent());
+    expect(panel.state.draggingColumnKey).toBe("gene");
+    source.componentWillUnmount();
+    expect(panel.state.draggingColumnKey).toBeNull();
+    expectForeignDropIgnored(panel, previousOrder);
+  });
+
+  it.each([
+    ["loading", { loading: true }],
+    ["out of viewport", { inViewport: false }],
+    ["missing", { missing: true }],
+    ["error", { error: new Error("unavailable") }],
+    ["event selection changes", { selectedFilteredEvent: { uid: "selected" } }],
+  ])("cancels active drag when %s, before returning to a fresh header", (_, changedProps) => {
+    const panel = makePanel();
+    const previousOrder = keys(panel);
+    header(panel, "gene").onColumnDragStart("gene");
+    const previousProps = panel.props;
+    panel.props = { ...previousProps, ...changedProps };
+    panel.componentDidUpdate(previousProps);
+    expect(panel.state.draggingColumnKey).toBeNull();
+    const unavailableProps = panel.props;
+    panel.props = previousProps;
+    panel.componentDidUpdate(unavailableProps);
+    expectForeignDropIgnored(panel, previousOrder);
+  });
+
+  it("cancels on column visibility, event-type and table changes without resetting user order", () => {
+    const panel = makePanel();
+    header(panel, "tier").onColumnDragStart("tier");
+    header(panel, "gene").onColumnDrop("gene");
+    const previousOrder = keys(panel);
+    const selectedKeys = panel.state.selectedColumnKeys;
+    header(panel, "gene").onColumnDragStart("gene");
+    panel.handleColumnSelectionChange(selectedKeys.filter((key) => key !== "gene"));
+    expect(panel.state.draggingColumnKey).toBeNull();
+    panel.handleColumnSelectionChange(selectedKeys);
+    expectForeignDropIgnored(panel, previousOrder);
+    header(panel, "gene").onColumnDragStart("gene");
+    panel.handleSegmentedChange("snv");
+    expect(panel.state.draggingColumnKey).toBeNull();
+    header(panel, "gene").onColumnDragStart("gene");
+    panel.handleTableChange({ pageSize: 10 }, {}, { columnKey: "tier", order: "ascend" });
+    expect(panel.state.draggingColumnKey).toBeNull();
+    expectForeignDropIgnored(panel, previousOrder);
+  });
+
+  it("ignores child cleanup during parent teardown, but accepts it after a StrictMode remount", () => {
+    const panel = makePanel();
+    const source = makeHeader(panel, "gene");
+    source.handleDragStart(dragEvent());
+    panel.componentWillUnmount();
+    const setState = panel.setState;
+    panel.setState = jest.fn(setState);
+    source.componentWillUnmount();
+    expect(panel.setState).not.toHaveBeenCalled();
+    panel.componentDidMount();
+    expect(panel.state.draggingColumnKey).toBeNull();
+    const nextSource = makeHeader(panel, "gene");
+    nextSource.handleDragStart(dragEvent());
+    nextSource.componentWillUnmount();
+    expect(panel.state.draggingColumnKey).toBeNull();
+  });
+
+  it("uses the table's native horizontal scrollbar and native pagination", () => {
+    const panel = makePanel();
+    panel.props = { ...panel.props, filteredEvents: [{ uid: "event", eventType: "snv" }] };
+    const table = findElementByType(panel.render(), "Table");
+
+    expect(table.props.pagination).toEqual({ pageSize: 50 });
+    expect(table.props.scroll).toEqual({ x: expect.any(Number), y: 500 });
+    expect(table.props.scroll.x).toBeGreaterThan(0);
+    expect(table.props.dataSource).toBe(panel.props.filteredEvents);
+    expect(findElementByType(panel.render(), "Slider")).toBeNull();
+  });
+
+  it("styles both native scrollbars at rest instead of relying on an overlay scrollbar gutter", () => {
+    const Wrapper = jest.requireActual("./index.style").default;
+    const styles = Wrapper.componentStyle.rules.join("");
+
+    expect(styles).toMatch(/\.ant-table-body,[^{]*\.ant-table-content\s*\{[^}]*overflow-x: scroll !important/);
+    expect(styles).toMatch(/\.ant-table-body,[^{]*\.ant-table-content\s*\{[^}]*scrollbar-gutter: stable/);
+    expect(styles).toMatch(/\.ant-table-body\s*\{[^}]*overflow-y: scroll !important/);
+    expect(styles).toMatch(/&::-webkit-scrollbar\s*\{[^}]*width: 12px;[^}]*height: 12px/);
+    expect(styles).toMatch(/&::-webkit-scrollbar-thumb\s*\{[^}]*background: #8c8c8c/);
+    expect(styles).toMatch(/&::-webkit-scrollbar-track,[^{]*&::-webkit-scrollbar-corner\s*\{[^}]*background: #f0f0f0/);
+    // Non-auto standard scrollbar styles override WebKit pseudo-elements in Chrome.
+    expect(styles).toContain("scrollbar-width: auto");
+    expect(styles).toContain("scrollbar-color: auto");
+    expect(styles).not.toContain("horizontal-scroll-controls");
+  });
+
+  it("updates the table's native overflow width after a column resize", () => {
+    const panel = makePanel();
+    const before = findElementByType(panel.render(), "Table");
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 400 } });
+    const after = findElementByType(panel.render(), "Table");
+
+    expect(after.props.scroll.x).toBeGreaterThan(before.props.scroll.x);
+  });
+});
+
+describe("FilteredEventsListPanel resize commits", () => {
+  let panel;
+
+  beforeEach(() => {
+    panel = new FilteredEventsListPanel({});
+    panel.setState = jest.fn((update) => {
+      panel.state = {
+        ...panel.state,
+        ...(typeof update === "function" ? update(panel.state) : update),
+      };
+    });
+  });
+
+  afterEach(() => panel.componentWillUnmount());
+
+  it("stages rapid drag widths without rerendering and commits the latest width once on stop", () => {
+    panel.state.columnWidths = { location: 250 };
+    const resize = panel.handleColumnResize("gene");
+    [180, 210, 290, 360].forEach((width) => resize(null, { size: { width } }));
+
+    expect(panel.setState).not.toHaveBeenCalled();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 410 } });
+    expect(panel.setState).toHaveBeenCalledTimes(1);
+    expect(panel.state.columnWidths).toEqual({ gene: 410, location: 250 });
+  });
+
+  it("ignores invalid widths and clamps the final committed width", () => {
+    const resize = panel.handleColumnResize("gene");
+    [NaN, Infinity, undefined].forEach((width) => resize(null, { size: { width } }));
+    expect(panel.setState).not.toHaveBeenCalled();
+
+    panel.handleColumnResizeStop("gene")(null, { size: { width: -20 } });
+    expect(panel.state.columnWidths.gene).toBe(100);
+  });
+
+  it("discards staged widths on unmount and accepts a fresh commit after remount", () => {
+    panel.handleColumnResize("gene")(null, { size: { width: 260 } });
+    panel.componentWillUnmount();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 300 } });
+    expect(panel.setState).not.toHaveBeenCalled();
+
+    panel.componentDidMount();
+    panel.setState.mockClear();
+    panel.handleColumnResizeStop("tier")(null, { size: { width: 140 } });
+    expect(panel.setState).toHaveBeenCalledTimes(1);
+    expect(panel.state.columnWidths).toEqual({ tier: 140 });
+  });
+});
+
+describe("FilteredEventsListPanel pagination", () => {
+  it("updates the controlled page size when the per-page selection changes", () => {
+    const records = Array.from({ length: 60 }, (_, index) => ({
+      uid: `event-${index}`,
+      eventType: "snv",
+    }));
+    const setColumnFilters = jest.fn();
+    buildColumnsFromSettings.mockReturnValue([]);
+    const panel = new FilteredEventsListPanel({
+      t: (key) => key,
+      id: "case-1",
+      filteredEvents: records,
+      originalFilteredEvents: records,
+      selectedFilteredEvent: null,
+      selectedEventUids: [],
+      columnFilters: {},
+      viewMode: "detail",
+      loading: false,
+      error: null,
+      missing: false,
+      selectFilteredEvent: jest.fn(),
+      setSelectedEventUids: jest.fn(),
+      setColumnFilters,
+      additionalColumns: [],
+      data: { filteredEventsColumns: [] },
+      dataset: { id: "dataset-1" },
+      inViewport: true,
+    });
+    panel.setState = (update) => {
+      const nextState =
+        typeof update === "function"
+          ? update(panel.state, panel.props)
+          : update;
+      panel.state = { ...panel.state, ...nextState };
+    };
+
+    const table = findElementByType(panel.render(), "Table");
+    expect(table.props.pagination).toEqual({ pageSize: 50 });
+    expect(table.props.pagination.current).toBeUndefined();
+    expect(table.props.dataSource).toBe(records);
+
+    table.props.onChange({ current: 1, pageSize: 10 }, {}, {});
+
+    expect(panel.state.pageSize).toBe(10);
+    expect(findElementByType(panel.render(), "Table").props.pagination).toMatchObject({
+      pageSize: 10,
+    });
+  });
+});
+
 describe("FilteredEventsListPanel report selection", () => {
   it("renders a labeled fixed tri-state checkbox column outside resizable data columns", () => {
     const records = [
@@ -301,16 +634,16 @@ describe("FilteredEventsListPanel report selection", () => {
       "tier-3",
     ]);
 
-    const rowCheckbox = selectionColumn.render(null, records[1]);
-    rowCheckbox.props.onChange({ target: { checked: true } });
+    const { props: rowCheckboxProps } = selectionColumn.render(null, records[1]);
+    rowCheckboxProps.onChange({ target: { checked: true } });
     expect(setSelectedEventUids).toHaveBeenLastCalledWith([
       "tier-1",
       "tier-2",
     ]);
 
-    const uidlessCheckbox = selectionColumn.render(null, records[3]);
-    expect(uidlessCheckbox.props.disabled).toBe(true);
-    uidlessCheckbox.props.onChange({ target: { checked: true } });
+    const { props: uidlessCheckboxProps } = selectionColumn.render(null, records[3]);
+    expect(uidlessCheckboxProps.disabled).toBe(true);
+    uidlessCheckboxProps.onChange({ target: { checked: true } });
     expect(setSelectedEventUids).toHaveBeenCalledTimes(2);
 
     panel.props = {
@@ -420,7 +753,7 @@ describe("FilteredEventsListPanel report selection", () => {
     const table = findElementByType(panel.render(), "Table");
     const headerCheckbox = table.props.columns[0].title;
 
-    expect(table.props.pagination).toEqual({ pageSize: 50 });
+    expect(table.props.pagination).toMatchObject({ pageSize: 50 });
     expect(headerCheckbox.props.checked).toBe(false);
     expect(headerCheckbox.props.indeterminate).toBe(true);
 
@@ -491,8 +824,8 @@ describe("FilteredEventsListPanel filtered event details presentation", () => {
         panel.state = { ...panel.state, ...nextState };
       };
 
-      const openingView = panel.render();
-      const openingTable = findElementByType(openingView, "Table");
+      const view = panel.render();
+      const openingTable = findElementByType(view, "Table");
       const filteredEventDetailsModal = createPortal.mock.calls[0][0];
 
       expect(openingTable).not.toBeNull();
@@ -510,8 +843,10 @@ describe("FilteredEventsListPanel filtered event details presentation", () => {
         "selectedVariantId",
       );
 
+      panel.handleColumnDragStart("gene");
       filteredEventDetailsModal.props.afterOpenChange(true);
 
+      expect(panel.state.draggingColumnKey).toBeNull();
       expect(panel.state.filteredEventDetailsModalPresented).toBe(true);
       expect(findElementByType(panel.render(), "Table")).toBeNull();
 

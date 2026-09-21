@@ -827,8 +827,9 @@
       "commonYscale-help": "Apply a common Y-scale across all charts for easier comparison",
       "individualYscale": "Individual Y-scale",
       "individualYscale-help": "Apply individual Y-scales for each chart to better visualize distributions",
-      "location-placeholder": "Try 1:100000-3:200000|11:100000-13:200000",
-      "location-help": "Location as 1:100000-3:200000|11:100000-13:200000"
+      "location-placeholder": "Try 1:100000 or 1:100000-200000",
+      "location-help": "Enter a position (1:100000), a range (1:100000-200000), or chromosome-qualified ranges (1:100000-3:200000). Separate multiple regions with |. Changes apply when you leave the field; an empty field restores the current location.",
+      "invalid-location": "Invalid genomic location. The current location was preserved."
     },
     "alteration-card": {
       "unknown": "Unknown",

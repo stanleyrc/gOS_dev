@@ -18,7 +18,11 @@ import {
 import * as d3 from "d3";
 import { AiOutlineDownload } from "react-icons/ai";
 import { LoadingOutlined } from "@ant-design/icons";
-import { downloadCanvasAsPng, locateGenomeRange } from "../../helpers/utility";
+import {
+  downloadCanvasAsPng,
+  locateGenomeRange,
+  locationToDomains,
+} from "../../helpers/utility";
 import * as htmlToImage from "html-to-image";
 import { AiFillBoxPlot } from "react-icons/ai";
 import Wrapper from "./index.style";
@@ -38,7 +42,7 @@ const margins = {
   gap: 0,
 };
 
-class TracksLegendPanel extends Component {
+export class TracksLegendPanel extends Component {
   container = null;
   genesStructure = null;
 
@@ -48,12 +52,32 @@ class TracksLegendPanel extends Component {
     this.setState({ locationString: e.target.value });
   };
 
-  handleLocationKeyPress = (e) => {
-    if (e.key === "Enter") {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set("location", this.state.locationString);
-      window.location.href = currentUrl.toString();
+  handleLocationBlur = () => {
+    const { locationString } = this.state;
+    if (locationString === null) return;
+    if (!locationString.trim()) {
+      this.setState({ locationString: null });
+      return;
     }
+
+    const { chromoBins, domains, updateDomains, t } = this.props;
+    let nextDomains;
+    try {
+      nextDomains = locationToDomains(chromoBins, locationString);
+    } catch {
+      this.setState({ locationString: null });
+      message.error(t("components.tracks-legend-panel.invalid-location"));
+      return;
+    }
+
+    const unchanged =
+      nextDomains.length === domains.length &&
+      nextDomains.every(
+        (domain, index) =>
+          domain[0] === domains[index][0] && domain[1] === domains[index][1],
+      );
+    if (!unchanged) updateDomains(nextDomains);
+    this.setState({ locationString: null });
   };
 
   onDownloadButtonClicked = () => {
@@ -91,9 +115,10 @@ class TracksLegendPanel extends Component {
       return null;
     }
 
-    let locationString =
-      this.state.locationString ||
-      domains.map((domain) => locateGenomeRange(chromoBins, domain)).join("|");
+    const locationString =
+      this.state.locationString === null
+        ? domains.map((domain) => locateGenomeRange(chromoBins, domain)).join("|")
+        : this.state.locationString;
     return (
       <Wrapper>
         <Card
@@ -112,7 +137,7 @@ class TracksLegendPanel extends Component {
                   size="small"
                   value={locationString}
                   onChange={this.handleLocationChange}
-                  onPressEnter={this.handleLocationKeyPress}
+                  onBlur={this.handleLocationBlur}
                   placeholder={t(
                     "components.tracks-legend-panel.location-placeholder",
                   )}
