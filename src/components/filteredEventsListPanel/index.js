@@ -60,6 +60,7 @@ const getColumnTitle = (title) => {
 
 export class FilteredEventsListPanel extends Component {
   unmounted = false;
+  pendingColumnWidths = {};
 
   handleResetFilters = () => {
     const { resetColumnFilters } = this.props;
@@ -300,6 +301,7 @@ export class FilteredEventsListPanel extends Component {
   componentWillUnmount() {
     // Child header cleanup may run after the panel's own unmount callback.
     this.unmounted = true;
+    this.pendingColumnWidths = {};
   }
 
   handleFilteredEventDetailsModalOpenChange = (presented) => {
@@ -339,14 +341,21 @@ export class FilteredEventsListPanel extends Component {
   };
 
   handleColumnResize = (columnKey) => (_, { size }) => {
-    if (!Number.isFinite(size?.width)) return;
+    if (this.unmounted || !Number.isFinite(size?.width)) return;
+    this.pendingColumnWidths[columnKey] = clampColumnWidth(size.width);
+  };
 
-    this.setState(({ columnWidths }) => ({
-      columnWidths: {
-        ...columnWidths,
-        [columnKey]: clampColumnWidth(size.width),
-      },
-    }));
+  handleColumnResizeStop = (columnKey) => (event, data) => {
+    this.handleColumnResize(columnKey)(event, data);
+    const widths = this.pendingColumnWidths;
+    this.pendingColumnWidths = {};
+    if (this.unmounted || Object.keys(widths).length === 0) return;
+
+    this.setState(({ columnWidths }) =>
+      Object.keys(widths).some((key) => widths[key] !== columnWidths[key])
+        ? { columnWidths: { ...columnWidths, ...widths } }
+        : null
+    );
   };
 
   handleTableChange = (pagination, filters, sorter) => {
@@ -546,7 +555,8 @@ export class FilteredEventsListPanel extends Component {
     const resizableColumns = makeColumnsResizable(
       selectedDataColumns,
       columnWidths,
-      this.handleColumnResize
+      this.handleColumnResize,
+      this.handleColumnResizeStop
     );
     const visibleColumns = [checkboxColumn, ...resizableColumns];
     const tableScrollWidth = visibleColumns.reduce(

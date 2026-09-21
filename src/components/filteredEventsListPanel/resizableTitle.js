@@ -11,7 +11,8 @@ export function clampColumnWidth(width) {
 export function makeColumnsResizable(
   columns,
   columnWidths,
-  getResizeHandler
+  getResizeHandler,
+  getResizeStopHandler
 ) {
   return columns.map((column, index) => {
     const columnKey = column.key ?? column.dataIndex ?? index;
@@ -35,6 +36,7 @@ export function makeColumnsResizable(
         width: numericWidth,
         minWidth: MIN_COLUMN_WIDTH,
         onResize: getResizeHandler(columnKey),
+        onResizeStop: getResizeStopHandler?.(columnKey),
       }),
     };
   });
@@ -75,7 +77,8 @@ export class ColumnSortControl extends Component {
 }
 
 class ResizableTitle extends Component {
-  state = { isDropTarget: false };
+  state = { isDropTarget: false, resizeWidth: null };
+  resizePreview = null;
   isResizing = false;
   isDragging = false;
   blockDrag = false;
@@ -110,6 +113,7 @@ class ResizableTitle extends Component {
     this.isResizing = false;
     this.blockDrag = false;
     this.suppressClick = false;
+    this.restorePreviewWidth();
     if (wasDragging) this.props.onColumnDragEnd?.();
   }
 
@@ -147,6 +151,63 @@ class ResizableTitle extends Component {
     if (!this.props.sortControlOnly) this.props.onKeyDown?.(event);
   };
 
+  applyPreviewWidth = ({ node, size } = {}) => {
+    if (!Number.isFinite(size?.width)) return;
+    // react-resizable supplies the handle span, not the table header.
+    const header = node?.closest?.("th");
+    if (!header) return;
+    if (!this.resizePreview) {
+      const cellIndex = Array.from(header.parentElement.children).indexOf(header);
+      const container = header.closest(".ant-table-container");
+      const tables = Array.from(container?.querySelectorAll(
+        ".ant-table-header > table, .ant-table-body > table, .ant-table-content > table"
+      ) || []);
+      this.resizePreview = {
+        header,
+        headerStyleWidth: header.style.width,
+        columnWidth: header.getBoundingClientRect().width,
+        tables: tables.map((table) => {
+          const column = table.querySelector(`colgroup col:nth-child(${cellIndex + 1})`);
+          return {
+            table, column,
+            width: table.getBoundingClientRect().width,
+            tableStyleWidth: table.style.width,
+            columnStyleWidth: column?.style.width,
+          };
+        }),
+      };
+    }
+    const width = clampColumnWidth(size.width);
+    const preview = this.resizePreview;
+    preview.header.style.width = `${width}px`;
+    // AntD renders separate header/body tables. Grow their total widths too,
+    // otherwise fixed layout takes space from neighboring columns.
+    preview.tables.forEach(({ table, column, width: tableWidth }) => {
+      if (column) column.style.width = `${width}px`;
+      table.style.width = `${tableWidth + width - preview.columnWidth}px`;
+    });
+  };
+
+  restorePreviewWidth = (keepColumnWidths = false) => {
+    const preview = this.resizePreview;
+    if (!preview) return;
+    preview.header.style.width = preview.headerStyleWidth;
+    preview.tables.forEach(({ table, column, tableStyleWidth, columnStyleWidth }) => {
+      table.style.width = tableStyleWidth;
+      if (column && !keepColumnWidths) column.style.width = columnStyleWidth;
+    });
+    this.resizePreview = null;
+  };
+
+  handleResize = (event, data) => {
+    if (!Number.isFinite(data?.size?.width)) return;
+    this.applyPreviewWidth(data);
+    // Resizable adds each movement delta to its controlled width. Update only
+    // this header during a drag; the expensive row tree commits once on release.
+    this.setState({ resizeWidth: clampColumnWidth(data.size.width) });
+    this.props.onResize?.(event, data);
+  };
+
   handleResizeStart = (event, data) => {
     // Cancel native header dragging/text selection before it can steal the mouse.
     event.preventDefault();
@@ -158,8 +219,14 @@ class ResizableTitle extends Component {
   };
 
   handleResizeStop = (event, data) => {
+    this.applyPreviewWidth(data);
+    // AntD has already measured the live body widths into its header state.
+    // Restoring old col widths here would bypass React's unchanged-style check
+    // and leave the header stuck at the old size after the parent commits.
+    this.restorePreviewWidth(true);
     this.isResizing = false;
     this.suppressClick = true;
+    this.setState({ resizeWidth: null });
     this.props.onResizeStop?.(event, data);
   };
 
@@ -259,12 +326,12 @@ class ResizableTitle extends Component {
 
     return (
       <Resizable
-        width={width}
+        width={this.state.resizeWidth ?? width}
         height={0}
         axis="x"
         minConstraints={[minWidth, 0]}
         resizeHandles={["e"]}
-        onResize={onResize}
+        onResize={this.handleResize}
         onResizeStart={this.handleResizeStart}
         onResizeStop={this.handleResizeStop}
         draggableOpts={{ enableUserSelectHack: false }}

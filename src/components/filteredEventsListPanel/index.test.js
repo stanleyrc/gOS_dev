@@ -294,7 +294,7 @@ describe("FilteredEventsListPanel header interactions", () => {
     const panel = makePanel();
     header(panel, "location").onColumnDragStart("location");
     header(panel, "gene").onColumnDrop("gene");
-    panel.handleColumnResize("gene")(null, { size: { width: 290 } });
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 290 } });
     panel.handleTableChange({ pageSize: 10 }, { tier: [1] }, { columnKey: "gene", order: "descend" });
     panel.handleColumnSelectionChange(["gene", "caller", "pinned", "location"]);
     panel.handleColumnSelectionChange(["gene", "tier", "caller", "pinned", "location"]);
@@ -434,6 +434,63 @@ describe("FilteredEventsListPanel header interactions", () => {
     expect(panel.state.draggingColumnKey).toBeNull();
   });
 
+  it("updates the table's native overflow width after a column resize", () => {
+    const panel = makePanel();
+    const before = findElementByType(panel.render(), "Table");
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 400 } });
+    const after = findElementByType(panel.render(), "Table");
+
+    expect(after.props.scroll.x).toBeGreaterThan(before.props.scroll.x);
+  });
+});
+
+describe("FilteredEventsListPanel resize commits", () => {
+  let panel;
+
+  beforeEach(() => {
+    panel = new FilteredEventsListPanel({});
+    panel.setState = jest.fn((update) => {
+      panel.state = {
+        ...panel.state,
+        ...(typeof update === "function" ? update(panel.state) : update),
+      };
+    });
+  });
+
+  afterEach(() => panel.componentWillUnmount());
+
+  it("stages rapid drag widths without rerendering and commits the latest width once on stop", () => {
+    panel.state.columnWidths = { location: 250 };
+    const resize = panel.handleColumnResize("gene");
+    [180, 210, 290, 360].forEach((width) => resize(null, { size: { width } }));
+
+    expect(panel.setState).not.toHaveBeenCalled();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 410 } });
+    expect(panel.setState).toHaveBeenCalledTimes(1);
+    expect(panel.state.columnWidths).toEqual({ gene: 410, location: 250 });
+  });
+
+  it("ignores invalid widths and clamps the final committed width", () => {
+    const resize = panel.handleColumnResize("gene");
+    [NaN, Infinity, undefined].forEach((width) => resize(null, { size: { width } }));
+    expect(panel.setState).not.toHaveBeenCalled();
+
+    panel.handleColumnResizeStop("gene")(null, { size: { width: -20 } });
+    expect(panel.state.columnWidths.gene).toBe(100);
+  });
+
+  it("discards staged widths on unmount and accepts a fresh commit after remount", () => {
+    panel.handleColumnResize("gene")(null, { size: { width: 260 } });
+    panel.componentWillUnmount();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 300 } });
+    expect(panel.setState).not.toHaveBeenCalled();
+
+    panel.componentDidMount();
+    panel.setState.mockClear();
+    panel.handleColumnResizeStop("tier")(null, { size: { width: 140 } });
+    expect(panel.setState).toHaveBeenCalledTimes(1);
+    expect(panel.state.columnWidths).toEqual({ tier: 140 });
+  });
 });
 
 describe("FilteredEventsListPanel pagination", () => {
