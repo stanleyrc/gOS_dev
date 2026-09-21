@@ -25,6 +25,7 @@ jest.mock("antd", () => {
     Skeleton: "Skeleton",
     Select,
     Checkbox: "Checkbox",
+    Slider: "Slider",
   };
 });
 jest.mock("d3", () => ({
@@ -432,6 +433,34 @@ describe("FilteredEventsListPanel header interactions", () => {
     nextSource.handleDragStart(dragEvent());
     nextSource.componentWillUnmount();
     expect(panel.state.draggingColumnKey).toBeNull();
+  });
+
+  it("uses the table's native horizontal scrollbar and native pagination", () => {
+    const panel = makePanel();
+    panel.props = { ...panel.props, filteredEvents: [{ uid: "event", eventType: "snv" }] };
+    const table = findElementByType(panel.render(), "Table");
+
+    expect(table.props.pagination).toEqual({ pageSize: 50 });
+    expect(table.props.scroll).toEqual({ x: expect.any(Number), y: 500 });
+    expect(table.props.scroll.x).toBeGreaterThan(0);
+    expect(table.props.dataSource).toBe(panel.props.filteredEvents);
+    expect(findElementByType(panel.render(), "Slider")).toBeNull();
+  });
+
+  it("styles both native scrollbars at rest instead of relying on an overlay scrollbar gutter", () => {
+    const Wrapper = jest.requireActual("./index.style").default;
+    const styles = Wrapper.componentStyle.rules.join("");
+
+    expect(styles).toMatch(/\.ant-table-body,[^{]*\.ant-table-content\s*\{[^}]*overflow-x: scroll !important/);
+    expect(styles).toMatch(/\.ant-table-body,[^{]*\.ant-table-content\s*\{[^}]*scrollbar-gutter: stable/);
+    expect(styles).toMatch(/\.ant-table-body\s*\{[^}]*overflow-y: scroll !important/);
+    expect(styles).toMatch(/&::-webkit-scrollbar\s*\{[^}]*width: 12px;[^}]*height: 12px/);
+    expect(styles).toMatch(/&::-webkit-scrollbar-thumb\s*\{[^}]*background: #8c8c8c/);
+    expect(styles).toMatch(/&::-webkit-scrollbar-track,[^{]*&::-webkit-scrollbar-corner\s*\{[^}]*background: #f0f0f0/);
+    // Non-auto standard scrollbar styles override WebKit pseudo-elements in Chrome.
+    expect(styles).toContain("scrollbar-width: auto");
+    expect(styles).toContain("scrollbar-color: auto");
+    expect(styles).not.toContain("horizontal-scroll-controls");
   });
 
   it("updates the table's native overflow width after a column resize", () => {

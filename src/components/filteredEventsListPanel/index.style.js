@@ -212,9 +212,37 @@ const Wrapper = styled.div`
       .ant-table-container {
         .ant-table-body,
         .ant-table-content {
-          scrollbar-width: thin;
-          scrollbar-color: #eaeaea transparent;
+          overflow-x: scroll !important;
           scrollbar-gutter: stable;
+          /* Non-auto values override the WebKit rules in newer Chromium. */
+          scrollbar-width: auto;
+          scrollbar-color: auto;
+
+          /* Explicit dimensions opt out of macOS overlay auto-hiding. A stable
+             gutter alone does not keep an overlay scrollbar visible at rest. */
+          &::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+          }
+
+          &::-webkit-scrollbar-track,
+          &::-webkit-scrollbar-corner {
+            background: #f0f0f0;
+          }
+
+          &::-webkit-scrollbar-thumb {
+            background: #8c8c8c;
+            border: 2px solid #f0f0f0;
+            border-radius: 6px;
+          }
+
+          &::-webkit-scrollbar-thumb:hover {
+            background: #595959;
+          }
+        }
+
+        .ant-table-body {
+          overflow-y: scroll !important;
         }
       }
     }
