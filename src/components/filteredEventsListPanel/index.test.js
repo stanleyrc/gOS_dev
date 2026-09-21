@@ -239,6 +239,56 @@ describe("FilteredEventsListPanel default visible columns", () => {
   });
 });
 
+describe("FilteredEventsListPanel pagination", () => {
+  it("updates the controlled page size when the per-page selection changes", () => {
+    const records = Array.from({ length: 60 }, (_, index) => ({
+      uid: `event-${index}`,
+      eventType: "snv",
+    }));
+    const setColumnFilters = jest.fn();
+    buildColumnsFromSettings.mockReturnValue([]);
+    const panel = new FilteredEventsListPanel({
+      t: (key) => key,
+      id: "case-1",
+      filteredEvents: records,
+      originalFilteredEvents: records,
+      selectedFilteredEvent: null,
+      selectedEventUids: [],
+      columnFilters: {},
+      viewMode: "detail",
+      loading: false,
+      error: null,
+      missing: false,
+      selectFilteredEvent: jest.fn(),
+      setSelectedEventUids: jest.fn(),
+      setColumnFilters,
+      additionalColumns: [],
+      data: { filteredEventsColumns: [] },
+      dataset: { id: "dataset-1" },
+      inViewport: true,
+    });
+    panel.setState = (update) => {
+      const nextState =
+        typeof update === "function"
+          ? update(panel.state, panel.props)
+          : update;
+      panel.state = { ...panel.state, ...nextState };
+    };
+
+    const table = findElementByType(panel.render(), "Table");
+    expect(table.props.pagination).toEqual({ pageSize: 50 });
+    expect(table.props.pagination.current).toBeUndefined();
+    expect(table.props.dataSource).toBe(records);
+
+    table.props.onChange({ current: 1, pageSize: 10 }, {}, {});
+
+    expect(panel.state.pageSize).toBe(10);
+    expect(findElementByType(panel.render(), "Table").props.pagination).toMatchObject({
+      pageSize: 10,
+    });
+  });
+});
+
 describe("FilteredEventsListPanel report selection", () => {
   it("renders a labeled fixed tri-state checkbox column outside resizable data columns", () => {
     const records = [

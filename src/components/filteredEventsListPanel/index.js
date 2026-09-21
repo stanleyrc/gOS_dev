@@ -164,6 +164,7 @@ export class FilteredEventsListPanel extends Component {
       order: null,
     },
     columnWidths: {},
+    pageSize: 50,
     filteredEventDetailsModalPresented: false,
   };
 
@@ -317,7 +318,10 @@ export class FilteredEventsListPanel extends Component {
     };
 
     this.props.setColumnFilters(columnFilters);
-    this.setState({ sortState });
+    this.setState({
+      sortState,
+      pageSize: pagination?.pageSize || this.state.pageSize,
+    });
   };
 
   getTierTooltipContent = (record) => {
@@ -386,6 +390,7 @@ export class FilteredEventsListPanel extends Component {
       selectedColumnKeys,
       sortState,
       columnWidths,
+      pageSize,
       filteredEventDetailsModalPresented,
     } = this.state;
 
@@ -593,7 +598,7 @@ export class FilteredEventsListPanel extends Component {
                         columns={visibleColumns}
                         dataSource={records}
                         rowClassName="filtered-events-event-row"
-                        pagination={{ pageSize: 50 }}
+                        pagination={{ pageSize }}
                         showSorterTooltip={false}
                         onChange={this.handleTableChange}
                         scroll={{ x: tableScrollWidth || "100%", y: 500 }}
