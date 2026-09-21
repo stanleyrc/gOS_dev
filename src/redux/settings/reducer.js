@@ -11,27 +11,6 @@ import {
   isAllDatasetsBrowseScope,
 } from "../../helpers/browseScope";
 
-const isLocationWithinChromosomes = (location, chromoBins) =>
-  `${location}`.split("|").every((range) => {
-    const endpoints = range.split("-");
-    return (
-      endpoints.length === 2 &&
-      endpoints.every((endpoint) => {
-        const parts = endpoint.split(":");
-        const chromosome = parts[0];
-        const position = Number(parts[1]);
-        const chromosomeBin = chromoBins[chromosome];
-        return (
-          parts.length === 2 &&
-          chromosomeBin &&
-          Number.isFinite(position) &&
-          position >= chromosomeBin.startPoint &&
-          position <= chromosomeBin.endPoint
-        );
-      })
-    );
-  });
-
 const areValidDomains = (domains, genomeLength) =>
   Array.isArray(domains) &&
   domains.length > 0 &&
@@ -247,9 +226,6 @@ export default function appReducer(state = initState, action) {
       if (!state.datasetInitialized && url0.searchParams.get("location")) {
         try {
           const bookmarkedLocation = url0.searchParams.get("location");
-          if (!isLocationWithinChromosomes(bookmarkedLocation, chromoBins)) {
-            throw new Error("Invalid genomic location");
-          }
           nextDomains = locationToDomains(
             chromoBins,
             bookmarkedLocation,

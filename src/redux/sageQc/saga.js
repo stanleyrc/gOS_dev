@@ -189,18 +189,27 @@ export function* fetchSageQc(action) {
   }
 }
 
-function* selectVariant(action) {
+export function* selectVariant(action) {
   const currentState = yield select(getCurrentState);
-  let { chromoBins, defaultDomain } = currentState.Settings;
+  let { chromoBins, defaultDomain, domains } = currentState.Settings;
   let { variant } = action;
   let selectedVariant = variant;
   let urlVariant = new URL(decodeURI(document.location));
   if (selectedVariant) {
-    let loc = selectedVariant.actualLocation;
-    let domsVariant = locationToDomains(chromoBins, loc);
-    // eliminate domains that are smaller than 10 bases wide
-    if (domsVariant.length > 1) {
-      domsVariant = domsVariant.filter((d) => d[1] - d[0] > 10);
+    let domsVariant;
+    try {
+      domsVariant = locationToDomains(
+        chromoBins,
+        selectedVariant.actualLocation,
+        { clampRanges: true }
+      );
+      // eliminate domains that are smaller than 10 bases wide
+      if (domsVariant.length > 1) {
+        domsVariant = domsVariant.filter((d) => d[1] - d[0] > 10);
+      }
+    } catch (error) {
+      // Bad record coordinates must not discard the view or abort the root saga.
+      domsVariant = domains ?? [defaultDomain];
     }
     urlVariant.searchParams.set("variant", selectedVariant.id);
     window.history.replaceState(

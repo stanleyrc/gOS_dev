@@ -76,18 +76,27 @@ function* fetchFilteredEvents(action) {
   }
 }
 
-function* selectFilteredEvent(action) {
+export function* selectFilteredEvent(action) {
   const currentState = yield select(getCurrentState);
-  let { chromoBins, defaultDomain } = currentState.Settings;
+  let { chromoBins, defaultDomain, domains } = currentState.Settings;
   let { filteredEvent } = action;
   let selectedFilteredEvent = filteredEvent;
   let urlGene = new URL(decodeURI(document.location));
   if (selectedFilteredEvent) {
-    let loc = selectedFilteredEvent.actualLocation;
-    let domsGene = locationToDomains(chromoBins, loc);
-    // eliminate domains that are smaller than 10 bases wide
-    if (domsGene.length > 1) {
-      domsGene = domsGene.filter((d) => d[1] - d[0] > 10);
+    let domsGene;
+    try {
+      domsGene = locationToDomains(
+        chromoBins,
+        selectedFilteredEvent.actualLocation,
+        { clampRanges: true }
+      );
+      // eliminate domains that are smaller than 10 bases wide
+      if (domsGene.length > 1) {
+        domsGene = domsGene.filter((d) => d[1] - d[0] > 10);
+      }
+    } catch (error) {
+      // Bad record coordinates must not discard the view or abort the root saga.
+      domsGene = domains ?? [defaultDomain];
     }
     urlGene.searchParams.set("gene", selectedFilteredEvent.gene);
     window.history.replaceState(

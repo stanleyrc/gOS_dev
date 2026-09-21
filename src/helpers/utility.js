@@ -3,6 +3,7 @@ import axios from "axios";
 import * as d3 from "d3";
 import Connection from "./connection";
 import Interval from "./interval";
+import { locationToDomains as parseGenomeLocation } from "./genomeLocation";
 
 export function splitFloat64(x) {
   const high = Math.fround(x); // nearest float32
@@ -703,24 +704,8 @@ export function domainsToLocation(chromoBins, domains) {
   return domains.map((d) => locateGenomeRange(chromoBins, d)).join("|");
 }
 
-export function locationToDomains(chromoBins, loc) {
-  let domains = [];
-  loc.split("|").forEach((d, i) => {
-    let domainString = d.split("-").map((e) => e.split(":"));
-    let domain = [];
-    domain.push(
-      chromoBins[domainString[0][0]].startPlace +
-        +domainString[0][1] -
-        chromoBins[domainString[0][0]].startPoint
-    );
-    domain.push(
-      chromoBins[domainString[1][0]].startPlace +
-        +domainString[1][1] -
-        chromoBins[domainString[1][0]].startPoint
-    );
-    domains.push(domain);
-  });
-  return domains;
+export function locationToDomains(chromoBins, loc, options) {
+  return parseGenomeLocation(chromoBins, loc, options);
 }
 
 export function locateGenomeRange(chromoBins, domain) {
