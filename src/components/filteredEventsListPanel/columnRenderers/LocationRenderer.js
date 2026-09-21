@@ -2,7 +2,10 @@ import React, { Component } from "react";
 import { Button, Tooltip, Typography } from "antd";
 import { BsDashLg } from "react-icons/bs";
 import CopyIconButton from "../../copyIconButton";
-import { getCoordinateCopyValue } from "../../../helpers/genomicLocation";
+import {
+  formatLocationDisplay,
+  getCoordinateCopyValue,
+} from "../../../helpers/genomicLocation";
 
 const { Text } = Typography;
 
@@ -27,18 +30,19 @@ export default class LocationRenderer extends Component {
       );
     }
 
-    const copyValue = getCoordinateCopyValue(value);
+    const displayValue = formatLocationDisplay(value);
+    const copyValue = getCoordinateCopyValue(displayValue);
 
     return (
       <div className="filtered-events-location-cell">
-        <Tooltip title={String(value)}>
+        <Tooltip title={String(displayValue)}>
           <Button
             type="link"
             className="filtered-events-location-link filtered-events-ellipsis-text"
             onClick={this.handleOpenLocation}
-            aria-label={`Open coordinates ${value} in Plots`}
+            aria-label={`Open coordinates ${displayValue} in Plots`}
           >
-            {value}
+            {displayValue}
           </Button>
         </Tooltip>
         <CopyIconButton

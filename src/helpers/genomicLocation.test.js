@@ -1,6 +1,7 @@
 /** @jest-environment node */
 
 import {
+  formatLocationDisplay,
   getCoordinateCopyValue,
   parseVariantG,
 } from "./genomicLocation";
@@ -83,6 +84,42 @@ describe("parseVariantG", () => {
     "1:100-1:200",
   ])("returns null for malformed input %#", (value) => {
     expect(parseVariantG(value)).toBeNull();
+  });
+});
+
+describe("formatLocationDisplay", () => {
+  test.each([
+    ["17:7577568-7577568 C>A", "17:7577568 C>A"],
+    ["1:100-100 A>G", "1:100 A>G"],
+    ["  ChRx:100-100 c > t  ", "  ChRx:100 c > t  "],
+    ["chrM:100-100 a>g", "chrM:100 a>g"],
+  ])("collapses only a genuine repeated-endpoint SNV: %s", (value, expected) => {
+    expect(formatLocationDisplay(value)).toBe(expected);
+  });
+
+  test.each([
+    null,
+    undefined,
+    100,
+    {},
+    "",
+    "not a location",
+    "1:100 A>G",
+    "1:100-101 A>G",
+    "1:100-100 AC>A",
+    "1:100-100 A>AC",
+    "1:100-100 AC>GT",
+    "1:100-100 A>-",
+    "1:100-100 ->A",
+    "1:100-100 A>*",
+    "1:100-100 N>G",
+    "1:100-100 A>A",
+    "1:100-100 A>a",
+    "1:100-100",
+    "1:100-1:100",
+    "1:100-100 A>G extra",
+  ])("preserves other values without changing their type: %#", (value) => {
+    expect(formatLocationDisplay(value)).toBe(value);
   });
 });
 

@@ -30,6 +30,23 @@ export function parseVariantG(value) {
   };
 }
 
+/** Collapse repeated endpoints only for distinct canonical single-base alleles. */
+export function formatLocationDisplay(value) {
+  const variant = parseVariantG(value);
+  if (
+    !variant ||
+    variant.start !== variant.end ||
+    !/^[ACGT]$/i.test(variant.reference) ||
+    !/^[ACGT]$/i.test(variant.alternate) ||
+    variant.reference.toUpperCase() === variant.alternate.toUpperCase()
+  ) {
+    return value;
+  }
+
+  // Edit only the duplicate endpoint, retaining chromosome spelling and allele text.
+  return value.replace(/(:\d+)-\d+(?=\s)/, "$1");
+}
+
 /**
  * Return only the genomic coordinate portion of a displayed location.
  * Non-SNV locations are preserved after trimming surrounding whitespace.
