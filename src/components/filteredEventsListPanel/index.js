@@ -34,7 +34,9 @@ import { buildColumnsFromSettings } from "./columnBuilders";
 import getDefaultVisibleFilteredEventsColumnKeys, {
   orderFilteredEventsColumns,
 } from "./defaultVisibleFilteredEventsColumns";
+import { moveColumnKey, orderMovableColumns } from "./columnOrder";
 import ResizableTitle, {
+  ColumnSortControl,
   clampColumnWidth,
   makeColumnsResizable,
 } from "./resizableTitle";
@@ -57,13 +59,13 @@ const getColumnTitle = (title) => {
 };
 
 export class FilteredEventsListPanel extends Component {
+  unmounted = false;
+
   handleResetFilters = () => {
     const { resetColumnFilters } = this.props;
 
     resetColumnFilters();
-    this.setState({
-      selectedColumnKeys: this.getDefaultColumnKeys(),
-    });
+    this.initializeSelectedColumns();
   };
 
   handleCheckboxChange = (record, checked) => {
@@ -164,6 +166,8 @@ export class FilteredEventsListPanel extends Component {
       order: null,
     },
     columnWidths: {},
+    columnOrderKeys: [],
+    draggingColumnKey: null,
     pageSize: 50,
     filteredEventDetailsModalPresented: false,
   };
@@ -232,11 +236,11 @@ export class FilteredEventsListPanel extends Component {
   };
 
   handleSegmentedChange = (eventType) => {
-    this.setState({ eventType });
+    this.setState({ eventType, draggingColumnKey: null });
   };
 
   handleColumnSelectionChange = (selectedKeys) => {
-    this.setState({ selectedColumnKeys: selectedKeys });
+    this.setState({ selectedColumnKeys: selectedKeys, draggingColumnKey: null });
   };
 
   handleTierChange = async (record, tier) => {
@@ -263,6 +267,7 @@ export class FilteredEventsListPanel extends Component {
   };
 
   componentDidMount() {
+    this.unmounted = false;
     this.initializeSelectedColumns();
   }
 
@@ -275,6 +280,15 @@ export class FilteredEventsListPanel extends Component {
     }
 
     const hasEventSelection = Boolean(this.props.selectedFilteredEvent);
+    if (this.state.draggingColumnKey != null && (
+      this.props.loading || !this.props.inViewport ||
+      this.props.error || this.props.missing ||
+      (hasEventSelection && this.state.filteredEventDetailsModalPresented) ||
+      prevProps.selectedFilteredEvent !== this.props.selectedFilteredEvent ||
+      !this.state.selectedColumnKeys.includes(this.state.draggingColumnKey)
+    )) {
+      this.handleColumnDragEnd();
+    }
     if (
       !hasEventSelection &&
       this.state.filteredEventDetailsModalPresented
@@ -283,14 +297,45 @@ export class FilteredEventsListPanel extends Component {
     }
   }
 
+  componentWillUnmount() {
+    // Child header cleanup may run after the panel's own unmount callback.
+    this.unmounted = true;
+  }
+
   handleFilteredEventDetailsModalOpenChange = (presented) => {
     if (presented !== this.state.filteredEventDetailsModalPresented) {
-      this.setState({ filteredEventDetailsModalPresented: presented });
+      this.setState({
+        filteredEventDetailsModalPresented: presented,
+        draggingColumnKey: null,
+      });
     }
   };
 
   initializeSelectedColumns = () => {
-    this.setState({ selectedColumnKeys: this.getDefaultColumnKeys() });
+    this.setState({
+      selectedColumnKeys: this.getDefaultColumnKeys(),
+      columnOrderKeys: [],
+      draggingColumnKey: null,
+    });
+  };
+
+  handleColumnDragStart = (columnKey) => {
+    this.setState({ draggingColumnKey: columnKey });
+  };
+
+  handleColumnDragEnd = () => {
+    if (!this.unmounted) this.setState({ draggingColumnKey: null });
+  };
+
+  handleColumnDrop = (targetKey, movableColumnKeys) => {
+    this.setState(({ draggingColumnKey }) => draggingColumnKey == null ? null : ({
+      columnOrderKeys: moveColumnKey(
+        movableColumnKeys,
+        draggingColumnKey,
+        targetKey,
+      ),
+      draggingColumnKey: null,
+    }));
   };
 
   handleColumnResize = (columnKey) => (_, { size }) => {
@@ -321,6 +366,7 @@ export class FilteredEventsListPanel extends Component {
     this.setState({
       sortState,
       pageSize: pagination?.pageSize || this.state.pageSize,
+      draggingColumnKey: null,
     });
   };
 
@@ -390,6 +436,8 @@ export class FilteredEventsListPanel extends Component {
       selectedColumnKeys,
       sortState,
       columnWidths,
+      columnOrderKeys,
+      draggingColumnKey,
       pageSize,
       filteredEventDetailsModalPresented,
     } = this.state;
@@ -415,11 +463,45 @@ export class FilteredEventsListPanel extends Component {
       filterValues
     );
 
-    const orderedColumns = orderFilteredEventsColumns(
-      columns,
-      dataset?.defaultVisibleFilteredEventsColumns,
+    const orderedColumns = orderMovableColumns(
+      orderFilteredEventsColumns(
+        columns,
+        dataset?.defaultVisibleFilteredEventsColumns,
+      ),
+      columnOrderKeys,
     );
-    const columnsWithSortState = orderedColumns.map((col) => {
+    const movableColumnKeys = orderedColumns
+      .filter((column) => !column.fixed)
+      .map((column) => column.key);
+    const withHeaderControls = (column, movable = false) => ({
+      ...column,
+      ...(column.sorter
+        ? {
+            showSorterTooltip: false,
+            sortIcon: ({ sortOrder }) => (
+              <ColumnSortControl
+                sortOrder={sortOrder}
+                title={getColumnTitle(column.title)}
+              />
+            ),
+          }
+        : {}),
+      onHeaderCell: (currentColumn) => ({
+        ...column.onHeaderCell?.(currentColumn),
+        sortControlOnly: Boolean(column.sorter),
+        ...(movable
+          ? {
+              columnKey: column.key,
+              draggingColumnKey,
+              onColumnDragStart: this.handleColumnDragStart,
+              onColumnDrop: (key) => this.handleColumnDrop(key, movableColumnKeys),
+              onColumnDragEnd: this.handleColumnDragEnd,
+            }
+          : {}),
+      }),
+    });
+    const columnsWithSortState = orderedColumns.map((column) => {
+      const col = withHeaderControls(column, !column.fixed);
       if (!col.sorter) return col;
       return {
         ...col,
@@ -428,7 +510,7 @@ export class FilteredEventsListPanel extends Component {
     });
 
     const selectedDataColumns = [
-      ...(additionalColumns || []),
+      ...(additionalColumns || []).map((column) => withHeaderControls(column)),
       ...columnsWithSortState,
     ].filter((column) => selectedColumnKeys.includes(column.key));
     const filteredRecords = this.getRecordsMatchingColumnFilters(
@@ -555,7 +637,7 @@ export class FilteredEventsListPanel extends Component {
               style={{ marginBottom: "12px", ...transitionStyle(inViewport) }}
             >
               {inViewport && (
-                <Col flex="auto">
+                <Col flex="auto" className="filtered-events-column-controls">
                   <Select
                     mode="multiple"
                     placeholder={t(

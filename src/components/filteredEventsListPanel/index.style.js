@@ -125,6 +125,55 @@ const Wrapper = styled.div`
     text-overflow: ellipsis;
   }
 
+  .filtered-events-column-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+  }
+
+  .ant-table-thead th.ant-table-column-has-sorters {
+    cursor: default;
+  }
+
+  .ant-table-thead th[draggable="true"] {
+    cursor: grab;
+  }
+
+  .ant-table-column-sorters {
+    cursor: inherit;
+  }
+
+  /* AntD's full-header hit area otherwise covers the chevron button. */
+  .ant-table-column-sorters::after {
+    content: none;
+  }
+
+  .filtered-events-sort-control {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 6px;
+    line-height: 1;
+    cursor: pointer;
+    flex: none;
+    border-radius: 4px;
+  }
+
+  .filtered-events-sort-control:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .filtered-events-sort-control:focus-visible {
+    outline: 2px solid #1677ff;
+    outline-offset: 1px;
+  }
+
+  .ant-table-thead th.filtered-events-column-drop-target {
+    box-shadow: inset 3px 0 #1677ff;
+    background: #e6f4ff;
+  }
+
   .filtered-events-resizable-header {
     position: relative;
     overflow: visible;
