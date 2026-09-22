@@ -323,6 +323,16 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(invalidItd.resultTables[0].rows[0][4].value).toBe("");
   });
 
+  it("renders VAF to two places and preserves missing values", () => {
+    const model = buildMyeloSeqDocxModel({
+      alterations: [0.046, 49.95, 0, null, ""].map((VAF) => ({ type: "SNV", VAF })),
+    });
+    expect(model.resultTables[0].rows.map((row) => row[4].value))
+      .toEqual(["4.60", "49.95", "0.00", "", ""]);
+    expect(buildMyeloSeqDocxModel({ alterations: [{ type: "SNV", VAF: null }] }).resultTables[0].columns)
+      .not.toContain("VAF(%)");
+  });
+
   it("omits an unavailable finding identity while retaining Comments", () => {
     const model = buildMyeloSeqDocxModel({
       alterations: [

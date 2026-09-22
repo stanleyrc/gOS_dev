@@ -1,6 +1,7 @@
 import { escapeHtml } from "./format";
 import {
   formatMyeloSeqVariant,
+  formatMyeloSeqVaf,
   getMyeloSeqVariantType,
   getMyeloSeqInsertionSize,
   isMyeloSeqFusion as isFusion,
@@ -24,13 +25,6 @@ function formatNumber(value, maximumFractionDigits = 2) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(number);
-}
-
-function formatPercent(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "";
-  const percent = Math.abs(number) <= 1 ? number * 100 : number;
-  return formatNumber(percent, 1);
 }
 
 function text(value) {
@@ -115,7 +109,7 @@ function buildSequenceTables(report) {
       required: sequenceFindings.some((finding) => getMyeloSeqVariantType(finding) === "FLT3ITD"),
       value: getMyeloSeqInsertionSize,
     },
-    { label: "VAF(%)", value: (finding) => formatPercent(finding.VAF) },
+    { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF) },
     { label: "Depth", value: (finding) => formatNumber(finding.depth, 0) },
     { label: "Transcript", value: (finding) => finding.transcript },
   ];

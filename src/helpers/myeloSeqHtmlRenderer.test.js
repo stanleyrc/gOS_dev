@@ -371,6 +371,17 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(invalidItd.html).toContain("<td>FLT3ITD</td><td></td>");
   });
 
+  it("renders VAF to two places without inventing zero for missing values", async () => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({
+      alterations: [0.046, 49.95, 0, null, ""].map((VAF) => ({ type: "SNV", VAF })),
+    });
+    expect(html).toContain("<td>4.60</td>");
+    expect(html).toContain("<td>49.95</td>");
+    expect(html.match(/<td>0\.00<\/td>/g)).toHaveLength(1);
+    const absent = await new MyeloSeqHtmlRenderer().render({ alterations: [{ type: "SNV", VAF: null }] });
+    expect(absent.html).not.toContain("<th>VAF(%)</th>");
+  });
+
   it("escapes case-specific content", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,

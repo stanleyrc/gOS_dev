@@ -23,6 +23,14 @@ export function getMyeloSeqInsertionSize(finding) {
     : undefined;
 }
 
+export function formatMyeloSeqVaf(value) {
+  if (value == null || String(value).trim() === "") return "";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  const percent = Math.abs(number) <= 1 ? number * 100 : number;
+  return percent.toFixed(2);
+}
+
 export function formatMyeloSeqVariant(value) {
   const variant = String(value ?? "").trim();
   const parts = variant.split(/\s*[/,]\s*(?=[cp]\.)/i);
