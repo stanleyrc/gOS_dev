@@ -245,6 +245,29 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(html).not.toContain("<thead>");
   });
 
+  it.each([
+    ["NM_013986.4::NM_002017.5", "EWSR1(NM_013986.4:exon 7) :: FLI1(NM_002017.5:exon 6)"],
+    [undefined, "EWSR1(7)::FLI1(6)"],
+  ])("uses one fusion identity in the table and Gene Fusion, with transcripts %j", async (transcript, identity) => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({ alterations: [{
+      gene: "EWSR1::FLI1", variant: "In-Frame Fusion Exon 7::Exon 6", tier: "1", type: "Fusion",
+      transcript, locus: "22:29683123,11:128651853",
+    }] });
+    expect(html).toContain(`<td class="gene-cell">${identity}</td>`);
+    expect(html).toContain(`<strong>Gene Fusion:</strong> ${identity}`);
+    expect(html).toContain("<td>chr22:29683123-chr11:128651853</td>");
+    expect(html).toContain("<strong>Breakpoint:</strong> chr22:29683123-chr11:128651853");
+  });
+
+  it("escapes supplied fusion transcript IDs in both display locations", async () => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({ alterations: [{
+      gene: "EWSR1::FLI1", variant: "In-Frame Fusion Exon 7::Exon 6", tier: "1", type: "Fusion",
+      transcript: ["<NM_013986.4>", "NM_002017.5"],
+    }] });
+    expect(html).not.toContain("<NM_013986.4>");
+    expect(html.split("EWSR1(&lt;NM_013986.4&gt;:exon 7)")).toHaveLength(3);
+  });
+
   it("renders negative DNA alongside positive RNA", async () => {
     const { html } = await new MyeloSeqHtmlRenderer().render({
       alterations: [report.alterations[1]],

@@ -211,6 +211,26 @@ describe("MyeloSeqDocxRenderer model", () => {
     });
   });
 
+  it.each([
+    ["NM_013986.4::NM_002017.5", "EWSR1(NM_013986.4:exon 7) :: FLI1(NM_002017.5:exon 6)"],
+    [undefined, "EWSR1(7)::FLI1(6)"],
+  ])("uses one fusion identity in the model and Word document, with transcripts %j", async (transcript, identity) => {
+    const source = { alterations: [{
+      gene: "EWSR1::FLI1", variant: "In-Frame Fusion Exon 7::Exon 6", tier: "1", type: "Fusion",
+      transcript, locus: "22:29683123,11:128651853",
+    }] };
+    const model = buildMyeloSeqDocxModel(source);
+    expect(model.resultTables[0].rows[0][0].value).toBe(identity);
+    expect(model.tierSections[0].findings[0].lines[0]).toEqual({ label: "Gene Fusion", value: identity });
+    expect(model.resultTables[0].rows[0][3].value).toBe("chr22:29683123-chr11:128651853");
+    expect(model.tierSections[0].findings[0].lines[1]).toEqual({
+      label: "Breakpoint", value: "chr22:29683123-chr11:128651853",
+    });
+    const { blob } = await new MyeloSeqDocxRenderer().render(source);
+    const { documentXml } = await unpackDocumentXml(blob);
+    expect(documentXml.split(identity)).toHaveLength(3);
+  });
+
   it("uses NA when primary site is disabled and keeps Clinical History unmapped", () => {
     const model = buildMyeloSeqDocxModel({
       ...report,

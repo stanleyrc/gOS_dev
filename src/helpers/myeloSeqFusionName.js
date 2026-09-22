@@ -42,13 +42,20 @@ function parseFormattedFusionGeneExons(value) {
   if (parts.length !== 2) return undefined;
 
   const parsed = parts.map((part) =>
-    part.trim().match(/^([^\s():]+)\s*\(\s*(?:exon\s*)?([^\s():]+)\s*\)$/i),
+    part.trim().match(/^([^\s():]+)\s*\(\s*(?:([^\s():]+)\s*:\s*)?(?:exon\s*)?([^\s():]+)\s*\)$/i),
   );
   if (parsed.some((match) => !match)) return undefined;
 
-  return parsed
-    .map((match) => `${match[1]}(${match[2]})`)
-    .join("::");
+  return parsed.map((match) => ({ gene: match[1], transcript: match[2], exon: match[3] }));
+}
+
+function parseFusionTranscripts(finding) {
+  const value = firstValue(finding?.transcript, finding?.Transcript, finding?.transcript_id);
+  const parts = Array.isArray(value) ? value : typeof value === "string" ? value.split("::") : [];
+  // A single ID has no safe partner assignment. Preserve empty slots in an explicit pair.
+  if (parts.length !== 2) return [];
+  return parts.map((part) => typeof part === "string" && /^[^\s():]+$/.test(part.trim())
+    ? part.trim() : undefined);
 }
 
 function parseFusionExons(value) {
@@ -70,18 +77,24 @@ export function getMyeloSeqFusionName(finding) {
 
 export function getMyeloSeqFusionGeneExons(finding) {
   const { gene, variant } = getFusionIdentityValues(finding);
-  const formattedIdentity =
-    parseFormattedFusionGeneExons(variant) ||
-    parseFormattedFusionGeneExons(gene);
-  if (formattedIdentity) return formattedIdentity;
-
-  const genes = hasValue(gene)
-    ? String(gene).split("::").map((value) => value.trim())
-    : [];
+  const formattedGene = parseFormattedFusionGeneExons(gene);
+  const formattedIdentity = parseFormattedFusionGeneExons(variant) || formattedGene;
+  const genes = formattedGene ? formattedGene.map((partner) => partner.gene)
+    : hasValue(gene) ? String(gene).split("::").map((value) => value.trim()) : [];
   const exons = parseFusionExons(variant);
-  if (genes.length === 2 && genes.every(Boolean) && exons) {
-    return `${genes[0]}(${exons[0]})::${genes[1]}(${exons[1]})`;
-  }
+  const partners = formattedIdentity || (genes.length === 2 && genes.every(Boolean) && exons
+    ? genes.map((name, index) => ({ gene: name, exon: exons[index] })) : undefined);
+  if (!partners) return getMyeloSeqFusionName(finding);
 
-  return getMyeloSeqFusionName(finding);
+  const transcripts = parseFusionTranscripts(finding);
+  const sourceGenes = genes.length ? genes : partners.map((partner) => partner.gene);
+  const paired = partners.map((partner) => {
+    const index = sourceGenes.indexOf(partner.gene);
+    const unambiguous = sourceGenes.length === 2 && new Set(sourceGenes).size === 2 && index >= 0;
+    const namedTranscript = formattedGene?.find((source) => source.gene === partner.gene)?.transcript;
+    return { ...partner, transcript: partner.transcript || namedTranscript || (unambiguous ? transcripts[index] : undefined) };
+  });
+  return paired.map(({ gene: name, exon, transcript }) => transcript
+    ? `${name}(${transcript}:exon ${exon})` : `${name}(${exon})`)
+    .join(paired.some((partner) => partner.transcript) ? " :: " : "::");
 }
