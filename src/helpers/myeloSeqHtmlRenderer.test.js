@@ -348,27 +348,29 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(finding.variant).toBe("p.Val617Phe / c.1849G>T");
   });
 
-  it("uses supplied variant types and adds numeric insertion sizes only for FLT3ITD", async () => {
+  it("labels FLT3 INDEL size in Variant Type without an extra column", async () => {
     const alterations = [
-      { gene: "FLT3", variant_type: "flt3itd", type: "Inframe", variant: "p.long / c.1740_1793dupA" },
+      { gene: "FLT3", tier: "1", variant_type: "indel", type: "Inframe", variant: "p.Glu598_Tyr599insValThrGlySerSerAspAsnGluTyrPheTyrValAspPheArgGluTyrGlu / c.1740_1793dup" },
       { gene: "FLT3", variant_type: "snv", type: "Missense", variant: "c.2503G>T" },
       { gene: "CALR", variant_type: "indel", variant: "c.1154_1155insTTGTC" },
       { gene: "BCR::ABL1", variant_type: "fusion", type: "Other", variant: "BCR(14)::ABL1(2)" },
     ];
     const { html } = await new MyeloSeqHtmlRenderer().render({ alterations });
-    expect(html).toContain("<th>Insertion Size</th>");
-    expect(html).toContain("<td>FLT3ITD</td><td>54</td>");
-    expect(html).toContain("<td>SNV</td><td></td>");
-    expect(html).toContain("<td>INDEL</td><td></td>");
+    expect(html).not.toContain("<th>Insertion Size</th>");
+    expect(html).toContain("<td>INDEL 54(bp)</td>");
+    expect(html).toContain("<td>c.1740_1793dup, p.V581_E598dup</td>");
+    expect(html).toContain("<strong>Variant:</strong> FLT3, c.1740_1793dup, p.V581_E598dup");
+    expect(html).toContain("<td>SNV</td>");
+    expect(html).toContain("<td>INDEL</td>");
     expect(html).toContain("<td>FUSION</td>");
     expect(html).not.toContain("54 bp");
     expect(html).not.toContain("Missense");
     expect(html).not.toContain("Inframe");
     const withoutItd = await new MyeloSeqHtmlRenderer().render({ alterations: alterations.slice(1) });
     expect(withoutItd.html).not.toContain("<th>Insertion Size</th>");
-    const invalidItd = await new MyeloSeqHtmlRenderer().render({ alterations: [{ variant_type: "FLT3ITD", variant: "p.only" }] });
-    expect(invalidItd.html).toContain("<th>Insertion Size</th>");
-    expect(invalidItd.html).toContain("<td>FLT3ITD</td><td></td>");
+    const invalidItd = await new MyeloSeqHtmlRenderer().render({ alterations: [{ gene: "FLT3", variant_type: "INDEL", variant: "p.only" }] });
+    expect(invalidItd.html).not.toContain("<th>Insertion Size</th>");
+    expect(invalidItd.html).toContain("<td>INDEL</td>");
   });
 
   it("renders VAF to two places without inventing zero for missing values", async () => {

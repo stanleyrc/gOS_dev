@@ -1,10 +1,9 @@
 import { escapeHtml } from "./format";
 import {
-  formatMyeloSeqVariant,
+  formatMyeloSeqFindingVariant,
   formatMyeloSeqVaf,
   formatMyeloSeqDepth,
-  getMyeloSeqVariantType,
-  getMyeloSeqInsertionSize,
+  formatMyeloSeqVariantType,
   isMyeloSeqFusion as isFusion,
 } from "./myeloSeqReportFormatting";
 import {
@@ -93,17 +92,12 @@ function buildSequenceTables(report) {
   const fusionFindings = alterations.filter(isFusion);
   const baseColumns = [
     { label: "Gene", required: true, value: (finding) => finding.gene, className: "gene-cell" },
-    { label: "Variant", required: true, value: (finding) => formatMyeloSeqVariant(finding.variant) },
+    { label: "Variant", required: true, value: formatMyeloSeqFindingVariant },
     { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: getMyeloSeqVariantType },
+    { label: "Variant Type", required: true, value: formatMyeloSeqVariantType },
   ];
   const sequenceColumns = [
     ...baseColumns,
-    {
-      label: "Insertion Size",
-      required: sequenceFindings.some((finding) => getMyeloSeqVariantType(finding) === "FLT3ITD"),
-      value: getMyeloSeqInsertionSize,
-    },
     { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF) },
     { label: "Depth", value: (finding) => formatMyeloSeqDepth(finding.depth) },
     { label: "Transcript", value: (finding) => finding.transcript },
@@ -125,7 +119,7 @@ function buildSequenceTables(report) {
     {
       label: "Variant Type",
       required: true,
-      value: getMyeloSeqVariantType,
+      value: formatMyeloSeqVariantType,
       width: "21%",
     },
     {
@@ -176,7 +170,7 @@ function renderFinding(finding) {
       )
     : renderInterpretationLine(
         "Variant",
-        [finding.gene, formatMyeloSeqVariant(finding.variant)].filter(hasValue).join(", "),
+        [finding.gene, formatMyeloSeqFindingVariant(finding)].filter(hasValue).join(", "),
       );
   const breakpoint = fusion
     ? renderInterpretationLine("Breakpoint", finding.locus)

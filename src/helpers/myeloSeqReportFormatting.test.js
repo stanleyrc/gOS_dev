@@ -1,6 +1,8 @@
 /** @jest-environment node */
 import {
   formatMyeloSeqVariant,
+  formatMyeloSeqFindingVariant,
+  formatMyeloSeqVariantType,
   formatMyeloSeqVaf,
   formatMyeloSeqDepth,
   getMyeloSeqVariantType,
@@ -24,7 +26,7 @@ describe("MyeloSeq variant types and insertion sizes", () => {
 
   it.each([
     ["c.1740_1793dupGGTGAC", 54],
-    ["p.Glu598_Tyr599insValThrGly / c.1740_1793*", 54],
+    ["p.Glu598_Tyr599insValThrGly / c.1740_1793*", undefined],
     ["c.1740_1740dupA", 1],
     ["c.1793_1740dupA", undefined],
     ["c.0_10dupA", undefined],
@@ -34,13 +36,64 @@ describe("MyeloSeq variant types and insertion sizes", () => {
     ["p.Glu598_Tyr599insValThrGly", undefined],
     [undefined, undefined],
   ])("computes the inclusive c. range for %s", (variant, expected) => {
-    expect(getMyeloSeqInsertionSize({ variant_type: "flt3itd", variant })).toBe(expected);
+    expect(getMyeloSeqInsertionSize({ gene: "FLT3", variant_type: "indel", variant })).toBe(expected);
   });
 
   it("uses source Variant and never calculates sizes for other types", () => {
-    expect(getMyeloSeqInsertionSize({ variant_type: "FLT3ITD", sourceVariant: "c.1740_1793dupA", variant: "p.only" })).toBe(54);
-    expect(getMyeloSeqInsertionSize({ variant_type: "FLT3ITD", Variant: "c.1740_1793dupA" })).toBe(54);
-    expect(getMyeloSeqInsertionSize({ variant_type: "INDEL", variant: "c.1740_1793dupA" })).toBeUndefined();
+    expect(getMyeloSeqInsertionSize({ gene: "FLT3", variant_type: "INDEL", sourceVariant: "c.1740_1793dupA", variant: "p.only" })).toBe(54);
+    expect(getMyeloSeqInsertionSize({ gene: "FLT3", variant_type: "FLT3ITD", Variant: "c.1740_1793dupA" })).toBe(54);
+    expect(getMyeloSeqInsertionSize({ gene: "CALR", variant_type: "INDEL", variant: "c.1740_1793dupA" })).toBeUndefined();
+  });
+});
+
+describe("FLT3 INDEL duplication display", () => {
+  const coding = "c.1740_1793dupGGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGA";
+  const protein = "p.Glu598_Tyr599insValThrGlySerSerAspAsnGluTyrPheTyrValAspPheArgGluTyrGlu";
+  const finding = { gene: "FLT3", variant_type: "INDEL", variant: `${protein} / ${coding}` };
+
+  it("matches protein duplication to the coding range and labels the type exactly", () => {
+    expect(formatMyeloSeqFindingVariant(finding)).toBe("c.1740_1793dup, p.V581_E598dup");
+    expect(formatMyeloSeqVariantType(finding)).toBe("INDEL 54(bp)");
+    expect(finding.variant).toBe(`${protein} / ${coding}`);
+    expect(formatMyeloSeqFindingVariant({ ...finding, sourceVariant: finding.variant, variant: "p.only" }))
+      .toBe("c.1740_1793dup, p.V581_E598dup");
+  });
+
+  it("shortens existing matching dup annotations and supports legacy FLT3ITD", () => {
+    const dup = { ...finding, variant_type: "FLT3ITD", variant: `${coding} / p.Val581_Glu598dupVTGSSDNEYFYVDFREYE` };
+    expect(formatMyeloSeqFindingVariant(dup)).toBe("c.1740_1793dup, p.V581_E598dup");
+    expect(formatMyeloSeqVariantType(dup)).toBe("INDEL 54(bp)");
+    expect(formatMyeloSeqFindingVariant({ ...finding, variant: "c.1740_1742dupGAA / p.Glu581_Tyr582insGlu" }))
+      .toBe("c.1740_1742dup, p.E581dup");
+    expect(formatMyeloSeqFindingVariant({ ...finding, variant: coding })).toBe("c.1740_1793dup");
+  });
+
+  it.each([
+    { gene: "CALR" }, { gene: "ASXL1" }, { variant_type: "SNV" },
+  ])("does not shorten or reconcile unrelated findings: %j", (override) => {
+    expect(formatMyeloSeqFindingVariant({ ...finding, ...override }))
+      .toBe(`${coding}, p.E598_Y599insVTGSSDNEYFYVDFREYE`);
+    expect(formatMyeloSeqVariantType({ ...finding, ...override })).toBe(override.variant_type || "INDEL");
+  });
+
+  it.each([
+    "c.1740_1793del / p.Glu598_Tyr599insValGlu",
+    "c.1740_1793insA / p.Glu598_Tyr599insValGlu",
+    "c.1740_1793dupA / p.E598_Y599insVTGSSDNEYFYVDFREYE",
+    "c.1740_1793dup / p.E598_Y599insVTG",
+    "c.1740_1792dup / p.E598_Y599insVTGSSDNEYFYVDFREYE",
+    "c.1740_1793dup / p.E597_Y598insVTGSSDNEYFYVDFREYE",
+    "c.1740_1793dup / p.E598_Y600insVTGSSDNEYFYVDFREYE",
+    "c.1740_1793dup / p.E598_Y599insVTGSSDNEYFYVDFREYA",
+    "c.1740_1793dup / p.V580_E598dup",
+    "c.1740_1793dup / p.unknown",
+  ])("preserves unsupported or inconsistent annotations: %s", (variant) => {
+    expect(formatMyeloSeqFindingVariant({ ...finding, variant })).toBe(formatMyeloSeqVariant(variant));
+  });
+
+  it("does not infer a size for FLT3 deletions or missing coding ranges", () => {
+    expect(formatMyeloSeqVariantType({ ...finding, variant: "c.1740_1793del" })).toBe("INDEL");
+    expect(formatMyeloSeqVariantType({ ...finding, variant: "p.only" })).toBe("INDEL");
   });
 });
 

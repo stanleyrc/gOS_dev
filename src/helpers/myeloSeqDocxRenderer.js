@@ -18,11 +18,10 @@ import {
   getMyeloSeqFusionName,
 } from "./myeloSeqFusionName";
 import {
-  formatMyeloSeqVariant,
+  formatMyeloSeqFindingVariant,
   formatMyeloSeqVaf,
   formatMyeloSeqDepth,
-  getMyeloSeqVariantType,
-  getMyeloSeqInsertionSize,
+  formatMyeloSeqVariantType,
   isMyeloSeqFusion as isFusion,
 } from "./myeloSeqReportFormatting";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
@@ -183,9 +182,9 @@ function buildResultTables(report) {
   const fusionFindings = alterations.filter(isFusion);
   const baseColumns = [
     { label: "Gene", required: true, value: (finding) => finding.gene, italics: true },
-    { label: "Variant", required: true, value: (finding) => formatMyeloSeqVariant(finding.variant) },
+    { label: "Variant", required: true, value: formatMyeloSeqFindingVariant },
     { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: getMyeloSeqVariantType },
+    { label: "Variant Type", required: true, value: formatMyeloSeqVariantType },
   ];
 
   return [
@@ -193,11 +192,6 @@ function buildResultTables(report) {
       "DNA Sequencing results",
       [
         ...baseColumns,
-        {
-          label: "Insertion Size",
-          required: sequenceFindings.some((finding) => getMyeloSeqVariantType(finding) === "FLT3ITD"),
-          value: getMyeloSeqInsertionSize,
-        },
         { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF) },
         {
           label: "Depth",
@@ -221,7 +215,7 @@ function buildResultTables(report) {
         {
           label: "Variant Type",
           required: true,
-          value: getMyeloSeqVariantType,
+          value: formatMyeloSeqVariantType,
         },
         {
           label: "Locus",
@@ -243,7 +237,7 @@ function buildFindingModel(finding) {
   const fusion = isFusion(finding);
   const identity = fusion
     ? getMyeloSeqFusionName(finding)
-    : [finding.gene, formatMyeloSeqVariant(finding.variant)].filter(hasValue).join(", ");
+    : [finding.gene, formatMyeloSeqFindingVariant(finding)].filter(hasValue).join(", ");
   const lines = [];
   if (hasValue(identity)) {
     lines.push({

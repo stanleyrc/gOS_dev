@@ -11,16 +11,85 @@ export function isMyeloSeqFusion(finding) {
   return /fusion/i.test(`${finding?.eventType || ""} ${finding?.type || ""}`);
 }
 
-export function getMyeloSeqInsertionSize(finding) {
-  if (getMyeloSeqVariantType(finding) !== "FLT3ITD") return undefined;
-  const variant = String(finding?.sourceVariant ?? finding?.Variant ?? finding?.variant ?? "");
-  const range = variant.match(/\bc\.(\d+)_(\d+)(?=[a-z*]|\s|$)/i);
+function isFlt3Indel(finding) {
+  const gene = String(finding?.gene ?? finding?.Gene ?? "").trim().toUpperCase();
+  return gene === "FLT3" && ["INDEL", "FLT3ITD"].includes(getMyeloSeqVariantType(finding));
+}
+
+function sourceVariant(finding) {
+  return String(finding?.sourceVariant ?? finding?.Variant ?? finding?.variant ?? "");
+}
+
+function getFlt3Duplication(finding) {
+  if (!isFlt3Indel(finding)) return undefined;
+  const range = sourceVariant(finding).match(/\bc\.(\d+)(?:_(\d+))?dup([ACGTRYSWKMBDHVN]*)(?=$|[\s,/])/i);
   if (!range) return undefined;
   const start = Number(range[1]);
-  const end = Number(range[2]);
-  return Number.isSafeInteger(start) && Number.isSafeInteger(end) && start > 0 && end >= start
-    ? end - start + 1
-    : undefined;
+  const end = Number(range[2] || range[1]);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start <= 0 || end < start) {
+    return undefined;
+  }
+  return {
+    coding: `c.${range[1]}${range[2] ? `_${range[2]}` : ""}dup`,
+    end,
+    size: end - start + 1,
+    sequenceMatchesRange: !range[3] || range[3].length === end - start + 1,
+  };
+}
+
+export function getMyeloSeqInsertionSize(finding) {
+  return getFlt3Duplication(finding)?.size;
+}
+
+export function formatMyeloSeqVariantType(finding) {
+  const type = isFlt3Indel(finding) ? "INDEL" : getMyeloSeqVariantType(finding);
+  const size = getMyeloSeqInsertionSize(finding);
+  return size === undefined ? type : `${type} ${size}(bp)`;
+}
+
+// Reconcile only an explicitly annotated, in-frame FLT3 duplication. The coding
+// range alone cannot supply amino acid identities: use the inserted peptide and
+// require its length, position and final residue to agree with the source.
+function matchingProteinDuplication(protein, duplication) {
+  if (duplication.size % 3 !== 0) return undefined;
+  const length = duplication.size / 3;
+  const end = Math.ceil(duplication.end / 3);
+  const start = end - length + 1;
+  if (start <= 0) return undefined;
+  const insertion = protein.match(/^p\.([A-Z])(\d+)_([A-Z])(\d+)ins([ACDEFGHIKLMNPQRSTVWY]+)$/);
+  if (insertion) {
+    const peptide = insertion[5];
+    if (Number(insertion[2]) !== end || Number(insertion[4]) !== end + 1 ||
+        peptide.length !== length || peptide[peptide.length - 1] !== insertion[1]) {
+      return undefined;
+    }
+    return length === 1
+      ? `p.${peptide[0]}${start}dup`
+      : `p.${peptide[0]}${start}_${insertion[1]}${end}dup`;
+  }
+  const existing = protein.match(/^p\.([A-Z])(\d+)(?:_([A-Z])(\d+))?dup([ACDEFGHIKLMNPQRSTVWY]*)$/);
+  if (!existing || Number(existing[2]) !== start || Number(existing[4] || existing[2]) !== end) {
+    return undefined;
+  }
+  const peptide = existing[5];
+  if (peptide && (peptide.length !== length || peptide[0] !== existing[1] ||
+      peptide[peptide.length - 1] !== (existing[3] || existing[1]))) {
+    return undefined;
+  }
+  return protein.slice(0, protein.indexOf("dup") + 3);
+}
+
+export function formatMyeloSeqFindingVariant(finding) {
+  const variant = formatMyeloSeqVariant(isFlt3Indel(finding)
+    ? sourceVariant(finding)
+    : finding?.variant ?? finding?.Variant);
+  const duplication = getFlt3Duplication(finding);
+  if (!duplication || !duplication.sequenceMatchesRange) return variant;
+  const parts = variant.split(/\s*,\s*(?=p\.)/);
+  if (parts.length === 1 && /^c\./.test(parts[0])) return duplication.coding;
+  if (parts.length !== 2 || !/^c\./.test(parts[0])) return variant;
+  const protein = matchingProteinDuplication(parts[1], duplication);
+  return protein ? `${duplication.coding}, ${protein}` : variant;
 }
 
 export function formatMyeloSeqDepth(value) {

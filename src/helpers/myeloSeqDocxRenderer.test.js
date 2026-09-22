@@ -303,24 +303,25 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(finding.variant).toBe("p.Val617Phe / c.1849G>T");
   });
 
-  it("uses supplied types and conditionally includes a numeric insertion-size column", () => {
+  it("labels FLT3 INDEL size in Variant Type without an extra column", () => {
     const alterations = [
-      { gene: "FLT3", variant_type: "flt3itd", type: "Inframe", variant: "p.long / c.1740_1793dupA" },
+      { gene: "FLT3", tier: "1", variant_type: "indel", type: "Inframe", variant: "p.Glu598_Tyr599insValThrGlySerSerAspAsnGluTyrPheTyrValAspPheArgGluTyrGlu / c.1740_1793dup" },
       { gene: "FLT3", variant_type: "snv", type: "Missense", variant: "c.2503G>T" },
       { gene: "CALR", variant_type: "indel", variant: "c.1154_1155insTTGTC" },
       { gene: "BCR::ABL1", variant_type: "fusion", type: "Other", variant: "BCR(14)::ABL1(2)" },
     ];
     const model = buildMyeloSeqDocxModel({ alterations });
     const dna = model.resultTables[0];
-    expect(dna.columns[4]).toBe("Insertion Size");
-    expect(dna.rows.map((row) => row.slice(3).map(({ value }) => value)))
-      .toEqual([["FLT3ITD", "54"], ["SNV", ""], ["INDEL", ""]]);
+    expect(dna.columns).not.toContain("Insertion Size");
+    expect(dna.rows.map((row) => row[3].value)).toEqual(["INDEL 54(bp)", "SNV", "INDEL"]);
+    expect(dna.rows[0][1].value).toBe("c.1740_1793dup, p.V581_E598dup");
+    expect(model.tierSections[0].findings[0].lines[0].value).toBe("FLT3, c.1740_1793dup, p.V581_E598dup");
     expect(model.resultTables[1].rows[0][2].value).toBe("FUSION");
     const withoutItd = buildMyeloSeqDocxModel({ alterations: alterations.slice(1) });
     expect(withoutItd.resultTables[0].columns).not.toContain("Insertion Size");
-    const invalidItd = buildMyeloSeqDocxModel({ alterations: [{ variant_type: "FLT3ITD", variant: "p.only" }] });
-    expect(invalidItd.resultTables[0].columns).toContain("Insertion Size");
-    expect(invalidItd.resultTables[0].rows[0][4].value).toBe("");
+    const invalidItd = buildMyeloSeqDocxModel({ alterations: [{ gene: "FLT3", variant_type: "INDEL", variant: "p.only" }] });
+    expect(invalidItd.resultTables[0].columns).not.toContain("Insertion Size");
+    expect(invalidItd.resultTables[0].rows[0][3].value).toBe("INDEL");
   });
 
   it("renders VAF to two places and preserves missing values", () => {
