@@ -13,10 +13,7 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
-import {
-  getMyeloSeqFusionGeneExons,
-  getMyeloSeqFusionName,
-} from "./myeloSeqFusionName";
+import { getMyeloSeqFusionGeneExons } from "./myeloSeqFusionName";
 import {
   formatMyeloSeqFindingVariant,
   formatMyeloSeqFusionLocus,
@@ -238,7 +235,7 @@ function buildResultTables(report) {
 function buildFindingModel(finding) {
   const fusion = isFusion(finding);
   const identity = fusion
-    ? getMyeloSeqFusionName(finding)
+    ? getMyeloSeqFusionGeneExons(finding)
     : [finding.gene, formatMyeloSeqFindingVariant(finding)].filter(hasValue).join(", ");
   const lines = [];
   if (hasValue(identity)) {
@@ -248,7 +245,7 @@ function buildFindingModel(finding) {
     });
   }
   if (fusion && hasValue(finding.locus)) {
-    lines.push({ label: "Breakpoint", value: String(finding.locus) });
+    lines.push({ label: "Breakpoint", value: formatMyeloSeqFusionLocus(finding.locus) });
   }
   lines.push({
     label: "Comments",

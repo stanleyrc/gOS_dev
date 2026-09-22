@@ -7,10 +7,7 @@ import {
   formatMyeloSeqVariantType,
   isMyeloSeqFusion as isFusion,
 } from "./myeloSeqReportFormatting";
-import {
-  getMyeloSeqFusionGeneExons,
-  getMyeloSeqFusionName,
-} from "./myeloSeqFusionName";
+import { getMyeloSeqFusionGeneExons } from "./myeloSeqFusionName";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 import {
   hasFailedMyeloSeqQc,
@@ -166,14 +163,14 @@ function renderFinding(finding) {
   const heading = fusion
     ? renderInterpretationLine(
         "Gene Fusion",
-        getMyeloSeqFusionName(finding),
+        getMyeloSeqFusionGeneExons(finding),
       )
     : renderInterpretationLine(
         "Variant",
         [finding.gene, formatMyeloSeqFindingVariant(finding)].filter(hasValue).join(", "),
       );
   const breakpoint = fusion
-    ? renderInterpretationLine("Breakpoint", finding.locus)
+    ? renderInterpretationLine("Breakpoint", formatMyeloSeqFusionLocus(finding.locus))
     : "";
   const comments = renderComments(finding);
 

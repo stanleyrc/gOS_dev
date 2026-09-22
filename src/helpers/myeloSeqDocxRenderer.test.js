@@ -132,7 +132,7 @@ describe("MyeloSeqDocxRenderer model", () => {
               { label: "Gene Fusion", value: "BCR(14)::ABL1(2)" },
               {
                 label: "Breakpoint",
-                value: "chr22:23632600::chr9:133729451",
+                value: "chr22:23632600-chr9:133729451",
               },
               { label: "Comments", value: "BCR::ABL1 variant summary" },
             ],
@@ -199,7 +199,11 @@ describe("MyeloSeqDocxRenderer model", () => {
     ]);
     expect(model.tierSections[0].findings[0].lines[0]).toEqual({
       label: "Gene Fusion",
-      value: "RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",
+      value: "RUNX1(3)::RUNX1T1(3)",
+    });
+    expect(model.tierSections[0].findings[0].lines[1]).toEqual({
+      label: "Breakpoint",
+      value: model.resultTables[0].rows[0][3].value,
     });
     expect(model.tierSections[1].findings[0].lines[0]).toEqual({
       label: "Gene Fusion",

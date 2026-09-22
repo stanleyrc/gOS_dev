@@ -107,7 +107,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     );
     expect(result.html).not.toContain("Fusion results");
     expect(result.html).toContain("NM_004972.4");
-    expect(result.html).toContain("chr22:23632600::chr9:133729451");
+    expect(result.html).toContain("chr22:23632600-chr9:133729451");
 
     expect(result.html).toContain(
       "<strong>Variant:</strong> JAK2, c.1849G&gt;T, p.V617F",
@@ -116,7 +116,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<strong>Gene Fusion:</strong> BCR(14)::ABL1(2)",
     );
     expect(result.html).toContain(
-      "<strong>Breakpoint:</strong> chr22:23632600::chr9:133729451",
+      "<strong>Breakpoint:</strong> chr22:23632600-chr9:133729451",
     );
     expect(result.html).toContain(
       '<strong>Comments:</strong> <span class="report-comment-value">JAK2 variant summary</span>',
@@ -190,11 +190,10 @@ describe("MyeloSeqHtmlRenderer", () => {
       '<td class="gene-cell">RUNX1(3)::RUNX1T1(3)</td><td>1</td><td>FUSION</td><td>chr21:36159848-37377215-chr8:92966953-93115764</td>',
     );
     expect(result.html).toContain(
-      "<strong>Gene Fusion:</strong> RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",
+      "<strong>Gene Fusion:</strong> RUNX1(3)::RUNX1T1(3)",
     );
-    expect(result.html).not.toContain(
-      '<td class="gene-cell">RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3</td>',
-    );
+    expect(result.html).not.toContain("RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3");
+    expect(result.html).toContain("<strong>Breakpoint:</strong> chr21:36159848-37377215-chr8:92966953-93115764");
     expect(result.html).toContain(
       '<td class="gene-cell">Legacy Fusion Exon 1::Exon 2</td><td>2</td><td>FUSION</td><td></td>',
     );
