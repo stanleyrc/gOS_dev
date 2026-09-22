@@ -3,6 +3,7 @@
 /* eslint-disable import/first */
 
 import React from "react";
+jest.mock("../../helpers/field", () => class TestField {});
 
 jest.mock("react-i18next", () => ({
   withTranslation: () => (Component) => Component,
@@ -42,7 +43,7 @@ jest.mock("../../redux/interpretations/actions", () => ({
 
 import { exportReport, previewReport } from "../../helpers/reportExporter";
 import interpretationsActions from "../../redux/interpretations/actions";
-import { mapDispatchToProps, ReportButtonsPanel } from ".";
+import { mapDispatchToProps, mapStateToProps, ReportButtonsPanel } from ".";
 
 function deferred() {
   let resolve;
@@ -58,6 +59,7 @@ function createProps(overrides = {}) {
   return {
     t: (key) => key,
     loading: false,
+    interpretationsReady: true,
     id: "case-1",
     dataset: { id: "dataset-1" },
     mergedEvents: {
@@ -104,6 +106,66 @@ describe("ReportButtonsPanel report preview", () => {
     jest.clearAllMocks();
     exportReport.mockResolvedValue(undefined);
     previewReport.mockResolvedValue("<html>Report</html>");
+  });
+
+  it("blocks preview/export until interpretations hydrate or finish saving", async () => {
+    const component = createComponent({ interpretationsReady: false });
+    await component.handlePreviewReport();
+    await component.handleExportNotes();
+    expect(previewReport).not.toHaveBeenCalled();
+    expect(exportReport).not.toHaveBeenCalled();
+    expect(React.Children.toArray(component.render().props.children)[0].props.disabled).toBe(true);
+  });
+
+  it("maps full interpretation state into the actual report payload", async () => {
+    const state = {
+      CaseReport: { id: "case-1", metadata: { primary_site: "na" } },
+      Settings: {
+        dataset: { id: "dataset-1" },
+        data: {},
+      },
+      PopulationStatistics: { loading: false }, FilteredEvents: { filteredEvents: [] },
+      Interpretations: { status: "succeeded", loadedContext: { caseId: "case-1", datasetId: "dataset-1" },
+        selected: { PRIMARY_SITE: "saved" }, byId: { saved: { alterationId: "PRIMARY_SITE", isCurrentUser: true, caseId: "case-1", datasetId: "dataset-1", data: { primarySite: { value: "bone marrow aspirate", label: "bone marrow aspirate" } } } } },
+    };
+    const mapped = mapStateToProps(state);
+    expect(mapped.Interpretations).toBe(state.Interpretations);
+    expect(mapped.Settings).toBe(state.Settings);
+    expect(mapped.primarySiteLabel).toBe("bone marrow aspirate");
+    expect(mapped.interpretationsReady).toBe(true);
+    const component = createComponent(mapped);
+    await component.handlePreviewReport();
+    expect(previewReport.mock.calls[0][0].Interpretations).toBe(state.Interpretations);
+  });
+
+  it("closes stale HTML when primary site, report style, or interpretations change", () => {
+    for (const changed of [
+      { primarySiteLabel: "bone marrow aspirate" },
+      { dataset: { id: "dataset-1", reportStyle: "classic" } },
+      { interpretationsReady: false },
+    ]) {
+      const component = createComponent({ primarySiteLabel: "na" });
+      const previous = component.props;
+      component.props = { ...previous, ...changed };
+      component.componentDidUpdate(previous);
+      expect(component.state.previewVisible).toBe(false);
+      expect(component.state.previewHtml).toBeNull();
+    }
+  });
+
+  it("ignores a closed preview's late HTML even after reopening the same case", async () => {
+    const first = deferred();
+    const second = deferred();
+    previewReport.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const component = createComponent();
+    const firstRequest = component.handlePreviewReport();
+    component.handleClosePreview();
+    const secondRequest = component.handlePreviewReport();
+    second.resolve("<html>new</html>");
+    await secondRequest;
+    first.resolve("<html>old</html>");
+    await firstRequest;
+    expect(component.state.previewHtml).toBe("<html>new</html>");
   });
 
   it("renders View Report as a round pill button", () => {
@@ -241,6 +303,12 @@ describe("ReportButtonsPanel report reset", () => {
       component.props.dataset,
     );
 
+    // Real reducer transitions invalidate readiness and clear the site while
+    // deletion is in progress; they must not cancel this reset's cleanup.
+    const previousProps = component.props;
+    component.props = { ...previousProps, interpretationsReady: false, primarySiteLabel: "NA" };
+    component.componentDidUpdate(previousProps);
+    expect(component.state.previewVisible).toBe(true);
     clearing.resolve({ caseId: "case-1" });
     await reset;
 

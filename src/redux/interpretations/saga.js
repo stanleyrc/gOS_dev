@@ -5,8 +5,9 @@ import {
   put,
   call,
   select,
+  take,
 } from "redux-saga/effects";
-import { getCurrentState } from "./selectors";
+import { getCurrentState, hasPendingInterpretationWrites } from "./selectors";
 import { getActiveRepository } from "../../services/repositories";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import actions from "./actions";
@@ -64,7 +65,23 @@ export function* fetchInterpretationsForCase(action) {
     datasetId = dataset?.id;
     const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
     const repository = getActiveRepository({ dataset });
-    const allInterpretations = yield call([repository, repository.getAll]);
+    // Do not publish a snapshot read before an overlapping write completed.
+    let snapshotState = state;
+    let allInterpretations;
+    while (true) {
+      if (!isActiveCaseDataset(snapshotState, caseId, datasetId)) return;
+      if (hasPendingInterpretationWrites(snapshotState, caseId, datasetId)) {
+        yield take(actions.INTERPRETATION_WRITE_FINISHED);
+        snapshotState = yield select();
+        continue;
+      }
+      const version = snapshotState.Interpretations?.writeVersion || 0;
+      allInterpretations = yield call([repository, repository.getAll]);
+      snapshotState = yield select();
+      if (!isActiveCaseDataset(snapshotState, caseId, datasetId)) return;
+      if (version === (snapshotState.Interpretations?.writeVersion || 0) &&
+          !hasPendingInterpretationWrites(snapshotState, caseId, datasetId)) break;
+    }
     const interpretationsForCase = allInterpretations.filter(
       (interpretation) =>
         acceptedCaseIds.has(interpretation.caseId) &&
@@ -109,11 +126,10 @@ export function* fetchInterpretationsForCase(action) {
       }
     }
 
-    const latestState = yield select();
-    if (!isActiveCaseDataset(latestState, caseId, datasetId)) return;
-
     yield put({
       type: actions.FETCH_INTERPRETATIONS_FOR_CASE_SUCCESS,
+      caseId,
+      datasetId,
       byId,
       selected,
       allInterpretations,
@@ -144,6 +160,7 @@ export function* updateInterpretation(action) {
   const { interpretation, completion } = action;
   let caseId;
   let datasetId;
+  let writeStarted = false;
 
   try {
     const state = yield select(getCurrentState);
@@ -157,6 +174,8 @@ export function* updateInterpretation(action) {
     const dataset = state.Settings?.dataset;
     datasetId = state.Settings?.dataset.id;
     const repository = getActiveRepository({ dataset });
+    yield put({ type: actions.INTERPRETATION_WRITE_STARTED, caseId, datasetId });
+    writeStarted = true;
 
     const acceptedCaseIds = getAcceptedCaseIds(state, caseId);
     const candidateStorageCaseIds = Array.from(new Set([
@@ -346,12 +365,17 @@ export function* updateInterpretation(action) {
       });
     }
     yield call(acknowledgeCompletion, completion, updateError, null);
+  } finally {
+    if (writeStarted) {
+      yield put({ type: actions.INTERPRETATION_WRITE_FINISHED, caseId, datasetId });
+    }
   }
 }
 
 export function* clearCaseInterpretations(action) {
   const { caseId, completion, dataset: capturedDataset } = action;
   let datasetId;
+  let writeStarted = false;
 
   try {
     if (!caseId) {
@@ -364,6 +388,8 @@ export function* clearCaseInterpretations(action) {
     const repository = getActiveRepository({ dataset });
     const acceptedCaseIds = getAcceptedCaseIds(state, caseId, datasetId);
     const currentUserId = getCurrentUserId();
+    yield put({ type: actions.INTERPRETATION_WRITE_STARTED, caseId, datasetId });
+    writeStarted = true;
 
     for (const storedCaseId of acceptedCaseIds) {
       const interpretations = yield call(
@@ -408,11 +434,17 @@ export function* clearCaseInterpretations(action) {
       });
     }
     yield call(acknowledgeCompletion, completion, clearError, null);
+  } finally {
+    if (writeStarted) {
+      yield put({ type: actions.INTERPRETATION_WRITE_FINISHED, caseId, datasetId });
+    }
   }
 }
 
-function* updateAuthorName(action) {
+export function* updateAuthorName(action) {
   const { authorId, newAuthorName } = action;
+  let datasetId;
+  let writeStarted = false;
 
   try {
     if (!authorId || !newAuthorName) {
@@ -421,8 +453,11 @@ function* updateAuthorName(action) {
 
     const state = yield select();
     const dataset = state.Settings?.dataset;
-    const datasetId = state.Settings?.dataset?.id;
+    datasetId = state.Settings?.dataset?.id;
     const repository = getActiveRepository({ dataset });
+    // Renaming an author may write records for several cases in this dataset.
+    yield put({ type: actions.INTERPRETATION_WRITE_STARTED, caseId: null, datasetId });
+    writeStarted = true;
     
     // Get all interpretations from repository
     const allInterpretations = yield call([repository, repository.getAll]);
@@ -471,6 +506,10 @@ function* updateAuthorName(action) {
       type: actions.UPDATE_AUTHOR_NAME_FAILED,
       error: error.message || "Failed to update author name",
     });
+  } finally {
+    if (writeStarted) {
+      yield put({ type: actions.INTERPRETATION_WRITE_FINISHED, caseId: null, datasetId });
+    }
   }
 }
 

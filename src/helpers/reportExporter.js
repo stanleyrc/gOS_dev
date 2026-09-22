@@ -1,7 +1,10 @@
+import { HtmlRenderer } from "./htmlRenderer";
 import { MyeloSeqDocxRenderer } from "./myeloSeqDocxRenderer";
 import { MyeloSeqHtmlRenderer } from "./myeloSeqHtmlRenderer";
 import { getUser } from './userAuth';
 import { datasetHasField } from './browseScope';
+import { getPrimarySite } from './primarySite';
+import { isMyeloSeqReportStyle } from './reportStyle';
 
 /**
  * Builds a report structure from Redux state with merged interpretations
@@ -32,10 +35,7 @@ function buildReportFromMergedState(state, mergedEvents, selectedEventUids = [])
       m?.tumor_details ?? m?.tumorDetails,
     ),
     disease: fieldString('disease', m?.disease),
-    primarySite: fieldString(
-      'primary_site',
-      m?.primary_site ?? m?.primarySite,
-    ),
+    primarySite: getPrimarySite(state)?.label || '',
     tmb: fieldNumber('tmb', m?.tmb?.score ?? m?.tmbScore ?? m?.tmb),
     msisensor: {
       msi_status: fieldString(
@@ -178,7 +178,10 @@ export async function previewReport(state, mergedEvents, selectedEventUids = [])
       getUser(),
       selectedEventUids,
     );
-    const renderer = new MyeloSeqHtmlRenderer();
+    const dataset = state?.Settings?.dataset || state?.dataset;
+    const renderer = isMyeloSeqReportStyle(dataset)
+      ? new MyeloSeqHtmlRenderer()
+      : new HtmlRenderer();
     const result = await renderer.render(report);
 
     return result.html;
@@ -189,11 +192,11 @@ export async function previewReport(state, mergedEvents, selectedEventUids = [])
 }
 
 /**
- * Exports the clinical report as a semantic DOCX file.
+ * Exports MyeloSeq as DOCX or the classic report as HTML.
  * @param {Object} state - Redux state
  * @param {Object} mergedEvents - Events merged with interpretations
  * @param {Array} selectedEventUids - Canonical event UIDs to include
- * @returns {Promise<Object>} DOCX renderer result
+ * @returns {Promise<Object>} Selected renderer result with a downloadable Blob
  */
 export async function exportReport(state, mergedEvents, selectedEventUids = []) {
   let anchor = null;
@@ -206,12 +209,23 @@ export async function exportReport(state, mergedEvents, selectedEventUids = []) 
       getUser(),
       selectedEventUids,
     );
-    const renderer = new MyeloSeqDocxRenderer();
-    const result = await renderer.render(report);
+    const dataset = state?.Settings?.dataset || state?.dataset;
+    const renderer = isMyeloSeqReportStyle(dataset)
+      ? new MyeloSeqDocxRenderer()
+      : new HtmlRenderer();
+    const rendered = await renderer.render(report);
+    const result = rendered.blob
+      ? rendered
+      : {
+          ...rendered,
+          blob: new Blob([rendered.html], {
+            type: rendered.mimeType || "text/html",
+          }),
+        };
     url = URL.createObjectURL(result.blob);
     anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = result.filename || "report.docx";
+    anchor.download = result.filename || "report.html";
     document.body.appendChild(anchor);
     anchor.click();
     return result;

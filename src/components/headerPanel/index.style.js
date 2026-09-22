@@ -3,7 +3,9 @@ import styled from "styled-components";
 const Wrapper = styled.div`
   .site-page-header {
     background: white;
-    padding: 16px 0px;
+    /* Detail tabs overlap the header's bottom edge; reserve their own row so
+       they cannot cover the primary-site control on short metadata headers. */
+    padding: 16px 0px 48px;
     margin: 0px 24px;
     .detail-title-breadcrumb {
       display: inline-flex;
@@ -39,6 +41,25 @@ const Wrapper = styled.div`
     .ant-page-header-heading-left,
     .ant-page-header-heading-title {
       cursor: default;
+    }
+    .ant-page-header-heading {
+      gap: 8px 16px;
+    }
+    .ant-page-header-heading-left {
+      flex: 1 1 620px;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      overflow: visible;
+    }
+    .ant-page-header-heading-title,
+    .ant-page-header-heading-sub-title {
+      margin-right: 0;
+      white-space: normal;
+      overflow: visible;
+    }
+    .metadata-header-toolbar,
+    .metadata-header-actions {
+      flex-wrap: wrap;
     }
     .detail-title-copy-button.ant-btn {
       appearance: none;
@@ -146,18 +167,44 @@ const Wrapper = styled.div`
     }
     .ant-pro-page-container-row {
       display: flex;
+      flex-wrap: wrap;
+      gap: 12px 32px;
       width: 100%;
     }
     .ant-pro-page-container-content,
     .ant-pro-page-container-main .ant-pro-page-container-title {
-      flex: auto;
-      width: 100%;
+      flex: 1 1 440px;
+      min-width: 0;
     }
     .ant-page-header-content {
       padding-top: 6px;
     }
     .page-header-content {
       display: flex;
+    }
+    .case-metadata-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .case-metadata-summary > .ant-avatar {
+      flex-shrink: 0;
+    }
+    .case-metadata-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+    .case-metadata-line {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
     .page-header-content .avatar-content {
       flex: 0 1 72px;
@@ -192,14 +239,17 @@ const Wrapper = styled.div`
       line-height: 28px;
     }
     .ant-pro-page-container-main .ant-pro-page-container-extraContent {
-      min-width: 242px;
-      margin-left: 88px;
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      margin-left: auto;
       text-align: right;
     }
     .extra-content {
-      zoom: 1;
-      float: right;
-      white-space: nowrap;
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      row-gap: 12px;
     }
     .extra-content .stat-item {
       position: relative;

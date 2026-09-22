@@ -61,6 +61,7 @@ jest.mock("../clinicalTrialsModal", () => ({
 jest.mock("../patientCaseSwitcher", () => "PatientCaseSwitcher");
 jest.mock("../copyIconButton", () => "CopyIconButton");
 jest.mock("../reportButtonsPanel", () => "ReportButtonsPanel");
+jest.mock("../primarySiteSelect", () => "PrimarySiteSelect");
 jest.mock("../../assets/images/cbioportal_icon.png", () => "cbioportal.png");
 jest.mock("../../assets/images/ctgov_logo.png", () => "ctgov.png");
 
@@ -88,6 +89,158 @@ const collectText = (node) => {
 };
 
 describe("HeaderPanel schema metadata", () => {
+  it.each([true, false])("shows the primary-site selector only when schema-enabled: %s", (enabled) => {
+    const component = new HeaderPanel({
+      t: (key) => key,
+      report: "case-1",
+      dataset: {
+        reportStyle: "myeloseq",
+        fields: enabled ? [{ id: "primary_site" }] : [],
+      },
+      metadata: { primary_site: "bone marrow aspirate" }, plots: [],
+    });
+    const find = (node) => {
+      if (Array.isArray(node)) return node.flatMap(find);
+      if (!React.isValidElement(node)) return [];
+      return [node, ...find(node.props.children)];
+    };
+    expect(find(component.render()).filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(enabled ? 1 : 0);
+  });
+
+  it("edits one existing site slot while retaining populated tumor metadata", () => {
+    const fields = ["tumor_type", "disease", "primary_site", "tumor_details"].map((id) => ({ id }));
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-1",
+      dataset: { reportStyle: "myeloseq", fields },
+      plots: [],
+      metadata: {
+        tumor_type: "CHOL", disease: "Adenocarcinoma", primary_site: "Liver",
+        tumor_details: "Intrahepatic cholangiocarcinoma",
+      },
+    });
+    const find = (node) => {
+      if (Array.isArray(node)) return node.flatMap(find);
+      if (!React.isValidElement(node)) return [];
+      return [node, ...find(node.props.children)];
+    };
+    const nodes = find(panel.render());
+    expect(nodes.find((node) => node.type === "Avatar").props.children).toBe("CHOL");
+    const line = nodes.find((node) => node.props.className === "case-metadata-line");
+    const children = React.Children.toArray(line.props.children);
+    expect(children.map((node) => node.type)).toEqual(["span", "PrimarySiteSelect", "span"]);
+    expect(collectText(children)).toEqual(["Adenocarcinoma", "Intrahepatic cholangiocarcinoma"]);
+    expect(nodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(1);
+    expect(nodes.some((node) => node.props.className === "ant-pro-page-container-extraContent")).toBe(false);
+  });
+
+  it("uses the selector when reportStyle is omitted", () => {
+    const fields = ["tumor_type", "disease", "primary_site", "tumor_details"].map((id) => ({ id }));
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-1",
+      dataset: { fields },
+      plots: [],
+      metadata: {
+        tumor_type: "CHOL",
+        disease: "Adenocarcinoma",
+        primary_site: "peripheral blood",
+        tumor_details: "Intrahepatic cholangiocarcinoma",
+      },
+    });
+    const find = (node) => {
+      if (Array.isArray(node)) return node.flatMap(find);
+      if (!React.isValidElement(node)) return [];
+      return [node, ...find(node.props.children)];
+    };
+    const nodes = find(panel.render());
+    const line = nodes.find((node) => node.props.className === "case-metadata-line");
+    const children = React.Children.toArray(line.props.children);
+    expect(children.map((node) => node.type)).toEqual(["span", "PrimarySiteSelect", "span"]);
+    expect(collectText(children)).toEqual([
+      "Adenocarcinoma",
+      "Intrahepatic cholangiocarcinoma",
+    ]);
+  });
+
+  it("shows raw primary site for an explicit classic report", () => {
+    const fields = ["disease", "primary_site", "tumor_details"].map((id) => ({ id }));
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-1",
+      dataset: { reportStyle: "classic", fields },
+      plots: [],
+      metadata: {
+        disease: "Adenocarcinoma",
+        primary_site: "Liver",
+        tumor_details: "Intrahepatic cholangiocarcinoma",
+      },
+    });
+    const find = (node) => {
+      if (Array.isArray(node)) return node.flatMap(find);
+      if (!React.isValidElement(node)) return [];
+      return [node, ...find(node.props.children)];
+    };
+    const nodes = find(panel.render());
+    const line = nodes.find((node) => node.props.className === "case-metadata-line");
+    const children = React.Children.toArray(line.props.children);
+    expect(children.map((node) => node.type)).toEqual(["span", "span", "span"]);
+    expect(collectText(children)).toEqual([
+      "Adenocarcinoma",
+      "Liver",
+      "Intrahepatic cholangiocarcinoma",
+    ]);
+    expect(nodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(0);
+  });
+
+  it.each([
+    ["missing", {}],
+    ["null", { primary_site: null }],
+    ["empty", { primary_site: "" }],
+    ["whitespace", { primary_site: "   " }],
+  ])("omits the primary-site element for %s raw metadata", (name, primarySiteMetadata) => {
+    const fields = ["disease", "primary_site", "tumor_details"].map((id) => ({ id }));
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-1",
+      dataset: { fields },
+      plots: [],
+      metadata: {
+        disease: "Adenocarcinoma",
+        tumor_details: "Details",
+        ...primarySiteMetadata,
+      },
+    });
+    const find = (node) => {
+      if (Array.isArray(node)) return node.flatMap(find);
+      if (!React.isValidElement(node)) return [];
+      return [node, ...find(node.props.children)];
+    };
+    const nodes = find(panel.render());
+    const line = nodes.find((node) => node.props.className === "case-metadata-line");
+    const children = React.Children.toArray(line.props.children);
+    expect(children.map((node) => node.type)).toEqual(["span", "span"]);
+    expect(collectText(children)).toEqual(["Adenocarcinoma", "Details"]);
+    expect(nodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(0);
+  });
+
+  it("keeps explicit lowercase na eligible for the selector", () => {
+    const panel = new HeaderPanel({
+      t: (key) => key,
+      report: "case-1",
+      dataset: { fields: [{ id: "primary_site" }] },
+      plots: [],
+      metadata: { primary_site: "na" },
+    });
+    const find = (node) => {
+      if (Array.isArray(node)) return node.flatMap(find);
+      if (!React.isValidElement(node)) return [];
+      return [node, ...find(node.props.children)];
+    };
+    expect(find(panel.render()).filter((node) => node.type === "PrimarySiteSelect"))
+      .toHaveLength(1);
+  });
+
   it("suppresses omitted raw values and preserves Purity/Ploidy with N/A", () => {
     const panel = new HeaderPanel({
       t: (key) => (key === "general.not-applicable" ? "N/A" : key),
@@ -328,8 +481,8 @@ describe("HeaderPanel schema metadata", () => {
       metadata: { pair: "CASE-42" },
     });
 
-    const pairTitle = panel.renderPairTitle("CASE-42");
-    const copyControl = pairTitle.props.copyControl;
+    const view = panel.renderPairTitle("CASE-42");
+    const copyControl = view.props.copyControl;
 
     expect(copyControl.type).toBe("CopyIconButton");
     expect(copyControl.props.value).toBe("CASE-42");

@@ -1,5 +1,8 @@
 {
   "gptKey": "",
+  "primarySiteOptions": {
+    "myeloseq": ["bone marrow aspirate", "peripheral blood", "na"]
+  },
   "coordinates": {
     "default": "hg19",
     "higlassMap": {

@@ -20,11 +20,7 @@ class ReportPreviewModal extends Component {
   handleCopyReport = async () => {
     const { html, loading } = this.props;
     const reportDocument = this.previewIframeRef.current?.contentDocument;
-    if (
-      loading ||
-      !html ||
-      !reportDocument?.querySelector(".report-document")
-    ) {
+    if (loading || !html || !reportDocument) {
       message.error("Report unavailable.");
       return;
     }

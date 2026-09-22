@@ -512,6 +512,13 @@
       "patient-level-description": "Filter case reports to this patient and compare gene sets in Aggregations.",
       "patient-level-aria-label": "View patient-level gene comparison for {{patientId}}"
     },
+    "primary-site": {
+      "label": "Primary site / specimen type",
+      "save-error": "Unable to save primary site. Your previous value is unchanged; please try again.",
+      "load-error": "Unable to load saved interpretations.",
+      "retry": "Retry",
+      "report-wait": "Wait for saved interpretations to load or finish saving before opening the report."
+    },
     "header-panel": {
       "view-report": "View Report",
       "qcMetrics": "Quality Control Metrics",

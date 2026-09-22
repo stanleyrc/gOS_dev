@@ -12,6 +12,26 @@ export const getCurrentState = (state) => state;
 export const getInterpretationsStatus = (state) => 
   state.Interpretations?.status || "idle";
 
+export const hasPendingInterpretationWrites = (
+  state, caseId = state.CaseReport?.id, datasetId = state.Settings?.dataset?.id,
+) => (state.Interpretations?.pendingWrites || []).some((context) =>
+  (context.caseId == null || `${context.caseId}` === `${caseId}`) &&
+  `${context.datasetId}` === `${datasetId}`,
+);
+
+// A completed save alone cannot establish that this case's stored data was read.
+export const areCaseInterpretationsReady = (state) => {
+  const { loadedContext, status } = state.Interpretations || {};
+  const caseId = state.CaseReport?.id;
+  const datasetId = state.Settings?.dataset?.id;
+  return Boolean(
+    caseId != null && datasetId != null && loadedContext &&
+    `${loadedContext.caseId}` === `${caseId}` &&
+    `${loadedContext.datasetId}` === `${datasetId}` &&
+    status !== "pending" && !hasPendingInterpretationWrites(state)
+  );
+};
+
 export const selectInterpretationsById = (state) => 
   state.Interpretations?.byId || {};
 

@@ -23,6 +23,8 @@ import {
 } from "../../helpers/utility";
 import { getNestedValue } from "../../helpers/metadata";
 import { datasetHasField } from "../../helpers/browseScope";
+import { isMyeloSeqReportStyle } from "../../helpers/reportStyle";
+import { getRawPrimarySite } from "../../helpers/primarySite";
 import { buildPatientLevelViewUrl } from "../../helpers/patientLevelView";
 import {
   valueFormat,
@@ -42,6 +44,7 @@ import PatientCaseSwitcher from "../patientCaseSwitcher";
 import { normalizePatientId } from "../patientCaseSwitcher/helpers";
 import CopyIconButton from "../copyIconButton";
 import ReportButtonsPanel from "../reportButtonsPanel";
+import PrimarySiteSelect from "../primarySiteSelect";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
 
 const { Text } = Typography;
@@ -157,7 +160,9 @@ export class HeaderPanel extends Component {
     const ploidy = fieldValue("ploidy");
     const inferred_sex = fieldValue("inferred_sex");
     const disease = fieldValue("disease");
-    const primary_site = fieldValue("primary_site");
+    const primarySite = datasetHasField(dataset, "primary_site")
+      ? getRawPrimarySite(metadata)
+      : null;
     const tumor_details = fieldValue("tumor_details");
     const treatment = fieldValue("treatment");
     const treatment_type = fieldValue("treatment_type");
@@ -350,6 +355,10 @@ export class HeaderPanel extends Component {
 
     const hasMetadataBadges =
       inferred_sex != null || Boolean(qcMetricsComponent);
+    const summaryFields = headerList.filter((field) =>
+      datasetHasField(dataset, field === "msisensor.label" ? "msisensor.score" : field),
+    );
+    const hasPurityPloidy = datasetHasField(dataset, "purity") || datasetHasField(dataset, "ploidy");
 
     return (
       <Wrapper>
@@ -452,66 +461,52 @@ export class HeaderPanel extends Component {
               <div className="ant-pro-page-container-row">
                 <div className="ant-pro-page-container-content">
                   <div className="page-header-content">
-                    <div className="avatar-content0">
-                      <Space direction="vertical" size="small">
-                        <Space>
-                          {tumor_type ? (
-                            <Avatar
-                              size="large"
-                              style={{
-                                backgroundColor: "#fde3cf",
-                                color: "#f56a00",
-                              }}
-                            >
-                              {tumor_type}
-                            </Avatar>
-                          ) : null}
-                          <Space direction="vertical" size="10">
-                            <Space direction="horizontal" size="small">
-                              {disease}
-                              {primary_site}
-                              {tumor_details}
-                            </Space>
-                            {[
-                              treatment,
-                              treatment_type,
-                              treatment_best_response,
-                              treatment_duration,
-                            ].some((item) => item != null) && (
-                              <Space>
-                                <Text type="secondary">
-                                  {t("metadata.treatment")}:{" "}
-                                </Text>
-                                {treatment}
-                                <Text type="secondary">
-                                  {t("metadata.treatment_type")}:{" "}
-                                </Text>
-                                {treatment_type}
-                                <Text type="secondary">
-                                  {t("metadata.treatment_best_response")}:{" "}
-                                </Text>
-                                {treatment_best_response}
-                                <Text type="secondary">
-                                  {t("metadata.treatment_duration")}:{" "}
-                                </Text>
-                                {treatment_duration}
-                              </Space>
-                            )}
+                    <div className="case-metadata-summary">
+                      {tumor_type ? (
+                        <Avatar
+                          size="large"
+                          style={{ backgroundColor: "#fde3cf", color: "#f56a00" }}
+                        >
+                          {tumor_type}
+                        </Avatar>
+                      ) : null}
+                      <div className="case-metadata-fields">
+                        <div className="case-metadata-line">
+                          {disease != null && <span>{disease}</span>}
+                          {primarySite && (
+                            isMyeloSeqReportStyle(dataset) ? (
+                              <PrimarySiteSelect />
+                            ) : (
+                              <span>{primarySite.label}</span>
+                            )
+                          )}
+                          {tumor_details != null && <span>{tumor_details}</span>}
+                        </div>
+                        {[
+                          treatment,
+                          treatment_type,
+                          treatment_best_response,
+                          treatment_duration,
+                        ].some((item) => item != null) && (
+                          <Space wrap>
+                            <Text type="secondary">{t("metadata.treatment")}: </Text>
+                            {treatment}
+                            <Text type="secondary">{t("metadata.treatment_type")}: </Text>
+                            {treatment_type}
+                            <Text type="secondary">{t("metadata.treatment_best_response")}: </Text>
+                            {treatment_best_response}
+                            <Text type="secondary">{t("metadata.treatment_duration")}: </Text>
+                            {treatment_duration}
                           </Space>
-                        </Space>
-                      </Space>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
+                {(summaryFields.length > 0 || hasPurityPloidy) && (
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
-                    {headerList
-                      .filter((d) => {
-                        const field =
-                          d === "msisensor.label" ? "msisensor.score" : d;
-                        return datasetHasField(dataset, field);
-                      })
-                      .map((d) => (
+                    {summaryFields.map((d) => (
                         <Tooltip
                           key={`components.header-panel.metadata.${d}.short`}
                           title={tooltips[d]}
@@ -566,8 +561,7 @@ export class HeaderPanel extends Component {
                         </Tooltip>
                       ))}
 
-                    {(datasetHasField(dataset, "purity") ||
-                      datasetHasField(dataset, "ploidy")) && (
+                    {hasPurityPloidy && (
                       <div className="stat-item">
                         <div className="ant-statistic">
                           <div className="ant-statistic-title">
@@ -607,6 +601,7 @@ export class HeaderPanel extends Component {
                     )}
                   </div>
                 </div>
+                )}
               </div>
             </div>
           </div>

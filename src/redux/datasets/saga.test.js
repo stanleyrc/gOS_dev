@@ -77,6 +77,15 @@ describe("dataset schema normalization", () => {
     expect(normalized.kpiFields.map(({ id }) => id)).toEqual(["purity"]);
   });
 
+  it("preserves dataset report style configuration", () => {
+    const normalized = normalizeDataset(
+      { id: "myelo", reportStyle: "myeloseq" },
+      settings,
+    );
+
+    expect(normalized.reportStyle).toBe("myeloseq");
+  });
+
   it("allows an explicit empty schema to disable every default field", () => {
     const normalized = normalizeDataset(
       { id: "schema-empty", schema: [] },

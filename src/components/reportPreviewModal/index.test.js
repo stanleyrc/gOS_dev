@@ -121,6 +121,21 @@ describe("ReportPreviewModal", () => {
     expect(component.state.copying).toBe(false);
   });
 
+  it("copies a classic report container from the loaded iframe", async () => {
+    const reportDocument = new JSDOM(
+      '<!doctype html><html><body><div class="container">Classic</div></body></html>',
+    ).window.document;
+    const component = createComponent({
+      html: '<div class="container">Classic</div>',
+    });
+    component.previewIframeRef.current = { contentDocument: reportDocument };
+
+    await component.handleCopyReport();
+
+    expect(copyReportDocument).toHaveBeenCalledWith(reportDocument);
+    expect(message.success).toHaveBeenCalledWith("Report copied.");
+  });
+
   it("shows concise failure feedback when copying fails", async () => {
     const reportDocument = createReportDocument();
     const component = createComponent();

@@ -1,5 +1,8 @@
 {
   "gptKey": "",
+  "primarySiteOptions": {
+    "myeloseq": ["bone marrow aspirate", "peripheral blood", "na"]
+  },
   "gene_sets": {
     "TP53_Pathway": [
       "TP53", "MDM2", "MDM4", "ATM", "ATR", "CHEK1", "CHEK2", "CDKN2A"

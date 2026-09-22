@@ -5,8 +5,17 @@ const { Blob: NodeBlob } = require("buffer");
 
 global.Blob = NodeBlob;
 
+const mockClassicHtmlRender = jest.fn();
 const mockHtmlRender = jest.fn();
 const mockDocxRender = jest.fn();
+
+jest.mock("./htmlRenderer", () => ({
+  HtmlRenderer: class MockHtmlRenderer {
+    render(report) {
+      return mockClassicHtmlRender(report);
+    }
+  },
+}));
 
 jest.mock("./myeloSeqHtmlRenderer", () => ({
   MyeloSeqHtmlRenderer: class MockMyeloSeqHtmlRenderer {
@@ -41,6 +50,7 @@ jest.mock("./browseScope", () => ({
 import { exportReport, previewReport } from "./reportExporter";
 
 const state = {
+  dataset: { id: "dataset-1", reportStyle: "myeloseq" },
   CaseReport: {
     id: "case-1",
     metadata: {},
@@ -56,8 +66,14 @@ describe("reportExporter", () => {
   let originalUrl;
 
   beforeEach(() => {
+    mockClassicHtmlRender.mockReset();
     mockHtmlRender.mockReset();
     mockDocxRender.mockReset();
+    mockClassicHtmlRender.mockResolvedValue({
+      html: "<html>classic</html>",
+      mimeType: "text/html",
+      filename: "report-case-1-Test User.html",
+    });
     mockHtmlRender.mockResolvedValue({ html: "<html></html>" });
     mockDocxRender.mockResolvedValue({
       blob: new Blob(["PK\u0003\u0004"], {
@@ -202,9 +218,37 @@ describe("reportExporter", () => {
     ]);
   });
 
+  it("uses the persisted primary site in both modal HTML and DOCX without changing tumor type", async () => {
+    const dataset = {
+      id: "dataset-1",
+      reportStyle: "myeloseq",
+      fields: [{ id: "primary_site" }, { id: "tumor_type" }],
+    };
+    const savedState = {
+      ...state, Settings: { dataset },
+      CaseReport: { id: "case-1", metadata: { primary_site: "Original", tumor_type: "UNCHANGED" } },
+      Interpretations: { selected: { PRIMARY_SITE: "saved" }, byId: { saved: {
+        alterationId: "PRIMARY_SITE", caseId: "case-1", datasetId: "dataset-1", isCurrentUser: true,
+        data: { primarySite: { value: "Bone marrow", label: "Bone marrow" } },
+      } } },
+    };
+    global.document = { createElement: () => ({ click: jest.fn() }), body: { appendChild: jest.fn(), removeChild: jest.fn() } };
+    global.URL = { createObjectURL: () => "blob:test", revokeObjectURL: jest.fn() };
+    await previewReport(savedState, { filteredEvents: [] });
+    await exportReport(savedState, { filteredEvents: [] });
+    for (const render of [mockHtmlRender, mockDocxRender]) {
+      expect(render.mock.calls[0][0].patient).toMatchObject({ primarySite: "Bone marrow", tumorType: "UNCHANGED" });
+    }
+    expect(savedState.CaseReport.metadata.primary_site).toBe("Original");
+    savedState.Settings.dataset = { ...dataset, fields: [{ id: "tumor_type" }] };
+    await previewReport(savedState, { filteredEvents: [] });
+    expect(mockHtmlRender.mock.calls[1][0].patient.primarySite).toBe("");
+  });
+
   it("does not map raw patient values omitted by the active dataset", async () => {
     const dataset = {
       id: "schema-test",
+      reportStyle: "myeloseq",
       schema: [{ id: "purity" }],
       fields: [{ id: "purity" }],
     };
@@ -260,6 +304,101 @@ describe("reportExporter", () => {
     expect(mockHtmlRender.mock.calls[0][0]).not.toHaveProperty(
       "interpretations",
     );
+  });
+
+  it.each([undefined, "unknown", "myeloseq"])(
+    "uses MyeloSeq preview and DOCX export for reportStyle %p",
+    async (reportStyle) => {
+      const anchor = { click: jest.fn() };
+      global.document = {
+        createElement: jest.fn(() => anchor),
+        body: { appendChild: jest.fn(), removeChild: jest.fn() },
+      };
+      global.URL = {
+        createObjectURL: jest.fn(() => "blob:myeloseq"),
+        revokeObjectURL: jest.fn(),
+      };
+      const dataset = { id: "dataset-1", fields: [{ id: "primary_site" }] };
+      if (reportStyle !== undefined) dataset.reportStyle = reportStyle;
+      const myeloState = {
+        ...state,
+        Settings: { dataset },
+        CaseReport: {
+          id: "case-1",
+          metadata: { primary_site: "peripheral blood" },
+        },
+      };
+
+      await previewReport(myeloState, { filteredEvents: [] });
+      await exportReport(myeloState, { filteredEvents: [] });
+
+      expect(mockHtmlRender).toHaveBeenCalledTimes(1);
+      expect(mockDocxRender).toHaveBeenCalledTimes(1);
+      expect(mockClassicHtmlRender).not.toHaveBeenCalled();
+      expect(anchor.download).toBe("report-case-1-Test User.docx");
+    },
+  );
+
+  it("uses classic HTML for preview and download when explicitly selected", async () => {
+    const anchor = { click: jest.fn() };
+    global.document = {
+      createElement: jest.fn(() => anchor),
+      body: { appendChild: jest.fn(), removeChild: jest.fn() },
+    };
+    global.URL = {
+      createObjectURL: jest.fn(() => "blob:classic"),
+      revokeObjectURL: jest.fn(),
+    };
+    const classicState = {
+      ...state,
+      Settings: {
+        dataset: {
+          id: "classic-dataset",
+          reportStyle: "classic",
+          fields: [{ id: "primary_site" }],
+        },
+      },
+      CaseReport: {
+        id: "case-1",
+        metadata: { primary_site: "Liver" },
+      },
+      Interpretations: {
+        selected: { PRIMARY_SITE: "saved" },
+        byId: {
+          saved: {
+            alterationId: "PRIMARY_SITE",
+            caseId: "case-1",
+            datasetId: "classic-dataset",
+            isCurrentUser: true,
+            data: {
+              primarySite: { value: "Bone marrow", label: "Bone marrow" },
+            },
+          },
+        },
+      },
+    };
+
+    await expect(
+      previewReport(classicState, { filteredEvents: [] }),
+    ).resolves.toBe("<html>classic</html>");
+    const result = await exportReport(classicState, { filteredEvents: [] });
+
+    expect(mockClassicHtmlRender).toHaveBeenCalledTimes(2);
+    expect(mockClassicHtmlRender.mock.calls[0][0].patient.primarySite).toBe("Liver");
+    expect(mockHtmlRender).not.toHaveBeenCalled();
+    expect(mockDocxRender).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      html: "<html>classic</html>",
+      mimeType: "text/html",
+      filename: "report-case-1-Test User.html",
+    });
+    expect(result.blob).toBeInstanceOf(Blob);
+    expect(result.blob.type).toBe("text/html");
+    expect(anchor).toMatchObject({
+      href: "blob:classic",
+      download: "report-case-1-Test User.html",
+    });
+    expect(anchor.click).toHaveBeenCalledTimes(1);
   });
 
   it("uses the DOCX renderer and downloads its Blob and filename", async () => {

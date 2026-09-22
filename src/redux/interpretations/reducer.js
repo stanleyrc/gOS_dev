@@ -4,6 +4,10 @@ import { createInterpretationHistoryKey } from "../../helpers/interpretationHist
 const initState = {
   status: "idle",
   error: null,
+  loadedContext: null,
+  loadError: null,
+  pendingWrites: [],
+  writeVersion: 0,
   byId: {},
   selected: {},
   byGene: {},
@@ -11,9 +15,28 @@ const initState = {
 
 export default function interpretationsReducer(state = initState, action) {
   switch (action.type) {
+    case actions.INTERPRETATION_WRITE_STARTED:
+      return {
+        ...state,
+        writeVersion: (state.writeVersion || 0) + 1,
+        pendingWrites: [...(state.pendingWrites || []), {
+          caseId: action.caseId, datasetId: action.datasetId,
+        }],
+      };
+    case actions.INTERPRETATION_WRITE_FINISHED: {
+      const pendingWrites = [...(state.pendingWrites || [])];
+      const index = pendingWrites.findIndex((context) =>
+        `${context.caseId}` === `${action.caseId}` &&
+        `${context.datasetId}` === `${action.datasetId}`,
+      );
+      if (index >= 0) pendingWrites.splice(index, 1);
+      return { ...state, pendingWrites, writeVersion: (state.writeVersion || 0) + 1 };
+    }
     case actions.FETCH_INTERPRETATIONS_FOR_CASE_REQUEST:
       return {
         ...state,
+        loadedContext: null,
+        loadError: null,
         status: "pending",
         error: null,
         byId: {},
@@ -32,6 +55,8 @@ export default function interpretationsReducer(state = initState, action) {
       return {
         ...state,
         status: "succeeded",
+        loadedContext: { caseId: action.caseId, datasetId: action.datasetId },
+        loadError: null,
         byId: action.byId,
         selected: action.selected,
         byGene: newByGene,
@@ -41,6 +66,8 @@ export default function interpretationsReducer(state = initState, action) {
     case actions.FETCH_INTERPRETATIONS_FOR_CASE_FAILED:
       return {
         ...state,
+        loadedContext: null,
+        loadError: action.error || "Failed to load interpretations",
         status: "failed",
         error: action.error,
         byId: {},
@@ -174,6 +201,8 @@ export default function interpretationsReducer(state = initState, action) {
     case actions.CLEAR_CASE_INTERPRETATIONS_SUCCESS:
       return {
         ...state,
+        loadedContext: null,
+        loadError: null,
         status: "succeeded",
         byId: {},
         selected: {},

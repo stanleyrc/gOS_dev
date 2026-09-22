@@ -2,7 +2,8 @@
 
 /* eslint-disable import/first */
 
-import { runSaga } from "redux-saga";
+import { runSaga, stdChannel } from "redux-saga";
+jest.mock("../../helpers/field", () => class TestField {});
 
 const mockGetActiveRepository = jest.fn();
 const mockGetCurrentUserId = jest.fn(() => "user-1");
@@ -22,10 +23,15 @@ jest.mock("../../services/signatures/SignatureService", () => ({
 }));
 
 import actions from "./actions";
+import reducer from "./reducer";
+import { areCaseInterpretationsReady } from "./selectors";
+import { getPrimarySite } from "../../helpers/primarySite";
+import EventInterpretation from "../../helpers/EventInterpretation";
 import {
   clearCaseInterpretations,
   fetchInterpretationsForCase,
   updateInterpretation,
+  updateAuthorName,
 } from "./saga";
 
 function createState(
@@ -34,7 +40,7 @@ function createState(
 ) {
   return {
     Settings: { dataset: { id: "dataset-1" } },
-    CaseReport: { id: "case-1" },
+    CaseReport: { id: "case-1", metadata: { primary_site: "original site" } },
     CaseReports: { datafiles: [] },
     FilteredEvents: { originalFilteredEvents: [originalEvent] },
     ...overrides,
@@ -101,6 +107,96 @@ async function runClear({
   ).toPromise();
   return dispatched;
 }
+
+describe("author rename write barrier", () => {
+  it("tracks dataset-wide repository writes even when the repository fails", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    const repository = createRepository({ getAll: jest.fn().mockRejectedValue(new Error("offline")) });
+    mockGetActiveRepository.mockReturnValue(repository);
+    const dispatched = [];
+    await runSaga({ getState: () => createState(), dispatch: action => dispatched.push(action) },
+      updateAuthorName, actions.updateAuthorName("user-1", "New name")).toPromise();
+    expect(dispatched.map(action => action.type)).toEqual([
+      actions.INTERPRETATION_WRITE_STARTED, actions.UPDATE_AUTHOR_NAME_FAILED,
+      actions.INTERPRETATION_WRITE_FINISHED,
+    ]);
+    expect(dispatched[0]).toMatchObject({ datasetId: "dataset-1", caseId: null });
+    consoleError.mockRestore();
+  });
+});
+
+describe("primary-site persistence through interpretation storage", () => {
+  it.each(["before", "during"])("does not publish a stale hydration begun %s a site save", async (when) => {
+    mockGetCurrentUserId.mockReturnValue("user-1");
+    mockGetUser.mockReturnValue(null);
+    const record = (label) => new EventInterpretation({
+      caseId: "case-1", datasetId: "dataset-1", authorId: "user-1", authorName: "User One",
+      alterationId: "PRIMARY_SITE", data: { primarySite: { value: label, label } },
+    });
+    let stored = record("na");
+    const oldSnapshot = [stored];
+    let releaseRead;
+    let releaseSave;
+    const read = new Promise((resolve) => { releaseRead = resolve; });
+    const save = new Promise((resolve) => { releaseSave = resolve; });
+    const repository = createRepository({
+      getAll: jest.fn().mockImplementation(async () => [stored]),
+      save: jest.fn(async (next) => { await save; stored = next; }),
+    });
+    if (when === "before") repository.getAll.mockImplementationOnce(() => read);
+    mockGetActiveRepository.mockReturnValue(repository);
+    const channel = stdChannel();
+    let state = createState(undefined, { Interpretations: reducer(undefined, {}) });
+    const env = { channel, getState: () => state, dispatch: (action) => {
+      state = { ...state, Interpretations: reducer(state.Interpretations, action) };
+      channel.put(action);
+    } };
+    const hydrate = () => runSaga(env, fetchInterpretationsForCase, actions.fetchInterpretationsForCase("case-1"));
+    let hydration;
+    if (when === "before") hydration = hydrate();
+    const mutation = runSaga(env, updateInterpretation, actions.updateInterpretation(record("bone marrow aspirate").toJSON()));
+    if (when === "during") {
+      hydration = hydrate();
+    }
+    expect(repository.getAll).toHaveBeenCalledTimes(when === "before" ? 1 : 0);
+    releaseSave();
+    await mutation.toPromise();
+    if (when === "before") releaseRead(oldSnapshot);
+    await hydration.toPromise();
+    expect(getPrimarySite(state).label).toBe("bone marrow aspirate");
+    expect(areCaseInterpretationsReady(state)).toBe(true);
+    expect(repository.getAll).toHaveBeenCalledTimes(when === "before" ? 2 : 1);
+    expect(state.Interpretations.pendingWrites).toEqual([]);
+  });
+
+  it.each(["bone marrow aspirate", "peripheral blood", "na"])("restores %s after save and fresh hydration", async (label) => {
+    mockGetCurrentUserId.mockReturnValue("user-1");
+    mockGetUser.mockReturnValue(null);
+    const repository = createRepository();
+    let stored;
+    repository.save.mockImplementation(async (record) => { stored = record; });
+    repository.getAll = jest.fn(async () => [stored]);
+    mockGetActiveRepository.mockReturnValue(repository);
+    let state = createState(undefined, { Interpretations: reducer(undefined, {}), CaseReport: { id: "case-1", metadata: { primary_site: "Original site" } } });
+    const dispatch = (action) => { state = { ...state, Interpretations: reducer(state.Interpretations, action) }; };
+    const env = { dispatch, getState: () => state };
+    await runSaga(env, updateInterpretation, actions.updateInterpretation({
+      caseId: "case-1", datasetId: "dataset-1", authorId: "user-1", authorName: "User One",
+      alterationId: "PRIMARY_SITE", data: { primarySite: { value: label, label } },
+    })).toPromise();
+    expect(repository.save).toHaveBeenCalledTimes(1);
+    expect(repository.delete).not.toHaveBeenCalled();
+    expect(stored.toJSON()).not.toHaveProperty("gene");
+    state = { ...state, Interpretations: reducer(undefined, {}) };
+    expect(areCaseInterpretationsReady(state)).toBe(false);
+    await runSaga(env, fetchInterpretationsForCase, actions.fetchInterpretationsForCase("case-1")).toPromise();
+    expect(areCaseInterpretationsReady(state)).toBe(true);
+    expect(getPrimarySite(state)).toEqual({ value: label, label });
+    expect(state.CaseReport.metadata.primary_site).toBe("Original site");
+    expect(state.Interpretations.byGene).toEqual({});
+    expect(mockGetActiveRepository).toHaveBeenLastCalledWith({ dataset: state.Settings.dataset });
+  });
+});
 
 describe("imported interpretation loading", () => {
   it("ignores a completed fetch after the active context changes", async () => {

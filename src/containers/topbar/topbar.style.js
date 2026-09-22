@@ -53,6 +53,31 @@ const TopbarWrapper = styled.div`
             min-width: 200px;
           }
         }
+        /* Keep the fixed-height navigation from wrapping its count over the
+           case header. Its existing selectors shrink instead at narrow widths. */
+        @media (max-width: 1000px) {
+          .ant-pro-top-nav-header-main-left {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            .ant-pro-top-nav-header-logo {
+              min-width: 70px;
+            }
+            > .ant-space {
+              width: 100%;
+              > .ant-space-item:nth-child(2),
+              > .ant-space-item:nth-child(3) {
+                flex: 1;
+                min-width: 0;
+              }
+            }
+            .datasets-select,
+            .reports-select {
+              width: 100%;
+              min-width: 0;
+            }
+          }
+        }
         .ant-pro-top-nav-header-menu {
           min-width: 0px;
           flex: 1 1 0%;

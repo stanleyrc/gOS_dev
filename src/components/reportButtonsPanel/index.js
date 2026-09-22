@@ -8,10 +8,17 @@ import { exportReport, previewReport } from "../../helpers/reportExporter";
 import interpretationsActions from "../../redux/interpretations/actions";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import Wrapper from "./index.style";
+import { areCaseInterpretationsReady } from "../../redux/interpretations/selectors";
+import { getPrimarySite } from "../../helpers/primarySite";
+import { resolveReportStyle } from "../../helpers/reportStyle";
 
 const { selectFilteredEvent, resetTierOverrides } = filteredEventsActions;
 
 class ReportButtonsPanel extends Component {
+  previewRequest = 0;
+  resetting = false;
+  unmounted = false;
+
   state = {
     exporting: false,
     previewVisible: false,
@@ -27,9 +34,20 @@ class ReportButtonsPanel extends Component {
       String(prevProps.dataset?.id ?? "") !==
       String(this.props.dataset?.id ?? "");
 
-    if ((caseChanged || datasetChanged) && this.state.previewVisible) {
+    const primarySiteChanged = prevProps.primarySiteLabel !== this.props.primarySiteLabel;
+    const reportStyleChanged =
+      resolveReportStyle(prevProps.dataset) !== resolveReportStyle(this.props.dataset);
+    const reportBecameStale = !this.resetting && (
+      primarySiteChanged || reportStyleChanged || !this.props.interpretationsReady
+    );
+    if ((caseChanged || datasetChanged || reportBecameStale) && this.state.previewVisible) {
       this.handleClosePreview();
     }
+  }
+
+  componentWillUnmount() {
+    this.unmounted = true;
+    this.previewRequest += 1;
   }
 
   getActiveReportContext = () => {
@@ -48,11 +66,12 @@ class ReportButtonsPanel extends Component {
     );
 
   isPreviewContextActive = (previewContext) =>
-    this.state.previewVisible &&
+    !this.unmounted && this.state.previewVisible &&
     this.state.previewContext === previewContext &&
     this.reportContextsMatch(previewContext, this.getActiveReportContext());
 
   handleExportNotes = async () => {
+    if (!this.props.interpretationsReady) return;
     const { mergedEvents } = this.props;
     const selectedEventUids = Array.isArray(
       this.state.previewSelectedEventUids,
@@ -72,6 +91,8 @@ class ReportButtonsPanel extends Component {
   };
 
   handlePreviewReport = async () => {
+    if (!this.props.interpretationsReady) return;
+    const request = ++this.previewRequest;
     const { mergedEvents } = this.props;
     const selectedEventUids = Array.isArray(this.props.selectedEventUids)
       ? [...this.props.selectedEventUids]
@@ -89,21 +110,24 @@ class ReportButtonsPanel extends Component {
       });
       const state = this.props;
       const html = await previewReport(state, mergedEvents, selectedEventUids);
-      if (!this.reportContextsMatch(previewContext, this.getActiveReportContext())) {
+      if (request !== this.previewRequest) return;
+      if (!this.props.interpretationsReady || !this.reportContextsMatch(previewContext, this.getActiveReportContext())) {
         this.handleClosePreview();
         return;
       }
       this.setState({ previewHtml: html, previewContext });
     } catch (err) {
       console.error("Report preview failed:", err);
-      this.handleClosePreview();
+      if (request === this.previewRequest) this.handleClosePreview();
     } finally {
-      this.setState({ previewLoading: false });
+      if (request === this.previewRequest) this.setState({ previewLoading: false });
     }
   };
 
   handleClosePreview = () => {
+    this.previewRequest += 1;
     this.setState({
+      previewLoading: false,
       previewVisible: false,
       previewHtml: null,
       previewContext: null,
@@ -141,19 +165,22 @@ class ReportButtonsPanel extends Component {
 
     if (!resetContextIsActive()) return;
 
-    // Clear interpretations from the captured dataset after confirmation.
-    await this.props.clearCaseInterpretations(caseId, dataset);
-
-    if (!resetContextIsActive()) return;
-
-    // Reset Redux state
-    resetTierOverrides();
-    selectFilteredEvent(null);
-    this.handleClosePreview();
+    // The reset itself invalidates hydration. Keep its preview context alive
+    // until Redux cleanup finishes, but still abandon it on navigation/close.
+    this.resetting = true;
+    try {
+      await this.props.clearCaseInterpretations(caseId, dataset);
+      if (!resetContextIsActive()) return;
+      resetTierOverrides();
+      selectFilteredEvent(null);
+      this.handleClosePreview();
+    } finally {
+      this.resetting = false;
+    }
   };
 
   render() {
-    const { t, loading } = this.props;
+    const { t, loading, interpretationsReady } = this.props;
 
     return (
       <Wrapper>
@@ -162,7 +189,8 @@ class ReportButtonsPanel extends Component {
           shape="round"
           icon={<FaFileMedical size={16} />}
           onClick={this.handlePreviewReport}
-          disabled={loading}
+          disabled={loading || !interpretationsReady}
+          title={!interpretationsReady ? t("components.primary-site.report-wait") : undefined}
           loading={this.state.previewLoading}
           aria-label={t("components.header-panel.view-report")}
         >
@@ -171,7 +199,7 @@ class ReportButtonsPanel extends Component {
         <ReportPreviewModal
           visible={this.state.previewVisible}
           onCancel={this.handleClosePreview}
-          loading={this.state.previewLoading}
+          loading={this.state.previewLoading || !interpretationsReady}
           html={this.state.previewHtml}
           onExport={this.handleExportNotes}
           onReset={this.handleResetReportState}
@@ -205,6 +233,10 @@ const mapDispatchToProps = (dispatch) => ({
     }),
 });
 const mapStateToProps = (state) => ({
+  interpretationsReady: areCaseInterpretationsReady(state),
+  primarySiteLabel: getPrimarySite(state)?.label,
+  Interpretations: state.Interpretations,
+  Settings: state.Settings,
   loading: state.PopulationStatistics.loading,
   id: state.CaseReport.id,
   CaseReport: state.CaseReport,
@@ -213,7 +245,7 @@ const mapStateToProps = (state) => ({
   selectedEventUids: require("../../redux/filteredEvents/selectors").selectReportEventUids(state),
 });
 
-export { mapDispatchToProps, ReportButtonsPanel };
+export { mapDispatchToProps, mapStateToProps, ReportButtonsPanel };
 export default connect(
   mapStateToProps,
   mapDispatchToProps

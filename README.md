@@ -79,6 +79,44 @@ Available `viewType` renderers:
 
 **Cohort Filters:** Define dataset-specific filters for the cohort-level view using `schema`. When provided, this overrides the default schema from settings. Each filter must include `id`, `title`, and `type`.
 
+### Report styles and primary-site choices
+
+Report presentation is selected by the dataset-level `reportStyle` property:
+
+- Omit `reportStyle`, set it to `"myeloseq"`, or supply an unrecognized value to use the MyeloSeq HTML preview and DOCX download.
+- Set `reportStyle` to `"classic"` to use the older classic HTML report for both preview and download.
+
+MyeloSeq is the compatibility default. Only classic requires an explicit opt-in:
+
+```json
+{
+  "id": "classic-dataset",
+  "reportStyle": "classic"
+}
+```
+
+The header's primary-site value is separate from `tumor_type`. A MyeloSeq dataset edits a nonblank raw `metadata.primary_site` through the specimen selector; a classic dataset displays that raw value as ordinary, non-editable metadata. Missing, null, empty, or whitespace-only raw values omit the primary-site header element entirely and do not activate a saved override. The literal lowercase value `na` is nonblank and remains editable. The dataset schema still controls whether the field exists. If `fields` is specified but omits `primary_site`, the header and report field remain disabled.
+
+The supplied MyeloSeq choices are exactly lowercase: **bone marrow aspirate**, **peripheral blood**, and **na**. They are configured in the top-level `primarySiteOptions.myeloseq` array in `public/settings.json` and `shared/settings.json`. There is no `Other` choice or whole-genome cancer-type fallback.
+
+A MyeloSeq dataset can replace those choices with a custom array:
+
+```json
+{
+  "id": "custom-myelo-dataset",
+  "primarySiteOptions": [
+    { "value": "custom specimen", "label": "custom specimen" },
+    "na"
+  ]
+}
+```
+
+Reusable custom arrays may still be added to the global `primarySiteOptions` map and referenced by name. Missing, unknown, or malformed configuration falls back to `primarySiteOptions.myeloseq`. An explicit array replaces the catalog; `[]` stays empty. Invalid entries are dropped, surrounding whitespace is trimmed, and duplicate values keep their first label. No first option is selected automatically; existing out-of-list values remain displayable but cannot be selected again.
+
+MyeloSeq selections use the existing interpretation backend: the dataset's `auditLoggingRepo` when configured, otherwise the existing IndexedDB repository. They are scoped to the active dataset, canonical case ID, and signed-in author. A `PRIMARY_SITE` interpretation saves `data.primarySite = { value, label }`; selecting **na** stores a real choice. Existing case-interpretation reset behavior also clears this override.
+
+For MyeloSeq cases with a nonblank raw primary site, the selected current-author snapshot takes precedence over `metadata.primary_site` and its label is used as report **Specimen Type**. Classic reports and headers use the raw source primary site instead. Existing saved selections remain stored and become effective again when both MyeloSeq style and eligible raw metadata apply. Source metadata and tumor type are never rewritten. When raw metadata is absent, the report receives no primary-site value; the existing MyeloSeq report fallback still renders Specimen Type as `NA`.
+
 ## Deployments
 - **Edge channel (latest `main`):** `.github/workflows/build-artifacts.yml` builds on every push to `main` and publishes a GitHub **prerelease**. This is intended for an “edge” instance that should always track the newest commit on `main`.
 - **Stable channel (promoted builds):** Use `.github/workflows/promote-stable.yml` to promote a specific `build-*` prerelease to a **stable** (non-prerelease) release. The GitHub `.../releases/latest` endpoint will then point at the promoted release.

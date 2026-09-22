@@ -115,8 +115,32 @@ function inlineComputedStyles(source, clone, getComputedStyle) {
   });
 }
 
+function normalizeCopiedPage(clone) {
+  const { style } = clone;
+  // Keep the rendered content width without the preview's page padding.
+  // Computed pixel widths also freeze responsive sizing for the paste target.
+  if (style.width.endsWith("px")) {
+    const horizontalPadding = style.boxSizing === "border-box"
+      ? (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
+      : 0;
+    style.width = `${Math.max(0, parseFloat(style.width) - horizontalPadding)}px`;
+  } else {
+    style.width = "auto";
+  }
+
+  // Explicit resets override the preview stylesheet in selection fallback too.
+  // Descendants retain their computed spacing, dimensions, and rich formatting.
+  style.margin = "0";
+  style.padding = "0";
+  style.minWidth = "0";
+  style.maxWidth = "none";
+  style.height = "auto";
+  style.minHeight = "0";
+  style.maxHeight = "none";
+}
+
 function getReportCopy(reportDocument) {
-  const report = reportDocument?.querySelector(".report-document");
+  const report = reportDocument?.querySelector(".report-document, .container");
   const reportWindow = reportDocument?.defaultView;
   if (!report || !reportWindow?.getComputedStyle) {
     throw new Error("Report preview is unavailable");
@@ -128,6 +152,7 @@ function getReportCopy(reportDocument) {
     clone,
     reportWindow.getComputedStyle.bind(reportWindow),
   );
+  normalizeCopiedPage(clone);
 
   return {
     clone,
