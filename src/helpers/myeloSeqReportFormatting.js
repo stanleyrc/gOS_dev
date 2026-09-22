@@ -1,4 +1,18 @@
 // Report-only formatting. Source annotations and stored events remain unchanged.
+export function formatMyeloSeqSampleId(value) {
+  const id = String(value ?? "");
+  const accession = id.match(/^TM\d{2}-\d{3}-\d{4}(?=$|[-_])/);
+  if (!accession) return id;
+  const accessions = Array.from(id.matchAll(/(?:^|_)(TM\d{2}-\d{3}-\d{4})(?=$|[-_])/g));
+  return accessions.every((match) => match[1] === accession[0]) ? accession[0] : id;
+}
+
+export function formatMyeloSeqComments(value) {
+  // Only the first, leading CSV source tag is metadata; later brackets may be
+  // citations or clinically meaningful annotations and must remain untouched.
+  return String(value ?? "").replace(/^\s*\[[^[\]\r\n]*\.csv\]\s*/, "");
+}
+
 export function getMyeloSeqVariantType(finding) {
   const suppliedType = String(finding?.variant_type ?? "").trim();
   return (suppliedType || String(finding?.type ?? "").trim()).toUpperCase();

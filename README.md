@@ -66,7 +66,9 @@ The `datasets.json` file defines available datasets and their configuration. Eac
 }
 ```
 
-**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Use the optional `defaultVisibleFilteredEventsColumns` array as an ordered, exact allow-list of merged settings and dataset column IDs to select when the Filtered Events panel first mounts and when **Reset All Filters** is clicked. Listed IDs determine their left-to-right order in the table. Omit the property to show every available column. Unknown IDs are ignored, duplicate IDs use their first position, and an empty array is valid. Columns supplied directly by a panel caller remain selected in their panel-defined position.
+**Filtered Events Columns:** Extend the filtered events list columns using `optionalFilteredEventsColumns`. Supports partial column definitions that merge with defaults. Use the optional `defaultVisibleFilteredEventsColumns` array as an ordered, exact allow-list of merged settings and dataset column IDs to select when the Filtered Events panel first mounts and when **Reset All Filters** is clicked. Listed IDs determine the default left-to-right order in the table. Omit the property to show every available column. Unknown IDs are ignored, duplicate IDs use their first position, and an empty array is valid. Columns supplied directly by a panel caller remain selected in their panel-defined position.
+
+**Saved column layout:** Column widths and order are saved in one browser `localStorage` entry, `gos.filteredEventsColumnLayout.v1`. No user or sign-in is required, and signing in, switching users, or signing out does not change the layout. Matching data-column IDs reuse that layout across cases, datasets, and reloads; saved order overrides the configured default order. Dataset-specific columns retain their preferences when absent from another dataset. Fixed columns keep their positions, and caller-specific columns are not shared. Widths are saved at the end of a resize, not during dragging. **Reset All Filters** restores default column order and visibility while retaining widths, as before. Filters, sorting, visibility, and page size are not persisted. Blocked/full storage does not prevent table use. Preferences are local to this browser and site, not synchronized between browsers or devices. Older user-specific entries remain untouched but are no longer used.
 
 Available `viewType` renderers:
 - `"gene-link"` – renders gene names as clickable event-detail links
@@ -116,6 +118,14 @@ Reusable custom arrays may still be added to the global `primarySiteOptions` map
 MyeloSeq selections use the existing interpretation backend: the dataset's `auditLoggingRepo` when configured, otherwise the existing IndexedDB repository. They are scoped to the active dataset, canonical case ID, and signed-in author. A `PRIMARY_SITE` interpretation saves `data.primarySite = { value, label }`; selecting **na** stores a real choice. Existing case-interpretation reset behavior also clears this override.
 
 For MyeloSeq cases, the selected current-author snapshot takes precedence over `metadata.primary_site` and its label is used as report **Specimen Type**, regardless of source metadata or dataset fields. Classic reports and headers use the schema-enabled raw source primary site instead. Existing saved selections remain stored and become effective again when MyeloSeq style applies. Source metadata and tumor type are never rewritten. When neither a saved selection nor raw metadata is available, the MyeloSeq report renders Specimen Type as `NA`.
+
+### MyeloSeq report display
+
+- **Tumor sample** shows the leading TM number for an unambiguous TM case ID: `TM26-240-0650-B26-6895_v1_TM26-240-0650-Q26-5679_RNA_v1` displays as `TM26-240-0650`. Non-TM IDs and IDs containing different TM numbers remain unchanged. Internal IDs, report titles, and filenames retain the full case ID.
+- A fusion event may provide a nonblank `locus`, for example `"22:23632600,9:133729451"`. The report displays it as `chr22:23632600-chr9:133729451` in both Locus and Breakpoint. If `locus` is missing or blank, the existing `fusion_gene_coords`, `location`, or `Genome_Location` is used, in that order. Gene ranges are never converted into guessed breakpoints.
+- Event **Comments** use `variant_summary` but omit an initial bracketed source tag only when it ends exactly with `.csv]`, for example `[Curated: PMKB heme_pmkbdb_July28_2026.csv]`. Other leading brackets and all later brackets remain unchanged. Source records are never modified.
+
+These display rules apply to both the MyeloSeq HTML preview and Word export; classic report display is unchanged.
 
 ## Deployments
 - **Edge channel (latest `main`):** `.github/workflows/build-artifacts.yml` builds on every push to `main` and publishes a GitHub **prerelease**. This is intended for an “edge” instance that should always track the newest commit on `main`.

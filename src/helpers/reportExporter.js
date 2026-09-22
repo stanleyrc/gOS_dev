@@ -138,7 +138,9 @@ function mapEvent(ev) {
     VAF: ev?.VAF ?? ev?.vaf,
     depth: explicitDepth ?? derivedDepth,
     transcript: ev?.transcript ?? ev?.Transcript ?? ev?.transcript_id,
-    locus: ev?.locus ?? ev?.fusion_gene_coords ?? ev?.location ?? ev?.Genome_Location,
+    // Optional explicit breakpoints take precedence; blank values fall back to
+    // the existing gene ranges without inferring breakpoint positions.
+    locus: firstNonBlankString(ev?.locus, ev?.fusion_gene_coords, ev?.location, ev?.Genome_Location),
     estimated_altered_copies: ev?.estimated_altered_copies ?? ev?.estimatedAlteredCopies,
     alt,
     ref,

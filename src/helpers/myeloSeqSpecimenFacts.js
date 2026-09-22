@@ -1,3 +1,5 @@
+import { formatMyeloSeqSampleId } from "./myeloSeqReportFormatting";
+
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
 }
@@ -16,7 +18,7 @@ export function getMyeloSeqSpecimenFacts(report) {
   ) ?? "NA";
 
   return [
-    ["Tumor sample", patient.caseId],
+    ["Tumor sample", formatMyeloSeqSampleId(patient.caseId)],
     ["Specimen Type", specimenType],
     ["Clinical History", "NA"],
   ]

@@ -27,6 +27,12 @@ import {
 import { createExactEventKey } from "../../helpers/interpretationHistory";
 import { selectReportEventUids } from "../../redux/filteredEvents/selectors";
 import EventInterpretation from "../../helpers/EventInterpretation";
+import {
+  COLUMN_LAYOUT_STORAGE_KEY,
+  mergeColumnOrder,
+  readColumnLayout,
+  saveColumnLayout,
+} from "../../helpers/filteredEventsColumnLayout";
 import ErrorPanel from "../errorPanel";
 import FilteredEventDetailsModal from "../filteredEventDetailsModal";
 import TierDistributionBarChart from "../tierDistributionBarChart";
@@ -67,6 +73,9 @@ export class FilteredEventsListPanel extends Component {
 
     resetColumnFilters();
     this.initializeSelectedColumns();
+    this.setState({ columnOrderKeys: [] }, () => {
+      this.persistColumnLayout({ columnOrderKeys: [] });
+    });
   };
 
   handleCheckboxChange = (record, checked) => {
@@ -267,9 +276,42 @@ export class FilteredEventsListPanel extends Component {
     updateInterpretation(interpretation.toJSON());
   };
 
+  restoreColumnLayout = () => {
+    if (this.unmounted) return;
+    this.pendingColumnWidths = {};
+    this.setState({
+      ...readColumnLayout(),
+      draggingColumnKey: null,
+    });
+  };
+
+  handleColumnLayoutStorage = (event) => {
+    if (event.key === null || event.key === COLUMN_LAYOUT_STORAGE_KEY) {
+      this.restoreColumnLayout();
+    }
+  };
+
+  persistColumnLayout = (patch) => {
+    if (this.unmounted) return;
+    // Caller-owned modal columns can reuse keys with unrelated meanings.
+    // Only configured data-column widths are portable between tables/cases.
+    const configuredKeys = new Set([
+      ...(this.props.data?.filteredEventsColumns || []),
+      ...(this.props.dataset?.optionalFilteredEventsColumns || []),
+    ].map((column) => column.id));
+    const columnWidths = Object.fromEntries(
+      Object.entries(patch.columnWidths || {}).filter(([key]) => configuredKeys.has(key)),
+    );
+    saveColumnLayout({ ...patch, columnWidths });
+  };
+
   componentDidMount() {
     this.unmounted = false;
     this.initializeSelectedColumns();
+    this.restoreColumnLayout();
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", this.handleColumnLayoutStorage);
+    }
   }
 
   componentDidUpdate(prevProps) {
@@ -302,6 +344,9 @@ export class FilteredEventsListPanel extends Component {
     // Child header cleanup may run after the panel's own unmount callback.
     this.unmounted = true;
     this.pendingColumnWidths = {};
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", this.handleColumnLayoutStorage);
+    }
   }
 
   handleFilteredEventDetailsModalOpenChange = (presented) => {
@@ -316,7 +361,6 @@ export class FilteredEventsListPanel extends Component {
   initializeSelectedColumns = () => {
     this.setState({
       selectedColumnKeys: this.getDefaultColumnKeys(),
-      columnOrderKeys: [],
       draggingColumnKey: null,
     });
   };
@@ -330,31 +374,35 @@ export class FilteredEventsListPanel extends Component {
   };
 
   handleColumnDrop = (targetKey, movableColumnKeys) => {
-    this.setState(({ draggingColumnKey }) => draggingColumnKey == null ? null : ({
-      columnOrderKeys: moveColumnKey(
-        movableColumnKeys,
-        draggingColumnKey,
-        targetKey,
-      ),
+    if (this.unmounted) return;
+    const reordered = moveColumnKey(movableColumnKeys, this.state.draggingColumnKey, targetKey);
+    if (reordered === movableColumnKeys) {
+      this.handleColumnDragEnd();
+      return;
+    }
+    this.setState(({ columnOrderKeys }) => ({
+      columnOrderKeys: mergeColumnOrder(columnOrderKeys, reordered),
       draggingColumnKey: null,
-    }));
+    }), () => this.persistColumnLayout({ columnOrderKeys: reordered }));
   };
 
-  handleColumnResize = (columnKey) => (_, { size }) => {
+  handleColumnResize = (columnKey) => (_, { size } = {}) => {
     if (this.unmounted || !Number.isFinite(size?.width)) return;
     this.pendingColumnWidths[columnKey] = clampColumnWidth(size.width);
   };
 
   handleColumnResizeStop = (columnKey) => (event, data) => {
+    if (this.unmounted) return;
     this.handleColumnResize(columnKey)(event, data);
     const widths = this.pendingColumnWidths;
     this.pendingColumnWidths = {};
-    if (this.unmounted || Object.keys(widths).length === 0) return;
+    if (Object.keys(widths).length === 0) return;
 
     this.setState(({ columnWidths }) =>
       Object.keys(widths).some((key) => widths[key] !== columnWidths[key])
         ? { columnWidths: { ...columnWidths, ...widths } }
-        : null
+        : null,
+      () => this.persistColumnLayout({ columnWidths: widths }),
     );
   };
 

@@ -92,6 +92,27 @@ describe("reportExporter", () => {
     global.URL = originalUrl;
   });
 
+  it.each([
+    ["22:23632600,9:133729451", "22:23632600,9:133729451"],
+    [undefined, "22:23521641-23660474,9:133589083-133763312"],
+    [null, "22:23521641-23660474,9:133589083-133763312"],
+    ["", "22:23521641-23660474,9:133589083-133763312"],
+    ["  ", "22:23521641-23660474,9:133589083-133763312"],
+  ])("prefers a supplied locus and otherwise preserves fusion ranges: %s", async (locus, expected) => {
+    const event = {
+      uid: "fusion", gene: "BCR::ABL1", type: "Fusion", Tier: 2,
+      Variant: "In-Frame Fusion Exon 14::Exon 2",
+      fusion_gene_coords: "22:23521641-23660474,9:133589083-133763312",
+      locus, variant_summary: "[Curated: source.csv] Original summary",
+    };
+    await previewReport(state, { filteredEvents: [event] }, ["fusion"]);
+    const finding = mockHtmlRender.mock.calls[0][0].alterations[0];
+    expect(finding.locus).toBe(expected);
+    expect(finding.tier).toBe("2");
+    expect(finding.variant_summary).toBe(event.variant_summary);
+    expect(event.locus).toBe(locus);
+  });
+
   it("includes only events selected by canonical uid", async () => {
     const mergedEvents = {
       filteredEvents: [

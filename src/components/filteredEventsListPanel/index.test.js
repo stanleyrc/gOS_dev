@@ -57,6 +57,13 @@ jest.mock("../../redux/interpretations/selectors", () => ({
   selectMergedEvents: jest.fn(),
 }));
 jest.mock("../../helpers/EventInterpretation", () => jest.fn());
+jest.mock("../../helpers/userAuth", () => {
+  const EventEmitter = require("eventemitter3");
+  return {
+    getCurrentUserId: jest.fn(() => null),
+    userAuthRepository: { emitter: new EventEmitter() },
+  };
+});
 jest.mock("./index.style", () => "Wrapper");
 jest.mock("../errorPanel", () => "ErrorPanel");
 jest.mock(
@@ -71,6 +78,8 @@ import { createPortal } from "react-dom";
 import { buildColumnsFromSettings } from "./columnBuilders";
 import { FilteredEventsListPanel } from "./index";
 import ResizableTitle, { ColumnSortControl } from "./resizableTitle";
+import { getCurrentUserId, userAuthRepository } from "../../helpers/userAuth";
+import { COLUMN_LAYOUT_STORAGE_KEY, readColumnLayout, saveColumnLayout } from "../../helpers/filteredEventsColumnLayout";
 
 function findElementByType(node, type) {
   if (!React.isValidElement(node)) return null;
@@ -83,6 +92,133 @@ function findElementByType(node, type) {
   }
   return null;
 }
+
+describe("FilteredEventsListPanel saved browser layout", () => {
+  let previousWindow;
+  let storage;
+  let listeners;
+  let panels;
+
+  beforeEach(() => {
+    previousWindow = global.window;
+    const items = new Map();
+    storage = {
+      getItem: jest.fn((key) => items.get(key) ?? null),
+      setItem: jest.fn((key, value) => items.set(key, value)),
+    };
+    listeners = new Map();
+    panels = [];
+    global.window = {
+      localStorage: storage,
+      addEventListener: jest.fn((name, callback) => listeners.set(callback, name)),
+      removeEventListener: jest.fn((name, callback) => listeners.delete(callback)),
+    };
+    getCurrentUserId.mockReset().mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    panels.forEach((panel) => panel.componentWillUnmount());
+    userAuthRepository.emitter.removeAllListeners();
+    getCurrentUserId.mockReturnValue(null);
+    global.window = previousWindow;
+  });
+
+  function makePanel(id = "case-1", dataset = {}) {
+    const panel = new FilteredEventsListPanel({
+      id, dataset, inViewport: true,
+      data: { filteredEventsColumns: ["gene", "tier"].map((key) => ({ id: key })) },
+      additionalColumns: [{ key: "caller" }],
+      resetColumnFilters: jest.fn(),
+    });
+    panel.setState = (update, callback) => {
+      panel.state = { ...panel.state, ...(typeof update === "function" ? update(panel.state) : update) };
+      callback?.();
+    };
+    panel.componentDidMount();
+    panels.push(panel);
+    return panel;
+  }
+
+  function reorder(panel, from = "gene", to = "tier", keys = ["gene", "tier"]) {
+    panel.handleColumnDragStart(from);
+    panel.handleColumnDrop(to, keys);
+  }
+
+  it("saves while signed out on resize completion/drop and restores across cases, reloads and datasets", () => {
+    const panel = makePanel();
+    panel.handleColumnResize("gene")(null, { size: { width: 310 } });
+    expect(storage.setItem).not.toHaveBeenCalled();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 340 } });
+    reorder(panel);
+    const restored = makePanel("case-2", { id: "other-dataset", defaultVisibleFilteredEventsColumns: ["gene"] });
+    expect(restored.state).toMatchObject({ columnWidths: { gene: 340 }, columnOrderKeys: ["tier", "gene"], selectedColumnKeys: ["gene", "caller"], pageSize: 50 });
+    expect(Object.keys(JSON.parse(storage.getItem(COLUMN_LAYOUT_STORAGE_KEY)))).toEqual(["columnWidths", "columnOrderKeys"]);
+    expect(getCurrentUserId).not.toHaveBeenCalled();
+    const previousProps = restored.props;
+    restored.props = { ...restored.props, dataset: { defaultVisibleFilteredEventsColumns: ["tier"] } };
+    restored.componentDidUpdate(previousProps);
+    expect(restored.state.columnOrderKeys).toEqual(["tier", "gene"]);
+  });
+
+  it("keeps hidden/other-dataset column preferences across a reorder and Reset Filters", () => {
+    saveColumnLayout({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: ["gene", "extra", "tier"] });
+    const panel = makePanel();
+    reorder(panel);
+    expect(readColumnLayout()).toEqual({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: ["tier", "extra", "gene"] });
+    panel.handleResetFilters();
+    expect(readColumnLayout()).toEqual({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: [] });
+    expect(panel.state.columnWidths.gene).toBe(340);
+  });
+
+  it("does not share caller-owned column widths", () => {
+    const panel = makePanel();
+    panel.handleColumnResizeStop("caller")(null, { size: { width: 400 } });
+    expect(panel.state.columnWidths.caller).toBe(400);
+    expect(readColumnLayout().columnWidths).toEqual({});
+  });
+
+  it("shares one layout across sign-in, user changes and sign-out without reading identity", () => {
+    const panel = makePanel();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 440 } });
+    reorder(panel);
+    for (const userId of ["user-a", "user-b", null]) {
+      getCurrentUserId.mockReturnValue(userId);
+      userAuthRepository.emitter.emit("userChanged", userId ? { userId } : null);
+      for (const callback of listeners.keys()) callback({ key: "gOS_user" });
+      const restored = makePanel();
+      expect(restored.state).toMatchObject({ columnWidths: { gene: 440 }, columnOrderKeys: ["tier", "gene"] });
+      expect(panel.state).toMatchObject({ columnWidths: { gene: 440 }, columnOrderKeys: ["tier", "gene"] });
+    }
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 500 } });
+    expect(readColumnLayout().columnWidths.gene).toBe(500);
+    expect(getCurrentUserId).not.toHaveBeenCalled();
+    expect(userAuthRepository.emitter.listenerCount("userChanged")).toBe(0);
+  });
+
+  it("refreshes only layout/clear storage events and releases subscriptions on unmount", () => {
+    const panel = makePanel();
+    expect(listeners.size).toBe(1);
+    saveColumnLayout({ columnWidths: { gene: 350 } });
+    for (const callback of listeners.keys()) callback({ key: "gOS_user" });
+    expect(panel.state.columnWidths).toEqual({});
+    for (const callback of listeners.keys()) callback({ key: COLUMN_LAYOUT_STORAGE_KEY });
+    expect(panel.state.columnWidths.gene).toBe(350);
+    storage.getItem.mockReturnValue(null);
+    for (const callback of listeners.keys()) callback({ key: null });
+    expect(panel.state.columnWidths).toEqual({});
+    panel.componentWillUnmount();
+    expect(listeners.size).toBe(0);
+  });
+
+  it("keeps interactions functional if storage is unavailable", () => {
+    storage.getItem.mockImplementation(() => { throw new Error("denied"); });
+    storage.setItem.mockImplementation(() => { throw new Error("full"); });
+    const panel = makePanel();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 350 } });
+    reorder(panel);
+    expect(panel.state).toMatchObject({ columnWidths: { gene: 350 }, columnOrderKeys: ["tier", "gene"] });
+  });
+});
 
 describe("FilteredEventsListPanel default visible columns", () => {
   it("applies dataset defaults on mount and Reset Filters", () => {

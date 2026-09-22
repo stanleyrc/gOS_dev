@@ -1,6 +1,8 @@
 /** @jest-environment node */
 import {
   formatMyeloSeqVariant,
+  formatMyeloSeqSampleId,
+  formatMyeloSeqComments,
   formatMyeloSeqFindingVariant,
   formatMyeloSeqFusionLocus,
   formatMyeloSeqVariantType,
@@ -10,6 +12,41 @@ import {
   getMyeloSeqInsertionSize,
   isMyeloSeqFusion,
 } from "./myeloSeqReportFormatting";
+
+describe("MyeloSeq report-only sample and comment display", () => {
+  it.each([
+    ["TM26-240-0650-B26-6895_v1_TM26-240-0650-Q26-5679_RNA_v1", "TM26-240-0650"],
+    ["TM26-014-0762-B26-0321_v1", "TM26-014-0762"],
+    ["TM26-240-0650", "TM26-240-0650"],
+    ["CASE-001", "CASE-001"],
+    ["  CASE-001  ", "  CASE-001  "],
+    ["TM26-240-06501-B26", "TM26-240-06501-B26"],
+    ["prefix_TM26-240-0650", "prefix_TM26-240-0650"],
+    ["TM26-240-0650-B26_v1_TM26-240-0651-Q26_v1", "TM26-240-0650-B26_v1_TM26-240-0651-Q26_v1"],
+    [null, ""], [undefined, ""],
+  ])("displays an unambiguous leading TM accession: %s", (value, expected) => {
+    expect(formatMyeloSeqSampleId(value)).toBe(expected);
+  });
+
+  it.each([
+    ["[Curated: PMKB heme_pmkbdb_July28_2026.csv] Oncogenic. [PMID: 123]", "Oncogenic. [PMID: 123]"],
+    ["  [Curated: source.csv]\n  Summary", "Summary"],
+    ["[Curated: source.csv]", ""],
+    ["[source.csv][second.csv] Text", "[second.csv] Text"],
+    ["[PMID: 123] Summary", "[PMID: 123] Summary"],
+    ["[PMID: 123] [source.csv] Summary", "[PMID: 123] [source.csv] Summary"],
+    ["Summary [source.csv]", "Summary [source.csv]"],
+    ["[source.txt] Summary", "[source.txt] Summary"],
+    ["[source.csv extra] Summary", "[source.csv extra] Summary"],
+    ["[source.csv Summary", "[source.csv Summary"],
+    ["[nested [source.csv] Summary", "[nested [source.csv] Summary"],
+    ["[source\n.csv] Summary", "[source\n.csv] Summary"],
+    ["  Unchanged text  ", "  Unchanged text  "],
+    [null, ""], [undefined, ""],
+  ])("strips only a leading bracketed source ending .csv]: %s", (value, expected) => {
+    expect(formatMyeloSeqComments(value)).toBe(expected);
+  });
+});
 
 describe("MyeloSeq variant types and insertion sizes", () => {
   it.each(["snv", "indel", "fusion", "flt3itd"])("uses supplied %s rather than consequence labels", (variant_type) => {
