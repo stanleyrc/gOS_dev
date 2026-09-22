@@ -92,6 +92,16 @@ export function formatMyeloSeqFindingVariant(finding) {
   return protein ? `${duplication.coding}, ${protein}` : variant;
 }
 
+export function formatMyeloSeqFusionLocus(value) {
+  const locus = String(value ?? "").trim();
+  const parts = locus.split(/\s*(?:,|::|-(?=(?:chr)?[\w.]+\s*:))\s*/i);
+  const coordinates = parts.map((part) => part.match(/^(?:chr)?([\w.]+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?$/i));
+  if (parts.length > 2 || coordinates.some((coordinate) => !coordinate)) return locus;
+  return coordinates.map(([, chromosome, start, end]) =>
+    `chr${chromosome}:${start}${end ? `-${end}` : ""}`,
+  ).join("-");
+}
+
 export function formatMyeloSeqDepth(value) {
   if (value == null || String(value).trim() === "") return "";
   const number = Number(value);

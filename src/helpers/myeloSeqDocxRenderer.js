@@ -19,6 +19,7 @@ import {
 } from "./myeloSeqFusionName";
 import {
   formatMyeloSeqFindingVariant,
+  formatMyeloSeqFusionLocus,
   formatMyeloSeqVaf,
   formatMyeloSeqDepth,
   formatMyeloSeqVariantType,
@@ -220,7 +221,7 @@ function buildResultTables(report) {
         {
           label: "Locus",
           required: true,
-          value: (finding) => finding.locus,
+          value: (finding) => formatMyeloSeqFusionLocus(finding.locus),
         },
       ],
       fusionFindings,

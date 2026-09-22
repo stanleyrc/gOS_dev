@@ -97,7 +97,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
     );
     expect(result.html).toContain(
-      '<td class="gene-cell">BCR(14)::ABL1(2)</td><td>1</td><td>FUSION</td><td>chr22:23632600::chr9:133729451</td>',
+      '<td class="gene-cell">BCR(14)::ABL1(2)</td><td>1</td><td>FUSION</td><td>chr22:23632600-chr9:133729451</td>',
     );
     expect(result.html).toContain(
       '<section class="result-table fusion-result-table">',
@@ -187,7 +187,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
     );
     expect(result.html).toContain(
-      '<td class="gene-cell">RUNX1(3)::RUNX1T1(3)</td><td>1</td><td>FUSION</td><td>21:36159848-37377215,8:92966953-93115764</td>',
+      '<td class="gene-cell">RUNX1(3)::RUNX1T1(3)</td><td>1</td><td>FUSION</td><td>chr21:36159848-37377215-chr8:92966953-93115764</td>',
     );
     expect(result.html).toContain(
       "<strong>Gene Fusion:</strong> RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",

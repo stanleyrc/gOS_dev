@@ -2,6 +2,7 @@
 import {
   formatMyeloSeqVariant,
   formatMyeloSeqFindingVariant,
+  formatMyeloSeqFusionLocus,
   formatMyeloSeqVariantType,
   formatMyeloSeqVaf,
   formatMyeloSeqDepth,
@@ -94,6 +95,23 @@ describe("FLT3 INDEL duplication display", () => {
   it("does not infer a size for FLT3 deletions or missing coding ranges", () => {
     expect(formatMyeloSeqVariantType({ ...finding, variant: "c.1740_1793del" })).toBe("INDEL");
     expect(formatMyeloSeqVariantType({ ...finding, variant: "p.only" })).toBe("INDEL");
+  });
+});
+
+describe("formatMyeloSeqFusionLocus", () => {
+  it.each([
+    ["22:23632600,9:133729451", "chr22:23632600-chr9:133729451"],
+    ["chr22:23632600::chr9:133729451", "chr22:23632600-chr9:133729451"],
+    ["chr22:23632600-chr9:133729451", "chr22:23632600-chr9:133729451"],
+    ["22:23632600-9:133729451", "chr22:23632600-chr9:133729451"],
+    ["15:74286764-74340403,17:38465194-38513344", "chr15:74286764-74340403-chr17:38465194-38513344"],
+    [" CHRX:12-14, chrY:22 ", "chrX:12-14-chrY:22"],
+    ["22:23632600", "chr22:23632600"],
+    ["unknown,unknown", "unknown,unknown"],
+    [null, ""], [undefined, ""], ["", ""],
+  ])("formats %s while preserving all coordinates", (value, expected) => {
+    expect(formatMyeloSeqFusionLocus(value)).toBe(expected);
+    expect(formatMyeloSeqFusionLocus(expected)).toBe(expected);
   });
 });
 

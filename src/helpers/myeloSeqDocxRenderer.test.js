@@ -110,7 +110,7 @@ describe("MyeloSeqDocxRenderer model", () => {
       "BCR(14)::ABL1(2)",
       "2",
       "FUSION",
-      "chr22:23632600::chr9:133729451",
+      "chr22:23632600-chr9:133729451",
     ]);
     expect(model.tierSections).toEqual([
       {
@@ -193,7 +193,7 @@ describe("MyeloSeqDocxRenderer model", () => {
         "RUNX1(3)::RUNX1T1(3)",
         "1",
         "FUSION",
-        "21:36159848-37377215,8:92966953-93115764",
+        "chr21:36159848-37377215-chr8:92966953-93115764",
       ],
       ["Legacy Fusion Exon 1::Exon 2", "2", "FUSION", ""],
     ]);

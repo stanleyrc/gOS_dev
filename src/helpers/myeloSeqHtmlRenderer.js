@@ -1,6 +1,7 @@
 import { escapeHtml } from "./format";
 import {
   formatMyeloSeqFindingVariant,
+  formatMyeloSeqFusionLocus,
   formatMyeloSeqVaf,
   formatMyeloSeqDepth,
   formatMyeloSeqVariantType,
@@ -125,7 +126,7 @@ function buildSequenceTables(report) {
     {
       label: "Locus",
       required: true,
-      value: (finding) => finding.locus,
+      value: (finding) => formatMyeloSeqFusionLocus(finding.locus),
       width: "42%",
     },
   ];
