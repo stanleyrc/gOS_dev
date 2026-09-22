@@ -237,7 +237,25 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("Legacy embedded value");
   });
 
-  it("omits dynamic fields and sections that are unavailable", async () => {
+  it.each([undefined, []])("renders both negative entries for unavailable findings: %s", async (alterations) => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({ alterations });
+    expect(html).toContain("DNA Sequencing results");
+    expect(html).toContain("Targeted RNA Sequencing results");
+    expect(html).toContain("<strong>Coding (non-synonymous) variants</strong> None.");
+    expect(html).toContain("<strong>The following fusions were detected in the tumor:</strong> None.");
+    expect(html).not.toContain("<thead>");
+  });
+
+  it("renders negative DNA alongside positive RNA", async () => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({
+      alterations: [report.alterations[1]],
+    });
+    expect(html).toContain("<strong>Coding (non-synonymous) variants</strong> None.");
+    expect(html).not.toContain("tumor:</strong> None.");
+    expect(html).toContain("<th>Gene(Exon)</th>");
+  });
+
+  it("omits unavailable optional columns but retains negative RNA", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       patient: { caseId: "CASE-EMPTY" },
       metadata: {},
@@ -247,7 +265,9 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("<th>VAF(%)</th>");
     expect(result.html).not.toContain("<th>Depth</th>");
     expect(result.html).not.toContain("<th>Transcript</th>");
-    expect(result.html).not.toContain("Targeted RNA Sequencing results");
+    expect(result.html).toContain("Targeted RNA Sequencing results");
+    expect(result.html).toContain("<strong>The following fusions were detected in the tumor:</strong> None.");
+    expect(result.html).not.toContain("variants</strong> None.");
     expect(result.html).toContain("<h3>Tier 2:</h3>");
     expect(result.html).toContain("<strong>Specimen Type:</strong> NA");
     expect(result.html).toContain("<strong>Clinical History:</strong> NA");

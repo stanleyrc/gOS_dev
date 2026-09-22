@@ -165,7 +165,10 @@ function stringValue(value) {
 }
 
 function buildResultTable(title, columnDefinitions, findings, options = {}) {
-  if (!findings.length) return null;
+  const { negativeLabel, ...tableOptions } = options;
+  if (!findings.length) {
+    return { title, columns: [], rows: [], negativeLabel };
+  }
   const availableColumns = columnDefinitions.filter(
     (column) =>
       column.required || findings.some((finding) => hasValue(column.value(finding))),
@@ -180,7 +183,7 @@ function buildResultTable(title, columnDefinitions, findings, options = {}) {
         italics: Boolean(column.italics),
       })),
     ),
-    ...options,
+    ...tableOptions,
   };
 }
 
@@ -210,6 +213,7 @@ function buildResultTables(report) {
         { label: "Transcript", value: (finding) => finding.transcript },
       ],
       sequenceFindings,
+      { negativeLabel: "Coding (non-synonymous) variants" },
     ),
     buildResultTable(
       "Targeted RNA Sequencing results",
@@ -234,6 +238,7 @@ function buildResultTables(report) {
       ],
       fusionFindings,
       {
+        negativeLabel: "The following fusions were detected in the tumor:",
         width: FUSION_RESULT_TABLE_WIDTH,
         columnWidths: FUSION_RESULT_COLUMN_WIDTHS,
       },
@@ -488,7 +493,16 @@ function createDocumentChildren(model) {
             spacing: { after: 0, line: 307 },
             run: { bold: true },
           }),
-          createResultTable(table),
+          table.negativeLabel
+            ? new Paragraph({
+                spacing: { before: 288, after: 0, line: 307 },
+                children: [
+                  new TextRun({ text: "• " }),
+                  new TextRun({ text: table.negativeLabel, bold: true }),
+                  new TextRun({ text: " None." }),
+                ],
+              })
+            : createResultTable(table),
           createParagraph("", { spacing: { after: 403 } }),
         );
       });

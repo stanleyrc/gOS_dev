@@ -178,14 +178,14 @@ describe("MyeloSeqDocxRenderer model", () => {
       ],
     });
 
-    expect(model.resultTables[0].columns).toEqual([
+    expect(model.resultTables[1].columns).toEqual([
       "Gene(Exon)",
       "Tier",
       "Variant Type",
       "Locus",
     ]);
     expect(
-      model.resultTables[0].rows.map((row) =>
+      model.resultTables[1].rows.map((row) =>
         row.map((cell) => cell.value),
       ),
     ).toEqual([
@@ -233,7 +233,10 @@ describe("MyeloSeqDocxRenderer model", () => {
       { label: "Specimen Type", value: "NA" },
       { label: "Clinical History", value: "NA" },
     ]);
-    expect(model.resultTables).toEqual([]);
+    expect(model.resultTables.map(({ negativeLabel }) => negativeLabel)).toEqual([
+      "Coding (non-synonymous) variants",
+      "The following fusions were detected in the tumor:",
+    ]);
     expect(model.tierSections).toEqual([]);
     expect(JSON.stringify(model)).not.toContain("Allowed disease");
     expect(JSON.stringify(model)).not.toContain("SCHEMA-OMITTED");
@@ -253,7 +256,8 @@ describe("MyeloSeqDocxRenderer model", () => {
       { label: "Specimen Type", value: "NA" },
       { label: "Clinical History", value: "NA" },
     ]);
-    expect(model.resultTables).toHaveLength(1);
+    expect(model.resultTables).toHaveLength(2);
+    expect(model.resultTables[1].negativeLabel).toBe("The following fusions were detected in the tumor:");
     expect(model.resultTables[0].columns).toEqual([
       "Gene",
       "Variant",
@@ -375,6 +379,21 @@ describe("MyeloSeqDocxRenderer output", () => {
     expect(documentXml).not.toContain("BCR::ABL1 variant summary");
     expect(documentXml).toContain("BACKGROUND");
   });
+
+  it.each([undefined, [], [report.alterations[0]], [report.alterations[1]]])(
+    "renders negative entries only for empty sequence groups: %j",
+    async (alterations) => {
+      const result = await new MyeloSeqDocxRenderer().render({ alterations });
+      const { documentXml } = await unpackDocumentXml(result.blob);
+      expect(documentXml).toContain("DNA Sequencing results");
+      expect(documentXml).toContain("Targeted RNA Sequencing results");
+      expect(documentXml.includes("Coding (non-synonymous) variants"))
+        .toBe(!alterations?.includes(report.alterations[0]));
+      expect(documentXml.includes("The following fusions were detected in the tumor:"))
+        .toBe(!alterations?.includes(report.alterations[1]));
+      expect(documentXml).toContain(" None.");
+    },
+  );
 
   it("accepts an explicit DOCX filename", async () => {
     const result = await new MyeloSeqDocxRenderer().render(report, {

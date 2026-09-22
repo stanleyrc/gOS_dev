@@ -46,7 +46,9 @@ function renderFact(label, value) {
 }
 
 function renderTable(title, columns, rows, options = {}) {
-  if (!rows.length) return "";
+  if (!rows.length) {
+    return `<section class="result-table negative-results"><h3>${text(title)}</h3><p>• <strong>${text(options.negativeLabel)}</strong> None.</p></section>`;
+  }
   const availableColumns = columns.filter(
     (column) => column.required || rows.some((row) => hasValue(column.value(row)))
   );
@@ -140,12 +142,17 @@ function buildSequenceTables(report) {
   ];
 
   return [
-    renderTable("DNA Sequencing results", sequenceColumns, sequenceFindings),
+    renderTable("DNA Sequencing results", sequenceColumns, sequenceFindings, {
+      negativeLabel: "Coding (non-synonymous) variants",
+    }),
     renderTable(
       "Targeted RNA Sequencing results",
       fusionColumns,
       fusionFindings,
-      { className: "fusion-result-table" },
+      {
+        className: "fusion-result-table",
+        negativeLabel: "The following fusions were detected in the tumor:",
+      },
     ),
   ]
     .filter(Boolean)
@@ -316,6 +323,7 @@ function getInlineCss() {
     .specimen-facts { margin-bottom: 0.18in; }
     .fact { margin: 0 0 0.2in 1px; }
     .result-table { margin: 0 0 0.28in; }
+    .negative-results h3 { margin-bottom: 0.2in; }
     h3 {
       margin: 0;
       font-size: 10pt;
