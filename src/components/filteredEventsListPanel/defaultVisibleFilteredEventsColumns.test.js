@@ -26,10 +26,10 @@ describe("getDefaultVisibleFilteredEventsColumnKeys", () => {
     expect(variantColumn.viewType).toBe("event-detail-link");
   });
 
-  it("places Location next to Gene in the application default columns", () => {
+  it("places Location immediately before Gene in the application default columns", () => {
     const columnKeys = settings.filteredEventsColumns.map(({ id }) => id);
 
-    expect(columnKeys.indexOf("location")).toBe(columnKeys.indexOf("gene") + 1);
+    expect(columnKeys.indexOf("location")).toBe(columnKeys.indexOf("gene") - 1);
   });
 
   it("shows every available column when the dataset default is absent", () => {
