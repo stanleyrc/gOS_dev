@@ -56,13 +56,12 @@ export function resolvePrimarySiteOptions(dataset, settings) {
   }, []);
 }
 
-/** Return the schema-enabled, scoped current-user snapshot or metadata fallback. */
+/** Return the scoped current-user snapshot or metadata fallback; only classic is schema-gated. */
 export function getPrimarySite(state = {}) {
   const dataset = state?.Settings?.dataset || state?.dataset;
-  if (dataset && !datasetHasField(dataset, "primary_site")) return null;
+  if (!isMyeloSeqReportStyle(dataset) && !datasetHasField(dataset, "primary_site")) return null;
 
   const fallback = getRawPrimarySite(state?.CaseReport?.metadata);
-  if (!fallback) return null;
 
   const caseId = state?.CaseReport?.id;
   const datasetId = dataset?.id;
@@ -87,6 +86,7 @@ export function getPrimarySite(state = {}) {
     if (snapshot) return snapshot;
   }
 
+  if (!fallback) return null;
   return resolvePrimarySiteOptions(dataset, state?.Settings?.data)
     .find((option) => option.value === fallback.value) || fallback;
 }

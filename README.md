@@ -95,7 +95,7 @@ MyeloSeq is the compatibility default. Only classic requires an explicit opt-in:
 }
 ```
 
-The header's primary-site value is separate from `tumor_type`. A MyeloSeq dataset edits a nonblank raw `metadata.primary_site` through the specimen selector; a classic dataset displays that raw value as ordinary, non-editable metadata. Missing, null, empty, or whitespace-only raw values omit the primary-site header element entirely and do not activate a saved override. The literal lowercase value `na` is nonblank and remains editable. The dataset schema still controls whether the field exists. If `fields` is specified but omits `primary_site`, the header and report field remain disabled.
+The header's primary-site value is separate from `tumor_type`. A MyeloSeq dataset always shows the specimen selector, even when `metadata.primary_site` is missing, null, empty, or whitespace-only, or the dataset's `fields` omit `primary_site`. Existing loading and save restrictions still apply. With no saved or raw value, the selector shows its placeholder rather than choosing an option automatically. A classic dataset still shows only nonblank, schema-enabled raw primary-site metadata as ordinary, non-editable text.
 
 The supplied MyeloSeq choices are exactly lowercase: **bone marrow aspirate**, **peripheral blood**, and **na**. They are configured in the top-level `primarySiteOptions.myeloseq` array in `public/settings.json` and `shared/settings.json`. There is no `Other` choice or whole-genome cancer-type fallback.
 
@@ -115,7 +115,7 @@ Reusable custom arrays may still be added to the global `primarySiteOptions` map
 
 MyeloSeq selections use the existing interpretation backend: the dataset's `auditLoggingRepo` when configured, otherwise the existing IndexedDB repository. They are scoped to the active dataset, canonical case ID, and signed-in author. A `PRIMARY_SITE` interpretation saves `data.primarySite = { value, label }`; selecting **na** stores a real choice. Existing case-interpretation reset behavior also clears this override.
 
-For MyeloSeq cases with a nonblank raw primary site, the selected current-author snapshot takes precedence over `metadata.primary_site` and its label is used as report **Specimen Type**. Classic reports and headers use the raw source primary site instead. Existing saved selections remain stored and become effective again when both MyeloSeq style and eligible raw metadata apply. Source metadata and tumor type are never rewritten. When raw metadata is absent, the report receives no primary-site value; the existing MyeloSeq report fallback still renders Specimen Type as `NA`.
+For MyeloSeq cases, the selected current-author snapshot takes precedence over `metadata.primary_site` and its label is used as report **Specimen Type**, regardless of source metadata or dataset fields. Classic reports and headers use the schema-enabled raw source primary site instead. Existing saved selections remain stored and become effective again when MyeloSeq style applies. Source metadata and tumor type are never rewritten. When neither a saved selection nor raw metadata is available, the MyeloSeq report renders Specimen Type as `NA`.
 
 ## Deployments
 - **Edge channel (latest `main`):** `.github/workflows/build-artifacts.yml` builds on every push to `main` and publishes a GitHub **prerelease**. This is intended for an “edge” instance that should always track the newest commit on `main`.

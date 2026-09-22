@@ -245,7 +245,7 @@ describe("getPrimarySite", () => {
     const state = createState();
     state.dataset = { id: "different-dataset", fields: [] };
     expect(getPrimarySite(state)).toEqual(snapshot);
-    state.Settings.dataset = { id: "different-dataset", fields: [] };
+    state.Settings.dataset = { id: "different-dataset", reportStyle: "classic", fields: [] };
     state.dataset = dataset;
     expect(getPrimarySite(state)).toBeNull();
   });
@@ -266,9 +266,19 @@ describe("getPrimarySite", () => {
   });
 
   it.each([[], [{ id: "tumor_type" }], ["primarySite"]].map((fields) => [fields]))(
-    "returns null when the dataset schema excludes primary_site %p", (fields) => {
+    "uses MyeloSeq selections and raw fallback even when fields exclude primary_site %p", (fields) => {
       const state = createState();
       state.Settings.dataset = { ...dataset, fields };
+      expect(getPrimarySite(state)).toEqual(snapshot);
+      state.Interpretations.selected = {};
+      expect(getPrimarySite(state)).toEqual({ value: "Bone marrow", label: "Bone marrow" });
+    },
+  );
+
+  it.each([[], [{ id: "tumor_type" }], ["primarySite"]].map((fields) => [fields]))(
+    "still excludes classic primary site when fields omit it %p", (fields) => {
+      const state = createState();
+      state.Settings.dataset = { ...dataset, reportStyle: "classic", fields };
       expect(getPrimarySite(state)).toBeNull();
     },
   );
@@ -321,10 +331,27 @@ describe("getPrimarySite", () => {
   );
 
   it.each([undefined, null, "", "  "])(
-    "ignores a saved override when raw primary_site is absent %p", (value) => {
-      expect(getPrimarySite(createState({}, { primary_site: value }))).toBeNull();
+    "uses a saved override when raw primary_site is absent %p", (value) => {
+      const state = createState({}, { primary_site: value });
+      state.Settings.dataset = { ...dataset, fields: [] };
+      expect(getPrimarySite(state)).toEqual(snapshot);
+      state.Settings.dataset = { ...state.Settings.dataset, reportStyle: "classic" };
+      expect(getPrimarySite(state)).toBeNull();
     },
   );
+
+  it.each([
+    { caseId: "case-2" }, { datasetId: "dataset-2" },
+    { isCurrentUser: false }, { alterationId: "GLOBAL_NOTES" }, { data: {} },
+  ])("rejects invalid saved values without source metadata %p", (record) => {
+    expect(getPrimarySite(createState(record, {}))).toBeNull();
+  });
+
+  it("restores a saved value even when the metadata object is missing", () => {
+    const state = createState();
+    delete state.CaseReport.metadata;
+    expect(getPrimarySite(state)).toEqual(snapshot);
+  });
 
   it("keeps explicit lowercase na eligible without a saved override", () => {
     expect(getPrimarySite(createState({ isCurrentUser: false }, { primary_site: "na" })))

@@ -161,11 +161,35 @@ describe("PrimarySiteSelect", () => {
     expect(props.loadError).toBe(true);
   });
 
-  it("maps saved value and options from actual Redux state", () => {
+  it("allows the first choice without source metadata while retaining readiness restrictions", async () => {
     const props = mapStateToProps({
-      CaseReport: { id: "case-1", metadata: { primary_site: "na" } },
+      CaseReport: { id: "case-1", metadata: {} },
       Settings: {
-        dataset: { id: "dataset-1" },
+        dataset: { id: "dataset-1", fields: [] },
+        data: { primarySiteOptions: { myeloseq: options } },
+      },
+      Interpretations: { loadedContext: { caseId: "case-1", datasetId: "dataset-1" } },
+    });
+    expect(props).toMatchObject({ value: null, options, ready: true });
+    const component = create(props);
+    expect(component.render().props.children[0].props).toMatchObject({
+      disabled: false, value: undefined, placeholder: "components.primary-site.label",
+    });
+    await component.handleChange("peripheral blood");
+    expect(component.props.savePrimarySite).toHaveBeenCalledWith(expect.objectContaining({
+      data: { primarySite: options[1] },
+    }));
+    component.props = { ...component.props, ready: false };
+    expect(component.render().props.children[0].props.disabled).toBe(true);
+    component.props = { ...component.props, ready: true, options: [] };
+    expect(component.render().props.children[0].props.disabled).toBe(true);
+  });
+
+  it("maps saved value and options without source metadata or a dataset field", () => {
+    const props = mapStateToProps({
+      CaseReport: { id: "case-1", metadata: {} },
+      Settings: {
+        dataset: { id: "dataset-1", fields: [] },
         data: { primarySiteOptions: { myeloseq: options } },
       },
       Interpretations: { status: "succeeded", loadedContext: { caseId: "case-1", datasetId: "dataset-1" },

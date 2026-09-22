@@ -473,12 +473,10 @@ export class HeaderPanel extends Component {
                       <div className="case-metadata-fields">
                         <div className="case-metadata-line">
                           {disease != null && <span>{disease}</span>}
-                          {primarySite && (
-                            isMyeloSeqReportStyle(dataset) ? (
-                              <PrimarySiteSelect />
-                            ) : (
-                              <span>{primarySite.label}</span>
-                            )
+                          {isMyeloSeqReportStyle(dataset) ? (
+                            <PrimarySiteSelect />
+                          ) : primarySite && (
+                            <span>{primarySite.label}</span>
                           )}
                           {tumor_details != null && <span>{tumor_details}</span>}
                         </div>

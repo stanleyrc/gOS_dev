@@ -234,7 +234,7 @@ describe("reportExporter", () => {
     ]);
   });
 
-  it("uses the persisted primary site in both modal HTML and DOCX without changing tumor type", async () => {
+  it.each(["Original", undefined])("uses the persisted primary site in HTML and DOCX with raw site %p", async (rawSite) => {
     const dataset = {
       id: "dataset-1",
       reportStyle: "myeloseq",
@@ -242,7 +242,7 @@ describe("reportExporter", () => {
     };
     const savedState = {
       ...state, Settings: { dataset },
-      CaseReport: { id: "case-1", metadata: { primary_site: "Original", tumor_type: "UNCHANGED" } },
+      CaseReport: { id: "case-1", metadata: { primary_site: rawSite, tumor_type: "UNCHANGED" } },
       Interpretations: { selected: { PRIMARY_SITE: "saved" }, byId: { saved: {
         alterationId: "PRIMARY_SITE", caseId: "case-1", datasetId: "dataset-1", isCurrentUser: true,
         data: { primarySite: { value: "Bone marrow", label: "Bone marrow" } },
@@ -255,10 +255,14 @@ describe("reportExporter", () => {
     for (const render of [mockHtmlRender, mockDocxRender]) {
       expect(render.mock.calls[0][0].patient).toMatchObject({ primarySite: "Bone marrow", tumorType: "UNCHANGED" });
     }
-    expect(savedState.CaseReport.metadata.primary_site).toBe("Original");
+    expect(savedState.CaseReport.metadata.primary_site).toBe(rawSite);
     savedState.Settings.dataset = { ...dataset, fields: [{ id: "tumor_type" }] };
     await previewReport(savedState, { filteredEvents: [] });
-    expect(mockHtmlRender.mock.calls[1][0].patient.primarySite).toBe("");
+    await exportReport(savedState, { filteredEvents: [] });
+    for (const render of [mockHtmlRender, mockDocxRender]) {
+      expect(render.mock.calls[1][0].patient).toMatchObject({ primarySite: "Bone marrow", tumorType: "UNCHANGED" });
+    }
+    expect(savedState.CaseReport.metadata.primary_site).toBe(rawSite);
   });
 
   it("does not map raw patient values omitted by the active dataset", async () => {

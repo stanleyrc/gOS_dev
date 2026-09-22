@@ -89,22 +89,36 @@ const collectText = (node) => {
 };
 
 describe("HeaderPanel schema metadata", () => {
-  it.each([true, false])("shows the primary-site selector only when schema-enabled: %s", (enabled) => {
+  it.each([
+    ["myeloseq", true, "bone marrow aspirate", 1],
+    ["myeloseq", false, "bone marrow aspirate", 1],
+    ["myeloseq", false, undefined, 1],
+    [undefined, false, undefined, 1],
+    ["unknown", false, undefined, 1],
+    ["classic", true, "bone marrow aspirate", 0],
+    ["classic", false, "bone marrow aspirate", 0],
+    ["classic", false, undefined, 0],
+  ])("selector for style %p, field enabled %p, raw site %p", (reportStyle, enabled, primary_site, count) => {
     const component = new HeaderPanel({
       t: (key) => key,
       report: "case-1",
       dataset: {
-        reportStyle: "myeloseq",
+        reportStyle,
         fields: enabled ? [{ id: "primary_site" }] : [],
       },
-      metadata: { primary_site: "bone marrow aspirate" }, plots: [],
+      metadata: { primary_site }, plots: [],
     });
     const find = (node) => {
       if (Array.isArray(node)) return node.flatMap(find);
       if (!React.isValidElement(node)) return [];
       return [node, ...find(node.props.children)];
     };
-    expect(find(component.render()).filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(enabled ? 1 : 0);
+    const nodes = find(component.render());
+    expect(nodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(count);
+    expect(collectText(component.render()).includes("bone marrow aspirate"))
+      .toBe(reportStyle === "classic" && enabled && Boolean(primary_site));
+    component.props = { ...component.props, report: null };
+    expect(component.render()).toBeNull();
   });
 
   it("edits one existing site slot while retaining populated tumor metadata", () => {
@@ -198,7 +212,7 @@ describe("HeaderPanel schema metadata", () => {
     ["null", { primary_site: null }],
     ["empty", { primary_site: "" }],
     ["whitespace", { primary_site: "   " }],
-  ])("omits the primary-site element for %s raw metadata", (name, primarySiteMetadata) => {
+  ])("shows the MyeloSeq selector but no classic site for %s raw metadata", (name, primarySiteMetadata) => {
     const fields = ["disease", "primary_site", "tumor_details"].map((id) => ({ id }));
     const panel = new HeaderPanel({
       t: (key) => key,
@@ -219,9 +233,15 @@ describe("HeaderPanel schema metadata", () => {
     const nodes = find(panel.render());
     const line = nodes.find((node) => node.props.className === "case-metadata-line");
     const children = React.Children.toArray(line.props.children);
-    expect(children.map((node) => node.type)).toEqual(["span", "span"]);
+    expect(children.map((node) => node.type)).toEqual(["span", "PrimarySiteSelect", "span"]);
     expect(collectText(children)).toEqual(["Adenocarcinoma", "Details"]);
-    expect(nodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(0);
+    expect(nodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(1);
+    panel.props = { ...panel.props, dataset: { fields, reportStyle: "classic" } };
+    const classicNodes = find(panel.render());
+    const classicLine = classicNodes.find((node) => node.props.className === "case-metadata-line");
+    expect(React.Children.toArray(classicLine.props.children).map((node) => node.type))
+      .toEqual(["span", "span"]);
+    expect(classicNodes.filter((node) => node.type === "PrimarySiteSelect")).toHaveLength(0);
   });
 
   it("keeps explicit lowercase na eligible for the selector", () => {

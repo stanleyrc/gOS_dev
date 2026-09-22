@@ -169,7 +169,10 @@ describe("primary-site persistence through interpretation storage", () => {
     expect(state.Interpretations.pendingWrites).toEqual([]);
   });
 
-  it.each(["bone marrow aspirate", "peripheral blood", "na"])("restores %s after save and fresh hydration", async (label) => {
+  it.each([
+    ["bone marrow aspirate", "Original site"], ["peripheral blood", "Original site"], ["na", "Original site"],
+    ["bone marrow aspirate", undefined], ["peripheral blood", undefined], ["na", undefined],
+  ])("restores %s after save and fresh hydration with raw site %p", async (label, rawSite) => {
     mockGetCurrentUserId.mockReturnValue("user-1");
     mockGetUser.mockReturnValue(null);
     const repository = createRepository();
@@ -177,7 +180,8 @@ describe("primary-site persistence through interpretation storage", () => {
     repository.save.mockImplementation(async (record) => { stored = record; });
     repository.getAll = jest.fn(async () => [stored]);
     mockGetActiveRepository.mockReturnValue(repository);
-    let state = createState(undefined, { Interpretations: reducer(undefined, {}), CaseReport: { id: "case-1", metadata: { primary_site: "Original site" } } });
+    let state = createState(undefined, { Interpretations: reducer(undefined, {}), CaseReport: { id: "case-1", metadata: { primary_site: rawSite } } });
+    state.Settings = { ...state.Settings, dataset: { ...state.Settings.dataset, fields: [] } };
     const dispatch = (action) => { state = { ...state, Interpretations: reducer(state.Interpretations, action) }; };
     const env = { dispatch, getState: () => state };
     await runSaga(env, updateInterpretation, actions.updateInterpretation({
@@ -192,7 +196,7 @@ describe("primary-site persistence through interpretation storage", () => {
     await runSaga(env, fetchInterpretationsForCase, actions.fetchInterpretationsForCase("case-1")).toPromise();
     expect(areCaseInterpretationsReady(state)).toBe(true);
     expect(getPrimarySite(state)).toEqual({ value: label, label });
-    expect(state.CaseReport.metadata.primary_site).toBe("Original site");
+    expect(state.CaseReport.metadata.primary_site).toBe(rawSite);
     expect(state.Interpretations.byGene).toEqual({});
     expect(mockGetActiveRepository).toHaveBeenLastCalledWith({ dataset: state.Settings.dataset });
   });

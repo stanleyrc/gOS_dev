@@ -1,12 +1,4 @@
 /** @jest-environment node */
-/* eslint-disable import/first */
-
-jest.mock("./browseScope", () => ({
-  datasetHasField: (dataset, fieldId) =>
-    (dataset?.fields || []).some(
-      (field) => (field.id || field.name) === fieldId,
-    ),
-}));
 
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 
@@ -27,17 +19,23 @@ describe("MyeloSeq specimen facts", () => {
     ]);
   });
 
-  it("uses NA when primary site is schema-disabled", () => {
+  it.each([
+    [{ primarySite: "Selected site" }, { primary_site: "Source site" }, "Selected site"],
+    [{ primarySite: "Selected site" }, {}, "Selected site"],
+    [{}, { primary_site: "Source site" }, "Source site"],
+    [{}, { primarySite: "Alias site" }, "Alias site"],
+    [{}, {}, "NA"],
+    [{ primarySite: "" }, { primary_site: "  " }, "NA"],
+    [{ primarySite: "na" }, {}, "na"],
+  ])("resolves specimen type independently of dataset fields: %p, %p", (patient, metadata, expected) => {
     expect(
       getMyeloSeqSpecimenFacts({
-        dataset: {
-          fields: [{ id: "disease" }],
-        },
-        patient: { primarySite: "Schema-disabled site" },
-        metadata: { primary_site: "Schema-disabled metadata site" },
+        dataset: { fields: [{ id: "disease" }] },
+        patient,
+        metadata,
       }),
     ).toEqual([
-      { label: "Specimen Type", value: "NA" },
+      { label: "Specimen Type", value: expected },
       { label: "Clinical History", value: "NA" },
     ]);
   });

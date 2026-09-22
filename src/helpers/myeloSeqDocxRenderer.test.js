@@ -231,7 +231,7 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(documentXml.split(identity)).toHaveLength(3);
   });
 
-  it("uses NA when primary site is disabled and keeps Clinical History unmapped", () => {
+  it("uses the selected specimen without a schema field and keeps Clinical History unmapped", () => {
     const model = buildMyeloSeqDocxModel({
       ...report,
       dataset: {
@@ -254,7 +254,7 @@ describe("MyeloSeqDocxRenderer model", () => {
 
     expect(model.specimenFacts).toEqual([
       { label: "Tumor sample", value: "CASE-001" },
-      { label: "Specimen Type", value: "NA" },
+      { label: "Specimen Type", value: "Bone marrow" },
       { label: "Clinical History", value: "NA" },
     ]);
     expect(model.resultTables.map(({ negativeLabel }) => negativeLabel)).toEqual([

@@ -461,7 +461,7 @@ describe("MyeloSeqHtmlRenderer", () => {
     );
   });
 
-  it("uses NA for specimen type when primary site is disabled", async () => {
+  it("uses the selected specimen type when primary site is omitted from fields", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,
       dataset: {
@@ -484,7 +484,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       },
     });
 
-    expect(result.html).toContain("<strong>Specimen Type:</strong> NA");
+    expect(result.html).toContain("<strong>Specimen Type:</strong> Bone marrow");
     expect(result.html).toContain("<strong>Clinical History:</strong> NA");
     expect(result.html).not.toContain("Allowed disease");
     expect(result.html).not.toContain("SCHEMA-OMITTED");
