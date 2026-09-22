@@ -130,7 +130,7 @@ function buildSequenceTables(report) {
     },
   ];
 
-  return [
+  const tables = [
     renderTable("DNA Sequencing results", sequenceColumns, sequenceFindings, {
       negativeLabel: "Coding (non-synonymous) variants",
     }),
@@ -143,9 +143,8 @@ function buildSequenceTables(report) {
         negativeLabel: "The following fusions were detected in the tumor:",
       },
     ),
-  ]
-    .filter(Boolean)
-    .join("");
+  ];
+  return (fusionFindings.length ? tables.reverse() : tables).join("");
 }
 
 function buildQcFailureResults() {

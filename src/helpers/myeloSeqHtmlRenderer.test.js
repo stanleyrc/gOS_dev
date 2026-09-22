@@ -396,6 +396,15 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(absent.html).not.toContain("<th>Depth</th>");
   });
 
+  it.each([
+    [report.alterations, true], [[report.alterations[1]], true],
+    [[report.alterations[0]], false], [[], false],
+  ])("puts RNA first only when positive: %j", async (alterations, rnaFirst) => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({ alterations });
+    expect(html.indexOf("Targeted RNA Sequencing results") < html.indexOf("DNA Sequencing results"))
+      .toBe(rnaFirst);
+  });
+
   it("escapes case-specific content", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,

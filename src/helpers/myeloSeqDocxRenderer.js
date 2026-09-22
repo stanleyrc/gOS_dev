@@ -187,7 +187,7 @@ function buildResultTables(report) {
     { label: "Variant Type", required: true, value: formatMyeloSeqVariantType },
   ];
 
-  return [
+  const tables = [
     buildResultTable(
       "DNA Sequencing results",
       [
@@ -230,7 +230,8 @@ function buildResultTables(report) {
         columnWidths: FUSION_RESULT_COLUMN_WIDTHS,
       },
     ),
-  ].filter(Boolean);
+  ];
+  return fusionFindings.length ? tables.reverse() : tables;
 }
 
 function buildFindingModel(finding) {

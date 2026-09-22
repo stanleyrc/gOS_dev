@@ -83,7 +83,7 @@ describe("MyeloSeqDocxRenderer model", () => {
       { label: "Specimen Type", value: "Bone marrow" },
       { label: "Clinical History", value: "NA" },
     ]);
-    expect(model.resultTables.map(({ title, columns }) => ({ title, columns })))
+    expect([...model.resultTables].reverse().map(({ title, columns }) => ({ title, columns })))
       .toEqual([
         {
           title: "DNA Sequencing results",
@@ -102,11 +102,11 @@ describe("MyeloSeqDocxRenderer model", () => {
           columns: ["Gene(Exon)", "Tier", "Variant Type", "Locus"],
         },
       ]);
-    expect(model.resultTables[1]).toMatchObject({
+    expect(model.resultTables[0]).toMatchObject({
       width: 10800,
       columnWidths: [3132, 864, 2268, 4536],
     });
-    expect(model.resultTables[1].rows[0].map(({ value }) => value)).toEqual([
+    expect(model.resultTables[0].rows[0].map(({ value }) => value)).toEqual([
       "BCR(14)::ABL1(2)",
       "2",
       "FUSION",
@@ -178,14 +178,14 @@ describe("MyeloSeqDocxRenderer model", () => {
       ],
     });
 
-    expect(model.resultTables[1].columns).toEqual([
+    expect(model.resultTables[0].columns).toEqual([
       "Gene(Exon)",
       "Tier",
       "Variant Type",
       "Locus",
     ]);
     expect(
-      model.resultTables[1].rows.map((row) =>
+      model.resultTables[0].rows.map((row) =>
         row.map((cell) => cell.value),
       ),
     ).toEqual([
@@ -311,14 +311,14 @@ describe("MyeloSeqDocxRenderer model", () => {
       { gene: "BCR::ABL1", variant_type: "fusion", type: "Other", variant: "BCR(14)::ABL1(2)" },
     ];
     const model = buildMyeloSeqDocxModel({ alterations });
-    const dna = model.resultTables[0];
+    const dna = model.resultTables[1];
     expect(dna.columns).not.toContain("Insertion Size");
     expect(dna.rows.map((row) => row[3].value)).toEqual(["INDEL 54(bp)", "SNV", "INDEL"]);
     expect(dna.rows[0][1].value).toBe("c.1740_1793dup, p.V581_E598dup");
     expect(model.tierSections[0].findings[0].lines[0].value).toBe("FLT3, c.1740_1793dup, p.V581_E598dup");
-    expect(model.resultTables[1].rows[0][2].value).toBe("FUSION");
+    expect(model.resultTables[0].rows[0][2].value).toBe("FUSION");
     const withoutItd = buildMyeloSeqDocxModel({ alterations: alterations.slice(1) });
-    expect(withoutItd.resultTables[0].columns).not.toContain("Insertion Size");
+    expect(withoutItd.resultTables[1].columns).not.toContain("Insertion Size");
     const invalidItd = buildMyeloSeqDocxModel({ alterations: [{ gene: "FLT3", variant_type: "INDEL", variant: "p.only" }] });
     expect(invalidItd.resultTables[0].columns).not.toContain("Insertion Size");
     expect(invalidItd.resultTables[0].rows[0][3].value).toBe("INDEL");
@@ -342,6 +342,19 @@ describe("MyeloSeqDocxRenderer model", () => {
       .toEqual(["2753", "2586", "0", ""]);
     expect(buildMyeloSeqDocxModel({ alterations: [{ type: "SNV", depth: null }] }).resultTables[0].columns)
       .not.toContain("Depth");
+  });
+
+  it.each([
+    [report.alterations, true], [[report.alterations[1]], true],
+    [[report.alterations[0]], false], [[], false],
+  ])("puts RNA first only when positive: %j", async (alterations, rnaFirst) => {
+    const titles = buildMyeloSeqDocxModel({ alterations }).resultTables.map(({ title }) => title);
+    expect(titles).toEqual(rnaFirst
+      ? ["Targeted RNA Sequencing results", "DNA Sequencing results"]
+      : ["DNA Sequencing results", "Targeted RNA Sequencing results"]);
+    const { blob } = await new MyeloSeqDocxRenderer().render({ alterations });
+    const { documentXml } = await unpackDocumentXml(blob);
+    expect(documentXml.indexOf(titles[0])).toBeLessThan(documentXml.indexOf(titles[1]));
   });
 
   it("omits an unavailable finding identity while retaining Comments", () => {
