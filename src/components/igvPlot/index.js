@@ -11,7 +11,7 @@ import Wrapper from "./index.style";
 
 const margins = {};
 
-class IgvPlot extends Component {
+export class IgvPlot extends Component {
   container = null;
   igvBrowser = null;
   domain = [];
@@ -60,6 +60,7 @@ class IgvPlot extends Component {
         indexURL: indexTumorURL,
         format,
         type: "alignment",
+        colorBy: "strand",
         sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
@@ -71,6 +72,7 @@ class IgvPlot extends Component {
         indexURL: indexNormalURL,
         format,
         type: "alignment",
+        colorBy: "strand",
         sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
@@ -82,6 +84,7 @@ class IgvPlot extends Component {
         indexURL: indexTumorRnaURL,
         format,
         type: "alignment",
+        colorBy: "strand",
         sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
@@ -93,6 +96,7 @@ class IgvPlot extends Component {
         indexURL: indexNormalRnaURL,
         format,
         type: "alignment",
+        colorBy: "strand",
         sort: [{ chr, position, option: "BASE", direction: "ASC" }],
       });
     }
