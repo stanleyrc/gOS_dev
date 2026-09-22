@@ -404,6 +404,23 @@ describe("MyeloSeqHtmlRenderer", () => {
       .toBe(rnaFirst);
   });
 
+  it("keeps long annotations intact inside fixed, wrapping result tables", async () => {
+    const coding = `c.1154_1155ins${"ACGT".repeat(50)}`;
+    const { html } = await new MyeloSeqHtmlRenderer().render({
+      alterations: [{ ...report.alterations[0], gene: "CALR", variant: `p.K385Nfs*47 / ${coding}` }],
+    });
+    expect(html).toContain(`<td>${coding}, p.K385Nfs*47</td>`);
+    expect(html).toMatch(/\.result-table table\s*\{\s*width: 100%;\s*table-layout: fixed;/);
+    expect(html).toContain("overflow-wrap: anywhere;");
+    expect(html).toContain("word-wrap: break-word;");
+    expect(html).toContain('<col style="width: 34%">');
+    expect(html).not.toContain("width: 86%");
+    const minimal = await new MyeloSeqHtmlRenderer().render({ alterations: [{ gene: "CALR", variant: coding, type: "INDEL" }] });
+    const widths = [...minimal.html.matchAll(/<col style="width: ([\d.]+)%">/g)].map((match) => Number(match[1]));
+    expect(widths).toHaveLength(4);
+    expect(widths.reduce((sum, width) => sum + width, 0)).toBeCloseTo(100);
+  });
+
   it("escapes case-specific content", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,

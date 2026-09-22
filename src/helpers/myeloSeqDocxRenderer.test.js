@@ -461,6 +461,25 @@ describe("MyeloSeqDocxRenderer output", () => {
     },
   );
 
+  it("keeps long variants intact with fixed page-width columns and character wrapping", async () => {
+    const coding = `c.1154_1155ins${"ACGT".repeat(50)}`;
+    const input = { alterations: [{ ...report.alterations[0], gene: "CALR", variant: `${coding}, p.K385Nfs*47` }] };
+    const model = buildMyeloSeqDocxModel(input);
+    expect(model.resultTables[0].columnWidths).toEqual([972, 3672, 648, 1620, 972, 864, 2052]);
+    const { blob } = await new MyeloSeqDocxRenderer().render(input);
+    const { documentXml } = await unpackDocumentXml(blob);
+    expect(documentXml).toContain(coding);
+    expect(documentXml).toContain('<w:tblLayout w:type="fixed"/>');
+    expect(documentXml).toMatch(/<w:tblW [^>]*w:w="10800"/);
+    expect(documentXml).toMatch(/<w:tcW [^>]*w:w="3672"/);
+    // docx wordWrap enables breaking long words by emitting w:wordWrap=0.
+    expect(documentXml).toContain('<w:wordWrap w:val="0"/>');
+    expect(documentXml).not.toContain("<w:noWrap");
+    const minimal = buildMyeloSeqDocxModel({ alterations: [{ gene: "CALR", variant: coding, type: "INDEL" }] });
+    expect(minimal.resultTables[0].columnWidths).toHaveLength(4);
+    expect(minimal.resultTables[0].columnWidths.reduce((sum, width) => sum + width, 0)).toBe(10800);
+  });
+
   it("accepts an explicit DOCX filename", async () => {
     const result = await new MyeloSeqDocxRenderer().render(report, {
       filename: "reviewed-report.docx",

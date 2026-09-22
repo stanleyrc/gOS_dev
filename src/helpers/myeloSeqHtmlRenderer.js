@@ -42,11 +42,12 @@ function renderTable(title, columns, rows, options = {}) {
   const header = availableColumns
     .map((column) => `<th>${text(column.label)}</th>`)
     .join("");
+  const totalWeight = availableColumns.reduce((total, column) => total + (Number(column.width) || 0), 0);
   const colgroup = availableColumns.some((column) => column.width)
     ? `<colgroup>${availableColumns
         .map((column) =>
           column.width
-            ? `<col style="width: ${text(column.width)}">`
+            ? `<col style="width: ${text(typeof column.width === "number" ? `${100 * column.width / totalWeight}%` : column.width)}">`
             : "<col>",
         )
         .join("")}</colgroup>`
@@ -89,16 +90,16 @@ function buildSequenceTables(report) {
   const sequenceFindings = alterations.filter((finding) => !isFusion(finding));
   const fusionFindings = alterations.filter(isFusion);
   const baseColumns = [
-    { label: "Gene", required: true, value: (finding) => finding.gene, className: "gene-cell" },
-    { label: "Variant", required: true, value: formatMyeloSeqFindingVariant },
-    { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: formatMyeloSeqVariantType },
+    { label: "Gene", required: true, value: (finding) => finding.gene, className: "gene-cell", width: 9 },
+    { label: "Variant", required: true, value: formatMyeloSeqFindingVariant, width: 34 },
+    { label: "Tier", required: true, value: (finding) => finding.tier, width: 6 },
+    { label: "Variant Type", required: true, value: formatMyeloSeqVariantType, width: 15 },
   ];
   const sequenceColumns = [
     ...baseColumns,
-    { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF) },
-    { label: "Depth", value: (finding) => formatMyeloSeqDepth(finding.depth) },
-    { label: "Transcript", value: (finding) => finding.transcript },
+    { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF), width: 9 },
+    { label: "Depth", value: (finding) => formatMyeloSeqDepth(finding.depth), width: 8 },
+    { label: "Transcript", value: (finding) => finding.transcript, width: 19 },
   ];
   const fusionColumns = [
     {
@@ -317,8 +318,7 @@ function getInlineCss() {
       break-after: avoid;
     }
     table { border-collapse: collapse; }
-    .result-table table { width: 86%; }
-    .fusion-result-table table {
+    .result-table table {
       width: 100%;
       table-layout: fixed;
     }
@@ -329,6 +329,8 @@ function getInlineCss() {
       text-align: center;
       font-size: 9.5pt;
       line-height: 1.15;
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
     }
     .result-table th { font-weight: 700; }
     .result-table .gene-cell { font-style: italic; }
@@ -337,9 +339,15 @@ function getInlineCss() {
     .qc-failure-results p { margin: 0; }
     .tier-section { margin: 0 0 0.28in; }
     .finding-interpretation { margin: 0 0 0.24in; }
-    .finding-interpretation p { margin: 0; white-space: pre-wrap; }
+    .finding-interpretation p {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
+    }
     .report-comment-value {
       display: inline-block;
+      max-width: 100%;
       min-width: 0.5em;
       min-height: 1em;
       vertical-align: top;

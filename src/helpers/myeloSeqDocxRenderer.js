@@ -36,7 +36,7 @@ const PAGE_WIDTH = 12240;
 const PAGE_HEIGHT = 15840;
 const PAGE_MARGIN = 720;
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
-const RESULT_TABLE_WIDTH = Math.round(CONTENT_WIDTH * 0.86);
+const RESULT_TABLE_WIDTH = CONTENT_WIDTH;
 const FUSION_RESULT_TABLE_WIDTH = CONTENT_WIDTH;
 const FUSION_RESULT_COLUMN_WIDTHS = [0.29, 0.08, 0.21, 0.42].map(
   (ratio) => Math.round(FUSION_RESULT_TABLE_WIDTH * ratio),
@@ -169,6 +169,9 @@ function buildResultTable(title, columnDefinitions, findings, options = {}) {
       })),
     ),
     ...tableOptions,
+    ...(availableColumns.every((column) => column.width)
+      ? { columnWidths: weightedColumnWidths(RESULT_TABLE_WIDTH, availableColumns.map((column) => column.width)) }
+      : {}),
   };
 }
 
@@ -179,10 +182,10 @@ function buildResultTables(report) {
   const sequenceFindings = alterations.filter((finding) => !isFusion(finding));
   const fusionFindings = alterations.filter(isFusion);
   const baseColumns = [
-    { label: "Gene", required: true, value: (finding) => finding.gene, italics: true },
-    { label: "Variant", required: true, value: formatMyeloSeqFindingVariant },
-    { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: formatMyeloSeqVariantType },
+    { label: "Gene", required: true, value: (finding) => finding.gene, italics: true, width: 9 },
+    { label: "Variant", required: true, value: formatMyeloSeqFindingVariant, width: 34 },
+    { label: "Tier", required: true, value: (finding) => finding.tier, width: 6 },
+    { label: "Variant Type", required: true, value: formatMyeloSeqVariantType, width: 15 },
   ];
 
   const tables = [
@@ -190,12 +193,13 @@ function buildResultTables(report) {
       "DNA Sequencing results",
       [
         ...baseColumns,
-        { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF) },
+        { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF), width: 9 },
         {
           label: "Depth",
           value: (finding) => formatMyeloSeqDepth(finding.depth),
+          width: 8,
         },
-        { label: "Transcript", value: (finding) => finding.transcript },
+        { label: "Transcript", value: (finding) => finding.transcript, width: 19 },
       ],
       sequenceFindings,
       { negativeLabel: "Coding (non-synonymous) variants" },
@@ -331,6 +335,7 @@ function createLabeledParagraph(label, value, options = {}) {
   return new Paragraph({
     spacing: { after: 0, line: 307 },
     widowControl: true,
+    wordWrap: true,
     ...options,
     children: [
       new TextRun({ text: `${label}:`, bold: true }),
@@ -361,12 +366,24 @@ function equalColumnWidths(width, columnCount) {
   );
 }
 
+function weightedColumnWidths(width, weights) {
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let remaining = width;
+  return weights.map((weight, index) => {
+    const size = index === weights.length - 1 ? remaining : Math.round(width * weight / total);
+    remaining -= size;
+    return size;
+  });
+}
+
 function createTableCell(value, options = {}) {
   return new TableCell({
+    width: { size: options.width, type: WidthType.DXA },
     verticalAlign: VerticalAlign.CENTER,
     children: [
       new Paragraph({
         alignment: options.alignment || AlignmentType.LEFT,
+        wordWrap: true,
         spacing: { before: 0, after: 0, line: 240 },
         children: [
           new TextRun({
@@ -383,10 +400,10 @@ function createTableCell(value, options = {}) {
 
 function createBorderedTable(rows, width, options = {}) {
   const columnCount = rows[0]?.length || 1;
+  const columnWidths = options.columnWidths || equalColumnWidths(width, columnCount);
   return new Table({
     width: { size: width, type: WidthType.DXA },
-    columnWidths:
-      options.columnWidths || equalColumnWidths(width, columnCount),
+    columnWidths,
     layout: TableLayoutType.FIXED,
     borders: TABLE_BORDERS,
     margins: { top: 20, bottom: 20, left: 80, right: 80 },
@@ -395,8 +412,9 @@ function createBorderedTable(rows, width, options = {}) {
         new TableRow({
           tableHeader: options.header && rowIndex === 0,
           cantSplit: true,
-          children: row.map((cell) =>
+          children: row.map((cell, columnIndex) =>
             createTableCell(cell.value ?? cell, {
+              width: columnWidths[columnIndex],
               alignment: options.center
                 ? AlignmentType.CENTER
                 : AlignmentType.LEFT,
