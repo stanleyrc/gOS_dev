@@ -41,8 +41,19 @@ export function formatMyeloSeqVaf(value) {
   return percent.toFixed(2);
 }
 
+const AMINO_ACIDS = {
+  Ala: "A", Arg: "R", Asn: "N", Asp: "D", Cys: "C", Gln: "Q", Glu: "E",
+  Gly: "G", His: "H", Ile: "I", Leu: "L", Lys: "K", Met: "M", Phe: "F",
+  Pro: "P", Ser: "S", Thr: "T", Trp: "W", Tyr: "Y", Val: "V",
+  Sec: "U", Pyl: "O", Asx: "B", Glx: "Z", Xaa: "X", Ter: "*",
+};
+const AMINO_ACID_PATTERN = new RegExp(Object.keys(AMINO_ACIDS).join("|"), "g");
+
 export function formatMyeloSeqVariant(value) {
-  const variant = String(value ?? "").trim();
+  const variant = String(value ?? "").trim().replace(
+    /\bp\.[^\s/,]+/g,
+    (protein) => protein.replace(AMINO_ACID_PATTERN, (aminoAcid) => AMINO_ACIDS[aminoAcid]),
+  );
   const parts = variant.split(/\s*[/,]\s*(?=[cp]\.)/i);
   const coding = parts.find((part) => /^c\.\S/i.test(part));
   const protein = parts.find((part) => /^p\.\S/i.test(part));

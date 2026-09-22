@@ -291,7 +291,7 @@ describe("MyeloSeqHtmlRenderer", () => {
 
     expect(result.html).toContain("DNA Sequencing results");
     expect(result.html).toContain("<h3>Tier 3:</h3>");
-    expect(result.html).toContain("<strong>Variant:</strong> TET2, p.Gln548Ter");
+    expect(result.html).toContain("<strong>Variant:</strong> TET2, p.Q548*");
     expect(result.html).toContain(
       '<strong>Comments:</strong> <span class="report-comment-value">Selected Tier 3 interpretation</span>',
     );
@@ -341,11 +341,11 @@ describe("MyeloSeqHtmlRenderer", () => {
   });
 
   it("puts coding annotation first with a comma in the table and interpretation", async () => {
-    const finding = { ...report.alterations[0], variant: "p.V617F / c.1849G>T" };
+    const finding = { ...report.alterations[0], variant: "p.Val617Phe / c.1849G>T" };
     const { html } = await new MyeloSeqHtmlRenderer().render({ alterations: [finding] });
     expect(html).toContain("<td>c.1849G&gt;T, p.V617F</td>");
     expect(html).toContain("<strong>Variant:</strong> JAK2, c.1849G&gt;T, p.V617F");
-    expect(finding.variant).toBe("p.V617F / c.1849G>T");
+    expect(finding.variant).toBe("p.Val617Phe / c.1849G>T");
   });
 
   it("uses supplied variant types and adds numeric insertion sizes only for FLT3ITD", async () => {

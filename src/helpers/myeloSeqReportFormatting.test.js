@@ -66,12 +66,20 @@ describe("formatMyeloSeqVaf", () => {
 
 describe("formatMyeloSeqVariant", () => {
   it.each([
+    ["p.Asp835Tyr / c.2503G>T", "c.2503G>T, p.D835Y"],
+    ["p.Lys385AsnfsTer47", "p.K385Nfs*47"],
+    ["p.Gln548Ter", "p.Q548*"],
+    ["p.(Arg175His)", "p.(R175H)"],
+    ["p.Val581_Glu598dup", "p.V581_E598dup"],
+    ["p.Ala1_Cys2delinsAspGluPheGlyHisIleLysLeuMetAsnProGlnArgSerThrValTrpTyr", "p.A1_C2delinsDEFGHIKLMNPQRSTVWY"],
+    ["p.Sec1Pyl", "p.U1O"],
+    ["c.123del", "c.123del"],
     ["p.V617F / c.1849G>T", "c.1849G>T, p.V617F"],
     ["c.1849G>T / p.V617F", "c.1849G>T, p.V617F"],
     ["p.V617F,c.1849G>T", "c.1849G>T, p.V617F"],
     ["c.1849G>T, p.V617F", "c.1849G>T, p.V617F"],
     ["p.K385Nfs*47 / c.1154_1155insTTGTC", "c.1154_1155insTTGTC, p.K385Nfs*47"],
-    ["c.1740_1793dupGGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGA / p.Glu598_Tyr599insValThrGly", "c.1740_1793dupGGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGA, p.Glu598_Tyr599insValThrGly"],
+    ["c.1740_1793dupGGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGA / p.Glu598_Tyr599insValThrGly", "c.1740_1793dupGGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGA, p.E598_Y599insVTG"],
     [" p.R175H ", "p.R175H"],
     ["c.119C>T", "c.119C>T"],
     ["BCR(14)::ABL1(2)", "BCR(14)::ABL1(2)"],
