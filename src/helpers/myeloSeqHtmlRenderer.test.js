@@ -382,6 +382,18 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(absent.html).not.toContain("<th>VAF(%)</th>");
   });
 
+  it("renders depth without comma grouping", async () => {
+    const { html } = await new MyeloSeqHtmlRenderer().render({
+      alterations: [2753, 2586, 0, null].map((depth) => ({ type: "SNV", depth })),
+    });
+    expect(html).toContain("<td>2753</td>");
+    expect(html).toContain("<td>2586</td>");
+    expect(html).toContain("<td>0</td>");
+    expect(html).not.toContain("2,753");
+    const absent = await new MyeloSeqHtmlRenderer().render({ alterations: [{ type: "SNV", depth: null }] });
+    expect(absent.html).not.toContain("<th>Depth</th>");
+  });
+
   it("escapes case-specific content", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,

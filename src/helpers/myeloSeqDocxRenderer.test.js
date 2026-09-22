@@ -333,6 +333,16 @@ describe("MyeloSeqDocxRenderer model", () => {
       .not.toContain("VAF(%)");
   });
 
+  it("renders depth without comma grouping", () => {
+    const model = buildMyeloSeqDocxModel({
+      alterations: [2753, 2586, 0, null].map((depth) => ({ type: "SNV", depth })),
+    });
+    expect(model.resultTables[0].rows.map((row) => row[4].value))
+      .toEqual(["2753", "2586", "0", ""]);
+    expect(buildMyeloSeqDocxModel({ alterations: [{ type: "SNV", depth: null }] }).resultTables[0].columns)
+      .not.toContain("Depth");
+  });
+
   it("omits an unavailable finding identity while retaining Comments", () => {
     const model = buildMyeloSeqDocxModel({
       alterations: [

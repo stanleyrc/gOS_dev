@@ -23,6 +23,16 @@ export function getMyeloSeqInsertionSize(finding) {
     : undefined;
 }
 
+export function formatMyeloSeqDepth(value) {
+  if (value == null || String(value).trim() === "") return "";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  return new Intl.NumberFormat("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: 0,
+  }).format(number);
+}
+
 export function formatMyeloSeqVaf(value) {
   if (value == null || String(value).trim() === "") return "";
   const number = Number(value);

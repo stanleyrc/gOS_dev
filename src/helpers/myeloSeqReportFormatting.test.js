@@ -2,6 +2,7 @@
 import {
   formatMyeloSeqVariant,
   formatMyeloSeqVaf,
+  formatMyeloSeqDepth,
   getMyeloSeqVariantType,
   getMyeloSeqInsertionSize,
   isMyeloSeqFusion,
@@ -40,6 +41,16 @@ describe("MyeloSeq variant types and insertion sizes", () => {
     expect(getMyeloSeqInsertionSize({ variant_type: "FLT3ITD", sourceVariant: "c.1740_1793dupA", variant: "p.only" })).toBe(54);
     expect(getMyeloSeqInsertionSize({ variant_type: "FLT3ITD", Variant: "c.1740_1793dupA" })).toBe(54);
     expect(getMyeloSeqInsertionSize({ variant_type: "INDEL", variant: "c.1740_1793dupA" })).toBeUndefined();
+  });
+});
+
+describe("formatMyeloSeqDepth", () => {
+  it.each([
+    [2753, "2753"], [2586, "2586"], ["2000", "2000"], [0, "0"],
+    [2000.7, "2001"], [1000000, "1000000"],
+    [undefined, ""], [null, ""], ["", ""], ["  ", ""], ["invalid", ""], [Infinity, ""],
+  ])("formats %s without grouping separators", (value, expected) => {
+    expect(formatMyeloSeqDepth(value)).toBe(expected);
   });
 });
 

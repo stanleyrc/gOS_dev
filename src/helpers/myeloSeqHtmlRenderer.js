@@ -2,6 +2,7 @@ import { escapeHtml } from "./format";
 import {
   formatMyeloSeqVariant,
   formatMyeloSeqVaf,
+  formatMyeloSeqDepth,
   getMyeloSeqVariantType,
   getMyeloSeqInsertionSize,
   isMyeloSeqFusion as isFusion,
@@ -19,12 +20,6 @@ import {
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
-}
-
-function formatNumber(value, maximumFractionDigits = 2) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "";
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(number);
 }
 
 function text(value) {
@@ -110,7 +105,7 @@ function buildSequenceTables(report) {
       value: getMyeloSeqInsertionSize,
     },
     { label: "VAF(%)", value: (finding) => formatMyeloSeqVaf(finding.VAF) },
-    { label: "Depth", value: (finding) => formatNumber(finding.depth, 0) },
+    { label: "Depth", value: (finding) => formatMyeloSeqDepth(finding.depth) },
     { label: "Transcript", value: (finding) => finding.transcript },
   ];
   const fusionColumns = [
