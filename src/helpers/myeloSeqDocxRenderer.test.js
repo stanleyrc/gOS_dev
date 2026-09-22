@@ -295,6 +295,14 @@ describe("MyeloSeqDocxRenderer model", () => {
     ]);
   });
 
+  it("puts coding annotation first with a comma in the table and interpretation", () => {
+    const finding = { ...report.alterations[0], variant: "p.V617F / c.1849G>T" };
+    const model = buildMyeloSeqDocxModel({ alterations: [finding] });
+    expect(model.resultTables[0].rows[0][1].value).toBe("c.1849G>T, p.V617F");
+    expect(model.tierSections[0].findings[0].lines[0].value).toBe("JAK2, c.1849G>T, p.V617F");
+    expect(finding.variant).toBe("p.V617F / c.1849G>T");
+  });
+
   it("omits an unavailable finding identity while retaining Comments", () => {
     const model = buildMyeloSeqDocxModel({
       alterations: [

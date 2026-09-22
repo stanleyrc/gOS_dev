@@ -17,6 +17,7 @@ import {
   getMyeloSeqFusionGeneExons,
   getMyeloSeqFusionName,
 } from "./myeloSeqFusionName";
+import { formatMyeloSeqVariant } from "./myeloSeqReportFormatting";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 import {
   hasFailedMyeloSeqQc,
@@ -195,7 +196,7 @@ function buildResultTables(report) {
   const fusionFindings = alterations.filter(isFusion);
   const baseColumns = [
     { label: "Gene", required: true, value: (finding) => finding.gene, italics: true },
-    { label: "Variant", required: true, value: (finding) => finding.variant },
+    { label: "Variant", required: true, value: (finding) => formatMyeloSeqVariant(finding.variant) },
     { label: "Tier", required: true, value: (finding) => finding.tier },
     { label: "Variant Type", required: true, value: (finding) => finding.type },
   ];
@@ -250,7 +251,7 @@ function buildFindingModel(finding) {
   const fusion = isFusion(finding);
   const identity = fusion
     ? getMyeloSeqFusionName(finding)
-    : [finding.gene, finding.variant].filter(hasValue).join(", ");
+    : [finding.gene, formatMyeloSeqVariant(finding.variant)].filter(hasValue).join(", ");
   const lines = [];
   if (hasValue(identity)) {
     lines.push({

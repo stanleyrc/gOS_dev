@@ -1,4 +1,5 @@
 import { escapeHtml } from "./format";
+import { formatMyeloSeqVariant } from "./myeloSeqReportFormatting";
 import {
   getMyeloSeqFusionGeneExons,
   getMyeloSeqFusionName,
@@ -103,7 +104,7 @@ function buildSequenceTables(report) {
   const fusionFindings = alterations.filter(isFusion);
   const baseColumns = [
     { label: "Gene", required: true, value: (finding) => finding.gene, className: "gene-cell" },
-    { label: "Variant", required: true, value: (finding) => finding.variant },
+    { label: "Variant", required: true, value: (finding) => formatMyeloSeqVariant(finding.variant) },
     { label: "Tier", required: true, value: (finding) => finding.tier },
     { label: "Variant Type", required: true, value: (finding) => finding.type },
   ];
@@ -181,7 +182,7 @@ function renderFinding(finding) {
       )
     : renderInterpretationLine(
         "Variant",
-        [finding.gene, finding.variant].filter(hasValue).join(", "),
+        [finding.gene, formatMyeloSeqVariant(finding.variant)].filter(hasValue).join(", "),
       );
   const breakpoint = fusion
     ? renderInterpretationLine("Breakpoint", finding.locus)

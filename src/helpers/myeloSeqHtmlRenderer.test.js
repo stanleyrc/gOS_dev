@@ -340,6 +340,14 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(result.html).not.toContain("data-alteration-id");
   });
 
+  it("puts coding annotation first with a comma in the table and interpretation", async () => {
+    const finding = { ...report.alterations[0], variant: "p.V617F / c.1849G>T" };
+    const { html } = await new MyeloSeqHtmlRenderer().render({ alterations: [finding] });
+    expect(html).toContain("<td>c.1849G&gt;T, p.V617F</td>");
+    expect(html).toContain("<strong>Variant:</strong> JAK2, c.1849G&gt;T, p.V617F");
+    expect(finding.variant).toBe("p.V617F / c.1849G>T");
+  });
+
   it("escapes case-specific content", async () => {
     const result = await new MyeloSeqHtmlRenderer().render({
       ...report,
