@@ -17,7 +17,12 @@ import {
   getMyeloSeqFusionGeneExons,
   getMyeloSeqFusionName,
 } from "./myeloSeqFusionName";
-import { formatMyeloSeqVariant } from "./myeloSeqReportFormatting";
+import {
+  formatMyeloSeqVariant,
+  getMyeloSeqVariantType,
+  getMyeloSeqInsertionSize,
+  isMyeloSeqFusion as isFusion,
+} from "./myeloSeqReportFormatting";
 import { getMyeloSeqSpecimenFacts } from "./myeloSeqSpecimenFacts";
 import {
   hasFailedMyeloSeqQc,
@@ -156,11 +161,6 @@ function formatPercent(value) {
   return formatNumber(percent, 1);
 }
 
-function isFusion(finding) {
-  const type = `${finding?.eventType || ""} ${finding?.type || ""}`;
-  return /fusion/i.test(type);
-}
-
 function stringValue(value) {
   return hasValue(value) ? String(value) : "";
 }
@@ -198,7 +198,7 @@ function buildResultTables(report) {
     { label: "Gene", required: true, value: (finding) => finding.gene, italics: true },
     { label: "Variant", required: true, value: (finding) => formatMyeloSeqVariant(finding.variant) },
     { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: (finding) => finding.type },
+    { label: "Variant Type", required: true, value: getMyeloSeqVariantType },
   ];
 
   return [
@@ -206,6 +206,11 @@ function buildResultTables(report) {
       "DNA Sequencing results",
       [
         ...baseColumns,
+        {
+          label: "Insertion Size",
+          required: sequenceFindings.some((finding) => getMyeloSeqVariantType(finding) === "FLT3ITD"),
+          value: getMyeloSeqInsertionSize,
+        },
         { label: "VAF(%)", value: (finding) => formatPercent(finding.VAF) },
         {
           label: "Depth",
@@ -229,7 +234,7 @@ function buildResultTables(report) {
         {
           label: "Variant Type",
           required: true,
-          value: (finding) => finding.type,
+          value: getMyeloSeqVariantType,
         },
         {
           label: "Locus",

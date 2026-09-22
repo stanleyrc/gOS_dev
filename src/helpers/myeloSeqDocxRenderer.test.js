@@ -109,7 +109,7 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(model.resultTables[1].rows[0].map(({ value }) => value)).toEqual([
       "BCR(14)::ABL1(2)",
       "2",
-      "Fusion",
+      "FUSION",
       "chr22:23632600::chr9:133729451",
     ]);
     expect(model.tierSections).toEqual([
@@ -192,10 +192,10 @@ describe("MyeloSeqDocxRenderer model", () => {
       [
         "RUNX1(3)::RUNX1T1(3)",
         "1",
-        "Fusion",
+        "FUSION",
         "21:36159848-37377215,8:92966953-93115764",
       ],
-      ["Legacy Fusion Exon 1::Exon 2", "2", "Fusion", ""],
+      ["Legacy Fusion Exon 1::Exon 2", "2", "FUSION", ""],
     ]);
     expect(model.tierSections[0].findings[0].lines[0]).toEqual({
       label: "Gene Fusion",
@@ -301,6 +301,26 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(model.resultTables[0].rows[0][1].value).toBe("c.1849G>T, p.V617F");
     expect(model.tierSections[0].findings[0].lines[0].value).toBe("JAK2, c.1849G>T, p.V617F");
     expect(finding.variant).toBe("p.V617F / c.1849G>T");
+  });
+
+  it("uses supplied types and conditionally includes a numeric insertion-size column", () => {
+    const alterations = [
+      { gene: "FLT3", variant_type: "flt3itd", type: "Inframe", variant: "p.long / c.1740_1793dupA" },
+      { gene: "FLT3", variant_type: "snv", type: "Missense", variant: "c.2503G>T" },
+      { gene: "CALR", variant_type: "indel", variant: "c.1154_1155insTTGTC" },
+      { gene: "BCR::ABL1", variant_type: "fusion", type: "Other", variant: "BCR(14)::ABL1(2)" },
+    ];
+    const model = buildMyeloSeqDocxModel({ alterations });
+    const dna = model.resultTables[0];
+    expect(dna.columns[4]).toBe("Insertion Size");
+    expect(dna.rows.map((row) => row.slice(3).map(({ value }) => value)))
+      .toEqual([["FLT3ITD", "54"], ["SNV", ""], ["INDEL", ""]]);
+    expect(model.resultTables[1].rows[0][2].value).toBe("FUSION");
+    const withoutItd = buildMyeloSeqDocxModel({ alterations: alterations.slice(1) });
+    expect(withoutItd.resultTables[0].columns).not.toContain("Insertion Size");
+    const invalidItd = buildMyeloSeqDocxModel({ alterations: [{ variant_type: "FLT3ITD", variant: "p.only" }] });
+    expect(invalidItd.resultTables[0].columns).toContain("Insertion Size");
+    expect(invalidItd.resultTables[0].rows[0][4].value).toBe("");
   });
 
   it("omits an unavailable finding identity while retaining Comments", () => {

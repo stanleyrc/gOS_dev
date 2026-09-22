@@ -1,5 +1,46 @@
 /** @jest-environment node */
-import { formatMyeloSeqVariant } from "./myeloSeqReportFormatting";
+import {
+  formatMyeloSeqVariant,
+  getMyeloSeqVariantType,
+  getMyeloSeqInsertionSize,
+  isMyeloSeqFusion,
+} from "./myeloSeqReportFormatting";
+
+describe("MyeloSeq variant types and insertion sizes", () => {
+  it.each(["snv", "indel", "fusion", "flt3itd"])("uses supplied %s rather than consequence labels", (variant_type) => {
+    expect(getMyeloSeqVariantType({ variant_type, type: "Missense" })).toBe(variant_type.toUpperCase());
+  });
+
+  it("supports legacy types but treats the supplied type as authoritative", () => {
+    expect(getMyeloSeqVariantType({ type: "Fusion" })).toBe("FUSION");
+    expect(getMyeloSeqVariantType({ variant_type: "  indel  " })).toBe("INDEL");
+    expect(getMyeloSeqVariantType({})).toBe("");
+    expect(isMyeloSeqFusion({ variant_type: "fusion", type: "Other" })).toBe(true);
+    expect(isMyeloSeqFusion({ eventType: "fusion" })).toBe(true);
+    expect(isMyeloSeqFusion({ variant_type: "snv", eventType: "fusion" })).toBe(false);
+  });
+
+  it.each([
+    ["c.1740_1793dupGGTGAC", 54],
+    ["p.Glu598_Tyr599insValThrGly / c.1740_1793*", 54],
+    ["c.1740_1740dupA", 1],
+    ["c.1793_1740dupA", undefined],
+    ["c.0_10dupA", undefined],
+    ["c.1740+1_1793dupA", undefined],
+    ["c.1740_1793+1dupA", undefined],
+    ["c.1740_9007199254740992dupA", undefined],
+    ["p.Glu598_Tyr599insValThrGly", undefined],
+    [undefined, undefined],
+  ])("computes the inclusive c. range for %s", (variant, expected) => {
+    expect(getMyeloSeqInsertionSize({ variant_type: "flt3itd", variant })).toBe(expected);
+  });
+
+  it("uses source Variant and never calculates sizes for other types", () => {
+    expect(getMyeloSeqInsertionSize({ variant_type: "FLT3ITD", sourceVariant: "c.1740_1793dupA", variant: "p.only" })).toBe(54);
+    expect(getMyeloSeqInsertionSize({ variant_type: "FLT3ITD", Variant: "c.1740_1793dupA" })).toBe(54);
+    expect(getMyeloSeqInsertionSize({ variant_type: "INDEL", variant: "c.1740_1793dupA" })).toBeUndefined();
+  });
+});
 
 describe("formatMyeloSeqVariant", () => {
   it.each([

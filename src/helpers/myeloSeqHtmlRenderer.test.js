@@ -97,7 +97,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
     );
     expect(result.html).toContain(
-      '<td class="gene-cell">BCR(14)::ABL1(2)</td><td>1</td><td>Fusion</td><td>chr22:23632600::chr9:133729451</td>',
+      '<td class="gene-cell">BCR(14)::ABL1(2)</td><td>1</td><td>FUSION</td><td>chr22:23632600::chr9:133729451</td>',
     );
     expect(result.html).toContain(
       '<section class="result-table fusion-result-table">',
@@ -187,7 +187,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       "<th>Gene(Exon)</th><th>Tier</th><th>Variant Type</th><th>Locus</th>",
     );
     expect(result.html).toContain(
-      '<td class="gene-cell">RUNX1(3)::RUNX1T1(3)</td><td>1</td><td>Fusion</td><td>21:36159848-37377215,8:92966953-93115764</td>',
+      '<td class="gene-cell">RUNX1(3)::RUNX1T1(3)</td><td>1</td><td>FUSION</td><td>21:36159848-37377215,8:92966953-93115764</td>',
     );
     expect(result.html).toContain(
       "<strong>Gene Fusion:</strong> RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3",
@@ -196,7 +196,7 @@ describe("MyeloSeqHtmlRenderer", () => {
       '<td class="gene-cell">RUNX1::RUNX1T1 In-Frame Fusion Exon 3::Exon 3</td>',
     );
     expect(result.html).toContain(
-      '<td class="gene-cell">Legacy Fusion Exon 1::Exon 2</td><td>2</td><td>Fusion</td><td></td>',
+      '<td class="gene-cell">Legacy Fusion Exon 1::Exon 2</td><td>2</td><td>FUSION</td><td></td>',
     );
   });
 
@@ -346,6 +346,29 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(html).toContain("<td>c.1849G&gt;T, p.V617F</td>");
     expect(html).toContain("<strong>Variant:</strong> JAK2, c.1849G&gt;T, p.V617F");
     expect(finding.variant).toBe("p.V617F / c.1849G>T");
+  });
+
+  it("uses supplied variant types and adds numeric insertion sizes only for FLT3ITD", async () => {
+    const alterations = [
+      { gene: "FLT3", variant_type: "flt3itd", type: "Inframe", variant: "p.long / c.1740_1793dupA" },
+      { gene: "FLT3", variant_type: "snv", type: "Missense", variant: "c.2503G>T" },
+      { gene: "CALR", variant_type: "indel", variant: "c.1154_1155insTTGTC" },
+      { gene: "BCR::ABL1", variant_type: "fusion", type: "Other", variant: "BCR(14)::ABL1(2)" },
+    ];
+    const { html } = await new MyeloSeqHtmlRenderer().render({ alterations });
+    expect(html).toContain("<th>Insertion Size</th>");
+    expect(html).toContain("<td>FLT3ITD</td><td>54</td>");
+    expect(html).toContain("<td>SNV</td><td></td>");
+    expect(html).toContain("<td>INDEL</td><td></td>");
+    expect(html).toContain("<td>FUSION</td>");
+    expect(html).not.toContain("54 bp");
+    expect(html).not.toContain("Missense");
+    expect(html).not.toContain("Inframe");
+    const withoutItd = await new MyeloSeqHtmlRenderer().render({ alterations: alterations.slice(1) });
+    expect(withoutItd.html).not.toContain("<th>Insertion Size</th>");
+    const invalidItd = await new MyeloSeqHtmlRenderer().render({ alterations: [{ variant_type: "FLT3ITD", variant: "p.only" }] });
+    expect(invalidItd.html).toContain("<th>Insertion Size</th>");
+    expect(invalidItd.html).toContain("<td>FLT3ITD</td><td></td>");
   });
 
   it("escapes case-specific content", async () => {

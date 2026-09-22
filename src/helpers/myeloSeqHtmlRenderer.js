@@ -1,5 +1,10 @@
 import { escapeHtml } from "./format";
-import { formatMyeloSeqVariant } from "./myeloSeqReportFormatting";
+import {
+  formatMyeloSeqVariant,
+  getMyeloSeqVariantType,
+  getMyeloSeqInsertionSize,
+  isMyeloSeqFusion as isFusion,
+} from "./myeloSeqReportFormatting";
 import {
   getMyeloSeqFusionGeneExons,
   getMyeloSeqFusionName,
@@ -30,11 +35,6 @@ function formatPercent(value) {
 
 function text(value) {
   return escapeHtml(hasValue(value) ? String(value) : "");
-}
-
-function isFusion(finding) {
-  const type = `${finding?.eventType || ""} ${finding?.type || ""}`;
-  return /fusion/i.test(type);
 }
 
 function renderSectionBar(label) {
@@ -106,10 +106,15 @@ function buildSequenceTables(report) {
     { label: "Gene", required: true, value: (finding) => finding.gene, className: "gene-cell" },
     { label: "Variant", required: true, value: (finding) => formatMyeloSeqVariant(finding.variant) },
     { label: "Tier", required: true, value: (finding) => finding.tier },
-    { label: "Variant Type", required: true, value: (finding) => finding.type },
+    { label: "Variant Type", required: true, value: getMyeloSeqVariantType },
   ];
   const sequenceColumns = [
     ...baseColumns,
+    {
+      label: "Insertion Size",
+      required: sequenceFindings.some((finding) => getMyeloSeqVariantType(finding) === "FLT3ITD"),
+      value: getMyeloSeqInsertionSize,
+    },
     { label: "VAF(%)", value: (finding) => formatPercent(finding.VAF) },
     { label: "Depth", value: (finding) => formatNumber(finding.depth, 0) },
     { label: "Transcript", value: (finding) => finding.transcript },
@@ -131,7 +136,7 @@ function buildSequenceTables(report) {
     {
       label: "Variant Type",
       required: true,
-      value: (finding) => finding.type,
+      value: getMyeloSeqVariantType,
       width: "21%",
     },
     {

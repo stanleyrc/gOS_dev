@@ -124,6 +124,8 @@ function mapEvent(ev) {
     variant,
     tier: tier != null ? String(tier) : undefined,
     type: ev?.type ?? ev?.vartype ?? ev?.variant_type,
+    variant_type: ev?.variant_type,
+    sourceVariant: ev?.Variant ?? ev?.variant,
     eventType: ev?.eventType,
     role: ev?.role,
     effect: ev?.effect,

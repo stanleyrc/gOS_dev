@@ -170,6 +170,22 @@ describe("reportExporter", () => {
     });
   });
 
+  it("preserves supplied variant_type and source Variant without changing the classic type", async () => {
+    const mergedEvents = { filteredEvents: [{
+      uid: "itd", gene: "FLT3", variant_type: "FLT3ITD", type: "Inframe",
+      Variant: "p.long / c.1740_1793dupA", variant: "p.long", tier: 1,
+    }] };
+    await previewReport(state, mergedEvents, ["itd"]);
+    const finding = mockHtmlRender.mock.calls[0][0].alterations[0];
+    expect(finding).toMatchObject({
+      type: "Inframe", variant_type: "FLT3ITD", sourceVariant: "p.long / c.1740_1793dupA",
+    });
+    const { buildMyeloSeqDocxModel } = jest.requireActual("./myeloSeqDocxRenderer");
+    expect(buildMyeloSeqDocxModel({ alterations: [finding] }).resultTables[0].rows[0][4].value).toBe("54");
+    await previewReport({ ...state, dataset: { reportStyle: "classic" } }, mergedEvents, ["itd"]);
+    expect(mockClassicHtmlRender.mock.calls[0][0].alterations[0].type).toBe("Inframe");
+  });
+
   it("preserves fusion gene identity independently of the Variant field", async () => {
     const mergedEvents = {
       filteredEvents: [
