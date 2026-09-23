@@ -121,9 +121,9 @@ For MyeloSeq cases, the selected current-author snapshot takes precedence over `
 
 ### MyeloSeq report display
 
-- **Tumor sample** shows the leading TM number for an unambiguous TM case ID: `TM26-240-0650-B26-6895_v1_TM26-240-0650-Q26-5679_RNA_v1` displays as `TM26-240-0650`. Non-TM IDs and IDs containing different TM numbers remain unchanged. Internal IDs, report titles, and filenames retain the full case ID.
+- **Tumor sample** shows `metadata.pair` exactly as supplied by the backend, falling back to the source case ID only if pair is absent. Report titles and filenames still use the source case ID.
 - A fusion event may provide a nonblank `locus`, for example `"22:23632600,9:133729451"`. The report displays it as `chr22:23632600-chr9:133729451` in both Locus and Breakpoint. If `locus` is missing or blank, the existing `fusion_gene_coords`, `location`, or `Genome_Location` is used, in that order. Gene ranges are never converted into guessed breakpoints.
-- Event **Comments** use `variant_summary` but omit an initial bracketed source tag only when it ends exactly with `.csv]`, for example `[Curated: PMKB heme_pmkbdb_July28_2026.csv]`. Other leading brackets and all later brackets remain unchanged. Source records are never modified.
+- Event **Comments** show `variant_summary` as supplied by the backend, without removing any source tags in the frontend. HTML output still escapes markup; source records are not modified.
 
 These display rules apply to both the MyeloSeq HTML preview and Word export; classic report display is unchanged.
 

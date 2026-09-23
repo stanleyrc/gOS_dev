@@ -1,6 +1,5 @@
 import { escapeHtml } from "./format";
 import {
-  formatMyeloSeqComments,
   formatMyeloSeqFindingVariant,
   formatMyeloSeqFusionLocus,
   formatMyeloSeqVaf,
@@ -157,7 +156,7 @@ function renderInterpretationLine(label, value) {
 }
 
 function renderComments(finding) {
-  return `<p><strong>Comments:</strong> <span class="report-comment-value">${text(formatMyeloSeqComments(finding?.variant_summary))}</span></p>`;
+  return `<p><strong>Comments:</strong> <span class="report-comment-value">${text(finding?.variant_summary)}</span></p>`;
 }
 
 function renderFinding(finding) {

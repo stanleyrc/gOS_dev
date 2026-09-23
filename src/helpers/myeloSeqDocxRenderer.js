@@ -15,7 +15,6 @@ import {
 } from "docx";
 import { getMyeloSeqFusionGeneExons } from "./myeloSeqFusionName";
 import {
-  formatMyeloSeqComments,
   formatMyeloSeqFindingVariant,
   formatMyeloSeqFusionLocus,
   formatMyeloSeqVaf,
@@ -254,7 +253,7 @@ function buildFindingModel(finding) {
   }
   lines.push({
     label: "Comments",
-    value: formatMyeloSeqComments(finding.variant_summary),
+    value: finding.variant_summary ?? "",
   });
   return { lines };
 }

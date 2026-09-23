@@ -70,12 +70,13 @@ const report = {
 };
 
 describe("MyeloSeqHtmlRenderer", () => {
-  it("uses TM-only specimen display and strips only the initial CSV comment source", async () => {
+  it("uses the backend pair and renders variant_summary without stripping its source", async () => {
     const id = "TM26-240-0650-B26-6895_v1_TM26-240-0650-Q26-5679_RNA_v1";
     const summary = "[Curated: PMKB heme_pmkbdb_July28_2026.csv] Oncogenic <variant>. [PMID: 123]";
     const input = {
       ...report,
       patient: { ...report.patient, caseId: id },
+      metadata: { ...report.metadata, pair: "TM26-240-0650" },
       alterations: [
         { ...report.alterations[0], variant_summary: summary },
         { ...report.alterations[1], variant_summary: "[PMID: 456] Keep [later.csv]" },
@@ -85,9 +86,8 @@ describe("MyeloSeqHtmlRenderer", () => {
     expect(html).toContain("<strong>Tumor sample:</strong> TM26-240-0650</p>");
     expect(filename).toContain(id);
     expect(html).toContain("Clinical Report — " + id);
-    expect(html).toContain('<span class="report-comment-value">Oncogenic &lt;variant&gt;. [PMID: 123]</span>');
+    expect(html).toContain('<span class="report-comment-value">[Curated: PMKB heme_pmkbdb_July28_2026.csv] Oncogenic &lt;variant&gt;. [PMID: 123]</span>');
     expect(html).toContain('<span class="report-comment-value">[PMID: 456] Keep [later.csv]</span>');
-    expect(html).not.toContain("heme_pmkbdb_July28_2026.csv");
     expect(input.alterations[0].variant_summary).toBe(summary);
     expect(input.patient.caseId).toBe(id);
   });

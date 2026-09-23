@@ -75,12 +75,13 @@ async function unpackDocumentXml(blob) {
 }
 
 describe("MyeloSeqDocxRenderer model", () => {
-  it("exports TM-only specimen and CSV-source-free Comments while retaining original IDs and annotations", async () => {
+  it("exports the backend pair and unmodified Comments while retaining the source case ID", async () => {
     const id = "TM26-240-0650-B26-6895_v1_TM26-240-0650-Q26-5679_RNA_v1";
     const summary = "[Curated: PMKB heme_pmkbdb_July28_2026.csv] Oncogenic. [PMID: 123]";
     const input = {
       ...report,
       patient: { ...report.patient, caseId: id },
+      metadata: { ...report.metadata, pair: "TM26-240-0650" },
       alterations: [
         { ...report.alterations[0], variant_summary: summary },
         { ...report.alterations[1], variant_summary: "[PMID: 456] Keep [later.csv]" },
@@ -94,9 +95,8 @@ describe("MyeloSeqDocxRenderer model", () => {
     expect(documentXml).toContain("TM26-240-0650</w:t>");
     expect(documentXml).not.toContain(id);
     expect(filename).toContain(id);
-    expect(documentXml).toContain("Oncogenic. [PMID: 123]");
+    expect(documentXml).toContain("[Curated: PMKB heme_pmkbdb_July28_2026.csv] Oncogenic. [PMID: 123]");
     expect(documentXml).toContain("[PMID: 456] Keep [later.csv]");
-    expect(documentXml).not.toContain("heme_pmkbdb_July28_2026.csv");
     expect(input.alterations[0].variant_summary).toBe(summary);
     expect(input.patient.caseId).toBe(id);
   });
