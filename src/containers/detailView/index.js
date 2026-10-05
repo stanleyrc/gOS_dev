@@ -12,6 +12,8 @@ import PopulationTab from "../../tabs/populationTab";
 import SageQcTab from "../../tabs/sageQcTab";
 import BinQCTab from "../../tabs/binQCTab";
 import SignaturesTab from "../../tabs/signaturesTab";
+import SingleCellTab from "../../tabs/singleCellTab";
+import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import settingsActions from "../../redux/settings/actions";
 import {
   firstEnabledDetailTab,
@@ -74,8 +76,14 @@ export class DetailView extends Component {
       4: <SageQcTab />,
       5: <BinQCTab />,
       6: <SignaturesTab />,
+      7: <SingleCellTab />,
     };
-    let tabsOrder = [0, 1, 2, 3, 4, 5, 6];
+    // The single-cell tab only exists for single-cell patient entries; it
+    // leads the tab bar there and is hidden for ordinary cases.
+    let tabsOrder =
+      tabAvailability[7] === true
+        ? [7, 0, 1, 2, 3, 4, 5, 6]
+        : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
@@ -88,6 +96,7 @@ export class DetailView extends Component {
             </div>
           </Affix>
           <div className="ant-home-content-container">
+            <CellContextBanner />
             <Tabs
               defaultActiveKey="1"
               activeKey={tab.toString()}

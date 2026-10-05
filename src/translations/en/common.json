@@ -274,7 +274,8 @@
         "cases": "Case Reports",
         "aggregations": "Aggregations",
         "cohorts": "Population Stats",
-        "parallel-coordinates": "Parallel Coordinates"
+        "parallel-coordinates": "Parallel Coordinates",
+        "single-cell-cohort": "Single-Cell Cohort"
       },
       "aggregations": {
         "title": "Cohort Level Aggregations",
@@ -432,7 +433,8 @@
         "tab3": "Population View",
         "tab4": "Variant QC",
         "tab5": "Purity-Ploidy Fit",
-        "tab6": "Signatures"
+        "tab6": "Signatures",
+        "tab7": "Single-Cell"
       }
     },
     "detail-error-view": {
@@ -868,6 +870,125 @@
       "aria": {
         "edit-notes": "Edit Notes",
         "click-edit-notes": "Click to edit notes"
+      }
+    },
+    "single-cell": {
+      "loading": "Loading the patient's cells…",
+      "no-cells": "No cells are linked to this patient. Cells are datafiles.json entries with entry_type \"cell\" and this patient's patient_id.",
+      "no-file": "no file",
+      "errors": {
+        "load": "The single-cell patient view could not be loaded",
+        "tree": "tree.nwk could not be parsed; the tree was inferred instead",
+        "cn": "Copy-number heatmap could not be built from the cells' complex.json files",
+        "snv": "SNV heatmap could not be built from the cells' mutations.json files",
+        "junctions": "Junction heatmap could not be built from the cells' complex.json files"
+      },
+      "tree": {
+        "file": "Tree from tree.nwk",
+        "snv": "Tree inferred from shared SNVs (UPGMA)",
+        "cn": "Tree inferred from copy-number similarity (UPGMA)",
+        "none": "No tree — rows ordered by clone"
+      },
+      "heatmap": {
+        "title": "Phylogeny & heatmap",
+        "cell-count": "{{count}} cell",
+        "cell-count_plural": "{{count}} cells",
+        "cn": "Total CN",
+        "snv": "SNVs",
+        "junctions": "Junction CN",
+        "whole-genome": "Show whole genome",
+        "zoom-in": "Zoom in",
+        "zoom-out": "Zoom out",
+        "download": "Download heatmap as PNG",
+        "zoom-chromosome": "Zoom to chromosome {{chromosome}}",
+        "no-matrix": "No data for this heatmap",
+        "missing-genomes": "{{count}} cell has no complex.json and is shown blank",
+        "missing-genomes_plural": "{{count}} cells have no complex.json and are shown blank",
+        "hint": "Click a cell to pull it up · ⌘/Ctrl-click to add or remove · Shift-click for a range · click a tree node for its clade · drag to pan, ⌘/Ctrl/Alt-scroll to zoom · brush regions in the bar above to compare them side by side"
+      },
+      "legend": {
+        "cn": "Copy number",
+        "snv": "SNV",
+        "junctions": "Junction CN",
+        "clones": "Clones"
+      },
+      "snv": {
+        "present": "Called",
+        "absent": "Not called",
+        "missing": "No mutations.json",
+        "order-genomic": "Genomic order",
+        "order-prevalence": "By prevalence"
+      },
+      "tooltip": {
+        "cell": "Cell",
+        "clone": "Clone",
+        "clade": "Clade",
+        "segment": "Segment",
+        "state": "CN",
+        "consensus": "Consensus",
+        "variant": "Variant",
+        "gene": "Gene",
+        "annotation": "Effect",
+        "status": "Status",
+        "reads": "Alt / depth",
+        "breakpoints": "Breakpoints",
+        "type": "Class",
+        "junction-cn": "Junction CN"
+      },
+      "selection": {
+        "title": "Selected cells",
+        "count": "{{count}} selected",
+        "count_plural": "{{count}} selected",
+        "select-clone": "Select a clone…",
+        "one-per-clone": "One per clone",
+        "clear": "Clear",
+        "empty": "Click a cell in the tree or heatmap to pull it up.",
+        "more": "and {{count}} more",
+        "track-limit": "Tracks are shown for the first {{limit}} selected cells.",
+        "browse": "Browse all {{count}} cells",
+        "search": "Search cell, clone or attribute"
+      },
+      "table": {
+        "cell": "Cell",
+        "clone": "Clone"
+      },
+      "tracks": {
+        "title": "Cell tracks",
+        "coverage": "Coverage",
+        "total": "Total CN",
+        "allelic": "Allelic CN",
+        "hetsnps": "Het SNPs",
+        "mutations": "SNVs",
+        "open-cell": "Open cell report",
+        "remove": "Remove from selection",
+        "missing": "{{track}}: no file for this cell",
+        "error": "{{track}} could not be loaded for this cell",
+        "no-fit": "This cell's metadata.json has no slope/intercept, so raw counts are shown.",
+        "empty": "Select cells in the tree or heatmap to see their tracks."
+      },
+      "banner": {
+        "cell-of": "Single cell from patient",
+        "unknown-patient": "unknown patient",
+        "clone": "clone {{clone}}",
+        "open-patient": "Open patient"
+      },
+      "cohort": {
+        "empty": "No single-cell patients in this dataset. Patients are datafiles.json entries with entry_type \"patient\".",
+        "patients": "Patients",
+        "cells": "Cells",
+        "patient": "Patient",
+        "tumor-type": "Tumor type",
+        "dataset": "Dataset",
+        "clones": "Clones",
+        "composition": "Clone composition",
+        "cells-read": "Cells in heatmap",
+        "capped": "first {{count}}",
+        "table-title": "Single-cell patients",
+        "heatmap-title": "Total copy number across the cohort",
+        "rows-patients": "One row per patient",
+        "rows-cells": "One row per cell",
+        "median-of": "median of {{count}} cells",
+        "open": "Open patient"
       }
     },
     "tracks-modal": {

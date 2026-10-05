@@ -25,6 +25,8 @@ jest.mock("../../tabs/populationTab", () => "PopulationTab");
 jest.mock("../../tabs/sageQcTab", () => "SageQcTab");
 jest.mock("../../tabs/binQCTab", () => "BinQCTab");
 jest.mock("../../tabs/signaturesTab", () => "SignaturesTab");
+jest.mock("../../tabs/singleCellTab", () => "SingleCellTab");
+jest.mock("../../components/singleCell/cellContextBanner", () => "CellContextBanner");
 jest.mock("./index.style", () => "Wrapper");
 
 import { DetailView } from "./index";

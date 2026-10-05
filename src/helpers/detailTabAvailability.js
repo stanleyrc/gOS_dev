@@ -1,4 +1,7 @@
-export const DETAIL_TAB_KEYS = ["0", "1", "2", "3", "4", "5", "6"];
+export const DETAIL_TAB_KEYS = ["0", "1", "2", "3", "4", "5", "6", "7"];
+// Tab 7 is the single-cell patient view. It only exists for patient entries,
+// so it is never assumed enabled and is preferred when it is.
+export const SINGLE_CELL_TAB_KEY = "7";
 
 export const sourceKeepsTabEnabled = (source) =>
   Boolean(
@@ -20,6 +23,14 @@ const ppfitKeepsTabEnabled = (ppfit, metadata = {}) =>
         (ppfit.missing !== true &&
           ((ppfit.data?.intervals || []).length > 0 ||
             (isNumeric(metadata.beta) && isNumeric(metadata.gamma)))))
+  );
+
+const singleCellKeepsTabEnabled = (singleCell) =>
+  Boolean(
+    singleCell &&
+      (singleCell.loading ||
+        singleCell.error != null ||
+        (singleCell.missing !== true && singleCell.patient != null))
   );
 
 export const getDetailTabAvailability = (state = {}) => {
@@ -64,8 +75,15 @@ export const getDetailTabAvailability = (state = {}) => {
         snvplicity.hetsnpsImageError
       ),
     6: sourceKeepsTabEnabled(state.SignatureStatistics),
+    7: singleCellKeepsTabEnabled(state.SingleCell),
   };
 };
 
-export const firstEnabledDetailTab = (availability = {}) =>
-  DETAIL_TAB_KEYS.find((key) => availability[key] !== false) || null;
+export const firstEnabledDetailTab = (availability = {}) => {
+  if (availability[SINGLE_CELL_TAB_KEY] === true) return SINGLE_CELL_TAB_KEY;
+  return (
+    DETAIL_TAB_KEYS.find(
+      (key) => key !== SINGLE_CELL_TAB_KEY && availability[key] !== false
+    ) || null
+  );
+};

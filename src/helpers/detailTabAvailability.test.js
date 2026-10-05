@@ -119,6 +119,35 @@ describe("detail tab availability", () => {
   });
 });
 
+describe("single-cell patient tab", () => {
+  it("is disabled for bulk cases and when the slice is absent", () => {
+    expect(getDetailTabAvailability(baseState())[7]).toBe(false);
+    const state = baseState();
+    state.SingleCell = { loading: false, missing: true, error: null, patient: null };
+    expect(getDetailTabAvailability(state)[7]).toBe(false);
+  });
+
+  it("is enabled while loading and once a patient has loaded", () => {
+    const loading = baseState();
+    loading.SingleCell = { loading: true, missing: false, error: null, patient: null };
+    expect(getDetailTabAvailability(loading)[7]).toBe(true);
+
+    const loaded = baseState();
+    loaded.SingleCell = {
+      loading: false,
+      missing: false,
+      error: null,
+      patient: { caseReportId: "P1" },
+    };
+    expect(getDetailTabAvailability(loaded)[7]).toBe(true);
+  });
+
+  it("is preferred as the landing tab only when explicitly enabled", () => {
+    expect(firstEnabledDetailTab({ 0: true, 1: false, 7: true })).toBe("7");
+    expect(firstEnabledDetailTab({ 0: true, 7: false })).toBe("0");
+  });
+});
+
 describe("firstEnabledDetailTab", () => {
   it("returns the first enabled tab in route order", () => {
     expect(
