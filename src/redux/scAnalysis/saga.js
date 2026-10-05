@@ -12,6 +12,9 @@ import {
   submitJob,
 } from "./api";
 
+import { loadRnaMatrix } from "../singleCell/loaders";
+import { expressionByCell } from "../../helpers/singleCell/staticRna";
+
 const POLL_MS = 1500;
 const TERMINAL = new Set(["done", "failed"]);
 const polling = new Set();
@@ -123,10 +126,43 @@ function* selectJob(action) {
   }
 }
 
+/** Static rna/ files first (no service needed), then the analysis service. */
+function* staticExpression(gene) {
+  const { SingleCell, Settings } = yield select(getState);
+  if (SingleCell.rna.status !== "ok" || !SingleCell.patient || !Settings.dataset) return null;
+  const matrix = yield call(loadRnaMatrix, Settings.dataset, SingleCell.patient.caseReportId);
+  const result = expressionByCell(SingleCell.rna.data, matrix, gene);
+  if (!result) throw new Error(`gene ${gene} not found`);
+  return result;
+}
+
 function* expression(action) {
+  let staticError = null;
+  try {
+    const result = yield call(staticExpression, action.gene);
+    if (result) {
+      yield put({
+        type: actions.SCA_EXPRESSION_LOADED,
+        gene: action.gene,
+        resolvedGene: result.gene,
+        values: result.values,
+        max: result.max,
+      });
+      return;
+    }
+  } catch (error) {
+    staticError = error;
+  }
   const { ScAnalysis } = yield select(getState);
   const { base, context } = ScAnalysis;
-  if (!base || !context) return;
+  if (!base || !context) {
+    yield put({
+      type: actions.SCA_EXPRESSION_FAILED,
+      gene: action.gene,
+      error: staticError?.message || "no RNA for this patient",
+    });
+    return;
+  }
   try {
     const data = yield call(fetchExpression, base, context.dataset, context.patient, action.gene);
     const values = {};

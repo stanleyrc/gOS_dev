@@ -1,0 +1,396 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
+import { AutoComplete, Button, Card, Select, Space, Tag, Typography } from "antd";
+import { DotChartOutlined } from "@ant-design/icons";
+import singleCellActions from "../../redux/singleCell/actions";
+import scaActions from "../../redux/scAnalysis/actions";
+import useContainerWidth from "./useContainerWidth";
+import usePixelRatio from "./usePixelRatio";
+import { CLONE_PALETTE } from "../../helpers/singleCell/matrix";
+import { searchGeneNames } from "../../helpers/singleCell/staticRna";
+import Wrapper from "./index.style";
+
+const { Text } = Typography;
+const HEIGHT = 440;
+const LEGEND_WIDTH = 240;
+const PAD = 14;
+const HIT_RADIUS = 8;
+const NO_DATA = "#D9D9D9";
+
+const isMulti = (event) => event.metaKey || event.ctrlKey;
+
+// Viridis stops: readable on small points, ordered light-to-dark in luminance.
+const VIRIDIS = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
+function viridis(t) {
+  const x = Math.max(0, Math.min(1, t)) * (VIRIDIS.length - 1);
+  const k = Math.min(VIRIDIS.length - 2, Math.floor(x));
+  const f = x - k;
+  const c = VIRIDIS[k].map((v, i) => Math.round(v + (VIRIDIS[k + 1][i] - v) * f));
+  return `rgb(${c.join(",")})`;
+}
+
+/** Even-odd point-in-polygon test. */
+function insidePolygon(x, y, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * UMAP of the patient's RNA (rna/cells.json from export_seurat.R), linked to
+ * the tree and heatmap: hovering a point highlights the cell everywhere,
+ * click selects (Cmd/Ctrl toggles, Shift adds) and dragging draws a lasso.
+ * Colour by clone, any metadata field exported from Seurat, or a gene.
+ */
+export default function UmapPanel() {
+  const { t } = useTranslation("common");
+  const dispatch = useDispatch();
+  const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId } = useSelector((s) => s.SingleCell);
+  const expression = useSelector((s) => s.ScAnalysis.expression);
+  const [containerRef, containerWidth] = useContainerWidth();
+  const pixelRatio = usePixelRatio();
+  const canvasRef = useRef(null);
+  const [colorBy, setColorBy] = useState("clone");
+  const [geneOptions, setGeneOptions] = useState([]);
+  const [tip, setTip] = useState(null);
+  const [lasso, setLasso] = useState(null);
+  const dragRef = useRef(null);
+  const hoveredRef = useRef(null);
+
+  const summary = rna.status === "ok" ? rna.data : null;
+  const width = Math.max(240, Math.min(containerWidth - LEGEND_WIDTH - 16, 820));
+  const inTree = useMemo(() => new Set(order), [order]);
+  const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
+  const selected = useMemo(() => new Set(selectedCellIds), [selectedCellIds]);
+  const geneReady = expression.status === "ok" && Boolean(expression.values);
+
+  useEffect(() => {
+    if (geneReady) setColorBy("gene");
+    else setColorBy((current) => (current === "gene" ? "clone" : current));
+  }, [geneReady, expression.gene]);
+
+  const points = useMemo(() => {
+    if (!summary?.hasUmap) return [];
+    const list = summary.cells.filter((c) => Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
+    const xs = list.map((c) => c.umap_1);
+    const ys = list.map((c) => c.umap_2);
+    const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+    const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+    const sx = (width - 2 * PAD) / Math.max(1e-9, x1 - x0);
+    const sy = (HEIGHT - 2 * PAD) / Math.max(1e-9, y1 - y0);
+    const s = Math.min(sx, sy);
+    const ox = (width - s * (x1 - x0)) / 2;
+    const oy = (HEIGHT - s * (y1 - y0)) / 2;
+    return list.map((c) => ({
+      cell: c,
+      id: c.displayId,
+      linked: c.cell_id != null && inTree.has(c.cell_id),
+      x: ox + (c.umap_1 - x0) * s,
+      y: HEIGHT - (oy + (c.umap_2 - y0) * s),
+    }));
+  }, [summary, width, inTree]);
+
+  /* ---- colour scale ---- */
+  const field = summary?.fields.find((f) => f.name === colorBy) || null;
+  const scale = useMemo(() => {
+    if (colorBy === "gene" && geneReady) {
+      return {
+        kind: "numeric",
+        color: (p) => {
+          const v = expression.values[p.id];
+          return Number.isFinite(v) ? viridis(v / (expression.max || 1)) : NO_DATA;
+        },
+        value: (p) => expression.values[p.id],
+        range: [0, expression.max],
+        title: expression.gene,
+      };
+    }
+    if (field && field.numeric) {
+      const values = points.map((p) => p.cell[field.name]).filter(Number.isFinite);
+      const lo = Math.min(...values);
+      const hi = Math.max(...values);
+      return {
+        kind: "numeric",
+        color: (p) => {
+          const v = p.cell[field.name];
+          return Number.isFinite(v) ? viridis((v - lo) / (hi - lo || 1)) : NO_DATA;
+        },
+        value: (p) => p.cell[field.name],
+        range: [lo, hi],
+        title: field.name,
+      };
+    }
+    if (field) {
+      const colors = Object.fromEntries(field.levels.map((l, k) => [l, CLONE_PALETTE[k % CLONE_PALETTE.length]]));
+      return {
+        kind: "categorical",
+        color: (p) => colors[`${p.cell[field.name]}`] || NO_DATA,
+        value: (p) => p.cell[field.name],
+        levels: colors,
+        title: field.name,
+      };
+    }
+    return {
+      kind: "categorical",
+      color: (p) => {
+        const clone = p.linked ? cloneOf.get(p.cell.cell_id) : null;
+        return clone != null && cloneColors[clone] ? cloneColors[clone] : NO_DATA;
+      },
+      value: (p) => (p.linked ? cloneOf.get(p.cell.cell_id) : null),
+      levels: cloneColors,
+      title: t("components.single-cell.legend.clones"),
+    };
+  }, [colorBy, geneReady, expression, field, points, cloneOf, cloneColors, t]);
+
+  /* ---- drawing ---- */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width = Math.floor(width * pixelRatio);
+    canvas.height = Math.floor(HEIGHT * pixelRatio);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.clearRect(0, 0, width, HEIGHT);
+    const r = points.length > 2000 ? 2.5 : 4;
+    // Unselected first, then selected on top, then the hovered cell.
+    const draw = (p, emphasis) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, emphasis ? r + 1 : r, 0, 2 * Math.PI);
+      if (p.linked) {
+        ctx.fillStyle = scale.color(p);
+        ctx.fill();
+      } else {
+        // RNA-only cells (no DNA cell in the tree): hollow.
+        ctx.strokeStyle = scale.color(p) === NO_DATA ? "#8c8c8c" : scale.color(p);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      if (emphasis) {
+        ctx.strokeStyle = "#262626";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    };
+    points.forEach((p) => !(p.linked && selected.has(p.cell.cell_id)) && draw(p, false));
+    points.forEach((p) => p.linked && selected.has(p.cell.cell_id) && draw(p, true));
+    const hovered = points.find((p) => p.linked && p.cell.cell_id === hoveredCellId);
+    if (hovered) {
+      ctx.strokeStyle = "#fa541c";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(hovered.x, hovered.y, r + 4, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+    if (lasso && lasso.length > 1) {
+      ctx.strokeStyle = "#1677ff";
+      ctx.fillStyle = "rgba(22,119,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      lasso.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }, [points, scale, selected, hoveredCellId, lasso, width, pixelRatio]);
+
+  /* ---- interaction ---- */
+  const local = (event) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    return [event.clientX - rect.left, event.clientY - rect.top];
+  };
+  const nearest = (x, y) => {
+    let best = null;
+    let bestD = HIT_RADIUS;
+    points.forEach((p) => {
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    });
+    return best;
+  };
+  const shareHover = (cellId) => {
+    if (hoveredRef.current === cellId) return;
+    hoveredRef.current = cellId;
+    dispatch(singleCellActions.updateHover(cellId));
+  };
+  const select = (ids, event) => {
+    if (isMulti(event)) {
+      const next = new Set(selectedCellIds);
+      const removing = ids.length && ids.every((id) => next.has(id));
+      ids.forEach((id) => (removing ? next.delete(id) : next.add(id)));
+      dispatch(singleCellActions.updateSelection([...next]));
+    } else if (event.shiftKey) {
+      dispatch(singleCellActions.updateSelection([...selectedCellIds, ...ids]));
+    } else {
+      dispatch(singleCellActions.updateSelection(ids));
+    }
+  };
+
+  const onMouseDown = (event) => {
+    if (event.button !== 0) return;
+    dragRef.current = { start: local(event), path: [local(event)], moved: false };
+  };
+  const onMouseMove = (event) => {
+    const [x, y] = local(event);
+    const drag = dragRef.current;
+    if (drag) {
+      if (!drag.moved && Math.hypot(x - drag.start[0], y - drag.start[1]) > 4) drag.moved = true;
+      if (drag.moved) {
+        drag.path.push([x, y]);
+        setLasso([...drag.path]);
+        setTip(null);
+        return;
+      }
+    }
+    const p = nearest(x, y);
+    shareHover(p && p.linked ? p.cell.cell_id : null);
+    if (!p) return setTip(null);
+    const value = scale.value(p);
+    setTip({
+      left: Math.min(x + 14, width - 200),
+      top: y + 14,
+      lines: [
+        [t("components.single-cell.tooltip.cell"), p.id],
+        ...(p.linked ? [] : [[t("components.single-cell.umap.rna-only"), t("components.single-cell.umap.not-in-tree")]]),
+        ...(value != null && value !== "" ? [[scale.title, typeof value === "number" ? Math.round(value * 1000) / 1000 : value]] : []),
+      ],
+    });
+  };
+  const onMouseUp = (event) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (drag?.moved && drag.path.length > 2) {
+      const ids = points
+        .filter((p) => p.linked && insidePolygon(p.x, p.y, drag.path))
+        .map((p) => p.cell.cell_id);
+      setLasso(null);
+      select(ids, event);
+      return;
+    }
+    setLasso(null);
+    const [x, y] = local(event);
+    const p = nearest(x, y);
+    if (p && p.linked) select([p.cell.cell_id], event);
+  };
+  const onLeave = () => {
+    setTip(null);
+    shareHover(null);
+    if (dragRef.current) {
+      dragRef.current = null;
+      setLasso(null);
+    }
+  };
+
+  if (rna.status !== "ok") return null;
+  const nLinked = points.filter((p) => p.linked).length;
+  const colorOptions = [
+    { value: "clone", label: t("components.single-cell.umap.color-clone") },
+    ...(geneReady ? [{ value: "gene", label: t("components.single-cell.umap.color-gene", { gene: expression.gene }) }] : []),
+    ...summary.fields.map((f) => ({ value: f.name, label: f.name })),
+  ];
+
+  return (
+    <Wrapper>
+      <Card
+        size="small"
+        title={
+          <Space wrap>
+            <DotChartOutlined />
+            <span>{t("components.single-cell.umap.title")}</span>
+            <Text type="secondary">
+              {t("components.single-cell.umap.summary", { cells: points.length, linked: nLinked, genes: summary.genes.length })}
+            </Text>
+          </Space>
+        }
+        extra={
+          <Space wrap>
+            <Text type="secondary">{t("components.single-cell.umap.color-by")}</Text>
+            <Select size="small" style={{ width: 200 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch />
+            <AutoComplete
+              size="small"
+              style={{ width: 170 }}
+              placeholder={t("components.single-cell.compare.gene-placeholder")}
+              options={geneOptions}
+              onSearch={(q) => setGeneOptions(searchGeneNames(summary.genes, q).map((g) => ({ value: g })))}
+              onSelect={(gene) => dispatch(scaActions.fetchExpression(gene))}
+            />
+            {expression.gene && (
+              <Tag closable onClose={() => dispatch(scaActions.clearExpression())}>
+                {expression.gene}
+                {expression.status === "loading" ? " …" : ""}
+              </Tag>
+            )}
+            <Button size="small" onClick={() => dispatch(singleCellActions.updateSelection([]))}>
+              {t("components.single-cell.selection.clear")}
+            </Button>
+          </Space>
+        }
+      >
+        {!summary.hasUmap ? (
+          <Text type="secondary">{t("components.single-cell.umap.no-umap")}</Text>
+        ) : (
+          <div ref={containerRef} className="sc-umap">
+            <div className="sc-umap-plot" style={{ width, height: HEIGHT }}>
+              <canvas
+                ref={canvasRef}
+                style={{ width, height: HEIGHT, display: "block", cursor: lasso ? "crosshair" : "default" }}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onLeave}
+              />
+              {tip && (
+                <div className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
+                  {tip.lines.map(([k, v]) => (
+                    <div key={k}>
+                      <span className="sc-tooltip-key">{k}</span> {`${v}`}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="sc-umap-legend" style={{ width: LEGEND_WIDTH }}>
+              <Text strong type="secondary">
+                {scale.title}
+              </Text>
+              {scale.kind === "categorical" ? (
+                Object.entries(scale.levels).map(([level, color]) => (
+                  <span key={level} className="sc-legend-item">
+                    <span className="sc-legend-swatch" style={{ background: color }} />
+                    <Text type="secondary">{level}</Text>
+                  </span>
+                ))
+              ) : (
+                <>
+                  <div
+                    className="sc-umap-ramp"
+                    style={{
+                      background: `linear-gradient(to right, ${[0, 0.25, 0.5, 0.75, 1].map(viridis).join(",")})`,
+                    }}
+                  />
+                  <Text type="secondary" className="sc-hint">
+                    {scale.range.map((v) => Math.round(v * 100) / 100).join(" – ")}
+                  </Text>
+                </>
+              )}
+              <span className="sc-legend-item">
+                <span className="sc-legend-swatch sc-legend-hollow" />
+                <Text type="secondary">{t("components.single-cell.umap.rna-only")}</Text>
+              </span>
+              <Text type="secondary" className="sc-hint">
+                {t("components.single-cell.umap.hint")}
+              </Text>
+            </div>
+          </div>
+        )}
+      </Card>
+    </Wrapper>
+  );
+}

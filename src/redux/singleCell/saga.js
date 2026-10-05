@@ -4,6 +4,7 @@ import actions, {
   SC_FETCH_CONCURRENCY,
   SC_FETCHED_TRACKS,
   SC_MAX_TRACK_CELLS,
+  SC_PALETTE_STORAGE_KEY,
 } from "./actions";
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
 import { getCancelToken } from "../../helpers/cancelToken";
@@ -11,13 +12,16 @@ import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests
 import { treeForCells } from "../../helpers/singleCell/newick";
 import { cloneColorMap, defaultCellOrder } from "../../helpers/singleCell/matrix";
 import {
+  allelicRowFromAllelic,
   cellsForPatient,
   cnRowFromGenome,
   entryType,
   junctionsFromGenomes,
   patientKeyOf,
   snvFromMutations,
+  snvFromSparse,
 } from "../../helpers/singleCell/cellFiles";
+import { parseRnaSummary } from "../../helpers/singleCell/staticRna";
 import {
   cnDistances,
   hasInformativeSnvs,
@@ -99,10 +103,14 @@ function* fetchSingleCellData() {
     const cellIds = cells.map((c) => c.cell_id);
 
     // Per-cell complex.json + mutations.json, a few cells at a time.
-    const treeFile = yield call(tryGet, casePath(dataset, id, "tree.nwk"), {
-      cancelToken,
-      responseType: "text",
-    });
+    // Patient-level files: tree, optional SNV matrix (reads at every site,
+    // pgv sparse format) and the static RNA summary from export_seurat.R.
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile] = yield all([
+      call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
+      call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
+      call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
+      call(tryGet, casePath(dataset, id, "rna/genes.tsv"), { cancelToken, responseType: "text" }),
+    ]);
     const cellFiles = {};
     const genomeErrors = [];
     for (let k = 0; k < cellIds.length; k += SC_FETCH_CONCURRENCY) {
@@ -145,9 +153,16 @@ function* fetchSingleCellData() {
       junctionsRaw.status === "ok" && junctionsRaw.data.junctions.length === 0
         ? missing()
         : junctionsRaw;
-    const snvRaw = anyMutations
-      ? attempt(() => snvFromMutations(cellIds, mutations, chromoBins))
-      : missing();
+    const snvRaw =
+      snvMatrixFile.status === "ok"
+        ? attempt(() => snvFromSparse(snvMatrixFile.data, cellIds, chromoBins))
+        : anyMutations
+        ? attempt(() => snvFromMutations(cellIds, mutations, chromoBins))
+        : missing();
+    const rna =
+      rnaCellsFile.status === "ok" && rnaGenesFile.status === "ok"
+        ? attempt(() => parseRnaSummary(rnaCellsFile.data, rnaGenesFile.data))
+        : missing();
     const snv =
       snvRaw.status === "ok" && snvRaw.data.variants.length === 0 ? missing() : snvRaw;
 
@@ -168,6 +183,7 @@ function* fetchSingleCellData() {
       cn,
       snv,
       junctions,
+      rna,
       cellFiles,
       selectedCellIds: order.slice(0, 1),
     });
@@ -248,7 +264,47 @@ function* fetchPerCellTrack(action) {
   }
 }
 
+/** Each cell's allelic.json as major/minor rows, fetched the first time a non-total CN mode is shown. */
+function* loadAllelic() {
+  const state = yield select(getState);
+  const { SingleCell } = state;
+  const { dataset, chromoBins } = state.Settings;
+  if (SingleCell.cnMode === "total" || SingleCell.allelic.status !== "loading" || !dataset) return;
+  const cellIds = SingleCell.cells.map((c) => c.cell_id);
+  const cancelToken = getCancelToken();
+  try {
+    const rows = [];
+    for (let k = 0; k < cellIds.length; k += SC_FETCH_CONCURRENCY) {
+      const batch = cellIds.slice(k, k + SC_FETCH_CONCURRENCY);
+      const results = yield all(
+        batch.map((cellId) => call(tryGet, casePath(dataset, cellId, "allelic.json"), { cancelToken }))
+      );
+      results.forEach((r) => {
+        rows.push(r.status === "ok" ? allelicRowFromAllelic(r.data, chromoBins) : null);
+      });
+    }
+    const loaded = rows.some(Boolean)
+      ? { status: "ok", data: { cells: cellIds, rows }, error: null }
+      : { status: "missing", data: null, error: null };
+    yield put({ type: actions.SC_ALLELIC_LOADED, allelic: loaded });
+  } catch (error) {
+    if (axios.isCancel(error)) return;
+    yield put({ type: actions.SC_ALLELIC_FAILED, error });
+  }
+}
+
+function* persistPalette() {
+  const { SingleCell } = yield select(getState);
+  try {
+    window.localStorage.setItem(SC_PALETTE_STORAGE_KEY, JSON.stringify(SingleCell.palette));
+  } catch (error) {
+    // storage unavailable (private window): keep the in-memory palette only
+  }
+}
+
 function* actionWatcher() {
+  yield takeLatest(actions.SC_CN_MODE_UPDATED, loadAllelic);
+  yield takeLatest(actions.SC_PALETTE_UPDATED, persistPalette);
   yield takeLatest(actions.FETCH_SINGLE_CELL_DATA_REQUEST, fetchSingleCellData);
   yield takeEvery(
     [

@@ -881,7 +881,8 @@
         "tree": "tree.nwk could not be parsed; the tree was inferred instead",
         "cn": "Copy-number heatmap could not be built from the cells' complex.json files",
         "snv": "SNV heatmap could not be built from the cells' mutations.json files",
-        "junctions": "Junction heatmap could not be built from the cells' complex.json files"
+        "junctions": "Junction heatmap could not be built from the cells' complex.json files",
+        "allelic": "Could not load allelic copy number"
       },
       "tree": {
         "file": "Tree from tree.nwk",
@@ -893,7 +894,7 @@
         "title": "Phylogeny & heatmap",
         "cell-count": "{{count}} cell",
         "cell-count_plural": "{{count}} cells",
-        "cn": "Total CN",
+        "cn": "Copy number",
         "snv": "SNVs",
         "junctions": "Junction CN",
         "whole-genome": "Show whole genome",
@@ -904,21 +905,28 @@
         "no-matrix": "No data for this heatmap",
         "missing-genomes": "{{count}} cell has no complex.json and is shown blank",
         "missing-genomes_plural": "{{count}} cells have no complex.json and are shown blank",
-        "hint": "Click a cell to pull it up · ⌘/Ctrl-click to add or remove · Shift-click for a range · click a tree node for its clade · drag to pan, ⌘/Ctrl/Alt-scroll to zoom · brush regions in the bar above to compare them side by side"
+        "hint": "Click a cell to pull it up · ⌘/Ctrl-click to add or remove · Shift-click for a range · click a tree node for its clade · drag to pan, ⌘/Ctrl/Alt-scroll to zoom · brush regions in the bar above to compare them side by side",
+        "missing-allelic": "{{count}} cell has no allelic.json and is shown blank",
+        "missing-allelic_plural": "{{count}} cells have no allelic.json and are shown blank",
+        "loading-allelic": "Loading allelic copy number…"
       },
       "legend": {
         "cn": "Copy number",
         "snv": "SNV",
         "junctions": "Junction CN",
         "clones": "Clones",
-        "expression": "{{gene}} expression"
+        "expression": "{{gene}} expression",
+        "missing": "missing",
+        "binned": "binned columns: fraction of sites with alt reads"
       },
       "snv": {
         "present": "Called",
         "absent": "Not called",
         "missing": "No mutations.json",
         "order-genomic": "Genomic order",
-        "order-prevalence": "By prevalence"
+        "order-prevalence": "By prevalence",
+        "order-tree": "Follow the tree",
+        "order-catalog": "File order"
       },
       "tooltip": {
         "cell": "Cell",
@@ -1032,6 +1040,56 @@
         "enrich-summary": "{{set}}: {{n}} DE genes against {{universe}} tested genes; {{sig}} sets with q < 0.05.",
         "back-to-de": "Back to the DE result",
         "failed": "The analysis failed"
+      },
+      "cn-mode": {
+        "total": "Total",
+        "major": "Major",
+        "minor": "Minor"
+      },
+      "toolbar": {
+        "copy-number": "Copy number",
+        "side-panel": "Mutations beside",
+        "metric": "Mutations",
+        "order": "Columns"
+      },
+      "metric": {
+        "vaf": "VAF",
+        "alt": "Alt reads",
+        "depth": "Total reads"
+      },
+      "side": {
+        "sites": "Sites",
+        "positive": "With alt reads",
+        "zero": "Reads, no alt",
+        "no-reads": "No reads",
+        "range": "Sites {{from}}–{{to}} of {{total}}",
+        "all": "All {{total}} sites",
+        "binned": "binned",
+        "reset": "Show all sites (or double-click)"
+      },
+      "palette": {
+        "title": "Copy-number colours",
+        "preset": "Preset",
+        "reset": "Reset to preset",
+        "total": "Total copy number",
+        "allelic": "Major / minor copy number",
+        "missing": "Missing",
+        "note": "Saved in this browser. The last colour is used for that state and above.",
+        "presets": {
+          "pgv": "pgv (white = 2 / 1)",
+          "scwgs": "scWGS (grey = 2)"
+        }
+      },
+      "umap": {
+        "title": "RNA UMAP",
+        "summary": "{{cells}} RNA cells · {{linked}} in the tree · {{genes}} genes",
+        "color-by": "Colour by",
+        "color-clone": "Clone",
+        "color-gene": "Gene: {{gene}}",
+        "rna-only": "RNA only",
+        "not-in-tree": "no DNA cell in the tree",
+        "no-umap": "No UMAP coordinates in rna/cells.json",
+        "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)"
       }
     },
     "tracks-modal": {

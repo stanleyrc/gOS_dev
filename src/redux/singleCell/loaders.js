@@ -8,6 +8,7 @@ import {
   isMissingDataResponse,
 } from "../../helpers/dataAvailability";
 import { splitFloat64 } from "../../helpers/utility";
+import { readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 
 export const casePath = (dataset, caseReportId, filename) =>
   `${dataset.dataPath}${caseReportId}/${filename}`;
@@ -72,4 +73,24 @@ export function arrowScatter(buffer, slope, intercept) {
     dataPointsColor: Array.from(table.getChild("color").toArray()),
     hasFit,
   };
+}
+
+const rnaMatrixCache = new Map();
+/** A patient's rna/ expression matrix (about 6 MB for hundreds of cells), fetched once. */
+export async function loadRnaMatrix(dataset, patientId) {
+  const key = `${dataset.dataPath}${patientId}`;
+  if (!rnaMatrixCache.has(key)) {
+    const get = (name) =>
+      axios
+        .get(casePath(dataset, patientId, `rna/${name}`), { responseType: "arraybuffer" })
+        .then((r) => r.data);
+    const promise = Promise.all([
+      get("matrix.indptr.i32"),
+      get("matrix.indices.i32"),
+      get("matrix.data.f32"),
+    ]).then(([indptr, indices, data]) => readMatrixBuffers(indptr, indices, data));
+    promise.catch(() => rnaMatrixCache.delete(key));
+    rnaMatrixCache.set(key, promise);
+  }
+  return rnaMatrixCache.get(key);
 }

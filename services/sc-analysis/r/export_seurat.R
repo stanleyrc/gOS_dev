@@ -6,13 +6,16 @@
 #   Rscript export_seurat.R --rds patient.rds --out /srv/gos/data/SC-PT01 \
 #       --datafiles /srv/gos/shared/datafiles.json --patient SC-PT01 \
 #       [--assay RNA] [--reduction umap] [--cluster-col seurat_clusters] \
-#       [--cell-type-col cell_type]
+#       [--cell-type-col cell_type] [--meta-cols state,Phase,MES1]
 #
 # Links RNA cells to gOS cells using datafiles.json: a cell entry
 # (entry_type "cell", patient_id = --patient) matches the RNA barcode equal to
 # its rna_id, or to its own ID when rna_id is absent.
 #
-# UNTESTED in the environment it was written in (no R available there).
+# --meta-cols adds further metadata columns to cells.json (used to colour the
+# UMAP in gOS); columns missing from the object are skipped with a warning.
+#
+# Tested on BWH70 (Seurat 5.1.0, Assay5 RNA with counts/data/scale.data).
 
 suppressPackageStartupMessages({
   library(Seurat)
@@ -23,7 +26,7 @@ suppressPackageStartupMessages({
 
 args <- commandArgs(trailingOnly = TRUE)
 opt <- list(assay = "RNA", reduction = "umap", `cluster-col` = "seurat_clusters",
-            `cell-type-col` = "cell_type", datafiles = NA, patient = NA)
+            `cell-type-col` = "cell_type", `meta-cols` = "", datafiles = NA, patient = NA)
 i <- 1
 while (i <= length(args)) {
   key <- sub("^--", "", args[[i]])
@@ -74,7 +77,11 @@ if (!is.na(opt$datafiles)) {
 meta <- obj[[]]
 num_or_null <- function(col) if (col %in% colnames(meta)) meta[barcodes, col] else NULL
 cells <- data.frame(rna_id = barcodes, cell_id = cell_id, stringsAsFactors = FALSE)
-for (col in c(opt$`cluster-col`, opt$`cell-type-col`, "nCount_RNA", "nFeature_RNA", "percent.mt")) {
+extra <- trimws(strsplit(opt$`meta-cols`, ",")[[1]])
+extra <- extra[nzchar(extra)]
+absent <- setdiff(extra, colnames(meta))
+if (length(absent)) warning("metadata columns not found: ", paste(absent, collapse = ", "))
+for (col in unique(c(opt$`cluster-col`, opt$`cell-type-col`, "nCount_RNA", "nFeature_RNA", "percent.mt", extra))) {
   v <- num_or_null(col)
   if (!is.null(v)) cells[[gsub("[^A-Za-z0-9_]", "_", col)]] <- if (is.factor(v)) as.character(v) else v
 }
