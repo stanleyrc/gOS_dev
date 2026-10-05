@@ -2,10 +2,11 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Space, Typography } from "antd";
 import {
-  CN_STATE_COLORS,
-  SNV_STATUS_COLORS,
+  SNV_MISSING_COLOR,
+  countTicks,
   expressionRGB,
   junctionColor,
+  normalizePalette,
 } from "../../helpers/singleCell/matrix";
 
 const { Text } = Typography;
@@ -17,30 +18,59 @@ const Swatch = ({ color, label }) => (
   </span>
 );
 
+const grey = (v) => {
+  const c = Math.round(255 * (1 - v));
+  return `rgb(${c},${c},${c})`;
+};
+const countColor = (value, max) => {
+  const t = Math.log1p(Math.max(0, Math.min(max, value))) / Math.log1p(Math.max(1, max));
+  return `rgb(${Math.round(255 * t)},128,${Math.round(255 * (1 - t))})`;
+};
+
 export default function HeatmapLegend({
   type,
+  cnMode = "total",
+  palette = null,
+  snvMetric = null,
+  snvMax = 1,
   maxJunctionCn = 1,
   cloneColors = {},
   showClones = true,
   expression = null,
 }) {
   const { t } = useTranslation("common");
-  let items = [];
+  const groups = [];
   if (type === "cn") {
-    items = CN_STATE_COLORS.map((color, k) => ({
-      color,
-      label: k === CN_STATE_COLORS.length - 1 ? `${k}+` : `${k}`,
-    }));
-  } else if (type === "snv") {
-    items = [
-      { color: SNV_STATUS_COLORS.present, label: t("components.single-cell.snv.present") },
-      { color: SNV_STATUS_COLORS.absent, label: t("components.single-cell.snv.absent") },
-      { color: SNV_STATUS_COLORS.missing, label: t("components.single-cell.snv.missing") },
-    ];
+    const p = normalizePalette(palette);
+    const colors = cnMode === "total" ? p.total : p.allelic;
+    groups.push({
+      key: "cn",
+      title: `${t("components.single-cell.legend.cn")} (${t(`components.single-cell.cn-mode.${cnMode}`)})`,
+      items: [
+        ...colors.map((color, k) => ({ color, label: k === colors.length - 1 ? `${k}+` : `${k}` })),
+        { color: p.missing, label: t("components.single-cell.legend.missing") },
+      ],
+    });
   } else if (type === "junctions") {
     const top = Math.max(1, Math.ceil(maxJunctionCn || 1));
     const steps = [...new Set([0, 1, Math.ceil(top / 2), top])].filter((v) => v <= top);
-    items = steps.map((v) => ({ color: junctionColor(v, top), label: `${v}` }));
+    groups.push({
+      key: "junctions",
+      title: t("components.single-cell.legend.junctions"),
+      items: steps.map((v) => ({ color: junctionColor(v, top), label: `${v}` })),
+    });
+  }
+  if (snvMetric) {
+    const items =
+      snvMetric === "vaf"
+        ? [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: `${v}` }))
+        : countTicks(snvMax).map((v) => ({ color: countColor(v, snvMax), label: `${v}` }));
+    groups.push({
+      key: "snv",
+      title: t(`components.single-cell.metric.${snvMetric}`),
+      items: [...items, { color: SNV_MISSING_COLOR, label: t("components.single-cell.side.no-reads") }],
+      note: t("components.single-cell.legend.binned"),
+    });
   }
   const clones = Object.keys(cloneColors);
   const rgb = (v) => {
@@ -48,17 +78,22 @@ export default function HeatmapLegend({
     return c ? `rgb(${c.join(",")})` : "#fff";
   };
   return (
-    <Space wrap size={[12, 4]} className="sc-legend">
-      {items.length > 0 && (
-        <Space size={4} wrap>
+    <Space wrap size={[16, 4]} className="sc-legend">
+      {groups.map((g) => (
+        <Space key={g.key} size={4} wrap>
           <Text strong type="secondary">
-            {t(`components.single-cell.legend.${type}`)}
+            {g.title}
           </Text>
-          {items.map((d) => (
+          {g.items.map((d) => (
             <Swatch key={d.label} {...d} />
           ))}
+          {g.note && (
+            <Text type="secondary" className="sc-hint">
+              · {g.note}
+            </Text>
+          )}
         </Space>
-      )}
+      ))}
       {expression && (
         <Space size={4} wrap>
           <Text strong type="secondary">

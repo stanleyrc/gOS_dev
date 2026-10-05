@@ -146,6 +146,51 @@ const Wrapper = styled.div`
     font-size: 11px;
     fill: #595959;
   }
+  .sc-toolbar {
+    margin-bottom: 8px;
+  }
+  .sc-hover-band {
+    position: absolute;
+    right: 0;
+    pointer-events: none;
+    box-sizing: border-box;
+    border: 1px solid #1677ff;
+    background: rgba(22, 119, 255, 0.08);
+  }
+  .sc-side-axis {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .sc-umap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .sc-umap-plot {
+    position: relative;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+  }
+  .sc-umap-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sc-umap-ramp {
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .sc-legend-hollow {
+    background: transparent !important;
+    border: 1.5px solid #8c8c8c !important;
+    border-radius: 50% !important;
+  }
 `;
 
 export default Wrapper;

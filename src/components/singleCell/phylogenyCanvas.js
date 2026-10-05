@@ -9,6 +9,8 @@ const HIT_RADIUS = 7;
  * layout: output of layoutTree (leaf rows 0..leaves-1); nRows may exceed the
  * number of leaves when some cells are not in the tree (drawn as empty rows).
  * Branches whose leaves all share a clone take that clone's colour.
+ * Drawn at device resolution (pixelRatio); hoverRow and selectedRows mark
+ * leaves picked in any linked view (heatmap, cell browser, UMAP).
  */
 export default function PhylogenyCanvas({
   layout,
@@ -18,6 +20,9 @@ export default function PhylogenyCanvas({
   leafClones = [],
   cloneColors = {},
   selectedLeafRange = null,
+  selectedRows = null,
+  hoverRow = null,
+  pixelRatio = 1,
   onSelectRange,
   onHoverNode,
 }) {
@@ -55,11 +60,12 @@ export default function PhylogenyCanvas({
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || !layout || !geometry) return;
-    canvas.width = Math.floor(width);
-    canvas.height = Math.floor(height);
+    canvas.width = Math.floor(width * pixelRatio);
+    canvas.height = Math.floor(height * pixelRatio);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.clearRect(0, 0, width, height);
     const { px, py } = geometry;
 
     if (selectedLeafRange) {
@@ -90,7 +96,26 @@ export default function PhylogenyCanvas({
         ctx.stroke();
       }
     });
-  }, [layout, geometry, nodeClones, cloneColors, width, height, nRows, selectedLeafRange]);
+
+    // Selected and hovered leaves: a dot at the tip, plus a row band for hover.
+    const leafX = new Map();
+    layout.nodes.forEach((n) => n.isLeaf && leafX.set(n.firstLeaf, px(n.x)));
+    const dot = (row, color, r) => {
+      if (!leafX.has(row)) return;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(leafX.get(row), py(row), r, 0, 2 * Math.PI);
+      ctx.fill();
+    };
+    const rowH = height / nRows;
+    const dotR = Math.max(1.5, Math.min(3, rowH / 2));
+    if (selectedRows) selectedRows.forEach((row) => dot(row, "#1677ff", dotR));
+    if (hoverRow != null && hoverRow >= 0) {
+      ctx.fillStyle = "rgba(22,119,255,0.18)";
+      ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
+      dot(hoverRow, "#fa541c", dotR + 1);
+    }
+  }, [layout, geometry, nodeClones, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, pixelRatio]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;

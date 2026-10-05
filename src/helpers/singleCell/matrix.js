@@ -359,6 +359,7 @@ export function representativeCells(cells, order, limit = 3) {
 /** Column order for SNV heatmap: genomic, or by prevalence (fraction present among covered). */
 export function snvColumnOrder(snv, mode = "genomic") {
   const idx = snv.variants.map((v) => v.index);
+  if (mode === "catalog") return idx;
   if (mode === "prevalence") {
     const prevalence = snv.variants.map((v) => {
       let present = 0;
@@ -484,4 +485,217 @@ export function expressionRGB(value, max) {
 export function expressionRGBA(value, max) {
   const rgb = expressionRGB(value, max);
   return rgb ? packRGBA(rgb) : MISSING_RGBA;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Configurable copy-number palettes                                        */
+/* ----------------------------------------------------------------------- */
+
+// pgv phylogeny palette (states 0..10, 11+). Allelic channels shift it so
+// CN 1 is the neutral white; Total keeps CN 2 white.
+const PGV_TOTAL = [
+  "#168CCB", "#8FD3E8", "#FFFFFF", "#FDBF6F", "#FF8A3D", "#FF5A24",
+  "#EF2B2D", "#D7193F", "#B2184B", "#8C1D40", "#5A2630", "#000000",
+];
+const shiftForAllelic = (p) => [p[0], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[11]];
+
+export const CN_PALETTE_PRESETS = {
+  pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
+  scwgs: {
+    total: CN_STATE_COLORS,
+    allelic: shiftForAllelic(CN_STATE_COLORS).map((c, k) => (k === 1 ? "#CCCCCC" : c)),
+    missing: MISSING_COLOR,
+  },
+};
+export const DEFAULT_CN_PALETTE = "pgv";
+export const CN_MODES = ["total", "major", "minor"];
+
+const validHex = (c) => /^#[0-9a-f]{6}$/i.test(`${c || ""}`);
+
+/** Fill gaps in a user palette from a preset, so stored palettes survive format changes. */
+export function normalizePalette(palette, preset = DEFAULT_CN_PALETTE) {
+  const base = CN_PALETTE_PRESETS[preset] || CN_PALETTE_PRESETS[DEFAULT_CN_PALETTE];
+  const pick = (list, fallback) =>
+    fallback.map((c, k) => (Array.isArray(list) && validHex(list[k]) ? list[k] : c));
+  return {
+    total: pick(palette?.total, base.total),
+    allelic: pick(palette?.allelic, base.allelic),
+    missing: validHex(palette?.missing) ? palette.missing : base.missing,
+  };
+}
+
+/** Packed-RGBA lookup for one CN mode: state -> colour (11+ share the last colour). */
+export function cnColorer(palette, mode = "total") {
+  const p = normalizePalette(palette);
+  const colors = (mode === "total" ? p.total : p.allelic).map((c) => packRGBA(hexToRgb(c)));
+  const missing = packRGBA(hexToRgb(p.missing));
+  return (state) =>
+    Number.isFinite(state)
+      ? colors[Math.max(0, Math.min(colors.length - 1, Math.floor(state)))]
+      : missing;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Mutation metrics (VAF, alt reads, total reads)                           */
+/* ----------------------------------------------------------------------- */
+
+export const SNV_METRICS = ["vaf", "alt", "depth"];
+export const SNV_MISSING_COLOR = "#ADB5BD";
+const SNV_MISSING_RGBA = packRGBA(hexToRgb(SNV_MISSING_COLOR));
+
+/** Value of a metric for matrix row p, variant c; null when the site has no reads. */
+export function snvMetricValue(snv, p, c, metric) {
+  if (p < 0 || snv.status[p][c] < 0) return null;
+  const alt = snv.alt[p][c];
+  const depth = snv.depth[p][c];
+  if (metric === "alt") return Number.isFinite(alt) ? alt : snv.status[p][c] === 1 ? null : 0;
+  if (metric === "depth") return Number.isFinite(depth) ? depth : null;
+  if (Number.isFinite(alt) && depth > 0) return alt / depth;
+  return snv.status[p][c] === 0 && !Number.isFinite(depth) ? 0 : null;
+}
+
+/** White (0) to black (1), as pgv draws VAF and binned positive fractions. */
+export function vafRGBA(value) {
+  if (value == null || !Number.isFinite(value)) return SNV_MISSING_RGBA;
+  const v = Math.round(255 * (1 - Math.max(0, Math.min(1, value))));
+  return packRGBA([v, v, v]);
+}
+
+/** Read counts are right-skewed: log1p blue-to-red, scaled to the patient maximum. */
+export function countRGBA(value, max) {
+  if (value == null || !Number.isFinite(value)) return SNV_MISSING_RGBA;
+  const top = Math.max(1, max || 1);
+  const t = Math.log1p(Math.max(0, Math.min(top, value))) / Math.log1p(top);
+  return packRGBA([Math.round(255 * t), 128, Math.round(255 * (1 - t))]);
+}
+
+export function snvMetricMax(snv, metric) {
+  if (metric === "vaf") return 1;
+  const source = metric === "alt" ? snv.alt : snv.depth;
+  let max = 1;
+  source.forEach((row) => row.forEach((v) => {
+    if (Number.isFinite(v) && v > max) max = v;
+  }));
+  return max;
+}
+
+export function snvMetricRGBA(value, metric, max) {
+  return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max);
+}
+
+/** Tick values for a count legend on the log1p scale. */
+export function countTicks(max) {
+  const top = Math.max(1, Math.round(max || 1));
+  return [...new Set([0, 1 / 3, 2 / 3, 1].map((f) => (f === 1 ? top : Math.round(Math.expm1(Math.log1p(top) * f)))))];
+}
+
+/**
+ * Summary of one bin of columns for row p: sites with alt reads, covered
+ * sites without, and sites with no reads. The overview colour is the
+ * fraction of positive sites (pgv convention), not a mean VAF.
+ */
+export function snvBinSummary(snv, p, columns, start, end) {
+  let positive = 0;
+  let zero = 0;
+  let missing = 0;
+  for (let k = start; k < end; k += 1) {
+    const s = p < 0 ? -1 : snv.status[p][columns[k]];
+    if (s === 1) positive += 1;
+    else if (s === 0) zero += 1;
+    else missing += 1;
+  }
+  return { positive, zero, missing };
+}
+
+/**
+ * Map `width` pixels onto columns[start..end): one bin per pixel when sites
+ * outnumber pixels, else each site spans several pixels. Returns per pixel
+ * the bin's [start, end) offsets into `columns` (Int32Arrays, -1 = none).
+ */
+export function columnBins(count, width, range = [0, count]) {
+  const w = Math.max(0, Math.floor(width));
+  const binStart = new Int32Array(w).fill(-1);
+  const binEnd = new Int32Array(w).fill(-1);
+  const start = Math.max(0, Math.min(count, Math.floor(range[0])));
+  const end = Math.max(start, Math.min(count, Math.ceil(range[1])));
+  const span = end - start;
+  if (!span || !w) return { binStart, binEnd, binned: false };
+  for (let x = 0; x < w; x += 1) {
+    const a = start + Math.floor((x * span) / w);
+    const b = start + Math.floor(((x + 1) * span) / w);
+    binStart[x] = a;
+    binEnd[x] = Math.max(a + 1, b);
+  }
+  return { binStart, binEnd, binned: span > w };
+}
+
+/**
+ * Column order that follows the tree: each variant is placed on the clade
+ * (contiguous leaf rows [firstLeaf, lastLeaf]) that best matches the cells
+ * calling it (F1 over cells with reads), then variants are sorted by clade in
+ * depth-first order with the trunk first, and by prevalence within a clade.
+ * rows: matrix row (in snv) for each display row (rowMap of display order).
+ */
+export function treeColumnOrder(snv, layout, rows) {
+  const nVar = snv.variants.length;
+  if (!layout || !nVar) return snv.variants.map((v) => v.index);
+  const nLeaves = layout.leaves.length;
+  const carriers = Array.from({ length: nVar }, () => []);
+  const covered = Array.from({ length: nVar }, () => []);
+  for (let r = 0; r < nLeaves; r += 1) {
+    const p = rows[r];
+    if (p < 0) continue;
+    const status = snv.status[p];
+    for (let c = 0; c < nVar; c += 1) {
+      if (status[c] >= 0) covered[c].push(r);
+      if (status[c] === 1) carriers[c].push(r);
+    }
+  }
+  const countIn = (sorted, lo, hi) => {
+    const lower = (v) => {
+      let a = 0;
+      let b = sorted.length;
+      while (a < b) {
+        const m = (a + b) >> 1;
+        if (sorted[m] < v) a = m + 1;
+        else b = m;
+      }
+      return a;
+    };
+    return lower(hi + 1) - lower(lo);
+  };
+  // Depth-first rank of each clade: parents before children, top to bottom.
+  const nodes = layout.nodes.filter((n) => n.lastLeaf > n.firstLeaf || n.isLeaf);
+  const rank = new Map();
+  [...nodes]
+    .sort((a, b) => a.firstLeaf - b.firstLeaf || b.lastLeaf - a.lastLeaf)
+    .forEach((n, k) => rank.set(n, k));
+  const placement = new Int32Array(nVar);
+  const prevalence = new Float64Array(nVar);
+  for (let c = 0; c < nVar; c += 1) {
+    const nCarry = carriers[c].length;
+    prevalence[c] = covered[c].length ? nCarry / covered[c].length : 0;
+    if (!nCarry) {
+      placement[c] = Number.MAX_SAFE_INTEGER;
+      continue;
+    }
+    let best = null;
+    let bestScore = -1;
+    nodes.forEach((n) => {
+      const inside = countIn(carriers[c], n.firstLeaf, n.lastLeaf);
+      if (!inside) return;
+      const coveredInside = countIn(covered[c], n.firstLeaf, n.lastLeaf);
+      const precision = inside / nCarry;
+      const recall = coveredInside ? inside / coveredInside : 0;
+      const f1 = (2 * precision * recall) / (precision + recall || 1);
+      if (f1 > bestScore + 1e-12 || (Math.abs(f1 - bestScore) <= 1e-12 && rank.get(n) < rank.get(best))) {
+        bestScore = f1;
+        best = n;
+      }
+    });
+    placement[c] = best ? rank.get(best) : Number.MAX_SAFE_INTEGER;
+  }
+  return snv.variants
+    .map((v) => v.index)
+    .sort((a, b) => placement[a] - placement[b] || prevalence[b] - prevalence[a] || a - b);
 }

@@ -12,6 +12,9 @@ const BACKGROUND = 0x00000000; // transparent
  *
  * Cost is width x height lookups regardless of matrix size, so it stays fast
  * for thousands of cells x thousands of bins.
+ *
+ * pixelRatio draws at device resolution (sharp on high-DPI screens): `cols`
+ * then has one entry per device pixel column, i.e. width * pixelRatio.
  */
 export default function HeatmapCanvas({
   width,
@@ -28,6 +31,7 @@ export default function HeatmapCanvas({
   onWheelZoom,
   className,
   style,
+  pixelRatio = 1,
 }) {
   const ref = useRef(null);
   const rowsRef = useRef(null);
@@ -39,8 +43,9 @@ export default function HeatmapCanvas({
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || width <= 0 || height <= 0) return;
-    const w = Math.floor(width);
-    const h = Math.floor(height);
+    const pr = pixelRatio;
+    const w = Math.floor(width * pr);
+    const h = Math.floor(height * pr);
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
@@ -73,12 +78,13 @@ export default function HeatmapCanvas({
     }
     ctx.putImageData(image, 0, 0);
 
-    ctx.lineWidth = 1;
+    ctx.lineWidth = pr;
     separators.forEach((x) => {
       ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      const px = Math.floor(x * pr) + pr / 2;
       ctx.beginPath();
-      ctx.moveTo(Math.floor(x) + 0.5, 0);
-      ctx.lineTo(Math.floor(x) + 0.5, h);
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, h);
       ctx.stroke();
     });
 
@@ -87,10 +93,10 @@ export default function HeatmapCanvas({
       const rowH = h / nRows;
       highlightRows.forEach((r) => {
         const y0 = r * rowH;
-        ctx.strokeRect(0.5, y0 + 0.5, w - 1, Math.max(1, rowH - 1));
+        ctx.strokeRect(pr / 2, y0 + pr / 2, w - pr, Math.max(pr, rowH - pr));
       });
     }
-  }, [width, height, nRows, cols, colorAt, separators, highlightRows]);
+  }, [width, height, nRows, cols, colorAt, separators, highlightRows, pixelRatio]);
 
   // Wheel zoom needs a non-passive listener to stop the page from scrolling.
   // Only modified wheels (Cmd/Ctrl/Alt) zoom; plain wheels scroll the page.
@@ -135,14 +141,21 @@ export default function HeatmapCanvas({
     const canvas = ref.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor(event.clientX - rect.left);
-    const y = Math.floor(event.clientY - rect.top);
+    const x = Math.floor((event.clientX - rect.left) * pixelRatio);
+    const y = Math.floor((event.clientY - rect.top) * pixelRatio);
     if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
     const rows = rowsRef.current;
     const row = rows ? rows[y] : -1;
     const rowCols = typeof cols === "function" ? (row >= 0 ? cols(row) : null) : cols;
     const col = rowCols && x < rowCols.length ? rowCols[x] : -1;
-    return { x, y, row, col, clientX: event.clientX, clientY: event.clientY };
+    return {
+      x: x / pixelRatio,
+      y: y / pixelRatio,
+      row,
+      col,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    };
   };
 
   return (

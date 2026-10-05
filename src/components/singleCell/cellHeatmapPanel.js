@@ -1,20 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Segmented, Select, Space, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Segmented, Select, Space, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import HeatmapLegend from "./heatmapLegend";
+import MutationSidePanel from "./mutationSidePanel";
+import PaletteEditor from "./paletteEditor";
 import useContainerWidth from "./useContainerWidth";
+import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
 import {
   MISSING_RGBA,
   binLabel,
   chromosomeSpans,
-  cnStateRGBA,
+  cnColorer,
   discreteColumnLookup,
   discreteGroups,
   domainExtents,
@@ -27,7 +30,8 @@ import {
   panDomain,
   rowMap,
   snvColumnOrder,
-  snvStatusRGBA,
+  snvMetricMax,
+  treeColumnOrder,
   zoomDomain,
 } from "../../helpers/singleCell/matrix";
 import Wrapper from "./index.style";
@@ -42,12 +46,15 @@ const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
 const UNSELECTED_RGBA = packRGBA(hexToRgb("#FFFFFF"));
 
 const heatmapHeight = (nRows) => Math.min(720, Math.max(160, nRows * 6));
+const sidePanelWidth = (containerWidth) => Math.round(Math.min(420, Math.max(180, containerWidth * 0.22)));
 const isMulti = (event) => event.metaKey || event.ctrlKey;
 
 /**
  * Phylogeny + cells x genome heatmap for a single-cell patient. Rows follow
- * the tree; the heatmap shows total copy number (each cell's genome graph
- * nodes), SNVs (each cell's mutations) or junction copy number.
+ * the tree; the heatmap shows copy number (total, major or minor allele),
+ * SNVs or junction copy number. Beside the copy number, a compact mutation
+ * matrix uses the same rows. Hovering a row highlights the cell in every
+ * linked view (tree, UMAP).
  *
  * Click a leaf or row to pull up that cell; Cmd/Ctrl-click adds or removes
  * cells; Shift-click selects a range; click an internal node for its clade.
@@ -60,21 +67,43 @@ export default function CellHeatmapPanel() {
   const expression = useSelector((state) => state.ScAnalysis.expression);
   const showExpression = expression.status === "ok" && Boolean(expression.values);
   const [containerRef, containerWidth] = useContainerWidth();
+  const pixelRatio = usePixelRatio();
   const [hover, setHover] = useState(null);
   const anchorRow = useRef(null);
   const canvasHolder = useRef(null);
 
-  const { order, cells, cloneColors, tree, cn, snv, junctions, heatmapType, snvOrder, selectedCellIds } = sc;
+  const {
+    order,
+    cells,
+    cloneColors,
+    tree,
+    cn,
+    allelic,
+    snv,
+    junctions,
+    heatmapType,
+    snvOrder,
+    snvMetric,
+    cnMode,
+    palette,
+    sidePanel,
+    hoveredCellId,
+    selectedCellIds,
+  } = sc;
   const nRows = order.length;
   const hasTree = tree.status === "ok" && Boolean(tree.data?.layout);
   const treeWidth = hasTree ? TREE_WIDTH : 0;
+  const snvReady = snv.status === "ok";
+  const showSide = sidePanel && snvReady && heatmapType !== "snv";
+  const sideWidth = showSide ? sidePanelWidth(containerWidth) : 0;
   // Annotation strip: selection, clone, and the searched gene's expression when shown.
   const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
   const heatWidth = Math.max(
     200,
-    containerWidth - treeWidth - annotationWidth - (hasTree ? GAP : 0) - GAP
+    containerWidth - treeWidth - annotationWidth - (hasTree ? GAP : 0) - GAP - (showSide ? sideWidth + GAP : 0)
   );
   const height = heatmapHeight(nRows);
+  const devWidth = heatWidth * pixelRatio;
 
   /* ---- zoom / pan: same shared domains as the genome view and the cell tracks ---- */
   const pendingDomains = useRef(null);
@@ -124,6 +153,7 @@ export default function CellHeatmapPanel() {
     () => new Set(selectedCellIds.map((id) => rowOf.get(id)).filter((r) => r != null)),
     [selectedCellIds, rowOf]
   );
+  const hoverRow = hoveredCellId != null && rowOf.has(hoveredCellId) ? rowOf.get(hoveredCellId) : null;
   const leafClones = useMemo(
     () => (hasTree ? tree.data.layout.leaves.map((id) => cellById.get(id)?.clone_id ?? null) : []),
     [hasTree, tree, cellById]
@@ -137,72 +167,48 @@ export default function CellHeatmapPanel() {
     return hi - lo + 1 === rows.length && hi < tree.data.layout.leaves.length ? [lo, hi] : null;
   }, [hasTree, selectedRows, tree]);
 
-  /* ---- active matrix: column lookup, colour function, axis ---- */
+  /* ---- mutation matrix shared by the SNV view and the side panel ---- */
+  const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
+  const snvColumns = useMemo(() => {
+    if (!snvReady) return [];
+    if (snvOrder === "tree") return treeColumnOrder(snv.data, hasTree ? tree.data.layout : null, snvRows);
+    return snvColumnOrder(snv.data, snvOrder);
+  }, [snvReady, snv, snvOrder, hasTree, tree, snvRows]);
+  const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
+  const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
+
+  /* ---- copy number: total from complex.json, major/minor from allelic.json ---- */
+  const cnSource = cnMode === "total" ? cn : allelic;
+  const cnColor = useMemo(() => cnColorer(palette, cnMode), [palette, cnMode]);
+
+  /* ---- active matrix (copy number or junctions): column lookup, colour, axis ---- */
   const active = useMemo(() => {
-    if (heatmapType === "cn" && cn.status === "ok") {
-      const { rows } = cn.data;
-      const map = rowMap(order, cn.data.cells);
+    if (heatmapType === "cn" && cnSource.status === "ok") {
+      const { rows } = cnSource.data;
+      const map = rowMap(order, cnSource.data.cells);
+      const valuesOf = (row) => (cnMode === "major" ? row.major : cnMode === "minor" ? row.minor : row.values);
       const lookups = new Map();
       const colsFor = (r) => {
         const p = map[r];
         if (p < 0 || !rows[p]) return null;
         if (!lookups.has(p)) {
-          lookups.set(p, genomicColumnLookup(rows[p].binIndex, domains, heatWidth, GAP).cols);
+          lookups.set(p, genomicColumnLookup(rows[p].binIndex, domains, devWidth, GAP * pixelRatio).cols);
         }
         return lookups.get(p);
       };
       const axis = chromosomeSpans(chromoBins, domainExtents(domains, heatWidth, GAP));
+      const label = t(`components.single-cell.cn-mode.${cnMode}`);
       return {
         cols: colsFor,
         axis,
-        colorAt: (r, c) => cnStateRGBA(rows[map[r]].values[c]),
+        colorAt: (r, c) => cnColor(valuesOf(rows[map[r]])[c]),
         describe: (r, c) => {
           const p = map[r];
-          if (p < 0 || !rows[p]) return [[t("components.single-cell.tooltip.state"), t("components.single-cell.no-file")]];
+          if (p < 0 || !rows[p]) return [[label, t("components.single-cell.no-file")]];
           if (c < 0) return null;
           return [
             [t("components.single-cell.tooltip.segment"), binLabel(rows[p].binIndex, c)],
-            [t("components.single-cell.tooltip.state"), rows[p].values[c]],
-          ];
-        },
-      };
-    }
-    if (heatmapType === "snv" && snv.status === "ok") {
-      const m = snv.data;
-      const map = rowMap(order, m.cells);
-      const columnOrder = snvColumnOrder(m, snvOrder);
-      const disc = discreteColumnLookup(columnOrder.length, heatWidth);
-      const cols = Int32Array.from(disc, (k) => (k < 0 ? -1 : columnOrder[k]));
-      const axis =
-        snvOrder === "genomic"
-          ? discreteGroups(columnOrder, (i) => m.variants[i].chromosome, heatWidth)
-          : { spans: [], separators: [] };
-      const statusText = {
-        1: t("components.single-cell.snv.present"),
-        0: t("components.single-cell.snv.absent"),
-        [-1]: t("components.single-cell.snv.missing"),
-      };
-      return {
-        cols,
-        axis,
-        colorAt: (r, c) => {
-          const p = map[r];
-          return p < 0 ? snvStatusRGBA(-1) : snvStatusRGBA(m.status[p][c]);
-        },
-        describe: (r, c) => {
-          const p = map[r];
-          if (p < 0 || c < 0) return null;
-          const v = m.variants[c];
-          const alt = m.alt[p][c];
-          const depth = m.depth[p][c];
-          return [
-            [t("components.single-cell.tooltip.variant"), v.id],
-            ...(v.gene ? [[t("components.single-cell.tooltip.gene"), v.gene]] : []),
-            ...(v.annotation ? [[t("components.single-cell.tooltip.annotation"), v.annotation]] : []),
-            [t("components.single-cell.tooltip.status"), statusText[m.status[p][c]]],
-            ...(Number.isFinite(alt)
-              ? [[t("components.single-cell.tooltip.reads"), `${alt} / ${Number.isFinite(depth) ? depth : "NA"}`]]
-              : []),
+            [label, valuesOf(rows[p])[c]],
           ];
         },
       };
@@ -211,7 +217,7 @@ export default function CellHeatmapPanel() {
       const m = junctions.data;
       const map = rowMap(order, m.cells);
       const columnOrder = junctionColumnOrder(m.junctions);
-      const disc = discreteColumnLookup(columnOrder.length, heatWidth);
+      const disc = discreteColumnLookup(columnOrder.length, devWidth);
       const cols = Int32Array.from(disc, (k) => (k < 0 ? -1 : columnOrder[k]));
       const axis = discreteGroups(columnOrder, (i) => m.junctions[i].chromosome1, heatWidth);
       return {
@@ -238,11 +244,11 @@ export default function CellHeatmapPanel() {
       };
     }
     return null;
-  }, [heatmapType, cn, snv, junctions, order, domains, heatWidth, chromoBins, snvOrder, t]);
+  }, [heatmapType, cnSource, cnMode, cnColor, junctions, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t]);
 
   const annotationCols = useMemo(
-    () => discreteColumnLookup(showExpression ? 3 : 2, annotationWidth),
-    [showExpression, annotationWidth]
+    () => discreteColumnLookup(showExpression ? 3 : 2, annotationWidth * pixelRatio),
+    [showExpression, annotationWidth, pixelRatio]
   );
   const annotationColor = useCallback(
     (r, c) => {
@@ -283,13 +289,25 @@ export default function CellHeatmapPanel() {
     setSelection(isMulti(event) || event.shiftKey ? [...selectedCellIds, ...clade] : clade);
   };
 
+  /* ---- hover: tooltip here, highlighted cell shared with the tree and UMAP ---- */
+  const hoveredRef = useRef(null);
+  const shareHover = (cellId) => {
+    if (hoveredRef.current === cellId) return;
+    hoveredRef.current = cellId;
+    dispatch(singleCellActions.updateHover(cellId));
+  };
+  const clearHover = () => {
+    setHover(null);
+    shareHover(null);
+  };
   const hoverCell = (row, extra, event) => {
-    if (row == null || row < 0) return setHover(null);
+    if (row == null || row < 0) return clearHover();
+    shareHover(order[row]);
     const cell = cellById.get(order[row]);
     const holder = canvasHolder.current?.getBoundingClientRect();
     const left = event.clientX - (holder?.left || 0) + 14;
     setHover({
-      left: Math.min(left, (holder?.width || left) - 240),
+      left: Math.min(left, (holder?.width || left) - 260),
       top: event.clientY - (holder?.top || 0) + 14,
       lines: [
         [t("components.single-cell.tooltip.cell"), order[row]],
@@ -310,16 +328,17 @@ export default function CellHeatmapPanel() {
   const downloadPng = () => {
     const holder = canvasHolder.current;
     if (!holder) return;
-    const out = document.createElement("canvas");
-    out.width = holder.clientWidth;
-    out.height = height;
-    const ctx = out.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, out.width, out.height);
     const base = holder.getBoundingClientRect();
+    const out = document.createElement("canvas");
+    out.width = Math.ceil(base.width * pixelRatio);
+    out.height = Math.ceil(height * pixelRatio);
+    const ctx = out.getContext("2d");
+    ctx.scale(pixelRatio, pixelRatio);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, base.width, height);
     holder.querySelectorAll("canvas").forEach((c) => {
       const r = c.getBoundingClientRect();
-      ctx.drawImage(c, r.left - base.left, r.top - base.top);
+      ctx.drawImage(c, r.left - base.left, r.top - base.top, r.width, r.height);
     });
     const link = document.createElement("a");
     link.download = `${sc.patient?.caseReportId || "patient"}_${heatmapType}_heatmap.png`;
@@ -329,29 +348,47 @@ export default function CellHeatmapPanel() {
 
   const typeOptions = [
     { value: "cn", label: t("components.single-cell.heatmap.cn"), disabled: cn.status !== "ok" },
-    { value: "snv", label: t("components.single-cell.heatmap.snv"), disabled: snv.status !== "ok" },
+    { value: "snv", label: t("components.single-cell.heatmap.snv"), disabled: !snvReady },
     {
       value: "junctions",
       label: t("components.single-cell.heatmap.junctions"),
       disabled: junctions.status !== "ok",
     },
   ];
+  const showSnvControls = snvReady && (heatmapType === "snv" || showSide);
 
   const alerts = [];
   if (tree.error) {
     alerts.push({ key: "tree", message: t("components.single-cell.errors.tree"), description: tree.error.message });
   }
-  [["cn", cn], ["snv", snv], ["junctions", junctions]].forEach(([key, s]) => {
+  [["cn", cn], ["snv", snv], ["junctions", junctions], ["allelic", allelic]].forEach(([key, s]) => {
     if (s.status === "error") {
       alerts.push({ key, message: t(`components.single-cell.errors.${key}`), description: s.error?.message });
     }
   });
-  const missingGenomes = cn.status === "ok" ? cn.data.rows.filter((r) => !r).length : 0;
+  const missingGenomes =
+    heatmapType === "cn" && cnSource.status === "ok" ? cnSource.data.rows.filter((r) => !r).length : 0;
 
   const treeNote =
     tree.status === "ok"
       ? t(`components.single-cell.tree.${tree.method}`)
       : t("components.single-cell.tree.none");
+
+  const sideProps = {
+    snv: snv.data,
+    rows: snvRows,
+    nRows,
+    columnOrder: snvColumns,
+    metric: snvMetric,
+    max: snvMax,
+    height,
+    pixelRatio,
+    axisHeight: AXIS_HEIGHT,
+    highlightRows: selectedRows.size <= 50 ? selectedRows : null,
+    onRowClick: handleRowClick,
+    onHover: (row, lines, event) => hoverCell(row, lines, event),
+    onLeave: clearHover,
+  };
 
   return (
     <Wrapper>
@@ -371,24 +408,6 @@ export default function CellHeatmapPanel() {
         }
         extra={
           <Space wrap>
-            <Segmented
-              size="small"
-              options={typeOptions}
-              value={heatmapType}
-              onChange={(value) => dispatch(singleCellActions.updateHeatmapType(value))}
-            />
-            {heatmapType === "snv" && (
-              <Select
-                size="small"
-                value={snvOrder}
-                style={{ width: 150 }}
-                onChange={(value) => dispatch(singleCellActions.updateSnvOrder(value))}
-                options={[
-                  { value: "genomic", label: t("components.single-cell.snv.order-genomic") },
-                  { value: "prevalence", label: t("components.single-cell.snv.order-prevalence") },
-                ]}
-              />
-            )}
             {heatmapType === "cn" && (
               <Tooltip title={t("components.single-cell.heatmap.zoom-in")}>
                 <Button size="small" icon={<AiOutlineZoomIn />} onClick={() => zoomAll(0.5)} />
@@ -408,34 +427,102 @@ export default function CellHeatmapPanel() {
                 />
               </Tooltip>
             )}
+            <PaletteEditor />
             <Tooltip title={t("components.single-cell.heatmap.download")}>
               <Button size="small" icon={<AiOutlineDownload />} onClick={downloadPng} />
             </Tooltip>
           </Space>
         }
       >
+        <Space wrap size={[16, 8]} className="sc-toolbar">
+          <Segmented
+            size="small"
+            options={typeOptions}
+            value={heatmapType}
+            onChange={(value) => dispatch(singleCellActions.updateHeatmapType(value))}
+          />
+          {heatmapType === "cn" && (
+            <Space size={4}>
+              <Text type="secondary">{t("components.single-cell.toolbar.copy-number")}</Text>
+              <Select
+                size="small"
+                style={{ width: 110 }}
+                value={cnMode}
+                loading={cnMode !== "total" && allelic.status === "loading"}
+                onChange={(value) => dispatch(singleCellActions.updateCnMode(value))}
+                options={["total", "major", "minor"].map((value) => ({
+                  value,
+                  label: t(`components.single-cell.cn-mode.${value}`),
+                }))}
+              />
+            </Space>
+          )}
+          {snvReady && heatmapType !== "snv" && (
+            <Checkbox
+              checked={sidePanel}
+              onChange={(e) => dispatch(singleCellActions.updateSidePanel(e.target.checked))}
+            >
+              {t("components.single-cell.toolbar.side-panel")}
+            </Checkbox>
+          )}
+          {showSnvControls && (
+            <Space size={4} wrap>
+              <Text type="secondary">{t("components.single-cell.toolbar.metric")}</Text>
+              <Select
+                size="small"
+                style={{ width: 120 }}
+                value={snvMetric}
+                onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
+                options={["vaf", "alt", "depth"].map((value) => ({
+                  value,
+                  label: t(`components.single-cell.metric.${value}`),
+                }))}
+              />
+              <Text type="secondary">{t("components.single-cell.toolbar.order")}</Text>
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                value={snvOrder}
+                onChange={(value) => dispatch(singleCellActions.updateSnvOrder(value))}
+                options={["tree", "genomic", "prevalence", "catalog"].map((value) => ({
+                  value,
+                  label: t(`components.single-cell.snv.order-${value}`),
+                  disabled: value === "tree" && !hasTree,
+                }))}
+              />
+            </Space>
+          )}
+        </Space>
         {alerts.map((a) => (
           <Alert key={a.key} type="warning" showIcon className="sc-alert" message={a.message} description={a.description} />
         ))}
-        {missingGenomes > 0 && heatmapType === "cn" && (
+        {missingGenomes > 0 && (
           <Alert
             type="info"
             showIcon
             className="sc-alert"
-            message={t("components.single-cell.heatmap.missing-genomes", { count: missingGenomes })}
+            message={t(
+              cnMode === "total"
+                ? "components.single-cell.heatmap.missing-genomes"
+                : "components.single-cell.heatmap.missing-allelic",
+              { count: missingGenomes }
+            )}
           />
         )}
         <div ref={containerRef} className="sc-heatmap-container">
-          <div ref={canvasHolder} className="sc-heatmap-row" style={{ height }}>
+          <div ref={canvasHolder} className="sc-heatmap-row" style={{ minHeight: height }}>
             {hasTree && (
               <PhylogenyCanvas
                 layout={tree.data.layout}
                 nRows={nRows}
                 width={treeWidth}
                 height={height}
+                pixelRatio={pixelRatio}
                 leafClones={leafClones}
                 cloneColors={cloneColors}
                 selectedLeafRange={selectedLeafRange}
+                selectedRows={selectedRows}
+                hoverRow={hoverRow}
                 onSelectRange={handleTreeSelect}
                 onHoverNode={(node, event) =>
                   node
@@ -451,7 +538,7 @@ export default function CellHeatmapPanel() {
                             ]],
                         event
                       )
-                    : setHover(null)
+                    : clearHover()
                 }
               />
             )}
@@ -461,29 +548,82 @@ export default function CellHeatmapPanel() {
               nRows={nRows}
               cols={annotationCols}
               colorAt={annotationColor}
+              pixelRatio={pixelRatio}
               onClick={handleRowClick}
               onHover={({ row }, event) => hoverCell(row, null, event)}
-              onLeave={() => setHover(null)}
+              onLeave={clearHover}
             />
-            {active ? (
-              <HeatmapCanvas
+            {heatmapType === "snv" && snvReady ? (
+              <MutationSidePanel
+                {...sideProps}
                 width={heatWidth}
-                height={height}
-                nRows={nRows}
-                cols={active.cols}
-                colorAt={active.colorAt}
-                separators={active.axis.separators}
-                highlightRows={selectedRows.size <= 50 ? selectedRows : null}
-                onClick={handleRowClick}
-                onDrag={heatmapType === "cn" ? handlePan : undefined}
-                onWheelZoom={heatmapType === "cn" ? handleWheelZoom : undefined}
-                onHover={({ row, col }, event) => hoverCell(row, active.describe(row, col), event)}
-                onLeave={() => setHover(null)}
+                groupOf={snvOrder === "genomic" ? chromosomeOfVariant : null}
               />
             ) : (
-              <div className="sc-heatmap-empty" style={{ width: heatWidth, height }}>
-                <Text type="secondary">{t("components.single-cell.heatmap.no-matrix")}</Text>
+              <div style={{ width: heatWidth }}>
+                {active ? (
+                  <HeatmapCanvas
+                    width={heatWidth}
+                    height={height}
+                    nRows={nRows}
+                    cols={active.cols}
+                    colorAt={active.colorAt}
+                    pixelRatio={pixelRatio}
+                    separators={active.axis.separators}
+                    highlightRows={selectedRows.size <= 50 ? selectedRows : null}
+                    onClick={handleRowClick}
+                    onDrag={heatmapType === "cn" ? handlePan : undefined}
+                    onWheelZoom={heatmapType === "cn" ? handleWheelZoom : undefined}
+                    onHover={({ row, col }, event) => hoverCell(row, active.describe(row, col), event)}
+                    onLeave={clearHover}
+                  />
+                ) : (
+                  <div className="sc-heatmap-empty" style={{ width: heatWidth, height }}>
+                    <Text type="secondary">
+                      {heatmapType === "cn" && cnSource.status === "loading"
+                        ? t("components.single-cell.heatmap.loading-allelic")
+                        : t("components.single-cell.heatmap.no-matrix")}
+                    </Text>
+                  </div>
+                )}
+                {active && (
+                  <div className="sc-axis" style={{ width: heatWidth, height: AXIS_HEIGHT }}>
+                    {active.axis.spans
+                      .filter((s) => s.x1 - s.x0 >= 14)
+                      .map((s, k) => (
+                        <span
+                          key={`${s.chromosome}-${k}`}
+                          className={heatmapType === "cn" ? "sc-axis-label sc-axis-link" : "sc-axis-label"}
+                          style={{ left: s.x0, width: s.x1 - s.x0 }}
+                          title={
+                            heatmapType === "cn"
+                              ? t("components.single-cell.heatmap.zoom-chromosome", { chromosome: s.chromosome })
+                              : s.chromosome
+                          }
+                          onClick={() => {
+                            const c = chromoBins[s.chromosome];
+                            if (heatmapType === "cn" && c) {
+                              dispatch(settingsActions.updateDomains([[c.startPlace, c.endPlace]]));
+                            }
+                          }}
+                        >
+                          {s.chromosome}
+                        </span>
+                      ))}
+                  </div>
+                )}
               </div>
+            )}
+            {showSide && <MutationSidePanel {...sideProps} width={sideWidth} />}
+            {hoverRow != null && (
+              <div
+                className="sc-hover-band"
+                style={{
+                  top: (hoverRow * height) / nRows,
+                  height: Math.max(2, height / nRows),
+                  left: treeWidth + (hasTree ? GAP : 0),
+                }}
+              />
             )}
             {hover && (
               <div className="sc-tooltip" style={{ left: Math.max(0, hover.left), top: hover.top }}>
@@ -495,42 +635,13 @@ export default function CellHeatmapPanel() {
               </div>
             )}
           </div>
-          {active && (
-            <div
-              className="sc-axis"
-              style={{
-                marginLeft: treeWidth + (hasTree ? GAP : 0) + annotationWidth + GAP,
-                width: heatWidth,
-                height: AXIS_HEIGHT,
-              }}
-            >
-              {active.axis.spans
-                .filter((s) => s.x1 - s.x0 >= 14)
-                .map((s, k) => (
-                  <span
-                    key={`${s.chromosome}-${k}`}
-                    className={heatmapType === "cn" ? "sc-axis-label sc-axis-link" : "sc-axis-label"}
-                    style={{ left: s.x0, width: s.x1 - s.x0 }}
-                    title={
-                      heatmapType === "cn"
-                        ? t("components.single-cell.heatmap.zoom-chromosome", { chromosome: s.chromosome })
-                        : s.chromosome
-                    }
-                    onClick={() => {
-                      const c = chromoBins[s.chromosome];
-                      if (heatmapType === "cn" && c) {
-                        dispatch(settingsActions.updateDomains([[c.startPlace, c.endPlace]]));
-                      }
-                    }}
-                  >
-                    {s.chromosome}
-                  </span>
-                ))}
-            </div>
-          )}
           <div className="sc-heatmap-footer">
             <HeatmapLegend
               type={heatmapType}
+              cnMode={cnMode}
+              palette={palette}
+              snvMetric={showSnvControls ? snvMetric : null}
+              snvMax={snvMax}
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}
               expression={showExpression ? expression : null}

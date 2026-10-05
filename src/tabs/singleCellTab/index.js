@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Affix, Alert, Col, Empty, Progress, Row, Space, Typography } from "antd";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
+import UmapPanel from "../../components/singleCell/umapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
@@ -77,6 +78,9 @@ export default function SingleCellTab() {
         </Col>
         <Col span={24}>
           <CellHeatmapPanel />
+        </Col>
+        <Col span={24}>
+          <UmapPanel />
         </Col>
         <Col span={24}>
           <CellSelectionPanel />

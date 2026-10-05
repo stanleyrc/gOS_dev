@@ -5,6 +5,7 @@ import { Button, Card, Col, Empty, Progress, Row, Segmented, Space, Statistic, T
 import { ApartmentOutlined } from "@ant-design/icons";
 import axios from "axios";
 import HeatmapCanvas from "./heatmapCanvas";
+import usePixelRatio from "./usePixelRatio";
 import HeatmapLegend from "./heatmapLegend";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import useContainerWidth from "./useContainerWidth";
@@ -20,7 +21,7 @@ import {
   binLabel,
   chromosomeSpans,
   cloneColorMap,
-  cnStateRGBA,
+  cnColorer,
   domainExtents,
   genomicColumnLookup,
   naturalCompare,
@@ -104,6 +105,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const datasetRecords = useSelector((state) => state.Datasets.records);
   const datasets = useMemo(() => datasetRecords || [], [datasetRecords]);
   const { chromoBins, genomeLength } = useSelector((state) => state.Settings);
+  const palette = useSelector((state) => state.SingleCell.palette);
+  const pixelRatio = usePixelRatio();
   const [containerRef, containerWidth] = useContainerWidth();
   const [rows, setRows] = useState({});
   const [progress, setProgress] = useState(0);
@@ -216,15 +219,18 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     const colsFor = (r) => {
       const entry = heatRows[r];
       if (!entry?.row) return null;
-      if (!lookups.has(r)) lookups.set(r, genomicColumnLookup(entry.row.binIndex, domains, heatWidth).cols);
+      if (!lookups.has(r)) {
+        lookups.set(r, genomicColumnLookup(entry.row.binIndex, domains, heatWidth * pixelRatio).cols);
+      }
       return lookups.get(r);
     };
+    const color = cnColorer(palette, "total");
     return {
       cols: colsFor,
-      colorAt: (r, c) => cnStateRGBA(heatRows[r].row.values[c]),
+      colorAt: (r, c) => color(heatRows[r].row.values[c]),
       axis: chromosomeSpans(chromoBins, domainExtents(domains, heatWidth)),
     };
-  }, [heatRows, domains, heatWidth, chromoBins]);
+  }, [heatRows, domains, heatWidth, chromoBins, palette, pixelRatio]);
 
   // Patient blocks for the label column in per-cell mode.
   const patientBlocks = useMemo(() => {
@@ -373,6 +379,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                   />
                 )}
                 <HeatmapCanvas
+                  pixelRatio={pixelRatio}
                   width={heatWidth}
                   height={height}
                   nRows={heatRows.length}
@@ -423,7 +430,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                   ))}
               </div>
               <div className="sc-heatmap-footer">
-                <HeatmapLegend type="cn" showClones={false} />
+                <HeatmapLegend type="cn" palette={palette} showClones={false} />
               </div>
             </div>
           </Card>

@@ -1,5 +1,17 @@
-import actions, { SC_DEFAULT_TRACKS } from "./actions";
+import actions, { SC_DEFAULT_TRACKS, SC_PALETTE_STORAGE_KEY } from "./actions";
 import caseReportActions from "../caseReport/actions";
+import { DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
+
+const storedPalette = () => {
+  try {
+    const raw = window.localStorage.getItem(SC_PALETTE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const preset = parsed?.preset || DEFAULT_CN_PALETTE;
+    return { preset, ...normalizePalette(parsed, preset) };
+  } catch (error) {
+    return { preset: DEFAULT_CN_PALETTE, ...normalizePalette(null) };
+  }
+};
 
 const emptySource = { status: "idle", data: null, error: null };
 
@@ -17,14 +29,29 @@ const initState = {
   cn: emptySource, // { cells, rows: [{ binIndex, values } | null] }
   snv: emptySource,
   junctions: emptySource,
+  allelic: emptySource, // { cells, rows: [{ binIndex, major, minor } | null] }, loaded on demand
+  rna: emptySource, // static rna/ summary: { cells, genes, fields, hasUmap }
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
   selectedCellIds: [],
   visibleTracks: SC_DEFAULT_TRACKS,
   heatmapType: "cn",
-  snvOrder: "genomic",
+  snvOrder: "tree",
+  snvMetric: "vaf",
+  cnMode: "total",
+  palette: storedPalette(),
+  sidePanel: true,
+  hoveredCellId: null,
   perCell: {}, // { [cellId]: { [track]: { status, data, error } } }
 };
+
+// View preferences that survive switching patients.
+const preferences = (state) => ({
+  visibleTracks: state.visibleTracks,
+  snvMetric: state.snvMetric,
+  palette: state.palette,
+  sidePanel: state.sidePanel,
+});
 
 const sameIds = (a, b) => a.length === b.length && a.every((v, k) => v === b[k]);
 
@@ -41,7 +68,7 @@ export default function appReducer(state = initState, action) {
     case actions.FETCH_SINGLE_CELL_DATA_REQUEST:
       return {
         ...initState,
-        visibleTracks: state.visibleTracks,
+        ...preferences(state),
         loading: action.type === actions.FETCH_SINGLE_CELL_DATA_REQUEST,
       };
     case actions.FETCH_SINGLE_CELL_DATA_PROGRESS:
@@ -61,6 +88,7 @@ export default function appReducer(state = initState, action) {
         cn: action.cn,
         snv: action.snv,
         junctions: action.junctions,
+        rna: action.rna || emptySource,
         cellFiles: action.cellFiles,
         selectedCellIds: action.selectedCellIds,
         heatmapType:
@@ -72,9 +100,9 @@ export default function appReducer(state = initState, action) {
         perCell: {},
       };
     case actions.FETCH_SINGLE_CELL_DATA_MISSING:
-      return { ...initState, visibleTracks: state.visibleTracks, missing: true };
+      return { ...initState, ...preferences(state), missing: true };
     case actions.FETCH_SINGLE_CELL_DATA_FAILED:
-      return { ...initState, visibleTracks: state.visibleTracks, error: action.error };
+      return { ...initState, ...preferences(state), error: action.error };
     case actions.SC_SELECTION_UPDATED: {
       const known = new Set(state.order);
       const next = [...new Set(action.cellIds || [])].filter((id) => known.has(id));
@@ -86,6 +114,31 @@ export default function appReducer(state = initState, action) {
       return { ...state, heatmapType: action.heatmapType };
     case actions.SC_SNV_ORDER_UPDATED:
       return { ...state, snvOrder: action.snvOrder };
+    case actions.SC_SNV_METRIC_UPDATED:
+      return { ...state, snvMetric: action.snvMetric };
+    case actions.SC_CN_MODE_UPDATED:
+      return {
+        ...state,
+        cnMode: action.cnMode,
+        allelic:
+          action.cnMode !== "total" && state.allelic.status === "idle"
+            ? { ...emptySource, status: "loading" }
+            : state.allelic,
+      };
+    case actions.SC_ALLELIC_LOADED:
+      return { ...state, allelic: action.allelic };
+    case actions.SC_ALLELIC_FAILED:
+      return { ...state, allelic: { status: "error", data: null, error: action.error } };
+    case actions.SC_PALETTE_UPDATED: {
+      const preset = action.palette?.preset || state.palette.preset;
+      return { ...state, palette: { preset, ...normalizePalette(action.palette, preset) } };
+    }
+    case actions.SC_SIDE_PANEL_UPDATED:
+      return { ...state, sidePanel: Boolean(action.visible) };
+    case actions.SC_HOVER_UPDATED:
+      return state.hoveredCellId === (action.cellId ?? null)
+        ? state
+        : { ...state, hoveredCellId: action.cellId ?? null };
     case actions.SC_PER_CELL_TRACK_REQUEST:
     case actions.SC_PER_CELL_TRACK_SUCCESS:
     case actions.SC_PER_CELL_TRACK_MISSING:

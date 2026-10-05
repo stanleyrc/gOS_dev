@@ -319,3 +319,123 @@ export function medianCnRow(rows, chromoBins, step = 1e6) {
   }
   return { binIndex, values };
 }
+
+/* ----------------------------------------------------------------------- */
+/* Allelic (major / minor) copy number from allelic.json                    */
+/* ----------------------------------------------------------------------- */
+
+/**
+ * allelic.json as heatmap rows: { binIndex, major, minor }. Intervals may
+ * carry explicit majorCn/minorCn; otherwise each locus has two `y`
+ * observations (one per allele, colours are only drawing hints), and the
+ * larger is the major allele. A locus without a complete pair is missing.
+ */
+export function allelicRowFromAllelic(allelic, chromoBins) {
+  const loci = new Map();
+  (allelic?.intervals || []).forEach((d) => {
+    if (d.type != null && d.type !== "interval") return;
+    if (!resolveChromosome(d.chromosome, chromoBins)) return;
+    const key = `${d.chromosome}:${d.startPoint}:${d.endPoint}`;
+    if (!loci.has(key)) loci.set(key, { d, values: [], major: null, minor: null });
+    const locus = loci.get(key);
+    if (d.majorCn != null || d.minorCn != null) {
+      locus.major = Number(d.majorCn);
+      locus.minor = Number(d.minorCn);
+    } else {
+      locus.values.push(Number(d.y));
+    }
+  });
+  const list = [...loci.values()].map((l) => {
+    if (l.major == null && l.values.length === 2 && l.values.every(Number.isFinite)) {
+      l.major = Math.max(...l.values);
+      l.minor = Math.min(...l.values);
+    }
+    return l;
+  });
+  const binIndex = buildBinIndex(
+    {
+      chromosome: list.map((l) => l.d.chromosome),
+      start: list.map((l) => Number(l.d.startPoint)),
+      end: list.map((l) => Number(l.d.endPoint)),
+    },
+    chromoBins
+  );
+  const value = (v) => (v == null || !Number.isFinite(v) ? NaN : v);
+  return {
+    binIndex,
+    major: Float32Array.from(list, (l) => value(l.major)),
+    minor: Float32Array.from(list, (l) => value(l.minor)),
+  };
+}
+
+/* ----------------------------------------------------------------------- */
+/* Patient-level SNV matrix (pgv sparse format)                             */
+/* ----------------------------------------------------------------------- */
+
+/** "chr1_18258813_G_A" or "1:18258813:G>A" -> { chromosome, position, ref, alt }. */
+export function parseVariantId(id) {
+  const s = `${id ?? ""}`;
+  let m = s.match(/^([^_:]+)[_:](\d+)[_:]([A-Za-z*-]+)[_>:]([A-Za-z*-]+)$/);
+  if (m) return { chromosome: m[1].replace(/^chr/i, ""), position: Number(m[2]), ref: m[3], alt: m[4] };
+  m = s.match(/^([^_:]+)[_:](\d+)/);
+  return m ? { chromosome: m[1].replace(/^chr/i, ""), position: Number(m[2]), ref: "", alt: "" } : null;
+}
+
+/**
+ * Build the SNV matrix from a patient's snv_matrix.json, in pgv's sparse
+ * format: { variants: [{ id, gene? }], cells: { cellId: [{ variantId, refCount,
+ * altCount, vaf }] } }. Unlike per-cell mutations.json it records reads at
+ * sites where the variant was not called, so depth and VAF are known there.
+ * Status per cell: 1 alt reads, 0 reads but no alt, -1 no reads or no entry.
+ * Variant order in the file is kept as `index` (the "catalog" order).
+ * Entries may also be compact [variantIndex, refCount, altCount] triples,
+ * indexing the file's `variants` array (about 6x smaller than objects).
+ */
+export function snvFromSparse(sparse, cellIds, chromoBins) {
+  const variants = [];
+  const byId = new Map();
+  const bySourceIndex = new Map();
+  (sparse?.variants || []).forEach((v, sourceIndex) => {
+    const id = `${v.id ?? v.variantId ?? ""}`;
+    const parsed = parseVariantId(id);
+    if (!id || !parsed || byId.has(id)) return;
+    byId.set(id, variants.length);
+    bySourceIndex.set(sourceIndex, variants.length);
+    variants.push({
+      id,
+      index: variants.length,
+      chromosome: parsed.chromosome,
+      position: parsed.position,
+      ref: parsed.ref,
+      alt: parsed.alt,
+      gene: v.gene || v.Gene || null,
+      annotation: v.annotation || (parsed.ref ? `${parsed.ref}>${parsed.alt}` : null),
+      global: toGlobal(chromoBins, parsed.chromosome, parsed.position),
+    });
+  });
+  const n = variants.length;
+  const cellsIn = sparse?.cells || {};
+  const status = [];
+  const alt = [];
+  const depth = [];
+  cellIds.forEach((cellId) => {
+    const s = new Int8Array(n).fill(-1);
+    const a = new Float32Array(n).fill(NaN);
+    const dp = new Float32Array(n).fill(NaN);
+    (cellsIn[cellId] || []).forEach((o) => {
+      const compact = Array.isArray(o);
+      const k = compact ? bySourceIndex.get(o[0]) : byId.get(`${o.variantId ?? o.id ?? ""}`);
+      if (k == null) return;
+      const x = compact ? o[2] : o.altCount;
+      const r = compact ? o[1] : o.refCount;
+      if (x == null || r == null || !Number.isFinite(x) || !Number.isFinite(r)) return;
+      a[k] = x;
+      dp[k] = x + r;
+      s[k] = x > 0 ? 1 : x + r > 0 ? 0 : -1;
+    });
+    status.push(s);
+    alt.push(a);
+    depth.push(dp);
+  });
+  return { cells: [...cellIds], variants, status, alt, depth, source: "matrix" };
+}
