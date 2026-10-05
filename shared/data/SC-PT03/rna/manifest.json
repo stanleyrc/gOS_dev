@@ -1,0 +1,8 @@
+{
+  "format": "gos-sc-rna/1",
+  "n_cells": 25,
+  "n_genes": 342,
+  "normalization": "LogNormalize",
+  "source": "scripts/generate_sc_demo.py (synthetic)",
+  "n_matched": 22
+}

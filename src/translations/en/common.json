@@ -910,7 +910,8 @@
         "cn": "Copy number",
         "snv": "SNV",
         "junctions": "Junction CN",
-        "clones": "Clones"
+        "clones": "Clones",
+        "expression": "{{gene}} expression"
       },
       "snv": {
         "present": "Called",
@@ -933,7 +934,8 @@
         "reads": "Alt / depth",
         "breakpoints": "Breakpoints",
         "type": "Class",
-        "junction-cn": "Junction CN"
+        "junction-cn": "Junction CN",
+        "no-rna": "no RNA"
       },
       "selection": {
         "title": "Selected cells",
@@ -989,6 +991,47 @@
         "rows-cells": "One row per cell",
         "median-of": "median of {{count}} cells",
         "open": "Open patient"
+      },
+      "compare": {
+        "title": "Compare groups",
+        "rna-summary": "RNA: {{cells}} cells ({{matched}} linked to the tree), {{genes}} genes",
+        "service-error": "The analysis service could not be reached",
+        "no-rna": "This patient has no pre-analysed RNA (rna/ folder) yet.",
+        "connecting": "Connecting to the analysis service…",
+        "empty-group": "not set",
+        "set-from-selection": "Set from selection",
+        "selection-label": "{{count}} selected cells",
+        "clone-label": "clone {{clone}}",
+        "rest-label": "rest",
+        "clone-vs-rest": "Clone vs rest…",
+        "swap": "Swap A/B",
+        "gene-strip": "Gene beside the tree:",
+        "gene-placeholder": "Search a gene",
+        "run": "Run",
+        "no-analyses": "The service offers no group analyses.",
+        "history": "Recent analyses",
+        "state": {
+          "queued": "queued",
+          "running": "running",
+          "done": "done",
+          "failed": "failed"
+        }
+      },
+      "results": {
+        "gene": "Gene",
+        "p-adj": "p (Bonferroni)",
+        "filter": "Filter genes",
+        "de-summary": "{{a}} ({{nA}} cells) vs {{b}} ({{nB}} cells): {{tested}} genes tested, {{sig}} significant",
+        "enrich": "Enrichment:",
+        "higher-in": "higher in {{group}}",
+        "both": "both directions",
+        "term": "Gene set",
+        "overlap": "Overlap",
+        "expected": "Expected",
+        "genes": "Genes",
+        "enrich-summary": "{{set}}: {{n}} DE genes against {{universe}} tested genes; {{sig}} sets with q < 0.05.",
+        "back-to-de": "Back to the DE result",
+        "failed": "The analysis failed"
       }
     },
     "tracks-modal": {

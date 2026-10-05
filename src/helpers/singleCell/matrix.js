@@ -464,3 +464,24 @@ export function zoomDomain(domain, anchor, factor, bounds, minWidth = 100) {
 export function panDomain(domain, delta, bounds) {
   return clampDomain(domain[0] + delta, domain[1] - domain[0], bounds);
 }
+
+/* ----------------------------------------------------------------------- */
+/* Expression colour                                                        */
+/* ----------------------------------------------------------------------- */
+
+export const EXPRESSION_ZERO_COLOR = "#EFEDF5";
+const EXPRESSION_LOW = hexToRgb("#DADAEB");
+const EXPRESSION_HIGH = hexToRgb("#3F007D");
+
+/** Sequential colour for an expression value; 0 is pale, NaN/undefined is "no RNA". */
+export function expressionRGB(value, max) {
+  if (value == null || !Number.isFinite(value)) return null;
+  if (value <= 0 || !(max > 0)) return hexToRgb(EXPRESSION_ZERO_COLOR);
+  const t = Math.min(1, value / max);
+  return EXPRESSION_LOW.map((lo, k) => Math.round(lo + (EXPRESSION_HIGH[k] - lo) * t));
+}
+
+export function expressionRGBA(value, max) {
+  const rgb = expressionRGB(value, max);
+  return rgb ? packRGBA(rgb) : MISSING_RGBA;
+}

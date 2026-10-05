@@ -18,6 +18,7 @@ import {
   discreteColumnLookup,
   discreteGroups,
   domainExtents,
+  expressionRGBA,
   genomicColumnLookup,
   hexToRgb,
   junctionColumnOrder,
@@ -34,6 +35,7 @@ import Wrapper from "./index.style";
 const { Text } = Typography;
 const TREE_WIDTH = 180;
 const ANNOTATION_WIDTH = 18;
+const ANNOTATION_WIDTH_EXPR = 30;
 const GAP = 4;
 const AXIS_HEIGHT = 18;
 const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
@@ -55,6 +57,8 @@ export default function CellHeatmapPanel() {
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
   const { domains, chromoBins, defaultDomain, genomeLength } = useSelector((state) => state.Settings);
+  const expression = useSelector((state) => state.ScAnalysis.expression);
+  const showExpression = expression.status === "ok" && Boolean(expression.values);
   const [containerRef, containerWidth] = useContainerWidth();
   const [hover, setHover] = useState(null);
   const anchorRow = useRef(null);
@@ -64,9 +68,11 @@ export default function CellHeatmapPanel() {
   const nRows = order.length;
   const hasTree = tree.status === "ok" && Boolean(tree.data?.layout);
   const treeWidth = hasTree ? TREE_WIDTH : 0;
+  // Annotation strip: selection, clone, and the searched gene's expression when shown.
+  const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
   const heatWidth = Math.max(
     200,
-    containerWidth - treeWidth - ANNOTATION_WIDTH - (hasTree ? GAP : 0) - GAP
+    containerWidth - treeWidth - annotationWidth - (hasTree ? GAP : 0) - GAP
   );
   const height = heatmapHeight(nRows);
 
@@ -234,14 +240,18 @@ export default function CellHeatmapPanel() {
     return null;
   }, [heatmapType, cn, snv, junctions, order, domains, heatWidth, chromoBins, snvOrder, t]);
 
-  const annotationCols = useMemo(() => discreteColumnLookup(2, ANNOTATION_WIDTH), []);
+  const annotationCols = useMemo(
+    () => discreteColumnLookup(showExpression ? 3 : 2, annotationWidth),
+    [showExpression, annotationWidth]
+  );
   const annotationColor = useCallback(
     (r, c) => {
       if (c === 0) return selectedRows.has(r) ? SELECTED_RGBA : UNSELECTED_RGBA;
+      if (c === 2) return expressionRGBA(expression.values?.[order[r]], expression.max);
       const clone = cellById.get(order[r])?.clone_id;
       return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : MISSING_RGBA;
     },
-    [selectedRows, cellById, order, cloneColors]
+    [selectedRows, cellById, order, cloneColors, expression]
   );
 
   /* ---- selection ---- */
@@ -284,6 +294,14 @@ export default function CellHeatmapPanel() {
       lines: [
         [t("components.single-cell.tooltip.cell"), order[row]],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
+        ...(showExpression
+          ? [[
+              expression.gene,
+              expression.values[order[row]] == null
+                ? t("components.single-cell.tooltip.no-rna")
+                : expression.values[order[row]],
+            ]]
+          : []),
         ...(extra || []),
       ],
     });
@@ -438,7 +456,7 @@ export default function CellHeatmapPanel() {
               />
             )}
             <HeatmapCanvas
-              width={ANNOTATION_WIDTH}
+              width={annotationWidth}
               height={height}
               nRows={nRows}
               cols={annotationCols}
@@ -481,7 +499,7 @@ export default function CellHeatmapPanel() {
             <div
               className="sc-axis"
               style={{
-                marginLeft: treeWidth + (hasTree ? GAP : 0) + ANNOTATION_WIDTH + GAP,
+                marginLeft: treeWidth + (hasTree ? GAP : 0) + annotationWidth + GAP,
                 width: heatWidth,
                 height: AXIS_HEIGHT,
               }}
@@ -511,7 +529,12 @@ export default function CellHeatmapPanel() {
             </div>
           )}
           <div className="sc-heatmap-footer">
-            <HeatmapLegend type={heatmapType} maxJunctionCn={junctions.data?.maxCn} cloneColors={cloneColors} />
+            <HeatmapLegend
+              type={heatmapType}
+              maxJunctionCn={junctions.data?.maxCn}
+              cloneColors={cloneColors}
+              expression={showExpression ? expression : null}
+            />
             <Text type="secondary" className="sc-hint">
               {t("components.single-cell.heatmap.hint")}
             </Text>

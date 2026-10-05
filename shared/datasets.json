@@ -12,6 +12,7 @@
     "datafilesPath": "datafiles_sc.json",
     "commonPath": "common/",
     "dataPath": "data/",
-    "reference": "hg19"
+    "reference": "hg19",
+    "analysisApi": "sc-api/"
   }
 ]

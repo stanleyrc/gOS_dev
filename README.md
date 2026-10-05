@@ -37,7 +37,7 @@ Add your own case report data by mirroring the structure above and updating the 
 
 ### Single-cell WGS
 
-Datasets can mix in single-cell patients: each cell is an ordinary case folder, and `datafiles.json` marks entries with `entry_type: "patient"` or `"cell"` (cells link to their patient via `patient_id`). Patients get a **Single-Cell** tab — phylogeny, total-CN / SNV / junction-CN heatmaps and per-cell tracks — and the case list gains a **Single-Cell Cohort** tab. See [SINGLE_CELL.md](SINGLE_CELL.md); `scripts/generate_sc_demo.py` builds the bundled demo.
+Datasets can mix in single-cell patients: each cell is an ordinary case folder, and `datafiles.json` marks entries with `entry_type: "patient"` or `"cell"` (cells link to their patient via `patient_id`). Patients get a **Single-Cell** tab — phylogeny, total-CN / SNV / junction-CN heatmaps and per-cell tracks — and the case list gains a **Single-Cell Cohort** tab. See [SINGLE_CELL.md](SINGLE_CELL.md); `scripts/generate_sc_demo.py` builds the bundled demo. RNA comparisons between selected cell groups run through the analysis service in [services/sc-analysis](services/sc-analysis/README.md).
 
 ### Configuring datasets
 

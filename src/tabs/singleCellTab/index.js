@@ -5,6 +5,8 @@ import { Affix, Alert, Col, Empty, Progress, Row, Space, Typography } from "antd
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
+import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
+import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
 import Wrapper from "./index.style";
 
@@ -78,6 +80,12 @@ export default function SingleCellTab() {
         </Col>
         <Col span={24}>
           <CellSelectionPanel />
+        </Col>
+        <Col span={24}>
+          <CompareGroupsPanel />
+        </Col>
+        <Col span={24}>
+          <AnalysisResultsPanel />
         </Col>
         <Col span={24}>
           <CellTracksPanel yScaleMode={yScaleMode} />

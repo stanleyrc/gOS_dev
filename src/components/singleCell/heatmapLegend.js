@@ -4,6 +4,7 @@ import { Space, Typography } from "antd";
 import {
   CN_STATE_COLORS,
   SNV_STATUS_COLORS,
+  expressionRGB,
   junctionColor,
 } from "../../helpers/singleCell/matrix";
 
@@ -16,7 +17,13 @@ const Swatch = ({ color, label }) => (
   </span>
 );
 
-export default function HeatmapLegend({ type, maxJunctionCn = 1, cloneColors = {}, showClones = true }) {
+export default function HeatmapLegend({
+  type,
+  maxJunctionCn = 1,
+  cloneColors = {},
+  showClones = true,
+  expression = null,
+}) {
   const { t } = useTranslation("common");
   let items = [];
   if (type === "cn") {
@@ -36,6 +43,10 @@ export default function HeatmapLegend({ type, maxJunctionCn = 1, cloneColors = {
     items = steps.map((v) => ({ color: junctionColor(v, top), label: `${v}` }));
   }
   const clones = Object.keys(cloneColors);
+  const rgb = (v) => {
+    const c = expressionRGB(v, expression?.max);
+    return c ? `rgb(${c.join(",")})` : "#fff";
+  };
   return (
     <Space wrap size={[12, 4]} className="sc-legend">
       {items.length > 0 && (
@@ -46,6 +57,17 @@ export default function HeatmapLegend({ type, maxJunctionCn = 1, cloneColors = {
           {items.map((d) => (
             <Swatch key={d.label} {...d} />
           ))}
+        </Space>
+      )}
+      {expression && (
+        <Space size={4} wrap>
+          <Text strong type="secondary">
+            {t("components.single-cell.legend.expression", { gene: expression.gene })}
+          </Text>
+          <Swatch color={rgb(0)} label="0" />
+          <Swatch color={rgb(expression.max / 2)} label={(expression.max / 2).toFixed(1)} />
+          <Swatch color={rgb(expression.max)} label={expression.max.toFixed(1)} />
+          <Swatch color="#fff" label={t("components.single-cell.tooltip.no-rna")} />
         </Space>
       )}
       {showClones && clones.length > 0 && (

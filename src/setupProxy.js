@@ -27,6 +27,15 @@ module.exports = function (app) {
     }),
   );
 
+  // Single-cell analysis service (services/sc-analysis); it strips the prefix itself.
+  app.use(
+    "/sc-api",
+    createProxyMiddleware({
+      target: process.env.GOS_SC_API || "http://127.0.0.1:8787",
+      changeOrigin: true,
+    })
+  );
+
   app.use(
     "/api",
     createProxyMiddleware({

@@ -29,6 +29,9 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from arrow_minimal import write_table  # noqa: E402
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "sc-analysis"))
+from gos_sc.store import write_patient_rna  # noqa: E402
+
 ROOT = os.path.join(os.path.dirname(__file__), "..", "shared")
 DATA = os.path.join(ROOT, "data")
 MB = 1_000_000
@@ -315,6 +318,117 @@ def write_json(path, payload):
         json.dump(payload, fh, separators=(",", ":"))
 
 
+# --------------------------------------------------------------------------
+# Synthetic RNA: the same cells (most of them) plus some RNA-only cells.
+# Expression follows copy number for dosage-sensitive genes, and each clone
+# carries a cell-state program and a few marker genes. Separate RNG so the
+# DNA demo stays identical.
+# --------------------------------------------------------------------------
+
+rng_rna = random.Random(4242)
+PROGRAMS = {
+    "MES-like": ["CHI3L1", "CD44", "VIM", "ANXA1", "S100A10", "TIMP1"],
+    "AC-like": ["GFAP", "APOE", "AQP4", "SPARCL1", "CLU", "SLC1A3"],
+    "OPC-like": ["OLIG1", "OLIG2", "SOX10", "PLP1", "PDGFRA", "BCAN"],
+    "NPC-like": ["SOX4", "SOX11", "DCX", "STMN2", "DLL3", "ELAVL4"],
+    "Cycling": ["MKI67", "TOP2A", "CENPF", "NUSAP1", "TPX2", "CCNB1"],
+}
+CLONE_PROGRAMS = {
+    "SC-PT01": {"A": ["AC-like"], "B": ["MES-like"], "C": ["NPC-like", "Cycling"]},
+    "SC-PT02": {"A": ["Cycling"], "B": ["MES-like"]},
+    "SC-PT03": {"A": ["OPC-like"], "B": ["AC-like"], "C": ["MES-like", "Cycling"]},
+}
+
+
+def rna_genes():
+    """Gene name -> (chromosome, position, base mean, dosage sensitive)."""
+    genes = {}
+    for gene, chromosome, pos, *_ in DRIVERS:
+        genes[gene] = (chromosome, pos, rng_rna.uniform(1, 4), True)
+    for members in PROGRAMS.values():
+        for gene in members:
+            chromosome = rng_rna.choice(list(CHROM_LEN))
+            genes.setdefault(gene, (chromosome, rng_rna.randrange(MB, CHROM_LEN[chromosome] - MB),
+                                    rng_rna.uniform(0.3, 1.0), rng_rna.random() < 0.5))
+    for k in range(1, 301):
+        chromosome = rng_rna.choice(list(CHROM_LEN))
+        genes[f"G{k:04d}"] = (chromosome, rng_rna.randrange(MB, CHROM_LEN[chromosome] - MB),
+                              rng_rna.lognormvariate(0, 1), rng_rna.random() < 0.7)
+    return genes
+
+
+RNA_GENES = rna_genes()
+RNA_GENE_NAMES = list(RNA_GENES)
+
+
+def poisson(mu):
+    if mu > 40:
+        return max(0, int(round(rng_rna.gauss(mu, math.sqrt(mu)))))
+    limit, k, p = math.exp(-mu), 0, 1.0
+    while True:
+        p *= rng_rna.random()
+        if p <= limit:
+            return k
+        k += 1
+
+
+def clone_markers(pid, clone):
+    seed = sum(map(ord, f"{pid}-{clone}"))
+    r = random.Random(seed)
+    return r.sample([g for g in RNA_GENE_NAMES if g.startswith("G")], 6)
+
+
+def rna_profile(pid, clone, segments):
+    """Counts per gene for one cell."""
+    boosted = set()
+    for program in CLONE_PROGRAMS.get(pid, {}).get(clone, []):
+        boosted.update(PROGRAMS[program])
+    markers = set(clone_markers(pid, clone))
+    size = rng_rna.uniform(0.6, 1.6)
+    counts = []
+    for gene in RNA_GENE_NAMES:
+        chromosome, pos, base, dosage = RNA_GENES[gene]
+        mu = base * size
+        if dosage:
+            a, b = cn_at(segments, chromosome, pos)
+            mu *= (a + b) / 2
+        if gene in boosted:
+            mu *= 6
+        if gene in markers:
+            mu *= 4
+        counts.append(poisson(mu))
+    return counts
+
+
+def write_rna(pid, rna_cells):
+    """rna_cells: list of (rna_id, cell_id or None, clone, segments)."""
+    columns = [[] for _ in RNA_GENE_NAMES]
+    cells = []
+    for col, (rna_id, cell_id, clone, segments) in enumerate(rna_cells):
+        counts = rna_profile(pid, clone, segments)
+        total = sum(counts) or 1
+        for g, c in enumerate(counts):
+            if c:
+                columns[g].append((col, round(math.log1p(c / total * 1e4), 4)))
+        cells.append({"rna_id": rna_id, "cell_id": cell_id, "clone_id": clone,
+                      "nCount_RNA": total, "nFeature_RNA": sum(1 for c in counts if c)})
+    write_patient_rna(os.path.join(DATA, pid), cells, RNA_GENE_NAMES, columns,
+                      {"source": "scripts/generate_sc_demo.py (synthetic)", "n_matched":
+                       sum(1 for c in cells if c["cell_id"])})
+
+
+def write_gene_sets():
+    os.makedirs(os.path.join(ROOT, "genesets"), exist_ok=True)
+    lines = [f"{name.upper().replace('-', '_')}\tsynthetic demo program\t" + "\t".join(genes)
+             for name, genes in PROGRAMS.items()]
+    for patient in PATIENTS:
+        for clone in patient["clones"]:
+            lines.append(f"{patient['id']}_CLONE_{clone}_MARKERS\tsynthetic clone markers\t"
+                         + "\t".join(clone_markers(patient["id"], clone)))
+    with open(os.path.join(ROOT, "genesets", "demo_programs.gmt"), "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
 def main():
     manifest = []
     for patient in PATIENTS:
@@ -327,6 +441,7 @@ def main():
                 random_snv() for _ in range(rng.randrange(8, 14))]
         cells_by_clone = {}
         cell_records = []
+        rna_cells = []
         n_without_mutations = patient.get("cells_without_mutations", 0)
         for clone, design in patient["clones"].items():
             path = lineage(patient, clone)
@@ -368,6 +483,13 @@ def main():
                     "junction_count": len(genome["connections"]),
                     "summary": f"Single cell · clone {clone} · ploidy {ploidy}",
                 }
+                # ~85% of cells also have RNA; some RNA barcodes differ from the
+                # gOS cell ID and are linked through rna_id in datafiles.json.
+                if rng_rna.random() < 0.85:
+                    rna_id = cell_id if rng_rna.random() < 0.5 else f"RNA-{cell_id[-3:]}-{pid}"
+                    if rna_id != cell_id:
+                        record["rna_id"] = rna_id
+                    rna_cells.append((rna_id, cell_id, clone, segments))
                 metadata = {**record, "cov_slope": 1 / READS_PER_COPY, "cov_intercept": 0,
                             "hets_slope": 1 / HET_READS_PER_COPY, "hets_intercept": 0}
                 write_json(os.path.join(folder, "metadata.json"), [metadata])
@@ -381,6 +503,15 @@ def main():
                             build_coverage(segments, noise=rng.uniform(0.08, 0.2)))
                 write_table(os.path.join(folder, "hetsnps.arrow"), build_hetsnps(segments))
                 cell_records.append(record)
+
+        # A few RNA-only cells per clone (no DNA case folder of their own).
+        for clone, design in patient["clones"].items():
+            events = list(patient["trunk"])
+            for node in lineage(patient, clone):
+                events += patient["clones"][node]["events"]
+            for k in range(max(1, design["n"] // 8)):
+                rna_cells.append((f"RNAONLY-{pid}-{clone}{k + 1:02d}", None, clone, cell_segments(events)))
+        write_rna(pid, rna_cells)
 
         folder = os.path.join(DATA, pid)
         os.makedirs(folder, exist_ok=True)
@@ -408,6 +539,7 @@ def main():
         manifest.extend(cell_records)
 
     write_json(os.path.join(ROOT, "datafiles_sc.json"), manifest)
+    write_gene_sets()
 
     datasets_path = os.path.join(ROOT, "datasets.json")
     with open(datasets_path) as fh:
@@ -419,6 +551,7 @@ def main():
         "commonPath": "common/",
         "dataPath": "data/",
         "reference": "hg19",
+        "analysisApi": "sc-api/",
     }]
     with open(datasets_path, "w") as fh:
         json.dump(datasets, fh, indent=2)

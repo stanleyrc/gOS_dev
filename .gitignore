@@ -104,3 +104,7 @@ report/
 gOS.code-workspace
 .yarn/install-state.gz
 releases/
+
+# single-cell analysis service results written into case folders
+shared/data/*/analyses/
+shared/data/_cohort/

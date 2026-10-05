@@ -117,6 +117,31 @@ const Wrapper = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .sc-history {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .sc-history-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+  }
+  .sc-history-item:hover {
+    background: #fafafa;
+  }
+  .sc-history-item.active {
+    border-color: #91caff;
+    background: #e6f4ff;
+  }
   .sc-prevalence svg text {
     font-size: 11px;
     fill: #595959;

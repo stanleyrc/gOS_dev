@@ -56,11 +56,19 @@ Any other bulk file you put in a cell folder (`filtered.events.json`, `sage.qc.j
 - **Cell tracks:** these appear below the heatmap for the selected cells (up to 6 at a time). Coverage and Total CN are shown by default; Allelic CN, Het SNPs and SNVs are toggles. "Open cell report" opens the cell's full gOS report.
 - **Case list → Single-Cell Cohort tab:** appears when the dataset has patients. It shows cell and clone counts, clone composition, and the cohort CN heatmap. Click a patient to open it.
 
+## RNA analyses
+
+Patients with pre-analysed RNA (a `rna/` folder written by `services/sc-analysis/r/export_seurat.R` from the lab's Seurat object) get two more things in the Single-Cell tab:
+
+- **Compare groups:** set group A and group B from any selection, or with a clone-vs-rest preset. Then pick an analysis and run it. Results show as a volcano plot, a gene table and gene-set enrichment, with TSV download and a history of past runs.
+- **Gene beside the tree:** search a gene, or click one in a result, to add an expression column next to the clone strip. Clicking a gene also moves the genome view to it.
+
+Both talk to the analysis service in `services/sc-analysis` (see its README), enabled per dataset with `"analysisApi": "sc-api/"` in `datasets.json`. RNA cells link to gOS cells by the same ID, or by an `rna_id` on the cell's `datafiles.json` entry.
+
 ## Demo
 
-`python3 scripts/generate_sc_demo.py` regenerates the **DEMO Single-Cell Dataset**: 3 patients and 94 cells. SC-PT01 ships a `tree.nwk`; the others are inferred from SNVs, and two SC-PT03 cells deliberately lack `mutations.json`. The generator uses pyarrow when available, else `scripts/arrow_minimal.py`, which needs `flatbuffers`.
+`python3 scripts/generate_sc_demo.py` regenerates the **DEMO Single-Cell Dataset**: 3 patients and 94 cells, with synthetic RNA for most cells plus a few RNA-only cells, and demo gene sets in `shared/genesets/`. SC-PT01 ships a `tree.nwk`; the others are inferred from SNVs, and two SC-PT03 cells deliberately lack `mutations.json`. The generator uses pyarrow when available, else `scripts/arrow_minimal.py`, which needs `flatbuffers`.
 
 ## Not yet covered
 
-- RNA: the heatmap, tree and selection components are generic (cells × columns), so expression matrices can reuse them.
 - Selecting cells in the cohort view opens the patient, but doesn't pre-select those cells.
