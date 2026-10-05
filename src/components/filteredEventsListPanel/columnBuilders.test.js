@@ -204,6 +204,16 @@ describe("buildColumnConfig", () => {
     expect(column.onFilter(0, { tier: "0" })).toBe(true);
   });
 
+  test("leaves Tier filtering inactive, including for missing or additional tiers", () => {
+    const records = [{ tier: 1 }, { tier: 2 }, { tier: 3 }, { tier: 4 }, { tier: null }];
+    const column = buildColumnConfig(
+      { id: "tier", title: "Tier", dataIndex: "tier", type: "numeric", filterable: true },
+      records,
+    );
+    expect(column.filteredValue).toBeNull();
+    expect(column.filters.map((filter) => filter.value)).toEqual([1, 2, 3, 4]);
+  });
+
   test("labels VAF as percentage while retaining raw data for numeric sorting and filters", () => {
     const settings = require("../../../public/settings.json");
     const translations = require("../../translations/en/common.json");

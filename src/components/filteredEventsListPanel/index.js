@@ -804,7 +804,7 @@ const mapStateToProps = (state) => {
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
     selectedEventUids: selectReportEventUids(state),
-    columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2, 3] },
+    columnFilters: state.FilteredEvents.columnFilters || {},
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
     missing: state.FilteredEvents.missing,
