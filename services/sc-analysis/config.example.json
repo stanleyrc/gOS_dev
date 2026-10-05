@@ -1,0 +1,22 @@
+{
+  "host": "127.0.0.1",
+  "port": 8787,
+  "datasets": {
+    "demo-sc": { "data_root": "../../shared/data" }
+  },
+  "gene_sets": {
+    "demo": "../../shared/genesets/demo_programs.gmt"
+  },
+  "executor": {
+    "default": "local",
+    "local": { "workers": 4, "timeout_s": 3600 },
+    "slurm": {
+      "python": "python3",
+      "args": ["--time=02:00:00", "--mem=16G", "--cpus-per-task=2"]
+    }
+  },
+  "analyses": {
+    "de_seurat": { "enabled": false, "image": "/path/to/seurat.sif" },
+    "de_pseudobulk": { "enabled": false, "image": "/path/to/seurat-edger.sif" }
+  }
+}

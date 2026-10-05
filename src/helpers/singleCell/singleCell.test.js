@@ -21,6 +21,7 @@ import {
   cloneColorMap,
   zoomDomain,
   panDomain,
+  expressionRGB,
 } from "./matrix";
 import {
   entryType,
@@ -363,5 +364,14 @@ describe("domain zoom and pan", () => {
     expect(panDomain([100, 200], 50, bounds)).toEqual([150, 250]);
     expect(panDomain([100, 200], -500, bounds)).toEqual([1, 101]);
     expect(panDomain([1900, 2000], 500, bounds)).toEqual([1901, 2001]);
+  });
+});
+
+describe("expression colours", () => {
+  it("separates no RNA, zero and high expression", () => {
+    expect(expressionRGB(undefined, 3)).toBeNull();
+    expect(expressionRGB(0, 3)).toEqual([0xef, 0xed, 0xf5]);
+    expect(expressionRGB(3, 3)).toEqual([0x3f, 0x00, 0x7d]);
+    expect(expressionRGB(10, 3)).toEqual([0x3f, 0x00, 0x7d]);
   });
 });

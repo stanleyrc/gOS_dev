@@ -1,0 +1,14 @@
+# systemd user service: survives logouts and reboots (unlike tmux).
+#   cp deploy/gos-sc-analysis.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now gos-sc-analysis
+#   loginctl enable-linger $USER     # keep it running when you are logged out
+[Unit]
+Description=gOS single-cell analysis service
+
+[Service]
+WorkingDirectory=%h/gos/services/sc-analysis
+ExecStart=/usr/bin/env python3 -m gos_sc.server --config %h/gos/services/sc-analysis/config.json
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
