@@ -34,7 +34,7 @@ const LABEL_WIDTH = 160;
 const TREE_WIDTH = 140;
 const ROW_HEIGHT = 18;
 // Cap on cells read per patient for the cohort heatmap.
-const MAX_CELLS_PER_PATIENT = 200;
+const MAX_CELLS_PER_PATIENT = 2000;
 // Per-cell rows shrink to keep the heatmap under ~900px tall.
 const MAX_CELL_ROWS_HEIGHT = 900;
 const PATIENT_PALETTE = ["#4E79A7", "#A0CBE8", "#F28E2B", "#FFBE7D", "#59A14F", "#8CD17D", "#B6992D", "#F1CE63", "#499894", "#86BCB6"];
