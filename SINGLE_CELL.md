@@ -46,7 +46,7 @@ Any other bulk file you put in a cell folder (`filtered.events.json`, `sage.qc.j
 | SNV heatmap | each cell's `mutations.json`. A variant is "called" in a cell that lists it with alt reads, "not called" in a cell whose file lacks it, and "no data" for a cell without `mutations.json`. |
 | Phylogeny | `<patient>/tree.nwk` when present. Otherwise it's inferred: UPGMA on Jaccard distance of SNVs called in ≥2 cells, or on copy-number distance if there are no shared SNVs. The heatmap title says which. |
 | Cell tracks | coverage, total CN, allelic CN, het SNPs, SNVs from the cell's own files |
-| Cohort heatmap | each cell's `complex.json`. Either one row per cell, ordered by each patient's tree, or one median row per patient. Reads at most 200 cells per patient. |
+| Cohort heatmap | each cell's `complex.json`. Either one row per cell, ordered by each patient's tree, or one median row per patient. Reads at most 2,000 cells per patient. |
 
 ## Using it
 
