@@ -35,6 +35,10 @@ The `shared/` directory contains the minimum data/config the UI expects:
 
 Add your own case report data by mirroring the structure above and updating the JSON manifests accordingly.
 
+### Single-cell WGS
+
+Datasets can mix in single-cell patients: each cell is an ordinary case folder, and `datafiles.json` marks entries with `entry_type: "patient"` or `"cell"` (cells link to their patient via `patient_id`). Patients get a **Single-Cell** tab — phylogeny, total-CN / SNV / junction-CN heatmaps and per-cell tracks — and the case list gains a **Single-Cell Cohort** tab. See [SINGLE_CELL.md](SINGLE_CELL.md); `scripts/generate_sc_demo.py` builds the bundled demo.
+
 ### Configuring datasets
 
 The `datasets.json` file defines available datasets and their configuration. Each dataset entry supports:

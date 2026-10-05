@@ -55,6 +55,11 @@ import {
   sourceDatasetHasField,
 } from "../../helpers/browseScope";
 import { userAuthRepository } from "../../helpers/userAuth";
+import SingleCellCohortPanel from "../../components/singleCell/singleCellCohortPanel";
+import {
+  isCellRecord,
+  isPatientRecord,
+} from "../../helpers/singleCell/cellFiles";
 
 const {
   applyFavoriteSearch,
@@ -1427,7 +1432,9 @@ export class ListView extends Component {
                       label: t("containers.list-view.tabs.aggregations"),
                       children: (
                         <AggregationsPanel
-                          datafiles={datafiles}
+                          datafiles={(datafiles || []).filter(
+                            (record) => !isCellRecord(record),
+                          )}
                           searchFilters={searchFilters}
                           dataset={dataset}
                           initialActiveTab={
@@ -1447,6 +1454,17 @@ export class ListView extends Component {
                       label: t("containers.list-view.tabs.cohorts"),
                       children: <CohortsPanel />,
                     },
+                    ...((datafiles || []).some(isPatientRecord)
+                      ? [
+                          {
+                            key: "singleCellCohort",
+                            label: t("containers.list-view.tabs.single-cell-cohort"),
+                            children: (
+                              <SingleCellCohortPanel datafiles={datafiles} />
+                            ),
+                          },
+                        ]
+                      : []),
                     {
                       key: "parallelCoordinates",
                       label: t(

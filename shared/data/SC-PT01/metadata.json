@@ -1,0 +1,1 @@
+[{"pair":"SC-PT01","entry_type":"patient","patient_id":"SC-PT01","tumor_type":"GBM","disease":"Glioblastoma","primary_site":"brain","inferred_sex":"female","cell_count":40,"summary":"Single-cell WGS patient\nCells: 40\nClones: A (12 cells), B (15 cells), C (13 cells)"}]

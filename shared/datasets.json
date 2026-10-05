@@ -5,5 +5,13 @@
     "datafilesPath": "datafiles.json",
     "commonPath": "common/",
     "dataPath": "data/"
+  },
+  {
+    "id": "demo-sc",
+    "title": "DEMO Single-Cell Dataset",
+    "datafilesPath": "datafiles_sc.json",
+    "commonPath": "common/",
+    "dataPath": "data/",
+    "reference": "hg19"
   }
 ]

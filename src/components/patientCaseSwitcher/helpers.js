@@ -4,6 +4,7 @@ import {
   specimenDateEndKey,
   specimenDateSortKey,
 } from "../../helpers/specimenDate";
+import { isCellRecord } from "../../helpers/singleCell/cellFiles";
 
 export { formatSpecimenDate, parseSpecimenDate };
 
@@ -75,6 +76,7 @@ export const findPatientCases = (records = [], patientId) => {
     .filter(
       (record) =>
         record.visible !== false &&
+        !isCellRecord(record) &&
         normalizePatientId(record.patient_id) === normalizedPatientId,
     )
     .forEach((record) => {

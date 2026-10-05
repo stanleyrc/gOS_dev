@@ -15,6 +15,7 @@ import {
   normalizeSpecimenDateRangeFilter,
   specimenDateMatchesRangeFilter,
 } from "./specimenDate";
+import { isCellRecord } from "./singleCell/cellFiles";
 
 export const emptyInterpretationSummary = () => ({
   all: new Set(),
@@ -171,7 +172,10 @@ export const filterCaseReportRecords = (
   fields = [],
   externalData = {},
 ) => {
-  let records = sourceRecords.filter((record) => record.visible !== false);
+  // Single-cell entries are reached through their patient, not the case list.
+  let records = sourceRecords.filter(
+    (record) => record.visible !== false && !isCellRecord(record),
+  );
   records = applyExternalFilters(
     records,
     searchFilters,

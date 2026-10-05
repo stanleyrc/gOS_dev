@@ -25,7 +25,7 @@ const { openCaseReport } = datasetsActions;
 const patientCaseSearchCache = new Map();
 const MAX_PATIENT_SEARCH_CACHE_ENTRIES = 20;
 
-const defaultLoadPatientCases = async (
+export const defaultLoadPatientCases = async (
   datasets,
   patientId,
   cachedRecordsByDataset,

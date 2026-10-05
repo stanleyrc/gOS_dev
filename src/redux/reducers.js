@@ -23,6 +23,8 @@ import Highlights from "./highlights/reducer";
 import Snvplicity from "./snvplicity/reducer";
 import Cytobands from "./cytobands/reducer";
 import Interpretations from "./interpretations/reducer";
+import SingleCell from "./singleCell/reducer";
+import SingleCellPatient from "./singleCellPatient/reducer";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
@@ -51,4 +53,6 @@ export default {
   Snvplicity,
   Cytobands,
   Interpretations,
+  SingleCell,
+  SingleCellPatient,
 };

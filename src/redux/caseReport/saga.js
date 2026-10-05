@@ -18,6 +18,7 @@ import igvActions from "../igv/actions";
 import highlightsActions from "../highlights/actions";
 import snvplicityActions from "../snvplicity/actions";
 import interpretationsActions from "../interpretations/actions";
+import singleCellActions from "../singleCell/actions";
 import { cancelAllRequests, getCancelToken } from "../../helpers/cancelToken";
 import { qcEvaluator } from "../../helpers/metadata";
 
@@ -101,6 +102,7 @@ function* followUpFetchCaseReportSuccess(action) {
     igvActions.FETCH_IGV_DATA_REQUEST,
     highlightsActions.FETCH_HIGHLIGHTS_DATA_REQUEST,
     snvplicityActions.FETCH_SNVPLICITY_DATA_REQUEST,
+    singleCellActions.FETCH_SINGLE_CELL_DATA_REQUEST,
   ];
 
   yield all(actionTypes.map((type) => put({ type })));
