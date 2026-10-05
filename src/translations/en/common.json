@@ -658,7 +658,7 @@
       "effect": "Effect",
       "refCounts": "REF Counts",
       "altCounts": "ALT Counts",
-      "vaf": "Variant Allele Frequency",
+      "vaf": "Variant Allele Frequency (%)",
       "segmentCopyNumber": "Total Segmental Copies",
       "fusionCopyNumber": "Total Fusion Copies",
       "estimatedAlteredCopies": "Altered Copies",

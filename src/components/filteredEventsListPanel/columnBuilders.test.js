@@ -204,6 +204,22 @@ describe("buildColumnConfig", () => {
     expect(column.onFilter(0, { tier: "0" })).toBe(true);
   });
 
+  test("labels VAF as percentage while retaining raw data for numeric sorting and filters", () => {
+    const settings = require("../../../public/settings.json");
+    const translations = require("../../translations/en/common.json");
+    const definition = settings.filteredEventsColumns.find((column) => column.id === "vaf");
+    const records = Object.freeze([Object.freeze({ vaf: 0.371 }), Object.freeze({ vaf: 0.9 })]);
+    const column = buildColumnConfig(definition, records, {
+      t: (key) => key.split(".").reduce((value, part) => value[part], translations),
+    });
+    expect(column.title).toBe("Variant Allele Frequency (%)");
+    expect(column.render(null, records[0]).props.value).toBe(0.371);
+    expect(column.sorter.compare(records[0], records[1])).toBe(-1);
+    expect(column.onFilter("0.3,0.4", records[0])).toBe(true);
+    expect(column.onFilter("0.3,0.4", records[1])).toBe(false);
+    expect(column.filteredValue).toBeNull();
+  });
+
   test("keeps nonnumeric filter values distinct", () => {
     const column = buildColumnConfig(
       {
