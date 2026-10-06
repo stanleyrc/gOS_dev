@@ -1170,7 +1170,12 @@
         "src-picked": "Picked genes ({{count}})",
         "src-variable": "Most variable genes",
         "n-genes": "{{count}} genes",
-        "phylo-hint": "Each gene scaled to its maximum · blank rows: no RNA · hover links to the UMAP · click a row or tree node to select"
+        "phylo-hint": "Each gene scaled to its maximum · blank rows: no RNA · hover links to the UMAP · click a row or tree node to select",
+        "src-sets": "Gene sets",
+        "order-tree": "Order: along tree",
+        "order-listed": "Order: as listed",
+        "annotations": "Annotations (e.g. state)",
+        "genes-range": "Genes {{from}}–{{to}} of {{total}} · scroll or drag to zoom; names show when zoomed in"
       }
     },
     "tracks-modal": {

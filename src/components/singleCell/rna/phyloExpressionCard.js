@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
+import axios from "axios";
 import { Card, Empty, Select, Space, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
@@ -9,22 +10,53 @@ import ExpressionSidePanel from "../expressionSidePanel";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
 import useTreeView from "../useTreeView";
+import useRnaData from "./useRnaData";
 import singleCellActions from "../../../redux/singleCell/actions";
 import Wrapper from "../index.style";
-import { MISSING_RGBA, discreteColumnLookup, hexToRgb, packRGBA } from "../../../helpers/singleCell/matrix";
-import { topVariableGenes } from "../../../helpers/singleCell/staticRna";
+import {
+  CLONE_PALETTE,
+  MISSING_RGBA,
+  discreteColumnLookup,
+  expressionRGBA,
+  hexToRgb,
+  packRGBA,
+} from "../../../helpers/singleCell/matrix";
+import { geneValues, topVariableGenes } from "../../../helpers/singleCell/staticRna";
+import { parseGmt } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
 const HEIGHT = 440;
 const TREE_WIDTH = 170;
 const STRIP = 12;
 const GAP = 4;
+const MAX_GENES = 2000;
+const COUNTS = [20, 50, 100, 250, 500, 1000, 2000];
+
+let indexPromise = null;
+const geneSetIndex = () => {
+  if (!indexPromise) {
+    indexPromise = axios.get("genesets/index.json").then((r) => r.data);
+    indexPromise.catch(() => (indexPromise = null));
+  }
+  return indexPromise;
+};
+const gmtCache = new Map();
+const loadGmt = (file) => {
+  if (!gmtCache.has(file)) {
+    const p = axios.get(`genesets/${file}`, { responseType: "text", transformResponse: [(d) => d] }).then((r) => parseGmt(r.data));
+    p.catch(() => gmtCache.delete(file));
+    gmtCache.set(file, p);
+  }
+  return gmtCache.get(file);
+};
+const prettyTerm = (term) => term.replace(/^HALLMARK_|^REACTOME_|^GOBP_/, "").replace(/_/g, " ");
 
 /**
- * Expression on the phylogeny: the tree, a clone strip and a gene heatmap with
- * rows aligned to the tree. Genes come from the last DE comparison (top up and
- * down), the genes picked on this tab, or the most variable genes. Hover and
- * selection are shared with the UMAP and the Single-Cell tab.
+ * Expression on the phylogeny: tree, clone and annotation strips (e.g. GBM
+ * cell state) and a zoomable gene heatmap with rows aligned to the tree.
+ * Genes come from the last DE comparison, the picked genes, the most variable
+ * genes, or gene sets (3CA GBM state programs, Hallmark, Reactome, GO).
+ * Hover and selection are shared with the UMAP and the Single-Cell tab.
  */
 export default function PhyloExpressionCard({ summary, matrix }) {
   const { t } = useTranslation("common");
@@ -32,10 +64,19 @@ export default function PhyloExpressionCard({ summary, matrix }) {
   const { cloneColors, selectedCellIds, hoveredCellId } = useSelector((state) => state.SingleCell);
   const { geneList, deTop } = useSelector((state) => state.ScAnalysis);
   const { order, treeLayout, cellById } = useTreeView();
+  const { rowOfId } = useRnaData();
   const [containerRef, width] = useContainerWidth(700);
   const pixelRatio = usePixelRatio();
-  const [source, setSource] = useState("variable");
-  const [nGenes, setNGenes] = useState(20);
+  const [source, setSource] = useState("sets");
+  const [nGenes, setNGenes] = useState(50);
+  const [geneOrder, setGeneOrder] = useState("tree");
+  const [collections, setCollections] = useState([]);
+  const [collection, setCollection] = useState(null);
+  const [sets, setSets] = useState([]);
+  const [chosenSets, setChosenSets] = useState([]);
+  const stateField = summary.fields.find((f) => /^state$/i.test(f.name)) ? "state" : null;
+  const [annotations, setAnnotations] = useState(stateField ? [stateField] : []);
+  const [hoverRange, setHoverRange] = useState(null);
 
   // Follow the newest source: a fresh DE result, or a new pick.
   useEffect(() => {
@@ -47,15 +88,60 @@ export default function PhyloExpressionCard({ summary, matrix }) {
     lastPicked.current = geneList.length;
   }, [geneList]);
 
-  const variable = useMemo(() => (matrix ? topVariableGenes(summary, matrix, 50) : []), [summary, matrix]);
-  const genes = useMemo(() => {
-    if (source === "picked") return geneList.slice(0, 60);
+  // Gene-set collections (3CA GBM programs first).
+  useEffect(() => {
+    geneSetIndex()
+      .then((list) => {
+        setCollections(list);
+        setCollection((c) => c || list[0]?.id || null);
+      })
+      .catch(() => setCollections([]));
+  }, []);
+  useEffect(() => {
+    const entry = collections.find((c) => c.id === collection);
+    if (!entry) return;
+    loadGmt(entry.file).then((list) => {
+      setSets(list);
+      // Default to the GBM state programs when they're there.
+      const gbm = list.filter((s) => /MES_GLIOMA|ASTROCYTES|NPC_GLIOMA|OLIGO_PROGENITOR|NPC_OPC/.test(s.term)).map((s) => s.term);
+      setChosenSets(gbm.length ? gbm : list.slice(0, 1).map((s) => s.term));
+    });
+  }, [collection, collections]);
+
+  const variable = useMemo(() => (matrix ? topVariableGenes(summary, matrix, MAX_GENES) : []), [summary, matrix]);
+  const listed = useMemo(() => {
+    if (source === "picked") return geneList.slice(0, MAX_GENES);
     if (source === "de" && deTop) {
       const half = Math.ceil(nGenes / 2);
       return [...deTop.up.slice(0, half), ...deTop.down.slice(0, half)];
     }
+    if (source === "sets") {
+      const bySet = new Map(sets.map((s) => [s.term, s.genes]));
+      return [...new Set(chosenSets.flatMap((term) => bySet.get(term) || []))].filter((g) => summary.geneIndex.has(g));
+    }
     return variable.slice(0, nGenes);
-  }, [source, geneList, deTop, variable, nGenes]);
+  }, [source, geneList, deTop, variable, nGenes, sets, chosenSets, summary]);
+
+  // Order genes along the tree: by the row where expression is centred.
+  const genes = useMemo(() => {
+    if (geneOrder !== "tree" || !matrix || listed.length < 2) return listed;
+    const rnaRows = order.map((id) => rowOfId.get(id) ?? -1);
+    const centre = new Map();
+    listed.forEach((gene) => {
+      const g = summary.geneIndex.get(gene);
+      if (g == null) return;
+      const v = geneValues(matrix, summary.cells.length, g);
+      let w = 0;
+      let s = 0;
+      rnaRows.forEach((k, r) => {
+        if (k < 0) return;
+        w += v[k];
+        s += v[k] * r;
+      });
+      centre.set(gene, w > 0 ? s / w : Infinity);
+    });
+    return [...listed].sort((a, b) => (centre.get(a) ?? Infinity) - (centre.get(b) ?? Infinity));
+  }, [geneOrder, listed, matrix, order, rowOfId, summary]);
 
   const nRows = order.length;
   const rowOf = useMemo(() => new Map(order.map((id, k) => [id, k])), [order]);
@@ -68,17 +154,57 @@ export default function PhyloExpressionCard({ summary, matrix }) {
     () => (treeLayout ? treeLayout.leaves.map((id) => cellById.get(id)?.clone_id ?? null) : []),
     [treeLayout, cellById]
   );
-  const treeWidth = treeLayout ? TREE_WIDTH : 0;
-  const heatWidth = Math.max(120, width - treeWidth - STRIP - 2 * GAP);
 
-  const stripCols = useMemo(() => discreteColumnLookup(1, STRIP * pixelRatio), [pixelRatio]);
-  const stripColor = useCallback(
-    (r) => {
-      const clone = cellById.get(order[r])?.clone_id;
-      return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : MISSING_RGBA;
-    },
-    [cellById, order, cloneColors]
+  /* ---- annotation strips: clone, then chosen metadata fields ---- */
+  const annotationFields = useMemo(
+    () => annotations.map((name) => summary.fields.find((f) => f.name === name)).filter(Boolean),
+    [annotations, summary]
   );
+  const levelColors = useMemo(
+    () =>
+      Object.fromEntries(
+        annotationFields
+          .filter((f) => !f.numeric)
+          .map((f) => [f.name, Object.fromEntries(f.levels.map((l, k) => [l, CLONE_PALETTE[(k + 3) % CLONE_PALETTE.length]]))])
+      ),
+    [annotationFields]
+  );
+  const ranges = useMemo(() => {
+    const out = {};
+    annotationFields
+      .filter((f) => f.numeric)
+      .forEach((f) => {
+        const vals = summary.cells.map((c) => c[f.name]).filter(Number.isFinite);
+        out[f.name] = [Math.min(...vals), Math.max(...vals)];
+      });
+    return out;
+  }, [annotationFields, summary]);
+  const nStrips = 1 + annotationFields.length;
+  const stripWidth = nStrips * STRIP;
+  const stripCols = useMemo(() => discreteColumnLookup(nStrips, stripWidth * pixelRatio), [nStrips, stripWidth, pixelRatio]);
+  const stripColor = useCallback(
+    (r, c) => {
+      const id = order[r];
+      if (c === 0) {
+        const clone = cellById.get(id)?.clone_id;
+        return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : MISSING_RGBA;
+      }
+      const f = annotationFields[c - 1];
+      const k = rowOfId.get(id);
+      const v = k == null ? null : summary.cells[k][f.name];
+      if (v == null || v === "") return MISSING_RGBA;
+      if (f.numeric) {
+        const [lo, hi] = ranges[f.name];
+        return expressionRGBA(v - lo, hi - lo || 1);
+      }
+      const hex = levelColors[f.name]?.[`${v}`];
+      return hex ? packRGBA(hexToRgb(hex)) : MISSING_RGBA;
+    },
+    [order, cellById, cloneColors, annotationFields, rowOfId, summary, ranges, levelColors]
+  );
+
+  const treeWidth = treeLayout ? TREE_WIDTH : 0;
+  const heatWidth = Math.max(120, width - treeWidth - stripWidth - 2 * GAP);
 
   const hoverRef = useRef(null);
   const share = (id) => {
@@ -100,6 +226,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
   };
 
   const sourceOptions = [
+    { value: "sets", label: t("components.single-cell.rna.src-sets") },
     { value: "de", label: deTop ? t("components.single-cell.rna.src-de", { a: deTop.labels.A }) : t("components.single-cell.rna.src-de-none"), disabled: !deTop },
     { value: "picked", label: t("components.single-cell.rna.src-picked", { count: geneList.length }), disabled: !geneList.length },
     { value: "variable", label: t("components.single-cell.rna.src-variable") },
@@ -107,74 +234,147 @@ export default function PhyloExpressionCard({ summary, matrix }) {
 
   return (
     <Wrapper>
-    <Card
-      size="small"
-      title={<Space><ApartmentOutlined />{t("components.single-cell.rna.phylo-title")}</Space>}
-      extra={
-        <Space wrap>
-          <Select size="small" style={{ width: 230 }} value={source} onChange={setSource} options={sourceOptions} />
-          {source !== "picked" && (
+      <Card
+        size="small"
+        title={
+          <Space>
+            <ApartmentOutlined />
+            {t("components.single-cell.rna.phylo-title")}
+            <Text type="secondary">{t("components.single-cell.rna.n-genes", { count: genes.length })}</Text>
+          </Space>
+        }
+      >
+        <Space wrap size={[12, 6]} style={{ marginBottom: 8 }}>
+          <Select size="small" style={{ width: 210 }} value={source} onChange={setSource} options={sourceOptions} />
+          {(source === "variable" || source === "de") && (
             <Select
               size="small"
-              style={{ width: 90 }}
+              style={{ width: 110 }}
               value={nGenes}
               onChange={setNGenes}
-              options={[10, 20, 30, 50].map((n) => ({ value: n, label: t("components.single-cell.rna.n-genes", { count: n }) }))}
+              options={COUNTS.map((n) => ({ value: n, label: t("components.single-cell.rna.n-genes", { count: n }) }))}
             />
           )}
+          {source === "sets" && (
+            <>
+              <Select
+                size="small"
+                style={{ width: 210 }}
+                value={collection}
+                onChange={setCollection}
+                options={collections.map((c) => ({ value: c.id, label: c.title }))}
+              />
+              <Select
+                size="small"
+                mode="multiple"
+                showSearch
+                allowClear
+                maxTagCount="responsive"
+                style={{ minWidth: 260, maxWidth: 520 }}
+                value={chosenSets}
+                onChange={setChosenSets}
+                options={sets.map((s) => ({ value: s.term, label: `${prettyTerm(s.term)} (${s.genes.length})` }))}
+                filterOption={(input, option) => option.label.toUpperCase().includes(input.toUpperCase())}
+              />
+            </>
+          )}
+          <Select
+            size="small"
+            style={{ width: 140 }}
+            value={geneOrder}
+            onChange={setGeneOrder}
+            options={[
+              { value: "tree", label: t("components.single-cell.rna.order-tree") },
+              { value: "listed", label: t("components.single-cell.rna.order-listed") },
+            ]}
+          />
+          <Select
+            size="small"
+            mode="multiple"
+            allowClear
+            maxTagCount="responsive"
+            style={{ minWidth: 180, maxWidth: 360 }}
+            placeholder={t("components.single-cell.rna.annotations")}
+            value={annotations}
+            onChange={setAnnotations}
+            options={summary.fields.map((f) => ({ value: f.name, label: f.name }))}
+          />
         </Space>
-      }
-    >
-      <div ref={containerRef}>
-        {!genes.length ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.rna.no-genes")} />
-        ) : (
-          <div style={{ display: "flex", gap: GAP, alignItems: "flex-start" }} onMouseLeave={() => share(null)}>
-            {treeLayout && (
-              <PhylogenyCanvas
-                layout={treeLayout}
+        <div ref={containerRef}>
+          {!genes.length ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.rna.no-genes")} />
+          ) : (
+            <div style={{ display: "flex", gap: GAP, alignItems: "flex-start" }} onMouseLeave={() => share(null)}>
+              {treeLayout && (
+                <PhylogenyCanvas
+                  layout={treeLayout}
+                  nRows={nRows}
+                  width={treeWidth}
+                  height={HEIGHT}
+                  pixelRatio={pixelRatio}
+                  leafClones={leafClones}
+                  cloneColors={cloneColors}
+                  selectedRows={selectedRows}
+                  hoverRow={hoverRow}
+                  hoverRange={hoverRange}
+                  onSelectRange={([a, b], e) => {
+                    const clade = order.slice(a, b + 1);
+                    dispatch(singleCellActions.updateSelection(e.metaKey || e.ctrlKey || e.shiftKey ? [...selectedCellIds, ...clade] : clade));
+                  }}
+                  onHoverNode={(node) => {
+                    if (!node) {
+                      setHoverRange(null);
+                      return share(null);
+                    }
+                    setHoverRange(node.isLeaf ? null : [node.firstLeaf, node.lastLeaf]);
+                    return share(node.isLeaf ? order[node.firstLeaf] : null);
+                  }}
+                />
+              )}
+              <HeatmapCanvas
+                width={stripWidth}
+                height={HEIGHT}
                 nRows={nRows}
-                width={treeWidth}
+                cols={stripCols}
+                colorAt={stripColor}
+                pixelRatio={pixelRatio}
+                onClick={onRowClick}
+                onHover={({ row }) => share(order[row])}
+              />
+              <ExpressionSidePanel
+                genes={genes}
+                order={order}
+                width={heatWidth}
                 height={HEIGHT}
                 pixelRatio={pixelRatio}
-                leafClones={leafClones}
-                cloneColors={cloneColors}
-                selectedRows={selectedRows}
-                hoverRow={hoverRow}
-                onSelectRange={([a, b], e) => {
-                  const clade = order.slice(a, b + 1);
-                  dispatch(singleCellActions.updateSelection(e.metaKey || e.ctrlKey || e.shiftKey ? [...selectedCellIds, ...clade] : clade));
-                }}
-                onHoverNode={(node) => share(node ? order[node.firstLeaf] : null)}
+                onRowClick={onRowClick}
+                onHover={(row) => share(row != null && row >= 0 ? order[row] : null)}
+                onLeave={() => share(null)}
               />
-            )}
-            <HeatmapCanvas
-              width={STRIP}
-              height={HEIGHT}
-              nRows={nRows}
-              cols={stripCols}
-              colorAt={stripColor}
-              pixelRatio={pixelRatio}
-              onClick={onRowClick}
-              onHover={({ row }) => share(order[row])}
-            />
-            <ExpressionSidePanel
-              genes={genes}
-              order={order}
-              width={heatWidth}
-              height={HEIGHT}
-              pixelRatio={pixelRatio}
-              onRowClick={onRowClick}
-              onHover={(row) => share(row != null && row >= 0 ? order[row] : null)}
-              onLeave={() => share(null)}
-            />
+            </div>
+          )}
+          <Space wrap size={[12, 2]} style={{ marginTop: 4 }}>
+            {annotationFields
+              .filter((f) => !f.numeric)
+              .map((f) => (
+                <Space key={f.name} size={4} wrap>
+                  <Text strong type="secondary">{f.name}</Text>
+                  {Object.entries(levelColors[f.name] || {}).map(([level, color]) => (
+                    <span key={level} className="sc-legend-item">
+                      <span className="sc-legend-swatch" style={{ background: color }} />
+                      <Text type="secondary">{level}</Text>
+                    </span>
+                  ))}
+                </Space>
+              ))}
+          </Space>
+          <div>
+            <Text type="secondary" className="sc-hint">
+              {t("components.single-cell.rna.phylo-hint")}
+            </Text>
           </div>
-        )}
-        <Text type="secondary" className="sc-hint">
-          {t("components.single-cell.rna.phylo-hint")}
-        </Text>
-      </div>
-    </Card>
+        </div>
+      </Card>
     </Wrapper>
   );
 }

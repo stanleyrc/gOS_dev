@@ -451,6 +451,7 @@ export default function CellHeatmapPanel() {
 
   /* ---- hover: tooltip here, highlighted cell shared with the tree and UMAP ---- */
   const hoveredRef = useRef(null);
+  const [hoverRange, setHoverRange] = useState(null);
   const shareHover = (cellId) => {
     if (hoveredRef.current === cellId) return;
     hoveredRef.current = cellId;
@@ -458,6 +459,7 @@ export default function CellHeatmapPanel() {
   };
   const clearHover = () => {
     setHover(null);
+    setHoverRange(null);
     shareHover(null);
   };
   const hoverCell = (row, extra, event) => {
@@ -777,22 +779,26 @@ export default function CellHeatmapPanel() {
                 selectedRows={selectedRows}
                 hoverRow={hoverRow}
                 onSelectRange={handleTreeSelect}
-                onHoverNode={(node, event) =>
-                  node
-                    ? hoverCell(
-                        node.firstLeaf,
-                        node.isLeaf
-                          ? []
-                          : [[
-                              t("components.single-cell.tooltip.clade"),
-                              t("components.single-cell.heatmap.cell-count", {
-                                count: node.lastLeaf - node.firstLeaf + 1,
-                              }),
-                            ]],
-                        event
-                      )
-                    : clearHover()
-                }
+                hoverRange={hoverRange}
+                onHoverNode={(node, event) => {
+                  if (!node) return clearHover();
+                  if (node.isLeaf) {
+                    setHoverRange(null);
+                    return hoverCell(node.firstLeaf, [], event);
+                  }
+                  // A clade: highlight all of it, not its first cell.
+                  hoverCell(
+                    node.firstLeaf,
+                    [[
+                      t("components.single-cell.tooltip.clade"),
+                      t("components.single-cell.heatmap.cell-count", { count: node.lastLeaf - node.firstLeaf + 1 }),
+                    ]],
+                    event
+                  );
+                  shareHover(null);
+                  setHoverRange([node.firstLeaf, node.lastLeaf]);
+                  return undefined;
+                }}
               />
             )}
             {hasTree && (
@@ -931,7 +937,17 @@ export default function CellHeatmapPanel() {
                 }}
               />
             ))}
-            {hoverRow != null && (
+            {hoverRange && (
+              <div
+                className="sc-hover-band sc-hover-clade"
+                style={{
+                  top: (hoverRange[0] * height) / nRows,
+                  height: Math.max(2, ((hoverRange[1] - hoverRange[0] + 1) * height) / nRows),
+                  left: leftPad + treeBlock,
+                }}
+              />
+            )}
+            {!hoverRange && hoverRow != null && (
               <div
                 className="sc-hover-band"
                 style={{
