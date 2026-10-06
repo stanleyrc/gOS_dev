@@ -101,3 +101,26 @@ export function expressionByCell(summary, matrix, gene) {
   });
   return { gene: summary.genes[g], values, max };
 }
+
+/**
+ * Most variable genes: dispersion (variance / mean) of log-normalized values
+ * among genes with mean >= minMean, highest first.
+ */
+export function topVariableGenes(summary, matrix, n = 20, minMean = 0.1) {
+  const nCells = summary.cells.length;
+  const scored = [];
+  for (let g = 0; g < summary.genes.length; g += 1) {
+    let sum = 0;
+    let sumSq = 0;
+    for (let k = matrix.indptr[g]; k < matrix.indptr[g + 1]; k += 1) {
+      const v = matrix.data[k];
+      sum += v;
+      sumSq += v * v;
+    }
+    const mean = sum / nCells;
+    if (mean < minMean) continue;
+    const variance = sumSq / nCells - mean * mean;
+    scored.push([summary.genes[g], variance / mean]);
+  }
+  return scored.sort((a, b) => b[1] - a[1]).slice(0, n).map((x) => x[0]);
+}

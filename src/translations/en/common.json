@@ -912,7 +912,8 @@
         "loading-allelic": "Loading allelic copy number…",
         "resize-tree": "Drag to resize the tree (double-click to reset)",
         "resize-height": "Drag to change the heatmap height (double-click to reset)",
-        "resize-genes": "Drag to change the height of the gene and cytoband tracks (double-click to reset)"
+        "resize-genes": "Drag to change the height of the gene and cytoband tracks (double-click to reset)",
+        "resize-panel": "Drag to resize this panel (double-click to reset)"
       },
       "legend": {
         "cn": "Copy number",
@@ -1061,7 +1062,9 @@
         "hide-placeholder": "clones…",
         "clip": "Shorten long branches",
         "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //",
-        "genes-beside": "Genes beside ({{count}})"
+        "genes-beside": "Genes beside ({{count}})",
+        "pin": "Pin",
+        "pin-placeholder": "genes…"
       },
       "metric": {
         "vaf": "VAF",
@@ -1160,7 +1163,14 @@
         "pick-help": "Click a point to pick a gene · Shift/⌘-click to add or remove · drag to lasso (Shift/⌘ adds) · or tick genes in the table",
         "show-on-tree": "Show beside the phylogeny",
         "violins-for": "Violins",
-        "copy": "Copy list"
+        "copy": "Copy list",
+        "phylo-title": "Expression on the phylogeny",
+        "src-de": "Top DE genes ({{a}} vs rest)",
+        "src-de-none": "Top DE genes (run DE first)",
+        "src-picked": "Picked genes ({{count}})",
+        "src-variable": "Most variable genes",
+        "n-genes": "{{count}} genes",
+        "phylo-hint": "Each gene scaled to its maximum · blank rows: no RNA · hover links to the UMAP · click a row or tree node to select"
       }
     },
     "tracks-modal": {

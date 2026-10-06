@@ -28,12 +28,13 @@ import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
+import { binAt } from "../../../helpers/singleCell/matrix";
 import { differentialExpression, overRepresentation, parseGmt } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
 const fmt = (v, d = 2) => (v == null ? "" : Number(v).toFixed(d));
-const DE_COLUMNS = ["gene", "avg_log2FC", "pct_1", "pct_2", "p_val", "p_val_adj", "q_val"];
+const DE_COLUMNS = ["gene", "avg_log2FC", "pct_1", "pct_2", "cn_1", "cn_2", "p_val", "p_val_adj", "q_val"];
 
 let setIndexPromise = null;
 const geneSetIndex = () => {
@@ -175,6 +176,8 @@ function EnrichmentBars({ terms, onTerm }) {
 export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene, onViolins }) {
   const dispatch = useDispatch();
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
+  const cn = useSelector((state) => state.SingleCell.cn);
+  const { optionsList: geneOptions, genesStartPoint, genesEndPoint } = useSelector((state) => state.Genes);
   const setGeneList = (genes) => dispatch(scaActions.setGeneList(genes));
   const showOnTree = () => {
     dispatch(singleCellActions.updateLayout({ showGenePanel: true }));
@@ -217,7 +220,42 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     });
     setProgress(null);
     setResult({ labels, nA: rowsA.length, nB: rowsB.length, genes });
+    const top = (sign) => genes.filter((g) => Math.sign(g.avg_log2FC) === sign && g.q_val < 0.05).slice(0, 25).map((g) => g.gene);
+    dispatch(scaActions.setDeTop({ labels, up: top(1), down: top(-1) }));
   };
+
+  // Mean total copy number at each gene's locus in group A and B (cells with
+  // a DNA profile only), from the cells' genome graphs.
+  const cnByGene = useMemo(() => {
+    if (!result || cn.status !== "ok" || !geneOptions?.length) return null;
+    const rowOfCell = new Map(cn.data.cells.map((id, k) => [id, cn.data.rows[k]]));
+    const groupRows = (side) =>
+      (groups[side]?.groups.flatMap((g) => g.cells) || []).map((id) => rowOfCell.get(id)).filter(Boolean);
+    const rowsA = groupRows("A");
+    const rowsB = groupRows("B");
+    const geneIndex = new Map(geneOptions.map((o) => [o.label, o.value]));
+    const mean = (rows, g) => {
+      let sum = 0;
+      let n = 0;
+      rows.forEach((row) => {
+        const b = binAt(row.binIndex, g);
+        if (b >= 0 && Number.isFinite(row.values[b])) {
+          sum += row.values[b];
+          n += 1;
+        }
+      });
+      return n ? sum / n : null;
+    };
+    const out = new Map();
+    result.genes.forEach((r) => {
+      const i = geneIndex.get(r.gene);
+      if (i == null) return;
+      const mid = (Number(genesStartPoint[i]) + Number(genesEndPoint[i])) / 2;
+      out.set(r.gene, [mean(rowsA, mid), mean(rowsB, mid)]);
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, cn, geneOptions, genesStartPoint, genesEndPoint]);
 
   const significant = (g) => g.q_val < qCut && Math.abs(g.avg_log2FC) >= lfcCut;
   const nSig = result ? result.genes.filter(significant).length : 0;
@@ -272,6 +310,22 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     },
     { title: `% ${result?.labels.A || "A"}`, dataIndex: "pct_1", key: "p1", render: (v) => fmt(v * 100, 0) },
     { title: `% ${result?.labels.B || "B"}`, dataIndex: "pct_2", key: "p2", render: (v) => fmt(v * 100, 0) },
+    ...(cnByGene
+      ? [
+          {
+            title: `CN ${result?.labels.A || "A"}`,
+            key: "cn1",
+            sorter: (a, b) => (cnByGene.get(a.gene)?.[0] ?? -1) - (cnByGene.get(b.gene)?.[0] ?? -1),
+            render: (_, r) => fmt(cnByGene.get(r.gene)?.[0], 1),
+          },
+          {
+            title: `CN ${result?.labels.B || "B"}`,
+            key: "cn2",
+            sorter: (a, b) => (cnByGene.get(a.gene)?.[1] ?? -1) - (cnByGene.get(b.gene)?.[1] ?? -1),
+            render: (_, r) => fmt(cnByGene.get(r.gene)?.[1], 1),
+          },
+        ]
+      : []),
     { title: "p", dataIndex: "p_val", key: "p", sorter: (a, b) => a.p_val - b.p_val, render: fmtP },
     { title: t("components.single-cell.results.p-adj"), dataIndex: "p_val_adj", key: "padj", render: fmtP },
     { title: "q (BH)", dataIndex: "q_val", key: "q", render: fmtP },
@@ -422,7 +476,17 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                   <Button
                     size="small"
                     icon={<AiOutlineDownload />}
-                    onClick={() => downloadTsv(`de_${result.labels.A}_vs_${result.labels.B}.tsv`, DE_COLUMNS, result.genes)}
+                    onClick={() =>
+                      downloadTsv(
+                        `de_${result.labels.A}_vs_${result.labels.B}.tsv`,
+                        DE_COLUMNS,
+                        result.genes.map((g) => ({
+                          ...g,
+                          cn_1: cnByGene?.get(g.gene)?.[0]?.toFixed(2) ?? "",
+                          cn_2: cnByGene?.get(g.gene)?.[1]?.toFixed(2) ?? "",
+                        }))
+                      )
+                    }
                   >
                     TSV
                   </Button>

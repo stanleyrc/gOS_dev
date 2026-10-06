@@ -173,6 +173,16 @@ const Wrapper = styled.div`
   .sc-resize-handle:hover {
     background: #1677ff;
   }
+  /* Heatmap controls stay reachable while scrolling, below the pinned
+     header, tabs and navigation (--sc-sticky-top from the tab). */
+  .sc-toolbar-sticky {
+    position: sticky;
+    top: var(--sc-sticky-top, 0px);
+    z-index: 6;
+    background: #fff;
+    padding: 6px 0 2px;
+    margin-top: -6px;
+  }
   .sc-toolbar {
     margin-bottom: 8px;
   }
@@ -210,6 +220,42 @@ const Wrapper = styled.div`
     display: flex;
     flex-wrap: wrap;
     gap: 8px 16px;
+  }
+  .sc-pinned-overlay {
+    position: absolute;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .sc-pinned-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1.5px dashed rgba(114, 46, 209, 0.85);
+  }
+  .sc-pinned-label {
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    padding: 0 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #531dab;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .sc-width-handle {
+    position: absolute;
+    left: -5px;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    z-index: 3;
+    cursor: col-resize;
+    border-radius: 2px;
+  }
+  .sc-width-handle:hover {
+    background: rgba(22, 119, 255, 0.5);
   }
   .sc-side-axis {
     display: flex;

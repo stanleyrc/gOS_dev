@@ -22,6 +22,7 @@ const initState = {
   resultErrors: {},
   expression: { gene: null, status: "idle", values: null, max: 0, error: null },
   geneList: [],
+  deTop: null,
 };
 
 const countCells = (groups) => groups.reduce((n, g) => n + g.cells.length, 0);
@@ -106,6 +107,8 @@ export default function appReducer(state = initState, action) {
     case actions.SCA_EXPRESSION_FAILED:
       if (action.gene !== state.expression.gene) return state;
       return { ...state, expression: { ...state.expression, status: "error", error: action.error } };
+    case actions.SCA_DE_TOP_UPDATED:
+      return { ...state, deTop: action.deTop };
     case actions.SCA_GENE_LIST_UPDATED:
       return { ...state, geneList: [...new Set(action.genes || [])] };
     case actions.SCA_CLEAR_EXPRESSION:

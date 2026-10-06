@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Col, Collapse, Empty, Row, Typography } from "antd";
@@ -6,6 +6,7 @@ import UmapPanel from "../../components/singleCell/umapPanel";
 import RnaGroupsCard from "../../components/singleCell/rna/rnaGroupsCard";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
+import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
@@ -28,6 +29,11 @@ export default function SingleCellRnaTab() {
   const service = useSelector((state) => state.ScAnalysis.service);
   const expressionGene = useSelector((state) => state.ScAnalysis.expression.gene);
   const [violinGenes, setViolinGenes] = useState([]);
+  const geneList = useSelector((state) => state.ScAnalysis.geneList);
+  // Violins follow the genes picked in the volcano or table.
+  useEffect(() => {
+    if (geneList.length) setViolinGenes(geneList.slice(0, 8));
+  }, [geneList]);
 
   if (!summary) {
     return (
@@ -49,8 +55,11 @@ export default function SingleCellRnaTab() {
             <Alert type="error" showIcon message={t("components.single-cell.rna.matrix-error")} description={error} />
           </Col>
         )}
-        <Col span={24}>
+        <Col xs={24} xxl={12}>
           <UmapPanel />
+        </Col>
+        <Col xs={24} xxl={12}>
+          <PhyloExpressionCard summary={summary} matrix={matrix} />
         </Col>
         <Col span={24}>
           <RnaGroupsCard summary={summary} />

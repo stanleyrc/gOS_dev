@@ -194,9 +194,22 @@ export default function PhylogenyCanvas({
       }
     });
     if (best) return best;
-    // Otherwise the leaf on this row, if the row belongs to the tree.
+    // Otherwise the clade the pointer is inside: the deepest internal node to
+    // the left of the pointer whose cells span this row. Right of every
+    // internal node on the row (on a leaf's own branch), it's that leaf.
     const row = Math.floor((y / height) * nRows);
-    return layout.nodes.find((n) => n.isLeaf && n.firstLeaf === row) || null;
+    let inside = null;
+    layout.nodes.forEach((n) => {
+      if (n.isLeaf || row < n.firstLeaf || row > n.lastLeaf || px(n.x) > x) return;
+      if (!inside || n.x > inside.x) inside = n;
+    });
+    const leaf = layout.nodes.find((n) => n.isLeaf && n.firstLeaf === row) || null;
+    if (leaf && inside) {
+      // On the leaf's branch (right of where it leaves its parent): the leaf.
+      const parentX = leaf.parent >= 0 ? px(layout.nodes[leaf.parent].x) : 0;
+      if (x > parentX + 2 && (!inside || layout.nodes[leaf.parent] === inside)) return leaf;
+    }
+    return inside || leaf;
   };
 
   if (!layout) return <div style={{ width, height }} />;
