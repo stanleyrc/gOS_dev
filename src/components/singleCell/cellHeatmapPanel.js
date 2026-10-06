@@ -9,6 +9,7 @@ import PhylogenyCanvas from "./phylogenyCanvas";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel from "./mutationSidePanel";
 import PaletteEditor from "./paletteEditor";
+import HeightHandle from "./heightHandle";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -151,7 +152,10 @@ export default function CellHeatmapPanel() {
   const genomeLeft = leftPad + treeBlock + annotationWidth + GAP;
   const rightSpace = showSide ? Math.max(MIN_GENOME_RIGHT, sideWidth + GAP) : MIN_GENOME_RIGHT;
   const heatWidth = Math.max(200, containerWidth - genomeLeft - rightSpace);
-  const height = heatmapHeight(nRows, layout.rowHeight);
+  const [dragHeight, setDragHeight] = useState(null);
+  const baseHeight = layout.heatmapHeight || heatmapHeight(nRows, layout.rowHeight);
+  const height = dragHeight ?? baseHeight;
+  const clampHeight = (h) => Math.round(Math.max(120, Math.min(6000, h)));
   useEffect(() => {
     dispatch(
       singleCellActions.updatePlotInsets({
@@ -183,15 +187,40 @@ export default function CellHeatmapPanel() {
   const devWidth = heatWidth * pixelRatio;
 
   /* ---- zoom / pan: same shared domains as the genome view and the cell tracks ---- */
+  // With one region shown, wheel/drag previews instantly as a CSS transform of
+  // the drawn heatmap and commits the region once the gesture pauses (like the
+  // genome tracks); several regions update frame by frame.
   const pendingDomains = useRef(null);
   const frame = useRef(null);
+  const commitTimer = useRef(null);
+  const [preview, setPreview] = useState(null);
   useEffect(() => {
     pendingDomains.current = null;
+    setPreview(null);
   }, [domains]);
-  useEffect(() => () => frame.current && cancelAnimationFrame(frame.current), []);
+  useEffect(
+    () => () => {
+      if (frame.current) cancelAnimationFrame(frame.current);
+      if (commitTimer.current) clearTimeout(commitTimer.current);
+    },
+    []
+  );
   const bounds = useMemo(() => [1, genomeLength || defaultDomain?.[1] || 1], [genomeLength, defaultDomain]);
   const pushDomains = (next) => {
     pendingDomains.current = next;
+    if (domains.length === 1 && next.length === 1 && heatmapType === "cn") {
+      const [a0, a1] = domains[0];
+      const [b0, b1] = next[0];
+      const scale = (a1 - a0) / Math.max(1, b1 - b0);
+      const tx = ((a0 - b0) * heatWidth) / Math.max(1, b1 - b0);
+      setPreview(`translateX(${tx}px) scaleX(${scale})`);
+      if (commitTimer.current) clearTimeout(commitTimer.current);
+      commitTimer.current = setTimeout(() => {
+        commitTimer.current = null;
+        if (pendingDomains.current) dispatch(settingsActions.updateDomains(pendingDomains.current));
+      }, 160);
+      return;
+    }
     if (frame.current) return;
     frame.current = requestAnimationFrame(() => {
       frame.current = null;
@@ -218,7 +247,9 @@ export default function CellHeatmapPanel() {
     const [px0, px1, d] = hit.extent;
     const anchor = d[0] + ((x - px0) / (px1 - px0)) * (d[1] - d[0]);
     const next = [...currentDomains()];
-    next[hit.k] = zoomDomain(d, anchor, deltaY > 0 ? 1.25 : 0.8, bounds);
+    // Continuous factor from the wheel delta (trackpads send small steps).
+    const factor = Math.min(2, Math.max(0.5, Math.exp(deltaY * 0.0015)));
+    next[hit.k] = zoomDomain(d, anchor, factor, bounds);
     pushDomains(next);
   };
   const zoomAll = (factor) =>
@@ -550,7 +581,7 @@ export default function CellHeatmapPanel() {
               size="small"
               style={{ width: 90 }}
               value={layout.rowHeight}
-              onChange={(value) => dispatch(singleCellActions.updateLayout({ rowHeight: value }))}
+              onChange={(value) => dispatch(singleCellActions.updateLayout({ rowHeight: value, heatmapHeight: null }))}
               options={ROW_HEIGHTS.map((value) => ({
                 value,
                 label: value === "auto" ? t("components.single-cell.toolbar.fit") : `${value} px`,
@@ -698,7 +729,9 @@ export default function CellHeatmapPanel() {
             ) : (
               <div style={{ width: heatWidth }}>
                 {active ? (
+                  <div style={{ overflow: "hidden", width: heatWidth }}>
                   <HeatmapCanvas
+                    style={preview ? { transform: preview, transformOrigin: "0 0" } : undefined}
                     width={heatWidth}
                     height={height}
                     nRows={nRows}
@@ -713,6 +746,7 @@ export default function CellHeatmapPanel() {
                     onHover={({ row, col }, event) => hoverCell(row, active.describe(row, col), event)}
                     onLeave={clearHover}
                   />
+                  </div>
                 ) : (
                   <div className="sc-heatmap-empty" style={{ width: heatWidth, height }}>
                     <Text type="secondary">
@@ -771,6 +805,15 @@ export default function CellHeatmapPanel() {
               </div>
             )}
           </div>
+          <HeightHandle
+            title={t("components.single-cell.heatmap.resize-height")}
+            onResize={(dy) => setDragHeight(clampHeight(baseHeight + dy))}
+            onCommit={(dy) => {
+              dispatch(singleCellActions.updateLayout({ heatmapHeight: clampHeight(baseHeight + dy) }));
+              setDragHeight(null);
+            }}
+            onReset={() => dispatch(singleCellActions.updateLayout({ heatmapHeight: null }))}
+          />
           <div className="sc-heatmap-footer">
             <HeatmapLegend
               type={heatmapType}

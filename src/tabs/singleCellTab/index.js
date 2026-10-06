@@ -9,6 +9,8 @@ import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
 import singleCellActions from "../../redux/singleCell/actions";
+import HeightHandle from "../../components/singleCell/heightHandle";
+import SingleCellWrapper from "../../components/singleCell/index.style";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
@@ -40,6 +42,7 @@ export default function SingleCellTab() {
   const genes = useSelector((state) => state.Genes);
   const [yScaleMode, setYScaleMode] = useState("common");
   const [pinned, setPinned] = useState(false);
+  const [dragNav, setDragNav] = useState(null);
   const headerHeight = usePinnedHeaderHeight();
 
   if (loading) {
@@ -109,9 +112,21 @@ export default function SingleCellTab() {
                 yScaleMode,
                 compact: pinned,
                 plotInsets,
+                plotHeight: dragNav ?? layout.navHeight,
               }}
             />
           </Affix>
+          <SingleCellWrapper>
+            <HeightHandle
+              title={t("components.single-cell.heatmap.resize-genes")}
+              onResize={(dy) => setDragNav(Math.max(140, Math.min(800, layout.navHeight + dy)))}
+              onCommit={(dy) => {
+                dispatch(singleCellActions.updateLayout({ navHeight: Math.max(140, Math.min(800, layout.navHeight + dy)) }));
+                setDragNav(null);
+              }}
+              onReset={() => dispatch(singleCellActions.updateLayout({ navHeight: 240 }))}
+            />
+          </SingleCellWrapper>
         </Col>
         <Col span={24}>
           <CellHeatmapPanel />

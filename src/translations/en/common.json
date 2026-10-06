@@ -910,7 +910,9 @@
         "missing-allelic": "{{count}} cell has no allelic.json and is shown blank",
         "missing-allelic_plural": "{{count}} cells have no allelic.json and are shown blank",
         "loading-allelic": "Loading allelic copy number…",
-        "resize-tree": "Drag to resize the tree (double-click to reset)"
+        "resize-tree": "Drag to resize the tree (double-click to reset)",
+        "resize-height": "Drag to change the heatmap height (double-click to reset)",
+        "resize-genes": "Drag to change the height of the gene and cytoband tracks (double-click to reset)"
       },
       "legend": {
         "cn": "Copy number",

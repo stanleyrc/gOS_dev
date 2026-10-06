@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 
 const PAD_LEFT = 6;
 const PAD_RIGHT = 4;
-const HIT_RADIUS = 7;
+const HIT_RADIUS = 5;
 
 /**
  * Rectangular phylogeny drawn on canvas, rows aligned with the heatmap.
@@ -158,11 +158,23 @@ export default function PhylogenyCanvas({
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    // An internal node is hit on its point, its vertical connector, or the
+    // branch leading to it, so clades high in the tree are easy to pick.
+    const { px, py } = geometry;
     let best = null;
     let bestD = HIT_RADIUS;
     layout.nodes.forEach((n) => {
       if (n.isLeaf) return;
-      const d = Math.hypot(geometry.px(n.x) - x, geometry.py(n.y) - y);
+      let d = Math.hypot(px(n.x) - x, py(n.y) - y);
+      const first = layout.nodes[n.children[0]];
+      const last = layout.nodes[n.children[n.children.length - 1]];
+      const y0 = Math.min(py(first.y), py(last.y));
+      const y1 = Math.max(py(first.y), py(last.y));
+      if (y >= y0 - 2 && y <= y1 + 2) d = Math.min(d, Math.abs(px(n.x) - x) + 1);
+      if (n.parent >= 0) {
+        const x0 = px(layout.nodes[n.parent].x);
+        if (x >= x0 - 2 && x <= px(n.x) + 2) d = Math.min(d, Math.abs(py(n.y) - y) + 1);
+      }
       if (d <= bestD) {
         bestD = d;
         best = n;

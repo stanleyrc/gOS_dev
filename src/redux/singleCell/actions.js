@@ -1,7 +1,8 @@
 // Tracks shown for each selected cell. Coverage and total CN are on by
 // default; the others are toggles. All come from the cell's own case folder.
 export const SC_TRACKS = ["total", "coverage", "allelic", "hetsnps", "mutations"];
-export const SC_DEFAULT_TRACKS = ["total", "coverage"];
+// Only total CN by default: coverage files are large (~30 MB per cell).
+export const SC_DEFAULT_TRACKS = ["total"];
 // Tracks fetched on demand when a cell is selected (total CN and SNVs are
 // already loaded for the heatmaps).
 export const SC_FETCHED_TRACKS = {
@@ -29,6 +30,8 @@ export const SC_DEFAULT_LAYOUT = {
   clipBranches: true,
   hiddenClones: [],
   igvSync: true,
+  heatmapHeight: null, // px; null = from rowHeight
+  navHeight: 240, // px of the gene + cytoband tracks above the heatmap
 };
 
 const actions = {
