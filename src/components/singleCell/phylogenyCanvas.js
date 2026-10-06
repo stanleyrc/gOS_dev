@@ -47,6 +47,17 @@ export default function PhylogenyCanvas({
   }, [layout, leafClones]);
 
   // Cell labels beside the leaves when rows are tall enough to read them.
+  // Nodes whose leaves are all selected: their subtree is drawn highlighted.
+  const nodeSelected = useMemo(() => {
+    if (!layout || !selectedRows || !selectedRows.size) return null;
+    const out = new Array(layout.nodes.length).fill(false);
+    for (let k = layout.nodes.length - 1; k >= 0; k -= 1) {
+      const n = layout.nodes[k];
+      out[k] = n.isLeaf ? selectedRows.has(n.firstLeaf) : n.children.every((c) => out[c]);
+    }
+    return out;
+  }, [layout, selectedRows]);
+
   const geometry = useMemo(() => {
     if (!layout || !nRows) return null;
     const rowH = height / nRows;
@@ -84,7 +95,9 @@ export default function PhylogenyCanvas({
     ctx.lineWidth = lineWidth;
     layout.nodes.forEach((n, k) => {
       const color = nodeClones[k] != null ? cloneColors[nodeClones[k]] : null;
-      ctx.strokeStyle = color || "#8c8c8c";
+      const picked = nodeSelected && nodeSelected[k];
+      ctx.strokeStyle = picked ? "#1677ff" : color || "#8c8c8c";
+      ctx.lineWidth = picked ? 2.5 : lineWidth;
       if (n.parent >= 0) {
         const parent = layout.nodes[n.parent];
         ctx.beginPath();
@@ -150,7 +163,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, "#fa541c", dotR + 1);
     }
-  }, [layout, geometry, nodeClones, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, pixelRatio]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, pixelRatio]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;

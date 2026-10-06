@@ -184,6 +184,33 @@ const Wrapper = styled.div`
     border: 1px solid #1677ff;
     background: rgba(22, 119, 255, 0.08);
   }
+  .sc-select-band {
+    position: absolute;
+    right: 0;
+    pointer-events: none;
+    box-sizing: border-box;
+    border-top: 1px solid rgba(22, 119, 255, 0.9);
+    border-bottom: 1px solid rgba(22, 119, 255, 0.9);
+    background: rgba(22, 119, 255, 0.12);
+  }
+  .sc-gene-labels {
+    position: relative;
+    overflow: visible;
+  }
+  .sc-gene-label {
+    position: absolute;
+    top: 4px;
+    transform: rotate(60deg);
+    transform-origin: 0 0;
+    font-size: 10px;
+    white-space: nowrap;
+    color: #595959;
+  }
+  .sc-violin-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
   .sc-side-axis {
     display: flex;
     align-items: center;

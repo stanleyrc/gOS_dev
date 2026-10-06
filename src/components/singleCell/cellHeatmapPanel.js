@@ -10,6 +10,7 @@ import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel from "./mutationSidePanel";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
+import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -34,6 +35,7 @@ import {
   snvColumnOrder,
   snvMetricMax,
   treeColumnOrder,
+  wheelZoomFactor,
   zoomDomain,
 } from "../../helpers/singleCell/matrix";
 import Wrapper from "./index.style";
@@ -80,8 +82,9 @@ export default function CellHeatmapPanel() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
-  const { domains, chromoBins, defaultDomain, genomeLength } = useSelector((state) => state.Settings);
+  const { domains, chromoBins, defaultDomain, genomeLength, zoomedByCmd } = useSelector((state) => state.Settings);
   const expression = useSelector((state) => state.ScAnalysis.expression);
+  const geneList = useSelector((state) => state.ScAnalysis.geneList);
   const showExpression = expression.status === "ok" && Boolean(expression.values);
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
@@ -144,13 +147,18 @@ export default function CellHeatmapPanel() {
   const snvReady = snv.status === "ok";
   const showSide = sidePanel && snvReady && heatmapType !== "snv";
   const sideWidth = showSide ? sidePanelWidth(containerWidth) : 0;
+  const showGenes = Boolean(layout.showGenePanel) && geneList.length > 0 && sc.rna.status === "ok";
+  const geneWidth = showGenes ? Math.max(60, Math.min(400, GENE_COLUMN_WIDTH * geneList.length)) : 0;
   // Annotation strip: selection, clone, and the searched gene's expression when shown.
   const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
   const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
   const genomeLeft = leftPad + treeBlock + annotationWidth + GAP;
-  const rightSpace = showSide ? Math.max(MIN_GENOME_RIGHT, sideWidth + GAP) : MIN_GENOME_RIGHT;
+  const rightSpace = Math.max(
+    MIN_GENOME_RIGHT,
+    (showSide ? sideWidth + GAP : 0) + (showGenes ? geneWidth + GAP : 0)
+  );
   const heatWidth = Math.max(200, containerWidth - genomeLeft - rightSpace);
   const [dragHeight, setDragHeight] = useState(null);
   const baseHeight = layout.heatmapHeight || heatmapHeight(nRows, layout.rowHeight);
@@ -241,15 +249,14 @@ export default function CellHeatmapPanel() {
     next[hit.k] = panDomain(d, (-dx * (d[1] - d[0])) / (px1 - px0), bounds);
     pushDomains(next);
   };
-  const handleWheelZoom = ({ x, deltaY }) => {
+  const handleWheelZoom = ({ x, deltaY, deltaMode, pinch }) => {
     const hit = extentAt(x);
     if (!hit) return;
     const [px0, px1, d] = hit.extent;
     const anchor = d[0] + ((x - px0) / (px1 - px0)) * (d[1] - d[0]);
     const next = [...currentDomains()];
-    // Continuous factor from the wheel delta (trackpads send small steps).
-    const factor = Math.min(2, Math.max(0.5, Math.exp(deltaY * 0.0015)));
-    next[hit.k] = zoomDomain(d, anchor, factor, bounds);
+    // Same wheel response as the genome plots (d3-zoom).
+    next[hit.k] = zoomDomain(d, anchor, wheelZoomFactor({ deltaY, deltaMode, pinch }), bounds);
     pushDomains(next);
   };
   const zoomAll = (factor) =>
@@ -260,6 +267,17 @@ export default function CellHeatmapPanel() {
     () => new Set(selectedCellIds.map((id) => rowOf.get(id)).filter((r) => r != null)),
     [selectedCellIds, rowOf]
   );
+  // Selected rows as contiguous runs, drawn as light overlays (no canvas redraw).
+  const selectedRuns = useMemo(() => {
+    const rows = [...selectedRows].sort((a, b) => a - b);
+    const runs = [];
+    rows.forEach((r) => {
+      const last = runs[runs.length - 1];
+      if (last && r === last[1] + 1) last[1] = r;
+      else runs.push([r, r]);
+    });
+    return runs;
+  }, [selectedRows]);
   const hoverRow = hoveredCellId != null && rowOf.has(hoveredCellId) ? rowOf.get(hoveredCellId) : null;
   const leafClones = useMemo(
     () => (hasTree ? treeLayout.leaves.map((id) => cellById.get(id)?.clone_id ?? null) : []),
@@ -491,7 +509,7 @@ export default function CellHeatmapPanel() {
     height,
     pixelRatio,
     axisHeight: AXIS_HEIGHT,
-    highlightRows: selectedRows.size <= 50 ? selectedRows : null,
+    wheelNeedsModifier: Boolean(zoomedByCmd),
     onRowClick: handleRowClick,
     onSiteClick: (row, c) => {
       const v = snv.data.variants[c];
@@ -612,6 +630,14 @@ export default function CellHeatmapPanel() {
               <Tooltip title={t("components.single-cell.toolbar.clip-help")}>
                 {t("components.single-cell.toolbar.clip")}
               </Tooltip>
+            </Checkbox>
+          )}
+          {geneList.length > 0 && sc.rna.status === "ok" && (
+            <Checkbox
+              checked={Boolean(layout.showGenePanel)}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ showGenePanel: e.target.checked }))}
+            >
+              {t("components.single-cell.toolbar.genes-beside", { count: geneList.length })}
             </Checkbox>
           )}
           {snvReady && heatmapType !== "snv" && (
@@ -739,10 +765,15 @@ export default function CellHeatmapPanel() {
                     colorAt={active.colorAt}
                     pixelRatio={pixelRatio}
                     separators={active.axis.separators}
-                    highlightRows={selectedRows.size <= 50 ? selectedRows : null}
                     onClick={handleRowClick}
                     onDrag={heatmapType === "cn" ? handlePan : undefined}
                     onWheelZoom={heatmapType === "cn" ? handleWheelZoom : undefined}
+                    wheelNeedsModifier={Boolean(zoomedByCmd)}
+                    onDoubleClick={
+                      heatmapType === "cn"
+                        ? ({ x }) => handleWheelZoom({ x, deltaY: -500, deltaMode: 0 })
+                        : undefined
+                    }
                     onHover={({ row, col }, event) => hoverCell(row, active.describe(row, col), event)}
                     onLeave={clearHover}
                   />
@@ -785,6 +816,29 @@ export default function CellHeatmapPanel() {
               </div>
             )}
             {showSide && <MutationSidePanel {...sideProps} width={sideWidth} />}
+            {showGenes && (
+              <ExpressionSidePanel
+                genes={geneList}
+                order={order}
+                width={geneWidth}
+                height={height}
+                pixelRatio={pixelRatio}
+                onRowClick={handleRowClick}
+                onHover={(row, lines, event) => hoverCell(row, lines, event)}
+                onLeave={clearHover}
+              />
+            )}
+            {selectedRuns.map(([a, b]) => (
+              <div
+                key={`sel${a}`}
+                className="sc-select-band"
+                style={{
+                  top: (a * height) / nRows,
+                  height: Math.max(2, ((b - a + 1) * height) / nRows),
+                  left: leftPad + treeBlock,
+                }}
+              />
+            ))}
             {hoverRow != null && (
               <div
                 className="sc-hover-band"

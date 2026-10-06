@@ -188,7 +188,7 @@ function* fetchSingleCellData() {
       junctions,
       rna,
       cellFiles,
-      selectedCellIds: order.slice(0, 1),
+      selectedCellIds: [],
     });
   } catch (error) {
     if (axios.isCancel(error)) return;
