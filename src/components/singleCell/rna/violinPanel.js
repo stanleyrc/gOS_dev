@@ -10,7 +10,7 @@ import { geneValues, searchGeneNames } from "../../../helpers/singleCell/staticR
 import { kernelDensity, quartiles } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
-const ROW_HEIGHT = 180;
+const ROW_HEIGHT = 200;
 const M = { top: 18, right: 12, bottom: 46, left: 44 };
 const GROUP_COLORS = { A: "#C2185B", B: "#1F5FA8" };
 const MAX_GENES = 8;
@@ -55,7 +55,8 @@ export function useViolinGroups(summary, rowsFor, groupBy) {
 }
 
 function GeneViolins({ gene, values, groups, width }) {
-  const plotW = width - M.left - M.right;
+  // At most ~170 px per group so a two-group plot doesn't sprawl.
+  const plotW = Math.min(width - M.left - M.right, Math.max(220, groups.length * 170));
   const ymax = Math.max(0.5, d3.max(groups, (g) => d3.max(g.rows, (r) => values[r])) || 0);
   const y = d3.scaleLinear().domain([0, ymax * 1.05]).range([ROW_HEIGHT - M.bottom, M.top]).nice();
   const band = d3.scaleBand().domain(groups.map((g) => g.key)).range([M.left, M.left + plotW]).padding(0.2);
@@ -91,10 +92,13 @@ function GeneViolins({ gene, values, groups, width }) {
           .curve(d3.curveBasis);
         return (
           <g key={g.key}>
+            <rect x={cx - band.bandwidth() / 2} y={M.top} width={band.bandwidth()} height={ROW_HEIGHT - M.top - M.bottom} fill="#FAFAFA" rx={4} />
             <path d={area(grid.map((x, i) => ({ x, d: density[i] })))} fill={g.color} fillOpacity={0.25} stroke={g.color} />
-            {v.map((val, k) => (
-              <circle key={k} cx={cx + jitter(k + 1) * half * 0.5} cy={y(val)} r={1.6} fill={g.color} fillOpacity={0.7} />
-            ))}
+            {v.map((val, k) => {
+              // Spread points by the density at their value so they fill the violin.
+              const at = density[Math.max(0, Math.min(grid.length - 1, Math.round((val / grid[grid.length - 1]) * (grid.length - 1))))] / dmax;
+              return <circle key={k} cx={cx + jitter(k + 1) * half * 1.7 * at} cy={y(val)} r={1.7} fill={g.color} fillOpacity={0.75} />;
+            })}
             <rect x={cx - 3} y={y(stats.q3)} width={6} height={Math.max(1, y(stats.q1) - y(stats.q3))} fill="#262626" fillOpacity={0.6} />
             <line x1={cx - 8} x2={cx + 8} y1={y(stats.median)} y2={y(stats.median)} stroke="#262626" strokeWidth={2} />
             <title>{`${g.label}: n=${v.length}, median ${stats.median.toFixed(2)}, ${Math.round(pct * 100)}% expressing`}</title>

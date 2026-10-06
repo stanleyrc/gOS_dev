@@ -1054,7 +1054,11 @@
         "metric": "Mutations",
         "order": "Columns",
         "row-height": "Row height",
-        "fit": "Fit"
+        "fit": "Fit",
+        "hide": "Hide",
+        "hide-placeholder": "clones…",
+        "clip": "Shorten long branches",
+        "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //"
       },
       "metric": {
         "vaf": "VAF",
@@ -1102,7 +1106,8 @@
       "igv": {
         "title": "Reads (IGV)",
         "add-selected": "Add {{count}} selected cell(s)",
-        "note": "Reads cover ±200 bp around the patient's mutation sites and this cell's junction breakpoints. Click another site in the mutation heatmap to move; scroll inside IGV to zoom."
+        "note": "Reads cover ±200 bp around the patient's mutation sites and this cell's junction breakpoints. Click another site in the mutation panel to move; zoom in IGV to see individual reads.",
+        "sync": "Zoom genome views to this site"
       },
       "rna": {
         "no-rna": "No RNA export for this patient (rna/ folder)",
@@ -1139,7 +1144,15 @@
         "enrich-summary": "{{set}}: {{n}} selected genes in a universe of {{universe}} tested genes; {{sig}} sets with q < 0.05 (hypergeometric).",
         "server-title": "Server analyses (MAST, pseudobulk)",
         "server-ready": "service connected",
-        "server-off": "service not reachable from the web server yet"
+        "server-off": "service not reachable from the web server yet",
+        "compare-by": "Compare",
+        "mode-field": "values of a field",
+        "mode-selection": "selected cells ({{count}})",
+        "selected-cells": "selected cells",
+        "selection-a": "the cells selected in the tree, heatmap or UMAP",
+        "pick-values": "pick one or more values",
+        "n-cells": "{{count}} cells",
+        "selection-help": "Select cells on the Single-Cell tab (tree, heatmap) or lasso them in the UMAP above."
       }
     },
     "tracks-modal": {

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Button, Card, Checkbox, Col, Empty, Row, Space, Tag, Typography } from "antd";
@@ -76,6 +76,12 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
   // Pad the plots so their genomic area lines up with the heatmap's columns;
   // subtract this panel's own nesting (cell block border/padding, row
   // gutter, each track card's padding and border).
+  // Genome panels measure their width on mount and window resize only, so
+  // nudge them whenever the heatmap's genomic margins move.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    return () => cancelAnimationFrame(frame);
+  }, [plotInsets.left, plotInsets.right]);
   const trackPadding = {
     marginLeft: Math.max(0, plotInsets.left - TRACK_NESTING.left),
     marginRight: Math.max(0, plotInsets.right - TRACK_NESTING.right),
