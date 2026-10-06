@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import axios from "axios";
 import { Card, Empty, Select, Space, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
@@ -11,10 +10,11 @@ import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
 import useTreeView from "../useTreeView";
 import useRnaData from "./useRnaData";
+import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
 import singleCellActions from "../../../redux/singleCell/actions";
 import Wrapper from "../index.style";
 import {
-  CLONE_PALETTE,
+  annotationColors,
   MISSING_RGBA,
   discreteColumnLookup,
   expressionRGBA,
@@ -22,7 +22,7 @@ import {
   packRGBA,
 } from "../../../helpers/singleCell/matrix";
 import { geneValues, topVariableGenes } from "../../../helpers/singleCell/staticRna";
-import { parseGmt } from "../../../helpers/singleCell/rnaStats";
+import { clusteredGeneOrder, scaledExpression } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
 const HEIGHT = 440;
@@ -32,24 +32,6 @@ const GAP = 4;
 const MAX_GENES = 2000;
 const COUNTS = [20, 50, 100, 250, 500, 1000, 2000];
 
-let indexPromise = null;
-const geneSetIndex = () => {
-  if (!indexPromise) {
-    indexPromise = axios.get("genesets/index.json").then((r) => r.data);
-    indexPromise.catch(() => (indexPromise = null));
-  }
-  return indexPromise;
-};
-const gmtCache = new Map();
-const loadGmt = (file) => {
-  if (!gmtCache.has(file)) {
-    const p = axios.get(`genesets/${file}`, { responseType: "text", transformResponse: [(d) => d] }).then((r) => parseGmt(r.data));
-    p.catch(() => gmtCache.delete(file));
-    gmtCache.set(file, p);
-  }
-  return gmtCache.get(file);
-};
-const prettyTerm = (term) => term.replace(/^HALLMARK_|^REACTOME_|^GOBP_/, "").replace(/_/g, " ");
 
 /**
  * Expression on the phylogeny: tree, clone and annotation strips (e.g. GBM
@@ -74,8 +56,10 @@ export default function PhyloExpressionCard({ summary, matrix }) {
   const [collection, setCollection] = useState(null);
   const [sets, setSets] = useState([]);
   const [chosenSets, setChosenSets] = useState([]);
-  const stateField = summary.fields.find((f) => /^state$/i.test(f.name)) ? "state" : null;
-  const [annotations, setAnnotations] = useState(stateField ? [stateField] : []);
+  // Default strips: GBM cell state and tumour region, when exported.
+  const [annotations, setAnnotations] = useState(() =>
+    ["state", "Region_Annotation"].filter((name) => summary.fields.some((f) => f.name === name))
+  );
   const [hoverRange, setHoverRange] = useState(null);
 
   // Follow the newest source: a fresh DE result, or a new pick.
@@ -122,9 +106,15 @@ export default function PhyloExpressionCard({ summary, matrix }) {
     return variable.slice(0, nGenes);
   }, [source, geneList, deTop, variable, nGenes, sets, chosenSets, summary]);
 
-  // Order genes along the tree: by the row where expression is centred.
+  // Order genes along the tree (row where expression is centred), or cluster
+  // co-expressed genes together (PCA loadings on these genes).
   const genes = useMemo(() => {
-    if (geneOrder !== "tree" || !matrix || listed.length < 2) return listed;
+    if (geneOrder === "listed" || !matrix || listed.length < 2) return listed;
+    if (geneOrder === "clustered") {
+      const idx = listed.map((g) => summary.geneIndex.get(g)).filter((g) => g != null);
+      const X = scaledExpression(matrix, idx, summary.cells.length);
+      return clusteredGeneOrder(X, summary.cells.length, idx.length).map((j) => summary.genes[idx[j]]);
+    }
     const rnaRows = order.map((id) => rowOfId.get(id) ?? -1);
     const centre = new Map();
     listed.forEach((gene) => {
@@ -165,7 +155,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
       Object.fromEntries(
         annotationFields
           .filter((f) => !f.numeric)
-          .map((f) => [f.name, Object.fromEntries(f.levels.map((l, k) => [l, CLONE_PALETTE[(k + 3) % CLONE_PALETTE.length]]))])
+          .map((f) => [f.name, annotationColors(f.levels)])
       ),
     [annotationFields]
   );
@@ -285,6 +275,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
             onChange={setGeneOrder}
             options={[
               { value: "tree", label: t("components.single-cell.rna.order-tree") },
+              { value: "clustered", label: t("components.single-cell.rna.order-clustered") },
               { value: "listed", label: t("components.single-cell.rna.order-listed") },
             ]}
           />

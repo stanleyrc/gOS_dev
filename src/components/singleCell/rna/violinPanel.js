@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
@@ -8,12 +8,16 @@ import useContainerWidth from "../useContainerWidth";
 import { CLONE_PALETTE } from "../../../helpers/singleCell/matrix";
 import { geneValues, searchGeneNames } from "../../../helpers/singleCell/staticRna";
 import { kernelDensity, quartiles } from "../../../helpers/singleCell/rnaStats";
+import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
 
 const { Text } = Typography;
 const ROW_HEIGHT = 200;
 const M = { top: 18, right: 12, bottom: 46, left: 44 };
 const GROUP_COLORS = { A: "#C2185B", B: "#1F5FA8" };
-const MAX_GENES = 8;
+const MAX_GENES = 48;
+// A gene set's module score (mean expression of its genes) is shown as one
+// extra "gene" keyed like this.
+const SCORE = "score:";
 
 // Deterministic jitter so points don't move between renders.
 const jitter = (k) => (((Math.sin(k * 12.9898) * 43758.5453) % 1) + 1) % 1 - 0.5;
@@ -124,6 +128,29 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
   const [groupBy, setGroupBy] = useState("clone");
   const [options, setOptions] = useState([]);
   const groups = useViolinGroups(summary, rowsFor, groupBy);
+  const [collections, setCollections] = useState([]);
+  const [collection, setCollection] = useState(null);
+  const [sets, setSets] = useState([]);
+  const [scoreSets, setScoreSets] = useState({}); // term -> genes
+  useEffect(() => {
+    geneSetIndex()
+      .then((list) => {
+        setCollections(list);
+        setCollection((c) => c || list[0]?.id || null);
+      })
+      .catch(() => setCollections([]));
+  }, []);
+  useEffect(() => {
+    const entry = collections.find((c) => c.id === collection);
+    if (entry) loadGmt(entry.file).then(setSets);
+  }, [collection, collections]);
+  const addSet = (term) => {
+    const set = sets.find((x) => x.term === term);
+    if (!set) return;
+    const present = set.genes.filter((g) => summary.geneIndex.has(g));
+    setScoreSets((m) => ({ ...m, [term]: present }));
+    onGenesChange([`${SCORE}${term}`, ...present].slice(0, MAX_GENES));
+  };
   const categorical = summary.fields.filter((f) => !f.numeric);
 
   const valuesFor = useMemo(() => {
@@ -131,12 +158,24 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
     return (gene) => {
       if (!matrix) return null;
       if (!cache.has(gene)) {
-        const g = summary.geneIndex.get(gene) ?? summary.geneIndex.get(gene.toUpperCase());
-        cache.set(gene, g == null ? null : geneValues(matrix, summary.cells.length, g));
+        if (gene.startsWith(SCORE)) {
+          // Module score: mean of the set's genes in each cell.
+          const members = scoreSets[gene.slice(SCORE.length)] || [];
+          const out = new Float32Array(summary.cells.length);
+          members.forEach((m) => {
+            const v = geneValues(matrix, summary.cells.length, summary.geneIndex.get(m));
+            for (let i = 0; i < out.length; i += 1) out[i] += v[i] / members.length;
+          });
+          cache.set(gene, members.length ? out : null);
+        } else {
+          const g = summary.geneIndex.get(gene) ?? summary.geneIndex.get(gene.toUpperCase());
+          cache.set(gene, g == null ? null : geneValues(matrix, summary.cells.length, g));
+        }
       }
       return cache.get(gene);
     };
-  }, [matrix, summary]);
+  }, [matrix, summary, scoreSets]);
+  const label = (gene) => (gene.startsWith(SCORE) ? `Score: ${prettyTerm(gene.slice(SCORE.length))}` : gene);
 
   return (
     <Card
@@ -165,15 +204,37 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
             onSearch={(q) => setOptions(searchGeneNames(summary.genes, q).map((g) => ({ value: g })))}
             onSelect={(gene) => onGenesChange([...genes.filter((g) => g !== gene), gene].slice(-MAX_GENES))}
           />
+          <Select
+            size="small"
+            style={{ width: 190 }}
+            value={collection}
+            onChange={setCollection}
+            options={collections.map((c) => ({ value: c.id, label: c.title }))}
+          />
+          <Select
+            size="small"
+            showSearch
+            style={{ width: 240 }}
+            placeholder={t("components.single-cell.rna.add-set")}
+            value={null}
+            onChange={addSet}
+            options={sets.map((x) => ({ value: x.term, label: `${prettyTerm(x.term)} (${x.genes.length})` }))}
+            filterOption={(input, option) => option.label.toUpperCase().includes(input.toUpperCase())}
+          />
         </Space>
       }
     >
       <Space size={[4, 4]} wrap style={{ marginBottom: 8 }}>
         {genes.map((g) => (
           <Tag key={g} closable onClose={() => onGenesChange(genes.filter((x) => x !== g))}>
-            {g}
+            {label(g)}
           </Tag>
         ))}
+        {genes.length > 1 && (
+          <Tag style={{ cursor: "pointer" }} onClick={() => onGenesChange([])}>
+            {t("components.single-cell.selection.clear")}
+          </Tag>
+        )}
       </Space>
       <div ref={ref}>
         {!genes.length || !groups.length ? (
@@ -191,7 +252,7 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
               const values = valuesFor(gene);
               const plotWidth = Math.min(width, Math.max(240, groups.length * 120 + M.left + M.right));
               return values ? (
-                <GeneViolins key={gene} gene={gene} values={values} groups={groups} width={plotWidth} />
+                <GeneViolins key={gene} gene={label(gene)} values={values} groups={groups} width={plotWidth} />
               ) : (
                 <Text key={gene} type="danger">{t("components.single-cell.rna.unknown-gene", { gene })}</Text>
               );

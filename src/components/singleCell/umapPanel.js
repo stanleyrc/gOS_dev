@@ -7,8 +7,10 @@ import singleCellActions from "../../redux/singleCell/actions";
 import scaActions from "../../redux/scAnalysis/actions";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
-import { CLONE_PALETTE } from "../../helpers/singleCell/matrix";
-import { searchGeneNames } from "../../helpers/singleCell/staticRna";
+import { annotationColors } from "../../helpers/singleCell/matrix";
+import { searchGeneNames, topVariableGenes } from "../../helpers/singleCell/staticRna";
+import { kmeans, pca, scaledExpression } from "../../helpers/singleCell/rnaStats";
+import useRnaData from "./rna/useRnaData";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
@@ -59,6 +61,29 @@ export default function UmapPanel() {
   const [geneOptions, setGeneOptions] = useState([]);
   const [tip, setTip] = useState(null);
   const [lasso, setLasso] = useState(null);
+  const { matrix } = useRnaData();
+  const [k, setK] = useState(4);
+  const [clustering, setClustering] = useState(false);
+  // Quick clustering: PCA (10 PCs) on the 2,000 most variable genes, then
+  // k-means; the labels become a metadata field usable everywhere.
+  const runClustering = () => {
+    if (!matrix || rna.status !== "ok") return;
+    setClustering(true);
+    setTimeout(() => {
+      const summary = rna.data;
+      const genes = topVariableGenes(summary, matrix, 2000);
+      const idx = genes.map((g) => summary.geneIndex.get(g));
+      const X = scaledExpression(matrix, idx, summary.cells.length);
+      const { scores } = pca(X, summary.cells.length, idx.length, 10);
+      const labels = kmeans(scores, k);
+      const name = `rna_kmeans_k${k}`;
+      const values = {};
+      summary.cells.forEach((c, i) => (values[c.displayId] = `C${labels[i] + 1}`));
+      dispatch(singleCellActions.addRnaField(name, values));
+      setColorBy(name);
+      setClustering(false);
+    }, 30);
+  };
   const dragRef = useRef(null);
   const hoveredRef = useRef(null);
 
@@ -126,7 +151,7 @@ export default function UmapPanel() {
       };
     }
     if (field) {
-      const colors = Object.fromEntries(field.levels.map((l, k) => [l, CLONE_PALETTE[k % CLONE_PALETTE.length]]));
+      const colors = annotationColors(field.levels);
       return {
         kind: "categorical",
         color: (p) => colors[`${p.cell[field.name]}`] || NO_DATA,
@@ -327,6 +352,16 @@ export default function UmapPanel() {
                 {expression.status === "loading" ? " …" : ""}
               </Tag>
             )}
+            <Select
+              size="small"
+              style={{ width: 70 }}
+              value={k}
+              onChange={setK}
+              options={[2, 3, 4, 5, 6, 7, 8, 10].map((n) => ({ value: n, label: `k=${n}` }))}
+            />
+            <Button size="small" loading={clustering} disabled={!matrix} onClick={runClustering}>
+              {t("components.single-cell.umap.cluster")}
+            </Button>
             <Button size="small" onClick={() => dispatch(singleCellActions.updateSelection([]))}>
               {t("components.single-cell.selection.clear")}
             </Button>

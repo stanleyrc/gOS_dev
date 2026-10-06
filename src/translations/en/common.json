@@ -1064,7 +1064,8 @@
         "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //",
         "genes-beside": "Genes beside ({{count}})",
         "pin": "Pin",
-        "pin-placeholder": "genes…"
+        "pin-placeholder": "genes…",
+        "annotate": "Annotate"
       },
       "metric": {
         "vaf": "VAF",
@@ -1103,11 +1104,13 @@
         "rna-only": "RNA only",
         "not-in-tree": "no DNA cell in the tree",
         "no-umap": "No UMAP coordinates in rna/cells.json",
-        "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)"
+        "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)",
+        "cluster": "Cluster (k-means)"
       },
       "toggles": {
         "umap": "RNA UMAP",
-        "cell-table": "Cell table"
+        "cell-table": "Cell table",
+        "keep-genes": "Keep gene track when scrolling"
       },
       "igv": {
         "title": "Reads (IGV)",
@@ -1175,7 +1178,19 @@
         "order-tree": "Order: along tree",
         "order-listed": "Order: as listed",
         "annotations": "Annotations (e.g. state)",
-        "genes-range": "Genes {{from}}–{{to}} of {{total}} · scroll or drag to zoom; names show when zoomed in"
+        "genes-range": "Genes {{from}}–{{to}} of {{total}} · scroll or drag to zoom; names show when zoomed in",
+        "order-clustered": "Order: clustered",
+        "add-set": "Add a gene set (with module score)",
+        "mode-tree": "from the tree",
+        "tree-help": "Set on the Single-Cell tab: select a clade or cells, then \"Set as group A/B\". Pick another mode to build groups here instead."
+      },
+      "groups": {
+        "selected": "{{count}} selected",
+        "set": "Set as group {{side}}",
+        "rest": "Group B = all other cells",
+        "rest-label": "all other cells",
+        "tree-label": "tree selection",
+        "compare": "Compare A vs B in the RNA tab →"
       }
     },
     "tracks-modal": {

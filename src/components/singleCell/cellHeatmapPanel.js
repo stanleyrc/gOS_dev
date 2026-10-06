@@ -16,6 +16,7 @@ import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
+import scaActions from "../../redux/scAnalysis/actions";
 import useTreeView from "./useTreeView";
 import {
   MISSING_RGBA,
@@ -38,12 +39,13 @@ import {
   treeColumnOrder,
   wheelZoomFactor,
   zoomDomain,
+  annotationColors,
 } from "../../helpers/singleCell/matrix";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
-const ANNOTATION_WIDTH = 18;
-const ANNOTATION_WIDTH_EXPR = 30;
+const ANNOTATION_COLUMN = 9; // px per strip: selection, clone, metadata fields, expression
+const NOT_ANNOTATIONS = new Set(["pair", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
 // Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
 // and 50 px between regions; the heatmap uses the same so they line up.
@@ -161,7 +163,24 @@ export default function CellHeatmapPanel() {
     window.addEventListener("mouseup", up);
   };
   // Annotation strip: selection, clone, and the searched gene's expression when shown.
-  const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
+  // Metadata strips (e.g. GBM state, region) from the cells' manifest records.
+  const annotationOptions = useMemo(() => {
+    const keys = new Set();
+    cells.forEach((c) => Object.keys(c).forEach((k) => keys.add(k)));
+    return [...keys].filter((k) => {
+      if (NOT_ANNOTATIONS.has(k)) return false;
+      const values = new Set(cells.map((c) => c[k]).filter((v) => v != null && v !== "" && typeof v !== "object"));
+      return values.size >= 2 && values.size <= 24 && [...values].every((v) => typeof v === "string");
+    });
+  }, [cells]);
+  const annotationFields = (layout.annotationFields || []).filter((f) => annotationOptions.includes(f));
+  const annotationLevels = useMemo(
+    () => Object.fromEntries(annotationFields.map((f) => [f, annotationColors(cells.map((c) => c[f]).filter((v) => v != null && v !== ""))])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cells, annotationFields.join("|")]
+  );
+  const nAnnotation = 2 + annotationFields.length + (showExpression ? 1 : 0);
+  const annotationWidth = ANNOTATION_COLUMN * nAnnotation;
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
   const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
@@ -407,18 +426,36 @@ export default function CellHeatmapPanel() {
   }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t]);
 
   const annotationCols = useMemo(
-    () => discreteColumnLookup(showExpression ? 3 : 2, annotationWidth * pixelRatio),
-    [showExpression, annotationWidth, pixelRatio]
+    () => discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio),
+    [nAnnotation, annotationWidth, pixelRatio]
   );
   const annotationColor = useCallback(
     (r, c) => {
       if (c === 0) return selectedRows.has(r) ? SELECTED_RGBA : UNSELECTED_RGBA;
-      if (c === 2) return expressionRGBA(expression.values?.[order[r]], expression.max);
-      const clone = cellById.get(order[r])?.clone_id;
-      return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : MISSING_RGBA;
+      const cell = cellById.get(order[r]);
+      if (c === 1) {
+        const clone = cell?.clone_id;
+        return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : MISSING_RGBA;
+      }
+      const f = annotationFields[c - 2];
+      if (f == null) return expressionRGBA(expression.values?.[order[r]], expression.max);
+      const hex = annotationLevels[f]?.[`${cell?.[f] ?? ""}`];
+      return hex ? packRGBA(hexToRgb(hex)) : MISSING_RGBA;
     },
-    [selectedRows, cellById, order, cloneColors, expression]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|")]
   );
+
+  /* ---- groups for RNA comparisons from the current (tree / heatmap) selection ---- */
+  const scaGroups = useSelector((state) => state.ScAnalysis.groups);
+  const setTreeGroup = (side, rest = false) => {
+    const chosen = new Set(selectedCellIds);
+    const ids = rest ? order.filter((id) => !chosen.has(id)) : [...selectedCellIds];
+    const label = rest
+      ? t("components.single-cell.groups.rest-label")
+      : t("components.single-cell.groups.tree-label", { count: ids.length });
+    dispatch(scaActions.setGroup(side, ids.length ? [{ patient: sc.patient?.caseReportId, cells: ids }] : [], label, "tree"));
+  };
 
   /* ---- selection ---- */
   const setSelection = (ids) => dispatch(singleCellActions.updateSelection(ids));
@@ -474,6 +511,7 @@ export default function CellHeatmapPanel() {
       lines: [
         [t("components.single-cell.tooltip.cell"), order[row]],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
+        ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
         ...(showExpression
           ? [[
               expression.gene,
@@ -624,6 +662,36 @@ export default function CellHeatmapPanel() {
         }
       >
         <div className="sc-toolbar-sticky">
+        {selectedCellIds.length > 0 && (
+          <Space wrap size={[8, 4]} className="sc-group-bar">
+            <Text strong>{t("components.single-cell.groups.selected", { count: selectedCellIds.length })}</Text>
+            <Button size="small" onClick={() => setTreeGroup("A")}>
+              {t("components.single-cell.groups.set", { side: "A" })}
+            </Button>
+            <Button size="small" onClick={() => setTreeGroup("B")}>
+              {t("components.single-cell.groups.set", { side: "B" })}
+            </Button>
+            <Button size="small" onClick={() => setTreeGroup("B", true)}>
+              {t("components.single-cell.groups.rest")}
+            </Button>
+            {(scaGroups.A || scaGroups.B) && (
+              <Text type="secondary">
+                {["A", "B"]
+                  .filter((s) => scaGroups[s])
+                  .map((s) => `${s}: ${scaGroups[s].label} (${scaGroups[s].nCells})`)
+                  .join(" · ")}
+              </Text>
+            )}
+            {sc.rna.status === "ok" && scaGroups.A && scaGroups.B && (
+              <Button size="small" type="link" onClick={() => dispatch(settingsActions.updateTab("8"))}>
+                {t("components.single-cell.groups.compare")}
+              </Button>
+            )}
+            <Button size="small" type="text" onClick={() => dispatch(singleCellActions.updateSelection([]))}>
+              {t("components.single-cell.selection.clear")}
+            </Button>
+          </Space>
+        )}
         <Space wrap size={[16, 8]} className="sc-toolbar">
           <Segmented
             size="small"
@@ -660,6 +728,21 @@ export default function CellHeatmapPanel() {
               }))}
             />
           </Space>
+          {annotationOptions.length > 0 && (
+            <Space size={4}>
+              <Text type="secondary">{t("components.single-cell.toolbar.annotate")}</Text>
+              <Select
+                size="small"
+                mode="multiple"
+                allowClear
+                maxTagCount="responsive"
+                style={{ minWidth: 150, maxWidth: 320 }}
+                value={annotationFields}
+                onChange={(value) => dispatch(singleCellActions.updateLayout({ annotationFields: value }))}
+                options={annotationOptions.map((f) => ({ value: f, label: f }))}
+              />
+            </Space>
+          )}
           <Space size={4}>
             <Text type="secondary">{t("components.single-cell.toolbar.pin")}</Text>
             <Select
@@ -987,6 +1070,17 @@ export default function CellHeatmapPanel() {
               cloneColors={cloneColors}
               expression={showExpression ? expression : null}
             />
+            {annotationFields.map((f) => (
+              <Space key={f} size={4} wrap className="sc-legend">
+                <Text strong type="secondary">{f}</Text>
+                {Object.entries(annotationLevels[f] || {}).map(([level, color]) => (
+                  <span key={level} className="sc-legend-item">
+                    <span className="sc-legend-swatch" style={{ background: color }} />
+                    <Text type="secondary">{level}</Text>
+                  </span>
+                ))}
+              </Space>
+            ))}
             <Text type="secondary" className="sc-hint">
               {t("components.single-cell.heatmap.hint")}
             </Text>

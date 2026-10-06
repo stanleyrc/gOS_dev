@@ -32,7 +32,7 @@ export default function SingleCellRnaTab() {
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
   // Violins follow the genes picked in the volcano or table.
   useEffect(() => {
-    if (geneList.length) setViolinGenes(geneList.slice(0, 8));
+    if (geneList.length) setViolinGenes(geneList.slice(0, 48));
   }, [geneList]);
 
   if (!summary) {
@@ -43,7 +43,7 @@ export default function SingleCellRnaTab() {
     );
   }
   const showGene = (gene) => {
-    setViolinGenes((genes) => [...genes.filter((g) => g !== gene), gene].slice(-8));
+    setViolinGenes((genes) => [...genes.filter((g) => g !== gene), gene].slice(-48));
     dispatch(scaActions.fetchExpression(gene));
   };
 

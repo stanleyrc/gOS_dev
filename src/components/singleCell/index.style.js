@@ -183,6 +183,13 @@ const Wrapper = styled.div`
     padding: 6px 0 2px;
     margin-top: -6px;
   }
+  .sc-group-bar {
+    width: 100%;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    background: #f0f5ff;
+  }
   .sc-toolbar {
     margin-bottom: 8px;
   }
@@ -199,9 +206,7 @@ const Wrapper = styled.div`
     right: 0;
     pointer-events: none;
     box-sizing: border-box;
-    border-top: 1px solid rgba(22, 119, 255, 0.9);
-    border-bottom: 1px solid rgba(22, 119, 255, 0.9);
-    background: rgba(22, 119, 255, 0.12);
+    background: rgba(22, 119, 255, 0.14);
   }
   .sc-gene-labels {
     position: relative;

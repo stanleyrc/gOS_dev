@@ -470,16 +470,20 @@ export function panDomain(domain, delta, bounds) {
 /* Expression colour                                                        */
 /* ----------------------------------------------------------------------- */
 
-export const EXPRESSION_ZERO_COLOR = "#EFEDF5";
-const EXPRESSION_LOW = hexToRgb("#DADAEB");
-const EXPRESSION_HIGH = hexToRgb("#3F007D");
+export const EXPRESSION_ZERO_COLOR = "#EAEAEA";
+// YlGnBu: pale yellow (low) through green to dark blue (high); distinct from
+// the copy-number blues/oranges and the black/white mutation scale.
+const EXPRESSION_RAMP = ["#FFFFD9", "#EDF8B1", "#C7E9B4", "#7FCDBB", "#41B6C4", "#1D91C0", "#225EA8", "#253494", "#081D58"].map(hexToRgb);
 
-/** Sequential colour for an expression value; 0 is pale, NaN/undefined is "no RNA". */
+/** Colour for an expression value: 0 is light grey, NaN/undefined is "no RNA" (null). */
 export function expressionRGB(value, max) {
   if (value == null || !Number.isFinite(value)) return null;
   if (value <= 0 || !(max > 0)) return hexToRgb(EXPRESSION_ZERO_COLOR);
-  const t = Math.min(1, value / max);
-  return EXPRESSION_LOW.map((lo, k) => Math.round(lo + (EXPRESSION_HIGH[k] - lo) * t));
+  // Gamma < 1 lifts low values so sparse expression stays visible.
+  const t = Math.pow(Math.min(1, value / max), 0.7) * (EXPRESSION_RAMP.length - 1);
+  const k = Math.min(EXPRESSION_RAMP.length - 2, Math.floor(t));
+  const f = t - k;
+  return EXPRESSION_RAMP[k].map((c, i) => Math.round(c + (EXPRESSION_RAMP[k + 1][i] - c) * f));
 }
 
 export function expressionRGBA(value, max) {
@@ -708,4 +712,30 @@ export function treeColumnOrder(snv, layout, rows) {
 export function wheelZoomFactor({ deltaY, deltaMode = 0, pinch = false }) {
   const k = deltaMode === 1 ? 0.05 : deltaMode ? 1 : 0.002;
   return Math.pow(2, deltaY * k * (pinch ? 10 : 1));
+}
+
+/* ----------------------------------------------------------------------- */
+/* Annotation colours shared by every view                                  */
+/* ----------------------------------------------------------------------- */
+
+// Fixed colours for GBM cell states so they match across views.
+const KNOWN_LEVEL_COLORS = {
+  MES: "#E15759",
+  NPC: "#B07AA1",
+  OPC: "#76B7B2",
+  AC: "#EDC948",
+  "Enhancing Edge": "#F28E2B",
+  "Non-Enhancing Peritumoral": "#4E79A7",
+};
+const ANNOTATION_PALETTE = ["#59A14F", "#9C755F", "#FF9DA7", "#BAB0AC", "#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#EDC948", "#B07AA1"];
+
+/** level -> colour for a categorical annotation (stable: sorted levels). */
+export function annotationColors(levels = []) {
+  const sorted = [...new Set(levels.map(String))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const out = {};
+  let k = 0;
+  sorted.forEach((l) => {
+    out[l] = KNOWN_LEVEL_COLORS[l] || ANNOTATION_PALETTE[k++ % ANNOTATION_PALETTE.length];
+  });
+  return out;
 }

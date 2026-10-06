@@ -24,7 +24,8 @@ const actions = {
   SCA_DE_TOP_UPDATED: "SCA_DE_TOP_UPDATED",
 
   /** groups: [{ patient, cells: [cellId] }], label: short display name */
-  setGroup: (side, groups, label) => ({ type: actions.SCA_SET_GROUP, side, groups, label }),
+  /** source "tree" marks groups set from the phylogeny / heatmap selection. */
+  setGroup: (side, groups, label, source = null) => ({ type: actions.SCA_SET_GROUP, side, groups, label, source }),
   clearGroups: () => ({ type: actions.SCA_CLEAR_GROUPS }),
   /** body: { analysis, params, sourceJob? } — groups and labels come from state */
   submitJob: (analysis, params, sourceJob = null) => ({

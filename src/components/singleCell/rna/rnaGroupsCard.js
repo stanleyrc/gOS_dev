@@ -19,7 +19,15 @@ export default function RnaGroupsCard({ summary }) {
   const dispatch = useDispatch();
   const { selectedCellIds, cells, patient } = useSelector((state) => state.SingleCell);
   const pid = patient?.caseReportId;
-  const [mode, setMode] = useState("field");
+  const shared = useSelector((state) => state.ScAnalysis.groups);
+  const fromTree = shared.A?.source === "tree" || shared.B?.source === "tree";
+  const [mode, setMode] = useState(fromTree ? "tree" : "field");
+  // Groups made on the Single-Cell tab (tree or heatmap selection) take over.
+  const treeKey = `${shared.A?.source === "tree" ? shared.A.label + shared.A.nCells : ""}|${shared.B?.source === "tree" ? shared.B.label + shared.B.nCells : ""}`;
+  useEffect(() => {
+    if (fromTree) setMode("tree");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeKey]);
   const [field, setField] = useState("clone");
   const [aValues, setAValues] = useState([]);
   const [bValues, setBValues] = useState([OTHERS]);
@@ -74,11 +82,13 @@ export default function RnaGroupsCard({ summary }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary, mode, field, aValues, bValues, selected, cloneOf]);
 
-  // Apply to the shared groups as they change.
+  // Apply to the shared groups as they change (not in "tree" mode, where the
+  // groups come from the Single-Cell tab).
   useEffect(() => {
+    if (mode === "tree") return;
     dispatch(scaActions.setGroup("A", groups.a.length ? [{ patient: pid, cells: groups.a }] : [], groups.labelA));
     dispatch(scaActions.setGroup("B", groups.b.length ? [{ patient: pid, cells: groups.b }] : [], groups.labelB));
-  }, [dispatch, groups, pid]);
+  }, [dispatch, groups, pid, mode]);
 
   const levelOptions = levels.map(([level, n]) => ({ value: level, label: `${level} (${n})` }));
   const swap = () => {
@@ -98,6 +108,7 @@ export default function RnaGroupsCard({ summary }) {
             value={mode}
             onChange={setMode}
             options={[
+              ...(fromTree ? [{ value: "tree", label: t("components.single-cell.rna.mode-tree") }] : []),
               { value: "field", label: t("components.single-cell.rna.mode-field") },
               { value: "selection", label: t("components.single-cell.rna.mode-selection", { count: selectedCellIds.length }) },
             ]}
@@ -116,6 +127,22 @@ export default function RnaGroupsCard({ summary }) {
             />
           )}
         </Space>
+        {mode === "tree" ? (
+          <Row gutter={[16, 8]} align="middle">
+            {["A", "B"].map((side) => (
+              <Col xs={24} lg={12} key={side}>
+                <div className={`sc-group-box sc-group-${side.toLowerCase()}`}>
+                  <Text strong>{side}</Text>
+                  <Text>{shared[side] ? shared[side].label : t("components.single-cell.rna.unset", { side })}</Text>
+                  <Text type="secondary">{t("components.single-cell.rna.n-cells", { count: shared[side]?.nCells || 0 })}</Text>
+                </div>
+              </Col>
+            ))}
+            <Col span={24}>
+              <Text type="secondary">{t("components.single-cell.rna.tree-help")}</Text>
+            </Col>
+          </Row>
+        ) : (
         <Row gutter={[16, 8]} align="middle">
           <Col xs={24} lg={11}>
             <div className="sc-group-box sc-group-a">
@@ -166,7 +193,8 @@ export default function RnaGroupsCard({ summary }) {
             </div>
           </Col>
         </Row>
-        {groups.overlap > 0 && (
+        )}
+        {mode !== "tree" && groups.overlap > 0 && (
           <Alert type="warning" showIcon message={t("components.single-cell.rna.overlap", { count: groups.overlap })} />
         )}
         {mode === "selection" && !groups.a.length && (
