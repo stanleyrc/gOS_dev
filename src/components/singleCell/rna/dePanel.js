@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import axios from "axios";
 import * as d3 from "d3";
 import {
   Alert,
@@ -25,34 +24,18 @@ import scaActions from "../../../redux/scAnalysis/actions";
 import singleCellActions from "../../../redux/singleCell/actions";
 import settingsActions from "../../../redux/settings/actions";
 import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
+import { geneSetIndex, loadGmt } from "./geneSets";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { binAt } from "../../../helpers/singleCell/matrix";
-import { differentialExpression, overRepresentation, parseGmt } from "../../../helpers/singleCell/rnaStats";
+import { differentialExpression, overRepresentation } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
 const fmt = (v, d = 2) => (v == null ? "" : Number(v).toFixed(d));
 const DE_COLUMNS = ["gene", "avg_log2FC", "pct_1", "pct_2", "cn_1", "cn_2", "p_val", "p_val_adj", "q_val"];
 
-let setIndexPromise = null;
-const geneSetIndex = () => {
-  if (!setIndexPromise) {
-    setIndexPromise = axios.get("genesets/index.json").then((r) => r.data);
-    setIndexPromise.catch(() => (setIndexPromise = null));
-  }
-  return setIndexPromise;
-};
-const gmtCache = new Map();
-const loadGmt = (file) => {
-  if (!gmtCache.has(file)) {
-    const p = axios.get(`genesets/${file}`, { responseType: "text", transformResponse: [(d) => d] }).then((r) => parseGmt(r.data));
-    p.catch(() => gmtCache.delete(file));
-    gmtCache.set(file, p);
-  }
-  return gmtCache.get(file);
-};
 
 /** Dot plot: genes x groups, dot size = % expressing, colour = mean expression scaled per gene. */
 function DotPlot({ genes, groups, summary, matrix }) {
@@ -426,7 +409,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                         <Button size="small" type="primary" onClick={showOnTree}>
                           {t("components.single-cell.rna.show-on-tree")}
                         </Button>
-                        <Button size="small" onClick={() => onViolins(geneList.slice(0, 8))}>
+                        <Button size="small" onClick={() => onViolins(geneList.slice(0, 48))}>
                           {t("components.single-cell.rna.violins-for")}
                         </Button>
                         <Button size="small" onClick={() => navigator.clipboard?.writeText(geneList.join("\n"))}>

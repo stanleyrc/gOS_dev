@@ -112,6 +112,10 @@ export default function SingleCellTab() {
               <Switch size="small" checked={layout.showCellTable} onChange={toggle("showCellTable")} />
               <Text>{t("components.single-cell.toggles.cell-table")}</Text>
             </Space>
+            <Space size={6}>
+              <Switch size="small" checked={Boolean(layout.keepGeneTrack)} onChange={toggle("keepGeneTrack")} />
+              <Text>{t("components.single-cell.toggles.keep-genes")}</Text>
+            </Space>
           </Space>
         </Col>
         <Col span={24}>
@@ -134,6 +138,7 @@ export default function SingleCellTab() {
                 compact: pinned,
                 plotInsets,
                 plotHeight: dragNav ?? layout.navHeight,
+                compactKeepsGenes: Boolean(layout.keepGeneTrack),
               }}
             />
             </div>

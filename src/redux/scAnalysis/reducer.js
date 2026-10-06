@@ -52,7 +52,7 @@ export default function appReducer(state = initState, action) {
         groups: {
           ...state.groups,
           [action.side]: action.groups?.length
-            ? { groups: action.groups, label: action.label, nCells: countCells(action.groups) }
+            ? { groups: action.groups, label: action.label, nCells: countCells(action.groups), source: action.source || null }
             : null,
         },
       };

@@ -53,3 +53,31 @@ describe("rnaStats", () => {
     expect(quartiles([1, 2, 3, 4, 5]).median).toBe(3);
   });
 });
+
+describe("quick clustering", () => {
+  const { pca, kmeans, scaledExpression, clusteredGeneOrder } = require("./rnaStats");
+  it("separates two obvious groups with PCA + k-means", () => {
+    // 10 cells x 4 genes: cells 0-4 express genes 0-1, cells 5-9 genes 2-3.
+    const nCells = 10;
+    const dense = (on) => Array.from({ length: nCells }, (_, i) => (on(i) ? 3 + (i % 2) * 0.1 : 0));
+    const genes = [dense((i) => i < 5), dense((i) => i < 5), dense((i) => i >= 5), dense((i) => i >= 5)];
+    const indptr = [0];
+    const indices = [];
+    const data = [];
+    genes.forEach((g) => {
+      g.forEach((v, i) => v && (indices.push(i), data.push(v)));
+      indptr.push(indices.length);
+    });
+    const m = { indptr: Int32Array.from(indptr), indices: Int32Array.from(indices), data: Float32Array.from(data) };
+    const X = scaledExpression(m, [0, 1, 2, 3], nCells);
+    const { scores } = pca(X, nCells, 4, 2);
+    const labels = kmeans([scores[0], scores[1]], 2);
+    expect(new Set(Array.from(labels.slice(0, 5))).size).toBe(1);
+    expect(new Set(Array.from(labels.slice(5))).size).toBe(1);
+    expect(labels[0]).not.toBe(labels[9]);
+    const order = clusteredGeneOrder(X, nCells, 4);
+    const pos = (j) => order.indexOf(j);
+    expect(Math.abs(pos(0) - pos(1))).toBe(1);
+    expect(Math.abs(pos(2) - pos(3))).toBe(1);
+  });
+});

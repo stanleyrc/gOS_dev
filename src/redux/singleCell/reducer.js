@@ -154,6 +154,19 @@ export default function appReducer(state = initState, action) {
     }
     case actions.SC_SIDE_PANEL_UPDATED:
       return { ...state, sidePanel: Boolean(action.visible) };
+    case actions.SC_RNA_FIELD_ADDED: {
+      if (state.rna.status !== "ok") return state;
+      const summary = state.rna.data;
+      const cells = summary.cells.map((c) => ({ ...c, [action.name]: action.values[c.displayId] ?? null }));
+      const levels = [...new Set(Object.values(action.values).filter((v) => v != null).map(String))].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true })
+      );
+      const fields = [
+        ...summary.fields.filter((f) => f.name !== action.name),
+        { name: action.name, numeric: false, levels },
+      ];
+      return { ...state, rna: { ...state.rna, data: { ...summary, cells, fields } } };
+    }
     case actions.SC_LAYOUT_UPDATED:
       return { ...state, layout: { ...state.layout, ...action.patch } };
     case actions.SC_PLOT_INSETS_UPDATED:

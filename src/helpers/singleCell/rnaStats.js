@@ -249,3 +249,142 @@ export function quartiles(values) {
   };
   return { q1: at(0.25), median: at(0.5), q3: at(0.75) };
 }
+
+/* ----------------------------------------------------------------------- */
+/* Quick clustering: PCA on scaled genes, k-means on PC scores              */
+/* ----------------------------------------------------------------------- */
+
+/** Cells x genes matrix of z-scored (clipped at ±10) log-normalized values. */
+export function scaledExpression(matrix, geneIdx, nCells) {
+  const X = new Float32Array(nCells * geneIdx.length);
+  geneIdx.forEach((g, j) => {
+    const col = new Float32Array(nCells);
+    for (let k = matrix.indptr[g]; k < matrix.indptr[g + 1]; k += 1) col[matrix.indices[k]] = matrix.data[k];
+    let mean = 0;
+    col.forEach((v) => (mean += v));
+    mean /= nCells;
+    let sd = 0;
+    col.forEach((v) => (sd += (v - mean) ** 2));
+    sd = Math.sqrt(sd / Math.max(1, nCells - 1)) || 1;
+    for (let i = 0; i < nCells; i += 1) X[i * geneIdx.length + j] = Math.max(-10, Math.min(10, (col[i] - mean) / sd));
+  });
+  return X;
+}
+
+/**
+ * Top principal components of a cells x genes matrix via the cells x cells
+ * Gram matrix and power iteration (fast when cells << genes).
+ * Returns { scores: [Float64Array(nCells)] per PC, values: eigenvalues }.
+ */
+export function pca(X, nCells, nGenes, nPcs = 10, iterations = 120) {
+  const K = new Float64Array(nCells * nCells);
+  for (let a = 0; a < nCells; a += 1) {
+    for (let b = a; b < nCells; b += 1) {
+      let s = 0;
+      const oa = a * nGenes;
+      const ob = b * nGenes;
+      for (let j = 0; j < nGenes; j += 1) s += X[oa + j] * X[ob + j];
+      K[a * nCells + b] = s;
+      K[b * nCells + a] = s;
+    }
+  }
+  // Double-centre the Gram matrix (genes are centred already; this is safe).
+  const vectors = [];
+  const values = [];
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) - 0.5;
+  for (let p = 0; p < Math.min(nPcs, nCells - 1); p += 1) {
+    let v = Float64Array.from({ length: nCells }, rand);
+    let lambda = 0;
+    for (let it = 0; it < iterations; it += 1) {
+      const w = new Float64Array(nCells);
+      for (let a = 0; a < nCells; a += 1) {
+        let s = 0;
+        const o = a * nCells;
+        for (let b = 0; b < nCells; b += 1) s += K[o + b] * v[b];
+        w[a] = s;
+      }
+      vectors.forEach((u) => {
+        let d = 0;
+        for (let a = 0; a < nCells; a += 1) d += w[a] * u[a];
+        for (let a = 0; a < nCells; a += 1) w[a] -= d * u[a];
+      });
+      let norm = 0;
+      w.forEach((x) => (norm += x * x));
+      norm = Math.sqrt(norm) || 1;
+      lambda = norm;
+      v = w.map((x) => x / norm);
+    }
+    vectors.push(v);
+    values.push(lambda);
+  }
+  const scores = vectors.map((u, p) => u.map((x) => x * Math.sqrt(values[p])));
+  return { scores, values };
+}
+
+/** k-means (k-means++ init, deterministic) on points = [dims][n]; returns labels 0..k-1. */
+export function kmeans(points, k, iterations = 60) {
+  const dims = points.length;
+  const n = points[0]?.length || 0;
+  if (!n || k < 1) return new Int32Array(n);
+  let seed = 11;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const dist = (i, c) => {
+    let s = 0;
+    for (let d = 0; d < dims; d += 1) s += (points[d][i] - c[d]) ** 2;
+    return s;
+  };
+  const centres = [Array.from({ length: dims }, (_, d) => points[d][Math.floor(rand() * n)])];
+  while (centres.length < k) {
+    const d2 = Array.from({ length: n }, (_, i) => Math.min(...centres.map((c) => dist(i, c))));
+    const total = d2.reduce((s, x) => s + x, 0);
+    let r = rand() * total;
+    let pick = 0;
+    for (; pick < n - 1 && r > d2[pick]; pick += 1) r -= d2[pick];
+    centres.push(Array.from({ length: dims }, (_, d) => points[d][pick]));
+  }
+  const labels = new Int32Array(n);
+  for (let it = 0; it < iterations; it += 1) {
+    let moved = false;
+    for (let i = 0; i < n; i += 1) {
+      let best = 0;
+      let bestD = Infinity;
+      centres.forEach((c, j) => {
+        const d = dist(i, c);
+        if (d < bestD) {
+          bestD = d;
+          best = j;
+        }
+      });
+      if (labels[i] !== best) moved = true;
+      labels[i] = best;
+    }
+    centres.forEach((c, j) => {
+      const members = [];
+      for (let i = 0; i < n; i += 1) if (labels[i] === j) members.push(i);
+      if (!members.length) return;
+      for (let d = 0; d < dims; d += 1) c[d] = members.reduce((s, i) => s + points[d][i], 0) / members.length;
+    });
+    if (!moved && it > 0) break;
+  }
+  // Relabel by size, largest first, so cluster 1 is the biggest.
+  const sizes = Array.from({ length: k }, (_, j) => [j, labels.filter((l) => l === j).length]).sort((a, b) => b[1] - a[1]);
+  const rank = new Map(sizes.map(([j], r) => [j, r]));
+  return labels.map((l) => rank.get(l));
+}
+
+/**
+ * Order genes so co-expressed genes sit together: angle of each gene's
+ * loading on the first two PCs of the cells (computed on those genes).
+ */
+export function clusteredGeneOrder(X, nCells, nGenes) {
+  if (nGenes < 3) return Array.from({ length: nGenes }, (_, j) => j);
+  const { scores } = pca(X, nCells, nGenes, 2, 80);
+  const load = (p, j) => {
+    let s = 0;
+    for (let i = 0; i < nCells; i += 1) s += X[i * nGenes + j] * scores[p][i];
+    return s;
+  };
+  const angle = Array.from({ length: nGenes }, (_, j) => Math.atan2(load(1, j), load(0, j)));
+  return angle.map((a, j) => [a, j]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+}

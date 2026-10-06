@@ -34,6 +34,8 @@ export const SC_DEFAULT_LAYOUT = {
   navHeight: 240, // px of the gene + cytoband tracks above the heatmap
   showGenePanel: true, // expression of the RNA tab's picked genes beside the heatmap
   pinnedGenes: [], // genes marked across the heatmap and cell tracks
+  annotationFields: ["state", "Region_Annotation"], // cell metadata strips beside the clone strip
+  keepGeneTrack: false, // keep the gene track in the pinned navigation while scrolling
   sideWidth: null, // px of the mutation panel beside the CN heatmap (null = auto)
   geneWidth: null, // px of the gene expression panel (null = auto)
 };
@@ -57,6 +59,7 @@ const actions = {
   SC_SIDE_PANEL_UPDATED: "SC_SIDE_PANEL_UPDATED",
   SC_HOVER_UPDATED: "SC_HOVER_UPDATED",
   SC_LAYOUT_UPDATED: "SC_LAYOUT_UPDATED",
+  SC_RNA_FIELD_ADDED: "SC_RNA_FIELD_ADDED",
   SC_PLOT_INSETS_UPDATED: "SC_PLOT_INSETS_UPDATED",
   SC_IGV_OPENED: "SC_IGV_OPENED",
   SC_IGV_CLOSED: "SC_IGV_CLOSED",
@@ -93,6 +96,8 @@ const actions = {
   updateHover: (cellId) => ({ type: actions.SC_HOVER_UPDATED, cellId }),
   /** patch of SC_DEFAULT_LAYOUT keys; saved in this browser */
   updateLayout: (patch) => ({ type: actions.SC_LAYOUT_UPDATED, patch }),
+  /** Add (or replace) a computed RNA metadata field, e.g. k-means clusters: values keyed by RNA displayId. */
+  addRnaField: (name, values) => ({ type: actions.SC_RNA_FIELD_ADDED, name, values }),
   /** Pixels between the heatmap card's content edges and its genomic columns, minus genome-plot margins. */
   updatePlotInsets: (insets) => ({ type: actions.SC_PLOT_INSETS_UPDATED, insets }),
   /** Show reads for cells at a locus: { cellIds, chromosome, position, label } */

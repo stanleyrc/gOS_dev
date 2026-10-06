@@ -113,6 +113,7 @@ export class TracksLegendPanel extends Component {
       compact = false,
       plotInsets = null,
       plotHeight = null,
+      compactKeepsGenes = false,
     } = this.props;
     if (!visible) {
       return null;
@@ -242,7 +243,11 @@ export class TracksLegendPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
               style={{
-                ...(compact ? { height: "auto" } : plotHeight ? { height: plotHeight } : {}),
+                ...(compact
+                  ? { height: compactKeepsGenes ? 150 : "auto" }
+                  : plotHeight
+                  ? { height: plotHeight }
+                  : {}),
                 // Optional padding so the genome plots line up with another
                 // view's genomic columns (the single-cell heatmap).
                 ...(plotInsets
@@ -257,7 +262,12 @@ export class TracksLegendPanel extends Component {
                 {({ width, height }) => {
                   // With a custom height, extra room goes to the gene track
                   // and the cytobands keep their default 120 px.
-                  const genesHeight = plotHeight ? Math.max(40, height - 144) : height / 2.5;
+                  const genesHeight =
+                    compact && compactKeepsGenes
+                      ? Math.max(40, height - 70)
+                      : plotHeight
+                      ? Math.max(40, height - 144)
+                      : height / 2.5;
                   const cytobandsHeight = plotHeight ? 120 : height / 2;
                   return (
                     <Row style={{ width }} gutter={[margins.gap, 0]}>
@@ -267,7 +277,7 @@ export class TracksLegendPanel extends Component {
                           {...{ width: width - 2 * margins.padding }}
                         />
                       </Col>
-                      {!compact && (
+                      {(!compact || compactKeepsGenes) && (
                       <Col span={24}>
                         <GenesPlot
                           {...{

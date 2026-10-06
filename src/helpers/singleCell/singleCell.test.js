@@ -370,8 +370,8 @@ describe("domain zoom and pan", () => {
 describe("expression colours", () => {
   it("separates no RNA, zero and high expression", () => {
     expect(expressionRGB(undefined, 3)).toBeNull();
-    expect(expressionRGB(0, 3)).toEqual([0xef, 0xed, 0xf5]);
-    expect(expressionRGB(3, 3)).toEqual([0x3f, 0x00, 0x7d]);
-    expect(expressionRGB(10, 3)).toEqual([0x3f, 0x00, 0x7d]);
+    expect(expressionRGB(0, 3)).toEqual([0xea, 0xea, 0xea]);
+    expect(expressionRGB(3, 3)).toEqual([0x08, 0x1d, 0x58]);
+    expect(expressionRGB(10, 3)).toEqual([0x08, 0x1d, 0x58]);
   });
 });
