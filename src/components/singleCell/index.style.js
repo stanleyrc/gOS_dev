@@ -257,6 +257,14 @@ const Wrapper = styled.div`
   .sc-width-handle:hover {
     background: rgba(22, 119, 255, 0.5);
   }
+  .sc-hover-clade {
+    border-color: #fa541c;
+    background: rgba(250, 84, 28, 0.08);
+  }
+  .sc-gene-zoom {
+    display: flex;
+    justify-content: flex-end;
+  }
   .sc-side-axis {
     display: flex;
     align-items: center;

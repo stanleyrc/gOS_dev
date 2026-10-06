@@ -22,6 +22,7 @@ export default function PhylogenyCanvas({
   selectedLeafRange = null,
   selectedRows = null,
   hoverRow = null,
+  hoverRange = null,
   pixelRatio = 1,
   onSelectRange,
   onHoverNode,
@@ -96,8 +97,9 @@ export default function PhylogenyCanvas({
     layout.nodes.forEach((n, k) => {
       const color = nodeClones[k] != null ? cloneColors[nodeClones[k]] : null;
       const picked = nodeSelected && nodeSelected[k];
-      ctx.strokeStyle = picked ? "#1677ff" : color || "#8c8c8c";
-      ctx.lineWidth = picked ? 2.5 : lineWidth;
+      const hovered = hoverRange && n.firstLeaf >= hoverRange[0] && n.lastLeaf <= hoverRange[1];
+      ctx.strokeStyle = hovered ? "#fa541c" : picked ? "#1677ff" : color || "#8c8c8c";
+      ctx.lineWidth = hovered || picked ? 2.5 : lineWidth;
       if (n.parent >= 0) {
         const parent = layout.nodes[n.parent];
         ctx.beginPath();
@@ -158,12 +160,16 @@ export default function PhylogenyCanvas({
     const rowH = height / nRows;
     const dotR = Math.max(1.5, Math.min(3, rowH / 2));
     if (selectedRows) selectedRows.forEach((row) => dot(row, "#1677ff", dotR));
-    if (hoverRow != null && hoverRow >= 0) {
+    if (hoverRange) {
+      // Hovering a clade: shade every row it spans (what a click selects).
+      ctx.fillStyle = "rgba(250,84,28,0.10)";
+      ctx.fillRect(0, hoverRange[0] * rowH, width, Math.max(1, (hoverRange[1] - hoverRange[0] + 1) * rowH));
+    } else if (hoverRow != null && hoverRow >= 0) {
       ctx.fillStyle = "rgba(22,119,255,0.18)";
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, "#fa541c", dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, pixelRatio]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;
