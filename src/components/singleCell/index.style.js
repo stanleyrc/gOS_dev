@@ -146,6 +146,23 @@ const Wrapper = styled.div`
     font-size: 11px;
     fill: #595959;
   }
+  .sc-igv {
+    min-height: 320px;
+    margin-top: 8px;
+  }
+  .sc-level {
+    padding: 0 6px;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+  }
+  .sc-resize-handle {
+    cursor: col-resize;
+    background: #f0f0f0;
+    border-radius: 1px;
+  }
+  .sc-resize-handle:hover {
+    background: #1677ff;
+  }
   .sc-toolbar {
     margin-bottom: 8px;
   }

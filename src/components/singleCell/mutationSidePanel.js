@@ -26,7 +26,8 @@ const clampRange = (start, span, total) => {
  * columns each pixel is a bin coloured by the fraction of sites with alt
  * reads; zoomed in, each site has its own column coloured by the metric
  * (VAF, alt reads or total reads). Cmd/Ctrl/Alt-scroll zooms, drag pans,
- * double-click resets.
+ * double-click resets. Clicking a binned column zooms to its sites; clicking
+ * a single site calls onSiteClick (the gOS view opens that cell's reads).
  */
 export default function MutationSidePanel({
   snv,
@@ -39,6 +40,7 @@ export default function MutationSidePanel({
   height,
   pixelRatio = 1,
   onRowClick,
+  onSiteClick = null,
   onHover,
   onLeave,
   axisHeight = 18,
@@ -142,7 +144,16 @@ export default function MutationSidePanel({
           pixelRatio={pixelRatio}
           separators={groups.separators}
           highlightRows={highlightRows}
-          onClick={onRowClick}
+          onClick={(hit, event) => {
+            const a = bins.binStart[hit.col];
+            const b = bins.binEnd[hit.col];
+            if (a >= 0 && b - a > 1) {
+              setRange(clampRange(a, b - a, total));
+              return;
+            }
+            onRowClick(hit, event);
+            if (a >= 0 && onSiteClick) onSiteClick(hit.row, columnOrder[a], event);
+          }}
           onDrag={handleDrag}
           onWheelZoom={({ x, deltaY }) => zoomAt(x / width, deltaY > 0 ? 1.25 : 0.8)}
           onHover={({ row, col }, event) => onHover(row, col < 0 ? [] : describe(row, col), event)}

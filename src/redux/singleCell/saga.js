@@ -4,6 +4,7 @@ import actions, {
   SC_FETCH_CONCURRENCY,
   SC_FETCHED_TRACKS,
   SC_MAX_TRACK_CELLS,
+  SC_LAYOUT_STORAGE_KEY,
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
@@ -302,7 +303,17 @@ function* persistPalette() {
   }
 }
 
+function* persistLayout() {
+  const { SingleCell } = yield select(getState);
+  try {
+    window.localStorage.setItem(SC_LAYOUT_STORAGE_KEY, JSON.stringify(SingleCell.layout));
+  } catch (error) {
+    // storage unavailable: keep the in-memory layout only
+  }
+}
+
 function* actionWatcher() {
+  yield takeLatest(actions.SC_LAYOUT_UPDATED, persistLayout);
   yield takeLatest(actions.SC_CN_MODE_UPDATED, loadAllelic);
   yield takeLatest(actions.SC_PALETTE_UPDATED, persistPalette);
   yield takeLatest(actions.FETCH_SINGLE_CELL_DATA_REQUEST, fetchSingleCellData);

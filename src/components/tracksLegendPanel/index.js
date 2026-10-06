@@ -110,6 +110,8 @@ export class TracksLegendPanel extends Component {
       visible,
       handleYscaleModeChange,
       yScaleMode,
+      compact = false,
+      plotInsets = null,
     } = this.props;
     if (!visible) {
       return null;
@@ -123,7 +125,8 @@ export class TracksLegendPanel extends Component {
       <Wrapper>
         <Card
           size="small"
-          title={
+          className={compact ? "tracks-legend-compact" : undefined}
+          title={compact ? null : (
             <Space>
               <span role="img" className="anticon anticon-dashboard">
                 <AiFillBoxPlot />
@@ -144,8 +147,8 @@ export class TracksLegendPanel extends Component {
                 />
               </Tooltip>
             </Space>
-          }
-          extra={
+          )}
+          extra={compact ? null : (
             <Space>
               {loading ? (
                 <Spin
@@ -231,12 +234,23 @@ export class TracksLegendPanel extends Component {
                 />
               </Tooltip>
             </Space>
-          }
+          )}
         >
           {
             <div
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
+              style={{
+                ...(compact ? { height: "auto" } : {}),
+                // Optional padding so the genome plots line up with another
+                // view's genomic columns (the single-cell heatmap).
+                ...(plotInsets
+                  ? {
+                      marginLeft: Math.max(0, plotInsets.left),
+                      marginRight: Math.max(0, plotInsets.right),
+                    }
+                  : {}),
+              }}
             >
               <ContainerDimensions>
                 {({ width, height }) => {
@@ -250,6 +264,7 @@ export class TracksLegendPanel extends Component {
                           {...{ width: width - 2 * margins.padding }}
                         />
                       </Col>
+                      {!compact && (
                       <Col span={24}>
                         <GenesPlot
                           {...{
@@ -265,6 +280,8 @@ export class TracksLegendPanel extends Component {
                           margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }}
                         />
                       </Col>
+                      )}
+                      {!compact && (
                       <Col span={24}>
                         <CytobandsPlot
                           {...{
@@ -279,6 +296,7 @@ export class TracksLegendPanel extends Component {
                           margins={{ gapX: 50, gapY: 24, gapYUnits: 2 }}
                         />
                       </Col>
+                      )}
                     </Row>
                   );
                 }}

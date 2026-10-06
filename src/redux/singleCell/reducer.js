@@ -1,6 +1,20 @@
-import actions, { SC_DEFAULT_TRACKS, SC_PALETTE_STORAGE_KEY } from "./actions";
+import actions, {
+  SC_DEFAULT_LAYOUT,
+  SC_DEFAULT_TRACKS,
+  SC_LAYOUT_STORAGE_KEY,
+  SC_PALETTE_STORAGE_KEY,
+} from "./actions";
 import caseReportActions from "../caseReport/actions";
 import { DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
+
+const storedLayout = () => {
+  try {
+    const raw = window.localStorage.getItem(SC_LAYOUT_STORAGE_KEY);
+    return { ...SC_DEFAULT_LAYOUT, ...(raw ? JSON.parse(raw) : {}) };
+  } catch (error) {
+    return { ...SC_DEFAULT_LAYOUT };
+  }
+};
 
 const storedPalette = () => {
   try {
@@ -42,6 +56,9 @@ const initState = {
   palette: storedPalette(),
   sidePanel: true,
   hoveredCellId: null,
+  layout: storedLayout(),
+  plotInsets: { left: 0, right: 0 },
+  igv: null, // { cellIds, chromosome, position, label }
   perCell: {}, // { [cellId]: { [track]: { status, data, error } } }
 };
 
@@ -51,6 +68,8 @@ const preferences = (state) => ({
   snvMetric: state.snvMetric,
   palette: state.palette,
   sidePanel: state.sidePanel,
+  layout: state.layout,
+  plotInsets: state.plotInsets,
 });
 
 const sameIds = (a, b) => a.length === b.length && a.every((v, k) => v === b[k]);
@@ -135,6 +154,16 @@ export default function appReducer(state = initState, action) {
     }
     case actions.SC_SIDE_PANEL_UPDATED:
       return { ...state, sidePanel: Boolean(action.visible) };
+    case actions.SC_LAYOUT_UPDATED:
+      return { ...state, layout: { ...state.layout, ...action.patch } };
+    case actions.SC_PLOT_INSETS_UPDATED:
+      return state.plotInsets.left === action.insets.left && state.plotInsets.right === action.insets.right
+        ? state
+        : { ...state, plotInsets: action.insets };
+    case actions.SC_IGV_OPENED:
+      return { ...state, igv: action.view };
+    case actions.SC_IGV_CLOSED:
+      return { ...state, igv: null };
     case actions.SC_HOVER_UPDATED:
       return state.hoveredCellId === (action.cellId ?? null)
         ? state
