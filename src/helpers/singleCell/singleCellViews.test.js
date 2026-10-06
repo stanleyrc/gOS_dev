@@ -194,3 +194,19 @@ describe("static RNA files", () => {
     expect(expressionByCell(summary, matrix, "NOPE")).toBeNull();
   });
 });
+
+describe("long branch shortening", () => {
+  it("caps outlier edges and marks them", () => {
+    const { clipLongBranches, longBranchCap } = require("./newick");
+    const leaves = Array.from({ length: 8 }, (_, k) => `t${k}:0.01`).join(",");
+    const layout = layoutTree(parseNewick(`((${leaves}):0.01,normal:5);`));
+    const cap = longBranchCap(layout);
+    expect(cap).toBeLessThan(5);
+    const clipped = clipLongBranches(layout, cap);
+    const normal = clipped.nodes.find((n) => n.name === "normal");
+    expect(normal.clipped).toBe(true);
+    expect(normal.x).toBeCloseTo(cap, 9);
+    expect(clipped.leaves).toEqual(layout.leaves);
+    expect(clipped.maxX).toBeLessThan(layout.maxX);
+  });
+});

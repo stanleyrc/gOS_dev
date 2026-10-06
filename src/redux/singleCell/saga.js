@@ -10,7 +10,7 @@ import actions, {
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
-import { treeForCells } from "../../helpers/singleCell/newick";
+import { parseNewick, treeForCells } from "../../helpers/singleCell/newick";
 import { cloneColorMap, defaultCellOrder } from "../../helpers/singleCell/matrix";
 import {
   allelicRowFromAllelic,
@@ -60,8 +60,10 @@ function* manifestRecords(dataset) {
 function buildTree(treeFile, cellIds, snv, cn, genomeLength) {
   if (treeFile.status === "ok") {
     try {
-      const built = treeForCells(treeFile.data, cellIds);
-      if (built.layout) return { ...ok(built), method: "file" };
+      // Keep the parsed tree (source) so views can re-prune it, e.g. to hide clones.
+      const source = parseNewick(treeFile.data);
+      const built = treeForCells(source, cellIds);
+      if (built.layout) return { ...ok({ ...built, source }), method: "file" };
     } catch (error) {
       // fall through to inference, but keep the parse error visible
       const inferred = buildTree(missing(), cellIds, snv, cn, genomeLength);
@@ -73,11 +75,11 @@ function buildTree(treeFile, cellIds, snv, cn, genomeLength) {
   }
   if (snv.status === "ok" && hasInformativeSnvs(snv.data)) {
     const root = upgma(snvDistances(snv.data), cellIds);
-    return { ...ok(treeForCells(root, cellIds)), method: "snv" };
+    return { ...ok({ ...treeForCells(root, cellIds), source: root }), method: "snv" };
   }
   if (cn.status === "ok" && cn.data.rows.some(Boolean)) {
     const root = upgma(cnDistances(cn.data.rows, genomeLength), cellIds);
-    return { ...ok(treeForCells(root, cellIds)), method: "cn" };
+    return { ...ok({ ...treeForCells(root, cellIds), source: root }), method: "cn" };
   }
   return { ...missing(), method: null };
 }

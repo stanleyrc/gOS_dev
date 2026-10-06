@@ -287,3 +287,45 @@ export function toUnitHeight(root) {
   });
   return copy(root, true);
 }
+
+/**
+ * Cap for outlier branches: 3x the 95th percentile of non-zero edge lengths.
+ * Returns Infinity when there is nothing to clip.
+ */
+export function longBranchCap(layout, factor = 3, quantile = 0.95) {
+  if (!layout) return Infinity;
+  const edges = layout.nodes
+    .filter((n) => n.parent >= 0)
+    .map((n) => n.x - layout.nodes[n.parent].x)
+    .filter((e) => e > 0)
+    .sort((a, b) => a - b);
+  if (edges.length < 5) return Infinity;
+  return factor * edges[Math.floor(quantile * (edges.length - 1))];
+}
+
+/**
+ * Copy of a layout with edges longer than `cap` shortened to `cap` (x
+ * recomputed from the root). Shortened nodes get `clipped: true` so the
+ * drawing can mark the break. Leaf rows are unchanged.
+ */
+export function clipLongBranches(layout, cap) {
+  if (!layout || !Number.isFinite(cap)) return layout;
+  const nodes = layout.nodes.map((n) => ({ ...n }));
+  const done = new Array(nodes.length).fill(false);
+  const place = (k) => {
+    if (done[k]) return nodes[k].x;
+    const n = nodes[k];
+    if (n.parent < 0) {
+      n.x = 0;
+    } else {
+      const edge = layout.nodes[k].x - layout.nodes[n.parent].x;
+      n.clipped = edge > cap;
+      n.x = place(n.parent) + Math.min(edge, cap);
+    }
+    done[k] = true;
+    return n.x;
+  };
+  nodes.forEach((_, k) => place(k));
+  const maxX = nodes.reduce((m, n) => Math.max(m, n.x), 0);
+  return { ...layout, nodes, maxX };
+}

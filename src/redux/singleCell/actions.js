@@ -1,7 +1,7 @@
 // Tracks shown for each selected cell. Coverage and total CN are on by
 // default; the others are toggles. All come from the cell's own case folder.
-export const SC_TRACKS = ["coverage", "total", "allelic", "hetsnps", "mutations"];
-export const SC_DEFAULT_TRACKS = ["coverage", "total"];
+export const SC_TRACKS = ["total", "coverage", "allelic", "hetsnps", "mutations"];
+export const SC_DEFAULT_TRACKS = ["total", "coverage"];
 // Tracks fetched on demand when a cell is selected (total CN and SNVs are
 // already loaded for the heatmaps).
 export const SC_FETCHED_TRACKS = {
@@ -18,7 +18,18 @@ export const SC_PALETTE_STORAGE_KEY = "gos.singleCell.cnPalette";
 export const SC_LAYOUT_STORAGE_KEY = "gos.singleCell.layout";
 // Layout preferences: tree width (px), heatmap row height ("auto" or px per
 // row), and whether the UMAP and cell table show in the Single-Cell tab.
-export const SC_DEFAULT_LAYOUT = { treeWidth: 220, rowHeight: "auto", showUmap: false, showCellTable: false };
+// clipBranches shortens outlier branches (e.g. a normal outgroup) so tumour
+// structure stays visible; hiddenClones drops those clones from the tree and
+// heatmap; igvSync zooms every genome view to the site IGV shows.
+export const SC_DEFAULT_LAYOUT = {
+  treeWidth: 220,
+  rowHeight: "auto",
+  showUmap: false,
+  showCellTable: false,
+  clipBranches: true,
+  hiddenClones: [],
+  igvSync: true,
+};
 
 const actions = {
   FETCH_SINGLE_CELL_DATA_REQUEST: "FETCH_SINGLE_CELL_DATA_REQUEST",

@@ -91,6 +91,21 @@ export default function PhylogenyCanvas({
         ctx.moveTo(px(parent.x), py(n.y));
         ctx.lineTo(px(n.x), py(n.y));
         ctx.stroke();
+        if (n.clipped) {
+          // Shortened outlier branch: a "//" break mark at its midpoint.
+          const mx = (px(parent.x) + px(n.x)) / 2;
+          const y = py(n.y);
+          ctx.save();
+          ctx.strokeStyle = "#595959";
+          ctx.lineWidth = 1;
+          [-2.5, 2.5].forEach((dx) => {
+            ctx.beginPath();
+            ctx.moveTo(mx + dx - 2, y + 4);
+            ctx.lineTo(mx + dx + 2, y - 4);
+            ctx.stroke();
+          });
+          ctx.restore();
+        }
       }
       if (!n.isLeaf) {
         const first = layout.nodes[n.children[0]];

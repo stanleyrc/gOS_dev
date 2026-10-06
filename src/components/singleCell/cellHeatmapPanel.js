@@ -13,6 +13,7 @@ import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
+import { clipLongBranches, longBranchCap, treeForCells } from "../../helpers/singleCell/newick";
 import {
   MISSING_RGBA,
   binLabel,
@@ -44,6 +45,10 @@ const GAP = 4;
 // and 50 px between regions; the heatmap uses the same so they line up.
 const GENOME_MARGIN = 50;
 const DOMAIN_GAP = 50;
+// The cell tracks sit inside nested cards (cellTracksPanel TRACK_NESTING), so
+// the genomic area keeps at least this much room on each side for them to match.
+const MIN_GENOME_LEFT = GENOME_MARGIN + 40;
+const MIN_GENOME_RIGHT = GENOME_MARGIN + 24;
 // Tree block = tree + gap + 2 px handle + gap (the row is a flex box with 4 px gaps).
 const HANDLE_WIDTH = 10;
 const TREE_MIN = 80;
@@ -84,7 +89,7 @@ export default function CellHeatmapPanel() {
   const canvasHolder = useRef(null);
 
   const {
-    order,
+    order: fullOrder,
     cells,
     cloneColors,
     tree,
@@ -102,8 +107,34 @@ export default function CellHeatmapPanel() {
     selectedCellIds,
     layout,
   } = sc;
+  const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
+  const cloneNames = useMemo(
+    () => [...new Set(cells.map((c) => c.clone_id).filter((c) => c != null))].sort(),
+    [cells]
+  );
+
+  /* ---- displayed rows: hidden clones removed (tree re-pruned), long branches shortened ---- */
+  const hiddenKey = (layout.hiddenClones || []).join("|");
+  const view = useMemo(() => {
+    const hidden = new Set(layout.hiddenClones || []);
+    let rows = fullOrder;
+    let treeLayout = tree.status === "ok" ? tree.data?.layout || null : null;
+    if (hidden.size) {
+      rows = fullOrder.filter((id) => !hidden.has(cellById.get(id)?.clone_id));
+      if (tree.status === "ok" && tree.data?.source) {
+        const built = treeForCells(tree.data.source, rows);
+        treeLayout = built.layout;
+        rows = [...(built.layout?.leaves || []), ...rows.filter((id) => built.unplaced.includes(id))];
+      }
+    }
+    if (treeLayout && layout.clipBranches) treeLayout = clipLongBranches(treeLayout, longBranchCap(treeLayout));
+    return { rows, treeLayout };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullOrder, tree, cellById, hiddenKey, layout.clipBranches]);
+  const order = view.rows;
+  const treeLayout = view.treeLayout;
   const nRows = order.length;
-  const hasTree = tree.status === "ok" && Boolean(tree.data?.layout);
+  const hasTree = Boolean(treeLayout);
   const [dragTreeWidth, setDragTreeWidth] = useState(null);
   const treeWidth = hasTree
     ? Math.max(TREE_MIN, Math.min(TREE_MAX, dragTreeWidth ?? layout.treeWidth, containerWidth - 400))
@@ -114,11 +145,11 @@ export default function CellHeatmapPanel() {
   const sideWidth = showSide ? sidePanelWidth(containerWidth) : 0;
   // Annotation strip: selection, clone, and the searched gene's expression when shown.
   const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
-  // Genomic columns start at genomeLeft and leave rightSpace, both at least
-  // GENOME_MARGIN so the 50 px-margin genome plots can be padded to match.
-  const leftPad = Math.max(0, GENOME_MARGIN - (treeBlock + annotationWidth + GAP));
+  // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
+  // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
+  const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
   const genomeLeft = leftPad + treeBlock + annotationWidth + GAP;
-  const rightSpace = showSide ? sideWidth + GAP : GENOME_MARGIN;
+  const rightSpace = showSide ? Math.max(MIN_GENOME_RIGHT, sideWidth + GAP) : MIN_GENOME_RIGHT;
   const heatWidth = Math.max(200, containerWidth - genomeLeft - rightSpace);
   const height = heatmapHeight(nRows, layout.rowHeight);
   useEffect(() => {
@@ -193,7 +224,6 @@ export default function CellHeatmapPanel() {
   const zoomAll = (factor) =>
     pushDomains(currentDomains().map((d) => zoomDomain(d, (d[0] + d[1]) / 2, factor, bounds)));
 
-  const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const rowOf = useMemo(() => new Map(order.map((id, k) => [id, k])), [order]);
   const selectedRows = useMemo(
     () => new Set(selectedCellIds.map((id) => rowOf.get(id)).filter((r) => r != null)),
@@ -201,8 +231,8 @@ export default function CellHeatmapPanel() {
   );
   const hoverRow = hoveredCellId != null && rowOf.has(hoveredCellId) ? rowOf.get(hoveredCellId) : null;
   const leafClones = useMemo(
-    () => (hasTree ? tree.data.layout.leaves.map((id) => cellById.get(id)?.clone_id ?? null) : []),
-    [hasTree, tree, cellById]
+    () => (hasTree ? treeLayout.leaves.map((id) => cellById.get(id)?.clone_id ?? null) : []),
+    [hasTree, treeLayout, cellById]
   );
   const selectedLeafRange = useMemo(() => {
     if (!hasTree || !selectedRows.size) return null;
@@ -210,16 +240,16 @@ export default function CellHeatmapPanel() {
     const lo = Math.min(...rows);
     const hi = Math.max(...rows);
     // Only shade when the selection is one contiguous block of tree rows.
-    return hi - lo + 1 === rows.length && hi < tree.data.layout.leaves.length ? [lo, hi] : null;
-  }, [hasTree, selectedRows, tree]);
+    return hi - lo + 1 === rows.length && hi < treeLayout.leaves.length ? [lo, hi] : null;
+  }, [hasTree, selectedRows, treeLayout]);
 
   /* ---- mutation matrix shared by the SNV view and the side panel ---- */
   const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
-    if (snvOrder === "tree") return treeColumnOrder(snv.data, hasTree ? tree.data.layout : null, snvRows);
+    if (snvOrder === "tree") return treeColumnOrder(snv.data, treeLayout, snvRows);
     return snvColumnOrder(snv.data, snvOrder);
-  }, [snvReady, snv, snvOrder, hasTree, tree, snvRows]);
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows]);
   const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
   const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
 
@@ -527,6 +557,32 @@ export default function CellHeatmapPanel() {
               }))}
             />
           </Space>
+          {cloneNames.length > 1 && (
+            <Space size={4}>
+              <Text type="secondary">{t("components.single-cell.toolbar.hide")}</Text>
+              <Select
+                size="small"
+                mode="multiple"
+                allowClear
+                maxTagCount="responsive"
+                style={{ minWidth: 160, maxWidth: 320 }}
+                placeholder={t("components.single-cell.toolbar.hide-placeholder")}
+                value={layout.hiddenClones || []}
+                onChange={(value) => dispatch(singleCellActions.updateLayout({ hiddenClones: value }))}
+                options={cloneNames.map((c) => ({ value: c, label: c }))}
+              />
+            </Space>
+          )}
+          {tree.status === "ok" && (
+            <Checkbox
+              checked={layout.clipBranches}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ clipBranches: e.target.checked }))}
+            >
+              <Tooltip title={t("components.single-cell.toolbar.clip-help")}>
+                {t("components.single-cell.toolbar.clip")}
+              </Tooltip>
+            </Checkbox>
+          )}
           {snvReady && heatmapType !== "snv" && (
             <Checkbox
               checked={sidePanel}
@@ -584,7 +640,7 @@ export default function CellHeatmapPanel() {
             {leftPad > 0 && <div style={{ width: leftPad - GAP, flex: "none" }} />}
             {hasTree && (
               <PhylogenyCanvas
-                layout={tree.data.layout}
+                layout={treeLayout}
                 nRows={nRows}
                 width={treeWidth}
                 height={height}

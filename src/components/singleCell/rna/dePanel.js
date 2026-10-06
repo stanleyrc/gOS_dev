@@ -20,15 +20,14 @@ import {
 } from "antd";
 import { AiOutlineDownload } from "react-icons/ai";
 import { ExperimentOutlined } from "@ant-design/icons";
-import { Volcano, downloadTsv } from "../analysisResultsPanel";
+import { downloadTsv } from "../analysisResultsPanel";
+import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { differentialExpression, overRepresentation, parseGmt } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
-const COLOR_UP = "#C2185B";
-const COLOR_DOWN = "#1F5FA8";
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
 const fmt = (v, d = 2) => (v == null ? "" : Number(v).toFixed(d));
 const DE_COLUMNS = ["gene", "avg_log2FC", "pct_1", "pct_2", "p_val", "p_val_adj", "q_val"];
@@ -54,9 +53,9 @@ const loadGmt = (file) => {
 /** Dot plot: genes x groups, dot size = % expressing, colour = mean expression scaled per gene. */
 function DotPlot({ genes, groups, summary, matrix }) {
   const [ref, width] = useContainerWidth(900);
-  const cell = 22;
-  const left = 150;
-  const top = 70;
+  const cell = 26;
+  const left = 110;
+  const top = 96;
   const data = useMemo(() => {
     return genes.map((gene) => {
       const g = summary.geneIndex.get(gene);
@@ -73,8 +72,9 @@ function DotPlot({ genes, groups, summary, matrix }) {
     });
   }, [genes, groups, summary, matrix]);
   const color = d3.interpolateViridis;
-  const plotWidth = Math.min(width, left + groups.length * cell + 20);
-  const height = top + genes.length * cell + 10;
+  const legendX = left + groups.length * cell + 24;
+  const plotWidth = Math.max(Math.min(width, legendX + 150), legendX + 150);
+  const height = Math.max(top + genes.length * cell + 10, top + 170);
   return (
     <div ref={ref} style={{ overflowX: "auto" }}>
       <svg width={plotWidth} height={height} role="img" aria-label="Dot plot">
@@ -101,6 +101,62 @@ function DotPlot({ genes, groups, summary, matrix }) {
             ))}
           </g>
         ))}
+        {/* legends: dot size = % expressing, colour = mean scaled per gene */}
+        <g transform={`translate(${legendX} ${top})`}>
+          <text fontSize="11" fill="#595959" fontWeight="600">% expressing</text>
+          {[0.25, 0.5, 1].map((f, k) => (
+            <g key={f} transform={`translate(${12 + k * 34} 22)`}>
+              <circle r={Math.sqrt(f) * (cell / 2 - 1)} fill="#8C8C8C" />
+              <text y={24} textAnchor="middle" fontSize="10" fill="#8C8C8C">{`${f * 100}%`}</text>
+            </g>
+          ))}
+          <text y={78} fontSize="11" fill="#595959" fontWeight="600">mean (scaled)</text>
+          <defs>
+            <linearGradient id="dotplot-ramp" x1="0" x2="1">
+              {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+                <stop key={f} offset={f} stopColor={color(f)} />
+              ))}
+            </linearGradient>
+          </defs>
+          <rect y={86} width={110} height={10} fill="url(#dotplot-ramp)" rx={2} />
+          <text y={110} fontSize="10" fill="#8C8C8C">0</text>
+          <text x={110} y={110} fontSize="10" fill="#8C8C8C" textAnchor="end">max</text>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+/** Horizontal bars of -log10 q for the top enriched sets. */
+function EnrichmentBars({ terms, onTerm }) {
+  const [ref, width] = useContainerWidth(700);
+  const top = terms.slice(0, 12);
+  const labelW = Math.min(360, Math.max(180, width * 0.45));
+  const barW = Math.max(120, width - labelW - 70);
+  const max = d3.max(top, (r) => -Math.log10(Math.max(r.q_val, 1e-300))) || 1;
+  const x = d3.scaleLinear().domain([0, max]).range([0, barW]).nice();
+  const rowH = 22;
+  return (
+    <div ref={ref}>
+      <svg width={width} height={top.length * rowH + 30} role="img" aria-label="Enrichment bars">
+        {top.map((r, i) => {
+          const v = -Math.log10(Math.max(r.q_val, 1e-300));
+          return (
+            <g key={r.term} transform={`translate(0 ${i * rowH})`} style={{ cursor: "pointer" }} onClick={() => onTerm(r)}>
+              <text x={labelW - 8} y={rowH / 2 + 4} textAnchor="end" fontSize="11" fill="#262626">
+                {r.term.replace(/^HALLMARK_|^REACTOME_|^GOBP_/, "").replace(/_/g, " ").toLowerCase().slice(0, 52)}
+              </text>
+              <rect x={labelW} y={4} width={Math.max(1, x(v))} height={rowH - 8} rx={2} fill={r.q_val < 0.05 ? "#722ED1" : "#D3ADF7"} />
+              <text x={labelW + x(v) + 6} y={rowH / 2 + 4} fontSize="10" fill="#8C8C8C">
+                {`${r.overlap}/${r.size}`}
+              </text>
+            </g>
+          );
+        })}
+        <line x1={labelW + x(-Math.log10(0.05))} x2={labelW + x(-Math.log10(0.05))} y1={0} y2={top.length * rowH} stroke="#8C8C8C" strokeDasharray="4 4" />
+        <text x={labelW + barW / 2} y={top.length * rowH + 22} textAnchor="middle" fontSize="11" fill="#595959">
+          −log10 q (dashed: q = 0.05)
+        </text>
       </svg>
     </div>
   );
@@ -252,7 +308,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
           <Text type="secondary">{t("components.single-cell.rna.need-groups")}</Text>
         ) : overlap > 0 ? (
           <Alert type="warning" showIcon message={t("components.single-cell.rna.overlap", { count: overlap })} />
-        ) : (
+        ) : result ? null : (
           <Text type="secondary">
             {t("components.single-cell.rna.ready", { a: groups.A.label, nA: rowsA.length, b: groups.B.label, nB: rowsB.length })}
           </Text>
@@ -275,32 +331,15 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
             {(result.nA < 20 || result.nB < 20) && (
               <Alert type="info" showIcon message={t("components.single-cell.rna.exploratory")} />
             )}
-            <Row gutter={[16, 16]}>
+            <Row gutter={[24, 16]}>
               <Col xs={24} xl={14}>
-                <Volcano genes={result.genes} labels={result.labels} selectedGene={selectedGene} onGene={onGene} />
-                <Space wrap style={{ margin: "8px 0" }}>
-                  <Input.Search
-                    allowClear
-                    size="small"
-                    placeholder={t("components.single-cell.results.filter")}
-                    style={{ width: 200 }}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  <Button
-                    size="small"
-                    icon={<AiOutlineDownload />}
-                    onClick={() => downloadTsv(`de_${result.labels.A}_vs_${result.labels.B}.tsv`, DE_COLUMNS, result.genes)}
-                  >
-                    TSV
-                  </Button>
-                </Space>
-                <Table
-                  size="small"
-                  rowKey="gene"
-                  columns={columns}
-                  dataSource={rows}
-                  pagination={{ pageSize: 12, showSizeChanger: true }}
-                  scroll={{ x: true }}
+                <VolcanoPlot
+                  genes={result.genes}
+                  labels={result.labels}
+                  qCut={qCut}
+                  lfcCut={lfcCut}
+                  selectedGene={selectedGene}
+                  onGene={onGene}
                 />
               </Col>
               <Col xs={24} xl={10}>
@@ -326,6 +365,33 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                   />
                 </Space>
                 <DotPlot genes={dotGenes} groups={dotGroups} summary={summary} matrix={matrix} />
+              </Col>
+              <Col span={24}>
+                <Space wrap style={{ marginBottom: 8 }}>
+                  <Input.Search
+                    allowClear
+                    size="small"
+                    placeholder={t("components.single-cell.results.filter")}
+                    style={{ width: 200 }}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  <Button
+                    size="small"
+                    icon={<AiOutlineDownload />}
+                    onClick={() => downloadTsv(`de_${result.labels.A}_vs_${result.labels.B}.tsv`, DE_COLUMNS, result.genes)}
+                  >
+                    TSV
+                  </Button>
+                </Space>
+                <Table
+                  size="small"
+                  rowKey="gene"
+                  columns={columns}
+                  dataSource={rows}
+                  pagination={{ pageSize: 10, showSizeChanger: true }}
+                  scroll={{ x: true }}
+                  rowClassName={(r) => (r.gene === selectedGene ? "sc-row-active" : "")}
+                />
               </Col>
             </Row>
             <Space wrap>
@@ -367,6 +433,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                     sig: enrichment.terms.filter((r) => r.q_val < 0.05).length,
                   })}
                 </Text>
+                <EnrichmentBars terms={enrichment.terms} onTerm={(r) => r.genes[0] && onGene(r.genes[0])} />
                 <Table
                   size="small"
                   rowKey="term"
