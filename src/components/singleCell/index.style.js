@@ -155,6 +155,16 @@ const Wrapper = styled.div`
     border: 1px solid #f0f0f0;
     border-radius: 4px;
   }
+  .sc-height-handle {
+    height: 6px;
+    margin: 2px 0;
+    border-radius: 3px;
+    background: #f0f0f0;
+    cursor: row-resize;
+  }
+  .sc-height-handle:hover {
+    background: #1677ff;
+  }
   .sc-resize-handle {
     cursor: col-resize;
     background: #f0f0f0;

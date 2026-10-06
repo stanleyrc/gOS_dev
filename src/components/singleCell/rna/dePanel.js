@@ -71,7 +71,8 @@ function DotPlot({ genes, groups, summary, matrix }) {
       return { gene, stats: stats.map((s) => ({ ...s, scaled: s.mean / max })) };
     });
   }, [genes, groups, summary, matrix]);
-  const color = d3.interpolateViridis;
+  // Seurat DotPlot's default: light grey (low) to blue (high).
+  const color = d3.interpolateRgb("#E3E3E3", "#1F4E99");
   const legendX = left + groups.length * cell + 24;
   const plotWidth = Math.max(Math.min(width, legendX + 150), legendX + 150);
   const height = Math.max(top + genes.length * cell + 10, top + 170);

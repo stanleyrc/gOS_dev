@@ -112,6 +112,7 @@ export class TracksLegendPanel extends Component {
       yScaleMode,
       compact = false,
       plotInsets = null,
+      plotHeight = null,
     } = this.props;
     if (!visible) {
       return null;
@@ -241,7 +242,7 @@ export class TracksLegendPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
               style={{
-                ...(compact ? { height: "auto" } : {}),
+                ...(compact ? { height: "auto" } : plotHeight ? { height: plotHeight } : {}),
                 // Optional padding so the genome plots line up with another
                 // view's genomic columns (the single-cell heatmap).
                 ...(plotInsets

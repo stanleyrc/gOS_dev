@@ -5,7 +5,6 @@ import useContainerWidth from "../useContainerWidth";
 export const COLOR_UP = "#C2185B";
 export const COLOR_DOWN = "#1F5FA8";
 const COLOR_NS = "#C9CED6";
-const HEIGHT = 440;
 const M = { top: 28, right: 24, bottom: 46, left: 56 };
 const N_LABELS = 8;
 
@@ -17,6 +16,8 @@ const N_LABELS = 8;
 export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene, onGene }) {
   const [ref, width] = useContainerWidth(700);
   const [hover, setHover] = useState(null);
+  // Roughly 3:2, so the plot isn't flattened on wide screens.
+  const HEIGHT = Math.round(Math.min(720, Math.max(480, width * 0.68)));
   const plotW = Math.max(200, width - M.left - M.right);
   const plotH = HEIGHT - M.top - M.bottom;
 
