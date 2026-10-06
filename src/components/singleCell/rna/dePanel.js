@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import * as d3 from "d3";
@@ -21,6 +21,9 @@ import {
 import { AiOutlineDownload } from "react-icons/ai";
 import { ExperimentOutlined } from "@ant-design/icons";
 import { downloadTsv } from "../analysisResultsPanel";
+import scaActions from "../../../redux/scAnalysis/actions";
+import singleCellActions from "../../../redux/singleCell/actions";
+import settingsActions from "../../../redux/settings/actions";
 import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
@@ -169,7 +172,14 @@ function EnrichmentBars({ terms, onTerm }) {
  * volcano, gene table, a dot plot of top genes across groups, and gene-set
  * over-representation of the up/down genes.
  */
-export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene }) {
+export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene, onViolins }) {
+  const dispatch = useDispatch();
+  const geneList = useSelector((state) => state.ScAnalysis.geneList);
+  const setGeneList = (genes) => dispatch(scaActions.setGeneList(genes));
+  const showOnTree = () => {
+    dispatch(singleCellActions.updateLayout({ showGenePanel: true }));
+    dispatch(settingsActions.updateTab("7"));
+  };
   const { t } = useTranslation("common");
   const groups = useSelector((state) => state.ScAnalysis.groups);
   const [minPct, setMinPct] = useState(0.01);
@@ -340,8 +350,41 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                   qCut={qCut}
                   lfcCut={lfcCut}
                   selectedGene={selectedGene}
+                  selectedGenes={geneList}
+                  onSelectGenes={setGeneList}
                   onGene={onGene}
                 />
+                <div className="sc-picked">
+                  <Text strong>{t("components.single-cell.rna.picked", { count: geneList.length })}</Text>
+                  {geneList.length === 0 ? (
+                    <Text type="secondary">{t("components.single-cell.rna.pick-help")}</Text>
+                  ) : (
+                    <>
+                      <Space size={[4, 4]} wrap style={{ maxHeight: 64, overflow: "auto" }}>
+                        {geneList.slice(0, 40).map((g) => (
+                          <Tag key={g} closable onClose={() => setGeneList(geneList.filter((x) => x !== g))}>
+                            {g}
+                          </Tag>
+                        ))}
+                        {geneList.length > 40 && <Text type="secondary">+{geneList.length - 40}</Text>}
+                      </Space>
+                      <Space wrap>
+                        <Button size="small" type="primary" onClick={showOnTree}>
+                          {t("components.single-cell.rna.show-on-tree")}
+                        </Button>
+                        <Button size="small" onClick={() => onViolins(geneList.slice(0, 8))}>
+                          {t("components.single-cell.rna.violins-for")}
+                        </Button>
+                        <Button size="small" onClick={() => navigator.clipboard?.writeText(geneList.join("\n"))}>
+                          {t("components.single-cell.rna.copy")}
+                        </Button>
+                        <Button size="small" type="text" onClick={() => setGeneList([])}>
+                          {t("components.single-cell.selection.clear")}
+                        </Button>
+                      </Space>
+                    </>
+                  )}
+                </div>
               </Col>
               <Col xs={24} xl={10}>
                 <Space wrap style={{ marginBottom: 8 }}>
@@ -392,6 +435,11 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                   pagination={{ pageSize: 10, showSizeChanger: true }}
                   scroll={{ x: true }}
                   rowClassName={(r) => (r.gene === selectedGene ? "sc-row-active" : "")}
+                  rowSelection={{
+                    selectedRowKeys: geneList,
+                    preserveSelectedRowKeys: true,
+                    onChange: (keys) => setGeneList(keys),
+                  }}
                 />
               </Col>
             </Row>

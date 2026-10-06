@@ -1060,7 +1060,8 @@
         "hide": "Hide",
         "hide-placeholder": "clones…",
         "clip": "Shorten long branches",
-        "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //"
+        "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //",
+        "genes-beside": "Genes beside ({{count}})"
       },
       "metric": {
         "vaf": "VAF",
@@ -1154,7 +1155,12 @@
         "selection-a": "the cells selected in the tree, heatmap or UMAP",
         "pick-values": "pick one or more values",
         "n-cells": "{{count}} cells",
-        "selection-help": "Select cells on the Single-Cell tab (tree, heatmap) or lasso them in the UMAP above."
+        "selection-help": "Select cells on the Single-Cell tab (tree, heatmap) or lasso them in the UMAP above.",
+        "picked": "Picked genes ({{count}})",
+        "pick-help": "Click a point to pick a gene · Shift/⌘-click to add or remove · drag to lasso (Shift/⌘ adds) · or tick genes in the table",
+        "show-on-tree": "Show beside the phylogeny",
+        "violins-for": "Violins",
+        "copy": "Copy list"
       }
     },
     "tracks-modal": {

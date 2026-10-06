@@ -32,6 +32,8 @@ export default function HeatmapCanvas({
   className,
   style,
   pixelRatio = 1,
+  wheelNeedsModifier = true,
+  onDoubleClick,
 }) {
   const ref = useRef(null);
   const rowsRef = useRef(null);
@@ -39,6 +41,8 @@ export default function HeatmapCanvas({
   const suppressClick = useRef(false);
   const wheelHandler = useRef(onWheelZoom);
   wheelHandler.current = onWheelZoom;
+  const needsModifier = useRef(wheelNeedsModifier);
+  needsModifier.current = wheelNeedsModifier;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -99,16 +103,20 @@ export default function HeatmapCanvas({
   }, [width, height, nRows, cols, colorAt, separators, highlightRows, pixelRatio]);
 
   // Wheel zoom needs a non-passive listener to stop the page from scrolling.
-  // Only modified wheels (Cmd/Ctrl/Alt) zoom; plain wheels scroll the page.
+  // With wheelNeedsModifier only Cmd/Ctrl/Alt wheels zoom (plain wheels scroll
+  // the page); otherwise every wheel zooms, as in the genome plots.
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return undefined;
     const listener = (event) => {
       if (!wheelHandler.current) return;
-      if (!(event.metaKey || event.ctrlKey || event.altKey)) return;
+      if (needsModifier.current && !(event.metaKey || event.ctrlKey || event.altKey)) return;
       const rect = canvas.getBoundingClientRect();
       event.preventDefault();
-      wheelHandler.current({ x: event.clientX - rect.left, deltaY: event.deltaY }, event);
+      wheelHandler.current(
+        { x: event.clientX - rect.left, deltaY: event.deltaY, deltaMode: event.deltaMode, pinch: event.ctrlKey },
+        event
+      );
     };
     canvas.addEventListener("wheel", listener, { passive: false });
     return () => canvas.removeEventListener("wheel", listener);
@@ -185,6 +193,11 @@ export default function HeatmapCanvas({
         hit ? onHover(hit, e) : onLeave && onLeave();
       }}
       onMouseLeave={() => onLeave && onLeave()}
+      onDoubleClick={(e) => {
+        if (!onDoubleClick) return;
+        const rect = ref.current.getBoundingClientRect();
+        onDoubleClick({ x: e.clientX - rect.left }, e);
+      }}
       onClick={(e) => {
         if (suppressClick.current) {
           suppressClick.current = false;

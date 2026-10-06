@@ -56,7 +56,14 @@ export default function SingleCellRnaTab() {
           <RnaGroupsCard summary={summary} />
         </Col>
         <Col span={24}>
-          <DePanel summary={summary} matrix={matrix} rowsFor={rowsFor} onGene={showGene} selectedGene={expressionGene} />
+          <DePanel
+            summary={summary}
+            matrix={matrix}
+            rowsFor={rowsFor}
+            onGene={showGene}
+            selectedGene={expressionGene}
+            onViolins={setViolinGenes}
+          />
         </Col>
         <Col span={24}>
           <ViolinPanel summary={summary} matrix={matrix} rowsFor={rowsFor} genes={violinGenes} onGenesChange={setViolinGenes} />

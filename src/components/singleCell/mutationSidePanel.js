@@ -4,6 +4,7 @@ import { Button, Space, Tooltip, Typography } from "antd";
 import { AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
 import {
+  wheelZoomFactor,
   columnBins,
   snvBinSummary,
   snvMetricRGBA,
@@ -46,6 +47,7 @@ export default function MutationSidePanel({
   axisHeight = 18,
   groupOf = null,
   highlightRows = null,
+  wheelNeedsModifier = true,
 }) {
   const { t } = useTranslation("common");
   const total = columnOrder.length;
@@ -155,7 +157,8 @@ export default function MutationSidePanel({
             if (a >= 0 && onSiteClick) onSiteClick(hit.row, columnOrder[a], event);
           }}
           onDrag={handleDrag}
-          onWheelZoom={({ x, deltaY }) => zoomAt(x / width, deltaY > 0 ? 1.25 : 0.8)}
+          onWheelZoom={(e) => zoomAt(e.x / width, wheelZoomFactor(e))}
+          wheelNeedsModifier={wheelNeedsModifier}
           onHover={({ row, col }, event) => onHover(row, col < 0 ? [] : describe(row, col), event)}
           onLeave={onLeave}
         />

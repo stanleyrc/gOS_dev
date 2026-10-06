@@ -32,6 +32,7 @@ export const SC_DEFAULT_LAYOUT = {
   igvSync: true,
   heatmapHeight: null, // px; null = from rowHeight
   navHeight: 240, // px of the gene + cytoband tracks above the heatmap
+  showGenePanel: true, // expression of the RNA tab's picked genes beside the heatmap
 };
 
 const actions = {

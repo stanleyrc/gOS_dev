@@ -55,8 +55,7 @@ export function useViolinGroups(summary, rowsFor, groupBy) {
 }
 
 function GeneViolins({ gene, values, groups, width }) {
-  // At most ~170 px per group so a two-group plot doesn't sprawl.
-  const plotW = Math.min(width - M.left - M.right, Math.max(220, groups.length * 170));
+  const plotW = width - M.left - M.right;
   const ymax = Math.max(0.5, d3.max(groups, (g) => d3.max(g.rows, (r) => values[r])) || 0);
   const y = d3.scaleLinear().domain([0, ymax * 1.05]).range([ROW_HEIGHT - M.bottom, M.top]).nice();
   const band = d3.scaleBand().domain(groups.map((g) => g.key)).range([M.left, M.left + plotW]).padding(0.2);
@@ -185,14 +184,19 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
         ) : !matrix ? (
           <Text type="secondary">{t("components.single-cell.rna.loading-matrix")}</Text>
         ) : (
-          genes.map((gene) => {
-            const values = valuesFor(gene);
-            return values ? (
-              <GeneViolins key={gene} gene={gene} values={values} groups={groups} width={width} />
-            ) : (
-              <Text key={gene} type="danger">{t("components.single-cell.rna.unknown-gene", { gene })}</Text>
-            );
-          })
+          // Small multiples: each gene's plot is sized to its groups (~120 px
+          // each) and the plots wrap side by side.
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 24px" }}>
+            {genes.map((gene) => {
+              const values = valuesFor(gene);
+              const plotWidth = Math.min(width, Math.max(240, groups.length * 120 + M.left + M.right));
+              return values ? (
+                <GeneViolins key={gene} gene={gene} values={values} groups={groups} width={plotWidth} />
+              ) : (
+                <Text key={gene} type="danger">{t("components.single-cell.rna.unknown-gene", { gene })}</Text>
+              );
+            })}
+          </div>
         )}
       </div>
     </Card>

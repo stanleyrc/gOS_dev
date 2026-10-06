@@ -699,3 +699,13 @@ export function treeColumnOrder(snv, layout, rows) {
     .map((v) => v.index)
     .sort((a, b) => placement[a] - placement[b] || prevalence[b] - prevalence[a] || a - b);
 }
+
+/**
+ * Zoom factor for one wheel event, as d3-zoom computes it (the genome plots'
+ * behaviour): 2^(delta * k) with k = 0.002 per pixel, 0.05 per line, 1 per
+ * page, and 10x for pinch gestures (ctrlKey). >1 zooms out.
+ */
+export function wheelZoomFactor({ deltaY, deltaMode = 0, pinch = false }) {
+  const k = deltaMode === 1 ? 0.05 : deltaMode ? 1 : 0.002;
+  return Math.pow(2, deltaY * k * (pinch ? 10 : 1));
+}

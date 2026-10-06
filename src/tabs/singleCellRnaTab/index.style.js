@@ -26,6 +26,15 @@ const Wrapper = styled.div`
   .sc-row-active td {
     background: #fff7e6 !important;
   }
+  .sc-picked {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+  }
 `;
 
 export default Wrapper;

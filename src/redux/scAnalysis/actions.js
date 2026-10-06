@@ -20,6 +20,7 @@ const actions = {
   SCA_EXPRESSION_LOADED: "SCA_EXPRESSION_LOADED",
   SCA_EXPRESSION_FAILED: "SCA_EXPRESSION_FAILED",
   SCA_CLEAR_EXPRESSION: "SCA_CLEAR_EXPRESSION",
+  SCA_GENE_LIST_UPDATED: "SCA_GENE_LIST_UPDATED",
 
   /** groups: [{ patient, cells: [cellId] }], label: short display name */
   setGroup: (side, groups, label) => ({ type: actions.SCA_SET_GROUP, side, groups, label }),
@@ -34,6 +35,8 @@ const actions = {
   selectJob: (id) => ({ type: actions.SCA_SELECT_JOB, id }),
   fetchExpression: (gene) => ({ type: actions.SCA_FETCH_EXPRESSION, gene }),
   clearExpression: () => ({ type: actions.SCA_CLEAR_EXPRESSION }),
+  /** Genes picked in the RNA tab (volcano, table); shown beside the tree. */
+  setGeneList: (genes) => ({ type: actions.SCA_GENE_LIST_UPDATED, genes }),
 };
 
 export default actions;
