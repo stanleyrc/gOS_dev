@@ -18,7 +18,7 @@ const COLOR_NS = "#BDBDBD";
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
 const fmtNum = (v, digits = 2) => (v == null ? "" : Number(v).toFixed(digits));
 
-function downloadTsv(filename, columns, rows) {
+export function downloadTsv(filename, columns, rows) {
   const lines = [columns.join("\t")].concat(
     rows.map((r) => columns.map((c) => (Array.isArray(r[c]) ? r[c].join(",") : r[c] ?? "")).join("\t"))
   );
@@ -30,7 +30,7 @@ function downloadTsv(filename, columns, rows) {
   URL.revokeObjectURL(link.href);
 }
 
-function Volcano({ genes, labels, selectedGene, onGene }) {
+export function Volcano({ genes, labels, selectedGene, onGene }) {
   const [ref, width] = useContainerWidth(700);
   const height = 320;
   const m = { top: 16, right: 16, bottom: 40, left: 52 };

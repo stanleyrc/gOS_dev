@@ -46,14 +46,19 @@ export default function PhylogenyCanvas({
     return out;
   }, [layout, leafClones]);
 
+  // Cell labels beside the leaves when rows are tall enough to read them.
   const geometry = useMemo(() => {
     if (!layout || !nRows) return null;
     const rowH = height / nRows;
+    const labelWidth = rowH >= 9 && width >= 200 ? Math.min(170, Math.round(width * 0.45)) : 0;
     const span = Math.max(layout.maxX, 1e-9);
-    const usable = Math.max(1, width - PAD_LEFT - PAD_RIGHT);
+    const usable = Math.max(1, width - PAD_LEFT - PAD_RIGHT - labelWidth);
     return {
       px: (x) => PAD_LEFT + (x / span) * usable,
       py: (y) => (y + 0.5) * rowH,
+      labelX: width - labelWidth,
+      fontSize: Math.min(11, Math.floor(rowH - 1)),
+      showLabels: labelWidth > 0,
     };
   }, [layout, nRows, width, height]);
 
@@ -96,6 +101,21 @@ export default function PhylogenyCanvas({
         ctx.stroke();
       }
     });
+
+    if (geometry.showLabels) {
+      ctx.font = `${geometry.fontSize}px sans-serif`;
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#595959";
+      layout.nodes.forEach((n) => {
+        if (!n.isLeaf) return;
+        ctx.strokeStyle = "#e8e8e8";
+        ctx.beginPath();
+        ctx.moveTo(px(n.x) + 2, py(n.y));
+        ctx.lineTo(geometry.labelX, py(n.y));
+        ctx.stroke();
+        ctx.fillText(n.name, geometry.labelX + 2, py(n.y), width - geometry.labelX - 4);
+      });
+    }
 
     // Selected and hovered leaves: a dot at the tip, plus a row band for hover.
     const leafX = new Map();

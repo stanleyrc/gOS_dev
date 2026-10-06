@@ -1,27 +1,46 @@
-import React, { useState } from "react";
-import { useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Affix, Alert, Col, Empty, Progress, Row, Space, Typography } from "antd";
+import { Affix, Alert, Col, Empty, Progress, Row, Space, Switch, Typography } from "antd";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
+import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
-import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
-import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
+import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
 
-/** Patient-level single-cell view: phylogeny, heatmaps, cell selection and per-cell tracks. */
+/** Height of the case header pinned at the top of the page (it varies by case). */
+function usePinnedHeaderHeight(fallback = 144) {
+  const [height, setHeight] = useState(fallback);
+  useEffect(() => {
+    const el = document.querySelector(".ant-home-header-container");
+    if (!el) return undefined;
+    const measure = () => setHeight(Math.round(el.getBoundingClientRect().height) || fallback);
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fallback]);
+  return height;
+}
+
+/** Patient-level single-cell view: phylogeny, heatmaps, reads, and per-cell tracks. */
 export default function SingleCellTab() {
   const { t } = useTranslation("common");
-  const { loading, loadingPercentage, error, missing, cells } = useSelector(
+  const dispatch = useDispatch();
+  const { loading, loadingPercentage, error, missing, cells, layout, plotInsets, rna } = useSelector(
     (state) => state.SingleCell
   );
   const chromoBins = useSelector((state) => state.Settings.chromoBins);
   const genes = useSelector((state) => state.Genes);
   const [yScaleMode, setYScaleMode] = useState("common");
+  const [pinned, setPinned] = useState(false);
+  const headerHeight = usePinnedHeaderHeight();
 
   if (loading) {
     return (
@@ -54,14 +73,31 @@ export default function SingleCellTab() {
     );
   }
 
+  const toggle = (key) => (checked) => dispatch(singleCellActions.updateLayout({ [key]: checked }));
+
   return (
     <Wrapper>
       <Row gutter={[16, 16]}>
         <Col span={24}>
-          {/* Same navigation as the Genome View: chromosome brush strip for one or
-              more side-by-side regions, location box and gene search. It drives
-              the heatmap and every cell track below. */}
-          <Affix offsetTop={144}>
+          <Space wrap size={[16, 4]} className="sc-tab-toggles">
+            {rna.status === "ok" && (
+              <Space size={6}>
+                <Switch size="small" checked={layout.showUmap} onChange={toggle("showUmap")} />
+                <Text>{t("components.single-cell.toggles.umap")}</Text>
+              </Space>
+            )}
+            <Space size={6}>
+              <Switch size="small" checked={layout.showCellTable} onChange={toggle("showCellTable")} />
+              <Text>{t("components.single-cell.toggles.cell-table")}</Text>
+            </Space>
+          </Space>
+        </Col>
+        <Col span={24}>
+          {/* Same navigation as the Genome View (chromosome brush strip for one or
+              more side-by-side regions, location box, gene search), padded so
+              its genome plots line up with the heatmap's genomic columns. While
+              pinned during scrolling it shrinks to the plots alone. */}
+          <Affix offsetTop={headerHeight} onChange={(affixed) => setPinned(Boolean(affixed))}>
             <TracksLegendPanel
               {...{
                 loading: genes.loading,
@@ -69,9 +105,10 @@ export default function SingleCellTab() {
                 error: genes.error,
                 chromoBins,
                 visible: true,
-                height: 160,
                 handleYscaleModeChange: setYScaleMode,
                 yScaleMode,
+                compact: pinned,
+                plotInsets,
               }}
             />
           </Affix>
@@ -80,17 +117,18 @@ export default function SingleCellTab() {
           <CellHeatmapPanel />
         </Col>
         <Col span={24}>
-          <UmapPanel />
+          <CellIgvPanel />
         </Col>
-        <Col span={24}>
-          <CellSelectionPanel />
-        </Col>
-        <Col span={24}>
-          <CompareGroupsPanel />
-        </Col>
-        <Col span={24}>
-          <AnalysisResultsPanel />
-        </Col>
+        {layout.showUmap && rna.status === "ok" && (
+          <Col span={24}>
+            <UmapPanel />
+          </Col>
+        )}
+        {layout.showCellTable && (
+          <Col span={24}>
+            <CellSelectionPanel />
+          </Col>
+        )}
         <Col span={24}>
           <CellTracksPanel yScaleMode={yScaleMode} />
         </Col>

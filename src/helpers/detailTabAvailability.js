@@ -1,7 +1,9 @@
-export const DETAIL_TAB_KEYS = ["0", "1", "2", "3", "4", "5", "6", "7"];
+export const DETAIL_TAB_KEYS = ["0", "1", "2", "3", "4", "5", "6", "7", "8"];
 // Tab 7 is the single-cell patient view. It only exists for patient entries,
 // so it is never assumed enabled and is preferred when it is.
 export const SINGLE_CELL_TAB_KEY = "7";
+// Tab 8 holds RNA analyses for single-cell patients with an rna/ export.
+export const SINGLE_CELL_RNA_TAB_KEY = "8";
 
 export const sourceKeepsTabEnabled = (source) =>
   Boolean(
@@ -76,6 +78,7 @@ export const getDetailTabAvailability = (state = {}) => {
       ),
     6: sourceKeepsTabEnabled(state.SignatureStatistics),
     7: singleCellKeepsTabEnabled(state.SingleCell),
+    8: state.SingleCell?.rna?.status === "ok",
   };
 };
 
@@ -83,7 +86,9 @@ export const firstEnabledDetailTab = (availability = {}) => {
   if (availability[SINGLE_CELL_TAB_KEY] === true) return SINGLE_CELL_TAB_KEY;
   return (
     DETAIL_TAB_KEYS.find(
-      (key) => key !== SINGLE_CELL_TAB_KEY && availability[key] !== false
+      (key) =>
+        key !== SINGLE_CELL_TAB_KEY &&
+        (key === SINGLE_CELL_RNA_TAB_KEY ? availability[key] === true : availability[key] !== false)
     ) || null
   );
 };

@@ -434,7 +434,8 @@
         "tab4": "Variant QC",
         "tab5": "Purity-Ploidy Fit",
         "tab6": "Signatures",
-        "tab7": "Single-Cell"
+        "tab7": "Single-Cell",
+        "tab8": "Single-Cell RNA"
       }
     },
     "detail-error-view": {
@@ -908,7 +909,8 @@
         "hint": "Click a cell to pull it up · ⌘/Ctrl-click to add or remove · Shift-click for a range · click a tree node for its clade · drag to pan, ⌘/Ctrl/Alt-scroll to zoom · brush regions in the bar above to compare them side by side",
         "missing-allelic": "{{count}} cell has no allelic.json and is shown blank",
         "missing-allelic_plural": "{{count}} cells have no allelic.json and are shown blank",
-        "loading-allelic": "Loading allelic copy number…"
+        "loading-allelic": "Loading allelic copy number…",
+        "resize-tree": "Drag to resize the tree (double-click to reset)"
       },
       "legend": {
         "cn": "Copy number",
@@ -1050,7 +1052,9 @@
         "copy-number": "Copy number",
         "side-panel": "Mutations beside",
         "metric": "Mutations",
-        "order": "Columns"
+        "order": "Columns",
+        "row-height": "Row height",
+        "fit": "Fit"
       },
       "metric": {
         "vaf": "VAF",
@@ -1090,6 +1094,52 @@
         "not-in-tree": "no DNA cell in the tree",
         "no-umap": "No UMAP coordinates in rna/cells.json",
         "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)"
+      },
+      "toggles": {
+        "umap": "RNA UMAP",
+        "cell-table": "Cell table"
+      },
+      "igv": {
+        "title": "Reads (IGV)",
+        "add-selected": "Add {{count}} selected cell(s)",
+        "note": "Reads cover ±200 bp around the patient's mutation sites and this cell's junction breakpoints. Click another site in the mutation heatmap to move; scroll inside IGV to zoom."
+      },
+      "rna": {
+        "no-rna": "No RNA export for this patient (rna/ folder)",
+        "matrix-error": "Could not load the expression matrix",
+        "groups-title": "Groups to compare",
+        "unset": "Group {{side}} not set",
+        "from-selection": "From the current selection ({{count}} cells):",
+        "selection": "selection",
+        "set": "Set {{side}}",
+        "b-rest": "B = all other RNA cells",
+        "all-other": "all other cells",
+        "rest-of": "not {{level}}",
+        "from-field": "From a clone or metadata field:",
+        "vs-rest": "vs rest",
+        "violin-title": "Expression by group",
+        "group-by": "Group by",
+        "groups-ab": "Groups A / B",
+        "add-gene": "Add a gene",
+        "no-groups": "No groups to show: pick a grouping with values, or set groups A and B",
+        "no-genes": "Add genes above, or click a gene in the DE results",
+        "loading-matrix": "Loading expression matrix…",
+        "unknown-gene": "{{gene}} is not in this patient's RNA",
+        "de-title": "Differential expression (A vs B)",
+        "min-pct": "min. fraction expressing",
+        "run-de": "Run",
+        "need-groups": "Set groups A and B above (or on the Single-Cell tab via the selection) to compare them.",
+        "overlap": "{{count}} cells are in both groups; make the groups disjoint to compare them.",
+        "ready": "{{a}} ({{nA}} cells) vs {{b}} ({{nB}} cells) · Wilcoxon rank-sum, Seurat FindMarkers defaults, computed in your browser",
+        "de-summary": "{{a}} ({{nA}}) vs {{b}} ({{nB}}): {{tested}} genes tested, {{sig}} with q < {{q}} and |log2FC| ≥ {{lfc}}. p adj = Bonferroni (as Seurat); q = Benjamini-Hochberg.",
+        "exploratory": "A group has fewer than 20 cells: treat these results as exploratory. Cells within one patient are not independent replicates.",
+        "dot-title": "Top genes across",
+        "top-n": "top {{n}} each way",
+        "enrich-title": "Gene-set enrichment",
+        "enrich-summary": "{{set}}: {{n}} selected genes in a universe of {{universe}} tested genes; {{sig}} sets with q < 0.05 (hypergeometric).",
+        "server-title": "Server analyses (MAST, pseudobulk)",
+        "server-ready": "service connected",
+        "server-off": "service not reachable from the web server yet"
       }
     },
     "tracks-modal": {

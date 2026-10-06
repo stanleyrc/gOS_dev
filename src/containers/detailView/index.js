@@ -13,6 +13,7 @@ import SageQcTab from "../../tabs/sageQcTab";
 import BinQCTab from "../../tabs/binQCTab";
 import SignaturesTab from "../../tabs/signaturesTab";
 import SingleCellTab from "../../tabs/singleCellTab";
+import SingleCellRnaTab from "../../tabs/singleCellRnaTab";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import settingsActions from "../../redux/settings/actions";
 import {
@@ -23,6 +24,8 @@ import {
 const { updateTab, updateDomains, updateCaseReport } = settingsActions;
 
 export class DetailView extends Component {
+  state = { headerPinned: false };
+
   componentDidMount() {
     this.redirectDisabledTab();
   }
@@ -77,19 +80,22 @@ export class DetailView extends Component {
       5: <BinQCTab />,
       6: <SignaturesTab />,
       7: <SingleCellTab />,
+      8: <SingleCellRnaTab />,
     };
     // The single-cell tab only exists for single-cell patient entries; it
     // leads the tab bar there and is hidden for ordinary cases.
+    // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, 0, 1, 2, 3, 4, 5, 6]
+        ? [7, ...(tabAvailability[8] === true ? [8] : []), 0, 1, 2, 3, 4, 5, 6]
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper>
         <Skeleton active loading={loading}>
-          <Affix offsetTop={0}>
+          <Affix offsetTop={0} onChange={(affixed) => this.setState({ headerPinned: Boolean(affixed) })}>
             <div className="ant-home-header-container">
               <HeaderPanel
+                compact={this.state.headerPinned}
                 canReturnToResults={canReturnToResults}
                 onBackToResults={this.handleBackToResults}
               />

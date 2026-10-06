@@ -46,6 +46,7 @@ import CopyIconButton from "../copyIconButton";
 import ReportButtonsPanel from "../reportButtonsPanel";
 import PrimarySiteSelect from "../primarySiteSelect";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
+import { entryType } from "../../helpers/singleCell/cellFiles";
 
 const { Text } = Typography;
 const COPY_CASE_ID_TOOLTIP_KEY =
@@ -359,6 +360,12 @@ export class HeaderPanel extends Component {
       datasetHasField(dataset, field === "msisensor.label" ? "msisensor.score" : field),
     );
     const hasPurityPloidy = datasetHasField(dataset, "purity") || datasetHasField(dataset, "ploidy");
+    // Single-cell patients have no bulk metrics of their own (the dataset's
+    // fields come from its cells), so the summary row would only show N/A.
+    const isSingleCellPatient = entryType(metadata) === "patient";
+    // While pinned during scrolling, single-cell patient pages keep only the
+    // title row so the sticky area stays small.
+    const compactHeader = Boolean(this.props.compact) && isSingleCellPatient;
 
     return (
       <Wrapper>
@@ -448,14 +455,15 @@ export class HeaderPanel extends Component {
               </Space>
             </Space>
           }
-          extra={
+          extra={compactHeader ? null : (
             <Space size={[0, 4]} wrap>
               <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>
               <Tag color={legendColors()[1]}>{t("metadata.tags.tag2")}</Tag>
               <Tag color={legendColors()[2]}>{t("metadata.tags.tag3")}</Tag>
             </Space>
-          }
+          )}
         >
+          {!compactHeader && (
           <div className="ant-pro-page-container-detail">
             <div className="ant-pro-page-container-main">
               <div className="ant-pro-page-container-row">
@@ -501,7 +509,7 @@ export class HeaderPanel extends Component {
                     </div>
                   </div>
                 </div>
-                {(summaryFields.length > 0 || hasPurityPloidy) && (
+                {!isSingleCellPatient && (summaryFields.length > 0 || hasPurityPloidy) && (
                 <div className="ant-pro-page-container-extraContent">
                   <div className="extra-content">
                     {summaryFields.map((d) => (
@@ -603,6 +611,7 @@ export class HeaderPanel extends Component {
               </div>
             </div>
           </div>
+          )}
         </PageHeader>
         <CbioportalModal
           visible={this.state.cbioportalModalVisible}

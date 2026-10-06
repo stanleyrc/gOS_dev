@@ -65,12 +65,21 @@ function TrackNote({ status, error, label }) {
  * default; allelic CN, het SNPs and SNVs are toggles. Every track comes from
  * the cell's own case folder, the same files its full report uses.
  */
+const TRACK_NESTING = { left: 35, right: 21 };
+
 export default function CellTracksPanel({ yScaleMode = "common" }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
   const { chromoBins, domains } = useSelector((state) => state.Settings);
-  const { selectedCellIds, visibleTracks, perCell, cellFiles, cells, cloneColors, patient } = sc;
+  const { selectedCellIds, visibleTracks, perCell, cellFiles, cells, cloneColors, patient, plotInsets } = sc;
+  // Pad the plots so their genomic area lines up with the heatmap's columns;
+  // subtract this panel's own nesting (cell block border/padding, row
+  // gutter, each track card's padding and border).
+  const trackPadding = {
+    marginLeft: Math.max(0, plotInsets.left - TRACK_NESTING.left),
+    marginRight: Math.max(0, plotInsets.right - TRACK_NESTING.right),
+  };
 
   const shown = selectedCellIds.slice(0, SC_MAX_TRACK_CELLS);
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
@@ -253,7 +262,7 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
                       />
                     </Space>
                   </div>
-                  <Row gutter={[16, 12]}>
+                  <Row gutter={[16, 12]} style={trackPadding}>
                     {orderedTracks.map((track) => (
                       <Col span={24} key={track}>
                         {renderTrack(cellId, track)}

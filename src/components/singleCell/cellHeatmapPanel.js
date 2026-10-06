@@ -37,15 +37,26 @@ import {
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
-const TREE_WIDTH = 180;
 const ANNOTATION_WIDTH = 18;
 const ANNOTATION_WIDTH_EXPR = 30;
 const GAP = 4;
+// Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
+// and 50 px between regions; the heatmap uses the same so they line up.
+const GENOME_MARGIN = 50;
+const DOMAIN_GAP = 50;
+// Tree block = tree + gap + 2 px handle + gap (the row is a flex box with 4 px gaps).
+const HANDLE_WIDTH = 10;
+const TREE_MIN = 80;
+const TREE_MAX = 900;
 const AXIS_HEIGHT = 18;
 const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
 const UNSELECTED_RGBA = packRGBA(hexToRgb("#FFFFFF"));
 
-const heatmapHeight = (nRows) => Math.min(720, Math.max(160, nRows * 6));
+const heatmapHeight = (nRows, rowHeight = "auto") =>
+  rowHeight === "auto"
+    ? Math.min(720, Math.max(160, nRows * 6))
+    : Math.min(6000, Math.max(160, nRows * Number(rowHeight)));
+const ROW_HEIGHTS = ["auto", 4, 6, 10, 14, 20];
 const sidePanelWidth = (containerWidth) => Math.round(Math.min(420, Math.max(180, containerWidth * 0.22)));
 const isMulti = (event) => event.metaKey || event.ctrlKey;
 
@@ -89,20 +100,55 @@ export default function CellHeatmapPanel() {
     sidePanel,
     hoveredCellId,
     selectedCellIds,
+    layout,
   } = sc;
   const nRows = order.length;
   const hasTree = tree.status === "ok" && Boolean(tree.data?.layout);
-  const treeWidth = hasTree ? TREE_WIDTH : 0;
+  const [dragTreeWidth, setDragTreeWidth] = useState(null);
+  const treeWidth = hasTree
+    ? Math.max(TREE_MIN, Math.min(TREE_MAX, dragTreeWidth ?? layout.treeWidth, containerWidth - 400))
+    : 0;
+  const treeBlock = hasTree ? treeWidth + HANDLE_WIDTH : 0;
   const snvReady = snv.status === "ok";
   const showSide = sidePanel && snvReady && heatmapType !== "snv";
   const sideWidth = showSide ? sidePanelWidth(containerWidth) : 0;
   // Annotation strip: selection, clone, and the searched gene's expression when shown.
   const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
-  const heatWidth = Math.max(
-    200,
-    containerWidth - treeWidth - annotationWidth - (hasTree ? GAP : 0) - GAP - (showSide ? sideWidth + GAP : 0)
-  );
-  const height = heatmapHeight(nRows);
+  // Genomic columns start at genomeLeft and leave rightSpace, both at least
+  // GENOME_MARGIN so the 50 px-margin genome plots can be padded to match.
+  const leftPad = Math.max(0, GENOME_MARGIN - (treeBlock + annotationWidth + GAP));
+  const genomeLeft = leftPad + treeBlock + annotationWidth + GAP;
+  const rightSpace = showSide ? sideWidth + GAP : GENOME_MARGIN;
+  const heatWidth = Math.max(200, containerWidth - genomeLeft - rightSpace);
+  const height = heatmapHeight(nRows, layout.rowHeight);
+  useEffect(() => {
+    dispatch(
+      singleCellActions.updatePlotInsets({
+        left: genomeLeft - GENOME_MARGIN,
+        right: containerWidth - genomeLeft - heatWidth - GENOME_MARGIN,
+      })
+    );
+  }, [dispatch, genomeLeft, heatWidth, containerWidth]);
+
+  /* ---- tree width: drag the handle between the tree and the heatmap ---- */
+  const startTreeDrag = (event) => {
+    event.preventDefault();
+    const x0 = event.clientX;
+    const w0 = treeWidth;
+    let latest = w0;
+    const move = (e) => {
+      latest = Math.max(TREE_MIN, Math.min(TREE_MAX, w0 + e.clientX - x0));
+      setDragTreeWidth(latest);
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      dispatch(singleCellActions.updateLayout({ treeWidth: latest }));
+      setDragTreeWidth(null);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
   const devWidth = heatWidth * pixelRatio;
 
   /* ---- zoom / pan: same shared domains as the genome view and the cell tracks ---- */
@@ -123,7 +169,7 @@ export default function CellHeatmapPanel() {
   };
   const currentDomains = () => pendingDomains.current || domains;
   const extentAt = (x) => {
-    const extents = domainExtents(currentDomains(), heatWidth, GAP);
+    const extents = domainExtents(currentDomains(), heatWidth, DOMAIN_GAP);
     const k = extents.findIndex(([px0, px1]) => x >= px0 && x < px1);
     return k < 0 ? null : { k, extent: extents[k] };
   };
@@ -192,11 +238,11 @@ export default function CellHeatmapPanel() {
         const p = map[r];
         if (p < 0 || !rows[p]) return null;
         if (!lookups.has(p)) {
-          lookups.set(p, genomicColumnLookup(rows[p].binIndex, domains, devWidth, GAP * pixelRatio).cols);
+          lookups.set(p, genomicColumnLookup(rows[p].binIndex, domains, devWidth, DOMAIN_GAP * pixelRatio).cols);
         }
         return lookups.get(p);
       };
-      const axis = chromosomeSpans(chromoBins, domainExtents(domains, heatWidth, GAP));
+      const axis = chromosomeSpans(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP));
       const label = t(`components.single-cell.cn-mode.${cnMode}`);
       return {
         cols: colsFor,
@@ -386,6 +432,17 @@ export default function CellHeatmapPanel() {
     axisHeight: AXIS_HEIGHT,
     highlightRows: selectedRows.size <= 50 ? selectedRows : null,
     onRowClick: handleRowClick,
+    onSiteClick: (row, c) => {
+      const v = snv.data.variants[c];
+      dispatch(
+        singleCellActions.openIgv({
+          cellIds: [order[row]],
+          chromosome: v.chromosome,
+          position: v.position,
+          label: v.id,
+        })
+      );
+    },
     onHover: (row, lines, event) => hoverCell(row, lines, event),
     onLeave: clearHover,
   };
@@ -457,6 +514,19 @@ export default function CellHeatmapPanel() {
               />
             </Space>
           )}
+          <Space size={4}>
+            <Text type="secondary">{t("components.single-cell.toolbar.row-height")}</Text>
+            <Select
+              size="small"
+              style={{ width: 90 }}
+              value={layout.rowHeight}
+              onChange={(value) => dispatch(singleCellActions.updateLayout({ rowHeight: value }))}
+              options={ROW_HEIGHTS.map((value) => ({
+                value,
+                label: value === "auto" ? t("components.single-cell.toolbar.fit") : `${value} px`,
+              }))}
+            />
+          </Space>
           {snvReady && heatmapType !== "snv" && (
             <Checkbox
               checked={sidePanel}
@@ -511,6 +581,7 @@ export default function CellHeatmapPanel() {
         )}
         <div ref={containerRef} className="sc-heatmap-container">
           <div ref={canvasHolder} className="sc-heatmap-row" style={{ minHeight: height }}>
+            {leftPad > 0 && <div style={{ width: leftPad - GAP, flex: "none" }} />}
             {hasTree && (
               <PhylogenyCanvas
                 layout={tree.data.layout}
@@ -540,6 +611,15 @@ export default function CellHeatmapPanel() {
                       )
                     : clearHover()
                 }
+              />
+            )}
+            {hasTree && (
+              <div
+                className="sc-resize-handle"
+                style={{ height, width: HANDLE_WIDTH - 2 * GAP, flex: "none" }}
+                title={t("components.single-cell.heatmap.resize-tree")}
+                onMouseDown={startTreeDrag}
+                onDoubleClick={() => dispatch(singleCellActions.updateLayout({ treeWidth: 220 }))}
               />
             )}
             <HeatmapCanvas
@@ -621,7 +701,7 @@ export default function CellHeatmapPanel() {
                 style={{
                   top: (hoverRow * height) / nRows,
                   height: Math.max(2, height / nRows),
-                  left: treeWidth + (hasTree ? GAP : 0),
+                  left: leftPad + treeBlock,
                 }}
               />
             )}
