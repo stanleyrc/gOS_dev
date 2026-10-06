@@ -21,6 +21,7 @@ const actions = {
   SCA_EXPRESSION_FAILED: "SCA_EXPRESSION_FAILED",
   SCA_CLEAR_EXPRESSION: "SCA_CLEAR_EXPRESSION",
   SCA_GENE_LIST_UPDATED: "SCA_GENE_LIST_UPDATED",
+  SCA_DE_TOP_UPDATED: "SCA_DE_TOP_UPDATED",
 
   /** groups: [{ patient, cells: [cellId] }], label: short display name */
   setGroup: (side, groups, label) => ({ type: actions.SCA_SET_GROUP, side, groups, label }),
@@ -37,6 +38,8 @@ const actions = {
   clearExpression: () => ({ type: actions.SCA_CLEAR_EXPRESSION }),
   /** Genes picked in the RNA tab (volcano, table); shown beside the tree. */
   setGeneList: (genes) => ({ type: actions.SCA_GENE_LIST_UPDATED, genes }),
+  /** Top genes of the last in-browser DE: { labels, up: [gene], down: [gene] } */
+  setDeTop: (deTop) => ({ type: actions.SCA_DE_TOP_UPDATED, deTop }),
 };
 
 export default actions;

@@ -255,8 +255,10 @@ export class TracksLegendPanel extends Component {
             >
               <ContainerDimensions>
                 {({ width, height }) => {
-                  const genesHeight = height / 2.5;
-                  const cytobandsHeight = height / 2;
+                  // With a custom height, extra room goes to the gene track
+                  // and the cytobands keep their default 120 px.
+                  const genesHeight = plotHeight ? Math.max(40, height - 144) : height / 2.5;
+                  const cytobandsHeight = plotHeight ? 120 : height / 2;
                   return (
                     <Row style={{ width }} gutter={[margins.gap, 0]}>
                       <Col span={24}>

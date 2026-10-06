@@ -33,6 +33,9 @@ export const SC_DEFAULT_LAYOUT = {
   heatmapHeight: null, // px; null = from rowHeight
   navHeight: 240, // px of the gene + cytoband tracks above the heatmap
   showGenePanel: true, // expression of the RNA tab's picked genes beside the heatmap
+  pinnedGenes: [], // genes marked across the heatmap and cell tracks
+  sideWidth: null, // px of the mutation panel beside the CN heatmap (null = auto)
+  geneWidth: null, // px of the gene expression panel (null = auto)
 };
 
 const actions = {

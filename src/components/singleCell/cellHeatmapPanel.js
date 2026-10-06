@@ -11,11 +11,12 @@ import MutationSidePanel from "./mutationSidePanel";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
 import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
+import PinnedGenesOverlay from "./pinnedGenesOverlay";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
-import { clipLongBranches, longBranchCap, treeForCells } from "../../helpers/singleCell/newick";
+import useTreeView from "./useTreeView";
 import {
   MISSING_RGBA,
   binLabel,
@@ -85,6 +86,7 @@ export default function CellHeatmapPanel() {
   const { domains, chromoBins, defaultDomain, genomeLength, zoomedByCmd } = useSelector((state) => state.Settings);
   const expression = useSelector((state) => state.ScAnalysis.expression);
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
+  const geneOptions = useSelector((state) => state.Genes.optionsList);
   const showExpression = expression.status === "ok" && Boolean(expression.values);
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
@@ -93,7 +95,6 @@ export default function CellHeatmapPanel() {
   const canvasHolder = useRef(null);
 
   const {
-    order: fullOrder,
     cells,
     cloneColors,
     tree,
@@ -118,25 +119,7 @@ export default function CellHeatmapPanel() {
   );
 
   /* ---- displayed rows: hidden clones removed (tree re-pruned), long branches shortened ---- */
-  const hiddenKey = (layout.hiddenClones || []).join("|");
-  const view = useMemo(() => {
-    const hidden = new Set(layout.hiddenClones || []);
-    let rows = fullOrder;
-    let treeLayout = tree.status === "ok" ? tree.data?.layout || null : null;
-    if (hidden.size) {
-      rows = fullOrder.filter((id) => !hidden.has(cellById.get(id)?.clone_id));
-      if (tree.status === "ok" && tree.data?.source) {
-        const built = treeForCells(tree.data.source, rows);
-        treeLayout = built.layout;
-        rows = [...(built.layout?.leaves || []), ...rows.filter((id) => built.unplaced.includes(id))];
-      }
-    }
-    if (treeLayout && layout.clipBranches) treeLayout = clipLongBranches(treeLayout, longBranchCap(treeLayout));
-    return { rows, treeLayout };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullOrder, tree, cellById, hiddenKey, layout.clipBranches]);
-  const order = view.rows;
-  const treeLayout = view.treeLayout;
+  const { order, treeLayout } = useTreeView();
   const nRows = order.length;
   const hasTree = Boolean(treeLayout);
   const [dragTreeWidth, setDragTreeWidth] = useState(null);
@@ -146,9 +129,37 @@ export default function CellHeatmapPanel() {
   const treeBlock = hasTree ? treeWidth + HANDLE_WIDTH : 0;
   const snvReady = snv.status === "ok";
   const showSide = sidePanel && snvReady && heatmapType !== "snv";
-  const sideWidth = showSide ? sidePanelWidth(containerWidth) : 0;
+  // Side panel widths: dragged (live), saved in the layout, or automatic.
+  const [dragSide, setDragSide] = useState(null);
+  const [dragGene, setDragGene] = useState(null);
+  const maxSide = Math.max(120, containerWidth * 0.6);
+  const sideWidth = showSide
+    ? Math.round(Math.max(100, Math.min(maxSide, dragSide ?? layout.sideWidth ?? sidePanelWidth(containerWidth))))
+    : 0;
   const showGenes = Boolean(layout.showGenePanel) && geneList.length > 0 && sc.rna.status === "ok";
-  const geneWidth = showGenes ? Math.max(60, Math.min(400, GENE_COLUMN_WIDTH * geneList.length)) : 0;
+  const geneWidth = showGenes
+    ? Math.round(
+        Math.max(40, Math.min(maxSide, dragGene ?? layout.geneWidth ?? Math.max(60, Math.min(400, GENE_COLUMN_WIDTH * geneList.length))))
+      )
+    : 0;
+  // Drag a panel's left edge: moving left widens it.
+  const startWidthDrag = (current, setLive, key) => (event) => {
+    event.preventDefault();
+    const x0 = event.clientX;
+    let latest = current;
+    const move = (e) => {
+      latest = Math.round(Math.max(40, Math.min(maxSide, current - (e.clientX - x0))));
+      setLive(latest);
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      dispatch(singleCellActions.updateLayout({ [key]: latest }));
+      setLive(null);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
   // Annotation strip: selection, clone, and the searched gene's expression when shown.
   const annotationWidth = showExpression ? ANNOTATION_WIDTH_EXPR : ANNOTATION_WIDTH;
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
@@ -306,6 +317,29 @@ export default function CellHeatmapPanel() {
   const cnSource = cnMode === "total" ? cn : allelic;
   const cnColor = useMemo(() => cnColorer(palette, cnMode), [palette, cnMode]);
 
+  /* ---- junction columns can be zoomed (wheel/drag/double-click) like the mutation panel ---- */
+  const [jRange, setJRange] = useState(null);
+  const nJunctions = junctions.status === "ok" ? junctions.data.junctions.length : 0;
+  useEffect(() => setJRange(null), [nJunctions]);
+  const jRangeRef = useRef(null);
+  jRangeRef.current = jRange || [0, nJunctions];
+  const setJunctionRange = (start, span) => {
+    const size = Math.max(Math.min(3, nJunctions), Math.min(nJunctions, Math.round(span)));
+    const s = Math.max(0, Math.min(nJunctions - size, Math.round(start)));
+    setJRange(s === 0 && size === nJunctions ? null : [s, s + size]);
+  };
+  const junctionWheel = (e) => {
+    const [s, eEnd] = jRangeRef.current;
+    const span = eEnd - s;
+    const next = span * wheelZoomFactor(e);
+    const f = e.x / heatWidth;
+    setJunctionRange(s + f * span - f * next, next);
+  };
+  const junctionDrag = ({ dx }) => {
+    const [s, eEnd] = jRangeRef.current;
+    setJunctionRange(s - (dx * (eEnd - s)) / heatWidth, eEnd - s);
+  };
+
   /* ---- active matrix (copy number or junctions): column lookup, colour, axis ---- */
   const active = useMemo(() => {
     if (heatmapType === "cn" && cnSource.status === "ok") {
@@ -341,7 +375,8 @@ export default function CellHeatmapPanel() {
     if (heatmapType === "junctions" && junctions.status === "ok") {
       const m = junctions.data;
       const map = rowMap(order, m.cells);
-      const columnOrder = junctionColumnOrder(m.junctions);
+      const [js, je] = jRange || [0, m.junctions.length];
+      const columnOrder = junctionColumnOrder(m.junctions).slice(js, je);
       const disc = discreteColumnLookup(columnOrder.length, devWidth);
       const cols = Int32Array.from(disc, (k) => (k < 0 ? -1 : columnOrder[k]));
       const axis = discreteGroups(columnOrder, (i) => m.junctions[i].chromosome1, heatWidth);
@@ -369,7 +404,7 @@ export default function CellHeatmapPanel() {
       };
     }
     return null;
-  }, [heatmapType, cnSource, cnMode, cnColor, junctions, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t]);
+  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t]);
 
   const annotationCols = useMemo(
     () => discreteColumnLookup(showExpression ? 3 : 2, annotationWidth * pixelRatio),
@@ -544,22 +579,38 @@ export default function CellHeatmapPanel() {
         }
         extra={
           <Space wrap>
-            {heatmapType === "cn" && (
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
               <Tooltip title={t("components.single-cell.heatmap.zoom-in")}>
-                <Button size="small" icon={<AiOutlineZoomIn />} onClick={() => zoomAll(0.5)} />
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomIn />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(0.5) : junctionWheel({ x: heatWidth / 2, deltaY: -500, deltaMode: 0 })
+                  }
+                />
               </Tooltip>
             )}
-            {heatmapType === "cn" && (
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
               <Tooltip title={t("components.single-cell.heatmap.zoom-out")}>
-                <Button size="small" icon={<AiOutlineZoomOut />} onClick={() => zoomAll(2)} />
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomOut />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
+                  }
+                />
               </Tooltip>
             )}
-            {heatmapType === "cn" && (
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
               <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
                 <Button
                   size="small"
                   icon={<AiOutlineFullscreen />}
-                  onClick={() => defaultDomain && dispatch(settingsActions.updateDomains([defaultDomain]))}
+                  onClick={() =>
+                    heatmapType === "cn"
+                      ? defaultDomain && dispatch(settingsActions.updateDomains([defaultDomain]))
+                      : setJRange(null)
+                  }
                 />
               </Tooltip>
             )}
@@ -570,6 +621,7 @@ export default function CellHeatmapPanel() {
           </Space>
         }
       >
+        <div className="sc-toolbar-sticky">
         <Space wrap size={[16, 8]} className="sc-toolbar">
           <Segmented
             size="small"
@@ -604,6 +656,22 @@ export default function CellHeatmapPanel() {
                 value,
                 label: value === "auto" ? t("components.single-cell.toolbar.fit") : `${value} px`,
               }))}
+            />
+          </Space>
+          <Space size={4}>
+            <Text type="secondary">{t("components.single-cell.toolbar.pin")}</Text>
+            <Select
+              size="small"
+              mode="multiple"
+              allowClear
+              showSearch
+              maxTagCount="responsive"
+              style={{ minWidth: 150, maxWidth: 340 }}
+              placeholder={t("components.single-cell.toolbar.pin-placeholder")}
+              value={layout.pinnedGenes || []}
+              onChange={(value) => dispatch(singleCellActions.updateLayout({ pinnedGenes: value }))}
+              options={(geneOptions || []).map((o) => ({ value: o.label, label: o.label }))}
+              filterOption={(input, option) => option.value.toUpperCase().startsWith(input.toUpperCase())}
             />
           </Space>
           {cloneNames.length > 1 && (
@@ -676,6 +744,7 @@ export default function CellHeatmapPanel() {
             </Space>
           )}
         </Space>
+        </div>
         {alerts.map((a) => (
           <Alert key={a.key} type="warning" showIcon className="sc-alert" message={a.message} description={a.description} />
         ))}
@@ -766,12 +835,14 @@ export default function CellHeatmapPanel() {
                     pixelRatio={pixelRatio}
                     separators={active.axis.separators}
                     onClick={handleRowClick}
-                    onDrag={heatmapType === "cn" ? handlePan : undefined}
-                    onWheelZoom={heatmapType === "cn" ? handleWheelZoom : undefined}
+                    onDrag={heatmapType === "cn" ? handlePan : heatmapType === "junctions" ? junctionDrag : undefined}
+                    onWheelZoom={heatmapType === "cn" ? handleWheelZoom : heatmapType === "junctions" ? junctionWheel : undefined}
                     wheelNeedsModifier={Boolean(zoomedByCmd)}
                     onDoubleClick={
                       heatmapType === "cn"
                         ? ({ x }) => handleWheelZoom({ x, deltaY: -500, deltaMode: 0 })
+                        : heatmapType === "junctions"
+                        ? ({ x }) => junctionWheel({ x, deltaY: -500, deltaMode: 0 })
                         : undefined
                     }
                     onHover={({ row, col }, event) => hoverCell(row, active.describe(row, col), event)}
@@ -815,8 +886,25 @@ export default function CellHeatmapPanel() {
                 )}
               </div>
             )}
-            {showSide && <MutationSidePanel {...sideProps} width={sideWidth} />}
+            {showSide && (
+              <div style={{ position: "relative" }}>
+                <div
+                  className="sc-width-handle"
+                  title={t("components.single-cell.heatmap.resize-panel")}
+                  onMouseDown={startWidthDrag(sideWidth, setDragSide, "sideWidth")}
+                  onDoubleClick={() => dispatch(singleCellActions.updateLayout({ sideWidth: null }))}
+                />
+                <MutationSidePanel {...sideProps} width={sideWidth} />
+              </div>
+            )}
             {showGenes && (
+              <div style={{ position: "relative" }}>
+              <div
+                className="sc-width-handle"
+                title={t("components.single-cell.heatmap.resize-panel")}
+                onMouseDown={startWidthDrag(geneWidth, setDragGene, "geneWidth")}
+                onDoubleClick={() => dispatch(singleCellActions.updateLayout({ geneWidth: null }))}
+              />
               <ExpressionSidePanel
                 genes={geneList}
                 order={order}
@@ -827,6 +915,10 @@ export default function CellHeatmapPanel() {
                 onHover={(row, lines, event) => hoverCell(row, lines, event)}
                 onLeave={clearHover}
               />
+              </div>
+            )}
+            {heatmapType === "cn" && (
+              <PinnedGenesOverlay left={genomeLeft} width={heatWidth} top={0} bottom={0} />
             )}
             {selectedRuns.map(([a, b]) => (
               <div

@@ -24,13 +24,33 @@ import {
 const { updateTab, updateDomains, updateCaseReport } = settingsActions;
 
 export class DetailView extends Component {
-  state = { headerPinned: false };
+  state = { headerPinned: false, headerHeight: 0 };
+  headerRef = React.createRef();
 
   componentDidMount() {
     this.redirectDisabledTab();
+    this.observeHeader();
   }
 
+  componentWillUnmount() {
+    if (this.headerObserver) this.headerObserver.disconnect();
+  }
+
+  // The pinned header's height positions the sticky tab bar below it.
+  observeHeader = () => {
+    const el = this.headerRef.current;
+    if (!el || this.headerObserver || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const h = Math.round(el.getBoundingClientRect().height);
+      if (h !== this.state.headerHeight) this.setState({ headerHeight: h });
+    };
+    this.headerObserver = new ResizeObserver(measure);
+    this.headerObserver.observe(el);
+    measure();
+  };
+
   componentDidUpdate(prevProps) {
+    this.observeHeader();
     if (
       prevProps.tab !== this.props.tab ||
       prevProps.tabAvailability !== this.props.tabAvailability
@@ -90,10 +110,10 @@ export class DetailView extends Component {
         ? [7, ...(tabAvailability[8] === true ? [8] : []), 0, 1, 2, 3, 4, 5, 6]
         : [0, 1, 2, 3, 4, 5, 6];
     return (
-      <Wrapper>
+      <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>
         <Skeleton active loading={loading}>
           <Affix offsetTop={0} onChange={(affixed) => this.setState({ headerPinned: Boolean(affixed) })}>
-            <div className="ant-home-header-container">
+            <div className="ant-home-header-container" ref={this.headerRef}>
               <HeaderPanel
                 compact={this.state.headerPinned}
                 canReturnToResults={canReturnToResults}

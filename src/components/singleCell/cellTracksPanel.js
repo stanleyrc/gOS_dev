@@ -6,6 +6,7 @@ import { CloseOutlined, ExportOutlined } from "@ant-design/icons";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import MutationsPanel from "../mutationsPanel";
+import PinnedGenesOverlay from "./pinnedGenesOverlay";
 import singleCellActions, { SC_MAX_TRACK_CELLS, SC_TRACKS } from "../../redux/singleCell/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
@@ -82,6 +83,16 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
     const frame = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     return () => cancelAnimationFrame(frame);
   }, [plotInsets.left, plotInsets.right]);
+  const tracksRef = React.useRef(null);
+  const [tracksWidth, setTracksWidth] = React.useState(0);
+  useEffect(() => {
+    const el = tracksRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    // The Row's gutter adds 8 px each side beyond the card content box.
+    const observer = new ResizeObserver(() => setTracksWidth(el.getBoundingClientRect().width - 16));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const trackPadding = {
     marginLeft: Math.max(0, plotInsets.left - TRACK_NESTING.left),
     marginRight: Math.max(0, plotInsets.right - TRACK_NESTING.right),
@@ -231,7 +242,10 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
           </div>
         }
       >
-        <Row gutter={[16, 16]}>
+        <div style={{ position: "relative" }}>
+        {/* Pinned genes down every cell's plots (same genomic area as the heatmap). */}
+        <PinnedGenesOverlay left={plotInsets.left + 50} width={Math.max(0, tracksWidth - plotInsets.left - plotInsets.right - 100)} />
+        <Row gutter={[16, 16]} ref={tracksRef}>
           {shown.length === 0 && (
             <Col span={24}>
               <Empty description={t("components.single-cell.tracks.empty")} />
@@ -280,6 +294,7 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
             );
           })}
         </Row>
+        </div>
       </Card>
     </Wrapper>
   );

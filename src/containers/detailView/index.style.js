@@ -18,6 +18,17 @@ const Wrapper = styled.div`
   .ant-panel-list-container {
     margin: 24px;
   }
+  /* Keep the tab bar reachable while scrolling: it sticks just below the
+     pinned case header (its height is --gos-header-h). */
+  .ant-home-content-container > .ant-tabs > .ant-tabs-nav {
+    position: sticky;
+    top: var(--gos-header-h, 0px);
+    z-index: 11;
+    background: white;
+    padding: 0 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+  }
   .ant-home-content-container .ant-tabs-tab-btn:focus,
   .ant-home-content-container .ant-tabs-tab-btn:focus-visible {
     outline: none;

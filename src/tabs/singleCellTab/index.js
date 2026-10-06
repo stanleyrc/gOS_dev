@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Affix, Alert, Col, Empty, Progress, Row, Space, Switch, Typography } from "antd";
@@ -15,17 +15,25 @@ import Wrapper from "./index.style";
 
 const { Text } = Typography;
 
-/** Height of the case header pinned at the top of the page (it varies by case). */
+/**
+ * Height of what stays pinned above the navigation: the case header plus the
+ * sticky tab bar (both vary by case and while scrolling).
+ */
 function usePinnedHeaderHeight(fallback = 144) {
   const [height, setHeight] = useState(fallback);
   useEffect(() => {
-    const el = document.querySelector(".ant-home-header-container");
-    if (!el) return undefined;
-    const measure = () => setHeight(Math.round(el.getBoundingClientRect().height) || fallback);
+    const header = document.querySelector(".ant-home-header-container");
+    const tabs = document.querySelector(".ant-home-content-container > .ant-tabs > .ant-tabs-nav");
+    if (!header) return undefined;
+    const measure = () =>
+      setHeight(
+        Math.round(header.getBoundingClientRect().height + (tabs ? tabs.getBoundingClientRect().height : 0)) || fallback
+      );
     measure();
     if (typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    observer.observe(header);
+    if (tabs) observer.observe(tabs);
     return () => observer.disconnect();
   }, [fallback]);
   return height;
@@ -44,6 +52,17 @@ export default function SingleCellTab() {
   const [pinned, setPinned] = useState(false);
   const [dragNav, setDragNav] = useState(null);
   const headerHeight = usePinnedHeaderHeight();
+  // Height of the navigation as currently drawn (compact while pinned): the
+  // heatmap toolbar sticks just below it.
+  const navRef = useRef(null);
+  const [navHeight, setNavHeight] = useState(0);
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => setNavHeight(Math.round(el.getBoundingClientRect().height)));
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
 
   if (loading) {
     return (
@@ -79,7 +98,7 @@ export default function SingleCellTab() {
   const toggle = (key) => (checked) => dispatch(singleCellActions.updateLayout({ [key]: checked }));
 
   return (
-    <Wrapper>
+    <Wrapper style={{ "--sc-sticky-top": `${headerHeight + (pinned ? navHeight : 0)}px` }}>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space wrap size={[16, 4]} className="sc-tab-toggles">
@@ -100,7 +119,9 @@ export default function SingleCellTab() {
               more side-by-side regions, location box, gene search), padded so
               its genome plots line up with the heatmap's genomic columns. While
               pinned during scrolling it shrinks to the plots alone. */}
+          <div className="sc-nav-affix">
           <Affix offsetTop={headerHeight} onChange={(affixed) => setPinned(Boolean(affixed))}>
+            <div ref={navRef}>
             <TracksLegendPanel
               {...{
                 loading: genes.loading,
@@ -115,7 +136,9 @@ export default function SingleCellTab() {
                 plotHeight: dragNav ?? layout.navHeight,
               }}
             />
+            </div>
           </Affix>
+          </div>
           <SingleCellWrapper>
             <HeightHandle
               title={t("components.single-cell.heatmap.resize-genes")}
