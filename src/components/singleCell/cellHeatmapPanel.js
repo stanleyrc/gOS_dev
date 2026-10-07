@@ -8,6 +8,7 @@ import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import BranchSnvDrawer from "./branchSnvDrawer";
+import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
 import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
@@ -732,6 +733,7 @@ export default function CellHeatmapPanel() {
         }
       >
         <div className="sc-toolbar-sticky">
+        <SavedGroupsBar />
         {selectedCellIds.length > 0 && (
           <Space wrap size={[8, 4]} className="sc-group-bar">
             <Text strong>{t("components.single-cell.groups.selected", { count: selectedCellIds.length })}</Text>
