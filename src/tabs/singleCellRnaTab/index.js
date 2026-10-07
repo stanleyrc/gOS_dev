@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Col, Collapse, Empty, Row, Typography } from "antd";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import RnaGroupsCard from "../../components/singleCell/rna/rnaGroupsCard";
+import SavedGroupsBar from "../../components/singleCell/savedGroupsBar";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
 import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
@@ -64,6 +65,9 @@ export default function SingleCellRnaTab() {
         </Col>
         <Col span={24}>
           <DosagePanel summary={summary} matrix={matrix} rowOfId={rowOfId} />
+        </Col>
+        <Col span={24}>
+          <SavedGroupsBar />
         </Col>
         <Col span={24}>
           <RnaGroupsCard summary={summary} />

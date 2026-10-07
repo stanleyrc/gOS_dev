@@ -1279,6 +1279,17 @@
         "show-in-heatmap": "Show these sites in the heatmap",
         "fit-summary": "{{n}} SNVs fitted to COSMIC v3.4 (cosine {{cosine}})",
         "this-branch": "This branch"
+      },
+      "saved-groups": {
+        "title": "Saved groups:",
+        "name": "Group name",
+        "default-name": "Group {{n}}",
+        "save": "Save {{count}} cells as group",
+        "tag-help": "{{count}} cells. Click to select them; they are also the RNA field \"saved_group\" for DE and UMAP colouring.",
+        "link": "Copy link",
+        "link-help": "Copy a link to this page that includes these saved groups",
+        "copied": "Link with saved groups copied",
+        "copy-prompt": "Copy this link:"
       }
     },
     "tracks-modal": {
