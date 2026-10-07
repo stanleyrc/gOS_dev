@@ -211,3 +211,24 @@ export function fitSignatures(counts, reference, { addPenalty = 0.05, removePena
     .sort((a, b) => b.activity - a.activity);
   return { activities, cosine: cosine(counts, reconstruction), reconstruction, total };
 }
+
+/**
+ * Per-signature share of each channel's mutations (as the bulk Signatures
+ * tab's decomposed catalogs): mutations_k(i) = counts(i) * ref_k(i) a_k /
+ * sum_j ref_j(i) a_j, with the signature's reference profile scaled to its
+ * activity and the cosine between the two.
+ */
+export function decomposeFit(counts, reference, activities) {
+  const cols = activities.map((a) => reference.columns[reference.names.indexOf(a.signature)]);
+  const recon = new Float64Array(96);
+  activities.forEach((a, k) => cols[k] && cols[k].forEach((p, i) => (recon[i] += p * a.activity)));
+  return activities
+    .map((a, k) => {
+      const col = cols[k];
+      if (!col) return null;
+      const decomposed = SBS96.map((_, i) => (recon[i] > 0 ? (counts[i] * col[i] * a.activity) / recon[i] : 0));
+      const expected = SBS96.map((_, i) => col[i] * a.activity);
+      return { signature: a.signature, activity: a.activity, decomposed, expected, cosine: cosine(decomposed, expected) };
+    })
+    .filter(Boolean);
+}
