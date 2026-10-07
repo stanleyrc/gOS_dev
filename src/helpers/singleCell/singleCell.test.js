@@ -17,6 +17,9 @@ import {
   junctionColor,
   binLabel,
   chromosomeSpans,
+  formatPosition,
+  genomicTicks,
+  niceStep,
   discreteGroups,
   cloneColorMap,
   zoomDomain,
@@ -163,6 +166,16 @@ describe("axes", () => {
     expect(spans.map((s) => s.chromosome)).toEqual(["1", "2"]);
     expect(separators).toHaveLength(1);
     expect(separators[0]).toBeCloseTo(50, 0);
+  });
+
+  it("adds Mb ticks only when zoomed to a few chromosomes", () => {
+    const bins = { 1: { startPoint: 1, startPlace: 1, endPlace: 50e6 }, 2: { startPoint: 1, startPlace: 50e6 + 1, endPlace: 100e6 } };
+    const ticks = genomicTicks(bins, [[0, 500, [1, 50e6]]]);
+    expect(ticks.length).toBeGreaterThan(2);
+    expect(ticks.every((t) => t.chromosome === "1" && / Mb$/.test(t.label))).toBe(true);
+    expect(genomicTicks(bins, [[0, 500, [1, 100e6]]], { maxChromosomes: 1 })).toEqual([]);
+    expect(niceStep(3.2e6)).toBe(5e6);
+    expect(formatPosition(25e4, 5e4)).toBe("250 kb");
   });
 
   it("groups discrete columns by key", () => {
