@@ -5,7 +5,9 @@ import axios from "axios";
 import * as d3 from "d3";
 import { Alert, Button, Card, Col, Empty, Radio, Row, Space, Tooltip, Typography } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
-import { SBS96, SBS_COLORS, fitSignatures, parseCosmic, sbs96Counts } from "../../helpers/singleCell/signatures";
+import { SBS96, SBS_COLORS, decomposeFit, fitSignatures, parseCosmic, sbs96Counts } from "../../helpers/singleCell/signatures";
+import BarPlotPanel from "../barPlotPanel";
+import { mutationFilterTypes, mutationsColorPalette, mutationsGroups, nucleotideMutationText } from "../../helpers/utility";
 import { filterSnvColumns, sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import useContainerWidth from "./useContainerWidth";
@@ -137,6 +139,76 @@ export function Profile({ counts, reconstruction, width }) {
   );
 }
 
+/** SBS96 values as the bulk tab's catalog points (BarPlotPanel). */
+const catalogPoints = (values, tag) =>
+  SBS96.map((ch, i) => ({
+    id: `${tag}-${i}`,
+    type: ch,
+    mutations: Math.round(values[i] * 10) / 10,
+    mutationType: ch.slice(2, 5),
+    variantType: "sbs",
+    label: nucleotideMutationText(ch),
+    group: mutationsGroups()[ch.slice(2, 5)],
+  }));
+
+/**
+ * Bulk-style mutation catalog of the fitted sites (fitted profile overlaid),
+ * or one decomposed catalog per signature against its COSMIC profile.
+ */
+function FitCatalogs({ fit }) {
+  const { t } = useTranslation("common");
+  const [mode, setMode] = useState("catalog");
+  const legend = mutationFilterTypes().sbs.map((key) => ({
+    id: key,
+    group: mutationsGroups()[key],
+    color: mutationsColorPalette()[key],
+    title: t(`metadata.mutation-catalog-titles.${key}`),
+    header: t(`metadata.mutation-catalog-headers.${mutationsGroups()[key]}`),
+    subtitle: t(`metadata.mutation-catalog-subtitles.${mutationsGroups()[key]}`),
+  }));
+  const common = {
+    loading: false,
+    legend,
+    xTitle: "",
+    xVariable: "type",
+    xFormat: null,
+    yTitle: t("components.mutation-catalog-panel.y-title"),
+    yVariable: "mutations",
+    yFormat: "~s",
+    colorVariable: "mutationType",
+    xAxisRotation: -90,
+    segmentedOptions: [
+      { label: t("components.single-cell.signatures.catalog"), value: "catalog" },
+      { label: t("components.segmented-filter.decomposed-mode"), value: "decomposed" },
+    ],
+    segmentedValue: mode,
+    handleSegmentedChange: setMode,
+  };
+  return (
+    <Space direction="vertical" size="middle" style={{ display: "flex" }}>
+      {mode === "catalog" ? (
+        <BarPlotPanel
+          {...common}
+          title={t("components.single-cell.signatures.catalog-title", { n: fit.used })}
+          dataPoints={catalogPoints(fit.counts, "obs")}
+          referenceDataPoints={catalogPoints(fit.reconstruction, "fit")}
+        />
+      ) : (
+        fit.decomposition.map((d) => (
+          <BarPlotPanel
+            key={d.signature}
+            {...common}
+            title={`${d.signature} · ${aetiologyText(d.signature) || ""} · ${Math.round(d.activity)} mutations · cosine ${d3.format(".0%")(d.cosine)}`}
+            dataPoints={catalogPoints(d.decomposed, `${d.signature}-dec`)}
+            referenceDataPoints={catalogPoints(d.expected, `${d.signature}-ref`)}
+          />
+        ))
+      )}
+      <Text type="secondary">{t("components.single-cell.signatures.catalog-help")}</Text>
+    </Space>
+  );
+}
+
 /**
  * SBS signatures of the patient's SNVs: SigProfilerAssignment fits of preset
  * sets computed in the backend (signatures.json), and a quick fit in the
@@ -179,7 +251,7 @@ export default function SignaturePanel() {
       // let the button repaint before the (sub-second) fit
       await new Promise((resolve) => setTimeout(resolve, 20));
       const result = fitSignatures(counts, reference);
-      setFit({ ...result, counts, used });
+      setFit({ ...result, counts, used, decomposition: decomposeFit(counts, reference, result.activities) });
     } catch (e) {
       setError(e.message || `${e}`);
     }
@@ -264,6 +336,11 @@ export default function SignaturePanel() {
               </>
             )}
           </Col>
+          {fit && fit.used > 0 && (
+            <Col span={24}>
+              <FitCatalogs fit={fit} />
+            </Col>
+          )}
         </Row>
       </div>
     </Card>

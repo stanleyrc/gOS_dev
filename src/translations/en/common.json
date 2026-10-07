@@ -1141,7 +1141,10 @@
         "no-filter-note": "Uses every SNV site; filter sites in the SNV heatmap toolbar to narrow the set.",
         "no-contexts": "This patient's SNV matrix has no trinucleotide contexts; rerun the signatures step of gos_sc_upload.R.",
         "fit-summary": "{{n}} sites · NNLS with stepwise selection on COSMIC v3.4 GRCh38 · cosine similarity {{cosine}} (bars: observed, dots: fitted)",
-        "this-fit": "This selection"
+        "this-fit": "This selection",
+        "catalog": "Catalog",
+        "catalog-title": "Mutation catalog of the fitted sites ({{n}} SNVs)",
+        "catalog-help": "Catalog: observed SBS96 counts, with the fitted reconstruction as the reference outline. Decomposed: each fitted signature's share of every channel, against its COSMIC v3.4 profile scaled to its activity (as in the bulk Signatures tab)."
       },
       "umap": {
         "title": "RNA UMAP",
