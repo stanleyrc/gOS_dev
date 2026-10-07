@@ -7,7 +7,7 @@
 // matrix.indptr.i32 (n_genes + 1), matrix.indices.i32 (cell rows),
 // matrix.data.f32 (values), all little-endian.
 
-const NON_FIELDS = new Set(["rna_id", "cell_id", "umap_1", "umap_2"]);
+const NON_FIELDS = new Set(["rna_id", "cell_id", "umap_1", "umap_2", "umap_dna_1", "umap_dna_2"]);
 
 /** Parse cells.json + genes.tsv into the shape the views use. */
 export function parseRnaSummary(cellsJson, genesTsv) {
@@ -35,13 +35,15 @@ export function parseRnaSummary(cellsJson, genesTsv) {
     fields.push({ name, numeric, levels });
   });
   const hasUmap = cells.some((c) => Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
+  // A second UMAP recomputed on just the RNA cells that also have DNA (optional).
+  const hasDnaUmap = cells.some((c) => Number.isFinite(c.umap_dna_1) && Number.isFinite(c.umap_dna_2));
   const geneIndex = new Map();
   genes.forEach((g, k) => {
     if (!geneIndex.has(g)) geneIndex.set(g, k);
     const upper = g.toUpperCase();
     if (!geneIndex.has(upper)) geneIndex.set(upper, k);
   });
-  return { cells, genes, geneIndex, fields, hasUmap };
+  return { cells, genes, geneIndex, fields, hasUmap, hasDnaUmap };
 }
 
 /** Case-insensitive prefix matches first, then substring matches. */

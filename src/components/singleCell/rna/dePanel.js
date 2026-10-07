@@ -6,6 +6,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Col,
   Input,
   InputNumber,
@@ -178,7 +179,9 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
   const [setId, setSetId] = useState("hallmark");
   const [direction, setDirection] = useState("up");
   const [qCut, setQCut] = useState(0.05);
+  const [pCut, setPCut] = useState(1);
   const [lfcCut, setLfcCut] = useState(0.25);
+  const [onlyPassing, setOnlyPassing] = useState(false);
   const [enrichment, setEnrichment] = useState(null);
   const [enrichError, setEnrichError] = useState(null);
   const dotGroups = useViolinGroups(summary, rowsFor, dotGroupBy);
@@ -203,8 +206,6 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     });
     setProgress(null);
     setResult({ labels, nA: rowsA.length, nB: rowsB.length, genes });
-    const top = (sign) => genes.filter((g) => Math.sign(g.avg_log2FC) === sign && g.q_val < 0.05).slice(0, 25).map((g) => g.gene);
-    dispatch(scaActions.setDeTop({ labels, up: top(1), down: top(-1) }));
   };
 
   // Mean total copy number at each gene's locus in group A and B (cells with
@@ -240,13 +241,24 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, cn, geneOptions, genesStartPoint, genesEndPoint]);
 
-  const significant = (g) => g.q_val < qCut && Math.abs(g.avg_log2FC) >= lfcCut;
+  // One set of cutoffs drives the table, volcano, enrichment and the tree heatmap.
+  const significant = (g) => g.q_val < qCut && g.p_val < pCut && Math.abs(g.avg_log2FC) >= lfcCut;
   const nSig = result ? result.genes.filter(significant).length : 0;
   const rows = useMemo(() => {
     if (!result) return [];
     const q = query.trim().toUpperCase();
-    return result.genes.filter((g) => !q || g.gene.toUpperCase().includes(q));
-  }, [result, query]);
+    return result.genes.filter((g) => (!q || g.gene.toUpperCase().includes(q)) && (!onlyPassing || significant(g)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, query, onlyPassing, qCut, pCut, lfcCut]);
+
+  // Every passing gene, by p value, up and down; the tree heatmap takes its top N.
+  useEffect(() => {
+    if (!result) return;
+    const passing = result.genes.filter(significant);
+    const top = (sign) => passing.filter((g) => Math.sign(g.avg_log2FC) === sign).map((g) => g.gene);
+    dispatch(scaActions.setDeTop({ labels: result.labels, up: top(1), down: top(-1) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, qCut, pCut, lfcCut]);
   const dotGenes = useMemo(() => {
     if (!result) return [];
     const up = result.genes.filter((g) => g.avg_log2FC > 0).slice(0, nDot).map((g) => g.gene);
@@ -373,6 +385,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                 tested: result.genes.length,
                 sig: nSig,
                 q: qCut,
+                p: pCut,
                 lfc: lfcCut,
               })}
             </Text>
@@ -456,6 +469,15 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                     style={{ width: 200 }}
                     onChange={(e) => setQuery(e.target.value)}
                   />
+                  <Text type="secondary">p &lt;</Text>
+                  <InputNumber size="small" min={0} max={1} step={0.01} value={pCut} onChange={(v) => setPCut(v ?? 1)} style={{ width: 80 }} />
+                  <Text type="secondary">q &lt;</Text>
+                  <InputNumber size="small" min={0} max={1} step={0.01} value={qCut} onChange={(v) => setQCut(v ?? 0.05)} style={{ width: 80 }} />
+                  <Text type="secondary">|log2FC| ≥</Text>
+                  <InputNumber size="small" min={0} step={0.25} value={lfcCut} onChange={(v) => setLfcCut(v ?? 0)} style={{ width: 75 }} />
+                  <Checkbox checked={onlyPassing} onChange={(e) => setOnlyPassing(e.target.checked)}>
+                    {t("components.single-cell.rna.only-passing", { count: nSig })}
+                  </Checkbox>
                   <Button
                     size="small"
                     icon={<AiOutlineDownload />}
@@ -510,10 +532,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                   { value: "both", label: t("components.single-cell.results.both") },
                 ]}
               />
-              <Text type="secondary">q &lt;</Text>
-              <InputNumber size="small" min={0} max={1} step={0.01} value={qCut} onChange={(v) => setQCut(v ?? 0.05)} style={{ width: 75 }} />
-              <Text type="secondary">|log2FC| ≥</Text>
-              <InputNumber size="small" min={0} step={0.25} value={lfcCut} onChange={(v) => setLfcCut(v ?? 0)} style={{ width: 75 }} />
+              <Text type="secondary">{t("components.single-cell.rna.enrich-uses-cutoffs", { count: nSig })}</Text>
               <Button size="small" disabled={!sets.length} onClick={enrich}>
                 {t("components.single-cell.compare.run")}
               </Button>

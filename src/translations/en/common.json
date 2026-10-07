@@ -892,6 +892,8 @@
         "none": "No tree — rows ordered by clone"
       },
       "heatmap": {
+        "strip-selected": "Selected",
+        "strip-clone": "Clone",
         "title": "Phylogeny & heatmap",
         "cell-count": "{{count}} cell",
         "cell-count_plural": "{{count}} cells",
@@ -931,7 +933,16 @@
         "order-genomic": "Genomic order",
         "order-prevalence": "By prevalence",
         "order-tree": "Follow the tree",
-        "order-catalog": "File order"
+        "order-catalog": "File order",
+        "sites": "Sites",
+        "all-sites": "All sites",
+        "cellphy-only": "CellPhy input only",
+        "category": "On the tree",
+        "category-truncal": "Truncal (tumor MRCA)",
+        "category-subclonal": "Subclonal (shared)",
+        "category-private": "Private (one cell)",
+        "category-outside_tumor": "Outside tumor clade",
+        "category-unmapped": "Unmapped"
       },
       "tooltip": {
         "cell": "Cell",
@@ -1105,7 +1116,10 @@
         "not-in-tree": "no DNA cell in the tree",
         "no-umap": "No UMAP coordinates in rna/cells.json",
         "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)",
-        "cluster": "Cluster (k-means)"
+        "cluster": "Cluster (k-means)",
+        "view-all": "All RNA cells",
+        "view-dna": "Cells with DNA (same UMAP)",
+        "view-dna-umap": "Cells with DNA (UMAP rerun on them)"
       },
       "toggles": {
         "umap": "RNA UMAP",
@@ -1145,7 +1159,7 @@
         "need-groups": "Set groups A and B above (or on the Single-Cell tab via the selection) to compare them.",
         "overlap": "{{count}} cells are in both groups; make the groups disjoint to compare them.",
         "ready": "{{a}} ({{nA}} cells) vs {{b}} ({{nB}} cells) · Wilcoxon rank-sum, Seurat FindMarkers defaults, computed in your browser",
-        "de-summary": "{{a}} ({{nA}}) vs {{b}} ({{nB}}): {{tested}} genes tested, {{sig}} with q < {{q}} and |log2FC| ≥ {{lfc}}. p adj = Bonferroni (as Seurat); q = Benjamini-Hochberg.",
+        "de-summary": "{{a}} ({{nA}}) vs {{b}} ({{nB}}): {{tested}} genes tested, {{sig}} with p < {{p}}, q < {{q}} and |log2FC| ≥ {{lfc}}. These cutoffs also set the genes used for enrichment and the DE heatmap on the tree. p adj = Bonferroni (as Seurat); q = Benjamini-Hochberg.",
         "exploratory": "A group has fewer than 20 cells: treat these results as exploratory. Cells within one patient are not independent replicates.",
         "dot-title": "Top genes across",
         "top-n": "top {{n}} each way",
@@ -1168,7 +1182,9 @@
         "violins-for": "Violins",
         "copy": "Copy list",
         "phylo-title": "Expression on the phylogeny",
-        "src-de": "Top DE genes ({{a}} vs rest)",
+        "src-de": "DE genes, {{a}} vs {{b}} ({{count}} passing)",
+        "only-passing": "Only genes passing ({{count}})",
+        "enrich-uses-cutoffs": "{{count}} genes passing the cutoffs above",
         "src-de-none": "Top DE genes (run DE first)",
         "src-picked": "Picked genes ({{count}})",
         "src-variable": "Most variable genes",

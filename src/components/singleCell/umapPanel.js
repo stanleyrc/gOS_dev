@@ -58,6 +58,9 @@ export default function UmapPanel() {
   const pixelRatio = usePixelRatio();
   const canvasRef = useRef(null);
   const [colorBy, setColorBy] = useState("clone");
+  // all: original UMAP, every RNA cell · dna: original UMAP, RNA-only cells hidden ·
+  // dna-umap: UMAP recomputed on the cells with DNA
+  const [view, setView] = useState("all");
   const [geneOptions, setGeneOptions] = useState([]);
   const [tip, setTip] = useState(null);
   const [lasso, setLasso] = useState(null);
@@ -101,9 +104,16 @@ export default function UmapPanel() {
 
   const points = useMemo(() => {
     if (!summary?.hasUmap) return [];
-    const list = summary.cells.filter((c) => Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
-    const xs = list.map((c) => c.umap_1);
-    const ys = list.map((c) => c.umap_2);
+    const recomputed = view === "dna-umap" && summary.hasDnaUmap;
+    const xKey = recomputed ? "umap_dna_1" : "umap_1";
+    const yKey = recomputed ? "umap_dna_2" : "umap_2";
+    const hasDna = (c) => c.cell_id != null && inTree.has(c.cell_id);
+    const list = summary.cells.filter(
+      (c) => Number.isFinite(c[xKey]) && Number.isFinite(c[yKey]) && (view === "all" || hasDna(c))
+    );
+    if (!list.length) return [];
+    const xs = list.map((c) => c[xKey]);
+    const ys = list.map((c) => c[yKey]);
     const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
     const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
     const sx = (width - 2 * PAD) / Math.max(1e-9, x1 - x0);
@@ -115,10 +125,10 @@ export default function UmapPanel() {
       cell: c,
       id: c.displayId,
       linked: c.cell_id != null && inTree.has(c.cell_id),
-      x: ox + (c.umap_1 - x0) * s,
-      y: HEIGHT - (oy + (c.umap_2 - y0) * s),
+      x: ox + (c[xKey] - x0) * s,
+      y: HEIGHT - (oy + (c[yKey] - y0) * s),
     }));
-  }, [summary, width, inTree]);
+  }, [summary, width, inTree, view]);
 
   /* ---- colour scale ---- */
   const field = summary?.fields.find((f) => f.name === colorBy) || null;
@@ -336,6 +346,17 @@ export default function UmapPanel() {
         }
         extra={
           <Space wrap>
+            <Select
+              size="small"
+              style={{ width: 230 }}
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "all", label: t("components.single-cell.umap.view-all") },
+                { value: "dna", label: t("components.single-cell.umap.view-dna") },
+                { value: "dna-umap", label: t("components.single-cell.umap.view-dna-umap"), disabled: !summary.hasDnaUmap },
+              ]}
+            />
             <Text type="secondary">{t("components.single-cell.umap.color-by")}</Text>
             <Select size="small" style={{ width: 200 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch />
             <AutoComplete
