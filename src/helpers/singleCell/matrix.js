@@ -719,11 +719,17 @@ export function wheelZoomFactor({ deltaY, deltaMode = 0, pinch = false }) {
 /* ----------------------------------------------------------------------- */
 
 // Fixed colours for GBM cell states so they match across views.
+// GBM cell states as in the lab's figures (bwh69.R state.col_fun): OPC green,
+// NPC blue, AC orange, MES red; "-like" names share the colour.
 const KNOWN_LEVEL_COLORS = {
-  MES: "#E15759",
-  NPC: "#B07AA1",
-  OPC: "#76B7B2",
-  AC: "#EDC948",
+  MES: "#eb2626",
+  NPC: "#3b54a3",
+  OPC: "#6cbd45",
+  AC: "#f9a41b",
+  "MES-like": "#eb2626",
+  "NPC-like": "#3b54a3",
+  "OPC-like": "#6cbd45",
+  "AC-like": "#f9a41b",
   "Enhancing Edge": "#F28E2B",
   "Non-Enhancing Peritumoral": "#4E79A7",
 };

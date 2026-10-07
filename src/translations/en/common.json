@@ -1069,6 +1069,7 @@
         "side-panel": "Mutations beside",
         "metric": "Mutations",
         "order": "Columns",
+        "strip-width": "Strip width",
         "row-height": "Row height",
         "fit": "Fit",
         "hide": "Hide",
@@ -1115,6 +1116,16 @@
         "help": "Tick events below to show them on the Single-Cell heatmap: SNVs filter the SNV heatmap to those sites, copy-number changes and fusions zoom the CN heatmap to their genes, and the cells carrying them are selected.",
         "filter-tag": "Picked events: {{count}} sites"
       },
+      "dosage": {
+        "title": "Dosage vs expression",
+        "summary": "{{gene}}: {{n}} cells with DNA and RNA · Spearman ρ {{rho}} · slope {{slope}} log-expression per copy",
+        "no-gene": "{{gene}} is not in both the RNA matrix and the gene annotation",
+        "rank": "Rank all genes",
+        "rank-intro": "Rank all genes by the correlation between copy number at their locus and their expression (cells with both DNA and RNA).",
+        "rank-help": "{{count}} genes expressed in at least 10 cells; click a gene to plot it",
+        "slope": "Slope",
+        "mean-cn": "Mean CN"
+      },
       "signatures": {
         "title": "SBS signatures",
         "reference": "COSMIC v{{version}} · {{genome}}",
@@ -1143,6 +1154,13 @@
         "no-umap": "No UMAP coordinates in rna/cells.json",
         "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)",
         "cluster": "Cluster (k-means)",
+        "color-cn": "Copy number at a gene",
+        "color-selection": "Selected cells (e.g. a clade)",
+        "cn-title": "CN at {{gene}}",
+        "cn-gene": "Gene",
+        "sel-in": "Selected",
+        "sel-out": "Other cells with DNA",
+        "sel-title": "Selection ({{count}} cells)",
         "view-all": "All RNA cells",
         "view-dna": "Cells with DNA (same UMAP)",
         "view-dna-umap": "Cells with DNA (UMAP rerun on them)"
@@ -1210,6 +1228,7 @@
         "phylo-title": "Expression on the phylogeny",
         "src-de": "DE genes, {{a}} vs {{b}} ({{count}} passing)",
         "only-passing": "Only genes passing ({{count}})",
+        "add-state-scores": "Add state scores",
         "multi-title": "Several groups:",
         "multi-all-groups": "all {{count}} groups",
         "multi-rest": "each vs rest",

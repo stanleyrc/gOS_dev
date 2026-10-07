@@ -160,12 +160,14 @@ export default function appReducer(state = initState, action) {
       if (state.rna.status !== "ok") return state;
       const summary = state.rna.data;
       const cells = summary.cells.map((c) => ({ ...c, [action.name]: action.values[c.displayId] ?? null }));
-      const levels = [...new Set(Object.values(action.values).filter((v) => v != null).map(String))].sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true })
-      );
+      const levels = action.numeric
+        ? null
+        : [...new Set(Object.values(action.values).filter((v) => v != null).map(String))].sort((a, b) =>
+            a.localeCompare(b, undefined, { numeric: true })
+          );
       const fields = [
         ...summary.fields.filter((f) => f.name !== action.name),
-        { name: action.name, numeric: false, levels },
+        { name: action.name, numeric: Boolean(action.numeric), levels },
       ];
       return { ...state, rna: { ...state.rna, data: { ...summary, cells, fields } } };
     }
