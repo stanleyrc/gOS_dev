@@ -157,6 +157,210 @@ function EnrichmentBars({ terms, onTerm }) {
  * volcano, gene table, a dot plot of top genes across groups, and gene-set
  * over-representation of the up/down genes.
  */
+
+/**
+ * Differential expression across several groups (clones, or the levels of
+ * any cell metadata field): each group against the rest of the chosen groups
+ * (as Seurat FindAllMarkers) and/or every pair of groups (FindMarkers per
+ * pair). Results are listed per comparison; "View" opens one in the volcano,
+ * table and enrichment views below, and a dot plot shows each group's top
+ * markers.
+ */
+function MultiGroupDe({ summary, matrix, rowsFor, minPct, significant, onView, viewing }) {
+  const { t } = useTranslation("common");
+  const categorical = summary.fields.filter((f) => !f.numeric);
+  const [field, setField] = useState("clone");
+  const groups = useViolinGroups(summary, rowsFor, field);
+  const usable = groups.filter((g) => g.rows.length >= 3);
+  const [chosen, setChosen] = useState(null); // null = every group with >= 3 cells
+  const [modes, setModes] = useState(["rest", "pairs"]);
+  const [progress, setProgress] = useState(null);
+  const [results, setResults] = useState([]);
+  const [nMarkers, setNMarkers] = useState(5);
+  useEffect(() => {
+    setChosen(null);
+    setResults([]);
+  }, [field]);
+  const picked = usable.filter((g) => !chosen || chosen.includes(g.key));
+  const nComparisons =
+    (modes.includes("rest") && picked.length >= 2 ? picked.length : 0) +
+    (modes.includes("pairs") ? (picked.length * (picked.length - 1)) / 2 : 0);
+
+  const run = async () => {
+    const comparisons = [];
+    if (modes.includes("rest")) {
+      picked.forEach((g) => {
+        const rest = picked.filter((h) => h !== g).flatMap((h) => h.rows);
+        comparisons.push({ type: "rest", key: `${g.key} vs rest`, A: g, B: { label: "rest", rows: rest } });
+      });
+    }
+    if (modes.includes("pairs")) {
+      picked.forEach((g, i) =>
+        picked.slice(i + 1).forEach((h) => comparisons.push({ type: "pair", key: `${g.key} vs ${h.key}`, A: g, B: h }))
+      );
+    }
+    const out = [];
+    setProgress(0);
+    for (let k = 0; k < comparisons.length; k += 1) {
+      const c = comparisons[k];
+      // eslint-disable-next-line no-await-in-loop
+      const genes = await differentialExpression(matrix, summary.genes, summary.cells.length, c.A.rows, c.B.rows, {
+        minPct,
+        onProgress: (f) => setProgress(Math.round((100 * (k + f)) / comparisons.length)),
+      });
+      out.push({
+        key: c.key,
+        type: c.type,
+        group: c.A.key,
+        labels: { A: c.A.label, B: c.B.label },
+        nA: c.A.rows.length,
+        nB: c.B.rows.length,
+        genes,
+        multi: true,
+      });
+    }
+    setProgress(null);
+    setResults(out);
+  };
+
+  const markerGenes = useMemo(() => {
+    const seen = new Set();
+    results
+      .filter((r) => r.type === "rest")
+      .forEach((r) =>
+        r.genes
+          .filter((g) => g.avg_log2FC > 0 && significant(g))
+          .slice(0, nMarkers)
+          .forEach((g) => seen.add(g.gene))
+      );
+    return [...seen];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, nMarkers, significant]);
+
+  const downloadAll = () =>
+    downloadTsv(
+      `de_${field}_all_comparisons.tsv`,
+      ["comparison", "type", ...DE_COLUMNS.filter((c) => !c.startsWith("cn_"))],
+      results.flatMap((r) => r.genes.map((g) => ({ ...g, comparison: r.key, type: r.type })))
+    );
+
+  const columns = [
+    { title: t("components.single-cell.rna.multi-comparison"), dataIndex: "key", key: "key" },
+    {
+      title: t("components.single-cell.rna.multi-cells"),
+      key: "n",
+      render: (_, r) => `${r.nA} / ${r.nB}`,
+    },
+    {
+      title: t("components.single-cell.rna.multi-sig"),
+      key: "sig",
+      sorter: (a, b) => a.genes.filter(significant).length - b.genes.filter(significant).length,
+      render: (_, r) => {
+        const sig = r.genes.filter(significant);
+        return `${sig.filter((g) => g.avg_log2FC > 0).length} up · ${sig.filter((g) => g.avg_log2FC < 0).length} down`;
+      },
+    },
+    {
+      title: t("components.single-cell.rna.multi-top"),
+      key: "top",
+      render: (_, r) => (
+        <Space size={[2, 2]} wrap>
+          {r.genes
+            .filter((g) => g.avg_log2FC > 0 && significant(g))
+            .slice(0, 6)
+            .map((g) => (
+              <Tag key={g.gene} color="red">{g.gene}</Tag>
+            ))}
+        </Space>
+      ),
+    },
+    {
+      title: "",
+      key: "view",
+      render: (_, r) => (
+        <Button size="small" type={viewing === r.key ? "primary" : "default"} onClick={() => onView(r)}>
+          {t("components.single-cell.rna.multi-view")}
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="sc-multi-de">
+      <Space wrap style={{ marginBottom: 8 }}>
+        <Text strong>{t("components.single-cell.rna.multi-title")}</Text>
+        <Select
+          size="small"
+          style={{ width: 170 }}
+          value={field}
+          onChange={setField}
+          options={[
+            { value: "clone", label: t("components.single-cell.umap.color-clone") },
+            ...categorical.map((f) => ({ value: f.name, label: f.name })),
+          ]}
+        />
+        <Select
+          size="small"
+          mode="multiple"
+          allowClear
+          maxTagCount="responsive"
+          style={{ minWidth: 240 }}
+          placeholder={t("components.single-cell.rna.multi-all-groups", { count: usable.length })}
+          value={chosen || []}
+          onChange={(v) => setChosen(v.length ? v : null)}
+          options={usable.map((g) => ({ value: g.key, label: `${g.label} (${g.rows.length})` }))}
+        />
+        <Checkbox.Group
+          value={modes}
+          onChange={setModes}
+          options={[
+            { value: "rest", label: t("components.single-cell.rna.multi-rest") },
+            { value: "pairs", label: t("components.single-cell.rna.multi-pairs") },
+          ]}
+        />
+        <Button size="small" type="primary" disabled={!matrix || picked.length < 2 || !nComparisons || progress != null} onClick={run}>
+          {t("components.single-cell.rna.multi-run", { count: nComparisons })}
+        </Button>
+        {results.length > 0 && (
+          <Button size="small" icon={<AiOutlineDownload />} onClick={downloadAll}>
+            TSV
+          </Button>
+        )}
+      </Space>
+      {groups.length > usable.length && (
+        <div>
+          <Text type="secondary">{t("components.single-cell.rna.multi-small", { count: groups.length - usable.length })}</Text>
+        </div>
+      )}
+      {progress != null && <Progress percent={progress} size="small" />}
+      {results.length > 0 && (
+        <Row gutter={[24, 12]}>
+          <Col xs={24} xl={14}>
+            <Table size="small" rowKey="key" columns={columns} dataSource={results} pagination={{ pageSize: 8 }} scroll={{ x: true }} />
+          </Col>
+          <Col xs={24} xl={10}>
+            {results.some((r) => r.type === "rest") && (
+              <>
+                <Space wrap style={{ marginBottom: 8 }}>
+                  <Text strong>{t("components.single-cell.rna.multi-markers")}</Text>
+                  <Select
+                    size="small"
+                    style={{ width: 120 }}
+                    value={nMarkers}
+                    onChange={setNMarkers}
+                    options={[3, 5, 10, 20].map((n) => ({ value: n, label: t("components.single-cell.rna.multi-per-group", { n }) }))}
+                  />
+                </Space>
+                <DotPlot genes={markerGenes} groups={picked} summary={summary} matrix={matrix} />
+              </>
+            )}
+          </Col>
+        </Row>
+      )}
+    </div>
+  );
+}
+
 export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene, onViolins }) {
   const dispatch = useDispatch();
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
@@ -211,7 +415,8 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
   // Mean total copy number at each gene's locus in group A and B (cells with
   // a DNA profile only), from the cells' genome graphs.
   const cnByGene = useMemo(() => {
-    if (!result || cn.status !== "ok" || !geneOptions?.length) return null;
+    // CN columns are for the A / B selection groups, not multi-group comparisons
+    if (!result || result.multi || cn.status !== "ok" || !geneOptions?.length) return null;
     const rowOfCell = new Map(cn.data.cells.map((id, k) => [id, cn.data.rows[k]]));
     const groupRows = (side) =>
       (groups[side]?.groups.flatMap((g) => g.cells) || []).map((id) => rowOfCell.get(id)).filter(Boolean);
@@ -374,6 +579,18 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
           </Text>
         )}
         {progress != null && <Progress percent={progress} size="small" />}
+        <MultiGroupDe
+          summary={summary}
+          matrix={matrix}
+          rowsFor={rowsFor}
+          minPct={minPct}
+          significant={significant}
+          viewing={result?.multi ? result.key : null}
+          onView={(r) => {
+            setEnrichment(null);
+            setResult(r);
+          }}
+        />
         {result && (
           <>
             <Text>

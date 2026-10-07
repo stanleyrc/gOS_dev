@@ -416,6 +416,13 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
       // it was one of the sites CellPhy built the tree from.
       category: v.category ?? null,
       cellphyInput: v.cellphy_input ?? null,
+      // SnpEff + OncoKB annotation and SBS96 context (gos_sc_upload.R drivers / signatures)
+      consequence: v.consequence ?? null,
+      protein: v.protein ?? null,
+      oncogenic: v.oncogenic ?? null,
+      oncokbLevel: v.oncokb_level ?? null,
+      driver: v.driver === true,
+      context: v.context ?? null,
       node: v.node ?? null,
       cladeCells: v.clade_cells ?? null,
       mapConfidence: v.map_confidence ?? null,
