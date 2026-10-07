@@ -411,6 +411,14 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
       gene: v.gene || v.Gene || null,
       annotation: v.annotation || (parsed.ref ? `${parsed.ref}>${parsed.alt}` : null),
       global: toGlobal(chromoBins, parsed.chromosome, parsed.position),
+      // Where the site sits on the tree (written by skilift build_gos_sc_dataset):
+      // truncal / subclonal / private / outside_tumor / unmapped, and whether
+      // it was one of the sites CellPhy built the tree from.
+      category: v.category ?? null,
+      cellphyInput: v.cellphy_input ?? null,
+      node: v.node ?? null,
+      cladeCells: v.clade_cells ?? null,
+      mapConfidence: v.map_confidence ?? null,
     });
   });
   const n = variants.length;

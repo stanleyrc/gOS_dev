@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button, Space, Tooltip, Typography } from "antd";
 import { AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
@@ -14,6 +15,71 @@ import {
 
 const { Text } = Typography;
 const MIN_SITES = 5;
+const CATEGORY_BAR = 10;
+
+/** Where an SNV maps on the tree (variant.category), in legend order. */
+export const SNV_CATEGORIES = [
+  { key: "truncal", color: "#6a3d9a" },
+  { key: "subclonal", color: "#ff7f00" },
+  { key: "private", color: "#33a02c" },
+  { key: "outside_tumor", color: "#8c8c8c" },
+  { key: "unmapped", color: "#d9d9d9" },
+];
+const CATEGORY_COLOR = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.color]));
+
+/**
+ * One-row bar of site categories over the SNV columns. Binned pixels show
+ * their most common category; hovering names the category and its share.
+ */
+function CategoryBar({ snv, columnOrder, bins, width, pixelRatio, t }) {
+  const ref = useRef(null);
+  const [title, setTitle] = useState("");
+  const deviceWidth = Math.floor(width * pixelRatio);
+  const summaryAt = useCallback(
+    (x) => {
+      const a = bins.binStart[x];
+      const b = bins.binEnd[x];
+      if (a < 0) return null;
+      const counts = {};
+      for (let i = a; i < b; i += 1) {
+        const k = snv.variants[columnOrder[i]]?.category || "unmapped";
+        counts[k] = (counts[k] || 0) + 1;
+      }
+      const top = Object.entries(counts).sort((p, q) => q[1] - p[1])[0];
+      return { top: top[0], counts, n: b - a };
+    },
+    [bins, snv, columnOrder]
+  );
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let x = 0; x < deviceWidth; x += 1) {
+      const s = summaryAt(x);
+      if (!s) continue;
+      ctx.fillStyle = CATEGORY_COLOR[s.top] || CATEGORY_COLOR.unmapped;
+      ctx.fillRect(x, 0, 1, canvas.height);
+    }
+  }, [deviceWidth, summaryAt]);
+  const onMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const s = summaryAt(Math.floor((e.clientX - rect.left) * pixelRatio));
+    if (!s) return setTitle("");
+    const parts = Object.entries(s.counts).map(([k, n]) => `${t(`components.single-cell.snv.category-${k}`)}: ${n}`);
+    return setTitle(s.n > 1 ? `${s.n} sites · ${parts.join(" · ")}` : parts[0].replace(/: 1$/, ""));
+  };
+  return (
+    <canvas
+      ref={ref}
+      title={title}
+      width={deviceWidth}
+      height={Math.round(CATEGORY_BAR * pixelRatio)}
+      style={{ width, height: CATEGORY_BAR, display: "block" }}
+      onMouseMove={onMove}
+    />
+  );
+}
 
 const clampRange = (start, span, total) => {
   const size = Math.max(Math.min(MIN_SITES, total), Math.min(total, Math.round(span)));
@@ -48,6 +114,7 @@ export default function MutationSidePanel({
   groupOf = null,
   highlightRows = null,
   wheelNeedsModifier = true,
+  categoryNode = null,
 }) {
   const { t } = useTranslation("common");
   const total = columnOrder.length;
@@ -115,6 +182,12 @@ export default function MutationSidePanel({
     return [
       [t("components.single-cell.tooltip.variant"), v.id],
       ...(v.gene ? [[t("components.single-cell.tooltip.gene"), v.gene]] : []),
+      ...(v.category
+        ? [[
+            t("components.single-cell.snv.category"),
+            `${t(`components.single-cell.snv.category-${v.category}`)}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}`,
+          ]]
+        : []),
       [t("components.single-cell.metric.vaf"), vaf == null ? fmt(null) : vaf.toFixed(3)],
       [t("components.single-cell.metric.alt"), fmt(snvMetricValue(snv, p, c, "alt"))],
       [t("components.single-cell.metric.depth"), fmt(snvMetricValue(snv, p, c, "depth"))],
@@ -134,8 +207,15 @@ export default function MutationSidePanel({
 
   const [s, e] = range;
   const zoomed = e - s < total;
+  const hasCategories = useMemo(() => snv.variants.some((v) => v.category), [snv]);
   return (
     <div style={{ width }}>
+      {categoryNode &&
+        hasCategories &&
+        createPortal(
+          <CategoryBar snv={snv} columnOrder={columnOrder} bins={bins} width={width} pixelRatio={pixelRatio} t={t} />,
+          categoryNode
+        )}
       <div onDoubleClick={() => setRange([0, total])}>
         <HeatmapCanvas
           width={width}

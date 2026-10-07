@@ -5,6 +5,7 @@ import { Card, Empty, Select, Space, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import HeatmapCanvas from "../heatmapCanvas";
+import StripLabels from "../stripLabels";
 import ExpressionSidePanel from "../expressionSidePanel";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
@@ -96,8 +97,10 @@ export default function PhyloExpressionCard({ summary, matrix }) {
   const listed = useMemo(() => {
     if (source === "picked") return geneList.slice(0, MAX_GENES);
     if (source === "de" && deTop) {
-      const half = Math.ceil(nGenes / 2);
-      return [...deTop.up.slice(0, half), ...deTop.down.slice(0, half)];
+      // Half each way; a side with too few genes passing gives its share to the other.
+      const n = Math.min(nGenes, MAX_GENES);
+      const nUp = Math.min(deTop.up.length, Math.max(Math.ceil(n / 2), n - deTop.down.length));
+      return [...deTop.up.slice(0, nUp), ...deTop.down.slice(0, n - nUp)];
     }
     if (source === "sets") {
       const bySet = new Map(sets.map((s) => [s.term, s.genes]));
@@ -217,7 +220,13 @@ export default function PhyloExpressionCard({ summary, matrix }) {
 
   const sourceOptions = [
     { value: "sets", label: t("components.single-cell.rna.src-sets") },
-    { value: "de", label: deTop ? t("components.single-cell.rna.src-de", { a: deTop.labels.A }) : t("components.single-cell.rna.src-de-none"), disabled: !deTop },
+    {
+      value: "de",
+      label: deTop
+        ? t("components.single-cell.rna.src-de", { a: deTop.labels.A, b: deTop.labels.B, count: deTop.up.length + deTop.down.length })
+        : t("components.single-cell.rna.src-de-none"),
+      disabled: !deTop,
+    },
     { value: "picked", label: t("components.single-cell.rna.src-picked", { count: geneList.length }), disabled: !geneList.length },
     { value: "variable", label: t("components.single-cell.rna.src-variable") },
   ];
@@ -295,6 +304,12 @@ export default function PhyloExpressionCard({ summary, matrix }) {
           {!genes.length ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.rna.no-genes")} />
           ) : (
+            <>
+            <StripLabels
+              left={treeWidth ? treeWidth + GAP : 0}
+              columnWidth={STRIP}
+              labels={[t("components.single-cell.heatmap.strip-clone"), ...annotationFields.map((f) => f.name)]}
+            />
             <div style={{ display: "flex", gap: GAP, alignItems: "flex-start" }} onMouseLeave={() => share(null)}>
               {treeLayout && (
                 <PhylogenyCanvas
@@ -343,6 +358,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
                 onLeave={() => share(null)}
               />
             </div>
+            </>
           )}
           <Space wrap size={[12, 2]} style={{ marginTop: 4 }}>
             {annotationFields

@@ -8,6 +8,32 @@ const Wrapper = styled.div`
     position: relative;
     width: 100%;
   }
+  .sc-swatch {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 4px;
+    border-radius: 2px;
+    vertical-align: baseline;
+  }
+  .sc-strip-labels {
+    position: relative;
+    flex: none;
+  }
+  .sc-strip-label {
+    position: absolute;
+    bottom: 2px;
+    max-height: 100%;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 10px;
+    color: #595959;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    user-select: none;
+  }
   .sc-heatmap-row {
     position: relative;
     display: flex;

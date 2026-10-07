@@ -5,9 +5,10 @@ import { Alert, Button, Card, Checkbox, Segmented, Select, Space, Tooltip, Typog
 import { ApartmentOutlined } from "@ant-design/icons";
 import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
+import StripLabels from "./stripLabels";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import HeatmapLegend from "./heatmapLegend";
-import MutationSidePanel from "./mutationSidePanel";
+import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
 import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
@@ -292,6 +293,29 @@ export default function CellHeatmapPanel() {
   const zoomAll = (factor) =>
     pushDomains(currentDomains().map((d) => zoomDomain(d, (d[0] + d[1]) / 2, factor, bounds)));
 
+  // Wheel zoom listens on the fixed-size box around the heatmap, not the canvas:
+  // while a zoom previews, the canvas is CSS-scaled and (zooming out) no longer
+  // covers the box, so wheels there would otherwise scroll the page, and x must
+  // be measured in the box's (unscaled) coordinates.
+  const wheelZoom = useRef(null);
+  const wheelNeedsModifierRef = useRef(false);
+  wheelNeedsModifierRef.current = Boolean(zoomedByCmd);
+  const detachWheel = useRef(null);
+  const wheelBox = useCallback((el) => {
+    if (detachWheel.current) detachWheel.current();
+    detachWheel.current = null;
+    if (!el) return;
+    const listener = (event) => {
+      if (!wheelZoom.current) return;
+      if (wheelNeedsModifierRef.current && !(event.metaKey || event.ctrlKey || event.altKey)) return;
+      event.preventDefault();
+      const rect = el.getBoundingClientRect();
+      wheelZoom.current({ x: event.clientX - rect.left, deltaY: event.deltaY, deltaMode: event.deltaMode, pinch: event.ctrlKey });
+    };
+    el.addEventListener("wheel", listener, { passive: false });
+    detachWheel.current = () => el.removeEventListener("wheel", listener);
+  }, []);
+
   const rowOf = useMemo(() => new Map(order.map((id, k) => [id, k])), [order]);
   const selectedRows = useMemo(
     () => new Set(selectedCellIds.map((id) => rowOf.get(id)).filter((r) => r != null)),
@@ -324,11 +348,26 @@ export default function CellHeatmapPanel() {
 
   /* ---- mutation matrix shared by the SNV view and the side panel ---- */
   const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
+  // Which sites to show: by where they map on the tree, and CellPhy input only.
+  const [snvCategories, setSnvCategories] = useState(null); // null = all
+  const [cellphyOnly, setCellphyOnly] = useState(false);
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    if (snvReady) snv.data.variants.forEach((v) => v.category && (counts[v.category] = (counts[v.category] || 0) + 1));
+    return counts;
+  }, [snvReady, snv]);
+  const hasCategories = Object.keys(categoryCounts).length > 0;
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
-    if (snvOrder === "tree") return treeColumnOrder(snv.data, treeLayout, snvRows);
-    return snvColumnOrder(snv.data, snvOrder);
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows]);
+    const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
+    if (!snvCategories && !cellphyOnly) return all;
+    const keep = snvCategories ? new Set(snvCategories) : null;
+    return all.filter((c) => {
+      const v = snv.data.variants[c];
+      return (!keep || keep.has(v.category || "unmapped")) && (!cellphyOnly || v.cellphyInput === true);
+    });
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly]);
+  const [snvHeader, setSnvHeader] = useState(null);
   const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
   const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
 
@@ -358,6 +397,7 @@ export default function CellHeatmapPanel() {
     const [s, eEnd] = jRangeRef.current;
     setJunctionRange(s - (dx * (eEnd - s)) / heatWidth, eEnd - s);
   };
+  wheelZoom.current = heatmapType === "cn" ? handleWheelZoom : heatmapType === "junctions" ? junctionWheel : null;
 
   /* ---- active matrix (copy number or junctions): column lookup, colour, axis ---- */
   const active = useMemo(() => {
@@ -826,6 +866,33 @@ export default function CellHeatmapPanel() {
                   disabled: value === "tree" && !hasTree,
                 }))}
               />
+              {hasCategories && (
+                <>
+                  <Text type="secondary">{t("components.single-cell.snv.sites")}</Text>
+                  <Select
+                    size="small"
+                    mode="multiple"
+                    allowClear
+                    maxTagCount="responsive"
+                    style={{ minWidth: 200 }}
+                    placeholder={t("components.single-cell.snv.all-sites")}
+                    value={snvCategories || []}
+                    onChange={(value) => setSnvCategories(value.length ? value : null)}
+                    options={SNV_CATEGORIES.filter((c) => categoryCounts[c.key]).map((c) => ({
+                      value: c.key,
+                      label: (
+                        <span>
+                          <span className="sc-swatch" style={{ background: c.color }} />
+                          {t(`components.single-cell.snv.category-${c.key}`)} ({categoryCounts[c.key]})
+                        </span>
+                      ),
+                    }))}
+                  />
+                  <Checkbox checked={cellphyOnly} onChange={(e) => setCellphyOnly(e.target.checked)}>
+                    {t("components.single-cell.snv.cellphy-only")}
+                  </Checkbox>
+                </>
+              )}
             </Space>
           )}
         </Space>
@@ -847,6 +914,21 @@ export default function CellHeatmapPanel() {
           />
         )}
         <div ref={containerRef} className="sc-heatmap-container">
+          <div style={{ display: "flex", alignItems: "flex-end" }}>
+            <StripLabels
+              left={leftPad + treeBlock}
+              columnWidth={ANNOTATION_COLUMN}
+              labels={[
+                t("components.single-cell.heatmap.strip-selected"),
+                t("components.single-cell.heatmap.strip-clone"),
+                ...annotationFields,
+                ...(showExpression ? [expression.gene] : []),
+              ]}
+            />
+            {heatmapType === "snv" && hasCategories && (
+              <div ref={setSnvHeader} style={{ marginLeft: GAP, width: heatWidth, flex: "none", paddingBottom: 2 }} />
+            )}
+          </div>
           <div ref={canvasHolder} className="sc-heatmap-row" style={{ minHeight: height }}>
             {leftPad > 0 && <div style={{ width: leftPad - GAP, flex: "none" }} />}
             {hasTree && (
@@ -907,13 +989,14 @@ export default function CellHeatmapPanel() {
             {heatmapType === "snv" && snvReady ? (
               <MutationSidePanel
                 {...sideProps}
+                categoryNode={snvHeader}
                 width={heatWidth}
                 groupOf={snvOrder === "genomic" ? chromosomeOfVariant : null}
               />
             ) : (
               <div style={{ width: heatWidth }}>
                 {active ? (
-                  <div style={{ overflow: "hidden", width: heatWidth }}>
+                  <div ref={wheelBox} style={{ overflow: "hidden", width: heatWidth }}>
                   <HeatmapCanvas
                     style={preview ? { transform: preview, transformOrigin: "0 0" } : undefined}
                     width={heatWidth}
@@ -925,8 +1008,6 @@ export default function CellHeatmapPanel() {
                     separators={active.axis.separators}
                     onClick={handleRowClick}
                     onDrag={heatmapType === "cn" ? handlePan : heatmapType === "junctions" ? junctionDrag : undefined}
-                    onWheelZoom={heatmapType === "cn" ? handleWheelZoom : heatmapType === "junctions" ? junctionWheel : undefined}
-                    wheelNeedsModifier={Boolean(zoomedByCmd)}
                     onDoubleClick={
                       heatmapType === "cn"
                         ? ({ x }) => handleWheelZoom({ x, deltaY: -500, deltaMode: 0 })
