@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Segmented, Select, Space, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
@@ -351,7 +351,7 @@ export default function CellHeatmapPanel() {
   const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
   // Which sites to show (shared with the signature panel through the layout):
   // by where they map on the tree, CellPhy input only, OncoKB drivers only.
-  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly } = layout;
+  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds } = layout;
   const setSnvCategories = (value) => dispatch(singleCellActions.updateLayout({ snvCategories: value }));
   const setCellphyOnly = (value) => dispatch(singleCellActions.updateLayout({ snvCellphyOnly: value }));
   const setDriversOnly = (value) => dispatch(singleCellActions.updateLayout({ snvDriversOnly: value }));
@@ -365,8 +365,8 @@ export default function CellHeatmapPanel() {
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
-    return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly });
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly]);
+    return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds });
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds]);
   const [snvHeader, setSnvHeader] = useState(null);
   const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
   const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
@@ -891,6 +891,11 @@ export default function CellHeatmapPanel() {
                   <Checkbox checked={cellphyOnly} onChange={(e) => setCellphyOnly(e.target.checked)}>
                     {t("components.single-cell.snv.cellphy-only")}
                   </Checkbox>
+                  {snvSiteIds?.length > 0 && (
+                    <Tag closable color="blue" onClose={() => dispatch(singleCellActions.updateLayout({ snvSiteIds: null }))}>
+                      {t("components.single-cell.events.filter-tag", { count: snvSiteIds.length })}
+                    </Tag>
+                  )}
                   {nDrivers > 0 && (
                     <Checkbox checked={driversOnly} onChange={(e) => setDriversOnly(e.target.checked)}>
                       {t("components.single-cell.snv.drivers-only", { count: nDrivers })}

@@ -9,6 +9,7 @@ import { SBS96, SBS_COLORS, fitSignatures, parseCosmic, sbs96Counts } from "../.
 import { filterSnvColumns, sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import useContainerWidth from "./useContainerWidth";
+import signatureMetadata from "../../translations/en/signatures.json";
 
 const { Text } = Typography;
 const COSMIC_FILE = "COSMIC_v3.4_SBS_GRCh38.txt";
@@ -28,6 +29,33 @@ function loadCosmic() {
     });
   }
   return cosmicPromise;
+}
+
+/** COSMIC aetiology of a signature, as plain text and as the bulk views' HTML (with the COSMIC link). */
+const aetiologyHtml = (sig) => signatureMetadata.metadata[sig]?.full || null;
+const aetiologyText = (sig) => (aetiologyHtml(sig) || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "") || "";
+
+/** Every signature in the given fits, with its aetiology (as in the bulk Signatures tab). */
+function AetiologyLegend({ rows }) {
+  const sigs = [...new Set(rows.flatMap((r) => r.activities.map((a) => a.signature)))].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true })
+  );
+  if (!sigs.length) return null;
+  return (
+    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "14px 1fr", columnGap: 6, rowGap: 2, fontSize: 12 }}>
+      {sigs.map((sig) => (
+        <React.Fragment key={sig}>
+          <span style={{ width: 12, height: 12, marginTop: 3, background: signatureColor(sig), display: "inline-block", borderRadius: 2 }} />
+          {aetiologyHtml(sig) ? (
+            // eslint-disable-next-line react/no-danger
+            <span dangerouslySetInnerHTML={{ __html: aetiologyHtml(sig) }} />
+          ) : (
+            <span>{sig}</span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
 }
 
 const signatureColor = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3, ...d3.schemePastel1]);
@@ -50,7 +78,7 @@ function ActivityBars({ rows, width }) {
               const w = (a.activity / total) * barWidth;
               const rect = (
                 <rect key={a.signature} x={x} y={0} width={Math.max(0, w - 0.5)} height={BAR_HEIGHT} fill={signatureColor(a.signature)}>
-                  <title>{`${a.signature}: ${Math.round(a.activity)} mutations (${((100 * a.activity) / total).toFixed(0)}%)`}</title>
+                  <title>{`${a.signature}: ${Math.round(a.activity)} mutations (${((100 * a.activity) / total).toFixed(0)}%)${aetiologyText(a.signature) ? `\n${aetiologyText(a.signature)}` : ""}`}</title>
                 </rect>
               );
               const label =
@@ -188,7 +216,10 @@ export default function SignaturePanel() {
               <Text type="secondary">{t("components.single-cell.signatures.backend-help")}</Text>
             </div>
             {backendSets.length ? (
-              <ActivityBars rows={backendSets} width={Math.max(300, (width >= 1200 ? width / 2 : width) - 24)} />
+              <>
+                <ActivityBars rows={backendSets} width={Math.max(300, (width >= 1200 ? width / 2 : width) - 24)} />
+                <AetiologyLegend rows={backendSets} />
+              </>
             ) : (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.no-backend")} />
             )}
@@ -228,6 +259,7 @@ export default function SignaturePanel() {
                   rows={[{ name: t("components.single-cell.signatures.this-fit"), n: fit.used, activities: fit.activities }]}
                   width={Math.max(300, (width >= 1200 ? width / 2 : width) - 24)}
                 />
+                <AetiologyLegend rows={[{ activities: fit.activities }]} />
                 <Profile counts={fit.counts} reconstruction={fit.reconstruction} width={Math.max(300, (width >= 1200 ? width / 2 : width) - 24)} />
               </>
             )}
