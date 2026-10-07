@@ -25,7 +25,9 @@ export default function PhylogenyCanvas({
   hoverRange = null,
   pixelRatio = 1,
   onSelectRange,
+  onSelectNode,
   onHoverNode,
+  branchCounts = null,
 }) {
   const ref = useRef(null);
 
@@ -132,6 +134,28 @@ export default function PhylogenyCanvas({
       }
     });
 
+    // SNVs mapped to each branch, written above it where it fits.
+    if (branchCounts && branchCounts.size) {
+      const rowH = height / nRows;
+      ctx.font = "9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      branchCounts.forEach((count, k) => {
+        const n = layout.nodes[k];
+        if (!n || n.parent < 0 || !count || (n.isLeaf && rowH < 9)) return;
+        const x0 = px(layout.nodes[n.parent].x);
+        const x1 = px(n.x);
+        const label = `${count}`;
+        if (x1 - x0 < ctx.measureText(label).width + 2) return;
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        const tw = ctx.measureText(label).width;
+        ctx.fillRect((x0 + x1) / 2 - tw / 2 - 1, py(n.y) - 10, tw + 2, 9);
+        ctx.fillStyle = "#cf1322";
+        ctx.fillText(label, (x0 + x1) / 2, py(n.y) - 1);
+      });
+      ctx.textAlign = "start";
+    }
+
     if (geometry.showLabels) {
       ctx.font = `${geometry.fontSize}px sans-serif`;
       ctx.textBaseline = "middle";
@@ -169,7 +193,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, "#fa541c", dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;
@@ -227,6 +251,7 @@ export default function PhylogenyCanvas({
       onClick={(e) => {
         const n = nodeAt(e);
         if (n && onSelectRange) onSelectRange([n.firstLeaf, n.lastLeaf], e);
+        if (n && onSelectNode) onSelectNode(layout.nodes.indexOf(n), e);
       }}
       onMouseMove={(e) => onHoverNode && onHoverNode(nodeAt(e), e)}
       onMouseLeave={() => onHoverNode && onHoverNode(null)}

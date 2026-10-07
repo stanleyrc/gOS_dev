@@ -426,6 +426,8 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
       node: v.node ?? null,
       cladeCells: v.clade_cells ?? null,
       mapConfidence: v.map_confidence ?? null,
+      anchor: v.anchor ?? null,
+      altCells: v.alt_cells ?? null,
     });
   });
   const n = variants.length;
