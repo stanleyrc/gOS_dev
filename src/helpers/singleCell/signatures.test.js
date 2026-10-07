@@ -59,3 +59,21 @@ describe("fitSignatures", () => {
     expect(fitSignatures(new Float64Array(96), reference).activities).toHaveLength(0);
   });
 });
+
+describe("decomposed catalogs", () => {
+  it("splits each channel's counts across the fitted signatures", () => {
+    const { decomposeFit, SBS96: CH } = require("./signatures");
+    const a = new Float64Array(96).fill(0);
+    const b = new Float64Array(96).fill(0);
+    a[0] = 1;
+    b[0] = 0.5;
+    b[1] = 0.5;
+    const reference = { names: ["A", "B"], columns: [a, b] };
+    const counts = CH.map((_, i) => (i === 0 ? 30 : i === 1 ? 10 : 0));
+    const out = decomposeFit(counts, reference, [{ signature: "A", activity: 20 }, { signature: "B", activity: 20 }]);
+    expect(out[0].decomposed[0]).toBeCloseTo(20);
+    expect(out[1].decomposed[0]).toBeCloseTo(10);
+    expect(out[1].decomposed[1]).toBeCloseTo(10);
+    expect(out[0].cosine).toBeCloseTo(1);
+  });
+});
