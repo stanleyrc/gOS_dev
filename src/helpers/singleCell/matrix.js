@@ -420,6 +420,51 @@ export function chromosomeSpans(chromoBins, extents) {
   return { spans, separators };
 }
 
+/** 1, 2 or 5 × 10^k, the smallest at least `raw`. */
+export function niceStep(raw) {
+  if (!(raw > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  const m = raw / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
+/** Position label in Mb / kb / bp depending on the tick step. */
+export function formatPosition(bp, step) {
+  if (step >= 1e6) return `${+(bp / 1e6).toFixed(step >= 1e7 ? 0 : 1)} Mb`;
+  if (step >= 1e3) return `${+(bp / 1e3).toFixed(step >= 1e4 ? 0 : 1)} kb`;
+  return `${Math.round(bp).toLocaleString()} bp`;
+}
+
+/**
+ * Within-chromosome coordinate ticks for genomic heatmap columns. Only
+ * chromosomes that are wide enough on screen (zoomed in, or a domain showing
+ * just a few chromosomes) get ticks, so the whole-genome view keeps only the
+ * chromosome names. Each domain/region gets its own axis.
+ */
+export function genomicTicks(chromoBins, extents, { minSpan = 60, maxChromosomes = 4, spacing = 90 } = {}) {
+  const ticks = [];
+  extents.forEach(([px0, px1, d]) => {
+    const scale = (g) => px0 + ((g - d[0]) / (d[1] - d[0])) * (px1 - px0);
+    const visible = Object.keys(chromoBins).filter((k) => chromoBins[k].endPlace > d[0] && chromoBins[k].startPlace < d[1]);
+    if (!visible.length || visible.length > maxChromosomes) return;
+    visible.forEach((chromosome) => {
+      const c = chromoBins[chromosome];
+      const a = Math.max(c.startPlace, d[0]);
+      const b = Math.min(c.endPlace, d[1]);
+      const px = scale(b) - scale(a);
+      if (px < minSpan) return;
+      const offset = (c.startPoint ?? 1) - c.startPlace;
+      const la = a + offset;
+      const lb = b + offset;
+      const step = niceStep((lb - la) / Math.max(1, Math.floor(px / spacing)));
+      for (let v = Math.ceil(la / step) * step; v <= lb; v += step) {
+        ticks.push({ x: scale(v - offset), label: formatPosition(v, step), chromosome });
+      }
+    });
+  });
+  return ticks;
+}
+
 /**
  * For discrete columns laid out in `order`, group consecutive columns that
  * share a key (e.g. chromosome) and return pixel spans and separators.

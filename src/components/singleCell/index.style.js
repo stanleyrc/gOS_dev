@@ -60,6 +60,17 @@ const Wrapper = styled.div`
     white-space: nowrap;
     user-select: none;
   }
+  .sc-axis-tick {
+    position: absolute;
+    font-size: 9px;
+    line-height: 12px;
+    padding-left: 2px;
+    border-left: 1px solid #8c8c8c;
+    color: #8c8c8c;
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+  }
   .sc-axis-link {
     cursor: pointer;
   }

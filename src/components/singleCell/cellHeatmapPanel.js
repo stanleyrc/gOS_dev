@@ -30,6 +30,7 @@ import {
   domainExtents,
   expressionRGBA,
   genomicColumnLookup,
+  genomicTicks,
   hexToRgb,
   junctionColumnOrder,
   junctionRGBA,
@@ -62,6 +63,7 @@ const HANDLE_WIDTH = 10;
 const TREE_MIN = 80;
 const TREE_MAX = 900;
 const AXIS_HEIGHT = 18;
+const TICK_HEIGHT = 16;
 const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
 const UNSELECTED_RGBA = packRGBA(hexToRgb("#FFFFFF"));
 
@@ -615,6 +617,12 @@ export default function CellHeatmapPanel() {
       ? t(`components.single-cell.tree.${tree.method}`)
       : t("components.single-cell.tree.none");
 
+  const ticks = useMemo(
+    () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
+    [heatmapType, chromoBins, domains, heatWidth]
+  );
+  const axisHeight = ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT;
+
   const sideProps = {
     snv: snv.data,
     rows: snvRows,
@@ -624,7 +632,7 @@ export default function CellHeatmapPanel() {
     max: snvMax,
     height,
     pixelRatio,
-    axisHeight: AXIS_HEIGHT,
+    axisHeight: axisHeight,
     wheelNeedsModifier: Boolean(zoomedByCmd),
     onRowClick: handleRowClick,
     onSiteClick: (row, c) => {
@@ -1050,7 +1058,12 @@ export default function CellHeatmapPanel() {
                   </div>
                 )}
                 {active && (
-                  <div className="sc-axis" style={{ width: heatWidth, height: AXIS_HEIGHT }}>
+                  <div className="sc-axis" style={{ width: heatWidth, height: axisHeight }}>
+                    {ticks.map((tk, k) => (
+                      <span key={`tick-${k}`} className="sc-axis-tick" style={{ left: tk.x, top: AXIS_HEIGHT - 2 }} title={`chr${tk.chromosome}:${tk.label}`}>
+                        {tk.label}
+                      </span>
+                    ))}
                     {active.axis.spans
                       .filter((s) => s.x1 - s.x0 >= 14)
                       .map((s, k) => (
