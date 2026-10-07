@@ -1265,6 +1265,20 @@
         "rest-label": "all other cells",
         "tree-label": "tree selection",
         "compare": "Compare A vs B in the RNA tab →"
+      },
+      "branch": {
+        "toggle": "Branch SNVs",
+        "toggle-help": "Number of SNVs mapped to each branch of the tree (one-gain mapping), following the site filters. Click a branch to list its SNVs and fit their signatures.",
+        "title": "{{count}} SNVs on this branch ({{cells}} cells below it)",
+        "help": "Sites whose mutation maps to this branch: gained here and carried by the cells below it. Click a site to view the reads in IGV.",
+        "site": "Site",
+        "effect": "Effect",
+        "alt-cells": "Alt cells / clade",
+        "igv": "Open the reads of cells in this clade in IGV",
+        "fit": "Fit signatures ({{count}} with context)",
+        "show-in-heatmap": "Show these sites in the heatmap",
+        "fit-summary": "{{n}} SNVs fitted to COSMIC v3.4 (cosine {{cosine}})",
+        "this-branch": "This branch"
       }
     },
     "tracks-modal": {

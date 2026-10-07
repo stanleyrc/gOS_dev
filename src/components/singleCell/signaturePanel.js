@@ -18,7 +18,7 @@ const PROFILE_HEIGHT = 110;
 
 let cosmicPromise = null;
 /** COSMIC v3.4 SBS GRCh38 reference from the app's public folder (fetched once). */
-function loadCosmic() {
+export function loadCosmic() {
   if (!cosmicPromise) {
     const base = window.location.href.split("?")[0].replace(/\/[^/]*$/, "");
     cosmicPromise = axios
@@ -36,7 +36,7 @@ const aetiologyHtml = (sig) => signatureMetadata.metadata[sig]?.full || null;
 const aetiologyText = (sig) => (aetiologyHtml(sig) || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "") || "";
 
 /** Every signature in the given fits, with its aetiology (as in the bulk Signatures tab). */
-function AetiologyLegend({ rows }) {
+export function AetiologyLegend({ rows }) {
   const sigs = [...new Set(rows.flatMap((r) => r.activities.map((a) => a.signature)))].sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true })
   );
@@ -61,7 +61,7 @@ function AetiologyLegend({ rows }) {
 const signatureColor = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3, ...d3.schemePastel1]);
 
 /** One stacked bar per set: each signature's share of the set's mutations. */
-function ActivityBars({ rows, width }) {
+export function ActivityBars({ rows, width }) {
   const labelWidth = 150;
   const barWidth = Math.max(80, width - labelWidth - 70);
   return (
@@ -101,7 +101,7 @@ function ActivityBars({ rows, width }) {
 }
 
 /** 96-channel profile: observed counts as bars, the fitted reconstruction as dots. */
-function Profile({ counts, reconstruction, width }) {
+export function Profile({ counts, reconstruction, width }) {
   const max = Math.max(1, ...counts, ...reconstruction);
   const left = 28;
   const w = (width - left - 4) / 96;

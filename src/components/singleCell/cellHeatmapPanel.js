@@ -7,6 +7,9 @@ import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomO
 import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
 import PhylogenyCanvas from "./phylogenyCanvas";
+import BranchSnvDrawer from "./branchSnvDrawer";
+import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
+import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns } from "../../helpers/singleCell/snvSites";
@@ -371,6 +374,24 @@ export default function CellHeatmapPanel() {
     return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds });
   }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds]);
   const [snvHeader, setSnvHeader] = useState(null);
+
+  // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
+  const fullTreeLayout = useMemo(
+    () => (tree.status === "ok" && tree.method === "file" && tree.data?.source ? layoutTree(tree.data.source) : null),
+    [tree]
+  );
+  const canShowBranchSnvs = Boolean(fullTreeLayout && hasTree && snvReady && hasAnchors(snv.data));
+  const showBranchSnvs = canShowBranchSnvs && Boolean(layout.branchSnvs);
+  const snvsByBranch = useMemo(
+    () => (showBranchSnvs ? branchVariants(snv.data, snvColumns, treeLayout, fullTreeLayout) : null),
+    [showBranchSnvs, snv, snvColumns, treeLayout, fullTreeLayout]
+  );
+  const branchCounts = useMemo(
+    () => (snvsByBranch ? new Map([...snvsByBranch].map(([k, v]) => [k, v.length])) : null),
+    [snvsByBranch]
+  );
+  const [branchNode, setBranchNode] = useState(null);
+  useEffect(() => setBranchNode(null), [treeLayout]);
   const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
   const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
 
@@ -844,6 +865,16 @@ export default function CellHeatmapPanel() {
               </Tooltip>
             </Checkbox>
           )}
+          {canShowBranchSnvs && (
+            <Checkbox
+              checked={Boolean(layout.branchSnvs)}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ branchSnvs: e.target.checked }))}
+            >
+              <Tooltip title={t("components.single-cell.branch.toggle-help")}>
+                {t("components.single-cell.branch.toggle")}
+              </Tooltip>
+            </Checkbox>
+          )}
           {geneList.length > 0 && sc.rna.status === "ok" && (
             <Checkbox
               checked={Boolean(layout.showGenePanel)}
@@ -973,6 +1004,8 @@ export default function CellHeatmapPanel() {
                 selectedRows={selectedRows}
                 hoverRow={hoverRow}
                 onSelectRange={handleTreeSelect}
+                branchCounts={branchCounts}
+                onSelectNode={(k) => snvsByBranch?.has(k) && setBranchNode(k)}
                 hoverRange={hoverRange}
                 onHoverNode={(node, event) => {
                   if (!node) return clearHover();
@@ -1202,6 +1235,15 @@ export default function CellHeatmapPanel() {
           </div>
         </div>
       </Card>
+      {snvsByBranch && branchNode != null && treeLayout?.nodes[branchNode] && (
+        <BranchSnvDrawer
+          open
+          onClose={() => setBranchNode(null)}
+          snv={snv.data}
+          variantIdx={snvsByBranch.get(branchNode) || []}
+          cellIds={treeLayout.leaves.slice(treeLayout.nodes[branchNode].firstLeaf, treeLayout.nodes[branchNode].lastLeaf + 1)}
+        />
+      )}
     </Wrapper>
   );
 }
