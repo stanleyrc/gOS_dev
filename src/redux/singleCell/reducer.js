@@ -6,13 +6,20 @@ import actions, {
 } from "./actions";
 import caseReportActions from "../caseReport/actions";
 import { DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
+import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups";
+
+// Saved cell groups shared through the URL join the stored ones.
+const withUrlGroups = (layout) => {
+  const incoming = groupsFromUrl();
+  return incoming ? { ...layout, savedGroups: mergeGroups(layout.savedGroups || {}, incoming) } : layout;
+};
 
 const storedLayout = () => {
   try {
     const raw = window.localStorage.getItem(SC_LAYOUT_STORAGE_KEY);
-    return { ...SC_DEFAULT_LAYOUT, ...(raw ? JSON.parse(raw) : {}) };
+    return withUrlGroups({ ...SC_DEFAULT_LAYOUT, ...(raw ? JSON.parse(raw) : {}) });
   } catch (error) {
-    return { ...SC_DEFAULT_LAYOUT };
+    return withUrlGroups({ ...SC_DEFAULT_LAYOUT });
   }
 };
 
