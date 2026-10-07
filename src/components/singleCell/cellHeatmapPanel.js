@@ -46,7 +46,7 @@ import {
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
-const ANNOTATION_COLUMN = 9; // px per strip: selection, clone, metadata fields, expression
+const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
 const NOT_ANNOTATIONS = new Set(["pair", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
 // Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
@@ -182,6 +182,7 @@ export default function CellHeatmapPanel() {
     [cells, annotationFields.join("|")]
   );
   const nAnnotation = 2 + annotationFields.length + (showExpression ? 1 : 0);
+  const ANNOTATION_COLUMN = layout.stripWidth || 14;
   const annotationWidth = ANNOTATION_COLUMN * nAnnotation;
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
@@ -755,6 +756,16 @@ export default function CellHeatmapPanel() {
               />
             </Space>
           )}
+          <Space size={4}>
+            <Text type="secondary">{t("components.single-cell.toolbar.strip-width")}</Text>
+            <Select
+              size="small"
+              style={{ width: 80 }}
+              value={layout.stripWidth || 14}
+              onChange={(value) => dispatch(singleCellActions.updateLayout({ stripWidth: value }))}
+              options={STRIP_WIDTHS.map((value) => ({ value, label: `${value} px` }))}
+            />
+          </Space>
           <Space size={4}>
             <Text type="secondary">{t("components.single-cell.toolbar.row-height")}</Text>
             <Select

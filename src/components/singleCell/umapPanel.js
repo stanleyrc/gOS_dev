@@ -8,6 +8,7 @@ import scaActions from "../../redux/scAnalysis/actions";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import { annotationColors } from "../../helpers/singleCell/matrix";
+import { cnAtPosition, geneLocus } from "../../helpers/singleCell/dosage";
 import { searchGeneNames, topVariableGenes } from "../../helpers/singleCell/staticRna";
 import { kmeans, pca, scaledExpression } from "../../helpers/singleCell/rnaStats";
 import useRnaData from "./rna/useRnaData";
@@ -52,7 +53,16 @@ function insidePolygon(x, y, polygon) {
 export default function UmapPanel() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId } = useSelector((s) => s.SingleCell);
+  const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId, cn } = useSelector((s) => s.SingleCell);
+  const genesState = useSelector((s) => s.Genes);
+  // colour by copy number at this gene's locus (from the cells' genome graphs)
+  const [cnGene, setCnGene] = useState("EGFR");
+  const [cnGeneOptions, setCnGeneOptions] = useState([]);
+  const cnLocus = useMemo(() => geneLocus(genesState, cnGene), [genesState, cnGene]);
+  const cnOfCell = useMemo(
+    () => (cn.status === "ok" && cnLocus ? cnAtPosition(cn.data, cnLocus.mid) : new Map()),
+    [cn, cnLocus]
+  );
   const expression = useSelector((s) => s.ScAnalysis.expression);
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
@@ -133,6 +143,34 @@ export default function UmapPanel() {
   /* ---- colour scale ---- */
   const field = summary?.fields.find((f) => f.name === colorBy) || null;
   const scale = useMemo(() => {
+    if (colorBy === "cn") {
+      const values = [...cnOfCell.values()].sort((a, b) => a - b);
+      const hi = Math.max(2, values[Math.floor(0.98 * (values.length - 1))] || 2);
+      return {
+        kind: "numeric",
+        color: (p) => {
+          const v = cnOfCell.get(p.cell.cell_id);
+          return Number.isFinite(v) ? viridis(Math.min(1, v / hi)) : NO_DATA;
+        },
+        value: (p) => cnOfCell.get(p.cell.cell_id),
+        range: [0, hi],
+        title: t("components.single-cell.umap.cn-title", { gene: cnLocus?.gene || cnGene }),
+      };
+    }
+    if (colorBy === "selection") {
+      const sel = new Set(selectedCellIds);
+      const levels = {
+        [t("components.single-cell.umap.sel-in")]: "#d4380d",
+        [t("components.single-cell.umap.sel-out")]: "#91caff",
+      };
+      return {
+        kind: "categorical",
+        color: (p) => (sel.has(p.cell.cell_id) ? levels[t("components.single-cell.umap.sel-in")] : levels[t("components.single-cell.umap.sel-out")]),
+        value: (p) => (sel.has(p.cell.cell_id) ? t("components.single-cell.umap.sel-in") : t("components.single-cell.umap.sel-out")),
+        levels,
+        title: t("components.single-cell.umap.sel-title", { count: selectedCellIds.length }),
+      };
+    }
     if (colorBy === "gene" && geneReady) {
       return {
         kind: "numeric",
@@ -180,7 +218,7 @@ export default function UmapPanel() {
       levels: cloneColors,
       title: t("components.single-cell.legend.clones"),
     };
-  }, [colorBy, geneReady, expression, field, points, cloneOf, cloneColors, t]);
+  }, [colorBy, geneReady, expression, field, points, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds]);
 
   /* ---- drawing ---- */
   useEffect(() => {
@@ -327,6 +365,8 @@ export default function UmapPanel() {
   const nLinked = points.filter((p) => p.linked).length;
   const colorOptions = [
     { value: "clone", label: t("components.single-cell.umap.color-clone") },
+    { value: "selection", label: t("components.single-cell.umap.color-selection") },
+    ...(cn.status === "ok" ? [{ value: "cn", label: t("components.single-cell.umap.color-cn") }] : []),
     ...(geneReady ? [{ value: "gene", label: t("components.single-cell.umap.color-gene", { gene: expression.gene }) }] : []),
     ...summary.fields.map((f) => ({ value: f.name, label: f.name })),
   ];
@@ -359,6 +399,24 @@ export default function UmapPanel() {
             />
             <Text type="secondary">{t("components.single-cell.umap.color-by")}</Text>
             <Select size="small" style={{ width: 200 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch />
+            {colorBy === "cn" && (
+              <AutoComplete
+                size="small"
+                style={{ width: 130 }}
+                value={cnGene}
+                placeholder={t("components.single-cell.umap.cn-gene")}
+                options={cnGeneOptions}
+                onChange={setCnGene}
+                onSearch={(q) =>
+                  setCnGeneOptions(
+                    (genesState.optionsList || [])
+                      .filter((o) => `${o.label}`.toUpperCase().startsWith(`${q}`.toUpperCase()))
+                      .slice(0, 20)
+                      .map((o) => ({ value: o.label }))
+                  )
+                }
+              />
+            )}
             <AutoComplete
               size="small"
               style={{ width: 170 }}

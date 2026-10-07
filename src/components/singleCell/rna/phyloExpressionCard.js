@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Card, Empty, Select, Space, Typography } from "antd";
+import { Button, Card, Empty, Select, Space, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import HeatmapCanvas from "../heatmapCanvas";
@@ -23,12 +23,13 @@ import {
   packRGBA,
 } from "../../../helpers/singleCell/matrix";
 import { geneValues, topVariableGenes } from "../../../helpers/singleCell/staticRna";
+import { stateScores } from "../../../helpers/singleCell/stateScores";
 import { clusteredGeneOrder, scaledExpression } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
 const HEIGHT = 440;
 const TREE_WIDTH = 170;
-const STRIP = 12;
+
 const GAP = 4;
 const MAX_GENES = 2000;
 const COUNTS = [20, 50, 100, 250, 500, 1000, 2000];
@@ -44,7 +45,7 @@ const COUNTS = [20, 50, 100, 250, 500, 1000, 2000];
 export default function PhyloExpressionCard({ summary, matrix }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { cloneColors, selectedCellIds, hoveredCellId } = useSelector((state) => state.SingleCell);
+  const { cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((state) => state.SingleCell);
   const { geneList, deTop } = useSelector((state) => state.ScAnalysis);
   const { order, treeLayout, cellById } = useTreeView();
   const { rowOfId } = useRnaData();
@@ -62,6 +63,16 @@ export default function PhyloExpressionCard({ summary, matrix }) {
     ["state", "Region_Annotation"].filter((name) => summary.fields.some((f) => f.name === name))
   );
   const [hoverRange, setHoverRange] = useState(null);
+
+  // GBM state (MES / AC / OPC / NPC) and proliferation scores as numeric cell
+  // fields: they become strips here and colourings on the UMAP.
+  const addStateScores = async () => {
+    const entry = (await geneSetIndex()).find((c) => c.id === "gbm_3ca");
+    const sets = entry ? new Map((await loadGmt(entry.file)).map((x) => [x.term, x.genes])) : new Map();
+    const scores = stateScores(summary, matrix, sets);
+    Object.entries(scores).forEach(([name, values]) => dispatch(singleCellActions.addRnaField(name, values, true)));
+    setAnnotations((current) => [...new Set([...current, "score_MES", "score_AC", "score_OPC", "score_NPC", "score_cycling"])].filter((n) => scores[n] || current.includes(n)));
+  };
 
   // Follow the newest source: a fresh DE result, or a new pick.
   useEffect(() => {
@@ -172,6 +183,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
       });
     return out;
   }, [annotationFields, summary]);
+  const STRIP = layout.stripWidth || 14; // shared with the CN heatmap's strip width
   const nStrips = 1 + annotationFields.length;
   const stripWidth = nStrips * STRIP;
   const stripCols = useMemo(() => discreteColumnLookup(nStrips, stripWidth * pixelRatio), [nStrips, stripWidth, pixelRatio]);
@@ -299,6 +311,9 @@ export default function PhyloExpressionCard({ summary, matrix }) {
             onChange={setAnnotations}
             options={summary.fields.map((f) => ({ value: f.name, label: f.name }))}
           />
+          <Button size="small" disabled={!matrix} onClick={addStateScores}>
+            {t("components.single-cell.rna.add-state-scores")}
+          </Button>
         </Space>
         <div ref={containerRef}>
           {!genes.length ? (
