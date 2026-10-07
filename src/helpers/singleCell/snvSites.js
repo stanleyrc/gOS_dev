@@ -1,23 +1,35 @@
 // Which SNV sites (columns) to show, shared by the SNV heatmap and the
 // signature panel: by where the site maps on the tree (variant.category), only
-// the sites CellPhy built the tree from, and only OncoKB driver sites.
+// the sites CellPhy built the tree from, only OncoKB driver sites, and a
+// minimum clade score (how cleanly the alt calls follow the mapped clade).
 
 /** True when the SNV matrix carries per-site tree categories. */
 export const hasSiteCategories = (snv) => Boolean(snv?.variants?.some((v) => v.category));
 
+/** True when the SNV matrix carries clade scores. */
+export const hasCladeScores = (snv) => Boolean(snv?.variants?.some((v) => v.cladeScore != null));
+
+/** "alt in clade / clade calls · alt outside / outside calls" for a variant. */
+export const cladeScoreDetail = (v) =>
+  v.cladeScore == null
+    ? null
+    : `${v.cladeScore.toFixed(2)} (alt ${v.altInClade}/${v.altInClade + v.refInClade} in clade, ${v.altOutsideClade}/${v.altOutsideClade + v.refOutsideClade} outside)`;
+
 /** Filter column (variant) indices by the layout's SNV site filters. */
-export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, snvDriversOnly, snvSiteIds } = {}) {
+export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, snvDriversOnly, snvSiteIds, snvMinCladeScore } = {}) {
   if (!snv) return columns;
   const categories = hasSiteCategories(snv) && snvCategories?.length ? new Set(snvCategories) : null;
   const sites = snvSiteIds?.length ? new Set(snvSiteIds) : null;
-  if (!categories && !snvCellphyOnly && !snvDriversOnly && !sites) return columns;
+  const minScore = snvMinCladeScore > 0 ? snvMinCladeScore : null;
+  if (!categories && !snvCellphyOnly && !snvDriversOnly && !sites && !minScore) return columns;
   return columns.filter((c) => {
     const v = snv.variants[c];
     return (
       (!sites || sites.has(v.id)) &&
       (!categories || categories.has(v.category || "unmapped")) &&
       (!snvCellphyOnly || v.cellphyInput === true) &&
-      (!snvDriversOnly || v.driver === true)
+      (!snvDriversOnly || v.driver === true) &&
+      (!minScore || (v.cladeScore != null && v.cladeScore >= minScore))
     );
   });
 }

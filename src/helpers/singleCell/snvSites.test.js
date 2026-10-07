@@ -28,3 +28,11 @@ describe("filterSnvColumns", () => {
     expect(filterSnvColumns(snv, all, { snvDriversOnly: true })).toEqual([1, 2]);
   });
 });
+
+describe("clade score filter", () => {
+  it("keeps sites at or above the minimum clade score", () => {
+    const snv = { variants: [{ id: "a", cladeScore: 0.95 }, { id: "b", cladeScore: 0.4 }, { id: "c", cladeScore: null }] };
+    expect(filterSnvColumns(snv, [0, 1, 2], { snvMinCladeScore: 0.7 })).toEqual([0]);
+    expect(filterSnvColumns(snv, [0, 1, 2], { snvMinCladeScore: null })).toEqual([0, 1, 2]);
+  });
+});
