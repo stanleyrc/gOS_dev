@@ -13,7 +13,7 @@ import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs"
 import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
-import { filterSnvColumns } from "../../helpers/singleCell/snvSites";
+import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
 import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
@@ -358,7 +358,7 @@ export default function CellHeatmapPanel() {
   const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
   // Which sites to show (shared with the signature panel through the layout):
   // by where they map on the tree, CellPhy input only, OncoKB drivers only.
-  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds } = layout;
+  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore } = layout;
   const setSnvCategories = (value) => dispatch(singleCellActions.updateLayout({ snvCategories: value }));
   const setCellphyOnly = (value) => dispatch(singleCellActions.updateLayout({ snvCellphyOnly: value }));
   const setDriversOnly = (value) => dispatch(singleCellActions.updateLayout({ snvDriversOnly: value }));
@@ -372,8 +372,8 @@ export default function CellHeatmapPanel() {
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
-    return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds });
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds]);
+    return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore });
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvMinCladeScore]);
   const [snvHeader, setSnvHeader] = useState(null);
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
@@ -947,6 +947,20 @@ export default function CellHeatmapPanel() {
                     <Tag closable color="blue" onClose={() => dispatch(singleCellActions.updateLayout({ snvSiteIds: null }))}>
                       {t("components.single-cell.events.filter-tag", { count: snvSiteIds.length })}
                     </Tag>
+                  )}
+                  {hasCladeScores(snv.data) && (
+                    <Tooltip title={t("components.single-cell.snv.clade-score-help")}>
+                      <Select
+                        size="small"
+                        style={{ width: 150 }}
+                        value={snvMinCladeScore || 0}
+                        onChange={(value) => dispatch(singleCellActions.updateLayout({ snvMinCladeScore: value || null }))}
+                        options={[0, 0.5, 0.7, 0.8, 0.9].map((value) => ({
+                          value,
+                          label: value ? t("components.single-cell.snv.clade-score-min", { value }) : t("components.single-cell.snv.clade-score-any"),
+                        }))}
+                      />
+                    </Tooltip>
                   )}
                   {nDrivers > 0 && (
                     <Checkbox checked={driversOnly} onChange={(e) => setDriversOnly(e.target.checked)}>

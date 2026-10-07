@@ -944,7 +944,11 @@
         "category-subclonal": "Subclonal (shared)",
         "category-private": "Private (one cell)",
         "category-outside_tumor": "Outside tumor clade",
-        "category-unmapped": "Unmapped"
+        "category-unmapped": "Unmapped",
+        "clade-score": "Clade score",
+        "clade-score-help": "How cleanly a site's alt calls follow the clade it maps to: F1 of 'alt call' vs 'in the mapped clade' over cells with a genotype call, 2·alt in clade / (2·alt in clade + ref in clade + alt outside). 1 = every called cell in the clade is alt and no called cell outside it is.",
+        "clade-score-min": "Clade score ≥ {{value}}",
+        "clade-score-any": "Any clade score"
       },
       "tooltip": {
         "cell": "Cell",
