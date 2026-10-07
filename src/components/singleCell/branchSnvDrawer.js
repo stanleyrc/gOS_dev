@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Button, Drawer, Space, Table, Tag, Typography } from "antd";
 import { fitSignatures, sbs96Counts } from "../../helpers/singleCell/signatures";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
+import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { ActivityBars, AetiologyLegend, Profile, loadCosmic } from "./signaturePanel";
 import singleCellActions from "../../redux/singleCell/actions";
 
@@ -85,6 +86,13 @@ export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellId
       title: t("components.single-cell.branch.alt-cells"),
       key: "cells",
       render: (_, v) => (v.cladeCells != null ? `${v.altCells ?? "?"}/${v.cladeCells}` : "–"),
+    },
+    {
+      title: t("components.single-cell.snv.clade-score"),
+      dataIndex: "cladeScore",
+      key: "cladeScore",
+      sorter: (a, b) => (a.cladeScore ?? -1) - (b.cladeScore ?? -1),
+      render: (s, v) => (s == null ? "–" : <span title={cladeScoreDetail(v)}>{s.toFixed(2)}</span>),
     },
     { title: "SBS96", dataIndex: "context", key: "context", render: (c) => c || "–" },
   ];

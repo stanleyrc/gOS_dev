@@ -428,6 +428,12 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
       mapConfidence: v.map_confidence ?? null,
       anchor: v.anchor ?? null,
       altCells: v.alt_cells ?? null,
+      // fit of the alt calls to the mapped clade (gos_sc_upload.R map step)
+      cladeScore: v.clade_score ?? null,
+      altInClade: v.alt_in_clade ?? null,
+      refInClade: v.ref_in_clade ?? null,
+      altOutsideClade: v.alt_outside_clade ?? null,
+      refOutsideClade: v.ref_outside_clade ?? null,
     });
   });
   const n = variants.length;

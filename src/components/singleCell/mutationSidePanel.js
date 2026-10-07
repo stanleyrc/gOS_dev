@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button, Space, Tooltip, Typography } from "antd";
@@ -206,6 +207,7 @@ export default function MutationSidePanel({
             `${t(`components.single-cell.snv.category-${v.category}`)}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}`,
           ]]
         : []),
+      ...(v.cladeScore != null ? [[t("components.single-cell.snv.clade-score"), cladeScoreDetail(v)]] : []),
       [t("components.single-cell.metric.vaf"), vaf == null ? fmt(null) : vaf.toFixed(3)],
       [t("components.single-cell.metric.alt"), fmt(snvMetricValue(snv, p, c, "alt"))],
       [t("components.single-cell.metric.depth"), fmt(snvMetricValue(snv, p, c, "depth"))],
