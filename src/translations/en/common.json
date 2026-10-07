@@ -1108,6 +1108,13 @@
           "scwgs": "scWGS (grey = 2)"
         }
       },
+      "events": {
+        "picked": "{{count}} events picked",
+        "summary": "{{snvs}} SNV sites · {{genes}} copy-number / fusion events · {{cells}} cells carrying them",
+        "show": "Show on the Single-Cell heatmap",
+        "help": "Tick events below to show them on the Single-Cell heatmap: SNVs filter the SNV heatmap to those sites, copy-number changes and fusions zoom the CN heatmap to their genes, and the cells carrying them are selected.",
+        "filter-tag": "Picked events: {{count}} sites"
+      },
       "signatures": {
         "title": "SBS signatures",
         "reference": "COSMIC v{{version}} · {{genome}}",

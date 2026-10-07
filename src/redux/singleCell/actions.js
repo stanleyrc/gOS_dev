@@ -41,6 +41,7 @@ export const SC_DEFAULT_LAYOUT = {
   snvCategories: null, // SNV sites shown, by where they map on the tree (null = all)
   snvCellphyOnly: false, // only the sites CellPhy built the tree from
   snvDriversOnly: false, // only OncoKB driver sites
+  snvSiteIds: null, // only these SNV sites (e.g. picked in Filtered Events); null = no restriction
   showSignatures: true, // SBS signature panel below the heatmap
 };
 
