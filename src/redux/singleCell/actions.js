@@ -38,6 +38,10 @@ export const SC_DEFAULT_LAYOUT = {
   keepGeneTrack: false, // keep the gene track in the pinned navigation while scrolling
   sideWidth: null, // px of the mutation panel beside the CN heatmap (null = auto)
   geneWidth: null, // px of the gene expression panel (null = auto)
+  snvCategories: null, // SNV sites shown, by where they map on the tree (null = all)
+  snvCellphyOnly: false, // only the sites CellPhy built the tree from
+  snvDriversOnly: false, // only OncoKB driver sites
+  showSignatures: true, // SBS signature panel below the heatmap
 };
 
 const actions = {

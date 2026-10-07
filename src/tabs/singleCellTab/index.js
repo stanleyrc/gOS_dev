@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Affix, Alert, Col, Empty, Progress, Row, Space, Switch, Typography } from "antd";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
+import SignaturePanel from "../../components/singleCell/signaturePanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
@@ -162,6 +163,11 @@ export default function SingleCellTab() {
         <Col span={24}>
           <CellIgvPanel />
         </Col>
+        {layout.showSignatures !== false && (
+          <Col span={24}>
+            <SignaturePanel />
+          </Col>
+        )}
         {layout.showUmap && rna.status === "ok" && (
           <Col span={24}>
             <UmapPanel />

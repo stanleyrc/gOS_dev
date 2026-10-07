@@ -9,6 +9,7 @@ import StripLabels from "./stripLabels";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
+import { filterSnvColumns } from "../../helpers/singleCell/snvSites";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
 import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
@@ -348,9 +349,13 @@ export default function CellHeatmapPanel() {
 
   /* ---- mutation matrix shared by the SNV view and the side panel ---- */
   const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
-  // Which sites to show: by where they map on the tree, and CellPhy input only.
-  const [snvCategories, setSnvCategories] = useState(null); // null = all
-  const [cellphyOnly, setCellphyOnly] = useState(false);
+  // Which sites to show (shared with the signature panel through the layout):
+  // by where they map on the tree, CellPhy input only, OncoKB drivers only.
+  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly } = layout;
+  const setSnvCategories = (value) => dispatch(singleCellActions.updateLayout({ snvCategories: value }));
+  const setCellphyOnly = (value) => dispatch(singleCellActions.updateLayout({ snvCellphyOnly: value }));
+  const setDriversOnly = (value) => dispatch(singleCellActions.updateLayout({ snvDriversOnly: value }));
+  const nDrivers = useMemo(() => (snvReady ? snv.data.variants.filter((v) => v.driver).length : 0), [snvReady, snv]);
   const categoryCounts = useMemo(() => {
     const counts = {};
     if (snvReady) snv.data.variants.forEach((v) => v.category && (counts[v.category] = (counts[v.category] || 0) + 1));
@@ -360,13 +365,8 @@ export default function CellHeatmapPanel() {
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
-    if (!snvCategories && !cellphyOnly) return all;
-    const keep = snvCategories ? new Set(snvCategories) : null;
-    return all.filter((c) => {
-      const v = snv.data.variants[c];
-      return (!keep || keep.has(v.category || "unmapped")) && (!cellphyOnly || v.cellphyInput === true);
-    });
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly]);
+    return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly });
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly]);
   const [snvHeader, setSnvHeader] = useState(null);
   const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
   const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
@@ -891,6 +891,11 @@ export default function CellHeatmapPanel() {
                   <Checkbox checked={cellphyOnly} onChange={(e) => setCellphyOnly(e.target.checked)}>
                     {t("components.single-cell.snv.cellphy-only")}
                   </Checkbox>
+                  {nDrivers > 0 && (
+                    <Checkbox checked={driversOnly} onChange={(e) => setDriversOnly(e.target.checked)}>
+                      {t("components.single-cell.snv.drivers-only", { count: nDrivers })}
+                    </Checkbox>
+                  )}
                 </>
               )}
             </Space>

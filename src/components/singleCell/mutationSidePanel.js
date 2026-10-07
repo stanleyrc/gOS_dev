@@ -16,6 +16,8 @@ import {
 const { Text } = Typography;
 const MIN_SITES = 5;
 const CATEGORY_BAR = 10;
+const DRIVER_BAR = 4;
+const DRIVER_COLOR = "#cf1322";
 
 /** Where an SNV maps on the tree (variant.category), in legend order. */
 export const SNV_CATEGORIES = [
@@ -46,7 +48,12 @@ function CategoryBar({ snv, columnOrder, bins, width, pixelRatio, t }) {
         counts[k] = (counts[k] || 0) + 1;
       }
       const top = Object.entries(counts).sort((p, q) => q[1] - p[1])[0];
-      return { top: top[0], counts, n: b - a };
+      const drivers = [];
+      for (let i = a; i < b; i += 1) {
+        const v = snv.variants[columnOrder[i]];
+        if (v?.driver) drivers.push(v);
+      }
+      return { top: top[0], counts, n: b - a, drivers };
     },
     [bins, snv, columnOrder]
   );
@@ -55,27 +62,35 @@ function CategoryBar({ snv, columnOrder, bins, width, pixelRatio, t }) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const driverH = Math.round(DRIVER_BAR * pixelRatio);
     for (let x = 0; x < deviceWidth; x += 1) {
       const s = summaryAt(x);
       if (!s) continue;
       ctx.fillStyle = CATEGORY_COLOR[s.top] || CATEGORY_COLOR.unmapped;
-      ctx.fillRect(x, 0, 1, canvas.height);
+      ctx.fillRect(x, driverH + 1, 1, canvas.height - driverH - 1);
+      if (s.drivers.length) {
+        // drivers are rare: widen the tick so a single site stays visible
+        ctx.fillStyle = DRIVER_COLOR;
+        ctx.fillRect(Math.max(0, x - pixelRatio), 0, 2 * pixelRatio + 1, driverH);
+      }
     }
-  }, [deviceWidth, summaryAt]);
+  }, [deviceWidth, summaryAt, pixelRatio]);
   const onMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const s = summaryAt(Math.floor((e.clientX - rect.left) * pixelRatio));
     if (!s) return setTitle("");
     const parts = Object.entries(s.counts).map(([k, n]) => `${t(`components.single-cell.snv.category-${k}`)}: ${n}`);
-    return setTitle(s.n > 1 ? `${s.n} sites · ${parts.join(" · ")}` : parts[0].replace(/: 1$/, ""));
+    const drivers = s.drivers.map((v) => `${v.gene} ${v.protein || v.consequence || ""} (${v.oncogenic || v.oncokbLevel})`);
+    const text = s.n > 1 ? `${s.n} sites · ${parts.join(" · ")}` : parts[0].replace(/: 1$/, "");
+    return setTitle(drivers.length ? `${text}\nOncoKB: ${drivers.join(", ")}` : text);
   };
   return (
     <canvas
       ref={ref}
       title={title}
       width={deviceWidth}
-      height={Math.round(CATEGORY_BAR * pixelRatio)}
-      style={{ width, height: CATEGORY_BAR, display: "block" }}
+      height={Math.round((CATEGORY_BAR + DRIVER_BAR + 1) * pixelRatio)}
+      style={{ width, height: CATEGORY_BAR + DRIVER_BAR + 1, display: "block" }}
       onMouseMove={onMove}
     />
   );
@@ -181,7 +196,10 @@ export default function MutationSidePanel({
     const vaf = snvMetricValue(snv, p, c, "vaf");
     return [
       [t("components.single-cell.tooltip.variant"), v.id],
-      ...(v.gene ? [[t("components.single-cell.tooltip.gene"), v.gene]] : []),
+      ...(v.gene ? [[t("components.single-cell.tooltip.gene"), [v.gene, v.protein || v.consequence].filter(Boolean).join(" ")]] : []),
+      ...(v.oncogenic || v.oncokbLevel
+        ? [["OncoKB", [v.oncogenic, v.oncokbLevel].filter(Boolean).join(" · ")]]
+        : []),
       ...(v.category
         ? [[
             t("components.single-cell.snv.category"),
