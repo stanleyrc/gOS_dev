@@ -220,6 +220,11 @@ const Wrapper = styled.div`
     padding: 6px 0 2px;
     margin-top: -6px;
   }
+  .sc-saved-groups {
+    width: 100%;
+    padding: 2px 8px;
+    margin-bottom: 4px;
+  }
   .sc-group-bar {
     width: 100%;
     padding: 4px 8px;
