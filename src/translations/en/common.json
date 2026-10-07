@@ -435,7 +435,8 @@
         "tab5": "Purity-Ploidy Fit",
         "tab6": "Signatures",
         "tab7": "Single-Cell",
-        "tab8": "Single-Cell RNA"
+        "tab8": "Single-Cell RNA",
+        "tab9": "Single-Cell Signatures"
       }
     },
     "detail-error-view": {
