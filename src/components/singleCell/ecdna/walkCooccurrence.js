@@ -19,9 +19,9 @@ export function WalkUpset({ walks, cellIds, colorOf }) {
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(600);
   const [minCn, setMinCn] = useState(2);
-  const combos = useMemo(() => walkCombinations(walks, cellIds, minCn).filter((c) => c.walks.length).slice(0, 16), [walks, cellIds, minCn]);
+  const combos = useMemo(() => walkCombinations(walks, cellIds, minCn).filter((c) => c.walks.length && c.n >= 2).slice(0, 20), [walks, cellIds, minCn]);
   if (!walks.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.none-selected")} />;
-  const LEFT = 150;
+  const LEFT = 190;
   const rowH = 22;
   const colW = Math.max(26, Math.min(60, (width - LEFT - 80) / Math.max(1, combos.length)));
   const barH = 110;
@@ -36,22 +36,22 @@ export function WalkUpset({ walks, cellIds, colorOf }) {
           {combos.map((c, j) => (
             <g key={c.walks.join("|")} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection(c.cells))}>
               <rect x={LEFT + j * colW + 4} y={y(c.n)} width={colW - 8} height={barH - y(c.n)} fill={c.walks.length === 1 ? colorOf(c.walks[0]) : "#8c8c8c"} />
-              <text x={LEFT + (j + 0.5) * colW} y={y(c.n) - 3} textAnchor="middle" fontSize={10} fill="#262626">{`${c.n} (${d3.format(".0%")(c.n / cellIds.length)})`}</text>
-              {walks.map((w, i) => {
-                const on = c.walks.includes(w.id);
-                return <circle key={w.id} cx={LEFT + (j + 0.5) * colW} cy={top + (i + 0.5) * rowH} r={on ? 6 : 3.5} fill={on ? colorOf(w.id) : "#e8e8e8"} />;
-              })}
+              <text x={LEFT + (j + 0.5) * colW} y={y(c.n) - 3} textAnchor="middle" fontSize={11} fill="#262626">{c.n}</text>
               {c.walks.length > 1 && (() => {
                 const idx = c.walks.map((id) => walks.findIndex((w) => w.id === id)).filter((i) => i >= 0);
-                return <line x1={LEFT + (j + 0.5) * colW} x2={LEFT + (j + 0.5) * colW} y1={top + (Math.min(...idx) + 0.5) * rowH} y2={top + (Math.max(...idx) + 0.5) * rowH} stroke="#262626" strokeWidth={2} />;
+                return <line x1={LEFT + (j + 0.5) * colW} x2={LEFT + (j + 0.5) * colW} y1={top + (Math.min(...idx) + 0.5) * rowH} y2={top + (Math.max(...idx) + 0.5) * rowH} stroke="#8c8c8c" strokeWidth={1.5} />;
               })()}
+              {walks.map((w, i) => {
+                const on = c.walks.includes(w.id);
+                return <circle key={w.id} cx={LEFT + (j + 0.5) * colW} cy={top + (i + 0.5) * rowH} r={on ? 5.5 : 3} fill={on ? colorOf(w.id) : "#d9d9d9"} stroke={on ? "#fff" : "none"} />;
+              })}
               <title>{`${c.walks.map((id) => walks.find((w) => w.id === id)?.label).join(" + ")}: ${c.n} cells\n${t("components.single-cell.ecdna.upset-click")}`}</title>
             </g>
           ))}
           {walks.map((w, i) => (
             <g key={w.id}>
               <rect x={0} y={top + i * rowH} width={LEFT + combos.length * colW + 20} height={rowH} fill={i % 2 ? "#fafafa" : "transparent"} />
-              <text x={LEFT - 8} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={11} fill={colorOf(w.id)} fontWeight={600}>{w.label}</text>
+              <text x={LEFT - 8} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={12} fill={colorOf(w.id)} fontWeight={600}>{w.label.length > 24 ? `${w.label.slice(0, 23)}…` : w.label}<title>{w.label}</title></text>
               <text x={LEFT + combos.length * colW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={9} fill="#8c8c8c">{`${cellIds.filter((id) => (Number(w.cells[id]) || 0) >= minCn).length}`}</text>
             </g>
           ))}
