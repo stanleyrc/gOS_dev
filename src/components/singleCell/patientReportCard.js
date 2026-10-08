@@ -5,6 +5,8 @@ import * as d3 from "d3";
 import { Alert, Button, Card, Col, Collapse, Descriptions, Empty, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import DriverCellMatrix from "./driverCellMatrix";
 import ReportFindings from "./reportFindings";
+import useTreeView from "./useTreeView";
+import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { AimOutlined, ExperimentOutlined, FileSearchOutlined, ProfileOutlined, SelectOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -22,7 +24,7 @@ const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", tru
 const aetiology = (sig) => (signatureMetadata.metadata[sig]?.full || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "");
 
 /** One driver line with actions: select carriers, zoom the heatmap, view reads. */
-function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails }) {
+function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, fit }) {
   const { t } = useTranslation("common");
   const pct = d3.format(".0%");
   return (
@@ -42,6 +44,13 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
         </Space>
         <div>
           <Text type="secondary">{t("components.single-cell.report.in-cells", { cells: d.cells, pct: pct(d.fraction) })}</Text>
+          {fit && Number.isFinite(fit.score) && (
+            <Tooltip title={t("components.single-cell.report.clade-fit-help", { inClade: fit.inClade, clade: fit.clade, carriers: fit.carriers })}>
+              <Tag color={fit.score >= 0.8 ? "green" : fit.score < 0.5 ? "red" : "default"} style={{ marginLeft: 6 }}>
+                {t("components.single-cell.report.clade-fit", { score: fit.score.toFixed(2) })}
+              </Tag>
+            </Tooltip>
+          )}
           {Object.entries(d.fractions)
             .filter(([, f]) => f.n > 0)
             .sort((a, b) => b[1].fraction - a[1].fraction)
@@ -112,11 +121,21 @@ function SignatureBar({ items, width = 320 }) {
  * burden by tree position, signatures, and caveats. `interactive` enables
  * the heatmap / IGV actions (only on the patient's own page).
  */
-export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null }) {
+export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength } = useSelector((state) => state.Settings);
   const report = useMemo(() => buildPatientReport({ patient, events: events || [], cells: cells || [], variants: variants || [], signatures }), [patient, events, cells, variants, signatures]);
+  // clade fit of each driver's carriers: the displayed tree on the patient page, the patient's tree.nwk on the cohort page
+  const { treeLayout: ownTree } = useTreeView();
+  const tree = interactive ? ownTree : treeProp;
+  const fitOf = useMemo(() => {
+    const m = new Map();
+    if (!tree) return m;
+    [...report.clonal, ...report.subclonal, ...report.rare].forEach((d) => m.set(d.label, cladeFitScore(`${d.event.cell_ids || ""}`.split(",").filter(Boolean), tree)));
+    return m;
+  }, [tree, report]);
+  const lowFit = [...fitOf.values()].filter((f) => Number.isFinite(f.score) && f.score < 0.5).length;
   const pct = d3.format(".0%");
 
   const onSelect = (d) => dispatch(singleCellActions.updateSelection(`${d.event.cell_ids || ""}`.split(",").filter(Boolean)));
@@ -155,6 +174,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     dispatch(settingsActions.updateTab("1"));
   };
   const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails };
+  const row = (d) => <DriverRow key={d.label} d={d} fit={fitOf.get(d.label)} {...rowProps} />;
   const allDrivers = [...report.clonal, ...report.subclonal, ...report.rare];
   const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
   const driverColumns = [
@@ -163,6 +183,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     { title: t("components.single-cell.report.col-role"), dataIndex: "role", key: "role", width: 140, render: (v) => v || "–" },
     { title: t("components.single-cell.report.col-cells"), dataIndex: "cells", key: "cells", width: 90, sorter: (a, b) => a.fraction - b.fraction, defaultSortOrder: "descend" },
     { title: t("components.single-cell.report.col-clonality"), dataIndex: "clonality", key: "clonality", width: 100, render: (v) => <Tag color={v === "clonal" ? "green" : v === "subclonal" ? "orange" : "default"}>{v}</Tag> },
+    { title: t("components.single-cell.events.clade-score"), key: "fit", width: 90, sorter: (a, b) => (fitOf.get(a.label)?.score || 0) - (fitOf.get(b.label)?.score || 0), render: (_, d) => { const f = fitOf.get(d.label); return f && Number.isFinite(f.score) ? <span style={{ color: f.score < 0.5 ? "#cf1322" : f.score >= 0.8 ? "#237804" : undefined }}>{f.score.toFixed(2)}</span> : "–"; } },
     { title: t("components.single-cell.report.col-clones"), key: "clones", render: (_, d) => Object.entries(d.fractions).filter(([, f]) => f.n > 0).sort((a, b) => b[1].fraction - a[1].fraction).map(([c, f]) => <Tag key={c} color={cloneColors[c]}>{`${c} ${f.n}/${f.size}`}</Tag>) },
   ];
   const expanded = (d) => {
@@ -233,10 +254,10 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         <Col xs={24} lg={14}>
           <Title level={5}>{t("components.single-cell.report.clonal-title", { count: report.clonal.length })}</Title>
           <Text type="secondary">{t("components.single-cell.report.clonal-help", { pct: pct(0.85) })}</Text>
-          {report.clonal.length ? report.clonal.map((d) => <DriverRow key={d.label} d={d} {...rowProps} />) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
+          {report.clonal.length ? report.clonal.map(row) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
           <Title level={5} style={{ marginTop: 16 }}>{t("components.single-cell.report.subclonal-title", { count: report.subclonal.length })}</Title>
           <Text type="secondary">{t("components.single-cell.report.subclonal-help")}</Text>
-          {report.subclonal.length ? report.subclonal.map((d) => <DriverRow key={d.label} d={d} {...rowProps} />) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
+          {report.subclonal.length ? report.subclonal.map(row) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
           {report.rare.length > 0 && (
             <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
               {t("components.single-cell.report.rare", { count: report.rare.length, list: report.rare.slice(0, 6).map((d) => `${d.label} (${d.cells})`).join("; ") })}
@@ -318,9 +339,14 @@ export default function PatientReportCard({ patient, events, cells, variants, si
             ]}
           />
         </Col>
-        {report.caveats.length > 0 && (
+        {(report.caveats.length > 0 || lowFit > 0) && (
           <Col span={24}>
-            <Alert type="warning" showIcon message={t("components.single-cell.report.caveats")} description={report.caveats.map((c) => t(`components.single-cell.report.caveat-${c}`)).join(" ")} />
+            <Alert
+              type="warning"
+              showIcon
+              message={t("components.single-cell.report.caveats")}
+              description={[...report.caveats.map((c) => t(`components.single-cell.report.caveat-${c}`)), ...(lowFit > 0 ? [t("components.single-cell.report.caveat-low-fit", { count: lowFit })] : [])].join(" ")}
+            />
           </Col>
         )}
       </Row>
