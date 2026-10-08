@@ -879,6 +879,19 @@
       }
     },
     "single-cell": {
+      "rates": {
+        "title": "Mutation rates along the tree",
+        "clade": "Clade",
+        "mixed": "{{count}} clones",
+        "gained": "SNVs on branch",
+        "gained-mb": "per callable Mb",
+        "private-in": "Private / Mb (clade)",
+        "private-out": "Private / Mb (rest)",
+        "fold": "Fold",
+        "faster": "faster",
+        "slower": "slower",
+        "help": "Each row is a clade of ≥ 3 cells: SNV sites gained on the branch above it (with alt reads in the clade, in none of its sibling clades), divided by the median callable megabases of its cells, and the per-cell rate of private SNVs per callable Mb inside the clade versus the rest of the tumour (median, fold change, two-sided Mann-Whitney). Clades flagged faster/slower (p < 0.01, fold ≥ 1.5) have a different ongoing mutation rate. Click a row to select the clade."
+      },
       "timing": {
         "title": "Amplification timing",
         "sites": "SNVs on amplicon",
@@ -1076,6 +1089,7 @@
         "open-patient": "Open patient"
       },
       "cohort": {
+        "rows-clones": "Clones",
         "sc-title": "RNA programs by clone and patient",
         "sc-rows": "Rows",
         "sc-fill": "Fill",
@@ -1713,6 +1727,9 @@
         "matrix-help2": "Rows: tier 1–2 alterations ordered from the trunk down (tree depth of the clade their carriers fit best); right column: fraction of tumor cells · clade fit (red = scattered carriers, likely noise). Columns: cells in tree order under the phylogeny and clone strip (dashed lines separate clones). Click a clade or clone block to select its cells (and zoom when ticked); Cmd/Ctrl + wheel zooms around the pointer; click a name for the alteration popup, the colour bar to select its carriers, a cell to select it."
       },
       "site": {
+        "allelic": "Allelic CN",
+        "allelic-detail": "major {{major}} / minor {{minor}} (median) · LOH in {{loh}}/{{n}} cells · mutant copies match the major allele in {{onMajor}}, the minor in {{onMinor}}",
+        "on-major": "mutant allele amplified",
         "clade-cells": " · {{count}} cells in the clade",
         "carriers": "Carriers",
         "carriers-of": "{{carriers}} cells with alt reads of {{covered}} covered",

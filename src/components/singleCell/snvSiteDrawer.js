@@ -87,6 +87,13 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
               {cnInfo.amplified && <Tag color="red" style={{ marginLeft: 6 }}>{t("components.single-cell.site.amplified")}</Tag>}
             </Descriptions.Item>
           )}
+          {cnInfo?.allelic && (
+            <Descriptions.Item label={t("components.single-cell.site.allelic")}>
+              {t("components.single-cell.site.allelic-detail", { major: cnInfo.allelic.medianMajor.toFixed(0), minor: cnInfo.allelic.medianMinor.toFixed(0), loh: cnInfo.allelic.nLoh, n: cnInfo.allelic.n, onMajor: cnInfo.allelic.nOnMajor, onMinor: cnInfo.allelic.nOnMinor })}
+              {cnInfo.allelic.mutantAmplified && <Tag color="magenta" style={{ marginLeft: 6 }}>{t("components.single-cell.site.on-major")}</Tag>}
+              {cnInfo.allelic.nLoh === cnInfo.allelic.n && cnInfo.allelic.n > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>LOH</Tag>}
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label={t("components.single-cell.site.carriers")}>{t("components.single-cell.site.carriers-of", { carriers, covered: table.length })}</Descriptions.Item>
           {calls && <Descriptions.Item label={t("components.single-cell.site.genotypes")}>{t("components.single-cell.site.genotypes-of", calls)}</Descriptions.Item>}
         </Descriptions>

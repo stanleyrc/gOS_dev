@@ -14,18 +14,29 @@ const median = (v) => {
  * @param snv matrix payload ({ cells, variants, status, alt, depth })
  * @param cn CN payload ({ cells, rows })
  * @param minDepth reads needed in a cell to use its VAF
- * @returns per variant: { medianCn, maxCn, altCopies, nCarriers, nAmplified, amplified }
+ * @param allelic optional allele-specific payload ({ cells, rows: [{ binIndex, major, minor }] })
+ * @returns per variant: { medianCn, maxCn, altCopies, nCarriers, nAmplified, amplified, allelic? }
+ *   allelic: { n, nLoh, medianMajor, medianMinor, nOnMajor, nOnMinor, mutantAmplified }
+ *   (LOH = minor allele 0 at the site; a mutation is "on the major allele" when
+ *   its mutant copies match the major allele count within 0.5 and major > minor)
  */
-export function snvCopyNumber(snv, cn, { minDepth = 4, ampCn = 4, ampCopies = 1.5 } = {}) {
+export function snvCopyNumber(snv, cn, { minDepth = 4, ampCn = 4, ampCopies = 1.5, allelic = null } = {}) {
   const out = new Array(snv.variants.length).fill(null);
   if (!cn?.rows?.length) return out;
   const cnRowOf = new Map(cn.cells.map((id, k) => [id, cn.rows[k]]));
   const rows = snv.cells.map((id) => cnRowOf.get(id) || null);
+  const alRowOf = allelic?.rows?.length ? new Map(allelic.cells.map((id, k) => [id, allelic.rows[k]])) : null;
+  const alRows = alRowOf ? snv.cells.map((id) => alRowOf.get(id) || null) : null;
   snv.variants.forEach((v, c) => {
     if (!Number.isFinite(v.global)) return;
     const cns = [];
     const copies = [];
     let nAmplified = 0;
+    const majors = [];
+    const minors = [];
+    let nLoh = 0;
+    let nOnMajor = 0;
+    let nOnMinor = 0;
     for (let p = 0; p < snv.cells.length; p += 1) {
       if (snv.status[p][c] !== 1) continue;
       const row = rows[p];
@@ -37,12 +48,32 @@ export function snvCopyNumber(snv, cn, { minDepth = 4, ampCn = 4, ampCopies = 1.
       if (total >= ampCn) nAmplified += 1;
       const depth = snvMetricValue(snv, p, c, "depth");
       const alt = snvMetricValue(snv, p, c, "alt");
-      if (depth >= minDepth && Number.isFinite(alt)) copies.push((alt / depth) * total);
+      const mutant = depth >= minDepth && Number.isFinite(alt) ? (alt / depth) * total : NaN;
+      if (Number.isFinite(mutant)) copies.push(mutant);
+      const al = alRows ? alRows[p] : null;
+      if (al) {
+        const ab = binAt(al.binIndex, v.global);
+        const major = ab >= 0 ? al.major[ab] : NaN;
+        const minor = ab >= 0 ? al.minor[ab] : NaN;
+        if (Number.isFinite(major) && Number.isFinite(minor)) {
+          majors.push(major);
+          minors.push(minor);
+          if (minor === 0) nLoh += 1;
+          if (Number.isFinite(mutant) && major > minor) {
+            if (Math.abs(mutant - major) <= 0.5) nOnMajor += 1;
+            else if (Math.abs(mutant - minor) <= 0.5) nOnMinor += 1;
+          }
+        }
+      }
     }
     if (!cns.length) return;
     const medianCn = median(cns);
     const altCopies = median(copies);
     out[c] = { medianCn, maxCn: Math.max(...cns), altCopies, nCarriers: cns.length, nAmplified, amplified: medianCn >= ampCn && (Number.isNaN(altCopies) || altCopies >= ampCopies) };
+    if (majors.length) {
+      const medianMajor = median(majors);
+      out[c].allelic = { n: majors.length, nLoh, medianMajor, medianMinor: median(minors), nOnMajor, nOnMinor, mutantAmplified: medianMajor >= 2 && nOnMajor > nOnMinor && nOnMajor >= Math.max(1, Math.ceil(majors.length / 3)) };
+    }
   });
   return out;
 }
