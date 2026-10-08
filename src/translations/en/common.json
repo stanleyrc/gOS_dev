@@ -1205,7 +1205,8 @@
           "diverging": "Diverging (blue–white–red)",
           "zissou": "Zissou (cool losses, warm gains)",
           "viridis": "Viridis (sequential)",
-          "magma": "Magma (sequential)"
+          "magma": "Magma (sequential)",
+          "pgvDark": "pgv dark (CN 2 = dark grey)"
         },
         "theme": "Categorical theme",
         "theme-help": "Colours for clones, groups, UMAP fields, violins, signatures and saved groups. The heatmap copy-number colours are set separately below."
