@@ -1,5 +1,6 @@
 // Copy number vs expression in the same cells: CN at a gene's locus from each
 // cell's genome graph (the CN heatmap rows), expression from the RNA matrix.
+import { benjaminiHochberg, correlationP } from "./tests";
 import { binAt } from "./matrix";
 
 /** A gene's position in genome (global) coordinates from the Genes store, or null. */
@@ -136,7 +137,7 @@ export async function dosageRanking({ cn, summary, matrix, rowOfId, genesState, 
           }
         });
         const rho = spearman(x, y);
-        if (Number.isFinite(rho)) out.push({ gene: summary.genes[g], rho, slope: slope(x, y), n: x.length, meanCn: x.reduce((s, v) => s + v, 0) / x.length });
+        if (Number.isFinite(rho)) out.push({ gene: summary.genes[g], rho, p: correlationP(rho, x.length), slope: slope(x, y), n: x.length, meanCn: x.reduce((s, v) => s + v, 0) / x.length });
       }
     }
     if (onProgress && g % 2000 === 1999) {
@@ -145,6 +146,9 @@ export async function dosageRanking({ cn, summary, matrix, rowOfId, genesState, 
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
+  // BH across the ranked genes
+  const q = benjaminiHochberg(out.map((r) => (Number.isFinite(r.p) ? r.p : 1)));
+  out.forEach((r, k) => (r.q = q[k]));
   if (onProgress) onProgress(1);
   return out.sort((p, q) => q.rho - p.rho);
 }
