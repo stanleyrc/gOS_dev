@@ -15,7 +15,7 @@ import SvgExportButton from "../svgExportButton";
 import { FONT, YAxis } from "../cohort/charts";
 
 const { Text } = Typography;
-const M = { top: 26, right: 14, bottom: 48, left: 56 };
+const M = { top: 30, right: 16, bottom: 58, left: 66 };
 const NO_CLONE = "#8c8c8c";
 const MAX_GENES = 12;
 const FALLBACK_GENES = ["EGFR", "CDK4", "MDM2", "PDGFRA", "CDKN2A", "PTEN"];
@@ -75,11 +75,11 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
       style={{ cursor: "crosshair", userSelect: "none", display: "block" }}
     >
       <rect x={0} y={0} width={width} height={height} fill="#ffffff" rx={6} />
-      <text x={M.left} y={16} fontSize={14} fontWeight={600} fill="#262626">{gene}</text>
+      <text x={M.left} y={18} fontSize={16} fontWeight={600} fill="#262626">{gene}</text>
       {badge && (
-        <text x={M.left + gene.length * 9 + 8} y={16} fontSize={11} fill={badge.color}>{badge.text}</text>
+        <text x={M.left + gene.length * 10 + 10} y={18} fontSize={12} fill={badge.color}>{badge.text}</text>
       )}
-      <text x={width - M.right} y={16} textAnchor="end" fontSize={11} fill={sig ? "#cf1322" : "#8c8c8c"}>
+      <text x={width - M.right} y={18} textAnchor="end" fontSize={12} fill={sig ? "#cf1322" : "#8c8c8c"}>
         {`ρ ${Number.isFinite(result.rho) ? result.rho.toFixed(2) : "–"} · ${formatP(p)} · n ${points.length}`}
       </text>
       <g transform={`translate(${M.left},${M.top})`}>
@@ -87,17 +87,17 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
         {x.ticks(5).map((v) => (
           <g key={`x${v}`} transform={`translate(${x(v)},0)`}>
             <line y1={0} y2={h} stroke="#eeeeee" />
-            <text y={h + 14} textAnchor="middle" fontSize={10} fill="#595959">{v}</text>
+            <text y={h + 16} textAnchor="middle" fontSize={12} fill="#595959">{v}</text>
           </g>
         ))}
         {y.ticks(4).map((v) => (
           <g key={`y${v}`} transform={`translate(0,${y(v)})`}>
             <line x1={0} x2={w} stroke="#eeeeee" />
-            <text x={-6} dy="0.35em" textAnchor="end" fontSize={10} fill="#595959">{v}</text>
+            <text x={-8} dy="0.35em" textAnchor="end" fontSize={12} fill="#595959">{v}</text>
           </g>
         ))}
-        <text x={w / 2} y={h + 32} textAnchor="middle" fontSize={11} fill="#595959">{`copy number at ${gene}`}</text>
-        <text transform={`translate(${-40},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={11} fill="#595959">{`${gene} expression (log)`}</text>
+        <text x={w / 2} y={h + 40} textAnchor="middle" fontSize={13} fill="#595959">{`copy number at ${gene} (per cell)`}</text>
+        <text transform={`translate(${-48},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={13} fill="#595959">{`${gene} expression (log-normalized)`}</text>
         {fit && <line x1={x(fit[0][0])} y1={y(Math.max(0, fit[0][1]))} x2={x(fit[1][0])} y2={y(Math.max(0, fit[1][1]))} stroke="#595959" strokeDasharray="4 3" strokeOpacity={0.6} />}
         {points.map((pt) => {
           const clone = cloneOf.get(pt.id);
