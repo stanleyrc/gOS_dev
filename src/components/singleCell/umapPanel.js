@@ -8,6 +8,7 @@ import scaActions from "../../redux/scAnalysis/actions";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import { annotationColors } from "../../helpers/singleCell/matrix";
+import { themePalette } from "../../helpers/singleCell/themes";
 import { cnAtPosition, geneLocus } from "../../helpers/singleCell/dosage";
 import { searchGeneNames, topVariableGenes } from "../../helpers/singleCell/staticRna";
 import { kmeans, pca, scaledExpression } from "../../helpers/singleCell/rnaStats";
@@ -53,7 +54,7 @@ function insidePolygon(x, y, polygon) {
 export default function UmapPanel() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId, cn } = useSelector((s) => s.SingleCell);
+  const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId, cn, layout } = useSelector((s) => s.SingleCell);
   const genesState = useSelector((s) => s.Genes);
   // colour by copy number at this gene's locus (from the cells' genome graphs)
   const [cnGene, setCnGene] = useState("EGFR");
@@ -199,7 +200,7 @@ export default function UmapPanel() {
       };
     }
     if (field) {
-      const colors = annotationColors(field.levels);
+      const colors = annotationColors(field.levels, themePalette(layout.theme));
       return {
         kind: "categorical",
         color: (p) => colors[`${p.cell[field.name]}`] || NO_DATA,
@@ -218,7 +219,7 @@ export default function UmapPanel() {
       levels: cloneColors,
       title: t("components.single-cell.legend.clones"),
     };
-  }, [colorBy, geneReady, expression, field, points, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds]);
+  }, [colorBy, geneReady, expression, field, points, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds, layout.theme]);
 
   /* ---- drawing ---- */
   useEffect(() => {

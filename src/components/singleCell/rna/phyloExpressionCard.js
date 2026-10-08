@@ -24,6 +24,7 @@ import {
 } from "../../../helpers/singleCell/matrix";
 import { geneValues, topVariableGenes } from "../../../helpers/singleCell/staticRna";
 import { stateScores } from "../../../helpers/singleCell/stateScores";
+import { themePalette } from "../../../helpers/singleCell/themes";
 import { clusteredGeneOrder, scaledExpression } from "../../../helpers/singleCell/rnaStats";
 
 const { Text } = Typography;
@@ -169,9 +170,9 @@ export default function PhyloExpressionCard({ summary, matrix }) {
       Object.fromEntries(
         annotationFields
           .filter((f) => !f.numeric)
-          .map((f) => [f.name, annotationColors(f.levels)])
+          .map((f) => [f.name, annotationColors(f.levels, themePalette(layout.theme))])
       ),
-    [annotationFields]
+    [annotationFields, layout.theme]
   );
   const ranges = useMemo(() => {
     const out = {};

@@ -44,6 +44,8 @@ export const SC_DEFAULT_LAYOUT = {
   stripWidth: 14, // px per annotation strip beside the heatmaps (clone, state, region, ...)
   snvSiteIds: null, // only these SNV sites (e.g. picked in Filtered Events); null = no restriction
   showSignatures: true, // SBS signature panel below the heatmap
+  theme: "tableau", // categorical colour theme (helpers/singleCell/themes.js)
+  branchSnvs: false, // SNV counts on the tree branches
 };
 
 const actions = {

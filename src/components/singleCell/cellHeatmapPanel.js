@@ -10,6 +10,7 @@ import PhylogenyCanvas from "./phylogenyCanvas";
 import BranchSnvDrawer from "./branchSnvDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
+import { themePalette } from "../../helpers/singleCell/themes";
 import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
@@ -183,9 +184,9 @@ export default function CellHeatmapPanel() {
   }, [cells]);
   const annotationFields = (layout.annotationFields || []).filter((f) => annotationOptions.includes(f));
   const annotationLevels = useMemo(
-    () => Object.fromEntries(annotationFields.map((f) => [f, annotationColors(cells.map((c) => c[f]).filter((v) => v != null && v !== ""))])),
+    () => Object.fromEntries(annotationFields.map((f) => [f, annotationColors(cells.map((c) => c[f]).filter((v) => v != null && v !== ""), themePalette(layout.theme))])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cells, annotationFields.join("|")]
+    [layout.theme, cells, annotationFields.join("|")]
   );
   const nAnnotation = 2 + annotationFields.length + (showExpression ? 1 : 0);
   const ANNOTATION_COLUMN = layout.stripWidth || 14;
