@@ -92,3 +92,52 @@ export function spearman(x, y) {
   }
   return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : NaN;
 }
+
+/** Merged genomic footprint of a walk: [{ chromosome, start, end }] sorted, overlapping nodes merged. */
+export function walkFootprint(walk) {
+  const byChr = new Map();
+  (walk.nodes || []).forEach((n) => {
+    if (!byChr.has(n.chromosome)) byChr.set(n.chromosome, []);
+    byChr.get(n.chromosome).push([Math.min(n.start, n.end), Math.max(n.start, n.end)]);
+  });
+  const out = [];
+  [...byChr.entries()].forEach(([chromosome, list]) => {
+    list.sort((a, b) => a[0] - b[0]);
+    let cur = null;
+    list.forEach(([s, e]) => {
+      if (cur && s <= cur[1] + 1) cur[1] = Math.max(cur[1], e);
+      else {
+        cur = [s, e];
+        out.push({ chromosome, range: cur });
+      }
+    });
+  });
+  return out.map((o) => ({ chromosome: o.chromosome, start: o.range[0], end: o.range[1] })).sort((a, b) => `${a.chromosome}`.localeCompare(`${b.chromosome}`, undefined, { numeric: true }) || a.start - b.start);
+}
+
+const footprintLength = (fp) => fp.reduce((s, r) => s + (r.end - r.start + 1), 0);
+
+/** Shared bases of two footprints. */
+export function sharedBases(fa, fb) {
+  let shared = 0;
+  fa.forEach((a) =>
+    fb.forEach((b) => {
+      if (a.chromosome !== b.chromosome) return;
+      const s = Math.max(a.start, b.start);
+      const e = Math.min(a.end, b.end);
+      if (e >= s) shared += e - s + 1;
+    })
+  );
+  return shared;
+}
+
+/**
+ * Pairwise containment of walks: matrix[i][j] = fraction of walk i's bases
+ * that lie inside walk j (1 = i is contained in j). Also each walk's footprint length.
+ */
+export function walkContainment(walks) {
+  const fps = walks.map(walkFootprint);
+  const lens = fps.map(footprintLength);
+  const matrix = walks.map((_, i) => walks.map((__, j) => (i === j ? 1 : lens[i] ? sharedBases(fps[i], fps[j]) / lens[i] : 0)));
+  return { matrix, lengths: lens, footprints: fps };
+}

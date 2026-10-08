@@ -26,3 +26,20 @@ describe("walks", () => {
     expect(spearman([1, 2, 3, 4], [4, 3, 2, 1])).toBeCloseTo(-1);
   });
 });
+
+describe("walk footprints", () => {
+  const { walkContainment, walkFootprint } = require("./walks");
+  const big = { nodes: [{ chromosome: "7", start: 100, end: 500 }, { chromosome: "7", start: 501, end: 1000 }] };
+  const small = { nodes: [{ chromosome: "7", start: 200, end: 300 }] };
+  const other = { nodes: [{ chromosome: "5", start: 1, end: 100 }] };
+  it("merges adjacent nodes", () => {
+    expect(walkFootprint(big)).toEqual([{ chromosome: "7", start: 100, end: 1000 }]);
+  });
+  it("computes containment", () => {
+    const { matrix, lengths } = walkContainment([big, small, other]);
+    expect(lengths).toEqual([901, 101, 100]);
+    expect(matrix[1][0]).toBeCloseTo(1);
+    expect(matrix[0][1]).toBeCloseTo(101 / 901);
+    expect(matrix[2][0]).toBe(0);
+  });
+});
