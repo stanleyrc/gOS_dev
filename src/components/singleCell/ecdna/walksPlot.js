@@ -266,7 +266,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                   const lift = Math.min(laneHeight * 0.4, 4 + Math.abs(xb - xa) / 12);
                   const top = cy - BAR / 2;
                   return (
-                    <path key={ji} d={`M${xa},${top} C${xa},${top - lift} ${xb},${top - lift} ${xb},${top}`} fill="none" stroke="#cf1322" strokeWidth={1.2} strokeOpacity={0.85} onMouseEnter={(e) => showTip(e, w, [tip, w.label])}>
+                    <path key={ji} d={`M${xa},${top} C${xa},${top - lift} ${xb},${top - lift} ${xb},${top}`} fill="none" stroke="#cf1322" strokeWidth={1.8} strokeOpacity={0.9} onMouseEnter={(e) => showTip(e, w, [tip, w.label])}>
                       <title>{tip}</title>
                     </path>
                   );
