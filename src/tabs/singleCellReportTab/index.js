@@ -3,6 +3,8 @@ import { useSelector } from "react-redux";
 import PatientReportCard from "../../components/singleCell/patientReportCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import ScEventModal from "../../components/singleCell/scEventModal";
+import ClonalHistoryCard from "../../components/singleCell/clonalHistoryCard";
+import HelpDrawer from "../../components/singleCell/helpDrawer";
 
 /** Key findings of the open single-cell patient, with links into the heatmap and IGV. */
 export default function SingleCellReportTab() {
@@ -11,6 +13,9 @@ export default function SingleCellReportTab() {
   return (
     <SingleCellWrapper>
       <ScEventModal />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <HelpDrawer />
+      </div>
       <PatientReportCard
         patient={patient?.caseReportId}
         events={events || []}
@@ -20,6 +25,9 @@ export default function SingleCellReportTab() {
         cloneColors={cloneColors}
         interactive
       />
+      <div style={{ marginTop: 16 }}>
+        <ClonalHistoryCard />
+      </div>
     </SingleCellWrapper>
   );
 }

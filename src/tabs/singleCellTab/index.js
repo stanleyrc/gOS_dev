@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Affix, Alert, Col, Empty, Progress, Row, Space, Switch, Typography } from "antd";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
+import HelpDrawer from "../../components/singleCell/helpDrawer";
 import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
@@ -108,6 +109,7 @@ export default function SingleCellTab() {
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space wrap size={[16, 4]} className="sc-tab-toggles">
+            <HelpDrawer compact />
             {rna.status === "ok" && (
               <Space size={6}>
                 <Switch size="small" checked={layout.showUmap} onChange={toggle("showUmap")} />
