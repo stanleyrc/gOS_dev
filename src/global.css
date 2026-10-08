@@ -457,3 +457,6 @@ html[data-theme="dark"] .sc-heatmap-empty,
 html[data-theme="dark"] .ant-card {
   border-color: #303030;
 }
+html[data-theme="dark"] .sc-strip-label {
+  color: #d9d9d9 !important;
+}
