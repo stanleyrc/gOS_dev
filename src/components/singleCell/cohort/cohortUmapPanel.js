@@ -30,7 +30,8 @@ export default function CohortUmapPanel({ summaries, datasets }) {
   const [colorBy, setColorBy] = useState("patient");
   const [hidden, setHidden] = useState([]);
   const [tumorOnly, setTumorOnly] = useState(true);
-  const dataset = datasets[0];
+  // the dataset these patients belong to (the records list may hold other datasets first)
+  const dataset = datasets.find((d) => summaries.some((s) => `${s.record.datasetId}` === `${d.id}`)) || datasets[0];
   useEffect(() => {
     if (!dataset) return undefined;
     let active = true;
