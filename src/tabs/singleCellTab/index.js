@@ -9,7 +9,6 @@ import UmapPanel from "../../components/singleCell/umapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
-import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
 import PendingEventOpener from "../../components/singleCell/pendingEventOpener";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -128,10 +127,6 @@ export default function SingleCellTab() {
               <Switch size="small" checked={Boolean(layout.showTreeBars)} onChange={toggle("showTreeBars")} />
               <Text>{t("components.single-cell.toggles.tree-bars")}</Text>
             </Space>
-            <Space size={6}>
-              <Switch size="small" checked={Boolean(layout.showSignatureTree)} onChange={toggle("showSignatureTree")} />
-              <Text>{t("components.single-cell.toggles.signature-tree")}</Text>
-            </Space>
           </Space>
         </Col>
         <Col span={24}>
@@ -190,12 +185,7 @@ export default function SingleCellTab() {
         )}
         {layout.showTreeBars && (
           <Col span={24}>
-            <PhyloBarsCard defaultTracks={["snv_count", "signatures"]} />
-          </Col>
-        )}
-        {layout.showSignatureTree && (
-          <Col span={24}>
-            <SignatureTreeCard />
+            <PhyloBarsCard defaultTracks={["snv_count"]} />
           </Col>
         )}
         <Col span={24}>
