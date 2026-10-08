@@ -441,24 +441,33 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
   const status = [];
   const alt = [];
   const depth = [];
+  const gt = [];
+  let hasGt = false;
   cellIds.forEach((cellId) => {
     const s = new Int8Array(n).fill(-1);
     const a = new Float32Array(n).fill(NaN);
     const dp = new Float32Array(n).fill(NaN);
+    const g = new Int8Array(n).fill(-1); // PL genotype call: 1 alt, 0 ref, -1 no call
     (cellsIn[cellId] || []).forEach((o) => {
       const compact = Array.isArray(o);
       const k = compact ? bySourceIndex.get(o[0]) : byId.get(`${o.variantId ?? o.id ?? ""}`);
       if (k == null) return;
       const x = compact ? o[2] : o.altCount;
       const r = compact ? o[1] : o.refCount;
+      const call = compact ? o[3] : o.gt;
+      if (call === 0 || call === 1) {
+        g[k] = call;
+        hasGt = true;
+      }
       if (x == null || r == null || !Number.isFinite(x) || !Number.isFinite(r)) return;
       a[k] = x;
       dp[k] = x + r;
       s[k] = x > 0 ? 1 : x + r > 0 ? 0 : -1;
     });
     status.push(s);
+    gt.push(g);
     alt.push(a);
     depth.push(dp);
   });
-  return { cells: [...cellIds], variants, status, alt, depth, source: "matrix" };
+  return { cells: [...cellIds], variants, status, alt, depth, gt: hasGt ? gt : null, source: "matrix" };
 }

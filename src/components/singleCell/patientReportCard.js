@@ -169,10 +169,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     }
   };
   // the same popup as a row of the Filtered Events table (alteration, plots with cell tracks, variant QC)
-  const onDetails = (d) => {
-    dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"));
-    dispatch(settingsActions.updateTab("1"));
-  };
+  const onDetails = (d) => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"));
   const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails };
   const row = (d) => <DriverRow key={d.label} d={d} fit={fitOf.get(d.label)} {...rowProps} />;
   const allDrivers = [...report.clonal, ...report.subclonal, ...report.rare];
