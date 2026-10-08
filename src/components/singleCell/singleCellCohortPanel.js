@@ -45,6 +45,8 @@ import CohortCircosPanel from "./cohort/cohortCircosPanel";
 import CohortEventsTable from "./cohort/cohortEventsTable";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
 import CohortRnaPanel from "./cohort/cohortRnaPanel";
+import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
+import HelpDrawer from "./helpDrawer";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -362,6 +364,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             <Statistic title={t("components.single-cell.cohort.patients")} value={summaries.length} />
             <Statistic title={t("components.single-cell.cohort.cells")} value={totalCells} />
             {cohortFiles.progress < 100 && <Progress percent={cohortFiles.progress} size="small" style={{ width: 160 }} />}
+            <HelpDrawer />
           </Space>
           <Tabs size="small" activeKey={view} onChange={setView} items={analysisTabs} />
         </Col>
@@ -389,6 +392,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
             <Col span={24}>
+              <CohortConvergencePanel summaries={summaries} files={cohortFiles.files} onEvent={openEvent} />
+            </Col>
+            <Col span={24}>
               <CohortCircosPanel summaries={summaries} files={cohortFiles.files} />
             </Col>
           </>
@@ -400,10 +406,10 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "mutations" && (
           <>
-            <Col xs={24} xxl={12}>
+            <Col span={24}>
               <TmbPanel summaries={summaries} files={cohortFiles.files} datafiles={datafiles} onOpen={openPatient} />
             </Col>
-            <Col xs={24} xxl={12}>
+            <Col span={24}>
               <CohortSignaturesPanel summaries={summaries} files={cohortFiles.files} />
             </Col>
           </>
