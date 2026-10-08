@@ -142,7 +142,7 @@ export default function SingleCellEcdnaTab() {
                   <Text type="secondary">{t("components.single-cell.ecdna.heat-pad")}</Text>
                   <Select size="small" value={pad} onChange={setPad} style={{ width: 86 }} options={PADS.map((p) => ({ value: p, label: padLabel(p) }))} />
                   <Button size="small" type="primary" ghost onClick={() => zoomToShown()} disabled={!shown.length}>{t("components.single-cell.ecdna.zoom-shown")}</Button>
-                  {focused && <Button size="small" onClick={() => zoomToShown([focused])}>{t("components.single-cell.ecdna.zoom-focus", { label: focused.label })}</Button>}
+                  {focus && focused && <Button size="small" onClick={() => zoomToShown([focused])}>{t("components.single-cell.ecdna.zoom-focus", { label: focused.label })}</Button>}
                 </Space>
               }
             >
