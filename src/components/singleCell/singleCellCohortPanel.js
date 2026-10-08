@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Col, Empty, Progress, Row, Segmented, Space, Statistic, Table, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Empty, Progress, Row, Segmented, Space, Statistic, Table, Tabs, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import axios from "axios";
 import HeatmapCanvas from "./heatmapCanvas";
@@ -29,6 +29,12 @@ import {
 import { layoutTree, parseNewick, pruneTree, toUnitHeight } from "../../helpers/singleCell/newick";
 import { cnDistances, upgma } from "../../helpers/singleCell/phylogeny";
 import Wrapper from "./index.style";
+import useCohortFiles from "./cohort/useCohortFiles";
+import TmbPanel from "./cohort/tmbPanel";
+import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
+import OncoprintPanel from "./cohort/oncoprintPanel";
+import CohortScatterPanel from "./cohort/cohortScatterPanel";
+import CohortQcPanel from "./cohort/cohortQcPanel";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -114,6 +120,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const [rowMode, setRowMode] = useState("patients");
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
+  const cohortFiles = useCohortFiles(summaries, datasets);
+  const [view, setView] = useState("overview");
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
 
@@ -309,15 +317,52 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       : Math.max(1, Math.min(4, MAX_CELL_ROWS_HEIGHT / Math.max(1, heatRows.length)));
   const height = Math.max(ROW_HEIGHT, heatRows.length * rowHeight);
 
+  const openCell = (cell) => cell?._patient && dispatch(datasetsActions.openCaseReport(cell._patient.record.datasetId, cell.cell_id));
+  const analysisTabs = [
+    { key: "overview", label: t("components.single-cell.cohort.view-overview") },
+    { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
+    { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
+    { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
+    { key: "qc", label: t("components.single-cell.cohort.view-qc") },
+  ];
+
   return (
     <Wrapper>
       <Row gutter={[16, 16]}>
         <Col span={24}>
-          <Space size="large">
+          <Space size="large" wrap>
             <Statistic title={t("components.single-cell.cohort.patients")} value={summaries.length} />
             <Statistic title={t("components.single-cell.cohort.cells")} value={totalCells} />
+            {cohortFiles.progress < 100 && <Progress percent={cohortFiles.progress} size="small" style={{ width: 160 }} />}
           </Space>
+          <Tabs size="small" activeKey={view} onChange={setView} items={analysisTabs} />
         </Col>
+        {view === "drivers" && (
+          <Col span={24}>
+            <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+          </Col>
+        )}
+        {view === "mutations" && (
+          <>
+            <Col xs={24} xxl={12}>
+              <TmbPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+            </Col>
+            <Col xs={24} xxl={12}>
+              <CohortSignaturesPanel summaries={summaries} files={cohortFiles.files} />
+            </Col>
+          </>
+        )}
+        {view === "scatter" && (
+          <Col span={24}>
+            <CohortScatterPanel summaries={summaries} files={cohortFiles.files} datafiles={datafiles} onOpen={openPatient} />
+          </Col>
+        )}
+        {view === "qc" && (
+          <Col span={24}>
+            <CohortQcPanel summaries={summaries} datafiles={datafiles} onOpenCell={openCell} />
+          </Col>
+        )}
+        {view === "overview" && (
         <Col span={24}>
           <Card size="small" title={<Space><ApartmentOutlined />{t("components.single-cell.cohort.table-title")}</Space>}>
             <Table
@@ -329,6 +374,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             />
           </Card>
         </Col>
+        )}
+        {view === "overview" && (
         <Col span={24}>
           <Card
             size="small"
@@ -435,6 +482,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </div>
           </Card>
         </Col>
+        )}
       </Row>
     </Wrapper>
   );
