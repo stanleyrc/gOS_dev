@@ -1067,7 +1067,9 @@
         "card-clonal": "Clonal drivers",
         "card-subclonal": "Subclonal drivers ({{count}})",
         "card-signatures": "SBS signatures (all sites)",
-        "card-burden": "SNVs: {{truncal}} truncal · {{subclonal}} subclonal · {{private}} private"
+        "card-burden": "SNVs: {{truncal}} truncal · {{subclonal}} subclonal · {{private}} private",
+        "circos-title": "Alterations of the chosen genes across patients (circos)",
+        "circos-help": "One ring per patient (outer = first). Marks sit at the gene's locus, coloured by alteration class with opacity = fraction of tumor cells; fusions are arcs between the partner loci (width = fraction). Gene names label the first occurrence."
       },
       "compare": {
         "title": "Compare groups",
@@ -1130,7 +1132,9 @@
         "genes-beside": "Genes beside ({{count}})",
         "pin": "Pin",
         "pin-placeholder": "genes…",
-        "annotate": "Annotate"
+        "annotate": "Annotate",
+        "row-view": "View",
+        "row-snvs": "SNVs"
       },
       "metric": {
         "vaf": "VAF",
@@ -1359,7 +1363,15 @@
         "mode-tree": "from the tree",
         "tree-help": "Set on the Single-Cell tab: select a clade or cells, then \"Set as group A/B\". Pick another mode to build groups here instead.",
         "tumor-only": "Tumor cells only",
-        "tumor-only-note": "{{count}} normal / non-malignant cells hidden, {{kept}} kept"
+        "tumor-only-note": "{{count}} normal / non-malignant cells hidden, {{kept}} kept",
+        "explorer-title": "Gene explorer",
+        "explorer-pct": "expressed in {{pct}} of {{n}} cells",
+        "composition-title": "Cell composition",
+        "composition-help": "Share of each level within every group (bars) with the group colour underneath; chi-square test of independence across groups. Click a bar to select the group's cells.",
+        "section-overview": "Overview",
+        "section-genes": "Genes",
+        "section-compare": "Compare & DE",
+        "section-server": "Server analyses"
       },
       "groups": {
         "selected": "{{count}} selected",
@@ -1504,7 +1516,8 @@
         "findings-dosage-row": "{{kind}}: Spearman ρ {{rho}} between copy number and expression; mean log-expression {{inside}} in {{nIn}} carriers vs {{outside}} in {{nOut}} other cells.",
         "findings-expressed": "dosage-expressed",
         "findings-anticorrelated": "anti-correlated",
-        "findings-dosage-help": "Cells with both DNA and RNA; ρ across all cells, means split by carrier status."
+        "findings-dosage-help": "Cells with both DNA and RNA; ρ across all cells, means split by carrier status.",
+        "details": "Open the alteration popup (plots, cell tracks, variant QC)"
       },
       "site": {
         "clade-cells": " · {{count}} cells in the clade",
@@ -1676,5 +1689,13 @@
     "signInButton": {
       "usernamePlaceholder": "Enter username to create new user..."
     }
+  },
+  "settings": {
+    "title": "Appearance",
+    "appearance": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "heatmap-palette": "Copy-number heatmap palette",
+    "heatmap-palette-help": "Colours of the CN heatmaps and circos rings; individual states can be edited from the heatmap's palette button."
   }
 }

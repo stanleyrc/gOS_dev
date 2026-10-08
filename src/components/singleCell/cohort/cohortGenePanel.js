@@ -8,6 +8,7 @@ import SvgExportButton from "../svgExportButton";
 import { EVENT_CLASS_ORDER, eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
+import { setPendingEvent } from "../pendingEventOpener";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -134,7 +135,15 @@ export default function CohortGenePanel({ summaries, files, onOpen }) {
                 const byClass = agg.get(g)?.get(p) || {};
                 let acc = 0;
                 return (
-                  <g key={p} style={{ cursor: "pointer" }} onClick={() => onOpen(summaries.find((s) => s.caseReportId === p))}>
+                  <g
+                    key={p}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      const best = Object.values(byClass).sort((a, b) => b.fraction - a.fraction)[0];
+                      if (best) setPendingEvent(p, best.event);
+                      onOpen(summaries.find((s) => s.caseReportId === p));
+                    }}
+                  >
                     <rect x={x1(p)} y={y.range()[1]} width={x1.bandwidth()} height={y.range()[0] - y.range()[1]} fill={patientFill(p)} fillOpacity={0.06} />
                     {EVENT_CLASS_ORDER.filter((cls) => byClass[cls]).map((cls) => {
                       const v = valueOf(byClass[cls]);

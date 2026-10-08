@@ -59,7 +59,9 @@ export default function CellIgvPanel() {
   domainsRef.current = domains;
   const [error, setError] = useState(null);
 
-  const locus = view ? `${chr(view.chromosome)}:${Math.max(1, view.position - WINDOW)}-${view.position + WINDOW}` : null;
+  // one locus, or several (e.g. both fusion breakpoints) shown side by side
+  const loci = view ? (view.loci?.length ? view.loci : [{ chromosome: view.chromosome, position: view.position }]) : [];
+  const locus = view ? loci.map((l) => `${chr(l.chromosome)}:${Math.max(1, l.position - WINDOW)}-${l.position + WINDOW}`).join(" ") : null;
   const cellIds = view ? view.cellIds.slice(0, SC_MAX_TRACK_CELLS) : [];
   const key = cellIds.join("|");
 

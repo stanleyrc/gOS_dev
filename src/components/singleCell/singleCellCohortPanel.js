@@ -38,6 +38,7 @@ import CohortQcPanel from "./cohort/cohortQcPanel";
 import PatientReportCard from "./patientReportCard";
 import CohortGenePanel from "./cohort/cohortGenePanel";
 import PatientCards from "./cohort/patientCards";
+import CohortCircosPanel from "./cohort/cohortCircosPanel";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -362,6 +363,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
             <Col span={24}>
               <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+            </Col>
+            <Col span={24}>
+              <CohortCircosPanel summaries={summaries} files={cohortFiles.files} />
             </Col>
           </>
         )}

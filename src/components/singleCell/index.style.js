@@ -232,6 +232,25 @@ const Wrapper = styled.div`
     border-radius: 6px;
     background: #f0f5ff;
   }
+  .sc-toolbar-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid #f0f0f0;
+  }
+  .sc-toolbar-row:first-child {
+    border-top: none;
+  }
+  .sc-toolbar-row-label {
+    flex: none;
+    width: 52px;
+    padding-top: 3px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #8c8c8c !important;
+  }
   .sc-toolbar {
     margin-bottom: 8px;
   }
