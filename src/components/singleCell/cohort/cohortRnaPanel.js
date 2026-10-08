@@ -10,10 +10,11 @@ import { casePath, loadRnaMatrix, tryGet } from "../../../redux/singleCell/loade
 import { parseRnaSummary, geneValues } from "../../../helpers/singleCell/staticRna";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
-import { chiSquareUpper, compareGroups, formatP } from "../../../helpers/singleCell/tests";
+import { chiSquareTable, compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, FONT, Swatches, XBandLabels, patientColor } from "./charts";
 import CohortUmapPanel from "./cohortUmapPanel";
 import CohortDosagePanel from "./cohortDosagePanel";
+import CohortStateClonePanel from "./cohortStateClonePanel";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -32,20 +33,6 @@ async function loadRna(dataset, id) {
   return rnaCache.get(key);
 }
 
-function chiSquareTable(table) {
-  const rows = table.length;
-  const cols = table[0]?.length || 0;
-  const rowSum = table.map((r) => d3.sum(r));
-  const colSum = d3.range(cols).map((j) => d3.sum(table, (r) => r[j]));
-  const n = d3.sum(rowSum);
-  if (!n || rows < 2 || cols < 2) return NaN;
-  let x2 = 0;
-  table.forEach((r, i) => r.forEach((v, j) => {
-    const e = (rowSum[i] * colSum[j]) / n;
-    if (e > 0) x2 += ((v - e) ** 2) / e;
-  }));
-  return chiSquareUpper(x2, (rows - 1) * (cols - 1));
-}
 
 /**
  * RNA across patients: cell-state / phase / region composition per patient
@@ -254,6 +241,14 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
             )}
             <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.rna-markers-help")}</Text>
           </Card>
+        </Col>
+        <Col span={24}>
+          <CohortStateClonePanel
+            groups={loaded.map((s) => ({ patient: s.caseReportId, color: patientColor(summaries.indexOf(s)), cells: cellsOf(s) }))}
+            fields={fields}
+            defaultFill={chosenField}
+            colorsFor={(levels) => annotationColors(levels, themePalette(layout.theme))}
+          />
         </Col>
         <Col span={24}>
           <CohortDosagePanel summaries={summaries} files={filesProp} rna={rna} cnRows={cnRows} datasets={datasets} />

@@ -879,6 +879,17 @@
       }
     },
     "single-cell": {
+      "timing": {
+        "title": "Amplification timing",
+        "sites": "SNVs on amplicon",
+        "pre": "Pre-amplification fraction",
+        "verdict": "Timing",
+        "few": "too few sites",
+        "early": "early amplification",
+        "late": "late amplification",
+        "mid": "intermediate",
+        "help": "For each strong tier 1–2 amplification, the SNV sites inside the amplified segment in its carrier cells (depth ≥ 6) are classified by estimated mutant copies (VAF × CN): ≥ 1.5 copies means the SNV preceded the amplification and was duplicated with it, ~1 copy that it arose afterwards. A low pre-amplification fraction (< 30%) indicates an early amplification; a high one (> 60%) a late amplification. Hover the site count for the per-site copies; click the gene for the alteration popup."
+      },
       "history": {
         "title": "Clonal history",
         "min-fit": "Min clade fit",
@@ -1065,6 +1076,11 @@
         "open-patient": "Open patient"
       },
       "cohort": {
+        "sc-title": "RNA programs by clone and patient",
+        "sc-rows": "Rows",
+        "sc-fill": "Fill",
+        "sc-chi": "χ²",
+        "sc-help": "One panel per patient: for every group of the row field (clone, cluster …) with ≥ 3 cells, the share of each level of the fill field (state …). The chi-square test asks whether composition differs between the rows within that patient; the same clone → program association recurring across patients is the cohort-level finding.",
         "sig-view-evolution": "Evolution",
         "sig-view-slope": "Truncal → later",
         "sig-view-matrix": "Fisher matrix",
@@ -1729,6 +1745,7 @@
         "help2": "Rings from the outside in: chromosomes (ticks every 50 Mb), then one copy-number ring per cell or clone (height ∝ CN up to 6; dashed line = CN 2; heatmap palette). Clone rings are the median CN of the clone's cells and show junctions found in at least the chosen fraction of its cells (line width ∝ recurrence)."
       },
       "overview": {
+        "exported": "Exported",
         "title": "Single-cell summary"
       }
     },
