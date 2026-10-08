@@ -109,7 +109,7 @@ export function robustOutliers(values = [], { k = 3, side = "both" } = {}) {
  * fraction of the genome away from the modal state, number of state changes
  * (segments), mean CN and the mean CN on X.
  */
-export function cnRowQc(row) {
+export function cnRowQc(row, ploidy = null) {
   if (!row || !row.values || !row.binIndex) return null;
   const { values, binIndex } = row;
   const n = binIndex.n ?? values.length;
@@ -143,6 +143,8 @@ export function cnRowQc(row) {
       modal = state;
     }
   });
+  const base = Number.isFinite(Number(ploidy)) ? Math.round(Number(ploidy)) : modal;
+  let alteredPloidy = 0;
   let prev = null;
   for (let i = 0; i < n; i += 1) {
     const v = values[i];
@@ -151,11 +153,15 @@ export function cnRowQc(row) {
     total += len;
     const state = Math.round(v);
     if (state !== modal) altered += len;
+    if (state !== base) alteredPloidy += len;
     if (prev != null && state !== prev) segments += 1;
     prev = state;
   }
   return {
     fractionAltered: total ? altered / total : NaN,
+    // FGA: fraction of the genome whose CN differs from the cell's (rounded) ploidy
+    fga: total ? alteredPloidy / total : NaN,
+    baseCn: base,
     segments,
     meanCn: sum / count,
     modalCn: modal,
@@ -170,7 +176,14 @@ export function patientMetrics(summary, { variants = [], events = [], cells = []
   const num = (k) => tumor.map((c) => Number(c[k])).filter(Number.isFinite);
   const median = (arr) => medianMad(arr).median;
   const strong = events.filter((e) => Number(e.Tier ?? e.tier) <= 2);
+  // approximate callable territory: median breadth (% of genome covered) x 3,100 Mb
+  const medianBreadth = median(num("qc_breadth"));
+  const callableMb = Number.isFinite(medianBreadth) ? (medianBreadth / 100) * GENOME_MB : NaN;
   return {
+    medianBreadth,
+    callableMb,
+    truncalPerMb: Number.isFinite(callableMb) && callableMb > 0 ? cats.truncal / callableMb : NaN,
+    subclonalPerMb: Number.isFinite(callableMb) && callableMb > 0 ? (cats.subclonal + cats.private) / callableMb : NaN,
     patient: summary.caseReportId,
     nCells: summary.nCells,
     nTumorCells: tumor.length,
@@ -189,6 +202,14 @@ export function patientMetrics(summary, { variants = [], events = [], cells = []
   };
 }
 
+export const GENOME_MB = 3100;
+
+/** Callable Mb of a cell list from its median breadth (% genome covered); NaN when unknown. */
+export function callableMbOf(cells = []) {
+  const b = medianMad(cells.map((c) => Number(c.qc_breadth)).filter(Number.isFinite)).median;
+  return Number.isFinite(b) ? (b / 100) * GENOME_MB : NaN;
+}
+
 export const PATIENT_METRICS = [
   ["nTumorCells", "Tumor cells"],
   ["nClones", "Clones"],
@@ -197,6 +218,9 @@ export const PATIENT_METRICS = [
   ["subclonal", "Subclonal SNVs"],
   ["private", "Private SNVs"],
   ["subclonalFraction", "Subclonal + private fraction"],
+  ["truncalPerMb", "Truncal SNVs per callable Mb (approx.)"],
+  ["subclonalPerMb", "Subclonal + private SNVs per callable Mb (approx.)"],
+  ["callableMb", "Callable territory, Mb (median breadth)"],
   ["medianPloidy", "Median ploidy"],
   ["medianSnvCount", "Median SNVs per cell"],
   ["medianJunctions", "Median junctions per cell"],

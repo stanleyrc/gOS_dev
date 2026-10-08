@@ -5,10 +5,38 @@ import { Button, ColorPicker, Popover, Select, Space, Tooltip, Typography } from
 import { BgColorsOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
+import { THEMES } from "../../helpers/singleCell/themes";
 
 const { Text } = Typography;
 
 const stateLabel = (k, n) => (k === n - 1 ? `${k}+` : `${k}`);
+
+/** Pick the categorical colour theme (persists in this browser with the layout). */
+export function ThemeSelect({ style }) {
+  const dispatch = useDispatch();
+  const theme = useSelector((state) => state.SingleCell.layout.theme) || "tableau";
+  return (
+    <Select
+      size="small"
+      style={{ width: 240, ...style }}
+      value={theme}
+      onChange={(value) => dispatch(singleCellActions.updateLayout({ theme: value }))}
+      options={Object.entries(THEMES).map(([value, th]) => ({
+        value,
+        label: (
+          <Space size={4}>
+            <span style={{ display: "inline-flex", gap: 1 }}>
+              {th.colors.slice(0, 6).map((c) => (
+                <span key={c} style={{ width: 9, height: 12, background: c, display: "inline-block", borderRadius: 1 }} />
+              ))}
+            </span>
+            {th.label}
+          </Space>
+        ),
+      }))}
+    />
+  );
+}
 
 /** Edit the copy-number colours (total and allelic); choices persist in this browser. */
 export default function PaletteEditor() {
@@ -44,6 +72,13 @@ export default function PaletteEditor() {
 
   const content = (
     <Space direction="vertical" size={8} style={{ maxWidth: 520 }}>
+      <Space wrap>
+        <Text strong>{t("components.single-cell.palette.theme")}</Text>
+        <ThemeSelect />
+      </Space>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        {t("components.single-cell.palette.theme-help")}
+      </Text>
       <Space wrap>
         <Text>{t("components.single-cell.palette.preset")}</Text>
         <Select

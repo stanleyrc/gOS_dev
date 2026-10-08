@@ -2,7 +2,8 @@ import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Alert, Button, Card, Col, Descriptions, Empty, Row, Space, Statistic, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Col, Collapse, Descriptions, Empty, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from "antd";
+import DriverCellMatrix from "./driverCellMatrix";
 import { AimOutlined, ExperimentOutlined, FileSearchOutlined, SelectOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
@@ -59,8 +60,8 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
           <Tooltip title={t("components.single-cell.report.zoom")}>
             <Button size="small" type="text" icon={<AimOutlined />} onClick={() => onZoom(d)} />
           </Tooltip>
-          {d.class !== "amp" && d.class !== "homdel" && d.class !== "fusion" && (
-            <Tooltip title={t("components.single-cell.report.igv")}>
+          {d.class !== "amp" && d.class !== "homdel" && (
+            <Tooltip title={d.class === "fusion" ? t("components.single-cell.report.igv-fusion") : t("components.single-cell.report.igv")}>
               <Button size="small" type="text" icon={<FileSearchOutlined />} onClick={() => onIgv(d)} />
             </Tooltip>
           )}
@@ -128,9 +129,12 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   };
   const onIgv = (d) => {
     const carriers = `${d.event.cell_ids || ""}`.split(",").filter(Boolean).slice(0, 6);
-    const position = Number(d.event.start);
+    // fusions: first breakpoint from fusion_gene_coords ("12:53097436-53102345+,...")
+    const bp = d.class === "fusion" ? `${d.event.fusion_gene_coords || ""}`.match(/^(\w+):(\d+)/) : null;
+    const chromosome = bp ? bp[1] : `${d.event.seqnames}`;
+    const position = bp ? Number(bp[2]) : Number(d.event.start);
     if (!carriers.length || !Number.isFinite(position)) return;
-    dispatch(singleCellActions.openIgv({ cellIds: carriers, chromosome: `${d.event.seqnames}`, position, label: d.label }));
+    dispatch(singleCellActions.openIgv({ cellIds: carriers, chromosome, position, label: d.label }));
     dispatch(settingsActions.updateTab("7"));
   };
   const onSites = (d) => {
@@ -141,6 +145,51 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     }
   };
   const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites };
+  const allDrivers = [...report.clonal, ...report.subclonal, ...report.rare];
+  const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
+  const driverColumns = [
+    { title: t("components.single-cell.report.col-alteration"), dataIndex: "label", key: "label", render: (v, d) => <Space size={4}><span style={{ width: 8, height: 8, borderRadius: 2, background: CLASS_COLORS[d.class], display: "inline-block" }} />{v}</Space> },
+    { title: "Tier", dataIndex: "tier", key: "tier", width: 60 },
+    { title: t("components.single-cell.report.col-role"), dataIndex: "role", key: "role", width: 140, render: (v) => v || "–" },
+    { title: t("components.single-cell.report.col-cells"), dataIndex: "cells", key: "cells", width: 90, sorter: (a, b) => a.fraction - b.fraction, defaultSortOrder: "descend" },
+    { title: t("components.single-cell.report.col-clonality"), dataIndex: "clonality", key: "clonality", width: 100, render: (v) => <Tag color={v === "clonal" ? "green" : v === "subclonal" ? "orange" : "default"}>{v}</Tag> },
+    { title: t("components.single-cell.report.col-clones"), key: "clones", render: (_, d) => Object.entries(d.fractions).filter(([, f]) => f.n > 0).sort((a, b) => b[1].fraction - a[1].fraction).map(([c, f]) => <Tag key={c} color={cloneColors[c]}>{`${c} ${f.n}/${f.size}`}</Tag>) },
+  ];
+  const expanded = (d) => {
+    const e = d.event;
+    const items = [
+      ["Variant", text(e.Variant)],
+      ["Genomic", text(e.Variant_g) || text(e.Genome_Location)],
+      ["Effect", text(e.effect)],
+      ["VAF (pooled)", Number.isFinite(Number(e.VAF)) ? Number(e.VAF).toFixed(3) : null],
+      ["Alt / ref reads", e.alt != null && e.ref != null && (Number(e.alt) || Number(e.ref)) ? `${e.alt} / ${e.ref}` : null],
+      ["Copies", text(e.estimated_altered_copies)],
+      ["Fusion CN", text(e.fusion_cn)],
+    ].filter(([, v]) => v);
+    return (
+      <Space direction="vertical" size={6} style={{ width: "100%" }}>
+        <Descriptions size="small" column={3} colon={false}>
+          {items.map(([k, v]) => <Descriptions.Item key={k} label={k}>{v}</Descriptions.Item>)}
+        </Descriptions>
+        {text(e.effect_description) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Effect: </Text>{text(e.effect_description)}</Paragraph>}
+        {text(e.variant_summary) && <Paragraph style={{ marginBottom: 4 }}>{text(e.variant_summary)}</Paragraph>}
+        {text(e.gene_summary) && <Paragraph type="secondary" style={{ marginBottom: 4 }}>{text(e.gene_summary)}</Paragraph>}
+        {text(e.therapeutics) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Therapeutics: </Text>{text(e.therapeutics)}</Paragraph>}
+        {text(e.prognoses) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Prognosis: </Text>{text(e.prognoses)}</Paragraph>}
+        <Paragraph style={{ marginBottom: 0 }}>
+          <Text strong>{t("components.single-cell.report.col-cells")}: </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{`${e.cell_ids || ""}`.split(",").filter(Boolean).join(", ")}</Text>
+        </Paragraph>
+        {interactive && (
+          <Space>
+            <Button size="small" onClick={() => onSelect(d)}>{t("components.single-cell.report.select-cells")}</Button>
+            <Button size="small" onClick={() => onZoom(d)}>{t("components.single-cell.report.zoom")}</Button>
+            {!["amp", "homdel"].includes(d.class) && <Button size="small" onClick={() => onIgv(d)}>{d.class === "fusion" ? t("components.single-cell.report.igv-fusion") : t("components.single-cell.report.igv")}</Button>}
+          </Space>
+        )}
+      </Space>
+    );
+  };
 
   if (!events && !cells?.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
 
@@ -226,6 +275,32 @@ export default function PatientReportCard({ patient, events, cells, variants, si
               message={t("components.single-cell.report.emerging", { list: report.signatures.emerging.map((s) => `${s.signature} (${pct(s.share)}${aetiology(s.signature) ? `, ${aetiology(s.signature)}` : ""})`).join("; ") })}
             />
           )}
+        </Col>
+        {interactive && allDrivers.length > 0 && (
+          <Col span={24}>
+            <DriverCellMatrix drivers={allDrivers} />
+          </Col>
+        )}
+        <Col span={24}>
+          <Collapse
+            size="small"
+            items={[
+              {
+                key: "table",
+                label: t("components.single-cell.report.table-title", { count: allDrivers.length }),
+                children: (
+                  <Table
+                    size="small"
+                    rowKey="label"
+                    columns={driverColumns}
+                    dataSource={allDrivers}
+                    pagination={{ pageSize: 15, size: "small" }}
+                    expandable={{ expandedRowRender: expanded }}
+                  />
+                ),
+              },
+            ]}
+          />
         </Col>
         {report.caveats.length > 0 && (
           <Col span={24}>

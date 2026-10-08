@@ -8,6 +8,7 @@ import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import BranchSnvDrawer from "./branchSnvDrawer";
+import SnvSiteDrawer from "./snvSiteDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
 import { themePalette } from "../../helpers/singleCell/themes";
@@ -167,6 +168,23 @@ export default function CellHeatmapPanel() {
       window.removeEventListener("mouseup", up);
       dispatch(singleCellActions.updateLayout({ [key]: latest }));
       setLive(null);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  // Drag the edge of the annotation strips to change their width (all strips together).
+  const startStripDrag = (event) => {
+    event.preventDefault();
+    const x0 = event.clientX;
+    const start = layout.stripWidth || 14;
+    const n = Math.max(1, Math.round(annotationWidth / start));
+    const move = (e) => {
+      const next = Math.round(Math.max(4, Math.min(60, start + (e.clientX - x0) / n)));
+      dispatch(singleCellActions.updateLayout({ stripWidth: next }));
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
@@ -393,6 +411,7 @@ export default function CellHeatmapPanel() {
     [snvsByBranch]
   );
   const [branchNode, setBranchNode] = useState(null);
+  const [siteDrawer, setSiteDrawer] = useState(null);
   useEffect(() => setBranchNode(null), [treeLayout]);
   const snvMax = useMemo(() => (snvReady ? snvMetricMax(snv.data, snvMetric) : 1), [snvReady, snv, snvMetric]);
   const chromosomeOfVariant = useCallback((c) => snv.data?.variants[c]?.chromosome ?? null, [snv]);
@@ -658,17 +677,8 @@ export default function CellHeatmapPanel() {
     axisHeight: axisHeight,
     wheelNeedsModifier: Boolean(zoomedByCmd),
     onRowClick: handleRowClick,
-    onSiteClick: (row, c) => {
-      const v = snv.data.variants[c];
-      dispatch(
-        singleCellActions.openIgv({
-          cellIds: [order[row]],
-          chromosome: v.chromosome,
-          position: v.position,
-          label: v.id,
-        })
-      );
-    },
+    // a site: drawer with its annotation and every cell's reads, IGV for several cells
+    onSiteClick: (row, c) => setSiteDrawer({ c, row }),
     onHover: (row, lines, event) => hoverCell(row, lines, event),
     onLeave: clearHover,
   };
@@ -1065,6 +1075,13 @@ export default function CellHeatmapPanel() {
               onHover={({ row }, event) => hoverCell(row, null, event)}
               onLeave={clearHover}
             />
+            <div
+              className="sc-resize-handle"
+              style={{ height, width: 6, flex: "none" }}
+              title={t("components.single-cell.toolbar.strip-width")}
+              onMouseDown={startStripDrag}
+              onDoubleClick={() => dispatch(singleCellActions.updateLayout({ stripWidth: 14 }))}
+            />
             {heatmapType === "snv" && snvReady ? (
               <MutationSidePanel
                 {...sideProps}
@@ -1252,6 +1269,9 @@ export default function CellHeatmapPanel() {
           </div>
         </div>
       </Card>
+      {siteDrawer && snvReady && snv.data.variants[siteDrawer.c] && (
+        <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} />
+      )}
       {snvsByBranch && branchNode != null && treeLayout?.nodes[branchNode] && (
         <BranchSnvDrawer
           open

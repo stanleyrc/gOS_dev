@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
-import { Layout, ConfigProvider } from "antd";
+import { Layout, ConfigProvider, theme as antdTheme } from "antd";
+import ThemeToggle from "./components/themeToggle";
+import { applyAppTheme, getAppTheme, onAppThemeChange } from "./helpers/appTheme";
 import { store, history } from "./redux/store";
 import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
@@ -17,8 +19,14 @@ import "./global.css";
 const { Content, Footer } = Layout;
 
 function App() {
+  // light / dark: stored in the browser, applied to antd and to <html data-theme>
+  const [mode, setMode] = useState(getAppTheme());
+  useEffect(() => {
+    applyAppTheme(mode);
+    return onAppThemeChange(setMode);
+  }, [mode]);
   return (
-    <ConfigProvider locale={en_US}>
+    <ConfigProvider locale={en_US} theme={{ algorithm: mode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm }}>
       <Provider store={store}>
         <I18nextProvider i18n={i18n}>
           <Router history={history}>
@@ -33,6 +41,7 @@ function App() {
                 </Footer>
               </Layout>
               <UserSignInModal />
+              <ThemeToggle />
             </AppHolder>
           </Router>
         </I18nextProvider>

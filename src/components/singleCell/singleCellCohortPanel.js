@@ -361,7 +361,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "mutations" && (
           <>
             <Col xs={24} xxl={12}>
-              <TmbPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+              <TmbPanel summaries={summaries} files={cohortFiles.files} datafiles={datafiles} onOpen={openPatient} />
             </Col>
             <Col xs={24} xxl={12}>
               <CohortSignaturesPanel summaries={summaries} files={cohortFiles.files} />

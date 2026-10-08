@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { AutoComplete, Button, Card, Empty, InputNumber, Progress, Select, Space, Typography } from "antd";
+import { AutoComplete, Button, Card, Checkbox, Empty, InputNumber, Progress, Select, Space, Tooltip, Typography } from "antd";
+import SvgExportButton from "./svgExportButton";
 import { BarChartOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import useContainerWidth from "./useContainerWidth";
@@ -21,9 +22,10 @@ import { cutTree, labelRuns } from "../../helpers/singleCell/treeGroups";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
 
 const { Text } = Typography;
-const HEIGHT = 440;
-const TREE_WIDTH = 170;
-const TRACK_W = 150;
+const MIN_HEIGHT = 440;
+const TREE_WIDTH = 240;
+const MIN_TRACK_W = 160;
+const MAX_TRACK_W = 480;
 const GAP = 6;
 const HEADER = 34;
 
@@ -39,7 +41,7 @@ const CN_FIELDS = [["fractionAltered", "Fraction of genome altered"], ["segments
 export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGene = "EGFR", defaultMode = "cells", title }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { cells, cn, snv, signatures, cloneColors, selectedCellIds, hoveredCellId } = useSelector((s) => s.SingleCell);
+  const { cells, cn, snv, signatures, cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((s) => s.SingleCell);
   const genesState = useSelector((s) => s.Genes);
   const { order, treeLayout, cellById } = useTreeView();
   const { summary, matrix } = useRnaData();
@@ -159,10 +161,13 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracks.includes("signatures"), hasContexts, sigKey, snv, signatures]);
 
-  /* ---- geometry ---- */
+  /* ---- geometry: tracks share the width left of the tree; rows at least 3 px ---- */
+  const HEIGHT = Math.max(MIN_HEIGHT, Math.min(1400, nRows * 3));
   const rowH = HEIGHT / Math.max(1, nRows);
   const treeWidth = treeLayout ? TREE_WIDTH : 0;
   const shown = tracks.filter((tr) => trackOptions.some((o) => o.value === tr));
+  const avail = Math.max(MIN_TRACK_W, width - treeWidth - GAP - 16);
+  const TRACK_W = Math.max(MIN_TRACK_W, Math.min(MAX_TRACK_W, Math.floor((avail - GAP * Math.max(0, shown.length - 1)) / Math.max(1, shown.length))));
   const svgWidth = Math.max(TRACK_W, shown.length * (TRACK_W + GAP));
   const hoverRef = useRef(null);
   const share = (id) => {
@@ -283,6 +288,12 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
             ]}
           />
           {mode === "cut" && <InputNumber size="small" min={2} max={30} value={k} onChange={(v) => setK(v || 2)} style={{ width: 64 }} />}
+          <Tooltip title={t("components.single-cell.toolbar.clip-help")}>
+            <Checkbox checked={Boolean(layout.clipBranches)} onChange={(e) => dispatch(singleCellActions.updateLayout({ clipBranches: e.target.checked }))}>
+              {t("components.single-cell.toolbar.clip")}
+            </Checkbox>
+          </Tooltip>
+          <SvgExportButton containerRef={containerRef} name="tree-bars" />
           {selectedCellIds.length > 0 && (
             <Button size="small" type="text" onClick={() => dispatch(singleCellActions.updateSelection([]))}>
               {t("components.single-cell.selection.clear")}
@@ -322,7 +333,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
                 }}
               />
             </div>
-            <svg width={Math.max(svgWidth, width - treeWidth - GAP - 8)} height={HEADER + HEIGHT}>
+            <svg width={svgWidth} height={HEADER + HEIGHT}>
               {hoverRow != null && <rect x={0} y={HEADER + hoverRow * rowH} width={svgWidth} height={Math.max(1, rowH)} fill="rgba(22,119,255,0.18)" />}
               {mode !== "cells" &&
                 groups.map((grp, i) => (
