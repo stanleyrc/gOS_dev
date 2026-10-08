@@ -8,6 +8,7 @@ import useContainerWidth from "../useContainerWidth";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { geneValues, searchGeneNames } from "../../../helpers/singleCell/staticRna";
 import { kernelDensity, quartiles } from "../../../helpers/singleCell/rnaStats";
+import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
 
 const { Text } = Typography;
@@ -59,7 +60,7 @@ export function useViolinGroups(summary, rowsFor, groupBy) {
   }, [summary, rowsFor, groupBy, abGroups, cells, cloneColors, palette]);
 }
 
-function GeneViolins({ gene, values, groups, width }) {
+function GeneViolins({ gene, values, groups, width, test }) {
   const plotW = width - M.left - M.right;
   const ymax = Math.max(0.5, d3.max(groups, (g) => d3.max(g.rows, (r) => values[r])) || 0);
   const y = d3.scaleLinear().domain([0, ymax * 1.05]).range([ROW_HEIGHT - M.bottom, M.top]).nice();
@@ -77,6 +78,16 @@ function GeneViolins({ gene, values, groups, width }) {
       <text x={M.left} y={14} fontSize="15" fontWeight="600" fill="#262626">
         {gene}
       </text>
+      {test && (
+        <text x={M.left + plotW} y={14} textAnchor="end" fontSize="12" fill={test.p < 0.05 ? "#cf1322" : "#8c8c8c"}>
+          {`${test.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(test.p)}`}
+          <title>
+            {test.pairs.length
+              ? test.pairs.map((p) => `${p.a} vs ${p.b}: ${formatP(p.p)} (q ${p.q < 1e-4 ? "<1e-4" : p.q.toFixed(3)})`).join("\n")
+              : "Two-sided Mann–Whitney U test between the two groups"}
+          </title>
+        </text>
+      )}
       {y.ticks(4).map((tk) => (
         <g key={tk}>
           <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke="#f0f0f0" />
@@ -129,6 +140,8 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
   const [groupBy, setGroupBy] = useState("clone");
   const [options, setOptions] = useState([]);
   const groups = useViolinGroups(summary, rowsFor, groupBy);
+  // Significance tests run after the plots have drawn (next tick), per gene.
+  const [tests, setTests] = useState({});
   const [collections, setCollections] = useState([]);
   const [collection, setCollection] = useState(null);
   const [sets, setSets] = useState([]);
@@ -177,6 +190,23 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
     };
   }, [matrix, summary, scoreSets]);
   const label = (gene) => (gene.startsWith(SCORE) ? `Score: ${prettyTerm(gene.slice(SCORE.length))}` : gene);
+
+
+  // Significance after the plots: Mann–Whitney for two groups, Kruskal–Wallis
+  // (+ pairwise, BH) for more. Runs a tick after render so drawing comes first.
+  useEffect(() => {
+    if (!matrix || !groups.length || !genes.length) return undefined;
+    const handle = setTimeout(() => {
+      const out = {};
+      genes.forEach((gene) => {
+        const values = valuesFor(gene);
+        if (!values) return;
+        out[gene] = compareGroups(groups.map((g) => ({ key: g.label, values: g.rows.map((r) => values[r]) })));
+      });
+      setTests(out);
+    }, 30);
+    return () => clearTimeout(handle);
+  }, [genes, groups, valuesFor, matrix]);
 
   return (
     <Card
@@ -253,7 +283,7 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
               const values = valuesFor(gene);
               const plotWidth = Math.min(width, Math.max(240, groups.length * 120 + M.left + M.right));
               return values ? (
-                <GeneViolins key={gene} gene={label(gene)} values={values} groups={groups} width={plotWidth} />
+                <GeneViolins key={gene} gene={label(gene)} values={values} groups={groups} width={plotWidth} test={tests[gene]} />
               ) : (
                 <Text key={gene} type="danger">{t("components.single-cell.rna.unknown-gene", { gene })}</Text>
               );
