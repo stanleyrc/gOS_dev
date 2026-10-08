@@ -7,6 +7,8 @@ import DriverCellMatrix from "./driverCellMatrix";
 import ReportFindings from "./reportFindings";
 import useTreeView from "./useTreeView";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
+import { segmentNoise } from "../../helpers/singleCell/segmentNoise";
+import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
 import { AimOutlined, ExperimentOutlined, FileSearchOutlined, ProfileOutlined, SelectOutlined } from "@ant-design/icons";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -24,7 +26,7 @@ const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", tru
 const aetiology = (sig) => (signatureMetadata.metadata[sig]?.full || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "");
 
 /** One driver line with actions: select carriers, zoom the heatmap, view reads. */
-function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, fit }) {
+function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, fit, noise = null }) {
   const { t } = useTranslation("common");
   const pct = d3.format(".0%");
   return (
@@ -39,6 +41,11 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
           {d.unverified && (
             <Tooltip title={t("components.single-cell.report.unverified-help")}>
               <Tag color="warning">{t("components.single-cell.report.unverified")}</Tag>
+            </Tooltip>
+          )}
+          {noise && (
+            <Tooltip title={t("components.single-cell.report.segment-help", { mb: (noise.medianWidthBp / 1e6).toFixed(2), narrow: noise.nNarrow, n: noise.nCovered, flank: Number.isFinite(noise.medianFlankCn) ? noise.medianFlankCn.toFixed(0) : "–" })}>
+              <Tag color={noise.narrow ? "error" : "default"}>{noise.narrow ? t("components.single-cell.report.segment-narrow", { mb: (noise.medianWidthBp / 1e6).toFixed(2) }) : t("components.single-cell.report.segment", { mb: (noise.medianWidthBp / 1e6).toFixed(1) })}</Tag>
             </Tooltip>
           )}
         </Space>
@@ -136,6 +143,16 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     return m;
   }, [tree, report]);
   const lowFit = [...fitOf.values()].filter((f) => Number.isFinite(f.score) && f.score < 0.5).length;
+  // width of the CN segment behind each deletion / amplification in its carriers (patient page only: needs the loaded CN rows)
+  const cn = useSelector((state) => state.SingleCell.cn);
+  const noiseOf = useMemo(() => {
+    const m = new Map();
+    if (!interactive || cn.status !== "ok") return m;
+    [...report.clonal, ...report.subclonal, ...report.rare]
+      .filter((d) => d.class === "homdel" || d.class === "amp")
+      .forEach((d) => m.set(d.label, segmentNoise(cn.data, { globalPosition: eventGlobalPosition(d.event, chromoBins), carriers: `${d.event.cell_ids || ""}`.split(",").filter(Boolean) })));
+    return m;
+  }, [interactive, cn, report, chromoBins]);
   const pct = d3.format(".0%");
 
   const onSelect = (d) => dispatch(singleCellActions.updateSelection(`${d.event.cell_ids || ""}`.split(",").filter(Boolean)));
@@ -171,7 +188,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   // the same popup as a row of the Filtered Events table (alteration, plots with cell tracks, variant QC)
   const onDetails = (d) => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"));
   const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails };
-  const row = (d) => <DriverRow key={d.label} d={d} fit={fitOf.get(d.label)} {...rowProps} />;
+  const row = (d) => <DriverRow key={d.label} d={d} fit={fitOf.get(d.label)} noise={noiseOf.get(d.label)} {...rowProps} />;
   const allDrivers = [...report.clonal, ...report.subclonal, ...report.rare];
   const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
   const driverColumns = [

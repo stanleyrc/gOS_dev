@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Select, Space, Switch, Tooltip, Typography } from "antd";
 import useTreeView from "./useTreeView";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
+import { segmentNoise } from "../../helpers/singleCell/segmentNoise";
+import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
+import { eventClass } from "../../helpers/singleCell/cohortStats";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
 import { EventsToHeatmapBar, isStrongEvent, selectEventColumn, useIsSingleCellPatient } from "./eventsToHeatmap";
 
@@ -26,6 +30,19 @@ export default function ScEventsPanel() {
     return cladeCache.current.get(key);
   };
   useEffect(() => cladeCache.current.clear(), [treeLayout]);
+  // width of the CN segment behind each deletion / amplification in its carriers
+  const cn = useSelector((s) => s.SingleCell.cn);
+  const chromoBins = useSelector((s) => s.Settings.chromoBins);
+  const noiseCache = useRef(new Map());
+  const noiseOf = (record) => {
+    const key = `${record.uid}|${record.cell_ids}`;
+    if (!noiseCache.current.has(key)) {
+      const cls = eventClass(record);
+      noiseCache.current.set(key, cls === "homdel" || cls === "amp" ? segmentNoise(cn.data, { globalPosition: eventGlobalPosition(record, chromoBins), carriers: `${record.cell_ids || ""}`.split(",").filter(Boolean) }) : null);
+    }
+    return noiseCache.current.get(key);
+  };
+  useEffect(() => noiseCache.current.clear(), [cn]);
   const [picked, setPicked] = useState(new Map()); // uid -> event
   const toggle = (record, on) =>
     setPicked((prev) => {
@@ -59,6 +76,30 @@ export default function ScEventsPanel() {
         },
       ]
     : [];
+  const segmentColumn =
+    cn.status === "ok"
+      ? [
+          {
+            title: (
+              <Tooltip title={t("components.single-cell.events.segment-help")}>
+                <span>{t("components.single-cell.events.segment")}</span>
+              </Tooltip>
+            ),
+            key: "segment",
+            width: 90,
+            sorter: (a, b) => (noiseOf(a)?.medianWidthBp || Infinity) - (noiseOf(b)?.medianWidthBp || Infinity),
+            render: (_, record) => {
+              const n = noiseOf(record);
+              if (!n) return "–";
+              return (
+                <Tooltip title={t("components.single-cell.events.segment-detail", { narrow: n.nNarrow, n: n.nCovered, flank: Number.isFinite(n.medianFlankCn) ? n.medianFlankCn.toFixed(0) : "–" })}>
+                  <span style={{ color: n.narrow ? "#cf1322" : undefined, fontWeight: n.narrow ? 600 : 400 }}>{`${(n.medianWidthBp / 1e6).toFixed(n.medianWidthBp < 1e6 ? 2 : 1)} Mb`}</span>
+                </Tooltip>
+              );
+            },
+          },
+        ]
+      : [];
   const recordFilter = (record) => (!strongOnly || isStrongEvent(record)) && (!minClade || !treeLayout || !(cladeOf(record).score < minClade));
   return (
     <>
@@ -75,7 +116,7 @@ export default function ScEventsPanel() {
         )}
       </Space>
       <EventsToHeatmapBar picked={picked} onClear={() => setPicked(new Map())} />
-      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...cladeColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
+      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
     </>
   );
 }
