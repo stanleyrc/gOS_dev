@@ -45,7 +45,7 @@ export default function ClonalHistoryCard() {
   const [ref, width] = useContainerWidth(1000);
   const { order, treeLayout, cellById } = useTreeView();
   const { snv, cloneColors, selectedCellIds, layout } = useSelector((s) => s.SingleCell);
-  const events = useSelector((s) => s.FilteredEvents.filteredEvents) || [];
+  const eventsState = useSelector((s) => s.FilteredEvents.filteredEvents);
   const model = useSignatureModel();
   const [minFit, setMinFit] = useState(0.5);
   const [showSigs, setShowSigs] = useState(true);
@@ -53,7 +53,7 @@ export default function ClonalHistoryCard() {
 
   const placed = useMemo(() => {
     if (!treeLayout) return [];
-    return events
+    return (eventsState || [])
       .filter((e) => Number(e.Tier ?? 9) <= 2 && isStrongEvent(e))
       .map((e) => {
         const carriers = `${e.cell_ids || ""}`.split(",").filter(Boolean);
@@ -61,7 +61,7 @@ export default function ClonalHistoryCard() {
         return { event: e, label: shortLabel(e), cls: eventClass(e), fit, fraction: Number(e.cell_fraction) || 0 };
       })
       .filter((d) => Number.isFinite(d.fit.score) && d.fit.score >= minFit && d.fit.node != null);
-  }, [events, treeLayout, minFit]);
+  }, [eventsState, treeLayout, minFit]);
 
   // SNVs and signature shift per internal node (sites seen in the clade but not in its parent's other children)
   const branchInfo = useMemo(() => {
