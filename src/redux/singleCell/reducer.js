@@ -54,6 +54,7 @@ const initState = {
   allelic: emptySource, // { cells, rows: [{ binIndex, major, minor } | null] }, loaded on demand
   rna: emptySource, // static rna/ summary: { cells, genes, fields, hasUmap }
   signatures: emptySource, // signatures.json: { cosmic_version, genome, sets: [{ name, n, activities }] }
+  walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
   selectedCellIds: [],
@@ -120,6 +121,7 @@ export default function appReducer(state = initState, action) {
         junctions: action.junctions,
         rna: action.rna || emptySource,
         signatures: action.signatures || emptySource,
+        walks: action.walks || emptySource,
         cellFiles: action.cellFiles,
         selectedCellIds: action.selectedCellIds,
         heatmapType:

@@ -11,11 +11,13 @@ async function loadPatient(dataset, summary, cancelToken) {
   const key = `${dataset.id}/${summary.caseReportId}`;
   if (cache.has(key)) return cache.get(key);
   const get = (file) => tryGet(casePath(dataset, summary.caseReportId, file), { cancelToken });
-  const [snv, signatures, events, tree] = await Promise.all([
+  const [snv, signatures, events, tree, walks] = await Promise.all([
     get("snv_matrix.json"),
     get("signatures.json"),
     get("filtered.events.json"),
     tryGet(casePath(dataset, summary.caseReportId, "tree.nwk"), { cancelToken, responseType: "text" }),
+    // ecDNA / amplicon walks with per-cell copies (skilift sc_export_walks), optional
+    get("walks.json"),
   ]);
   let treeLayout = null;
   if (tree.status === "ok") {
@@ -30,6 +32,7 @@ async function loadPatient(dataset, summary, cancelToken) {
     signatures: signatures.status === "ok" ? signatures.data : null,
     events: events.status === "ok" ? (Array.isArray(events.data) ? events.data : []) : null,
     tree: treeLayout,
+    walks: walks.status === "ok" ? walks.data : null,
   };
   cache.set(key, out);
   return out;

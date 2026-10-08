@@ -199,7 +199,7 @@ export default function DriverCellMatrix({ drivers }) {
                   onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}
                 >
                   {r.label.length > 34 ? `${r.label.slice(0, 33)}…` : r.label}
-                  <title>{[r.label, ...eventTooltipLines(r.event), ...(Number.isFinite(r.fit.score) ? [`clade fit ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)`] : []), t("components.single-cell.report.matrix-click")].join("\n")}</title>
+                  <title>{[r.label, ...eventTooltipLines(r.event), ...(Number.isFinite(r.fit.score) ? [`clade F1 ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)`] : []), t("components.single-cell.report.matrix-click")].join("\n")}</title>
                 </text>
                 <g clipPath="url(#dcm-clip)">
                   {order.slice(c0, c1 + 1).map((id, j) => {
