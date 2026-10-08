@@ -43,3 +43,14 @@ describe("walk footprints", () => {
     expect(matrix[2][0]).toBe(0);
   });
 });
+
+describe("walkFamilies", () => {
+  it("groups nested walks and orders short to long", () => {
+    const { walkFamilies } = require("./walks");
+    const long = { id: "L", ncells: 50, nodes: [{ chromosome: "7", start: 1, end: 1000 }] };
+    const short = { id: "S", ncells: 80, nodes: [{ chromosome: "7", start: 100, end: 300 }] };
+    const other = { id: "O", ncells: 10, nodes: [{ chromosome: "12", start: 1, end: 100 }] };
+    const fams = walkFamilies([long, other, short]);
+    expect(fams.map((f) => f.map((w) => w.id))).toEqual([["S", "L"], ["O"]]);
+  });
+});
