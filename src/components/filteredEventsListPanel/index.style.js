@@ -386,6 +386,58 @@ const Wrapper = styled.div`
   .reset-state-btn {
     margin-bottom: 16px;
   }
+
+  /* ---- compact restyle: denser rows, zebra striping, quieter header, sticky header ---- */
+  .table-container .ant-table-small .ant-table-thead > tr > th {
+    background: #fafafa;
+    font-size: 12px;
+    font-weight: 600;
+    color: #595959;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 6px 8px;
+    border-bottom: 2px solid #e8e8e8;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .table-container .ant-table-small .ant-table-tbody > tr > td {
+    padding: 5px 8px;
+    font-size: 13px;
+    line-height: 1.3;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .table-container .ant-table-small .ant-table-tbody > tr:nth-child(even) > td {
+    background: #fcfcfc;
+  }
+  .table-container .ant-table-small .ant-table-tbody > tr:hover > td {
+    background: #f0f5ff;
+  }
+  .table-container .ant-table-small .ant-table-tbody > tr > td .ant-btn-link {
+    padding: 0;
+    height: auto;
+    font-size: 13px;
+  }
+  .table-container .ant-table-small .ant-tag {
+    margin-inline-end: 4px;
+    font-size: 11px;
+    line-height: 18px;
+    padding-inline: 5px;
+  }
+  .table-container .ant-pagination {
+    margin: 10px 0 4px;
+  }
+  html[data-theme="dark"] & .table-container .ant-table-small .ant-table-thead > tr > th {
+    background: #1f1f1f;
+    color: #bfbfbf;
+    border-bottom-color: #303030;
+  }
+  html[data-theme="dark"] & .table-container .ant-table-small .ant-table-tbody > tr:nth-child(even) > td {
+    background: #181818;
+  }
+  html[data-theme="dark"] & .table-container .ant-table-small .ant-table-tbody > tr:hover > td {
+    background: #1d2a3f;
+  }
 `;
 
 export default Wrapper;
