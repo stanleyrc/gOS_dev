@@ -1,4 +1,4 @@
-export const DETAIL_TAB_KEYS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
+export const DETAIL_TAB_KEYS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 // Tab 7 is the single-cell patient view. It only exists for patient entries,
 // so it is never assumed enabled and is preferred when it is.
 export const SINGLE_CELL_TAB_KEY = "7";
@@ -10,6 +10,8 @@ export const SINGLE_CELL_SIGNATURES_TAB_KEY = "9";
 export const SINGLE_CELL_RNA_CN_TAB_KEY = "10";
 // Tab 11 is per-cell QC of a single-cell patient.
 export const SINGLE_CELL_QC_TAB_KEY = "11";
+// Tab 12 is the key-findings report of a single-cell patient.
+export const SINGLE_CELL_REPORT_TAB_KEY = "12";
 
 const singleCellHasSignatures = (singleCell) =>
   Boolean(
@@ -95,6 +97,7 @@ export const getDetailTabAvailability = (state = {}) => {
     9: singleCellHasSignatures(state.SingleCell),
     10: state.SingleCell?.rna?.status === "ok",
     11: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
+    12: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
   };
 };
 
@@ -105,7 +108,7 @@ export const firstEnabledDetailTab = (availability = {}) => {
       (key) =>
         key !== SINGLE_CELL_TAB_KEY &&
         // single-cell RNA / signature tabs only exist for single-cell patients
-        ([SINGLE_CELL_RNA_TAB_KEY, SINGLE_CELL_SIGNATURES_TAB_KEY, SINGLE_CELL_RNA_CN_TAB_KEY, SINGLE_CELL_QC_TAB_KEY].includes(key)
+        ([SINGLE_CELL_RNA_TAB_KEY, SINGLE_CELL_SIGNATURES_TAB_KEY, SINGLE_CELL_RNA_CN_TAB_KEY, SINGLE_CELL_QC_TAB_KEY, SINGLE_CELL_REPORT_TAB_KEY].includes(key)
           ? availability[key] === true
           : availability[key] !== false)
     ) || null

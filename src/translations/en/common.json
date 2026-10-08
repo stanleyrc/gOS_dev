@@ -438,7 +438,8 @@
         "tab8": "Single-Cell RNA",
         "tab9": "Single-Cell Signatures",
         "tab10": "Single-Cell RNA × CN",
-        "tab11": "Single-Cell QC"
+        "tab11": "Single-Cell QC",
+        "tab12": "Single-Cell Report"
       }
     },
     "detail-error-view": {
@@ -1051,7 +1052,8 @@
         "class-splice": "Splice",
         "class-missense": "Missense",
         "scatter-title": "Patients compared",
-        "scatter-help": "One point per patient. Click a point to open the patient."
+        "scatter-help": "One point per patient. Click a point to open the patient.",
+        "view-reports": "Key findings"
       },
       "compare": {
         "title": "Compare groups",
@@ -1373,6 +1375,41 @@
         "signatures": "SBS signatures",
         "signatures-axis": "share of fitted SNVs",
         "help": "Bars follow the tree rows. Per clone / clade: numeric tracks show the mean over the group's cells and signatures are fitted on the group's pooled SNV sites (NNLS on the signatures found for this patient). Click a bar or clade to select its cells; Cmd/Ctrl-click adds."
+      },
+      "report": {
+        "title": "Key findings · {{patient}}",
+        "summary-cells": "{{tumor}} tumor cells and {{normal}} normal cells in {{clones}} clones.",
+        "summary-clonal": "Clonal (likely truncal) drivers: {{list}}.",
+        "summary-no-clonal": "No tier 1–2 alteration is present in nearly all tumor cells.",
+        "summary-subclonal": "{{count}} subclonal driver alterations mark subsets of cells.",
+        "summary-signatures": "Dominant SBS signatures: {{list}}.",
+        "clonal-title": "Clonal drivers ({{count}})",
+        "clonal-help": "Tier 1–2 alterations in at least {{pct}} of tumor cells: most likely acquired on the trunk.",
+        "subclonal-title": "Subclonal drivers ({{count}})",
+        "subclonal-help": "Tier 1–2 alterations in 10–85% of tumor cells, with the clones that carry them.",
+        "rare": "{{count}} further tier 1–2 alterations in fewer than 10% of cells (shown with the strong-events filter off): {{list}}.",
+        "none": "None",
+        "in-cells": "in {{cells}} tumor cells ({{pct}})",
+        "clones-title": "Clones and what defines them",
+        "clone-size": "{{n}} cells ({{pct}} of tumor)",
+        "clone-defining": "Defined by: {{list}}",
+        "clone-no-defining": "No tier 1–2 alteration is specific to this clone.",
+        "clone-carried": "Also carries: {{list}}",
+        "select-clone": "select",
+        "burden-title": "SNV burden by tree position (CellPhy-input sites)",
+        "snv-drivers": "OncoKB SNV drivers",
+        "signatures-title": "SBS signatures",
+        "sig-all": "All sites ({{n}})",
+        "emerging": "Signatures gaining after the trunk: {{list}}.",
+        "unverified": "unverified",
+        "unverified-help": "Fusions come from per-cell genome-graph walks and have not been checked against reads.",
+        "select-cells": "Select the carrier cells",
+        "zoom": "Zoom the single-cell heatmap to this locus",
+        "igv": "View reads of carrier cells in IGV",
+        "show-site": "Show only this SNV site in the mutation heatmap",
+        "caveats": "Caveats",
+        "caveat-fusions-unverified": "Fusion calls are unverified gGnome walks; check them in IGV before trusting them.",
+        "caveat-homdel-noise": "Many homozygous-deletion calls are present in only 1–2 cells and are likely coverage dropout; they are hidden here."
       }
     },
     "tracks-modal": {
