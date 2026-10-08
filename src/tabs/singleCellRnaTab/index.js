@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Col, Collapse, Empty, Row, Typography } from "antd";
+import { Alert, Col, Collapse, Empty, Row, Space, Switch, Typography } from "antd";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import RnaGroupsCard from "../../components/singleCell/rna/rnaGroupsCard";
 import SavedGroupsBar from "../../components/singleCell/savedGroupsBar";
+import { ThemeSelect } from "../../components/singleCell/paletteEditor";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
 import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
@@ -12,6 +13,7 @@ import useRnaData from "../../components/singleCell/rna/useRnaData";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
 import scaActions from "../../redux/scAnalysis/actions";
+import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
@@ -26,7 +28,7 @@ const { Text } = Typography;
 export default function SingleCellRnaTab() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { summary, matrix, error, rowsFor } = useRnaData();
+  const { summary, matrix, error, rowsFor, excluded, tumorOnly } = useRnaData();
   const service = useSelector((state) => state.ScAnalysis.service);
   const expressionGene = useSelector((state) => state.ScAnalysis.expression.gene);
   const [violinGenes, setViolinGenes] = useState([]);
@@ -56,6 +58,19 @@ export default function SingleCellRnaTab() {
             <Alert type="error" showIcon message={t("components.single-cell.rna.matrix-error")} description={error} />
           </Col>
         )}
+        <Col span={24}>
+          <Space wrap size="large">
+            <Space>
+              <Text type="secondary">{t("components.single-cell.palette.theme")}</Text>
+              <ThemeSelect />
+            </Space>
+            <Space>
+              <Switch size="small" checked={tumorOnly} onChange={(v) => dispatch(singleCellActions.updateLayout({ rnaTumorOnly: v }))} />
+              <Text>{t("components.single-cell.rna.tumor-only")}</Text>
+              {tumorOnly && <Text type="secondary">{t("components.single-cell.rna.tumor-only-note", { count: excluded, kept: summary.cells.length })}</Text>}
+            </Space>
+          </Space>
+        </Col>
         <Col xs={24} xxl={12}>
           <UmapPanel />
         </Col>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Empty, Select, Space, Typography } from "antd";
+import { Button, Card, Checkbox, Empty, Select, Space, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import HeatmapCanvas from "../heatmapCanvas";
@@ -315,6 +315,11 @@ export default function PhyloExpressionCard({ summary, matrix }) {
           <Button size="small" disabled={!matrix} onClick={addStateScores}>
             {t("components.single-cell.rna.add-state-scores")}
           </Button>
+          <Tooltip title={t("components.single-cell.toolbar.clip-help")}>
+            <Checkbox checked={Boolean(layout.clipBranches)} onChange={(e) => dispatch(singleCellActions.updateLayout({ clipBranches: e.target.checked }))}>
+              {t("components.single-cell.toolbar.clip")}
+            </Checkbox>
+          </Tooltip>
         </Space>
         <div ref={containerRef}>
           {!genes.length ? (
