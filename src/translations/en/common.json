@@ -1082,7 +1082,10 @@
         "ev-copies": "Altered copies",
         "ev-carriers": "Carriers by clone:",
         "ev-cells": "Cells to show",
-        "ev-open-patient": "Open the patient"
+        "ev-open-patient": "Open the patient",
+        "height": "Height",
+        "reset-zoom": "Whole genome",
+        "heatmap-help": "Cmd/Ctrl + wheel (or pinch) zooms, drag pans, click a chromosome to zoom to it, double-click resets."
       },
       "compare": {
         "title": "Compare groups",
@@ -1564,7 +1567,10 @@
         "findings-amplified": "SNVs on amplicons",
         "findings-amplified-help": "{{count}} SNVs whose carrier cells have CN ≥ 4 at the site with ≥ 1.5 estimated mutant copies (VAF × CN): mutated before the amplification.",
         "findings-amplified-row": "{{variant}} · median CN {{cn}} · {{copies}} mutant copies · {{n}} carriers",
-        "matrix-select": "Select the carrier cells"
+        "matrix-select": "Select the carrier cells",
+        "clade-fit": "clade fit {{score}}",
+        "clade-fit-help": "How well the carrier cells follow the phylogeny: best F1 between the carriers and any clade ({{inClade}} of {{carriers}} carriers in the best clade of {{clade}} cells). ≥ 0.8 = one clean clade; < 0.5 = scattered cells, likely a noisy call.",
+        "caveat-low-fit": "{{count}} tier 1–2 alterations have scattered carriers (clade fit < 0.5) and are more likely noise than real subclonal events."
       },
       "site": {
         "clade-cells": " · {{count}} cells in the clade",
