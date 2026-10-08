@@ -35,6 +35,7 @@ import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
+import PatientReportCard from "./patientReportCard";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -320,6 +321,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const openCell = (cell) => cell?._patient && dispatch(datasetsActions.openCaseReport(cell._patient.record.datasetId, cell.cell_id));
   const analysisTabs = [
     { key: "overview", label: t("components.single-cell.cohort.view-overview") },
+    { key: "reports", label: t("components.single-cell.cohort.view-reports") },
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
     { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
@@ -337,6 +339,20 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           </Space>
           <Tabs size="small" activeKey={view} onChange={setView} items={analysisTabs} />
         </Col>
+        {view === "reports" &&
+          summaries.map((s) => (
+            <Col span={24} key={s.caseReportId}>
+              <PatientReportCard
+                patient={s.caseReportId}
+                events={cohortFiles.files[s.caseReportId]?.events || []}
+                cells={cellsForPatient(datafiles, s.patientKey)}
+                variants={cohortFiles.files[s.caseReportId]?.variants || []}
+                signatures={cohortFiles.files[s.caseReportId]?.signatures || null}
+                cloneColors={cloneColors}
+                onOpen={() => openPatient(s)}
+              />
+            </Col>
+          ))}
         {view === "drivers" && (
           <Col span={24}>
             <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
