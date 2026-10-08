@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import { isDarkPlots } from "../../helpers/singleCell/matrix";
 
 const PAD_LEFT = 6;
 const PAD_RIGHT = 4;
@@ -28,8 +29,10 @@ export default function PhylogenyCanvas({
   onSelectNode,
   onHoverNode,
   branchCounts = null,
+  showScaleBar = true,
 }) {
   const ref = useRef(null);
+  const dark = isDarkPlots();
 
   const nodeClones = useMemo(() => {
     if (!layout) return [];
@@ -86,6 +89,8 @@ export default function PhylogenyCanvas({
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     ctx.clearRect(0, 0, width, height);
     const { px, py } = geometry;
+    const ink = dark ? "#bfbfbf" : "#595959";
+    const faint = dark ? "#434343" : "#e8e8e8";
 
     if (selectedLeafRange) {
       ctx.fillStyle = "rgba(24,144,255,0.12)";
@@ -113,7 +118,7 @@ export default function PhylogenyCanvas({
           const mx = (px(parent.x) + px(n.x)) / 2;
           const y = py(n.y);
           ctx.save();
-          ctx.strokeStyle = "#595959";
+          ctx.strokeStyle = ink;
           ctx.lineWidth = 1;
           [-2.5, 2.5].forEach((dx) => {
             ctx.beginPath();
@@ -147,7 +152,7 @@ export default function PhylogenyCanvas({
         const x1 = px(n.x);
         const label = `${count}`;
         if (x1 - x0 < ctx.measureText(label).width + 2) return;
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillStyle = dark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)";
         const tw = ctx.measureText(label).width;
         ctx.fillRect((x0 + x1) / 2 - tw / 2 - 1, py(n.y) - 10, tw + 2, 9);
         ctx.fillStyle = "#cf1322";
@@ -159,16 +164,46 @@ export default function PhylogenyCanvas({
     if (geometry.showLabels) {
       ctx.font = `${geometry.fontSize}px sans-serif`;
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#595959";
+      ctx.fillStyle = ink;
       layout.nodes.forEach((n) => {
         if (!n.isLeaf) return;
-        ctx.strokeStyle = "#e8e8e8";
+        ctx.strokeStyle = faint;
         ctx.beginPath();
         ctx.moveTo(px(n.x) + 2, py(n.y));
         ctx.lineTo(geometry.labelX, py(n.y));
         ctx.stroke();
         ctx.fillText(n.name, geometry.labelX + 2, py(n.y), width - geometry.labelX - 4);
       });
+    }
+
+    // Scale bar in branch-length units: a 1/2/5 × 10^k length that spans
+    // between a tenth and a third of the tree's width.
+    if (showScaleBar && height >= 48 && layout.maxX > 0) {
+      const target = (layout.maxX * 0.2);
+      const mag = 10 ** Math.floor(Math.log10(target));
+      const len = [1, 2, 5, 10].map((m) => m * mag).reduce((best, v) => (Math.abs(v - target) < Math.abs(best - target) ? v : best), mag);
+      const x0 = px(0);
+      const x1 = px(len);
+      const y = height - 5;
+      ctx.save();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.moveTo(x0, y - 3);
+      ctx.lineTo(x0, y + 3);
+      ctx.moveTo(x1, y - 3);
+      ctx.lineTo(x1, y + 3);
+      ctx.stroke();
+      ctx.font = "9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = ink;
+      const label = len >= 1 ? `${len}` : len.toPrecision(1);
+      ctx.fillText(label, (x0 + x1) / 2, y - 2);
+      ctx.restore();
+      ctx.textAlign = "start";
     }
 
     // Selected and hovered leaves: a dot at the tip, plus a row band for hover.
@@ -193,7 +228,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, "#fa541c", dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, dark, showScaleBar]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;
