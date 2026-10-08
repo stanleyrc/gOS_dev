@@ -78,7 +78,11 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
   const { chromoBins, domains } = useSelector((state) => state.Settings);
-  const { selectedCellIds, visibleTracks, perCell, cellFiles, cells, cloneColors, patient, plotInsets } = sc;
+  const { selectedCellIds, perCell, cellFiles, cells, cloneColors, patient, plotInsets } = sc;
+  // Embedded (event popup): its own track choice, CN graph + coverage first.
+  const [localTracks, setLocalTracks] = React.useState(["total", "coverage"]);
+  const visibleTracks = embedded ? localTracks : sc.visibleTracks;
+  const setTracks = (tracks) => (embedded ? setLocalTracks(tracks) : dispatch(singleCellActions.updateVisibleTracks(tracks)));
   // Pad the plots so their genomic area lines up with the heatmap's columns;
   // subtract this panel's own nesting (cell block border/padding, row
   // gutter, each track card's padding and border).
@@ -255,7 +259,7 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
             <span>{title || t("components.single-cell.tracks.title")}</span>
             <Checkbox.Group
               value={visibleTracks}
-              onChange={(tracks) => dispatch(singleCellActions.updateVisibleTracks(tracks))}
+              onChange={setTracks}
               options={SC_TRACKS.map((track) => ({ value: track, label: label(track) }))}
             />
           </div>
