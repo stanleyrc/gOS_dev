@@ -11,6 +11,7 @@ import SvgExportButton from "./svgExportButton";
 import singleCellActions from "../../redux/singleCell/actions";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
+import { eventTooltipLines } from "../../helpers/singleCell/cohortStats";
 import { Swatches } from "./cohort/charts";
 
 const { Text } = Typography;
@@ -194,7 +195,7 @@ export default function DriverCellMatrix({ drivers }) {
                   onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}
                 >
                   {r.label.length > 34 ? `${r.label.slice(0, 33)}…` : r.label}
-                  <title>{`${r.label}\n${r.cells} cells (${pct(r.fraction)})${Number.isFinite(r.fit.score) ? `\nclade fit ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)` : ""}\n${t("components.single-cell.report.matrix-click")}`}</title>
+                  <title>{[r.label, ...eventTooltipLines(r.event), ...(Number.isFinite(r.fit.score) ? [`clade fit ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)`] : []), t("components.single-cell.report.matrix-click")].join("\n")}</title>
                 </text>
                 <g clipPath="url(#dcm-clip)">
                   {order.slice(c0, c1 + 1).map((id, j) => {
