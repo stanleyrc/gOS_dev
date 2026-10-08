@@ -185,6 +185,10 @@ export default function DriverCellMatrix({ drivers }) {
                 <rect x={6} y={y + 4} width={8} height={ROW_H - 8} rx={2} fill={CLASS_COLORS[r.class]} style={{ cursor: "pointer" }} onClick={(e) => select([...r.carriers], e)}>
                   <title>{t("components.single-cell.report.matrix-select")}</title>
                 </rect>
+                {/* SVG text only reacts on its glyphs: a transparent hit area over the whole label column opens the popup */}
+                <rect x={18} y={y} width={LABEL_W - 18} height={ROW_H} fill="transparent" pointerEvents="all" style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}>
+                  <title>{[r.label, ...eventTooltipLines(r.event), t("components.single-cell.report.matrix-click")].join("\n")}</title>
+                </rect>
                 <text
                   x={20}
                   y={y + ROW_H / 2}

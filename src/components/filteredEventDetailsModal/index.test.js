@@ -85,11 +85,13 @@ describe("FilteredEventDetailsModal", () => {
     expect(tabs.props.activeKey).toBe("plots");
     expect(tabs.props.items.map(({ key }) => key)).toEqual([
       "plots",
+      "reads",
       "alteration",
       "variantQc",
     ]);
     expect(tabs.props.items.map(({ label }) => label)).toEqual([
       "components.filtered-event-details-modal.tabs.plots",
+      "components.filtered-event-details-modal.tabs.reads",
       "components.filtered-event-details-modal.tabs.alteration",
       "components.filtered-event-details-modal.tabs.variantQc",
     ]);

@@ -13,6 +13,7 @@ describe("filtered event details tabs", () => {
   it("defines the canonical tab order and legacy boundary aliases", () => {
     expect(FILTERED_EVENT_DETAILS_TAB_ORDER).toEqual([
       FILTERED_EVENT_DETAILS_TABS.PLOTS,
+      FILTERED_EVENT_DETAILS_TABS.READS,
       FILTERED_EVENT_DETAILS_TABS.ALTERATION,
       FILTERED_EVENT_DETAILS_TABS.VARIANT_QC,
     ]);
