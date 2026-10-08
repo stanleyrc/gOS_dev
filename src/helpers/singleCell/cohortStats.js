@@ -228,3 +228,30 @@ export const PATIENT_METRICS = [
   ["tier12Events", "Tier 1–2 events"],
   ["clonalEvents", "Clonal tier 1–2 events (≥90% cells)"],
 ];
+
+const clean = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
+
+/**
+ * Plain-text lines describing a filtered event for a hover tooltip: tier,
+ * alteration type (in-frame / out-of-frame fusion, deletion, amplification,
+ * SNV consequence), protein and genomic change, role, effect, copies and
+ * carrier cells.
+ */
+export function eventTooltipLines(event = {}) {
+  const lines = [];
+  const vt = `${event.vartype || event.type || ""}`;
+  const type = /outframe/i.test(vt) ? "out-of-frame fusion" : /fusion/i.test(vt) ? "in-frame fusion" : /homdel/i.test(vt) ? "homozygous deletion" : /amp/i.test(vt) ? "amplification" : clean(event.Variant) && !/^(SNV|None)$/i.test(event.Variant) ? `${vt} ${clean(event.Variant)}` : clean(vt);
+  if (clean(event.Tier)) lines.push(`Tier ${clean(event.Tier)}`);
+  if (type) lines.push(type);
+  if (clean(event.Variant_g)) lines.push(clean(event.Variant_g));
+  if (clean(event.fusion_gene_coords)) lines.push(`breakpoints ${clean(event.fusion_gene_coords)}`);
+  else if (clean(event.Genome_Location)) lines.push(clean(event.Genome_Location));
+  if (clean(event.role)) lines.push(clean(event.role));
+  if (clean(event.effect)) lines.push(clean(event.effect));
+  if (clean(event.estimated_altered_copies)) lines.push(`${clean(event.estimated_altered_copies)} altered copies`);
+  if (clean(event.fusion_cn)) lines.push(`fusion CN ${clean(event.fusion_cn)}`);
+  if (clean(event.VAF)) lines.push(`VAF ${clean(event.VAF)}`);
+  if (clean(event.cells)) lines.push(`${clean(event.cells)} cells${Number.isFinite(Number(event.cell_fraction)) ? ` (${Math.round(100 * Number(event.cell_fraction))}%)` : ""}`);
+  if (clean(event.therapeutics)) lines.push(`therapeutics: ${clean(event.therapeutics)}`);
+  return lines;
+}

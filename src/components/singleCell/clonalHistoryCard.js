@@ -11,7 +11,7 @@ import useSignatureModel from "./signatures/useSignatureModel";
 import singleCellActions from "../../redux/singleCell/actions";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
-import { eventClass } from "../../helpers/singleCell/cohortStats";
+import { eventClass, eventTooltipLines } from "../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../helpers/singleCell/strongEvents";
 import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { rowMap } from "../../helpers/singleCell/matrix";
@@ -166,7 +166,7 @@ export default function ClonalHistoryCard() {
                   <rect x={-3} y={-10} width={d.label.length * 6.6 + 10} height={13} rx={3} fill="#fff" stroke={CLASS_COLORS[d.cls]} />
                   <rect x={-3} y={-10} width={4} height={13} fill={CLASS_COLORS[d.cls]} />
                   <text x={4} y={0} fontSize={10} fill="#262626">{d.label}</text>
-                  <title>{`${shortLabel(d.event)} · ${d.event.cells} cells (${d3.format(".0%")(d.fraction)}) · clade fit ${d.fit.score.toFixed(2)}\n${t("components.single-cell.history.click")}`}</title>
+                  <title>{[shortLabel(d.event), ...eventTooltipLines(d.event), `clade fit ${d.fit.score.toFixed(2)} (best clade ${d.fit.clade} cells)`, t("components.single-cell.history.click")].join("\n")}</title>
                 </g>
               ));
           })}

@@ -53,3 +53,12 @@ describe("cohort statistics", () => {
     expect(qc.chrXMeanCn).toBe(1);
   });
 });
+
+describe("eventTooltipLines", () => {
+  it("describes fusions and deletions", () => {
+    const { eventTooltipLines } = require("./cohortStats");
+    expect(eventTooltipLines({ Tier: "1", vartype: "outframe_fusion", fusion_gene_coords: "12:1-2+,12:5-6-", cells: "65/130", cell_fraction: "0.5" })).toEqual(["Tier 1", "out-of-frame fusion", "breakpoints 12:1-2+,12:5-6-", "65/130 cells (50%)"]);
+    expect(eventTooltipLines({ Tier: "1", vartype: "HOMDEL", Genome_Location: "17:1-2", role: "Tumor Suppressor", effect: "None", estimated_altered_copies: "2" })).toEqual(["Tier 1", "homozygous deletion", "17:1-2", "Tumor Suppressor", "2 altered copies"]);
+    expect(eventTooltipLines({ vartype: "SNV", Variant: "p.R132H", Variant_g: "2:1-1 G>A" })).toEqual(["SNV p.R132H", "2:1-1 G>A"]);
+  });
+});
