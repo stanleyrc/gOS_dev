@@ -3,6 +3,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Button, Select, Space, Switch, Typography } from "antd";
 import CellTracksPanel from "./cellTracksPanel";
+import CellIgvPanel from "./cellIgvPanel";
+import GeneTrackMini from "./geneTrackMini";
+import useContainerWidth from "./useContainerWidth";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
 import { locationToDomains } from "../../helpers/utility";
@@ -40,6 +43,8 @@ function SingleCellEventTracks({ record }) {
   const [multi, setMulti] = useState(false);
   const [one, setOne] = useState(null);
   const [many, setMany] = useState([]);
+  const [showIgv, setShowIgv] = useState(false);
+  const [trackRef, trackWidth] = useContainerWidth(900);
   useEffect(() => {
     setOne(carriers[0] || null);
     setMany(carriers.slice(0, DEFAULT_MULTI));
@@ -65,6 +70,18 @@ function SingleCellEventTracks({ record }) {
     return <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-cells")} />;
   }
   const shown = multi ? many : one ? [one] : [];
+  // IGV at the event: SNVs at the variant position, fusions at both breakpoints, CNAs at the gene start
+  const bps = `${record?.fusion_gene_coords || ""}`.split(",").map((s) => s.match(/^(\w+):(\d+)/)).filter(Boolean).map((m) => ({ chromosome: m[1], position: Number(m[2]) }));
+  const snvPos = `${record?.Variant_g || ""}`.match(/^(\w+):(\d+)/);
+  const igvView = shown.length
+    ? {
+        cellIds: shown,
+        chromosome: bps.length ? bps[0].chromosome : snvPos ? snvPos[1] : `${record?.seqnames}`,
+        position: bps.length ? bps[0].position : snvPos ? Number(snvPos[2]) : Number(record?.start),
+        loci: bps.length > 1 ? bps : undefined,
+        label: record?.gene || record?.fusion_genes,
+      }
+    : null;
 
   return (
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
@@ -92,7 +109,19 @@ function SingleCellEventTracks({ record }) {
         <Button size="small" type="link" onClick={() => dispatch(singleCellActions.updateSelection(carriers))}>
           {t("components.single-cell.event-cells.select-all", { count: carriers.length })}
         </Button>
+        <Switch size="small" checked={showIgv} onChange={setShowIgv} />
+        <Text>{t("components.single-cell.event-cells.igv")}</Text>
       </Space>
+      {showIgv && igvView && Number.isFinite(igvView.position) && (
+        <div>
+          <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.event-cells.igv-help", { count: shown.length })}</Text>
+          <CellIgvPanel view={igvView} embedded />
+        </div>
+      )}
+      <div ref={trackRef} style={{ padding: "0 8px" }}>
+        <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.event-cells.genes")}</Text>
+        <GeneTrackMini width={Math.max(200, trackWidth - 16)} highlight={record?.gene} />
+      </div>
       <CellTracksPanel
         cellIds={shown}
         embedded

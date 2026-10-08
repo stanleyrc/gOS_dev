@@ -20,7 +20,7 @@ const HEIGHT = 320;
  * bars (one per patient) stacked by alteration class, as cells or % of
  * tumor cells. Below, the aggregated event table (gene x patient).
  */
-export default function CohortGenePanel({ summaries, files, onOpen }) {
+export default function CohortGenePanel({ summaries, files, onOpen, onEvent = null }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(1000);
   const [mode, setMode] = useState("fraction");
@@ -140,8 +140,10 @@ export default function CohortGenePanel({ summaries, files, onOpen }) {
                     style={{ cursor: "pointer" }}
                     onClick={() => {
                       const best = Object.values(byClass).sort((a, b) => b.fraction - a.fraction)[0];
+                      const s = summaries.find((x) => x.caseReportId === p);
+                      if (best && onEvent) return onEvent(s, best.event);
                       if (best) setPendingEvent(p, best.event);
-                      onOpen(summaries.find((s) => s.caseReportId === p));
+                      return onOpen(s);
                     }}
                   >
                     <rect x={x1(p)} y={y.range()[1]} width={x1.bandwidth()} height={y.range()[0] - y.range()[1]} fill={patientFill(p)} fillOpacity={0.06} />

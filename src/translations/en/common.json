@@ -952,7 +952,9 @@
         "clade-score": "Clade score",
         "clade-score-help": "How cleanly a site's alt calls follow the clade it maps to: F1 of 'alt call' vs 'in the mapped clade' over cells with a genotype call, 2·alt in clade / (2·alt in clade + ref in clade + alt outside). 1 = every called cell in the clade is alt and no called cell outside it is.",
         "clade-score-min": "Clade score ≥ {{value}}",
-        "clade-score-any": "Any clade score"
+        "clade-score-any": "Any clade score",
+        "amplified-only": "Amplified SNVs only ({{count}})",
+        "amplified-help": "Sites whose carrier cells have copy number ≥ 4 at the site with an estimated ≥ 1.5 mutant copies (VAF × CN): the mutation was present before the amplification."
       },
       "tooltip": {
         "cell": "Cell",
@@ -1069,7 +1071,18 @@
         "card-signatures": "SBS signatures (all sites)",
         "card-burden": "SNVs: {{truncal}} truncal · {{subclonal}} subclonal · {{private}} private",
         "circos-title": "Alterations of the chosen genes across patients (circos)",
-        "circos-help": "One ring per patient (outer = first). Marks sit at the gene's locus, coloured by alteration class with opacity = fraction of tumor cells; fusions are arcs between the partner loci (width = fraction). Gene names label the first occurrence."
+        "circos-help": "One ring per patient (outer = first). Marks sit at the gene's locus, coloured by alteration class with opacity = fraction of tumor cells; fusions are arcs between the partner loci (width = fraction). Gene names label the first occurrence.",
+        "view-events": "All events",
+        "events-title": "Filtered events across patients ({{count}} of {{total}})",
+        "ev-search": "Search gene / variant / role…",
+        "ev-class": "Alteration",
+        "ev-variant": "Variant",
+        "ev-genomic": "Genomic",
+        "ev-effect": "Effect",
+        "ev-copies": "Altered copies",
+        "ev-carriers": "Carriers by clone:",
+        "ev-cells": "Cells to show",
+        "ev-open-patient": "Open the patient"
       },
       "compare": {
         "title": "Compare groups",
@@ -1196,7 +1209,14 @@
         "by-chromosome": "Dosage sensitivity by chromosome",
         "by-chromosome-help": "Share of ranked genes on each chromosome whose expression follows copy number (Spearman ρ ≥ 0.3); red when the chromosome's median ρ is ≥ 0.3.",
         "add-gene": "Add a gene…",
-        "help": "One panel per gene; click a point to select the cell, drag a box to select cells (Shift adds). Selection is shared with the tree below, the heatmap and the UMAP."
+        "help": "One panel per gene; click a point to select the cell, drag a box to select cells (Shift adds). Selection is shared with the tree below, the heatmap and the UMAP.",
+        "use-drivers": "Use this patient's CN drivers ({{count}})",
+        "legend-note": "point colour = clone; dashed line = least-squares fit",
+        "rank-title": "Genome-wide dosage sensitivity",
+        "stat-genes": "Genes ranked",
+        "stat-sensitive": "Dosage-sensitive (ρ ≥ 0.3, q < 0.05)",
+        "stat-median": "Median ρ",
+        "rho-dist": "Distribution of ρ"
       },
       "signatures": {
         "title": "SBS signatures",
@@ -1244,7 +1264,20 @@
         "clade-vs-rest-meta": "{{nClade}} sites in the clade, {{nRest}} outside · cosine between profiles {{cos}}",
         "clade-share": "Share in clade [95% CI]",
         "rest-share": "Share outside [95% CI]",
-        "clade-vs-rest-help": "NNLS shares of the signatures found for this patient, with 95% bootstrap intervals (80 resamples of sites). * = intervals do not overlap."
+        "clade-vs-rest-help": "NNLS shares of the signatures found for this patient, with 95% bootstrap intervals (80 resamples of sites). * = intervals do not overlap.",
+        "sites-all": "All sites",
+        "sites-post-trunk": "Post-trunk sites",
+        "unit-count": "Mutations",
+        "unit-share": "Share",
+        "height": "Height",
+        "model-note": "Joint fit ({{source}}): {{list}}. Each mutation is assigned to the signature most likely to have produced its SBS96 channel given the fit; bars count unique mutations with alt reads in the clade's cells.",
+        "model-loading": "Loading COSMIC reference…",
+        "clade-meta2": "{{cells}} cells · {{n}} mutations",
+        "in-clade": "In clade",
+        "outside": "Outside",
+        "clade-vs-rest-meta2": "{{nClade}} assigned mutations in the clade vs {{nRest}} outside it (unique sites; shared sites counted for the clade)",
+        "clade-vs-rest-help2": "Fisher's exact test per signature on assigned-mutation counts (clade vs the other clades). Red = enriched in the clade, blue = depleted (p < 0.01).",
+        "tree-help2": "Click a clade to compare it with the rest; Cmd/Ctrl-click adds cells to the selection. Drag the height slider to resize."
       },
       "umap": {
         "title": "RNA UMAP",
@@ -1371,7 +1404,13 @@
         "section-overview": "Overview",
         "section-genes": "Genes",
         "section-compare": "Compare & DE",
-        "section-server": "Server analyses"
+        "section-server": "Server analyses",
+        "markers-title": "Marker genes",
+        "markers-top": "Top",
+        "markers-compute": "Compute markers ({{count}} groups vs rest)",
+        "markers-empty": "No markers yet: the pipeline export (rna/markers.json) is missing for this grouping; compute them here (Wilcoxon, each group vs the rest).",
+        "markers-backend": "{{method}}; positive markers ordered by adjusted p.",
+        "markers-browser": "Computed in the browser: each group vs the rest (Wilcoxon, Bonferroni-adjusted p, log2FC > 0.25)."
       },
       "groups": {
         "selected": "{{count}} selected",
@@ -1412,7 +1451,10 @@
         "multiple": "Multiple cells",
         "pad": "Padding",
         "select-all": "Select all {{count}} in the heatmap",
-        "no-cells": "No cells are listed for this event."
+        "no-cells": "No cells are listed for this event.",
+        "igv": "Reads (IGV)",
+        "igv-help": "Reads of the {{count}} shown cells around the event (fusions: both breakpoints side by side). Cells' BAM slices cover SNV sites and junction breakpoints only.",
+        "genes": "Genes in view (the event's gene in red)"
       },
       "qc": {
         "title": "Cell QC",
@@ -1456,7 +1498,8 @@
         "gene-expr": "Expression of gene",
         "signatures": "SBS signatures",
         "signatures-axis": "share of fitted SNVs",
-        "help": "Bars follow the tree rows. Per clone / clade: numeric tracks show the mean over the group's cells and signatures are fitted on the group's pooled SNV sites (NNLS on the signatures found for this patient). Click a bar or clade to select its cells; Cmd/Ctrl-click adds."
+        "help": "Bars follow the tree rows. Per clone / clade: numeric tracks show the mean over the group's cells and signatures are fitted on the group's pooled SNV sites (NNLS on the signatures found for this patient). Click a bar or clade to select its cells; Cmd/Ctrl-click adds.",
+        "signatures-axis2": "unique mutations by assigned signature"
       },
       "report": {
         "title": "Key findings · {{patient}}",
@@ -1494,8 +1537,8 @@
         "caveat-homdel-noise": "Many homozygous-deletion calls are present in only 1–2 cells and are likely coverage dropout; they are hidden here.",
         "clone-fisher": "Fisher's exact test, carriers in this clone vs other tumor cells: {{p}}, odds ratio {{or}}. * = enriched (p < 0.01, > 50% of the clone).",
         "matrix-title": "Driver alterations by cell (tree order)",
-        "matrix-click": "Click the name to select the carrier cells",
-        "matrix-help": "Rows: tier 1–2 alterations ordered from the trunk down (by the tree depth of the clade their carriers fit best); right column: fraction of tumor cells · clade fit (red when carriers are scattered, i.e. likely noise). Columns: cells in tree order under their clone colour. Click a cell or a row name to select; hover to highlight across views.",
+        "matrix-click": "Click the name for the alteration popup; click the colour bar to select the carrier cells",
+        "matrix-help": "Rows: tier 1–2 alterations ordered from the trunk down (by the tree depth of the clade their carriers fit best); right column: fraction of tumor cells · clade fit (red when carriers are scattered, i.e. likely noise). Columns: cells in tree order under the phylogeny and clone strip. Click a name for the popup (plots, cell tracks, IGV), the colour bar to select its carriers, a cell to select it; hover highlights across views.",
         "table-title": "All tier 1–2 alterations with details ({{count}})",
         "col-alteration": "Alteration",
         "col-role": "Role",
@@ -1517,7 +1560,11 @@
         "findings-expressed": "dosage-expressed",
         "findings-anticorrelated": "anti-correlated",
         "findings-dosage-help": "Cells with both DNA and RNA; ρ across all cells, means split by carrier status.",
-        "details": "Open the alteration popup (plots, cell tracks, variant QC)"
+        "details": "Open the alteration popup (plots, cell tracks, variant QC)",
+        "findings-amplified": "SNVs on amplicons",
+        "findings-amplified-help": "{{count}} SNVs whose carrier cells have CN ≥ 4 at the site with ≥ 1.5 estimated mutant copies (VAF × CN): mutated before the amplification.",
+        "findings-amplified-row": "{{variant}} · median CN {{cn}} · {{copies}} mutant copies · {{n}} carriers",
+        "matrix-select": "Select the carrier cells"
       },
       "site": {
         "clade-cells": " · {{count}} cells in the clade",
@@ -1525,7 +1572,10 @@
         "carriers-of": "{{carriers}} cells with alt reads of {{covered}} covered",
         "igv": "Open {{count}} cells in IGV",
         "pick-carriers": "Pick carriers (max {{max}})",
-        "select-carriers": "Select carriers in the heatmap"
+        "select-carriers": "Select carriers in the heatmap",
+        "cn": "Copy number at site",
+        "cn-detail": "median CN {{cn}} in carriers · est. mutant copies {{copies}} · {{n}} of {{total}} carriers on CN ≥ 4",
+        "amplified": "amplified SNV"
       },
       "circos": {
         "title": "Circos of a cell",
@@ -1545,6 +1595,9 @@
         "centre-junctions": "{{count}} junctions shown",
         "ring": "ring {{n}}:",
         "help2": "Rings from the outside in: chromosomes (ticks every 50 Mb), then one copy-number ring per cell or clone (height ∝ CN up to 6; dashed line = CN 2; heatmap palette). Clone rings are the median CN of the clone's cells and show junctions found in at least the chosen fraction of its cells (line width ∝ recurrence)."
+      },
+      "overview": {
+        "title": "Single-cell summary"
       }
     },
     "tracks-modal": {

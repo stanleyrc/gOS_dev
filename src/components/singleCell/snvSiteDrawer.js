@@ -6,6 +6,8 @@ import singleCellActions from "../../redux/singleCell/actions";
 import { snvMetricValue } from "../../helpers/singleCell/matrix";
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
+import useSignatureModel from "./signatures/useSignatureModel";
+import { signatureColorOf } from "./signaturePanel";
 
 const { Text } = Typography;
 const IGV_MAX = 8;
@@ -16,11 +18,13 @@ const categoryColor = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.col
  * reads at the site (alt / depth / VAF). Pick cells (carriers preselected,
  * up to 8) and open them together in IGV.
  */
-export default function SnvSiteDrawer({ open, onClose, variant, order, rows, clickedRow }) {
+export default function SnvSiteDrawer({ open, onClose, variant, order, rows, clickedRow, cnInfo = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { snv, cells, cloneColors } = useSelector((state) => state.SingleCell);
   const snvData = snv.status === "ok" ? snv.data : null;
+  const model = useSignatureModel();
+  const assigned = model.ready && variant ? { signature: model.assignment.signature[variant.index], prob: model.assignment.prob[variant.index] } : null;
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   const c = variant?.index;
   const table = useMemo(() => {
@@ -66,7 +70,22 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
             </Descriptions.Item>
           )}
           {variant.cladeScore != null && <Descriptions.Item label={t("components.single-cell.snv.clade-score")}>{cladeScoreDetail(variant)}</Descriptions.Item>}
-          {variant.context && <Descriptions.Item label="SBS96">{variant.context}</Descriptions.Item>}
+          {variant.context && (
+            <Descriptions.Item label="SBS96">
+              {variant.context}
+              {assigned?.signature && (
+                <Tag style={{ marginLeft: 6, borderColor: signatureColorOf(assigned.signature), color: signatureColorOf(assigned.signature) }}>
+                  {`${assigned.signature} · ${Math.round(100 * assigned.prob)}%`}
+                </Tag>
+              )}
+            </Descriptions.Item>
+          )}
+          {cnInfo && (
+            <Descriptions.Item label={t("components.single-cell.site.cn")}>
+              {t("components.single-cell.site.cn-detail", { cn: cnInfo.medianCn.toFixed(1), copies: Number.isFinite(cnInfo.altCopies) ? cnInfo.altCopies.toFixed(1) : "–", n: cnInfo.nAmplified, total: cnInfo.nCarriers })}
+              {cnInfo.amplified && <Tag color="red" style={{ marginLeft: 6 }}>{t("components.single-cell.site.amplified")}</Tag>}
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label={t("components.single-cell.site.carriers")}>{t("components.single-cell.site.carriers-of", { carriers, covered: table.length })}</Descriptions.Item>
         </Descriptions>
         <Space wrap>

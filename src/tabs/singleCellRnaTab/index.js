@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Col, Empty, Row, Space, Switch, Tabs, Typography } from "antd";
 import GeneExplorerCard from "../../components/singleCell/rna/geneExplorerCard";
 import CompositionCard from "../../components/singleCell/rna/compositionCard";
+import MarkersCard from "../../components/singleCell/rna/markersCard";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import RnaGroupsCard from "../../components/singleCell/rna/rnaGroupsCard";
 import SavedGroupsBar from "../../components/singleCell/savedGroupsBar";
@@ -102,6 +103,9 @@ export default function SingleCellRnaTab() {
                 label: t("components.single-cell.rna.section-genes"),
                 children: (
                   <Row gutter={[16, 16]}>
+                    <Col span={24}>
+                      <MarkersCard summary={summary} matrix={matrix} />
+                    </Col>
                     <Col span={24}>
                       <GeneExplorerCard summary={summary} matrix={matrix} defaultGene={expressionGene || "EGFR"} />
                     </Col>
