@@ -8,19 +8,10 @@ import filteredEventsActions from "../../redux/filteredEvents/actions";
 import { amplificationTiming } from "../../helpers/singleCell/snvCopyNumber";
 import { eventClass } from "../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../helpers/singleCell/strongEvents";
+import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
-
-/** Genome-wide coordinate of an event's midpoint from Settings.chromoBins. */
-export function eventGlobalPosition(event, chromoBins) {
-  const chr = `${event.seqnames || `${event.Genome_Location || ""}`.split(":")[0]}`.replace(/^chr/, "");
-  const bin = chromoBins?.[chr];
-  const start = Number(event.start);
-  const end = Number(event.end) || start;
-  if (!bin || !Number.isFinite(start)) return NaN;
-  return bin.startPlace + ((start + end) / 2 - bin.startPoint);
-}
 
 /**
  * Timing of each strong tier 1–2 amplification relative to the SNVs on the
