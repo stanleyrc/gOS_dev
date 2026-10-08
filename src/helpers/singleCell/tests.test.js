@@ -34,3 +34,12 @@ describe("significance tests", () => {
     expect(fisherExact(5, 5, 5, 5).p).toBeCloseTo(1, 6);
   });
 });
+
+describe("chiSquareTable", () => {
+  it("is small for dependent tables and large for independent ones", () => {
+    const { chiSquareTable } = require("./tests");
+    expect(chiSquareTable([[50, 0], [0, 50]])).toBeLessThan(1e-6);
+    expect(chiSquareTable([[25, 25], [25, 25]])).toBeCloseTo(1, 5);
+    expect(Number.isNaN(chiSquareTable([[1, 2]]))).toBe(true);
+  });
+});

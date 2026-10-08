@@ -19,6 +19,8 @@ export default function ScPatientOverview() {
   const singleCell = useIsSingleCellPatient();
   const { patient, cells, snv, signatures, cloneColors, tree } = useSelector((s) => s.SingleCell);
   const events = useSelector((s) => s.FilteredEvents.filteredEvents);
+  const datafiles = useSelector((s) => s.CaseReports.datafiles) || [];
+  const record = datafiles.find((r) => r.entry_type === "patient" && `${r.pair}` === `${patient?.caseReportId}`);
   const report = useMemo(
     () =>
       singleCell
@@ -52,6 +54,14 @@ export default function ScPatientOverview() {
             <Statistic title={t("components.single-cell.snv.category-truncal")} value={report.burden.truncal} />
             <Statistic title={t("components.single-cell.report.clonal-title", { count: "" }).replace(" ()", "")} value={report.clonal.length} />
             <Statistic title={t("components.single-cell.tree.title", { defaultValue: "Tree" })} value={tree.status === "ok" ? t(`components.single-cell.tree.${tree.method}`, { defaultValue: tree.method }) : "–"} valueStyle={{ fontSize: 16 }} />
+            {record?.exported && (
+              <Statistic
+                title={t("components.single-cell.overview.exported")}
+                value={`${record.exported}`.slice(0, 10)}
+                suffix={record.export_version ? <span style={{ fontSize: 12 }}>{`skilift ${record.export_version}`}</span> : null}
+                valueStyle={{ fontSize: 16 }}
+              />
+            )}
           </Space>
         </Col>
         <Col xs={24} lg={16}>

@@ -215,3 +215,21 @@ export function formatP(p) {
   if (p < 0.001) return `p = ${p.toExponential(1)}`;
   return `p = ${p.toFixed(3)}`;
 }
+
+/** Chi-square test of independence on a contingency table (rows × cols of counts); returns the p-value. */
+export function chiSquareTable(table) {
+  const rows = table.length;
+  const cols = table[0]?.length || 0;
+  const rowSum = table.map((r) => r.reduce((a, v) => a + v, 0));
+  const colSum = Array.from({ length: cols }, (_, j) => table.reduce((a, r) => a + r[j], 0));
+  const n = rowSum.reduce((a, v) => a + v, 0);
+  if (!n || rows < 2 || cols < 2) return NaN;
+  let x2 = 0;
+  table.forEach((r, i) =>
+    r.forEach((v, j) => {
+      const e = (rowSum[i] * colSum[j]) / n;
+      if (e > 0) x2 += (v - e) ** 2 / e;
+    })
+  );
+  return chiSquareUpper(x2, (rows - 1) * (cols - 1));
+}
