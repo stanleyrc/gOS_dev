@@ -12,7 +12,8 @@ const { Text } = Typography;
 const GAP_X = 50; // same outer margin / inter-domain gap as the heatmap and the genes plot
 const BAR = 12;
 const ARROW = 5;
-const AXIS_H = 26;
+const AXIS_H = 22;
+const HEAD_H = 18; // chromosome / range header above each panel
 // the heatmap draws its genomic columns 10 px further right than its reported inset
 const HEATMAP_OFFSET = 10;
 
@@ -57,7 +58,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
   // lanes: families in order, separated by a small gap
   const lanes = useMemo(() => {
     const out = [];
-    let y = 8;
+    let y = HEAD_H + 4;
     families.forEach((fam, f) => {
       if (f > 0) y += 10;
       fam.forEach((w) => {
@@ -172,6 +173,20 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
             </clipPath>
           ))}
         </defs>
+        {/* panel headers: chromosome and visible range */}
+        {ticks.map(({ k, scale, chr }) => {
+          const [ga, gb] = scale.domain();
+          const [xa, xb] = scale.range();
+          return (
+            <g key={`h${k}`}>
+              <rect x={xa} y={0} width={xb - xa} height={HEAD_H} fill={chr?.color || "#d9d9d9"} fillOpacity={0.18} />
+              <text x={(xa + xb) / 2} y={HEAD_H / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#262626">
+                <tspan fontWeight={700}>{chr ? `chr${chr.chromosome}` : ""}</tspan>
+                {chr && xb - xa > 140 ? `  ${fmtPos(ga, chr)} – ${fmtPos(gb, chr)}` : ""}
+              </text>
+            </g>
+          );
+        })}
         {/* panel frames */}
         {extents.map(([a, b], k) => (
           <rect key={`f${k}`} x={x0 + a} y={0} width={b - a} height={lanes.height} fill="none" stroke="#91caff" strokeOpacity={0.6} />
@@ -290,7 +305,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                 <text x={scale(v)} y={lanes.height + 17} textAnchor="middle" fontSize={10} fill="#595959">{fmtPos(v, chr)}</text>
               </g>
             ))}
-            {chr && <text x={scale.range()[0]} y={lanes.height + 17} textAnchor="end" dx={-6} fontSize={11} fontWeight={600} fill={chr.color || "#262626"}>{`chr${chr.chromosome}`}</text>}
+
           </g>
         ))}
       </svg>
