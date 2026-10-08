@@ -82,8 +82,10 @@ export default function SingleCellEcdnaTab() {
     setSelected((prev) => {
       const kept = prev.filter((id) => filtered.some((w) => w.id === id));
       if (kept.length) return kept;
-      const curated = filtered.filter((w) => w.curated);
-      return (curated.length ? curated : filtered.slice(0, 6)).map((w) => w.id);
+      // default: every walk in a family that holds a curated walk (the species and its variants)
+      const fams = walkFamilies(filtered).filter((fam) => fam.some((w) => w.curated));
+      const pick = fams.length ? fams.flat() : filtered.slice(0, 6);
+      return pick.slice(0, 24).map((w) => w.id);
     });
     setFocus((f) => (f && filtered.some((w) => w.id === f) ? f : null));
   }, [filtered]);

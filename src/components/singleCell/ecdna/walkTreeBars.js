@@ -17,7 +17,6 @@ const { Text } = Typography;
 const TREE_WIDTH = 220;
 const LABEL_W = 120;
 const GAP = 8;
-const HEADER_H = 86;
 
 /**
  * Copies of the selected walks along the phylogeny: per cell (one stacked
@@ -62,6 +61,8 @@ export default function WalkTreeBars({ walks, colorOf }) {
   if (!treeLayout || !order.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.tree.none")} />;
   if (!walks.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.none-selected")} />;
   const barsW = Math.max(240, width - TREE_WIDTH - GAP - LABEL_W - 30);
+  // rotated (-30°) lane titles: room for the longest one
+  const HEADER_H = Math.min(90, 22 + 0.5 * 7 * Math.min(26, Math.max(4, ...walks.map((w) => w.label.length))));
   const maxTot = d3.max(values, (v) => v.tot) || 1;
   const x = d3.scaleLinear().domain([0, unit === "copies" ? maxTot : 1]).range([0, barsW]);
   // separate lanes: one small-multiple per walk with its own copy scale
