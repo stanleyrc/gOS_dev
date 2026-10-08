@@ -29,6 +29,7 @@ jest.mock("../../tabs/singleCellTab", () => "SingleCellTab");
 jest.mock("../../tabs/singleCellRnaTab", () => "SingleCellRnaTab");
 jest.mock("../../tabs/singleCellSignaturesTab", () => "SingleCellSignaturesTab");
 jest.mock("../../tabs/singleCellRnaCnTab", () => "SingleCellRnaCnTab");
+jest.mock("../../tabs/singleCellQcTab", () => "SingleCellQcTab");
 jest.mock("../../components/singleCell/cellContextBanner", () => "CellContextBanner");
 jest.mock("./index.style", () => "Wrapper");
 

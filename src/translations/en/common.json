@@ -437,7 +437,8 @@
         "tab7": "Single-Cell",
         "tab8": "Single-Cell RNA",
         "tab9": "Single-Cell Signatures",
-        "tab10": "Single-Cell RNA × CN"
+        "tab10": "Single-Cell RNA × CN",
+        "tab11": "Single-Cell QC"
       }
     },
     "detail-error-view": {
@@ -1021,7 +1022,36 @@
         "rows-patients": "One row per patient",
         "rows-cells": "One row per cell",
         "median-of": "median of {{count}} cells",
-        "open": "Open patient"
+        "open": "Open patient",
+        "view-overview": "Overview",
+        "view-drivers": "Drivers (oncoprint)",
+        "view-mutations": "Mutation burden & signatures",
+        "view-scatter": "Patient scatter",
+        "view-qc": "Cell QC",
+        "tmb-title": "Mutation burden by tree position",
+        "tmb-count": "Counts",
+        "tmb-fraction": "Fractions",
+        "tmb-y": "SNV sites (CellPhy input)",
+        "tmb-y-fraction": "Fraction of sites",
+        "tmb-help": "Tree-mapped SNV sites used to build each patient's tree: truncal = mapped to the tumor MRCA, subclonal = an internal node below it, private = one cell. Counts depend on each patient's site filter and coverage; per-Mb burden needs the callable territory (not exported yet).",
+        "tmb-empty": "No tree-mapped SNV sites loaded yet.",
+        "signatures-title": "SBS signatures across patients",
+        "signatures-set": "Sites",
+        "signatures-help": "SigProfilerAssignment fits (COSMIC v3.4) from each patient's signatures.json; hover a segment for the aetiology.",
+        "signatures-empty": "No signatures.json loaded yet.",
+        "oncoprint-title": "Driver alterations across patients",
+        "oncoprint-tier": "Tier",
+        "oncoprint-genes": "Genes",
+        "oncoprint-empty": "No filtered events loaded yet.",
+        "oncoprint-help": "Each cell is the strongest alteration of that gene in that patient, shaded by the fraction of tumor cells carrying it (label). Several alteration classes stack as stripes. Bars on top count altered genes per patient; the right column counts patients per gene. Click to open the patient.",
+        "class-amp": "Amplification",
+        "class-homdel": "Homozygous deletion",
+        "class-fusion": "Fusion",
+        "class-trunc": "Truncating",
+        "class-splice": "Splice",
+        "class-missense": "Missense",
+        "scatter-title": "Patients compared",
+        "scatter-help": "One point per patient. Click a point to open the patient."
       },
       "compare": {
         "title": "Compare groups",
@@ -1184,7 +1214,8 @@
       "toggles": {
         "umap": "RNA UMAP",
         "cell-table": "Cell table",
-        "keep-genes": "Keep gene track when scrolling"
+        "keep-genes": "Keep gene track when scrolling",
+        "tree-bars": "Tree bars"
       },
       "igv": {
         "title": "Reads (IGV)",
@@ -1314,6 +1345,34 @@
         "pad": "Padding",
         "select-all": "Select all {{count}} in the heatmap",
         "no-cells": "No cells are listed for this event."
+      },
+      "qc": {
+        "title": "Cell QC",
+        "cohort-title": "Cell QC across patients",
+        "empty": "No QC metrics are available for these cells.",
+        "group-by": "Group by",
+        "tumor-only": "Tumor cells only",
+        "select-flagged": "Select {{count}} flagged cells",
+        "select": "Select",
+        "help": "Library metrics come from the pipeline export (reads, depth, breadth, MAD, Gini, allelic dropout; not every patient has all of them). Copy-number metrics are computed here from each cell's CN graph. Red points are more than 3 MADs from the patient median for that metric.",
+        "flagged-title": "Flagged cells ({{count}})",
+        "flags": "Flags",
+        "cohort-help": "{{count}} cells flagged as outliers (> 3 MADs from their patient's median). Click a point to open that cell."
+      },
+      "bars": {
+        "title": "Bar annotations on the phylogeny",
+        "rna-cn-title": "Copy number and expression on the phylogeny",
+        "pick": "Pick tracks…",
+        "gene": "Gene",
+        "per-cell": "Per cell",
+        "per-clone": "Per clone",
+        "per-clade": "Tree cut into k clades",
+        "clade": "Clade",
+        "gene-cn": "Copy number at gene",
+        "gene-expr": "Expression of gene",
+        "signatures": "SBS signatures",
+        "signatures-axis": "share of fitted SNVs",
+        "help": "Bars follow the tree rows. Per clone / clade: numeric tracks show the mean over the group's cells and signatures are fitted on the group's pooled SNV sites (NNLS on the signatures found for this patient). Click a bar or clade to select its cells; Cmd/Ctrl-click adds."
       }
     },
     "tracks-modal": {
