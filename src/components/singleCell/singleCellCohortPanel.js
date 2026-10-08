@@ -196,8 +196,35 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     const d = domains[0];
     setZoomed(panDomain(d, (-dx * (d[1] - d[0])) / Math.max(1, heatWidth), whole));
   };
-  // Heatmap rows: one consensus row per patient, or every loaded cell grouped by patient.
+  // Heatmap rows: one consensus row per patient, one pseudobulk row per clone
+  // (median of its cells) grouped by patient, or every loaded cell grouped by patient.
   const { rows: heatRows, layout: cohortTree } = useMemo(() => {
+    if (rowMode === "clones") {
+      return {
+        layout: null,
+        rows: summaries.flatMap((s, k) => {
+          const entry = rows[s.caseReportId];
+          if (!entry?.cellRows.length) return [];
+          const byClone = new Map();
+          entry.cellRows.forEach((c) => {
+            const key = c.clone ?? "NA";
+            if (!byClone.has(key)) byClone.set(key, []);
+            byClone.get(key).push(c.row);
+          });
+          return [...byClone.entries()]
+            .filter(([, list]) => list.length >= 2)
+            .sort((a, b) => b[1].length - a[1].length)
+            .map(([clone, list]) => ({
+              summary: s,
+              patientIndex: k,
+              label: `${s.caseReportId} · ${clone} (${list.length})`,
+              clone,
+              nCells: list.length,
+              row: medianCnRow(list, chromoBins),
+            }));
+        }),
+      };
+    }
     if (rowMode === "patients") {
       return {
         layout: null,
@@ -247,7 +274,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       return { summary: summaries[k], patientIndex: k, label: `${leaf}`, row: null };
     };
     return { rows: layout.leaves.map((leaf) => byLeaf.get(leaf) || fallback(leaf)), layout };
-  }, [rowMode, summaries, rows]);
+  }, [rowMode, summaries, rows, chromoBins]);
 
   const heat = useMemo(() => {
     const lookups = new Map();
@@ -339,8 +366,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   ];
 
   const rowHeight =
-    rowMode === "patients"
-      ? ROW_HEIGHT * rowScale
+    rowMode === "patients" || rowMode === "clones"
+      ? ROW_HEIGHT * rowScale * (rowMode === "clones" ? 0.75 : 1)
       : Math.max(1, Math.min(6, (MAX_CELL_ROWS_HEIGHT * rowScale) / Math.max(1, heatRows.length)));
   const height = Math.max(ROW_HEIGHT, heatRows.length * rowHeight);
 
@@ -468,6 +495,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                   onChange={setRowMode}
                   options={[
                     { value: "patients", label: t("components.single-cell.cohort.rows-patients") },
+                    { value: "clones", label: t("components.single-cell.cohort.rows-clones") },
                     { value: "cells", label: t("components.single-cell.cohort.rows-cells") },
                   ]}
                 />
@@ -527,7 +555,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                         [t("components.single-cell.cohort.patient"), entry.summary.caseReportId],
                         ...(rowMode === "cells"
                           ? [[t("components.single-cell.tooltip.cell"), entry.label]]
-                          : [[t("components.single-cell.tooltip.consensus"), t("components.single-cell.cohort.median-of", { count: rows[entry.summary.caseReportId]?.cellRows.length || 0 })]]),
+                          : [[t("components.single-cell.tooltip.consensus"), t("components.single-cell.cohort.median-of", { count: entry.nCells || rows[entry.summary.caseReportId]?.cellRows.length || 0 })]]),
                         ...(entry.clone != null ? [[t("components.single-cell.tooltip.clone"), entry.clone]] : []),
                         [t("components.single-cell.tooltip.segment"), binLabel(entry.row.binIndex, col)],
                         [t("components.single-cell.tooltip.state"), entry.row.values[col]],

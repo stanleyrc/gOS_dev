@@ -38,3 +38,20 @@ describe("amplificationTiming", () => {
     expect(r.preFraction).toBeCloseTo(0.5);
   });
 });
+
+describe("snvCopyNumber allelic", () => {
+  it("reports LOH and the allele carrying the mutation", () => {
+    const { buildBinIndex } = require("./matrix");
+    const { snvCopyNumber } = require("./snvCopyNumber");
+    const chromoBins = { 1: { chromosome: "1", startPoint: 1, endPoint: 1000, startPlace: 1, endPlace: 1000 } };
+    const binIndex = buildBinIndex({ chromosome: ["1"], start: [1], end: [1000] }, chromoBins);
+    const cn = { cells: ["c1", "c2"], rows: [{ binIndex, values: Float32Array.from([3]) }, { binIndex, values: Float32Array.from([3]) }] };
+    const allelic = { cells: ["c1", "c2"], rows: [{ binIndex, major: Float32Array.from([3]), minor: Float32Array.from([0]) }, { binIndex, major: Float32Array.from([2]), minor: Float32Array.from([1]) }] };
+    const snv = { cells: ["c1", "c2"], variants: [{ id: "a", global: 500 }], status: [[1], [1]], alt: [[30], [20]], depth: [[30], [30]] };
+    const [r] = snvCopyNumber(snv, cn, { allelic });
+    expect(r.allelic.n).toBe(2);
+    expect(r.allelic.nLoh).toBe(1);
+    expect(r.allelic.nOnMajor).toBe(2); // 3 of 3 copies and 2 of 3 copies
+    expect(r.allelic.mutantAmplified).toBe(true);
+  });
+});
