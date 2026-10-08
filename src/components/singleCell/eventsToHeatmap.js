@@ -49,6 +49,23 @@ export function EventsToHeatmapBar({ picked, onClear }) {
   const genes = events.filter((e) => !eventSnvSiteId(e));
   const cellIds = [...new Set(events.flatMap((e) => `${e.cell_ids || ""}`.split(",").filter(Boolean)))];
 
+  const cells = useSelector((state) => state.SingleCell.cells);
+  const annotationFields = useSelector((state) => state.SingleCell.layout.annotationFields) || [];
+  // Each picked event becomes a cell field ("carrier" / "–") shown as a strip beside the heatmaps.
+  const showOnTree = () => {
+    const names = [];
+    events.forEach((e) => {
+      const gene = e.gene || e.fusion_genes || e.name || e.uid;
+      const name = `${gene}${e.type ? ` ${e.type}` : ""}`.slice(0, 40);
+      const carriers = new Set(`${e.cell_ids || ""}`.split(",").filter(Boolean));
+      const values = Object.fromEntries(cells.map((c) => [c.cell_id, carriers.has(c.cell_id) ? "carrier" : "–"]));
+      dispatch(singleCellActions.addCellField(name, values));
+      names.push(name);
+    });
+    dispatch(singleCellActions.updateLayout({ annotationFields: [...new Set([...annotationFields, ...names])] }));
+    dispatch(settingsActions.updateTab("7"));
+  };
+
   const show = () => {
     if (cellIds.length) dispatch(singleCellActions.updateSelection(cellIds));
     if (inMatrix.length) {
@@ -94,6 +111,9 @@ export function EventsToHeatmapBar({ picked, onClear }) {
           )}
           <Button size="small" type="primary" disabled={!inMatrix.length && !genes.length} onClick={show}>
             {t("components.single-cell.events.show")}
+          </Button>
+          <Button size="small" onClick={showOnTree} disabled={!events.length}>
+            {t("components.single-cell.events.show-on-tree", { count: events.length })}
           </Button>
           {events.length > 0 && (
             <Button size="small" type="text" onClick={onClear}>

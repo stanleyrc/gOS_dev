@@ -68,6 +68,7 @@ const actions = {
   SC_HOVER_UPDATED: "SC_HOVER_UPDATED",
   SC_LAYOUT_UPDATED: "SC_LAYOUT_UPDATED",
   SC_RNA_FIELD_ADDED: "SC_RNA_FIELD_ADDED",
+  SC_CELL_FIELD_ADDED: "SC_CELL_FIELD_ADDED",
   SC_PLOT_INSETS_UPDATED: "SC_PLOT_INSETS_UPDATED",
   SC_IGV_OPENED: "SC_IGV_OPENED",
   SC_IGV_CLOSED: "SC_IGV_CLOSED",
@@ -106,6 +107,8 @@ const actions = {
   updateLayout: (patch) => ({ type: actions.SC_LAYOUT_UPDATED, patch }),
   /** Add (or replace) a computed RNA metadata field, e.g. k-means clusters: values keyed by RNA displayId. */
   addRnaField: (name, values, numeric = false) => ({ type: actions.SC_RNA_FIELD_ADDED, name, values, numeric }),
+  /** Add a categorical field to the DNA cells (values keyed by cell id), e.g. carriers of an event. */
+  addCellField: (name, values) => ({ type: actions.SC_CELL_FIELD_ADDED, name, values }),
   /** Pixels between the heatmap card's content edges and its genomic columns, minus genome-plot margins. */
   updatePlotInsets: (insets) => ({ type: actions.SC_PLOT_INSETS_UPDATED, insets }),
   /** Show reads for cells at a locus: { cellIds, chromosome, position, label } */

@@ -439,7 +439,8 @@
         "tab9": "Single-Cell Signatures",
         "tab10": "Single-Cell RNA × CN",
         "tab11": "Single-Cell QC",
-        "tab12": "Single-Cell Report"
+        "tab12": "Single-Cell Report",
+        "tab13": "Single-Cell Circos"
       }
     },
     "detail-error-view": {
@@ -1034,7 +1035,7 @@
         "tmb-fraction": "Fractions",
         "tmb-y": "SNV sites (CellPhy input)",
         "tmb-y-fraction": "Fraction of sites",
-        "tmb-help": "Tree-mapped SNV sites used to build each patient's tree: truncal = mapped to the tumor MRCA, subclonal = an internal node below it, private = one cell. Counts depend on each patient's site filter and coverage; per-Mb burden needs the callable territory (not exported yet).",
+        "tmb-help": "Tree-mapped SNV sites used to build each patient's tree: truncal = mapped to the tumor MRCA, subclonal = an internal node below it, private = one cell. 'Per Mb' divides by an approximate callable territory (median breadth of the tumor cells × 3,100 Mb); patients without breadth QC show n/a.",
         "tmb-empty": "No tree-mapped SNV sites loaded yet.",
         "signatures-title": "SBS signatures across patients",
         "signatures-set": "Sites",
@@ -1053,7 +1054,9 @@
         "class-missense": "Missense",
         "scatter-title": "Patients compared",
         "scatter-help": "One point per patient. Click a point to open the patient.",
-        "view-reports": "Key findings"
+        "view-reports": "Key findings",
+        "tmb-per-mb": "Per Mb (approx.)",
+        "tmb-y-per-mb": "SNV sites per callable Mb"
       },
       "compare": {
         "title": "Compare groups",
@@ -1159,7 +1162,12 @@
         "help": "Tick events below to show them on the Single-Cell heatmap: SNVs filter the SNV heatmap to those sites, copy-number changes and fusions zoom the CN heatmap to their genes, and the cells carrying them are selected.",
         "filter-tag": "Picked events: {{count}} sites",
         "strong-only": "Strong events only",
-        "strong-help": "Hide likely noise: deletions must be in at least 10% of tumor cells, other events in at least 3 cells and 5% of tumor cells. Turn off to see every event."
+        "strong-help": "Hide likely noise: deletions must be in at least 10% of tumor cells, other events in at least 3 cells and 5% of tumor cells. Turn off to see every event.",
+        "show-on-tree": "Show {{count}} as strips on the tree",
+        "clade-score": "Clade fit",
+        "clade-any": "any",
+        "clade-score-help": "How well the carrier cells follow the phylogeny: best F1 between the carriers and any clade of the tree. 1 = exactly one clade; low values mean scattered cells, typical of noisy junction or deletion calls.",
+        "clade-score-detail": "{{inClade}} of the {{carriers}} carriers sit in the best clade of {{clade}} cells"
       },
       "dosage": {
         "title": "Dosage vs expression",
@@ -1171,7 +1179,9 @@
         "slope": "Slope",
         "mean-cn": "Mean CN",
         "by-chromosome": "Dosage sensitivity by chromosome",
-        "by-chromosome-help": "Share of ranked genes on each chromosome whose expression follows copy number (Spearman ρ ≥ 0.3); red when the chromosome's median ρ is ≥ 0.3."
+        "by-chromosome-help": "Share of ranked genes on each chromosome whose expression follows copy number (Spearman ρ ≥ 0.3); red when the chromosome's median ρ is ≥ 0.3.",
+        "add-gene": "Add a gene…",
+        "help": "One panel per gene; click a point to select the cell, drag a box to select cells (Shift adds). Selection is shared with the tree below, the heatmap and the UMAP."
       },
       "signatures": {
         "title": "SBS signatures",
@@ -1210,7 +1220,11 @@
         "compare-empty": "No fits yet: click the fit button to fit the sets in the browser.",
         "similarity-title": "Cosine similarity between set profiles",
         "similarity-help": "SBS96 profiles compared directly (sets with at least 10 sites). Low similarity between truncal and subclonal sites or between clones points to a change in mutational process.",
-        "tree-title": "Signatures along the phylogeny"
+        "tree-title": "Signatures along the phylogeny",
+        "clade-meta": "{{cells}} cells · {{sites}} sites",
+        "too-few": "fewer than 10 sites",
+        "cos-truncal": "cos vs truncal {{value}}",
+        "tree-help": "Each clade's bar is the NNLS fit of the SBS96 profile of the tree sites with alt reads in its cells, using the signatures SigProfiler found for this patient. The right column is the cosine similarity of the clade's profile to the truncal profile (red below 0.8). Click a clade to select its cells."
       },
       "umap": {
         "title": "RNA UMAP",
@@ -1326,7 +1340,9 @@
         "order-clustered": "Order: clustered",
         "add-set": "Add a gene set (with module score)",
         "mode-tree": "from the tree",
-        "tree-help": "Set on the Single-Cell tab: select a clade or cells, then \"Set as group A/B\". Pick another mode to build groups here instead."
+        "tree-help": "Set on the Single-Cell tab: select a clade or cells, then \"Set as group A/B\". Pick another mode to build groups here instead.",
+        "tumor-only": "Tumor cells only",
+        "tumor-only-note": "{{count}} normal / non-malignant cells hidden, {{kept}} kept"
       },
       "groups": {
         "selected": "{{count}} selected",
@@ -1377,10 +1393,24 @@
         "tumor-only": "Tumor cells only",
         "select-flagged": "Select {{count}} flagged cells",
         "select": "Select",
-        "help": "Library metrics come from the pipeline export (reads, depth, breadth, MAD, Gini, allelic dropout; not every patient has all of them). Copy-number metrics are computed here from each cell's CN graph. Red points are more than 3 MADs from the patient median for that metric.",
+        "help": "FGA is the fraction of the genome whose copy number differs from the cell's rounded ploidy. Library metrics come from the pipeline export (not every patient has all of them); RNA QC from the Seurat metadata of linked cells. Red points are more than 3 MADs from the patient median.",
         "flagged-title": "Flagged cells ({{count}})",
         "flags": "Flags",
-        "cohort-help": "{{count}} cells flagged as outliers (> 3 MADs from their patient's median). Click a point to open that cell."
+        "cohort-help": "{{count}} cells flagged as outliers (> 3 MADs from their patient's median). Click a point to open that cell.",
+        "section-all": "All",
+        "section-cn": "Copy number",
+        "section-calls": "Calls",
+        "section-library": "Library",
+        "section-rna": "RNA",
+        "stat-cells": "Cells",
+        "stat-flagged": "Flagged",
+        "stat-fga": "Median FGA",
+        "stat-ploidy": "Median ploidy",
+        "stat-snvs": "Median SNVs / cell",
+        "stat-depth": "Median depth",
+        "stat-rna": "Cells with RNA",
+        "median": "median {{value}}",
+        "segments": "Segments"
       },
       "bars": {
         "title": "Bar annotations on the phylogeny",
@@ -1431,7 +1461,34 @@
         "caveats": "Caveats",
         "caveat-fusions-unverified": "Fusion calls are unverified gGnome walks; check them in IGV before trusting them.",
         "caveat-homdel-noise": "Many homozygous-deletion calls are present in only 1–2 cells and are likely coverage dropout; they are hidden here.",
-        "clone-fisher": "Fisher's exact test, carriers in this clone vs other tumor cells: {{p}}, odds ratio {{or}}. * = enriched (p < 0.01, > 50% of the clone)."
+        "clone-fisher": "Fisher's exact test, carriers in this clone vs other tumor cells: {{p}}, odds ratio {{or}}. * = enriched (p < 0.01, > 50% of the clone).",
+        "matrix-title": "Driver alterations by cell (tree order)",
+        "matrix-click": "Click the name to select the carrier cells",
+        "matrix-help": "Rows: tier 1–2 alterations ordered from the trunk down (by the tree depth of the clade their carriers fit best); right column: fraction of tumor cells · clade fit (red when carriers are scattered, i.e. likely noise). Columns: cells in tree order under their clone colour. Click a cell or a row name to select; hover to highlight across views.",
+        "table-title": "All tier 1–2 alterations with details ({{count}})",
+        "col-alteration": "Alteration",
+        "col-role": "Role",
+        "col-cells": "Cells",
+        "col-clonality": "Clonality",
+        "col-clones": "By clone",
+        "igv-fusion": "View reads at the first breakpoint of the fusion in carrier cells (verify the call)"
+      },
+      "site": {
+        "clade-cells": " · {{count}} cells in the clade",
+        "carriers": "Carriers",
+        "carriers-of": "{{carriers}} cells with alt reads of {{covered}} covered",
+        "igv": "Open {{count}} cells in IGV",
+        "pick-carriers": "Pick carriers (max {{max}})",
+        "select-carriers": "Select carriers in the heatmap"
+      },
+      "circos": {
+        "title": "Circos of a cell",
+        "all-junctions": "All junctions",
+        "inter": "Inter-chromosomal",
+        "cn-ring": "CN ring",
+        "summary": "{{junctions}} junctions · {{segments}} segments",
+        "help": "Outer ring: chromosomes. Inner ring: total copy number of the cell's genome graph (heatmap palette, height ∝ CN up to 8). Arcs: ALT junctions between breakpoints.",
+        "select-cell": "Select this cell in the heatmap"
       }
     },
     "tracks-modal": {

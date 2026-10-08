@@ -4,7 +4,8 @@ import * as d3 from "d3";
 import { Card, Empty, Segmented, Space, Typography } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
-import { snvCategoryCounts } from "../../../helpers/singleCell/cohortStats";
+import { callableMbOf, snvCategoryCounts } from "../../../helpers/singleCell/cohortStats";
+import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
 
 const { Text } = Typography;
@@ -19,25 +20,33 @@ const HEIGHT = 300;
  * Mutation burden per patient from the tree-mapped CellPhy-input SNV sites:
  * truncal (tumor MRCA), subclonal and private counts, stacked or as fractions.
  */
-export default function TmbPanel({ summaries, files, onOpen }) {
+export default function TmbPanel({ summaries, files, datafiles = [], onOpen }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(800);
   const [mode, setMode] = useState("count");
   const rows = useMemo(
     () =>
       summaries
-        .map((s) => ({ patient: s.caseReportId, summary: s, counts: files[s.caseReportId]?.variants ? snvCategoryCounts(files[s.caseReportId].variants) : null }))
+        .map((s) => ({
+          patient: s.caseReportId,
+          summary: s,
+          counts: files[s.caseReportId]?.variants ? snvCategoryCounts(files[s.caseReportId].variants) : null,
+          callableMb: callableMbOf(cellsForPatient(datafiles, s.patientKey).filter((c) => !/^normal$/i.test(`${c.clone_id || ""}`))),
+        }))
         .filter((r) => r.counts),
-    [summaries, files]
+    [summaries, files, datafiles]
   );
   if (!rows.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.tmb-empty")} />;
 
   const M = { top: 12, right: 12, bottom: 56, left: 64 };
   const total = (c) => CATS.reduce((s, [k]) => s + (c[k] || 0), 0);
   const x = d3.scaleBand().domain(rows.map((r) => r.patient)).range([M.left, width - M.right]).padding(0.3);
-  const ymax = mode === "count" ? d3.max(rows, (r) => total(r.counts)) || 1 : 1;
+  const perMb = (r, k) => (Number.isFinite(r.callableMb) && r.callableMb > 0 ? r.counts[k] / r.callableMb : 0);
+  const totalPerMb = (r) => CATS.reduce((s, [k]) => s + perMb(r, k), 0);
+  const ymax = mode === "count" ? d3.max(rows, (r) => total(r.counts)) || 1 : mode === "perMb" ? d3.max(rows, totalPerMb) || 1 : 1;
   const y = d3.scaleLinear().domain([0, ymax]).nice().range([HEIGHT - M.bottom, M.top]);
-  const value = (r, k) => (mode === "count" ? r.counts[k] : r.counts[k] / Math.max(1, total(r.counts)));
+  const value = (r, k) => (mode === "count" ? r.counts[k] : mode === "perMb" ? perMb(r, k) : r.counts[k] / Math.max(1, total(r.counts)));
+  const hasBreadth = rows.some((r) => Number.isFinite(r.callableMb));
 
   return (
     <Card
@@ -50,6 +59,7 @@ export default function TmbPanel({ summaries, files, onOpen }) {
           onChange={setMode}
           options={[
             { value: "count", label: t("components.single-cell.cohort.tmb-count") },
+            ...(hasBreadth ? [{ value: "perMb", label: t("components.single-cell.cohort.tmb-per-mb") }] : []),
             { value: "fraction", label: t("components.single-cell.cohort.tmb-fraction") },
           ]}
         />
@@ -57,7 +67,7 @@ export default function TmbPanel({ summaries, files, onOpen }) {
     >
       <div ref={ref}>
         <svg width={width} height={HEIGHT}>
-          <YAxis scale={y} x0={M.left} x1={width - M.right} title={mode === "count" ? t("components.single-cell.cohort.tmb-y") : t("components.single-cell.cohort.tmb-y-fraction")} format={mode === "count" ? d3.format("~s") : d3.format(".0%")} />
+          <YAxis scale={y} x0={M.left} x1={width - M.right} title={mode === "count" ? t("components.single-cell.cohort.tmb-y") : mode === "perMb" ? t("components.single-cell.cohort.tmb-y-per-mb") : t("components.single-cell.cohort.tmb-y-fraction")} format={mode === "fraction" ? d3.format(".0%") : d3.format("~g")} />
           {rows.map((r) => {
             let y0 = 0;
             return (
@@ -73,8 +83,8 @@ export default function TmbPanel({ summaries, files, onOpen }) {
                     </rect>
                   );
                 })}
-                <text x={x(r.patient) + x.bandwidth() / 2} y={y(mode === "count" ? total(r.counts) : 1) - 4} textAnchor="middle" fontSize={FONT.axis} fill="#262626">
-                  {mode === "count" ? d3.format(",")(total(r.counts)) : `${r.counts.truncal}`}
+                <text x={x(r.patient) + x.bandwidth() / 2} y={y(mode === "count" ? total(r.counts) : mode === "perMb" ? totalPerMb(r) : 1) - 4} textAnchor="middle" fontSize={FONT.axis} fill="#262626">
+                  {mode === "count" ? d3.format(",")(total(r.counts)) : mode === "perMb" ? (Number.isFinite(r.callableMb) ? `${d3.format(".2f")(totalPerMb(r))}/Mb` : "n/a") : `${r.counts.truncal}`}
                 </text>
               </g>
             );
