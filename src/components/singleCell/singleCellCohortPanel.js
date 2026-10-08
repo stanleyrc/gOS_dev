@@ -39,6 +39,8 @@ import PatientReportCard from "./patientReportCard";
 import CohortGenePanel from "./cohort/cohortGenePanel";
 import PatientCards from "./cohort/patientCards";
 import CohortCircosPanel from "./cohort/cohortCircosPanel";
+import CohortEventsTable from "./cohort/cohortEventsTable";
+import CohortEventDrawer from "./cohort/cohortEventDrawer";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -126,6 +128,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
   const cohortFiles = useCohortFiles(summaries, datasets);
   const [view, setView] = useState("overview");
+  const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
+  const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
 
@@ -326,6 +330,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "overview", label: t("components.single-cell.cohort.view-overview") },
     { key: "reports", label: t("components.single-cell.cohort.view-reports") },
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
+    { key: "events", label: t("components.single-cell.cohort.view-events") },
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
     { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
     { key: "qc", label: t("components.single-cell.cohort.view-qc") },
@@ -359,10 +364,10 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "drivers" && (
           <>
             <Col span={24}>
-              <CohortGenePanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+              <CohortGenePanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
             <Col span={24}>
-              <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+              <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
             <Col span={24}>
               <CohortCircosPanel summaries={summaries} files={cohortFiles.files} />
@@ -383,6 +388,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               <CohortSignaturesPanel summaries={summaries} files={cohortFiles.files} />
             </Col>
           </>
+        )}
+        {view === "events" && (
+          <Col span={24}>
+            <CohortEventsTable summaries={summaries} files={cohortFiles.files} onEvent={openEvent} />
+          </Col>
         )}
         {view === "scatter" && (
           <Col span={24}>
@@ -516,6 +526,15 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         </Col>
         )}
       </Row>
+      <CohortEventDrawer
+        open={Boolean(eventDrawer)}
+        onClose={() => setEventDrawer(null)}
+        summary={eventDrawer?.summary}
+        event={eventDrawer?.event}
+        dataset={eventDrawer ? datasetOf(eventDrawer.summary) : null}
+        cells={eventDrawer ? cellsForPatient(datafiles, eventDrawer.summary.patientKey) : []}
+        cloneColors={cloneColors}
+      />
     </Wrapper>
   );
 }

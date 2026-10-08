@@ -20,7 +20,8 @@ import { getNestedValue } from "../../helpers/metadata";
 import { datasetHasField } from "../../helpers/browseScope";
 import Wrapper from "./index.style";
 import ViolinPlotPanel from "../../components/violinPlotPanel";
-import FilteredEventsListPanel from "../../components/filteredEventsListPanel";
+import ScEventsPanel from "../../components/singleCell/scEventsPanel";
+import ScPatientOverview from "../../components/singleCell/scPatientOverview";
 import HighlightsPanel from "../../components/highlightsPanel";
 import GlobalNotesPanel from "../../components/globalNotesPanel";
 import * as d3 from "d3";
@@ -196,7 +197,8 @@ class SummaryTab extends Component {
           />
         </Skeleton>
         <GlobalNotesPanel />
-        <FilteredEventsListPanel />
+        <ScPatientOverview />
+        <ScEventsPanel />
       </Wrapper>
     );
   }
