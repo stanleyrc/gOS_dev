@@ -9,6 +9,7 @@ import UmapPanel from "../../components/singleCell/umapPanel";
 import RnaGroupsCard from "../../components/singleCell/rna/rnaGroupsCard";
 import SavedGroupsBar from "../../components/singleCell/savedGroupsBar";
 import { ThemeSelect } from "../../components/singleCell/paletteEditor";
+import HelpDrawer from "../../components/singleCell/helpDrawer";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
 import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
@@ -68,6 +69,7 @@ export default function SingleCellRnaTab() {
               <Text type="secondary">{t("components.single-cell.palette.theme")}</Text>
               <ThemeSelect />
             </Space>
+            <HelpDrawer compact />
             <Space>
               <Switch size="small" checked={tumorOnly} onChange={(v) => dispatch(singleCellActions.updateLayout({ rnaTumorOnly: v }))} />
               <Text>{t("components.single-cell.rna.tumor-only")}</Text>
