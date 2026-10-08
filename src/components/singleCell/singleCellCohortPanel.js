@@ -44,6 +44,7 @@ import PatientCards from "./cohort/patientCards";
 import CohortCircosPanel from "./cohort/cohortCircosPanel";
 import CohortEventsTable from "./cohort/cohortEventsTable";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
+import CohortRnaPanel from "./cohort/cohortRnaPanel";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -347,6 +348,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "reports", label: t("components.single-cell.cohort.view-reports") },
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
     { key: "events", label: t("components.single-cell.cohort.view-events") },
+    { key: "rna", label: t("components.single-cell.cohort.view-rna") },
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
     { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
     { key: "qc", label: t("components.single-cell.cohort.view-qc") },
@@ -405,6 +407,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               <CohortSignaturesPanel summaries={summaries} files={cohortFiles.files} />
             </Col>
           </>
+        )}
+        {view === "rna" && (
+          <Col span={24}>
+            <CohortRnaPanel summaries={summaries} datasets={datasets} />
+          </Col>
         )}
         {view === "events" && (
           <Col span={24}>
