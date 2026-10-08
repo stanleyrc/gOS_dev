@@ -927,7 +927,7 @@ export default function CellHeatmapPanel() {
                 style={{ width: 120 }}
                 value={snvMetric}
                 onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
-                options={["vaf", "alt", "depth"].map((value) => ({
+                options={["vaf", "alt", "depth", ...(snv.data?.gt ? ["gt"] : [])].map((value) => ({
                   value,
                   label: t(`components.single-cell.metric.${value}`),
                 }))}

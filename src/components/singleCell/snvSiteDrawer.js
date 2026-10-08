@@ -56,6 +56,7 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
   const openIgv = () =>
     dispatch(singleCellActions.openIgv({ cellIds: chosen, chromosome: variant.chromosome, position: variant.position, label: variant.id }));
   const carriers = table.filter((x) => x.carrier).length;
+  const calls = snvData?.gt && c != null ? snvData.cells.reduce((acc, _, p) => { const g = snvData.gt[p][c]; if (g === 1) acc.alt += 1; else if (g === 0) acc.ref += 1; else acc.none += 1; return acc; }, { alt: 0, ref: 0, none: 0 }) : null;
 
   return (
     <Drawer open={open} onClose={onClose} width={640} title={variant.id}>
@@ -87,6 +88,7 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
             </Descriptions.Item>
           )}
           <Descriptions.Item label={t("components.single-cell.site.carriers")}>{t("components.single-cell.site.carriers-of", { carriers, covered: table.length })}</Descriptions.Item>
+          {calls && <Descriptions.Item label={t("components.single-cell.site.genotypes")}>{t("components.single-cell.site.genotypes-of", calls)}</Descriptions.Item>}
         </Descriptions>
         <Space wrap>
           <Button type="primary" size="small" disabled={!chosen.length} onClick={openIgv}>

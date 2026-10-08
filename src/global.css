@@ -491,3 +491,21 @@ html[data-theme="dark"] .ant-statistic-title {
 html[data-theme="dark"] .ant-statistic-content {
   color: #e6e6e6 !important;
 }
+
+/* dark theme: genome navigation panels (genes / cytobands / genome plots) */
+html[data-theme="dark"] .zoom-background,
+html[data-theme="dark"] rect.zoom-background {
+  fill: #1a1a1a !important;
+}
+html[data-theme="dark"] svg.plot-container,
+html[data-theme="dark"] svg.plot-container-cytobands,
+html[data-theme="dark"] .ant-wrapper,
+html[data-theme="dark"] .ant-wrapper-cytobands,
+html[data-theme="dark"] .labels-container,
+html[data-theme="dark"] .genome-plot {
+  background: #141414 !important;
+}
+html[data-theme="dark"] svg.plot-container text,
+html[data-theme="dark"] svg.plot-container-cytobands text {
+  fill: #e0e0e0;
+}

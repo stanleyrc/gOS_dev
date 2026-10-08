@@ -10,7 +10,6 @@ import TreeTop from "./treeTop";
 import SvgExportButton from "./svgExportButton";
 import singleCellActions from "../../redux/singleCell/actions";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
-import settingsActions from "../../redux/settings/actions";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { Swatches } from "./cohort/charts";
 
@@ -192,10 +191,7 @@ export default function DriverCellMatrix({ drivers }) {
                   fontSize={12}
                   fill="#1677ff"
                   style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"));
-                    dispatch(settingsActions.updateTab("1"));
-                  }}
+                  onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}
                 >
                   {r.label.length > 34 ? `${r.label.slice(0, 33)}…` : r.label}
                   <title>{`${r.label}\n${r.cells} cells (${pct(r.fraction)})${Number.isFinite(r.fit.score) ? `\nclade fit ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)` : ""}\n${t("components.single-cell.report.matrix-click")}`}</title>

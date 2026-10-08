@@ -2,6 +2,7 @@ import React from "react";
 import { useSelector } from "react-redux";
 import PatientReportCard from "../../components/singleCell/patientReportCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
+import ScEventModal from "../../components/singleCell/scEventModal";
 
 /** Key findings of the open single-cell patient, with links into the heatmap and IGV. */
 export default function SingleCellReportTab() {
@@ -9,6 +10,7 @@ export default function SingleCellReportTab() {
   const events = useSelector((state) => state.FilteredEvents.filteredEvents);
   return (
     <SingleCellWrapper>
+      <ScEventModal />
       <PatientReportCard
         patient={patient?.caseReportId}
         events={events || []}
