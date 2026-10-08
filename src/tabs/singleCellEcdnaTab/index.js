@@ -11,6 +11,7 @@ import WalkTable from "../../components/singleCell/ecdna/walkTable";
 import WalkDiagram from "../../components/singleCell/ecdna/walkDiagram";
 import WalkTreeBars from "../../components/singleCell/ecdna/walkTreeBars";
 import WalkCooccurrence from "../../components/singleCell/ecdna/walkCooccurrence";
+import WalkRegionHeatmap from "../../components/singleCell/ecdna/walkRegionHeatmap";
 import useTreeView from "../../components/singleCell/useTreeView";
 
 const { Text } = Typography;
@@ -55,11 +56,14 @@ export default function SingleCellEcdnaTab() {
             <WalkTable walks={filtered} total={all.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} focus={focus} onFocus={setFocus} nCells={cellIds.length} />
           </Card>
         </Col>
-        <Col xs={24} xl={10}>
+        <Col xs={24} xl={9}>
           <WalkDiagram walk={filtered.find((w) => w.id === focus) || byId.get(focus)} colorOf={colorOf} cellCount={cellIds.length} />
         </Col>
-        <Col xs={24} xl={14}>
+        <Col xs={24} xl={15}>
           <WalkTreeBars walks={shown} colorOf={colorOf} />
+        </Col>
+        <Col span={24}>
+          <WalkRegionHeatmap walk={filtered.find((w) => w.id === focus) || byId.get(focus)} walks={filtered} colorOf={colorOf} onFocus={setFocus} />
         </Col>
         <Col span={24}>
           <WalkCooccurrence walks={shown} cellIds={cellIds} colorOf={colorOf} />

@@ -12,7 +12,7 @@ import { geneSetIndex, loadGmt, prettyTerm } from "../rna/geneSets";
 import { downloadTsv } from "../analysisResultsPanel";
 import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
-import { benjaminiHochberg, differentialExpression, overRepresentation, pca, scaledExpression } from "../../../helpers/singleCell/rnaStats";
+import { benjaminiHochberg, differentialExpression, overRepresentation, pcaAsync, scaledExpression } from "../../../helpers/singleCell/rnaStats";
 import { fisherCombined, geneVariances, mergeRnaMatrices, subsetCells } from "../../../helpers/singleCell/rnaMerge";
 import { chiSquareUpper, compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { GENE_SETS } from "../../../helpers/singleCell/geneSets";
@@ -251,6 +251,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
 
   const runPca = async () => {
     setBusy("pca");
+    setProgress(0);
     await new Promise((resolve) => setTimeout(resolve, 0));
     try {
       const useGroups = nA + nB > 0;
@@ -274,7 +275,8 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
       const variances = geneVariances(sub, merged.genes.length, d3.range(cellIdx.length));
       const geneIdx = d3.range(merged.genes.length).filter((g) => variances[g] > 0 && !/^MT-/.test(merged.genes[g])).sort((a, b) => variances[b] - variances[a]).slice(0, N_VARIABLE);
       const X = scaledExpression(sub, geneIdx, cellIdx.length);
-      const { scores, values } = pca(X, cellIdx.length, geneIdx.length, N_PCS);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { scores, values } = await pcaAsync(X, cellIdx.length, geneIdx.length, N_PCS, 120, setProgress);
       let total = 0;
       X.forEach((v) => (total += v * v));
       const loadings = scores.map((sc, p) => {
@@ -361,7 +363,10 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                 </>
               )}
               {section === "pca" && (
-                <Button size="small" type="primary" loading={busy === "pca"} disabled={!loaded.length} onClick={runPca}>{nA + nB > 0 ? t("components.single-cell.cohort.de-pca-groups") : t("components.single-cell.cohort.de-pca-all")}</Button>
+                <>
+                  <Button size="small" type="primary" loading={busy === "pca"} disabled={!loaded.length} onClick={runPca}>{nA + nB > 0 ? t("components.single-cell.cohort.de-pca-groups") : t("components.single-cell.cohort.de-pca-all")}</Button>
+                  {busy === "pca" && <Progress percent={Math.round(100 * progress)} size="small" style={{ width: 160 }} />}
+                </>
               )}
             </Space>
             <div><Text type="secondary" style={{ fontSize: 12 }}>{section === "de" ? t("components.single-cell.cohort.de-help") : t("components.single-cell.cohort.de-pca-help")}</Text></div>
