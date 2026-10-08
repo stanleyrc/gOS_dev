@@ -33,6 +33,13 @@ export function WalkUpset({ walks, cellIds, colorOf }) {
     <Card size="small" title={<Space><TableOutlined />{t("components.single-cell.ecdna.upset-title")}</Space>} extra={<Space><Text type="secondary">{t("components.single-cell.ecdna.min-cn")}</Text><InputNumber size="small" min={1} value={minCn} onChange={(v) => setMinCn(v ?? 1)} style={{ width: 70 }} /><SvgExportButton containerRef={ref} name="ecdna-cooccurrence" /></Space>}>
       <div ref={ref}>
         <svg width={Math.max(width - 8, LEFT + combos.length * colW + 80)} height={h}>
+          {walks.map((w, i) => (
+            <g key={w.id}>
+              <rect x={0} y={top + i * rowH} width={LEFT + combos.length * colW + 20} height={rowH} fill={i % 2 ? "#fafafa" : "transparent"} />
+              <text x={LEFT - 8} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={12} fill={colorOf(w.id)} fontWeight={600}>{w.label.length > 24 ? `${w.label.slice(0, 23)}…` : w.label}<title>{w.label}</title></text>
+              <text x={LEFT + combos.length * colW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={9} fill="#8c8c8c">{`${cellIds.filter((id) => (Number(w.cells[id]) || 0) >= minCn).length}`}</text>
+            </g>
+          ))}
           {combos.map((c, j) => (
             <g key={c.walks.join("|")} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection(c.cells))}>
               <rect x={LEFT + j * colW + 4} y={y(c.n)} width={colW - 8} height={barH - y(c.n)} fill={c.walks.length === 1 ? colorOf(c.walks[0]) : "#8c8c8c"} />
@@ -46,13 +53,6 @@ export function WalkUpset({ walks, cellIds, colorOf }) {
                 return <circle key={w.id} cx={LEFT + (j + 0.5) * colW} cy={top + (i + 0.5) * rowH} r={on ? 5.5 : 3} fill={on ? colorOf(w.id) : "#d9d9d9"} stroke={on ? "#fff" : "none"} />;
               })}
               <title>{`${c.walks.map((id) => walks.find((w) => w.id === id)?.label).join(" + ")}: ${c.n} cells\n${t("components.single-cell.ecdna.upset-click")}`}</title>
-            </g>
-          ))}
-          {walks.map((w, i) => (
-            <g key={w.id}>
-              <rect x={0} y={top + i * rowH} width={LEFT + combos.length * colW + 20} height={rowH} fill={i % 2 ? "#fafafa" : "transparent"} />
-              <text x={LEFT - 8} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={12} fill={colorOf(w.id)} fontWeight={600}>{w.label.length > 24 ? `${w.label.slice(0, 23)}…` : w.label}<title>{w.label}</title></text>
-              <text x={LEFT + combos.length * colW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={9} fill="#8c8c8c">{`${cellIds.filter((id) => (Number(w.cells[id]) || 0) >= minCn).length}`}</text>
             </g>
           ))}
         </svg>
