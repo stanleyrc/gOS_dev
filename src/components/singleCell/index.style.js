@@ -26,8 +26,9 @@ const Wrapper = styled.div`
     max-height: 100%;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
-    font-size: 10px;
-    color: #595959;
+    font-size: 12px;
+    font-weight: 500;
+    color: #434343;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
