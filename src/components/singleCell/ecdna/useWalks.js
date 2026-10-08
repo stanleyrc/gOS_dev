@@ -3,7 +3,8 @@ import { useSelector } from "react-redux";
 import * as d3 from "d3";
 import { filterWalks } from "../../../helpers/singleCell/walks";
 
-const PALETTE = [...d3.schemeTableau10, ...d3.schemeSet2, ...d3.schemePastel1];
+// 10 + 8 + 9 distinct hues before anything repeats
+const PALETTE = [...d3.schemeTableau10, ...d3.schemeDark2, ...d3.schemeSet1];
 
 /**
  * The patient's walks (walks.json), the filter settings that hide spurious
