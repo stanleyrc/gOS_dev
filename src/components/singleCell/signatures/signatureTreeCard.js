@@ -45,7 +45,7 @@ export default function SignatureTreeCard() {
   const [siteSet, setSiteSet] = useState("all");
   const [hoverRange, setHoverRange] = useState(null);
   const [focus, setFocus] = useState(null);
-  const height = layout.sigTreeHeight || 420;
+  const height = layout.sigTreeHeight || (mode === "cells" ? Math.max(420, Math.min(1400, order.length * 4)) : 420);
   const snvData = snv.status === "ok" ? snv.data : null;
 
   const nRows = order.length;
@@ -56,9 +56,10 @@ export default function SignatureTreeCard() {
 
   const clades = useMemo(() => {
     if (!treeLayout) return [];
+    if (mode === "cells") return order.map((id, i) => ({ key: id, label: id, first: i, last: i, clone: leafClones[i] }));
     if (mode === "clones") return labelRuns(leafClones).map((r, i) => ({ key: `${r.label}:${i}`, label: r.label ?? "–", first: r.first, last: r.last, clone: r.label }));
     return cutTree(treeLayout, k).map((c, i) => ({ key: `cut:${c.node}`, label: `${t("components.single-cell.bars.clade")} ${i + 1}`, first: c.first, last: c.last }));
-  }, [treeLayout, mode, k, leafClones, t]);
+  }, [treeLayout, mode, k, leafClones, order, t]);
 
   // burden per clade: unique sites (optionally only post-trunk sites) seen in its cells, by assigned signature
   const burdens = useMemo(() => {
@@ -126,7 +127,7 @@ export default function SignatureTreeCard() {
       title={<Space><ApartmentOutlined />{t("components.single-cell.signatures.tree-title")}</Space>}
       extra={
         <Space wrap>
-          <Select size="small" style={{ width: 150 }} value={mode} onChange={setMode} options={[{ value: "clones", label: t("components.single-cell.bars.per-clone") }, { value: "cut", label: t("components.single-cell.bars.per-clade") }]} />
+          <Select size="small" style={{ width: 150 }} value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.bars.per-cell") }, { value: "clones", label: t("components.single-cell.bars.per-clone") }, { value: "cut", label: t("components.single-cell.bars.per-clade") }]} />
           {mode === "cut" && <InputNumber size="small" min={2} max={30} value={k} onChange={(v) => setK(v || 2)} style={{ width: 64 }} />}
           <Select size="small" style={{ width: 150 }} value={siteSet} onChange={setSiteSet} options={[{ value: "all", label: t("components.single-cell.signatures.sites-all") }, { value: "subclonal", label: t("components.single-cell.signatures.sites-post-trunk") }, { value: "truncal", label: t("components.single-cell.snv.category-truncal") }, { value: "private", label: t("components.single-cell.snv.category-private") }]} />
           <Segmented size="small" value={unit} onChange={setUnit} options={[{ value: "count", label: t("components.single-cell.signatures.unit-count") }, { value: "share", label: t("components.single-cell.signatures.unit-share") }]} />
@@ -180,16 +181,19 @@ export default function SignatureTreeCard() {
               const h = (c.last - c.first + 1) * rowH;
               const b = burdens?.[c.key];
               const cy = y0 + h / 2;
-              const barH = Math.max(6, Math.min(h - 4, 26));
+              const barH = mode === "cells" ? Math.max(1, h - (h > 3 ? 1 : 0)) : Math.max(6, Math.min(h - 4, 26));
               const selected = selectedRows.size && d3.range(c.first, c.last + 1).some((r) => selectedRows.has(r));
               const bx = LABEL_W;
               let x = 0;
               const total = b ? (unit === "count" ? 1 : Math.max(1, b.assigned)) : 1;
               return (
-                <g key={c.key} style={{ cursor: "pointer" }} onClick={(e) => selectClade(c, e)}>
-                  <rect x={0} y={y0} width={width} height={h} fill={focus === c.key ? "#e6f4ff" : i % 2 ? "#fafafa" : "#f5f5f5"} fillOpacity={selected ? 0.5 : 0.8} />
+                <g key={c.key} style={{ cursor: "pointer" }} onClick={(e) => selectClade(c, e)} onMouseEnter={() => mode === "cells" && share(c.key)}>
+                  <rect x={0} y={y0} width={width} height={h} fill={focus === c.key ? "#e6f4ff" : mode === "cells" ? "#ffffff" : i % 2 ? "#fafafa" : "#f5f5f5"} fillOpacity={selected ? 0.5 : 0.8} />
+                  {mode === "cells" && hoverRow === c.first && <rect x={0} y={y0} width={width} height={h} fill="rgba(22,119,255,0.18)" />}
                   <rect x={0} y={y0 + 1} width={5} height={Math.max(1, h - 2)} fill={(c.clone != null && cloneColors[c.clone]) || "#8c8c8c"} />
-                  {h >= 22 ? (
+                  {mode === "cells" && h < 22 ? (
+                    h >= 9 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(10, h - 1)} fill="#595959">{c.label}</text>
+                  ) : h >= 22 ? (
                     <>
                       <text x={10} y={cy - 5} fontSize={12} fontWeight={600} fill="#262626">{c.label.length > 18 ? `${c.label.slice(0, 17)}…` : c.label}</text>
                       <text x={10} y={cy + 9} fontSize={10} fill="#8c8c8c">{t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}</text>
