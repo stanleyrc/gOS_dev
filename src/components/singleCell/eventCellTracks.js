@@ -43,7 +43,8 @@ function SingleCellEventTracks({ record }) {
   const [multi, setMulti] = useState(false);
   const [one, setOne] = useState(null);
   const [many, setMany] = useState([]);
-  const [showIgv, setShowIgv] = useState(false);
+  // reads open by default where there is something to see at base resolution (SNVs, fusion breakpoints)
+  const [showIgv, setShowIgv] = useState(() => Boolean(record?.Variant_g && /^\w+:\d+/.test(`${record.Variant_g}`)) || Boolean(record?.fusion_gene_coords && record.fusion_gene_coords !== "None"));
   const [trackRef, trackWidth] = useContainerWidth(900);
   useEffect(() => {
     setOne(carriers[0] || null);
@@ -130,6 +131,58 @@ function SingleCellEventTracks({ record }) {
       />
     </Space>
   );
+}
+
+/** IGV view of an event for the given cells: SNVs at the variant, fusions at both breakpoints, CNAs at the gene start. */
+export function eventIgvView(record, cellIds) {
+  const bps = `${record?.fusion_gene_coords || ""}`.split(",").map((s) => s.match(/^(\w+):(\d+)/)).filter(Boolean).map((m) => ({ chromosome: m[1], position: Number(m[2]) }));
+  const snvPos = `${record?.Variant_g || ""}`.match(/^(\w+):(\d+)/);
+  const view = {
+    cellIds,
+    chromosome: bps.length ? bps[0].chromosome : snvPos ? snvPos[1] : `${record?.seqnames}`,
+    position: bps.length ? bps[0].position : snvPos ? Number(snvPos[2]) : Number(record?.start),
+    loci: bps.length > 1 ? bps : undefined,
+    label: record?.gene || record?.fusion_genes,
+  };
+  return Number.isFinite(view.position) ? view : null;
+}
+
+/** Reads tab of the popup on a single-cell patient: IGV of the carrier cells at the event. */
+function SingleCellEventReads({ record }) {
+  const { t } = useTranslation("common");
+  const { cells, cloneColors } = useSelector((state) => state.SingleCell);
+  const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
+  const [picked, setPicked] = useState([]);
+  useEffect(() => setPicked(carriers.slice(0, 3)), [carriers]);
+  const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
+  if (!carriers.length) return <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-cells")} />;
+  const view = picked.length ? eventIgvView(record, picked) : null;
+  return (
+    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+      <Space wrap>
+        <Text type="secondary">{t("components.single-cell.event-cells.carriers", { count: carriers.length })}</Text>
+        <Select
+          size="small"
+          mode="multiple"
+          maxCount={SC_MAX_TRACK_CELLS}
+          style={{ minWidth: 360 }}
+          value={picked}
+          onChange={setPicked}
+          options={carriers.map((id) => ({ value: id, label: <span>{cloneOf.get(id) != null && <span className="sc-swatch" style={{ background: cloneColors[cloneOf.get(id)] }} />}{id}</span> }))}
+          maxTagCount="responsive"
+          showSearch
+        />
+        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.event-cells.igv-help", { count: picked.length })}</Text>
+      </Space>
+      {view ? <CellIgvPanel view={view} embedded /> : <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-position")} />}
+    </Space>
+  );
+}
+
+/** Reads (IGV) of the carrier cells on a single-cell patient, otherwise the bulk tracks (`fallback`). */
+export function EventReads({ record, fallback }) {
+  const singleCell = useIsSingleCellPatient();
+  return singleCell ? <SingleCellEventReads record={record} /> : fallback;
 }
 
 /** Per-cell tracks on a single-cell patient, otherwise the bulk tracks (`fallback`). */
