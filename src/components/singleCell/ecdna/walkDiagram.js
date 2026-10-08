@@ -73,7 +73,8 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
               const mid = (n.a0 + n.a1) / 2;
               return (
                 <g key={n.i}>
-                  <path d={path} fill={chrColor(n.chromosome)} stroke="#fff" strokeWidth={0.5}>
+                  {/* d3.arc paths are centred on (0,0): move them to the ring's centre */}
+                  <path d={path} transform={`translate(${cx},${cy})`} fill={chrColor(n.chromosome)} stroke="#fff" strokeWidth={0.5}>
                     <title>{`${n.chromosome}:${n.start.toLocaleString()}-${n.end.toLocaleString()} (${n.strand}) · ${fmtPos(n.len)}${Number.isFinite(n.cn) ? ` · graph CN ${n.cn}` : ""}\n${(genesByNode.get(n.i) || []).map((g) => g.name).join(", ")}`}</title>
                   </path>
                   {n.a1 - n.a0 > 0.08 && (
