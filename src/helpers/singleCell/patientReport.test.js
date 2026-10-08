@@ -23,6 +23,8 @@ describe("patient report", () => {
     const cloneOf = new Map(cells.map((c) => [c.cell_id, c.clone_id]));
     const f = cloneFractions(events[1], cloneOf, { "Clone 1": 10, "Clone 2": 10 });
     expect(f["Clone 2"].fraction).toBeCloseTo(0.9);
+    expect(f["Clone 2"].p).toBeLessThan(0.01);
+    expect(f["Clone 1"].p).toBeLessThan(0.01);
     expect(definingClones(f, 20)).toEqual(["Clone 2"]);
   });
 

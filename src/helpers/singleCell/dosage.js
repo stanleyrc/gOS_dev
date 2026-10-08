@@ -152,3 +152,32 @@ export async function dosageRanking({ cn, summary, matrix, rowOfId, genesState, 
   if (onProgress) onProgress(1);
   return out.sort((p, q) => q.rho - p.rho);
 }
+
+/**
+ * Dosage sensitivity per chromosome from a ranking: genes with |rho| above
+ * `threshold` as a fraction, with the median rho. Chromosome of a gene is
+ * taken from its global position and chromoBins.
+ */
+export function dosageByChromosome(ranking, genesState, chromoBins, threshold = 0.3) {
+  const chromosomes = Object.keys(chromoBins || {});
+  const chromosomeOf = (place) => chromosomes.find((c) => place >= chromoBins[c].startPlace && place <= chromoBins[c].endPlace) || null;
+  const byChr = new Map();
+  ranking.forEach((r) => {
+    const locus = geneLocus(genesState, r.gene);
+    if (!locus) return;
+    const chr = chromosomeOf(locus.mid);
+    if (!chr) return;
+    if (!byChr.has(chr)) byChr.set(chr, []);
+    byChr.get(chr).push(r.rho);
+  });
+  const median = (v) => {
+    const s = v.slice().sort((a, b) => a - b);
+    return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+  };
+  return chromosomes
+    .filter((c) => byChr.has(c))
+    .map((chromosome) => {
+      const rhos = byChr.get(chromosome);
+      return { chromosome, n: rhos.length, medianRho: median(rhos), fracSensitive: rhos.filter((x) => x >= threshold).length / rhos.length };
+    });
+}

@@ -11,6 +11,7 @@ import { eventSnvSiteId } from "../../helpers/singleCell/snvSites";
 import { locationToDomains } from "../../helpers/utility";
 import { padDomains } from "../../helpers/singleCell/eventDomains";
 import { signatureColorOf } from "./signaturePanel";
+import { formatP } from "../../helpers/singleCell/tests";
 import signatureMetadata from "../../translations/en/signatures.json";
 
 const { Text, Paragraph, Title } = Typography;
@@ -42,9 +43,11 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
             .filter(([, f]) => f.n > 0)
             .sort((a, b) => b[1].fraction - a[1].fraction)
             .map(([clone, f]) => (
-              <Tag key={clone} color={cloneColors[clone]} style={{ marginLeft: 6 }}>
-                {`${clone} ${f.n}/${f.size}`}
-              </Tag>
+              <Tooltip key={clone} title={t("components.single-cell.report.clone-fisher", { p: formatP(f.p), or: Number.isFinite(f.oddsRatio) ? f.oddsRatio.toFixed(1) : "∞" })}>
+                <Tag color={cloneColors[clone]} style={{ marginLeft: 6, fontWeight: f.p < 0.01 && f.fraction > 0.5 ? 600 : 400 }}>
+                  {`${clone} ${f.n}/${f.size}${f.p < 0.01 && f.fraction > 0.5 ? " *" : ""}`}
+                </Tag>
+              </Tooltip>
             ))}
         </div>
       </div>

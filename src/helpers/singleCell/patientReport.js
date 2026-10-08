@@ -5,6 +5,7 @@
 import { eventClass } from "./cohortStats";
 import { isStrongEvent } from "./strongEvents";
 import { snvCategoryCounts } from "./cohortStats";
+import { fisherExact } from "./tests";
 
 export const CLONAL_FRACTION = 0.85;
 export const RARE_FRACTION = 0.1;
@@ -27,9 +28,15 @@ export function cloneFractions(event, cloneOf, cloneSizes) {
     counts[clone] = (counts[clone] || 0) + 1;
   });
   const out = {};
+  const tumorTotal = Object.entries(cloneSizes).filter(([c]) => !isNormal(c)).reduce((s, [, v]) => s + v, 0);
+  const carriersTotal = Object.entries(counts).reduce((s, [, v]) => s + v, 0);
   Object.keys(cloneSizes).forEach((clone) => {
     if (isNormal(clone)) return;
-    out[clone] = { n: counts[clone] || 0, size: cloneSizes[clone], fraction: cloneSizes[clone] ? (counts[clone] || 0) / cloneSizes[clone] : 0 };
+    const n = counts[clone] || 0;
+    const size = cloneSizes[clone];
+    // Fisher's exact test: carriers in this clone vs in the other tumor cells
+    const { p, oddsRatio } = fisherExact(n, size - n, carriersTotal - n, tumorTotal - size - (carriersTotal - n));
+    out[clone] = { n, size, fraction: size ? n / size : 0, p, oddsRatio };
   });
   return out;
 }
