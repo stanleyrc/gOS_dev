@@ -6,7 +6,7 @@ import { QuestionCircleOutlined } from "@ant-design/icons";
 const { Text, Paragraph, Title } = Typography;
 
 const SECTIONS = [
-  ["scores", ["clade-fit", "clade-score", "strong-events", "amplified-snv", "fga", "map-confidence", "categories"]],
+  ["scores", ["clade-fit", "clade-score", "strong-events", "amplified-snv", "walks", "fga", "map-confidence", "categories"]],
   ["signatures", ["joint-fit", "assignment", "clade-vs-rest", "bootstrap"]],
   ["rna", ["tumor-only", "markers", "dosage", "composition"]],
   ["cohort", ["oncoprint", "per-mb", "convergence", "sigmat", "cohort-de", "cohort-pca", "program-score"]],

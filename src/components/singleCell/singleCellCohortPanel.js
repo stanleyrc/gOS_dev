@@ -46,6 +46,7 @@ import CohortEventsTable from "./cohort/cohortEventsTable";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
 import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
+import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import HelpDrawer from "./helpDrawer";
 
 const { Text } = Typography;
@@ -376,6 +377,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "overview", label: t("components.single-cell.cohort.view-overview") },
     { key: "reports", label: t("components.single-cell.cohort.view-reports") },
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
+    { key: "amplicons", label: t("components.single-cell.cohort.view-amplicons") },
     { key: "events", label: t("components.single-cell.cohort.view-events") },
     { key: "rna", label: t("components.single-cell.cohort.view-rna") },
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
@@ -454,6 +456,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "scatter" && (
           <Col span={24}>
             <CohortScatterPanel summaries={summaries} files={cohortFiles.files} datafiles={datafiles} onOpen={openPatient} />
+          </Col>
+        )}
+        {view === "amplicons" && (
+          <Col span={24}>
+            <CohortAmpliconPanel summaries={summaries} files={cohortFiles.files} cnRows={rows} chromoBins={chromoBins} />
           </Col>
         )}
         {view === "qc" && (

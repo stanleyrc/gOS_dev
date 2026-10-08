@@ -108,13 +108,15 @@ function* fetchSingleCellData() {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile] = yield all([
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/genes.tsv"), { cancelToken, responseType: "text" }),
       // SigProfilerAssignment fits of preset SNV sets (skilift / gos_sc_upload.R)
       call(tryGet, casePath(dataset, id, "signatures.json"), { cancelToken }),
+      // ecDNA / amplicon walks with per-cell copy numbers (skilift sc_export_walks)
+      call(tryGet, casePath(dataset, id, "walks.json"), { cancelToken }),
     ]);
     const cellFiles = {};
     const genomeErrors = [];
@@ -190,6 +192,7 @@ function* fetchSingleCellData() {
       junctions,
       rna,
       signatures: signaturesFile.status === "ok" ? signaturesFile : missing(),
+      walks: walksFile.status === "ok" ? walksFile : missing(),
       cellFiles,
       selectedCellIds: [],
     });
