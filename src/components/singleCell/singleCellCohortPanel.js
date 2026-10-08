@@ -410,7 +410,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "rna" && (
           <Col span={24}>
-            <CohortRnaPanel summaries={summaries} datasets={datasets} />
+            <CohortRnaPanel summaries={summaries} datasets={datasets} cnRows={rows} files={cohortFiles.files} />
           </Col>
         )}
         {view === "events" && (

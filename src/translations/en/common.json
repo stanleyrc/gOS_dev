@@ -1102,7 +1102,14 @@
         "rna-gene": "A gene across patients",
         "rna-gene-show": "Show",
         "rna-gene-intro": "Type a gene (or click a marker) to load each patient's expression matrix and compare.",
-        "rna-gene-help": "Log-normalized expression per patient; the table gives mean (and % expressing) per group of the chosen field."
+        "rna-gene-help": "Log-normalized expression per patient; the table gives mean (and % expressing) per group of the chosen field.",
+        "umap-title": "Integrated RNA UMAP across patients ({{count}} cells)",
+        "umap-missing": "No cohort UMAP yet: run the pipeline's cohort_rna step (merges the Seurat objects, Harmony on patient, UMAP).",
+        "umap-help": "Merged Seurat objects, Harmony-corrected for patient; colour by patient or any metadata field; hide patients; click a cell to open its patient.",
+        "dosage-title": "Copy number vs expression across patients",
+        "dosage-run": "Compute for {{count}} patients",
+        "dosage-intro": "Spearman ρ between a gene's copy number (each cell's genome graph) and its expression, per patient, for the chosen genes (defaults: the cohort's amplified / deleted drivers). Loads each patient's expression matrix.",
+        "dosage-help": "Red = expression follows copy number, blue = anti-correlated; * p < 0.01. Grey: fewer than 8 cells with both DNA and RNA."
       },
       "compare": {
         "title": "Compare groups",

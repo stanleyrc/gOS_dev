@@ -10,9 +10,20 @@ export const FONT = { axis: 12, label: 13, title: 14 };
 
 /** Linear y axis with grid lines and a title. */
 export function YAxis({ scale, x0, x1, title, ticks = 5, format = d3.format("~s") }) {
+  // log scales: only powers of ten (and 2x / 5x when few decades)
+  const isLog = typeof scale.base === "function";
+  let values = scale.ticks(ticks);
+  if (isLog) {
+    const [lo, hi] = scale.domain();
+    const decades = Math.log10(hi) - Math.log10(lo);
+    values = scale.ticks().filter((v) => {
+      const m = v / 10 ** Math.floor(Math.log10(v) + 1e-9);
+      return Math.abs(m - 1) < 1e-6 || (decades < 2.5 && (Math.abs(m - 2) < 1e-6 || Math.abs(m - 5) < 1e-6));
+    });
+  }
   return (
     <g>
-      {scale.ticks(ticks).map((v) => (
+      {values.map((v) => (
         <g key={v} transform={`translate(0,${scale(v)})`}>
           <line x1={x0} x2={x1} stroke="#f0f0f0" />
           <text x={x0 - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill="#595959">
@@ -114,7 +125,7 @@ export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = 
           </g>
         );
       })}
-      <XBandLabels scale={x} y={height - M.bottom + 18} rotate={groups.length > 8} />
+      <XBandLabels scale={x} y={height - M.bottom + 18} rotate={groups.length > 8 || x.bandwidth() < 72} />
     </svg>
   );
 }
