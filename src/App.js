@@ -3,6 +3,8 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { Layout, ConfigProvider, theme as antdTheme } from "antd";
 import { applyAppTheme, getAppTheme, onAppThemeChange } from "./helpers/appTheme";
 import UpdateNotice from "./components/updateNotice";
+import singleCellActions from "./redux/singleCell/actions";
+import { CN_PALETTE_PRESETS } from "./helpers/singleCell/matrix";
 import { store, history } from "./redux/store";
 import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
@@ -23,6 +25,15 @@ function App() {
   const [mode, setMode] = useState(getAppTheme());
   useEffect(() => {
     applyAppTheme(mode);
+    // the CN heatmap palette follows the theme between its light / dark pgv variants
+    const preset = store.getState().SingleCell?.palette?.preset;
+    const want = mode === "dark" ? "pgvDark" : "pgv";
+    if ((preset === "pgv" || preset === "pgvDark") && preset !== want) {
+      store.dispatch(singleCellActions.updatePalette({ preset: want, ...CN_PALETTE_PRESETS[want] }));
+    } else if (preset === want) {
+      // force heatmaps to redraw with the theme-aware neutral colours
+      store.dispatch(singleCellActions.updatePalette({ ...store.getState().SingleCell.palette }));
+    }
     return onAppThemeChange(setMode);
   }, [mode]);
   return (
