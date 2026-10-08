@@ -7,7 +7,7 @@ import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import MutationsPanel from "../mutationsPanel";
 import PinnedGenesOverlay from "./pinnedGenesOverlay";
-import singleCellActions, { SC_MAX_TRACK_CELLS, SC_TRACKS } from "../../redux/singleCell/actions";
+import singleCellActions, { SC_FETCHED_TRACKS, SC_MAX_TRACK_CELLS, SC_TRACKS } from "../../redux/singleCell/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
 import Wrapper from "./index.style";
@@ -68,7 +68,12 @@ function TrackNote({ status, error, label }) {
  */
 const TRACK_NESTING = { left: 35, right: 21 };
 
-export default function CellTracksPanel({ yScaleMode = "common" }) {
+/**
+ * `cellIds` shows those cells instead of the selection (e.g. the cells
+ * carrying a filtered event); `embedded` drops the heatmap alignment padding
+ * and pinned genes for use inside a modal; `onRemove` replaces "deselect".
+ */
+export default function CellTracksPanel({ yScaleMode = "common", cellIds = null, embedded = false, onRemove = null, title = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
@@ -93,12 +98,26 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const trackPadding = {
-    marginLeft: Math.max(0, plotInsets.left - TRACK_NESTING.left),
-    marginRight: Math.max(0, plotInsets.right - TRACK_NESTING.right),
-  };
+  const trackPadding = embedded
+    ? {}
+    : {
+        marginLeft: Math.max(0, plotInsets.left - TRACK_NESTING.left),
+        marginRight: Math.max(0, plotInsets.right - TRACK_NESTING.right),
+      };
 
-  const shown = selectedCellIds.slice(0, SC_MAX_TRACK_CELLS);
+  const listed = cellIds || selectedCellIds;
+  const shown = listed.slice(0, SC_MAX_TRACK_CELLS);
+  // The saga loads tracks for the selection; explicit cells load here.
+  const shownKey = cellIds ? shown.join("|") : "";
+  useEffect(() => {
+    if (!cellIds) return;
+    shown.forEach((cellId) =>
+      visibleTracks
+        .filter((track) => SC_FETCHED_TRACKS[track] && !perCell[cellId]?.[track])
+        .forEach((track) => dispatch(singleCellActions.requestPerCellTrack(cellId, track)))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownKey, visibleTracks]);
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const label = (track) => t(`components.single-cell.tracks.${track}`);
 
@@ -121,7 +140,7 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
   const openCell = (cellId) =>
     patient && dispatch(datasetsActions.openCaseReport(patient.datasetId, cellId));
   const removeCell = (cellId) =>
-    dispatch(singleCellActions.updateSelection(selectedCellIds.filter((c) => c !== cellId)));
+    onRemove ? onRemove(cellId) : dispatch(singleCellActions.updateSelection(selectedCellIds.filter((c) => c !== cellId)));
 
   const scatter = (cellId, track, data) => (
     <ScatterPlotPanel
@@ -233,7 +252,7 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
         size="small"
         title={
           <div className="sc-cell-tracks-header">
-            <span>{t("components.single-cell.tracks.title")}</span>
+            <span>{title || t("components.single-cell.tracks.title")}</span>
             <Checkbox.Group
               value={visibleTracks}
               onChange={(tracks) => dispatch(singleCellActions.updateVisibleTracks(tracks))}
@@ -244,14 +263,16 @@ export default function CellTracksPanel({ yScaleMode = "common" }) {
       >
         <div style={{ position: "relative" }}>
         {/* Pinned genes down every cell's plots (same genomic area as the heatmap). */}
-        <PinnedGenesOverlay left={plotInsets.left + 50} width={Math.max(0, tracksWidth - plotInsets.left - plotInsets.right - 100)} />
+        {!embedded && (
+          <PinnedGenesOverlay left={plotInsets.left + 50} width={Math.max(0, tracksWidth - plotInsets.left - plotInsets.right - 100)} />
+        )}
         <Row gutter={[16, 16]} ref={tracksRef}>
           {shown.length === 0 && (
             <Col span={24}>
               <Empty description={t("components.single-cell.tracks.empty")} />
             </Col>
           )}
-          {selectedCellIds.length > SC_MAX_TRACK_CELLS && (
+          {listed.length > SC_MAX_TRACK_CELLS && (
             <Col span={24}>
               <Text type="warning">
                 {t("components.single-cell.selection.track-limit", { limit: SC_MAX_TRACK_CELLS })}

@@ -3,6 +3,7 @@ import { Modal, Tabs, Alert, Space, Spin, Tag, Typography } from "antd";
 import Wrapper from "./index.style";
 
 import TracksModal from "../tracksModal";
+import EventTracks from "../singleCell/eventCellTracks";
 import AlterationCard from "../alterationCard";
 import { withTranslation } from "react-i18next";
 import { roleColorMap } from "../../helpers/utility";
@@ -99,9 +100,12 @@ export class FilteredEventDetailsModal extends Component {
       );
     }
 
+    // Single-cell patients have no patient-level tracks: show the event in
+    // the cells that carry it instead (EventTracks falls back to bulk).
+    const tracks = <TracksModal {...this.getTracksProps(tab)} />;
     return (
       <div className="filtered-event-tab-content">
-        <TracksModal {...this.getTracksProps(tab)} />
+        {tab === FILTERED_EVENT_DETAILS_TABS.PLOTS ? <EventTracks record={record} fallback={tracks} /> : tracks}
       </div>
     );
   };
