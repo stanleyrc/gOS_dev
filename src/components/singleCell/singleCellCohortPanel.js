@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Col, Empty, Progress, Row, Segmented, Slider, Space, Statistic, Table, Tabs, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Empty, InputNumber, Progress, Row, Segmented, Slider, Space, Statistic, Switch, Table, Tabs, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import axios from "axios";
 import HeatmapCanvas from "./heatmapCanvas";
@@ -48,6 +48,7 @@ import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import HelpDrawer from "./helpDrawer";
+import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -137,6 +138,29 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const [view, setView] = useState("overview");
   const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
   const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
+  // Clade F1 filter: drop alterations whose carrier cells do not sit in one clade of the
+  // patient's tree (scattered carriers are mostly noise); applies to every cohort view.
+  const [cladeFilterOn, setCladeFilterOn] = useState(true);
+  const [minCladeF1, setMinCladeF1] = useState(0.5);
+  const files = useMemo(() => {
+    if (!cladeFilterOn) return cohortFiles.files;
+    const out = {};
+    Object.entries(cohortFiles.files).forEach(([id, f]) => {
+      if (!f?.events || !f.tree) {
+        out[id] = f;
+        return;
+      }
+      out[id] = {
+        ...f,
+        events: f.events.filter((e) => {
+          const fit = cladeFitScore(`${e.cell_ids || ""}`.split(",").filter(Boolean), f.tree);
+          return !Number.isFinite(fit.score) || fit.score >= minCladeF1;
+        }),
+      };
+    });
+    return out;
+  }, [cohortFiles.files, cladeFilterOn, minCladeF1]);
+  const nDropped = useMemo(() => Object.entries(cohortFiles.files).reduce((n, [id, f]) => n + ((f?.events?.length || 0) - (files[id]?.events?.length || 0)), 0), [cohortFiles.files, files]);
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
 
@@ -393,6 +417,14 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             <Statistic title={t("components.single-cell.cohort.patients")} value={summaries.length} />
             <Statistic title={t("components.single-cell.cohort.cells")} value={totalCells} />
             {cohortFiles.progress < 100 && <Progress percent={cohortFiles.progress} size="small" style={{ width: 160 }} />}
+            <Tooltip title={t("components.single-cell.cohort.clade-filter-help")}>
+              <Space size={6}>
+                <Switch size="small" checked={cladeFilterOn} onChange={setCladeFilterOn} />
+                <Text>{t("components.single-cell.cohort.clade-filter")}</Text>
+                <InputNumber size="small" min={0} max={1} step={0.05} value={minCladeF1} disabled={!cladeFilterOn} onChange={(v) => setMinCladeF1(v ?? 0)} style={{ width: 70 }} />
+                {cladeFilterOn && nDropped > 0 && <Text type="secondary">{t("components.single-cell.cohort.clade-filter-dropped", { count: nDropped })}</Text>}
+              </Space>
+            </Tooltip>
             <HelpDrawer />
           </Space>
           <Tabs size="small" activeKey={view} onChange={setView} items={analysisTabs} />
@@ -402,7 +434,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             <Col span={24} key={s.caseReportId}>
               <PatientReportCard
                 patient={s.caseReportId}
-                events={cohortFiles.files[s.caseReportId]?.events || []}
+                events={files[s.caseReportId]?.events || []}
                 cells={cellsForPatient(datafiles, s.patientKey)}
                 variants={cohortFiles.files[s.caseReportId]?.variants || []}
                 signatures={cohortFiles.files[s.caseReportId]?.signatures || null}
@@ -415,52 +447,52 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "drivers" && (
           <>
             <Col span={24}>
-              <CohortGenePanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} onEvent={openEvent} />
+              <CohortGenePanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
             <Col span={24}>
-              <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} onEvent={openEvent} />
+              <OncoprintPanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
             <Col span={24}>
-              <CohortConvergencePanel summaries={summaries} files={cohortFiles.files} onEvent={openEvent} />
+              <CohortConvergencePanel summaries={summaries} files={files} onEvent={openEvent} />
             </Col>
             <Col span={24}>
-              <CohortCircosPanel summaries={summaries} files={cohortFiles.files} />
+              <CohortCircosPanel summaries={summaries} files={files} />
             </Col>
           </>
         )}
         {view === "overview" && (
           <Col span={24}>
-            <PatientCards summaries={summaries} files={cohortFiles.files} datafiles={datafiles} cloneColors={cloneColors} onOpen={openPatient} />
+            <PatientCards summaries={summaries} files={files} datafiles={datafiles} cloneColors={cloneColors} onOpen={openPatient} />
           </Col>
         )}
         {view === "mutations" && (
           <>
             <Col span={24}>
-              <TmbPanel summaries={summaries} files={cohortFiles.files} datafiles={datafiles} onOpen={openPatient} />
+              <TmbPanel summaries={summaries} files={files} datafiles={datafiles} onOpen={openPatient} />
             </Col>
             <Col span={24}>
-              <CohortSignaturesPanel summaries={summaries} files={cohortFiles.files} />
+              <CohortSignaturesPanel summaries={summaries} files={files} />
             </Col>
           </>
         )}
         {view === "rna" && (
           <Col span={24}>
-            <CohortRnaPanel summaries={summaries} datasets={datasets} cnRows={rows} files={cohortFiles.files} />
+            <CohortRnaPanel summaries={summaries} datasets={datasets} cnRows={rows} files={files} />
           </Col>
         )}
         {view === "events" && (
           <Col span={24}>
-            <CohortEventsTable summaries={summaries} files={cohortFiles.files} onEvent={openEvent} />
+            <CohortEventsTable summaries={summaries} files={files} onEvent={openEvent} />
           </Col>
         )}
         {view === "scatter" && (
           <Col span={24}>
-            <CohortScatterPanel summaries={summaries} files={cohortFiles.files} datafiles={datafiles} onOpen={openPatient} />
+            <CohortScatterPanel summaries={summaries} files={files} datafiles={datafiles} onOpen={openPatient} />
           </Col>
         )}
         {view === "amplicons" && (
           <Col span={24}>
-            <CohortAmpliconPanel summaries={summaries} files={cohortFiles.files} cnRows={rows} chromoBins={chromoBins} />
+            <CohortAmpliconPanel summaries={summaries} files={files} cnRows={rows} chromoBins={chromoBins} />
           </Col>
         )}
         {view === "qc" && (
