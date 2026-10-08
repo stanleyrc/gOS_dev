@@ -12,6 +12,8 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { chiSquareUpper, compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, FONT, Swatches, XBandLabels, patientColor } from "./charts";
+import CohortUmapPanel from "./cohortUmapPanel";
+import CohortDosagePanel from "./cohortDosagePanel";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -51,7 +53,7 @@ function chiSquareTable(table) {
  * cell state, and any gene's expression per patient (matrices loaded on
  * demand).
  */
-export default function CohortRnaPanel({ summaries, datasets }) {
+export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files: filesProp = {} }) {
   const { t } = useTranslation("common");
   const layout = useSelector((s) => s.SingleCell.layout);
   const [ref, width] = useContainerWidth(1000);
@@ -158,7 +160,8 @@ export default function CohortRnaPanel({ summaries, datasets }) {
   const qcMetrics = [["nCount_RNA", t("components.single-cell.cohort.rna-counts"), true], ["nFeature_RNA", t("components.single-cell.cohort.rna-genes"), true], ["percent_mt", t("components.single-cell.cohort.rna-mt"), false]].filter(([k]) => loaded.some((s) => cellsOf(s).some((c) => Number.isFinite(Number(c[k])))));
   const qcGroups = (k) => loaded.map((s, i) => ({ key: s.caseReportId, label: s.caseReportId, color: patientColor(i), values: cellsOf(s).map((c) => Number(c[k])), ids: cellsOf(s).map((c) => c.displayId) }));
   const M = { top: 14, right: 12, bottom: 50, left: 44 };
-  const compW = Math.max(320, Math.floor(width / 2) - 24);
+  const compW = Math.max(320, Math.floor((width * 10) / 24) - 28);
+  const qcW = Math.max(600, Math.floor((width * 14) / 24) - 28);
   const x = d3.scaleBand().domain(loaded.map((s) => s.caseReportId)).range([M.left, compW - M.right]).padding(0.3);
   const y = d3.scaleLinear().domain([0, 1]).range([240 - M.bottom, M.top]);
   const geneTest = geneData && geneData.length >= 2 ? compareGroups(geneData.map((g) => ({ key: g.patient, values: g.values }))) : null;
@@ -175,9 +178,23 @@ export default function CohortRnaPanel({ summaries, datasets }) {
             <Text type="secondary">{t("components.single-cell.cohort.rna-loaded", { count: loaded.length, cells: d3.sum(loaded, (s) => cellsOf(s).length) })}</Text>
           </Space>
         </Col>
+        <Col span={24}>
+          <CohortUmapPanel summaries={summaries} datasets={datasets} />
+        </Col>
         {composition && (
-          <Col xs={24} xl={12}>
-            <Card size="small" title={<Space><PieChartOutlined />{t("components.single-cell.cohort.rna-composition", { field: chosenField })}</Space>} extra={<SvgExportButton containerRef={ref} name="cohort-rna-composition" />}>
+          <Col xs={24} xl={10}>
+            <Card
+              size="small"
+              title={<Space><PieChartOutlined />{t("components.single-cell.cohort.rna-composition", { field: chosenField })}</Space>}
+              extra={
+                <Space>
+                  {Number.isFinite(composition.p) && (
+                    <Text type={composition.p < 0.05 ? "danger" : "secondary"} style={{ fontSize: 12 }}>{`chi-square ${composition.p < 1e-4 ? "p < 1e-4" : `p = ${composition.p.toFixed(3)}`}`}</Text>
+                  )}
+                  <SvgExportButton containerRef={ref} name="cohort-rna-composition" />
+                </Space>
+              }
+            >
               <svg width={compW} height={240}>
                 {y.ticks(5).map((v) => (
                   <g key={v} transform={`translate(0,${y(v)})`}>
@@ -200,24 +217,19 @@ export default function CohortRnaPanel({ summaries, datasets }) {
                     </g>
                   );
                 })}
-                <XBandLabels scale={x} y={240 - M.bottom + 20} rotate={loaded.length > 6} />
-                <text x={compW - M.right} y={M.top + 2} textAnchor="end" fontSize={FONT.axis} fill={Number.isFinite(composition.p) && composition.p < 0.05 ? "#cf1322" : "#8c8c8c"}>
-                  {Number.isFinite(composition.p) ? `chi-square ${composition.p < 1e-4 ? "p < 1e-4" : `p = ${composition.p.toFixed(3)}`}` : ""}
-                </text>
+                <XBandLabels scale={x} y={240 - M.bottom + 20} rotate={loaded.length > 6 || x.bandwidth() < 72} />
               </svg>
               <Swatches items={composition.levels.map((l) => ({ key: l, color: levelColors[l], label: l }))} />
             </Card>
           </Col>
         )}
-        <Col xs={24} xl={12}>
+        <Col xs={24} xl={14}>
           <Card size="small" title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.rna-qc")}</Space>}>
-            <Row gutter={[12, 12]}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {qcMetrics.map(([k, label, log]) => (
-                <Col key={k} span={qcMetrics.length > 1 ? 12 : 24}>
-                  <BoxStrips groups={qcGroups(k)} width={Math.max(220, compW / (qcMetrics.length > 1 ? 2 : 1) - 12)} height={220} yTitle={label} log={log} />
-                </Col>
+                <BoxStrips key={k} groups={qcGroups(k)} width={Math.max(220, Math.floor(qcW / qcMetrics.length) - 8)} height={300} yTitle={label} log={log} />
               ))}
-            </Row>
+            </div>
           </Card>
         </Col>
         <Col xs={24} xl={12}>
@@ -242,6 +254,9 @@ export default function CohortRnaPanel({ summaries, datasets }) {
             )}
             <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.rna-markers-help")}</Text>
           </Card>
+        </Col>
+        <Col span={24}>
+          <CohortDosagePanel summaries={summaries} files={filesProp} rna={rna} cnRows={cnRows} datasets={datasets} />
         </Col>
         <Col xs={24} xl={12}>
           <Card
