@@ -166,6 +166,8 @@ export default function appReducer(state = initState, action) {
     }
     case actions.SC_SIDE_PANEL_UPDATED:
       return { ...state, sidePanel: Boolean(action.visible) };
+    case actions.SC_CELL_FIELD_ADDED:
+      return { ...state, cells: state.cells.map((c) => ({ ...c, [action.name]: action.values[c.cell_id] ?? null })) };
     case actions.SC_RNA_FIELD_ADDED: {
       if (state.rna.status !== "ok") return state;
       const summary = state.rna.data;

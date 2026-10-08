@@ -75,16 +75,15 @@ export default function UmapPanel() {
   const [geneOptions, setGeneOptions] = useState([]);
   const [tip, setTip] = useState(null);
   const [lasso, setLasso] = useState(null);
-  const { matrix } = useRnaData();
+  const { matrix, summary } = useRnaData();
   const [k, setK] = useState(4);
   const [clustering, setClustering] = useState(false);
   // Quick clustering: PCA (10 PCs) on the 2,000 most variable genes, then
   // k-means; the labels become a metadata field usable everywhere.
   const runClustering = () => {
-    if (!matrix || rna.status !== "ok") return;
+    if (!matrix || !summary) return;
     setClustering(true);
     setTimeout(() => {
-      const summary = rna.data;
       const genes = topVariableGenes(summary, matrix, 2000);
       const idx = genes.map((g) => summary.geneIndex.get(g));
       const X = scaledExpression(matrix, idx, summary.cells.length);
@@ -101,7 +100,6 @@ export default function UmapPanel() {
   const dragRef = useRef(null);
   const hoveredRef = useRef(null);
 
-  const summary = rna.status === "ok" ? rna.data : null;
   const width = Math.max(240, Math.min(containerWidth - LEGEND_WIDTH - 16, 820));
   const inTree = useMemo(() => new Set(order), [order]);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
