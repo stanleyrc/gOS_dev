@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
+import { layoutTree, parseNewick } from "../../../helpers/singleCell/newick";
 
 // Patient-level files of every single-cell patient, for the cohort views:
 // SNV sites (with tree categories), SBS signature fits and filtered events.
@@ -10,11 +11,25 @@ async function loadPatient(dataset, summary, cancelToken) {
   const key = `${dataset.id}/${summary.caseReportId}`;
   if (cache.has(key)) return cache.get(key);
   const get = (file) => tryGet(casePath(dataset, summary.caseReportId, file), { cancelToken });
-  const [snv, signatures, events] = await Promise.all([get("snv_matrix.json"), get("signatures.json"), get("filtered.events.json")]);
+  const [snv, signatures, events, tree] = await Promise.all([
+    get("snv_matrix.json"),
+    get("signatures.json"),
+    get("filtered.events.json"),
+    tryGet(casePath(dataset, summary.caseReportId, "tree.nwk"), { cancelToken, responseType: "text" }),
+  ]);
+  let treeLayout = null;
+  if (tree.status === "ok") {
+    try {
+      treeLayout = layoutTree(parseNewick(tree.data));
+    } catch (error) {
+      treeLayout = null;
+    }
+  }
   const out = {
     variants: snv.status === "ok" ? snv.data?.variants || [] : null,
     signatures: signatures.status === "ok" ? signatures.data : null,
     events: events.status === "ok" ? (Array.isArray(events.data) ? events.data : []) : null,
+    tree: treeLayout,
   };
   cache.set(key, out);
   return out;

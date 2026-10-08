@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Col, Empty, Progress, Row, Segmented, Space, Statistic, Table, Tabs, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Empty, Progress, Row, Segmented, Slider, Space, Statistic, Table, Tabs, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import axios from "axios";
 import HeatmapCanvas from "./heatmapCanvas";
@@ -25,6 +25,9 @@ import {
   domainExtents,
   genomicColumnLookup,
   naturalCompare,
+  panDomain,
+  wheelZoomFactor,
+  zoomDomain,
 } from "../../helpers/singleCell/matrix";
 import { layoutTree, parseNewick, pruneTree, toUnitHeight } from "../../helpers/singleCell/newick";
 import { cnDistances, upgma } from "../../helpers/singleCell/phylogeny";
@@ -176,7 +179,20 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const treeWidth = rowMode === "cells" ? TREE_WIDTH : 0;
   const heatWidth = Math.max(200, containerWidth - LABEL_WIDTH - treeWidth - 12);
-  const domains = useMemo(() => [[1, genomeLength || 1]], [genomeLength]);
+  // zoomable genome window (wheel with Cmd/Ctrl, or pinch; drag to pan; click a chromosome label)
+  const whole = useMemo(() => [1, genomeLength || 1], [genomeLength]);
+  const [zoomed, setZoomed] = useState(null);
+  const domains = useMemo(() => [zoomed || whole], [zoomed, whole]);
+  const [rowScale, setRowScale] = useState(1); // height multiplier
+  const zoomAt = ({ x, deltaY, deltaMode, pinch }) => {
+    const d = domains[0];
+    const anchor = d[0] + (x / Math.max(1, heatWidth)) * (d[1] - d[0]);
+    setZoomed(zoomDomain(d, anchor, wheelZoomFactor({ deltaY, deltaMode, pinch }), whole, 1e5));
+  };
+  const panBy = ({ dx }) => {
+    const d = domains[0];
+    setZoomed(panDomain(d, (-dx * (d[1] - d[0])) / Math.max(1, heatWidth), whole));
+  };
   // Heatmap rows: one consensus row per patient, or every loaded cell grouped by patient.
   const { rows: heatRows, layout: cohortTree } = useMemo(() => {
     if (rowMode === "patients") {
@@ -321,8 +337,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const rowHeight =
     rowMode === "patients"
-      ? ROW_HEIGHT
-      : Math.max(1, Math.min(4, MAX_CELL_ROWS_HEIGHT / Math.max(1, heatRows.length)));
+      ? ROW_HEIGHT * rowScale
+      : Math.max(1, Math.min(6, (MAX_CELL_ROWS_HEIGHT * rowScale) / Math.max(1, heatRows.length)));
   const height = Math.max(ROW_HEIGHT, heatRows.length * rowHeight);
 
   const openCell = (cell) => cell?._patient && dispatch(datasetsActions.openCaseReport(cell._patient.record.datasetId, cell.cell_id));
@@ -356,6 +372,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 cells={cellsForPatient(datafiles, s.patientKey)}
                 variants={cohortFiles.files[s.caseReportId]?.variants || []}
                 signatures={cohortFiles.files[s.caseReportId]?.signatures || null}
+                treeLayout={cohortFiles.files[s.caseReportId]?.tree || null}
                 cloneColors={cloneColors}
                 onOpen={() => openPatient(s)}
               />
@@ -425,6 +442,13 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             extra={
               <Space>
                 {progress < 100 && <Progress percent={progress} size="small" style={{ width: 160 }} />}
+                <Space size={4}>
+                  <Text type="secondary">{t("components.single-cell.cohort.height")}</Text>
+                  <Slider min={0.5} max={4} step={0.25} value={rowScale} onChange={setRowScale} style={{ width: 110, margin: "0 6px" }} />
+                </Space>
+                {zoomed && (
+                  <Button size="small" onClick={() => setZoomed(null)}>{t("components.single-cell.cohort.reset-zoom")}</Button>
+                )}
                 <Segmented
                   size="small"
                   value={rowMode}
@@ -475,6 +499,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                   cols={heat.cols}
                   colorAt={heat.colorAt}
                   separators={heat.axis.separators}
+                  onWheelZoom={zoomAt}
+                  onDrag={panBy}
+                  onDoubleClick={() => setZoomed(null)}
                   onClick={({ row }) => heatRows[row] && openPatient(heatRows[row].summary)}
                   onHover={({ row, col, clientX, clientY }) => {
                     const entry = heatRows[row];
@@ -513,13 +540,23 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 {heat.axis.spans
                   .filter((s) => s.x1 - s.x0 >= 14)
                   .map((s) => (
-                    <span key={s.chromosome} className="sc-axis-label" style={{ left: s.x0, width: s.x1 - s.x0 }}>
+                    <span
+                      key={s.chromosome}
+                      className="sc-axis-label sc-axis-link"
+                      style={{ left: s.x0, width: s.x1 - s.x0 }}
+                      title={t("components.single-cell.heatmap.zoom-chromosome", { chromosome: s.chromosome })}
+                      onClick={() => {
+                        const c = chromoBins[s.chromosome];
+                        if (c) setZoomed([c.startPlace, c.endPlace]);
+                      }}
+                    >
                       {s.chromosome}
                     </span>
                   ))}
               </div>
               <div className="sc-heatmap-footer">
                 <HeatmapLegend type="cn" palette={palette} showClones={false} />
+                <Text type="secondary" className="sc-hint">{t("components.single-cell.cohort.heatmap-help")}</Text>
               </div>
             </div>
           </Card>
