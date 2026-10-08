@@ -8,7 +8,6 @@ import SavedGroupsBar from "../../components/singleCell/savedGroupsBar";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
 import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
-import DosagePanel from "../../components/singleCell/rna/dosagePanel";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
@@ -27,7 +26,7 @@ const { Text } = Typography;
 export default function SingleCellRnaTab() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { summary, matrix, error, rowsFor, rowOfId } = useRnaData();
+  const { summary, matrix, error, rowsFor } = useRnaData();
   const service = useSelector((state) => state.ScAnalysis.service);
   const expressionGene = useSelector((state) => state.ScAnalysis.expression.gene);
   const [violinGenes, setViolinGenes] = useState([]);
@@ -62,9 +61,6 @@ export default function SingleCellRnaTab() {
         </Col>
         <Col xs={24} xxl={12}>
           <PhyloExpressionCard summary={summary} matrix={matrix} />
-        </Col>
-        <Col span={24}>
-          <DosagePanel summary={summary} matrix={matrix} rowOfId={rowOfId} />
         </Col>
         <Col span={24}>
           <SavedGroupsBar />

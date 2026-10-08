@@ -436,7 +436,8 @@
         "tab6": "Signatures",
         "tab7": "Single-Cell",
         "tab8": "Single-Cell RNA",
-        "tab9": "Single-Cell Signatures"
+        "tab9": "Single-Cell Signatures",
+        "tab10": "Single-Cell RNA × CN"
       }
     },
     "detail-error-view": {
@@ -1118,7 +1119,9 @@
         "summary": "{{snvs}} SNV sites · {{genes}} copy-number / fusion events · {{cells}} cells carrying them",
         "show": "Show on the Single-Cell heatmap",
         "help": "Tick events below to show them on the Single-Cell heatmap: SNVs filter the SNV heatmap to those sites, copy-number changes and fusions zoom the CN heatmap to their genes, and the cells carrying them are selected.",
-        "filter-tag": "Picked events: {{count}} sites"
+        "filter-tag": "Picked events: {{count}} sites",
+        "strong-only": "Strong events only",
+        "strong-help": "Hide likely noise: deletions must be in at least 10% of tumor cells, other events in at least 3 cells and 5% of tumor cells. Turn off to see every event."
       },
       "dosage": {
         "title": "Dosage vs expression",

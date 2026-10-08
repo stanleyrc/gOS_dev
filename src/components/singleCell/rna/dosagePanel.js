@@ -10,7 +10,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import useContainerWidth from "../useContainerWidth";
 
 const { Text } = Typography;
-const HEIGHT = 300;
+const HEIGHT = 480;
 const M = { top: 12, right: 12, bottom: 36, left: 46 };
 const NO_CLONE = "#8c8c8c";
 
@@ -100,23 +100,25 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
   };
 
   if (!summary || !cnData) return null;
-  const plotWidth = Math.max(320, Math.min(width >= 1200 ? width * 0.55 : width, 760) - 16);
+  // xl: plot column is 15/24 of the card
+  const plotWidth = Math.max(320, (width >= 1200 ? (width * 15) / 24 : width) - 24);
   const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : "–");
   const columns = [
     {
       title: t("components.single-cell.results.gene"),
       dataIndex: "gene",
       key: "gene",
+      width: 110,
       render: (g) => (
         <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setGene(g)}>
           {g}
         </Button>
       ),
     },
-    { title: "ρ", dataIndex: "rho", key: "rho", sorter: (a, b) => a.rho - b.rho, defaultSortOrder: "descend", render: (v) => fmt(v) },
-    { title: t("components.single-cell.dosage.slope"), dataIndex: "slope", key: "slope", sorter: (a, b) => a.slope - b.slope, render: (v) => fmt(v) },
-    { title: t("components.single-cell.dosage.mean-cn"), dataIndex: "meanCn", key: "cn", sorter: (a, b) => a.meanCn - b.meanCn, render: (v) => fmt(v, 1) },
-    { title: "n", dataIndex: "n", key: "n" },
+    { title: "ρ", dataIndex: "rho", key: "rho", width: 64, sorter: (a, b) => a.rho - b.rho, defaultSortOrder: "descend", render: (v) => fmt(v) },
+    { title: t("components.single-cell.dosage.slope"), dataIndex: "slope", key: "slope", width: 72, sorter: (a, b) => a.slope - b.slope, render: (v) => fmt(v) },
+    { title: t("components.single-cell.dosage.mean-cn"), dataIndex: "meanCn", key: "cn", width: 84, sorter: (a, b) => a.meanCn - b.meanCn, render: (v) => fmt(v, 1) },
+    { title: "n", dataIndex: "n", key: "n", width: 56 },
   ];
 
   return (
@@ -146,7 +148,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
     >
       <div ref={containerRef}>
         <Row gutter={[24, 12]}>
-          <Col xs={24} xl={14}>
+          <Col xs={24} xl={15}>
             {!locus || geneIndex == null ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.dosage.no-gene", { gene })} />
             ) : (
@@ -170,12 +172,12 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
               </>
             )}
           </Col>
-          <Col xs={24} xl={10}>
+          <Col xs={24} xl={9}>
             {progress != null && <Progress percent={progress} size="small" />}
             {ranking ? (
               <>
                 <Text type="secondary">{t("components.single-cell.dosage.rank-help", { count: ranking.length })}</Text>
-                <Table size="small" rowKey="gene" columns={columns} dataSource={ranking} pagination={{ pageSize: 10 }} />
+                <Table size="small" rowKey="gene" columns={columns} dataSource={ranking} tableLayout="fixed" style={{ maxWidth: 420 }} pagination={{ pageSize: 15, size: "small", showSizeChanger: false }} />
               </>
             ) : (
               <Text type="secondary">{t("components.single-cell.dosage.rank-intro")}</Text>
