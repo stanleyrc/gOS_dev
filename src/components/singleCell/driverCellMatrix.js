@@ -114,16 +114,17 @@ export default function DriverCellMatrix({ drivers }) {
             return (
               <g key={r.label}>
                 <rect x={0} y={y} width={LABEL_W + matW + 70} height={ROW_H} fill={k % 2 ? "#fafafa" : "#ffffff"} />
-                <rect x={0} y={y + 3} width={6} height={ROW_H - 6} fill={CLASS_COLORS[r.class]} />
+                <rect x={0} y={y + 3} width={6} height={ROW_H - 6} fill={CLASS_COLORS[r.class]} style={{ cursor: "pointer" }} onClick={(e) => select([...r.carriers], e)}>
+                  <title>{t("components.single-cell.report.matrix-select")}</title>
+                </rect>
                 <text
                   x={12}
                   y={y + ROW_H / 2}
                   dy="0.35em"
                   fontSize={11}
-                  fill="#262626"
+                  fill="#1677ff"
                   style={{ cursor: "pointer" }}
-                  onClick={(e) => select([...r.carriers], e)}
-                  onDoubleClick={() => {
+                  onClick={() => {
                     dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"));
                     dispatch(settingsActions.updateTab("1"));
                   }}
