@@ -502,6 +502,8 @@ export class FilteredEventsListPanel extends Component {
     let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
     let records =
       (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
+    // optional row filter from the page (e.g. single-cell "strong events only")
+    if (this.props.recordFilter) records = records.filter(this.props.recordFilter);
 
     const { columnFilters } = this.props;
     const filterValues = { ...columnFilters };
