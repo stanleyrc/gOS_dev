@@ -15,6 +15,7 @@ import { BoxStrips, FONT, Swatches, XBandLabels, patientColor } from "./charts";
 import CohortUmapPanel from "./cohortUmapPanel";
 import CohortDosagePanel from "./cohortDosagePanel";
 import CohortStateClonePanel from "./cohortStateClonePanel";
+import CohortGeneSetPanel from "./cohortGeneSetPanel";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -52,6 +53,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   const [geneQuery, setGeneQuery] = useState("");
   const [geneData, setGeneData] = useState(null);
   const [geneBusy, setGeneBusy] = useState(false);
+  const [scores, setScores] = useState(null);
   const datasetOf = (s) => datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
 
   useEffect(() => {
@@ -166,7 +168,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           </Space>
         </Col>
         <Col span={24}>
-          <CohortUmapPanel summaries={summaries} datasets={datasets} />
+          <CohortUmapPanel summaries={summaries} datasets={datasets} overlay={scores} />
         </Col>
         {composition && (
           <Col xs={24} xl={10}>
@@ -241,6 +243,9 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
             )}
             <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.rna-markers-help")}</Text>
           </Card>
+        </Col>
+        <Col span={24}>
+          <CohortGeneSetPanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} field={chosenField} sharedMarkers={sharedMarkers} onScores={setScores} />
         </Col>
         <Col span={24}>
           <CohortStateClonePanel
