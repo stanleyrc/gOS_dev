@@ -17,6 +17,7 @@ const { Text } = Typography;
 const TREE_WIDTH = 220;
 const LABEL_W = 120;
 const GAP = 8;
+const HEADER_H = 86;
 
 /**
  * Copies of the selected walks along the phylogeny: per cell (one stacked
@@ -60,7 +61,7 @@ export default function WalkTreeBars({ walks, colorOf }) {
   );
   if (!treeLayout || !order.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.tree.none")} />;
   if (!walks.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.none-selected")} />;
-  const barsW = Math.max(240, width - TREE_WIDTH - GAP - LABEL_W - 60);
+  const barsW = Math.max(240, width - TREE_WIDTH - GAP - LABEL_W - 30);
   const maxTot = d3.max(values, (v) => v.tot) || 1;
   const x = d3.scaleLinear().domain([0, unit === "copies" ? maxTot : 1]).range([0, barsW]);
   // separate lanes: one small-multiple per walk with its own copy scale
@@ -91,6 +92,16 @@ export default function WalkTreeBars({ walks, colorOf }) {
       }
     >
       <div ref={ref}>
+        {layoutMode === "separate" && (
+          <svg width={TREE_WIDTH + GAP + LABEL_W + barsW + 60} height={HEADER_H} style={{ display: "block" }}>
+            {walks.map((w, j) => (
+              <text key={w.id} transform={`translate(${TREE_WIDTH + GAP + laneLeft(j) + 4},${HEADER_H - 4}) rotate(-30)`} fontSize={12} fontWeight={600} fill={colorOf(w.id)}>
+                {w.label.length > 26 ? `${w.label.slice(0, 25)}…` : w.label}
+                <title>{`${w.label} · max ${laneMax[j].toFixed(0)} copies`}</title>
+              </text>
+            ))}
+          </svg>
+        )}
         <div style={{ display: "flex", gap: GAP, alignItems: "flex-start" }} onMouseLeave={() => share(null)}>
           <PhylogenyCanvas
             layout={treeLayout}
@@ -116,14 +127,14 @@ export default function WalkTreeBars({ walks, colorOf }) {
               return share(node.isLeaf ? order[node.firstLeaf] : null);
             }}
           />
-          <svg width={LABEL_W + barsW + 60} height={height + 34}>
+          <svg width={LABEL_W + barsW + 60} height={height + 24}>
             {layoutMode === "separate" &&
               walks.map((w, j) => (
                 <g key={`lane-${w.id}`} transform={`translate(${laneLeft(j)},${height + 2})`}>
-                  <text x={0} y={12} fontSize={11} fontWeight={600} fill={colorOf(w.id)}>{w.label.length > 18 ? `${w.label.slice(0, 17)}…` : w.label}</text>
-                  <line x1={0} x2={laneW} y1={16} y2={16} stroke="#d9d9d9" />
-                  <text x={laneW} y={28} textAnchor="end" fontSize={9} fill="#8c8c8c">{`${laneMax[j].toFixed(0)} copies`}</text>
-                  <line x1={0} x2={0} y1={-height - 2} y2={16} stroke="#e8e8e8" />
+                  <line x1={0} x2={laneW} y1={2} y2={2} stroke="#d9d9d9" />
+                  <text x={0} y={14} fontSize={10} fill="#8c8c8c">0</text>
+                  <text x={laneW} y={14} textAnchor="end" fontSize={10} fill="#8c8c8c">{laneMax[j].toFixed(0)}</text>
+                  <line x1={0} x2={0} y1={-height - 2} y2={2} stroke="#e8e8e8" />
                 </g>
               ))}
             {groups.map((g, i) => {

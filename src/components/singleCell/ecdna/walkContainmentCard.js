@@ -20,7 +20,7 @@ export default function WalkContainmentCard({ walks, colorOf }) {
   if (walks.length < 2) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.contain-few")} />;
   const order = d3.range(walks.length).sort((a, b) => lengths[b] - lengths[a]);
   const cell = Math.max(28, Math.min(48, 520 / walks.length));
-  const LEFT = 170;
+  const LEFT = 250;
   const TOP = 110;
   const color = d3.scaleSequential(d3.interpolateBlues).domain([0, 1]);
   const pairs = [];
@@ -33,7 +33,7 @@ export default function WalkContainmentCard({ walks, colorOf }) {
         ))}
         {order.map((i, r) => (
           <g key={`r${i}`}>
-            <text x={LEFT - 8} y={TOP + (r + 0.5) * cell} dy="0.35em" textAnchor="end" fontSize={11} fill={colorOf(walks[i].id)} fontWeight={600}>{`${walks[i].label} (${fmtBp(lengths[i])})`}</text>
+            <text x={LEFT - 8} y={TOP + (r + 0.5) * cell} dy="0.35em" textAnchor="end" fontSize={11} fill={colorOf(walks[i].id)} fontWeight={600}>{`${walks[i].label.length > 26 ? `${walks[i].label.slice(0, 25)}…` : walks[i].label} (${fmtBp(lengths[i])})`}<title>{walks[i].label}</title></text>
             {order.map((j, c) => (
               <g key={`${i}-${j}`}>
                 <rect x={LEFT + c * cell + 1} y={TOP + r * cell + 1} width={cell - 2} height={cell - 2} fill={i === j ? "#f0f0f0" : color(matrix[i][j])} rx={3} />
