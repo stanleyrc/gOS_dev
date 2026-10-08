@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Alert, Button, Select, Space, Switch, Typography } from "antd";
 import CellTracksPanel from "./cellTracksPanel";
 import CellIgvPanel from "./cellIgvPanel";
-import GeneTrackMini from "./geneTrackMini";
+import GenesPlot from "../genesPlotHiglass";
+import HoverLine from "../hoverLine";
 import useContainerWidth from "./useContainerWidth";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
@@ -14,6 +15,7 @@ import { padDomains } from "../../helpers/singleCell/eventDomains";
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
+const GENES_H = 130;
 const DEFAULT_PAD = 5e4;
 const DEFAULT_MULTI = 3;
 
@@ -36,7 +38,8 @@ function paddedEventDomains(chromoBins, location, pad, genomeLength) {
 function SingleCellEventTracks({ record }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { chromoBins, genomeLength } = useSelector((state) => state.Settings);
+  const { chromoBins, genomeLength, domains } = useSelector((state) => state.Settings);
+  const genesList = useSelector((state) => state.Genes?.list || []);
   const { cells, cloneColors } = useSelector((state) => state.SingleCell);
   const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
   const [pad, setPad] = useState(DEFAULT_PAD);
@@ -119,9 +122,14 @@ function SingleCellEventTracks({ record }) {
           <CellIgvPanel view={igvView} embedded />
         </div>
       )}
-      <div ref={trackRef} style={{ padding: "0 8px" }}>
+      <div ref={trackRef} style={{ padding: "0 8px", position: "relative" }}>
         <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.event-cells.genes")}</Text>
-        <GeneTrackMini width={Math.max(200, trackWidth - 16)} highlight={record?.gene} />
+        {genesList.length > 0 && (
+          <div style={{ position: "relative", height: GENES_H }}>
+            <GenesPlot {...{ width: Math.max(200, trackWidth - 16), height: GENES_H, domains, genesList }} />
+            <HoverLine width={Math.max(200, trackWidth - 16)} height={GENES_H} margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }} />
+          </div>
+        )}
       </div>
       <CellTracksPanel
         cellIds={shown}

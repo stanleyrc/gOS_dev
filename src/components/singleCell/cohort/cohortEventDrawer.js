@@ -6,7 +6,8 @@ import { Button, Checkbox, Descriptions, Drawer, Select, Space, Switch, Tag, Typ
 import { TrackPlot } from "../cellTracksPanel";
 import { SC_TRACKS } from "../../../redux/singleCell/actions";
 import CellIgvPanel from "../cellIgvPanel";
-import GeneTrackMini from "../geneTrackMini";
+import GenesPlot from "../../genesPlotHiglass";
+import HoverLine from "../../hoverLine";
 import useContainerWidth from "../useContainerWidth";
 import settingsActions from "../../../redux/settings/actions";
 import datasetsActions from "../../../redux/datasets/actions";
@@ -29,7 +30,8 @@ const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.repla
 export default function CohortEventDrawer({ open, onClose, summary, event, dataset, cells = [], cloneColors = {} }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { chromoBins, genomeLength } = useSelector((s) => s.Settings);
+  const { chromoBins, genomeLength, domains } = useSelector((s) => s.Settings);
+  const genesList = useSelector((s) => s.Genes?.list || []);
   const [ref, width] = useContainerWidth(640);
   const [picked, setPicked] = useState([]);
   const [tracks, setTracks] = useState(["total", "coverage"]);
@@ -141,7 +143,12 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
             <Text>{t("components.single-cell.event-cells.igv")}</Text>
           </Space>
           <Checkbox.Group value={tracks} onChange={setTracks} options={SC_TRACKS.map((track) => ({ value: track, label: t(`components.single-cell.tracks.${track}`) }))} />
-          <GeneTrackMini width={Math.max(300, width - 8)} highlight={`${event.gene || ""}`.split("::")[0]} />
+          {genesList.length > 0 && (
+            <div style={{ position: "relative", height: 130 }}>
+              <GenesPlot {...{ width: Math.max(300, width - 8), height: 130, domains, genesList }} />
+              <HoverLine width={Math.max(300, width - 8)} height={130} margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }} />
+            </div>
+          )}
           {picked.map((id) => (
             <div key={id} className="sc-cell-block" style={{ borderLeftColor: cloneOf.get(id) != null ? cloneColors[cloneOf.get(id)] : undefined }}>
               <div className="sc-cell-title">
