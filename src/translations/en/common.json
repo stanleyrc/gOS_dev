@@ -1056,7 +1056,18 @@
         "scatter-help": "One point per patient. Click a point to open the patient.",
         "view-reports": "Key findings",
         "tmb-per-mb": "Per Mb (approx.)",
-        "tmb-y-per-mb": "SNV sites per callable Mb"
+        "tmb-y-per-mb": "SNV sites per callable Mb",
+        "genes-title": "Altered genes across patients",
+        "genes-fraction": "% of tumor cells",
+        "genes-cells": "Cells",
+        "genes-y-fraction": "Tumor cells with the alteration",
+        "genes-y-cells": "Cells with the alteration",
+        "genes-note": "one bar per patient, stacked by alteration class",
+        "card-cells": "{{tumor}} tumor + {{normal}} normal cells · {{clones}} clones",
+        "card-clonal": "Clonal drivers",
+        "card-subclonal": "Subclonal drivers ({{count}})",
+        "card-signatures": "SBS signatures (all sites)",
+        "card-burden": "SNVs: {{truncal}} truncal · {{subclonal}} subclonal · {{private}} private"
       },
       "compare": {
         "title": "Compare groups",
@@ -1224,7 +1235,12 @@
         "clade-meta": "{{cells}} cells · {{sites}} sites",
         "too-few": "fewer than 10 sites",
         "cos-truncal": "cos vs truncal {{value}}",
-        "tree-help": "Each clade's bar is the NNLS fit of the SBS96 profile of the tree sites with alt reads in its cells, using the signatures SigProfiler found for this patient. The right column is the cosine similarity of the clade's profile to the truncal profile (red below 0.8). Click a clade to select its cells."
+        "tree-help": "Each clade's bar is the NNLS fit of the SBS96 profile of the tree sites with alt reads in its cells, using the signatures SigProfiler found for this patient. The right column is the cosine similarity of the clade's profile to the truncal profile (red below 0.8). Click a clade to select its cells.",
+        "clade-vs-rest": "{{clade}} vs the other tumor cells",
+        "clade-vs-rest-meta": "{{nClade}} sites in the clade, {{nRest}} outside · cosine between profiles {{cos}}",
+        "clade-share": "Share in clade [95% CI]",
+        "rest-share": "Share outside [95% CI]",
+        "clade-vs-rest-help": "NNLS shares of the signatures found for this patient, with 95% bootstrap intervals (80 resamples of sites). * = intervals do not overlap."
       },
       "umap": {
         "title": "RNA UMAP",
@@ -1252,7 +1268,8 @@
         "umap": "RNA UMAP",
         "cell-table": "Cell table",
         "keep-genes": "Keep gene track when scrolling",
-        "tree-bars": "Tree bars"
+        "tree-bars": "Tree bars",
+        "signature-tree": "Signatures on tree"
       },
       "igv": {
         "title": "Reads (IGV)",
@@ -1410,7 +1427,9 @@
         "stat-depth": "Median depth",
         "stat-rna": "Cells with RNA",
         "median": "median {{value}}",
-        "segments": "Segments"
+        "segments": "Segments",
+        "correlations": "Metric correlations (Spearman)",
+        "medians-title": "Medians per group"
       },
       "bars": {
         "title": "Bar annotations on the phylogeny",
@@ -1471,7 +1490,21 @@
         "col-cells": "Cells",
         "col-clonality": "Clonality",
         "col-clones": "By clone",
-        "igv-fusion": "View reads at the first breakpoint of the fusion in carrier cells (verify the call)"
+        "igv-fusion": "View reads at the first breakpoint of the fusion in carrier cells (verify the call)",
+        "findings-title": "Further findings (computed in the browser)",
+        "findings-sigs": "Clade-specific signatures",
+        "findings-sigs-trunk": "Truncal sites: {{list}}.",
+        "findings-sigs-clone": "{{n}} post-trunk sites · top {{top}} ({{share}}) · cosine to truncal {{cos}}.",
+        "findings-sigs-gained": "Gained after the trunk: {{list}}.",
+        "findings-sigs-few": "only {{n}} post-trunk sites (too few to fit).",
+        "findings-rna": "Cell states by clone (RNA)",
+        "findings-rna-test": "Composition of {{field}} differs between clones: chi-square {{p}}.",
+        "findings-cycling": "{{pct}} cycling (S/G2M)",
+        "findings-dosage": "Copy-number drivers and their expression",
+        "findings-dosage-row": "{{kind}}: Spearman ρ {{rho}} between copy number and expression; mean log-expression {{inside}} in {{nIn}} carriers vs {{outside}} in {{nOut}} other cells.",
+        "findings-expressed": "dosage-expressed",
+        "findings-anticorrelated": "anti-correlated",
+        "findings-dosage-help": "Cells with both DNA and RNA; ρ across all cells, means split by carrier status."
       },
       "site": {
         "clade-cells": " · {{count}} cells in the clade",
@@ -1488,7 +1521,17 @@
         "cn-ring": "CN ring",
         "summary": "{{junctions}} junctions · {{segments}} segments",
         "help": "Outer ring: chromosomes. Inner ring: total copy number of the cell's genome graph (heatmap palette, height ∝ CN up to 8). Arcs: ALT junctions between breakpoints.",
-        "select-cell": "Select this cell in the heatmap"
+        "select-cell": "Select this cell in the heatmap",
+        "title2": "Circos beside the phylogeny",
+        "mode-cells": "Selected cells",
+        "mode-clones": "Pseudobulk clones",
+        "min-share": "Junction in ≥ fraction of clone cells",
+        "tree-help": "Click cells or clades to choose the rings (up to 6).",
+        "centre-cells": "{{count}} cells",
+        "centre-clones": "{{count}} clones",
+        "centre-junctions": "{{count}} junctions shown",
+        "ring": "ring {{n}}:",
+        "help2": "Rings from the outside in: chromosomes (ticks every 50 Mb), then one copy-number ring per cell or clone (height ∝ CN up to 6; dashed line = CN 2; heatmap palette). Clone rings are the median CN of the clone's cells and show junctions found in at least the chosen fraction of its cells (line width ∝ recurrence)."
       }
     },
     "tracks-modal": {
