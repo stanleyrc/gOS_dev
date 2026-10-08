@@ -141,3 +141,29 @@ export function walkContainment(walks) {
   const matrix = walks.map((_, i) => walks.map((__, j) => (i === j ? 1 : lens[i] ? sharedBases(fps[i], fps[j]) / lens[i] : 0)));
   return { matrix, lengths: lens, footprints: fps };
 }
+
+/**
+ * Group walks into families: two walks are related when one holds >= `minShared`
+ * of the other's bases (union-find over the containment matrix). Families are
+ * ordered by their largest carrier count, walks inside a family from the
+ * shortest (top) to the longest (bottom), like nested variants of one species.
+ */
+export function walkFamilies(walks, { minShared = 0.5, carriers = (w) => w.stats?.ncells ?? w.ncells ?? 0 } = {}) {
+  const { matrix, lengths } = walkContainment(walks);
+  const parent = walks.map((_, i) => i);
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  walks.forEach((_, i) =>
+    walks.forEach((__, j) => {
+      if (i < j && Math.max(matrix[i][j], matrix[j][i]) >= minShared) parent[find(i)] = find(j);
+    })
+  );
+  const groups = new Map();
+  walks.forEach((w, i) => {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(i);
+  });
+  return [...groups.values()]
+    .map((idx) => idx.sort((a, b) => lengths[a] - lengths[b]).map((i) => walks[i]))
+    .sort((a, b) => Math.max(...b.map(carriers)) - Math.max(...a.map(carriers)));
+}
