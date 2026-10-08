@@ -912,6 +912,12 @@
         "help": "{{count}} tier 1–2 alterations placed on the branch above the clade their carrier cells fit best (trunk events at the root); grey numbers are SNV sites gained on a branch (seen in the clade, absent from its siblings), coloured tags the signature whose share rises most on that branch. Click a node to select its cells, an alteration for its popup."
       },
       "help": {
+        "cohort-de-name": "Cohort differential expression",
+        "cohort-de": "Pooled: patients' matrices merged on gene names, one Wilcoxon rank-sum test per gene between groups A and B, log2FC = log2((Σ expm1(A) + 1) / nA) − log2((Σ expm1(B) + 1) / nB) (Seurat), BH q-values. Per patient: the same test inside each patient with ≥ 3 cells in both groups; p-values combined by Fisher's method, log2FC averaged, concordance = patients whose fold change has the cohort sign.",
+        "cohort-pca-name": "Cohort PCA",
+        "cohort-pca": "Up to 1,500 of the compared cells (evenly subsampled), the 1,000 most variable non-mitochondrial genes z-scored across those cells, top 10 PCs by power iteration on the cell × cell Gram matrix; variance explained = eigenvalue / total scaled variance; loadings = gene projections on each unit component.",
+        "program-score-name": "Program score",
+        "program-score": "Mean over a gene set of each gene's z-score across one patient's cells; per-patient scaling removes patient batch from the score.",
         "title": "How the single-cell scores are computed",
         "button": "Definitions",
         "scores": "Alterations and cells",
@@ -1089,6 +1095,7 @@
         "open-patient": "Open patient"
       },
       "cohort": {
+        "sigmat-truncal": "truncal",
         "umap-selected": "{{count}} cells selected",
         "umap-drag": "Drag a box to select cells",
         "de-title": "Differential expression & PCA across patients",
