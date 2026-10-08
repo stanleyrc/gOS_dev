@@ -1297,6 +1297,14 @@
         "link-help": "Copy a link to this page that includes these saved groups",
         "copied": "Link with saved groups copied",
         "copy-prompt": "Copy this link:"
+      },
+      "event-cells": {
+        "title": "Cells carrying the event · {{location}}",
+        "carriers": "{{count}} cells carry this event.",
+        "multiple": "Multiple cells",
+        "pad": "Padding",
+        "select-all": "Select all {{count}} in the heatmap",
+        "no-cells": "No cells are listed for this event."
       }
     },
     "tracks-modal": {

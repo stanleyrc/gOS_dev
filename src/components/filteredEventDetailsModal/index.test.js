@@ -14,6 +14,7 @@ jest.mock("antd", () => ({
   Typography: { Text: "Text" },
 }));
 jest.mock("../tracksModal", () => "TracksModal");
+jest.mock("../singleCell/eventCellTracks", () => "EventTracks");
 jest.mock("../alterationCard", () => "AlterationCard");
 jest.mock("../../helpers/utility", () => ({
   roleColorMap: () => ({ oncogenic: "red", resistance: "blue" }),
@@ -28,7 +29,9 @@ function findElementByType(node, type) {
   if (!React.isValidElement(node)) return null;
   if (node.type === type) return node;
 
-  for (const child of React.Children.toArray(node.props.children)) {
+  // EventTracks holds the bulk tracks in its `fallback` prop
+  const nested = [...React.Children.toArray(node.props.children), node.props.fallback].filter(Boolean);
+  for (const child of nested) {
     const match = findElementByType(child, type);
     if (match) return match;
   }
