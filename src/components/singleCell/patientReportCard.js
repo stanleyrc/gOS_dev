@@ -5,7 +5,8 @@ import * as d3 from "d3";
 import { Alert, Button, Card, Col, Collapse, Descriptions, Empty, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import DriverCellMatrix from "./driverCellMatrix";
 import ReportFindings from "./reportFindings";
-import { AimOutlined, ExperimentOutlined, FileSearchOutlined, SelectOutlined } from "@ant-design/icons";
+import { AimOutlined, ExperimentOutlined, FileSearchOutlined, ProfileOutlined, SelectOutlined } from "@ant-design/icons";
+import filteredEventsActions from "../../redux/filteredEvents/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
@@ -21,7 +22,7 @@ const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", tru
 const aetiology = (sig) => (signatureMetadata.metadata[sig]?.full || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "");
 
 /** One driver line with actions: select carriers, zoom the heatmap, view reads. */
-function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites }) {
+function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails }) {
   const { t } = useTranslation("common");
   const pct = d3.format(".0%");
   return (
@@ -55,6 +56,9 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
       </div>
       {interactive && (
         <Space size={2}>
+          <Tooltip title={t("components.single-cell.report.details")}>
+            <Button size="small" type="text" icon={<ProfileOutlined />} onClick={() => onDetails(d)} />
+          </Tooltip>
           <Tooltip title={t("components.single-cell.report.select-cells")}>
             <Button size="small" type="text" icon={<SelectOutlined />} onClick={() => onSelect(d)} />
           </Tooltip>
@@ -131,11 +135,11 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   const onIgv = (d) => {
     const carriers = `${d.event.cell_ids || ""}`.split(",").filter(Boolean).slice(0, 6);
     // fusions: first breakpoint from fusion_gene_coords ("12:53097436-53102345+,...")
-    const bp = d.class === "fusion" ? `${d.event.fusion_gene_coords || ""}`.match(/^(\w+):(\d+)/) : null;
-    const chromosome = bp ? bp[1] : `${d.event.seqnames}`;
-    const position = bp ? Number(bp[2]) : Number(d.event.start);
+    const bps = d.class === "fusion" ? `${d.event.fusion_gene_coords || ""}`.split(",").map((s) => s.match(/^(\w+):(\d+)/)).filter(Boolean).map((m) => ({ chromosome: m[1], position: Number(m[2]) })) : [];
+    const chromosome = bps.length ? bps[0].chromosome : `${d.event.seqnames}`;
+    const position = bps.length ? bps[0].position : Number(d.event.start);
     if (!carriers.length || !Number.isFinite(position)) return;
-    dispatch(singleCellActions.openIgv({ cellIds: carriers, chromosome, position, label: d.label }));
+    dispatch(singleCellActions.openIgv({ cellIds: carriers, chromosome, position, loci: bps.length > 1 ? bps : undefined, label: d.label }));
     dispatch(settingsActions.updateTab("7"));
   };
   const onSites = (d) => {
@@ -145,7 +149,12 @@ export default function PatientReportCard({ patient, events, cells, variants, si
       dispatch(settingsActions.updateTab("7"));
     }
   };
-  const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites };
+  // the same popup as a row of the Filtered Events table (alteration, plots with cell tracks, variant QC)
+  const onDetails = (d) => {
+    dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"));
+    dispatch(settingsActions.updateTab("1"));
+  };
+  const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails };
   const allDrivers = [...report.clonal, ...report.subclonal, ...report.rare];
   const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
   const driverColumns = [
@@ -183,6 +192,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         </Paragraph>
         {interactive && (
           <Space>
+            <Button size="small" onClick={() => onDetails(d)}>{t("components.single-cell.report.details")}</Button>
             <Button size="small" onClick={() => onSelect(d)}>{t("components.single-cell.report.select-cells")}</Button>
             <Button size="small" onClick={() => onZoom(d)}>{t("components.single-cell.report.zoom")}</Button>
             {!["amp", "homdel"].includes(d.class) && <Button size="small" onClick={() => onIgv(d)}>{d.class === "fusion" ? t("components.single-cell.report.igv-fusion") : t("components.single-cell.report.igv")}</Button>}
