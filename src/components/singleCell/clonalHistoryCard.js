@@ -166,7 +166,7 @@ export default function ClonalHistoryCard() {
                   <rect x={-3} y={-10} width={d.label.length * 6.6 + 10} height={13} rx={3} fill="#fff" stroke={CLASS_COLORS[d.cls]} />
                   <rect x={-3} y={-10} width={4} height={13} fill={CLASS_COLORS[d.cls]} />
                   <text x={4} y={0} fontSize={10} fill="#262626">{d.label}</text>
-                  <title>{[shortLabel(d.event), ...eventTooltipLines(d.event), `clade fit ${d.fit.score.toFixed(2)} (best clade ${d.fit.clade} cells)`, t("components.single-cell.history.click")].join("\n")}</title>
+                  <title>{[shortLabel(d.event), ...eventTooltipLines(d.event), `clade F1 ${d.fit.score.toFixed(2)} (best clade ${d.fit.clade} cells)`, t("components.single-cell.history.click")].join("\n")}</title>
                 </g>
               ));
           })}
