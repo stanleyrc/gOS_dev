@@ -93,28 +93,29 @@ export default function CohortSignatureMatrix({
     { patient: p.patient, kind: "truncal" },
     { patient: p.patient, kind: "later" },
   ]);
-  const colW = Math.max(34, Math.min(60, (width - LEFT - 20) / cols.length));
+  const colW = Math.max(48, Math.min(72, (width - LEFT - 20) / cols.length));
   const w = LEFT + cols.length * colW + 20;
   const h = TOP + data.signatures.length * CELL + 8;
   const color = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, 1]);
   const inner = (
     <div ref={ref} style={{ overflowX: "auto" }}>
       {embedded && (
-        <Segmented
-          size="small"
-          value={mode}
-          onChange={setMode}
-          style={{ marginBottom: 6 }}
-          options={[
-            {
-              value: "share",
-              label: t("components.segmented-filter.fraction"),
-            },
-            { value: "count", label: t("components.segmented-filter.count") },
-          ]}
-        />
+        <div style={{ marginBottom: 8 }}>
+          <Segmented
+            size="small"
+            value={mode}
+            onChange={setMode}
+            options={[
+              {
+                value: "share",
+                label: t("components.segmented-filter.fraction"),
+              },
+              { value: "count", label: t("components.segmented-filter.count") },
+            ]}
+          />
+        </div>
       )}
-      <svg width={w} height={h}>
+      <svg width={w} height={h} style={{ display: "block" }}>
         {data.per.map((p, i) => (
           <text
             key={p.patient}
@@ -138,7 +139,7 @@ export default function CohortSignatureMatrix({
             fill="#595959"
           >
             {c.kind === "truncal"
-              ? t("components.single-cell.snv.category-truncal")
+              ? t("components.single-cell.cohort.sigmat-truncal")
               : t("components.single-cell.cohort.sigmat-later")}
           </text>
         ))}

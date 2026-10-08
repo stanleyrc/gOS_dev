@@ -9,7 +9,7 @@ const SECTIONS = [
   ["scores", ["clade-fit", "clade-score", "strong-events", "amplified-snv", "fga", "map-confidence", "categories"]],
   ["signatures", ["joint-fit", "assignment", "clade-vs-rest", "bootstrap"]],
   ["rna", ["tumor-only", "markers", "dosage", "composition"]],
-  ["cohort", ["oncoprint", "per-mb", "convergence", "sigmat"]],
+  ["cohort", ["oncoprint", "per-mb", "convergence", "sigmat", "cohort-de", "cohort-pca", "program-score"]],
 ];
 
 /** "?" button opening a drawer that defines every derived score and threshold used in the single-cell views. */

@@ -310,7 +310,8 @@ export default function CohortSignaturesPanel({ summaries, files }) {
   const [highlight, setHighlight] = useState(null);
   const any = summaries.some((s) => files[s.caseReportId]?.signatures?.sets?.length);
   const legendRows = useMemo(
-    () => summaries.map((s) => ({ name: s.caseReportId, activities: (files[s.caseReportId]?.signatures?.sets?.find((x) => x.name === "all")?.activities || []).map((a) => ({ signature: a.signature, activity: Number(a.activity) || 0 })) })),
+    // every signature fitted in any set of any patient (not just the "all" set), so the legend covers the matrix and clone views
+    () => summaries.map((s) => ({ name: s.caseReportId, activities: (files[s.caseReportId]?.signatures?.sets || []).flatMap((set) => (set.activities || []).map((a) => ({ signature: a.signature, activity: Number(a.activity) || 0 }))) })),
     [summaries, files]
   );
   if (!any) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.signatures-empty")} />;
