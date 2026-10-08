@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Space, Table, Typography } from "antd";
 import { DotChartOutlined } from "@ant-design/icons";
-import { dosagePoints, dosageRanking, geneLocus } from "../../../helpers/singleCell/dosage";
+import { dosageByChromosome, dosagePoints, dosageRanking, geneLocus } from "../../../helpers/singleCell/dosage";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { searchGeneNames } from "../../../helpers/singleCell/staticRna";
 import singleCellActions from "../../../redux/singleCell/actions";
@@ -77,6 +77,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
   const dispatch = useDispatch();
   const { cn, cells, cloneColors, selectedCellIds } = useSelector((s) => s.SingleCell);
   const genesState = useSelector((s) => s.Genes);
+  const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const [containerRef, width] = useContainerWidth(700);
   const [gene, setGene] = useState("EGFR");
   const [options, setOptions] = useState([]);
@@ -92,6 +93,8 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
     () => dosagePoints({ cn: cnData, summary, matrix, rowOfId, locus, geneIndex }),
     [cnData, summary, matrix, rowOfId, locus, geneIndex]
   );
+
+  const byChromosome = useMemo(() => (ranking ? dosageByChromosome(ranking, genesState, chromoBins) : []), [ranking, genesState, chromoBins]);
 
   const rank = async () => {
     setProgress(0);
@@ -181,6 +184,26 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
               <>
                 <Text type="secondary">{t("components.single-cell.dosage.rank-help", { count: ranking.length })}</Text>
                 <Table size="small" rowKey="gene" columns={columns} dataSource={ranking} tableLayout="fixed" style={{ maxWidth: 420 }} pagination={{ pageSize: 15, size: "small", showSizeChanger: false }} />
+                {byChromosome.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <Text strong>{t("components.single-cell.dosage.by-chromosome")}</Text>
+                    <svg width={Math.min(420, plotWidth)} height={byChromosome.length * 16 + 20}>
+                      {byChromosome.map((c, i) => {
+                        const w = Math.min(380, plotWidth - 40);
+                        return (
+                          <g key={c.chromosome} transform={`translate(0,${i * 16 + 4})`}>
+                            <text x={28} y={11} textAnchor="end" fontSize={11} fill="#262626">{c.chromosome}</text>
+                            <rect x={34} y={2} width={w - 34} height={11} fill="#f0f0f0" />
+                            <rect x={34} y={2} width={(w - 34) * c.fracSensitive} height={11} fill={c.medianRho >= 0.3 ? "#D7191C" : "#4E79A7"} />
+                            <text x={w + 4} y={11} fontSize={10} fill="#8c8c8c">{`${Math.round(100 * c.fracSensitive)}% · n=${c.n}`}</text>
+                            <title>{`chr${c.chromosome}: ${c.n} genes, median ρ ${c.medianRho.toFixed(2)}, ${Math.round(100 * c.fracSensitive)}% with ρ ≥ 0.3`}</title>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                    <div><Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.dosage.by-chromosome-help")}</Text></div>
+                  </div>
+                )}
               </>
             ) : (
               <Text type="secondary">{t("components.single-cell.dosage.rank-intro")}</Text>
