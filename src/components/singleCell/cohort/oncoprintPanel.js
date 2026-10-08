@@ -20,7 +20,7 @@ const GENE_W = 120;
  * fraction of tumor cells carrying the strongest alteration, coloured by
  * its class. Several classes in one gene/patient draw as stacked stripes.
  */
-export default function OncoprintPanel({ summaries, files, onOpen }) {
+export default function OncoprintPanel({ summaries, files, onOpen, onEvent = null }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(900);
   const [maxTier, setMaxTier] = useState(2);
@@ -99,8 +99,9 @@ export default function OncoprintPanel({ summaries, files, onOpen }) {
                       style={{ cursor: cell ? "pointer" : undefined }}
                       onClick={() => {
                         if (!cell) return;
+                        if (onEvent) return onEvent(summaryOf(p), cell.event);
                         setPendingEvent(p, cell.event);
-                        onOpen(summaryOf(p));
+                        return onOpen(summaryOf(p));
                       }}
                     >
                       <rect x={x + 2} y={y + 2} width={cellW - 4} height={CELL_H - 4} fill="#f5f5f5" rx={2} />

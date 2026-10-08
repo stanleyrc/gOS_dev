@@ -42,14 +42,16 @@ const sameDomain = (a, b, tolerance = 2) =>
  * Laid out on the heatmap's genomic columns. With "zoom genome views" on, the
  * heatmap, navigation and cell tracks follow IGV's window and vice versa.
  */
-export default function CellIgvPanel() {
+export default function CellIgvPanel({ view: viewProp = null, embedded = false, dataset: datasetProp = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const view = useSelector((state) => state.SingleCell.igv);
+  const storeView = useSelector((state) => state.SingleCell.igv);
+  const view = viewProp || storeView;
   const selectedCellIds = useSelector((state) => state.SingleCell.selectedCellIds);
   const plotInsets = useSelector((state) => state.SingleCell.plotInsets);
-  const sync = useSelector((state) => state.SingleCell.layout.igvSync);
-  const { dataset, chromoBins, domains } = useSelector((state) => state.Settings);
+  const sync = useSelector((state) => state.SingleCell.layout.igvSync) && !embedded;
+  const { dataset: storeDataset, chromoBins, domains } = useSelector((state) => state.Settings);
+  const dataset = datasetProp || storeDataset;
   const reference = dataset?.reference || "hg38";
   const containerRef = useRef(null);
   const browserRef = useRef(null);
@@ -178,6 +180,14 @@ export default function CellIgvPanel() {
 
   if (!view) return null;
   const others = selectedCellIds.filter((id) => !cellIds.includes(id));
+  if (embedded) {
+    return (
+      <Wrapper>
+        {error && <Alert type="warning" showIcon className="sc-alert" message={error} />}
+        <div ref={containerRef} className="sc-igv" />
+      </Wrapper>
+    );
+  }
   return (
     <Wrapper>
       <Card

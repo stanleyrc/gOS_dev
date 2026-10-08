@@ -16,6 +16,7 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
+import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
 import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
@@ -388,11 +389,16 @@ export default function CellHeatmapPanel() {
     return counts;
   }, [snvReady, snv]);
   const hasCategories = Object.keys(categoryCounts).length > 0;
+  // copy number at each site in its carrier cells (amplified SNVs: CN >= 4 with >= 1.5 mutant copies)
+  const snvCn = useMemo(() => (snvReady && cn.status === "ok" ? snvCopyNumber(snv.data, cn.data) : null), [snvReady, snv, cn]);
+  const nAmplified = useMemo(() => (snvCn ? snvCn.filter((x) => x?.amplified).length : 0), [snvCn]);
+  const amplifiedOnly = Boolean(layout.snvAmplifiedOnly);
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
-    return filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore });
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvMinCladeScore]);
+    const filtered = filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore });
+    return amplifiedOnly && snvCn ? filtered.filter((c) => snvCn[c]?.amplified) : filtered;
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvMinCladeScore, amplifiedOnly, snvCn]);
   const [snvHeader, setSnvHeader] = useState(null);
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
@@ -982,6 +988,13 @@ export default function CellHeatmapPanel() {
                       />
                     </Tooltip>
                   )}
+                  {nAmplified > 0 && (
+                    <Tooltip title={t("components.single-cell.snv.amplified-help")}>
+                      <Checkbox checked={amplifiedOnly} onChange={(e) => dispatch(singleCellActions.updateLayout({ snvAmplifiedOnly: e.target.checked }))}>
+                        {t("components.single-cell.snv.amplified-only", { count: nAmplified })}
+                      </Checkbox>
+                    </Tooltip>
+                  )}
                   {nDrivers > 0 && (
                     <Checkbox checked={driversOnly} onChange={(e) => setDriversOnly(e.target.checked)}>
                       {t("components.single-cell.snv.drivers-only", { count: nDrivers })}
@@ -1281,7 +1294,7 @@ export default function CellHeatmapPanel() {
         </div>
       </Card>
       {siteDrawer && snvReady && snv.data.variants[siteDrawer.c] && (
-        <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} />
+        <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} cnInfo={snvCn?.[siteDrawer.c] || null} />
       )}
       {snvsByBranch && branchNode != null && treeLayout?.nodes[branchNode] && (
         <BranchSnvDrawer

@@ -232,6 +232,19 @@ const Wrapper = styled.div`
     border-radius: 6px;
     background: #f0f5ff;
   }
+  .sc-events-table .ant-table-thead > tr > th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #595959;
+    background: #fafafa;
+  }
+  .sc-events-table .ant-table-tbody > tr:nth-child(even) > td {
+    background: #fcfcfc;
+  }
+  .sc-events-table .ant-table-tbody > tr:hover > td {
+    background: #f0f5ff;
+  }
   .sc-toolbar-row {
     display: flex;
     align-items: flex-start;

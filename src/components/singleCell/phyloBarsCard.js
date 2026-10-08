@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
@@ -11,13 +11,14 @@ import usePixelRatio from "./usePixelRatio";
 import useTreeView from "./useTreeView";
 import useRnaData from "./rna/useRnaData";
 import singleCellActions from "../../redux/singleCell/actions";
-import { loadCosmic, signatureColorOf, AetiologyLegend } from "./signaturePanel";
+import { signatureColorOf, AetiologyLegend } from "./signaturePanel";
 import { cnRowQc } from "../../helpers/singleCell/cohortStats";
 import { cnAtPosition, geneLocus } from "../../helpers/singleCell/dosage";
 import { geneValues, searchGeneNames } from "../../helpers/singleCell/staticRna";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
-import { fitSignatures, nnls, sbs96Counts } from "../../helpers/singleCell/signatures";
+import useSignatureModel from "./signatures/useSignatureModel";
+import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { cutTree, labelRuns } from "../../helpers/singleCell/treeGroups";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
 
@@ -41,7 +42,7 @@ const CN_FIELDS = [["fractionAltered", "Fraction of genome altered"], ["segments
 export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGene = "EGFR", defaultMode = "cells", title }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { cells, cn, snv, signatures, cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((s) => s.SingleCell);
+  const { cells, cn, snv, cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((s) => s.SingleCell);
   const genesState = useSelector((s) => s.Genes);
   const { order, treeLayout, cellById } = useTreeView();
   const { summary, matrix } = useRnaData();
@@ -52,8 +53,8 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
   const [geneOptions, setGeneOptions] = useState([]);
   const [mode, setMode] = useState(defaultMode);
   const [k, setK] = useState(4);
-  const [sigFits, setSigFits] = useState({});
-  const [sigProgress, setSigProgress] = useState(null);
+  const model = useSignatureModel();
+  const [sigProgress] = useState(null);
   const [hoverRange, setHoverRange] = useState(null);
 
   const nRows = order.length;
@@ -117,49 +118,19 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
     };
   }, [order, cellById, cnQc, locus, cn, geneIndex, matrix, summary, rnaById]);
 
-  /* ---- signatures per group (NNLS on the patient's fitted signatures) ---- */
-  const sigKey = `${mode}:${k}:${order.join(",").length}`;
-  useEffect(() => {
-    if (!tracks.includes("signatures") || !hasContexts || !groups.length) return undefined;
-    let active = true;
-    (async () => {
-      setSigProgress(0);
-      const reference = await loadCosmic();
-      const known = new Set((signatures.status === "ok" ? signatures.data?.sets || [] : []).flatMap((s) => (s.activities || []).map((a) => a.signature)));
-      const subset = reference.names.map((n, j) => [n, j]).filter(([n]) => known.has(n));
-      const rows = rowMap(order, snv.data.cells);
-      const out = {};
-      for (let g = 0; g < groups.length; g += 1) {
-        const grp = groups[g];
-        const seen = sitesSeenInRows(snv.data, grp.rows.map((r) => rows[r]).filter((r) => r >= 0));
-        const contexts = [...seen].map((c) => snv.data.variants[c].context).filter(Boolean);
-        const { counts, used } = sbs96Counts(contexts);
-        let activities = [];
-        if (used >= 5) {
-          if (subset.length >= 2) {
-            const x = nnls(subset.map(([, j]) => reference.columns[j]), counts);
-            activities = subset.map(([n], i) => ({ signature: n, activity: x[i] })).filter((a) => a.activity > 0);
-          } else {
-            activities = fitSignatures(counts, reference).activities;
-          }
-        }
-        out[grp.key] = { activities, n: used };
-        if (g % 10 === 9) {
-          if (!active) return;
-          setSigProgress(Math.round((100 * g) / groups.length));
-          // let the UI breathe
-          await new Promise((resolve) => setTimeout(resolve, 0)); // eslint-disable-line no-await-in-loop
-        }
-      }
-      if (!active) return;
-      setSigFits(out);
-      setSigProgress(null);
-    })().catch(() => active && setSigProgress(null));
-    return () => {
-      active = false;
-    };
+  /* ---- signatures per group: unique mutations assigned by the joint fit ---- */
+  const sigFits = useMemo(() => {
+    if (!tracks.includes("signatures") || !model.ready || !hasContexts || !groups.length) return {};
+    const rows = rowMap(order, snv.data.cells);
+    const out = {};
+    groups.forEach((grp) => {
+      const seen = sitesSeenInRows(snv.data, grp.rows.map((r) => rows[r]).filter((r) => r >= 0));
+      const b = signatureBurden([...seen], model.assignment);
+      out[grp.key] = { activities: Object.entries(b.counts).map(([signature, activity]) => ({ signature, activity })), n: b.assigned };
+    });
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tracks.includes("signatures"), hasContexts, sigKey, snv, signatures]);
+  }, [tracks.includes("signatures"), model, hasContexts, groups, order, snv]);
 
   /* ---- geometry: tracks share the width left of the tree; rows at least 3 px ---- */
   const HEIGHT = Math.max(MIN_HEIGHT, Math.min(1400, nRows * 3));
@@ -223,7 +194,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
   const renderSignatures = (x0) => (
     <g key="signatures" transform={`translate(${x0},0)`}>
       <text x={0} y={12} fontSize={12} fontWeight="600" fill="#262626">{t("components.single-cell.bars.signatures")}</text>
-      <text x={0} y={HEADER - 6} fontSize={10} fill="#8c8c8c">{t("components.single-cell.bars.signatures-axis")}</text>
+      <text x={0} y={HEADER - 6} fontSize={10} fill="#8c8c8c">{t("components.single-cell.bars.signatures-axis2")}</text>
       {groups.map((grp) => {
         const fit = sigFits[grp.key];
         if (!fit || !fit.activities.length) return null;
@@ -240,7 +211,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
                 x += w;
                 return rect;
               })}
-            <title>{`${grp.label} (${fit.n} SNVs)\n${fit.activities.slice().sort((a, b) => b.activity - a.activity).map((a) => `${a.signature}: ${d3.format(".0%")(a.activity / total)}`).join("\n")}`}</title>
+            <title>{`${grp.label} (${fit.n} assigned mutations)\n${fit.activities.slice().sort((a, b) => b.activity - a.activity).map((a) => `${a.signature}: ${a.activity} (${d3.format(".0%")(a.activity / total)})`).join("\n")}`}</title>
           </g>
         );
       })}

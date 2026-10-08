@@ -13,6 +13,7 @@ import { cosine, nnls, sbs96Counts } from "../../helpers/singleCell/signatures";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { chiSquareUpper } from "../../helpers/singleCell/tests";
+import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
 
 const { Text, Title } = Typography;
 const pct = d3.format(".0%");
@@ -129,7 +130,17 @@ export default function ReportFindings({ report, cloneColors }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snv, signatures, order.length, tumorClones.join("|")]);
 
-  const hasAny = states || dosage.length || cladeSigs;
+  /* ---- SNVs on amplicons (mutant copies >= 1.5 on CN >= 4: mutated before the amplification) ---- */
+  const amplifiedSnvs = useMemo(() => {
+    if (snv.status !== "ok" || cn.status !== "ok") return [];
+    const info = snvCopyNumber(snv.data, cn.data);
+    return snv.data.variants
+      .map((v, c) => ({ v, i: info[c] }))
+      .filter((x) => x.i?.amplified)
+      .sort((a, b) => Number(b.v.driver) - Number(a.v.driver) || b.i.altCopies - a.i.altCopies);
+  }, [snv, cn]);
+
+  const hasAny = states || dosage.length || cladeSigs || amplifiedSnvs.length;
   if (!hasAny) return null;
 
   return (
@@ -183,6 +194,20 @@ export default function ReportFindings({ report, cloneColors }) {
                 </div>
               );
             })}
+          </Col>
+        )}
+        {amplifiedSnvs.length > 0 && (
+          <Col xs={24} xl={8}>
+            <Title level={5}>{t("components.single-cell.report.findings-amplified")}</Title>
+            <Text type="secondary">{t("components.single-cell.report.findings-amplified-help", { count: amplifiedSnvs.length })}</Text>
+            {amplifiedSnvs.slice(0, 12).map(({ v, i }) => (
+              <div key={v.id} style={{ marginTop: 4 }}>
+                <Text strong>{v.gene || v.id}</Text>{" "}
+                <Text>{t("components.single-cell.report.findings-amplified-row", { variant: v.protein || v.consequence || v.id, cn: i.medianCn.toFixed(1), copies: Number.isFinite(i.altCopies) ? i.altCopies.toFixed(1) : "–", n: i.nCarriers })}</Text>
+                {v.driver && <Tag color="red" style={{ marginLeft: 6 }}>driver</Tag>}
+                {v.category && <Tag style={{ marginLeft: 4 }}>{t(`components.single-cell.snv.category-${v.category}`)}</Tag>}
+              </div>
+            ))}
           </Col>
         )}
         {dosage.length > 0 && (
