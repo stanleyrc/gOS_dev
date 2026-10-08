@@ -363,6 +363,13 @@ html[data-theme="dark"] svg text[fill="#8c8c8c"] {
 html[data-theme="dark"] svg rect[fill="rgba(255,255,255,0.8)"] {
   fill: rgba(20, 20, 20, 0.8);
 }
+/* label boxes drawn white with a coloured outline (clonal history, matrix tags) */
+html[data-theme="dark"] svg rect[fill="#fff"][stroke] {
+  fill: #1f1f1f;
+}
+html[data-theme="dark"] svg rect[fill="#f0f0f0"][rx] {
+  fill: #333;
+}
 html[data-theme="dark"] canvas {
   filter: none;
 }
