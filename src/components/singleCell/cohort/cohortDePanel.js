@@ -7,6 +7,7 @@ import { AiOutlineDownload } from "react-icons/ai";
 import { ExperimentOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
+import ScErrorBoundary from "../errorBoundary";
 import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "../rna/volcanoPlot";
 import { geneSetIndex, loadGmt, prettyTerm } from "../rna/geneSets";
 import { downloadTsv } from "../analysisResultsPanel";
@@ -373,7 +374,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
           </Col>
           {section === "de" && result?.error && <Col span={24}><Alert type="error" showIcon message={result.error} /></Col>}
           {section === "de" && result?.rows && (
-            <>
+            <ScErrorBoundary resetKey={`${qCut}-${lfcCut}-${selectedGene}`} title="DE view failed">
               <Col span={24}>
                 <Space wrap size={[6, 4]}>
                   <Text strong>{t("components.single-cell.cohort.de-summary", { tested: result.rows.length, up: sig.filter((r) => r.avg_log2FC > 0).length, down: sig.filter((r) => r.avg_log2FC < 0).length, nA: result.nA, nB: result.nB })}</Text>
@@ -389,7 +390,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                     <Space wrap style={{ marginBottom: 4 }}>
                       <Text strong>{geneDetail.gene}</Text>
                       {onGene && <Button size="small" onClick={() => onGene(geneDetail.gene)}>{t("components.single-cell.cohort.de-open-gene")}</Button>}
-                      {(() => { const test = compareGroups(geneDetail.groups.map((g) => ({ key: g.key, values: g.values }))); return <Text type="secondary">{`${test.test || ""} ${formatP(test.p)}`}</Text>; })()}
+                      {(() => { const test = compareGroups(geneDetail.groups.map((g) => ({ key: g.key, values: g.values }))); return <Text type="secondary">{`${test?.test || ""} ${formatP(test?.p)}`}</Text>; })()}
                     </Space>
                     <BoxStrips groups={geneDetail.groups} width={Math.max(300, Math.floor((w * 10) / 24) - 16)} height={300} yTitle={t("components.single-cell.cohort.de-expression")} />
                   </div>
@@ -421,12 +422,13 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
               <Col span={24}>
                 <Table size="small" className="sc-events-table" rowKey="gene" columns={columns} dataSource={result.rows.filter((r) => r.q_val < qCut || selectedGenes.includes(r.gene))} pagination={{ pageSize: 10, size: "small" }} rowClassName={(r) => (selectedGenes.includes(r.gene) ? "sc-row-picked" : "")} />
               </Col>
-            </>
+            </ScErrorBoundary>
           )}
           {section === "pca" && !pcaState && <Col span={24}><Text type="secondary">{t("components.single-cell.cohort.de-pca-intro")}</Text></Col>}
           {section === "pca" && pcaState?.error && <Col span={24}><Alert type="error" showIcon message={pcaState.error} /></Col>}
           {section === "pca" && pcaState?.scores && (
             <Col span={24}>
+              <ScErrorBoundary resetKey={`${pcX}-${pcY}-${pcColor}-${pcaState.cells.length}`} title="PCA view failed">
               <Card size="small" type="inner" title={t("components.single-cell.cohort.de-pca-title", { cells: pcaState.cells.length, genes: pcaState.nGenes })}>
                 <Space wrap style={{ marginBottom: 6 }}>
                   <Text type="secondary">x</Text>
@@ -489,12 +491,13 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                     {pcaState.useGroups && (() => {
                       const groups = ["A", "B"].map((g) => ({ key: g, label: g === "A" ? labels.A : labels.B, color: g === "A" ? COLOR_UP : COLOR_DOWN, values: pcaState.cells.map((c, i) => (c.group === g ? pcaState.scores[pcX][i] : NaN)).filter(Number.isFinite), ids: [] }));
                       const test = compareGroups(groups.map((g) => ({ key: g.key, values: g.values })));
-                      return <div style={{ marginTop: 8 }}><Text type="secondary" style={{ fontSize: 12 }}>{`PC${pcX + 1} A vs B: ${test.test || ""} ${formatP(test.p)}`}</Text><BoxStrips groups={groups} width={Math.max(320, Math.floor(w / 2) - 16)} height={160} yTitle={`PC${pcX + 1}`} /></div>;
+                      return <div style={{ marginTop: 8 }}><Text type="secondary" style={{ fontSize: 12 }}>{`PC${pcX + 1} A vs B: ${test?.test || ""} ${formatP(test?.p)}`}</Text><BoxStrips groups={groups} width={Math.max(320, Math.floor(w / 2) - 16)} height={160} yTitle={`PC${pcX + 1}`} /></div>;
                     })()}
                   </Col>
                 </Row>
                 <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.de-pca-help")}</Text>
               </Card>
+              </ScErrorBoundary>
             </Col>
           )}
         </Row>

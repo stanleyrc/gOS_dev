@@ -118,7 +118,23 @@ export default function DriverCellMatrix({ drivers }) {
         </Space>
       }
     >
-      <div ref={ref} onMouseLeave={() => { setHoverRange(null); dispatch(singleCellActions.updateHover(null)); }}>
+      <div ref={ref} style={{ position: "relative" }} onMouseLeave={() => { setHoverRange(null); dispatch(singleCellActions.updateHover(null)); }}>
+        {/* HTML buttons over the SVG labels: a plain click target for the alteration popup */}
+        <div style={{ position: "absolute", left: 18, top: (win ? 18 : 0) + top, width: LABEL_W - 18, zIndex: 2 }}>
+          {rows.map((r) => (
+            <button
+              key={`btn-${r.label}`}
+              type="button"
+              title={[r.label, ...eventTooltipLines(r.event), t("components.single-cell.report.matrix-click")].join("\n")}
+              onClick={(e) => {
+                e.stopPropagation();
+                dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"));
+              }}
+              style={{ display: "block", width: "100%", height: ROW_H, padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}
+              aria-label={`${t("components.single-cell.report.matrix-click")}: ${r.label}`}
+            />
+          ))}
+        </div>
         {win && <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.report.matrix-window", { shown: nVis, total: n })}</Text>}
         <svg ref={svgRef} width={LABEL_W + matW + RIGHT_W} height={height} style={{ display: "block" }} onWheel={onWheel}>
           <defs>
@@ -189,15 +205,7 @@ export default function DriverCellMatrix({ drivers }) {
                 <rect x={18} y={y} width={LABEL_W - 18} height={ROW_H} fill="transparent" pointerEvents="all" style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}>
                   <title>{[r.label, ...eventTooltipLines(r.event), t("components.single-cell.report.matrix-click")].join("\n")}</title>
                 </rect>
-                <text
-                  x={20}
-                  y={y + ROW_H / 2}
-                  dy="0.35em"
-                  fontSize={12}
-                  fill="#1677ff"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}
-                >
+                <text x={20} y={y + ROW_H / 2} dy="0.35em" fontSize={12} fill="#1677ff" pointerEvents="none">
                   {r.label.length > 34 ? `${r.label.slice(0, 33)}…` : r.label}
                   <title>{[r.label, ...eventTooltipLines(r.event), ...(Number.isFinite(r.fit.score) ? [`clade F1 ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)`] : []), t("components.single-cell.report.matrix-click")].join("\n")}</title>
                 </text>
