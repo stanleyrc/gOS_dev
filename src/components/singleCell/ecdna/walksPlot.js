@@ -13,6 +13,8 @@ const GAP_X = 50; // same outer margin / inter-domain gap as the heatmap and the
 const BAR = 12;
 const ARROW = 5;
 const AXIS_H = 26;
+// the heatmap draws its genomic columns 10 px further right than its reported inset
+const HEATMAP_OFFSET = 10;
 
 /** PGV WalkInterval.points: a box with an arrow head on the strand side (plain box when too narrow). */
 function intervalPoints(w, h, strand) {
@@ -44,7 +46,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
   const svgRef = useRef(null);
 
   const stageW = Math.max(200, width - labelWidth - rightWidth - 2 * GAP_X);
-  const x0 = labelWidth + GAP_X;
+  const x0 = labelWidth + GAP_X + HEATMAP_OFFSET;
   const extents = useMemo(() => domainExtents(domains, stageW, GAP_X), [domains, stageW]);
   const panelOf = (g) => extents.findIndex(([, , d]) => g >= d[0] && g <= d[1]);
   const px = (g, k = panelOf(g)) => {
@@ -245,10 +247,11 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                 if (ka >= 0 && kb >= 0) {
                   const xa = px(ga, ka);
                   const xb = px(gb, kb);
-                  const lift = Math.min(laneHeight / 2 + 2, 6 + Math.abs(xb - xa) / 10);
+                  // keep the arc inside its own lane: long junctions get flatter, not taller
+                  const lift = Math.min(laneHeight * 0.4, 4 + Math.abs(xb - xa) / 12);
                   const top = cy - BAR / 2;
                   return (
-                    <path key={ji} d={`M${xa},${top} C${xa},${top - lift} ${xb},${top - lift} ${xb},${top}`} fill="none" stroke="#cf1322" strokeWidth={1.4} onMouseEnter={(e) => showTip(e, w, [tip, w.label])}>
+                    <path key={ji} d={`M${xa},${top} C${xa},${top - lift} ${xb},${top - lift} ${xb},${top}`} fill="none" stroke="#cf1322" strokeWidth={1.2} strokeOpacity={0.85} onMouseEnter={(e) => showTip(e, w, [tip, w.label])}>
                       <title>{tip}</title>
                     </path>
                   );
