@@ -28,7 +28,7 @@ export function WalkUpset({ walks, cellIds, colorOf }) {
   const top = barH + 14;
   const h = top + walks.length * rowH + 10;
   const max = d3.max(combos, (c) => c.n) || 1;
-  const y = d3.scaleLinear().domain([0, max]).range([barH, 6]);
+  const y = d3.scaleLinear().domain([0, max]).range([barH, 18]);
   return (
     <Card size="small" title={<Space><TableOutlined />{t("components.single-cell.ecdna.upset-title")}</Space>} extra={<Space><Text type="secondary">{t("components.single-cell.ecdna.min-cn")}</Text><InputNumber size="small" min={1} value={minCn} onChange={(v) => setMinCn(v ?? 1)} style={{ width: 70 }} /><SvgExportButton containerRef={ref} name="ecdna-cooccurrence" /></Space>}>
       <div ref={ref}>
