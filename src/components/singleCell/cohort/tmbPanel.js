@@ -1,0 +1,89 @@
+import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import * as d3 from "d3";
+import { Card, Empty, Segmented, Space, Typography } from "antd";
+import { BarChartOutlined } from "@ant-design/icons";
+import useContainerWidth from "../useContainerWidth";
+import { snvCategoryCounts } from "../../../helpers/singleCell/cohortStats";
+import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
+
+const { Text } = Typography;
+const CATS = [
+  ["truncal", "#2F6DB5"],
+  ["subclonal", "#F28E2B"],
+  ["private", "#BAB0AC"],
+];
+const HEIGHT = 300;
+
+/**
+ * Mutation burden per patient from the tree-mapped CellPhy-input SNV sites:
+ * truncal (tumor MRCA), subclonal and private counts, stacked or as fractions.
+ */
+export default function TmbPanel({ summaries, files, onOpen }) {
+  const { t } = useTranslation("common");
+  const [ref, width] = useContainerWidth(800);
+  const [mode, setMode] = useState("count");
+  const rows = useMemo(
+    () =>
+      summaries
+        .map((s) => ({ patient: s.caseReportId, summary: s, counts: files[s.caseReportId]?.variants ? snvCategoryCounts(files[s.caseReportId].variants) : null }))
+        .filter((r) => r.counts),
+    [summaries, files]
+  );
+  if (!rows.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.tmb-empty")} />;
+
+  const M = { top: 12, right: 12, bottom: 56, left: 64 };
+  const total = (c) => CATS.reduce((s, [k]) => s + (c[k] || 0), 0);
+  const x = d3.scaleBand().domain(rows.map((r) => r.patient)).range([M.left, width - M.right]).padding(0.3);
+  const ymax = mode === "count" ? d3.max(rows, (r) => total(r.counts)) || 1 : 1;
+  const y = d3.scaleLinear().domain([0, ymax]).nice().range([HEIGHT - M.bottom, M.top]);
+  const value = (r, k) => (mode === "count" ? r.counts[k] : r.counts[k] / Math.max(1, total(r.counts)));
+
+  return (
+    <Card
+      size="small"
+      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.tmb-title")}</Space>}
+      extra={
+        <Segmented
+          size="small"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "count", label: t("components.single-cell.cohort.tmb-count") },
+            { value: "fraction", label: t("components.single-cell.cohort.tmb-fraction") },
+          ]}
+        />
+      }
+    >
+      <div ref={ref}>
+        <svg width={width} height={HEIGHT}>
+          <YAxis scale={y} x0={M.left} x1={width - M.right} title={mode === "count" ? t("components.single-cell.cohort.tmb-y") : t("components.single-cell.cohort.tmb-y-fraction")} format={mode === "count" ? d3.format("~s") : d3.format(".0%")} />
+          {rows.map((r) => {
+            let y0 = 0;
+            return (
+              <g key={r.patient} style={{ cursor: "pointer" }} onClick={() => onOpen(r.summary)}>
+                {CATS.map(([k, color]) => {
+                  const v = value(r, k);
+                  const top = y(y0 + v);
+                  const h = y(y0) - top;
+                  y0 += v;
+                  return (
+                    <rect key={k} x={x(r.patient)} y={top} width={x.bandwidth()} height={Math.max(0, h)} fill={color}>
+                      <title>{`${r.patient} · ${t(`components.single-cell.snv.category-${k}`)}: ${r.counts[k]} (${d3.format(".0%")(r.counts[k] / Math.max(1, total(r.counts)))})`}</title>
+                    </rect>
+                  );
+                })}
+                <text x={x(r.patient) + x.bandwidth() / 2} y={y(mode === "count" ? total(r.counts) : 1) - 4} textAnchor="middle" fontSize={FONT.axis} fill="#262626">
+                  {mode === "count" ? d3.format(",")(total(r.counts)) : `${r.counts.truncal}`}
+                </text>
+              </g>
+            );
+          })}
+          <XBandLabels scale={x} y={HEIGHT - M.bottom + 20} rotate={rows.length > 8} onClick={(p) => onOpen(rows.find((r) => r.patient === p)?.summary)} />
+        </svg>
+        <Swatches items={CATS.map(([k, color]) => ({ key: k, color, label: t(`components.single-cell.snv.category-${k}`) }))} />
+        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.tmb-help")}</Text>
+      </div>
+    </Card>
+  );
+}
