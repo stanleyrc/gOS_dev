@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Alert, Button, Card, Col, Collapse, Descriptions, Empty, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import DriverCellMatrix from "./driverCellMatrix";
+import ReportFindings from "./reportFindings";
 import { AimOutlined, ExperimentOutlined, FileSearchOutlined, SelectOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
@@ -279,6 +280,11 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         {interactive && allDrivers.length > 0 && (
           <Col span={24}>
             <DriverCellMatrix drivers={allDrivers} />
+          </Col>
+        )}
+        {interactive && (
+          <Col span={24}>
+            <ReportFindings report={report} cloneColors={cloneColors} />
           </Col>
         )}
         <Col span={24}>

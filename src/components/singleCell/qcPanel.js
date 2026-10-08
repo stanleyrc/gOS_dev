@@ -11,7 +11,9 @@ import datasetsActions from "../../redux/datasets/actions";
 import { cnRowQc, medianMad, robustOutliers } from "../../helpers/singleCell/cohortStats";
 import { annotationColors } from "../../helpers/singleCell/matrix";
 import { themePalette } from "../../helpers/singleCell/themes";
-import { BoxStrips } from "./cohort/charts";
+import { BoxStrips, FONT, YAxis } from "./cohort/charts";
+import { spearman } from "../../helpers/singleCell/dosage";
+import { correlationP, formatP } from "../../helpers/singleCell/tests";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
 import SvgExportButton from "./svgExportButton";
 
@@ -109,8 +111,16 @@ export default function QcPanel() {
     });
   const flaggedIds = new Set(flags.keys());
   const flaggedRows = rows.filter((r) => flaggedIds.has(r.cell_id));
-  const cols = width >= 1500 ? 3 : width >= 900 ? 2 : 1;
-  const plotWidth = Math.floor((width - 16 * (cols - 1)) / cols) - 26;
+  const cols = width >= 1600 ? 4 : width >= 1100 ? 3 : width >= 700 ? 2 : 1;
+  const plotWidth = Math.floor((width - 12 * (cols - 1)) / cols) - 26;
+  const PAIRS = [["qc_depth", "snv_count"], ["ploidy", "fga"], ["segments", "qc_mad"], ["nCount_RNA", "nFeature_RNA"], ["fga", "snv_count"], ["qc_breadth", "junction_count"]].filter(([a, b]) => metrics.some((m) => m[0] === a) && metrics.some((m) => m[0] === b));
+  const labelOf = (k) => (metrics.find((m) => m[0] === k) || [k, k])[1];
+  const groupMedians = levels.map((lv) => {
+    const sub = rows.filter((r) => `${r[groupBy] ?? "NA"}` === lv);
+    const row = { key: lv, group: lv, n: sub.length };
+    metrics.forEach(([k]) => (row[k] = medianMad(sub.map((r) => Number(r[k]))).median));
+    return row;
+  });
   const openCell = (id) => patient && dispatch(datasetsActions.openCaseReport(patient.datasetId, id));
   const fmt = (v, d = 2) => (Number.isFinite(Number(v)) ? d3.format(`.${d}~f`)(Number(v)) : "–");
   const med = (k) => medianMad(rows.map((r) => Number(r[k]))).median;
@@ -163,13 +173,66 @@ export default function QcPanel() {
             <Row gutter={[16, 16]}>
               {shownMetrics.map(([k, label, log]) => (
                 <Col key={k} span={24 / cols}>
-                  <Card size="small" title={<span style={{ fontSize: 13 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "4px 8px" }}>
-                    <BoxStrips groups={groupsFor(k)} width={plotWidth} height={230} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
+                  <Card size="small" title={<span style={{ fontSize: 12 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "2px 6px" }} headStyle={{ minHeight: 32 }}>
+                    <BoxStrips groups={groupsFor(k)} width={plotWidth} height={170} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
                   </Card>
                 </Col>
               ))}
             </Row>
           </div>
+        </Col>
+        {(section === "all") && PAIRS.length > 0 && (
+          <Col span={24}>
+            <Card size="small" title={t("components.single-cell.qc.correlations")} bodyStyle={{ padding: "4px 8px" }}>
+              <Row gutter={[12, 12]}>
+                {PAIRS.map(([a, b]) => {
+                  const pts = rows.filter((r) => Number.isFinite(Number(r[a])) && Number.isFinite(Number(r[b]))).map((r) => ({ id: r.cell_id, x: Number(r[a]), y: Number(r[b]), g: `${r[groupBy] ?? "NA"}` }));
+                  if (pts.length < 5) return null;
+                  const w = plotWidth;
+                  const h = 190;
+                  const Mm = { top: 10, right: 10, bottom: 40, left: 56 };
+                  const xs = d3.scaleLinear().domain(d3.extent(pts, (p) => p.x)).nice().range([Mm.left, w - Mm.right]);
+                  const ys = d3.scaleLinear().domain(d3.extent(pts, (p) => p.y)).nice().range([h - Mm.bottom, Mm.top]);
+                  const rho = spearman(pts.map((p) => p.x), pts.map((p) => p.y));
+                  return (
+                    <Col key={`${a}-${b}`} span={24 / cols}>
+                      <svg width={w} height={h}>
+                        <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 24 ? `${labelOf(b).slice(0, 23)}…` : labelOf(b)} ticks={4} format={d3.format("~g")} />
+                        {xs.ticks(4).map((v) => (
+                          <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill="#595959">{d3.format("~g")(v)}</text>
+                        ))}
+                        <text x={(Mm.left + w - Mm.right) / 2} y={h - 6} textAnchor="middle" fontSize={FONT.axis} fill="#262626">{labelOf(a)}</text>
+                        {pts.map((p) => (
+                          <circle key={p.id} cx={xs(p.x)} cy={ys(p.y)} r={flaggedIds.has(p.id) ? 3.5 : 2.6} fill={colors[p.g] || "#8c8c8c"} fillOpacity={0.8} stroke={flaggedIds.has(p.id) ? "#cf1322" : "none"} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection([p.id]))}>
+                            <title>{`${p.id}
+${labelOf(a)}: ${d3.format("~g")(p.x)}
+${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
+                          </circle>
+                        ))}
+                        <text x={w - Mm.right} y={Mm.top + 2} textAnchor="end" fontSize={11} fill="#595959">{`ρ ${Number.isFinite(rho) ? rho.toFixed(2) : "–"} · ${formatP(correlationP(rho, pts.length))}`}</text>
+                      </svg>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </Card>
+          </Col>
+        )}
+        <Col span={24}>
+          <Card size="small" title={t("components.single-cell.qc.medians-title")} bodyStyle={{ padding: 0 }}>
+            <Table
+              size="small"
+              rowKey="key"
+              pagination={false}
+              scroll={{ x: true }}
+              dataSource={groupMedians}
+              columns={[
+                { title: groupBy === "clone_id" ? t("components.single-cell.umap.color-clone") : groupBy, dataIndex: "group", fixed: "left", width: 140, render: (g) => <Tag color={colors[g]}>{g}</Tag> },
+                { title: "n", dataIndex: "n", width: 60 },
+                ...metrics.map(([k, label]) => ({ title: <span style={{ fontSize: 11 }}>{label}</span>, dataIndex: k, width: 120, render: (v) => (k === "fga" ? (Number.isFinite(v) ? d3.format(".1%")(v) : "–") : fmt(v, 2)) })),
+              ]}
+            />
+          </Card>
         </Col>
         <Col span={24}>
           <Card size="small" title={t("components.single-cell.qc.flagged-title", { count: flaggedRows.length })}>

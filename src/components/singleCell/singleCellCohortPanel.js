@@ -36,6 +36,8 @@ import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
 import PatientReportCard from "./patientReportCard";
+import CohortGenePanel from "./cohort/cohortGenePanel";
+import PatientCards from "./cohort/patientCards";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -354,8 +356,18 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
           ))}
         {view === "drivers" && (
+          <>
+            <Col span={24}>
+              <CohortGenePanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+            </Col>
+            <Col span={24}>
+              <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+            </Col>
+          </>
+        )}
+        {view === "overview" && (
           <Col span={24}>
-            <OncoprintPanel summaries={summaries} files={cohortFiles.files} onOpen={openPatient} />
+            <PatientCards summaries={summaries} files={cohortFiles.files} datafiles={datafiles} cloneColors={cloneColors} onOpen={openPatient} />
           </Col>
         )}
         {view === "mutations" && (
