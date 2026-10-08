@@ -4,6 +4,7 @@ import PatientReportCard from "../../components/singleCell/patientReportCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import ClonalHistoryCard from "../../components/singleCell/clonalHistoryCard";
+import AmpTimingCard from "../../components/singleCell/ampTimingCard";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
 
 /** Key findings of the open single-cell patient, with links into the heatmap and IGV. */
@@ -27,6 +28,9 @@ export default function SingleCellReportTab() {
       />
       <div style={{ marginTop: 16 }}>
         <ClonalHistoryCard />
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <AmpTimingCard />
       </div>
     </SingleCellWrapper>
   );
