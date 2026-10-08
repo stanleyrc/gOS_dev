@@ -366,3 +366,67 @@ html[data-theme="dark"] svg rect[fill="rgba(255,255,255,0.8)"] {
 html[data-theme="dark"] canvas {
   filter: none;
 }
+
+/* dark theme: app chrome drawn with fixed light colours by styled-components */
+html[data-theme="dark"] .ant-pro-top-menu,
+html[data-theme="dark"] .ant-pro-top-nav-header,
+html[data-theme="dark"] .ant-pro-top-nav-header.light,
+html[data-theme="dark"] .ant-pro-top-nav-header-main,
+html[data-theme="dark"] .ant-layout-header {
+  background: #1b1b1b !important;
+  color: #e6e6e6 !important;
+  border-bottom: 1px solid #303030;
+}
+html[data-theme="dark"] .ant-pro-top-nav-header-logo h1,
+html[data-theme="dark"] .ant-pro-top-nav-header-logo,
+html[data-theme="dark"] .ant-pro-top-menu .ant-select-selection-item,
+html[data-theme="dark"] .ant-pro-top-menu .ant-select-selection-placeholder {
+  color: #e6e6e6 !important;
+}
+html[data-theme="dark"] .site-page-header,
+html[data-theme="dark"] .ant-page-header,
+html[data-theme="dark"] .ant-home-header-container,
+html[data-theme="dark"] .ant-home-content-container,
+html[data-theme="dark"] .ant-panel-container,
+html[data-theme="dark"] .ant-panel-list-container,
+html[data-theme="dark"] .ant-home-content-container > .ant-tabs > .ant-tabs-nav,
+html[data-theme="dark"] .ant-tabs-nav,
+html[data-theme="dark"] .ant-affix > div {
+  background: #141414 !important;
+  border-color: #303030 !important;
+}
+html[data-theme="dark"] .ant-page-header-heading-title,
+html[data-theme="dark"] .detail-title-breadcrumb,
+html[data-theme="dark"] .detail-title-breadcrumb-link,
+html[data-theme="dark"] .site-page-header .ant-typography,
+html[data-theme="dark"] .site-page-header h1,
+html[data-theme="dark"] .site-page-header h2,
+html[data-theme="dark"] .site-page-header h3,
+html[data-theme="dark"] .ant-page-header .ant-typography {
+  color: #e6e6e6 !important;
+}
+html[data-theme="dark"] .detail-title-breadcrumb-link:hover {
+  color: #69b1ff !important;
+}
+html[data-theme="dark"] .ant-page-header .ant-btn-default,
+html[data-theme="dark"] .site-page-header .ant-btn-default {
+  background: #1f1f1f !important;
+  color: #e6e6e6 !important;
+  border-color: #434343 !important;
+}
+html[data-theme="dark"] .ant-pro-top-menu .ant-select-selector,
+html[data-theme="dark"] .ant-pro-top-menu .ant-select {
+  background: #262626 !important;
+  color: #e6e6e6 !important;
+  border-color: #434343 !important;
+}
+html[data-theme="dark"] .sc-toolbar-row {
+  border-top-color: #303030;
+}
+html[data-theme="dark"] .sc-events-table .ant-table-thead > tr > th,
+html[data-theme="dark"] .sc-toolbar-sticky {
+  background: #1f1f1f !important;
+}
+html[data-theme="dark"] .sc-events-table .ant-table-tbody > tr:nth-child(even) > td {
+  background: #181818 !important;
+}
