@@ -1111,8 +1111,14 @@
         "note": "Saved in this browser. The last colour is used for that state and above.",
         "presets": {
           "pgv": "pgv (white = 2 / 1)",
-          "scwgs": "scWGS (grey = 2)"
-        }
+          "scwgs": "scWGS (grey = 2)",
+          "diverging": "Diverging (blue–white–red)",
+          "zissou": "Zissou (cool losses, warm gains)",
+          "viridis": "Viridis (sequential)",
+          "magma": "Magma (sequential)"
+        },
+        "theme": "Categorical theme",
+        "theme-help": "Colours for clones, groups, UMAP fields, violins, signatures and saved groups. The heatmap copy-number colours are set separately below."
       },
       "events": {
         "picked": "{{count}} events picked",

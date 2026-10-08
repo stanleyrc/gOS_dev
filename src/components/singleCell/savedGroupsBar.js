@@ -6,9 +6,10 @@ import { LinkOutlined, SaveOutlined } from "@ant-design/icons";
 import * as d3 from "d3";
 import singleCellActions from "../../redux/singleCell/actions";
 import { SAVED_GROUP_FIELD, groupValues, shareUrl } from "../../helpers/singleCell/savedGroups";
+import { themePalette } from "../../helpers/singleCell/themes";
 
 const { Text } = Typography;
-const groupColor = d3.scaleOrdinal(d3.schemeDark2);
+const groupColor = (theme) => d3.scaleOrdinal(themePalette(theme));
 
 /** The open patient's saved groups and a setter. */
 export function useSavedGroups() {
@@ -45,8 +46,9 @@ export function useSavedGroupsField() {
 export default function SavedGroupsBar() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { selectedCellIds } = useSelector((state) => state.SingleCell);
+  const { selectedCellIds, layout } = useSelector((state) => state.SingleCell);
   const { pid, groups, setGroups } = useSavedGroups();
+  const colorOf = groupColor(layout.theme);
   const [name, setName] = useState("");
   useSavedGroupsField();
 
@@ -72,7 +74,7 @@ export default function SavedGroupsBar() {
       {groups.map((g) => (
         <Tooltip key={g.name} title={t("components.single-cell.saved-groups.tag-help", { count: g.cells.length })}>
           <Tag
-            color={groupColor(g.name)}
+            color={colorOf(g.name)}
             closable
             style={{ cursor: "pointer" }}
             onClick={() => dispatch(singleCellActions.updateSelection(g.cells))}

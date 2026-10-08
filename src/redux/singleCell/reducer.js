@@ -7,6 +7,7 @@ import actions, {
 import caseReportActions from "../caseReport/actions";
 import { DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
 import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups";
+import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
@@ -109,7 +110,9 @@ export default function appReducer(state = initState, action) {
         error: null,
         patient: action.patient,
         cells: action.cells,
-        cloneColors: action.cloneColors,
+        // dataset colours are kept as `cloneColorsFixed`; the shown ones follow the theme
+        cloneColorsFixed: action.cloneColors,
+        cloneColors: cloneColorsForTheme(Object.keys(action.cloneColors || {}), state.layout.theme || DEFAULT_THEME, action.cloneColors),
         order: action.order,
         tree: action.tree,
         cn: action.cn,
@@ -178,8 +181,14 @@ export default function appReducer(state = initState, action) {
       ];
       return { ...state, rna: { ...state.rna, data: { ...summary, cells, fields } } };
     }
-    case actions.SC_LAYOUT_UPDATED:
-      return { ...state, layout: { ...state.layout, ...action.patch } };
+    case actions.SC_LAYOUT_UPDATED: {
+      const layout = { ...state.layout, ...action.patch };
+      const cloneColors =
+        action.patch.theme && action.patch.theme !== state.layout.theme
+          ? cloneColorsForTheme(Object.keys(state.cloneColors || {}), action.patch.theme, state.cloneColorsFixed || {})
+          : state.cloneColors;
+      return { ...state, layout, cloneColors };
+    }
     case actions.SC_PLOT_INSETS_UPDATED:
       return state.plotInsets.left === action.insets.left && state.plotInsets.right === action.insets.right
         ? state
