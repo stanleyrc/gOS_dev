@@ -9,6 +9,7 @@ import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
 import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
+import PendingEventOpener from "../../components/singleCell/pendingEventOpener";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
 import singleCellActions from "../../redux/singleCell/actions";
 import HeightHandle from "../../components/singleCell/heightHandle";
@@ -101,6 +102,7 @@ export default function SingleCellTab() {
 
   return (
     <Wrapper style={{ "--sc-sticky-top": `${headerHeight + (pinned ? navHeight : 0)}px` }}>
+      <PendingEventOpener />
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space wrap size={[16, 4]} className="sc-tab-toggles">

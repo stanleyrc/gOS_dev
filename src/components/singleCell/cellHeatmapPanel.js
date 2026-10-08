@@ -775,7 +775,11 @@ export default function CellHeatmapPanel() {
             </Button>
           </Space>
         )}
-        <Space wrap size={[16, 8]} className="sc-toolbar">
+        <div className="sc-toolbar">
+          <div className="sc-toolbar-row">
+            <Text strong className="sc-toolbar-row-label">{t("components.single-cell.toolbar.row-view")}</Text>
+            <Space wrap size={[12, 6]}>
+
           <Segmented
             size="small"
             options={typeOptions}
@@ -878,16 +882,6 @@ export default function CellHeatmapPanel() {
               </Tooltip>
             </Checkbox>
           )}
-          {canShowBranchSnvs && (
-            <Checkbox
-              checked={Boolean(layout.branchSnvs)}
-              onChange={(e) => dispatch(singleCellActions.updateLayout({ branchSnvs: e.target.checked }))}
-            >
-              <Tooltip title={t("components.single-cell.branch.toggle-help")}>
-                {t("components.single-cell.branch.toggle")}
-              </Tooltip>
-            </Checkbox>
-          )}
           {geneList.length > 0 && sc.rna.status === "ok" && (
             <Checkbox
               checked={Boolean(layout.showGenePanel)}
@@ -904,8 +898,23 @@ export default function CellHeatmapPanel() {
               {t("components.single-cell.toolbar.side-panel")}
             </Checkbox>
           )}
-          {showSnvControls && (
-            <Space size={4} wrap>
+            </Space>
+          </div>
+          {(showSnvControls || canShowBranchSnvs) && (
+            <div className="sc-toolbar-row">
+              <Text strong className="sc-toolbar-row-label">{t("components.single-cell.toolbar.row-snvs")}</Text>
+              <Space wrap size={[12, 6]}>
+          {canShowBranchSnvs && (
+            <Checkbox
+              checked={Boolean(layout.branchSnvs)}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ branchSnvs: e.target.checked }))}
+            >
+              <Tooltip title={t("components.single-cell.branch.toggle-help")}>
+                {t("components.single-cell.branch.toggle")}
+              </Tooltip>
+            </Checkbox>
+          )}
+                {showSnvControls && (<>
               <Text type="secondary">{t("components.single-cell.toolbar.metric")}</Text>
               <Select
                 size="small"
@@ -980,9 +989,11 @@ export default function CellHeatmapPanel() {
                   )}
                 </>
               )}
-            </Space>
+            </>)}
+              </Space>
+            </div>
           )}
-        </Space>
+        </div>
         </div>
         {alerts.map((a) => (
           <Alert key={a.key} type="warning" showIcon className="sc-alert" message={a.message} description={a.description} />
