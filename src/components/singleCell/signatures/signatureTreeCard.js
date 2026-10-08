@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Checkbox, Empty, InputNumber, Progress, Select, Space, Tooltip, Typography } from "antd";
+import { Card, Checkbox, Empty, InputNumber, Progress, Select, Space, Table, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import useContainerWidth from "../useContainerWidth";
@@ -11,7 +11,7 @@ import useTreeView from "../useTreeView";
 import SvgExportButton from "../svgExportButton";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { AetiologyLegend, loadCosmic, signatureColorOf } from "../signaturePanel";
-import { cosine, fitSignatures, nnls, sbs96Counts } from "../../../helpers/singleCell/signatures";
+import { bootstrapShares, cosine, fitSignatures, nnls, sbs96Counts } from "../../../helpers/singleCell/signatures";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../../helpers/singleCell/snvSites";
 import { cutTree, labelRuns } from "../../../helpers/singleCell/treeGroups";
@@ -43,6 +43,8 @@ export default function SignatureTreeCard() {
   const [fits, setFits] = useState(null);
   const [progress, setProgress] = useState(null);
   const [hoverRange, setHoverRange] = useState(null);
+  const [focus, setFocus] = useState(null); // clade key for the clade-vs-rest table
+  const [focusStats, setFocusStats] = useState(null);
   const snvData = snv.status === "ok" ? snv.data : null;
 
   const nRows = order.length;
@@ -83,7 +85,7 @@ export default function SignatureTreeCard() {
             activities = subset.map(([n], q) => ({ signature: n, activity: x[q] })).filter((a) => a.activity > 0);
           } else activities = fitSignatures(counts, reference).activities;
         }
-        out[c.key] = { activities: activities.sort((a, b) => b.activity - a.activity), n: used, cosTruncal: cosine(counts, truncal) };
+        out[c.key] = { activities: activities.sort((a, b) => b.activity - a.activity), n: used, cosTruncal: cosine(counts, truncal), contexts, counts };
         if (!active) return;
         setProgress(Math.round((100 * (i + 1)) / clades.length));
         // eslint-disable-next-line no-await-in-loop
@@ -98,6 +100,47 @@ export default function SignatureTreeCard() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snvData, cladesKey, signatures]);
+
+  // Clade vs rest: shares with bootstrap intervals for the focused clade and all other tumor cells
+  useEffect(() => {
+    if (!focus || !fits || !fits[focus] || !snvData) return undefined;
+    let active = true;
+    (async () => {
+      const reference = await loadCosmic();
+      const rows = rowMap(order, snvData.cells);
+      const inClade = clades.find((c) => c.key === focus);
+      if (!inClade) return;
+      const restRows = order.map((_, r) => r).filter((r) => (r < inClade.first || r > inClade.last) && !/^normal$/i.test(`${leafClones[r] || ""}`)).map((r) => rows[r]).filter((r) => r >= 0);
+      const seen = sitesSeenInRows(snvData, restRows);
+      const restContexts = [...seen].map((s) => snvData.variants[s].context).filter(Boolean);
+      const names = [...new Set([...fits[focus].activities.map((a) => a.signature)])];
+      const known = new Set((signatures.status === "ok" ? signatures.data?.sets || [] : []).flatMap((s) => (s.activities || []).map((a) => a.signature)));
+      const subset = reference.names.map((n, j) => [n, j]).filter(([n]) => known.has(n) || names.includes(n));
+      const { counts: restCounts, used: restUsed } = sbs96Counts(restContexts);
+      const xr = nnls(subset.map(([, j]) => reference.columns[j]), restCounts);
+      const restTotal = xr.reduce((a, b) => a + b, 0) || 1;
+      const restShare = Object.fromEntries(subset.map(([n], k) => [n, xr[k] / restTotal]));
+      const cladeTotal = fits[focus].activities.reduce((s, a) => s + a.activity, 0) || 1;
+      const sigNames = subset.map(([n]) => n);
+      const ciClade = bootstrapShares(fits[focus].contexts, reference, sigNames, 80);
+      const ciRest = bootstrapShares(restContexts, reference, sigNames, 80);
+      if (!active) return;
+      const rowsOut = sigNames
+        .map((n) => {
+          const clade = (fits[focus].activities.find((a) => a.signature === n)?.activity || 0) / cladeTotal;
+          const rest = restShare[n] || 0;
+          const separated = ciClade[n] && ciRest[n] && (ciClade[n].lo > ciRest[n].hi || ciClade[n].hi < ciRest[n].lo);
+          return { signature: n, clade, rest, diff: clade - rest, ciClade: ciClade[n], ciRest: ciRest[n], separated };
+        })
+        .filter((r) => r.clade > 0.01 || r.rest > 0.01)
+        .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+      setFocusStats({ rows: rowsOut, nClade: fits[focus].n, nRest: restUsed, cos: cosine(fits[focus].counts, restCounts) });
+    })().catch(() => {});
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, fits]);
 
   const hoverRef = useRef(null);
   const share = (id) => {
@@ -114,6 +157,7 @@ export default function SignatureTreeCard() {
   const barW = Math.max(200, width - barX - 150);
   const allSigs = [...new Set(Object.values(fits || {}).flatMap((f) => f.activities.map((a) => a.signature)))];
   const selectClade = (c, e) => {
+    setFocus(c.key);
     const ids = order.slice(c.first, c.last + 1);
     dispatch(singleCellActions.updateSelection(e?.metaKey || e?.ctrlKey || e?.shiftKey ? [...selectedCellIds, ...ids] : ids));
   };
@@ -219,6 +263,32 @@ export default function SignatureTreeCard() {
             })}
           </svg>
         </div>
+        {focus && fits?.[focus] && (
+          <div style={{ marginTop: 10 }}>
+            <Text strong>{t("components.single-cell.signatures.clade-vs-rest", { clade: clades.find((c) => c.key === focus)?.label || focus })}</Text>
+            {focusStats ? (
+              <>
+                <div><Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.clade-vs-rest-meta", { nClade: focusStats.nClade, nRest: focusStats.nRest, cos: pct(focusStats.cos) })}</Text></div>
+                <Table
+                  size="small"
+                  rowKey="signature"
+                  pagination={false}
+                  style={{ maxWidth: 720 }}
+                  dataSource={focusStats.rows}
+                  columns={[
+                    { title: t("components.single-cell.signatures.signature"), dataIndex: "signature", width: 90, render: (s) => <span><span className="sc-swatch" style={{ background: signatureColorOf(s) }} />{s}</span> },
+                    { title: t("components.single-cell.signatures.clade-share"), dataIndex: "clade", width: 150, render: (v, r) => `${pct(v)}${r.ciClade ? ` [${pct(r.ciClade.lo)}–${pct(r.ciClade.hi)}]` : ""}` },
+                    { title: t("components.single-cell.signatures.rest-share"), dataIndex: "rest", width: 150, render: (v, r) => `${pct(v)}${r.ciRest ? ` [${pct(r.ciRest.lo)}–${pct(r.ciRest.hi)}]` : ""}` },
+                    { title: "Δ", dataIndex: "diff", width: 80, render: (v, r) => <span style={{ color: r.separated ? (v > 0 ? "#cf1322" : "#1d39c4") : undefined, fontWeight: r.separated ? 600 : 400 }}>{`${v > 0 ? "+" : ""}${pct(v)}${r.separated ? " *" : ""}`}</span> },
+                  ]}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.clade-vs-rest-help")}</Text>
+              </>
+            ) : (
+              <div><Text type="secondary">…</Text></div>
+            )}
+          </div>
+        )}
         {allSigs.length > 0 && <AetiologyLegend rows={[{ activities: allSigs.map((s) => ({ signature: s })) }]} />}
         <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.tree-help")}</Text>
       </div>

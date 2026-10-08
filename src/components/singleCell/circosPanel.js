@@ -2,172 +2,312 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Segmented, Select, Space, Switch, Typography } from "antd";
+import { Card, Empty, InputNumber, Progress, Segmented, Space, Switch, Typography } from "antd";
 import { RadarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "./useContainerWidth";
+import usePixelRatio from "./usePixelRatio";
+import useTreeView from "./useTreeView";
+import PhylogenyCanvas from "./phylogenyCanvas";
 import SvgExportButton from "./svgExportButton";
 import singleCellActions from "../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import { cnColorer } from "../../helpers/singleCell/matrix";
+import { medianCnRow } from "../../helpers/singleCell/cellFiles";
 
 const { Text } = Typography;
-const cache = new Map();
+const genomeCache = new Map();
+const MAX_RINGS = 6;
+const MAX_CLONE_CELLS = 60;
+const TREE_WIDTH = 230;
+const CHR_COLORS = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3]);
+const JUNCTION_COLORS = { TRA: "#7B3294", INV: "#E6AB02", DEL: "#2C7BB6", DUP: "#D7191C", other: "#1B9E77" };
+
+async function loadGenome(dataset, cellId) {
+  const key = `${dataset.id}/${cellId}`;
+  if (!genomeCache.has(key)) {
+    const r = await tryGet(casePath(dataset, cellId, "complex.json"));
+    genomeCache.set(key, r.status === "ok" ? r.data : null);
+  }
+  return genomeCache.get(key);
+}
+
+/** Breakpoint pairs of a genome graph's ALT junctions in global coordinates. */
+function junctionsOf(genome, toPlace) {
+  if (!genome) return [];
+  const byIid = new Map((genome.intervals || []).map((i) => [i.iid, i]));
+  const endOf = (iid) => {
+    const i = byIid.get(Math.abs(iid));
+    if (!i) return null;
+    return { chr: i.chromosome, pos: iid < 0 ? i.startPoint : i.endPoint, place: toPlace(i.chromosome, iid < 0 ? i.startPoint : i.endPoint) };
+  };
+  return (genome.connections || [])
+    .filter((c) => c.type === "ALT")
+    .map((c) => {
+      const a = endOf(c.source);
+      const b = endOf(c.sink);
+      if (!a || !b || a.place == null || b.place == null) return null;
+      const kind = a.chr !== b.chr ? "TRA" : /INV/i.test(c.title) ? "INV" : /DEL/i.test(c.title) ? "DEL" : /DUP/i.test(c.title) ? "DUP" : "other";
+      return { a, b, kind, title: c.title, key: `${a.chr}:${Math.round(a.pos / 1e4)}-${b.chr}:${Math.round(b.pos / 1e4)}` };
+    })
+    .filter(Boolean);
+}
 
 /**
- * Circos of one cell's genome graph: chromosome ideogram ring, copy number
- * ring (heatmap palette), and junctions as arcs through the centre
- * (colour by type: INV / DEL / DUP-like / TRA). Pick any cell; the current
- * selection's cells are offered first.
+ * Circos next to the phylogeny. Rings are either the selected cells (click
+ * cells / clades in the tree, up to 6) or pseudobulk clones (median CN of
+ * the clone's cells; junctions shared by several of its cells, line width
+ * = recurrence). Outer ring: chromosomes with 50 Mb ticks; inner rings: CN
+ * in the heatmap palette; centre: junction arcs by type.
  */
 export default function CircosPanel() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { cells, selectedCellIds, cloneColors, palette, patient } = useSelector((s) => s.SingleCell);
+  const { cells, cn, selectedCellIds, hoveredCellId, cloneColors, palette } = useSelector((s) => s.SingleCell);
   const { chromoBins, genomeLength, dataset } = useSelector((s) => s.Settings);
-  const [ref, width] = useContainerWidth(900);
-  const [cellId, setCellId] = useState(null);
-  const [genome, setGenome] = useState(null);
+  const { order, treeLayout, cellById } = useTreeView();
+  const pixelRatio = usePixelRatio();
+  const [ref, width] = useContainerWidth(1100);
+  const [mode, setMode] = useState("cells");
   const [showCn, setShowCn] = useState(true);
-  const [junctionMode, setJunctionMode] = useState("all");
-  const chosen = cellId || selectedCellIds[0] || cells[0]?.cell_id || null;
+  const [minShare, setMinShare] = useState(0.2);
+  const [junctionData, setJunctionData] = useState({});
+  const [progress, setProgress] = useState(null);
+  const [hoverRange, setHoverRange] = useState(null);
 
-  useEffect(() => {
-    if (!chosen || !dataset) return undefined;
-    let active = true;
-    const key = `${dataset.id}/${chosen}`;
-    if (cache.has(key)) {
-      setGenome(cache.get(key));
-      return undefined;
+  const chromosomes = useMemo(() => Object.keys(chromoBins || {}), [chromoBins]);
+  const toPlace = (chr, pos) => (chromoBins[chr] ? chromoBins[chr].startPlace + pos - chromoBins[chr].startPoint : null);
+  const cnRowOf = useMemo(() => {
+    const m = new Map();
+    if (cn.status === "ok" && cn.data) cn.data.cells.forEach((id, k) => m.set(id, cn.data.rows[k]));
+    return m;
+  }, [cn]);
+
+  // ring sources
+  const sources = useMemo(() => {
+    if (mode === "cells") {
+      const ids = (selectedCellIds.length ? selectedCellIds : order.slice(0, 1)).slice(0, MAX_RINGS);
+      return ids.map((id) => ({ key: id, label: id, color: cloneColors[cellById.get(id)?.clone_id] || "#8c8c8c", cellIds: [id], row: cnRowOf.get(id) || null }));
     }
-    setGenome(null);
-    tryGet(casePath(dataset, chosen, "complex.json")).then((r) => {
-      if (!active) return;
-      const g = r.status === "ok" ? r.data : null;
-      cache.set(key, g);
-      setGenome(g);
+    const byClone = new Map();
+    cells.forEach((c) => {
+      if (c.clone_id == null || /^normal$/i.test(`${c.clone_id}`)) return;
+      if (!byClone.has(c.clone_id)) byClone.set(c.clone_id, []);
+      byClone.get(c.clone_id).push(c.cell_id);
     });
+    return [...byClone.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, MAX_RINGS)
+      .map(([clone, ids]) => ({
+        key: `clone:${clone}`,
+        label: `${clone} (${ids.length})`,
+        color: cloneColors[clone] || "#8c8c8c",
+        cellIds: ids,
+        row: medianCnRow(ids.map((id) => cnRowOf.get(id)).filter(Boolean), chromoBins),
+      }));
+  }, [mode, selectedCellIds, order, cells, cloneColors, cellById, cnRowOf, chromoBins]);
+
+  // junctions per source (fetch complex.json of the cells, capped per clone)
+  const sourcesKey = sources.map((s) => `${s.key}:${s.cellIds.length}`).join("|");
+  useEffect(() => {
+    if (!dataset || !sources.length) return undefined;
+    let active = true;
+    (async () => {
+      const out = {};
+      let done = 0;
+      const total = sources.reduce((s, src) => s + Math.min(MAX_CLONE_CELLS, src.cellIds.length), 0);
+      setProgress(0);
+      for (const src of sources) {
+        const ids = src.cellIds.slice(0, MAX_CLONE_CELLS);
+        const counts = new Map();
+        for (let i = 0; i < ids.length; i += 4) {
+          // eslint-disable-next-line no-await-in-loop
+          const genomes = await Promise.all(ids.slice(i, i + 4).map((id) => loadGenome(dataset, id)));
+          genomes.forEach((g) => {
+            const seen = new Set();
+            junctionsOf(g, toPlace).forEach((j) => {
+              if (seen.has(j.key)) return;
+              seen.add(j.key);
+              const cur = counts.get(j.key) || { ...j, n: 0 };
+              cur.n += 1;
+              counts.set(j.key, cur);
+            });
+          });
+          done += genomes.length;
+          if (!active) return;
+          setProgress(Math.round((100 * done) / Math.max(1, total)));
+        }
+        out[src.key] = { junctions: [...counts.values()], nCells: ids.length };
+      }
+      if (!active) return;
+      setJunctionData(out);
+      setProgress(null);
+    })().catch(() => active && setProgress(null));
     return () => {
       active = false;
     };
-  }, [chosen, dataset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourcesKey, dataset]);
 
-  const size = Math.min(Math.max(420, width - 24), 820);
+  /* ---- geometry ---- */
+  const size = Math.min(Math.max(480, width - TREE_WIDTH - 40), 880);
   const R = size / 2;
-  const chromosomes = useMemo(() => Object.keys(chromoBins || {}), [chromoBins]);
-  const angle = useMemo(() => {
-    const total = genomeLength || d3.max(chromosomes, (c) => chromoBins[c].endPlace) || 1;
-    const gapRad = 0.006;
-    return (place) => -Math.PI / 2 + (place / total) * (2 * Math.PI - gapRad * chromosomes.length) + gapRad * (chromosomes.findIndex((c) => place >= chromoBins[c].startPlace && place <= chromoBins[c].endPlace) + 1);
-  }, [genomeLength, chromosomes, chromoBins]);
-  const toPlace = (chr, pos) => (chromoBins[chr] ? chromoBins[chr].startPlace + pos - chromoBins[chr].startPoint : null);
-  const intervals = useMemo(() => (genome?.intervals || []).filter((i) => (i.type == null || i.type === "interval") && chromoBins[i.chromosome]), [genome, chromoBins]);
-  const byIid = useMemo(() => new Map(intervals.map((i) => [i.iid, i])), [intervals]);
-  const connections = useMemo(() => (genome?.connections || []).filter((c) => (junctionMode === "all" ? c.type === "ALT" : c.type === "ALT" && byIid.get(Math.abs(c.source))?.chromosome !== byIid.get(Math.abs(c.sink))?.chromosome)), [genome, junctionMode, byIid]);
+  const total = genomeLength || d3.max(chromosomes, (c) => chromoBins[c].endPlace) || 1;
+  const gap = 0.012;
+  const angle = useMemo(() => (place) => {
+    const k = chromosomes.findIndex((c) => place >= chromoBins[c].startPlace && place <= chromoBins[c].endPlace);
+    return -Math.PI / 2 + (place / total) * (2 * Math.PI - gap * chromosomes.length) + gap * (Math.max(0, k) + 0.5);
+  }, [chromosomes, chromoBins, total]);
+  const arc = (a0, a1, r0, r1) => d3.arc()({ innerRadius: r0, outerRadius: r1, startAngle: a0 + Math.PI / 2, endAngle: a1 + Math.PI / 2 });
   const color = useMemo(() => cnColorer(palette, "total"), [palette]);
-  const rgba = (packed) => {
-    const r = packed & 255;
-    const g = (packed >> 8) & 255;
-    const b = (packed >> 16) & 255;
-    return `rgb(${r},${g},${b})`;
-  };
+  const rgb = (packed) => `rgb(${packed & 255},${(packed >> 8) & 255},${(packed >> 16) & 255})`;
+  const ideo = [R - 34, R - 18];
+  const ringW = showCn ? Math.min(42, Math.max(16, (R - 110) / Math.max(1, sources.length))) : 0;
+  const ringR = (i) => [ideo[0] - 8 - (i + 1) * ringW, ideo[0] - 8 - i * ringW - 3];
+  const innerR = ideo[0] - 12 - sources.length * ringW;
   if (!chromosomes.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
 
-  const ideoR = [R - 28, R - 12];
-  const cnR = [R - 86, R - 34];
-  const cnY = d3.scaleLinear().domain([0, 8]).range(cnR).clamp(true);
-  const arcPath = (a0, a1, r0, r1) => d3.arc()({ innerRadius: r0, outerRadius: r1, startAngle: a0 + Math.PI / 2, endAngle: a1 + Math.PI / 2 });
-  const endOf = (iid) => {
-    const i = byIid.get(Math.abs(iid));
-    if (!i) return null;
-    const pos = iid < 0 ? i.startPoint : i.endPoint; // sign = which end of the interval
-    return toPlace(i.chromosome, pos);
-  };
-  const junctionColor = (c) => {
-    const a = byIid.get(Math.abs(c.source));
-    const b = byIid.get(Math.abs(c.sink));
-    if (!a || !b) return "#999";
-    if (a.chromosome !== b.chromosome) return "#7B3294";
-    return /INV/i.test(c.title) ? "#E6AB02" : /DEL/i.test(c.title) ? "#2C7BB6" : /DUP/i.test(c.title) ? "#D7191C" : "#1B9E77";
-  };
-  const clone = cells.find((c) => c.cell_id === chosen)?.clone_id;
-  const cellOptions = [...new Set([...selectedCellIds, ...cells.map((c) => c.cell_id)])].map((id) => ({ value: id, label: `${id}${selectedCellIds.includes(id) ? " ✓" : ""}` }));
+  const nRows = order.length;
+  const rowOf = new Map(order.map((id, i) => [id, i]));
+  const selectedRows = new Set(selectedCellIds.map((id) => rowOf.get(id)).filter((r) => r != null));
+  const leafClones = order.map((id) => cellById.get(id)?.clone_id ?? null);
+  const treeHeight = Math.max(360, Math.min(size, nRows * 4));
 
   return (
     <Card
       size="small"
-      title={<Space><RadarChartOutlined />{t("components.single-cell.circos.title")}{clone && <Text style={{ color: cloneColors[clone] }}>{clone}</Text>}</Space>}
+      title={<Space><RadarChartOutlined />{t("components.single-cell.circos.title2")}</Space>}
       extra={
         <Space wrap>
-          <Select size="small" showSearch style={{ width: 260 }} value={chosen} onChange={setCellId} options={cellOptions} />
-          <Segmented size="small" value={junctionMode} onChange={setJunctionMode} options={[{ value: "all", label: t("components.single-cell.circos.all-junctions") }, { value: "inter", label: t("components.single-cell.circos.inter") }]} />
+          <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.circos.mode-cells") }, { value: "clones", label: t("components.single-cell.circos.mode-clones") }]} />
+          {mode === "clones" && (
+            <Space size={4}>
+              <Text type="secondary">{t("components.single-cell.circos.min-share")}</Text>
+              <InputNumber size="small" min={0} max={1} step={0.1} value={minShare} onChange={(v) => setMinShare(v ?? 0)} style={{ width: 70 }} />
+            </Space>
+          )}
           <Switch size="small" checked={showCn} onChange={setShowCn} />
           <Text>{t("components.single-cell.circos.cn-ring")}</Text>
-          <SvgExportButton containerRef={ref} name={`circos-${chosen}`} />
+          <SvgExportButton containerRef={ref} name="circos" />
         </Space>
       }
     >
-      <div ref={ref} style={{ display: "flex", justifyContent: "center" }}>
-        {!genome ? (
-          <Text type="secondary">{t("components.single-cell.loading")}</Text>
-        ) : (
-          <svg width={size} height={size}>
+      <div ref={ref} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        {treeLayout && (
+          <div style={{ flex: "none" }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.circos.tree-help")}</Text>
+            <PhylogenyCanvas
+              layout={treeLayout}
+              nRows={nRows}
+              width={TREE_WIDTH}
+              height={treeHeight}
+              pixelRatio={pixelRatio}
+              leafClones={leafClones}
+              cloneColors={cloneColors}
+              selectedRows={selectedRows}
+              hoverRow={hoveredCellId != null && rowOf.has(hoveredCellId) ? rowOf.get(hoveredCellId) : null}
+              hoverRange={hoverRange}
+              onSelectRange={([a, b], e) => {
+                const ids = order.slice(a, b + 1);
+                dispatch(singleCellActions.updateSelection(e.metaKey || e.ctrlKey || e.shiftKey ? [...selectedCellIds, ...ids] : ids));
+                setMode("cells");
+              }}
+              onHoverNode={(node) => {
+                setHoverRange(node && !node.isLeaf ? [node.firstLeaf, node.lastLeaf] : null);
+                dispatch(singleCellActions.updateHover(node && node.isLeaf ? order[node.firstLeaf] : null));
+              }}
+            />
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {progress != null && <Progress percent={progress} size="small" style={{ width: 240 }} />}
+          <svg width={size} height={size} style={{ display: "block", margin: "0 auto" }}>
+            <defs>
+              <radialGradient id="circos-bg" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity={0} />
+                <stop offset="100%" stopColor="#f0f0f0" stopOpacity={0.6} />
+              </radialGradient>
+            </defs>
             <g transform={`translate(${R},${R})`}>
+              <circle r={ideo[0]} fill="url(#circos-bg)" />
               {chromosomes.map((chr, i) => {
                 const c = chromoBins[chr];
                 const a0 = angle(c.startPlace);
                 const a1 = angle(c.endPlace);
                 const mid = (a0 + a1) / 2;
+                const ticks = d3.range(0, c.endPoint - c.startPoint, 5e7).slice(1);
                 return (
                   <g key={chr}>
-                    <path d={arcPath(a0, a1, ideoR[0], ideoR[1])} fill={i % 2 ? "#8c8c8c" : "#bfbfbf"} />
-                    <text x={Math.cos(mid) * (R - 2)} y={Math.sin(mid) * (R - 2)} dy="0.35em" textAnchor="middle" fontSize={11} fill="#262626" transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 2)} ${Math.sin(mid) * (R - 2)})`}>
+                    <path d={arc(a0, a1, ideo[0], ideo[1])} fill={CHR_COLORS(i)} fillOpacity={0.85} stroke="#fff" strokeWidth={0.8} />
+                    {ticks.map((tk) => {
+                      const a = angle(c.startPlace + tk);
+                      return <line key={tk} x1={Math.cos(a) * ideo[1]} y1={Math.sin(a) * ideo[1]} x2={Math.cos(a) * (ideo[1] + 4)} y2={Math.sin(a) * (ideo[1] + 4)} stroke="#595959" strokeWidth={0.8} />;
+                    })}
+                    <text x={Math.cos(mid) * (R - 6)} y={Math.sin(mid) * (R - 6)} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={600} fill="#262626" transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 6)} ${Math.sin(mid) * (R - 6)})`}>
                       {chr}
                     </text>
-                    {showCn && <path d={arcPath(a0, a1, cnR[0], cnR[1])} fill="#f5f5f5" />}
                   </g>
                 );
               })}
               {showCn &&
-                intervals.map((iv) => {
-                  const p0 = toPlace(iv.chromosome, iv.startPoint);
-                  const p1 = toPlace(iv.chromosome, iv.endPoint);
-                  if (p0 == null || p1 == null) return null;
-                  const y = Number(iv.y);
+                sources.map((src, i) => {
+                  const [r0, r1] = ringR(i);
+                  const row = src.row;
+                  const y = d3.scaleLinear().domain([0, 6]).range([r0, r1]).clamp(true);
                   return (
-                    <path key={iv.iid} d={arcPath(angle(p0), angle(Math.max(p1, p0 + 1)), cnR[0], cnY(y))} fill={rgba(color(y))}>
-                      <title>{`${iv.chromosome}:${iv.startPoint.toLocaleString()}-${iv.endPoint.toLocaleString()} · CN ${y}`}</title>
-                    </path>
+                    <g key={src.key}>
+                      <circle r={(r0 + r1) / 2} fill="none" stroke={src.color} strokeWidth={r1 - r0} strokeOpacity={0.08} />
+                      <circle r={y(2)} fill="none" stroke="#bfbfbf" strokeWidth={0.6} strokeDasharray="2 3" />
+                      {row &&
+                        d3.range(row.binIndex.n).map((b) => {
+                          const v = row.values[b];
+                          if (!Number.isFinite(v)) return null;
+                          const g0 = row.binIndex.gStart[b];
+                          const g1 = row.binIndex.gEnd[b];
+                          return <path key={b} d={arc(angle(g0), angle(Math.max(g1, g0 + 1)), r0, y(v))} fill={rgb(color(v))} />;
+                        })}
+                      <text x={-R + 8} y={-(r0 + r1) / 2 + 3} fontSize={10} fill={src.color} style={{ pointerEvents: "none" }} />
+                    </g>
                   );
                 })}
-              {connections.map((c) => {
-                const p0 = endOf(c.source);
-                const p1 = endOf(c.sink);
-                if (p0 == null || p1 == null) return null;
-                const r = (showCn ? cnR[0] : ideoR[0]) - 4;
-                const [x0, y0] = [Math.cos(angle(p0)) * r, Math.sin(angle(p0)) * r];
-                const [x1, y1] = [Math.cos(angle(p1)) * r, Math.sin(angle(p1)) * r];
-                const d = Math.hypot(x1 - x0, y1 - y0);
-                const pull = Math.min(0.9, d / (2 * r));
-                const [cx, cy] = [((x0 + x1) / 2) * (1 - pull), ((y0 + y1) / 2) * (1 - pull)];
-                return (
-                  <path key={c.cid} d={`M${x0},${y0} Q${cx},${cy} ${x1},${y1}`} fill="none" stroke={junctionColor(c)} strokeWidth={1.4} strokeOpacity={0.8}>
-                    <title>{`${c.title} · ${byIid.get(Math.abs(c.source))?.chromosome}:${(c.source < 0 ? byIid.get(Math.abs(c.source))?.startPoint : byIid.get(Math.abs(c.source))?.endPoint)?.toLocaleString()} → ${byIid.get(Math.abs(c.sink))?.chromosome}:${(c.sink < 0 ? byIid.get(Math.abs(c.sink))?.startPoint : byIid.get(Math.abs(c.sink))?.endPoint)?.toLocaleString()}`}</title>
-                  </path>
-                );
+              {sources.map((src) => {
+                const data = junctionData[src.key];
+                if (!data) return null;
+                const shown = mode === "clones" ? data.junctions.filter((j) => j.n / Math.max(1, data.nCells) >= minShare) : data.junctions;
+                return shown.map((j) => {
+                  const r = innerR - 2;
+                  const [x0, y0] = [Math.cos(angle(j.a.place)) * r, Math.sin(angle(j.a.place)) * r];
+                  const [x1, y1] = [Math.cos(angle(j.b.place)) * r, Math.sin(angle(j.b.place)) * r];
+                  const dist = Math.hypot(x1 - x0, y1 - y0);
+                  const pull = Math.min(0.92, dist / (2 * r));
+                  const [cx, cy] = [((x0 + x1) / 2) * (1 - pull), ((y0 + y1) / 2) * (1 - pull)];
+                  const w = mode === "clones" ? 0.8 + 3 * (j.n / Math.max(1, data.nCells)) : 1.3;
+                  return (
+                    <path key={`${src.key}-${j.key}`} d={`M${x0},${y0} Q${cx},${cy} ${x1},${y1}`} fill="none" stroke={JUNCTION_COLORS[j.kind]} strokeWidth={w} strokeOpacity={mode === "clones" ? 0.75 : 0.6}>
+                      <title>{`${src.label} · ${j.title} · ${j.a.chr}:${j.a.pos.toLocaleString()} → ${j.b.chr}:${j.b.pos.toLocaleString()}${mode === "clones" ? ` · ${j.n}/${data.nCells} cells` : ""}`}</title>
+                    </path>
+                  );
+                });
               })}
-              <text x={0} y={-8} textAnchor="middle" fontSize={14} fontWeight={600} fill="#262626">{chosen}</text>
-              <text x={0} y={12} textAnchor="middle" fontSize={12} fill="#595959">{t("components.single-cell.circos.summary", { junctions: connections.length, segments: intervals.length })}</text>
+              <text x={0} y={-6} textAnchor="middle" fontSize={13} fontWeight={600} fill="#262626">{mode === "cells" ? t("components.single-cell.circos.centre-cells", { count: sources.length }) : t("components.single-cell.circos.centre-clones", { count: sources.length })}</text>
+              <text x={0} y={12} textAnchor="middle" fontSize={11} fill="#595959">{t("components.single-cell.circos.centre-junctions", { count: d3.sum(sources, (s) => (junctionData[s.key] ? (mode === "clones" ? junctionData[s.key].junctions.filter((j) => j.n / Math.max(1, junctionData[s.key].nCells) >= minShare).length : junctionData[s.key].junctions.length) : 0)) })}</text>
             </g>
           </svg>
-        )}
+          <Space wrap size={[12, 4]} style={{ marginTop: 6, fontSize: 12 }}>
+            {sources.map((src, i) => (
+              <span key={src.key} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 12, height: 12, background: src.color, borderRadius: 2 }} />
+                {`${t("components.single-cell.circos.ring", { n: i + 1 })} ${src.label}`}
+              </span>
+            ))}
+          </Space>
+          <Space wrap size={[12, 4]} style={{ marginTop: 4, fontSize: 12 }}>
+            {Object.entries(JUNCTION_COLORS).map(([k, c]) => (
+              <span key={k}><span className="sc-swatch" style={{ background: c }} />{k}</span>
+            ))}
+            <Text type="secondary">{t("components.single-cell.circos.help2")}</Text>
+          </Space>
+        </div>
       </div>
-      <Space wrap style={{ marginTop: 6, fontSize: 12 }}>
-        {[["#7B3294", "TRA"], ["#E6AB02", "INV"], ["#2C7BB6", "DEL"], ["#D7191C", "DUP"], ["#1B9E77", "other"]].map(([c, l]) => (
-          <span key={l}><span className="sc-swatch" style={{ background: c }} />{l}</span>
-        ))}
-        <Text type="secondary">{t("components.single-cell.circos.help")}</Text>
-        {patient && <Text type="link" onClick={() => dispatch(singleCellActions.updateSelection([chosen]))} style={{ cursor: "pointer" }}>{t("components.single-cell.circos.select-cell")}</Text>}
-      </Space>
     </Card>
   );
 }

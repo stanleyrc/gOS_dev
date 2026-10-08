@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { Layout, ConfigProvider, theme as antdTheme } from "antd";
-import ThemeToggle from "./components/themeToggle";
 import { applyAppTheme, getAppTheme, onAppThemeChange } from "./helpers/appTheme";
 import { store, history } from "./redux/store";
 import { I18nextProvider } from "react-i18next";
@@ -41,7 +40,6 @@ function App() {
                 </Footer>
               </Layout>
               <UserSignInModal />
-              <ThemeToggle />
             </AppHolder>
           </Router>
         </I18nextProvider>
