@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import FilteredEventDetailsModal from "../filteredEventDetailsModal";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
@@ -28,5 +29,10 @@ export default function ScEventModal() {
   }));
   // tabs 0 (Overall) and 1 (Filtered Events) render the table's own modal
   if (!record || tab === "0" || tab === "1") return null;
-  return <FilteredEventDetailsModal open record={record} initialTab={viewMode || "plots"} onClose={() => dispatch(filteredEventsActions.selectFilteredEvent(null))} {...props} />;
+  // The modal renders in place (getContainer={false}); portal it to <body> so
+  // no ancestor (tab pane, card, transformed wrapper) can hide or clip it.
+  return createPortal(
+    <FilteredEventDetailsModal open record={record} initialTab={viewMode || "plots"} onClose={() => dispatch(filteredEventsActions.selectFilteredEvent(null))} {...props} />,
+    document.body
+  );
 }
