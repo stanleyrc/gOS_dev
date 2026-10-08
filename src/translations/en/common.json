@@ -1356,6 +1356,9 @@
         "theme-help": "Colours for clones, groups, UMAP fields, violins, signatures and saved groups. The heatmap copy-number colours are set separately below."
       },
       "events": {
+        "segment": "Segment",
+        "segment-help": "Median width (Mb) of the copy-number segment behind a deletion / amplification in its carrier cells; red when most carriers have a segment under 1 Mb.",
+        "segment-detail": "{{narrow}}/{{n}} carriers with a segment under 1 Mb · flanking copy number {{flank}}",
         "picked": "{{count}} events picked",
         "summary": "{{snvs}} SNV sites · {{genes}} copy-number / fusion events · {{cells}} cells carrying them",
         "show": "Show on the Single-Cell heatmap",
@@ -1674,6 +1677,9 @@
         "signatures-axis2": "unique mutations by assigned signature"
       },
       "report": {
+        "segment": "segment {{mb}} Mb",
+        "segment-narrow": "narrow segment {{mb}} Mb",
+        "segment-help": "Median width of the copy-number segment at the gene in the carrier cells: {{mb}} Mb; {{narrow}}/{{n}} carriers have a segment under 1 Mb; flanking copy number {{flank}}. Narrow calls with normal flanks in a single cell are the ones most likely to be read-depth noise — check the reads.",
         "title": "Key findings · {{patient}}",
         "summary-cells": "{{tumor}} tumor cells and {{normal}} normal cells in {{clones}} clones.",
         "summary-clonal": "Clonal (likely truncal) drivers: {{list}}.",
