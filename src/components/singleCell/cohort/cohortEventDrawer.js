@@ -2,22 +2,22 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Button, Descriptions, Drawer, Select, Space, Switch, Tag, Typography } from "antd";
-import GenomePanel from "../../genomePanel";
+import { Button, Checkbox, Descriptions, Drawer, Select, Space, Switch, Tag, Typography } from "antd";
+import { TrackPlot } from "../cellTracksPanel";
+import { SC_TRACKS } from "../../../redux/singleCell/actions";
 import CellIgvPanel from "../cellIgvPanel";
 import GeneTrackMini from "../geneTrackMini";
 import useContainerWidth from "../useContainerWidth";
 import settingsActions from "../../../redux/settings/actions";
 import datasetsActions from "../../../redux/datasets/actions";
-import { casePath, tryGet } from "../../../redux/singleCell/loaders";
-import { dataToGenome, locationToDomains } from "../../../helpers/utility";
+import { loadCellTrack } from "../../../redux/singleCell/loaders";
+import { locationToDomains } from "../../../helpers/utility";
 import { padDomains } from "../../../helpers/singleCell/eventDomains";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { setPendingEvent } from "../pendingEventOpener";
 
 const { Text, Paragraph } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
-const genomeCache = new Map();
 const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
 
 /**
@@ -32,7 +32,8 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
   const { chromoBins, genomeLength } = useSelector((s) => s.Settings);
   const [ref, width] = useContainerWidth(640);
   const [picked, setPicked] = useState([]);
-  const [genomes, setGenomes] = useState({});
+  const [tracks, setTracks] = useState(["total", "coverage"]);
+  const [loaded, setLoaded] = useState({}); // `${cell}|${track}` -> { status, data }
   const [showIgv, setShowIgv] = useState(false);
   const carriers = useMemo(() => `${event?.cell_ids || ""}`.split(",").filter(Boolean), [event]);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
@@ -56,23 +57,18 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
   useEffect(() => {
     if (!dataset) return undefined;
     let active = true;
-    picked.forEach((id) => {
-      const key = `${dataset.id}/${id}`;
-      if (genomeCache.has(key)) {
-        setGenomes((g) => ({ ...g, [id]: genomeCache.get(key) }));
-        return;
-      }
-      tryGet(casePath(dataset, id, "complex.json")).then((r) => {
-        const genome = r.status === "ok" ? dataToGenome({ settings: r.data.settings || {}, intervals: r.data.intervals || [], connections: r.data.connections || [] }, chromoBins) : null;
-        genomeCache.set(key, genome);
-        if (active) setGenomes((g) => ({ ...g, [id]: genome }));
-      });
-    });
+    picked.forEach((id) =>
+      tracks.forEach((track) => {
+        const key = `${id}|${track}`;
+        if (loaded[key]) return;
+        loadCellTrack(dataset, id, track, chromoBins).then((res) => active && setLoaded((m) => ({ ...m, [key]: res })));
+      })
+    );
     return () => {
       active = false;
     };
-  }, [picked, dataset, chromoBins]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked, tracks, dataset, chromoBins]);
   if (!event) return null;
   const byClone = {};
   carriers.forEach((id) => {
@@ -144,14 +140,24 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
             <Switch size="small" checked={showIgv} onChange={setShowIgv} />
             <Text>{t("components.single-cell.event-cells.igv")}</Text>
           </Space>
+          <Checkbox.Group value={tracks} onChange={setTracks} options={SC_TRACKS.map((track) => ({ value: track, label: t(`components.single-cell.tracks.${track}`) }))} />
           <GeneTrackMini width={Math.max(300, width - 8)} highlight={`${event.gene || ""}`.split("::")[0]} />
-          {picked.map((id) =>
-            genomes[id] ? (
-              <GenomePanel key={id} loading={false} genome={genomes[id]} error={null} filename="complex.json" title={`${id}${cloneOf.get(id) ? ` · ${cloneOf.get(id)}` : ""}`} yAxisTitle={t("components.tracks-modal.genome-y-axis-title")} chromoBins={chromoBins} visible index={0} height={150} />
-            ) : (
-              <Text key={id} type="secondary">{`${id}: ${genomes[id] === null ? t("components.single-cell.tracks.missing", { track: "complex.json" }) : "…"}`}</Text>
-            )
-          )}
+          {picked.map((id) => (
+            <div key={id} className="sc-cell-block" style={{ borderLeftColor: cloneOf.get(id) != null ? cloneColors[cloneOf.get(id)] : undefined }}>
+              <div className="sc-cell-title">
+                <Text strong>{id}</Text>
+                {cloneOf.get(id) != null && <Tag color={cloneColors[cloneOf.get(id)]}>{cloneOf.get(id)}</Tag>}
+              </div>
+              {SC_TRACKS.filter((track) => tracks.includes(track)).map((track) => {
+                const entry = loaded[`${id}|${track}`];
+                return (
+                  <div key={track} style={{ marginBottom: 8 }}>
+                    <TrackPlot cellId={id} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} height={150} />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
           {showIgv && igvView && Number.isFinite(igvView.position) && <CellIgvPanel view={igvView} embedded dataset={dataset} />}
         </Space>
       </div>

@@ -62,6 +62,71 @@ function TrackNote({ status, error, label }) {
 }
 
 /**
+ * One track of one cell, from already-converted data: `total` / `mutations`
+ * take the raw complex.json / mutations.json object, `allelic` a genome
+ * graph, `coverage` / `hetsnps` the arrow scatter. Used by the cell tracks
+ * panel and the cohort event drawer.
+ */
+export function TrackPlot({ cellId, track, data, status = "ok", error = null, chromoBins, commonRangeY = null, height = PLOT_HEIGHT }) {
+  const { t } = useTranslation("common");
+  const label = t(`components.single-cell.tracks.${track}`);
+  if (status !== "ok" || !data) return <TrackNote status={status === "ok" ? "missing" : status} error={error} label={label} />;
+  if (track === "total" || track === "mutations") {
+    const genome = toGenome(data, chromoBins);
+    if (!genome) return <TrackNote status="missing" label={label} />;
+    const Panel = track === "total" ? GenomePanel : MutationsPanel;
+    return (
+      <Panel
+        {...{
+          loading: false,
+          loadingPercentage: 100,
+          genome,
+          error: null,
+          filename: track === "total" ? "complex.json" : "mutations.json",
+          title: `${label} · ${cellId}`,
+          yAxisTitle: track === "total" ? t("components.tracks-modal.genome-y-axis-title") : t("components.tracks-modal.mutations-plot-y-axis-title"),
+          chromoBins,
+          visible: true,
+          index: 0,
+          height,
+          commonRangeY,
+        }}
+      />
+    );
+  }
+  if (track === "allelic") {
+    return (
+      <GenomePanel
+        {...{ loading: false, genome: data, error: null, filename: "allelic.json", title: `${label} · ${cellId}`, yAxisTitle: t("components.tracks-modal.allelic-plot-y-axis-title"), chromoBins, visible: true, index: 0, height, commonRangeY }}
+      />
+    );
+  }
+  return (
+    <ScatterPlotPanel
+      {...{
+        loading: false,
+        dataPointsY1: data.dataPointsY1,
+        dataPointsY2: data.dataPointsY2,
+        dataPointsX: data.dataPointsX,
+        dataPointsXHigh: data.dataPointsXHigh,
+        dataPointsXLow: data.dataPointsXLow,
+        dataPointsColor: data.dataPointsColor,
+        error: null,
+        filename: track === "coverage" ? "coverage.arrow" : "hetsnps.arrow",
+        title: `${label} · ${cellId}`,
+        notification: data.hasFit ? noNotification : { status: "warning", heading: t("components.tracks-modal.missing-counts-axis"), messages: [t("components.single-cell.tracks.no-fit")] },
+        chromoBins,
+        visible: true,
+        height,
+        yAxisTitle: data.hasFit ? t("components.tracks-modal.coverage-copy-number") : t("components.tracks-modal.coverage-count"),
+        yAxis2Title: t("components.tracks-modal.coverage-count"),
+        commonRangeY: track === "coverage" && data.hasFit ? commonRangeY : null,
+      }}
+    />
+  );
+}
+
+/**
  * Stacked tracks for the selected cells. Coverage and total CN show by
  * default; allelic CN, het SNPs and SNVs are toggles. Every track comes from
  * the cell's own case folder, the same files its full report uses.
@@ -146,108 +211,12 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   const removeCell = (cellId) =>
     onRemove ? onRemove(cellId) : dispatch(singleCellActions.updateSelection(selectedCellIds.filter((c) => c !== cellId)));
 
-  const scatter = (cellId, track, data) => (
-    <ScatterPlotPanel
-      {...{
-        loading: false,
-        dataPointsY1: data.dataPointsY1,
-        dataPointsY2: data.dataPointsY2,
-        dataPointsX: data.dataPointsX,
-        dataPointsXHigh: data.dataPointsXHigh,
-        dataPointsXLow: data.dataPointsXLow,
-        dataPointsColor: data.dataPointsColor,
-        error: null,
-        filename: track === "coverage" ? "coverage.arrow" : "hetsnps.arrow",
-        title: `${label(track)} · ${cellId}`,
-        notification: data.hasFit
-          ? noNotification
-          : {
-              status: "warning",
-              heading: t("components.tracks-modal.missing-counts-axis"),
-              messages: [t("components.single-cell.tracks.no-fit")],
-            },
-        chromoBins,
-        visible: true,
-        height: PLOT_HEIGHT,
-        yAxisTitle: data.hasFit
-          ? t("components.tracks-modal.coverage-copy-number")
-          : t("components.tracks-modal.coverage-count"),
-        yAxis2Title: t("components.tracks-modal.coverage-count"),
-        commonRangeY: track === "coverage" && data.hasFit ? commonRangeY : null,
-      }}
-    />
-  );
-
   const renderTrack = (cellId, track) => {
-    if (track === "total") {
-      const genome = totals[cellId];
-      if (!genome) return <TrackNote status="missing" label={label(track)} />;
-      return (
-        <GenomePanel
-          {...{
-            loading: false,
-            genome,
-            error: null,
-            filename: "complex.json",
-            title: `${label(track)} · ${cellId}`,
-            yAxisTitle: t("components.tracks-modal.genome-y-axis-title"),
-            chromoBins,
-            visible: true,
-            index: 0,
-            height: PLOT_HEIGHT,
-            commonRangeY,
-          }}
-        />
-      );
-    }
-    if (track === "mutations") {
-      const genome = toGenome(cellFiles[cellId]?.mutations, chromoBins);
-      if (!genome) return <TrackNote status="missing" label={label(track)} />;
-      return (
-        <MutationsPanel
-          {...{
-            loading: false,
-            loadingPercentage: 100,
-            genome,
-            error: null,
-            filename: "mutations.json",
-            title: `${label(track)} · ${cellId}`,
-            yAxisTitle: t("components.tracks-modal.mutations-plot-y-axis-title"),
-            chromoBins,
-            visible: true,
-            index: 0,
-            height: PLOT_HEIGHT,
-            commonRangeY,
-          }}
-        />
-      );
-    }
+    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={commonRangeY} />;
+    if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={commonRangeY} />;
     const entry = perCell[cellId]?.[track];
-    if (!entry || entry.status !== "ok") {
-      return <TrackNote status={entry?.status} error={entry?.error} label={label(track)} />;
-    }
-    if (track === "allelic") {
-      return (
-        <GenomePanel
-          {...{
-            loading: false,
-            genome: entry.data,
-            error: null,
-            filename: "allelic.json",
-            title: `${label(track)} · ${cellId}`,
-            yAxisTitle: t("components.tracks-modal.allelic-plot-y-axis-title"),
-            chromoBins,
-            visible: true,
-            index: 0,
-            height: PLOT_HEIGHT,
-            commonRangeY,
-          }}
-        />
-      );
-    }
-    return scatter(cellId, track, entry.data);
+    return <TrackPlot cellId={cellId} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} />;
   };
-
   const orderedTracks = SC_TRACKS.filter((track) => visibleTracks.includes(track));
 
   return (

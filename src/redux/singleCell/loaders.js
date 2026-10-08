@@ -7,7 +7,8 @@ import {
   isMissingDataError,
   isMissingDataResponse,
 } from "../../helpers/dataAvailability";
-import { splitFloat64 } from "../../helpers/utility";
+import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utility";
+import { SC_FETCHED_TRACKS } from "./actions";
 import { readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 
 export const casePath = (dataset, caseReportId, filename) =>
@@ -93,4 +94,34 @@ export async function loadRnaMatrix(dataset, patientId) {
     rnaMatrixCache.set(key, promise);
   }
   return rnaMatrixCache.get(key);
+}
+
+const trackCache = new Map();
+/**
+ * One track of one cell, converted for the plots, outside the saga (cohort
+ * views where the patient is not the open case). track: total | coverage |
+ * allelic | hetsnps | mutations. Resolves { status: "ok" | "missing" | "error", data?, error? }.
+ */
+export async function loadCellTrack(dataset, cellId, track, chromoBins) {
+  const key = `${dataset.id}/${cellId}/${track}`;
+  if (!trackCache.has(key)) {
+    const promise = (async () => {
+      const filename = track === "total" ? "complex.json" : track === "mutations" ? "mutations.json" : SC_FETCHED_TRACKS[track];
+      if (!filename) return { status: "missing" };
+      const arrow = filename.endsWith(".arrow");
+      const res = await tryGet(casePath(dataset, cellId, filename), { responseType: arrow ? "arraybuffer" : "json" });
+      if (res.status !== "ok") return res;
+      if (track === "total" || track === "mutations") return { status: "ok", data: res.data || { settings: {}, intervals: [], connections: [] } };
+      if (arrow) {
+        const meta = await tryGet(casePath(dataset, cellId, "metadata.json"));
+        const record = meta.status === "ok" ? (Array.isArray(meta.data) ? meta.data[0] : meta.data) || {} : {};
+        const [slope, intercept] = track === "coverage" ? [record.cov_slope, record.cov_intercept] : [record.hets_slope, record.hets_intercept];
+        return { status: "ok", data: arrowScatter(res.data, Number(slope), Number(intercept)) };
+      }
+      return { status: "ok", data: dataToGenome(allelicToGenome(res.data || { settings: {}, intervals: [], connections: [] }), chromoBins) };
+    })().catch((error) => ({ status: "error", error }));
+    if (trackCache.size > 400) trackCache.clear();
+    trackCache.set(key, promise);
+  }
+  return trackCache.get(key);
 }
