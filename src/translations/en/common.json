@@ -881,6 +881,13 @@
     },
     "single-cell": {
       "ecdna": {
+        "track-title": "Walks on the genome ({{count}} ticked) over the cell heatmap",
+        "track-help": "One row per ticked walk, longest at the bottom: its nodes on the genome axis shared with the heatmap below (lighter = reverse strand), red arcs are ALT junctions joining non-adjacent pieces (the closing junction of a circle included). Variants of one species stack as nested rows; the heatmap underneath is the full single-cell heatmap zoomed to these regions (same zoom, strips and tracks as the Single-Cell tab). Click a row to focus it.",
+        "contain-title": "How the walks nest",
+        "contain-few": "Tick at least two walks to compare them.",
+        "contain-cell": "{{pct}} of {{a}} lies inside {{b}}",
+        "contain-in": "lies inside",
+        "contain-help": "Each cell: the fraction of the row walk's genome contained in the column walk (100 % = a sub-species / variant of it; 0 % = a separate amplicon). Listed pairs are ≥ 90 % contained.",
         "heat-title": "Copy number of every cell over the walk's regions",
         "heat-pad": "Pad",
         "heat-help": "Each cell's total copy number (the single-cell heatmap's colours) over the regions the walk is built from, with the padding on each side; above, the walk's nodes on the same coordinates (red outline = ALT junction end) and the genes; right, the walk's copies per cell. CN steps at the node boundaries that follow the copies bar support the walk.",

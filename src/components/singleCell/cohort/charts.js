@@ -41,7 +41,7 @@ export function YAxis({ scale, x0, x1, title, ticks = 5, format = d3.format("~s"
 }
 
 /** Category labels under a band scale; rotated when crowded. */
-export function XBandLabels({ scale, y, rotate = false, onClick }) {
+export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, fontSize = FONT.label }) {
   return (
     <g>
       {scale.domain().map((k) => (
@@ -51,12 +51,12 @@ export function XBandLabels({ scale, y, rotate = false, onClick }) {
           y={y}
           textAnchor={rotate ? "end" : "middle"}
           transform={rotate ? `rotate(-40 ${scale(k) + scale.bandwidth() / 2} ${y})` : undefined}
-          fontSize={FONT.label}
+          fontSize={fontSize}
           fill="#262626"
           style={{ cursor: onClick ? "pointer" : undefined }}
           onClick={onClick ? () => onClick(k) : undefined}
         >
-          {k}
+          {labels?.[k] ?? k}
         </text>
       ))}
     </g>
@@ -125,7 +125,7 @@ export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = 
           </g>
         );
       })}
-      <XBandLabels scale={x} y={height - M.bottom + 18} rotate={groups.length > 8 || x.bandwidth() < 72} />
+      <XBandLabels scale={x} y={height - M.bottom + 18} rotate={groups.length > 8 || x.bandwidth() < 72} labels={Object.fromEntries(groups.map((g) => [g.key, g.label ?? g.key]))} />
     </svg>
   );
 }
