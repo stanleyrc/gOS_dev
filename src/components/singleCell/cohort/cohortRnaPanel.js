@@ -16,6 +16,7 @@ import CohortUmapPanel from "./cohortUmapPanel";
 import CohortDosagePanel from "./cohortDosagePanel";
 import CohortStateClonePanel from "./cohortStateClonePanel";
 import CohortGeneSetPanel from "./cohortGeneSetPanel";
+import CohortDePanel from "./cohortDePanel";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -54,6 +55,8 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   const [geneData, setGeneData] = useState(null);
   const [geneBusy, setGeneBusy] = useState(false);
   const [scores, setScores] = useState(null);
+  const [umapSelection, setUmapSelection] = useState(new Set());
+  const selectUmap = (keys, add) => setUmapSelection((prev) => (add ? new Set([...prev, ...keys]) : new Set(keys)));
   const datasetOf = (s) => datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
 
   useEffect(() => {
@@ -168,7 +171,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           </Space>
         </Col>
         <Col span={24}>
-          <CohortUmapPanel summaries={summaries} datasets={datasets} overlay={scores} />
+          <CohortUmapPanel summaries={summaries} datasets={datasets} overlay={scores} selection={umapSelection} onSelect={selectUmap} />
         </Col>
         {composition && (
           <Col xs={24} xl={10}>
@@ -243,6 +246,9 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
             )}
             <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.rna-markers-help")}</Text>
           </Card>
+        </Col>
+        <Col span={24}>
+          <CohortDePanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} fields={fields} umapSelection={umapSelection} onGene={runGene} />
         </Col>
         <Col span={24}>
           <CohortGeneSetPanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} field={chosenField} sharedMarkers={sharedMarkers} onScores={setScores} />
