@@ -6,7 +6,7 @@ import { Layout, Space, Spin, Select, Avatar, Progress, Typography } from "antd"
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
 import SignInButton from "./signInButton";
-import ThemeToggle from "../../components/themeToggle";
+import SettingsMenu from "../../components/settingsMenu";
 import { siteConfig } from "../../settings";
 import logo from "../../assets/images/logo.png";
 import caseReportsActions from "../../redux/caseReports/actions";
@@ -300,7 +300,7 @@ export class Topbar extends Component {
                           />
                         ))}
                     </div>
-                    <ThemeToggle inline />
+                    <SettingsMenu />
                   <SignInButton />
                   </Space>
                 </div>

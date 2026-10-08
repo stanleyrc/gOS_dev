@@ -7,6 +7,7 @@ import useContainerWidth from "../useContainerWidth";
 import { EVENT_CLASS_ORDER, oncoprintMatrix } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches } from "./charts";
+import { setPendingEvent } from "../pendingEventOpener";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -93,7 +94,15 @@ export default function OncoprintPanel({ summaries, files, onOpen }) {
                   const classes = cell ? [...new Set(cell.all.map((e) => e.class))].sort((a, b) => EVENT_CLASS_ORDER.indexOf(a) - EVENT_CLASS_ORDER.indexOf(b)) : [];
                   const stripeH = classes.length ? (CELL_H - 4) / classes.length : 0;
                   return (
-                    <g key={p} style={{ cursor: cell ? "pointer" : undefined }} onClick={() => cell && onOpen(summaryOf(p))}>
+                    <g
+                      key={p}
+                      style={{ cursor: cell ? "pointer" : undefined }}
+                      onClick={() => {
+                        if (!cell) return;
+                        setPendingEvent(p, cell.event);
+                        onOpen(summaryOf(p));
+                      }}
+                    >
                       <rect x={x + 2} y={y + 2} width={cellW - 4} height={CELL_H - 4} fill="#f5f5f5" rx={2} />
                       {classes.map((c, k) => {
                         const e = cell.all.filter((a) => a.class === c).sort((a, b) => (b.fraction ?? 0) - (a.fraction ?? 0))[0];

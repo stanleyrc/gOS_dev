@@ -10,6 +10,8 @@ import TreeTop from "./treeTop";
 import SvgExportButton from "./svgExportButton";
 import singleCellActions from "../../redux/singleCell/actions";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
+import filteredEventsActions from "../../redux/filteredEvents/actions";
+import settingsActions from "../../redux/settings/actions";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -113,7 +115,19 @@ export default function DriverCellMatrix({ drivers }) {
               <g key={r.label}>
                 <rect x={0} y={y} width={LABEL_W + matW + 70} height={ROW_H} fill={k % 2 ? "#fafafa" : "#ffffff"} />
                 <rect x={0} y={y + 3} width={6} height={ROW_H - 6} fill={CLASS_COLORS[r.class]} />
-                <text x={12} y={y + ROW_H / 2} dy="0.35em" fontSize={11} fill="#262626" style={{ cursor: "pointer" }} onClick={(e) => select([...r.carriers], e)}>
+                <text
+                  x={12}
+                  y={y + ROW_H / 2}
+                  dy="0.35em"
+                  fontSize={11}
+                  fill="#262626"
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => select([...r.carriers], e)}
+                  onDoubleClick={() => {
+                    dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"));
+                    dispatch(settingsActions.updateTab("1"));
+                  }}
+                >
                   {r.label.length > 34 ? `${r.label.slice(0, 33)}…` : r.label}
                   <title>{`${r.label}\n${r.cells} cells (${pct(r.fraction)})${Number.isFinite(r.fit.score) ? `\nclade fit ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)` : ""}\n${t("components.single-cell.report.matrix-click")}`}</title>
                 </text>
