@@ -63,6 +63,7 @@ export function AetiologyLegend({ rows }) {
 
 // COSMIC signature colours: the theme first, then d3 schemes for long tails
 let signatureColor = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3, ...d3.schemePastel1]);
+export const signatureColorOf = (sig) => signatureColor(sig);
 export const setSignatureTheme = (theme) => {
   signatureColor = d3.scaleOrdinal([...themePalette(theme), ...d3.schemeSet3, ...d3.schemePastel1]);
 };

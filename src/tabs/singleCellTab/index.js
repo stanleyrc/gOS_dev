@@ -7,6 +7,7 @@ import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
+import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
 import singleCellActions from "../../redux/singleCell/actions";
 import HeightHandle from "../../components/singleCell/heightHandle";
@@ -116,6 +117,10 @@ export default function SingleCellTab() {
               <Switch size="small" checked={Boolean(layout.keepGeneTrack)} onChange={toggle("keepGeneTrack")} />
               <Text>{t("components.single-cell.toggles.keep-genes")}</Text>
             </Space>
+            <Space size={6}>
+              <Switch size="small" checked={Boolean(layout.showTreeBars)} onChange={toggle("showTreeBars")} />
+              <Text>{t("components.single-cell.toggles.tree-bars")}</Text>
+            </Space>
           </Space>
         </Col>
         <Col span={24}>
@@ -170,6 +175,11 @@ export default function SingleCellTab() {
         {layout.showCellTable && (
           <Col span={24}>
             <CellSelectionPanel />
+          </Col>
+        )}
+        {layout.showTreeBars && (
+          <Col span={24}>
+            <PhyloBarsCard defaultTracks={["snv_count", "signatures"]} />
           </Col>
         )}
         <Col span={24}>

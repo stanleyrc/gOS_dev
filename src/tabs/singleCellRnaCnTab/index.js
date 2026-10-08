@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Col, Empty, Row } from "antd";
 import DosagePanel from "../../components/singleCell/rna/dosagePanel";
+import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 
@@ -18,6 +19,9 @@ export default function SingleCellRnaCnTab() {
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <DosagePanel summary={summary} matrix={matrix} rowOfId={rowOfId} />
+        </Col>
+        <Col span={24}>
+          <PhyloBarsCard defaultTracks={["genecn", "geneexpr"]} defaultGene="EGFR" title={t("components.single-cell.bars.rna-cn-title")} />
         </Col>
       </Row>
     </SingleCellWrapper>
