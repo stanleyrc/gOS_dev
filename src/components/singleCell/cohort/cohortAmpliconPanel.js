@@ -49,16 +49,18 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
   const w = Math.max(500, width - 16);
 
   // strips: one group per patient × walk
-  const stripGroups = withWalks.flatMap((p) =>
-    p.walks.slice(0, 6).map((wk) => ({
+  const stripsByPatient = withWalks.map((p) => ({
+    ...p,
+    groups: p.walks.slice(0, 6).map((wk) => ({
       key: `${p.patient}::${wk.id}`,
-      label: `${p.patient} · ${wk.label}`,
+      label: wk.label,
       color: patientColor(p.k),
       values: p.cellIds.map((id) => Number(wk.cells[id]) || 0).filter((v) => v > 0),
       ids: p.cellIds.filter((id) => (Number(wk.cells[id]) || 0) > 0),
       fraction: wk.stats.fraction,
-    }))
-  );
+    })),
+  }));
+  const stripGroups = stripsByPatient.flatMap((p) => p.groups);
 
   // upset per patient over gene sets (driver genes of each walk): combinations present per cell
   const upset = withWalks.map((p) => {
@@ -115,8 +117,8 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
   const maxX = d3.max(scatter, (s) => d3.max(s.pts, (q) => q.x)) || 1;
   const maxY = d3.max(scatter, (s) => d3.max(s.pts, (q) => q.y)) || 1;
   const sw = Math.max(260, Math.floor(w / Math.min(3, Math.max(1, scatter.length))) - 16);
-  const sh = 260;
-  const M = { left: 44, right: 10, top: 14, bottom: 34 };
+  const sh = 300;
+  const M = { left: 52, right: 12, top: 18, bottom: 40 };
   const xs = d3.scaleLog().domain([1, Math.max(2, maxX)]).range([M.left, sw - M.right]).clamp(true);
   const ys = d3.scaleLog().domain([1, Math.max(2, maxY)]).range([sh - M.bottom, M.top]).clamp(true);
 
@@ -140,20 +142,31 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
               </Space>
             }
           >
-            {stripGroups.length ? <BoxStrips groups={stripGroups} width={w - 8} height={320} yTitle={t("components.single-cell.cohort.amp-y")} log /> : <Text type="secondary">{t("components.single-cell.cohort.amp-none-pass")}</Text>}
-            <svg width={w - 8} height={70}>
-              {stripGroups.map((g, i) => {
-                const bw = (w - 8 - 76) / Math.max(1, stripGroups.length);
+            {!stripGroups.length && <Text type="secondary">{t("components.single-cell.cohort.amp-none-pass")}</Text>}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+              {stripsByPatient.map((p) => {
+                const pw = Math.max(320, Math.min(w - 8, 110 + p.groups.length * 110));
                 return (
-                  <g key={g.key} transform={`translate(${64 + i * bw},0)`}>
-                    <rect x={bw * 0.15} y={50 - g.fraction * 44} width={bw * 0.7} height={g.fraction * 44} fill={g.color} />
-                    <text x={bw / 2} y={48 - g.fraction * 44} textAnchor="middle" fontSize={9} fill="#262626">{d3.format(".0%")(g.fraction)}</text>
-                    <title>{`${g.label}: ${g.ids.length} cells (${d3.format(".0%")(g.fraction)})`}</title>
-                  </g>
+                  <div key={p.patient}>
+                    <Text strong style={{ color: patientColor(p.k), fontSize: 14 }}>{p.patient}</Text>
+                    <BoxStrips groups={p.groups} width={pw} height={300} yTitle={t("components.single-cell.cohort.amp-y")} log />
+                    <svg width={pw} height={64}>
+                      {p.groups.map((g, i) => {
+                        const bw = (pw - 76) / Math.max(1, p.groups.length);
+                        return (
+                          <g key={g.key} transform={`translate(${64 + i * bw},0)`}>
+                            <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={g.color} />
+                            <text x={bw / 2} y={41 - g.fraction * 40} textAnchor="middle" fontSize={12} fill="#262626">{d3.format(".0%")(g.fraction)}</text>
+                            <title>{`${g.label}: ${g.ids.length} cells (${d3.format(".0%")(g.fraction)})`}</title>
+                          </g>
+                        );
+                      })}
+                      <text x={60} y={28} textAnchor="end" fontSize={12} fill="#595959">{t("components.single-cell.cohort.amp-pct")}</text>
+                    </svg>
+                  </div>
                 );
               })}
-              <text x={60} y={30} textAnchor="end" fontSize={10} fill="#595959">{t("components.single-cell.cohort.amp-pct")}</text>
-            </svg>
+            </div>
             <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.amp-help")}</Text>
           </Card>
         </Col>
@@ -161,9 +174,9 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
           <Card size="small" title={<Space><TableOutlined />{t("components.single-cell.cohort.amp-upset-title")}</Space>} extra={<Space><Text type="secondary">{t("components.single-cell.ecdna.min-cn")}</Text><InputNumber size="small" min={1} value={minCn} onChange={(v) => setMinCn(v ?? 1)} style={{ width: 64 }} /></Space>}>
             {(() => {
               const LEFT = 150;
-              const rowH = 18;
-              const colW = 34;
-              const barW = 160;
+              const rowH = 22;
+              const colW = 40;
+              const barW = 180;
               let y = 0;
               const blocks = upset.map((p) => {
                 const top = y;
@@ -171,14 +184,14 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                 return { ...p, top };
               });
               return (
-                <svg width={Math.max(w / 2 - 24, LEFT + allSets.length * colW + barW + 40)} height={y + 60}>
+                <svg width={Math.max(w / 2 - 24, LEFT + allSets.length * colW + barW + 40)} height={y + 90}>
                   {allSets.map((s, j) => (
-                    <text key={s} transform={`translate(${LEFT + (j + 0.5) * colW},${y + 6}) rotate(-60)`} fontSize={9} fill={GENE_PALETTE(s)} textAnchor="end" dy="0.35em">{s}</text>
+                    <text key={s} transform={`translate(${LEFT + (j + 0.5) * colW},${y + 6}) rotate(-60)`} fontSize={12} fontWeight={600} fill={GENE_PALETTE(s)} textAnchor="end" dy="0.35em">{s}</text>
                   ))}
                   {blocks.map((p) => (
                     <g key={p.patient} transform={`translate(0,${p.top})`}>
                       <rect x={0} y={0} width={4} height={14 + Math.max(1, p.combos.length) * rowH} fill={patientColor(p.k)} />
-                      <text x={10} y={10} dy="0.35em" fontSize={12} fontWeight={600} fill="#262626">{p.patient}</text>
+                      <text x={10} y={10} dy="0.35em" fontSize={14} fontWeight={600} fill="#262626">{p.patient}</text>
                       {p.combos.map((c, i) => {
                         const cy = 20 + (i + 0.5) * rowH;
                         const idx = c.sets.map((s) => allSets.indexOf(s)).filter((v) => v >= 0);
@@ -188,7 +201,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                             {allSets.map((s, j) => <circle key={s} cx={LEFT + (j + 0.5) * colW} cy={cy} r={c.sets.includes(s) ? 5 : 2.5} fill={c.sets.includes(s) ? GENE_PALETTE(s) : "#e8e8e8"} />)}
                             {idx.length > 1 && <line x1={LEFT + (Math.min(...idx) + 0.5) * colW} x2={LEFT + (Math.max(...idx) + 0.5) * colW} y1={cy} y2={cy} stroke="#262626" strokeWidth={2} />}
                             <rect x={LEFT + allSets.length * colW + 10} y={cy - 6} width={frac * barW} height={12} fill={c.sets.length === 1 ? GENE_PALETTE(c.sets[0]) : "#8c8c8c"} />
-                            <text x={LEFT + allSets.length * colW + 14 + frac * barW} y={cy} dy="0.35em" fontSize={9} fill="#262626">{`${d3.format(".0%")(frac)} (${c.n})`}</text>
+                            <text x={LEFT + allSets.length * colW + 14 + frac * barW} y={cy} dy="0.35em" fontSize={12} fill="#262626">{`${d3.format(".0%")(frac)} (${c.n})`}</text>
                           </g>
                         );
                       })}
@@ -215,12 +228,12 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {scatter.map((s) => (
                 <svg key={s.patient} width={sw} height={sh}>
-                  <text x={M.left} y={10} fontSize={11} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · ρ ${Number.isFinite(s.rho) ? s.rho.toFixed(2) : "–"} ${formatP(s.p)}`}</text>
-                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxX)).map((v) => <g key={`x${v}`}><line x1={xs(v)} x2={xs(v)} y1={M.top} y2={sh - M.bottom} stroke="#f0f0f0" /><text x={xs(v)} y={sh - M.bottom + 12} textAnchor="middle" fontSize={9} fill="#8c8c8c">{v}</text></g>)}
-                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxY)).map((v) => <g key={`y${v}`}><line x1={M.left} x2={sw - M.right} y1={ys(v)} y2={ys(v)} stroke="#f0f0f0" /><text x={M.left - 4} y={ys(v)} dy="0.35em" textAnchor="end" fontSize={9} fill="#8c8c8c">{v}</text></g>)}
-                  {s.pts.map((q) => <circle key={q.id} cx={xs(Math.max(1, q.x))} cy={ys(Math.max(1, q.y))} r={3} fill={patientColor(s.k)} fillOpacity={0.7}><title>{`${q.id}: ${gA} ${q.x.toFixed(1)} · ${gB} ${q.y.toFixed(1)}`}</title></circle>)}
-                  <text x={(M.left + sw - M.right) / 2} y={sh - 4} textAnchor="middle" fontSize={10} fill="#595959">{`${gA} copies`}</text>
-                  <text transform={`translate(10 ${(M.top + sh - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={10} fill="#595959">{`${gB} copies`}</text>
+                  <text x={M.left} y={12} fontSize={13} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · ρ ${Number.isFinite(s.rho) ? s.rho.toFixed(2) : "–"} ${formatP(s.p)}`}</text>
+                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxX)).map((v) => <g key={`x${v}`}><line x1={xs(v)} x2={xs(v)} y1={M.top} y2={sh - M.bottom} stroke="#f0f0f0" /><text x={xs(v)} y={sh - M.bottom + 14} textAnchor="middle" fontSize={11} fill="#595959">{v}</text></g>)}
+                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxY)).map((v) => <g key={`y${v}`}><line x1={M.left} x2={sw - M.right} y1={ys(v)} y2={ys(v)} stroke="#f0f0f0" /><text x={M.left - 6} y={ys(v)} dy="0.35em" textAnchor="end" fontSize={11} fill="#595959">{v}</text></g>)}
+                  {s.pts.map((q) => <circle key={q.id} cx={xs(Math.max(1, q.x))} cy={ys(Math.max(1, q.y))} r={3.5} fill={patientColor(s.k)} fillOpacity={0.7}><title>{`${q.id}: ${gA} ${q.x.toFixed(1)} · ${gB} ${q.y.toFixed(1)}`}</title></circle>)}
+                  <text x={(M.left + sw - M.right) / 2} y={sh - 6} textAnchor="middle" fontSize={13} fill="#262626">{`${gA} copies`}</text>
+                  <text transform={`translate(14 ${(M.top + sh - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={13} fill="#262626">{`${gB} copies`}</text>
                 </svg>
               ))}
             </div>
