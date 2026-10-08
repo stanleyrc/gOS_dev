@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
-import settingsActions from "../../redux/settings/actions";
 
 export const PENDING_EVENT_KEY = "gos-sc-pending-event";
 
@@ -46,10 +45,7 @@ export default function PendingEventOpener() {
     } catch (error) {
       // ignore
     }
-    if (match) {
-      dispatch(filteredEventsActions.selectFilteredEvent(match, "plots"));
-      dispatch(settingsActions.updateTab("1"));
-    }
+    if (match) dispatch(filteredEventsActions.selectFilteredEvent(match, "plots"));
   }, [dispatch, patient, events]);
   return null;
 }

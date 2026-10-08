@@ -608,12 +608,19 @@ export function cnColorer(palette, mode = "total") {
 /* Mutation metrics (VAF, alt reads, total reads)                           */
 /* ----------------------------------------------------------------------- */
 
-export const SNV_METRICS = ["vaf", "alt", "depth"];
+export const SNV_METRICS = ["vaf", "alt", "depth", "gt"];
+// genotype calls: no call / ref / alt
+export const GT_COLORS = { nocall: "#D9D9D9", ref: "#9ECAE1", alt: "#B2182B" };
 export const SNV_MISSING_COLOR = "#ADB5BD";
 const SNV_MISSING_RGBA = packRGBA(hexToRgb(SNV_MISSING_COLOR));
 
 /** Value of a metric for matrix row p, variant c; null when the site has no reads. */
 export function snvMetricValue(snv, p, c, metric) {
+  if (metric === "gt") {
+    if (p < 0 || !snv.gt) return null;
+    const g = snv.gt[p][c];
+    return g === 1 || g === 0 ? g : null; // 1 alt, 0 ref, null = no call
+  }
   if (p < 0 || snv.status[p][c] < 0) return null;
   const alt = snv.alt[p][c];
   const depth = snv.depth[p][c];
@@ -640,7 +647,7 @@ export function countRGBA(value, max) {
 }
 
 export function snvMetricMax(snv, metric) {
-  if (metric === "vaf") return 1;
+  if (metric === "vaf" || metric === "gt") return 1;
   const source = metric === "alt" ? snv.alt : snv.depth;
   let max = 1;
   source.forEach((row) => row.forEach((v) => {
@@ -650,6 +657,11 @@ export function snvMetricMax(snv, metric) {
 }
 
 export function snvMetricRGBA(value, metric, max) {
+  if (metric === "gt") {
+    if (value === 1) return packRGBA(hexToRgb(GT_COLORS.alt));
+    if (value === 0) return packRGBA(hexToRgb(GT_COLORS.ref));
+    return packRGBA(hexToRgb(isDarkPlots() ? "#3a3a3a" : GT_COLORS.nocall));
+  }
   return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max);
 }
 

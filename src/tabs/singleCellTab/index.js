@@ -14,6 +14,7 @@ import TracksLegendPanel from "../../components/tracksLegendPanel";
 import singleCellActions from "../../redux/singleCell/actions";
 import HeightHandle from "../../components/singleCell/heightHandle";
 import SingleCellWrapper from "../../components/singleCell/index.style";
+import ScEventModal from "../../components/singleCell/scEventModal";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
@@ -103,6 +104,7 @@ export default function SingleCellTab() {
   return (
     <Wrapper style={{ "--sc-sticky-top": `${headerHeight + (pinned ? navHeight : 0)}px` }}>
       <PendingEventOpener />
+      <ScEventModal />
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space wrap size={[16, 4]} className="sc-tab-toggles">

@@ -1179,7 +1179,8 @@
       "metric": {
         "vaf": "VAF",
         "alt": "Alt reads",
-        "depth": "Total reads"
+        "depth": "Total reads",
+        "gt": "Genotype call"
       },
       "side": {
         "sites": "Sites",
@@ -1611,7 +1612,9 @@
         "select-carriers": "Select carriers in the heatmap",
         "cn": "Copy number at site",
         "cn-detail": "median CN {{cn}} in carriers · est. mutant copies {{copies}} · {{n}} of {{total}} carriers on CN ≥ 4",
-        "amplified": "amplified SNV"
+        "amplified": "amplified SNV",
+        "genotypes": "Genotype calls",
+        "genotypes-of": "{{alt}} alt · {{ref}} ref · {{none}} no call (PL, GQ ≥ 10)"
       },
       "circos": {
         "title": "Circos of a cell",
