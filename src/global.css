@@ -516,3 +516,6 @@ html[data-theme="dark"] svg.plot-container text,
 html[data-theme="dark"] svg.plot-container-cytobands text {
   fill: #e0e0e0;
 }
+.sc-row-picked td {
+  background: rgba(22, 119, 255, 0.08) !important;
+}
