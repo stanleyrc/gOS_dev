@@ -1595,7 +1595,12 @@
         "matrix-select": "Select the carrier cells",
         "clade-fit": "clade fit {{score}}",
         "clade-fit-help": "How well the carrier cells follow the phylogeny: best F1 between the carriers and any clade ({{inClade}} of {{carriers}} carriers in the best clade of {{clade}} cells). ≥ 0.8 = one clean clade; < 0.5 = scattered cells, likely a noisy call.",
-        "caveat-low-fit": "{{count}} tier 1–2 alterations have scattered carriers (clade fit < 0.5) and are more likely noise than real subclonal events."
+        "caveat-low-fit": "{{count}} tier 1–2 alterations have scattered carriers (clade fit < 0.5) and are more likely noise than real subclonal events.",
+        "matrix-zoom-click": "Zoom to clicked clade",
+        "matrix-zoom-selection": "Zoom to selection",
+        "matrix-all": "All {{count}} cells",
+        "matrix-window": "Showing {{shown}} of {{total}} cells — Cmd/Ctrl + wheel to zoom, 'All cells' to reset.",
+        "matrix-help2": "Rows: tier 1–2 alterations ordered from the trunk down (tree depth of the clade their carriers fit best); right column: fraction of tumor cells · clade fit (red = scattered carriers, likely noise). Columns: cells in tree order under the phylogeny and clone strip (dashed lines separate clones). Click a clade or clone block to select its cells (and zoom when ticked); Cmd/Ctrl + wheel zooms around the pointer; click a name for the alteration popup, the colour bar to select its carriers, a cell to select it."
       },
       "site": {
         "clade-cells": " · {{count}} cells in the clade",
