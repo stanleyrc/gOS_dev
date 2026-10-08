@@ -5,6 +5,7 @@ import { Card, Col, Empty, Row, Select, Space, Typography } from "antd";
 import { BranchesOutlined, LineOutlined } from "@ant-design/icons";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
+import ScErrorBoundary from "../../components/singleCell/errorBoundary";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import useWalks from "../../components/singleCell/ecdna/useWalks";
@@ -86,6 +87,7 @@ export default function SingleCellEcdnaTab() {
   return (
     <SingleCellWrapper>
       <ScEventModal />
+      <ScErrorBoundary resetKey={`${selected.join("|")}-${focus}-${pad}`} title="ecDNA view failed">
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Card size="small" title={<Space><BranchesOutlined />{t("components.single-cell.ecdna.title", { count: all.length })}</Space>} extra={<HelpDrawer />}>
@@ -120,6 +122,7 @@ export default function SingleCellEcdnaTab() {
           <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.intro")}</Text>
         </Col>
       </Row>
+      </ScErrorBoundary>
     </SingleCellWrapper>
   );
 }

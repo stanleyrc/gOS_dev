@@ -154,7 +154,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                   {levels.length > 1 && (
                     <BoxStrips groups={levels.map((l) => ({ key: l, label: l, color: levelColors[l], values: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.score)), ids: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.rna_id)) }))} width={Math.max(260, Math.floor((w * 16) / 24 / 2) - 12)} height={260} yTitle={`${t("components.single-cell.cohort.gs-score")} · ${field}`} />
                   )}
-                  {levels.length > 1 && (() => { const test = compareGroups(levels.map((l) => ({ key: l, values: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.score)) }))); return <Text type="secondary" style={{ fontSize: 12, width: "100%" }}>{`${test.test || ""} ${formatP(test.p)}`}</Text>; })()}
+                  {levels.length > 1 && (() => { const test = compareGroups(levels.map((l) => ({ key: l, values: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.score)) }))); return <Text type="secondary" style={{ fontSize: 12, width: "100%" }}>{`${test?.test || ""} ${formatP(test?.p)}`}</Text>; })()}
                 </div>
               ) : (
                 <Text type="secondary">{t("components.single-cell.cohort.gs-intro")}</Text>

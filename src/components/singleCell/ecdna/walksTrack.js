@@ -63,7 +63,7 @@ export default function WalksTrack({ walks, colorOf, focus, onFocus }) {
     const { optionsList = [], genesStartPoint = [], genesEndPoint = [] } = genesState || {};
     return optionsList.map((o) => ({ name: o.label, start: Number(genesStartPoint[o.value]), end: Number(genesEndPoint[o.value]) })).filter((g) => Number.isFinite(g.start) && domains.some((d) => g.end >= d[0] && g.start <= d[1]));
   }, [genesState, domains]);
-  const spans = useMemo(() => chromosomeSpans(chromoBins, extents), [chromoBins, extents]);
+  const spans = useMemo(() => chromosomeSpans(chromoBins, extents).spans || [], [chromoBins, extents]);
   if (!walks.length) return <Text type="secondary">{t("components.single-cell.ecdna.none-selected")}</Text>;
   const walkGeneNames = new Set(walks.flatMap((w) => w.genes));
   const height = GENES_H + rows.length * ROW_H + AXIS_H;
