@@ -161,7 +161,7 @@ const catalogPoints = (values, tag) =>
  * Bulk-style mutation catalog of the fitted sites (fitted profile overlaid),
  * or one decomposed catalog per signature against its COSMIC profile.
  */
-function FitCatalogs({ fit }) {
+export function FitCatalogs({ fit }) {
   const { t } = useTranslation("common");
   const [mode, setMode] = useState("catalog");
   const legend = mutationFilterTypes().sbs.map((key) => ({

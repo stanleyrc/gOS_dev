@@ -232,3 +232,38 @@ export function decomposeFit(counts, reference, activities) {
     })
     .filter(Boolean);
 }
+
+/**
+ * Bootstrap 95% intervals of signature shares: resample the SBS96 contexts
+ * with replacement `rounds` times and refit (NNLS) the given signatures.
+ * Returns { [signature]: { lo, hi } } as shares of the fitted total.
+ */
+export function bootstrapShares(contexts, reference, signatureNames, rounds = 100, seed = 1) {
+  const idx = signatureNames.map((n) => reference.names.indexOf(n)).filter((j) => j >= 0);
+  const names = idx.map((j) => reference.names[j]);
+  const cols = idx.map((j) => reference.columns[j]);
+  const valid = contexts.filter((c) => CHANNEL_INDEX.has(c));
+  if (!valid.length || !cols.length) return {};
+  // small deterministic PRNG (mulberry32)
+  let s = seed >>> 0;
+  const rand = () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const shares = names.map(() => []);
+  for (let r = 0; r < rounds; r += 1) {
+    const counts = new Float64Array(96);
+    for (let i = 0; i < valid.length; i += 1) counts[CHANNEL_INDEX.get(valid[Math.floor(rand() * valid.length)])] += 1;
+    const x = nnls(cols, counts);
+    const total = x.reduce((a, b) => a + b, 0) || 1;
+    names.forEach((_, k) => shares[k].push(x[k] / total));
+  }
+  const out = {};
+  names.forEach((n, k) => {
+    const sorted = shares[k].sort((a, b) => a - b);
+    out[n] = { lo: sorted[Math.floor(0.025 * (sorted.length - 1))], hi: sorted[Math.ceil(0.975 * (sorted.length - 1))] };
+  });
+  return out;
+}

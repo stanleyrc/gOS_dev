@@ -1169,7 +1169,9 @@
         "rank-intro": "Rank all genes by the correlation between copy number at their locus and their expression (cells with both DNA and RNA).",
         "rank-help": "{{count}} genes expressed in at least 10 cells; click a gene to plot it",
         "slope": "Slope",
-        "mean-cn": "Mean CN"
+        "mean-cn": "Mean CN",
+        "by-chromosome": "Dosage sensitivity by chromosome",
+        "by-chromosome-help": "Share of ranked genes on each chromosome whose expression follows copy number (Spearman ρ ≥ 0.3); red when the chromosome's median ρ is ≥ 0.3."
       },
       "signatures": {
         "title": "SBS signatures",
@@ -1189,7 +1191,26 @@
         "this-fit": "This selection",
         "catalog": "Catalog",
         "catalog-title": "Mutation catalog of the fitted sites ({{n}} SNVs)",
-        "catalog-help": "Catalog: observed SBS96 counts, with the fitted reconstruction as the reference outline. Decomposed: each fitted signature's share of every channel, against its COSMIC v3.4 profile scaled to its activity (as in the bulk Signatures tab)."
+        "catalog-help": "Catalog: observed SBS96 counts, with the fitted reconstruction as the reference outline. Decomposed: each fitted signature's share of every channel, against its COSMIC v3.4 profile scaled to its activity (as in the bulk Signatures tab).",
+        "sets-title": "Signatures of a site set",
+        "set": "Sites",
+        "backend-short": "SigProfiler",
+        "browser-short": "browser fit",
+        "view-fit": "Fit",
+        "view-catalog": "Catalog",
+        "sets-help": "Pick a site set and run the browser fit, or choose a set with a precomputed SigProfilerAssignment fit (all / truncal / subclonal / private / clones).",
+        "ci-note": "95% bootstrap intervals from 100 resamples of the sites",
+        "ci-pending": "computing bootstrap intervals…",
+        "signature": "Signature",
+        "mutations": "Mutations",
+        "share": "Share",
+        "compare-title": "Signatures across site sets",
+        "fit-missing": "Fit {{count}} sets without a backend fit",
+        "compare-help": "Backend SigProfilerAssignment fits where available; sets marked * were fitted here (NNLS on this patient's signatures). Clone sets are the tree sites with alt reads in the clone's cells.",
+        "compare-empty": "No fits yet: click the fit button to fit the sets in the browser.",
+        "similarity-title": "Cosine similarity between set profiles",
+        "similarity-help": "SBS96 profiles compared directly (sets with at least 10 sites). Low similarity between truncal and subclonal sites or between clones points to a change in mutational process.",
+        "tree-title": "Signatures along the phylogeny"
       },
       "umap": {
         "title": "RNA UMAP",
@@ -1409,7 +1430,8 @@
         "show-site": "Show only this SNV site in the mutation heatmap",
         "caveats": "Caveats",
         "caveat-fusions-unverified": "Fusion calls are unverified gGnome walks; check them in IGV before trusting them.",
-        "caveat-homdel-noise": "Many homozygous-deletion calls are present in only 1–2 cells and are likely coverage dropout; they are hidden here."
+        "caveat-homdel-noise": "Many homozygous-deletion calls are present in only 1–2 cells and are likely coverage dropout; they are hidden here.",
+        "clone-fisher": "Fisher's exact test, carriers in this clone vs other tumor cells: {{p}}, odds ratio {{or}}. * = enriched (p < 0.01, > 50% of the clone)."
       }
     },
     "tracks-modal": {

@@ -77,3 +77,19 @@ describe("decomposed catalogs", () => {
     expect(out[0].cosine).toBeCloseTo(1);
   });
 });
+
+describe("bootstrapShares", () => {
+  it("brackets the point estimate", () => {
+    const { bootstrapShares, SBS96: CH } = require("./signatures");
+    const a = new Float64Array(96).fill(0);
+    const b = new Float64Array(96).fill(0);
+    a[0] = 1;
+    b[1] = 1;
+    const reference = { names: ["A", "B"], columns: [a, b] };
+    const contexts = [...Array(70).fill(CH[0]), ...Array(30).fill(CH[1])];
+    const ci = bootstrapShares(contexts, reference, ["A", "B"], 50);
+    expect(ci.A.lo).toBeLessThanOrEqual(0.7);
+    expect(ci.A.hi).toBeGreaterThanOrEqual(0.7);
+    expect(ci.B.hi).toBeLessThan(0.5);
+  });
+});
