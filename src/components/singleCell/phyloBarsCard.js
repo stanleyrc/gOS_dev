@@ -36,7 +36,7 @@ const CN_FIELDS = [["fractionAltered", "Fraction of genome altered"], ["segments
  * SBS signature activities as stacked bars, per cell or aggregated per clade
  * (clones, or the tree cut into k clades).
  */
-export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGene = "EGFR", title }) {
+export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGene = "EGFR", defaultMode = "cells", title }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { cells, cn, snv, signatures, cloneColors, selectedCellIds, hoveredCellId } = useSelector((s) => s.SingleCell);
@@ -48,7 +48,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
   const [tracks, setTracks] = useState(defaultTracks);
   const [gene, setGene] = useState(defaultGene);
   const [geneOptions, setGeneOptions] = useState([]);
-  const [mode, setMode] = useState("cells");
+  const [mode, setMode] = useState(defaultMode);
   const [k, setK] = useState(4);
   const [sigFits, setSigFits] = useState({});
   const [sigProgress, setSigProgress] = useState(null);
