@@ -34,6 +34,7 @@ export default function WalkTreeBars({ walks, colorOf }) {
   const [mode, setMode] = useState("cells");
   const [k, setK] = useState(6);
   const [unit, setUnit] = useState("copies");
+  const [layoutMode, setLayoutMode] = useState("separate");
   const [hoverRange, setHoverRange] = useState(null);
   const height = layout.walkTreeHeight || 520;
   const nRows = order.length;
@@ -62,6 +63,12 @@ export default function WalkTreeBars({ walks, colorOf }) {
   const barsW = Math.max(240, width - TREE_WIDTH - GAP - LABEL_W - 60);
   const maxTot = d3.max(values, (v) => v.tot) || 1;
   const x = d3.scaleLinear().domain([0, unit === "copies" ? maxTot : 1]).range([0, barsW]);
+  // separate lanes: one small-multiple per walk with its own copy scale
+  const laneGap = 14;
+  const laneW = Math.max(60, (barsW - laneGap * (walks.length - 1)) / Math.max(1, walks.length));
+  const laneMax = walks.map((w, j) => d3.max(values, (v) => v.per[j]) || 1);
+  const laneX = walks.map((w, j) => d3.scaleLinear().domain([0, laneMax[j]]).range([0, laneW]));
+  const laneLeft = (j) => LABEL_W + j * (laneW + laneGap);
   const share = (id) => dispatch(singleCellActions.updateHover(id));
   const select = (g, e) => {
     const ids = order.slice(g.first, g.last + 1);
@@ -75,7 +82,8 @@ export default function WalkTreeBars({ walks, colorOf }) {
         <Space wrap>
           <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.bars.per-cell") }, { value: "clones", label: t("components.single-cell.bars.per-clone") }, { value: "cut", label: t("components.single-cell.bars.per-clade") }]} />
           {mode === "cut" && <Slider min={2} max={12} value={k} onChange={setK} style={{ width: 90, margin: "0 6px" }} />}
-          <Segmented size="small" value={unit} onChange={setUnit} options={[{ value: "copies", label: t("components.single-cell.ecdna.unit-copies") }, { value: "share", label: t("components.single-cell.ecdna.unit-share") }]} />
+          <Segmented size="small" value={layoutMode} onChange={setLayoutMode} options={[{ value: "separate", label: t("components.single-cell.ecdna.layout-separate") }, { value: "stacked", label: t("components.single-cell.ecdna.layout-stacked") }]} />
+          {layoutMode === "stacked" && <Segmented size="small" value={unit} onChange={setUnit} options={[{ value: "copies", label: t("components.single-cell.ecdna.unit-copies") }, { value: "share", label: t("components.single-cell.ecdna.unit-share") }]} />}
           <Text type="secondary">{t("components.single-cell.signatures.height")}</Text>
           <Slider min={240} max={1600} step={20} value={height} onChange={(v) => dispatch(singleCellActions.updateLayout({ walkTreeHeight: v }))} style={{ width: 100, margin: "0 6px" }} />
           <SvgExportButton containerRef={ref} name="ecdna-on-tree" />
@@ -108,7 +116,16 @@ export default function WalkTreeBars({ walks, colorOf }) {
               return share(node.isLeaf ? order[node.firstLeaf] : null);
             }}
           />
-          <svg width={LABEL_W + barsW + 60} height={height + 16}>
+          <svg width={LABEL_W + barsW + 60} height={height + 34}>
+            {layoutMode === "separate" &&
+              walks.map((w, j) => (
+                <g key={`lane-${w.id}`} transform={`translate(${laneLeft(j)},${height + 2})`}>
+                  <text x={0} y={12} fontSize={11} fontWeight={600} fill={colorOf(w.id)}>{w.label.length > 18 ? `${w.label.slice(0, 17)}…` : w.label}</text>
+                  <line x1={0} x2={laneW} y1={16} y2={16} stroke="#d9d9d9" />
+                  <text x={laneW} y={28} textAnchor="end" fontSize={9} fill="#8c8c8c">{`${laneMax[j].toFixed(0)} copies`}</text>
+                  <line x1={0} x2={0} y1={-height - 2} y2={16} stroke="#e8e8e8" />
+                </g>
+              ))}
             {groups.map((g, i) => {
               const y0 = g.first * rowH;
               const h = (g.last - g.first + 1) * rowH;
@@ -124,7 +141,18 @@ export default function WalkTreeBars({ walks, colorOf }) {
                   {mode === "cells" && hoverRow === g.first && <rect x={0} y={y0} width={LABEL_W + barsW + 60} height={h} fill="rgba(22,119,255,0.18)" />}
                   <rect x={0} y={y0 + 1} width={5} height={Math.max(1, h - 2)} fill={(g.clone != null && cloneColors[g.clone]) || "#8c8c8c"} />
                   {(mode !== "cells" || h >= 9) && <text x={10} y={cy} dy="0.35em" fontSize={mode === "cells" ? Math.min(10, h - 1) : 11} fill="#262626">{g.label.length > 16 ? `${g.label.slice(0, 15)}…` : g.label}</text>}
-                  {walks.map((w, j) => {
+                  {layoutMode === "separate" &&
+                    walks.map((w, j) => {
+                      const val = v.per[j];
+                      if (!(val > 0)) return null;
+                      return (
+                        <g key={w.id}>
+                          <rect x={laneLeft(j)} y={cy - barH / 2} width={Math.max(0.5, laneX[j](val))} height={barH} fill={colorOf(w.id)} rx={1} />
+                          <title>{`${g.label} · ${w.label}: ${mode === "cells" ? `${val.toFixed(0)} copies` : `mean ${val.toFixed(1)} copies · ${v.carriers[j]}/${v.n} cells`}`}</title>
+                        </g>
+                      );
+                    })}
+                  {layoutMode === "stacked" && walks.map((w, j) => {
                     const val = v.per[j] / denom;
                     if (!(val > 0)) return null;
                     const wpx = x(val);
@@ -137,11 +165,11 @@ export default function WalkTreeBars({ walks, colorOf }) {
                     acc += wpx;
                     return el;
                   })}
-                  {mode !== "cells" && <text x={LABEL_W + acc + 4} y={cy} dy="0.35em" fontSize={9} fill="#8c8c8c">{unit === "copies" ? v.tot.toFixed(0) : `n=${v.n}`}</text>}
+                  {layoutMode === "stacked" && mode !== "cells" && <text x={LABEL_W + acc + 4} y={cy} dy="0.35em" fontSize={9} fill="#8c8c8c">{unit === "copies" ? v.tot.toFixed(0) : `n=${v.n}`}</text>}
                 </g>
               );
             })}
-            {unit === "copies" && x.ticks(5).map((tk) => (
+            {layoutMode === "stacked" && unit === "copies" && x.ticks(5).map((tk) => (
               <g key={tk} transform={`translate(${LABEL_W + x(tk)},0)`}>
                 <line y1={0} y2={height} stroke="#e8e8e8" strokeDasharray="2 3" />
                 <text y={height + 12} textAnchor="middle" fontSize={9} fill="#8c8c8c">{tk}</text>

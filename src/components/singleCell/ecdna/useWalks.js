@@ -12,14 +12,25 @@ const PALETTE = [...d3.schemeTableau10, ...d3.schemeSet2, ...d3.schemePastel1];
  */
 export default function useWalks(cellIds) {
   const walksSource = useSelector((s) => s.SingleCell.walks);
-  const [filters, setFilters] = useState({ minCells: 3, minMedianCn: 4, curatedOnly: false, circularOnly: false, driverOnly: false, minCn: 1 });
+  const [filters, setFilters] = useState({ minCells: 1, minMedianCn: 4, curatedOnly: false, circularOnly: false, driverOnly: false, minCn: 1 });
   // jsonlite unboxes length-1 vectors: genes / driver_genes may arrive as strings
   const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
-  const all = useMemo(
-    () => (walksSource.status === "ok" ? (walksSource.data?.walks || []).map((w) => ({ ...w, id: `${w.id}`, genes: asList(w.genes), driver_genes: asList(w.driver_genes), nodes: w.nodes || [], junctions: w.junctions || [], cells: w.cells || {} })) : []),
+  // walk cell ids may be spelled differently from the gOS ids (MGH302_MR2_pl3_10b vs MGH302_MR_2_pl3_10b):
+  // rename them onto the patient's cells by a key without separators / case
+  const idKey = (x) => `${x}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const all = useMemo(() => {
+    if (walksSource.status !== "ok") return [];
+    const canonical = new Map(cellIds.map((id) => [idKey(id), id]));
+    const remap = (cells) => {
+      const out = {};
+      Object.entries(cells || {}).forEach(([id, cn]) => {
+        out[canonical.get(idKey(id)) || id] = cn;
+      });
+      return out;
+    };
+    return (walksSource.data?.walks || []).map((w) => ({ ...w, id: `${w.id}`, genes: asList(w.genes), driver_genes: asList(w.driver_genes), nodes: w.nodes || [], junctions: w.junctions || [], cells: remap(w.cells) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [walksSource]
-  );
+  }, [walksSource, cellIds.join("|")]);
   const filtered = useMemo(() => filterWalks(all, cellIds, filters), [all, cellIds, filters]);
   const colorOf = useMemo(() => {
     const order = all.slice().sort((a, b) => (b.ncells || 0) - (a.ncells || 0));
