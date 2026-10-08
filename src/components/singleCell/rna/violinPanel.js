@@ -5,14 +5,14 @@ import * as d3 from "d3";
 import { AutoComplete, Card, Empty, Select, Space, Tag, Typography } from "antd";
 import { BoxPlotOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
-import { CLONE_PALETTE } from "../../../helpers/singleCell/matrix";
+import { themePalette } from "../../../helpers/singleCell/themes";
 import { geneValues, searchGeneNames } from "../../../helpers/singleCell/staticRna";
 import { kernelDensity, quartiles } from "../../../helpers/singleCell/rnaStats";
 import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
 
 const { Text } = Typography;
-const ROW_HEIGHT = 200;
-const M = { top: 18, right: 12, bottom: 46, left: 44 };
+const ROW_HEIGHT = 240;
+const M = { top: 22, right: 12, bottom: 58, left: 52 };
 const GROUP_COLORS = { A: "#C2185B", B: "#1F5FA8" };
 const MAX_GENES = 48;
 // A gene set's module score (mean expression of its genes) is shown as one
@@ -24,7 +24,8 @@ const jitter = (k) => (((Math.sin(k * 12.9898) * 43758.5453) % 1) + 1) % 1 - 0.5
 
 /** Groups of matrix rows to compare: A/B, clones, or levels of a metadata field. */
 export function useViolinGroups(summary, rowsFor, groupBy) {
-  const { cells, cloneColors } = useSelector((state) => state.SingleCell);
+  const { cells, cloneColors, layout } = useSelector((state) => state.SingleCell);
+  const palette = themePalette(layout.theme);
   const abGroups = useSelector((state) => state.ScAnalysis.groups);
   return useMemo(() => {
     if (!summary) return [];
@@ -52,10 +53,10 @@ export function useViolinGroups(summary, rowsFor, groupBy) {
       .map(([level, rows], k) => ({
         key: level,
         label: level,
-        color: (groupBy === "clone" && cloneColors[level]) || CLONE_PALETTE[k % CLONE_PALETTE.length],
+        color: (groupBy === "clone" && cloneColors[level]) || palette[k % palette.length],
         rows,
       }));
-  }, [summary, rowsFor, groupBy, abGroups, cells, cloneColors]);
+  }, [summary, rowsFor, groupBy, abGroups, cells, cloneColors, palette]);
 }
 
 function GeneViolins({ gene, values, groups, width }) {
@@ -73,13 +74,13 @@ function GeneViolins({ gene, values, groups, width }) {
   const half = Math.min(band.bandwidth() / 2, 70);
   return (
     <svg width={width} height={ROW_HEIGHT} role="img" aria-label={`${gene} violin plot`}>
-      <text x={M.left} y={12} fontSize="12" fontWeight="600" fill="#262626">
+      <text x={M.left} y={14} fontSize="15" fontWeight="600" fill="#262626">
         {gene}
       </text>
       {y.ticks(4).map((tk) => (
         <g key={tk}>
           <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke="#f0f0f0" />
-          <text x={M.left - 6} y={y(tk) + 4} textAnchor="end" fontSize="10" fill="#8c8c8c">
+          <text x={M.left - 6} y={y(tk) + 4} textAnchor="end" fontSize="12" fill="#595959">
             {tk}
           </text>
         </g>
@@ -96,7 +97,7 @@ function GeneViolins({ gene, values, groups, width }) {
         return (
           <g key={g.key}>
             <rect x={cx - band.bandwidth() / 2} y={M.top} width={band.bandwidth()} height={ROW_HEIGHT - M.top - M.bottom} fill="#FAFAFA" rx={4} />
-            <path d={area(grid.map((x, i) => ({ x, d: density[i] })))} fill={g.color} fillOpacity={0.25} stroke={g.color} />
+            <path d={area(grid.map((x, i) => ({ x, d: density[i] })))} fill={g.color} fillOpacity={0.35} stroke={g.color} strokeWidth={1.5} />
             {v.map((val, k) => {
               // Spread points by the density at their value so they fill the violin.
               const at = density[Math.max(0, Math.min(grid.length - 1, Math.round((val / grid[grid.length - 1]) * (grid.length - 1))))] / dmax;
@@ -105,16 +106,16 @@ function GeneViolins({ gene, values, groups, width }) {
             <rect x={cx - 3} y={y(stats.q3)} width={6} height={Math.max(1, y(stats.q1) - y(stats.q3))} fill="#262626" fillOpacity={0.6} />
             <line x1={cx - 8} x2={cx + 8} y1={y(stats.median)} y2={y(stats.median)} stroke="#262626" strokeWidth={2} />
             <title>{`${g.label}: n=${v.length}, median ${stats.median.toFixed(2)}, ${Math.round(pct * 100)}% expressing`}</title>
-            <text x={cx} y={ROW_HEIGHT - M.bottom + 14} textAnchor="middle" fontSize="11" fill="#595959">
+            <text x={cx} y={ROW_HEIGHT - M.bottom + 18} textAnchor="middle" fontSize="13" fontWeight="500" fill="#262626">
               {g.label.length > 22 ? `${g.label.slice(0, 21)}…` : g.label}
             </text>
-            <text x={cx} y={ROW_HEIGHT - M.bottom + 28} textAnchor="middle" fontSize="10" fill="#8c8c8c">
+            <text x={cx} y={ROW_HEIGHT - M.bottom + 36} textAnchor="middle" fontSize="12" fill="#8c8c8c">
               {`n=${v.length} · ${Math.round(pct * 100)}%`}
             </text>
           </g>
         );
       })}
-      <text transform={`translate(12 ${(M.top + ROW_HEIGHT - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize="11" fill="#8c8c8c">
+      <text transform={`translate(14 ${(M.top + ROW_HEIGHT - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize="12" fill="#595959">
         log-normalized
       </text>
     </svg>

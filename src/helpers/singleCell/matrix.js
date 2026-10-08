@@ -548,8 +548,20 @@ const PGV_TOTAL = [
 ];
 const shiftForAllelic = (p) => [p[0], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[11]];
 
+// Blue-white-red diverging (ColorBrewer RdBu, reversed), 2 = white.
+const DIVERGING_TOTAL = ["#2166AC", "#92C5DE", "#FFFFFF", "#FDDBC7", "#F4A582", "#E58368", "#D6604D", "#C43C3C", "#B2182B", "#8E0F22", "#67001F", "#2D0010"];
+// Sequential ramps: 0 dark, 11+ bright (viridis / magma samples).
+const VIRIDIS_TOTAL = ["#440154", "#482475", "#414487", "#355F8D", "#2A788E", "#21918C", "#22A884", "#44BF70", "#7AD151", "#BDDF26", "#FDE725", "#FFFFE0"];
+const MAGMA_TOTAL = ["#000004", "#180F3E", "#451077", "#721F81", "#9F2F7F", "#CD4071", "#F1605D", "#FD9567", "#FEC98D", "#FCFDBF", "#FFFFFF", "#FFFFFF"];
+// Zissou-inspired: cool losses, warm gains, 2 = pale.
+const ZISSOU_TOTAL = ["#3B9AB2", "#78B7C5", "#EEEEE6", "#EBCC2A", "#E1AF00", "#F2AD00", "#F98400", "#F21A00", "#C81400", "#9A0E00", "#6B0A00", "#2B0400"];
+
 export const CN_PALETTE_PRESETS = {
   pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
+  diverging: { total: DIVERGING_TOTAL, allelic: shiftForAllelic(DIVERGING_TOTAL), missing: "#EEEEEE" },
+  zissou: { total: ZISSOU_TOTAL, allelic: shiftForAllelic(ZISSOU_TOTAL), missing: "#EEEEEE" },
+  viridis: { total: VIRIDIS_TOTAL, allelic: shiftForAllelic(VIRIDIS_TOTAL), missing: "#EEEEEE" },
+  magma: { total: MAGMA_TOTAL, allelic: shiftForAllelic(MAGMA_TOTAL), missing: "#EEEEEE" },
   scwgs: {
     total: CN_STATE_COLORS,
     allelic: shiftForAllelic(CN_STATE_COLORS).map((c, k) => (k === 1 ? "#CCCCCC" : c)),
@@ -780,13 +792,17 @@ const KNOWN_LEVEL_COLORS = {
 };
 const ANNOTATION_PALETTE = ["#59A14F", "#9C755F", "#FF9DA7", "#BAB0AC", "#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#EDC948", "#B07AA1"];
 
-/** level -> colour for a categorical annotation (stable: sorted levels). */
-export function annotationColors(levels = []) {
+/**
+ * level -> colour for a categorical annotation (stable: sorted levels).
+ * Known GBM states keep their fixed colours; the rest cycle through
+ * `palette` (a theme's colours) or the built-in one.
+ */
+export function annotationColors(levels = [], palette = ANNOTATION_PALETTE) {
   const sorted = [...new Set(levels.map(String))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const out = {};
   let k = 0;
   sorted.forEach((l) => {
-    out[l] = KNOWN_LEVEL_COLORS[l] || ANNOTATION_PALETTE[k++ % ANNOTATION_PALETTE.length];
+    out[l] = KNOWN_LEVEL_COLORS[l] || palette[k++ % palette.length];
   });
   return out;
 }
