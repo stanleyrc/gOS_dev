@@ -13,6 +13,8 @@ const { Text } = Typography;
 const GENE_PAD = 2e6; // bp shown around a copy-number / fusion gene
 
 /** True on a single-cell patient's report (its Filtered Events come from the cells). */
+export { isStrongEvent } from "../../helpers/singleCell/strongEvents";
+
 export const useIsSingleCellPatient = () =>
   useSelector((state) => state.SingleCell.patient != null && !state.SingleCell.missing);
 
