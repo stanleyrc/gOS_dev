@@ -388,3 +388,63 @@ export function clusteredGeneOrder(X, nCells, nGenes) {
   const angle = Array.from({ length: nGenes }, (_, j) => Math.atan2(load(1, j), load(0, j)));
   return angle.map((a, j) => [a, j]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
 }
+
+/**
+ * `pca` that yields to the browser between blocks of the Gram matrix and
+ * between components, with progress in [0, 1], so a 1,000-cell PCA does not
+ * freeze the page. Same result as `pca`.
+ */
+export async function pcaAsync(X, nCells, nGenes, nPcs = 10, iterations = 120, onProgress = null) {
+  const breathe = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const K = new Float64Array(nCells * nCells);
+  const block = Math.max(1, Math.floor(4e7 / Math.max(1, nCells * nGenes)));
+  for (let a0 = 0; a0 < nCells; a0 += block) {
+    const a1 = Math.min(nCells, a0 + block);
+    for (let a = a0; a < a1; a += 1) {
+      const oa = a * nGenes;
+      for (let b = a; b < nCells; b += 1) {
+        let s = 0;
+        const ob = b * nGenes;
+        for (let j = 0; j < nGenes; j += 1) s += X[oa + j] * X[ob + j];
+        K[a * nCells + b] = s;
+        K[b * nCells + a] = s;
+      }
+    }
+    if (onProgress) onProgress((0.7 * a1) / nCells);
+    await breathe();
+  }
+  const vectors = [];
+  const values = [];
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) - 0.5;
+  const nComp = Math.min(nPcs, nCells - 1);
+  for (let p = 0; p < nComp; p += 1) {
+    let v = Float64Array.from({ length: nCells }, rand);
+    let lambda = 0;
+    for (let it = 0; it < iterations; it += 1) {
+      const w = new Float64Array(nCells);
+      for (let a = 0; a < nCells; a += 1) {
+        let s = 0;
+        const o = a * nCells;
+        for (let b = 0; b < nCells; b += 1) s += K[o + b] * v[b];
+        w[a] = s;
+      }
+      vectors.forEach((u) => {
+        let d = 0;
+        for (let a = 0; a < nCells; a += 1) d += w[a] * u[a];
+        for (let a = 0; a < nCells; a += 1) w[a] -= d * u[a];
+      });
+      let norm = 0;
+      w.forEach((x) => (norm += x * x));
+      norm = Math.sqrt(norm) || 1;
+      lambda = norm;
+      v = w.map((x) => x / norm);
+    }
+    vectors.push(v);
+    values.push(lambda);
+    if (onProgress) onProgress(0.7 + (0.3 * (p + 1)) / nComp);
+    await breathe();
+  }
+  const scores = vectors.map((u, p) => u.map((x) => x * Math.sqrt(values[p])));
+  return { scores, values };
+}

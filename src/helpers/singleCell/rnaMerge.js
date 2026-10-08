@@ -73,25 +73,37 @@ export function geneVariances(matrix, nGenes, cellIdx) {
   return out;
 }
 
-/** Sub-matrix over a subset of cells (rows renumbered 0..k-1), same genes. */
+/** Sub-matrix over a subset of cells (rows renumbered 0..k-1), same genes; typed arrays throughout. */
 export function subsetCells(matrix, nGenes, cellIdx) {
-  const map = new Int32Array(matrix.indices.length ? Math.max(...cellIdx, 0) + 1 : 0).fill(-1);
+  const size = matrix.indices.length ? Math.max(...cellIdx, 0) + 1 : 0;
+  const map = new Int32Array(size).fill(-1);
   cellIdx.forEach((i, k) => (map[i] = k));
   const indptr = new Int32Array(nGenes + 1);
-  const idx = [];
-  const dat = [];
+  // pass 1: count kept entries per gene
+  for (let g = 0; g < nGenes; g += 1) {
+    let n = 0;
+    for (let k = matrix.indptr[g]; k < matrix.indptr[g + 1]; k += 1) {
+      const i = matrix.indices[k];
+      if (i < size && map[i] >= 0) n += 1;
+    }
+    indptr[g + 1] = indptr[g] + n;
+  }
+  const indices = new Int32Array(indptr[nGenes]);
+  const data = new Float32Array(indptr[nGenes]);
+  // pass 2: fill
+  let out = 0;
   for (let g = 0; g < nGenes; g += 1) {
     for (let k = matrix.indptr[g]; k < matrix.indptr[g + 1]; k += 1) {
       const i = matrix.indices[k];
-      const m = i < map.length ? map[i] : -1;
+      const m = i < size ? map[i] : -1;
       if (m >= 0) {
-        idx.push(m);
-        dat.push(matrix.data[k]);
+        indices[out] = m;
+        data[out] = matrix.data[k];
+        out += 1;
       }
     }
-    indptr[g + 1] = idx.length;
   }
-  return { indptr, indices: Int32Array.from(idx), data: Float32Array.from(dat) };
+  return { indptr, indices, data };
 }
 
 /** Fisher's method: combined p from independent p-values (chi-square with 2k df). */

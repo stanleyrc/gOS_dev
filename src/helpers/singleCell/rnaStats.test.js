@@ -81,3 +81,16 @@ describe("quick clustering", () => {
     expect(Math.abs(pos(2) - pos(3))).toBe(1);
   });
 });
+
+describe("pcaAsync", () => {
+  it("matches the synchronous pca", async () => {
+    const { pca, pcaAsync } = require("./rnaStats");
+    const n = 12;
+    const g = 5;
+    const X = Float32Array.from({ length: n * g }, (_, i) => Math.sin(i * 0.7) + (i % 3));
+    const a = pca(X, n, g, 3);
+    const b = await pcaAsync(X, n, g, 3);
+    expect(b.values.map((v) => +v.toFixed(6))).toEqual(a.values.map((v) => +v.toFixed(6)));
+    expect(Math.abs(Math.abs(b.scores[0][0]) - Math.abs(a.scores[0][0]))).toBeLessThan(1e-6);
+  });
+});

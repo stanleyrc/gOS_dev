@@ -881,6 +881,11 @@
     },
     "single-cell": {
       "ecdna": {
+        "heat-title": "Copy number of every cell over the walk's regions",
+        "heat-pad": "Pad",
+        "heat-help": "Each cell's total copy number (the single-cell heatmap's colours) over the regions the walk is built from, with the padding on each side; above, the walk's nodes on the same coordinates (red outline = ALT junction end) and the genes; right, the walk's copies per cell. CN steps at the node boundaries that follow the copies bar support the walk.",
+        "layout-separate": "Separate",
+        "layout-stacked": "Stacked",
         "title": "ecDNA / amplicon walks ({{count}} in the genome graph)",
         "none": "No walks exported for this patient (pipeline step `walks`: db/amplicon_copies/all_patients.rds → walks.json).",
         "col-walk": "Walk",
@@ -1138,6 +1143,9 @@
         "open-patient": "Open patient"
       },
       "cohort": {
+        "clade-filter": "Clade F1 ≥",
+        "clade-filter-help": "Hide alterations whose carrier cells do not match one clade of the patient's phylogeny (best F1 below the threshold); scattered subclonal drivers are mostly noise. Applies to the patient cards, oncoprint, convergence, event table and reports.",
+        "clade-filter-dropped": "{{count}} alterations hidden",
         "view-amplicons": "ecDNA / amplicons",
         "amp-title": "Amplicon copies per cell",
         "amp-y": "walk copies (carriers)",
