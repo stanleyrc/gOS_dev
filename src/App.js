@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { Layout, ConfigProvider, theme as antdTheme } from "antd";
 import { applyAppTheme, getAppTheme, onAppThemeChange } from "./helpers/appTheme";
+import UpdateNotice from "./components/updateNotice";
 import { store, history } from "./redux/store";
 import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
@@ -40,6 +41,7 @@ function App() {
                 </Footer>
               </Layout>
               <UserSignInModal />
+              <UpdateNotice />
             </AppHolder>
           </Router>
         </I18nextProvider>
