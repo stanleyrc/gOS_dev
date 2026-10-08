@@ -5,6 +5,7 @@ import * as d3 from "d3";
 import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Space, Table, Typography } from "antd";
 import { DotChartOutlined } from "@ant-design/icons";
 import { dosagePoints, dosageRanking, geneLocus } from "../../../helpers/singleCell/dosage";
+import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { searchGeneNames } from "../../../helpers/singleCell/staticRna";
 import singleCellActions from "../../../redux/singleCell/actions";
 import useContainerWidth from "../useContainerWidth";
@@ -116,6 +117,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
       ),
     },
     { title: "ρ", dataIndex: "rho", key: "rho", width: 64, sorter: (a, b) => a.rho - b.rho, defaultSortOrder: "descend", render: (v) => fmt(v) },
+    { title: "q", dataIndex: "q", key: "q", width: 70, sorter: (a, b) => (a.q ?? 1) - (b.q ?? 1), render: (v) => (Number.isFinite(v) ? (v < 1e-4 ? "<1e-4" : v.toFixed(3)) : "–") },
     { title: t("components.single-cell.dosage.slope"), dataIndex: "slope", key: "slope", width: 72, sorter: (a, b) => a.slope - b.slope, render: (v) => fmt(v) },
     { title: t("components.single-cell.dosage.mean-cn"), dataIndex: "meanCn", key: "cn", width: 84, sorter: (a, b) => a.meanCn - b.meanCn, render: (v) => fmt(v, 1) },
     { title: "n", dataIndex: "n", key: "n", width: 56 },
@@ -160,6 +162,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                     rho: fmt(result.rho),
                     slope: fmt(result.slope),
                   })}
+                  {` · ${formatP(correlationP(result.rho, result.points.length))}`}
                 </Text>
                 <DosageScatter
                   points={result.points}
