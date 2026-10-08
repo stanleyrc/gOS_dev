@@ -390,7 +390,7 @@ export default function CellHeatmapPanel() {
   }, [snvReady, snv]);
   const hasCategories = Object.keys(categoryCounts).length > 0;
   // copy number at each site in its carrier cells (amplified SNVs: CN >= 4 with >= 1.5 mutant copies)
-  const snvCn = useMemo(() => (snvReady && cn.status === "ok" ? snvCopyNumber(snv.data, cn.data) : null), [snvReady, snv, cn]);
+  const snvCn = useMemo(() => (snvReady && cn.status === "ok" ? snvCopyNumber(snv.data, cn.data, { allelic: allelic.status === "ok" ? allelic.data : null }) : null), [snvReady, snv, cn, allelic]);
   const nAmplified = useMemo(() => (snvCn ? snvCn.filter((x) => x?.amplified).length : 0), [snvCn]);
   const amplifiedOnly = Boolean(layout.snvAmplifiedOnly);
   const snvColumns = useMemo(() => {
