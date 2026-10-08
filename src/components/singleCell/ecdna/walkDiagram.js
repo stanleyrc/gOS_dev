@@ -34,7 +34,7 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
   const nodes = walk.nodes;
   const total = d3.sum(nodes, (n) => n.end - n.start + 1) || 1;
   const w = Math.max(420, width - 16);
-  const size = Math.min(w, 520);
+  const size = Math.min(w, 400);
   const R = size / 2 - 70;
   const cx = size / 2;
   const cy = size / 2;
