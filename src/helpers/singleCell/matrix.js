@@ -80,9 +80,13 @@ export function cnStateColor(state) {
 const CN_RGBA = CN_STATE_COLORS.map((c) => packRGBA(hexToRgb(c)));
 const CN_INT = CN_STATE_COLORS.map((c) => packRGBInt(hexToRgb(c)));
 export const MISSING_RGBA = packRGBA(hexToRgb(MISSING_COLOR));
+const MISSING_RGBA_DARK = packRGBA(hexToRgb("#1a1a1a"));
+/** Dark app theme (html[data-theme="dark"]): plots use dark neutrals. */
+export const isDarkPlots = () => typeof document !== "undefined" && document.documentElement?.getAttribute("data-theme") === "dark";
+export const missingRGBA = () => (isDarkPlots() ? MISSING_RGBA_DARK : MISSING_RGBA);
 
 export function cnStateRGBA(state) {
-  if (!Number.isFinite(state)) return MISSING_RGBA;
+  if (!Number.isFinite(state)) return missingRGBA();
   return CN_RGBA[Math.max(0, Math.min(CN_RGBA.length - 1, Math.round(state)))];
 }
 
@@ -533,7 +537,7 @@ export function expressionRGB(value, max) {
 
 export function expressionRGBA(value, max) {
   const rgb = expressionRGB(value, max);
-  return rgb ? packRGBA(rgb) : MISSING_RGBA;
+  return rgb ? packRGBA(rgb) : missingRGBA();
 }
 
 /* ----------------------------------------------------------------------- */
@@ -556,8 +560,12 @@ const MAGMA_TOTAL = ["#000004", "#180F3E", "#451077", "#721F81", "#9F2F7F", "#CD
 // Zissou-inspired: cool losses, warm gains, 2 = pale.
 const ZISSOU_TOTAL = ["#3B9AB2", "#78B7C5", "#EEEEE6", "#EBCC2A", "#E1AF00", "#F2AD00", "#F98400", "#F21A00", "#C81400", "#9A0E00", "#6B0A00", "#2B0400"];
 
+// dark-theme variant of the pgv palette: CN 2 is dark grey instead of white
+const PGV_DARK = PGV_TOTAL.map((c, k) => (k === 2 ? "#2e2e2e" : c));
+
 export const CN_PALETTE_PRESETS = {
   pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
+  pgvDark: { total: PGV_DARK, allelic: shiftForAllelic(PGV_DARK), missing: "#1a1a1a" },
   diverging: { total: DIVERGING_TOTAL, allelic: shiftForAllelic(DIVERGING_TOTAL), missing: "#EEEEEE" },
   zissou: { total: ZISSOU_TOTAL, allelic: shiftForAllelic(ZISSOU_TOTAL), missing: "#EEEEEE" },
   viridis: { total: VIRIDIS_TOTAL, allelic: shiftForAllelic(VIRIDIS_TOTAL), missing: "#EEEEEE" },
@@ -615,10 +623,11 @@ export function snvMetricValue(snv, p, c, metric) {
   return snv.status[p][c] === 0 && !Number.isFinite(depth) ? 0 : null;
 }
 
-/** White (0) to black (1), as pgv draws VAF and binned positive fractions. */
+/** White (0) to black (1), as pgv draws VAF and binned positive fractions; dark theme: dark (0) to white (1). */
 export function vafRGBA(value) {
-  if (value == null || !Number.isFinite(value)) return SNV_MISSING_RGBA;
-  const v = Math.round(255 * (1 - Math.max(0, Math.min(1, value))));
+  if (value == null || !Number.isFinite(value)) return isDarkPlots() ? packRGBA([70, 74, 80]) : SNV_MISSING_RGBA;
+  const f = Math.max(0, Math.min(1, value));
+  const v = isDarkPlots() ? Math.round(31 + 224 * f) : Math.round(255 * (1 - f));
   return packRGBA([v, v, v]);
 }
 
