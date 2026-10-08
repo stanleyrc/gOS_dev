@@ -1095,6 +1095,9 @@
         "open-patient": "Open patient"
       },
       "cohort": {
+        "de-section-de": "Differential expression",
+        "de-section-pca": "PCA",
+        "de-pca-intro": "Run PCA on all tumour cells of the loaded patients, or set groups A / B above to run it on just those cells and compare their PC scores.",
         "sigmat-truncal": "truncal",
         "umap-selected": "{{count}} cells selected",
         "umap-drag": "Drag a box to select cells",
@@ -1661,6 +1664,7 @@
         "copy-prompt": "Copy this link:"
       },
       "event-cells": {
+        "no-position": "No genomic position for this alteration.",
         "title": "Cells carrying the event · {{location}}",
         "carriers": "{{count}} cells carry this event.",
         "multiple": "Multiple cells",
@@ -1863,6 +1867,7 @@
       "tabs": {
         "alteration": "Alteration",
         "plots": "Plots",
+        "reads": "Reads (IGV)",
         "variantQc": "Variant QC"
       },
       "loading": "Loading event details...",

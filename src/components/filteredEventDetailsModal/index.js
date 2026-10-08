@@ -3,7 +3,7 @@ import { Modal, Tabs, Alert, Space, Spin, Tag, Typography } from "antd";
 import Wrapper from "./index.style";
 
 import TracksModal from "../tracksModal";
-import EventTracks from "../singleCell/eventCellTracks";
+import EventTracks, { EventReads } from "../singleCell/eventCellTracks";
 import AlterationCard from "../alterationCard";
 import { withTranslation } from "react-i18next";
 import { roleColorMap } from "../../helpers/utility";
@@ -105,7 +105,7 @@ export class FilteredEventDetailsModal extends Component {
     const tracks = <TracksModal {...this.getTracksProps(tab)} />;
     return (
       <div className="filtered-event-tab-content">
-        {tab === FILTERED_EVENT_DETAILS_TABS.PLOTS ? <EventTracks record={record} fallback={tracks} /> : tracks}
+        {tab === FILTERED_EVENT_DETAILS_TABS.PLOTS ? <EventTracks record={record} fallback={tracks} /> : tab === FILTERED_EVENT_DETAILS_TABS.READS ? <EventReads record={record} fallback={tracks} /> : tracks}
       </div>
     );
   };

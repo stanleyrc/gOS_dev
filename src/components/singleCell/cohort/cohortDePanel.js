@@ -102,6 +102,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
   const [pcX, setPcX] = useState(0);
   const [pcY, setPcY] = useState(1);
   const [pcColor, setPcColor] = useState("group");
+  const [section, setSection] = useState("de");
   const matrices = useRef(new Map());
   const datasetOf = (s) => datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
   useEffect(() => {
@@ -325,7 +326,16 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
   const pcaColorOf = (c) => (pcColor === "patient" ? pcaColors[c.patient] : pcColor === "group" ? pcaColors[c.group] : pcaColors[`${c.cell[pcColor] ?? "NA"}`]) || "#d9d9d9";
 
   return (
-    <Card size="small" title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.de-title")}</Space>} extra={<SvgExportButton containerRef={ref} name="cohort-de" />}>
+    <Card
+      size="small"
+      title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.de-title")}</Space>}
+      extra={
+        <Space>
+          <Segmented size="small" value={section} onChange={setSection} options={[{ value: "de", label: t("components.single-cell.cohort.de-section-de") }, { value: "pca", label: t("components.single-cell.cohort.de-section-pca") }]} />
+          <SvgExportButton containerRef={ref} name={section === "pca" ? "cohort-pca" : "cohort-de"} />
+        </Space>
+      }
+    >
       <div ref={ref}>
         <Row gutter={[12, 12]}>
           <Col xs={24} xl={12}>
@@ -336,22 +346,28 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
           </Col>
           <Col span={24}>
             <Space wrap>
-              <Segmented size="small" value={deMode} onChange={setDeMode} options={[{ value: "pooled", label: t("components.single-cell.cohort.de-pooled") }, { value: "meta", label: t("components.single-cell.cohort.de-meta") }]} />
-              <Text type="secondary">min pct</Text>
-              <InputNumber size="small" min={0} max={1} step={0.05} value={minPct} onChange={(v) => setMinPct(v ?? 0.1)} style={{ width: 70 }} />
-              <Text type="secondary">q &lt;</Text>
-              <InputNumber size="small" min={0.0001} max={1} step={0.01} value={qCut} onChange={(v) => setQCut(v ?? 0.05)} style={{ width: 80 }} />
-              <Text type="secondary">|log2FC| ≥</Text>
-              <InputNumber size="small" min={0} max={5} step={0.1} value={lfcCut} onChange={(v) => setLfcCut(v ?? 0.5)} style={{ width: 70 }} />
-              <Button size="small" type="primary" loading={busy === "de"} disabled={nA < 3 || nB < 3} onClick={run}>{t("components.single-cell.cohort.de-run")}</Button>
-              <Button size="small" loading={busy === "pca"} disabled={!loaded.length} onClick={runPca}>{nA + nB > 0 ? t("components.single-cell.cohort.de-pca-groups") : t("components.single-cell.cohort.de-pca-all")}</Button>
-              {result?.rows && <Button size="small" icon={<AiOutlineDownload />} onClick={download}>TSV</Button>}
-              {busy === "de" && <Progress percent={Math.round(100 * progress)} size="small" style={{ width: 160 }} />}
+              {section === "de" && (
+                <>
+                  <Segmented size="small" value={deMode} onChange={setDeMode} options={[{ value: "pooled", label: t("components.single-cell.cohort.de-pooled") }, { value: "meta", label: t("components.single-cell.cohort.de-meta") }]} />
+                  <Text type="secondary">min pct</Text>
+                  <InputNumber size="small" min={0} max={1} step={0.05} value={minPct} onChange={(v) => setMinPct(v ?? 0.1)} style={{ width: 70 }} />
+                  <Text type="secondary">q &lt;</Text>
+                  <InputNumber size="small" min={0.0001} max={1} step={0.01} value={qCut} onChange={(v) => setQCut(v ?? 0.05)} style={{ width: 80 }} />
+                  <Text type="secondary">|log2FC| ≥</Text>
+                  <InputNumber size="small" min={0} max={5} step={0.1} value={lfcCut} onChange={(v) => setLfcCut(v ?? 0.5)} style={{ width: 70 }} />
+                  <Button size="small" type="primary" loading={busy === "de"} disabled={nA < 3 || nB < 3} onClick={run}>{t("components.single-cell.cohort.de-run")}</Button>
+                  {result?.rows && <Button size="small" icon={<AiOutlineDownload />} onClick={download}>TSV</Button>}
+                  {busy === "de" && <Progress percent={Math.round(100 * progress)} size="small" style={{ width: 160 }} />}
+                </>
+              )}
+              {section === "pca" && (
+                <Button size="small" type="primary" loading={busy === "pca"} disabled={!loaded.length} onClick={runPca}>{nA + nB > 0 ? t("components.single-cell.cohort.de-pca-groups") : t("components.single-cell.cohort.de-pca-all")}</Button>
+              )}
             </Space>
-            <div><Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.de-help")}</Text></div>
+            <div><Text type="secondary" style={{ fontSize: 12 }}>{section === "de" ? t("components.single-cell.cohort.de-help") : t("components.single-cell.cohort.de-pca-help")}</Text></div>
           </Col>
-          {result?.error && <Col span={24}><Alert type="error" showIcon message={result.error} /></Col>}
-          {result?.rows && (
+          {section === "de" && result?.error && <Col span={24}><Alert type="error" showIcon message={result.error} /></Col>}
+          {section === "de" && result?.rows && (
             <>
               <Col span={24}>
                 <Space wrap size={[6, 4]}>
@@ -402,8 +418,9 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
               </Col>
             </>
           )}
-          {pcaState?.error && <Col span={24}><Alert type="error" showIcon message={pcaState.error} /></Col>}
-          {pcaState?.scores && (
+          {section === "pca" && !pcaState && <Col span={24}><Text type="secondary">{t("components.single-cell.cohort.de-pca-intro")}</Text></Col>}
+          {section === "pca" && pcaState?.error && <Col span={24}><Alert type="error" showIcon message={pcaState.error} /></Col>}
+          {section === "pca" && pcaState?.scores && (
             <Col span={24}>
               <Card size="small" type="inner" title={t("components.single-cell.cohort.de-pca-title", { cells: pcaState.cells.length, genes: pcaState.nGenes })}>
                 <Space wrap style={{ marginBottom: 6 }}>
