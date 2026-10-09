@@ -36,6 +36,7 @@ import { differentialExpression, overRepresentation } from "../../../helpers/sin
 import { SC_GUTTER_INNER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
@@ -301,7 +302,7 @@ function MultiGroupDe({ summary, matrix, rowsFor, minPct, significant, onView, v
           onChange={setField}
           options={[
             { value: "clone", label: t("components.single-cell.umap.color-clone") },
-            ...categorical.map((f) => ({ value: f.name, label: f.name })),
+            ...categorical.map((f) => ({ value: f.name, label: fieldLabel(f.name) })),
           ]}
         />
         <Select
@@ -697,7 +698,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                     options={[
                       { value: "groups", label: t("components.single-cell.rna.groups-ab") },
                       { value: "clone", label: t("components.single-cell.umap.color-clone") },
-                      ...categorical.map((f) => ({ value: f.name, label: f.name })),
+                      ...categorical.map((f) => ({ value: f.name, label: fieldLabel(f.name) })),
                     ]}
                   />
                   <Select

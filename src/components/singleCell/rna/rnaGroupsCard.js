@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Button, Card, Col, Row, Segmented, Select, Space, Typography } from "antd";
 import { SwapOutlined, TeamOutlined } from "@ant-design/icons";
 import scaActions from "../../../redux/scAnalysis/actions";
+import { fieldLabel as prettyField } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const OTHERS = "__others__";
@@ -34,7 +35,7 @@ export default function RnaGroupsCard({ summary }) {
 
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   const categorical = summary.fields.filter((f) => !f.numeric);
-  const fieldLabel = (name) => (name === "clone" ? t("components.single-cell.umap.color-clone") : name);
+  const fieldLabel = (name) => (name === "clone" ? t("components.single-cell.umap.color-clone") : prettyField(name));
   const valueOf = (c, name = field) =>
     name === "clone" ? (c.cell_id ? cloneOf.get(c.cell_id) ?? null : null) : c[name] ?? null;
 
@@ -122,7 +123,7 @@ export default function RnaGroupsCard({ summary }) {
               showSearch
               options={[
                 { value: "clone", label: t("components.single-cell.umap.color-clone") },
-                ...categorical.map((f) => ({ value: f.name, label: f.name })),
+                ...categorical.map((f) => ({ value: f.name, label: fieldLabel(f.name) })),
               ]}
             />
           )}

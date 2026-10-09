@@ -17,6 +17,7 @@ import { locationToDomains } from "../../../helpers/utility";
 import { padDomains } from "../../../helpers/singleCell/eventDomains";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { setPendingEvent } from "../pendingEventOpener";
+import ColorTag from "../colorTag";
 
 const { Text, Paragraph } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -131,7 +132,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
             {Object.entries(byClone)
               .sort((a, b) => b[1] - a[1])
               .map(([c, n]) => (
-                <Tag key={c} color={cloneColors[c]}>{`${c} ${n}`}</Tag>
+                <ColorTag key={c} color={cloneColors[c]}>{`${c} ${n}`}</ColorTag>
               ))}
           </div>
           {text(event.effect_description) && <Paragraph style={{ marginBottom: 0 }}>{text(event.effect_description)}</Paragraph>}
@@ -158,7 +159,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
                   <div key={id} className="sc-cell-block" style={{ borderLeftColor: cloneOf.get(id) != null ? cloneColors[cloneOf.get(id)] : undefined }}>
                     <div className="sc-cell-title">
                       <Text strong>{id}</Text>
-                      {cloneOf.get(id) != null && <Tag color={cloneColors[cloneOf.get(id)]}>{cloneOf.get(id)}</Tag>}
+                      {cloneOf.get(id) != null && <ColorTag color={cloneColors[cloneOf.get(id)]}>{cloneOf.get(id)}</ColorTag>}
                     </div>
                     {SC_TRACKS.filter((track) => tracks.includes(track)).map((track) => {
                       const entry = loaded[`${id}|${track}`];

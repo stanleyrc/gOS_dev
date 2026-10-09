@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { Card, Col, Row, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Card, Col, Row, Space, Table, Tooltip, Typography } from "antd";
 import useRnaData from "../rna/useRnaData";
 import { hotspotGenotypes, normaliseTelomeres } from "../../../helpers/singleCell/precompute";
 import { expressionByCell } from "../../../helpers/singleCell/staticRna";
 import NotComputed, { pcFile } from "./notComputed";
 import { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const median = (v) => {
@@ -86,7 +87,7 @@ export default function TelomereCard() {
           dataSource={rows}
           scroll={{ x: 800 }}
           columns={[
-            { title: "Clone", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+            { title: "Clone", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
             { title: "Cells", dataIndex: "n", width: 60 },
             ...tertSites.map(([name]) => ({
               title: (

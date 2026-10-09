@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Col, Row, Space, Statistic, Table, Tag, Typography } from "antd";
+import { Card, Col, Row, Space, Statistic, Table, Typography } from "antd";
 import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
 import useSignatureModel from "../signatures/useSignatureModel";
@@ -10,6 +10,7 @@ import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import { CLOCK_SIGNATURES, cellClockBurden, cladeClockTiming, clockSites, mrcaTiming, placeByCladeSize } from "../../../helpers/singleCell/timing";
 import { Swatches, XBaseline } from "../cohort/charts";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const MIN_CELLS = 3;
@@ -171,7 +172,7 @@ export default function TimingCard() {
           pagination={false}
           dataSource={res.perClone}
           columns={[
-            { title: "Clone", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+            { title: "Clone", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
             { title: "Cells", dataIndex: "n" },
             { title: "Sensitivity (median)", dataIndex: "sensitivity", render: pct },
             { title: "Post-trunk clock SNVs (corrected)", dataIndex: "post", render: (x) => (Number.isFinite(x) ? x.toFixed(0) : "–") },
@@ -185,7 +186,7 @@ export default function TimingCard() {
           pagination={{ pageSize: 10, size: "small" }}
           onRow={(r) => ({ onClick: () => dispatch(singleCellActions.updateSelection(leavesOf(r.node))), style: { cursor: "pointer" } })}
           columns={[
-            { title: "Clade (majority clone)", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+            { title: "Clade (majority clone)", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
             { title: "Cells", dataIndex: "cells" },
             { title: "SNVs gained on branch", dataIndex: "gained" },
             { title: "… clock-like", dataIndex: "clockGained" },

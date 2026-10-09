@@ -13,6 +13,7 @@ import { chiSquareUpper } from "../../../helpers/singleCell/tests";
 import { FONT, Swatches, XBandLabels } from "../cohort/charts";
 import HintLine, { Provenance } from "../hintLine";
 import { INK } from "../../../helpers/singleCell/plotTheme";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const HEIGHT = 260;
@@ -72,9 +73,9 @@ export default function CompositionCard({ summary }) {
       title={<Space><PieChartOutlined />{t("components.single-cell.rna.composition-title")}<Provenance id="rnaComposition" /></Space>}
       extra={
         <Space wrap>
-          <Select size="small" style={{ width: 160 }} value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: f }))} />
+          <Select size="small" style={{ width: 160 }} value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
           <Text type="secondary">{t("components.single-cell.qc.group-by")}</Text>
-          <Select size="small" style={{ width: 160 }} value={groupBy} onChange={setGroupBy} options={[{ value: "clone", label: t("components.single-cell.umap.color-clone") }, ...fields.filter((f) => f !== field).map((f) => ({ value: f, label: f }))]} />
+          <Select size="small" style={{ width: 160 }} value={groupBy} onChange={setGroupBy} options={[{ value: "clone", label: t("components.single-cell.umap.color-clone") }, ...fields.filter((f) => f !== field).map((f) => ({ value: f, label: fieldLabel(f) }))]} />
           <SvgExportButton containerRef={ref} name={`composition-${field}`} />
         </Space>
       }

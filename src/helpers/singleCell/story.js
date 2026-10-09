@@ -12,12 +12,24 @@ export const STORY_SERIES = {
 
 const asArray = (v) => (Array.isArray(v) ? v : []);
 
+/** Typeset comparison operators the scripts write in ASCII: ">=" -> "≥", "<=" -> "≤", "!=" -> "≠". */
+export function typeset(text) {
+  return `${text ?? ""}`.replace(/\s?>=\s?/g, " ≥ ").replace(/\s?<=\s?/g, " ≤ ").replace(/\s?!=\s?/g, " ≠ ").replace(/\( ([≥≤≠])/g, "($1").replace(/^ ([≥≤≠])/, "$1");
+}
+
+/** A table header as the app writes them: first letter upper case, operators typeset. */
+export function headerCase(text) {
+  const s = typeset(text);
+  // leave mixed-case terms alone (ecDNA, mtDNA)
+  return s && !/^[a-z]+[A-Z]/.test(s) ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
 /** Keep only well-formed chapters / vignettes; null when the file is not a story. */
 export function normalizeStory(raw) {
   if (!raw || typeof raw !== "object" || raw.format !== STORY_FORMAT) return null;
   const section = (s) =>
     s && typeof s === "object" && s.title
-      ? { id: `${s.id || s.title}`, title: `${s.title}`, lede: s.lede || "", body: asArray(s.body).map(String), figure: s.figure || null, stats: asArray(s.stats) }
+      ? { id: `${s.id || s.title}`, title: typeset(s.title), lede: typeset(s.lede || ""), body: asArray(s.body).map(typeset), figure: s.figure || null, stats: asArray(s.stats) }
       : null;
   const patients = {};
   Object.entries(raw.patients || {}).forEach(([id, p]) => {

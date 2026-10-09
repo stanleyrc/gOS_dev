@@ -1,4 +1,4 @@
-import { matrixExtent, normalizeStory, sentencesAbout, stackRows, storyForPatient } from "./story";
+import { headerCase, matrixExtent, normalizeStory, sentencesAbout, stackRows, storyForPatient, typeset } from "./story";
 
 const raw = {
   format: "gos-sc-story/1",
@@ -46,5 +46,19 @@ describe("story helpers", () => {
   test("matrixExtent ignores missing values", () => {
     expect(matrixExtent([[0.2, null], [-0.5, NaN]])).toBe(0.5);
     expect(matrixExtent([])).toBe(1);
+  });
+});
+
+describe("typeset / headerCase", () => {
+  it("typesets comparison operators", () => {
+    expect(typeset("4 MH >= 5 bp, median CN >= 5")).toBe("4 MH ≥ 5 bp, median CN ≥ 5");
+    expect(typeset("ecDNA species (>= 10% of cells)")).toBe("ecDNA species (≥ 10% of cells)");
+    expect(typeset("a <= b != c")).toBe("a ≤ b ≠ c");
+    expect(typeset(null)).toBe("");
+  });
+  it("capitalises table headers", () => {
+    expect(headerCase("tumor cells")).toBe("Tumor cells");
+    expect(headerCase("ecDNA species (>= 10% of cells)")).toBe("ecDNA species (≥ 10% of cells)");
+    expect(headerCase("")).toBe("");
   });
 });

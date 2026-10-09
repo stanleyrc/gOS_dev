@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
@@ -24,9 +24,12 @@ import HintLine, { Provenance, ProvenanceTip } from "./hintLine";
 import useRnaFindings from "./rna/useRnaFindings";
 import RnaFindingsList, { CloneRnaLine, rnaSummarySentence } from "./rna/rnaFindingsList";
 import { SC_GUTTER } from "./density";
+import ColorTag from "./colorTag";
 
 const { Text, Paragraph, Title } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
+const SMALL_CLONE = 3;
+const MIN_CLONES_SHOWN = 6;
 const aetiology = (sig) => (signatureMetadata.metadata[sig]?.full || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "");
 
 /** One driver line with actions: select carriers, zoom the heatmap, view reads. */
@@ -62,16 +65,7 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
               </Tag>
             </Tooltip>
           )}
-          {Object.entries(d.fractions)
-            .filter(([, f]) => f.n > 0)
-            .sort((a, b) => b[1].fraction - a[1].fraction)
-            .map(([clone, f]) => (
-              <Tooltip key={clone} title={t("components.single-cell.report.clone-fisher", { p: formatP(f.p), or: Number.isFinite(f.oddsRatio) ? f.oddsRatio.toFixed(1) : "∞" })}>
-                <Tag color={cloneColors[clone]} style={{ marginLeft: 6, fontWeight: f.p < 0.01 && f.fraction > 0.5 ? 600 : 400 }}>
-                  {`${clone} ${f.n}/${f.size}${f.p < 0.01 && f.fraction > 0.5 ? " *" : ""}`}
-                </Tag>
-              </Tooltip>
-            ))}
+          <CloneTags fractions={d.fractions} cloneColors={cloneColors} />
         </div>
       </div>
       {interactive && (
@@ -98,6 +92,33 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
         </Space>
       )}
     </div>
+  );
+}
+
+// clone tags under a driver: the clones holding most carriers, the rest folded into "+N"
+const CLONE_TAGS_SHOWN = 6;
+function CloneTags({ fractions, cloneColors }) {
+  const { t } = useTranslation("common");
+  const entries = Object.entries(fractions || {})
+    .filter(([, f]) => f.n > 0)
+    .sort((a, b) => b[1].n - a[1].n || b[1].fraction - a[1].fraction);
+  const tag = ([clone, f]) => (
+    <Tooltip key={clone} title={t("components.single-cell.report.clone-fisher", { p: formatP(f.p), or: Number.isFinite(f.oddsRatio) ? f.oddsRatio.toFixed(1) : "∞" })}>
+      <ColorTag color={cloneColors[clone]} style={{ marginLeft: 6, fontWeight: f.p < 0.01 && f.fraction > 0.5 ? 600 : 400 }}>
+        {`${clone} ${f.n}/${f.size}${f.p < 0.01 && f.fraction > 0.5 ? " *" : ""}`}
+      </ColorTag>
+    </Tooltip>
+  );
+  const rest = entries.slice(CLONE_TAGS_SHOWN);
+  return (
+    <>
+      {entries.slice(0, CLONE_TAGS_SHOWN).map(tag)}
+      {rest.length > 0 && (
+        <Tooltip title={rest.map(([c, f]) => `${c} ${f.n}/${f.size}`).join(" · ")}>
+          <Tag style={{ marginLeft: 6, cursor: "help" }}>{t("components.single-cell.report.more-clones", { count: rest.length })}</Tag>
+        </Tooltip>
+      )}
+    </>
   );
 }
 
@@ -137,6 +158,7 @@ function SignatureBar({ items, width = 320 }) {
 export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null, rna = null, dataset = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
+  const [allClones, setAllClones] = useState(false);
   const { chromoBins, genomeLength } = useSelector((state) => state.Settings);
   const report = useMemo(() => buildPatientReport({ patient, events: events || [], cells: cells || [], variants: variants || [], signatures }), [patient, events, cells, variants, signatures]);
   const openDataset = useSelector((state) => state.Settings.dataset);
@@ -207,7 +229,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     { title: t("components.single-cell.report.col-cells"), dataIndex: "cells", key: "cells", width: 90, sorter: (a, b) => a.fraction - b.fraction, defaultSortOrder: "descend" },
     { title: t("components.single-cell.report.col-clonality"), dataIndex: "clonality", key: "clonality", width: 100, render: (v) => <Tag color={v === "clonal" ? "green" : v === "subclonal" ? "orange" : "default"}>{v}</Tag> },
     { title: t("components.single-cell.events.clade-score"), key: "fit", width: 90, sorter: (a, b) => (fitOf.get(a.label)?.score || 0) - (fitOf.get(b.label)?.score || 0), render: (_, d) => { const f = fitOf.get(d.label); return f && Number.isFinite(f.score) ? <span style={{ color: f.score < 0.5 ? "#cf1322" : f.score >= 0.8 ? "#237804" : undefined }}>{f.score.toFixed(2)}</span> : "–"; } },
-    { title: t("components.single-cell.report.col-clones"), key: "clones", render: (_, d) => Object.entries(d.fractions).filter(([, f]) => f.n > 0).sort((a, b) => b[1].fraction - a[1].fraction).map(([c, f]) => <Tag key={c} color={cloneColors[c]}>{`${c} ${f.n}/${f.size}`}</Tag>) },
+    { title: t("components.single-cell.report.col-clones"), key: "clones", render: (_, d) => Object.entries(d.fractions).filter(([, f]) => f.n > 0).sort((a, b) => b[1].fraction - a[1].fraction).map(([c, f]) => <ColorTag key={c} color={cloneColors[c]}>{`${c} ${f.n}/${f.size}`}</ColorTag>) },
   ];
   const expanded = (d) => {
     const e = d.event;
@@ -258,6 +280,9 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     rnaSummarySentence(rnaState.data, t),
   ].filter(Boolean);
   const driverGenes = new Set(allDrivers.flatMap((d) => `${d.gene || ""}`.split("::")));
+  // long clone lists (one- and two-cell clones of a deep tree) fold behind a link
+  const hiddenClones = allClones ? [] : report.clones.filter((c, i) => i >= MIN_CLONES_SHOWN && c.size < SMALL_CLONE);
+  const hasBurden = report.burden.truncal + report.burden.subclonal + report.burden.private + report.snvDrivers.length > 0;
 
   return (
     <Card
@@ -278,9 +303,9 @@ export default function PatientReportCard({ patient, events, cells, variants, si
       <Row gutter={SC_GUTTER}>
         <Col xs={24} lg={14}>
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.clonal-title", { count: report.clonal.length })} <HintLine inline text={t("components.single-cell.report.clonal-help", { pct: pct(0.85) })} /></Title>
-          {report.clonal.length ? report.clonal.map(row) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
+          {report.clonal.length ? report.clonal.map(row) : <Text type="secondary" className="sc-none">{t("components.single-cell.report.none")}</Text>}
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.subclonal-title", { count: report.subclonal.length })} <HintLine inline text={t("components.single-cell.report.subclonal-help")} /></Title>
-          {report.subclonal.length ? report.subclonal.map(row) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
+          {report.subclonal.length ? report.subclonal.map(row) : <Text type="secondary" className="sc-none">{t("components.single-cell.report.none")}</Text>}
           {report.rare.length > 0 && (
             <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
               {t("components.single-cell.report.rare", { count: report.rare.length, list: report.rare.slice(0, 6).map((d) => `${d.label} (${d.cells})`).join("; ") })}
@@ -289,11 +314,11 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         </Col>
         <Col xs={24} lg={10}>
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.clones-title")}</Title>
-          {report.clones.map((c) => (
+          {(allClones ? report.clones : report.clones.filter((c, i) => i < MIN_CLONES_SHOWN || c.size >= SMALL_CLONE)).map((c) => (
             <div key={c.clone} style={{ marginBottom: 8 }}>
               <Space size={6} wrap>
-                <Tag color={cloneColors[c.clone]}>{c.clone}</Tag>
-                <Text>{t("components.single-cell.report.clone-size", { n: c.size, pct: pct(c.fraction) })}</Text>
+                <ColorTag color={cloneColors[c.clone]}>{c.clone}</ColorTag>
+                <Text>{t("components.single-cell.report.clone-size", { count: c.size, pct: pct(c.fraction) })}</Text>
                 {interactive && (
                   <Button size="small" type="link" style={{ padding: 0 }} onClick={() => dispatch(singleCellActions.updateSelection((cells || []).filter((x) => `${x.clone_id}` === c.clone).map((x) => x.cell_id)))}>
                     {t("components.single-cell.report.select-clone")}
@@ -311,19 +336,32 @@ export default function PatientReportCard({ patient, events, cells, variants, si
               </div>
             </div>
           ))}
+          {hiddenClones.length > 0 && (
+            <Button size="small" type="link" style={{ padding: 0, marginBottom: 8 }} onClick={() => setAllClones(true)}>
+              {t("components.single-cell.report.more-small-clones", { count: hiddenClones.length, cells: d3.sum(hiddenClones, (c) => c.size) })}
+            </Button>
+          )}
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.burden-title")} <Provenance id="burden" /></Title>
-          <Space size="large">
-            <Statistic title={t("components.single-cell.snv.category-truncal")} value={report.burden.truncal} />
-            <Statistic title={t("components.single-cell.snv.category-subclonal")} value={report.burden.subclonal} />
-            <Statistic title={t("components.single-cell.snv.category-private")} value={report.burden.private} />
-            <Statistic title={t("components.single-cell.report.snv-drivers")} value={report.snvDrivers.length} />
-          </Space>
-          <Title level={5} className="sc-section-title">{t("components.single-cell.report.signatures-title")}</Title>
-          <Descriptions size="small" column={1} colon={false}>
-            <Descriptions.Item label={t("components.single-cell.report.sig-all", { n: report.signatures.n ?? "" })}><SignatureBar items={report.signatures.all} /></Descriptions.Item>
-            <Descriptions.Item label={t("components.single-cell.snv.category-truncal")}><SignatureBar items={report.signatures.truncal} /></Descriptions.Item>
-            <Descriptions.Item label={t("components.single-cell.snv.category-subclonal")}><SignatureBar items={report.signatures.subclonal} /></Descriptions.Item>
-          </Descriptions>
+          {hasBurden ? (
+            <Space size="large" wrap>
+              <Statistic title={t("components.single-cell.snv.category-truncal")} value={report.burden.truncal} />
+              <Statistic title={t("components.single-cell.snv.category-subclonal")} value={report.burden.subclonal} />
+              <Statistic title={t("components.single-cell.snv.category-private")} value={report.burden.private} />
+              <Statistic title={t("components.single-cell.report.snv-drivers")} value={report.snvDrivers.length} />
+            </Space>
+          ) : (
+            <Text type="secondary" className="sc-none">{t("components.single-cell.report.no-burden")}</Text>
+          )}
+          {report.signatures.all.length > 0 && (
+            <>
+              <Title level={5} className="sc-section-title">{t("components.single-cell.report.signatures-title")}</Title>
+              <Descriptions size="small" column={1} colon={false}>
+                <Descriptions.Item label={report.signatures.n != null ? t("components.single-cell.report.sig-all", { n: report.signatures.n }) : t("components.single-cell.report.sig-all-plain")}><SignatureBar items={report.signatures.all} /></Descriptions.Item>
+                {report.signatures.truncal.length > 0 && <Descriptions.Item label={t("components.single-cell.snv.category-truncal")}><SignatureBar items={report.signatures.truncal} /></Descriptions.Item>}
+                {report.signatures.subclonal.length > 0 && <Descriptions.Item label={t("components.single-cell.snv.category-subclonal")}><SignatureBar items={report.signatures.subclonal} /></Descriptions.Item>}
+              </Descriptions>
+            </>
+          )}
           {report.signatures.emerging.length > 0 && (
             <Alert
               type="info"

@@ -581,6 +581,20 @@ const Wrapper = styled.div`
     border-radius: 2px;
     border: 1px solid var(--sc-border, rgba(0, 0, 0, 0.1));
   }
+  .sc-none {
+    display: block;
+    margin: 2px 0 6px;
+  }
+  .sc-cell-tracks-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* sortable headers keep the header weight (global.css lightens
+     .ant-table-column-title, which mixed bold and regular headers) */
+  .ant-table-thead .ant-table-column-title {
+    font-weight: inherit;
+  }
   .sc-legend-hollow {
     background: transparent !important;
     border: 1.5px solid var(--sc-axis, #8c8c8c) !important;

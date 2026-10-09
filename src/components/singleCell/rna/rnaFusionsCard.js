@@ -108,7 +108,7 @@ export default function RnaFusionsCard({ summary }) {
         </Space>
       ),
     },
-    { title: t(`${k}.col-frame`), dataIndex: "reading_frame", sorter: (a, b) => `${a.reading_frame}`.localeCompare(`${b.reading_frame}`) },
+    { title: t(`${k}.col-frame`), dataIndex: "reading_frame", render: (v) => (v && v !== "." ? v : "–"), sorter: (a, b) => `${a.reading_frame}`.localeCompare(`${b.reading_frame}`) },
     {
       title: t(`${k}.col-confidence`),
       dataIndex: "confidence",

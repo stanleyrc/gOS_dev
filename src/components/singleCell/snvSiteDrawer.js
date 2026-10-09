@@ -8,6 +8,7 @@ import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
 import useSignatureModel from "./signatures/useSignatureModel";
 import { signatureColorOf } from "./signaturePanel";
+import ColorTag from "./colorTag";
 
 const { Text } = Typography;
 const IGV_MAX = 8;
@@ -119,7 +120,7 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
           columns={[
             { title: "", key: "pick", width: 36, render: (_, r) => <Checkbox checked={chosen.includes(r.id)} onChange={(e) => toggle(r.id, e.target.checked)} /> },
             { title: t("components.single-cell.tooltip.cell"), dataIndex: "id", render: (id, r) => <span style={{ fontWeight: r.carrier ? 600 : 400 }}>{id}</span> },
-            { title: t("components.single-cell.tooltip.clone"), dataIndex: "clone", render: (cl) => (cl ? <Tag color={cloneColors[cl]}>{cl}</Tag> : "–") },
+            { title: t("components.single-cell.tooltip.clone"), dataIndex: "clone", render: (cl) => (cl ? <ColorTag color={cloneColors[cl]}>{cl}</ColorTag> : "–") },
             { title: t("components.single-cell.metric.alt"), dataIndex: "alt", sorter: (a, b) => a.alt - b.alt },
             { title: t("components.single-cell.metric.depth"), dataIndex: "depth", sorter: (a, b) => a.depth - b.depth },
             { title: t("components.single-cell.metric.vaf"), dataIndex: "vaf", sorter: (a, b) => a.vaf - b.vaf, render: (v) => v.toFixed(2) },

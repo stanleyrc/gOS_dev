@@ -27,6 +27,7 @@ import { geneValues, topVariableGenes } from "../../../helpers/singleCell/static
 import { stateScores } from "../../../helpers/singleCell/stateScores";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { clusteredGeneOrder, scaledExpression } from "../../../helpers/singleCell/rnaStats";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const HEIGHT = 440;
@@ -311,7 +312,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
             placeholder={t("components.single-cell.rna.annotations")}
             value={annotations}
             onChange={setAnnotations}
-            options={summary.fields.map((f) => ({ value: f.name, label: f.name }))}
+            options={summary.fields.map((f) => ({ value: f.name, label: fieldLabel(f.name) }))}
           />
           <Button size="small" disabled={!matrix} onClick={addStateScores}>
             {t("components.single-cell.rna.add-state-scores")}
@@ -330,7 +331,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
             <StripLabels
               left={treeWidth ? treeWidth + GAP : 0}
               columnWidth={STRIP}
-              labels={[t("components.single-cell.heatmap.strip-clone"), ...annotationFields.map((f) => f.name)]}
+              labels={[t("components.single-cell.heatmap.strip-clone"), ...annotationFields.map((f) => fieldLabel(f.name))]}
             />
             <div style={{ display: "flex", gap: GAP, alignItems: "flex-start" }} onMouseLeave={() => share(null)}>
               {treeLayout && (
@@ -387,7 +388,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
               .filter((f) => !f.numeric)
               .map((f) => (
                 <Space key={f.name} size={4} wrap>
-                  <Text strong type="secondary">{f.name}</Text>
+                  <Text strong type="secondary">{fieldLabel(f.name)}</Text>
                   {Object.entries(levelColors[f.name] || {}).map(([level, color]) => (
                     <span key={level} className="sc-legend-item">
                       <span className="sc-legend-swatch" style={{ background: color }} />

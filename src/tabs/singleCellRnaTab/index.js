@@ -22,6 +22,7 @@ import SplicingCard from "../../components/singleCell/rna/splicingCard";
 import scaActions from "../../redux/scAnalysis/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
+import SingleCellWrapper from "../../components/singleCell/index.style";
 import { SC_GUTTER } from "../../components/singleCell/density";
 
 const { Text } = Typography;
@@ -64,6 +65,7 @@ export default function SingleCellRnaTab() {
 
   return (
     <Wrapper>
+      <SingleCellWrapper>
       <Row gutter={SC_GUTTER}>
         {error && (
           <Col span={24}>
@@ -170,8 +172,8 @@ export default function SingleCellRnaTab() {
                 key: "server",
                 label: (
                   <span>
-                    {t("components.single-cell.rna.section-server")}{" "}
-                    <Text type="secondary">· {t(service === "ready" ? "components.single-cell.rna.server-ready" : "components.single-cell.rna.server-off")}</Text>
+                    {t("components.single-cell.rna.section-server")}
+                    {service !== "ready" && <Text type="secondary"> · {t("components.single-cell.rna.server-off")}</Text>}
                   </span>
                 ),
                 children: (
@@ -189,6 +191,7 @@ export default function SingleCellRnaTab() {
           />
         </Col>
       </Row>
+      </SingleCellWrapper>
     </Wrapper>
   );
 }
