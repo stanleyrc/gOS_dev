@@ -168,3 +168,13 @@ export function evaluateBackendSet(set, { channels = null, profileCounts = null,
     nMismatch: !exported && set.n != null && Math.round(total) !== Number(set.n),
   };
 }
+
+/**
+ * SBS substitution-class colours for a theme: the COSMIC colours, except
+ * that on the dark panel the near-black C>G becomes a mid grey and the pale
+ * T>A a lighter grey, so both stay visible and distinct from each other.
+ */
+export function sbsClassColors(mode, base) {
+  if (mode !== "dark") return { ...base };
+  return { ...base, "C>G": "#8c8c8c", "T>A": "#d9d9d9" };
+}
