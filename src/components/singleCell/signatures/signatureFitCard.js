@@ -5,10 +5,10 @@ import * as d3 from "d3";
 import { Alert, Card, Col, Empty, Row, Segmented, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { CheckCircleOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import styled from "styled-components";
-import BarPlotPanel from "../../barPlotPanel";
+import BarPlot from "../../barPlot";
 import { SBS96, SBS_COLORS } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
-import { evaluateBackendSet, fitClass } from "../../../helpers/singleCell/signatureFit";
+import { evaluateBackendSet, fitClass, sbsClassColors } from "../../../helpers/singleCell/signatureFit";
 import { mutationFilterTypes, mutationsColorPalette, mutationsGroups } from "../../../helpers/utility";
 import { FONT_FAMILY, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { aetiologyText, catalogPoints, loadCosmic, signatureColorOf } from "../signaturePanel";
@@ -97,8 +97,9 @@ export function ResidualPlot({ evaluation, width }) {
   const bottom = 30;
   const w = (width - left - right) / 96;
   const values = SBS96.map((_, i) => evaluation.counts[i] - evaluation.reconstruction[i]);
-  // pale classes need an edge on the light panel, near-black C>G on the dark one
-  const outlined = (sub) => (pt.mode === "dark" ? sub === "C>G" : sub === "T>G" || sub === "T>A");
+  const colors = sbsClassColors(pt.mode, SBS_COLORS);
+  // pale classes need an edge on the light panel
+  const outlined = (sub) => pt.mode !== "dark" && (sub === "T>G" || sub === "T>A");
   const max = Math.max(1, ...values.map(Math.abs));
   const y = d3
     .scaleLinear()
@@ -119,7 +120,7 @@ export function ResidualPlot({ evaluation, width }) {
       <text transform={`translate(11, ${(top + RESIDUAL_HEIGHT - bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.tick} fill={pt.textSecondary}>
         observed − fitted
       </text>
-      {Object.entries(SBS_COLORS).map(([sub, color], k) => (
+      {Object.entries(colors).map(([sub, color], k) => (
         <g key={sub}>
           <rect x={left + k * 16 * w} y={0} width={16 * w - 1} height={8} fill={color} stroke={outlined(sub) ? pt.axis : "none"} strokeWidth={0.6} />
           <text x={left + (k + 0.5) * 16 * w} y={RESIDUAL_HEIGHT - 8} textAnchor="middle" fontSize={TYPE.tick} fill={pt.textSecondary}>
@@ -138,9 +139,9 @@ export function ResidualPlot({ evaluation, width }) {
               y={Math.min(y0, y1)}
               width={Math.max(1, w - 1.5)}
               height={Math.max(0.5, Math.abs(y1 - y0))}
-              fill={SBS_COLORS[ch.slice(2, 5)]}
+              fill={colors[ch.slice(2, 5)]}
               stroke={outlined(ch.slice(2, 5)) ? pt.axis : "none"}
-              strokeWidth={pt.mode === "dark" ? 0.8 : 0.4}
+              strokeWidth={0.4}
             />
             <rect x={left + i * w} y={top} width={w} height={RESIDUAL_HEIGHT - top - bottom} fill="transparent">
               <title>{`${ch}: ${evaluation.counts[i]} observed, ${evaluation.reconstruction[i].toFixed(1)} fitted, residual ${v >= 0 ? "+" : ""}${v.toFixed(1)}`}</title>
@@ -149,6 +150,56 @@ export function ResidualPlot({ evaluation, width }) {
         );
       })}
     </svg>
+  );
+}
+
+const CATALOG_HEIGHT = 240;
+
+// The bulk BarPlot draws its class-header connector lines in black; follow the text colour instead.
+const ChartScope = styled.div`
+  .legendPolyline {
+    stroke: currentColor;
+  }
+`;
+
+/**
+ * The bulk tab's SBS96 catalog chart (BarPlot) in a plain card: always
+ * rendered (BarPlotPanel only draws once react-in-viewport reports it
+ * visible and hides it at opacity 0 until then), with theme-aware class
+ * colours so C>G stays visible on the dark panel.
+ */
+function CatalogCard({ title, extra, values, reference, tag, width }) {
+  const { t } = useTranslation("common");
+  const pt = usePlotTheme();
+  const colors = sbsClassColors(pt.mode, mutationsColorPalette());
+  const legend = mutationFilterTypes().sbs.map((key) => ({
+    id: key,
+    group: mutationsGroups()[key],
+    color: colors[key],
+    title: t(`metadata.mutation-catalog-titles.${key}`),
+    header: t(`metadata.mutation-catalog-headers.${mutationsGroups()[key]}`),
+    subtitle: t(`metadata.mutation-catalog-subtitles.${mutationsGroups()[key]}`),
+  }));
+  return (
+    <Card size="small" title={title} extra={extra}>
+      <ChartScope style={{ color: pt.textSecondary }}>
+        <BarPlot
+          width={Math.max(320, width)}
+          height={CATALOG_HEIGHT}
+          dataPoints={catalogPoints(values, `${tag}-obs`)}
+          referenceDataPoints={catalogPoints(reference, `${tag}-ref`)}
+          legend={legend}
+          xTitle=""
+          xVariable="type"
+          xFormat={null}
+          xAxisRotation={-90}
+          yTitle={t("components.mutation-catalog-panel.y-title")}
+          yVariable="mutations"
+          yFormat="~s"
+          colorVariable="mutationType"
+        />
+      </ChartScope>
+    </Card>
   );
 }
 
@@ -162,41 +213,24 @@ export function FitEvaluation({ evaluation, title }) {
   const { t } = useTranslation("common");
   const [mode, setMode] = useState("catalog");
   const [ref, width] = useContainerWidth(900);
-  const legend = mutationFilterTypes().sbs.map((key) => ({
-    id: key,
-    group: mutationsGroups()[key],
-    color: mutationsColorPalette()[key],
-    title: t(`metadata.mutation-catalog-titles.${key}`),
-    header: t(`metadata.mutation-catalog-headers.${mutationsGroups()[key]}`),
-    subtitle: t(`metadata.mutation-catalog-subtitles.${mutationsGroups()[key]}`),
-  }));
   const options = [
     { label: t("components.single-cell.signatures.fit-mode-catalog"), value: "catalog" },
     { label: t("components.single-cell.signatures.fit-mode-residual"), value: "residual" },
     { label: t("components.segmented-filter.decomposed-mode"), value: "decomposed", disabled: !evaluation.decomposition.length },
   ];
-  const common = {
-    loading: false,
-    legend,
-    xTitle: "",
-    xVariable: "type",
-    xFormat: null,
-    yTitle: t("components.mutation-catalog-panel.y-title"),
-    yVariable: "mutations",
-    yFormat: "~s",
-    colorVariable: "mutationType",
-    xAxisRotation: -90,
-    segmentedOptions: options,
-    segmentedValue: mode,
-    handleSegmentedChange: setMode,
-  };
+  const switcher = <Segmented size="small" options={options} value={mode} onChange={setMode} />;
+  const chartWidth = Math.max(320, width - 26);
   const worst = evaluation.residuals.slice(0, 4);
   return (
     <FontScope ref={ref} className="sc-sigfit-font">
       <Space direction="vertical" size="middle" style={{ display: "flex" }}>
         {mode === "catalog" && (
-          <BarPlotPanel
-            {...common}
+          <CatalogCard
+            extra={switcher}
+            values={evaluation.counts}
+            reference={evaluation.reconstruction}
+            tag="fit"
+            width={chartWidth}
             title={
               <Space size={6}>
                 <span>{title || t("components.mutation-catalog-panel.title")}</span>
@@ -204,8 +238,6 @@ export function FitEvaluation({ evaluation, title }) {
                 <CosineTag value={evaluation.stats.cosine} />
               </Space>
             }
-            dataPoints={catalogPoints(evaluation.counts, "obs")}
-            referenceDataPoints={catalogPoints(evaluation.reconstruction, "fit")}
           />
         )}
         {mode === "residual" && (
@@ -217,9 +249,9 @@ export function FitEvaluation({ evaluation, title }) {
                 <CosineTag value={evaluation.stats.cosine} />
               </Space>
             }
-            extra={<Segmented size="small" options={options} value={mode} onChange={setMode} />}
+            extra={switcher}
           >
-            <ResidualPlot evaluation={evaluation} width={Math.max(320, width - 26)} />
+            <ResidualPlot evaluation={evaluation} width={chartWidth} />
             <Text type="secondary">
               {t("components.single-cell.signatures.fit-worst", {
                 list: worst.map((r) => `${r.channel} ${r.residual >= 0 ? "+" : ""}${r.residual.toFixed(1)} (${r.observed} vs ${r.fitted.toFixed(1)})`).join(" · "),
@@ -229,9 +261,13 @@ export function FitEvaluation({ evaluation, title }) {
         )}
         {mode === "decomposed" &&
           evaluation.decomposition.map((d) => (
-            <BarPlotPanel
+            <CatalogCard
               key={d.signature}
-              {...common}
+              extra={switcher}
+              values={d.decomposed}
+              reference={d.expected}
+              tag={d.signature}
+              width={chartWidth}
               title={
                 <Space size={6}>
                   <span>{d.signature}</span>
@@ -240,8 +276,6 @@ export function FitEvaluation({ evaluation, title }) {
                   <CosineTag value={d.cosine} />
                 </Space>
               }
-              dataPoints={catalogPoints(d.decomposed, `${d.signature}-dec`)}
-              referenceDataPoints={catalogPoints(d.expected, `${d.signature}-ref`)}
             />
           ))}
         {evaluation.decomposition.length > 0 && (

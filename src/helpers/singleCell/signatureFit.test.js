@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { SBS96, parseCosmic } from "./signatures";
-import { evaluateBackendSet, evaluateFit, fitClass, fitStats, reconstructionOf, residuals, toSbs96 } from "./signatureFit";
+import { evaluateBackendSet, evaluateFit, fitClass, fitStats, reconstructionOf, residuals, sbsClassColors, toSbs96 } from "./signatureFit";
 import bwh70 from "./__fixtures__/signatures.BWH70.json";
 
 const cosmic = parseCosmic(fs.readFileSync(path.join(__dirname, "../../../public/COSMIC_v3.4_SBS_GRCh38.txt"), "utf8"));
@@ -115,5 +115,18 @@ describe("evaluateFit", () => {
     const e = evaluateFit({ counts, activities: [{ signature: "SBS1", activity: 100 }], reference: cosmic });
     expect(e.stats.cosine).toBeCloseTo(1, 6);
     expect(e.decomposition[0].cosine).toBeCloseTo(1, 6);
+  });
+});
+
+describe("sbsClassColors", () => {
+  const base = { "C>A": "#1ebff0", "C>G": "#050708", "T>A": "#cbcacb" };
+  it("keeps the COSMIC colours in light mode", () => {
+    expect(sbsClassColors("light", base)).toEqual(base);
+  });
+  it("lifts C>G off the dark panel and keeps it apart from T>A", () => {
+    const dark = sbsClassColors("dark", base);
+    expect(dark["C>A"]).toBe(base["C>A"]);
+    expect(dark["C>G"]).not.toBe(base["C>G"]);
+    expect(dark["C>G"]).not.toBe(dark["T>A"]);
   });
 });
