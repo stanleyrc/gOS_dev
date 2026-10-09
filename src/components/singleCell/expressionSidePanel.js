@@ -21,7 +21,7 @@ const MIN_LABEL_PX = 9;
  * drag and double-click zoom the columns; names show once columns are wide
  * enough to read.
  */
-export default function ExpressionSidePanel({ genes, order, width, height, pixelRatio = 1, onRowClick, onHover, onLeave }) {
+export default function ExpressionSidePanel({ genes, order, width, height, pixelRatio = 1, onRowClick, onHover, onLeave, onGeneClick }) {
   const { t } = useTranslation("common");
   const { summary, matrix, rowOfId } = useRnaData();
   const zoomedByCmd = useSelector((state) => state.Settings.zoomedByCmd);
@@ -115,7 +115,13 @@ export default function ExpressionSidePanel({ genes, order, width, height, pixel
       {showLabels ? (
         <div className="sc-gene-labels" style={{ height: LABEL_HEIGHT }}>
           {columns.slice(s0, e0).map((c, k) => (
-            <span key={c.gene} className="sc-gene-label" style={{ left: (k + 0.5) * colPx }} title={`${c.gene} (max ${c.max.toFixed(2)})`}>
+            <span
+              key={c.gene}
+              className={onGeneClick ? "sc-gene-label sc-gene-label-click" : "sc-gene-label"}
+              style={{ left: (k + 0.5) * colPx }}
+              title={`${c.gene} (max ${c.max.toFixed(2)})`}
+              onClick={onGeneClick ? () => onGeneClick(c.gene) : undefined}
+            >
               {c.gene}
             </span>
           ))}
