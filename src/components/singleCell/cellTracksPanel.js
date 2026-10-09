@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Col, Empty, Row, Space, Tag, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Col, Empty, Row, Space, Typography } from "antd";
 import { CloseOutlined, ExportOutlined } from "@ant-design/icons";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
@@ -12,6 +12,7 @@ import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
+import ColorTag from "./colorTag";
 
 const { Text } = Typography;
 const PLOT_HEIGHT = 160;
@@ -228,7 +229,9 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
         size="small"
         title={
           <div className="sc-cell-tracks-header">
-            <span>{title || t("components.single-cell.tracks.title")}</span><Provenance id="cellTracks" />
+            <span className="sc-cell-tracks-title">
+              {title || t("components.single-cell.tracks.title")} <Provenance id="cellTracks" />
+            </span>
             <Checkbox.Group
               value={visibleTracks}
               onChange={setTracks}
@@ -266,7 +269,7 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
                 >
                   <div className="sc-cell-title">
                     <Text strong>{cellId}</Text>
-                    {clone != null && <Tag color={cloneColors[clone]}>{clone}</Tag>}
+                    {clone != null && <ColorTag color={cloneColors[clone]}>{clone}</ColorTag>}
                     <Space size={4}>
                       <Button size="small" icon={<ExportOutlined />} onClick={() => openCell(cellId)}>
                         {t("components.single-cell.tracks.open-cell")}

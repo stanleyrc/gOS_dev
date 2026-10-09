@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Switch, Table, Tag, Typography } from "antd";
+import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Switch, Table, Typography } from "antd";
 import { ExperimentOutlined } from "@ant-design/icons";
 import useContainerWidth from "./useContainerWidth";
 import useRnaData from "./rna/useRnaData";
@@ -15,10 +15,13 @@ import { BoxStrips, FONT, YAxis } from "./cohort/charts";
 import { spearman } from "../../helpers/singleCell/dosage";
 import { correlationP, formatP } from "../../helpers/singleCell/tests";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
+import { formatTick, formatValue } from "../../helpers/singleCell/figureStyle";
+import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 import SvgExportButton from "./svgExportButton";
 import HintLine, { Provenance } from "./hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "./density";
 import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import ColorTag from "./colorTag";
 
 const { Text } = Typography;
 
@@ -134,7 +137,7 @@ export default function QcPanel() {
     return row;
   });
   const openCell = (id) => patient && dispatch(datasetsActions.openCaseReport(patient.datasetId, id));
-  const fmt = (v, d = 2) => (Number.isFinite(Number(v)) ? d3.format(`.${d}~f`)(Number(v)) : "–");
+  const fmt = (v, d = 2) => formatValue(v, d);
   const med = (k) => medianMad(rows.map((r) => Number(r[k]))).median;
   const withRna = rows.filter((r) => Number.isFinite(Number(r.nCount_RNA))).length;
 
@@ -207,9 +210,9 @@ export default function QcPanel() {
                   return (
                     <Col key={`${a}-${b}`} span={24 / cols}>
                       <svg width={w} height={h}>
-                        <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 24 ? `${labelOf(b).slice(0, 23)}…` : labelOf(b)} ticks={4} format={d3.format("~g")} />
+                        <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 24 ? `${labelOf(b).slice(0, 23)}…` : labelOf(b)} ticks={4} format={(v) => formatTick(v)} />
                         {xs.ticks(4).map((v) => (
-                          <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{d3.format("~g")(v)}</text>
+                          <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{formatTick(v)}</text>
                         ))}
                         <text x={(Mm.left + w - Mm.right) / 2} y={h - 6} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>{labelOf(a)}</text>
                         {pts.map((p) => (
@@ -237,9 +240,9 @@ ${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
               scroll={{ x: true }}
               dataSource={groupMedians}
               columns={[
-                { title: groupBy === "clone_id" ? t("components.single-cell.umap.color-clone") : groupBy, dataIndex: "group", fixed: "left", width: 140, render: (g) => <Tag color={colors[g]}>{g}</Tag> },
+                { title: groupBy === "clone_id" ? t("components.single-cell.umap.color-clone") : fieldLabel(groupBy), dataIndex: "group", fixed: "left", width: 140, render: (g) => <ColorTag color={colors[g]}>{g}</ColorTag> },
                 { title: "n", dataIndex: "n", width: 60 },
-                ...metrics.map(([k, label]) => ({ title: <span style={{ fontSize: 12.5 }}>{label}</span>, dataIndex: k, width: 120, render: (v) => (k === "fga" ? (Number.isFinite(v) ? d3.format(".1%")(v) : "–") : fmt(v, 2)) })),
+                ...metrics.map(([k, label]) => ({ title: <span style={{ fontSize: 12.5, display: "inline-block", minWidth: 96 }}>{label}</span>, dataIndex: k, width: 120, align: "right", render: (v) => (k === "fga" ? (Number.isFinite(v) ? d3.format(".1%")(v) : "–") : fmt(v, 2)) })),
               ]}
             />
           </Card>
@@ -253,7 +256,7 @@ ${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
               pagination={{ pageSize: 10, size: "small" }}
               columns={[
                 { title: t("components.single-cell.tooltip.cell"), dataIndex: "cell_id", render: (id) => <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openCell(id)}>{id}</Button> },
-                { title: t("components.single-cell.tooltip.clone"), dataIndex: "clone_id", render: (c) => (c ? <Tag color={cloneColors[c]}>{c}</Tag> : "–") },
+                { title: t("components.single-cell.tooltip.clone"), dataIndex: "clone_id", render: (c) => (c ? <ColorTag color={cloneColors[c]}>{c}</ColorTag> : "–") },
                 { title: t("components.single-cell.qc.flags"), dataIndex: "cell_id", key: "flags", render: (id) => (flags.get(id) || []).join(", ") },
                 { title: "Ploidy", dataIndex: "ploidy", render: (v) => fmt(v) },
                 { title: "FGA", dataIndex: "fga", render: (v) => (Number.isFinite(v) ? d3.format(".0%")(v) : "–") },

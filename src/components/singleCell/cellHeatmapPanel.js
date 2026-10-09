@@ -55,6 +55,7 @@ import {
 import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
 import { currentPlotTheme } from "../../helpers/singleCell/plotTheme";
+import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
@@ -858,7 +859,7 @@ export default function CellHeatmapPanel() {
                 style={{ minWidth: 150, maxWidth: 320 }}
                 value={annotationFields}
                 onChange={(value) => dispatch(singleCellActions.updateLayout({ annotationFields: value }))}
-                options={annotationOptions.map((f) => ({ value: f, label: f }))}
+                options={annotationOptions.map((f) => ({ value: f, label: fieldLabel(f) }))}
               />
             </Space>
           )}
@@ -1035,7 +1036,7 @@ export default function CellHeatmapPanel() {
               labels={[
                 t("components.single-cell.heatmap.strip-selected"),
                 t("components.single-cell.heatmap.strip-clone"),
-                ...annotationFields,
+                ...annotationFields.map(fieldLabel),
                 ...(showExpression ? [expression.gene] : []),
               ]}
             />
@@ -1281,7 +1282,7 @@ export default function CellHeatmapPanel() {
             />
             {annotationFields.map((f) => (
               <Space key={f} size={4} wrap className="sc-legend">
-                <Text strong type="secondary">{f}</Text>
+                <Text strong type="secondary">{fieldLabel(f)}</Text>
                 {Object.entries(annotationLevels[f] || {}).map(([level, color]) => (
                   <span key={level} className="sc-legend-item">
                     <span className="sc-legend-swatch" style={{ background: color }} />

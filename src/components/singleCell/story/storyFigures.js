@@ -5,7 +5,7 @@ import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
-import { STORY_SERIES, matrixExtent, stackRows } from "../../../helpers/singleCell/story";
+import { STORY_SERIES, headerCase, matrixExtent, stackRows } from "../../../helpers/singleCell/story";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -189,7 +189,7 @@ export function StoryMatrix({ figure }) {
 }
 
 export function StoryTable({ figure }) {
-  const columns = (figure.columns || []).map((c, k) => ({ title: c, dataIndex: k, key: k, render: (v) => (typeof v === "number" && !Number.isInteger(v) ? v.toFixed(2) : v) }));
+  const columns = (figure.columns || []).map((c, k) => ({ title: headerCase(c), dataIndex: k, key: k, render: (v) => (typeof v === "number" && !Number.isInteger(v) ? v.toFixed(2) : v) }));
   const data = (figure.rows || []).map((r, i) => ({ key: i, ...Object.fromEntries(r.map((v, k) => [k, v])) }));
   return <Table size="small" columns={columns} dataSource={data} pagination={data.length > 12 ? { pageSize: 12, size: "small" } : false} />;
 }

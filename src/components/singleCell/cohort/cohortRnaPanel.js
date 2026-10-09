@@ -21,6 +21,7 @@ import CohortSplicingPanel from "./cohortSplicingPanel";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 import { INK } from "../../../helpers/singleCell/plotTheme";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -169,7 +170,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           <Space wrap>
             {progress < 100 && <Progress percent={progress} size="small" style={{ width: 160 }} />}
             <Text type="secondary">{t("components.single-cell.cohort.rna-field")}</Text>
-            <Select size="small" style={{ width: 180 }} value={chosenField} onChange={setField} options={fields.map((f) => ({ value: f, label: f }))} />
+            <Select size="small" style={{ width: 180 }} value={chosenField} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
             <Select size="small" style={{ width: 170 }} value={tumorOnly ? "tumor" : "all"} onChange={(v) => setTumorOnly(v === "tumor")} options={[{ value: "tumor", label: t("components.single-cell.rna.tumor-only") }, { value: "all", label: t("components.single-cell.cohort.rna-all-cells") }]} />
             <Text type="secondary">{t("components.single-cell.cohort.rna-loaded", { count: loaded.length, cells: d3.sum(loaded, (s) => cellsOf(s).length) })}</Text>
           </Space>
@@ -181,7 +182,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           <Col xs={24} xl={10}>
             <Card
               size="small"
-              title={<Space><PieChartOutlined />{t("components.single-cell.cohort.rna-composition", { field: chosenField })}<Provenance id="cohortRna" /></Space>}
+              title={<Space><PieChartOutlined />{t("components.single-cell.cohort.rna-composition", { field: fieldLabel(chosenField) })}<Provenance id="cohortRna" /></Space>}
               extra={
                 <Space>
                   {Number.isFinite(composition.p) && (
@@ -228,12 +229,12 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
             </div>
           </Card>
         </Col>
-        <Col xs={24} xl={12}>
-          <Card size="small" title={<Space><TagsOutlined />{t("components.single-cell.cohort.rna-markers", { field: chosenField })}<Provenance id="markers" /></Space>}>
+        <Col span={24}>
+          <Card size="small" title={<Space><TagsOutlined />{t("components.single-cell.cohort.rna-markers", { field: fieldLabel(chosenField).toLowerCase() })}<Provenance id="markers" /></Space>}>
             {sharedMarkers.length ? (
               <Row gutter={SC_GUTTER_INNER}>
                 {sharedMarkers.map((lv) => (
-                  <Col key={lv.level} xs={24} md={12}>
+                  <Col key={lv.level} xs={24} md={12} xl={6}>
                     <Text strong>{lv.level}</Text>
                     <div style={{ marginTop: 4 }}>
                       {lv.genes.slice(0, 20).map((g) => (
@@ -268,7 +269,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         <Col span={24}>
           <CohortDosagePanel summaries={summaries} files={filesProp} rna={rna} cnRows={cnRows} datasets={datasets} />
         </Col>
-        <Col xs={24} xl={12}>
+        <Col span={24}>
           <Card
             size="small"
             title={<Space><DotChartOutlined />{t("components.single-cell.cohort.rna-gene")}<Provenance id="cohortRna" /></Space>}

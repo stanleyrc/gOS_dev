@@ -83,7 +83,7 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
         <text x={M.left + gene.length * 10 + 10} y={18} fontSize={TYPE.label} fill={badge.color}>{badge.text}</text>
       )}
       <text x={width - M.right} y={18} textAnchor="end" fontSize={TYPE.label} fill={sig ? "#cf1322" : "#8c8c8c"}>
-        {`ρ ${Number.isFinite(result.rho) ? result.rho.toFixed(2) : "–"} · ${formatP(p)} · n ${points.length}`}
+        {Number.isFinite(result.rho) ? `ρ ${result.rho.toFixed(2)} · ${formatP(p)} · n ${points.length}` : `no variation to correlate · n ${points.length}`}
       </text>
       <g transform={`translate(${M.left},${M.top})`}>
         <rect x={0} y={0} width={w} height={h} fill={INK.panelAlt} />

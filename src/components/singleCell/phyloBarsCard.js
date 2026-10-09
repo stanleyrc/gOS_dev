@@ -23,6 +23,7 @@ import { cutTree, labelRuns } from "../../helpers/singleCell/treeGroups";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
 import HintLine, { Provenance } from "./hintLine";
 import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 
 const MIN_HEIGHT = 440;
 const TREE_WIDTH = 240;
@@ -92,9 +93,9 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
     const opts = [];
     CELL_FIELDS.filter(([key]) => has(key)).forEach(([key, label]) => opts.push({ value: key, label, group: "cell" }));
     if (cnQc.size) CN_FIELDS.forEach(([key, label]) => opts.push({ value: `cn:${key}`, label, group: "cn" }));
-    if (locus && cn.status === "ok") opts.push({ value: "genecn", label: `${t("components.single-cell.bars.gene-cn")} (${locus.gene})`, group: "gene" });
-    if (geneIndex != null && matrix) opts.push({ value: "geneexpr", label: `${t("components.single-cell.bars.gene-expr")} (${gene})`, group: "gene" });
-    numericRnaFields.forEach((f) => opts.push({ value: `rna:${f}`, label: f, group: "rna" }));
+    if (locus && cn.status === "ok") opts.push({ value: "genecn", label: t("components.single-cell.bars.gene-cn", { gene: locus.gene }), group: "gene" });
+    if (geneIndex != null && matrix) opts.push({ value: "geneexpr", label: t("components.single-cell.bars.gene-expr", { gene }), group: "gene" });
+    numericRnaFields.forEach((f) => opts.push({ value: `rna:${f}`, label: fieldLabel(f), group: "rna" }));
     if (hasContexts) opts.push({ value: "signatures", label: t("components.single-cell.bars.signatures"), group: "snv" });
     return opts;
   }, [cells, cnQc, locus, cn.status, geneIndex, matrix, gene, numericRnaFields, hasContexts, t]);

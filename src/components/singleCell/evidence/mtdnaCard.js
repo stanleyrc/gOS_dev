@@ -5,6 +5,7 @@ import useTreeView from "../useTreeView";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { heritabilityLabel, signalTable, treeWeights } from "../../../helpers/singleCell/heritability";
 import NotComputed, { pcFile } from "./notComputed";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const median = (v) => {
@@ -70,7 +71,7 @@ export default function MtdnaCard() {
           pagination={false}
           dataSource={byClone}
           columns={[
-            { title: "Clone", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+            { title: "Clone", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
             { title: "Cells", dataIndex: "n" },
             { title: "mtDNA copies per cell (median)", dataIndex: "median", render: (x) => (x == null ? "–" : Math.round(x)) },
           ]}

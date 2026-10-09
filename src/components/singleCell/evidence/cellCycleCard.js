@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Col, Row, Segmented, Space, Table, Tag, Typography } from "antd";
+import { Card, Col, Row, Segmented, Space, Table, Typography } from "antd";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { cellCycleConcordance } from "../../../helpers/singleCell/precompute";
@@ -9,6 +9,7 @@ import useContainerWidth from "../useContainerWidth";
 import NotComputed, { pcFile } from "./notComputed";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const fmt = (x, d = 2) => (x == null || Number.isNaN(x) ? "–" : x.toFixed(d));
@@ -178,7 +179,7 @@ export default function CellCycleCard() {
               pagination={false}
               dataSource={res.perClone}
               columns={[
-                { title: "Clone", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+                { title: "Clone", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
                 { title: "Cells", dataIndex: "n", width: 60 },
                 { title: "S-phase (DNA)", key: "d", render: (_, r) => `${r.dnaS} (${pct(r.dnaFrac)})` },
                 { title: "S + G2/M (RNA)", key: "r", render: (_, r) => (r.nRna ? `${r.rnaCycling}/${r.nRna} (${pct(r.rnaFrac)})` : "–") },

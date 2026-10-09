@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Card, Space, Table, Tag, Typography } from "antd";
+import { Button, Card, Space, Table, Typography } from "antd";
 import useTreeView from "../useTreeView";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { armsFromCytobands, convergentEvents, eventCarriers } from "../../../helpers/singleCell/convergence";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 
@@ -72,9 +73,9 @@ export default function ConvergenceCard() {
                     const ids = leavesOf(h.node);
                     const c = majority(ids);
                     return (
-                      <Tag key={h.node} color={cloneColors[c]} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection(ids))}>
+                      <ColorTag key={h.node} color={cloneColors[c]} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection(ids))}>
                         {c} · {h.n}
-                      </Tag>
+                      </ColorTag>
                     );
                   })}
                 </Space>

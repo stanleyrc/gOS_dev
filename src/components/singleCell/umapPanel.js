@@ -16,6 +16,7 @@ import useRnaData from "./rna/useRnaData";
 import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
 import { Provenance } from "./hintLine";
+import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const HEIGHT = 440;
@@ -370,7 +371,7 @@ export default function UmapPanel() {
     { value: "selection", label: t("components.single-cell.umap.color-selection") },
     ...(cn.status === "ok" ? [{ value: "cn", label: t("components.single-cell.umap.color-cn") }] : []),
     ...(geneReady ? [{ value: "gene", label: t("components.single-cell.umap.color-gene", { gene: expression.gene }) }] : []),
-    ...summary.fields.map((f) => ({ value: f.name, label: f.name })),
+    ...summary.fields.map((f) => ({ value: f.name, label: fieldLabel(f.name) })),
   ];
 
   return (
