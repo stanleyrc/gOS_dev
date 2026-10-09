@@ -48,7 +48,7 @@ export default function AmpTimingCard() {
   };
   const columns = [
     { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 110, render: (g, r) => <Text strong style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}>{g}</Text> },
-    { title: t("components.single-cell.cohort.ev-carriers"), dataIndex: "carriers", width: 80 },
+    { title: t("components.single-cell.cohort.ev-carriers").replace(/:$/, ""), dataIndex: "carriers", width: 80 },
     { title: t("components.single-cell.timing.sites"), dataIndex: "nSites", width: 90, render: (n, r) => <Tooltip title={r.sites.map((s) => `${s.id}${s.gene ? ` (${s.gene})` : ""}: ${s.medianCopies.toFixed(1)} copies in ${s.n} cells`).join("\n")}><span>{`${n} (${r.nObs} obs)`}</span></Tooltip> },
     {
       title: t("components.single-cell.timing.pre"),

@@ -210,7 +210,7 @@ export default function QcPanel() {
                   return (
                     <Col key={`${a}-${b}`} span={24 / cols}>
                       <svg width={w} height={h}>
-                        <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 24 ? `${labelOf(b).slice(0, 23)}…` : labelOf(b)} ticks={4} format={(v) => formatTick(v)} />
+                        <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 30 ? `${labelOf(b).slice(0, 29)}…` : labelOf(b)} ticks={4} format={(v) => formatTick(v)} />
                         {xs.ticks(4).map((v) => (
                           <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{formatTick(v)}</text>
                         ))}
