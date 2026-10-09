@@ -5,6 +5,7 @@ import { withTranslation } from "react-i18next";
 import { Layout, Space, Spin, Select, Avatar, Progress, Typography } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import TopbarWrapper from "./topbar.style";
+import HelpCenter from "../../components/singleCell/help/helpCenter";
 import SignInButton from "./signInButton";
 import SettingsMenu from "../../components/settingsMenu";
 import { siteConfig } from "../../settings";
@@ -300,6 +301,7 @@ export class Topbar extends Component {
                           />
                         ))}
                     </div>
+                    <HelpCenter />
                     <SettingsMenu />
                   <SignInButton />
                   </Space>
