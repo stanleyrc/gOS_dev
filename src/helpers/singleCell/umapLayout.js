@@ -21,10 +21,20 @@ export function embeddingDomain(values, { robust = true, lo = 0.02, hi = 0.98, p
   if (!v.length) return [0, 1];
   const full = [v[0], v[v.length - 1]];
   if (!robust || v.length < 20) return full;
-  const a = quantileSorted(v, lo);
-  const b = quantileSorted(v, hi);
+  // small islands far off the bulk (a few % of cells beyond an empty gap of
+  // >= 25% of the extent) are pinned too, so they do not squash the rest
+  const n = v.length;
+  const gapMin = 0.25 * (full[1] - full[0]);
+  const maxIsland = Math.max(1, Math.floor(0.1 * n));
+  let first = 0;
+  let last = n - 1;
+  for (let i = 0; i < maxIsland; i += 1) if (v[i + 1] - v[i] >= gapMin) first = i + 1;
+  for (let i = n - 1; i > n - 1 - maxIsland; i -= 1) if (v[i] - v[i - 1] >= gapMin) last = i - 1;
+  const core = v.slice(first, last + 1);
+  const a = quantileSorted(core, lo);
+  const b = quantileSorted(core, hi);
   const span = Math.max(1e-9, b - a);
-  const d = [Math.max(full[0], a - pad * span), Math.min(full[1], b + pad * span)];
+  const d = [Math.max(core[0], a - pad * span), Math.min(core[core.length - 1], b + pad * span)];
   return d;
 }
 

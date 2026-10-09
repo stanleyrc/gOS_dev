@@ -24,4 +24,10 @@ describe("umapLayout", () => {
     expect(Math.min(...xs)).toBeCloseTo(10);
     expect(Math.max(...xs)).toBeGreaterThan(300);
   });
+  it("pins a small far island (a few % of cells beyond a big gap)", () => {
+    const bulk = Array.from({ length: 500 }, (_, i) => (i % 50) / 10); // 0..4.9
+    const island = Array.from({ length: 20 }, () => 20); // 4% of cells, far right
+    const d = embeddingDomain([...bulk, ...island]);
+    expect(d[1]).toBeLessThan(6);
+  });
 });
