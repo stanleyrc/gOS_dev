@@ -174,3 +174,31 @@ export function defaultFocusWalk(walks, ids) {
   });
   return best;
 }
+
+/**
+ * Hidden (rare) walks attached to the visible walk they overlap most
+ * (either direction, >= minShared), for "+n rare" rows in the nesting tree.
+ * Returns Map(visible index | -1 for unattached -> [rare indices]).
+ */
+export function attachRare(matrix, rareIdx, visibleIdx, { minShared = 0.5 } = {}) {
+  const out = new Map();
+  rareIdx.forEach((r) => {
+    let host = -1;
+    let best = 0;
+    visibleIdx.forEach((v) => {
+      const s = Math.max(matrix[r][v] || 0, matrix[v][r] || 0);
+      if (s >= minShared && s > best) {
+        best = s;
+        host = v;
+      }
+    });
+    if (!out.has(host)) out.set(host, []);
+    out.get(host).push(r);
+  });
+  return out;
+}
+
+/** Sub-matrix of `matrix` over `idx` (rows and columns in that order). */
+export function subMatrix(matrix, idx) {
+  return idx.map((i) => idx.map((j) => matrix[i][j]));
+}
