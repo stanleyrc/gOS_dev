@@ -20,6 +20,7 @@ export const PC_FIELDS = {
   dnaCycle: "DNA cycle",
   qcFlag: "QC flag",
   altLike: "ALT-like",
+  qcFlags: "pc_qc_flags",
   ado: "pc_ado",
   mapd: "pc_mapd",
   lohHet: "pc_loh_het_rate",
@@ -96,6 +97,7 @@ export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, ca
     const qr = q.get(id);
     if (qr) {
       out[PC_FIELDS.qcFlag] = qcFlagLabel(qr);
+      out[PC_FIELDS.qcFlags] = [`${qr.flags || ""}`, qr.cn_inconsistent ? "cn_inconsistent" : ""].filter(Boolean).join(",");
       out[PC_FIELDS.ado] = num(qr.ado);
       out[PC_FIELDS.mapd] = num(qr.mapd);
       out[PC_FIELDS.lohHet] = num(qr.loh_het_rate);
@@ -257,4 +259,27 @@ export function statusRows(doc) {
     return { patient, steps: st, worst, nDone: states.filter((s) => s === "done").length };
   });
   return { steps, rows: rows.sort((a, b) => a.patient.localeCompare(b.patient)) };
+}
+
+// Global cell filter: QC rules (layout.qcExcludeRules) and manually excluded
+// cells (layout.excludedCells). Rules apply to every patient; ids are unique.
+export const QC_EXCLUDE_RULES = [
+  { value: "doublet", label: "Doublets (biallelic hets in LOH)" },
+  { value: "high_ado", label: "High allelic dropout" },
+  { value: "high_mapd", label: "High MAPD (noisy coverage)" },
+  { value: "cn_inconsistent", label: "Coverage not fitting integer CN" },
+  { value: "s_phase", label: "S-phase cells (DNA)" },
+];
+
+/** Set of cell ids excluded by the rules and the manual list. */
+export function excludedCellIds(cells = [], rules = [], manual = []) {
+  const out = new Set((manual || []).map(String));
+  if (!rules?.length) return out;
+  const want = new Set(rules);
+  cells.forEach((c) => {
+    const flags = new Set(`${c[PC_FIELDS.qcFlags] || ""}`.split(",").filter(Boolean));
+    const hit = [...flags].some((f) => want.has(f)) || (want.has("s_phase") && c[PC_FIELDS.dnaCycle] === "S-phase");
+    if (hit) out.add(`${c.cell_id}`);
+  });
+  return out;
 }
