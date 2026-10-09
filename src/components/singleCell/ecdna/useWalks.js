@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import * as d3 from "d3";
 import { filterWalks } from "../../../helpers/singleCell/walks";
 import { INK } from "../../../helpers/singleCell/plotTheme";
+import { WALK_FILTER_DEFAULTS } from "../../../helpers/singleCell/walkPanels";
 
 // 10 + 8 + 9 distinct hues before anything repeats
 const PALETTE = [...d3.schemeTableau10, ...d3.schemeDark2, ...d3.schemeSet1];
@@ -14,7 +15,7 @@ const PALETTE = [...d3.schemeTableau10, ...d3.schemeDark2, ...d3.schemeSet1];
  */
 export default function useWalks(cellIds) {
   const walksSource = useSelector((s) => s.SingleCell.walks);
-  const [filters, setFilters] = useState({ minCells: 1, minMedianCn: 4, curatedOnly: false, circularOnly: false, driverOnly: false, minCn: 1 });
+  const [filters, setFilters] = useState({ ...WALK_FILTER_DEFAULTS });
   // jsonlite unboxes length-1 vectors: genes / driver_genes may arrive as strings
   const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
   // walk cell ids may be spelled differently from the gOS ids (MGH302_MR2_pl3_10b vs MGH302_MR_2_pl3_10b):

@@ -3,6 +3,7 @@ import {
   subMatrix,
   bestPair,
   carriersByClone,
+  changedWalkFilters,
   carriersOf,
   containmentTree,
   defaultFocusWalk,
@@ -11,6 +12,7 @@ import {
   rareMaxOf,
   splitRare,
   DEFAULT_RARE_MAX,
+  WALK_FILTER_DEFAULTS,
 } from "./walkPanels";
 
 const ids = ["a", "b", "c", "d", "e", "f"];
@@ -25,6 +27,12 @@ describe("ecDNA panel helpers", () => {
     expect(rareMaxOf({})).toBe(DEFAULT_RARE_MAX);
     expect(rareMaxOf({ walkRareMax: 0 })).toBe(0);
     expect(rareMaxOf(null)).toBe(DEFAULT_RARE_MAX);
+  });
+
+  it("lists the walk filters changed from their defaults", () => {
+    expect(changedWalkFilters({ ...WALK_FILTER_DEFAULTS })).toEqual([]);
+    expect(changedWalkFilters({ ...WALK_FILTER_DEFAULTS, minCells: 3, driverOnly: true })).toEqual(["minCells", "driverOnly"]);
+    expect(changedWalkFilters(null)).toEqual([]);
   });
 
   it("counts carriers at a copy threshold", () => {

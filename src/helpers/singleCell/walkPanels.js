@@ -6,6 +6,10 @@ import { copiesOf, familyLabel } from "./walkCopies";
 /** Walks carried by <= this many cells are "rare" in every ecDNA panel unless the user changes it. */
 export const DEFAULT_RARE_MAX = 3;
 export const rareMaxOf = (layout) => (Number.isFinite(layout?.walkRareMax) ? layout.walkRareMax : DEFAULT_RARE_MAX);
+/** The walk filters a patient opens with (useWalks state). */
+export const WALK_FILTER_DEFAULTS = Object.freeze({ minCells: 1, minMedianCn: 4, curatedOnly: false, circularOnly: false, driverOnly: false, minCn: 1 });
+/** Names of the filters set away from their defaults (shown as a count when the filter row is folded away). */
+export const changedWalkFilters = (filters) => Object.keys(WALK_FILTER_DEFAULTS).filter((k) => filters && k in filters && filters[k] !== WALK_FILTER_DEFAULTS[k]);
 /** Fewer co-carrying cells than this: no correlation is reported. */
 export const MIN_PAIR_N = 5;
 
