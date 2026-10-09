@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Segmented, Space, Spin, Typography } from "antd";
 import Violins from "../violins";
 import HintLine from "../hintLine";
-import { patientColor } from "./charts";
+import { patientColor } from "../../../helpers/singleCell/patientColors";
 import { casePath, loadRnaMatrix, loadRnaSummary, tryGet } from "../../../redux/singleCell/loaders";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { cellEventPsi, eventPsi } from "../../../helpers/singleCell/spliceEvents";
@@ -63,8 +63,14 @@ export default function CohortSpliceEvent({ dataset, patients, cluster, event })
     (async () => {
       const out = [];
       for (const p of patients) {
-        // eslint-disable-next-line no-await-in-loop
-        const [spl, summary] = await Promise.all([loadPatientSplicing(dataset, p), loadRnaSummary(dataset, p).catch(() => null)]);
+        let spl = null;
+        let summary = null;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          [spl, summary] = await Promise.all([loadPatientSplicing(dataset, p), Promise.resolve(loadRnaSummary(dataset, p)).catch(() => null)]);
+        } catch (e) {
+          spl = null;
+        }
         if (!active) return;
         const cl = spl?.status === "ok" ? (spl.data.clusters || []).find((c) => c.id === cluster.id) : null;
         const cellOf = new Map((summary?.cells || []).map((c, k) => [`${c.rna_id}`, { ...c, row: k }]));
