@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Col, Empty, Row, Segmented, Select, Slider, Space, Typography } from "antd";
-import { BranchesOutlined, NodeExpandOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Col, Collapse, Empty, Row, Segmented, Select, Slider, Space, Typography } from "antd";
+import { BranchesOutlined, ClusterOutlined, NodeExpandOutlined } from "@ant-design/icons";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
 import ScErrorBoundary from "../../components/singleCell/errorBoundary";
@@ -18,6 +18,8 @@ import WalkDiagram from "../../components/singleCell/ecdna/walkDiagram";
 import WalkContainmentCard from "../../components/singleCell/ecdna/walkContainmentCard";
 import WalkTreeBars from "../../components/singleCell/ecdna/walkTreeBars";
 import WalkCooccurrence from "../../components/singleCell/ecdna/walkCooccurrence";
+import DisplayMenu from "../../components/singleCell/ecdna/displayMenu";
+import singleCellActions from "../../redux/singleCell/actions";
 import useTreeView from "../../components/singleCell/useTreeView";
 import useContainerWidth from "../../components/singleCell/useContainerWidth";
 import settingsActions from "../../redux/settings/actions";
@@ -69,6 +71,8 @@ export default function SingleCellEcdnaTab() {
   const cellsAll = useSelector((s) => s.SingleCell.cells);
   const patient = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const insets = useSelector((s) => s.SingleCell.plotInsets);
+  // nesting / co-occurrence / copies-vs-copies: folded away until the user opens them (remembered)
+  const relationsOpen = useSelector((s) => !!s.SingleCell.layout?.walkRelationsOpen);
   const { chromoBins, domains } = useSelector((s) => s.Settings);
   const genesList = useSelector((s) => s.Genes?.list || []);
   const cellIds = useMemo(() => (order.length ? order : cellsAll.map((c) => c.cell_id)), [order, cellsAll]);
@@ -164,11 +168,13 @@ export default function SingleCellEcdnaTab() {
               title={<Space size={6}><NodeExpandOutlined />{t("components.single-cell.ecdna.plot-title", { count: shown.length })}<HintLine inline provenance="walks" text={t("components.single-cell.ecdna.plot-help")} /></Space>}
               extra={
                 <Space wrap>
-                  <Segmented size="small" value={colorBy} onChange={setColorBy} options={[{ value: "walk", label: t("components.single-cell.ecdna.color-walk") }, { value: "chromosome", label: t("components.single-cell.ecdna.color-chr") }]} />
-                  <Text type="secondary">{t("components.single-cell.ecdna.lane")}</Text>
-                  <Slider min={12} max={40} value={laneHeight} onChange={setLaneHeight} style={{ width: 80, margin: "0 6px" }} />
-                  <Text type="secondary">{t("components.single-cell.ecdna.heat-pad")}</Text>
-                  <Select size="small" value={pad} onChange={setPad} style={{ width: 86 }} options={PADS.map((p) => ({ value: p, label: padLabel(p) }))} />
+                  <DisplayMenu
+                    rows={[
+                      { label: t("components.single-cell.ecdna.display-colour"), control: <Segmented size="small" value={colorBy} onChange={setColorBy} options={[{ value: "walk", label: t("components.single-cell.ecdna.color-walk") }, { value: "chromosome", label: t("components.single-cell.ecdna.color-chr") }]} /> },
+                      { label: t("components.single-cell.ecdna.lane"), control: <Slider min={12} max={40} value={laneHeight} onChange={setLaneHeight} style={{ width: 140, margin: "0 6px" }} /> },
+                      { label: t("components.single-cell.ecdna.heat-pad"), control: <Select size="small" value={pad} onChange={setPad} style={{ width: 86 }} options={PADS.map((p) => ({ value: p, label: padLabel(p) }))} /> },
+                    ]}
+                  />
                   <Button size="small" type="primary" ghost onClick={() => zoomToShown()} disabled={!shown.length}>{t("components.single-cell.ecdna.zoom-shown")}</Button>
                   {activeFocus && focused && <Button size="small" onClick={() => zoomToShown([focused])}>{t("components.single-cell.ecdna.zoom-focus", { label: shortLabel(focused.label, 18) })}</Button>}
                   {activeFocus && <Button size="small" type="text" onClick={() => setFocus(null)}>{t("components.single-cell.ecdna.clear-focus")}</Button>}
@@ -191,14 +197,31 @@ export default function SingleCellEcdnaTab() {
           <Col span={24}>
             <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} focus={activeFocus} />
           </Col>
-          <Col xs={24} xl={10}>
-            <WalkContainmentCard walks={shown} colorOf={colorOf} cellIds={cellIds} focus={activeFocus} onFocus={(id) => setFocus((f) => (f === id ? null : id))} />
-          </Col>
-          <Col xs={24} xl={14}>
+          <Col span={24}>
             <WalkDiagram walk={focused} colorOf={colorOf} cellIds={cellIds} />
           </Col>
           <Col span={24}>
-            <WalkCooccurrence walks={shown} families={shownFamilies} cellIds={cellIds} colorOf={colorOf} minCn={filters.minCn} />
+            <Collapse
+              className="sc-walk-relations"
+              activeKey={relationsOpen ? ["rel"] : []}
+              onChange={(keys) => dispatch(singleCellActions.updateLayout({ walkRelationsOpen: keys.length > 0 }))}
+              items={[
+                {
+                  key: "rel",
+                  label: <Space size={6}><ClusterOutlined />{t("components.single-cell.ecdna.relations-title")}<Text type="secondary">{t("components.single-cell.ecdna.relations-sub", { count: shown.length })}</Text></Space>,
+                  children: relationsOpen && (
+                    <Row gutter={SC_GUTTER}>
+                      <Col span={24}>
+                        <WalkContainmentCard walks={shown} colorOf={colorOf} cellIds={cellIds} focus={activeFocus} onFocus={(id) => setFocus((f) => (f === id ? null : id))} />
+                      </Col>
+                      <Col span={24}>
+                        <WalkCooccurrence walks={shown} families={shownFamilies} cellIds={cellIds} colorOf={colorOf} minCn={filters.minCn} />
+                      </Col>
+                    </Row>
+                  ),
+                },
+              ]}
+            />
           </Col>
         </Row>
       </ScErrorBoundary>
