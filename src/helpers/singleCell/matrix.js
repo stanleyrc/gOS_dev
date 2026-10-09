@@ -561,9 +561,10 @@ const MAGMA_TOTAL = ["#000004", "#180F3E", "#451077", "#721F81", "#9F2F7F", "#CD
 const ZISSOU_TOTAL = ["#3B9AB2", "#78B7C5", "#EEEEE6", "#EBCC2A", "#E1AF00", "#F2AD00", "#F98400", "#F21A00", "#C81400", "#9A0E00", "#6B0A00", "#2B0400"];
 
 // dark-theme variant of the pgv palette: CN 2 is dark grey instead of white,
-// and 11+ (black in pgv) is a bright magenta so the highest amplifications
-// neither vanish into the dark background nor glare white
-const PGV_DARK = PGV_TOTAL.map((c, k) => (k === 2 ? "#2e2e2e" : k === 11 ? "#f759ab" : c));
+// and 11+ (black in pgv, invisible on a dark panel) is the achromatic
+// opposite, a soft light grey: the extreme stays outside the blue-orange-red
+// ramp the way black does in light mode, without a stray hue or a white glare
+const PGV_DARK = PGV_TOTAL.map((c, k) => (k === 2 ? "#2e2e2e" : k === 11 ? "#d9d9d9" : c));
 
 export const CN_PALETTE_PRESETS = {
   pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
@@ -614,7 +615,6 @@ export const SNV_METRICS = ["vaf", "alt", "depth", "gt"];
 // genotype calls: no call / ref / alt
 export const GT_COLORS = { nocall: "#D9D9D9", ref: "#9ECAE1", alt: "#B2182B" };
 export const SNV_MISSING_COLOR = "#ADB5BD";
-const SNV_MISSING_RGBA = packRGBA(hexToRgb(SNV_MISSING_COLOR));
 
 /** Value of a metric for matrix row p, variant c; null when the site has no reads. */
 export function snvMetricValue(snv, p, c, metric) {
@@ -632,17 +632,27 @@ export function snvMetricValue(snv, p, c, metric) {
   return snv.status[p][c] === 0 && !Number.isFinite(depth) ? 0 : null;
 }
 
-/** White (0) to black (1), as pgv draws VAF and binned positive fractions; dark theme: dark (0) to white (1). */
-export function vafRGBA(value) {
-  if (value == null || !Number.isFinite(value)) return isDarkPlots() ? packRGBA([70, 74, 80]) : SNV_MISSING_RGBA;
+// dark theme: reference sites sit just above the panel, alt reads rise to a
+// soft light grey (pure white glared across whole clades) and sites with no
+// reads are the darkest, so uncovered stretches recede instead of speckling
+const SNV_DARK = { zero: 44, one: 200, missing: "#191919" };
+
+/** Colour of sites with no reads for the current theme. */
+export const snvMissingColor = () => (isDarkPlots() ? SNV_DARK.missing : SNV_MISSING_COLOR);
+
+/** [r, g, b] for a VAF / positive fraction: white (0) to black (1) as pgv draws it; dark theme: dark grey to light grey. */
+export function vafRGB(value) {
+  if (value == null || !Number.isFinite(value)) return hexToRgb(snvMissingColor());
   const f = Math.max(0, Math.min(1, value));
-  const v = isDarkPlots() ? Math.round(31 + 224 * f) : Math.round(255 * (1 - f));
-  return packRGBA([v, v, v]);
+  const v = isDarkPlots() ? Math.round(SNV_DARK.zero + (SNV_DARK.one - SNV_DARK.zero) * f) : Math.round(255 * (1 - f));
+  return [v, v, v];
 }
+
+export const vafRGBA = (value) => packRGBA(vafRGB(value));
 
 /** Read counts are right-skewed: log1p blue-to-red, scaled to the patient maximum. */
 export function countRGBA(value, max) {
-  if (value == null || !Number.isFinite(value)) return SNV_MISSING_RGBA;
+  if (value == null || !Number.isFinite(value)) return packRGBA(hexToRgb(snvMissingColor()));
   const top = Math.max(1, max || 1);
   const t = Math.log1p(Math.max(0, Math.min(top, value))) / Math.log1p(top);
   return packRGBA([Math.round(255 * t), 128, Math.round(255 * (1 - t))]);
@@ -662,7 +672,7 @@ export function snvMetricRGBA(value, metric, max) {
   if (metric === "gt") {
     if (value === 1) return packRGBA(hexToRgb(GT_COLORS.alt));
     if (value === 0) return packRGBA(hexToRgb(GT_COLORS.ref));
-    return packRGBA(hexToRgb(isDarkPlots() ? "#3a3a3a" : GT_COLORS.nocall));
+    return packRGBA(hexToRgb(isDarkPlots() ? SNV_DARK.missing : GT_COLORS.nocall));
   }
   return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max);
 }
