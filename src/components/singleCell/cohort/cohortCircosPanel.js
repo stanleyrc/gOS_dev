@@ -13,7 +13,7 @@ import HintLine, { Provenance } from "../hintLine";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
+const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
 const CHR_COLORS = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3]);
 
 const parseLoc = (s) => {

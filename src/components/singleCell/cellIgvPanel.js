@@ -62,6 +62,9 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
   const reference = dataset?.reference || "hg38";
   const containerRef = useRef(null);
   const browserRef = useRef(null);
+  // a browser being created (igv.createBrowser is async): later runs wait for it instead of creating a second one
+  const creatingRef = useRef(null);
+  const unmountedRef = useRef(false);
   const syncRef = useRef(sync);
   syncRef.current = sync;
   const domainsRef = useRef(domains);
@@ -117,37 +120,54 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
     const run = async () => {
       try {
         setError(null);
+        if (!browserRef.current && creatingRef.current) {
+          await creatingRef.current.catch(() => null);
+          if (cancelled || unmountedRef.current) return;
+        }
         if (!browserRef.current) {
-          const genomeList = await loadGenomeList();
-          if (cancelled) return;
-          // The genome list's hg38 entry carries genome-wide annotation tracks
-          // (RefSeq, ~20 MB); reads around one site don't need them.
-          const entry = (genomeList || []).find((g) => g.id === reference);
-          const browser = await igv.createBrowser(containerRef.current, {
-            genome: entry ? { ...entry, tracks: [] } : reference,
-            loadDefaultGenomes: false,
-            locus,
-            tracks,
-            showCenterGuide: true,
-            minimumBases: 1,
-          });
-          browserRef.current = browser;
-          // IGV panned or zoomed: genome views follow when sync is on.
-          browser.on("locuschange", (referenceFrames) => {
-            if (!syncRef.current) return;
-            const frame = referenceFrames?.[0];
-            const loc = frame?.getLocusString ? frame.getLocusString() : browser.currentLoci?.()[0];
-            if (!loc) return;
-            try {
-              const next = lociToDomains(chromoBins, loc.replace(/,/g, ""));
-              const cur = domainsRef.current;
-              if (next?.[0] && !(cur.length === 1 && sameDomain(cur[0], next[0]))) {
-                dispatch(settingsActions.updateDomains([next[0]]));
+          const create = (async () => {
+            const genomeList = await loadGenomeList();
+            // The genome list's hg38 entry carries genome-wide annotation tracks
+            // (RefSeq, ~20 MB); reads around one site don't need them.
+            const entry = (genomeList || []).find((g) => g.id === reference);
+            const browser = await igv.createBrowser(containerRef.current, {
+              genome: entry ? { ...entry, tracks: [] } : reference,
+              loadDefaultGenomes: false,
+              locus,
+              tracks,
+              showCenterGuide: true,
+              minimumBases: 1,
+            });
+            browserRef.current = browser;
+            // IGV panned or zoomed: genome views follow when sync is on.
+            browser.on("locuschange", (referenceFrames) => {
+              if (!syncRef.current) return;
+              const frame = referenceFrames?.[0];
+              const loc = frame?.getLocusString ? frame.getLocusString() : browser.currentLoci?.()[0];
+              if (!loc) return;
+              try {
+                const next = lociToDomains(chromoBins, loc.replace(/,/g, ""));
+                const cur = domainsRef.current;
+                if (next?.[0] && !(cur.length === 1 && sameDomain(cur[0], next[0]))) {
+                  dispatch(settingsActions.updateDomains([next[0]]));
+                }
+              } catch (e) {
+                // unparseable locus (e.g. "all"): leave the genome views as they are
               }
-            } catch (e) {
-              // unparseable locus (e.g. "all"): leave the genome views as they are
-            }
-          });
+            });
+            return browser;
+          })();
+          creatingRef.current = create;
+          try {
+            await create;
+          } finally {
+            if (creatingRef.current === create) creatingRef.current = null;
+          }
+          // closed while IGV was starting: drop the browser it made
+          if (unmountedRef.current && browserRef.current) {
+            igv.removeBrowser(browserRef.current);
+            browserRef.current = null;
+          }
           return;
         }
         const browser = browserRef.current;
@@ -176,13 +196,14 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
     }
     return undefined;
   }, [view]);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
       if (browserRef.current) igv.removeBrowser(browserRef.current);
       browserRef.current = null;
-    },
-    []
-  );
+    };
+  }, []);
 
   if (!view) return null;
   const others = selectedCellIds.filter((id) => !cellIds.includes(id));
