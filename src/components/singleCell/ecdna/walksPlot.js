@@ -258,7 +258,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                   const xb = px(gb, kb);
                   return Math.abs(xb - xa) > 2 ? <line key={ji} x1={xa} x2={xb} y1={cy} y2={cy} stroke="#8c8c8c" strokeDasharray="2 2" /> : null;
                 }
-                const tip = `ALT junction: ${A.chromosome}:${(A.strand === "-" ? A.start : A.end).toLocaleString()}${A.strand} → ${B.chromosome}:${(B.strand === "-" ? B.end : B.start).toLocaleString()}${B.strand}`;
+                const tip = `ALT junction: ${A.chromosome}:${(A.strand === "-" ? A.start : A.end).toLocaleString()}${A.strand} → ${B.chromosome}:${(B.strand === "-" ? B.end : B.start).toLocaleString()}${B.strand}${j.via ? ` (via ${j.via})` : ""}`;
                 if (ka >= 0 && kb >= 0) {
                   const xa = px(ga, ka);
                   const xb = px(gb, kb);
