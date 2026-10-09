@@ -12,6 +12,8 @@ import { cohortClusterRows, cohortPsiMatrix, filterClusters, junctionLabel } fro
 import { cohortOverview, cohortVariantRows } from "../../../helpers/singleCell/sashimi";
 import { junctionColor, psiColor, psiTextColor } from "../../../helpers/singleCell/rnaColors";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { normalizeSpliceFindings, pageOf } from "../../../helpers/singleCell/rnaHeadlineFindings";
+import SpliceFindingsList from "../rna/spliceFindingsList";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -29,6 +31,7 @@ export function loadCohortSplicing(dataset) {
 
 const fmtQ = (q) => (Number.isFinite(q) ? (q < 1e-3 ? q.toExponential(1) : q.toPrecision(2)) : "–");
 const fmtPct = (p) => (Number.isFinite(p) ? `${(p * 100).toFixed(1)}%` : "–");
+const PAGE_SIZE = 10;
 
 /**
  * Overview heatmap: the top clusters (rows) × patients (columns), each cell
@@ -97,7 +100,11 @@ export default function CohortSplicingPanel({ dataset }) {
   const plotRef = useRef(null);
   const [file, setFile] = useState(null);
   const [query, setQuery] = useState("");
+  const [queryText, setQueryText] = useState("");
   const [picked, setPicked] = useState(null);
+  const [page, setPage] = useState(1);
+  const pending = useRef(null);
+  const detailRef = useRef(null);
   useEffect(() => {
     let active = true;
     if (!dataset) return undefined;
@@ -107,6 +114,22 @@ export default function CohortSplicingPanel({ dataset }) {
     };
   }, [dataset]);
   const data = file?.status === "ok" ? file.data : null;
+  const findings = useMemo(() => normalizeSpliceFindings(data?.findings), [data]);
+  // IGV slices of a finding: its patient's rna/splice_reads/<cell>.bam (written for every finding cell)
+  const readsOf = (f) => Object.fromEntries(f.cells.map((id) => [id, `rna/splice_reads/${id}.bam`]));
+  const scrollToDetail = () => setTimeout(() => detailRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }), 120);
+  const pickFinding = (f) => {
+    if (!f?.clusterId) return;
+    if (!query && allRows.some((r) => r.id === f.clusterId)) {
+      setPicked(f.clusterId);
+      setPage(pageOf(allRows, f.clusterId, PAGE_SIZE));
+      scrollToDetail();
+      return;
+    }
+    pending.current = f.clusterId;
+    setQuery("");
+    setQueryText("");
+  };
   const allRows = useMemo(() => (data ? cohortClusterRows(data) : []), [data]);
   const rows = useMemo(() => {
     if (!query) return allRows;
@@ -116,6 +139,14 @@ export default function CohortSplicingPanel({ dataset }) {
   const overview = useMemo(() => (data ? cohortOverview({ ...data, clusters: rows.map((r) => r.cluster) }, { n: 30 }) : []), [data, rows]);
   const variantRows = useMemo(() => (data ? cohortVariantRows(data).filter((v) => v.rows.some((r) => r.nCells > 0)) : []), [data]);
   useEffect(() => {
+    const id = pending.current;
+    if (id && rows.some((r) => r.id === id)) {
+      pending.current = null;
+      setPicked(id);
+      setPage(pageOf(rows, id, PAGE_SIZE));
+      scrollToDetail();
+      return;
+    }
     if (rows.length && !rows.some((r) => r.id === picked)) setPicked(overview[0]?.id || rows[0].id);
   }, [rows, picked, overview]);
   const row = rows.find((r) => r.id === picked) || null;
@@ -148,6 +179,7 @@ export default function CohortSplicingPanel({ dataset }) {
     <Card size="small" title={title}>
       <div ref={ref}>
         <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {findings.length > 0 && <SpliceFindingsList findings={findings} onPick={pickFinding} spliceReads={readsOf} showPatient maxNotable={12} />}
           {variantRows.length > 0 && (
             <div>
               <Space size={4} style={{ marginBottom: 4 }}>
@@ -194,7 +226,21 @@ export default function CohortSplicingPanel({ dataset }) {
           )}
           <div>
             <Space wrap style={{ marginBottom: 8 }}>
-              <Input.Search size="small" allowClear placeholder={t(`${k}.search-gene`)} style={{ width: 200 }} onSearch={setQuery} onChange={(e) => !e.target.value && setQuery("")} />
+              <Input.Search
+                size="small"
+                allowClear
+                placeholder={t(`${k}.search-gene`)}
+                style={{ width: 200 }}
+                value={queryText}
+                onSearch={(v) => {
+                  setQuery(v);
+                  setPage(1);
+                }}
+                onChange={(e) => {
+                  setQueryText(e.target.value);
+                  if (!e.target.value) setQuery("");
+                }}
+              />
               <Text type="secondary">
                 {rows.length} / {allRows.length}
               </Text>
@@ -203,11 +249,22 @@ export default function CohortSplicingPanel({ dataset }) {
               size="small"
               rowKey="id"
               dataSource={rows}
-              pagination={{ pageSize: 10, size: "small" }}
+              pagination={{ pageSize: PAGE_SIZE, size: "small", current: page, onChange: setPage, showSizeChanger: false }}
               rowClassName={(r) => (r.id === picked ? "ant-table-row-selected" : "")}
               onRow={(r) => ({ onClick: () => setPicked(r.id), style: { cursor: "pointer" } })}
               scroll={{ x: "max-content" }}
               columns={[
+                {
+                  title: (
+                    <span>
+                      {t(`${k}.col-rank`)} <HintLine inline text={t(`${k}.rank-cohort-help`)} />
+                    </span>
+                  ),
+                  key: "rank",
+                  align: "right",
+                  render: (_, r) => (Number.isFinite(r.rank) ? r.rank : "–"),
+                  sorter: (a, b) => (a.rank === b.rank ? 0 : a.rank < b.rank ? -1 : 1),
+                },
                 { title: t(`${k}.col-gene`), dataIndex: "gene", sorter: (a, b) => a.gene.localeCompare(b.gene) },
                 { title: t(`${k}.col-locus`), dataIndex: "locus" },
                 {
@@ -218,13 +275,13 @@ export default function CohortSplicingPanel({ dataset }) {
                 },
                 { title: t(`${k}.col-junctions`), dataIndex: "nJunctions", align: "right" },
                 { title: t(`${k}.col-dpsi`), dataIndex: "max_dpsi", align: "right", render: (v) => (Number.isFinite(v) ? v.toFixed(2) : "–"), sorter: (a, b) => (a.max_dpsi || 0) - (b.max_dpsi || 0) },
-                { title: t(`${k}.col-q`), dataIndex: "q", align: "right", render: fmtQ, defaultSortOrder: "ascend", sorter: (a, b) => (a.q ?? 1) - (b.q ?? 1) },
+                { title: t(`${k}.col-q`), dataIndex: "q", align: "right", render: fmtQ, sorter: (a, b) => (a.q ?? 1) - (b.q ?? 1) },
                 { title: t(`${k}.col-patients`), dataIndex: "nPatients", align: "right", sorter: (a, b) => a.nPatients - b.nPatients },
               ]}
             />
           </div>
           {row && matrix ? (
-            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+            <Space direction="vertical" size={12} style={{ width: "100%" }} ref={detailRef}>
               <Space wrap>
                 <Text strong>
                   {t(`${k}.cohort-multiples`)} · {row.gene} · {row.locus}
