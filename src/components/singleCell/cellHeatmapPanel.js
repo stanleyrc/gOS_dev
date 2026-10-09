@@ -53,6 +53,7 @@ import {
   annotationColors,
 } from "../../helpers/singleCell/matrix";
 import Wrapper from "./index.style";
+import usePlotTheme from "./usePlotTheme";
 import { currentPlotTheme } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -74,7 +75,6 @@ const TREE_MAX = 900;
 const AXIS_HEIGHT = 18;
 const TICK_HEIGHT = 16;
 const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
-const UNSELECTED_RGBA = packRGBA(hexToRgb("#FFFFFF"));
 
 const heatmapHeight = (nRows, rowHeight = "auto") =>
   rowHeight === "auto"
@@ -95,6 +95,9 @@ const isMulti = (event) => event.metaKey || event.ctrlKey;
  * cells; Shift-click selects a range; click an internal node for its clade.
  */
 export default function CellHeatmapPanel() {
+  const pt = usePlotTheme();
+  // annotation strips: "not selected" / "no value" cells take the panel tint, not white
+  const stripBlank = useMemo(() => packRGBA(hexToRgb(pt.panelAlt)), [pt]);
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
@@ -524,19 +527,19 @@ export default function CellHeatmapPanel() {
   );
   const annotationColor = useCallback(
     (r, c) => {
-      if (c === 0) return selectedRows.has(r) ? SELECTED_RGBA : UNSELECTED_RGBA;
+      if (c === 0) return selectedRows.has(r) ? SELECTED_RGBA : stripBlank;
       const cell = cellById.get(order[r]);
       if (c === 1) {
         const clone = cell?.clone_id;
-        return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : MISSING_RGBA;
+        return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : stripBlank;
       }
       const f = annotationFields[c - 2];
       if (f == null) return expressionRGBA(expression.values?.[order[r]], expression.max);
       const hex = annotationLevels[f]?.[`${cell?.[f] ?? ""}`];
-      return hex ? packRGBA(hexToRgb(hex)) : MISSING_RGBA;
+      return hex ? packRGBA(hexToRgb(hex)) : stripBlank;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|")]
+    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank]
   );
 
   /* ---- groups for RNA comparisons from the current (tree / heatmap) selection ---- */

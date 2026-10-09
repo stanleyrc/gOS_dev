@@ -201,7 +201,7 @@ export default function SignatureTreeCard() {
                       <text x={10} y={cy + 9} fontSize={11} fill={INK.muted}>{t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}</text>
                     </>
                   ) : (
-                    <text x={10} y={cy} dy="0.35em" fontSize={11} fill={INK.text}>{c.label}</text>
+                    h >= 11 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(TYPE.tick, h - 1)} fill={INK.text}>{c.label}</text>
                   )}
                   {b &&
                     allSigs.map((s) => {
