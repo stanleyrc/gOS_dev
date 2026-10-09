@@ -51,7 +51,8 @@ export function cnaDiff(
     const b = binAt(row.binIndex, g);
     return b >= 0 ? row.values[b] : NaN;
   };
-  const chroms = (chromosomes || Object.keys(chromoBins)).filter((c) => /^(chr)?([0-9]{1,2}|X)$/.test(c));
+  // against a constant reference, skip chrX: its expected copy number depends on sex
+  const chroms = (chromosomes || Object.keys(chromoBins)).filter((c) => (useRef ? /^(chr)?[0-9]{1,2}$/ : /^(chr)?([0-9]{1,2}|X)$/).test(c));
   const out = [];
   chroms.forEach((c) => {
     const { startPlace, endPlace } = chromoBins[c];
