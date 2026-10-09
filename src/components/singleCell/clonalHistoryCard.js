@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Checkbox, Empty, Slider, Space, Typography } from "antd";
+import { Card, Checkbox, Empty, InputNumber, Slider, Space, Typography } from "antd";
 import { HistoryOutlined } from "@ant-design/icons";
 import useContainerWidth from "./useContainerWidth";
 import useTreeView from "./useTreeView";
@@ -16,13 +16,19 @@ import { isStrongEvent } from "../../helpers/singleCell/strongEvents";
 import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
+import { collapseTree, dominantValue, placeLabels } from "../../helpers/singleCell/collapsedTree";
 import { signatureColorOf } from "./signaturePanel";
 import { Swatches } from "./cohort/charts";
 import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
-const PAD = { left: 16, right: 260, top: 16, bottom: 16 };
+const PAD = { left: 12, right: 150, top: 18, bottom: 12 };
+const ROOT_STUB = 150; // trunk branch drawn left of the root, room for truncal alterations
+const WEDGE = 46; // collapsed-clade wedge length with equal branch lengths
+const CHIP_H = 15;
+const CHIP_FONT = 11;
+const chipWidth = (s, font = CHIP_FONT) => s.length * font * 0.6 + 12;
 
 const shortLabel = (e) => {
   const cls = eventClass(e);
@@ -34,11 +40,12 @@ const shortLabel = (e) => {
 };
 
 /**
- * Clonal history: the phylogeny with every tier 1–2 alteration placed on the
- * branch above the clade its carriers fit best (trunk events at the root),
- * SNV counts per branch, and the signature that increases most on a branch
- * relative to its parent. Click an alteration for its popup, a node to
- * select the clade.
+ * Clonal history: the phylogeny collapsed to clades of at least a minimum
+ * size (one row per collapsed clade), with every tier 1–2 alteration placed
+ * on the branch above the clade its carriers fit best (trunk events on the
+ * root stem), SNVs gained per branch, and the signature that increases most
+ * on a branch relative to its parent. Labels are de-overlapped. Click an
+ * alteration for its popup, a node or clade to select its cells.
  */
 export default function ClonalHistoryCard() {
   const { t } = useTranslation("common");
@@ -50,7 +57,12 @@ export default function ClonalHistoryCard() {
   const model = useSignatureModel();
   const [minFit, setMinFit] = useState(0.5);
   const [showSigs, setShowSigs] = useState(true);
-  const height = layout.historyHeight || 520;
+  const [equalBranches, setEqualBranches] = useState(true);
+  const [minCladeInput, setMinCladeInput] = useState(null);
+  const rowH = layout.historyRowH || 30;
+  const minClade = minCladeInput ?? Math.max(4, Math.round(order.length * 0.03));
+
+  const collapsed = useMemo(() => collapseTree(treeLayout, minClade), [treeLayout, minClade]);
 
   const placed = useMemo(() => {
     if (!treeLayout) return [];
@@ -64,7 +76,7 @@ export default function ClonalHistoryCard() {
       .filter((d) => Number.isFinite(d.fit.score) && d.fit.score >= minFit && d.fit.node != null);
   }, [eventsState, treeLayout, minFit]);
 
-  // SNVs and signature shift per internal node (sites seen in the clade but not in its parent's other children)
+  // SNVs and signature shift per drawn branch
   const branchInfo = useMemo(() => {
     if (!treeLayout || snv.status !== "ok" || !model.ready) return new Map();
     const rows = rowMap(order, snv.data.cells);
@@ -77,43 +89,94 @@ export default function ClonalHistoryCard() {
       return seenOf.get(node);
     };
     const out = new Map();
-    treeLayout.nodes.forEach((n, id) => {
-      if (n.isLeaf || n.parent < 0) return;
-      const mine = seen(id);
-      // sites gained on this branch: in all? no - present in this clade, absent from the sibling clades
-      const siblings = treeLayout.nodes[n.parent].children.filter((c) => c !== id);
-      const gained = [...mine].filter((c) => siblings.every((sib) => !seen(sib).has(c)) && snv.data.variants[c].category !== "truncal");
+    collapsed.nodes.forEach((c, id) => {
+      if (c.parent < 0) return;
+      const n = treeLayout.nodes[c.top];
+      const p = treeLayout.nodes[c.parent];
+      // the drawn branch may span a merged chain: gained = seen in the chain's clade, absent from the rest of the drawn parent's clade
+      const rest = sitesSeenInRows(snv.data, [...d3.range(p.firstLeaf, n.firstLeaf), ...d3.range(n.lastLeaf + 1, p.lastLeaf + 1)].map((r) => rows[r]).filter((r) => r >= 0));
+      const gained = [...seen(c.top)].filter((k) => !rest.has(k) && snv.data.variants[k].category !== "truncal");
       const b = signatureBurden(gained, model.assignment);
-      const parentB = signatureBurden([...seen(n.parent)], model.assignment);
+      const parentB = signatureBurden([...seen(c.parent)], model.assignment);
       let shift = null;
       if (b.assigned >= 15) {
         const pTot = parentB.assigned || 1;
         shift = Object.entries(b.counts)
-          .map(([s, c]) => ({ signature: s, delta: c / b.assigned - (parentB.counts[s] || 0) / pTot, share: c / b.assigned }))
-          .sort((a, c) => c.delta - a.delta)[0];
+          .map(([s, k]) => ({ signature: s, delta: k / b.assigned - (parentB.counts[s] || 0) / pTot, share: k / b.assigned }))
+          .sort((a, k) => k.delta - a.delta)[0];
         if (shift.delta < 0.1) shift = null;
       }
       out.set(id, { gained: gained.length, shift });
     });
     return out;
-  }, [treeLayout, snv, model, order]);
+  }, [treeLayout, collapsed, snv, model, order]);
 
-  if (!treeLayout || !order.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.tree.none")} />;
-  const nRows = order.length;
-  const span = Math.max(treeLayout.maxX, 1e-9);
-  const usable = Math.max(100, width - PAD.left - PAD.right);
-  const px = (x) => PAD.left + (x / span) * usable;
-  const rowH = (height - PAD.top - PAD.bottom) / nRows;
-  const py = (leafY) => PAD.top + (leafY + 0.5) * rowH;
+  if (!treeLayout || !order.length || !collapsed.rows) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.tree.none")} />;
+
+  const rootId = treeLayout.nodes.findIndex((n) => n.parent < 0);
+  const x0 = PAD.left + ROOT_STUB;
+  const usable = Math.max(200, width - x0 - PAD.right);
+  const step = (usable - WEDGE) / Math.max(1, collapsed.maxDepth);
+  const span = Math.max(collapsed.maxX, 1e-9);
+  const X = (c) => (equalBranches ? x0 + c.depth * step : x0 + (c.x / span) * usable);
+  const tipEnd = (c) => (equalBranches ? X(c) + WEDGE : Math.max(X(c) + 10, x0 + (c.tipX / span) * usable));
+  const Y = (c) => PAD.top + (c.row + 0.5) * rowH;
   const selected = new Set(selectedCellIds);
-  const byNode = d3.group(placed, (d) => d.fit.node);
-  const cloneOfNode = (n) => {
-    const clones = new Set(d3.range(n.firstLeaf, n.lastLeaf + 1).map((r) => cellById.get(order[r])?.clone_id));
-    return clones.size === 1 ? [...clones][0] : null;
+  const cloneOf = (c) => {
+    const n = treeLayout.nodes[c.id];
+    return dominantValue(n.firstLeaf, n.lastLeaf, (r) => cellById.get(order[r])?.clone_id, 0.8);
   };
-  const selectNode = (n, e) => {
+  const colorOf = (c) => {
+    const clone = cloneOf(c);
+    return (clone != null && cloneColors[clone]) || "#8c8c8c";
+  };
+  const isSel = (c) => {
+    if (!selected.size) return false;
+    const n = treeLayout.nodes[c.id];
+    return d3.range(n.firstLeaf, n.lastLeaf + 1).every((r) => selected.has(order[r]));
+  };
+  const selectNode = (c, e) => {
+    const n = treeLayout.nodes[c.id];
     const ids = order.slice(n.firstLeaf, n.lastLeaf + 1);
     dispatch(singleCellActions.updateSelection(e?.shiftKey || e?.metaKey ? [...new Set([...selectedCellIds, ...ids])] : ids));
+  };
+
+  // alterations grouped onto drawn nodes (a clade below the cut goes to its collapsed ancestor)
+  const byNode = d3.group(placed, (d) => collapsed.shownOf(d.fit.node));
+  const nodes = [...collapsed.nodes.values()];
+
+  // label boxes: alteration chips stacked above the branch end, SNV count + signature below
+  const boxes = [];
+  nodes.forEach((c) => {
+    const right = X(c) - 6;
+    const list = (byNode.get(c.id) || []).sort((a, b) => b.fraction - a.fraction);
+    if (list.length) {
+      const w = Math.max(...list.map((d) => chipWidth(d.label)));
+      const h = list.length * (CHIP_H + 2) - 2;
+      boxes.push({ kind: "events", node: c.id, list, x: right - w, w, h, y: Y(c) - 4 - h, ax: right, ay: Y(c), prio: 1, dir: -1 });
+    }
+    const info = branchInfo.get(c.id);
+    const sig = showSigs && info?.shift ? info.shift : null;
+    if (info?.gained > 0 || sig) {
+      const num = info?.gained > 0 ? `${info.gained}` : "";
+      const w = num.length * 6 + (sig ? chipWidth(`${sig.signature} ↑`, 10) + (num ? 4 : 0) : 0);
+      boxes.push({ kind: "branch", node: c.id, num, sig, x: right - w, w, h: 13, y: Y(c) + 3, ax: right, ay: Y(c) });
+    }
+  });
+  const labels = placeLabels(boxes);
+  const contentBottom = Math.max(PAD.top + collapsed.rows * rowH, ...labels.map((b) => b.y + b.h));
+  const contentTop = Math.min(0, ...labels.map((b) => b.y - 2));
+  const height = contentBottom - contentTop + PAD.bottom;
+
+  const root = collapsed.nodes.get(rootId);
+  const nodeTitle = (c) => {
+    const info = branchInfo.get(c.id);
+    return [
+      `${c.size} cells${cloneOf(c) != null ? ` · ${cloneOf(c)}` : ""}`,
+      info ? `${info.gained} SNVs gained on this branch` : null,
+      !c.tip && c.folded ? t("components.single-cell.history.folded", { count: c.folded }) : null,
+      t("components.single-cell.history.select"),
+    ].filter(Boolean).join("\n");
   };
 
   return (
@@ -121,63 +184,81 @@ export default function ClonalHistoryCard() {
       size="small"
       title={<Space><HistoryOutlined />{t("components.single-cell.history.title")}</Space>}
       extra={
-        <Space wrap>
+        <Space wrap size={6}>
+          <Text type="secondary">{t("components.single-cell.history.min-clade")}</Text>
+          <InputNumber size="small" min={1} max={Math.max(2, order.length)} value={minClade} onChange={(v) => setMinCladeInput(v || null)} style={{ width: 64 }} />
           <Text type="secondary">{t("components.single-cell.history.min-fit")}</Text>
-          <Slider min={0} max={1} step={0.05} value={minFit} onChange={setMinFit} style={{ width: 110, margin: "0 6px" }} />
+          <Slider min={0} max={1} step={0.05} value={minFit} onChange={setMinFit} style={{ width: 90, margin: "0 6px" }} />
+          <Checkbox checked={equalBranches} onChange={(e) => setEqualBranches(e.target.checked)}>{t("components.single-cell.history.equal")}</Checkbox>
           <Checkbox checked={showSigs} onChange={(e) => setShowSigs(e.target.checked)}>{t("components.single-cell.history.show-sigs")}</Checkbox>
-          <Text type="secondary">{t("components.single-cell.signatures.height")}</Text>
-          <Slider min={300} max={1400} step={20} value={height} onChange={(v) => dispatch(singleCellActions.updateLayout({ historyHeight: v }))} style={{ width: 110, margin: "0 6px" }} />
+          <Text type="secondary">{t("components.single-cell.history.row-height")}</Text>
+          <Slider min={18} max={70} step={2} value={rowH} onChange={(v) => dispatch(singleCellActions.updateLayout({ historyRowH: v }))} style={{ width: 90, margin: "0 6px" }} />
           <SvgExportButton containerRef={ref} name="clonal-history" />
         </Space>
       }
     >
       <div ref={ref}>
-        <svg width={width} height={height} style={{ display: "block" }}>
-          {treeLayout.nodes.map((n, id) => {
-            const parent = n.parent >= 0 ? treeLayout.nodes[n.parent] : null;
-            const clone = n.isLeaf ? cellById.get(order[n.firstLeaf])?.clone_id : cloneOfNode(n);
-            const color = (clone != null && cloneColors[clone]) || "#8c8c8c";
-            const sel = selected.size && d3.range(n.firstLeaf, n.lastLeaf + 1).every((r) => selected.has(order[r]));
+        <svg width={width} height={height} viewBox={`0 ${contentTop} ${width} ${height}`} style={{ display: "block", fontFamily: "inherit" }}>
+          {/* root stem */}
+          <line x1={PAD.left} x2={X(root)} y1={Y(root)} y2={Y(root)} stroke="#8c8c8c" strokeWidth={2} />
+          {nodes.map((c) => {
+            const parent = c.parent >= 0 ? collapsed.nodes.get(c.parent) : null;
+            const sel = isSel(c);
+            const color = sel ? "#1677ff" : colorOf(c);
+            const sw = sel ? 3 : 2;
+            const kids = c.children.map((k) => collapsed.nodes.get(k));
+            const half = Math.min(rowH * 0.42, 3 + Math.log2(c.size + 1) * 2.2);
             return (
-              <g key={id}>
-                {parent && <line x1={px(parent.x)} x2={px(n.x)} y1={py(n.y)} y2={py(n.y)} stroke={sel ? "#1677ff" : color} strokeWidth={sel ? 2.2 : n.isLeaf ? 0.8 : 1.4} />}
-                {!n.isLeaf && <line x1={px(n.x)} x2={px(n.x)} y1={py(treeLayout.nodes[n.children[0]].y)} y2={py(treeLayout.nodes[n.children[n.children.length - 1]].y)} stroke={sel ? "#1677ff" : color} strokeWidth={sel ? 2.2 : 1.4} />}
-                {!n.isLeaf && <circle cx={px(n.x)} cy={py(n.y)} r={byNode.has(id) ? 5 : 3} fill={byNode.has(id) ? "#262626" : "#bfbfbf"} stroke="#fff" style={{ cursor: "pointer" }} onClick={(e) => selectNode(n, e)}><title>{`${n.lastLeaf - n.firstLeaf + 1} cells${branchInfo.get(id) ? ` · ${branchInfo.get(id).gained} SNVs gained on this branch` : ""}`}</title></circle>}
-                {!n.isLeaf && parent && branchInfo.get(id)?.gained > 0 && (px(n.x) - px(parent.x) > 26) && (
-                  <text x={(px(parent.x) + px(n.x)) / 2} y={py(n.y) - 3} textAnchor="middle" fontSize={9} fill="#8c8c8c">{branchInfo.get(id).gained}</text>
-                )}
-                {showSigs && !n.isLeaf && branchInfo.get(id)?.shift && (
-                  <g transform={`translate(${px(n.x) + 7},${py(n.y) + 12})`}>
-                    <rect x={-2} y={-9} width={branchInfo.get(id).shift.signature.length * 6.4 + 10} height={12} rx={3} fill={signatureColorOf(branchInfo.get(id).shift.signature)} fillOpacity={0.9} />
-                    <text x={3} y={0} fontSize={9} fill="#fff">{`${branchInfo.get(id).shift.signature} ↑`}</text>
-                    <title>{t("components.single-cell.history.shift", { signature: branchInfo.get(id).shift.signature, share: d3.format(".0%")(branchInfo.get(id).shift.share), delta: d3.format("+.0%")(branchInfo.get(id).shift.delta) })}</title>
+              <g key={c.id}>
+                {parent && <line x1={X(parent)} x2={X(c)} y1={Y(c)} y2={Y(c)} stroke={color} strokeWidth={sw} />}
+                {kids.length > 0 && <line x1={X(c)} x2={X(c)} y1={Y(kids[0])} y2={Y(kids[kids.length - 1])} stroke={color} strokeWidth={sw} />}
+                {c.tip && (
+                  <g style={{ cursor: "pointer" }} onClick={(e) => selectNode(c, e)}>
+                    <path d={`M${X(c)},${Y(c)} L${tipEnd(c)},${Y(c) - half} L${tipEnd(c)},${Y(c) + half} Z`} fill={color} fillOpacity={0.3} stroke={color} strokeWidth={1.2} />
+                    <text x={tipEnd(c) + 6} y={Y(c)} dy="0.35em" fontSize={11} fill="#595959">
+                      {`${c.size} cells`}
+                      {cloneOf(c) != null && <tspan fill={colorOf(c)} fontWeight={600}>{` · ${cloneOf(c)}`}</tspan>}
+                    </text>
+                    <title>{nodeTitle(c)}</title>
                   </g>
+                )}
+                {!c.tip && (
+                  <circle cx={X(c)} cy={Y(c)} r={byNode.has(c.id) ? 5 : 3.5} fill={byNode.has(c.id) ? "#262626" : "#fff"} stroke={byNode.has(c.id) ? "#fff" : color} strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={(e) => selectNode(c, e)}>
+                    <title>{nodeTitle(c)}</title>
+                  </circle>
                 )}
               </g>
             );
           })}
-          {[...byNode.entries()].map(([nodeId, list]) => {
-            const n = treeLayout.nodes[nodeId];
-            const x = n.parent >= 0 ? (px(treeLayout.nodes[n.parent].x) + px(n.x)) / 2 : px(n.x) + 8;
-            const y0 = py(n.y) - (list.length * 14) / 2 - 8;
-            return list
-              .sort((a, b) => b.fraction - a.fraction)
-              .map((d, k) => (
-                <g key={d.label} transform={`translate(${x},${y0 + k * 14})`} style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"))}>
-                  <rect x={-3} y={-10} width={d.label.length * 6.6 + 10} height={13} rx={3} fill="#fff" stroke={CLASS_COLORS[d.cls]} />
-                  <rect x={-3} y={-10} width={4} height={13} fill={CLASS_COLORS[d.cls]} />
-                  <text x={4} y={0} fontSize={10} fill="#262626">{d.label}</text>
-                  <title>{[shortLabel(d.event), ...eventTooltipLines(d.event), `clade F1 ${d.fit.score.toFixed(2)} (best clade ${d.fit.clade} cells)`, t("components.single-cell.history.click")].join("\n")}</title>
+          {labels.map((b) => (
+            <g key={`${b.kind}-${b.node}`}>
+              {Math.abs(b.shifted) > 1 && <line x1={b.ax} y1={b.ay} x2={b.x + b.w} y2={b.kind === "events" ? b.y + b.h : b.y + 6} stroke="#bfbfbf" strokeDasharray="2,2" />}
+              {b.kind === "events" &&
+                b.list.map((d, k) => (
+                  <g key={d.label} transform={`translate(${b.x + b.w - chipWidth(d.label)},${b.y + k * (CHIP_H + 2)})`} style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"))}>
+                    <rect width={chipWidth(d.label)} height={CHIP_H} rx={3} fill="#fff" stroke={CLASS_COLORS[d.cls]} />
+                    <rect width={4} height={CHIP_H} rx={1} fill={CLASS_COLORS[d.cls]} />
+                    <text x={8} y={CHIP_H / 2} dy="0.35em" fontSize={CHIP_FONT} fill="#262626">{d.label}</text>
+                    <title>{[shortLabel(d.event), ...eventTooltipLines(d.event), `clade F1 ${d.fit.score.toFixed(2)} (best clade ${d.fit.clade} cells)`, t("components.single-cell.history.click")].join("\n")}</title>
+                  </g>
+                ))}
+              {b.kind === "branch" && (
+                <g transform={`translate(${b.x},${b.y})`}>
+                  {b.num && <text x={0} y={6.5} dy="0.35em" fontSize={10} fill="#8c8c8c">{b.num}<title>{t("components.single-cell.history.gained", { count: Number(b.num) })}</title></text>}
+                  {b.sig && (
+                    <g transform={`translate(${b.num ? b.num.length * 6 + 4 : 0},0)`}>
+                      <rect width={chipWidth(`${b.sig.signature} ↑`, 10)} height={13} rx={3} fill={signatureColorOf(b.sig.signature)} fillOpacity={0.9} />
+                      <text x={6} y={6.5} dy="0.35em" fontSize={10} fill="#fff">{`${b.sig.signature} ↑`}</text>
+                      <title>{t("components.single-cell.history.shift", { signature: b.sig.signature, share: d3.format(".0%")(b.sig.share), delta: d3.format("+.0%")(b.sig.delta) })}</title>
+                    </g>
+                  )}
                 </g>
-              ));
-          })}
-          {treeLayout.nodes.filter((n) => n.isLeaf).length <= 80 &&
-            treeLayout.nodes.filter((n) => n.isLeaf).map((n) => (
-              <text key={n.name} x={px(n.x) + 4} y={py(n.y)} dy="0.35em" fontSize={Math.min(10, rowH - 1)} fill="#8c8c8c">{n.name}</text>
-            ))}
+              )}
+            </g>
+          ))}
         </svg>
         <Swatches style={{ marginTop: 6 }} items={Object.entries(CLASS_COLORS).filter(([k]) => k !== "other" && placed.some((d) => d.cls === k)).map(([k, c]) => ({ key: k, color: c, label: t(`components.single-cell.cohort.class-${k}`) }))} />
-        <HintLine text={t("components.single-cell.history.help", { count: placed.length })} />
+        <HintLine text={t("components.single-cell.history.help", { count: placed.length, min: minClade })} />
       </div>
     </Card>
   );
