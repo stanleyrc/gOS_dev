@@ -1,4 +1,4 @@
-import { contourSegments, countBy, figureRows, fitLine, kde2d, leavesUnder, logKde, niceLogDomain, niceTicks, pointInPolygon, pruneLayout } from "./figureMath";
+import { compressLongBranches, contourSegments, countBy, figureRows, fitLine, kde2d, leavesUnder, logKde, niceLogDomain, niceTicks, pointInPolygon, pruneLayout } from "./figureMath";
 import { layoutTree, parseNewick } from "./newick";
 
 describe("figure math", () => {
@@ -68,6 +68,16 @@ describe("figure math", () => {
     const layout = layoutTree(parseNewick("((a,b),c);"));
     expect(figureRows(layout, ["c", "x", "a"])).toEqual({ rows: ["a", "c", "x"], nTree: 2 });
     expect(figureRows(null, ["c", "a"])).toEqual({ rows: ["c", "a"], nTree: 0 });
+  });
+
+  it("shortens over-long branches and marks the cut", () => {
+    const layout = layoutTree(parseNewick("(n:100,((a:1,b:1):1,(c:1,d:2):1):100);"));
+    const { x, broken, maxX } = compressLongBranches(layout);
+    expect(maxX).toBeLessThan(30);
+    expect(broken.reduce((s, v) => s + v, 0)).toBe(2);
+    const leaf = (name) => layout.nodes.findIndex((n) => n.name === name);
+    // within the clade the branch lengths are kept
+    expect(x[leaf("d")] - x[leaf("c")]).toBeCloseTo(1);
   });
 
   it("counts levels", () => {

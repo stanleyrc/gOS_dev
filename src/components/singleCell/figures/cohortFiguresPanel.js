@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Card, Col, Collapse, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tooltip, Typography } from "antd";
 import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
@@ -78,15 +78,25 @@ export default function CohortFiguresPanel(props) {
 
 function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, cloneColors = {}, onOpenCell }) {
   const dispatch = useDispatch();
-  const { selection, select, clear } = useCellSelection();
+  const { selection, select, clear, open: popupOpen } = useCellSelection();
   const [showLive, setShowLive] = useState([]);
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && clear();
+    // Esc clears the selection (when the popup is open, Esc only closes it)
+    const onKey = (e) => e.key === "Escape" && !popupOpen && clear();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [clear]);
+  }, [clear, popupOpen]);
   const styleName = useFigureStyleName();
   const [ref, width] = useContainerWidth(1200);
+  const rootRef = useRef(null);
+  const rootDiv = useCallback(
+    (el) => {
+      ref(el);
+      rootRef.current = el;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
   const patientRef = useRef(null);
   const [curatedOnly, setCuratedOnly] = useState(true);
   const [includeOther, setIncludeOther] = useState(false);
@@ -210,7 +220,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const selectedViolin = region.group ? { patient: current?.patient, key: region.group.key } : null;
 
   return (
-    <div ref={ref}>
+    <div ref={rootDiv}>
       <div className="sc-fig-selbar-wrap">
         <SelectionBar />
       </div>
@@ -340,7 +350,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
           </Card>
         </Col>
       </Row>
-      <SelectedCellsModal per={per} cnRows={cnRows} chromoBins={chromoBins} cloneColors={cloneColors} domains={domains} genes={genesInRegion} onOpenCell={onOpenCell} />
+      <SelectedCellsModal per={per} cnRows={cnRows} chromoBins={chromoBins} cloneColors={cloneColors} domains={domains} genes={genesInRegion} onOpenCell={onOpenCell} getContainer={() => rootRef.current || document.body} />
     </div>
   );
 }

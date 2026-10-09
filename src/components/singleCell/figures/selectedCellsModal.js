@@ -106,7 +106,7 @@ function CompareViolins({ groups, selected, tumour, minCn = 1 }) {
  * clone figure restricted to them, their amplicon copies against the other
  * tumour cells, and a table of the cells (copy ids, open a cell's report).
  */
-export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, cloneColors = {}, domains = [], genes = [], onOpenCell }) {
+export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, cloneColors = {}, domains = [], genes = [], onOpenCell, getContainer }) {
   const { selection, open, setOpen, select } = useCellSelection();
   const p = selection ? per.find((x) => x.patient === selection.patient) : null;
   const selCells = useMemo(() => (p && selection ? p.cells.filter((c) => selection.cells.has(c.cell_id)) : []), [p, selection]);
@@ -152,6 +152,7 @@ export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, clone
       footer={null}
       width="min(1500px, 94vw)"
       destroyOnClose
+      getContainer={getContainer}
       title={
         <Space size={8} wrap>
           <Tag color="blue" style={{ marginInlineEnd: 0 }}>{`${selection.cells.size} cells`}</Tag>
