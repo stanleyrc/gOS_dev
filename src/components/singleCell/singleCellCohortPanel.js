@@ -49,6 +49,7 @@ import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import HelpDrawer from "./helpDrawer";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
+import { SC_GUTTER } from "./density";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -411,7 +412,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   return (
     <Wrapper>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <Space size="large" wrap>
             <Statistic title={t("components.single-cell.cohort.patients")} value={summaries.length} />

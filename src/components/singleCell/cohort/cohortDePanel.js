@@ -20,6 +20,8 @@ import { GENE_SETS } from "../../../helpers/singleCell/geneSets";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { BoxStrips, Swatches, patientColor } from "./charts";
+import HintLine from "../hintLine";
+import { SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 const OTHERS = "__others__";
@@ -340,7 +342,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
       }
     >
       <div ref={ref}>
-        <Row gutter={[12, 12]}>
+        <Row gutter={SC_GUTTER_INNER}>
           <Col xs={24} xl={12}>
             <GroupEditor label="A" color={COLOR_UP} group={groupA} onChange={setGroupA} patients={patients} fields={fields} levelsOf={levelsOf} umapSelection={umapSelection} count={nA} t={t} allowOthers={false} />
           </Col>
@@ -438,7 +440,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                   <Text type="secondary">{t("components.single-cell.cohort.de-color")}</Text>
                   <Select size="small" value={pcColor} onChange={setPcColor} style={{ width: 150 }} options={[...(pcaState.useGroups ? [{ value: "group", label: "A / B" }] : []), { value: "patient", label: t("components.single-cell.cohort.patient") }, ...fields.map((f) => ({ value: f, label: f }))]} />
                 </Space>
-                <Row gutter={[12, 12]}>
+                <Row gutter={SC_GUTTER_INNER}>
                   <Col xs={24} xl={12}>
                     {(() => {
                       const sx = pcaState.scores[pcX];
@@ -495,7 +497,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                     })()}
                   </Col>
                 </Row>
-                <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.de-pca-help")}</Text>
+                <HintLine text={t("components.single-cell.cohort.de-pca-help")} />
               </Card>
               </ScErrorBoundary>
             </Col>
