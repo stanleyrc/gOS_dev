@@ -13,6 +13,8 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, Swatches, patientColor } from "./charts";
+import HintLine from "../hintLine";
+import { SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 
@@ -133,7 +135,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
     >
       <div ref={ref}>
         {view === "score" && (
-          <Row gutter={[12, 12]}>
+          <Row gutter={SC_GUTTER_INNER}>
             <Col xs={24} lg={8}>
               <Space direction="vertical" style={{ width: "100%" }}>
                 <Select size="small" style={{ width: "100%" }} value={preset} onChange={(v) => { setPreset(v); setText(GENE_SETS[v].join(", ")); }} options={Object.keys(GENE_SETS).map((k) => ({ value: k, label: k }))} />
@@ -160,7 +162,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                 <Text type="secondary">{t("components.single-cell.cohort.gs-intro")}</Text>
               )}
             </Col>
-            <Col span={24}><Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.gs-help")}</Text></Col>
+            <Col span={24}><HintLine text={t("components.single-cell.cohort.gs-help")} /></Col>
           </Row>
         )}
         {view === "dots" && (
@@ -224,7 +226,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
             })() : (
               <Text type="secondary">{dots ? t("components.single-cell.cohort.gs-dots-empty") : t("components.single-cell.cohort.gs-dots-intro")}</Text>
             )}
-            <Text type="secondary" style={{ fontSize: 12, display: "block" }}>{t("components.single-cell.cohort.gs-dots-help")}</Text>
+            <HintLine text={t("components.single-cell.cohort.gs-dots-help")} />
           </div>
         )}
       </div>

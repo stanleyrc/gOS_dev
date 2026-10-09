@@ -8,6 +8,8 @@ import useContainerWidth from "../useContainerWidth";
 import { ActivityBars, AetiologyLegend, loadCosmic } from "../signaturePanel";
 import { fitSignatures, nnls } from "../../../helpers/singleCell/signatures";
 import { profileSimilarity, setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
+import HintLine from "../hintLine";
+import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -98,14 +100,14 @@ export default function SignatureComparisonCard() {
       }
     >
       <div ref={ref}>
-        <Row gutter={[16, 12]}>
+        <Row gutter={SC_GUTTER}>
           <Col xs={24} xl={14}>
             {progress != null && <Progress percent={progress} size="small" />}
             {rows.length ? (
               <>
                 <ActivityBars rows={rows} width={Math.max(320, (width >= 1200 ? (width * 14) / 24 : width) - 24)} />
                 <AetiologyLegend rows={rows} />
-                <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.compare-help")}</Text>
+                <HintLine text={t("components.single-cell.signatures.compare-help")} />
               </>
             ) : (
               <Text type="secondary">{t("components.single-cell.signatures.compare-empty")}</Text>
@@ -139,7 +141,7 @@ export default function SignatureComparisonCard() {
                 </tbody>
               </table>
             </div>
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.similarity-help")}</Text>
+            <HintLine text={t("components.single-cell.signatures.similarity-help")} />
           </Col>
         </Row>
       </div>

@@ -22,11 +22,13 @@ import useTreeView from "../../components/singleCell/useTreeView";
 import useContainerWidth from "../../components/singleCell/useContainerWidth";
 import settingsActions from "../../redux/settings/actions";
 import { toGlobal, walkFamilies, walkFootprint } from "../../helpers/singleCell/walks";
+import HintLine from "../../components/singleCell/hintLine";
+import { SC_GUTTER } from "../../components/singleCell/density";
 
 const { Text } = Typography;
 const PADS = [5e4, 1e5, 2.5e5, 5e5, 1e6, 2e6];
 const padLabel = (p) => (p >= 1e6 ? `${p / 1e6} Mb` : `${p / 1e3} kb`);
-const GENES_H = 110;
+const GENES_H = 76;
 
 /** Padded, merged genomic domains covering the given walks (at most six panels). */
 function walksDomains(walks, chromoBins, pad) {
@@ -67,12 +69,12 @@ export default function SingleCellEcdnaTab() {
   const { chromoBins, domains } = useSelector((s) => s.Settings);
   const genesList = useSelector((s) => s.Genes?.list || []);
   const cellIds = useMemo(() => (order.length ? order : cellsAll.map((c) => c.cell_id)), [order, cellsAll]);
-  const { status, all, filtered, filters, setFilters, colorOf, byId } = useWalks(cellIds);
+  const { status, all, measured, filtered, filters, setFilters, colorOf, byId } = useWalks(cellIds);
   const [selected, setSelected] = useState([]);
   const [focus, setFocus] = useState(null);
   const [pad, setPad] = useState(2.5e5);
   const [colorBy, setColorBy] = useState("walk");
-  const [laneHeight, setLaneHeight] = useState(30);
+  const [laneHeight, setLaneHeight] = useState(18);
   const [showTable, setShowTable] = useState(false);
   const [genesRef, genesWidth] = useContainerWidth(1200);
 
@@ -119,7 +121,7 @@ export default function SingleCellEcdnaTab() {
     <SingleCellWrapper>
       <ScEventModal />
       <ScErrorBoundary resetKey={`${selected.join("|")}-${focus}`} title="ecDNA view failed">
-        <Row gutter={[16, 12]}>
+        <Row gutter={SC_GUTTER}>
           <Col span={24}>
             <Card size="small" title={<Space><BranchesOutlined />{t("components.single-cell.ecdna.title", { count: all.length })}</Space>} extra={<HelpDrawer />}>
               <WalkPicker families={families} total={all.length} nCells={cellIds.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} onShowTable={() => setShowTable((v) => !v)} />
@@ -133,12 +135,12 @@ export default function SingleCellEcdnaTab() {
           <Col span={24}>
             <Card
               size="small"
-              title={<Space><NodeExpandOutlined />{t("components.single-cell.ecdna.plot-title", { count: shown.length })}</Space>}
+              title={<Space size={6}><NodeExpandOutlined />{t("components.single-cell.ecdna.plot-title", { count: shown.length })}<HintLine inline text={t("components.single-cell.ecdna.plot-help")} /></Space>}
               extra={
                 <Space wrap>
                   <Segmented size="small" value={colorBy} onChange={setColorBy} options={[{ value: "walk", label: t("components.single-cell.ecdna.color-walk") }, { value: "chromosome", label: t("components.single-cell.ecdna.color-chr") }]} />
                   <Text type="secondary">{t("components.single-cell.ecdna.lane")}</Text>
-                  <Slider min={18} max={48} value={laneHeight} onChange={setLaneHeight} style={{ width: 80, margin: "0 6px" }} />
+                  <Slider min={12} max={40} value={laneHeight} onChange={setLaneHeight} style={{ width: 80, margin: "0 6px" }} />
                   <Text type="secondary">{t("components.single-cell.ecdna.heat-pad")}</Text>
                   <Select size="small" value={pad} onChange={setPad} style={{ width: 86 }} options={PADS.map((p) => ({ value: p, label: padLabel(p) }))} />
                   <Button size="small" type="primary" ghost onClick={() => zoomToShown()} disabled={!shown.length}>{t("components.single-cell.ecdna.zoom-shown")}</Button>
@@ -155,12 +157,11 @@ export default function SingleCellEcdnaTab() {
                   </>
                 )}
               </div>
-              <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.plot-help")}</Text>
             </Card>
             <CellHeatmapPanel />
           </Col>
           <Col span={24}>
-            <WalkTreeBars walks={shown} colorOf={colorOf} />
+            <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} />
           </Col>
           <Col xs={24} xl={14}>
             <WalkContainmentCard walks={shown} colorOf={colorOf} />

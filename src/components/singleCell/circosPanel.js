@@ -13,6 +13,7 @@ import singleCellActions from "../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import { cnColorer } from "../../helpers/singleCell/matrix";
 import { medianCnRow } from "../../helpers/singleCell/cellFiles";
+import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const genomeCache = new Map();
@@ -194,7 +195,7 @@ export default function CircosPanel() {
       <div ref={ref} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
         {treeLayout && (
           <div style={{ flex: "none" }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.circos.tree-help")}</Text>
+            <HintLine text={t("components.single-cell.circos.tree-help")} />
             <PhylogenyCanvas
               layout={treeLayout}
               nRows={nRows}

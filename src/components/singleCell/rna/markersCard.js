@@ -12,6 +12,7 @@ import { differentialExpression } from "../../../helpers/singleCell/rnaStats";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
+import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? Number(p).toExponential(1) : Number(p).toFixed(3));
@@ -172,7 +173,7 @@ export default function MarkersCard({ summary, matrix }) {
         {!markers ? (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.rna.markers-empty")} />
         ) : (
-          <Row gutter={[16, 12]}>
+          <Row gutter={SC_GUTTER}>
             <Col xs={24} xl={10}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {markers.source === "backend" ? t("components.single-cell.rna.markers-backend", { method: backend?.method || "Seurat" }) : t("components.single-cell.rna.markers-browser")}
@@ -180,7 +181,7 @@ export default function MarkersCard({ summary, matrix }) {
               <DotPlot genes={genes} groups={groups} summary={summary} matrix={matrix} width={Math.max(320, width * 0.4)} />
             </Col>
             <Col xs={24} xl={14}>
-              <Row gutter={[12, 12]}>
+              <Row gutter={SC_GUTTER_INNER}>
                 {groups.map((g) => (
                   <Col key={g.key} xs={24} xl={12}>
                     <Space size={6} style={{ marginBottom: 4 }}>

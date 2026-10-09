@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Button, Card, Checkbox, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
-import { ApartmentOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
+import HintLine from "./hintLine";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import BranchSnvDrawer from "./branchSnvDrawer";
 import SnvSiteDrawer from "./snvSiteDrawer";
@@ -703,6 +704,17 @@ export default function CellHeatmapPanel() {
             <Text type="secondary" className="sc-hint">
               · {treeNote}
             </Text>
+            {missingGenomes > 0 && (
+              <span className="sc-note">
+                <InfoCircleOutlined />
+                {t(
+                  cnMode === "total"
+                    ? "components.single-cell.heatmap.missing-genomes"
+                    : "components.single-cell.heatmap.missing-allelic",
+                  { count: missingGenomes }
+                )}
+              </span>
+            )}
           </Space>
         }
         extra={
@@ -1011,19 +1023,6 @@ export default function CellHeatmapPanel() {
         {alerts.map((a) => (
           <Alert key={a.key} type="warning" showIcon className="sc-alert" message={a.message} description={a.description} />
         ))}
-        {missingGenomes > 0 && (
-          <Alert
-            type="info"
-            showIcon
-            className="sc-alert"
-            message={t(
-              cnMode === "total"
-                ? "components.single-cell.heatmap.missing-genomes"
-                : "components.single-cell.heatmap.missing-allelic",
-              { count: missingGenomes }
-            )}
-          />
-        )}
         <div ref={containerRef} className="sc-heatmap-container">
           <div style={{ display: "flex", alignItems: "flex-end" }}>
             <StripLabels
@@ -1287,9 +1286,7 @@ export default function CellHeatmapPanel() {
                 ))}
               </Space>
             ))}
-            <Text type="secondary" className="sc-hint">
-              {t("components.single-cell.heatmap.hint")}
-            </Text>
+            <HintLine text={t("components.single-cell.heatmap.hint")} style={{ flex: "1 1 240px" }} />
           </div>
         </div>
       </Card>

@@ -5,6 +5,7 @@ import DosagePanel from "../../components/singleCell/rna/dosagePanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import SingleCellWrapper from "../../components/singleCell/index.style";
+import { SC_GUTTER } from "../../components/singleCell/density";
 
 /**
  * How copy number and expression relate in the same cells (DNA + RNA):
@@ -16,7 +17,7 @@ export default function SingleCellRnaCnTab() {
   if (!summary) return <Empty description={t("components.single-cell.rna.no-rna")} />;
   return (
     <SingleCellWrapper>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <DosagePanel summary={summary} matrix={matrix} rowOfId={rowOfId} />
         </Col>

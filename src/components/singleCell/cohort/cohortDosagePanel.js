@@ -13,6 +13,7 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { correlationP } from "../../../helpers/singleCell/tests";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const CELL = 30;
@@ -134,7 +135,7 @@ export default function CohortDosagePanel({ summaries, files, rna, cnRows, datas
                 </g>
               ))}
             </svg>
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.dosage-help")}</Text>
+            <HintLine text={t("components.single-cell.cohort.dosage-help")} />
           </>
         )}
       </div>

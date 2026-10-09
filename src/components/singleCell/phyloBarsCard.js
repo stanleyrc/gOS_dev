@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { AutoComplete, Button, Card, Checkbox, Empty, InputNumber, Progress, Select, Space, Tooltip, Typography } from "antd";
+import { AutoComplete, Button, Card, Checkbox, Empty, InputNumber, Progress, Select, Space, Tooltip } from "antd";
 import SvgExportButton from "./svgExportButton";
 import { BarChartOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "./phylogenyCanvas";
@@ -21,8 +21,8 @@ import useSignatureModel from "./signatures/useSignatureModel";
 import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { cutTree, labelRuns } from "../../helpers/singleCell/treeGroups";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
+import HintLine from "./hintLine";
 
-const { Text } = Typography;
 const MIN_HEIGHT = 440;
 const TREE_WIDTH = 240;
 const MIN_TRACK_W = 160;
@@ -316,7 +316,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
         )}
         {sigProgress != null && <Progress percent={sigProgress} size="small" style={{ width: 240 }} />}
         {shown.includes("signatures") && sigRows.length > 0 && <AetiologyLegend rows={sigRows} />}
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.bars.help")}</Text>
+        <HintLine text={t("components.single-cell.bars.help")} />
       </div>
     </Card>
   );
