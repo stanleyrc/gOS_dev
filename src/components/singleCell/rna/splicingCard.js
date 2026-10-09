@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useSpliceExons } from "../cohort/cohortSpliceEvent";
-import { clusterEvents, clusterTranscripts, differingJunctions, groupCellPsi, junctionEvent, mainJunctions } from "../../../helpers/singleCell/spliceEvents";
+import { clusterEvents, clusterTranscripts, differingJunctions, eventPsi, groupCellPsi, junctionEvent, mainJunctions } from "../../../helpers/singleCell/spliceEvents";
 import { resolveChromosome } from "../../../helpers/singleCell/matrix";
 import Violins from "../violins";
 import { useTranslation } from "react-i18next";
@@ -300,10 +300,14 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   // event shown per cell: the named event, else the junction that differs most between the groups
   const viewEvent = useMemo(() => {
     if (!cluster) return null;
-    if (spliceEvent) return spliceEvent;
+    // the named event, unless it barely differs between the groups (then the most differing junction says more)
+    if (spliceEvent) {
+      const ps = bigGroups.filter((g) => g.total >= 10).map((g) => eventPsi(g.counts, spliceEvent).psi).filter(Number.isFinite);
+      if (ps.length < 2 || Math.max(...ps) - Math.min(...ps) >= 0.05) return spliceEvent;
+    }
     const [j] = differingJunctions(groups, { minCells: MIN_GROUP_CELLS, top: 1 });
     return j != null ? junctionEvent(j, cluster.junctions.length) : null;
-  }, [cluster, spliceEvent, groups]);
+  }, [cluster, spliceEvent, groups, bigGroups]);
   const eventGroups = useMemo(() => {
     if (!cluster || !viewEvent) return [];
     const big = new Set(bigGroups.map((g) => g.group));
