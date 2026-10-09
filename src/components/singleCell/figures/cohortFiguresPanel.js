@@ -1,0 +1,310 @@
+import React, { useMemo, useRef, useState } from "react";
+import { Button, Card, Col, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
+import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
+import useContainerWidth from "../useContainerWidth";
+import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
+import { groupCombinations, isNormalClone, subclonalFindings, walkGroups } from "../../../helpers/singleCell/figures";
+import { AmpliconUpset, AmpliconViolins } from "./ampliconLandscape";
+import PhyloSignalPanel from "./phyloSignalPanel";
+import SubclonalFindingsTable from "./subclonalFindingsTable";
+import ClonalAmpliconView, { cnAt } from "./clonalAmpliconView";
+import { CloneCarrierBars, GeneCnScatter, SegmentCorrelation } from "./patientPanels";
+
+const { Text } = Typography;
+const PAD = 1.5e6;
+
+const globalPos = (chromoBins, chr, pos) => {
+  const bin = chromoBins?.[`${chr}`.replace(/^chr/, "")];
+  return bin ? bin.startPlace + Number(pos) : NaN;
+};
+
+/** Merge [chr, start, end] loci into padded global domains (one per chromosome, sorted). */
+function lociDomains(loci, chromoBins, pad = PAD) {
+  const by = new Map();
+  loci.forEach(([chr, s, e]) => {
+    const key = `${chr}`.replace(/^chr/, "");
+    if (!chromoBins?.[key] || !Number.isFinite(s)) return;
+    const cur = by.get(key);
+    by.set(key, cur ? [Math.min(cur[0], s), Math.max(cur[1], e)] : [s, e]);
+  });
+  return [...by.entries()]
+    .map(([chr, [s, e]]) => {
+      const bin = chromoBins[chr];
+      const p = Math.max(pad, 0.25 * (e - s));
+      const a = globalPos(chromoBins, chr, Math.max(bin.startPoint ?? 1, s - p));
+      const b = globalPos(chromoBins, chr, Math.min(bin.endPoint ?? e + p, e + p));
+      return [a, b, chr];
+    })
+    .filter((d) => d[1] > d[0])
+    .sort((x, y) => x[0] - y[0]);
+}
+
+const walkLoci = (walks) => walks.flatMap((w) => (w.nodes || []).map((n) => [n.chromosome, Number(n.start), Number(n.end)]));
+function eventLoci(e) {
+  const coords = `${e.fusion_gene_coords || ""}`.split(",").filter(Boolean);
+  const parsed = coords
+    .map((c) => /^(?:chr)?([^:]+):(\d+)-(\d+)/.exec(c))
+    .filter(Boolean)
+    .map((m) => [m[1], Number(m[2]), Number(m[3])]);
+  if (parsed.length) return parsed;
+  return Number.isFinite(Number(e.start)) ? [[e.seqnames, Number(e.start), Number(e.end) || Number(e.start)]] : [];
+}
+
+/**
+ * Cohort "Figures" tab: the paper's figures 3-5 rebuilt from the live data.
+ * Top: amplicon landscape (Fig 3A/B), phylogenetic signal (3E) and
+ * subclonal findings. Bottom: one patient's clonal amplicon view (4B/5B/5D)
+ * with clone carrier fractions (4F), gene-vs-gene copies (5E) and segment
+ * correlation (5C). Every top panel selects what the patient view shows.
+ */
+export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows = {}, chromoBins, cloneColors, onOpenCell }) {
+  const [ref, width] = useContainerWidth(1200);
+  const patientRef = useRef(null);
+  const [curatedOnly, setCuratedOnly] = useState(true);
+  const [includeOther, setIncludeOther] = useState(false);
+  const [minCells, setMinCells] = useState(3);
+  const [minCn, setMinCn] = useState(1);
+
+  const per = useMemo(
+    () =>
+      summaries.map((s) => {
+        const f = files[s.caseReportId] || {};
+        const cells = cellsForPatient(datafiles, s.patientKey);
+        const cellIds = f.walks?.cells?.length ? f.walks.cells : cells.map((c) => c.cell_id);
+        const groups = walkGroups(f.walks?.walks || [], cellIds, { curatedOnly, includeOther, minCells, minCn });
+        return { summary: s, patient: s.caseReportId, cells, cellIds, groups, combos: groupCombinations(groups, cellIds, minCn), tree: f.tree || null, events: f.events || [], snvPacked: f.snvCells || null, nVariants: f.variants?.length || 0 };
+      }),
+    [summaries, files, datafiles, curatedOnly, includeOther, minCells, minCn]
+  );
+  const withAmps = per.filter((p) => p.groups.length);
+
+  const findings = useMemo(
+    () =>
+      per.flatMap((p) =>
+        subclonalFindings({ events: p.events, groups: p.groups, cells: p.cells, tree: p.tree }).map((f, i) => ({ ...f, patient: p.patient, key: `${p.patient}::${f.kind}::${f.label}::${i}` }))
+      ),
+    [per]
+  );
+
+  // patient view selection
+  const [patient, setPatient] = useState(null);
+  const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "gene:<name>" | "f:<finding key>"
+  const [marked, setMarked] = useState(null); // { cells: Set, label, key }
+  const current = per.find((p) => p.patient === patient) || withAmps[0] || per[0];
+
+  const genePositions = useMemo(() => {
+    const m = new Map();
+    (current?.events || []).forEach((e) => {
+      const g = `${e.gene || ""}`;
+      if (!g || g.includes("::") || m.has(g) || !Number.isFinite(Number(e.start))) return;
+      m.set(g, [`${e.seqnames}`, Number(e.start), Number(e.end) || Number(e.start)]);
+    });
+    return m;
+  }, [current]);
+
+  const region = useMemo(() => {
+    if (!current) return { domains: [], label: "" };
+    const key = regionKey && current.groups.some((g) => `g:${g.key}` === regionKey) ? regionKey : regionKey?.startsWith("gene:") || regionKey?.startsWith("f:") ? regionKey : current.groups[0] ? `g:${current.groups[0].key}` : null;
+    if (key?.startsWith("g:")) {
+      const g = current.groups.find((x) => `g:${x.key}` === key);
+      if (g) return { key, domains: lociDomains(walkLoci(g.walks), chromoBins), label: `ec${g.key} walks`, group: g };
+    }
+    if (key?.startsWith("gene:")) {
+      const locus = genePositions.get(key.slice(5));
+      if (locus) return { key, domains: lociDomains([locus], chromoBins, 4e6), label: key.slice(5) };
+    }
+    if (key?.startsWith("f:")) {
+      const f = findings.find((x) => x.key === key.slice(2));
+      if (f?.event) return { key, domains: lociDomains(eventLoci(f.event), chromoBins), label: f.label };
+      if (f?.group) return { key, domains: lociDomains(walkLoci(f.group.walks), chromoBins), label: f.label, group: f.group };
+    }
+    // no amplicons: the patient's first amplified driver, else chr7 (EGFR)
+    const amp = current.events.find((e) => e.vartype === "AMP");
+    const loci = amp ? eventLoci(amp) : [["7", 55e6, 55.3e6]];
+    return { key: null, domains: lociDomains(loci, chromoBins, 4e6), label: amp ? `${amp.gene} AMP` : "chr7" };
+  }, [current, regionKey, genePositions, chromoBins, findings]);
+  const domains = useMemo(() => region.domains.map(([a, b]) => [a, b]), [region]);
+
+  const focus = (p, next = {}) => {
+    setPatient(p);
+    if (next.region !== undefined) setRegionKey(next.region);
+    if (next.marked !== undefined) setMarked(next.marked);
+    setTimeout(() => patientRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+  const markGroup = (p, key) => {
+    const g = p.groups.find((x) => x.key === key);
+    if (!g) return null;
+    return { cells: new Set(g.cellIds.filter((id, k) => g.cn[k] >= minCn)), label: `ec${key} carriers`, key: `g:${p.patient}:${key}` };
+  };
+
+  // gene-vs-gene scatter genes (defaults: the patient's first two amplicon genes)
+  const [genes, setGenes] = useState({});
+  const geneChoices = useMemo(() => {
+    const fromGroups = [...new Set((current?.groups || []).flatMap((g) => g.genes))].filter((g) => genePositions.has(g));
+    const amps = (current?.events || []).filter((e) => e.vartype === "AMP").map((e) => e.gene).filter((g) => genePositions.has(g));
+    return [...new Set([...fromGroups, ...amps, ...genePositions.keys()])];
+  }, [current, genePositions]);
+  const geneA = genes[current?.patient]?.[0] || geneChoices[0];
+  const geneB = genes[current?.patient]?.[1] || geneChoices.find((g) => g !== geneA) || geneA;
+  const scatter = useMemo(() => {
+    const entry = cnRows[current?.patient];
+    if (!entry || !geneA || !geneB) return null;
+    const pos = (g) => {
+      const l = genePositions.get(g);
+      return l ? globalPos(chromoBins, l[0], (l[1] + l[2]) / 2) : NaN;
+    };
+    const a = cnAt(entry, pos(geneA));
+    const b = cnAt(entry, pos(geneB));
+    const tumour = new Set(current.cells.filter((c) => !isNormalClone(c.clone_id)).map((c) => c.cell_id));
+    const ids = [...a.keys()].filter((id) => tumour.has(id));
+    return { ids, xs: ids.map((id) => a.get(id)), ys: ids.map((id) => b.get(id)) };
+  }, [cnRows, current, geneA, geneB, genePositions, chromoBins]);
+
+  const corrSets = useMemo(() => {
+    if (!current) return null;
+    const tumour = current.cells.filter((c) => !isNormalClone(c.clone_id)).map((c) => c.cell_id);
+    let carriers = marked?.cells;
+    let label = marked?.label;
+    if (!carriers?.size && region.group) {
+      const g = region.group;
+      carriers = new Set(g.cellIds.filter((id, k) => g.cn[k] >= minCn));
+      label = `ec${g.key} carriers`;
+    }
+    if (!carriers?.size) return null;
+    return { carriers, others: new Set(tumour.filter((id) => !carriers.has(id))), label };
+  }, [current, marked, region, minCn]);
+
+  if (!per.length) return <Empty />;
+  const third = width >= 1100 ? Math.floor((width - 32) / 3) - 26 : width - 26;
+  const regionOptions = [
+    ...(current?.groups || []).map((g) => ({ value: `g:${g.key}`, label: `ec${g.key} (${g.walks.length} walk${g.walks.length === 1 ? "" : "s"})` })),
+    ...(regionKey?.startsWith("f:") ? [{ value: regionKey, label: region.label }] : []),
+    ...[...genePositions.keys()].sort().map((g) => ({ value: `gene:${g}`, label: g })),
+  ];
+  const selectedViolin = marked?.key?.startsWith("g:") ? { patient: current?.patient, key: marked.key.split(":").slice(2).join(":") } : null;
+
+  return (
+    <div ref={ref}>
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card
+            size="small"
+            title={<Space><BranchesOutlined />Amplicon landscape <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3A–B</Text></Space>}
+            extra={
+              <Space wrap size={10}>
+                <Space size={4}><Switch size="small" checked={curatedOnly} onChange={setCuratedOnly} /><Text>Curated walks</Text></Space>
+                <Space size={4}><Switch size="small" checked={includeOther} onChange={setIncludeOther} /><Text>Non-driver walks</Text></Space>
+                <Space size={4}><Text type="secondary">Min cells</Text><InputNumber size="small" min={1} value={minCells} onChange={(v) => setMinCells(v ?? 1)} style={{ width: 56 }} /></Space>
+                <Space size={4}><Text type="secondary">Min copies</Text><InputNumber size="small" min={1} value={minCn} onChange={(v) => setMinCn(v ?? 1)} style={{ width: 56 }} /></Space>
+              </Space>
+            }
+          >
+            {!withAmps.length ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No ecDNA walks pass the filters" />
+            ) : (
+              <Row gutter={16}>
+                <Col xs={24} xl={13}>
+                  <AmpliconViolins per={withAmps} selected={selectedViolin} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+                </Col>
+                <Col xs={24} xl={11}>
+                  <AmpliconUpset
+                    per={withAmps}
+                    selected={marked?.key?.startsWith("c:") ? { patient: current?.patient, combo: marked.key.split(":").slice(2).join(":") } : null}
+                    onSelect={({ patient: p, combo, cells, label }) => focus(p, { marked: { cells: new Set(cells), label: `cells with ${label}`, key: `c:${p}:${combo}` } })}
+                  />
+                </Col>
+              </Row>
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} xxl={11}>
+          <Card size="small" title={<Space><NodeIndexOutlined />Inherited or redrawn? <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3E, every amplicon</Text></Space>}>
+            <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              High z: copies follow the tree (cells inherit their parent&apos;s load, as for EGFR ecDNA in BWH70); near the controls: redrawn each division. Click an amplicon to open it below.
+            </Text>
+          </Card>
+        </Col>
+        <Col xs={24} xxl={13}>
+          <Card size="small" title={<Space><ApartmentOutlined />Subclonal findings <Text type="secondary" style={{ fontWeight: 400 }}>· new: driver events and amplicons in part of a tumour, following the tree</Text></Space>}>
+            <SubclonalFindingsTable
+              findings={findings}
+              cloneColors={cloneColors}
+              selectedKey={regionKey?.startsWith("f:") ? regionKey.slice(2) : null}
+              onSelect={(f) => focus(f.patient, { region: `f:${f.key}`, marked: { cells: f.carriers, label: `${f.label} carriers`, key: `f:${f.key}` } })}
+            />
+          </Card>
+        </Col>
+        <Col span={24}>
+          <div ref={patientRef} style={{ scrollMarginTop: 12 }} />
+          <Card
+            size="small"
+            title={<Space><BarChartOutlined />Clonal amplicon view <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B / 5B / 5D</Text></Space>}
+            extra={
+              <Space wrap size={8}>
+                <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); setMarked(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
+                <Select size="small" showSearch style={{ width: 220 }} value={region.key || undefined} placeholder="Region" options={regionOptions} onChange={(v) => setRegionKey(v)} />
+                {marked && (
+                  <Tag closable onClose={() => setMarked(null)} color="default" style={{ marginInlineEnd: 0 }}>
+                    {`Marked: ${marked.label} (${marked.cells.size})`}
+                  </Tag>
+                )}
+              </Space>
+            }
+          >
+            {current && (
+              <ClonalAmpliconView
+                width={width - 26}
+                layout={current.tree}
+                cells={current.cells}
+                groups={current.groups}
+                cnEntry={cnRows[current.patient]}
+                snvPacked={current.snvPacked}
+                nVariants={current.nVariants}
+                domains={domains}
+                regionLabel={region.label}
+                chromoBins={chromoBins}
+                cloneColors={cloneColors}
+                marked={marked}
+                onMark={setMarked}
+                onOpenCell={onOpenCell}
+              />
+            )}
+            {!cnRows[current?.patient]?.cellRows?.length && <Text type="secondary">Loading cell copy number…</Text>}
+            <Row gutter={16} style={{ marginTop: 8 }}>
+              <Col xs={24} xl={8}>
+                <Text strong style={{ fontSize: 12 }}>Carriers per clone</Text> <Text type="secondary" style={{ fontSize: 12 }}>· Fig 4F</Text>
+                <CloneCarrierBars width={third} groups={current?.groups || []} cells={current?.cells || []} cloneColors={cloneColors} minCn={minCn} />
+              </Col>
+              <Col xs={24} xl={8}>
+                <Space size={4} wrap>
+                  <Text strong style={{ fontSize: 12 }}>Copies per cell</Text>
+                  <Select size="small" showSearch style={{ width: 100 }} value={geneA} options={geneChoices.map((g) => ({ value: g, label: g }))} onChange={(v) => setGenes((s) => ({ ...s, [current.patient]: [v, geneB] }))} />
+                  <Text type="secondary">vs</Text>
+                  <Select size="small" showSearch style={{ width: 100 }} value={geneB} options={geneChoices.map((g) => ({ value: g, label: g }))} onChange={(v) => setGenes((s) => ({ ...s, [current.patient]: [geneA, v] }))} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>· Fig 5E</Text>
+                </Space>
+                {scatter && <GeneCnScatter width={third} {...scatter} cells={current.cells} cloneColors={cloneColors} geneA={geneA} geneB={geneB} marked={marked} />}
+              </Col>
+              <Col xs={24} xl={8}>
+                <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the marked cells (upper triangle) and the other tumour cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
+                  <Text strong style={{ fontSize: 12 }}>Segment co-variation</Text> <Text type="secondary" style={{ fontSize: 12 }}>· Fig 5C{corrSets ? ` · ${corrSets.label}` : ""}</Text>
+                </Tooltip>
+                {corrSets ? (
+                  <SegmentCorrelation width={third} cnEntry={cnRows[current.patient]} domains={domains} carriers={corrSets.carriers} others={corrSets.others} chromoBins={chromoBins} />
+                ) : (
+                  <div><Text type="secondary" style={{ fontSize: 12 }}>Mark cells (tree node, upset row or finding) to compare them with the rest.</Text></div>
+                )}
+              </Col>
+            </Row>
+            {marked && (
+              <Button size="small" type="link" onClick={() => setMarked(null)} style={{ padding: 0 }}>
+                Clear marked cells
+              </Button>
+            )}
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
+}
