@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import useContainerWidth from "../useContainerWidth";
+import usePlotTheme from "../usePlotTheme";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 export const COLOR_UP = "#C2185B";
@@ -33,6 +34,7 @@ function insidePolygon(x, y, polygon) {
 export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene, selectedGenes = [], onGene = () => {}, onSelectGenes = () => {} }) {
   const [ref, width] = useContainerWidth(700);
   const [hover, setHover] = useState(null);
+  const theme = usePlotTheme();
   const [lasso, setLasso] = useState(null);
   const svgRef = useRef(null);
   const drag = useRef(null);
@@ -244,7 +246,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
               fontSize={TYPE.tick}
               fontWeight={picked.has(p.gene) ? 700 : 400}
               fill={anySig || picked.has(p.gene) ? INK.text : INK.textSecondary}
-              stroke={INK.panel}
+              stroke={theme.panel}
               strokeWidth="3"
               paintOrder="stroke"
             >
@@ -256,7 +258,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
           <g pointerEvents="none">
             <circle cx={x(focus.x)} cy={y(focus.y)} r={7} fill="none" stroke={INK.hover} strokeWidth={2} />
             {!focusLabelled && (
-              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={TYPE.label} fontWeight="600" fill="#FA541C" stroke={INK.panel} strokeWidth="3" paintOrder="stroke">
+              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={TYPE.label} fontWeight="600" fill="#FA541C" stroke={theme.panel} strokeWidth="3" paintOrder="stroke">
                 {`${focus.gene}  log2FC ${focus.x.toFixed(2)}`}
               </text>
             )}
@@ -285,8 +287,9 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
             left: Math.min(x(hover.x) + 12, width - 230),
             top: Math.max(y(hover.y) - 70, 0),
             pointerEvents: "none",
-            background: INK.panel,
-            border: `1px solid ${INK.grid}`,
+            background: theme.raised,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
             borderRadius: 4,
             padding: "4px 8px",
             fontSize: TYPE.tick,
@@ -299,7 +302,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
           <div>{`log2 FC ${hover.x.toFixed(2)} (${hover.x > 0 ? labels.A : labels.B} higher)`}</div>
           <div>{`p ${fmtP(hover.p)} · q ${fmtP(hover.q)}`}</div>
           {Number.isFinite(hover.pct1) && Number.isFinite(hover.pct2) && <div>{`detected in ${Math.round(hover.pct1 * 100)}% vs ${Math.round(hover.pct2 * 100)}%`}</div>}
-          <div style={{ color: INK.muted }}>click to pick · shift-click to add</div>
+          <div style={{ color: theme.muted }}>click to pick · shift-click to add</div>
         </div>
       )}
     </div>
