@@ -79,7 +79,7 @@ export default function BranchRatesCard() {
     { title: t("components.single-cell.rates.private-in"), dataIndex: "medianIn", width: 110, render: (v) => fmt(v, 3) },
     { title: t("components.single-cell.rates.private-out"), dataIndex: "medianOut", width: 110, render: (v) => fmt(v, 3) },
     { title: t("components.single-cell.rates.fold"), dataIndex: "fold", width: 80, sorter: (a, b) => (a.fold || 0) - (b.fold || 0), render: (v) => (v === Infinity ? "∞" : fmt(v)) },
-    { title: "p", dataIndex: "p", width: 90, sorter: (a, b) => (a.p || 1) - (b.p || 1), render: (p, r) => <Space size={4}><span>{formatP(p)}</span>{verdict(r)}</Space> },
+    { title: "p", dataIndex: "p", width: 90, sorter: (a, b) => (a.p || 1) - (b.p || 1), render: (p, r) => <Space size={4}><span>{formatP(p).replace(/^p = /, "")}</span>{verdict(r)}</Space> },
   ];
   return (
     <Card size="small" title={<Space><RiseOutlined />{t("components.single-cell.rates.title")}<Provenance id="branchRates" /></Space>}>
