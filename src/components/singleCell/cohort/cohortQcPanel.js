@@ -1,12 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Empty, Select, Space, Switch, Typography } from "antd";
+import * as d3 from "d3";
+import { Card, Empty, Select, Space, Statistic, Switch, Table, Typography } from "antd";
 import { ExperimentOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { robustOutliers } from "../../../helpers/singleCell/cohortStats";
 import { BoxStrips, patientColor } from "./charts";
-import { Provenance } from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
+import { formatValue } from "../../../helpers/singleCell/figureStyle";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 
@@ -53,6 +57,13 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
     groups.forEach((g) => robustOutliers(g.values).forEach((i) => out.add(g.ids[i])));
     return out;
   }, [groups]);
+  // per-patient summary under the plot: cells, median, IQR, flagged outliers
+  const rows = groups.map((g) => {
+    const v = g.values.filter(Number.isFinite).sort(d3.ascending);
+    const nFlag = g.ids.filter((id) => flagged.has(id)).length;
+    return { key: g.key, color: g.color, n: v.length, median: d3.quantile(v, 0.5), q1: d3.quantile(v, 0.25), q3: d3.quantile(v, 0.75), flagged: nFlag };
+  });
+  const allValues = groups.flatMap((g) => g.values).filter(Number.isFinite).sort(d3.ascending);
   if (!metrics.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.qc.empty")} />;
   return (
     <Card
@@ -67,6 +78,11 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
       }
     >
       <div ref={ref}>
+        <Space size="large" wrap style={{ marginBottom: 4 }}>
+          <Statistic title={t("components.single-cell.qc.stat-cells")} value={allValues.length} />
+          <Statistic title={t("components.single-cell.qc.stat-flagged")} value={flagged.size} valueStyle={flagged.size ? { color: INK.danger } : undefined} />
+          <Statistic title={t("components.single-cell.qc.cohort-median", { metric: def?.[1] || "" })} value={formatValue(d3.quantile(allValues, 0.5))} />
+        </Space>
         <BoxStrips
           groups={groups}
           width={Math.max(400, width - 16)}
@@ -76,9 +92,21 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
           flagged={flagged}
           onPoint={(g, k) => onOpenCell && onOpenCell(g.cells[k])}
         />
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          {t("components.single-cell.qc.cohort-help", { count: flagged.size })}
-        </Text>
+        <HintLine text={t("components.single-cell.qc.cohort-help", { count: flagged.size })} />
+        <Table
+          size="small"
+          rowKey="key"
+          pagination={false}
+          style={{ marginTop: 8 }}
+          dataSource={rows}
+          columns={[
+            { title: t("components.single-cell.cohort.patient"), dataIndex: "key", render: (k, r) => <ColorTag color={r.color} style={{ border: "none" }}>{k}</ColorTag> },
+            { title: t("components.single-cell.qc.stat-cells"), dataIndex: "n", align: "right", sorter: (a, b) => a.n - b.n },
+            { title: t("components.single-cell.qc.col-median"), dataIndex: "median", align: "right", sorter: (a, b) => (a.median ?? -Infinity) - (b.median ?? -Infinity), render: (v) => formatValue(v) },
+            { title: t("components.single-cell.qc.col-iqr"), key: "iqr", align: "right", render: (_, r) => (Number.isFinite(r.q1) ? `${formatValue(r.q1)} – ${formatValue(r.q3)}` : "–") },
+            { title: t("components.single-cell.qc.stat-flagged"), dataIndex: "flagged", align: "right", sorter: (a, b) => a.flagged - b.flagged, render: (v, r) => (v ? <Text type="danger">{`${v} (${d3.format(".0%")(v / Math.max(1, r.n))})`}</Text> : "0") },
+          ]}
+        />
       </div>
     </Card>
   );

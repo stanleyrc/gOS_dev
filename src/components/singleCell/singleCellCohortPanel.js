@@ -142,7 +142,14 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
   const cohortFiles = useCohortFiles(summaries, datasets);
-  const [view, setView] = useState("overview");
+  // ?scview=<key> opens a cohort view directly (deep links, e.g. ?scview=qc)
+  const [view, setView] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("scview") || "overview";
+    } catch (error) {
+      return "overview";
+    }
+  });
   const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
   const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
   // Clade F1 filter: drop alterations whose carrier cells do not sit in one clade of the
