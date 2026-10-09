@@ -14,6 +14,8 @@ export const SINGLE_CELL_QC_TAB_KEY = "11";
 export const SINGLE_CELL_REPORT_TAB_KEY = "12";
 // Tab 13 is the circos view of a single cell.
 export const SINGLE_CELL_CIRCOS_TAB_KEY = "13";
+// Tab 17 is the subclonal driver deep-dive.
+export const SINGLE_CELL_DRIVERS_TAB_KEY = "17";
 
 const singleCellHasSignatures = (singleCell) =>
   Boolean(
@@ -108,6 +110,8 @@ export const getDetailTabAvailability = (state = {}) => {
     15: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
     // Tab 16: the patient's part of the precomputed story (_cohort/story.json); the tab shows an empty state without it
     16: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
+    // Tab 17: subclonal driver deep-dive (carriers vs matched non-carriers); needs cells and filtered events
+    17: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0 && (state.FilteredEvents?.filteredEvents || []).length > 0),
   };
 };
 
