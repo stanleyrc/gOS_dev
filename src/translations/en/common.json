@@ -1451,7 +1451,21 @@
         "dosage-title": "Copy number vs expression across patients",
         "dosage-run": "Compute for {{count}} patients",
         "dosage-intro": "Spearman ρ between a gene's copy number (each cell's genome graph) and its expression, per patient, for the chosen genes (defaults: the cohort's amplified / deleted drivers). Loads each patient's expression matrix.",
-        "dosage-help": "Red = expression follows copy number, blue = anti-correlated; * p < 0.01. Grey: fewer than 8 cells with both DNA and RNA."
+        "dosage-help": "Red = expression follows copy number, blue = anti-correlated; * p < 0.01. Grey: fewer than 8 cells with both DNA and RNA.",
+        "sel-title": "Selected cells: {{n}} from {{patients}} patients",
+        "sel-clear": "Clear",
+        "sel-help": "What the selection holds against all loaded cells (× = share among selected / share among all; Fisher's exact test). Markers: Wilcoxon of selected vs other cells within each patient, combined across patients (weighted Stouffer), so patient differences do not pass as markers. Click a gene to plot it below, split by selection.",
+        "sel-markers": "Markers of the selection",
+        "sel-strata": "Within patients: {{strata}}",
+        "sel-no-strata": "No patient has at least 3 selected and 3 other cells, so markers cannot be tested within patients.",
+        "sel-up": "Higher in the selection (q < 0.1)",
+        "sel-down": "Lower in the selection (q < 0.1)",
+        "sel-none": "None",
+        "gene-split-patient": "Per patient",
+        "gene-split-field": "By {{field}}",
+        "gene-split-selection": "Selected vs rest",
+        "gene-selected": "selected",
+        "gene-rest": "rest"
       },
       "compare": {
         "title": "Compare groups",
