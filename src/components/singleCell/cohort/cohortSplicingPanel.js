@@ -75,7 +75,7 @@ function CohortPsiOverview({ rows, patients, picked, onPick }) {
               </g>
             ))}
             <text x={labelW + patients.length * cellW + 8} y={rowH / 2} dy="0.35em" fill="currentColor" opacity={0.75}>
-              {Number.isFinite(r.max_dpsi) ? r.max_dpsi.toFixed(2) : "–"}
+              {Number.isFinite(r.dpsi) ? r.dpsi.toFixed(2) : "–"}
             </text>
           </g>
         );
