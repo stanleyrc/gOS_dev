@@ -95,9 +95,10 @@ export default function GenePairScatter({ patient, cells, groups = [], cnEntry, 
           const r = list.filter((p) => p.x > 0).map((p) => p.y / p.x).sort((a, b) => a - b);
           return r.length ? r[Math.floor(r.length / 2)] : NaN;
         })(),
-        grid: list.length >= 8 ? kde2d(list.map((p) => [p.x, p.y]), { x0: 0, x1: X1, y0: 0, y1: Y1, gx: 56, gy: 56 }) : null,
       }))
       .sort((a, b) => b.list.length - a.list.length);
+    // contours for the largest clones only (readable, and cheap)
+    clones.forEach((k, i) => (k.grid = i < 4 && k.list.length >= 12 ? kde2d(k.list.map((p) => [p.x, p.y]), { x0: 0, x1: X1, y0: 0, y1: Y1, gx: 56, gy: 56 }) : null));
     return { pts, xt, yt, X1, Y1, clones, all: fitLine(pts.map((p) => p.x), pts.map((p) => p.y)) };
   }, [cellIds, groups, cnById, genePos, xKey, yKey, cloneOf]);
 
@@ -192,20 +193,25 @@ export default function GenePairScatter({ patient, cells, groups = [], cnEntry, 
         });
       }
       ctx.restore();
-      // per-clone slope / R² (top left)
-      textRole(ctx, c, "caption", "text");
-      ctx.textAlign = "left";
-      let ty = y0 + 8;
+      // per-clone slope / R² (top left, on a panel so points do not show through)
       const fmt = (f) => (Number.isFinite(f.slope) ? `slope ${f.slope.toFixed(2)} · R² ${f.r2.toFixed(2)}` : "");
-      ctx.fillText(`All (${data.pts.length}) ${fmt(data.all)}`, x0 + 6, ty);
+      const lines = [[`All (${data.pts.length}) ${fmt(data.all)}`, c.text]];
       data.clones
-        .filter((k) => k.list.length >= 5)
-        .slice(0, 5)
-        .forEach((k) => {
-          ty += 14;
-          ctx.fillStyle = colorOf(k.clone);
-          ctx.fillText(`${k.clone} (${k.list.length}) ${k.fit.r2 > 0.3 ? fmt(k.fit) : `ratio ${Number.isFinite(k.ratio) ? k.ratio.toFixed(2) : "–"}`}`, x0 + 6, ty);
-        });
+        .filter((k) => k.list.length >= 10)
+        .slice(0, 4)
+        .forEach((k) => lines.push([`${k.clone} (${k.list.length}) ${k.fit.r2 > 0.3 ? fmt(k.fit) : `ratio ${Number.isFinite(k.ratio) ? k.ratio.toFixed(2) : "–"}`}`, colorOf(k.clone)]));
+      textRole(ctx, c, "caption", "text");
+      const boxW = Math.max(...lines.map(([t]) => ctx.measureText(t).width)) + 12;
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = c.panel;
+      ctx.fillRect(x0 + 2, y0 + 1, boxW, lines.length * 14 + 6);
+      ctx.globalAlpha = 1;
+      lines.forEach(([t, col], k) => {
+        textRole(ctx, c, "caption", "text");
+        ctx.textAlign = "left";
+        ctx.fillStyle = col;
+        ctx.fillText(t, x0 + 8, y0 + 9 + k * 14);
+      });
       return [];
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

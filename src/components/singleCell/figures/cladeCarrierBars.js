@@ -5,7 +5,7 @@ import useContainerWidth from "../useContainerWidth";
 import { geneSetColor, isNormalClone } from "../../../helpers/singleCell/figures";
 import { selectMode } from "./cellSelection";
 
-const PAD = { left: 40, right: 8, top: 10, bottom: 44 };
+const PAD = { left: 40, right: 8, top: 10, bottom: 54 };
 
 /**
  * Fig 4F: proportion of each clade's cells carrying each amplicon (copies >=
@@ -69,11 +69,11 @@ export default function CladeCarrierBars({ cells, groups = [], minCn = 1, cloneC
         textRole(ctx, c, "label", "text");
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillText(fitText(ctx, `${d.clone}`, slot - 2), x0 + i * slot + slot / 2, y1 + 11);
+        ctx.fillText(fitText(ctx, `${d.clone}`.replace(/^clone[\s_-]*/i, ""), slot - 2), x0 + i * slot + slot / 2, y1 + 11);
         textRole(ctx, c, "caption");
         ctx.textBaseline = "top";
         ctx.textAlign = "center";
-        ctx.fillText(`n=${d.n}`, x0 + i * slot + slot / 2, y1 + 25);
+        ctx.fillText(slot >= 34 ? `n=${d.n}` : `${d.n}`, x0 + i * slot + slot / 2, y1 + 25);
         ctx.textBaseline = "middle";
       });
       ctx.strokeStyle = c.axis || c.muted;
@@ -88,6 +88,12 @@ export default function CladeCarrierBars({ cells, groups = [], minCn = 1, cloneC
       textRole(ctx, c, "head");
       ctx.textAlign = "center";
       ctx.fillText("Proportion of cells", 0, 0);
+      ctx.restore();
+      ctx.save();
+      textRole(ctx, c, "caption");
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("Clone (n cells)", x0, y1 + 36);
       ctx.restore();
       const hits = [];
       data.forEach((d, i) => d.bars.forEach((b, k) => hits.push({ x0: barX(i, k), x1: barX(i, k) + bw, y0: Math.min(sy(b.f), y1 - 6), y1, d, b })));
