@@ -72,7 +72,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
     >
       <div ref={ref}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
-        <div style={{ flex: "1 1 280px", minWidth: 260, fontSize: 12 }}>
+        <div className="sc-walk-card" style={{ flex: "1 1 280px", minWidth: 260 }}>
           <div className="sc-walk-facts">
             <Text type="secondary">{t("components.single-cell.ecdna.wf-carriers")}</Text>
             <span><b>{copies.length}</b>{` / ${cellIds.length} cells (${d3.format(".0%")(cellIds.length ? copies.length / cellIds.length : 0)})`}</span>
@@ -83,8 +83,14 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
             {walk.coordinates && <><Text type="secondary">{t("components.single-cell.ecdna.wf-region")}</Text><span>{walk.coordinates}</span></>}
             <Text type="secondary">{t("components.single-cell.ecdna.wf-genes")}</Text>
             <span>
-              {walk.genes.length ? walk.genes.map((g) => <Tag key={g} color={(walk.driver_genes || []).includes(g) ? "volcano" : undefined} style={{ margin: "0 3px 2px 0", fontSize: 11, lineHeight: "16px", paddingInline: 4 }}>{g}</Tag>) : "–"}
-              {hits.length > walk.genes.length && <Text type="secondary">{` +${hits.length - walk.genes.length} overlapping`}</Text>}
+              {walk.genes.map((g) => <Tag key={g} color={(walk.driver_genes || []).includes(g) ? "volcano" : undefined} style={{ margin: "0 3px 2px 0", fontSize: 11, lineHeight: "16px", paddingInline: 4 }}>{g}</Tag>)}
+              {/* other genes overlapping the nodes (all of them when the walk names none) */}
+              {(() => {
+                const others = [...new Set(hits.map((g) => g.name))].filter((g) => !walk.genes.includes(g));
+                if (!others.length) return walk.genes.length ? null : "–";
+                const shown = others.slice(0, walk.genes.length ? 6 : 12);
+                return <Text type="secondary" title={others.join(", ")}>{`${walk.genes.length ? "also " : ""}${shown.join(", ")}${others.length > shown.length ? ` +${others.length - shown.length}` : ""}`}</Text>;
+              })()}
             </span>
           </div>
           {byClone.length > 0 && (
