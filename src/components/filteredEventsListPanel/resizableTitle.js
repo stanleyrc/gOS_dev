@@ -298,7 +298,7 @@ class ResizableTitle extends Component {
       minWidth = MIN_COLUMN_WIDTH,
       className, sortControlOnly, columnKey, draggingColumnKey,
       onColumnDragStart, onColumnDrop, onColumnDragEnd,
-      onClick, onKeyDown, onPointerDownCapture, title, tabIndex,
+      onClick, onKeyDown, onPointerDownCapture, title, tabIndex, headerLabel,
       ...restProps
     } = this.props;
     const dragProps = this.canDragColumn() ? {
@@ -314,6 +314,7 @@ class ResizableTitle extends Component {
       <th
         {...restProps}
         {...dragProps}
+        aria-label={headerLabel ?? restProps["aria-label"]}
         className={[className, this.state.isDropTarget && "filtered-events-column-drop-target"].filter(Boolean).join(" ") || undefined}
         title={sortControlOnly ? undefined : title}
         tabIndex={sortControlOnly ? undefined : tabIndex}

@@ -204,6 +204,32 @@ describe("buildColumnConfig", () => {
     expect(column.onFilter(0, { tier: "0" })).toBe(true);
   });
 
+  test("leaves Tier filtering inactive, including for missing or additional tiers", () => {
+    const records = [{ tier: 1 }, { tier: 2 }, { tier: 3 }, { tier: 4 }, { tier: null }];
+    const column = buildColumnConfig(
+      { id: "tier", title: "Tier", dataIndex: "tier", type: "numeric", filterable: true },
+      records,
+    );
+    expect(column.filteredValue).toBeNull();
+    expect(column.filters.map((filter) => filter.value)).toEqual([1, 2, 3, 4]);
+  });
+
+  test("labels VAF as percentage while retaining raw data for numeric sorting and filters", () => {
+    const settings = require("../../../public/settings.json");
+    const translations = require("../../translations/en/common.json");
+    const definition = settings.filteredEventsColumns.find((column) => column.id === "vaf");
+    const records = Object.freeze([Object.freeze({ vaf: 0.371 }), Object.freeze({ vaf: 0.9 })]);
+    const column = buildColumnConfig(definition, records, {
+      t: (key) => key.split(".").reduce((value, part) => value[part], translations),
+    });
+    expect(column.title).toBe("Variant Allele Frequency (%)");
+    expect(column.render(null, records[0]).props.value).toBe(0.371);
+    expect(column.sorter.compare(records[0], records[1])).toBe(-1);
+    expect(column.onFilter("0.3,0.4", records[0])).toBe(true);
+    expect(column.onFilter("0.3,0.4", records[1])).toBe(false);
+    expect(column.filteredValue).toBeNull();
+  });
+
   test("keeps nonnumeric filter values distinct", () => {
     const column = buildColumnConfig(
       {

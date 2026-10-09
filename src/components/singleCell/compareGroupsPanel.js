@@ -21,6 +21,7 @@ import { ExperimentOutlined, SwapOutlined } from "@ant-design/icons";
 import scaActions from "../../redux/scAnalysis/actions";
 import { searchGenes } from "../../redux/scAnalysis/api";
 import { naturalCompare } from "../../helpers/singleCell/matrix";
+import { SC_GUTTER_INNER } from "./density";
 
 const { Text } = Typography;
 
@@ -170,7 +171,7 @@ export default function CompareGroupsPanel() {
         <Alert type="info" showIcon message={t("components.single-cell.compare.no-rna")} />
       )}
       {sca.service === "ready" && sca.rna?.available && (
-        <Row gutter={[24, 12]}>
+        <Row gutter={SC_GUTTER_INNER}>
           <Col xs={24} xl={12}>
             <Space direction="vertical" size={8} style={{ width: "100%" }}>
               {groupSlot("A")}

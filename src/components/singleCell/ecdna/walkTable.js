@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Checkbox, InputNumber, Space, Table, Tag, Typography } from "antd";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const fmtBp = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} Mb` : v >= 1e3 ? `${(v / 1e3).toFixed(0)} kb` : `${v} bp`);
@@ -44,7 +45,7 @@ export default function WalkTable({ walks, total, filters, setFilters, colorOf, 
         rowSelection={{ selectedRowKeys: selected, onChange: onSelect, columnWidth: 36 }}
         onRow={(w) => ({ onClick: () => onFocus(w.id) })}
       />
-      <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.table-help")}</Text>
+      <HintLine text={t("components.single-cell.ecdna.table-help")} />
     </div>
   );
 }

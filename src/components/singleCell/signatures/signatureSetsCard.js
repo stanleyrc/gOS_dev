@@ -8,6 +8,7 @@ import useContainerWidth from "../useContainerWidth";
 import { ActivityBars, AetiologyLegend, FitCatalogs, Profile, loadCosmic } from "../signaturePanel";
 import { bootstrapShares, decomposeFit, fitSignatures } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
+import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -98,7 +99,7 @@ export default function SignatureSetsCard() {
           <Profile counts={profile.counts} reconstruction={fit ? fit.reconstruction : new Float64Array(96)} width={plotWidth} />
         )}
         {view === "fit" && (
-          <Row gutter={[16, 12]}>
+          <Row gutter={SC_GUTTER}>
             <Col span={24}>
               {backendRow.length + fitRow.length ? (
                 <>

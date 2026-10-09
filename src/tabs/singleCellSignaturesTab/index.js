@@ -5,6 +5,7 @@ import SignatureSetsCard from "../../components/singleCell/signatures/signatureS
 import SignatureComparisonCard from "../../components/singleCell/signatures/signatureComparisonCard";
 import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
+import { SC_GUTTER } from "../../components/singleCell/density";
 
 /**
  * SBS signatures of a single-cell patient: one site set in depth (catalog,
@@ -15,7 +16,7 @@ export default function SingleCellSignaturesTab() {
   const hasTree = useSelector((state) => state.SingleCell.tree.status === "ok");
   return (
     <SingleCellWrapper>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <SignatureComparisonCard />
         </Col>

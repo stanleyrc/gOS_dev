@@ -17,6 +17,7 @@ import { rowMap } from "../../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../../helpers/singleCell/snvSites";
 import { cutTree, labelRuns } from "../../../helpers/singleCell/treeGroups";
 import { fisherExact } from "../../../helpers/singleCell/tests";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const TREE_WIDTH = 240;
@@ -181,7 +182,8 @@ export default function SignatureTreeCard() {
               const h = (c.last - c.first + 1) * rowH;
               const b = burdens?.[c.key];
               const cy = y0 + h / 2;
-              const barH = mode === "cells" ? Math.max(1, h - (h > 3 ? 1 : 0)) : Math.max(6, Math.min(h - 4, 26));
+              // bars and labels stay inside their own row band, so runs of one or two cells don't spill onto their neighbours
+              const barH = mode === "cells" ? Math.max(1, h - (h > 3 ? 1 : 0)) : Math.max(1, Math.min(h - (h > 8 ? 4 : 1), 26));
               const selected = selectedRows.size && d3.range(c.first, c.last + 1).some((r) => selectedRows.has(r));
               const bx = LABEL_W;
               let x = 0;
@@ -199,8 +201,9 @@ export default function SignatureTreeCard() {
                       <text x={10} y={cy + 9} fontSize={10} fill="#8c8c8c">{t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}</text>
                     </>
                   ) : (
-                    <text x={10} y={cy} dy="0.35em" fontSize={10} fill="#262626">{c.label}</text>
+                    h >= 11 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(10, h - 1)} fill="#262626">{c.label}</text>
                   )}
+                  <title>{`${c.label} · ${t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}`}</title>
                   {b &&
                     allSigs.map((s) => {
                       const n = b.counts[s] || 0;
@@ -209,7 +212,7 @@ export default function SignatureTreeCard() {
                       const rect = (
                         <g key={s}>
                           <rect x={bx + x} y={cy - barH / 2} width={Math.max(0, w - 0.6)} height={barH} fill={signatureColorOf(s)} rx={1} />
-                          {w > 34 && barH >= 10 && <text x={bx + x + w / 2} y={cy} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff" pointerEvents="none">{s}</text>}
+                          {w > 34 && barH >= 11 && <text x={bx + x + w / 2} y={cy} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff" pointerEvents="none">{s}</text>}
                           <title>{`${c.label} · ${s}: ${n} mutations (${pct(n / Math.max(1, b.assigned))})`}</title>
                         </g>
                       );
@@ -245,11 +248,11 @@ export default function SignatureTreeCard() {
                 { title: "Fisher p", dataIndex: "p", width: 100, render: (v, r) => <span style={{ color: v < 0.01 ? (r.inShare > r.restShare ? "#cf1322" : "#1d39c4") : undefined, fontWeight: v < 0.01 ? 600 : 400 }}>{v < 1e-4 ? "<1e-4" : v.toFixed(4)}</span> },
               ]}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.clade-vs-rest-help2")}</Text>
+            <HintLine text={t("components.single-cell.signatures.clade-vs-rest-help2")} />
           </div>
         )}
         {allSigs.length > 0 && <AetiologyLegend rows={[{ activities: allSigs.map((s) => ({ signature: s })) }]} />}
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.tree-help2")}</Text>
+        <HintLine text={t("components.single-cell.signatures.tree-help2")} />
       </div>
     </Card>
   );

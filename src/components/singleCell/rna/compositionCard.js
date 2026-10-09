@@ -11,6 +11,7 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { chiSquareUpper } from "../../../helpers/singleCell/tests";
 import { FONT, Swatches, XBandLabels } from "../cohort/charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const HEIGHT = 260;
@@ -112,7 +113,7 @@ export default function CompositionCard({ summary }) {
           </text>
         </svg>
         <Swatches items={data.levels.map((l) => ({ key: l, color: levelColors[l], label: l }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.rna.composition-help")}</Text>
+        <HintLine text={t("components.single-cell.rna.composition-help")} />
       </div>
     </Card>
   );
