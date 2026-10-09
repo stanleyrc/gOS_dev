@@ -67,8 +67,8 @@ export function useCohortRnaFindings({ summaries, files, datafiles, datasets, en
           id: s.caseReportId,
           dataset: datasets.find((d) => `${d.id}` === `${s.record.datasetId}`) || null,
           cells,
-          // drivers need the events; wait for them so the dosage tests run once
-          report: files[s.caseReportId]?.events ? buildPatientReport({ patient: s.caseReportId, events: files[s.caseReportId].events, cells }) : null,
+          // drivers need the events: wait for the patient's files (a patient without events still gets its RNA findings)
+          report: s.caseReportId in files ? buildPatientReport({ patient: s.caseReportId, events: files[s.caseReportId]?.events || [], cells }) : null,
         };
       }),
     [summaries, files, datafiles, datasets]
