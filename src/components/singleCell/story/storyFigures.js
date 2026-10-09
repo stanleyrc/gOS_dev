@@ -64,10 +64,14 @@ export function StoryBars({ figure }) {
 export function StoryScatter({ figure, groupColors = {} }) {
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(500);
-  const pts = figure.points || [];
-  const groups = [...new Set(pts.map((p) => p.group))].sort();
+  // at most 8 colours: the 7 largest groups keep theirs, the rest fold into "Other"
+  const raw = figure.points || [];
+  const sizes = d3.rollup(raw, (v) => v.length, (p) => p.group);
+  const keep = new Set([...sizes.entries()].sort((a, b) => b[1] - a[1]).slice(0, sizes.size > 8 ? 7 : 8).map(([g]) => g));
+  const pts = raw.map((p) => (keep.has(p.group) ? p : { ...p, group: "Other" }));
+  const groups = [...new Set(pts.map((p) => p.group))].sort((a, b) => (a === "Other") - (b === "Other") || `${a}`.localeCompare(`${b}`, undefined, { numeric: true }));
   const series = STORY_SERIES[theme.mode === "dark" ? "dark" : "light"];
-  const color = (g) => groupColors[g] || series[groups.indexOf(g) % 8];
+  const color = (g) => (g === "Other" ? theme.faint : groupColors[g] || series[groups.indexOf(g) % 8]);
   const m = { l: 44, r: 12, t: 8, b: 34 };
   const W = Math.min(560, Math.max(260, width));
   const H = 260;
