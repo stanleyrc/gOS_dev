@@ -1,4 +1,4 @@
-import { compressLongBranches, contourSegments, countBy, figureRows, fitLine, kde2d, leavesUnder, logKde, niceLogDomain, niceTicks, pointInPolygon, pruneLayout } from "./figureMath";
+import { ancestralBinary, packStoreSnv, variantNesting, walkDomains, compressLongBranches, contourSegments, countBy, figureRows, fitLine, kde2d, leavesUnder, logKde, niceLogDomain, niceTicks, pointInPolygon, pruneLayout } from "./figureMath";
 import { layoutTree, parseNewick } from "./newick";
 
 describe("figure math", () => {
@@ -78,6 +78,40 @@ describe("figure math", () => {
     const leaf = (name) => layout.nodes.findIndex((n) => n.name === name);
     // within the clade the branch lengths are kept
     expect(x[leaf("d")] - x[leaf("c")]).toBeCloseTo(1);
+  });
+
+  it("reconstructs a trait carried by one clade", () => {
+    const layout = layoutTree(parseNewick("((a:1,b:1,c:1):1,(d:1,e:1,f:1):1);"));
+    const carriers = new Set(["d", "e", "f"]);
+    const { p } = ancestralBinary(layout, (name) => carriers.has(name));
+    const clade = (names) => layout.nodes.findIndex((n) => !n.isLeaf && n.parent >= 0 && layout.leaves.slice(n.firstLeaf, n.lastLeaf + 1).join() === names);
+    expect(p[clade("d,e,f")]).toBeGreaterThan(0.9);
+    expect(p[clade("a,b,c")]).toBeLessThan(0.1);
+    const leafD = layout.nodes.findIndex((n) => n.name === "d");
+    expect(p[leafD]).toBeCloseTo(1);
+    // unknown leaves do not pull the estimate
+    const r2 = ancestralBinary(layout, (name) => (name === "f" ? null : carriers.has(name)));
+    expect(r2.p[clade("d,e,f")]).toBeGreaterThan(0.85);
+  });
+
+  it("nests ecDNA variants by containment", () => {
+    const w = (id, nodes) => ({ id, nodes: nodes.map(([s, e]) => ({ chromosome: "7", start: s, end: e })) });
+    const walks = [w("short", [[55e6, 55.2e6]]), w("long", [[54e6, 56e6]]), w("other", [[10e6, 11e6]])];
+    const { parent, depth, order } = variantNesting(walks);
+    expect(parent[0]).toBe(1);
+    expect(parent[1]).toBe(-1);
+    expect(parent[2]).toBe(-1);
+    expect(depth[0]).toBe(1);
+    expect(order.indexOf(1)).toBeLessThan(order.indexOf(0));
+  });
+
+  it("pads walk windows and packs store SNVs", () => {
+    const bins = { 7: { startPlace: 1000, startPoint: 1, endPoint: 1e9 } };
+    const d = walkDomains([{ nodes: [{ chromosome: "chr7", start: 10e6, end: 12e6 }] }], bins);
+    expect(d).toEqual([[1000 + 10e6 - 1.5e6, 1000 + 12e6 + 1.5e6]]);
+    const packed = packStoreSnv({ cells: ["a"], alt: [Float32Array.from([1, NaN, 0])], depth: [Float32Array.from([2, NaN, 5])] });
+    expect(Array.from(packed.a.idx)).toEqual([0, 2]);
+    expect(Array.from(packed.a.vaf)).toEqual([125, 0]);
   });
 
   it("counts levels", () => {

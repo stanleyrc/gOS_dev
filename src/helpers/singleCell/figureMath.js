@@ -3,6 +3,8 @@
 // lasso / brush hit tests and tree pruning for the selected-cells popup.
 // d3-free so jest can run it.
 
+import { walkContainment } from "./walks";
+
 const finite = (v) => Number.isFinite(v);
 
 /** Silverman bandwidth of a sample (falls back to `min` for tiny or flat samples). */
@@ -309,4 +311,177 @@ export function compressLongBranches(layout, { factor = 8, minFrac = 0.06 } = {}
     if (x[i] > maxX) maxX = x[i];
   });
   return { x, broken, maxX };
+}
+
+/**
+ * Marginal ancestral states of a binary trait (e.g. carries an ecDNA walk)
+ * on a tree layout, under a symmetric two-state Markov model with the rate
+ * chosen by maximum likelihood over a grid. `present(name)` returns true /
+ * false for measured leaves and null for unknown ones. Branch lengths are
+ * the layout depths (node.x). Returns { p: Float64Array (P(present) per
+ * node), rate, logLik }.
+ */
+export function ancestralBinary(layout, present) {
+  const nodes = layout?.nodes || [];
+  const N = nodes.length;
+  const p = new Float64Array(N).fill(NaN);
+  if (!N) return { p, rate: NaN, logLik: NaN };
+  const depth = Math.max(1e-9, layout.maxX || nodes.reduce((m, n) => Math.max(m, n.x), 0));
+  const tOf = (i) => (nodes[i].parent < 0 ? 0 : Math.max(depth * 1e-4, nodes[i].x - nodes[nodes[i].parent].x));
+  const leafL = nodes.map((n) => {
+    if (!n.isLeaf) return null;
+    const v = present(n.name);
+    return v == null ? [1, 1] : v ? [0, 1] : [1, 0];
+  });
+  const trans = (q, t) => {
+    const e = Math.exp(-2 * q * t);
+    return [0.5 + 0.5 * e, 0.5 - 0.5 * e]; // [same, change]
+  };
+  // up pass: per-node partial likelihoods (normalised, log scale kept separately)
+  const upPass = (q) => {
+    const L = new Array(N);
+    let logScale = 0;
+    for (let i = N - 1; i >= 0; i -= 1) {
+      const n = nodes[i];
+      if (n.isLeaf) {
+        L[i] = leafL[i];
+        continue;
+      }
+      let a = 1;
+      let b = 1;
+      n.children.forEach((c) => {
+        const [s, d] = trans(q, tOf(c));
+        a *= s * L[c][0] + d * L[c][1];
+        b *= d * L[c][0] + s * L[c][1];
+      });
+      const m = Math.max(a, b) || 1e-300;
+      logScale += Math.log(m);
+      L[i] = [a / m, b / m];
+    }
+    const root = nodes.findIndex((n) => n.parent < 0);
+    return { L, root, logLik: logScale + Math.log(0.5 * L[root][0] + 0.5 * L[root][1] || 1e-300) };
+  };
+  let best = null;
+  [0.03, 0.1, 0.3, 1, 3, 10, 30].forEach((k) => {
+    const q = k / depth;
+    const r = upPass(q);
+    if (!best || r.logLik > best.logLik) best = { ...r, q };
+  });
+  const { L, root, q } = best;
+  // down pass: U[i] = likelihood of everything outside the subtree of i, given i's state
+  const U = new Array(N);
+  U[root] = [0.5, 0.5];
+  for (let i = 0; i < N; i += 1) {
+    const n = nodes[i];
+    if (n.isLeaf || !U[i]) continue;
+    const msgs = n.children.map((c) => {
+      const [s, d] = trans(q, tOf(c));
+      return [s * L[c][0] + d * L[c][1], d * L[c][0] + s * L[c][1]];
+    });
+    n.children.forEach((c, k) => {
+      let a = U[i][0];
+      let b = U[i][1];
+      msgs.forEach((m, j) => {
+        if (j === k) return;
+        a *= m[0];
+        b *= m[1];
+      });
+      const [s, d] = trans(q, tOf(c));
+      const u0 = a * s + b * d;
+      const u1 = a * d + b * s;
+      const sum = u0 + u1 || 1e-300;
+      U[c] = [u0 / sum, u1 / sum];
+    });
+  }
+  for (let i = 0; i < N; i += 1) {
+    const a = U[i][0] * L[i][0];
+    const b = U[i][1] * L[i][1];
+    p[i] = a + b > 0 ? b / (a + b) : NaN;
+  }
+  return { p, rate: q, logLik: best.logLik };
+}
+
+/**
+ * Nesting of ecDNA variants (Fig 4C): each walk's parent is the smallest
+ * other walk holding >= `minShared` of its bases. Returns { parent: Int32Array
+ * (-1 = root), depth: Int32Array, order: walk indices in tree pre-order }.
+ */
+export function variantNesting(walks, { minShared = 0.9 } = {}) {
+  const n = walks.length;
+  const parent = new Int32Array(n).fill(-1);
+  const depth = new Int32Array(n);
+  if (!n) return { parent, depth, order: [] };
+  const { matrix, lengths } = walkContainment(walks);
+  for (let i = 0; i < n; i += 1) {
+    let best = -1;
+    for (let j = 0; j < n; j += 1) {
+      if (i === j || matrix[i][j] < minShared) continue;
+      // a parent must be larger (ties: the lower index, so two identical walks do not point at each other)
+      if (lengths[j] < lengths[i] || (lengths[j] === lengths[i] && j > i)) continue;
+      if (best < 0 || lengths[j] < lengths[best]) best = j;
+    }
+    parent[i] = best;
+  }
+  const kids = Array.from({ length: n }, () => []);
+  parent.forEach((p, i) => p >= 0 && kids[p].push(i));
+  const order = [];
+  const visit = (i, d) => {
+    depth[i] = d;
+    order.push(i);
+    kids[i].sort((a, b) => lengths[b] - lengths[a]).forEach((k) => visit(k, d + 1));
+  };
+  [...Array(n).keys()].filter((i) => parent[i] < 0).sort((a, b) => lengths[b] - lengths[a]).forEach((r) => visit(r, 0));
+  return { parent, depth, order };
+}
+
+/** Padded global windows ([a, b]) around walk nodes, one per chromosome. chromoBins: { chr: { startPlace, startPoint, endPoint } }. */
+export function walkDomains(walks, chromoBins, { pad = 1.5e6, frac = 0.25 } = {}) {
+  const by = new Map();
+  walks.forEach((w) =>
+    (w.nodes || []).forEach((nd) => {
+      const chr = `${nd.chromosome}`.replace(/^chr/, "");
+      if (!chromoBins?.[chr]) return;
+      const s = Math.min(Number(nd.start), Number(nd.end));
+      const e = Math.max(Number(nd.start), Number(nd.end));
+      const cur = by.get(chr);
+      by.set(chr, cur ? [Math.min(cur[0], s), Math.max(cur[1], e)] : [s, e]);
+    })
+  );
+  return [...by.entries()]
+    .map(([chr, [s, e]]) => {
+      const bin = chromoBins[chr];
+      const p = Math.max(pad, frac * (e - s));
+      const a = bin.startPlace + Math.max(bin.startPoint ?? 1, s - p);
+      const b = bin.startPlace + Math.min(bin.endPoint ?? e + p, e + p);
+      return [a, b];
+    })
+    .filter((d) => d[1] > d[0])
+    .sort((x, y) => x[0] - y[0]);
+}
+
+/**
+ * The store's SNV matrix (helpers/singleCell/cellFiles snvFromSparse: per-cell
+ * alt / depth arrays) as packed per-cell reads { cellId: { idx, vaf (0-250) } },
+ * the layout figures.js snvTreeOrder / binSnvMatrix take.
+ */
+export function packStoreSnv(data) {
+  const out = {};
+  if (!data?.cells) return out;
+  data.cells.forEach((id, r) => {
+    const a = data.alt[r];
+    const d = data.depth[r];
+    let k = 0;
+    for (let j = 0; j < d.length; j += 1) if (d[j] > 0) k += 1;
+    const idx = new Int32Array(k);
+    const vaf = new Uint8Array(k);
+    k = 0;
+    for (let j = 0; j < d.length; j += 1) {
+      if (!(d[j] > 0)) continue;
+      idx[k] = j;
+      vaf[k] = Math.round((250 * (a[j] || 0)) / d[j]);
+      k += 1;
+    }
+    out[id] = { idx, vaf };
+  });
+  return out;
 }

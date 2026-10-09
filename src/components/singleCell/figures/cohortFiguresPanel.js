@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Card, Col, Collapse, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tooltip, Typography } from "antd";
 import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
@@ -14,7 +14,8 @@ import { Provenance } from "../hintLine";
 import { useFigureStyleName } from "./figureCanvas";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
-import CloneFigure from "./cloneFigure";
+import PatientFigure, { PatientVariants } from "./patientFigure";
+import ScEventModal from "../scEventModal";
 import GenePairScatter from "./genePairScatter";
 import CladeCarrierBars from "./cladeCarrierBars";
 import SelectedCellsModal from "./selectedCellsModal";
@@ -127,7 +128,21 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   // patient view selection
   const [patient, setPatient] = useState(null);
   const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "gene:<name>" | "f:<finding key>"
-  const current = per.find((p) => p.patient === patient) || withAmps[0] || per[0];
+  // default: the patient with the most ecDNA walks among those with an SNV matrix (BWH70 in the paper's Fig 4)
+  const richest = useMemo(() => [...withAmps].sort((a, b) => (b.nVariants > 0) - (a.nVariants > 0) || b.groups.reduce((s, g) => s + g.walks.length, 0) - a.groups.reduce((s, g) => s + g.walks.length, 0))[0], [withAmps]);
+  const current = per.find((p) => p.patient === patient) || richest || per[0];
+  const [focusWalkId, setFocusWalkId] = useState(null);
+  useEffect(() => setFocusWalkId(null), [current?.patient]);
+  // the cohort selection drives the loaded patient's selection (tree, heatmap, report side panels)
+  const storePatient = useSelector((s) => s.SingleCell.patient?.caseReportId);
+  const storeSelection = useSelector((s) => s.SingleCell.selectedCellIds);
+  useEffect(() => {
+    if (!selection || `${storePatient}` !== `${selection.patient}`) return;
+    const cur = storeSelection || [];
+    if (cur.length === selection.cells.size && cur.every((id) => selection.cells.has(id))) return;
+    dispatch(singleCellActions.updateSelection([...selection.cells]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection, storePatient]);
   const marked = useMemo(() => (selection && selection.patient === current?.patient ? { cells: selection.cells, label: selection.label, key: `sel:${selection.label}` } : null), [selection, current]);
 
   const genePositions = useMemo(() => {
@@ -290,7 +305,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
           <div ref={patientRef} style={{ scrollMarginTop: 12 }} />
           <Card
             size="small"
-            title={<Space><BarChartOutlined />Clonal amplicon view <Provenance id="figClonalAmplicon" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B / 5B / 5D</Text></Space>}
+            title={<Space><BarChartOutlined />Clonal amplicon figure <Provenance id="figClonalAmplicon" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B–C / 5D · live: the patient&apos;s tree, cells and walks</Text></Space>}
             extra={
               <Space wrap size={8}>
                 <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
@@ -299,19 +314,21 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             }
           >
             {current && (
-              <CloneFigure
+              <PatientFigure
                 patient={current.patient}
-                layout={current.tree}
-                cells={current.cells}
-                groups={current.groups}
-                snv={current.snvPacked ? { packed: current.snvPacked, nVariants: current.nVariants } : null}
-                cnEntry={cnRows[current.patient]}
-                domains={domains}
-                chromoBins={chromoBins}
-                genes={genesInRegion}
-                cloneColors={cloneColors}
-                selected={selectedHere}
-                onSelect={selectHere}
+                events={current.events}
+                focusWalkId={focusWalkId}
+                onFocusWalk={setFocusWalkId}
+                onSelectCells={(ids, label) => select(current.patient, ids, { label })}
+              />
+            )}
+            {current && (
+              <PatientVariants
+                patient={current.patient}
+                events={current.events}
+                focusWalkId={focusWalkId}
+                onFocusWalk={setFocusWalkId}
+                onSelectCells={(ids, label) => select(current.patient, ids, { label })}
               />
             )}
             <Row gutter={[24, 16]} style={{ marginTop: 14 }}>
@@ -350,6 +367,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
           </Card>
         </Col>
       </Row>
+      <ScEventModal />
       <SelectedCellsModal per={per} cnRows={cnRows} chromoBins={chromoBins} cloneColors={cloneColors} domains={domains} genes={genesInRegion} onOpenCell={onOpenCell} getContainer={() => rootRef.current || document.body} />
     </div>
   );
