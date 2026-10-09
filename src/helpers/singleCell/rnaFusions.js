@@ -37,6 +37,14 @@ export const cellReads = (c) => (Number(c?.split1) || 0) + (Number(c?.split2) ||
 /** Total reads of a fusion. */
 export const fusionReads = (f) => (Number(f?.split_reads) || 0) + (Number(f?.discordant_mates) || 0);
 export const isReadThrough = (f) => /read-?through/i.test(`${f?.type || ""}`);
+/** 5'-5' / 3'-3' orientation: cannot make a productive transcript (shown de-emphasised). */
+export const isNonProductive = (f) => /5'-5'|3'-3'/.test(`${f?.type || ""}`);
+/** Display name of an Arriba gene field: the first gene ("A(123),B(45)" -> "A"); `rest` the others, for a tooltip. */
+export function geneDisplay(g) {
+  const parts = `${g || ""}`.split(",").map((p) => p.trim()).filter(Boolean);
+  const first = (parts[0] || "?").replace(/\(.*?\)/g, "");
+  return { name: first, rest: parts.slice(1), full: `${g || ""}`, intergenic: /\(\d+\)/.test(`${g || ""}`) };
+}
 
 /** Validated, normalised fusions.json (missing fields filled, cells sorted by reads). */
 export function normalizeFusions(json) {
@@ -53,7 +61,8 @@ export function normalizeFusions(json) {
     return {
       ...f,
       id: f.id || `${f.gene1}::${f.gene2}|${f.breakpoint1}|${f.breakpoint2}|${k}`,
-      label: `${f.gene1 || "?"}::${f.gene2 || "?"}`,
+      label: `${geneDisplay(f.gene1).name}::${geneDisplay(f.gene2).name}`,
+      known: Boolean(f.known),
       cells,
       n_cells: Number.isFinite(f.n_cells) ? f.n_cells : cells.length,
       n_cells_dna: Number.isFinite(f.n_cells_dna) ? f.n_cells_dna : cells.filter((c) => c.cell_id).length,
@@ -66,15 +75,16 @@ export function normalizeFusions(json) {
 }
 
 /** Fusions passing the table filters. */
-export function filterFusions(fusions, { minCells = 1, confidence = "low", hideReadThrough = false, query = "" } = {}) {
+export function filterFusions(fusions, { minCells = 1, confidence = "low", hideReadThrough = false, query = "", keepDnaMatched = false, knownOnly = false } = {}) {
   const minRank = confidenceRank(confidence);
   const q = `${query || ""}`.trim().toUpperCase();
   return (fusions || []).filter(
     (f) =>
-      (f.n_cells || 0) >= minCells &&
+      ((f.n_cells || 0) >= minCells || (keepDnaMatched && Boolean(f.dna_match))) &&
+      (!knownOnly || f.known) &&
       confidenceRank(f.confidence) >= minRank &&
       !(hideReadThrough && isReadThrough(f)) &&
-      (!q || `${f.gene1}::${f.gene2}`.toUpperCase().includes(q))
+      (!q || `${f.gene1}::${f.gene2}`.toUpperCase().includes(q) || `${f.label || ""}`.toUpperCase().includes(q))
   );
 }
 
