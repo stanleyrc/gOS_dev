@@ -61,7 +61,7 @@ export default function CohortSplicingPanel({ dataset }) {
     <Space>
       <BranchesOutlined />
       <span>{t(`${k}.cohort-title`)}</span>
-      <HintLine inline text={t(`${k}.cohort-help`)} />
+      <HintLine inline provenance="cohortSplicing" text={t(`${k}.cohort-help`)} />
     </Space>
   );
   if (!data) {

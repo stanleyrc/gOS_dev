@@ -11,6 +11,8 @@ import { SBS96, SBS_COLORS, cosine, sbs96Counts } from "../../../helpers/singleC
 import { patientColor } from "./charts";
 import CohortSignatureMatrix from "./cohortSignatureMatrix";
 import signatureMetadata from "../../../translations/en/signatures.json";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const SETS = ["truncal", "subclonal", "private"];
@@ -39,14 +41,14 @@ function StackBar({ acts, x, y, width, height, mode, highlight, onHover, label }
           const el = (
             <g key={sig} onMouseEnter={() => onHover && onHover(sig)} onMouseLeave={() => onHover && onHover(null)}>
               <rect x={cx} y={y} width={Math.max(0, w - 0.6)} height={height} fill={signatureColorOf(sig)} opacity={highlight && highlight !== sig ? 0.25 : 1} rx={1} />
-              {w > 36 && <text x={cx + w / 2} y={y + height / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff" pointerEvents="none">{sig}</text>}
+              {w > 36 && <text x={cx + w / 2} y={y + height / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">{sig}</text>}
               <title>{`${label} · ${sig}: ${Math.round(v)} mutations (${pct(v / total)})${aetiology(sig) ? `\n${aetiology(sig)}` : ""}`}</title>
             </g>
           );
           cx += w;
           return el;
         })}
-      {mode === "count" && <text x={x + width + 4} y={y + height / 2} dy="0.35em" fontSize={10} fill="#8c8c8c">{`n=${Math.round(total)}`}</text>}
+      {mode === "count" && <text x={x + width + 4} y={y + height / 2} dy="0.35em" fontSize={11} fill={INK.muted}>{`n=${Math.round(total)}`}</text>}
     </g>
   );
 }
@@ -64,17 +66,17 @@ function EvolutionView({ summaries, files, width, mode, highlight, setHighlight,
       {rows.map((s, i) => (
         <g key={s.caseReportId} transform={`translate(0,${i * groupH + 4})`}>
           <rect x={0} y={-2} width={4} height={groupH - 8} fill={patientColor(summaries.indexOf(s))} />
-          <text x={10} y={6} dy="0.35em" fontSize={12} fontWeight={600} fill="#262626">{s.caseReportId}</text>
+          <text x={10} y={6} dy="0.35em" fontSize={TYPE.label} fontWeight={600} fill={INK.text}>{s.caseReportId}</text>
           {SETS.map((name, k) => {
             const acts = setActivities(files[s.caseReportId], name);
             const y = 14 + k * (rowH + 3);
             return (
               <g key={name}>
-                <text x={LEFT - 6} y={y + rowH / 2} dy="0.35em" textAnchor="end" fontSize={10} fill="#595959">{t(`components.single-cell.cohort.sig-set-${name}`)}</text>
+                <text x={LEFT - 6} y={y + rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.textSecondary}>{t(`components.single-cell.cohort.sig-set-${name}`)}</text>
                 {Object.keys(acts).length ? (
                   <StackBar acts={mode === "count" ? acts : shares(acts)} x={LEFT} y={y} width={mode === "count" ? (barW * d3.sum(Object.values(acts))) / Math.max(1, ...SETS.map((n) => d3.sum(Object.values(setActivities(files[s.caseReportId], n))))) : barW} height={rowH} mode={mode} highlight={highlight} onHover={setHighlight} label={`${s.caseReportId} ${name}`} />
                 ) : (
-                  <text x={LEFT} y={y + rowH / 2} dy="0.35em" fontSize={10} fill="#bfbfbf">–</text>
+                  <text x={LEFT} y={y + rowH / 2} dy="0.35em" fontSize={11} fill={INK.faint}>–</text>
                 )}
               </g>
             );
@@ -118,10 +120,10 @@ function SlopeView({ summaries, files, width, highlight, setHighlight, t }) {
         return (
           <g key={sig} transform={`translate(${x0},${y0})`} opacity={dim ? 0.3 : 1} onMouseEnter={() => setHighlight(sig)} onMouseLeave={() => setHighlight(null)}>
             <rect x={6} y={6} width={6} height={10} fill={signatureColorOf(sig)} />
-            <text x={16} y={11} dy="0.35em" fontSize={12} fontWeight={600} fill="#262626">{sig}</text>
-            <text x={cellW - 8} y={11} dy="0.35em" textAnchor="end" fontSize={10} fill={meanB - meanA > 0.05 ? "#d4380d" : meanB - meanA < -0.05 ? "#1d39c4" : "#8c8c8c"}>{d3.format("+.0%")(meanB - meanA)}</text>
-            <line x1={40} x2={cellW - 40} y1={y(0)} y2={y(0)} stroke="#d9d9d9" />
-            {[0.5, 1].map((v) => <text key={v} x={34} y={y(v)} dy="0.35em" textAnchor="end" fontSize={8} fill="#bfbfbf">{pct(v)}</text>)}
+            <text x={16} y={11} dy="0.35em" fontSize={TYPE.label} fontWeight={600} fill={INK.text}>{sig}</text>
+            <text x={cellW - 8} y={11} dy="0.35em" textAnchor="end" fontSize={11} fill={meanB - meanA > 0.05 ? "#d4380d" : meanB - meanA < -0.05 ? "#1d39c4" : "#8c8c8c"}>{d3.format("+.0%")(meanB - meanA)}</text>
+            <line x1={40} x2={cellW - 40} y1={y(0)} y2={y(0)} stroke={INK.border} />
+            {[0.5, 1].map((v) => <text key={v} x={34} y={y(v)} dy="0.35em" textAnchor="end" fontSize={9.5} fill={INK.faint}>{pct(v)}</text>)}
             {vals.map((v) => (
               <g key={v.patient}>
                 <line x1={40} x2={cellW - 40} y1={y(v.a)} y2={y(v.b)} stroke={patientColor(v.k)} strokeWidth={1.6} />
@@ -130,9 +132,9 @@ function SlopeView({ summaries, files, width, highlight, setHighlight, t }) {
                 <title>{`${v.patient} · ${sig}: ${pct(v.a)} truncal → ${pct(v.b)} later`}</title>
               </g>
             ))}
-            <line x1={40} x2={cellW - 40} y1={y(meanA)} y2={y(meanB)} stroke="#262626" strokeWidth={2.4} strokeDasharray="4 3" />
-            <text x={40} y={cellH - 14} textAnchor="middle" fontSize={9} fill="#8c8c8c">{t("components.single-cell.cohort.sig-set-truncal")}</text>
-            <text x={cellW - 40} y={cellH - 14} textAnchor="middle" fontSize={9} fill="#8c8c8c">{t("components.single-cell.cohort.sig-later")}</text>
+            <line x1={40} x2={cellW - 40} y1={y(meanA)} y2={y(meanB)} stroke={INK.text} strokeWidth={2.4} strokeDasharray="4 3" />
+            <text x={40} y={cellH - 14} textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted}>{t("components.single-cell.cohort.sig-set-truncal")}</text>
+            <text x={cellW - 40} y={cellH - 14} textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted}>{t("components.single-cell.cohort.sig-later")}</text>
           </g>
         );
       })}
@@ -171,7 +173,7 @@ function SpectraView({ summaries, files, width, t }) {
           {Object.entries(SBS_COLORS).map(([sub, color], k) => (
             <g key={sub}>
               <rect x={30 + k * 16 * w} y={0} width={16 * w - 1} height={6} fill={color} />
-              <text x={30 + (k + 0.5) * 16 * w} y={13} textAnchor="middle" fontSize={9} fill="#595959">{sub}</text>
+              <text x={30 + (k + 0.5) * 16 * w} y={13} textAnchor="middle" fontSize={TYPE.micro} fill={INK.textSecondary}>{sub}</text>
             </g>
           ))}
           {spectra.map((s, i) => {
@@ -179,28 +181,28 @@ function SpectraView({ summaries, files, width, t }) {
             const y0 = 16 + i * (H + 10);
             return (
               <g key={s.patient} transform={`translate(0,${y0})`}>
-                <text x={30} y={8} fontSize={11} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · n=${s.used}`}</text>
+                <text x={30} y={8} fontSize={TYPE.tick} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · n=${s.used}`}</text>
                 {SBS96.map((ch, c) => {
                   const h = (s.counts[c] / max) * (H - 14);
                   return <rect key={ch} x={30 + c * w} y={H - h} width={Math.max(1, w - 0.8)} height={h} fill={SBS_COLORS[ch.slice(2, 5)]}><title>{`${s.patient} ${ch}: ${s.counts[c]}`}</title></rect>;
                 })}
-                <line x1={30} x2={30 + 96 * w} y1={H} y2={H} stroke="#d9d9d9" />
+                <line x1={30} x2={30 + 96 * w} y1={H} y2={H} stroke={INK.border} />
               </g>
             );
           })}
         </svg>
         <svg width={simW} height={60 + spectra.length * cell + 10}>
-          <text x={0} y={12} fontSize={11} fontWeight={600} fill="#262626">{t("components.single-cell.cohort.sig-similarity")}</text>
+          <text x={0} y={12} fontSize={TYPE.tick} fontWeight={600} fill={INK.text}>{t("components.single-cell.cohort.sig-similarity")}</text>
           {spectra.map((a, i) => (
             <g key={a.patient}>
-              <text x={56} y={60 + (i + 0.5) * cell} dy="0.35em" textAnchor="end" fontSize={9} fill={patientColor(a.k)}>{a.patient}</text>
-              <text transform={`translate(${60 + (i + 0.5) * cell},56) rotate(-45)`} fontSize={9} fill={patientColor(a.k)}>{a.patient}</text>
+              <text x={56} y={60 + (i + 0.5) * cell} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={patientColor(a.k)}>{a.patient}</text>
+              <text transform={`translate(${60 + (i + 0.5) * cell},56) rotate(-45)`} fontSize={TYPE.micro} fill={patientColor(a.k)}>{a.patient}</text>
               {spectra.map((b, j) => {
                 const v = cosine(a.counts, b.counts);
                 return (
                   <g key={b.patient}>
                     <rect x={60 + j * cell} y={60 + i * cell} width={cell - 1} height={cell - 1} fill={d3.interpolateBlues(Math.max(0, (v - 0.5) * 2))} />
-                    <text x={60 + (j + 0.5) * cell} y={60 + (i + 0.5) * cell} dy="0.35em" textAnchor="middle" fontSize={8} fill={v > 0.85 ? "#fff" : "#262626"}>{v.toFixed(2)}</text>
+                    <text x={60 + (j + 0.5) * cell} y={60 + (i + 0.5) * cell} dy="0.35em" textAnchor="middle" fontSize={9.5} fill={v > 0.85 ? "#fff" : "#262626"}>{v.toFixed(2)}</text>
                     <title>{`cosine(${a.patient}, ${b.patient}) = ${v.toFixed(3)}`}</title>
                   </g>
                 );
@@ -232,12 +234,12 @@ function ClonesView({ summaries, files, width, mode, highlight, setHighlight, t 
       {blocks.map((g) => (
         <g key={g.s.caseReportId} transform={`translate(0,${g.top})`}>
           <rect x={0} y={0} width={4} height={12 + g.sets.length * 18} fill={patientColor(g.k)} />
-          <text x={10} y={6} dy="0.35em" fontSize={12} fontWeight={600} fill="#262626">{g.s.caseReportId}</text>
+          <text x={10} y={6} dy="0.35em" fontSize={TYPE.label} fontWeight={600} fill={INK.text}>{g.s.caseReportId}</text>
           {g.sets.map((set, i) => {
             const acts = Object.fromEntries((set.activities || []).map((a) => [a.signature, Number(a.activity) || 0]));
             return (
               <g key={set.name}>
-                <text x={LEFT - 6} y={16 + i * 18 + 7} dy="0.35em" textAnchor="end" fontSize={10} fill="#595959">{`${set.name.replace(/^clone: /, "")} (n=${set.n ?? Math.round(d3.sum(Object.values(acts)))})`}</text>
+                <text x={LEFT - 6} y={16 + i * 18 + 7} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.textSecondary}>{`${set.name.replace(/^clone: /, "")} (n=${set.n ?? Math.round(d3.sum(Object.values(acts)))})`}</text>
                 <StackBar acts={mode === "count" ? acts : shares(acts)} x={LEFT} y={16 + i * 18} width={barW} height={14} mode="fraction" highlight={highlight} onHover={setHighlight} label={`${g.s.caseReportId} ${set.name}`} />
               </g>
             );
@@ -320,7 +322,7 @@ export default function CohortSignaturesPanel({ summaries, files }) {
   return (
     <Card
       size="small"
-      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.signatures-title")}</Space>}
+      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.signatures-title")}<Provenance id="cohortSignatures" /></Space>}
       extra={
         <Space wrap>
           <Segmented size="small" value={view} onChange={setView} options={["evolution", "slope", "matrix", "spectra", "clones", "table"].map((v) => ({ value: v, label: t(`components.single-cell.cohort.sig-view-${v}`) }))} />
@@ -339,7 +341,7 @@ export default function CohortSignaturesPanel({ summaries, files }) {
         {view === "clones" && <ClonesView {...common} />}
         {view === "table" && <SummaryTable summaries={summaries} files={files} t={t} />}
         {view !== "table" && view !== "spectra" && <AetiologyLegend rows={legendRows} />}
-        <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 4 }}>{t(`components.single-cell.cohort.sig-help-${view}`)}</Text>
+        <Text type="secondary" style={{ fontSize: 13, display: "block", marginTop: 4 }}>{t(`components.single-cell.cohort.sig-help-${view}`)}</Text>
       </div>
     </Card>
   );

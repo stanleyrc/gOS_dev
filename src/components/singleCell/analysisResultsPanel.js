@@ -7,6 +7,7 @@ import { AiOutlineDownload } from "react-icons/ai";
 import scaActions from "../../redux/scAnalysis/actions";
 import genesActions from "../../redux/genes/actions";
 import useContainerWidth from "./useContainerWidth";
+import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const SIG_Q = 0.05;
@@ -58,25 +59,25 @@ export function Volcano({ genes, labels, selectedGene, onGene }) {
       <svg width={width} height={height} role="img" aria-label="Volcano plot">
         {x.ticks(7).map((tk) => (
           <g key={`x${tk}`}>
-            <line x1={x(tk)} x2={x(tk)} y1={m.top} y2={height - m.bottom} stroke="#f0f0f0" />
-            <text x={x(tk)} y={height - m.bottom + 16} textAnchor="middle" fontSize="11" fill="#8c8c8c">
+            <line x1={x(tk)} x2={x(tk)} y1={m.top} y2={height - m.bottom} stroke={INK.grid} />
+            <text x={x(tk)} y={height - m.bottom + 16} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>
               {tk}
             </text>
           </g>
         ))}
         {y.ticks(5).map((tk) => (
           <g key={`y${tk}`}>
-            <line x1={m.left} x2={width - m.right} y1={y(tk)} y2={y(tk)} stroke="#f0f0f0" />
-            <text x={m.left - 8} y={y(tk) + 4} textAnchor="end" fontSize="11" fill="#8c8c8c">
+            <line x1={m.left} x2={width - m.right} y1={y(tk)} y2={y(tk)} stroke={INK.grid} />
+            <text x={m.left - 8} y={y(tk) + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>
               {tk}
             </text>
           </g>
         ))}
-        <line x1={x(0)} x2={x(0)} y1={m.top} y2={height - m.bottom} stroke="#bfbfbf" />
-        <text x={(m.left + width - m.right) / 2} y={height - 6} textAnchor="middle" fontSize="12" fill="#595959">
+        <line x1={x(0)} x2={x(0)} y1={m.top} y2={height - m.bottom} stroke={INK.axis} />
+        <text x={(m.left + width - m.right) / 2} y={height - 6} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
           {`log2 fold change  (← higher in ${labels?.B || "B"} · higher in ${labels?.A || "A"} →)`}
         </text>
-        <text transform={`translate(14 ${(m.top + height - m.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize="12" fill="#595959">
+        <text transform={`translate(14 ${(m.top + height - m.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
           −log10 p
         </text>
         {points.map((p) => (
@@ -100,8 +101,8 @@ export function Volcano({ genes, labels, selectedGene, onGene }) {
             x={x(p.x) + (p.x > 0 ? 6 : -6)}
             y={y(p.y) + 4}
             textAnchor={p.x > 0 ? "start" : "end"}
-            fontSize="11"
-            fill="#262626"
+            fontSize={TYPE.tick}
+            fill={INK.text}
             style={{ cursor: "pointer" }}
             onClick={() => onGene(p.gene)}
           >

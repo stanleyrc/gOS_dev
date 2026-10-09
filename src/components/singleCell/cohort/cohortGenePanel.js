@@ -9,6 +9,8 @@ import { EVENT_CLASS_ORDER, eventClass } from "../../../helpers/singleCell/cohor
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -89,7 +91,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
         return (
           <Space size={2} wrap>
             {Object.entries(byClass).map(([cls, c]) => (
-              <span key={cls} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12 }}>
+              <span key={cls} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13 }}>
                 <span style={{ width: 8, height: 8, background: CLASS_COLORS[cls], borderRadius: 2 }} />
                 {`${c.cells} (${pct(c.fraction)})`}
               </span>
@@ -103,7 +105,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   return (
     <Card
       size="small"
-      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.genes-title")}</Space>}
+      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.genes-title")}<Provenance id="oncoprint" /></Space>}
       extra={
         <Space wrap>
           <Select
@@ -153,19 +155,19 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                       const h = y(acc) - yTop;
                       acc += v;
                       return (
-                        <rect key={cls} x={x1(p)} y={yTop} width={x1.bandwidth()} height={Math.max(0, h)} fill={CLASS_COLORS[cls]} stroke="#fff" strokeWidth={0.5}>
+                        <rect key={cls} x={x1(p)} y={yTop} width={x1.bandwidth()} height={Math.max(0, h)} fill={CLASS_COLORS[cls]} stroke={INK.panel} strokeWidth={0.5}>
                           <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})`}</title>
                         </rect>
                       );
                     })}
-                    <text x={x1(p) + x1.bandwidth() / 2} y={HEIGHT - M.bottom + 12} textAnchor="middle" fontSize={9} fill="#8c8c8c" transform={`rotate(-50 ${x1(p) + x1.bandwidth() / 2} ${HEIGHT - M.bottom + 12})`}>{p}</text>
+                    <text x={x1(p) + x1.bandwidth() / 2} y={HEIGHT - M.bottom + 12} textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted} transform={`rotate(-50 ${x1(p) + x1.bandwidth() / 2} ${HEIGHT - M.bottom + 12})`}>{p}</text>
                   </g>
                 );
               })}
             </g>
           ))}
           <XBandLabels scale={x0} y={HEIGHT - 8} />
-          <text x={width - M.right} y={M.top - 4} textAnchor="end" fontSize={FONT.axis} fill="#8c8c8c">{t("components.single-cell.cohort.genes-note")}</text>
+          <text x={width - M.right} y={M.top - 4} textAnchor="end" fontSize={FONT.axis} fill={INK.muted}>{t("components.single-cell.cohort.genes-note")}</text>
         </svg>
         <Swatches items={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ key: c, color: CLASS_COLORS[c], label: t(`components.single-cell.cohort.class-${c}`) }))} />
         <Table size="small" rowKey="gene" columns={columns} dataSource={ranked} pagination={{ pageSize: 10, size: "small" }} scroll={{ x: true }} style={{ marginTop: 12 }} />

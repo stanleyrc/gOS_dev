@@ -53,6 +53,7 @@ import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { SC_GUTTER } from "./density";
 import { useCohortRnaFindings } from "./rna/useRnaFindings";
 import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
+import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -531,7 +532,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "overview" && (
         <Col span={24}>
-          <Card size="small" title={<Space><ApartmentOutlined />{t("components.single-cell.cohort.table-title")}</Space>}>
+          <Card size="small" title={<Space><ApartmentOutlined />{t("components.single-cell.cohort.table-title")}<Provenance id="cohortOverview" /></Space>}>
             <Table
               size="small"
               rowKey="caseReportId"
@@ -546,7 +547,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         <Col span={24}>
           <Card
             size="small"
-            title={t("components.single-cell.cohort.heatmap-title")}
+            title={<Space size={6}>{t("components.single-cell.cohort.heatmap-title")}<Provenance id="cohortHeatmap" /></Space>}
             extra={
               <Space>
                 {progress < 100 && <Progress percent={progress} size="small" style={{ width: 160 }} />}

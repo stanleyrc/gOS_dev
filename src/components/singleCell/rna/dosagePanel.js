@@ -13,8 +13,9 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { FONT, YAxis } from "../cohort/charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const M = { top: 30, right: 16, bottom: 58, left: 66 };
@@ -76,31 +77,31 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
       }}
       style={{ cursor: "crosshair", userSelect: "none", display: "block" }}
     >
-      <rect x={0} y={0} width={width} height={height} fill="#ffffff" rx={6} />
-      <text x={M.left} y={18} fontSize={16} fontWeight={600} fill="#262626">{gene}</text>
+      <rect x={0} y={0} width={width} height={height} fill={INK.panel} rx={6} />
+      <text x={M.left} y={18} fontSize={16} fontWeight={600} fill={INK.text}>{gene}</text>
       {badge && (
-        <text x={M.left + gene.length * 10 + 10} y={18} fontSize={12} fill={badge.color}>{badge.text}</text>
+        <text x={M.left + gene.length * 10 + 10} y={18} fontSize={TYPE.label} fill={badge.color}>{badge.text}</text>
       )}
-      <text x={width - M.right} y={18} textAnchor="end" fontSize={12} fill={sig ? "#cf1322" : "#8c8c8c"}>
+      <text x={width - M.right} y={18} textAnchor="end" fontSize={TYPE.label} fill={sig ? "#cf1322" : "#8c8c8c"}>
         {`ρ ${Number.isFinite(result.rho) ? result.rho.toFixed(2) : "–"} · ${formatP(p)} · n ${points.length}`}
       </text>
       <g transform={`translate(${M.left},${M.top})`}>
-        <rect x={0} y={0} width={w} height={h} fill="#fafafa" />
+        <rect x={0} y={0} width={w} height={h} fill={INK.panelAlt} />
         {x.ticks(5).map((v) => (
           <g key={`x${v}`} transform={`translate(${x(v)},0)`}>
-            <line y1={0} y2={h} stroke="#eeeeee" />
-            <text y={h + 16} textAnchor="middle" fontSize={12} fill="#595959">{v}</text>
+            <line y1={0} y2={h} stroke={INK.grid} />
+            <text y={h + 16} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>{v}</text>
           </g>
         ))}
         {y.ticks(4).map((v) => (
           <g key={`y${v}`} transform={`translate(0,${y(v)})`}>
-            <line x1={0} x2={w} stroke="#eeeeee" />
-            <text x={-8} dy="0.35em" textAnchor="end" fontSize={12} fill="#595959">{v}</text>
+            <line x1={0} x2={w} stroke={INK.grid} />
+            <text x={-8} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fill={INK.textSecondary}>{v}</text>
           </g>
         ))}
-        <text x={w / 2} y={h + 40} textAnchor="middle" fontSize={13} fill="#595959">{`copy number at ${gene} (per cell)`}</text>
-        <text transform={`translate(${-48},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={13} fill="#595959">{`${gene} expression (log-normalized)`}</text>
-        {fit && <line x1={x(fit[0][0])} y1={y(Math.max(0, fit[0][1]))} x2={x(fit[1][0])} y2={y(Math.max(0, fit[1][1]))} stroke="#595959" strokeDasharray="4 3" strokeOpacity={0.6} />}
+        <text x={w / 2} y={h + 40} textAnchor="middle" fontSize={TYPE.body} fill={INK.textSecondary}>{`copy number at ${gene} (per cell)`}</text>
+        <text transform={`translate(${-48},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.body} fill={INK.textSecondary}>{`${gene} expression (log-normalized)`}</text>
+        {fit && <line x1={x(fit[0][0])} y1={y(Math.max(0, fit[0][1]))} x2={x(fit[1][0])} y2={y(Math.max(0, fit[1][1]))} stroke={INK.textSecondary} strokeDasharray="4 3" strokeOpacity={0.6} />}
         {points.map((pt) => {
           const clone = cloneOf.get(pt.id);
           const isSel = selected.has(pt.id);
@@ -125,7 +126,7 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
             </circle>
           );
         })}
-        {drag && <rect x={Math.min(drag.x0, drag.x1)} y={Math.min(drag.y0, drag.y1)} width={Math.abs(drag.x1 - drag.x0)} height={Math.abs(drag.y1 - drag.y0)} fill="rgba(22,119,255,0.12)" stroke="#1677ff" strokeDasharray="4 2" />}
+        {drag && <rect x={Math.min(drag.x0, drag.x1)} y={Math.min(drag.y0, drag.y1)} width={Math.abs(drag.x1 - drag.x0)} height={Math.abs(drag.y1 - drag.y0)} fill="rgba(22,119,255,0.12)" stroke={INK.select} strokeDasharray="4 2" />}
       </g>
     </svg>
   );
@@ -144,9 +145,9 @@ function RhoHistogram({ ranking, width, height = 150 }) {
         <rect key={i} x={x(b.x0) + 0.5} y={y(b.length)} width={Math.max(0, x(b.x1) - x(b.x0) - 1)} height={y(0) - y(b.length)} fill={b.x0 >= 0.3 ? "#D7191C" : b.x1 <= -0.3 ? "#2C7BB6" : "#bfbfbf"} />
       ))}
       {[-1, -0.5, 0, 0.5, 1].map((v) => (
-        <text key={v} x={x(v)} y={height - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill="#595959">{v}</text>
+        <text key={v} x={x(v)} y={height - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{v}</text>
       ))}
-      <text x={(Mm.left + width - Mm.right) / 2} y={height - 4} textAnchor="middle" fontSize={FONT.axis} fill="#262626">Spearman ρ (CN vs expression) per gene</text>
+      <text x={(Mm.left + width - Mm.right) / 2} y={height - 4} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>Spearman ρ (CN vs expression) per gene</text>
     </svg>
   );
 }
@@ -242,7 +243,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
       <Col span={24}>
         <Card
           size="small"
-          title={<Space><DotChartOutlined />{t("components.single-cell.dosage.title")}</Space>}
+          title={<Space><DotChartOutlined />{t("components.single-cell.dosage.title")}<Provenance id="dosage" /></Space>}
           extra={
             <Space wrap>
               <AutoComplete size="small" style={{ width: 170 }} value={query} options={options} placeholder={t("components.single-cell.dosage.add-gene")} onChange={setQuery} onSelect={addGene} onSearch={(q) => setOptions(searchGeneNames(summary.genes, q).map((g) => ({ value: g })))} onKeyDown={(e) => e.key === "Enter" && addGene(query)} />
@@ -280,7 +281,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                       {!result ? (
                         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.dosage.no-gene", { gene })} />
                       ) : (
-                        <div style={{ border: "1px solid #f0f0f0", borderRadius: 6 }}>
+                        <div style={{ border: "1px solid var(--sc-border-soft)", borderRadius: 6 }}>
                           <DosageScatter gene={gene} result={result} width={plotW - 2} height={plotH} cloneOf={cloneOf} cloneColors={cloneColors} selected={selected} hovered={hoveredCellId} onSelect={onSelect} onHover={onHover} badge={ev ? { text: `${eventClass(ev) === "amp" ? "amplified" : "deleted"} in ${ev.cells}`, color: eventClass(ev) === "amp" ? "#D7191C" : "#2C7BB6" } : null} />
                         </div>
                       )}
@@ -289,7 +290,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                 })}
               </Row>
             )}
-            <Space wrap size={[12, 2]} style={{ marginTop: 8, fontSize: 12 }}>
+            <Space wrap size={[12, 2]} style={{ marginTop: 8, fontSize: 13 }}>
               {clonesShown.sort().map((c) => (
                 <span key={c}><span className="sc-swatch" style={{ background: cloneColors[c] || NO_CLONE }} />{c}</span>
               ))}
@@ -301,7 +302,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
       <Col span={24}>
         <Card
           size="small"
-          title={<Space><OrderedListOutlined />{t("components.single-cell.dosage.rank-title")}</Space>}
+          title={<Space><OrderedListOutlined />{t("components.single-cell.dosage.rank-title")}<Provenance id="dosage" /></Space>}
           extra={
             <Space>
               <Button size="small" type="primary" onClick={rank} loading={progress != null} disabled={!matrix}>{t("components.single-cell.dosage.rank")}</Button>
@@ -338,15 +339,15 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                       <svg width={w} height={byChromosome.length * rowH + 24}>
                         {[0, 0.25, 0.5, 0.75, 1].map((v) => (
                           <g key={v} transform={`translate(${x(v)},0)`}>
-                            <line y1={0} y2={byChromosome.length * rowH} stroke="#f0f0f0" />
-                            <text y={byChromosome.length * rowH + 14} textAnchor="middle" fontSize={10} fill="#595959">{pct(v)}</text>
+                            <line y1={0} y2={byChromosome.length * rowH} stroke={INK.grid} />
+                            <text y={byChromosome.length * rowH + 14} textAnchor="middle" fontSize={11} fill={INK.textSecondary}>{pct(v)}</text>
                           </g>
                         ))}
                         {byChromosome.map((c, i) => (
                           <g key={c.chromosome} transform={`translate(0,${i * rowH})`}>
-                            <text x={32} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={10} fill="#262626">{c.chromosome}</text>
+                            <text x={32} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.text}>{c.chromosome}</text>
                             <rect x={x(0)} y={2} width={x(c.fracSensitive) - x(0)} height={rowH - 4} fill={c.medianRho >= 0.3 ? "#D7191C" : "#4E79A7"} />
-                            <text x={w - 104} y={rowH / 2} dy="0.35em" fontSize={10} fill="#8c8c8c">{`${pct(c.fracSensitive)} · median ρ ${c.medianRho.toFixed(2)} · n ${c.n}`}</text>
+                            <text x={w - 104} y={rowH / 2} dy="0.35em" fontSize={11} fill={INK.muted}>{`${pct(c.fracSensitive)} · median ρ ${c.medianRho.toFixed(2)} · n ${c.n}`}</text>
                             <title>{`chr${c.chromosome}: ${c.n} genes, median ρ ${c.medianRho.toFixed(2)}, ${pct(c.fracSensitive)} with ρ ≥ 0.3`}</title>
                           </g>
                         ))}

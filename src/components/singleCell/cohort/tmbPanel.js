@@ -7,7 +7,8 @@ import useContainerWidth from "../useContainerWidth";
 import { callableMbOf, snvCategoryCounts } from "../../../helpers/singleCell/cohortStats";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const CATS = [
   ["truncal", "#2F6DB5"],
@@ -51,7 +52,7 @@ export default function TmbPanel({ summaries, files, datafiles = [], onOpen }) {
   return (
     <Card
       size="small"
-      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.tmb-title")}</Space>}
+      title={<Space><BarChartOutlined />{t("components.single-cell.cohort.tmb-title")}<Provenance id="tmb" /></Space>}
       extra={
         <Segmented
           size="small"
@@ -83,7 +84,7 @@ export default function TmbPanel({ summaries, files, datafiles = [], onOpen }) {
                     </rect>
                   );
                 })}
-                <text x={x(r.patient) + x.bandwidth() / 2} y={y(mode === "count" ? total(r.counts) : mode === "perMb" ? totalPerMb(r) : 1) - 4} textAnchor="middle" fontSize={FONT.axis} fill="#262626">
+                <text x={x(r.patient) + x.bandwidth() / 2} y={y(mode === "count" ? total(r.counts) : mode === "perMb" ? totalPerMb(r) : 1) - 4} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>
                   {mode === "count" ? d3.format(",")(total(r.counts)) : mode === "perMb" ? (Number.isFinite(r.callableMb) ? `${d3.format(".2f")(totalPerMb(r))}/Mb` : "n/a") : `${r.counts.truncal}`}
                 </text>
               </g>

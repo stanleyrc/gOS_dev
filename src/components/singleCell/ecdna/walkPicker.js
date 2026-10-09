@@ -43,7 +43,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
       </Space>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
         {families.map((fam, f) => (
-          <div key={f} style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", padding: "2px 6px", border: "1px dashed #d9d9d9", borderRadius: 6 }}>
+          <div key={f} style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", padding: "2px 6px", border: "1px dashed var(--sc-border)", borderRadius: 6 }}>
             {fam.map((w) => {
               const on = sel.has(w.id);
               const c = colorOf(w.id);

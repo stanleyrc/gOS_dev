@@ -7,6 +7,7 @@ import settingsActions from "../../../redux/settings/actions";
 import { domainExtents } from "../../../helpers/singleCell/matrix";
 import { toGlobal } from "../../../helpers/singleCell/walks";
 import useContainerWidth from "../useContainerWidth";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const GAP_X = 50; // same outer margin / inter-domain gap as the heatmap and the genes plot
@@ -73,7 +74,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
     return { rows: out, height: y + 2 };
   }, [families, laneHeight]);
   const height = lanes.height + AXIS_H;
-  const chrColor = (chr) => chromoBins?.[`${chr}`]?.color || "#8c8c8c";
+  const chrColor = (chr) => chromoBins?.[`${chr}`]?.color || INK.faint;
 
   // ---- zoom / pan on the shared domains ----
   const genomeEnd = defaultDomain?.[1] || Infinity;
@@ -184,7 +185,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
           return (
             <g key={`h${k}`}>
               <rect x={xa} y={0} width={xb - xa} height={HEAD_H} fill={chr?.color || "#d9d9d9"} fillOpacity={0.18} />
-              <text x={(xa + xb) / 2} y={HEAD_H / 2} dy="0.35em" textAnchor="middle" fontSize={10.5} fill="#262626">
+              <text x={(xa + xb) / 2} y={HEAD_H / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.tick} fill={INK.text}>
                 <tspan fontWeight={700}>{chr ? `chr${chr.chromosome}` : ""}</tspan>
                 {chr && xb - xa > 140 ? `  ${fmtPos(ga, chr)} – ${fmtPos(gb, chr)}` : ""}
               </text>
@@ -196,7 +197,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
           <rect key={`f${k}`} x={x0 + a} y={0} width={b - a} height={lanes.height} fill="none" stroke="#91caff" strokeOpacity={0.6} />
         ))}
         {/* grid */}
-        {ticks.map(({ k, vals, scale }) => vals.map((v) => <line key={`g${k}-${v}`} x1={scale(v)} x2={scale(v)} y1={0} y2={lanes.height} stroke="#f0f0f0" />))}
+        {ticks.map(({ k, vals, scale }) => vals.map((v) => <line key={`g${k}-${v}`} x1={scale(v)} x2={scale(v)} y1={0} y2={lanes.height} stroke={INK.grid} />))}
         {lanes.rows.map(({ walk: w, y }, i) => {
           const cy = y + laneHeight / 2;
           const color = colorOf(w.id);
@@ -221,7 +222,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
               <text x={20} y={cy} dy="0.35em" fontSize={laneHeight < 16 ? 10.5 : 11.5} fill="#262626">
                 <tspan fontWeight={isFocus ? 700 : 600}>{w.label.length > 22 ? `${w.label.slice(0, 21)}…` : w.label}</tspan>
                 {w.curated && <tspan fill="#389e0d" fontWeight={600}>{" ✓"}</tspan>}
-                {labelWidth > 180 && <tspan fill="#8c8c8c" fontSize={laneHeight < 16 ? 9.5 : 10.5}>{`  ${meta} · ${d3.format(".2s")(w.span)}b`}</tspan>}
+                {labelWidth > 180 && <tspan fill={INK.muted} fontSize={laneHeight < 16 ? 9.5 : 10.5}>{`  ${meta} · ${d3.format(".2s")(w.span)}b`}</tspan>}
               </text>
               {/* nodes */}
               {extents.map(([a, b, d], k) => (
@@ -261,7 +262,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                   if (ka < 0 || kb < 0 || Math.abs(gb - ga) < 2) return null;
                   const xa = px(ga, ka);
                   const xb = px(gb, kb);
-                  return Math.abs(xb - xa) > 2 ? <line key={ji} x1={xa} x2={xb} y1={cy} y2={cy} stroke="#8c8c8c" strokeDasharray="2 2" /> : null;
+                  return Math.abs(xb - xa) > 2 ? <line key={ji} x1={xa} x2={xb} y1={cy} y2={cy} stroke={INK.axis} strokeDasharray="2 2" /> : null;
                 }
                 const tip = `ALT junction: ${A.chromosome}:${(A.strand === "-" ? A.start : A.end).toLocaleString()}${A.strand} → ${B.chromosome}:${(B.strand === "-" ? B.end : B.start).toLocaleString()}${B.strand}${j.via ? ` (via ${j.via})` : ""}`;
                 if (ka >= 0 && kb >= 0) {
@@ -271,7 +272,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                   const lift = Math.min(laneHeight * 0.4, 4 + Math.abs(xb - xa) / 12);
                   const top = cy - BAR / 2;
                   return (
-                    <path key={ji} d={`M${xa},${top} C${xa},${top - lift} ${xb},${top - lift} ${xb},${top}`} fill="none" stroke="#cf1322" strokeWidth={1.8} strokeOpacity={0.9} onMouseEnter={(e) => showTip(e, w, [tip, w.label])}>
+                    <path key={ji} d={`M${xa},${top} C${xa},${top - lift} ${xb},${top - lift} ${xb},${top}`} fill="none" stroke={INK.danger} strokeWidth={1.8} strokeOpacity={0.9} onMouseEnter={(e) => showTip(e, w, [tip, w.label])}>
                       <title>{tip}</title>
                     </path>
                   );
@@ -282,8 +283,8 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                 const xv = px(visible.g, visible.k);
                 return (
                   <g key={ji} onClick={(e) => { e.stopPropagation(); addAnchorDomain(visible.other.chromosome, visible.otherPos); }}>
-                    <line x1={xv} x2={xv} y1={cy - BAR / 2} y2={cy - BAR / 2 - stub} stroke="#cf1322" strokeWidth={1.4} />
-                    <circle cx={xv} cy={cy - BAR / 2 - stub - 2} r={laneHeight < 22 ? 2.5 : 3.5} fill={chrColor(visible.other.chromosome)} stroke="#cf1322" />
+                    <line x1={xv} x2={xv} y1={cy - BAR / 2} y2={cy - BAR / 2 - stub} stroke={INK.danger} strokeWidth={1.4} />
+                    <circle cx={xv} cy={cy - BAR / 2 - stub - 2} r={laneHeight < 22 ? 2.5 : 3.5} fill={chrColor(visible.other.chromosome)} stroke={INK.danger} />
                     <title>{`${tip}\n${t("components.single-cell.ecdna.plot-anchor")}`}</title>
                   </g>
                 );
@@ -298,16 +299,16 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
             if (rows.length < 2) return null;
             const y0 = rows[0].y + 4;
             const y1 = rows[rows.length - 1].y + laneHeight - 4;
-            return <line key={`fam${f}`} x1={2} x2={2} y1={y0} y2={y1} stroke="#bfbfbf" strokeWidth={2} />;
+            return <line key={`fam${f}`} x1={2} x2={2} y1={y0} y2={y1} stroke={INK.axis} strokeWidth={2} />;
           })}
         {/* axis */}
         {ticks.map(({ k, vals, scale, chr }) => (
           <g key={`ax${k}`}>
-            <line x1={scale.range()[0]} x2={scale.range()[1]} y1={lanes.height + 2} y2={lanes.height + 2} stroke="#8c8c8c" />
+            <line x1={scale.range()[0]} x2={scale.range()[1]} y1={lanes.height + 2} y2={lanes.height + 2} stroke={INK.axis} />
             {vals.map((v) => (
               <g key={v}>
-                <line x1={scale(v)} x2={scale(v)} y1={lanes.height + 2} y2={lanes.height + 6} stroke="#8c8c8c" />
-                <text x={scale(v)} y={lanes.height + 14} textAnchor="middle" fontSize={9.5} fill="#595959">{fmtPos(v, chr)}</text>
+                <line x1={scale(v)} x2={scale(v)} y1={lanes.height + 2} y2={lanes.height + 6} stroke={INK.axis} />
+                <text x={scale(v)} y={lanes.height + 14} textAnchor="middle" fontSize={11} fill={INK.textSecondary}>{fmtPos(v, chr)}</text>
               </g>
             ))}
 

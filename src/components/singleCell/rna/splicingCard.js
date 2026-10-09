@@ -173,7 +173,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, width }) {
           <div style={{ display: "flex" }}>
             <div style={{ width: labelW, flex: "none" }}>
               {cluster.junctions.map((jn, j) => (
-                <div key={j} style={{ height: STRIP_ROW_H, lineHeight: `${STRIP_ROW_H}px`, fontSize: 11, whiteSpace: "nowrap", overflow: "hidden" }} title={junctionLabel(cluster.chromosome, jn)}>
+                <div key={j} style={{ height: STRIP_ROW_H, lineHeight: `${STRIP_ROW_H}px`, fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden" }} title={junctionLabel(cluster.chromosome, jn)}>
                   <span className="sc-swatch" style={{ background: junctionColor(j) }} />
                   {`${Number(jn.start).toLocaleString("en-US")}-${Number(jn.end).toLocaleString("en-US")}`}
                 </div>
@@ -255,7 +255,7 @@ export default function SplicingCard({ summary }) {
     <Space>
       <BranchesOutlined />
       <span>{t(`${k}.title`)}</span>
-      <HintLine inline text={t(`${k}.help`)} />
+      <HintLine inline provenance="splicing" text={t(`${k}.help`)} />
     </Space>
   );
   if (!data) {

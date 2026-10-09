@@ -70,7 +70,7 @@ export default function RnaFusionsCard({ summary }) {
     <Space>
       <NodeIndexOutlined />
       <span>{t(`${k}.title`)}</span>
-      <HintLine inline text={t(`${k}.help`)} />
+      <HintLine inline provenance="rnaFusions" text={t(`${k}.help`)} />
     </Space>
   );
   if (!data) {

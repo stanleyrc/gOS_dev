@@ -6,6 +6,7 @@ import useRnaData from "../rna/useRnaData";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { differentialExpression } from "../../../helpers/singleCell/rnaStats";
 import { cisTrans, cladeAndSister, cnaDiff, junctionDiff } from "../../../helpers/singleCell/branchDiff";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const WIDTH = 980;
@@ -109,7 +110,7 @@ export default function BranchDiffDrawer({ open, onClose, layout, node, snv, var
       label: `Copy number (${segments.length})`,
       children: (
         <Space direction="vertical" style={{ width: "100%" }} size="small">
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 13 }}>
             1 Mb grid; a segment differs when the clade median is ≥ 0.75 copies from the sister median and ≥ 60% of clade cells depart in the same direction.
           </Text>
           <Table
@@ -131,7 +132,7 @@ export default function BranchDiffDrawer({ open, onClose, layout, node, snv, var
                   const g = genesIn(s);
                   return (
                     <Tooltip title={g.slice(0, 60).join(", ")}>
-                      <Text style={{ fontSize: 12 }}>
+                      <Text style={{ fontSize: 13 }}>
                         {g.length} {g.length ? `(${g.slice(0, 4).join(", ")}${g.length > 4 ? "…" : ""})` : ""}
                       </Text>
                     </Tooltip>
@@ -242,7 +243,7 @@ export default function BranchDiffDrawer({ open, onClose, layout, node, snv, var
   ];
 
   return (
-    <Drawer open={open} onClose={onClose} width={WIDTH} title={`Branch diff: clade of ${groups.clade.length} cells vs sister of ${groups.sister.length}`}>
+    <Drawer open={open} onClose={onClose} width={WIDTH} title={<span>{`Branch diff: clade of ${groups.clade.length} cells vs sister of ${groups.sister.length}`} <Provenance id="branchDiff" /></span>}>
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         {!groups.sister.length && <Alert type="warning" showIcon message="This is the root: there is no sister clade to compare with." />}
         {groups.sister.length > 0 && vsReference && (

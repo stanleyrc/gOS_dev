@@ -6,6 +6,7 @@ import useContainerWidth from "../useContainerWidth";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { robustOutliers } from "../../../helpers/singleCell/cohortStats";
 import { BoxStrips, patientColor } from "./charts";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 
@@ -56,7 +57,7 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
   return (
     <Card
       size="small"
-      title={<Space><ExperimentOutlined />{t("components.single-cell.qc.cohort-title")}</Space>}
+      title={<Space><ExperimentOutlined />{t("components.single-cell.qc.cohort-title")}<Provenance id="cohortQc" /></Space>}
       extra={
         <Space>
           <Select size="small" style={{ width: 230 }} value={key} onChange={setMetric} options={metrics.map(([k, label]) => ({ value: k, label }))} />
@@ -75,7 +76,7 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
           flagged={flagged}
           onPoint={(g, k) => onOpenCell && onOpenCell(g.cells[k])}
         />
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <Text type="secondary" style={{ fontSize: 13 }}>
           {t("components.single-cell.qc.cohort-help", { count: flagged.size })}
         </Text>
       </div>

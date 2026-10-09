@@ -20,7 +20,7 @@ import { padDomains } from "../../helpers/singleCell/eventDomains";
 import { signatureColorOf } from "./signaturePanel";
 import { formatP } from "../../helpers/singleCell/tests";
 import signatureMetadata from "../../translations/en/signatures.json";
-import HintLine from "./hintLine";
+import HintLine, { Provenance, ProvenanceTip } from "./hintLine";
 import useRnaFindings from "./rna/useRnaFindings";
 import RnaFindingsList, { CloneRnaLine, rnaSummarySentence } from "./rna/rnaFindingsList";
 import { SC_GUTTER } from "./density";
@@ -34,7 +34,7 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
   const { t } = useTranslation("common");
   const pct = d3.format(".0%");
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 0", borderBottom: "1px solid #f0f0f0" }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 0", borderBottom: "1px solid var(--sc-border-soft)" }}>
       <span style={{ width: 10, height: 10, marginTop: 5, borderRadius: 2, background: CLASS_COLORS[d.class], flex: "0 0 auto" }} />
       <div style={{ flex: 1 }}>
         <Space size={6} wrap>
@@ -54,9 +54,9 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
           )}
         </Space>
         <div>
-          <Text type="secondary">{t("components.single-cell.report.in-cells", { cells: d.cells, pct: pct(d.fraction) })}</Text>
+          <Text type="secondary"><Provenance id="cloneFraction">{t("components.single-cell.report.in-cells", { cells: d.cells, pct: pct(d.fraction) })}</Provenance></Text>
           {fit && Number.isFinite(fit.score) && (
-            <Tooltip title={t("components.single-cell.report.clade-fit-help", { inClade: fit.inClade, clade: fit.clade, carriers: fit.carriers })}>
+            <Tooltip overlayClassName="sc-prov-overlay" title={<ProvenanceTip id="cladeFit" text={t("components.single-cell.report.clade-fit-help", { inClade: fit.inClade, clade: fit.clade, carriers: fit.carriers })} />}>
               <Tag color={fit.score >= 0.8 ? "green" : fit.score < 0.5 ? "red" : "default"} style={{ marginLeft: 6 }}>
                 {t("components.single-cell.report.clade-fit", { score: fit.score.toFixed(2) })}
               </Tag>
@@ -112,7 +112,7 @@ function SignatureBar({ items, width = 320 }) {
           <g key={s.signature}>
             <rect x={x} y={0} width={Math.max(0, w - 0.5)} height={18} fill={signatureColorOf(s.signature)} />
             {w > 36 && (
-              <text x={x + w / 2} y={9} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff">
+              <text x={x + w / 2} y={9} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff">
                 {s.signature}
               </text>
             )}
@@ -232,7 +232,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         {text(e.prognoses) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Prognosis: </Text>{text(e.prognoses)}</Paragraph>}
         <Paragraph style={{ marginBottom: 0 }}>
           <Text strong>{t("components.single-cell.report.col-cells")}: </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>{`${e.cell_ids || ""}`.split(",").filter(Boolean).join(", ")}</Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>{`${e.cell_ids || ""}`.split(",").filter(Boolean).join(", ")}</Text>
         </Paragraph>
         {interactive && (
           <Space>
@@ -265,7 +265,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
       title={
         <Space>
           <FileSearchOutlined />
-          {t("components.single-cell.report.title", { patient })}
+          {t("components.single-cell.report.title", { patient })}<Provenance id="keyFindings" />
           {onOpen && (
             <Button size="small" type="link" onClick={onOpen}>
               {t("components.single-cell.cohort.open")}
@@ -274,7 +274,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         </Space>
       }
     >
-      <Paragraph style={{ fontSize: 13, marginBottom: 6 }}>{summary.join(" ")}</Paragraph>
+      <Paragraph style={{ fontSize: 13.5, marginBottom: 6 }}>{summary.join(" ")}</Paragraph>
       <Row gutter={SC_GUTTER}>
         <Col xs={24} lg={14}>
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.clonal-title", { count: report.clonal.length })} <HintLine inline text={t("components.single-cell.report.clonal-help", { pct: pct(0.85) })} /></Title>
@@ -311,7 +311,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
               </div>
             </div>
           ))}
-          <Title level={5} className="sc-section-title">{t("components.single-cell.report.burden-title")}</Title>
+          <Title level={5} className="sc-section-title">{t("components.single-cell.report.burden-title")} <Provenance id="burden" /></Title>
           <Space size="large">
             <Statistic title={t("components.single-cell.snv.category-truncal")} value={report.burden.truncal} />
             <Statistic title={t("components.single-cell.snv.category-subclonal")} value={report.burden.subclonal} />

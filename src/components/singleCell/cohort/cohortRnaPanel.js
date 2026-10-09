@@ -18,8 +18,9 @@ import CohortStateClonePanel from "./cohortStateClonePanel";
 import CohortGeneSetPanel from "./cohortGeneSetPanel";
 import CohortDePanel from "./cohortDePanel";
 import CohortSplicingPanel from "./cohortSplicingPanel";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -180,11 +181,11 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           <Col xs={24} xl={10}>
             <Card
               size="small"
-              title={<Space><PieChartOutlined />{t("components.single-cell.cohort.rna-composition", { field: chosenField })}</Space>}
+              title={<Space><PieChartOutlined />{t("components.single-cell.cohort.rna-composition", { field: chosenField })}<Provenance id="cohortRna" /></Space>}
               extra={
                 <Space>
                   {Number.isFinite(composition.p) && (
-                    <Text type={composition.p < 0.05 ? "danger" : "secondary"} style={{ fontSize: 12 }}>{`chi-square ${composition.p < 1e-4 ? "p < 1e-4" : `p = ${composition.p.toFixed(3)}`}`}</Text>
+                    <Text type={composition.p < 0.05 ? "danger" : "secondary"} style={{ fontSize: 13 }}>{`chi-square ${composition.p < 1e-4 ? "p < 1e-4" : `p = ${composition.p.toFixed(3)}`}`}</Text>
                   )}
                   <SvgExportButton containerRef={ref} name="cohort-rna-composition" />
                 </Space>
@@ -193,8 +194,8 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
               <svg width={compW} height={240}>
                 {y.ticks(5).map((v) => (
                   <g key={v} transform={`translate(0,${y(v)})`}>
-                    <line x1={M.left} x2={compW - M.right} stroke="#f0f0f0" />
-                    <text x={M.left - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill="#595959">{d3.format(".0%")(v)}</text>
+                    <line x1={M.left} x2={compW - M.right} stroke={INK.grid} />
+                    <text x={M.left - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format(".0%")(v)}</text>
                   </g>
                 ))}
                 {composition.perPatient.map((r) => {
@@ -206,9 +207,9 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
                         const top = y(acc + v);
                         const h = y(acc) - top;
                         acc += v;
-                        return <rect key={l} x={x(r.patient)} y={top} width={x.bandwidth()} height={Math.max(0, h)} fill={levelColors[l]} stroke="#fff" strokeWidth={0.5}><title>{`${r.patient} · ${l}: ${r.counts[l]} of ${r.total} (${d3.format(".0%")(v)})`}</title></rect>;
+                        return <rect key={l} x={x(r.patient)} y={top} width={x.bandwidth()} height={Math.max(0, h)} fill={levelColors[l]} stroke={INK.panel} strokeWidth={0.5}><title>{`${r.patient} · ${l}: ${r.counts[l]} of ${r.total} (${d3.format(".0%")(v)})`}</title></rect>;
                       })}
-                      <text x={x(r.patient) + x.bandwidth() / 2} y={M.top - 2} textAnchor="middle" fontSize={10} fill="#8c8c8c">{`n=${r.total}`}</text>
+                      <text x={x(r.patient) + x.bandwidth() / 2} y={M.top - 2} textAnchor="middle" fontSize={11} fill={INK.muted}>{`n=${r.total}`}</text>
                     </g>
                   );
                 })}
@@ -219,7 +220,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           </Col>
         )}
         <Col xs={24} xl={14}>
-          <Card size="small" title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.rna-qc")}</Space>}>
+          <Card size="small" title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.rna-qc")}<Provenance id="cohortRna" /></Space>}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {qcMetrics.map(([k, label, log]) => (
                 <BoxStrips key={k} groups={qcGroups(k)} width={Math.max(220, Math.floor(qcW / qcMetrics.length) - 8)} height={300} yTitle={label} log={log} />
@@ -228,7 +229,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           </Card>
         </Col>
         <Col xs={24} xl={12}>
-          <Card size="small" title={<Space><TagsOutlined />{t("components.single-cell.cohort.rna-markers", { field: chosenField })}</Space>}>
+          <Card size="small" title={<Space><TagsOutlined />{t("components.single-cell.cohort.rna-markers", { field: chosenField })}<Provenance id="markers" /></Space>}>
             {sharedMarkers.length ? (
               <Row gutter={SC_GUTTER_INNER}>
                 {sharedMarkers.map((lv) => (
@@ -270,7 +271,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         <Col xs={24} xl={12}>
           <Card
             size="small"
-            title={<Space><DotChartOutlined />{t("components.single-cell.cohort.rna-gene")}</Space>}
+            title={<Space><DotChartOutlined />{t("components.single-cell.cohort.rna-gene")}<Provenance id="cohortRna" /></Space>}
             extra={
               <Space>
                 <AutoComplete size="small" style={{ width: 160 }} value={geneQuery} onChange={setGeneQuery} onSelect={runGene} options={geneQuery.length >= 2 ? allGenes.filter((g) => g.toUpperCase().startsWith(geneQuery.toUpperCase())).slice(0, 20).map((g) => ({ value: g })) : []} placeholder={t("components.single-cell.bars.gene")} onKeyDown={(e) => e.key === "Enter" && runGene(geneQuery)} />

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { rowLookup } from "../../helpers/singleCell/matrix";
+import usePlotTheme from "./usePlotTheme";
 
 const BACKGROUND = 0x00000000; // transparent
 
@@ -35,6 +36,7 @@ export default function HeatmapCanvas({
   wheelNeedsModifier = true,
   onDoubleClick,
 }) {
+  const pt = usePlotTheme();
   const ref = useRef(null);
   const rowsRef = useRef(null);
   const dragRef = useRef(null);
@@ -84,7 +86,7 @@ export default function HeatmapCanvas({
 
     ctx.lineWidth = pr;
     separators.forEach((x) => {
-      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeStyle = pt.separator;
       const px = Math.floor(x * pr) + pr / 2;
       ctx.beginPath();
       ctx.moveTo(px, 0);
@@ -93,14 +95,14 @@ export default function HeatmapCanvas({
     });
 
     if (highlightRows && highlightRows.size && nRows) {
-      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.strokeStyle = pt.outline;
       const rowH = h / nRows;
       highlightRows.forEach((r) => {
         const y0 = r * rowH;
         ctx.strokeRect(pr / 2, y0 + pr / 2, w - pr, Math.max(pr, rowH - pr));
       });
     }
-  }, [width, height, nRows, cols, colorAt, separators, highlightRows, pixelRatio]);
+  }, [width, height, nRows, cols, colorAt, separators, highlightRows, pixelRatio, pt]);
 
   // Wheel zoom needs a non-passive listener to stop the page from scrolling.
   // With wheelNeedsModifier only Cmd/Ctrl/Alt wheels zoom (plain wheels scroll

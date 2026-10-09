@@ -9,6 +9,7 @@ import { ActivityBars, AetiologyLegend, FitCatalogs, Profile, loadCosmic } from 
 import { bootstrapShares, decomposeFit, fitSignatures } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
 import { SC_GUTTER } from "../density";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -67,7 +68,7 @@ export default function SignatureSetsCard() {
   return (
     <Card
       size="small"
-      title={<Space><BarChartOutlined />{t("components.single-cell.signatures.sets-title")}</Space>}
+      title={<Space><BarChartOutlined />{t("components.single-cell.signatures.sets-title")}<Provenance id="signatureSets" /></Space>}
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.signatures.set")}</Text>

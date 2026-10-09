@@ -11,6 +11,7 @@ import singleCellActions, { SC_FETCHED_TRACKS, SC_MAX_TRACK_CELLS, SC_TRACKS } f
 import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
 const PLOT_HEIGHT = 160;
@@ -227,7 +228,7 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
         size="small"
         title={
           <div className="sc-cell-tracks-header">
-            <span>{title || t("components.single-cell.tracks.title")}</span>
+            <span>{title || t("components.single-cell.tracks.title")}</span><Provenance id="cellTracks" />
             <Checkbox.Group
               value={visibleTracks}
               onChange={setTracks}

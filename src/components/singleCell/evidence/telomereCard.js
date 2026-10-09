@@ -5,6 +5,7 @@ import useRnaData from "../rna/useRnaData";
 import { hotspotGenotypes } from "../../../helpers/singleCell/precompute";
 import { expressionByCell } from "../../../helpers/singleCell/staticRna";
 import NotComputed, { pcFile } from "./notComputed";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const median = (v) => {
@@ -66,16 +67,16 @@ export default function TelomereCard() {
   }, [cells, tel.data, tertSites, tertExpr]);
 
   return (
-    <Card size="small" title="TERT and telomeres by clone">
+    <Card size="small" title={<span>TERT and telomeres by clone <Provenance id="telomeres" /></span>}>
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         {!tel.ok && <NotComputed what="Telomere content" step="telomeres" status={tel.status} />}
         {!calls.ok && (
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 13 }}>
             TERT promoter genotypes: not yet computed (precompute step caller).
           </Text>
         )}
         {calls.ok && !tertSites.length && (
-          <Text type="secondary" style={{ fontSize: 12 }}>No TERT hotspot in this patient&apos;s region set.</Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>No TERT hotspot in this patient&apos;s region set.</Text>
         )}
         <Table
           size="small"
@@ -112,7 +113,7 @@ export default function TelomereCard() {
         />
         <Row>
           <Col span={24}>
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" style={{ fontSize: 12.5 }}>
               Telomere content: reads with ≥ {tel.data?.params?.min_repeats || 7} TTAGGG repeats per million reads, relative to the{" "}
               {tel.data?.reference || "patient"} median. ALT-like: content and variant-repeat fraction both &gt; 2 robust SD above the patient
               median{atrx ? `; ${atrx} cells carry an ATRX alteration` : ""}. TERT expression is often below detection in single cells, so

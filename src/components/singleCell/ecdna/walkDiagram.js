@@ -9,7 +9,8 @@ import SvgExportButton from "../svgExportButton";
 import { walkGenes, toGlobal } from "../../../helpers/singleCell/walks";
 import { carriersByClone, junctionRows } from "../../../helpers/singleCell/walkPanels";
 import { copiesOf } from "../../../helpers/singleCell/walkCopies";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const CHR_ORDER = [...d3.range(1, 23).map(String), "X", "Y"];
@@ -67,7 +68,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
   return (
     <Card
       size="small"
-      title={<Space><RadarChartOutlined /><span style={{ color: colorOf(walk.id) }}>{walk.label}</span><Text type="secondary">{walk.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")} · {fmtPos(walk.span)} · {t("components.single-cell.ecdna.nodes", { count: nodes.length })} · {t("components.single-cell.ecdna.alt-junctions", { count: alt.length })}</Text></Space>}
+      title={<Space><RadarChartOutlined /><span style={{ color: colorOf(walk.id) }}>{walk.label}</span><Text type="secondary">{walk.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")} · {fmtPos(walk.span)} · {t("components.single-cell.ecdna.nodes", { count: nodes.length })} · {t("components.single-cell.ecdna.alt-junctions", { count: alt.length })}</Text><Provenance id="walkDiagram" /></Space>}
       extra={<SvgExportButton containerRef={ref} name={`walk-${walk.label}`} />}
     >
       <div ref={ref}>
@@ -83,7 +84,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
             {walk.coordinates && <><Text type="secondary">{t("components.single-cell.ecdna.wf-region")}</Text><span>{walk.coordinates}</span></>}
             <Text type="secondary">{t("components.single-cell.ecdna.wf-genes")}</Text>
             <span>
-              {walk.genes.map((g) => <Tag key={g} color={(walk.driver_genes || []).includes(g) ? "volcano" : undefined} style={{ margin: "0 3px 2px 0", fontSize: 11, lineHeight: "16px", paddingInline: 4 }}>{g}</Tag>)}
+              {walk.genes.map((g) => <Tag key={g} color={(walk.driver_genes || []).includes(g) ? "volcano" : undefined} style={{ margin: "0 3px 2px 0", fontSize: 12.5, lineHeight: "16px", paddingInline: 4 }}>{g}</Tag>)}
               {/* other genes overlapping the nodes (all of them when the walk names none) */}
               {(() => {
                 const others = [...new Set(hits.map((g) => g.name))].filter((g) => !walk.genes.includes(g));
@@ -95,10 +96,10 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
           </div>
           {byClone.length > 0 && (
             <div style={{ marginTop: 6 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.ecdna.wf-by-clone")}</Text>
+              <Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.ecdna.wf-by-clone")}</Text>
               {byClone.map((r) => (
                 <div key={r.clone} style={{ display: "flex", alignItems: "center", gap: 6, lineHeight: "17px" }}>
-                  <span className="sc-swatch" style={{ background: cloneColors[r.clone] || "#8c8c8c" }} />
+                  <span className="sc-swatch" style={{ background: cloneColors[r.clone] || INK.faint }} />
                   <span style={{ width: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.clone}</span>
                   <span style={{ flex: "0 0 90px", height: 8, background: "rgba(128,128,128,0.15)", borderRadius: 2, overflow: "hidden" }}>
                     <span style={{ display: "block", height: "100%", width: `${r.n ? (100 * r.carriers) / r.n : 0}%`, background: colorOf(walk.id) }} />
@@ -111,15 +112,15 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
           )}
           {junctions.length > 0 && (
             <div style={{ marginTop: 6 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.ecdna.wf-junctions", { count: junctions.length })}</Text>
+              <Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.ecdna.wf-junctions", { count: junctions.length })}</Text>
               {junctions.slice(0, 8).map((j) => (
-                <div key={j.key} style={{ fontFamily: "monospace", fontSize: 11, lineHeight: "16px" }}>
-                  <span style={{ color: "#cf1322" }}>●</span>{` ${j.from} → ${j.to}`}
-                  {j.span != null && <Text type="secondary" style={{ fontFamily: "inherit", fontSize: 11 }}>{` (${fmtPos(j.span)})`}</Text>}
-                  {j.via && <Text type="secondary" style={{ fontFamily: "inherit", fontSize: 11 }}>{` via ${j.via}`}</Text>}
+                <div key={j.key} style={{ fontFamily: "monospace", fontSize: 12.5, lineHeight: "16px" }}>
+                  <span style={{ color: "var(--sc-danger)" }}>●</span>{` ${j.from} → ${j.to}`}
+                  {j.span != null && <Text type="secondary" style={{ fontFamily: "inherit", fontSize: 12.5 }}>{` (${fmtPos(j.span)})`}</Text>}
+                  {j.via && <Text type="secondary" style={{ fontFamily: "inherit", fontSize: 12.5 }}>{` via ${j.via}`}</Text>}
                 </div>
               ))}
-              {junctions.length > 8 && <Text type="secondary" style={{ fontSize: 11 }}>{`+${junctions.length - 8} more`}</Text>}
+              {junctions.length > 8 && <Text type="secondary" style={{ fontSize: 12.5 }}>{`+${junctions.length - 8} more`}</Text>}
             </div>
           )}
         </div>
@@ -131,11 +132,11 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
               return (
                 <g key={n.i}>
                   {/* d3.arc paths are centred on (0,0): move them to the ring's centre */}
-                  <path d={path} transform={`translate(${cx},${cy})`} fill={chromosomes.length > 1 ? chrColor(n.chromosome) : colorOf(walk.id)} stroke="#fff" strokeWidth={0.5}>
+                  <path d={path} transform={`translate(${cx},${cy})`} fill={chromosomes.length > 1 ? chrColor(n.chromosome) : colorOf(walk.id)} stroke={INK.panel} strokeWidth={0.5}>
                     <title>{`${n.chromosome}:${n.start.toLocaleString()}-${n.end.toLocaleString()} (${n.strand}) · ${fmtPos(n.len)}${Number.isFinite(n.cn) ? ` · graph CN ${n.cn}` : ""}\n${(genesByNode.get(n.i) || []).map((g) => g.name).join(", ")}`}</title>
                   </path>
                   {n.a1 - n.a0 > 0.08 && (
-                    <text x={cx + (R - 7) * Math.sin(mid)} y={cy - (R - 7) * Math.cos(mid)} dy="0.35em" textAnchor="middle" fontSize={8} fill="#fff" transform={`rotate(${(mid * 180) / Math.PI + (n.strand === "-" ? 180 : 0)},${cx + (R - 7) * Math.sin(mid)},${cy - (R - 7) * Math.cos(mid)})`} pointerEvents="none">▶</text>
+                    <text x={cx + (R - 7) * Math.sin(mid)} y={cy - (R - 7) * Math.cos(mid)} dy="0.35em" textAnchor="middle" fontSize={9.5} fill="#fff" transform={`rotate(${(mid * 180) / Math.PI + (n.strand === "-" ? 180 : 0)},${cx + (R - 7) * Math.sin(mid)},${cy - (R - 7) * Math.cos(mid)})`} pointerEvents="none">▶</text>
                   )}
                 </g>
               );
@@ -148,7 +149,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
               const y = cy - R * Math.cos(a);
               return j.type === "ALT" ? (
                 <g key={k}>
-                  <circle cx={x} cy={y} r={4} fill="#cf1322" stroke="#fff" />
+                  <circle cx={x} cy={y} r={4} fill={INK.danger} stroke={INK.panel} />
                   <title>{`ALT junction: ${n.chromosome}:${n.strand === "-" ? n.start : n.end}${n.strand} → ${placed[j.to]?.chromosome}:${placed[j.to]?.strand === "-" ? placed[j.to]?.end : placed[j.to]?.start}${placed[j.to]?.strand}`}</title>
                 </g>
               ) : null;
@@ -165,25 +166,25 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
               const right = Math.sin(a) >= 0;
               return (
                 <g key={g.name}>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#bfbfbf" />
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={INK.axis} />
                   <text x={x2 + (right ? 3 : -3)} y={y2} dy="0.35em" textAnchor={right ? "start" : "end"} fontSize={walk.genes.includes(g.name) ? 11 : 9} fontWeight={walk.genes.includes(g.name) ? 700 : 400} fill={walk.genes.includes(g.name) ? "#cf1322" : "#595959"}>{g.name}</text>
                 </g>
               );
             })}
-            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={13} fontWeight={600} fill="currentColor">{walk.label}</text>
-            <text x={cx} y={cy + 10} textAnchor="middle" fontSize={11} fill="#8c8c8c">{fmtPos(walk.span)}</text>
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={TYPE.body} fontWeight={600} fill="currentColor">{walk.label}</text>
+            <text x={cx} y={cy + 10} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>{fmtPos(walk.span)}</text>
           </svg>
         ) : !walk.circular && nodes.length > 2 ? (
           <svg width={w} height={70}>
             {placed.map((n) => (
-              <rect key={n.i} x={20 + n.f0 * (w - 40)} y={20} width={Math.max(1, (n.f1 - n.f0) * (w - 40))} height={20} fill={chrColor(n.chromosome)} stroke="#fff" strokeWidth={0.5}>
+              <rect key={n.i} x={20 + n.f0 * (w - 40)} y={20} width={Math.max(1, (n.f1 - n.f0) * (w - 40))} height={20} fill={chrColor(n.chromosome)} stroke={INK.panel} strokeWidth={0.5}>
                 <title>{`${n.chromosome}:${n.start}-${n.end} (${n.strand})`}</title>
               </rect>
             ))}
             {labelled.slice(0, 12).map((g, k) => {
               const n = placed[g.node];
               const x = 20 + (n.f0 + ((g.offset + g.span / 2) / Math.max(1, n.len)) * (n.f1 - n.f0)) * (w - 40);
-              return <text key={g.name} x={x} y={k % 2 ? 12 : 58} textAnchor="middle" fontSize={9} fill="#595959">{g.name}</text>;
+              return <text key={g.name} x={x} y={k % 2 ? 12 : 58} textAnchor="middle" fontSize={TYPE.micro} fill={INK.textSecondary}>{g.name}</text>;
             })}
           </svg>
         ) : null}
@@ -199,8 +200,8 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
             const chrGenes = genes.filter((g) => Number.isFinite(toGlobal(chromoBins, chr, lo)) && g.start >= toGlobal(chromoBins, chr, lo - pad) && g.end <= toGlobal(chromoBins, chr, hi + pad) && walk.genes.includes(g.name));
             return (
               <g key={chr} transform={`translate(0,${r * 34 + 6})`}>
-                <text x={44} y={14} textAnchor="end" fontSize={11} fontWeight={600} fill={chrColor(chr)}>{`chr${chr}`}</text>
-                <line x1={50} x2={20 + stripW} y1={14} y2={14} stroke="#d9d9d9" />
+                <text x={44} y={14} textAnchor="end" fontSize={TYPE.tick} fontWeight={600} fill={chrColor(chr)}>{`chr${chr}`}</text>
+                <line x1={50} x2={20 + stripW} y1={14} y2={14} stroke={INK.border} />
                 {mine.map((n) => (
                   <rect key={n.i} x={x(n.start)} y={8} width={Math.max(1, x(n.end) - x(n.start))} height={12} fill={chrColor(n.chromosome)} fillOpacity={n.strand === "-" ? 0.55 : 1}>
                     <title>{`${n.chromosome}:${n.start.toLocaleString()}-${n.end.toLocaleString()} (${n.strand})`}</title>
@@ -209,10 +210,10 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
                 {chrGenes.map((g) => {
                   const gs = g.start - toGlobal(chromoBins, chr, 0);
                   const ge = g.end - toGlobal(chromoBins, chr, 0);
-                  return <text key={g.name} x={x((gs + ge) / 2)} y={30} textAnchor="middle" fontSize={9} fill="#cf1322">{g.name}</text>;
+                  return <text key={g.name} x={x((gs + ge) / 2)} y={30} textAnchor="middle" fontSize={TYPE.micro} fill="#cf1322">{g.name}</text>;
                 })}
-                <text x={50} y={30} fontSize={8} fill="#8c8c8c">{fmtPos(lo)}</text>
-                <text x={20 + stripW} y={30} textAnchor="end" fontSize={8} fill="#8c8c8c">{fmtPos(hi)}</text>
+                <text x={50} y={30} fontSize={9.5} fill={INK.muted}>{fmtPos(lo)}</text>
+                <text x={20 + stripW} y={30} textAnchor="end" fontSize={9.5} fill={INK.muted}>{fmtPos(hi)}</text>
               </g>
             );
           })}

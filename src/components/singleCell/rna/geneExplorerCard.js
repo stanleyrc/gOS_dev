@@ -13,6 +13,8 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { BoxStrips } from "../cohort/charts";
 import { SC_GUTTER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const UMAP_H = 300;
@@ -41,7 +43,7 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
     if (!values) return [];
     return levels.map((lv) => {
       const idx = summary.cells.map((c, k) => (`${groupOf(c) ?? ""}` === lv ? k : -1)).filter((k) => k >= 0);
-      return { key: lv, label: lv, color: colors[lv] || "#8c8c8c", values: idx.map((k) => values[k]), ids: idx.map((k) => summary.cells[k].cell_id || summary.cells[k].displayId), pct: idx.length ? idx.filter((k) => values[k] > 0).length / idx.length : 0 };
+      return { key: lv, label: lv, color: colors[lv] || INK.faint, values: idx.map((k) => values[k]), ids: idx.map((k) => summary.cells[k].cell_id || summary.cells[k].displayId), pct: idx.length ? idx.filter((k) => values[k] > 0).length / idx.length : 0 };
     });
   }, [values, levels, summary, colors, groupOf]);
   const test = useMemo(() => (groups.length >= 2 ? compareGroups(groups.map((g) => ({ key: g.key, values: g.values }))) : null), [groups]);
@@ -60,7 +62,7 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
   return (
     <Card
       size="small"
-      title={<Space><ExperimentOutlined />{t("components.single-cell.rna.explorer-title")}</Space>}
+      title={<Space><ExperimentOutlined />{t("components.single-cell.rna.explorer-title")}<Provenance id="geneExplorer" /></Space>}
       extra={
         <Space wrap>
           <AutoComplete size="small" style={{ width: 160 }} value={gene} options={options} onChange={setGene} onSearch={(q) => setOptions(searchGeneNames(summary.genes, q).map((g) => ({ value: g })))} placeholder={t("components.single-cell.bars.gene")} />
@@ -91,7 +93,7 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
                         </circle>
                       );
                     })}
-                  <text x={half - 8} y={UMAP_H - 8} textAnchor="end" fontSize={11} fill="#8c8c8c">UMAP</text>
+                  <text x={half - 8} y={UMAP_H - 8} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>UMAP</text>
                 </svg>
               ) : (
                 <Text type="secondary">{t("components.single-cell.umap.no-umap")}</Text>
@@ -100,7 +102,7 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
             <Col xs={24} xl={12}>
               <Text type="secondary">{test ? `${test.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(test.p)}` : ""}</Text>
               <BoxStrips groups={groups} width={half} height={UMAP_H} yTitle={`${gene} (log-normalized)`} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
-              <Space wrap size={[8, 2]} style={{ fontSize: 11 }}>
+              <Space wrap size={[8, 2]} style={{ fontSize: 12.5 }}>
                 {groups.map((g) => (
                   <span key={g.key}><span className="sc-swatch" style={{ background: g.color }} />{`${g.label}: ${d3.format(".0%")(g.pct)} expressing`}</span>
                 ))}

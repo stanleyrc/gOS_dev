@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import useContainerWidth from "../useContainerWidth";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 export const COLOR_UP = "#C2185B";
 export const COLOR_DOWN = "#1F5FA8";
@@ -140,38 +141,38 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
       >
-        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="#FCFCFD" stroke="#F0F0F0" />
+        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="#FCFCFD" stroke={INK.grid} />
         {x.ticks(8).map((tk) => (
           <g key={`x${tk}`}>
-            <line x1={x(tk)} x2={x(tk)} y1={M.top} y2={M.top + plotH} stroke="#F0F0F0" />
-            <text x={x(tk)} y={M.top + plotH + 16} textAnchor="middle" fontSize="11" fill="#8C8C8C">
+            <line x1={x(tk)} x2={x(tk)} y1={M.top} y2={M.top + plotH} stroke={INK.grid} />
+            <text x={x(tk)} y={M.top + plotH + 16} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>
               {tk}
             </text>
           </g>
         ))}
         {y.ticks(6).map((tk) => (
           <g key={`y${tk}`}>
-            <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke="#F0F0F0" />
-            <text x={M.left - 8} y={y(tk) + 4} textAnchor="end" fontSize="11" fill="#8C8C8C">
+            <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke={INK.grid} />
+            <text x={M.left - 8} y={y(tk) + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>
               {tk}
             </text>
           </g>
         ))}
         {[-lfcCut, lfcCut].map((v) => (
-          <line key={v} x1={x(v)} x2={x(v)} y1={M.top} y2={M.top + plotH} stroke="#8C8C8C" strokeDasharray="4 4" />
+          <line key={v} x1={x(v)} x2={x(v)} y1={M.top} y2={M.top + plotH} stroke={INK.axis} strokeDasharray="4 4" />
         ))}
         {pAtQ != null && (
           <g>
-            <line x1={M.left} x2={M.left + plotW} y1={y(-Math.log10(pAtQ))} y2={y(-Math.log10(pAtQ))} stroke="#8C8C8C" strokeDasharray="4 4" />
-            <text x={M.left + plotW - 4} y={y(-Math.log10(pAtQ)) - 4} textAnchor="end" fontSize="10" fill="#8C8C8C">
+            <line x1={M.left} x2={M.left + plotW} y1={y(-Math.log10(pAtQ))} y2={y(-Math.log10(pAtQ))} stroke={INK.axis} strokeDasharray="4 4" />
+            <text x={M.left + plotW - 4} y={y(-Math.log10(pAtQ)) - 4} textAnchor="end" fontSize={11} fill={INK.muted}>
               {`q = ${qCut}`}
             </text>
           </g>
         )}
-        <text x={M.left + 6} y={M.top - 10} fontSize="12" fill={COLOR_DOWN} fontWeight="600">
+        <text x={M.left + 6} y={M.top - 10} fontSize={TYPE.label} fill={COLOR_DOWN} fontWeight="600">
           {`← higher in ${labels.B}`}
         </text>
-        <text x={M.left + plotW - 6} y={M.top - 10} fontSize="12" fill={COLOR_UP} fontWeight="600" textAnchor="end">
+        <text x={M.left + plotW - 6} y={M.top - 10} fontSize={TYPE.label} fill={COLOR_UP} fontWeight="600" textAnchor="end">
           {`higher in ${labels.A} →`}
         </text>
         {ns.map((p) => (
@@ -210,15 +211,15 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         ))}
         {labelled.map((p) => (
           <g key={`l${p.gene}`} style={{ cursor: "pointer" }} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => clickPoint(p, e)}>
-            <line x1={p.px} y1={p.py} x2={p.lx} y2={p.ly - 3} stroke="#BFBFBF" />
+            <line x1={p.px} y1={p.py} x2={p.lx} y2={p.ly - 3} stroke={INK.axis} />
             <text
               x={p.lx}
               y={p.ly}
               textAnchor={p.anchor}
-              fontSize="11"
+              fontSize={TYPE.tick}
               fontWeight={picked.has(p.gene) ? 700 : 400}
-              fill="#262626"
-              stroke="#fff"
+              fill={INK.text}
+              stroke={INK.panel}
               strokeWidth="3"
               paintOrder="stroke"
             >
@@ -228,9 +229,9 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         ))}
         {focus && (
           <g pointerEvents="none">
-            <circle cx={x(focus.x)} cy={y(focus.y)} r={7} fill="none" stroke="#FA541C" strokeWidth={2} />
+            <circle cx={x(focus.x)} cy={y(focus.y)} r={7} fill="none" stroke={INK.hover} strokeWidth={2} />
             {!focusLabelled && (
-              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize="12" fontWeight="600" fill="#FA541C" stroke="#fff" strokeWidth="3" paintOrder="stroke">
+              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={TYPE.label} fontWeight="600" fill="#FA541C" stroke={INK.panel} strokeWidth="3" paintOrder="stroke">
                 {`${focus.gene}  log2FC ${focus.x.toFixed(2)}`}
               </text>
             )}
@@ -240,15 +241,15 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
           <path
             d={`M${lasso.map((pt) => pt.join(",")).join("L")}Z`}
             fill="rgba(22,119,255,0.08)"
-            stroke="#1677ff"
+            stroke={INK.select}
             strokeDasharray="4 3"
             pointerEvents="none"
           />
         )}
-        <text x={M.left + plotW / 2} y={HEIGHT - 8} textAnchor="middle" fontSize="12" fill="#595959">
+        <text x={M.left + plotW / 2} y={HEIGHT - 8} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
           log2 fold change
         </text>
-        <text transform={`translate(16 ${M.top + plotH / 2}) rotate(-90)`} textAnchor="middle" fontSize="12" fill="#595959">
+        <text transform={`translate(16 ${M.top + plotH / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
           −log10 p
         </text>
       </svg>

@@ -14,7 +14,7 @@ import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { chiSquareUpper } from "../../helpers/singleCell/tests";
 import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
 import { SC_GUTTER_INNER } from "./density";
 
 const { Text, Title } = Typography;
@@ -146,7 +146,7 @@ export default function ReportFindings({ report, cloneColors }) {
   if (!hasAny) return null;
 
   return (
-    <Card size="small" title={<Space><BulbOutlined />{t("components.single-cell.report.findings-title")}</Space>}>
+    <Card size="small" title={<Space><BulbOutlined />{t("components.single-cell.report.findings-title")}<Provenance id="furtherFindings" /></Space>}>
       <Row gutter={SC_GUTTER_INNER}>
         {cladeSigs && (
           <Col xs={24} xl={8}>

@@ -62,7 +62,7 @@ export default function PaletteEditor() {
             disabledAlpha
             onChangeComplete={(c) => setColor(key, k, c.toHexString())}
           />
-          <Text type="secondary" style={{ fontSize: 11 }}>
+          <Text type="secondary" style={{ fontSize: 12.5 }}>
             {stateLabel(k, palette[key].length)}
           </Text>
         </Space>
@@ -76,7 +76,7 @@ export default function PaletteEditor() {
         <Text strong>{t("components.single-cell.palette.theme")}</Text>
         <ThemeSelect />
       </Space>
-      <Text type="secondary" style={{ fontSize: 12 }}>
+      <Text type="secondary" style={{ fontSize: 13 }}>
         {t("components.single-cell.palette.theme-help")}
       </Text>
       <Space wrap>
@@ -108,7 +108,7 @@ export default function PaletteEditor() {
           onChangeComplete={(c) => update({ missing: c.toHexString() })}
         />
       </Space>
-      <Text type="secondary" style={{ fontSize: 12 }}>
+      <Text type="secondary" style={{ fontSize: 13 }}>
         {t("components.single-cell.palette.note")}
       </Text>
     </Space>

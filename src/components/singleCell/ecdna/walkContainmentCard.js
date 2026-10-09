@@ -7,12 +7,13 @@ import { walkContainment } from "../../../helpers/singleCell/walks";
 import { attachRare, containmentTree, splitRare, subMatrix } from "../../../helpers/singleCell/walkPanels";
 import HintLine from "../hintLine";
 import { useRareMax } from "./rareControl";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const fmtBp = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)} Mb` : `${(v / 1e3).toFixed(0)} kb`);
 const ROW = 19;
 const INDENT = 14;
 const CELL = 19;
-const MUTED = "#8c8c8c";
+const MUTED = INK.muted;
 
 /**
  * How the selected walks nest. Left: the containment hierarchy (each walk
@@ -62,14 +63,14 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
   return (
     <Card
       size="small"
-      title={<Space size={6}><NodeIndexOutlined />{t("components.single-cell.ecdna.contain-title")}<HintLine inline text={t("components.single-cell.ecdna.contain-help")} /></Space>}
+      title={<Space size={6}><NodeIndexOutlined />{t("components.single-cell.ecdna.contain-title")}<HintLine inline provenance="walkNesting" text={t("components.single-cell.ecdna.contain-help")} /></Space>}
       extra={rare.length > 0 && common.length >= 2 && <Checkbox checked={showRare} onChange={(e) => setShowRare(e.target.checked)}>{t("components.single-cell.ecdna.contain-show-rare", { count: rare.length })}</Checkbox>}
     >
       <div style={{ overflowX: "auto" }}>
         <svg width={w} height={h} style={{ display: "block" }}>
           {/* column numbers match the row badges */}
           {cols.map((i, c) => (
-            <text key={`c${i}`} x={matX + (c + 0.5) * CELL} y={TOP - 4} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={colorOf(walks[i].id)}>
+            <text key={`c${i}`} x={matX + (c + 0.5) * CELL} y={TOP - 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={colorOf(walks[i].id)}>
               {c + 1}
               <title>{walks[i].label}</title>
             </text>
@@ -87,7 +88,7 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
               return (
                 <g key={`rare-${r.host}`}>
                   {connector}
-                  <text x={x0 + 2} y={cy} dy="0.35em" fontSize={10.5} fontStyle="italic" fill={MUTED}>
+                  <text x={x0 + 2} y={cy} dy="0.35em" fontSize={TYPE.tick} fontStyle="italic" fill={MUTED}>
                     {`+${r.members.length} rare (≤ ${rareMax} cells): ${names.slice(0, 3).join(", ")}${names.length > 3 ? ", …" : ""}`}
                     <title>{r.members.map((m) => `${walks[m].label} · ${carriers.get(walks[m].id) || 0} cells · ${fmtBp(lengths[m])}`).join("\n")}</title>
                   </text>
@@ -99,16 +100,16 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
             const isFocus = focus === wk.id;
             return (
               <g key={wk.id} style={{ cursor: onFocus ? "pointer" : "default" }} onClick={() => onFocus && onFocus(wk.id)}>
-                <rect x={0} y={y} width={w} height={ROW} fill={isFocus ? "rgba(22,119,255,0.14)" : k % 2 ? "rgba(128,128,128,0.06)" : "transparent"} />
+                <rect x={0} y={y} width={w} height={ROW} fill={isFocus ? INK.selectFill : k % 2 ? "rgba(128,128,128,0.06)" : "transparent"} />
                 {connector}
-                <text x={x0} y={cy} dy="0.35em" fontSize={9} fill={MUTED}>{num.get(r.i)}</text>
+                <text x={x0} y={cy} dy="0.35em" fontSize={TYPE.micro} fill={MUTED}>{num.get(r.i)}</text>
                 <circle cx={x0 + 17} cy={cy} r={4.5} fill={colorOf(wk.id)} />
-                <text x={x0 + 26} y={cy} dy="0.35em" fontSize={11.5} fill="currentColor" fontWeight={isRare ? 400 : 600} fontStyle={isRare ? "italic" : "normal"}>
+                <text x={x0 + 26} y={cy} dy="0.35em" fontSize={TYPE.label} fill="currentColor" fontWeight={isRare ? 400 : 600} fontStyle={isRare ? "italic" : "normal"}>
                   {wk.label.length > 20 ? `${wk.label.slice(0, 19)}…` : wk.label}
-                  <tspan fill={MUTED} fontWeight={400} fontStyle="normal" fontSize={10}>{`  ${fmtBp(lengths[r.i])} · ${carriers.get(wk.id) || 0} cells`}</tspan>
+                  <tspan fill={MUTED} fontWeight={400} fontStyle="normal" fontSize={11}>{`  ${fmtBp(lengths[r.i])} · ${carriers.get(wk.id) || 0} cells`}</tspan>
                   <title>{`${wk.label}${r.parent >= 0 ? `\n${d3.format(".0%")(r.share)} inside ${walks[r.parent].label}` : ""}`}</title>
                 </text>
-                {r.parent >= 0 && <text x={TREE_W - 2} y={cy} dy="0.35em" textAnchor="end" fontSize={9.5} fill={MUTED}>{`⊂ ${num.get(r.parent)} · ${d3.format(".0%")(r.share)}`}</text>}
+                {r.parent >= 0 && <text x={TREE_W - 2} y={cy} dy="0.35em" textAnchor="end" fontSize={11} fill={MUTED}>{`⊂ ${num.get(r.parent)} · ${d3.format(".0%")(r.share)}`}</text>}
                 {cols.map((j, c) => {
                   const v = matrix[r.i][j];
                   const x = matX + c * CELL;
@@ -125,7 +126,7 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
           })}
         </svg>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: MUTED, marginTop: 2, marginLeft: matX }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: MUTED, marginTop: 2, marginLeft: matX }}>
         <span>0</span>
         <span style={{ width: 80, height: 8, borderRadius: 2, background: `linear-gradient(to right, ${color(0.15)}, ${color(1)})` }} />
         <span>{t("components.single-cell.ecdna.contain-scale")}</span>

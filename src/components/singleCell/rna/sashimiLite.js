@@ -1,6 +1,7 @@
 import React from "react";
 import { arcLayout, junctionLabel } from "../../../helpers/singleCell/splicing";
 import { junctionColor, psiColor, psiTextColor } from "../../../helpers/singleCell/rnaColors";
+import { TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const FONT = 12;
 const fmtPct = (p) => (Number.isFinite(p) ? `${Math.round(p * 100)}%` : "–");
@@ -71,14 +72,14 @@ export function PsiHeatmap({ junctions, columns, psi, totals, chromosome, cellW 
   return (
     <svg width={width} height={height} style={{ display: "block" }} role="img">
       {columns.map((c, i) => (
-        <text key={c} transform={`translate(${labelW + i * cellW + cellW / 2},${headH - 6}) rotate(-35)`} fontSize={12} fill="currentColor">
+        <text key={c} transform={`translate(${labelW + i * cellW + cellW / 2},${headH - 6}) rotate(-35)`} fontSize={TYPE.label} fill="currentColor">
           {c}
         </text>
       ))}
       {junctions.map((jn, j) => (
         <g key={j} transform={`translate(0,${headH + j * cellH})`}>
           <rect x={0} y={cellH / 2 - 5} width={10} height={10} fill={junctionColor(j)} />
-          <text x={16} y={cellH / 2} dy="0.35em" fontSize={12} fill="currentColor" fontStyle={jn.annotated === false ? "italic" : undefined}>
+          <text x={16} y={cellH / 2} dy="0.35em" fontSize={TYPE.label} fill="currentColor" fontStyle={jn.annotated === false ? "italic" : undefined}>
             {junctionLabel(chromosome, jn)}
           </text>
           {columns.map((c, i) => {
@@ -88,7 +89,7 @@ export function PsiHeatmap({ junctions, columns, psi, totals, chromosome, cellW 
                 <rect width={cellW - 2} height={cellH - 2} fill={Number.isFinite(p) ? psiColor(p) : "rgba(0,0,0,0.04)"}>
                   <title>{`${c} · ${junctionLabel(chromosome, jn)}: ${Number.isFinite(p) ? p.toFixed(3) : "no reads"}`}</title>
                 </rect>
-                <text x={(cellW - 2) / 2} y={(cellH - 2) / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill={psiTextColor(p)}>
+                <text x={(cellW - 2) / 2} y={(cellH - 2) / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.tick} fill={psiTextColor(p)}>
                   {Number.isFinite(p) ? p.toFixed(2) : "–"}
                 </text>
               </g>
@@ -98,11 +99,11 @@ export function PsiHeatmap({ junctions, columns, psi, totals, chromosome, cellW 
       ))}
       {totals && (
         <g transform={`translate(0,${headH + junctions.length * cellH + 14})`}>
-          <text x={16} fontSize={11} fill="currentColor" opacity={0.65}>
+          <text x={16} fontSize={TYPE.tick} fill="currentColor" opacity={0.65}>
             {totalsLabel}
           </text>
           {columns.map((c, i) => (
-            <text key={c} x={labelW + i * cellW + (cellW - 2) / 2} textAnchor="middle" fontSize={11} fill="currentColor" opacity={0.65}>
+            <text key={c} x={labelW + i * cellW + (cellW - 2) / 2} textAnchor="middle" fontSize={TYPE.tick} fill="currentColor" opacity={0.65}>
               {totals[i]}
             </text>
           ))}

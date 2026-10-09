@@ -21,7 +21,8 @@ import useSignatureModel from "./signatures/useSignatureModel";
 import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { cutTree, labelRuns } from "../../helpers/singleCell/treeGroups";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
+import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
 
 const MIN_HEIGHT = 440;
 const TREE_WIDTH = 240;
@@ -165,10 +166,10 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
     const label = trackOptions.find((o) => o.value === track)?.label || track;
     return (
       <g key={track} transform={`translate(${x0},0)`}>
-        <text x={0} y={12} fontSize={12} fontWeight="600" fill="#262626">{label.length > 24 ? `${label.slice(0, 23)}…` : label}<title>{label}</title></text>
-        <text x={TRACK_W - 4} y={HEADER - 6} textAnchor="end" fontSize={10} fill="#8c8c8c">{d3.format("~g")(x.domain()[1])}</text>
-        <text x={x(0)} y={HEADER - 6} textAnchor="start" fontSize={10} fill="#8c8c8c">{d3.format("~g")(x.domain()[0])}</text>
-        <line x1={x(0)} x2={x(0)} y1={HEADER} y2={HEADER + HEIGHT} stroke="#d9d9d9" />
+        <text x={0} y={12} fontSize={TYPE.label} fontWeight="600" fill={INK.text}>{label.length > 24 ? `${label.slice(0, 23)}…` : label}<title>{label}</title></text>
+        <text x={TRACK_W - 4} y={HEADER - 6} textAnchor="end" fontSize={11} fill={INK.muted}>{d3.format("~g")(x.domain()[1])}</text>
+        <text x={x(0)} y={HEADER - 6} textAnchor="start" fontSize={11} fill={INK.muted}>{d3.format("~g")(x.domain()[0])}</text>
+        <line x1={x(0)} x2={x(0)} y1={HEADER} y2={HEADER + HEIGHT} stroke={INK.border} />
         {agg.map(({ grp, value, n }) =>
           value == null ? null : (
             <rect
@@ -193,8 +194,8 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
 
   const renderSignatures = (x0) => (
     <g key="signatures" transform={`translate(${x0},0)`}>
-      <text x={0} y={12} fontSize={12} fontWeight="600" fill="#262626">{t("components.single-cell.bars.signatures")}</text>
-      <text x={0} y={HEADER - 6} fontSize={10} fill="#8c8c8c">{t("components.single-cell.bars.signatures-axis2")}</text>
+      <text x={0} y={12} fontSize={TYPE.label} fontWeight="600" fill={INK.text}>{t("components.single-cell.bars.signatures")}</text>
+      <text x={0} y={HEADER - 6} fontSize={11} fill={INK.muted}>{t("components.single-cell.bars.signatures-axis2")}</text>
       {groups.map((grp) => {
         const fit = sigFits[grp.key];
         if (!fit || !fit.activities.length) return null;
@@ -224,7 +225,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
   return (
     <Card
       size="small"
-      title={<Space><BarChartOutlined />{title || t("components.single-cell.bars.title")}</Space>}
+      title={<Space><BarChartOutlined />{title || t("components.single-cell.bars.title")}<Provenance id="phyloBars" /></Space>}
       extra={
         <Space wrap>
           <Select
