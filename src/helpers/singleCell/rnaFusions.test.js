@@ -140,3 +140,12 @@ describe("real BWH70 fusions.json (no BAM slices yet)", () => {
     expect(defaultRnaCells(out.fusions[0], 6)).toEqual([]);
   });
 });
+
+describe("mergeLoci", () => {
+  const { mergeLoci } = require("./igvTracks");
+  it("appends RNA breakpoints not already near a DNA locus", () => {
+    const dna = [{ chromosome: "7", position: 55019017 }, { chromosome: "7", position: 55365448 }];
+    const rna = [{ chromosome: "chr7", position: 55019100 }, { chromosome: "chr7", position: 55400000 }];
+    expect(mergeLoci(dna, rna)).toEqual([dna[0], dna[1], rna[1]]);
+  });
+});

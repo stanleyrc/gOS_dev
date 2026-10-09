@@ -61,3 +61,14 @@ export function lociString(loci, window = 60) {
     .map((l) => `${chr(l.chromosome)}:${Math.max(1, l.position - window)}-${l.position + window}`)
     .join(" ");
 }
+
+/** Loci of `a` then those of `b` not within `tolerance` bp of one already listed (same chromosome, chr-insensitive). */
+export function mergeLoci(a = [], b = [], tolerance = 200) {
+  const bare = (c) => `${c}`.replace(/^chr/i, "");
+  const out = [];
+  [...a, ...b].forEach((l) => {
+    if (!l || !Number.isFinite(l.position)) return;
+    if (!out.some((o) => bare(o.chromosome) === bare(l.chromosome) && Math.abs(o.position - l.position) <= tolerance)) out.push(l);
+  });
+  return out;
+}
