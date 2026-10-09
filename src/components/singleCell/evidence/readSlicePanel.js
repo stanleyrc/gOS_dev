@@ -7,6 +7,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import { casePath } from "../../../redux/singleCell/loaders";
 import { siteCloneSummary, siteEvidence } from "../../../helpers/singleCell/precompute";
 import NotComputed, { pcFile } from "./notComputed";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const WINDOW = 60;
@@ -194,7 +195,7 @@ export default function ReadSlicePanel() {
     {
       title: "Cell",
       dataIndex: "id",
-      render: (id) => <Text style={{ fontSize: 12 }} strong={selected.has(id)}>{id}</Text>,
+      render: (id) => <Text style={{ fontSize: 13 }} strong={selected.has(id)}>{id}</Text>,
     },
     {
       title: "Clone",
@@ -251,17 +252,17 @@ export default function ReadSlicePanel() {
   return (
     <Card
       size="small"
-      title="Read evidence"
+      title={<span>Read evidence <Provenance id="readSlices" /></span>}
       extra={
         <Space wrap size="small">
           <Segmented size="small" options={["DNA + RNA", "DNA", "RNA"]} value={layers} onChange={setLayers} />
           <Space size={4}>
             <Switch size="small" checked={onlySelected} onChange={setOnlySelected} disabled={!selectedCellIds.length} />
-            <Text style={{ fontSize: 12 }}>selected cells only ({selectedCellIds.length})</Text>
+            <Text style={{ fontSize: 13 }}>selected cells only ({selectedCellIds.length})</Text>
           </Space>
           <Space size={4}>
             <Switch size="small" checked={groupByCell} onChange={setGroupByCell} />
-            <Text style={{ fontSize: 12 }}>group reads by cell</Text>
+            <Text style={{ fontSize: 13 }}>group reads by cell</Text>
           </Space>
         </Space>
       }
@@ -280,7 +281,7 @@ export default function ReadSlicePanel() {
         />
         {site && (
           <Space wrap size={[4, 4]}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>
               {site.id} · {site.source || (site.hotspot ? "hotspot" : "discovered")} · prevalence {site.prevalence ?? "–"} · tumour alt {site.alt_tumor}/
               {site.dp_tumor} · normal alt {site.alt_normal}/{site.dp_normal}
             </Text>
@@ -292,7 +293,7 @@ export default function ReadSlicePanel() {
           </Space>
         )}
         {!calls.ok && opt?.siteId == null && (
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 13 }}>
             Genotypes: not yet computed (precompute step caller).
           </Text>
         )}

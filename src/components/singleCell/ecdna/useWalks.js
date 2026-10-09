@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import * as d3 from "d3";
 import { filterWalks } from "../../../helpers/singleCell/walks";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 // 10 + 8 + 9 distinct hues before anything repeats
 const PALETTE = [...d3.schemeTableau10, ...d3.schemeDark2, ...d3.schemeSet1];
@@ -44,7 +45,7 @@ export default function useWalks(cellIds) {
   const colorOf = useMemo(() => {
     const order = all.slice().sort((a, b) => (b.ncells || 0) - (a.ncells || 0));
     const m = new Map(order.map((w, i) => [w.id, PALETTE[i % PALETTE.length]]));
-    return (id) => m.get(id) || "#8c8c8c";
+    return (id) => m.get(id) || INK.faint;
   }, [all]);
   return { status: walksSource.status, all, measured, filtered, filters, setFilters, colorOf, byId: useMemo(() => new Map(all.map((w) => [w.id, w])), [all]) };
 }

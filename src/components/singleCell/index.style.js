@@ -4,9 +4,9 @@ const Wrapper = styled.div`
   /* ---- density: one set of card chrome / spacing values for every
      single-cell tab (pairs with density.js for gutters) ---- */
   .ant-card-small > .ant-card-head {
-    min-height: 30px;
+    min-height: 32px;
     padding: 0 10px;
-    font-size: 13px;
+    font-size: var(--sc-fs-title, 15px);
   }
   .ant-card-small > .ant-card-head .ant-card-head-title,
   .ant-card-small > .ant-card-head .ant-card-extra {
@@ -20,7 +20,7 @@ const Wrapper = styled.div`
   }
   h5.ant-typography.sc-section-title {
     margin: 8px 0 2px;
-    font-size: 14px;
+    font-size: var(--sc-fs-title, 15px);
   }
   h5.ant-typography.sc-section-title:first-child {
     margin-top: 0;
@@ -33,11 +33,12 @@ const Wrapper = styled.div`
     margin-bottom: 4px;
   }
   .ant-statistic-content {
-    font-size: 20px;
+    font-size: var(--sc-fs-stat, 22px);
   }
   .ant-statistic-title {
     margin-bottom: 0;
-    font-size: 12px;
+    font-size: 13px;
+    color: var(--sc-muted, #666);
   }
   .sc-hint-line {
     display: flex;
@@ -46,8 +47,8 @@ const Wrapper = styled.div`
     min-width: 0;
     max-width: 100%;
     margin-top: 2px;
-    font-size: 11.5px;
-    line-height: 18px;
+    font-size: var(--sc-fs-label, 12.5px);
+    line-height: 20px;
     cursor: help;
   }
   .sc-hint-line > .ant-typography {
@@ -56,24 +57,25 @@ const Wrapper = styled.div`
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 11.5px;
+    font-size: var(--sc-fs-label, 12.5px);
+    color: var(--sc-muted, #666);
   }
   .sc-hint-icon {
     flex: none;
-    font-size: 12px;
-    color: #8c8c8c;
+    font-size: 13px;
+    color: var(--sc-faint, #8c8c8c);
     cursor: help;
   }
   .sc-hint-icon:hover {
-    color: #1677ff;
+    color: var(--sc-accent, #1677ff);
   }
   /* compact inline note (replaces full-width info banners) */
   .sc-note {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
-    color: #8c8c8c;
+    font-size: 13px;
+    color: var(--sc-muted, #666);
   }
   /* label / value grid (single-walk card facts) */
   .sc-walk-card,
@@ -90,14 +92,14 @@ const Wrapper = styled.div`
   .sc-alert {
     margin-bottom: 4px;
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: 13px;
   }
   .sc-alert.ant-alert-with-description {
     padding: 4px 10px;
   }
   .sc-alert.ant-alert-with-description .ant-alert-message {
     margin-bottom: 0;
-    font-size: 13px;
+    font-size: var(--sc-fs-body, 13.5px);
   }
   .sc-heatmap-container {
     position: relative;
@@ -121,9 +123,9 @@ const Wrapper = styled.div`
     max-height: 100%;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 500;
-    color: #434343;
+    color: var(--sc-text-secondary, #434343);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -140,13 +142,13 @@ const Wrapper = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px dashed #d9d9d9;
+    border: 1px dashed var(--sc-border, #d9d9d9);
   }
   .sc-axis {
     position: relative;
     margin-top: 2px;
-    font-size: 11px;
-    color: #595959;
+    font-size: var(--sc-fs-label, 12.5px);
+    color: var(--sc-text-secondary, #434343);
   }
   .sc-axis-label {
     position: absolute;
@@ -158,11 +160,11 @@ const Wrapper = styled.div`
   }
   .sc-axis-tick {
     position: absolute;
-    font-size: 9px;
-    line-height: 12px;
+    font-size: var(--sc-fs-tick, 11.5px);
+    line-height: 14px;
     padding-left: 2px;
-    border-left: 1px solid #8c8c8c;
-    color: #8c8c8c;
+    border-left: 1px solid var(--sc-axis, #8c8c8c);
+    color: var(--sc-muted, #666);
     white-space: nowrap;
     user-select: none;
     pointer-events: none;
@@ -171,7 +173,7 @@ const Wrapper = styled.div`
     cursor: pointer;
   }
   .sc-axis-link:hover {
-    color: #1677ff;
+    color: var(--sc-accent, #1677ff);
     text-decoration: underline;
   }
   .sc-heatmap-footer {
@@ -182,36 +184,37 @@ const Wrapper = styled.div`
     margin-top: 4px;
   }
   .sc-hint {
-    font-size: 12px;
+    font-size: 13px;
   }
   .sc-tooltip {
     position: absolute;
     z-index: 10;
     pointer-events: none;
-    background: rgba(255, 255, 255, 0.97);
-    border: 1px solid #d9d9d9;
+    background: var(--sc-raised, #fff);
+    color: var(--sc-text, #1f1f1f);
+    border: 1px solid var(--sc-border, #d9d9d9);
     border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    padding: 6px 8px;
-    font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    padding: 6px 9px;
+    font-size: var(--sc-fs-body, 13.5px);
     line-height: 1.5;
     max-width: 360px;
     white-space: nowrap;
   }
   .sc-tooltip-key {
-    color: #8c8c8c;
+    color: var(--sc-muted, #666);
   }
   .sc-legend-item {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    font-size: 12px;
+    font-size: 13px;
   }
   .sc-legend-swatch {
     display: inline-block;
     width: 12px;
     height: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--sc-border, rgba(0, 0, 0, 0.15));
     border-radius: 2px;
   }
   .sc-cell-tracks-header {
@@ -224,7 +227,7 @@ const Wrapper = styled.div`
   .sc-cell-block {
     margin-bottom: 16px;
     padding-left: 10px;
-    border-left: 4px solid #d9d9d9;
+    border-left: 4px solid var(--sc-border, #d9d9d9);
   }
   .sc-cell-title {
     display: flex;
@@ -246,14 +249,14 @@ const Wrapper = styled.div`
     .sc-cell-title {
       margin: 0 0 2px;
       gap: 6px;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 20px;
     }
     .sc-cell-title .ant-tag {
       margin-inline-end: 0;
       padding-inline: 4px;
-      font-size: 11px;
-      line-height: 16px;
+      font-size: 12px;
+      line-height: 17px;
     }
     .sc-cell-title .ant-btn-sm {
       height: 20px;
@@ -268,7 +271,7 @@ const Wrapper = styled.div`
     .ant-card-small > .ant-card-head {
       min-height: 22px;
       padding: 0 6px;
-      font-size: 11px;
+      font-size: 12px;
     }
     .ant-card-small > .ant-card-head .ant-card-head-title,
     .ant-card-small > .ant-card-head .ant-card-extra {
@@ -286,7 +289,8 @@ const Wrapper = styled.div`
   .sc-row-labels {
     display: flex;
     flex-direction: column;
-    font-size: 11px;
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-text-secondary, #434343);
     text-align: right;
     white-space: nowrap;
     overflow: hidden;
@@ -317,15 +321,15 @@ const Wrapper = styled.div`
     font: inherit;
   }
   .sc-history-item:hover {
-    background: #fafafa;
+    background: var(--sc-panel-alt, #fafafa);
   }
   .sc-history-item.active {
-    border-color: #91caff;
-    background: #e6f4ff;
+    border-color: var(--sc-accent, #91caff);
+    background: var(--sc-accent-soft, #e6f4ff);
   }
   .sc-prevalence svg text {
-    font-size: 11px;
-    fill: #595959;
+    font-size: 12px;
+    fill: var(--sc-text-secondary, #434343);
   }
   .sc-igv {
     min-height: 320px;
@@ -333,26 +337,26 @@ const Wrapper = styled.div`
   }
   .sc-level {
     padding: 0 6px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--sc-border-soft, #f0f0f0);
     border-radius: 4px;
   }
   .sc-height-handle {
     height: 6px;
     margin: 2px 0;
     border-radius: 3px;
-    background: #f0f0f0;
+    background: var(--sc-border-soft, #f0f0f0);
     cursor: row-resize;
   }
   .sc-height-handle:hover {
-    background: #1677ff;
+    background: var(--sc-accent, #1677ff);
   }
   .sc-resize-handle {
     cursor: col-resize;
-    background: #f0f0f0;
+    background: var(--sc-border-soft, #f0f0f0);
     border-radius: 1px;
   }
   .sc-resize-handle:hover {
-    background: #1677ff;
+    background: var(--sc-accent, #1677ff);
   }
   /* Heatmap controls stay reachable while scrolling, below the pinned
      header, tabs and navigation (--sc-sticky-top from the tab). */
@@ -360,7 +364,7 @@ const Wrapper = styled.div`
     position: sticky;
     top: var(--sc-sticky-top, 0px);
     z-index: 6;
-    background: #fff;
+    background: var(--sc-panel, #fff);
     padding: 3px 0 1px;
     margin-top: -3px;
   }
@@ -374,20 +378,20 @@ const Wrapper = styled.div`
     padding: 4px 8px;
     margin-bottom: 6px;
     border-radius: 6px;
-    background: #f0f5ff;
+    background: var(--sc-accent-soft, #f0f5ff);
   }
   .sc-events-table .ant-table-thead > tr > th {
-    font-size: 12px;
+    font-size: 12.5px;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: #595959;
-    background: #fafafa;
+    color: var(--sc-text-secondary, #434343);
+    background: var(--sc-panel-alt, #fafafa);
   }
   .sc-events-table .ant-table-tbody > tr:nth-child(even) > td {
-    background: #fcfcfc;
+    background: var(--sc-panel-alt, #fcfcfc);
   }
   .sc-events-table .ant-table-tbody > tr:hover > td {
-    background: #f0f5ff;
+    background: var(--sc-accent-soft, #f0f5ff);
   }
   .sc-toolbar-row {
     display: flex;
@@ -397,15 +401,16 @@ const Wrapper = styled.div`
   }
   .sc-toolbar-row + .sc-toolbar-row {
     padding-left: 12px;
-    border-left: 1px solid #f0f0f0;
+    border-left: 1px solid var(--sc-border-soft, #f0f0f0);
   }
   .sc-toolbar-row-label {
     flex: none;
     padding-top: 2px;
-    font-size: 10px;
+    font-size: 11px;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #8c8c8c !important;
+    color: var(--sc-muted, #666) !important;
   }
   /* control groups (VIEW, SNVS, ...) flow side by side and wrap */
   .sc-toolbar {
@@ -425,7 +430,7 @@ const Wrapper = styled.div`
     right: 0;
     pointer-events: none;
     box-sizing: border-box;
-    border: 1px solid #1677ff;
+    border: 1px solid var(--sc-select, #1677ff);
     background: rgba(22, 119, 255, 0.08);
   }
   .sc-select-band {
@@ -433,7 +438,7 @@ const Wrapper = styled.div`
     right: 0;
     pointer-events: none;
     box-sizing: border-box;
-    background: rgba(22, 119, 255, 0.14);
+    background: var(--sc-select-fill, rgba(22, 119, 255, 0.14));
   }
   .sc-gene-labels {
     position: relative;
@@ -444,9 +449,9 @@ const Wrapper = styled.div`
     top: 4px;
     transform: rotate(60deg);
     transform-origin: 0 0;
-    font-size: 10px;
+    font-size: var(--sc-fs-tick, 11.5px);
     white-space: nowrap;
-    color: #595959;
+    color: var(--sc-text-secondary, #434343);
   }
   .sc-violin-grid {
     display: flex;
@@ -469,10 +474,10 @@ const Wrapper = styled.div`
     top: 2px;
     left: 3px;
     padding: 0 3px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
-    color: #531dab;
-    background: rgba(255, 255, 255, 0.85);
+    color: var(--sc-pinned, #531dab);
+    background: var(--sc-label-bg, rgba(255, 255, 255, 0.85));
     border-radius: 2px;
     white-space: nowrap;
   }
@@ -490,8 +495,8 @@ const Wrapper = styled.div`
     background: rgba(22, 119, 255, 0.5);
   }
   .sc-hover-clade {
-    border-color: #fa541c;
-    background: rgba(250, 84, 28, 0.08);
+    border-color: var(--sc-hover, #fa541c);
+    background: var(--sc-hover-fill, rgba(250, 84, 28, 0.08));
   }
   .sc-gene-zoom {
     display: flex;
@@ -513,7 +518,7 @@ const Wrapper = styled.div`
   }
   .sc-umap-plot {
     position: relative;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--sc-border-soft, #f0f0f0);
     border-radius: 4px;
   }
   .sc-umap-legend {
@@ -524,11 +529,11 @@ const Wrapper = styled.div`
   .sc-umap-ramp {
     height: 10px;
     border-radius: 2px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--sc-border, rgba(0, 0, 0, 0.1));
   }
   .sc-legend-hollow {
     background: transparent !important;
-    border: 1.5px solid #8c8c8c !important;
+    border: 1.5px solid var(--sc-axis, #8c8c8c) !important;
     border-radius: 50% !important;
   }
 `;

@@ -6,7 +6,7 @@ import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import HeatmapCanvas from "../heatmapCanvas";
 import StripLabels from "../stripLabels";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import ExpressionSidePanel from "../expressionSidePanel";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
@@ -252,7 +252,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
         title={
           <Space>
             <ApartmentOutlined />
-            {t("components.single-cell.rna.phylo-title")}
+            {t("components.single-cell.rna.phylo-title")}<Provenance id="phyloExpression" />
             <Text type="secondary">{t("components.single-cell.rna.n-genes", { count: genes.length })}</Text>
           </Space>
         }

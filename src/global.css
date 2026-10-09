@@ -305,73 +305,43 @@ span.filter-option-count {
   text-overflow: ellipsis;
 }
 
-/* ---- dark theme (html[data-theme="dark"], see helpers/appTheme.js) ---- */
+/* ---- dark theme (html[data-theme="dark"], see helpers/appTheme.js) ----
+   Colours come from the --sc-* custom properties that applyAppTheme sets
+   from helpers/singleCell/plotTheme.js (one source for CSS, SVG and canvas).
+   Fixed light colours written as SVG attributes are re-tinted by the
+   stylesheet plotTheme.svgRemapCss() generates (style#sc-svg-remap). */
 html[data-theme="dark"],
 html[data-theme="dark"] body,
 html[data-theme="dark"] .ant-full-layout,
 html[data-theme="dark"] .ant-full-content,
 html[data-theme="dark"] .ant-layout,
 html[data-theme="dark"] .ant-layout-content {
-  background: #141414 !important;
-  color: #e6e6e6;
+  background: var(--sc-page) !important;
+  color: var(--sc-text);
 }
 html[data-theme="dark"] .ant-full-footer {
-  background: #1b1b1b !important;
-  color: #999;
-}
-html[data-theme="dark"] .ant-home-header-container,
-html[data-theme="dark"] .ant-home-content-container {
-  background: #141414 !important;
+  background: var(--sc-panel) !important;
+  color: var(--sc-muted);
 }
 html[data-theme="dark"] .sc-group-bar {
-  background: #1f2a3a !important;
+  background: var(--sc-accent-soft) !important;
 }
 html[data-theme="dark"] .sc-tooltip {
-  background: #262626 !important;
-  color: #eee !important;
-  border-color: #434343 !important;
+  background: var(--sc-raised) !important;
+  color: var(--sc-text) !important;
+  border-color: var(--sc-border) !important;
 }
 html[data-theme="dark"] .sc-heatmap-empty {
-  border-color: #434343;
+  border-color: var(--sc-border);
 }
-/* SVG plots: light fills / dark text drawn with fixed colours */
-html[data-theme="dark"] svg rect[fill="#f5f5f5"],
-html[data-theme="dark"] svg rect[fill="#fafafa"],
-html[data-theme="dark"] svg rect[fill="#FAFAFA"],
-html[data-theme="dark"] svg rect[fill="#f0f0f0"] {
-  fill: #262626;
-}
-html[data-theme="dark"] svg line[stroke="#f0f0f0"],
-html[data-theme="dark"] svg line[stroke="#e8e8e8"] {
-  stroke: #333;
-}
-html[data-theme="dark"] svg line[stroke="#d9d9d9"],
-html[data-theme="dark"] svg line[stroke="#8c8c8c"] {
-  stroke: #666;
-}
-html[data-theme="dark"] svg text[fill="#262626"],
-html[data-theme="dark"] svg text[fill="#000"],
-html[data-theme="dark"] svg text:not([fill]) {
-  fill: #e0e0e0;
-}
-html[data-theme="dark"] svg text[fill="#595959"] {
-  fill: #bdbdbd;
-}
-html[data-theme="dark"] svg text[fill="#8c8c8c"] {
-  fill: #9e9e9e;
-}
-html[data-theme="dark"] svg rect[fill="rgba(255,255,255,0.8)"] {
-  fill: rgba(20, 20, 20, 0.8);
-}
-/* label boxes drawn white with a coloured outline (clonal history, matrix tags) */
+/* labels painted over data (clonal history, matrix tags): keep them boxed */
 html[data-theme="dark"] svg rect[fill="#fff"][stroke] {
-  fill: #1f1f1f;
+  fill: var(--sc-raised);
 }
-html[data-theme="dark"] svg rect[fill="#f0f0f0"][rx] {
-  fill: #333;
-}
-html[data-theme="dark"] canvas {
-  filter: none;
+html[data-theme="dark"] svg text[fill="#fff" i],
+html[data-theme="dark"] svg text[fill="#ffffff" i],
+html[data-theme="dark"] svg text[fill="white"] {
+  fill: #f5f5f5;
 }
 
 /* dark theme: app chrome drawn with fixed light colours by styled-components */
@@ -380,15 +350,15 @@ html[data-theme="dark"] .ant-pro-top-nav-header,
 html[data-theme="dark"] .ant-pro-top-nav-header.light,
 html[data-theme="dark"] .ant-pro-top-nav-header-main,
 html[data-theme="dark"] .ant-layout-header {
-  background: #1b1b1b !important;
-  color: #e6e6e6 !important;
-  border-bottom: 1px solid #303030;
+  background: var(--sc-panel) !important;
+  color: var(--sc-text) !important;
+  border-bottom: 1px solid var(--sc-border-soft);
 }
 html[data-theme="dark"] .ant-pro-top-nav-header-logo h1,
 html[data-theme="dark"] .ant-pro-top-nav-header-logo,
 html[data-theme="dark"] .ant-pro-top-menu .ant-select-selection-item,
 html[data-theme="dark"] .ant-pro-top-menu .ant-select-selection-placeholder {
-  color: #e6e6e6 !important;
+  color: var(--sc-text) !important;
 }
 html[data-theme="dark"] .site-page-header,
 html[data-theme="dark"] .ant-page-header,
@@ -399,8 +369,8 @@ html[data-theme="dark"] .ant-panel-list-container,
 html[data-theme="dark"] .ant-home-content-container > .ant-tabs > .ant-tabs-nav,
 html[data-theme="dark"] .ant-tabs-nav,
 html[data-theme="dark"] .ant-affix > div {
-  background: #141414 !important;
-  border-color: #303030 !important;
+  background: var(--sc-page) !important;
+  border-color: var(--sc-border-soft) !important;
 }
 html[data-theme="dark"] .ant-page-header-heading-title,
 html[data-theme="dark"] .detail-title-breadcrumb,
@@ -410,112 +380,145 @@ html[data-theme="dark"] .site-page-header h1,
 html[data-theme="dark"] .site-page-header h2,
 html[data-theme="dark"] .site-page-header h3,
 html[data-theme="dark"] .ant-page-header .ant-typography {
-  color: #e6e6e6 !important;
+  color: var(--sc-text) !important;
 }
 html[data-theme="dark"] .detail-title-breadcrumb-link:hover {
-  color: #69b1ff !important;
+  color: var(--sc-accent) !important;
 }
 html[data-theme="dark"] .ant-page-header .ant-btn-default,
-html[data-theme="dark"] .site-page-header .ant-btn-default {
-  background: #1f1f1f !important;
-  color: #e6e6e6 !important;
-  border-color: #434343 !important;
+html[data-theme="dark"] .site-page-header .ant-btn-default,
+html[data-theme="dark"] .ant-pro-page-container .ant-btn-link,
+html[data-theme="dark"] .ant-page-header .ant-btn-link {
+  background: var(--sc-raised) !important;
+  color: var(--sc-text) !important;
+  border-color: var(--sc-border) !important;
 }
 html[data-theme="dark"] .ant-pro-top-menu .ant-select-selector,
 html[data-theme="dark"] .ant-pro-top-menu .ant-select {
-  background: #262626 !important;
-  color: #e6e6e6 !important;
-  border-color: #434343 !important;
+  background: var(--sc-raised) !important;
+  color: var(--sc-text) !important;
+  border-color: var(--sc-border) !important;
 }
 html[data-theme="dark"] .sc-toolbar-row {
-  border-top-color: #303030;
+  border-top-color: var(--sc-border-soft);
 }
+html[data-theme="dark"] .ant-table-thead > tr > th,
 html[data-theme="dark"] .sc-events-table .ant-table-thead > tr > th,
 html[data-theme="dark"] .sc-toolbar-sticky {
-  background: #1f1f1f !important;
+  background: var(--sc-panel-alt) !important;
+  color: var(--sc-text-secondary) !important;
 }
 html[data-theme="dark"] .sc-events-table .ant-table-tbody > tr:nth-child(even) > td {
-  background: #181818 !important;
+  background: var(--sc-panel-alt) !important;
 }
-
-/* dark theme: white plot backdrops and light grid lines in SVG charts */
-html[data-theme="dark"] svg rect[fill="#ffffff"],
-html[data-theme="dark"] svg rect[fill="#fff"],
-html[data-theme="dark"] svg rect[fill="white"] {
-  fill: #1f1f1f;
-}
-html[data-theme="dark"] svg line[stroke="#eeeeee"],
-html[data-theme="dark"] svg line[stroke="#f5f5f5"] {
-  stroke: #3a3a3a;
-}
-html[data-theme="dark"] svg circle[stroke="#fff"],
-html[data-theme="dark"] svg rect[stroke="#fff"],
-html[data-theme="dark"] svg path[stroke="#fff"] {
-  stroke: #1f1f1f;
-}
-html[data-theme="dark"] svg text[fill="#fff"] {
-  fill: #f0f0f0;
-}
-html[data-theme="dark"] svg rect[fill="#e8e8e8"],
-html[data-theme="dark"] svg rect[fill="#d9d9d9"] {
-  fill: #3a3a3a;
-}
-html[data-theme="dark"] .sc-heatmap-empty,
 html[data-theme="dark"] .ant-card {
-  border-color: #303030;
-}
-html[data-theme="dark"] .sc-strip-label {
-  color: #d9d9d9 !important;
-}
-
-/* dark theme: cards and the genome navigation (genes / cytobands) */
-html[data-theme="dark"] .ant-card {
-  background: #1d1d1d !important;
-  border: 1px solid #303030 !important;
+  background: var(--sc-panel) !important;
+  border: 1px solid var(--sc-border-soft) !important;
 }
 html[data-theme="dark"] .ant-card .ant-card-head {
-  border-bottom-color: #303030 !important;
-  color: #e6e6e6;
+  border-bottom-color: var(--sc-border-soft) !important;
+  color: var(--sc-text);
 }
 html[data-theme="dark"] .ant-card .ant-divider,
 html[data-theme="dark"] .ant-divider {
-  border-color: #3a3a3a !important;
-  color: #bfbfbf !important;
-}
-html[data-theme="dark"] .ant-wrapper,
-html[data-theme="dark"] .ant-wrapper-cytobands,
-html[data-theme="dark"] .sc-nav-affix,
-html[data-theme="dark"] div.genome-plot {
-  background: #141414 !important;
-}
-html[data-theme="dark"] .ant-wrapper svg text,
-html[data-theme="dark"] .plot-container-cytobands text {
-  fill: #e0e0e0;
+  border-color: var(--sc-border) !important;
+  color: var(--sc-text-secondary) !important;
 }
 html[data-theme="dark"] .ant-statistic-title {
-  color: #9e9e9e !important;
+  color: var(--sc-muted) !important;
 }
 html[data-theme="dark"] .ant-statistic-content {
-  color: #e6e6e6 !important;
+  color: var(--sc-text) !important;
+}
+html[data-theme="dark"] .sc-strip-label {
+  color: var(--sc-text-secondary) !important;
 }
 
-/* dark theme: genome navigation panels (genes / cytobands / genome plots) */
-html[data-theme="dark"] .zoom-background,
-html[data-theme="dark"] rect.zoom-background {
-  fill: #1a1a1a !important;
+/* dark theme: genome navigation (genes / cytobands) and genome plots. The
+   WebGL canvas sits under an absolutely positioned SVG overlay, so only the
+   wrappers get a background; the overlays stay transparent. */
+html[data-theme="dark"] .ant-wrapper,
+html[data-theme="dark"] .ant-wrapper-cytobands,
+html[data-theme="dark"] .ant-wrapper-legend,
+html[data-theme="dark"] .sc-nav-affix {
+  background: var(--sc-panel) !important;
 }
 html[data-theme="dark"] svg.plot-container,
 html[data-theme="dark"] svg.plot-container-cytobands,
-html[data-theme="dark"] .ant-wrapper,
-html[data-theme="dark"] .ant-wrapper-cytobands,
-html[data-theme="dark"] .labels-container,
-html[data-theme="dark"] .genome-plot {
-  background: #141414 !important;
+html[data-theme="dark"] div.genome-plot {
+  background: transparent !important;
 }
-html[data-theme="dark"] svg.plot-container text,
-html[data-theme="dark"] svg.plot-container-cytobands text {
-  fill: #e0e0e0;
+html[data-theme="dark"] .zoom-background,
+html[data-theme="dark"] rect.zoom-background {
+  fill: transparent !important;
+}
+html[data-theme="dark"] .ant-wrapper svg text,
+html[data-theme="dark"] .plot-container-cytobands text,
+html[data-theme="dark"] svg.plot-container text {
+  fill: var(--sc-text);
 }
 .sc-row-picked td {
   background: rgba(22, 119, 255, 0.08) !important;
+}
+
+/* provenance hovers (components/singleCell/hintLine.js Provenance) */
+.sc-prov-overlay {
+  max-width: 460px !important;
+}
+.sc-prov-overlay .ant-tooltip-inner {
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.sc-prov-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: normal;
+}
+.sc-prov-help {
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+.sc-prov-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 6px;
+}
+.sc-prov-key {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  padding-top: 1px;
+}
+.sc-prov-badge {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+.sc-prov-browser {
+  color: #91caff;
+}
+.sc-prov-backend {
+  color: #d3adf7;
+}
+.sc-prov-both {
+  color: #87e8de;
+}
+.sc-prov-underline {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--sc-faint, #8c8c8c);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.sc-prov-icon {
+  margin-left: 2px;
 }

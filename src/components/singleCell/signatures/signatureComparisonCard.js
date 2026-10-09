@@ -8,8 +8,10 @@ import useContainerWidth from "../useContainerWidth";
 import { ActivityBars, AetiologyLegend, loadCosmic } from "../signaturePanel";
 import { fitSignatures, nnls } from "../../../helpers/singleCell/signatures";
 import { profileSimilarity, setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
+import usePlotTheme from "../usePlotTheme";
+import { inkOn } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -20,6 +22,7 @@ const pct = d3.format(".0%");
  * plus the cosine similarity between the sets' SBS96 profiles.
  */
 export default function SignatureComparisonCard() {
+  const pt = usePlotTheme();
   const { t } = useTranslation("common");
   const { snv, signatures, cells, selectedCellIds, layout } = useSelector((state) => state.SingleCell);
   const [ref, width] = useContainerWidth(900);
@@ -73,13 +76,13 @@ export default function SignatureComparisonCard() {
   );
   const sim = useMemo(() => profileSimilarity(profiles.filter((p) => p.used >= 10)), [profiles]);
   if (!snvData || !sets.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.no-contexts")} />;
-  const color = d3.scaleSequential(d3.interpolateBlues).domain([0.5, 1]);
+  const color = d3.scaleSequential(pt.mode === "dark" ? d3.interpolateRgb(pt.panelAlt, "#69b1ff") : d3.interpolateBlues).domain([0.5, 1]);
   const missing = profiles.filter((p) => p.used >= 10 && !backend.find((s) => s.name === p.name) && !fits[p.key]).length;
 
   return (
     <Card
       size="small"
-      title={<Space><SwapOutlined />{t("components.single-cell.signatures.compare-title")}</Space>}
+      title={<Space><SwapOutlined />{t("components.single-cell.signatures.compare-title")}<Provenance id="signatureCompare" /></Space>}
       extra={
         <Space>
           {missing > 0 && (
@@ -116,7 +119,7 @@ export default function SignatureComparisonCard() {
           <Col xs={24} xl={10}>
             <Text strong>{t("components.single-cell.signatures.similarity-title")}</Text>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ borderCollapse: "collapse", fontSize: 11, marginTop: 6 }}>
+              <table style={{ borderCollapse: "collapse", fontSize: 12.5, marginTop: 6 }}>
                 <thead>
                   <tr>
                     <th />
@@ -132,7 +135,7 @@ export default function SignatureComparisonCard() {
                     <tr key={k}>
                       <td style={{ padding: "2px 6px", whiteSpace: "nowrap" }}>{profiles.find((p) => p.key === k)?.name}</td>
                       {sim.keys.map((k2, j) => (
-                        <td key={k2} style={{ width: 34, height: 24, textAlign: "center", background: color(sim.matrix[i][j]), color: sim.matrix[i][j] > 0.8 ? "#fff" : "#262626" }} title={`${profiles.find((p) => p.key === k)?.name} vs ${profiles.find((p) => p.key === k2)?.name}: cosine ${sim.matrix[i][j].toFixed(3)}`}>
+                        <td key={k2} style={{ width: 34, height: 24, textAlign: "center", background: color(sim.matrix[i][j]), color: inkOn(color(sim.matrix[i][j])) }} title={`${profiles.find((p) => p.key === k)?.name} vs ${profiles.find((p) => p.key === k2)?.name}: cosine ${sim.matrix[i][j].toFixed(3)}`}>
                           {i === j ? "" : pct(sim.matrix[i][j])}
                         </td>
                       ))}

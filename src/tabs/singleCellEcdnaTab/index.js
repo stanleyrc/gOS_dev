@@ -23,7 +23,7 @@ import useContainerWidth from "../../components/singleCell/useContainerWidth";
 import settingsActions from "../../redux/settings/actions";
 import { toGlobal, walkFamilies, walkFootprint } from "../../helpers/singleCell/walks";
 import { defaultFocusWalk } from "../../helpers/singleCell/walkPanels";
-import HintLine from "../../components/singleCell/hintLine";
+import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
 
 const { Text } = Typography;
@@ -125,7 +125,7 @@ export default function SingleCellEcdnaTab() {
       <ScErrorBoundary resetKey={`${selected.join("|")}-${focus}`} title="ecDNA view failed">
         <Row gutter={SC_GUTTER}>
           <Col span={24}>
-            <Card size="small" title={<Space><BranchesOutlined />{t("components.single-cell.ecdna.title", { count: all.length })}</Space>} extra={<HelpDrawer />}>
+            <Card size="small" title={<Space><BranchesOutlined />{t("components.single-cell.ecdna.title", { count: all.length })}<Provenance id="walks" /></Space>} extra={<HelpDrawer />}>
               <WalkPicker families={families} total={all.length} nCells={cellIds.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} onShowTable={() => setShowTable((v) => !v)} />
               {showTable && (
                 <div style={{ marginTop: 10 }}>
@@ -137,7 +137,7 @@ export default function SingleCellEcdnaTab() {
           <Col span={24}>
             <Card
               size="small"
-              title={<Space size={6}><NodeExpandOutlined />{t("components.single-cell.ecdna.plot-title", { count: shown.length })}<HintLine inline text={t("components.single-cell.ecdna.plot-help")} /></Space>}
+              title={<Space size={6}><NodeExpandOutlined />{t("components.single-cell.ecdna.plot-title", { count: shown.length })}<HintLine inline provenance="walks" text={t("components.single-cell.ecdna.plot-help")} /></Space>}
               extra={
                 <Space wrap>
                   <Segmented size="small" value={colorBy} onChange={setColorBy} options={[{ value: "walk", label: t("components.single-cell.ecdna.color-walk") }, { value: "chromosome", label: t("components.single-cell.ecdna.color-chr") }]} />

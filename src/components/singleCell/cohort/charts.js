@@ -1,5 +1,6 @@
 import React from "react";
 import * as d3 from "d3";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 // Small SVG building blocks shared by the cohort panels.
 
@@ -25,14 +26,14 @@ export function YAxis({ scale, x0, x1, title, ticks = 5, format = d3.format("~s"
     <g>
       {values.map((v) => (
         <g key={v} transform={`translate(0,${scale(v)})`}>
-          <line x1={x0} x2={x1} stroke="#f0f0f0" />
-          <text x={x0 - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill="#595959">
+          <line x1={x0} x2={x1} stroke={INK.grid} />
+          <text x={x0 - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>
             {format(v)}
           </text>
         </g>
       ))}
       {title && (
-        <text transform={`translate(${x0 - 44},${(scale.range()[0] + scale.range()[1]) / 2}) rotate(-90)`} textAnchor="middle" fontSize={FONT.label} fill="#262626">
+        <text transform={`translate(${x0 - 44},${(scale.range()[0] + scale.range()[1]) / 2}) rotate(-90)`} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>
           {title}
         </text>
       )}
@@ -52,7 +53,7 @@ export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, 
           textAnchor={rotate ? "end" : "middle"}
           transform={rotate ? `rotate(-40 ${scale(k) + scale.bandwidth() / 2} ${y})` : undefined}
           fontSize={fontSize}
-          fill="#262626"
+          fill={INK.text}
           style={{ cursor: onClick ? "pointer" : undefined }}
           onClick={onClick ? () => onClick(k) : undefined}
         >
@@ -66,7 +67,7 @@ export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, 
 /** Legend row of swatches. */
 export function Swatches({ items, style }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", fontSize: 12, ...style }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", fontSize: 13, ...style }}>
       {items.map(({ key, color, label }) => (
         <span key={key} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
           <span style={{ width: 12, height: 12, background: color, borderRadius: 2, display: "inline-block" }} />
@@ -103,7 +104,7 @@ export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = 
         return (
           <g key={g.key}>
             <rect x={cx - half} y={y(q3)} width={half * 2} height={Math.max(1, y(q1) - y(q3))} fill={g.color} fillOpacity={0.18} stroke={g.color} rx={3} />
-            <line x1={cx - half} x2={cx + half} y1={y(med)} y2={y(med)} stroke="#262626" strokeWidth={2} />
+            <line x1={cx - half} x2={cx + half} y1={y(med)} y2={y(med)} stroke={INK.text} strokeWidth={2} />
             {g.values.map((val, k) =>
               Number.isFinite(val) && (log ? val > 0 : true) ? (
                 <circle

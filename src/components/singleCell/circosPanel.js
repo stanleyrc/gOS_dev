@@ -13,7 +13,9 @@ import singleCellActions from "../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import { cnColorer } from "../../helpers/singleCell/matrix";
 import { medianCnRow } from "../../helpers/singleCell/cellFiles";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
+import usePlotTheme from "./usePlotTheme";
+import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const genomeCache = new Map();
@@ -61,6 +63,7 @@ function junctionsOf(genome, toPlace) {
  * in the heatmap palette; centre: junction arcs by type.
  */
 export default function CircosPanel() {
+  const pt = usePlotTheme();
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { cells, cn, selectedCellIds, hoveredCellId, cloneColors, palette } = useSelector((s) => s.SingleCell);
@@ -87,7 +90,7 @@ export default function CircosPanel() {
   const sources = useMemo(() => {
     if (mode === "cells") {
       const ids = (selectedCellIds.length ? selectedCellIds : order.slice(0, 1)).slice(0, MAX_RINGS);
-      return ids.map((id) => ({ key: id, label: id, color: cloneColors[cellById.get(id)?.clone_id] || "#8c8c8c", cellIds: [id], row: cnRowOf.get(id) || null }));
+      return ids.map((id) => ({ key: id, label: id, color: cloneColors[cellById.get(id)?.clone_id] || INK.faint, cellIds: [id], row: cnRowOf.get(id) || null }));
     }
     const byClone = new Map();
     cells.forEach((c) => {
@@ -101,7 +104,7 @@ export default function CircosPanel() {
       .map(([clone, ids]) => ({
         key: `clone:${clone}`,
         label: `${clone} (${ids.length})`,
-        color: cloneColors[clone] || "#8c8c8c",
+        color: cloneColors[clone] || INK.faint,
         cellIds: ids,
         row: medianCnRow(ids.map((id) => cnRowOf.get(id)).filter(Boolean), chromoBins),
       }));
@@ -178,7 +181,7 @@ export default function CircosPanel() {
   return (
     <Card
       size="small"
-      title={<Space><RadarChartOutlined />{t("components.single-cell.circos.title2")}</Space>}
+      title={<Space><RadarChartOutlined />{t("components.single-cell.circos.title2")}<Provenance id="circos" /></Space>}
       extra={
         <Space wrap>
           <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.circos.mode-cells") }, { value: "clones", label: t("components.single-cell.circos.mode-clones") }]} />
@@ -227,8 +230,8 @@ export default function CircosPanel() {
           <svg width={size} height={size} style={{ display: "block" }}>
             <defs>
               <radialGradient id="circos-bg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity={0} />
-                <stop offset="100%" stopColor="#f0f0f0" stopOpacity={0.6} />
+                <stop offset="0%" stopColor={pt.panel} stopOpacity={0} />
+                <stop offset="100%" stopColor={pt.empty} stopOpacity={pt.mode === "dark" ? 0.35 : 0.6} />
               </radialGradient>
             </defs>
             <g transform={`translate(${R},${R})`}>
@@ -241,12 +244,12 @@ export default function CircosPanel() {
                 const ticks = d3.range(0, c.endPoint - c.startPoint, 5e7).slice(1);
                 return (
                   <g key={chr}>
-                    <path d={arc(a0, a1, ideo[0], ideo[1])} fill={CHR_COLORS(i)} fillOpacity={0.85} stroke="#fff" strokeWidth={0.8} />
+                    <path d={arc(a0, a1, ideo[0], ideo[1])} fill={CHR_COLORS(i)} fillOpacity={0.85} stroke={INK.panel} strokeWidth={0.8} />
                     {ticks.map((tk) => {
                       const a = angle(c.startPlace + tk);
-                      return <line key={tk} x1={Math.cos(a) * ideo[1]} y1={Math.sin(a) * ideo[1]} x2={Math.cos(a) * (ideo[1] + 4)} y2={Math.sin(a) * (ideo[1] + 4)} stroke="#595959" strokeWidth={0.8} />;
+                      return <line key={tk} x1={Math.cos(a) * ideo[1]} y1={Math.sin(a) * ideo[1]} x2={Math.cos(a) * (ideo[1] + 4)} y2={Math.sin(a) * (ideo[1] + 4)} stroke={INK.textSecondary} strokeWidth={0.8} />;
                     })}
-                    <text x={Math.cos(mid) * (R - 6)} y={Math.sin(mid) * (R - 6)} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={600} fill="#262626" transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 6)} ${Math.sin(mid) * (R - 6)})`}>
+                    <text x={Math.cos(mid) * (R - 6)} y={Math.sin(mid) * (R - 6)} dy="0.35em" textAnchor="middle" fontSize={TYPE.tick} fontWeight={600} fill={INK.text} transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 6)} ${Math.sin(mid) * (R - 6)})`}>
                       {chr}
                     </text>
                   </g>
@@ -260,7 +263,7 @@ export default function CircosPanel() {
                   return (
                     <g key={src.key}>
                       <circle r={(r0 + r1) / 2} fill="none" stroke={src.color} strokeWidth={r1 - r0} strokeOpacity={0.08} />
-                      <circle r={y(2)} fill="none" stroke="#bfbfbf" strokeWidth={0.6} strokeDasharray="2 3" />
+                      <circle r={y(2)} fill="none" stroke={INK.axis} strokeWidth={0.6} strokeDasharray="2 3" />
                       {row &&
                         d3.range(row.binIndex.n).map((b) => {
                           const v = row.values[b];
@@ -269,7 +272,7 @@ export default function CircosPanel() {
                           const g1 = row.binIndex.gEnd[b];
                           return <path key={b} d={arc(angle(g0), angle(Math.max(g1, g0 + 1)), r0, y(v))} fill={rgb(color(v))} />;
                         })}
-                      <text x={-R + 8} y={-(r0 + r1) / 2 + 3} fontSize={10} fill={src.color} style={{ pointerEvents: "none" }} />
+                      <text x={-R + 8} y={-(r0 + r1) / 2 + 3} fontSize={11} fill={src.color} style={{ pointerEvents: "none" }} />
                     </g>
                   );
                 })}
@@ -292,13 +295,13 @@ export default function CircosPanel() {
                   );
                 });
               })}
-              <text x={0} y={-6} textAnchor="middle" fontSize={13} fontWeight={600} fill="#262626">{mode === "cells" ? t("components.single-cell.circos.centre-cells", { count: sources.length }) : t("components.single-cell.circos.centre-clones", { count: sources.length })}</text>
-              <text x={0} y={12} textAnchor="middle" fontSize={11} fill="#595959">{t("components.single-cell.circos.centre-junctions", { count: d3.sum(sources, (s) => (junctionData[s.key] ? (mode === "clones" ? junctionData[s.key].junctions.filter((j) => j.n / Math.max(1, junctionData[s.key].nCells) >= minShare).length : junctionData[s.key].junctions.length) : 0)) })}</text>
+              <text x={0} y={-6} textAnchor="middle" fontSize={TYPE.body} fontWeight={600} fill={INK.text}>{mode === "cells" ? t("components.single-cell.circos.centre-cells", { count: sources.length }) : t("components.single-cell.circos.centre-clones", { count: sources.length })}</text>
+              <text x={0} y={12} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{t("components.single-cell.circos.centre-junctions", { count: d3.sum(sources, (s) => (junctionData[s.key] ? (mode === "clones" ? junctionData[s.key].junctions.filter((j) => j.n / Math.max(1, junctionData[s.key].nCells) >= minShare).length : junctionData[s.key].junctions.length) : 0)) })}</text>
             </g>
           </svg>
           </div>
           <div style={{ flex: "1 1 220px", minWidth: 220, paddingTop: 8 }}>
-          <Space direction="vertical" size={4} style={{ fontSize: 12 }}>
+          <Space direction="vertical" size={4} style={{ fontSize: 13 }}>
             {sources.map((src, i) => (
               <span key={src.key} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 12, height: 12, background: src.color, borderRadius: 2 }} />
@@ -306,7 +309,7 @@ export default function CircosPanel() {
               </span>
             ))}
           </Space>
-          <Space wrap size={[12, 4]} style={{ marginTop: 10, fontSize: 12 }}>
+          <Space wrap size={[12, 4]} style={{ marginTop: 10, fontSize: 13 }}>
             {Object.entries(JUNCTION_COLORS).map(([k, c]) => (
               <span key={k}><span className="sc-swatch" style={{ background: c }} />{k}</span>
             ))}

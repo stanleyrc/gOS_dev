@@ -9,7 +9,8 @@ import SvgExportButton from "../svgExportButton";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { Swatches, patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -75,7 +76,7 @@ export default function CohortCircosPanel({ summaries, files }) {
   return (
     <Card
       size="small"
-      title={<Space><RadarChartOutlined />{t("components.single-cell.cohort.circos-title")}</Space>}
+      title={<Space><RadarChartOutlined />{t("components.single-cell.cohort.circos-title")}<Provenance id="oncoprint" /></Space>}
       extra={
         <Space wrap>
           <Select size="small" mode="multiple" showSearch maxTagCount="responsive" style={{ minWidth: 300, maxWidth: 520 }} value={genes} onChange={setPicked} options={ranked.map((r) => ({ value: r.gene, label: `${r.gene} (${r.patients})` }))} filterOption={(i, o) => o.label.toUpperCase().includes(i.toUpperCase())} />
@@ -95,8 +96,8 @@ export default function CohortCircosPanel({ summaries, files }) {
               const mid = (a0 + a1) / 2;
               return (
                 <g key={chr}>
-                  <path d={arc(a0, a1, ideo[0], ideo[1])} fill={CHR_COLORS(i)} fillOpacity={0.85} stroke="#fff" strokeWidth={0.8} />
-                  <text x={Math.cos(mid) * (R - 5)} y={Math.sin(mid) * (R - 5)} dy="0.35em" textAnchor="middle" fontSize={10} fontWeight={600} fill="#262626" transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 5)} ${Math.sin(mid) * (R - 5)})`}>{chr}</text>
+                  <path d={arc(a0, a1, ideo[0], ideo[1])} fill={CHR_COLORS(i)} fillOpacity={0.85} stroke={INK.panel} strokeWidth={0.8} />
+                  <text x={Math.cos(mid) * (R - 5)} y={Math.sin(mid) * (R - 5)} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text} transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 5)} ${Math.sin(mid) * (R - 5)})`}>{chr}</text>
                 </g>
               );
             })}
@@ -105,7 +106,7 @@ export default function CohortCircosPanel({ summaries, files }) {
               return (
                 <g key={s.caseReportId}>
                   <circle r={(r0 + r1) / 2} fill="none" stroke={patientColor(k)} strokeWidth={r1 - r0} strokeOpacity={0.1} />
-                  <text x={0} y={-(r0 + r1) / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill={patientColor(k)}>{s.caseReportId}</text>
+                  <text x={0} y={-(r0 + r1) / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.micro} fill={patientColor(k)}>{s.caseReportId}</text>
                 </g>
               );
             })}
@@ -123,7 +124,7 @@ export default function CohortCircosPanel({ summaries, files }) {
                   if (!labelled.has(key)) {
                     labelled.add(key);
                     const mid = (a0 + a1) / 2;
-                    marks.push(<text key={`t${i}`} x={Math.cos(mid) * (innerR - 14)} y={Math.sin(mid) * (innerR - 14)} dy="0.35em" textAnchor={Math.cos(mid) >= 0 ? "start" : "end"} fontSize={10} fill="#262626" transform={`rotate(${(mid * 180) / Math.PI + (Math.cos(mid) >= 0 ? 0 : 180)} ${Math.cos(mid) * (innerR - 14)} ${Math.sin(mid) * (innerR - 14)})`}>{e.gene}</text>);
+                    marks.push(<text key={`t${i}`} x={Math.cos(mid) * (innerR - 14)} y={Math.sin(mid) * (innerR - 14)} dy="0.35em" textAnchor={Math.cos(mid) >= 0 ? "start" : "end"} fontSize={11} fill={INK.text} transform={`rotate(${(mid * 180) / Math.PI + (Math.cos(mid) >= 0 ? 0 : 180)} ${Math.cos(mid) * (innerR - 14)} ${Math.sin(mid) * (innerR - 14)})`}>{e.gene}</text>);
                   }
                 }
               }
