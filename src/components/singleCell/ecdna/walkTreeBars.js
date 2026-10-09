@@ -48,7 +48,7 @@ const heat = (v) => d3.interpolateYlOrRd(0.08 + 0.92 * Math.max(0, Math.min(1, v
  * or clade, with a per-clone summary (carrier % and median copies) below.
  * Cells without walk counts are hatched, not drawn as zero.
  */
-export default function WalkTreeBars({ walks, families: familiesProp, colorOf, measured = null }) {
+export default function WalkTreeBars({ walks, families: familiesProp, colorOf, measured = null, focus = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(1000);
@@ -279,8 +279,11 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               const maxTxt = max != null && scaleMode === "column" ? fmt(max) : "";
               const label = colLabel(c, w);
               const room = w - (maxTxt && w > 70 ? maxTxt.length * 5.6 + 4 : 0);
+              // the walk highlighted in the plot: underline its column header
+              const isFocus = focus != null && c.type === "walk" && c.walks[0].id === focus;
               return (
                 <g key={c.key}>
+                  {isFocus && <rect x={colX[ci]} y={FAM_H + LABEL_H - 1} width={w} height={2.5} fill={colColor(c)} />}
                   <text x={colX[ci] + 1} y={FAM_H + LABEL_H / 2 + 1} dy="0.35em" fontSize={TYPE.tick} fontWeight={c.type === "walk" ? 600 : 500} fill={c.type === "walk" ? colColor(c) : "#595959"} fontStyle={c.type === "rare" ? "italic" : "normal"}>
                     {clip(label, room)}
                   </text>
