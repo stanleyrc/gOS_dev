@@ -97,6 +97,8 @@ export function ResidualPlot({ evaluation, width }) {
   const bottom = 30;
   const w = (width - left - right) / 96;
   const values = SBS96.map((_, i) => evaluation.counts[i] - evaluation.reconstruction[i]);
+  // pale classes need an edge on the light panel, near-black C>G on the dark one
+  const outlined = (sub) => (pt.mode === "dark" ? sub === "C>G" : sub === "T>G" || sub === "T>A");
   const max = Math.max(1, ...values.map(Math.abs));
   const y = d3
     .scaleLinear()
@@ -119,7 +121,7 @@ export function ResidualPlot({ evaluation, width }) {
       </text>
       {Object.entries(SBS_COLORS).map(([sub, color], k) => (
         <g key={sub}>
-          <rect x={left + k * 16 * w} y={0} width={16 * w - 1} height={8} fill={color} />
+          <rect x={left + k * 16 * w} y={0} width={16 * w - 1} height={8} fill={color} stroke={outlined(sub) ? pt.axis : "none"} strokeWidth={0.6} />
           <text x={left + (k + 0.5) * 16 * w} y={RESIDUAL_HEIGHT - 8} textAnchor="middle" fontSize={TYPE.tick} fill={pt.textSecondary}>
             {sub}
           </text>
@@ -137,8 +139,8 @@ export function ResidualPlot({ evaluation, width }) {
               width={Math.max(1, w - 1.5)}
               height={Math.max(0.5, Math.abs(y1 - y0))}
               fill={SBS_COLORS[ch.slice(2, 5)]}
-              stroke={ch.slice(2, 5) === "T>G" || ch.slice(2, 5) === "T>A" ? pt.axis : "none"}
-              strokeWidth={0.4}
+              stroke={outlined(ch.slice(2, 5)) ? pt.axis : "none"}
+              strokeWidth={pt.mode === "dark" ? 0.8 : 0.4}
             />
             <rect x={left + i * w} y={top} width={w} height={RESIDUAL_HEIGHT - top - bottom} fill="transparent">
               <title>{`${ch}: ${evaluation.counts[i]} observed, ${evaluation.reconstruction[i].toFixed(1)} fitted, residual ${v >= 0 ? "+" : ""}${v.toFixed(1)}`}</title>
