@@ -1,4 +1,4 @@
-import { cellClockBurden, cladeClockTiming, clockSites, mrcaTiming } from "./timing";
+import { cellClockBurden, cladeClockTiming, clockSites, mrcaTiming, placeByCladeSize } from "./timing";
 
 // 4 truncal sites (0-3), 2 subclonal (4,5), 2 private (6,7); signatures: clock at 0,1,4,6
 const snv = {
@@ -42,5 +42,29 @@ describe("clock timing", () => {
     const r = cladeClockTiming(layout, gains, clockSites(signatureOf), { truncalClock: 2, postClockMedian: 2 });
     expect(r[0]).toMatchObject({ node: 1, gained: 2, clockGained: 1, clockFraction: 0.5, cumulativeClock: 1 });
     expect(r[0].foundedAt).toBeCloseTo(0.75);
+  });
+
+  it("places subclonal sites by clade size, breaking ties by alt cells", () => {
+    // root(0) -> A(1: leaves 0,1) , B(2: leaves 2,3); both clades have 2 cells
+    const layout = {
+      nodes: [
+        { isLeaf: false, children: [1, 2], firstLeaf: 0, lastLeaf: 3 },
+        { isLeaf: false, children: [], firstLeaf: 0, lastLeaf: 1 },
+        { isLeaf: false, children: [], firstLeaf: 2, lastLeaf: 3 },
+      ],
+    };
+    const s = {
+      variants: [{ category: "subclonal", clade_cells: 2 }, { category: "subclonal", clade_cells: 4 }, { category: "truncal", clade_cells: 4 }],
+      status: [
+        [0, 1, 1],
+        [0, 1, 1],
+        [1, 1, 1],
+        [1, 0, 1],
+      ],
+    };
+    const out = placeByCladeSize(layout, s, [0, 1, 2, 3]);
+    expect(out.get(2)).toEqual([0]);
+    expect(out.get(0)).toEqual([1]);
+    expect(out.has(1)).toBe(false);
   });
 });
