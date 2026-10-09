@@ -16,6 +16,7 @@ import { chiSquareUpper } from "../../helpers/singleCell/tests";
 import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
 import HintLine, { Provenance } from "./hintLine";
 import { SC_GUTTER_INNER } from "./density";
+import ColorTag from "./colorTag";
 
 const { Text, Title } = Typography;
 const pct = d3.format(".0%");
@@ -154,7 +155,7 @@ export default function ReportFindings({ report, cloneColors }) {
             <Text type="secondary">{t("components.single-cell.report.findings-sigs-trunk", { list: cladeSigs.truncal.map((s) => `${s.signature} ${pct(s.share)}`).join(", ") })}</Text>
             {cladeSigs.clones.map((c) => (
               <div key={c.clone} style={{ marginTop: 6 }}>
-                <Tag color={cloneColors[c.clone]}>{c.clone}</Tag>
+                <ColorTag color={cloneColors[c.clone]}>{c.clone}</ColorTag>
                 {c.top ? (
                   <Text>
                     {t("components.single-cell.report.findings-sigs-clone", { n: c.n, top: c.top.signature, share: pct(c.top.share), cos: pct(c.cos) })}
@@ -178,7 +179,7 @@ export default function ReportFindings({ report, cloneColors }) {
               const top = Object.entries(states.byClone[c]).sort((a, b) => b[1] - a[1]);
               return (
                 <div key={c} style={{ marginTop: 6 }}>
-                  <Tag color={cloneColors[c]}>{c}</Tag>
+                  <ColorTag color={cloneColors[c]}>{c}</ColorTag>
                   <Text>{top.slice(0, 3).map(([l, n]) => `${l} ${pct(n / total)}`).join(", ")}</Text>
                   {states.phase && Number.isFinite(states.phase[c]) && <Text type="secondary">{` · ${t("components.single-cell.report.findings-cycling", { pct: pct(states.phase[c]) })}`}</Text>}
                   <svg width={220} height={8} style={{ display: "block", marginTop: 2 }}>

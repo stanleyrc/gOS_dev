@@ -8,6 +8,7 @@ import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { patientColor } from "./charts";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -50,9 +51,9 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
   const q = query.trim().toUpperCase();
   const shown = rows.filter((r) => r.tier <= maxTier && (!classes.length || classes.includes(r.cls)) && (!strongOnly || r.strong) && (!q || `${r.gene} ${r.variant} ${r.role} ${r.effect}`.toUpperCase().includes(q)));
   const columns = [
-    { title: t("components.single-cell.cohort.patient"), dataIndex: "patient", width: 110, filters: summaries.map((s) => ({ text: s.caseReportId, value: s.caseReportId })), onFilter: (v, r) => r.patient === v, render: (p, r) => <Tag color={patientColor(r.k)} style={{ color: "#fff", border: "none" }}>{p}</Tag> },
+    { title: t("components.single-cell.cohort.patient"), dataIndex: "patient", width: 110, filters: summaries.map((s) => ({ text: s.caseReportId, value: s.caseReportId })), onFilter: (v, r) => r.patient === v, render: (p, r) => <ColorTag color={patientColor(r.k)} style={{ border: "none" }}>{p}</ColorTag> },
     { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 150, sorter: (a, b) => a.gene.localeCompare(b.gene), render: (g) => <Text strong>{g}</Text> },
-    { title: t("components.single-cell.cohort.ev-class"), dataIndex: "cls", width: 120, sorter: (a, b) => EVENT_CLASS_ORDER.indexOf(a.cls) - EVENT_CLASS_ORDER.indexOf(b.cls), render: (c) => <Tag style={{ background: CLASS_COLORS[c], color: "#fff", border: "none" }}>{t(`components.single-cell.cohort.class-${c}`, { defaultValue: c })}</Tag> },
+    { title: t("components.single-cell.cohort.ev-class"), dataIndex: "cls", width: 160, sorter: (a, b) => EVENT_CLASS_ORDER.indexOf(a.cls) - EVENT_CLASS_ORDER.indexOf(b.cls), render: (c) => <Tag style={{ background: CLASS_COLORS[c], color: "#fff", border: "none" }}>{t(`components.single-cell.cohort.class-${c}`, { defaultValue: c })}</Tag> },
     { title: t("components.single-cell.cohort.ev-variant"), dataIndex: "variant", ellipsis: true, render: (v) => <Text type="secondary" style={{ fontSize: 13 }}>{v}</Text> },
     { title: "Tier", dataIndex: "tier", width: 64, sorter: (a, b) => a.tier - b.tier, render: (v) => (v <= 3 ? v : "–") },
     { title: t("components.single-cell.report.col-role"), dataIndex: "role", width: 140, render: (v) => (v ? <Tag color={/oncogene/i.test(v) ? "volcano" : "geekblue"}>{v}</Tag> : "–") },
@@ -60,7 +61,7 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
     {
       title: t("components.single-cell.report.col-cells"),
       dataIndex: "fraction",
-      width: 190,
+      width: 200,
       sorter: (a, b) => a.fraction - b.fraction,
       defaultSortOrder: "descend",
       render: (f, r) => (
@@ -69,7 +70,7 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
             <rect x={0} y={0} width={90} height={10} fill={INK.empty} rx={2} />
             <rect x={0} y={0} width={90 * f} height={10} fill={CLASS_COLORS[r.cls]} rx={2} />
           </svg>
-          <Text style={{ fontSize: 13 }}>{`${r.cells} (${pct(f)})`}</Text>
+          <Text style={{ fontSize: 13, whiteSpace: "nowrap" }}>{`${r.cells} (${pct(f)})`}</Text>
         </Space>
       ),
     },

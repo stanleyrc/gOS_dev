@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { Card, Space, Table, Tag, Typography } from "antd";
+import { Card, Space, Table, Typography } from "antd";
 import useTreeView from "../useTreeView";
 import useRnaData from "../rna/useRnaData";
 import { geneSetIndex, loadGmt } from "../rna/geneSets";
@@ -9,6 +9,7 @@ import { leafLbi } from "../../../helpers/singleCell/treeFitness";
 import { PC_NUMERIC_LABELS, spearman } from "../../../helpers/singleCell/precompute";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { bh } from "../../../helpers/singleCell/heritability";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const PROGRAM_LABEL = { score_MES: "MES-like", score_AC: "AC-like", score_OPC: "OPC-like", score_NPC: "NPC-like", score_G1S: "G1/S", score_G2M: "G2/M", score_cycling: "Cycling" };
@@ -90,7 +91,7 @@ export default function FitnessCard() {
           pagination={false}
           dataSource={byClone}
           columns={[
-            { title: "Clone", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+            { title: "Clone", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
             { title: "Cells", dataIndex: "n" },
             { title: "Median LBI", dataIndex: "median", render: (x) => (Number.isFinite(x) ? x.toFixed(4) : "–") },
           ]}

@@ -12,6 +12,7 @@ import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const ROW_HEIGHT = 240;
@@ -225,7 +226,7 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
             options={[
               { value: "groups", label: t("components.single-cell.rna.groups-ab") },
               { value: "clone", label: t("components.single-cell.umap.color-clone") },
-              ...categorical.map((f) => ({ value: f.name, label: f.name })),
+              ...categorical.map((f) => ({ value: f.name, label: fieldLabel(f.name) })),
             ]}
           />
           <AutoComplete
