@@ -50,7 +50,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
   const { t } = useTranslation("common");
   return (
     <Space direction="vertical" size={6} style={{ width: "100%" }}>
-      <Text>{t("components.single-cell.cohort.card-cells", { tumor: report.nTumorCells, normal: report.nNormalCells, clones: report.clones.length })}</Text>
+      <Text>{t("components.single-cell.cohort.card-cells", { tumor: report.nTumorCells, normal: report.nNormalCells, count: report.clones.length })}</Text>
       <CloneBar counts={cloneCounts} colors={cloneColors} />
       <div>
         <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-clonal")}</Text>
@@ -73,13 +73,19 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
           ))}
         </div>
       </div>
-      <div>
-        <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-signatures")}</Text>
-        <SigBar items={report.signatures.all} />
-        <Text type="secondary" style={{ fontSize: 12.5 }}>{report.signatures.all.slice(0, 3).map((x) => `${x.signature} ${d3.format(".0%")(x.share)}`).join(" · ")}</Text>
-      </div>
+      {report.signatures.all.length > 0 && (
+        <div>
+          <Text type="secondary" style={{ fontSize: 13, display: "block" }}>{t("components.single-cell.cohort.card-signatures")}</Text>
+          <SigBar items={report.signatures.all} />
+          <Text type="secondary" style={{ fontSize: 12.5, display: "block" }}>{report.signatures.all.slice(0, 3).map((x) => `${x.signature} ${d3.format(".0%")(x.share)}`).join(" · ")}</Text>
+        </div>
+      )}
       <Text type="secondary" style={{ fontSize: 13 }}>
-        <Provenance id="burden">{t("components.single-cell.cohort.card-burden", { truncal: report.burden.truncal, subclonal: report.burden.subclonal, private: report.burden.private })}</Provenance>
+        {report.burden.truncal + report.burden.subclonal + report.burden.private > 0 ? (
+          <Provenance id="burden">{t("components.single-cell.cohort.card-burden", { truncal: report.burden.truncal, subclonal: report.burden.subclonal, private: report.burden.private })}</Provenance>
+        ) : (
+          t("components.single-cell.cohort.card-no-burden")
+        )}
       </Text>
       {rna && rna.status !== "none" && (
         <div onClick={(e) => e.stopPropagation()} role="presentation">
