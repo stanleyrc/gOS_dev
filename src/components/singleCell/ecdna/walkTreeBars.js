@@ -12,6 +12,7 @@ import SvgExportButton from "../svgExportButton";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { cutTree, labelRuns } from "../../../helpers/singleCell/treeGroups";
 import { Swatches } from "../cohort/charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const TREE_WIDTH = 220;
@@ -190,7 +191,7 @@ export default function WalkTreeBars({ walks, colorOf }) {
           </svg>
         </div>
         <Swatches style={{ marginTop: 6 }} items={walks.map((w) => ({ key: w.id, color: colorOf(w.id), label: w.label }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.tree-help")}</Text>
+        <HintLine text={t("components.single-cell.ecdna.tree-help")} />
       </div>
     </Card>
   );

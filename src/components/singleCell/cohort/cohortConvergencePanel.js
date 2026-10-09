@@ -6,6 +6,7 @@ import { BranchesOutlined } from "@ant-design/icons";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { patientColor } from "./charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -92,7 +93,7 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
       bodyStyle={{ padding: 0 }}
     >
       <Table size="small" className="sc-events-table" rowKey="gene" columns={columns} dataSource={rows} pagination={{ pageSize: 15, size: "small" }} scroll={{ x: true }} />
-      <Text type="secondary" style={{ fontSize: 12, padding: 8, display: "block" }}>{t("components.single-cell.cohort.conv-help")}</Text>
+      <HintLine text={t("components.single-cell.cohort.conv-help")} />
     </Card>
   );
 }
