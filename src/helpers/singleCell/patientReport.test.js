@@ -42,7 +42,8 @@ describe("patient report", () => {
   it("uses the Add-to-report selection when one is given, whatever the tier", () => {
     const has2 = { uid: "8:1-8:1", gene: "HAS2", vartype: "SNV", type: "Missense", Variant: "p.F44L", Tier: 3, cell_fraction: "0.95", n_cells: "19", cells: "19/20", cell_ids: ids("a", 10) };
     const all = [...events.map((e, i) => ({ ...e, uid: `u${i}` })), has2];
-    const r = buildPatientReport({ patient: "P", events: all, cells, selectedUids: ["8:1-8:1", "u1"] });
+    // u3 (NOISE) is a ticked tier 1 event in 1 cell: still dropped as not strong
+    const r = buildPatientReport({ patient: "P", events: all, cells, selectedUids: ["8:1-8:1", "u1", "u3"] });
     expect(r.picked).toBe(true);
     expect([...r.clonal, ...r.subclonal, ...r.rare].map((d) => d.gene).sort()).toEqual(["HAS2", "PTEN"]);
     // nothing ticked: back to the strong tier 1-2 events
