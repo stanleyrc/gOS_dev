@@ -8,7 +8,7 @@ describe("strip label header", () => {
   });
   it("fits short labels and caps long ones", () => {
     expect(stripLabelHeight(["A"], 12)).toBe(STRIP_LABEL_MIN);
-    expect(stripLabelHeight(["Selected", "Clone"], 12)).toBe(Math.round(8 * 12 * 0.58 + 6));
+    expect(stripLabelHeight(["Selected", "Clone"], 11)).toBe(Math.round(8 * 11 * 0.58 + 6));
     expect(stripLabelHeight(["Region_Annotation_with_a_long_name"], 12)).toBe(STRIP_LABEL_MAX);
     expect(stripLabelHeight([], 12)).toBe(STRIP_LABEL_MIN);
   });
