@@ -245,7 +245,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
             {current && <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={marked} />}
             <Row gutter={16} style={{ marginTop: 8 }}>
               <Col xs={24} xl={12}>
-                <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the marked cells (upper triangle) and the other tumour cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
+                <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the marked cells (upper triangle) and the other tumor cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
                   <div className="sc-fig-subtitle">Segment co-variation <span>Fig 5C{corrSets ? ` · ${corrSets.label}` : ""}</span></div>
                 </Tooltip>
                 {corrSets && cnRows[current?.patient]?.cellRows?.length ? (

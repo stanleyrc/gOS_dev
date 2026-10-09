@@ -83,7 +83,7 @@ export default function ControlsCard() {
 
   const flagged = (likeness?.rows || []).filter((r) => r.score >= 0.5);
   return (
-    <Card size="small" title="Non-tumour cells as internal controls">
+    <Card size="small" title="Non-tumor cells as internal controls">
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         <Text strong>Noise floor ({nNormal} normal cells by DNA)</Text>
         {nNormal > 0 && !floor.some((r) => r.key === "fga") && (
@@ -102,12 +102,12 @@ export default function ControlsCard() {
             columns={[
               { title: "Metric", dataIndex: "label" },
               { title: "Normal cells (median)", key: "n", render: (_, r) => `${fmt(r.normal)} (n = ${r.nNormal})` },
-              { title: "Tumour cells (median)", key: "t", render: (_, r) => `${fmt(r.tumour)} (n = ${r.nTumour})` },
-              { title: "Tumour / normal", key: "r", render: (_, r) => (r.normal > 0 ? fmt(r.tumour / r.normal, 2) : "–") },
+              { title: "Tumor cells (median)", key: "t", render: (_, r) => `${fmt(r.tumour)} (n = ${r.nTumour})` },
+              { title: "Tumor / normal", key: "r", render: (_, r) => (r.normal > 0 ? fmt(r.tumour / r.normal, 2) : "–") },
             ]}
           />
         )}
-        <Text strong>Tumour cells that look normal by expression</Text>
+        <Text strong>Tumor cells that look normal by expression</Text>
         {!summary ? (
           <Text type="secondary">No RNA for this patient.</Text>
         ) : !likeness ? (
@@ -121,11 +121,11 @@ export default function ControlsCard() {
             <Text type="secondary" style={{ fontSize: 12 }}>
               Score = share of non-malignant cells among the cell&apos;s 15 nearest neighbours in expression space (PCs 1–15 of the 500 most
               variable genes); reference: {likeness.normalRows.length} non-malignant cells (DNA normal or RNA cell type),{" "}
-              {likeness.tumourRows.length} DNA-tumour cells. ≥ 0.5 = the cell sits among normal cells; with an altered genome these are tumour
+              {likeness.tumourRows.length} DNA-tumor cells. ≥ 0.5 = the cell sits among normal cells; with an altered genome these are tumor
               cells RNA alone would miss.
             </Text>
             <Space>
-              <Tag color={flagged.length ? "orange" : "default"}>{flagged.length} DNA-tumour cells among normal cells by expression</Tag>
+              <Tag color={flagged.length ? "orange" : "default"}>{flagged.length} DNA-tumor cells among normal cells by expression</Tag>
               <Button size="small" disabled={!flagged.length} onClick={() => dispatch(singleCellActions.updateSelection(flagged.map((r) => r.id)))}>
                 select them
               </Button>

@@ -33,7 +33,7 @@ export default function FishPlotCard() {
   );
   const bands = useMemo(() => fishBands(clades), [clades]);
   if (!treeLayout) return <Text type="secondary">No tree for this patient.</Text>;
-  if (!clades.length) return <Text type="secondary">No tumour cells on the tree.</Text>;
+  if (!clades.length) return <Text type="secondary">No tumor cells on the tree.</Text>;
 
   const h = 320;
   const m = { l: 16, r: 120, t: 12, b: 28 };
@@ -64,7 +64,7 @@ export default function FishPlotCard() {
         <Space size={4}>
           <Text style={{ fontSize: 12 }}>clades ≥</Text>
           <InputNumber size="small" min={1} max={50} value={minPct} onChange={(v) => v && setMinPct(v)} style={{ width: 64 }} />
-          <Text style={{ fontSize: 12 }}>% of tumour cells</Text>
+          <Text style={{ fontSize: 12 }}>% of tumor cells</Text>
         </Space>
       }
     >
@@ -82,24 +82,24 @@ export default function FishPlotCard() {
             onMouseLeave={() => setHover(null)}
             onClick={() => dispatch(singleCellActions.updateSelection(leavesOf(c)))}
           >
-            <title>{`${c.n} tumour cells (${Math.round(100 * c.frac)}%) · mostly ${c.clone} · founded at depth ${c.start.toFixed(3)}–${c.end.toFixed(3)}`}</title>
+            <title>{`${c.n} tumor cells (${Math.round(100 * c.frac)}%) · mostly ${c.clone} · founded at depth ${c.start.toFixed(3)}–${c.end.toFixed(3)}`}</title>
           </path>
         ))}
         {clades.map((c, i) => (bands[i][1] - bands[i][0]) * (h - m.t - m.b) < 13 || (i > 0 && kidsOf(clades, i)) ? null : (
           <text key={`l${c.node}`} x={width - m.r + 6} y={sy((bands[i][0] + bands[i][1]) / 2) + 4} fontSize={11} fill="currentColor">
-            {c.parent < 0 ? "all tumour" : `${c.clone} · ${c.n} (${Math.round(100 * c.frac)}%)`}
+            {c.parent < 0 ? "all tumor" : `${c.clone} · ${c.n} (${Math.round(100 * c.frac)}%)`}
           </text>
         ))}
         <line x1={m.l} x2={width - m.r} y1={h - m.b + 4} y2={h - m.b + 4} stroke="currentColor" opacity={0.3} />
         <text x={m.l} y={h - 6} fontSize={11} fill="currentColor">
-          tumour MRCA
+          tumor MRCA
         </text>
         <text x={width - m.r} y={h - 6} fontSize={11} textAnchor="end" fill="currentColor">
           molecular time (tree depth) → sampling
         </text>
       </svg>
       <Text type="secondary" style={{ fontSize: 11 }}>
-        Bands nest by ancestry; height = share of tumour cells at sampling. The global cell filter and hidden clones apply.
+        Bands nest by ancestry; height = share of tumor cells at sampling. The global cell filter and hidden clones apply.
       </Text>
     </Card>
   );
