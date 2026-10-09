@@ -137,6 +137,7 @@ function* fetchSingleCellData(action = {}) {
       sphase: pcData("sphase"),
       telomeres: pcData("telomeres"),
       calls: pcData("calls"),
+      mtdna: pcData("mtdna"),
     });
     const cellFiles = {};
     const genomeErrors = [];

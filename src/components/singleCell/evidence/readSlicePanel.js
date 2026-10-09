@@ -195,7 +195,13 @@ export default function ReadSlicePanel() {
     {
       title: "Cell",
       dataIndex: "id",
-      render: (id) => <Text style={{ fontSize: 13 }} strong={selected.has(id)}>{id}</Text>,
+      width: 190,
+      ellipsis: true,
+      render: (id) => (
+        <Text style={{ fontSize: 13, whiteSpace: "nowrap" }} strong={selected.has(id)} title={id}>
+          {id}
+        </Text>
+      ),
     },
     {
       title: "Clone",
@@ -282,9 +288,15 @@ export default function ReadSlicePanel() {
         {site && (
           <Space wrap size={[4, 4]}>
             <Text type="secondary" style={{ fontSize: 13 }}>
-              {site.id} · {site.source || (site.hotspot ? "hotspot" : "discovered")} · prevalence {site.prevalence ?? "–"} · tumour alt {site.alt_tumor}/
-              {site.dp_tumor} · normal alt {site.alt_normal}/{site.dp_normal}
+              {site.id} · {site.source || (site.hotspot ? "hotspot" : "discovered")} · covered in {site.cells_cov} of{" "}
+              {rows.filter((r) => !/^normal$/i.test(`${r.clone || ""}`)).length} tumour cells · pooled tumour alt {site.alt_tumor}/{site.dp_tumor} · normal alt{" "}
+              {site.alt_normal}/{site.dp_normal} · estimated prevalence {site.prevalence ?? "–"}
             </Text>
+            {site.cells_cov != null && rows.length > 0 && site.cells_cov < 0.25 * rows.length && (
+              <Tag color="warning">
+                Sparse coverage (dropout): most cells have no reads here, so &quot;no call&quot; is the expected state, not wild type
+              </Tag>
+            )}
             {Object.entries(summary).map(([clone, s]) => (
               <Tag key={clone} color={cloneColors[clone]}>
                 {clone}: {s.mut} mut · {s.wt} wt · {s.nc} no call
@@ -311,7 +323,7 @@ export default function ReadSlicePanel() {
                 dataSource={rows}
                 columns={columns}
                 pagination={{ pageSize: 25, size: "small" }}
-                scroll={{ x: 700 }}
+                scroll={{ x: 900 }}
                 onRow={(r) => ({
                   onClick: () => toggle(r.id),
                   style: { cursor: "pointer", background: selected.has(r.id) ? "rgba(24,144,255,0.12)" : undefined },

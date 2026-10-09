@@ -29,6 +29,8 @@ export const SC_DEFAULT_LAYOUT = {
   showCellTable: false,
   clipBranches: true,
   hiddenClones: [],
+  qcExcludeRules: [], // global cell filter: QC flags whose cells every view drops (helpers/singleCell/precompute.js)
+  excludedCells: [], // manually excluded cell ids (global cell filter)
   igvSync: true,
   heatmapHeight: null, // px; null = from rowHeight
   navHeight: 240, // px of the gene + cytoband tracks above the heatmap
