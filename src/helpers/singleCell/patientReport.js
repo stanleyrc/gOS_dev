@@ -72,8 +72,8 @@ export function eventLabel(event) {
  * @param variants snv_matrix variants (with category / cellphy_input / driver)
  * @param signatures signatures.json ({ sets: [{ name, n, activities }] })
  * @param selectedUids uids ticked under "Add to report" in the Filtered Events
- *   table; when non-empty the drivers are exactly those events, else the
- *   strong Tier 1-2 events
+ *   table; when non-empty the drivers are the ticked strong Tier 1-2 events
+ *   plus any ticked Tier 3 event, else all strong Tier 1-2 events
  */
 export function buildPatientReport({ patient, events = [], cells = [], variants = [], signatures = null, selectedUids = null }) {
   const cloneOf = new Map(cells.map((c) => [c.cell_id, c.clone_id]));
@@ -87,7 +87,8 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
   const tierOf = (e) => num(e.tier ?? e.Tier); // tier: as re-tiered by the user (merged interpretations)
   const picked = Array.isArray(selectedUids) && selectedUids.length ? new Set(selectedUids) : null;
   const drivers = events
-    .filter((e) => (picked ? e.uid != null && picked.has(e.uid) : (tierOf(e) ?? 9) <= 2 && isStrongEvent(e)))
+    // tier 1-2 events start out ticked, so they still need to be strong; tier 3 picks always count
+    .filter((e) => (tierOf(e) ?? 9) <= 2 ? isStrongEvent(e) && (!picked || picked.has(e.uid)) : Boolean(picked) && e.uid != null && picked.has(e.uid))
     .map((e) => {
       const fraction = num(e.cell_fraction) ?? 0;
       const fractions = cloneFractions(e, cloneOf, cloneSizes);
