@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Button, Card, Col, Empty, InputNumber, Progress, Row, Select, Space, Table, Tag, Typography } from "antd";
+import { Button, Card, Col, Empty, InputNumber, Progress, Row, Select, Space, Table, Typography } from "antd";
 import { TagsOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
@@ -15,6 +15,8 @@ import { themePalette } from "../../../helpers/singleCell/themes";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? Number(p).toExponential(1) : Number(p).toFixed(3));
@@ -158,7 +160,7 @@ export default function MarkersCard({ summary, matrix }) {
       title={<Space><TagsOutlined />{t("components.single-cell.rna.markers-title")}<Provenance id="markers" /></Space>}
       extra={
         <Space wrap>
-          <Select size="small" style={{ width: 170 }} value={chosen} onChange={setField} options={fields.map((f) => ({ value: f, label: f === "clone" ? t("components.single-cell.umap.color-clone") : f }))} />
+          <Select size="small" style={{ width: 170 }} value={chosen} onChange={setField} options={fields.map((f) => ({ value: f, label: f === "clone" ? t("components.single-cell.umap.color-clone") : fieldLabel(f) }))} />
           <Text type="secondary">{t("components.single-cell.rna.markers-top")}</Text>
           <InputNumber size="small" min={2} max={20} value={topN} onChange={(v) => setTopN(v || 6)} style={{ width: 60 }} />
           {!backendField && (
@@ -177,7 +179,7 @@ export default function MarkersCard({ summary, matrix }) {
         ) : (
           <Row gutter={SC_GUTTER}>
             <Col xs={24} xl={10}>
-              <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
                 {markers.source === "backend" ? t("components.single-cell.rna.markers-backend", { method: backend?.method || "Seurat" }) : t("components.single-cell.rna.markers-browser")}
               </Text>
               <DotPlot genes={genes} groups={groups} summary={summary} matrix={matrix} width={Math.max(320, width * 0.4)} />
@@ -187,7 +189,7 @@ export default function MarkersCard({ summary, matrix }) {
                 {groups.map((g) => (
                   <Col key={g.key} xs={24} xl={12}>
                     <Space size={6} style={{ marginBottom: 4 }}>
-                      <Tag color={g.color}>{g.label}</Tag>
+                      <ColorTag color={g.color}>{g.label}</ColorTag>
                       <Text type="secondary">{t("components.single-cell.rna.n-cells", { count: g.rows.length })}</Text>
                     </Space>
                     <Table size="small" rowKey="gene" columns={columns} dataSource={(markers.byGroup[g.key] || []).slice(0, topN)} pagination={false} />
