@@ -8,9 +8,10 @@
 /**
  * Clades to draw: [{ node, parent (index into the result or -1), start, end,
  * n, frac, cells, clone }] in pre-order. `exclude` = leaf ids to leave out
- * (normal cells); the root is the MRCA of the remaining leaves.
+ * (normal cells); the root is the MRCA of the remaining leaves. Clades with
+ * >= maxOfParent of their drawn parent's cells are folded into the parent.
  */
-export function fishClades(layout, cloneOf = new Map(), { minFrac = 0.05, minCells = 3, exclude = new Set() } = {}) {
+export function fishClades(layout, cloneOf = new Map(), { minFrac = 0.05, minCells = 3, exclude = new Set(), maxOfParent = 0.85 } = {}) {
   if (!layout?.nodes?.length) return [];
   const leafOk = layout.leaves.map((id) => !exclude.has(`${id}`));
   const nIn = (n) => {
@@ -41,7 +42,9 @@ export function fishClades(layout, cloneOf = new Map(), { minFrac = 0.05, minCel
   const visit = (idx, parentOut, parentX) => {
     const node = layout.nodes[idx];
     const n = nIn(node);
-    const keep = idx === rootIdx || (!node.isLeaf && n >= minCells && n / total >= minFrac);
+    // a clade holding nearly all of its drawn parent's cells adds a band of the same shape: fold it into the parent
+    const parentN = parentOut >= 0 ? out[parentOut].n : total;
+    const keep = idx === rootIdx || (!node.isLeaf && n >= minCells && n / total >= minFrac && n / parentN < maxOfParent);
     let here = parentOut;
     if (keep) {
       out.push({ node: idx, parent: parentOut, start: idx === rootIdx ? node.x : parentX, end: node.x, n, frac: n / total, clone: majority(node) });

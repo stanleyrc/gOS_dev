@@ -194,7 +194,13 @@ export default function ReadSlicePanel() {
     {
       title: "Cell",
       dataIndex: "id",
-      render: (id) => <Text style={{ fontSize: 12 }} strong={selected.has(id)}>{id}</Text>,
+      width: 190,
+      ellipsis: true,
+      render: (id) => (
+        <Text style={{ fontSize: 12, whiteSpace: "nowrap" }} strong={selected.has(id)} title={id}>
+          {id}
+        </Text>
+      ),
     },
     {
       title: "Clone",
@@ -316,7 +322,7 @@ export default function ReadSlicePanel() {
                 dataSource={rows}
                 columns={columns}
                 pagination={{ pageSize: 25, size: "small" }}
-                scroll={{ x: 700 }}
+                scroll={{ x: 900 }}
                 onRow={(r) => ({
                   onClick: () => toggle(r.id),
                   style: { cursor: "pointer", background: selected.has(r.id) ? "rgba(24,144,255,0.12)" : undefined },

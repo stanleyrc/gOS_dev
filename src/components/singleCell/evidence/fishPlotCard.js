@@ -20,7 +20,7 @@ export default function FishPlotCard() {
   const { cells, cloneColors } = useSelector((s) => s.SingleCell);
   const { treeLayout } = useTreeView();
   const [ref, width] = useContainerWidth(900);
-  const [minPct, setMinPct] = useState(5);
+  const [minPct, setMinPct] = useState(10);
   const [hover, setHover] = useState(null);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id ?? "unassigned"])), [cells]);
   const normals = useMemo(
@@ -85,7 +85,7 @@ export default function FishPlotCard() {
             <title>{`${c.n} tumour cells (${Math.round(100 * c.frac)}%) · mostly ${c.clone} · founded at depth ${c.start.toFixed(3)}–${c.end.toFixed(3)}`}</title>
           </path>
         ))}
-        {clades.map((c, i) => (
+        {clades.map((c, i) => (bands[i][1] - bands[i][0]) * (h - m.t - m.b) < 13 || (i > 0 && kidsOf(clades, i)) ? null : (
           <text key={`l${c.node}`} x={width - m.r + 6} y={sy((bands[i][0] + bands[i][1]) / 2) + 4} fontSize={11} fill="currentColor">
             {c.parent < 0 ? "all tumour" : `${c.clone} · ${c.n} (${Math.round(100 * c.frac)}%)`}
           </text>
@@ -103,6 +103,11 @@ export default function FishPlotCard() {
       </Text>
     </Card>
   );
+}
+
+// a parent band is labelled only when it has no drawn children (their labels sit inside it)
+function kidsOf(clades, i) {
+  return clades.some((c) => c.parent === i);
 }
 
 function depthOf(clades, i) {
