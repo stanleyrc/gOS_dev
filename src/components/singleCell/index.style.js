@@ -581,6 +581,9 @@ const Wrapper = styled.div`
     border-radius: 2px;
     border: 1px solid var(--sc-border, rgba(0, 0, 0, 0.1));
   }
+  .sc-nowrap-head .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
   .sc-none {
     display: block;
     margin: 2px 0 6px;

@@ -117,12 +117,15 @@ export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = 
   const lo = log ? Math.max(1e-3, d3.min(all)) : Math.min(0, d3.min(all));
   const x = d3.scaleBand().domain(groups.map((g) => g.key)).range([M.left, width - M.right]).padding(0.3);
   const rotate = groups.length > 8 || x.bandwidth() < 72;
-  if (rotate) M.bottom = 56; // room for slanted group names only when they slant
+  // slanted group names hang below the axis: grow the svg by their drop instead of squeezing the plot
+  const longest = Math.max(0, ...groups.map((g) => `${g.label ?? g.key}`.length));
+  const drop = rotate ? Math.min(90, Math.round(longest * 12 * 0.58 * 0.92 + 6)) : 0;
+  const svgHeight = height + Math.max(0, drop - (M.bottom - 18));
   const y = (log ? d3.scaleLog() : d3.scaleLinear()).domain([lo, d3.max(all) || 1]).nice().range([height - M.bottom, M.top]);
   const half = Math.min(28, x.bandwidth() / 2);
   const jitter = (k) => ((((Math.sin(k * 12.9898) * 43758.5453) % 1) + 1) % 1) - 0.5;
   return (
-    <svg width={width} height={height}>
+    <svg width={width} height={svgHeight}>
       <YAxis scale={y} x0={M.left} x1={width - M.right} title={yTitle} />
       <XBaseline x0={M.left} x1={width - M.right} y={height - M.bottom} />
       {groups.map((g) => {

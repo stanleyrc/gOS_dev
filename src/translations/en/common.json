@@ -1079,14 +1079,14 @@
       "no-file": "no file",
       "errors": {
         "load": "The single-cell patient view could not be loaded",
-        "tree": "tree.nwk could not be parsed; the tree was inferred instead",
+        "tree": "The pipeline phylogeny could not be read; the tree was inferred instead",
         "cn": "The copy-number heatmap could not be built from the cells' genome graphs",
         "snv": "The SNV heatmap could not be built from the cells' mutation calls",
         "junctions": "The junction heatmap could not be built from the cells' genome graphs",
         "allelic": "Could not load allelic copy number"
       },
       "tree": {
-        "file": "Tree from tree.nwk",
+        "file": "Pipeline phylogeny",
         "snv": "Tree inferred from shared SNVs (UPGMA)",
         "cn": "Tree inferred from copy-number similarity (UPGMA)",
         "none": "No tree — rows ordered by clone"
