@@ -39,7 +39,7 @@ export function loadCosmic() {
 
 /** COSMIC aetiology of a signature, as plain text and as the bulk views' HTML (with the COSMIC link). */
 const aetiologyHtml = (sig) => signatureMetadata.metadata[sig]?.full || null;
-const aetiologyText = (sig) => (aetiologyHtml(sig) || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "") || "";
+export const aetiologyText = (sig) => (aetiologyHtml(sig) || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "") || "";
 
 /** Every signature in the given fits, with its aetiology (as in the bulk Signatures tab). */
 export function AetiologyLegend({ rows }) {
@@ -149,7 +149,7 @@ export function Profile({ counts, reconstruction, width }) {
 }
 
 /** SBS96 values as the bulk tab's catalog points (BarPlotPanel). */
-const catalogPoints = (values, tag) =>
+export const catalogPoints = (values, tag) =>
   SBS96.map((ch, i) => ({
     id: `${tag}-${i}`,
     type: ch,
