@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Space, Table, Tag, Tooltip, Typography } from "antd";
 import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
 import singleCellActions from "../../../redux/singleCell/actions";
@@ -62,12 +62,18 @@ export default function IncoherenceCard() {
     return segs
       .map((s, i) => {
         const st = segmentIncoherence(treeLayout, s.values, tumour);
+        // carriers only: presence of an amplicon is inherited by a clone even when it is ecDNA; the copy number among
+        // carriers is what random segregation scrambles
+        const carriers = tumour.filter((id) => s.values.get(id) >= 6);
+        const ct = segmentIncoherence(treeLayout, s.values, carriers);
         const genes = [];
         (geneOptions || []).forEach((o) => {
           const mid = (Number(genesStartPoint[o.value]) + Number(genesEndPoint[o.value])) / 2;
           if (mid >= s.gStart && mid <= s.gEnd) genes.push(o.label);
         });
-        return st ? { key: i, ...s, ...st, genes, ecdna: ecdnaLike(st) } : null;
+        return st
+          ? { key: i, ...s, ...st, genes, nCarriers: carriers.length, cCv: ct?.cv, cNn: ct?.nnRatio, cI: ct?.moranI, ecdna: ecdnaLike(ct) }
+          : null;
       })
       .filter(Boolean);
   }, [cn, treeLayout, chromoBins, tumour, geneOptions, genesStartPoint, genesEndPoint]);
@@ -78,7 +84,8 @@ export default function IncoherenceCard() {
     <Card size="small" title="Amplicons that do not follow the tree (ecDNA-like incoherence)" ref={ref}>
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         <Text type="secondary" style={{ fontSize: 12 }}>
-          ecDNA-like: CV ≥ 0.5 and nearest-neighbour discordance ≥ 0.7 (tree neighbours almost as different as random pairs). Copy numbers come
+          ecDNA-like: among carrier cells (CN ≥ 6), CV ≥ 0.5 and nearest-neighbour discordance ≥ 0.7 (tree neighbours almost as different as
+          random pairs). All-cell columns also include which clones carry the amplicon, which is inherited either way. Copy numbers come
           from the cells&apos; JaBbA graphs (250 kb grid), so very high counts are capped by what the graphs resolve.
         </Text>
         <Table
@@ -105,6 +112,9 @@ export default function IncoherenceCard() {
             { title: "Excess kurtosis", dataIndex: "kurtosis", render: (x) => fmt(x, 1) },
             { title: <Tooltip title="mean |CN - CN of tree neighbour| / mean |CN_i - CN_j|">NN discordance</Tooltip>, dataIndex: "nnRatio", sorter: (a, b) => a.nnRatio - b.nnRatio, render: (x) => fmt(x) },
             { title: "Moran's I", dataIndex: "moranI", render: (x) => fmt(x, 3) },
+            { title: "Carrier cells", dataIndex: "nCarriers" },
+            { title: <Tooltip title="CV of copies among carriers (CN ≥ 6)">CV (carriers)</Tooltip>, dataIndex: "cCv", render: (x) => fmt(x) },
+            { title: <Tooltip title="nearest-neighbour discordance among carriers">NN (carriers)</Tooltip>, dataIndex: "cNn", render: (x) => fmt(x) },
             { title: "", dataIndex: "ecdna", render: (e) => (e ? <Tag color="magenta">ecDNA-like</Tag> : <Tag>tree-coherent</Tag>) },
           ]}
         />
@@ -114,13 +124,15 @@ export default function IncoherenceCard() {
               <Text style={{ fontSize: 12 }}>
                 chr{sel.chromosome}:{mb(sel.start)}–{mb(sel.end)}
               </Text>
-              <a
+              <Button
+                size="small"
+                type="link"
                 onClick={() =>
                   dispatch(singleCellActions.updateSelection(tumour.filter((id) => sel.values.get(id) >= Math.max(6, sel.median))))
                 }
               >
                 select cells at ≥ median CN
-              </a>
+              </Button>
             </Space>
             <CopyStrip ids={tumour} values={sel.values} cloneOf={cloneOf} cloneColors={cloneColors} width={Math.max(300, width - 24)} />
           </div>
