@@ -18,6 +18,6 @@ describe("CohortSplicingPanel", () => {
     expect(screen.getAllByText("EGFR").length).toBeGreaterThan(0);
     // P3: small-multiple title + heatmap column header
     expect((await screen.findAllByText("P3")).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("0.80")).toBeTruthy();
+    expect(screen.getAllByText("0.80").length).toBeGreaterThan(0);
   });
 });
