@@ -311,11 +311,10 @@ export default function PatientReportCard({ patient, events, cells, variants, si
               {t("components.single-cell.report.rare", { count: report.rare.length, list: report.rare.slice(0, 6).map((d) => `${d.label} (${d.cells})`).join("; ") })}
             </Text>
           )}
-        </Col>
-        <Col xs={24} lg={10}>
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.clones-title")}</Title>
+          <Row gutter={[16, 0]}>
           {(allClones ? report.clones : report.clones.filter((c, i) => i < MIN_CLONES_SHOWN || c.size >= SMALL_CLONE)).map((c) => (
-            <div key={c.clone} style={{ marginBottom: 8 }}>
+            <Col key={c.clone} xs={24} xl={report.clones.length > 1 ? 12 : 24} style={{ marginBottom: 8 }}>
               <Space size={6} wrap>
                 <ColorTag color={cloneColors[c.clone]}>{c.clone}</ColorTag>
                 <Text>{t("components.single-cell.report.clone-size", { count: c.size, pct: pct(c.fraction) })}</Text>
@@ -334,13 +333,16 @@ export default function PatientReportCard({ patient, events, cells, variants, si
                 {c.carried.length > 0 && <div><Text type="secondary">{t("components.single-cell.report.clone-carried", { list: c.carried.map((d) => d.label).join(", ") })}</Text></div>}
                 <CloneRnaLine findings={rnaState.data} clone={c.clone} />
               </div>
-            </div>
+            </Col>
           ))}
+          </Row>
           {hiddenClones.length > 0 && (
             <Button size="small" type="link" style={{ padding: 0, marginBottom: 8 }} onClick={() => setAllClones(true)}>
               {t("components.single-cell.report.more-small-clones", { count: hiddenClones.length, cells: d3.sum(hiddenClones, (c) => c.size) })}
             </Button>
           )}
+        </Col>
+        <Col xs={24} lg={10}>
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.burden-title")} <Provenance id="burden" /></Title>
           {hasBurden ? (
             <Space size="large" wrap>
