@@ -205,7 +205,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
               key={w.id}
               opacity={off ? 0.22 : 1}
               style={{ cursor: "pointer" }}
-              onMouseEnter={(e) => showTip(e, w, [w.label, `${w.circular ? "circular" : "linear"} · ${d3.format(".3s")(w.span)}b · ${w.nodes.length} nodes · ${w.junctions.filter((j) => j.type === "ALT").length} ALT junctions`, meta, w.genes.length ? `genes: ${w.genes.join(", ")}` : null, t("components.single-cell.ecdna.plot-click")].filter(Boolean))}
+              onMouseEnter={(e) => showTip(e, w, [w.label, `${w.circular ? "circular" : "linear"} · ${d3.format(".3s")(w.span)}b · ${w.nodes.length} segments${w.n_nodes_raw > w.nodes.length ? ` (${w.n_nodes_raw} graph nodes)` : ""} · ${w.junctions.filter((j) => j.type === "ALT").length} ALT junctions`, meta, w.genes.length ? `genes: ${w.genes.join(", ")}` : null, t("components.single-cell.ecdna.plot-click")].filter(Boolean))}
               onMouseMove={(e) => hover && showTip(e, w, hover.lines)}
               onClick={() => !drag.current?.moved && onFocus && onFocus(w.id)}
               onDoubleClick={() => zoomToWalk(w)}
