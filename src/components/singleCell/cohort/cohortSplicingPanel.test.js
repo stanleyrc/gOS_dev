@@ -4,6 +4,9 @@ import cohort from "../../../helpers/singleCell/__fixtures__/cohortSplicing.json
 import CohortSplicingPanel from "./cohortSplicingPanel";
 
 jest.mock("../../../redux/singleCell/loaders", () => ({
+  casePath: (dataset, id, file) => `${dataset.dataPath}${id}/${file}`,
+  loadRnaSummary: () => Promise.resolve(null),
+  loadRnaMatrix: () => Promise.reject(new Error("no matrix")),
   tryGet: (path) => Promise.resolve(path.includes("_cohort/rna/splicing.json") ? { status: "ok", data: require("../../../helpers/singleCell/__fixtures__/cohortSplicing.json") } : { status: "missing" }),
 }));
 // igv.js is ESM-only: the findings list's IGV panel is not exercised here
