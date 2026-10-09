@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Typography } from "antd";
 import { domainExtents } from "../../helpers/singleCell/matrix";
+import { TYPE } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const H = 44;
@@ -24,7 +25,7 @@ export default function GeneTrackMini({ width, highlight = null }) {
     const scale = (g) => px0 + ((g - d[0]) / (d[1] - d[0])) * (px1 - px0);
     genes.filter((g) => g.end >= d[0] && g.start <= d[1]).forEach((g) => shown.push({ ...g, x0: Math.max(px0, scale(g.start)), x1: Math.min(px1, scale(g.end)) }));
   });
-  if (!shown.length) return <Text type="secondary" style={{ fontSize: 11 }}>no genes in view</Text>;
+  if (!shown.length) return <Text type="secondary" style={{ fontSize: 12.5 }}>no genes in view</Text>;
   // two lanes to reduce overlaps
   const lanes = [[], []];
   const placed = shown
@@ -43,7 +44,7 @@ export default function GeneTrackMini({ width, highlight = null }) {
         return (
           <g key={`${g.name}-${g.x0}`}>
             <rect x={g.x0} y={y + 4} width={w} height={8} fill={hl ? "#D7191C" : "#7a9cc6"} rx={2} />
-            {w > 24 && <text x={g.x0 + 2} y={y + 1} fontSize={9} fill={hl ? "#D7191C" : "#595959"} fontWeight={hl ? 700 : 400}>{g.name}</text>}
+            {w > 24 && <text x={g.x0 + 2} y={y + 1} fontSize={TYPE.micro} fill={hl ? "#D7191C" : "#595959"} fontWeight={hl ? 700 : 400}>{g.name}</text>}
             <title>{g.name}</title>
           </g>
         );

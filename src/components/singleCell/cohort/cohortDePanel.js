@@ -20,8 +20,9 @@ import { GENE_SETS } from "../../../helpers/singleCell/geneSets";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { BoxStrips, Swatches, patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER_INNER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const OTHERS = "__others__";
@@ -333,7 +334,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
   return (
     <Card
       size="small"
-      title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.de-title")}</Space>}
+      title={<Space><ExperimentOutlined />{t("components.single-cell.cohort.de-title")}<Provenance id="cohortRna" /></Space>}
       extra={
         <Space>
           <Segmented size="small" value={section} onChange={setSection} options={[{ value: "de", label: t("components.single-cell.cohort.de-section-de") }, { value: "pca", label: t("components.single-cell.cohort.de-section-pca") }]} />
@@ -372,7 +373,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                 </>
               )}
             </Space>
-            <div><Text type="secondary" style={{ fontSize: 12 }}>{section === "de" ? t("components.single-cell.cohort.de-help") : t("components.single-cell.cohort.de-pca-help")}</Text></div>
+            <div><Text type="secondary" style={{ fontSize: 13 }}>{section === "de" ? t("components.single-cell.cohort.de-help") : t("components.single-cell.cohort.de-pca-help")}</Text></div>
           </Col>
           {section === "de" && result?.error && <Col span={24}><Alert type="error" showIcon message={result.error} /></Col>}
           {section === "de" && result?.rows && (
@@ -411,10 +412,10 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                         <Col span={12} key={key}>
                           <Text style={{ color, fontWeight: 600 }}>{t("components.single-cell.cohort.de-higher-in", { label: lab })}</Text>
                           {ora[key].length ? ora[key].slice(0, 8).map((r) => (
-                            <div key={r.term} style={{ fontSize: 12 }} title={r.genes.join(", ")}>
+                            <div key={r.term} style={{ fontSize: 13 }} title={r.genes.join(", ")}>
                               <span style={{ color: r.q_val < 0.05 ? color : undefined }}>{prettyTerm(r.term)}</span> <Text type="secondary">{`${r.overlap}/${r.size} · ${formatP(r.q_val)}`}</Text>
                             </div>
-                          )) : <div><Text type="secondary" style={{ fontSize: 12 }}>–</Text></div>}
+                          )) : <div><Text type="secondary" style={{ fontSize: 13 }}>–</Text></div>}
                         </Col>
                       ))}
                     </Row>
@@ -451,15 +452,15 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                       const y = d3.scaleLinear().domain(d3.extent(sy)).nice().range([ph - 36, 12]);
                       return (
                         <svg width={pw} height={ph}>
-                          <line x1={44} x2={pw - 12} y1={y(0)} y2={y(0)} stroke="#e8e8e8" />
-                          <line x1={x(0)} x2={x(0)} y1={12} y2={ph - 36} stroke="#e8e8e8" />
+                          <line x1={44} x2={pw - 12} y1={y(0)} y2={y(0)} stroke={INK.grid} />
+                          <line x1={x(0)} x2={x(0)} y1={12} y2={ph - 36} stroke={INK.grid} />
                           {pcaState.cells.map((c, i) => (
                             <circle key={i} cx={x(sx[i])} cy={y(sy[i])} r={2.8} fill={pcaColorOf(c)} fillOpacity={0.8}>
                               <title>{`${c.patient} · ${c.cell.rna_id}${c.group ? ` · ${c.group}` : ""}${c.cell.state ? ` · ${c.cell.state}` : ""}`}</title>
                             </circle>
                           ))}
-                          <text x={(44 + pw - 12) / 2} y={ph - 10} textAnchor="middle" fontSize={11} fill="#595959">{`PC${pcX + 1} (${d3.format(".1%")(pcaState.explained[pcX])})`}</text>
-                          <text transform={`translate(14 ${ph / 2}) rotate(-90)`} textAnchor="middle" fontSize={11} fill="#595959">{`PC${pcY + 1} (${d3.format(".1%")(pcaState.explained[pcY])})`}</text>
+                          <text x={(44 + pw - 12) / 2} y={ph - 10} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{`PC${pcX + 1} (${d3.format(".1%")(pcaState.explained[pcX])})`}</text>
+                          <text transform={`translate(14 ${ph / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{`PC${pcY + 1} (${d3.format(".1%")(pcaState.explained[pcY])})`}</text>
                         </svg>
                       );
                     })()}
@@ -473,7 +474,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                         return (
                           <g key={i} transform={`translate(${30 + i * bw},0)`} style={{ cursor: "pointer" }} onClick={() => { setPcX(i); setPcY(i === 0 ? 1 : 0); }}>
                             <rect x={2} y={70 - (e / max) * 60} width={bw - 4} height={(e / max) * 60} fill={i === pcX || i === pcY ? "#1677ff" : "#bfbfbf"} />
-                            <text x={bw / 2} y={82} textAnchor="middle" fontSize={9} fill="#595959">{`PC${i + 1}`}</text>
+                            <text x={bw / 2} y={82} textAnchor="middle" fontSize={TYPE.micro} fill={INK.textSecondary}>{`PC${i + 1}`}</text>
                             <title>{`PC${i + 1}: ${d3.format(".1%")(e)} of variance`}</title>
                           </g>
                         );
@@ -483,7 +484,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                       {[pcX, pcY].map((p) => (
                         <Col span={12} key={p}>
                           <Text strong>{`PC${p + 1} ${t("components.single-cell.cohort.de-loadings")}`}</Text>
-                          <div style={{ fontSize: 12 }}>
+                          <div style={{ fontSize: 13 }}>
                             <div>{pcaState.loadings[p].top.map((g) => <Tag key={g.gene} color="volcano" style={{ margin: 1, cursor: "pointer" }} onClick={() => onGene && onGene(g.gene)}>{g.gene}</Tag>)}</div>
                             <div>{pcaState.loadings[p].bottom.map((g) => <Tag key={g.gene} color="geekblue" style={{ margin: 1, cursor: "pointer" }} onClick={() => onGene && onGene(g.gene)}>{g.gene}</Tag>)}</div>
                           </div>
@@ -493,7 +494,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                     {pcaState.useGroups && (() => {
                       const groups = ["A", "B"].map((g) => ({ key: g, label: g === "A" ? labels.A : labels.B, color: g === "A" ? COLOR_UP : COLOR_DOWN, values: pcaState.cells.map((c, i) => (c.group === g ? pcaState.scores[pcX][i] : NaN)).filter(Number.isFinite), ids: [] }));
                       const test = compareGroups(groups.map((g) => ({ key: g.key, values: g.values })));
-                      return <div style={{ marginTop: 8 }}><Text type="secondary" style={{ fontSize: 12 }}>{`PC${pcX + 1} A vs B: ${test?.test || ""} ${formatP(test?.p)}`}</Text><BoxStrips groups={groups} width={Math.max(320, Math.floor(w / 2) - 16)} height={160} yTitle={`PC${pcX + 1}`} /></div>;
+                      return <div style={{ marginTop: 8 }}><Text type="secondary" style={{ fontSize: 13 }}>{`PC${pcX + 1} A vs B: ${test?.test || ""} ${formatP(test?.p)}`}</Text><BoxStrips groups={groups} width={Math.max(320, Math.floor(w / 2) - 16)} height={160} yTitle={`PC${pcX + 1}`} /></div>;
                     })()}
                   </Col>
                 </Row>

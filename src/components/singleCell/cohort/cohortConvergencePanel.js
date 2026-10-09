@@ -6,7 +6,7 @@ import { BranchesOutlined } from "@ant-design/icons";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -79,7 +79,7 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
   return (
     <Card
       size="small"
-      title={<Space><BranchesOutlined />{t("components.single-cell.cohort.conv-title", { count: rows.length })}</Space>}
+      title={<Space><BranchesOutlined />{t("components.single-cell.cohort.conv-title", { count: rows.length })}<Provenance id="oncoprint" /></Space>}
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-tier")}</Text>

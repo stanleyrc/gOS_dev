@@ -92,6 +92,14 @@ export function alterationClassColors(theme) {
   return { amp: "#D7191C", homdel: "#2C7BB6", fusion: theme.mode === "dark" ? "#a35fc4" : "#7B3294", trunc: theme.text, splice: "#E6AB02", missense: "#1B9E77", other: theme.faint };
 }
 
+/**
+ * Light tokens for colours written as SVG attributes (fill={INK.muted}).
+ * Every INK value is listed in SVG_REMAP, so under the dark theme the remap
+ * stylesheet re-tints it to the matching dark token without a re-render;
+ * use usePlotTheme() instead for canvas drawing or data-dependent colours.
+ */
+export const INK = LIGHT;
+
 /** Resolved colour tokens for "light" / "dark". */
 export function plotTheme(mode) {
   return mode === "dark" ? DARK : LIGHT;
@@ -132,8 +140,8 @@ const SHAPES = ["rect", "path", "circle", "ellipse", "polygon", "polyline", "lin
 export const SVG_REMAP = {
   textFill: {
     text: ["#000", "#000000", "black", "#141414", "#1a1a1a", "#1f1f1f", "#262626", "#333", "#333333", "#222", "#222222"],
-    textSecondary: ["#434343", "#555", "#555555", "#595959", "#666", "#666666"],
-    muted: ["#8c8c8c", "#888", "#888888", "#999", "#999999", "#aaa", "#aaaaaa", "#bfbfbf", "#bbb"],
+    textSecondary: ["#434343", "#555", "#555555", "#595959"],
+    muted: ["#666", "#666666", "#8c8c8c", "#888", "#888888", "#999", "#999999", "#aaa", "#aaaaaa", "#bfbfbf", "#bbb"],
   },
   shapeFill: {
     panel: ["#fff", "#ffffff", "white"],

@@ -16,8 +16,9 @@ import { spearman } from "../../helpers/singleCell/dosage";
 import { correlationP, formatP } from "../../helpers/singleCell/tests";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
 import SvgExportButton from "./svgExportButton";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "./density";
+import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 
@@ -109,7 +110,7 @@ export default function QcPanel() {
   const groupsFor = (key) =>
     levels.map((lv) => {
       const sub = rows.filter((r) => `${r[groupBy] ?? "NA"}` === lv);
-      return { key: lv, label: lv, color: colors[lv] || "#8c8c8c", values: sub.map((r) => Number(r[key])), ids: sub.map((r) => r.cell_id), cells: sub };
+      return { key: lv, label: lv, color: colors[lv] || INK.faint, values: sub.map((r) => Number(r[key])), ids: sub.map((r) => r.cell_id), cells: sub };
     });
   const flaggedIds = new Set(flags.keys());
   const flaggedRows = rows.filter((r) => flaggedIds.has(r.cell_id));
@@ -134,7 +135,7 @@ export default function QcPanel() {
         <Col span={24}>
           <Card
             size="small"
-            title={<Space><ExperimentOutlined />{t("components.single-cell.qc.title")}</Space>}
+            title={<Space><ExperimentOutlined />{t("components.single-cell.qc.title")}<Provenance id="qc" /></Space>}
             extra={
               <Space wrap>
                 <Segmented
@@ -173,7 +174,7 @@ export default function QcPanel() {
             <Row gutter={SC_GUTTER}>
               {shownMetrics.map(([k, label, log]) => (
                 <Col key={k} span={24 / cols}>
-                  <Card size="small" title={<span style={{ fontSize: 12 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "2px 6px" }} headStyle={{ minHeight: 26 }}>
+                  <Card size="small" title={<span style={{ fontSize: 13 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "2px 6px" }} headStyle={{ minHeight: 26 }}>
                     <BoxStrips groups={groupsFor(k)} width={plotWidth} height={140} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
                   </Card>
                 </Col>
@@ -199,17 +200,17 @@ export default function QcPanel() {
                       <svg width={w} height={h}>
                         <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 24 ? `${labelOf(b).slice(0, 23)}…` : labelOf(b)} ticks={4} format={d3.format("~g")} />
                         {xs.ticks(4).map((v) => (
-                          <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill="#595959">{d3.format("~g")(v)}</text>
+                          <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{d3.format("~g")(v)}</text>
                         ))}
-                        <text x={(Mm.left + w - Mm.right) / 2} y={h - 6} textAnchor="middle" fontSize={FONT.axis} fill="#262626">{labelOf(a)}</text>
+                        <text x={(Mm.left + w - Mm.right) / 2} y={h - 6} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>{labelOf(a)}</text>
                         {pts.map((p) => (
-                          <circle key={p.id} cx={xs(p.x)} cy={ys(p.y)} r={flaggedIds.has(p.id) ? 3.5 : 2.6} fill={colors[p.g] || "#8c8c8c"} fillOpacity={0.8} stroke={flaggedIds.has(p.id) ? "#cf1322" : "none"} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection([p.id]))}>
+                          <circle key={p.id} cx={xs(p.x)} cy={ys(p.y)} r={flaggedIds.has(p.id) ? 3.5 : 2.6} fill={colors[p.g] || INK.faint} fillOpacity={0.8} stroke={flaggedIds.has(p.id) ? "#cf1322" : "none"} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection([p.id]))}>
                             <title>{`${p.id}
 ${labelOf(a)}: ${d3.format("~g")(p.x)}
 ${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
                           </circle>
                         ))}
-                        <text x={w - Mm.right} y={Mm.top + 2} textAnchor="end" fontSize={11} fill="#595959">{`ρ ${Number.isFinite(rho) ? rho.toFixed(2) : "–"} · ${formatP(correlationP(rho, pts.length))}`}</text>
+                        <text x={w - Mm.right} y={Mm.top + 2} textAnchor="end" fontSize={TYPE.tick} fill={INK.textSecondary}>{`ρ ${Number.isFinite(rho) ? rho.toFixed(2) : "–"} · ${formatP(correlationP(rho, pts.length))}`}</text>
                       </svg>
                     </Col>
                   );
@@ -229,7 +230,7 @@ ${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
               columns={[
                 { title: groupBy === "clone_id" ? t("components.single-cell.umap.color-clone") : groupBy, dataIndex: "group", fixed: "left", width: 140, render: (g) => <Tag color={colors[g]}>{g}</Tag> },
                 { title: "n", dataIndex: "n", width: 60 },
-                ...metrics.map(([k, label]) => ({ title: <span style={{ fontSize: 11 }}>{label}</span>, dataIndex: k, width: 120, render: (v) => (k === "fga" ? (Number.isFinite(v) ? d3.format(".1%")(v) : "–") : fmt(v, 2)) })),
+                ...metrics.map(([k, label]) => ({ title: <span style={{ fontSize: 12.5 }}>{label}</span>, dataIndex: k, width: 120, render: (v) => (k === "fga" ? (Number.isFinite(v) ? d3.format(".1%")(v) : "–") : fmt(v, 2)) })),
               ]}
             />
           </Card>

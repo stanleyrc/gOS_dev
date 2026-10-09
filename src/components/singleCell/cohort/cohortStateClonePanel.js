@@ -7,7 +7,8 @@ import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { chiSquareTable } from "../../../helpers/singleCell/tests";
 import { Swatches } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -58,7 +59,7 @@ export default function CohortStateClonePanel({ groups, fields, defaultFill = "s
   return (
     <Card
       size="small"
-      title={<Space><TableOutlined />{t("components.single-cell.cohort.sc-title")}</Space>}
+      title={<Space><TableOutlined />{t("components.single-cell.cohort.sc-title")}<Provenance id="cohortRna" /></Space>}
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.cohort.sc-rows")}</Text>
@@ -78,27 +79,27 @@ export default function CohortStateClonePanel({ groups, fields, defaultFill = "s
             return (
               <g key={p.patient} transform={`translate(${x0},${y0})`}>
                 <rect x={0} y={4} width={4} height={heights[i] - 12} fill={p.color} />
-                <text x={10} y={12} dy="0.35em" fontSize={12} fontWeight={600} fill="#262626">{p.patient}</text>
-                <text x={cellW - 8} y={12} dy="0.35em" textAnchor="end" fontSize={10} fill={p.p < 0.01 ? "#d4380d" : "#8c8c8c"}>{`${t("components.single-cell.cohort.sc-chi")} ${pFmt(p.p)}`}</text>
+                <text x={10} y={12} dy="0.35em" fontSize={TYPE.label} fontWeight={600} fill={INK.text}>{p.patient}</text>
+                <text x={cellW - 8} y={12} dy="0.35em" textAnchor="end" fontSize={11} fill={p.p < 0.01 ? "#d4380d" : "#8c8c8c"}>{`${t("components.single-cell.cohort.sc-chi")} ${pFmt(p.p)}`}</text>
                 {p.rows.map((r, k) => {
                   const y = 28 + k * (rowH + 3);
                   let cx = LEFT;
                   return (
                     <g key={r.key}>
-                      <text x={LEFT - 6} y={y + rowH / 2} dy="0.35em" textAnchor="end" fontSize={10} fill="#595959">{r.key.length > 16 ? `${r.key.slice(0, 15)}…` : r.key}<title>{r.key}</title></text>
+                      <text x={LEFT - 6} y={y + rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.textSecondary}>{r.key.length > 16 ? `${r.key.slice(0, 15)}…` : r.key}<title>{r.key}</title></text>
                       {r.counts.map((c, j) => {
                         const w = (c / r.n) * barW;
                         const el = c > 0 && (
                           <g key={data.levels[j]}>
                             <rect x={cx} y={y} width={Math.max(0, w - 0.5)} height={rowH} fill={colors[data.levels[j]] || "#d9d9d9"} rx={1} />
-                            {w > 30 && <text x={cx + w / 2} y={y + rowH / 2} dy="0.35em" textAnchor="middle" fontSize={9} fill="#fff" pointerEvents="none">{pct(c / r.n)}</text>}
+                            {w > 30 && <text x={cx + w / 2} y={y + rowH / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.micro} fill="#fff" pointerEvents="none">{pct(c / r.n)}</text>}
                             <title>{`${p.patient} · ${r.key} · ${data.levels[j]}: ${c} / ${r.n} (${pct(c / r.n)})`}</title>
                           </g>
                         );
                         cx += w;
                         return el;
                       })}
-                      <text x={LEFT + barW + 4} y={y + rowH / 2} dy="0.35em" fontSize={9} fill="#8c8c8c">{`n=${r.n}`}</text>
+                      <text x={LEFT + barW + 4} y={y + rowH / 2} dy="0.35em" fontSize={TYPE.micro} fill={INK.muted}>{`n=${r.n}`}</text>
                     </g>
                   );
                 })}

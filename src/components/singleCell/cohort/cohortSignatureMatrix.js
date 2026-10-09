@@ -8,6 +8,8 @@ import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { fisherExact } from "../../../helpers/singleCell/tests";
 import { setSignatureTheme, signatureColorOf } from "../signaturePanel";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const CELL = 30;
@@ -122,9 +124,9 @@ export default function CohortSignatureMatrix({
             x={LEFT + (2 * i + 1) * colW}
             y={TOP - 46}
             textAnchor="middle"
-            fontSize={12}
+            fontSize={TYPE.label}
             fontWeight={600}
-            fill="#262626"
+            fill={INK.text}
           >
             {p.patient}
           </text>
@@ -135,8 +137,8 @@ export default function CohortSignatureMatrix({
             x={LEFT + (j + 0.5) * colW}
             y={TOP - 28}
             textAnchor="middle"
-            fontSize={10}
-            fill="#595959"
+            fontSize={11}
+            fill={INK.textSecondary}
           >
             {c.kind === "truncal"
               ? t("components.single-cell.cohort.sigmat-truncal")
@@ -151,8 +153,8 @@ export default function CohortSignatureMatrix({
               x={LEFT + (j + 0.5) * colW}
               y={TOP - 12}
               textAnchor="middle"
-              fontSize={9}
-              fill="#8c8c8c"
+              fontSize={TYPE.micro}
+              fill={INK.muted}
             >{`n=${Math.round(c.kind === "truncal" ? p.nT : p.nL)}`}</text>
           );
         })}
@@ -170,8 +172,8 @@ export default function CohortSignatureMatrix({
               y={TOP + i * CELL + CELL / 2}
               dy="0.35em"
               textAnchor="end"
-              fontSize={12}
-              fill="#262626"
+              fontSize={TYPE.label}
+              fill={INK.text}
             >
               {sig}
             </text>
@@ -197,7 +199,7 @@ export default function CohortSignatureMatrix({
                     y={TOP + i * CELL + CELL / 2}
                     dy="0.35em"
                     textAnchor="middle"
-                    fontSize={10}
+                    fontSize={11}
                     fill={share > 0.5 ? "#fff" : "#262626"}
                   >
                     {mode === "share" ? pct(share) : count}
@@ -210,7 +212,7 @@ export default function CohortSignatureMatrix({
           </g>
         ))}
       </svg>
-      <Text type="secondary" style={{ fontSize: 12 }}>
+      <Text type="secondary" style={{ fontSize: 13 }}>
         {t("components.single-cell.cohort.sigmat-help")}
       </Text>
     </div>
@@ -222,7 +224,7 @@ export default function CohortSignatureMatrix({
       title={
         <Space>
           <HeatMapOutlined />
-          {t("components.single-cell.cohort.sigmat-title")}
+          {t("components.single-cell.cohort.sigmat-title")}<Provenance id="cohortSignatures" />
         </Space>
       }
       extra={

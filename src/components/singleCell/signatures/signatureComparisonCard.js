@@ -8,7 +8,7 @@ import useContainerWidth from "../useContainerWidth";
 import { ActivityBars, AetiologyLegend, loadCosmic } from "../signaturePanel";
 import { fitSignatures, nnls } from "../../../helpers/singleCell/signatures";
 import { profileSimilarity, setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
@@ -79,7 +79,7 @@ export default function SignatureComparisonCard() {
   return (
     <Card
       size="small"
-      title={<Space><SwapOutlined />{t("components.single-cell.signatures.compare-title")}</Space>}
+      title={<Space><SwapOutlined />{t("components.single-cell.signatures.compare-title")}<Provenance id="signatureCompare" /></Space>}
       extra={
         <Space>
           {missing > 0 && (
@@ -116,7 +116,7 @@ export default function SignatureComparisonCard() {
           <Col xs={24} xl={10}>
             <Text strong>{t("components.single-cell.signatures.similarity-title")}</Text>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ borderCollapse: "collapse", fontSize: 11, marginTop: 6 }}>
+              <table style={{ borderCollapse: "collapse", fontSize: 12.5, marginTop: 6 }}>
                 <thead>
                   <tr>
                     <th />

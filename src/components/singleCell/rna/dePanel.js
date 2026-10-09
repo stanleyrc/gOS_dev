@@ -32,6 +32,8 @@ import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { binAt } from "../../../helpers/singleCell/matrix";
 import { differentialExpression, overRepresentation } from "../../../helpers/singleCell/rnaStats";
 import { SC_GUTTER_INNER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
@@ -69,13 +71,13 @@ function DotPlot({ genes, groups, summary, matrix }) {
     <div ref={ref} style={{ overflowX: "auto" }}>
       <svg width={plotWidth} height={height} role="img" aria-label="Dot plot">
         {groups.map((g, j) => (
-          <text key={g.key} transform={`translate(${left + j * cell + cell / 2} ${top - 6}) rotate(-45)`} fontSize="10" fill="#595959">
+          <text key={g.key} transform={`translate(${left + j * cell + cell / 2} ${top - 6}) rotate(-45)`} fontSize={11} fill={INK.textSecondary}>
             {g.label.length > 18 ? `${g.label.slice(0, 17)}…` : g.label}
           </text>
         ))}
         {data.map((row, i) => (
           <g key={row.gene}>
-            <text x={left - 6} y={top + i * cell + cell / 2 + 4} textAnchor="end" fontSize="11" fill="#262626">
+            <text x={left - 6} y={top + i * cell + cell / 2 + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.text}>
               {row.gene}
             </text>
             {row.stats.map((s, j) => (
@@ -93,14 +95,14 @@ function DotPlot({ genes, groups, summary, matrix }) {
         ))}
         {/* legends: dot size = % expressing, colour = mean scaled per gene */}
         <g transform={`translate(${legendX} ${top})`}>
-          <text fontSize="11" fill="#595959" fontWeight="600">% expressing</text>
+          <text fontSize={TYPE.tick} fill={INK.textSecondary} fontWeight="600">% expressing</text>
           {[0.25, 0.5, 1].map((f, k) => (
             <g key={f} transform={`translate(${12 + k * 34} 22)`}>
-              <circle r={Math.sqrt(f) * (cell / 2 - 1)} fill="#8C8C8C" />
-              <text y={24} textAnchor="middle" fontSize="10" fill="#8C8C8C">{`${f * 100}%`}</text>
+              <circle r={Math.sqrt(f) * (cell / 2 - 1)} fill={INK.faint} />
+              <text y={24} textAnchor="middle" fontSize={11} fill={INK.muted}>{`${f * 100}%`}</text>
             </g>
           ))}
-          <text y={78} fontSize="11" fill="#595959" fontWeight="600">mean (scaled)</text>
+          <text y={78} fontSize={TYPE.tick} fill={INK.textSecondary} fontWeight="600">mean (scaled)</text>
           <defs>
             <linearGradient id="dotplot-ramp" x1="0" x2="1">
               {[0, 0.25, 0.5, 0.75, 1].map((f) => (
@@ -109,8 +111,8 @@ function DotPlot({ genes, groups, summary, matrix }) {
             </linearGradient>
           </defs>
           <rect y={86} width={110} height={10} fill="url(#dotplot-ramp)" rx={2} />
-          <text y={110} fontSize="10" fill="#8C8C8C">0</text>
-          <text x={110} y={110} fontSize="10" fill="#8C8C8C" textAnchor="end">max</text>
+          <text y={110} fontSize={11} fill={INK.muted}>0</text>
+          <text x={110} y={110} fontSize={11} fill={INK.muted} textAnchor="end">max</text>
         </g>
       </svg>
     </div>
@@ -133,18 +135,18 @@ function EnrichmentBars({ terms, onTerm }) {
           const v = -Math.log10(Math.max(r.q_val, 1e-300));
           return (
             <g key={r.term} transform={`translate(0 ${i * rowH})`} style={{ cursor: "pointer" }} onClick={() => onTerm(r)}>
-              <text x={labelW - 8} y={rowH / 2 + 4} textAnchor="end" fontSize="11" fill="#262626">
+              <text x={labelW - 8} y={rowH / 2 + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.text}>
                 {r.term.replace(/^HALLMARK_|^REACTOME_|^GOBP_/, "").replace(/_/g, " ").toLowerCase().slice(0, 52)}
               </text>
               <rect x={labelW} y={4} width={Math.max(1, x(v))} height={rowH - 8} rx={2} fill={r.q_val < 0.05 ? "#722ED1" : "#D3ADF7"} />
-              <text x={labelW + x(v) + 6} y={rowH / 2 + 4} fontSize="10" fill="#8C8C8C">
+              <text x={labelW + x(v) + 6} y={rowH / 2 + 4} fontSize={11} fill={INK.muted}>
                 {`${r.overlap}/${r.size}`}
               </text>
             </g>
           );
         })}
-        <line x1={labelW + x(-Math.log10(0.05))} x2={labelW + x(-Math.log10(0.05))} y1={0} y2={top.length * rowH} stroke="#8C8C8C" strokeDasharray="4 4" />
-        <text x={labelW + barW / 2} y={top.length * rowH + 22} textAnchor="middle" fontSize="11" fill="#595959">
+        <line x1={labelW + x(-Math.log10(0.05))} x2={labelW + x(-Math.log10(0.05))} y1={0} y2={top.length * rowH} stroke={INK.axis} strokeDasharray="4 4" />
+        <text x={labelW + barW / 2} y={top.length * rowH + 22} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>
           −log10 q (dashed: q = 0.05)
         </text>
       </svg>
@@ -558,7 +560,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
   return (
     <Card
       size="small"
-      title={<Space><ExperimentOutlined />{t("components.single-cell.rna.de-title")}</Space>}
+      title={<Space><ExperimentOutlined />{t("components.single-cell.rna.de-title")}<Provenance id="de" /></Space>}
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.rna.min-pct")}</Text>

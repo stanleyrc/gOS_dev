@@ -15,6 +15,7 @@ import { kmeans, pca, scaledExpression } from "../../helpers/singleCell/rnaStats
 import useRnaData from "./rna/useRnaData";
 import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
+import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
 const HEIGHT = 440;
@@ -379,7 +380,7 @@ export default function UmapPanel() {
         title={
           <Space wrap>
             <DotChartOutlined />
-            <span>{t("components.single-cell.umap.title")}</span>
+            <span>{t("components.single-cell.umap.title")}</span><Provenance id="umap" />
             <Text type="secondary">
               {t("components.single-cell.umap.summary", { cells: points.length, linked: nLinked, genes: summary.genes.length })}
             </Text>

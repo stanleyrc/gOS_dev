@@ -8,6 +8,7 @@ import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { PatientCardBody } from "./cohort/patientCards";
 import { useIsSingleCellPatient } from "./eventsToHeatmap";
 import { SC_GUTTER_INNER } from "./density";
+import { Provenance } from "./hintLine";
 
 /**
  * Single-cell summary on the patient's Overall tab: the same card as the
@@ -39,7 +40,7 @@ export default function ScPatientOverview() {
     <Card
       size="small"
       style={{ marginBottom: 16 }}
-      title={<Space><ApartmentOutlined />{t("components.single-cell.overview.title")}</Space>}
+      title={<Space><ApartmentOutlined />{t("components.single-cell.overview.title")}<Provenance id="keyFindings" /></Space>}
       extra={
         <Space>
           <Button size="small" onClick={() => dispatch(settingsActions.updateTab("7"))}>{t("containers.detail-view.tabs.tab7")}</Button>
@@ -59,7 +60,7 @@ export default function ScPatientOverview() {
               <Statistic
                 title={t("components.single-cell.overview.exported")}
                 value={`${record.exported}`.slice(0, 10)}
-                suffix={record.export_version ? <span style={{ fontSize: 12 }}>{`skilift ${record.export_version}`}</span> : null}
+                suffix={record.export_version ? <span style={{ fontSize: 13 }}>{`skilift ${record.export_version}`}</span> : null}
                 valueStyle={{ fontSize: 16 }}
               />
             )}

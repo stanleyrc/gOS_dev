@@ -19,7 +19,7 @@ import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { collapseTree, dominantValue, placeLabels } from "../../helpers/singleCell/collapsedTree";
 import { signatureColorOf } from "./signaturePanel";
 import { Swatches } from "./cohort/charts";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
 import usePlotTheme from "./usePlotTheme";
 import { TYPE, alterationClassColors } from "../../helpers/singleCell/plotTheme";
 
@@ -185,7 +185,7 @@ export default function ClonalHistoryCard() {
   return (
     <Card
       size="small"
-      title={<Space><HistoryOutlined />{t("components.single-cell.history.title")}</Space>}
+      title={<Space><HistoryOutlined />{t("components.single-cell.history.title")}<Provenance id="clonalHistory" /></Space>}
       extra={
         <Space wrap size={6}>
           <Text type="secondary">{t("components.single-cell.history.min-clade")}</Text>

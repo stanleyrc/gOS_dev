@@ -9,7 +9,8 @@ import { amplificationTiming } from "../../helpers/singleCell/snvCopyNumber";
 import { eventClass } from "../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../helpers/singleCell/strongEvents";
 import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
+import { INK } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -56,7 +57,7 @@ export default function AmpTimingCard() {
       render: (f, r) =>
         Number.isFinite(f) ? (
           <Space size={6}>
-            <svg width={120} height={12}><rect width={120} height={12} fill="#f0f0f0" rx={3} /><rect width={120 * f} height={12} fill="#722ed1" rx={3} /></svg>
+            <svg width={120} height={12}><rect width={120} height={12} fill={INK.empty} rx={3} /><rect width={120 * f} height={12} fill="#722ed1" rx={3} /></svg>
             <span>{`${pct(f)} (${r.sites.filter((s) => s.pre).length}/${r.nSites})`}</span>
           </Space>
         ) : (
@@ -66,7 +67,7 @@ export default function AmpTimingCard() {
     { title: t("components.single-cell.timing.verdict"), key: "verdict", width: 160, render: (_, r) => <Tag color={verdict(r).color}>{verdict(r).label}</Tag> },
   ];
   return (
-    <Card size="small" title={<Space><FieldTimeOutlined />{t("components.single-cell.timing.title")}</Space>}>
+    <Card size="small" title={<Space><FieldTimeOutlined />{t("components.single-cell.timing.title")}<Provenance id="ampTiming" /></Space>}>
       <Table size="small" className="sc-events-table" columns={columns} dataSource={rows} pagination={false} />
       <HintLine text={t("components.single-cell.timing.help")} />
     </Card>
