@@ -7,6 +7,7 @@ import { pca, scaledExpression } from "../../../helpers/singleCell/rnaStats";
 import { topVariableGenes } from "../../../helpers/singleCell/staticRna";
 import { PC_NUMERIC_LABELS } from "../../../helpers/singleCell/precompute";
 import { alteredFraction, noiseFloor, normalNeighbourFraction } from "../../../helpers/singleCell/controls";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const fmt = (x, d = 3) => (Number.isFinite(x) ? x.toFixed(d) : "–");
@@ -137,7 +138,7 @@ export default function ControlsCard() {
               pagination={{ pageSize: 10, size: "small" }}
               columns={[
                 { title: "Cell", dataIndex: "id", ellipsis: true },
-                { title: "Clone (DNA)", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
+                { title: "Clone (DNA)", dataIndex: "clone", render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
                 { title: "RNA cell type", dataIndex: "cellType", render: (t) => t || "–" },
                 { title: "Genome altered", dataIndex: "fga", render: (x) => fmt(x, 2) },
                 {

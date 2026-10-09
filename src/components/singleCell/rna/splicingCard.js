@@ -21,6 +21,7 @@ import {
   variantSummary,
 } from "../../../helpers/singleCell/splicing";
 import { NO_READS_COLOR, junctionColor, psiColor, readsColor } from "../../../helpers/singleCell/rnaColors";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -33,7 +34,7 @@ function useGroupFields(summary) {
   return useMemo(
     () => [
       { value: "clone", label: t(`${k}.group-clone`) },
-      ...(summary?.fields || []).filter((f) => !f.numeric && f.levels && f.levels.length <= 24).map((f) => ({ value: f.name, label: f.name })),
+      ...(summary?.fields || []).filter((f) => !f.numeric && f.levels && f.levels.length <= 24).map((f) => ({ value: f.name, label: fieldLabel(f.name) })),
     ],
     [summary, t]
   );

@@ -7,6 +7,7 @@ import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../redux/singleCell/ac
 import datasetsActions from "../../redux/datasets/actions";
 import { naturalCompare, representativeCells } from "../../helpers/singleCell/matrix";
 import { snakeCaseToHumanReadable } from "../../helpers/utility";
+import ColorTag from "./colorTag";
 
 const { Text } = Typography;
 const MAX_EXTRA_COLUMNS = 6;
@@ -83,9 +84,9 @@ export default function CellSelectionPanel() {
     clone == null ? (
       <Text type="secondary">—</Text>
     ) : (
-      <Tag color={cloneColors[clone]} style={{ marginRight: 0 }}>
+      <ColorTag color={cloneColors[clone]} style={{ marginRight: 0 }}>
         {clone}
-      </Tag>
+      </ColorTag>
     );
 
   const columns = [

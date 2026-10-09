@@ -115,8 +115,26 @@ export function formatTick(v, { percent = false } = {}) {
   const a = Math.abs(v);
   if (a >= 1e6) return `${trim(v / 1e6)}M`;
   if (a >= 1e4) return `${trim(v / 1e3)}k`;
+  // whole thousands as k, so a log axis reads 100 · 1k · 10k, not 100 · 1 000 · 10k
+  if (a >= 1000 && v % 1000 === 0) return `${v / 1000}k`;
   if (a >= 1000) return `${Math.round(v)}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return trim(v);
+}
+
+/**
+ * A summary value for display (medians, means in tables and card headers):
+ * k / M / G with three significant digits from 10 000 up (90 499 908 ->
+ * "90.5M"), otherwise at most `digits` decimals without trailing zeros.
+ */
+export function formatValue(v, digits = 2) {
+  const x = Number(v);
+  if (v === null || v === undefined || v === "" || !Number.isFinite(x)) return "–";
+  const a = Math.abs(x);
+  const sig = (n) => `${Number(n.toPrecision(3))}`;
+  if (a >= 1e9) return `${sig(x / 1e9)}G`;
+  if (a >= 1e6) return `${sig(x / 1e6)}M`;
+  if (a >= 1e4) return `${sig(x / 1e3)}k`;
+  return `${Number(x.toFixed(a >= 100 ? Math.min(digits, 1) : digits))}`;
 }
 
 function trim(v) {

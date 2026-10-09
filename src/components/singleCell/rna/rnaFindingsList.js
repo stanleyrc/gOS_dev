@@ -5,6 +5,7 @@ import { Space, Tag, Tooltip, Typography } from "antd";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { formatP } from "../../../helpers/singleCell/tests";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -89,7 +90,7 @@ export default function RnaFindingsList({ findings, status = "ok", cloneColors =
   const mix = headlines.find((h) => h.kind === "state-mix");
   const items = groupedHeadlines(headlines).sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
   const shown = items.slice(0, max);
-  const cloneTag = (clone) => <Tag color={cloneColors[clone]} style={{ marginRight: 4 }}>{clone}</Tag>;
+  const cloneTag = (clone) => <ColorTag color={cloneColors[clone]} style={{ marginRight: 4 }}>{clone}</ColorTag>;
   return (
     <Space direction="vertical" size={4} style={{ width: "100%" }}>
       {showMix && mix && (

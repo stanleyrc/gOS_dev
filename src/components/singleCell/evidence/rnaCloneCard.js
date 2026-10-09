@@ -9,6 +9,7 @@ import { armsFromCytobands } from "../../../helpers/singleCell/convergence";
 import { baselineAccuracy, dnaArmCn, knnAssign, looAccuracy, rnaArmScores } from "../../../helpers/singleCell/rnaClones";
 import { spearman } from "../../../helpers/singleCell/precompute";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const pct = (x) => (Number.isFinite(x) ? `${Math.round(100 * x)}%` : "–");
@@ -123,9 +124,9 @@ export default function RnaCloneCard() {
             </Row>
             <Space wrap size={[4, 4]}>
               {Object.entries(model.loo.perClone).map(([c, r]) => (
-                <Tag key={c} color={cloneColors[c]}>
+                <ColorTag key={c} color={cloneColors[c]}>
                   {c}: {r.correct}/{r.n} recovered
-                </Tag>
+                </ColorTag>
               ))}
               {Object.entries(assignedBy).map(([c, k]) => (
                 <Tag key={`a${c}`}>

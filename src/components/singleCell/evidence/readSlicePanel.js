@@ -8,6 +8,7 @@ import { casePath } from "../../../redux/singleCell/loaders";
 import { siteCloneSummary, siteEvidence } from "../../../helpers/singleCell/precompute";
 import NotComputed, { pcFile } from "./notComputed";
 import { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const WINDOW = 60;
@@ -195,7 +196,8 @@ export default function ReadSlicePanel() {
     {
       title: "Cell",
       dataIndex: "id",
-      width: 190,
+      width: 160,
+      fixed: "left",
       ellipsis: true,
       render: (id) => (
         <Text style={{ fontSize: 13, whiteSpace: "nowrap" }} strong={selected.has(id)} title={id}>
@@ -206,8 +208,8 @@ export default function ReadSlicePanel() {
     {
       title: "Clone",
       dataIndex: "clone",
-      width: 110,
-      render: (c) => <Tag color={cloneColors[c]}>{c}</Tag>,
+      width: 96,
+      render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag>,
     },
     {
       title: "DNA alt / total",
@@ -298,9 +300,9 @@ export default function ReadSlicePanel() {
               </Tag>
             )}
             {Object.entries(summary).map(([clone, s]) => (
-              <Tag key={clone} color={cloneColors[clone]}>
+              <ColorTag key={clone} color={cloneColors[clone]}>
                 {clone}: {s.mut} mut · {s.wt} wt · {s.nc} no call
-              </Tag>
+              </ColorTag>
             ))}
           </Space>
         )}
@@ -323,7 +325,7 @@ export default function ReadSlicePanel() {
                 dataSource={rows}
                 columns={columns}
                 pagination={{ pageSize: 25, size: "small" }}
-                scroll={{ x: 900 }}
+                scroll={{ x: 790 }}
                 onRow={(r) => ({
                   onClick: () => toggle(r.id),
                   style: { cursor: "pointer", background: selected.has(r.id) ? "rgba(24,144,255,0.12)" : undefined },

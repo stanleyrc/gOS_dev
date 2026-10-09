@@ -7,6 +7,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import { differentialExpression } from "../../../helpers/singleCell/rnaStats";
 import { cisTrans, cladeAndSister, cnaDiff, junctionDiff } from "../../../helpers/singleCell/branchDiff";
 import { Provenance } from "../hintLine";
+import ColorTag from "../colorTag";
 
 const { Text } = Typography;
 const WIDTH = 980;
@@ -97,9 +98,9 @@ export default function BranchDiffDrawer({ open, onClose, layout, node, snv, var
   const Comp = ({ ids }) => (
     <Space size={[4, 4]} wrap>
       {composition(ids).map(([c, n]) => (
-        <Tag key={c} color={cloneColors[c]}>
+        <ColorTag key={c} color={cloneColors[c]}>
           {c} {n}
-        </Tag>
+        </ColorTag>
       ))}
     </Space>
   );
