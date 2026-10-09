@@ -46,7 +46,7 @@ export default function SubclonalFindingsTable({ findings, cloneColors, selected
       ),
     },
     {
-      title: "Tumour cells",
+      title: "Tumor cells",
       key: "n",
       width: 136,
       sorter: (a, b) => a.fraction - b.fraction,

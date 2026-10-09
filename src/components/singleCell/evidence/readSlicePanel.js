@@ -289,7 +289,7 @@ export default function ReadSlicePanel() {
           <Space wrap size={[4, 4]}>
             <Text type="secondary" style={{ fontSize: 13 }}>
               {site.id} · {site.source || (site.hotspot ? "hotspot" : "discovered")} · covered in {site.cells_cov} of{" "}
-              {rows.filter((r) => !/^normal$/i.test(`${r.clone || ""}`)).length} tumour cells · pooled tumour alt {site.alt_tumor}/{site.dp_tumor} · normal alt{" "}
+              {rows.filter((r) => !/^normal$/i.test(`${r.clone || ""}`)).length} tumor cells · pooled tumor alt {site.alt_tumor}/{site.dp_tumor} · normal alt{" "}
               {site.alt_normal}/{site.dp_normal} · estimated prevalence {site.prevalence ?? "–"}
             </Text>
             {site.cells_cov != null && rows.length > 0 && site.cells_cov < 0.25 * rows.length && (

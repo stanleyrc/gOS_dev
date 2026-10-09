@@ -993,7 +993,7 @@
         "fold": "Fold",
         "faster": "faster",
         "slower": "slower",
-        "help": "Each row is a clade of ≥ 3 cells: SNV sites gained on the branch above it (with alt reads in the clade, in none of its sibling clades), divided by the median callable megabases of its cells, and the per-cell rate of private SNVs per callable Mb inside the clade versus the rest of the tumour (median, fold change, two-sided Mann-Whitney). Clades flagged faster/slower (p < 0.01, fold ≥ 1.5) have a different ongoing mutation rate. Click a row to select the clade. Normal cells are left out of every clade and comparison."
+        "help": "Each row is a clade of ≥ 3 cells: SNV sites gained on the branch above it (with alt reads in the clade, in none of its sibling clades), divided by the median callable megabases of its cells, and the per-cell rate of private SNVs per callable Mb inside the clade versus the rest of the tumor (median, fold change, two-sided Mann-Whitney). Clades flagged faster/slower (p < 0.01, fold ≥ 1.5) have a different ongoing mutation rate. Click a row to select the clade. Normal cells are left out of every clade and comparison."
       },
       "timing": {
         "title": "Amplification timing",
@@ -1223,7 +1223,7 @@
         "amp-scatter-help": "Total copy number of two genes per cell (from each cell's CN segments, log scale) per patient with Spearman ρ: genes on the same amplicon rise together, genes on different ecDNA species do not.",
         "de-section-de": "Differential expression",
         "de-section-pca": "PCA",
-        "de-pca-intro": "Run PCA on all tumour cells of the loaded patients, or set groups A / B above to run it on just those cells and compare their PC scores.",
+        "de-pca-intro": "Run PCA on all tumor cells of the loaded patients, or set groups A / B above to run it on just those cells and compare their PC scores.",
         "sigmat-truncal": "truncal",
         "umap-selected": "{{count}} cells selected",
         "umap-drag": "Drag a box to select cells",
@@ -1244,7 +1244,7 @@
         "de-run": "Run DE (Wilcoxon)",
         "de-pca-groups": "PCA of A ∪ B",
         "de-pca-all": "PCA of all cells",
-        "de-help": "Build A and B from patients × a metadata field, from cells boxed on the cohort UMAP (Shift adds), or let B be every other cell. Pooled: one Wilcoxon test per gene on the merged cells (log2FC as Seurat). Per patient: the test runs inside each patient with ≥ 3 cells in both groups and the p-values are combined (Fisher); the concordance column counts patients whose fold change has the cohort sign — the way to find differences that hold in every tumour rather than in the biggest one.",
+        "de-help": "Build A and B from patients × a metadata field, from cells boxed on the cohort UMAP (Shift adds), or let B be every other cell. Pooled: one Wilcoxon test per gene on the merged cells (log2FC as Seurat). Per patient: the test runs inside each patient with ≥ 3 cells in both groups and the p-values are combined (Fisher); the concordance column counts patients whose fold change has the cohort sign — the way to find differences that hold in every tumor rather than in the biggest one.",
         "de-summary": "{{tested}} genes tested · {{up}} up, {{down}} down at the thresholds · A {{nA}} cells, B {{nB}} cells",
         "de-concordant": "Concordant",
         "de-per-patient": "log2FC per patient",
