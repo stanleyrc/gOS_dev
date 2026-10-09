@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Col, Empty, Row, Segmented, Select, Slider, Space, Typography } from "antd";
+import { Alert, Button, Card, Col, Empty, Row, Segmented, Select, Slider, Space, Typography } from "antd";
 import { BranchesOutlined, NodeExpandOutlined } from "@ant-design/icons";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
@@ -23,6 +23,8 @@ import useContainerWidth from "../../components/singleCell/useContainerWidth";
 import settingsActions from "../../redux/settings/actions";
 import { toGlobal, walkFamilies, walkFootprint } from "../../helpers/singleCell/walks";
 import { defaultFocusWalk } from "../../helpers/singleCell/walkPanels";
+import { shortLabel } from "../../helpers/singleCell/walkPlotState";
+import WalksLegend from "../../components/singleCell/ecdna/walksLegend";
 import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
 
@@ -70,13 +72,14 @@ export default function SingleCellEcdnaTab() {
   const { chromoBins, domains } = useSelector((s) => s.Settings);
   const genesList = useSelector((s) => s.Genes?.list || []);
   const cellIds = useMemo(() => (order.length ? order : cellsAll.map((c) => c.cell_id)), [order, cellsAll]);
-  const { status, all, measured, filtered, filters, setFilters, colorOf, byId } = useWalks(cellIds);
+  const { status, all, measured, filtered, filters, setFilters, colorOf, byId, idMatch } = useWalks(cellIds);
   const [selected, setSelected] = useState([]);
   const [focus, setFocus] = useState(null);
   const [pad, setPad] = useState(2.5e5);
   const [colorBy, setColorBy] = useState("walk");
   const [laneHeight, setLaneHeight] = useState(18);
   const [showTable, setShowTable] = useState(false);
+  const [chipHover, setChipHover] = useState(null); // walk hovered among the chips, marked in the plot
   const [genesRef, genesWidth] = useContainerWidth(1200);
 
   const families = useMemo(() => walkFamilies(filtered), [filtered]);
@@ -94,6 +97,19 @@ export default function SingleCellEcdnaTab() {
   }, [filtered]);
   const shown = useMemo(() => selected.map((id) => filtered.find((w) => w.id === id) || byId.get(id)).filter(Boolean), [selected, filtered, byId]);
   const shownFamilies = useMemo(() => walkFamilies(shown), [shown]);
+  // the highlight only applies to a drawn walk: unticking (or filtering out) the highlighted walk clears it,
+  // otherwise every lane would stay faded with nothing highlighted
+  const activeFocus = focus && shown.some((w) => w.id === focus) ? focus : null;
+  useEffect(() => {
+    if (focus && !activeFocus) setFocus(null);
+  }, [focus, activeFocus]);
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && setFocus(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  // the heatmap takes no props: keep its element stable so hovering chips / lanes never re-renders it
+  const heatmap = useMemo(() => <CellHeatmapPanel />, []);
 
   // open on the ticked walks' regions once per patient; afterwards the view is the user's
   const zoomedFor = useRef(null);
@@ -118,18 +134,26 @@ export default function SingleCellEcdnaTab() {
   const labelWidth = insets?.left > 120 ? insets.left : 300;
   const rightWidth = insets?.right > 0 ? insets.right : 60;
   // default single-walk card: the shown walk with the most carrier cells, not a one-cell variant
-  const focused = (focus && (filtered.find((w) => w.id === focus) || byId.get(focus))) || defaultFocusWalk(shown, cellIds);
+  const focused = (activeFocus && (filtered.find((w) => w.id === activeFocus) || byId.get(activeFocus))) || defaultFocusWalk(shown, cellIds);
   return (
     <SingleCellWrapper>
       <ScEventModal />
-      <ScErrorBoundary resetKey={`${selected.join("|")}-${focus}`} title="ecDNA view failed">
+      <ScErrorBoundary resetKey={`${selected.join("|")}-${activeFocus}`} title="ecDNA view failed">
         <Row gutter={SC_GUTTER}>
           <Col span={24}>
             <Card size="small" title={<Space><BranchesOutlined />{t("components.single-cell.ecdna.title", { count: all.length })}<Provenance id="walks" /></Space>} extra={<HelpDrawer />}>
-              <WalkPicker families={families} total={all.length} nCells={cellIds.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} onShowTable={() => setShowTable((v) => !v)} />
+              {idMatch.listed > 0 && idMatch.matched === 0 && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 10 }}
+                  message={t("components.single-cell.ecdna.id-mismatch", { count: idMatch.listed, example: idMatch.example, cell: cellIds[0] })}
+                />
+              )}
+              <WalkPicker families={families} total={all.length} nCells={cellIds.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} onShowTable={() => setShowTable((v) => !v)} tableOpen={showTable} focus={activeFocus} onHover={setChipHover} />
               {showTable && (
                 <div style={{ marginTop: 10 }}>
-                  <WalkTable walks={filtered} total={all.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} focus={focus} onFocus={setFocus} nCells={cellIds.length} />
+                  <WalkTable walks={filtered} total={all.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} focus={activeFocus} onFocus={(id) => { setSelected((prev) => (prev.includes(id) ? prev : [...prev, id])); setFocus(id); }} nCells={cellIds.length} />
                 </div>
               )}
             </Card>
@@ -146,11 +170,12 @@ export default function SingleCellEcdnaTab() {
                   <Text type="secondary">{t("components.single-cell.ecdna.heat-pad")}</Text>
                   <Select size="small" value={pad} onChange={setPad} style={{ width: 86 }} options={PADS.map((p) => ({ value: p, label: padLabel(p) }))} />
                   <Button size="small" type="primary" ghost onClick={() => zoomToShown()} disabled={!shown.length}>{t("components.single-cell.ecdna.zoom-shown")}</Button>
-                  {focus && focused && <Button size="small" onClick={() => zoomToShown([focused])}>{t("components.single-cell.ecdna.zoom-focus", { label: focused.label })}</Button>}
+                  {activeFocus && focused && <Button size="small" onClick={() => zoomToShown([focused])}>{t("components.single-cell.ecdna.zoom-focus", { label: shortLabel(focused.label, 18) })}</Button>}
+                  {activeFocus && <Button size="small" type="text" onClick={() => setFocus(null)}>{t("components.single-cell.ecdna.clear-focus")}</Button>}
                 </Space>
               }
             >
-              <WalksPlot walks={shown} families={shownFamilies} colorOf={colorOf} focus={focus} onFocus={(id) => setFocus((f) => (f === id ? null : id))} labelWidth={labelWidth} rightWidth={rightWidth} laneHeight={laneHeight} colorBy={colorBy} />
+              <WalksPlot walks={shown} families={shownFamilies} colorOf={colorOf} focus={activeFocus} hover={chipHover} onFocus={(id) => setFocus((f) => (f === id ? null : id))} labelWidth={labelWidth} rightWidth={rightWidth} laneHeight={laneHeight} colorBy={colorBy} />
               <div ref={genesRef} style={{ position: "relative", marginLeft: labelWidth, marginRight: rightWidth, height: GENES_H, marginTop: 4 }}>
                 {genesList.length > 0 && domains?.length > 0 && genesWidth > 200 && (
                   <>
@@ -159,14 +184,15 @@ export default function SingleCellEcdnaTab() {
                   </>
                 )}
               </div>
+              <WalksLegend />
             </Card>
-            <CellHeatmapPanel />
+            {heatmap}
           </Col>
           <Col span={24}>
-            <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} />
+            <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} focus={activeFocus} />
           </Col>
           <Col xs={24} xl={10}>
-            <WalkContainmentCard walks={shown} colorOf={colorOf} cellIds={cellIds} focus={focused?.id} onFocus={setFocus} />
+            <WalkContainmentCard walks={shown} colorOf={colorOf} cellIds={cellIds} focus={activeFocus} onFocus={(id) => setFocus((f) => (f === id ? null : id))} />
           </Col>
           <Col xs={24} xl={14}>
             <WalkDiagram walk={focused} colorOf={colorOf} cellIds={cellIds} />
