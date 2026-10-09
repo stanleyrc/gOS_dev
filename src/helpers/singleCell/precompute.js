@@ -10,6 +10,7 @@ export const PRECOMPUTE_FILES = {
   sphase: "precompute/sphase.json",
   telomeres: "precompute/telomeres.json",
   calls: "precompute/region_calls.json",
+  mtdna: "precompute/mtdna.json",
   slices: "slices/regions.json",
 };
 export const PRECOMPUTE_STATUS_FILE = "_precompute/status.json";
@@ -30,6 +31,7 @@ export const PC_FIELDS = {
   sProgression: "pc_s_progression",
   telRel: "pc_tel_rel",
   tvrFrac: "pc_tvr_frac",
+  mtCn: "pc_mt_cn",
 };
 export const PC_NUMERIC_LABELS = {
   pc_ado: "Allelic dropout (germline hets)",
@@ -41,6 +43,7 @@ export const PC_NUMERIC_LABELS = {
   pc_s_progression: "S-phase progression (DNA)",
   pc_tel_rel: "Telomere content (vs normal cells)",
   pc_tvr_frac: "Telomeric variant repeat fraction",
+  pc_mt_cn: "mtDNA copies per cell",
 };
 export const GENOTYPE_LABELS = { mut: "mutant", wt: "wild type", nc: "no call" };
 
@@ -85,12 +88,13 @@ export function hotspotGenotypes(calls, { onlyHotspots = true, minMut = 0 } = {}
  * only for hotspots with a mutant call in some cell, so silent hotspots don't
  * clutter the strip menus.
  */
-export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls } = {}) {
+export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls, mtdna } = {}) {
   const q = byCell(qc);
   const s = byCell(sphase);
   const t = byCell(telomeres);
+  const mt = byCell(mtdna);
   const gts = hotspotGenotypes(calls, { minMut: 1 });
-  if (!q.size && !s.size && !t.size && !Object.keys(gts).length) return cells;
+  if (!q.size && !s.size && !t.size && !mt.size && !Object.keys(gts).length) return cells;
   return cells.map((c) => {
     const id = `${c.cell_id}`;
     const out = { ...c };
@@ -116,6 +120,8 @@ export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, ca
       out[PC_FIELDS.telRel] = num(tr.tel_rel);
       out[PC_FIELDS.tvrFrac] = num(tr.tvr_frac);
     }
+    const mr = mt.get(id);
+    if (mr && mr.mt_cn != null) out[PC_FIELDS.mtCn] = num(mr.mt_cn);
     Object.entries(gts).forEach(([label, m]) => {
       const g = m[id];
       if (g != null) out[label] = GENOTYPE_LABELS[g] || g;

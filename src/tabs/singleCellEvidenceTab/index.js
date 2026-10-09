@@ -9,6 +9,7 @@ import PrecomputeStatusCard from "../../components/singleCell/evidence/precomput
 import CellFilterControl from "../../components/singleCell/evidence/cellFilterControl";
 import FishPlotCard from "../../components/singleCell/evidence/fishPlotCard";
 import ConvergenceCard from "../../components/singleCell/evidence/convergenceCard";
+import MtdnaCard from "../../components/singleCell/evidence/mtdnaCard";
 
 const VIEWS = [
   { value: "reads", label: "Reads & genotypes" },
@@ -16,6 +17,7 @@ const VIEWS = [
   { value: "telomeres", label: "TERT & telomeres" },
   { value: "clones", label: "Clones (fish plot)" },
   { value: "convergence", label: "Convergent events" },
+  { value: "mtdna", label: "mtDNA" },
   { value: "status", label: "Pipeline status" },
 ];
 
@@ -33,6 +35,7 @@ export default function SingleCellEvidenceTab() {
           {view === "telomeres" && <TelomereCard />}
           {view === "clones" && <FishPlotCard />}
           {view === "convergence" && <ConvergenceCard />}
+          {view === "mtdna" && <MtdnaCard />}
           {view === "status" && <PrecomputeStatusCard />}
         </ErrorBoundary>
       </Space>
