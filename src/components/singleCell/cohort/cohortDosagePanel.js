@@ -13,7 +13,8 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { correlationP } from "../../../helpers/singleCell/tests";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const CELL = 30;
@@ -99,7 +100,7 @@ export default function CohortDosagePanel({ summaries, files, rna, cnRows, datas
   return (
     <Card
       size="small"
-      title={<Space><HeatMapOutlined />{t("components.single-cell.cohort.dosage-title")}</Space>}
+      title={<Space><HeatMapOutlined />{t("components.single-cell.cohort.dosage-title")}<Provenance id="dosage" /></Space>}
       extra={
         <Space wrap>
           <Select size="small" mode="multiple" showSearch maxTagCount="responsive" style={{ minWidth: 320, maxWidth: 560 }} value={genes} onChange={setPicked} options={[...new Set([...genes, ...allGenes])].slice(0, 5000).map((g) => ({ value: g, label: g }))} filterOption={(input, o) => o.value.toUpperCase().startsWith(input.toUpperCase())} />
@@ -116,18 +117,18 @@ export default function CohortDosagePanel({ summaries, files, rna, cnRows, datas
           <>
             <svg width={Math.min(width, w)} height={h}>
               {patients.map((s, j) => (
-                <text key={s.caseReportId} x={LEFT + (j + 0.5) * colW} y={TOP - 10} textAnchor="end" fontSize={12} fontWeight={600} fill="#262626" transform={`rotate(-40 ${LEFT + (j + 0.5) * colW} ${TOP - 10})`}>{s.caseReportId}</text>
+                <text key={s.caseReportId} x={LEFT + (j + 0.5) * colW} y={TOP - 10} textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={INK.text} transform={`rotate(-40 ${LEFT + (j + 0.5) * colW} ${TOP - 10})`}>{s.caseReportId}</text>
               ))}
               {genes.map((gene, i) => (
                 <g key={gene}>
-                  <text x={LEFT - 8} y={TOP + i * CELL + CELL / 2} dy="0.35em" textAnchor="end" fontSize={12} fill="#262626">{gene}</text>
+                  <text x={LEFT - 8} y={TOP + i * CELL + CELL / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fill={INK.text}>{gene}</text>
                   {patients.map((s, j) => {
                     const r = result[`${gene}|${s.caseReportId}`];
                     const x = LEFT + j * colW;
                     return (
                       <g key={s.caseReportId}>
                         <rect x={x + 1} y={TOP + i * CELL + 1} width={colW - 2} height={CELL - 2} fill={r ? color(r.rho) : "#f5f5f5"} rx={3} />
-                        {r && <text x={x + colW / 2} y={TOP + i * CELL + CELL / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill={Math.abs(r.rho) > 0.5 ? "#fff" : "#262626"}>{r.rho.toFixed(2)}{r.p < 0.01 ? "*" : ""}</text>}
+                        {r && <text x={x + colW / 2} y={TOP + i * CELL + CELL / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.tick} fill={Math.abs(r.rho) > 0.5 ? "#fff" : "#262626"}>{r.rho.toFixed(2)}{r.p < 0.01 ? "*" : ""}</text>}
                         <title>{r ? `${gene} · ${s.caseReportId}: Spearman ρ ${r.rho.toFixed(2)}, p ${r.p < 1e-4 ? "< 1e-4" : r.p.toFixed(3)}, n ${r.n}, mean CN ${r.meanCn.toFixed(1)}` : `${gene} · ${s.caseReportId}: not enough linked cells`}</title>
                       </g>
                     );

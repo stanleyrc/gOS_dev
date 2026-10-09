@@ -7,6 +7,8 @@ import { cellCycleConcordance } from "../../../helpers/singleCell/precompute";
 import useRnaData from "../rna/useRnaData";
 import useContainerWidth from "../useContainerWidth";
 import NotComputed, { pcFile } from "./notComputed";
+import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const fmt = (x, d = 2) => (x == null || Number.isNaN(x) ? "–" : x.toFixed(d));
@@ -29,19 +31,19 @@ function Scatter({ points, width, yKey, yLabel, cloneColors, selected, onPick })
       <line x1={m.l} x2={width - m.r} y1={h - m.b} y2={h - m.b} stroke="currentColor" opacity={0.4} />
       <line x1={m.l} x2={m.l} y1={m.t} y2={h - m.b} stroke="currentColor" opacity={0.4} />
       {[x0, (x0 + x1) / 2, x1].map((v) => (
-        <text key={v} x={sx(v)} y={h - m.b + 14} fontSize={10} textAnchor="middle" fill="currentColor">
+        <text key={v} x={sx(v)} y={h - m.b + 14} fontSize={11} textAnchor="middle" fill="currentColor">
           {v.toFixed(2)}
         </text>
       ))}
       {[y0, (y0 + y1) / 2, y1].map((v) => (
-        <text key={v} x={m.l - 4} y={sy(v) + 3} fontSize={10} textAnchor="end" fill="currentColor">
+        <text key={v} x={m.l - 4} y={sy(v) + 3} fontSize={11} textAnchor="end" fill="currentColor">
           {v.toFixed(2)}
         </text>
       ))}
-      <text x={(m.l + width) / 2} y={h - 4} fontSize={11} textAnchor="middle" fill="currentColor">
+      <text x={(m.l + width) / 2} y={h - 4} fontSize={TYPE.tick} textAnchor="middle" fill="currentColor">
         DNA: coverage vs replication timing (rho)
       </text>
-      <text transform={`translate(11,${(h - m.b) / 2}) rotate(-90)`} fontSize={11} textAnchor="middle" fill="currentColor">
+      <text transform={`translate(11,${(h - m.b) / 2}) rotate(-90)`} fontSize={TYPE.tick} textAnchor="middle" fill="currentColor">
         {yLabel}
       </text>
       {pts.map((p) => (
@@ -86,7 +88,7 @@ function Profile({ profile, cellId, width }) {
       {starts.map(([c, i]) => (
         <g key={c}>
           <line x1={x(i)} x2={x(i)} y1={m.t} y2={h - m.b} stroke="currentColor" opacity={0.12} />
-          <text x={x(i) + 2} y={h - 6} fontSize={9} fill="currentColor" opacity={0.6}>
+          <text x={x(i) + 2} y={h - 6} fontSize={TYPE.micro} fill="currentColor" opacity={0.6}>
             {c.replace("chr", "")}
           </text>
         </g>
@@ -98,8 +100,8 @@ function Profile({ profile, cellId, width }) {
         <circle key={i} cx={x(i)} cy={y(v)} r={1.2} fill="currentColor" opacity={0.55} />
       ))}
       <line x1={m.l} x2={width - m.r} y1={y(0)} y2={y(0)} stroke="currentColor" opacity={0.3} />
-      <text x={4} y={y(0) + 3} fontSize={9} fill="currentColor">0</text>
-      <text x={4} y={m.t + 8} fontSize={9} fill="currentColor">early</text>
+      <text x={4} y={y(0) + 3} fontSize={TYPE.micro} fill="currentColor">0</text>
+      <text x={4} y={m.t + 8} fontSize={TYPE.micro} fill="currentColor">early</text>
     </svg>
   );
 }
@@ -141,9 +143,9 @@ export default function CellCycleCard() {
   const half = Math.max(280, Math.floor((width - 24) / 2));
   const nS = res.points.filter((p) => p.sCall).length;
   return (
-    <Card size="small" title="Cell cycle: DNA replication timing vs RNA" ref={ref}>
+    <Card size="small" title={<span>Cell cycle: DNA replication timing vs RNA <Provenance id="cellCycle" /></span>} ref={ref}>
       <Space direction="vertical" style={{ width: "100%" }} size="small">
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <Text type="secondary" style={{ fontSize: 13 }}>
           {res.points.length} cells scored from DNA, {nS} called S-phase (rho z ≥ 3 vs this patient&apos;s cells; null median{" "}
           {fmt(sphase.data.null?.median_cor, 3)}, MAD {fmt(sphase.data.null?.mad_cor, 3)}). Agreement with RNA over {res.nPaired} cells with both:
           rho vs S.Score {fmt(res.rhoS)}, vs G2M.Score {fmt(res.rhoG2M)}.
@@ -182,13 +184,13 @@ export default function CellCycleCard() {
                 { title: "S + G2/M (RNA)", key: "r", render: (_, r) => (r.nRna ? `${r.rnaCycling}/${r.nRna} (${pct(r.rnaFrac)})` : "–") },
               ]}
             />
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" style={{ fontSize: 12.5 }}>
               DNA counts cells caught mid-replication; RNA counts cells with S or G2/M programmes, so RNA fractions run higher.
             </Text>
           </Col>
         </Row>
         <div>
-          <Text style={{ fontSize: 12 }}>
+          <Text style={{ fontSize: 13 }}>
             {focus ? `${focus}: coverage residual (log2, CN- and GC-normalised) along the genome; top bar = reference timing (orange early)` : ""}
           </Text>
           <Profile profile={profile} cellId={focus} width={width} />

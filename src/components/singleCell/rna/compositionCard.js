@@ -11,7 +11,8 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { chiSquareUpper } from "../../../helpers/singleCell/tests";
 import { FONT, Swatches, XBandLabels } from "../cohort/charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const HEIGHT = 260;
@@ -68,7 +69,7 @@ export default function CompositionCard({ summary }) {
   return (
     <Card
       size="small"
-      title={<Space><PieChartOutlined />{t("components.single-cell.rna.composition-title")}</Space>}
+      title={<Space><PieChartOutlined />{t("components.single-cell.rna.composition-title")}<Provenance id="rnaComposition" /></Space>}
       extra={
         <Space wrap>
           <Select size="small" style={{ width: 160 }} value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: f }))} />
@@ -82,8 +83,8 @@ export default function CompositionCard({ summary }) {
         <svg width={width - 24} height={HEIGHT}>
           {y.ticks(5).map((v) => (
             <g key={v} transform={`translate(0,${y(v)})`}>
-              <line x1={M.left} x2={width - 24 - M.right} stroke="#f0f0f0" />
-              <text x={M.left - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill="#595959">{d3.format(".0%")(v)}</text>
+              <line x1={M.left} x2={width - 24 - M.right} stroke={INK.grid} />
+              <text x={M.left - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format(".0%")(v)}</text>
             </g>
           ))}
           {data.keys.map((k) => {
@@ -97,13 +98,13 @@ export default function CompositionCard({ summary }) {
                   const h = y(acc) - top;
                   acc += v;
                   return (
-                    <rect key={l} x={x(k)} y={top} width={x.bandwidth()} height={Math.max(0, h)} fill={levelColors[l]} stroke="#fff" strokeWidth={0.5}>
+                    <rect key={l} x={x(k)} y={top} width={x.bandwidth()} height={Math.max(0, h)} fill={levelColors[l]} stroke={INK.panel} strokeWidth={0.5}>
                       <title>{`${k} · ${l}: ${g.counts[l]} of ${g.total} (${d3.format(".0%")(v)})`}</title>
                     </rect>
                   );
                 })}
-                <rect x={x(k)} y={HEIGHT - M.bottom + 2} width={x.bandwidth()} height={5} fill={groupColors[k] || "#8c8c8c"} />
-                <text x={x(k) + x.bandwidth() / 2} y={M.top - 2} textAnchor="middle" fontSize={10} fill="#8c8c8c">{`n=${g.total}`}</text>
+                <rect x={x(k)} y={HEIGHT - M.bottom + 2} width={x.bandwidth()} height={5} fill={groupColors[k] || INK.faint} />
+                <text x={x(k) + x.bandwidth() / 2} y={M.top - 2} textAnchor="middle" fontSize={11} fill={INK.muted}>{`n=${g.total}`}</text>
               </g>
             );
           })}

@@ -15,7 +15,7 @@ export default function NotComputed({ what, step, status }) {
           {step && (
             <>
               <br />
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 13 }}>
                 precompute step <code>{step}</code> (gos_sc_precompute.py submit --steps {step})
               </Text>
             </>

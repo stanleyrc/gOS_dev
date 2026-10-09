@@ -1,23 +1,26 @@
 import React, { useEffect, useRef } from "react";
 import usePixelRatio from "../usePixelRatio";
-import { isDarkPlots } from "../../../helpers/singleCell/matrix";
+import usePlotTheme from "../usePlotTheme";
+import { FONT_FAMILY, TYPE, currentPlotTheme, fontCss } from "../../../helpers/singleCell/plotTheme";
 
-/** Text / grid colours for the current theme. */
+/** Text / grid colours for the current theme (tokens from helpers/singleCell/plotTheme). */
 export function ink() {
-  const dark = isDarkPlots();
+  const pt = currentPlotTheme();
   return {
-    dark,
-    text: dark ? "#d9d9d9" : "#262626",
-    muted: dark ? "#8c8c8c" : "#8c8c8c",
-    grid: dark ? "#303030" : "#f0f0f0",
-    band: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.045)",
-    empty: dark ? "#2a2a2a" : "#e8e8e8",
-    panel: dark ? "#141414" : "#ffffff",
+    dark: pt.mode === "dark",
+    text: pt.text,
+    muted: pt.muted,
+    grid: pt.grid,
+    band: pt.band,
+    empty: pt.empty,
+    panel: pt.panel,
   };
 }
 
-export const FONT_FAMILY = "-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-export const font = (px, weight = 400) => `${weight} ${px}px ${FONT_FAMILY}`;
+export { FONT_FAMILY };
+// figure text follows the app type scale: nothing below TYPE.micro, small sizes nudged up
+const scaled = (px) => (px <= 9 ? TYPE.micro : px <= 10 ? TYPE.tick - 0.5 : px <= 11 ? TYPE.tick : px <= 12 ? TYPE.label : px);
+export const font = (px, weight = 400) => fontCss(scaled(px), weight);
 
 /**
  * One canvas per figure panel. `draw(ctx, ink)` paints in CSS pixels (the
@@ -31,6 +34,7 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
   const tipRef = useRef(null);
   const hitsRef = useRef([]);
   const pr = usePixelRatio();
+  const themeMode = usePlotTheme().mode; // redraw on a light / dark switch
 
   useEffect(() => {
     const canvas = ref.current;
@@ -43,7 +47,8 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
     ctx.clearRect(0, 0, width, height);
     ctx.textBaseline = "middle";
     hitsRef.current = draw(ctx, ink()) || [];
-  }, [width, height, draw, pr]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, height, draw, pr, themeMode]);
 
   const find = (event) => {
     const rect = ref.current.getBoundingClientRect();

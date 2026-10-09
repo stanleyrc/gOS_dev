@@ -13,6 +13,8 @@ import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? Number(p).toExponential(1) : Number(p).toFixed(3));
@@ -50,14 +52,14 @@ function DotPlot({ genes, groups, summary, matrix, width }) {
       {groups.map((grp, k) => (
         <g key={grp.key} transform={`translate(${left + (k + 0.5) * colW},${top - 10})`}>
           <rect x={-colW / 2 + 2} y={-top + 12} width={colW - 4} height={6} fill={grp.color} />
-          <text textAnchor="end" fontSize={11} fill="#262626" transform="rotate(-45)">{grp.label.length > 16 ? `${grp.label.slice(0, 15)}…` : grp.label}</text>
+          <text textAnchor="end" fontSize={TYPE.tick} fill={INK.text} transform="rotate(-45)">{grp.label.length > 16 ? `${grp.label.slice(0, 15)}…` : grp.label}</text>
         </g>
       ))}
       {genes.map((gene, gi) => (
-        <text key={gene} x={left - 8} y={top + gi * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={11} fill="#262626">{gene}</text>
+        <text key={gene} x={left - 8} y={top + gi * cell + cell / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.text}>{gene}</text>
       ))}
       {data.map((d) => (
-        <circle key={`${d.gi}-${d.k}`} cx={left + (d.k + 0.5) * colW} cy={top + d.gi * cell + cell / 2} r={2 + 8 * Math.sqrt(d.pct)} fill={color(d.scaled)} stroke="#fff" strokeWidth={0.5}>
+        <circle key={`${d.gi}-${d.k}`} cx={left + (d.k + 0.5) * colW} cy={top + d.gi * cell + cell / 2} r={2 + 8 * Math.sqrt(d.pct)} fill={color(d.scaled)} stroke={INK.panel} strokeWidth={0.5}>
           <title>{`${genes[d.gi]} · ${groups[d.k].label}: ${Math.round(100 * d.pct)}% expressing, mean ${d.mean.toFixed(2)}`}</title>
         </circle>
       ))}
@@ -109,7 +111,7 @@ export default function MarkersCard({ summary, matrix }) {
     });
     const keys = [...by.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     const colors = chosen === "clone" ? cloneColors : annotationColors(keys, themePalette(layout.theme));
-    return keys.filter((k) => by.get(k).length >= 5).map((k) => ({ key: k, label: k, rows: by.get(k), color: colors[k] || "#8c8c8c" }));
+    return keys.filter((k) => by.get(k).length >= 5).map((k) => ({ key: k, label: k, rows: by.get(k), color: colors[k] || INK.faint }));
   }, [summary, chosen, cloneOf, cloneColors, layout.theme]);
 
   // backend markers exist for Seurat metadata columns (state, Clone_Annotation, seurat_clusters); DNA clones are computed here
@@ -153,7 +155,7 @@ export default function MarkersCard({ summary, matrix }) {
   return (
     <Card
       size="small"
-      title={<Space><TagsOutlined />{t("components.single-cell.rna.markers-title")}</Space>}
+      title={<Space><TagsOutlined />{t("components.single-cell.rna.markers-title")}<Provenance id="markers" /></Space>}
       extra={
         <Space wrap>
           <Select size="small" style={{ width: 170 }} value={chosen} onChange={setField} options={fields.map((f) => ({ value: f, label: f === "clone" ? t("components.single-cell.umap.color-clone") : f }))} />
@@ -175,7 +177,7 @@ export default function MarkersCard({ summary, matrix }) {
         ) : (
           <Row gutter={SC_GUTTER}>
             <Col xs={24} xl={10}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 13 }}>
                 {markers.source === "backend" ? t("components.single-cell.rna.markers-backend", { method: backend?.method || "Seurat" }) : t("components.single-cell.rna.markers-browser")}
               </Text>
               <DotPlot genes={genes} groups={groups} summary={summary} matrix={matrix} width={Math.max(320, width * 0.4)} />

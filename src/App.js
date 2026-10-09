@@ -20,6 +20,10 @@ import "./global.css";
 
 const { Content, Footer } = Layout;
 
+// apply the stored theme before the first render, so plots drawn in their
+// mount effects (which run before App's) already see the right colours
+if (typeof document !== "undefined") applyAppTheme(getAppTheme());
+
 function App() {
   // light / dark: stored in the browser, applied to antd and to <html data-theme>
   const [mode, setMode] = useState(getAppTheme());
