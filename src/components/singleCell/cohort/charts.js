@@ -7,8 +7,7 @@ import { useFigureStyle } from "../figures/figureCanvas";
 // Small SVG building blocks shared by the cohort panels; they follow the
 // chart style (helpers/singleCell/figureStyle) chosen in the layout.
 
-export const PATIENT_PALETTE = ["#4E79A7", "#A0CBE8", "#F28E2B", "#FFBE7D", "#59A14F", "#8CD17D", "#B6992D", "#F1CE63", "#499894", "#86BCB6"];
-export const patientColor = (k) => PATIENT_PALETTE[k % PATIENT_PALETTE.length];
+export { PATIENT_PALETTE, patientColor } from "../../../helpers/singleCell/patientColors";
 
 export const FONT = { axis: TYPE.tick, label: TYPE.label, title: TYPE.title - 1 };
 
