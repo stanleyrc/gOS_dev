@@ -5,7 +5,7 @@ import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
 import useSignatureModel from "../signatures/useSignatureModel";
 import singleCellActions from "../../../redux/singleCell/actions";
-import { branchGains } from "../../../helpers/singleCell/branchBurden";
+import { branchVariants } from "../../../helpers/singleCell/branchSnvs";
 import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import { CLOCK_SIGNATURES, cellClockBurden, cladeClockTiming, clockSites, mrcaTiming } from "../../../helpers/singleCell/timing";
@@ -13,7 +13,7 @@ import { Swatches, XBaseline } from "../cohort/charts";
 
 const { Text } = Typography;
 const MIN_CELLS = 3;
-const pct = (x) => (Number.isFinite(x) ? `${Math.round(100 * x)}%` : "–");
+const pct = (x) => (Number.isFinite(x) ? (x > 1 ? ">100%" : `${Math.round(100 * x)}%`) : "–");
 const median = (xs) => {
   const s = xs.filter(Number.isFinite).sort((a, b) => a - b);
   if (!s.length) return NaN;
@@ -44,13 +44,32 @@ export default function TimingCard() {
     const tumourRows = order.map((id, r) => (isNormalClone(cellById.get(id)?.clone_id) ? -1 : rows[r]));
     const burdens = cellClockBurden(data, tumourRows, clock);
     const mrca = mrcaTiming(data, clock, burdens);
-    // branch gains among tumour leaves only (normal leaves get no matrix row)
-    const leafRows = treeLayout.leaves.map((id) => {
-      const k = order.indexOf(id);
-      return k >= 0 ? tumourRows[k] : -1;
+    // SNVs placed on each branch by their tree mapping (one branch per site); truncal sites sit at the MRCA
+    const placed = branchVariants(data, data.variants.map((v, c) => c), treeLayout);
+    const nTumour = order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)).length;
+    const tumourLeavesUnder = (node) => {
+      const n = treeLayout.nodes[node];
+      let k = 0;
+      for (let i = n.firstLeaf; i <= n.lastLeaf; i += 1) if (!isNormalClone(cellById.get(treeLayout.leaves[i])?.clone_id)) k += 1;
+      return k;
+    };
+    const gains = new Map();
+    treeLayout.nodes.forEach((n, node) => {
+      if (n.isLeaf || n.parent < 0) return;
+      const cells = tumourLeavesUnder(node);
+      if (cells < Math.max(MIN_CELLS, 0.05 * nTumour) || cells === nTumour) return;
+      gains.set(node, { gained: (placed.get(node) || []).filter((c) => data.variants[c]?.category !== "truncal"), cells });
     });
-    const gains = branchGains(treeLayout, data, leafRows, { minCells: MIN_CELLS });
-    const clades = cladeClockTiming(treeLayout, gains, clock, mrca).filter((c) => Number.isFinite(c.foundedAt));
+    // cumulative clock sums run over ancestors' branches too, so pass every internal branch for the sums
+    const allGains = new Map();
+    placed.forEach((list, node) => allGains.set(node, { gained: list.filter((c) => data.variants[c]?.category !== "truncal"), cells: 0 }));
+    const timed = cladeClockTiming(treeLayout, allGains, clock, mrca);
+    const timedOf = new Map(timed.map((t) => [t.node, t]));
+    const clades = [...gains.entries()]
+      .map(([node, g]) => ({ ...timedOf.get(node), node, cells: g.cells, gained: g.gained.length }))
+      .filter((c) => Number.isFinite(c.foundedAt))
+      .sort((a, b) => a.foundedAt - b.foundedAt)
+      .slice(0, 30);
     const cloneOfLeaves = (node) => {
       const n = treeLayout.nodes[node];
       const m = new Map();
@@ -86,7 +105,7 @@ export default function TimingCard() {
 
   const h = 34 + 14 * res.clades.length;
   const m = { l: 16, r: 16, t: 18, b: 22 };
-  const sx = (t) => m.l + t * (width - m.l - m.r);
+  const sx = (t) => m.l + Math.min(1, t) * (width - m.l - m.r);
   const leavesOf = (node) => {
     const n = treeLayout.nodes[node];
     return treeLayout.leaves.slice(n.firstLeaf, n.lastLeaf + 1).filter((id) => !isNormalClone(cellById.get(id)?.clone_id));
@@ -169,6 +188,8 @@ export default function TimingCard() {
           ]}
         />
         <Text type="secondary" style={{ fontSize: 11 }}>
+          Clades with ≥ 5% of tumour cells. Founding = (truncal + clock SNVs on the branches from the MRCA down to the clade) / (truncal + the
+          median cell&apos;s post-trunk clock SNVs); a lineage with more clock SNVs than the median cell can exceed 100% (shown as &gt;100%).
           Copy-number timing (WGD, chr7 gain / chr10 loss) from SNV multiplicity is not shown yet; amplification timing is in the Report tab.
         </Text>
       </Space>
