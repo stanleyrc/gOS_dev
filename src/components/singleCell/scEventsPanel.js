@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Select, Space, Switch, Tooltip, Typography } from "antd";
+import { Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import useTreeView from "./useTreeView";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { segmentNoise } from "../../helpers/singleCell/segmentNoise";
@@ -16,6 +16,10 @@ import { EventsToHeatmapBar, isStrongEvent, selectEventColumn, useIsSingleCellPa
  * when the open case is a single-cell patient; the plain table otherwise.
  * Used by the Filtered Events tab and the Overall tab.
  */
+const EVIDENCE_COLORS = { likely: "volcano", possible: "gold", unlikely: "default" };
+const num = (v) => (v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
+const filteredEventsHaveEvidence = (records) => (records || []).some((r) => r.driver_class);
+
 export default function ScEventsPanel() {
   const { t } = useTranslation("common");
   const singleCell = useIsSingleCellPatient();
@@ -32,6 +36,7 @@ export default function ScEventsPanel() {
   useEffect(() => cladeCache.current.clear(), [treeLayout]);
   // width of the CN segment behind each deletion / amplification in its carriers
   const cn = useSelector((s) => s.SingleCell.cn);
+  const records = useSelector((s) => s.FilteredEvents.filteredEvents);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const noiseCache = useRef(new Map());
   const noiseOf = (record) => {
@@ -43,6 +48,7 @@ export default function ScEventsPanel() {
     return noiseCache.current.get(key);
   };
   useEffect(() => noiseCache.current.clear(), [cn]);
+  const columnFilters = useSelector((s) => s.FilteredEvents.columnFilters) || {};
   const [picked, setPicked] = useState(new Map()); // uid -> event
   const toggle = (record, on) =>
     setPicked((prev) => {
@@ -63,6 +69,8 @@ export default function ScEventsPanel() {
           ),
           key: "cladeScore",
           width: 90,
+          exportTitle: "clade_f1",
+          exportValue: (record) => (Number.isFinite(cladeOf(record).score) ? cladeOf(record).score.toFixed(3) : null),
           sorter: (a, b) => (cladeOf(a).score || 0) - (cladeOf(b).score || 0),
           render: (_, record) => {
             const c = cladeOf(record);
@@ -87,6 +95,8 @@ export default function ScEventsPanel() {
             ),
             key: "segment",
             width: 90,
+            exportTitle: "segment_width_mb",
+            exportValue: (record) => (noiseOf(record) ? (noiseOf(record).medianWidthBp / 1e6).toFixed(3) : null),
             sorter: (a, b) => (noiseOf(a)?.medianWidthBp || Infinity) - (noiseOf(b)?.medianWidthBp || Infinity),
             render: (_, record) => {
               const n = noiseOf(record);
@@ -100,6 +110,32 @@ export default function ScEventsPanel() {
           },
         ]
       : [];
+  // SNV driver evidence from the pipeline (gos_sc_snv_evidence.R): points, class and a readable summary
+  const evidenceColumn = filteredEventsHaveEvidence(records)
+    ? [
+        {
+          title: (
+            <Tooltip title={t("components.single-cell.events.driver-evidence-help")}>
+              <span>{t("components.single-cell.events.driver-evidence")}</span>
+            </Tooltip>
+          ),
+          key: "driverEvidence",
+          width: 110,
+          sorter: (a, b) => (num(a.driver_score) ?? -1) - (num(b.driver_score) ?? -1),
+          filters: ["likely", "possible", "unlikely"].map((v) => ({ text: v, value: v })),
+          filteredValue: columnFilters.driverEvidence || null,
+          onFilter: (value, record) => record.driver_class === value,
+          render: (_, record) =>
+            record.driver_class ? (
+              <Tooltip title={record.driver_evidence}>
+                <Tag color={EVIDENCE_COLORS[record.driver_class]}>{`${record.driver_class} ${record.driver_score}`}</Tag>
+              </Tooltip>
+            ) : (
+              "–"
+            ),
+        },
+      ]
+    : [];
   const recordFilter = (record) => (!strongOnly || isStrongEvent(record)) && (!minClade || !treeLayout || !(cladeOf(record).score < minClade));
   return (
     <>
@@ -116,7 +152,7 @@ export default function ScEventsPanel() {
         )}
       </Space>
       <EventsToHeatmapBar picked={picked} onClear={() => setPicked(new Map())} />
-      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
+      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
     </>
   );
 }
