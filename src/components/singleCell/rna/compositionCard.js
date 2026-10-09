@@ -110,11 +110,15 @@ export default function CompositionCard({ summary }) {
             );
           })}
           <XBandLabels scale={x} y={HEIGHT - M.bottom + 22} rotate={data.keys.length > 8} />
-          <text x={width - 24 - M.right} y={M.top + 2} textAnchor="end" fontSize={FONT.axis} fill={Number.isFinite(data.p) && data.p < 0.05 ? "#cf1322" : "#8c8c8c"}>
-            {Number.isFinite(data.p) ? `chi-square ${data.p < 1e-4 ? "p < 1e-4" : `p = ${data.p.toFixed(3)}`}` : ""}
-          </text>
         </svg>
-        <Swatches items={data.levels.map((l) => ({ key: l, color: levelColors[l], label: l }))} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Swatches items={data.levels.map((l) => ({ key: l, color: levelColors[l], label: l }))} />
+          {Number.isFinite(data.p) && (
+            <Text style={{ fontSize: FONT.axis, color: data.p < 0.05 ? INK.danger : INK.muted }}>
+              {`Chi-square ${data.p < 1e-4 ? "p < 1e-4" : `p = ${data.p.toFixed(3)}`}`}
+            </Text>
+          )}
+        </div>
         <HintLine text={t("components.single-cell.rna.composition-help")} />
       </div>
     </Card>
