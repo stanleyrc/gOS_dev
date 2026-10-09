@@ -94,15 +94,14 @@ function useGeneInfo(gene) {
  * (OncoKB list, COSMIC CGC), curated GBM role, GBM cell-state programs, the
  * glioma literature (PubMed) and this comparison's numbers for the gene.
  */
-export default function GeneInfoCard({ gene, row, labels }) {
+export default function GeneInfoCard({ gene, row, labels, cn }) {
   const s = useGeneInfo(gene);
   const [more, setMore] = useState(false);
   useEffect(() => setMore(false), [gene]);
   if (!gene) return null;
   const gbm = GBM_GENES[gene] || (s.info?.symbol && GBM_GENES[s.info.symbol]);
   const symbol = s.info?.symbol || gene;
-  const cn1 = row?.cn_1;
-  const cn2 = row?.cn_2;
+  const [cn1, cn2] = cn || [];
   return (
     <Card
       size="small"
@@ -140,7 +139,7 @@ export default function GeneInfoCard({ gene, row, labels }) {
         <Paragraph style={{ marginBottom: 6 }}>
           <Text strong>Here: </Text>
           {`log2FC ${fmt(row.avg_log2FC)} (${labels?.A || "A"} vs ${labels?.B || "B"}), expressed in ${pct(row.pct_1)} vs ${pct(row.pct_2)} of cells, q ${fmtQ(row.q_val)}`}
-          {Number.isFinite(Number(cn1)) && Number.isFinite(Number(cn2)) && (
+          {cn1 != null && cn2 != null && Number.isFinite(cn1) && Number.isFinite(cn2) && (
             <Text type={Math.abs(cn1 - cn2) >= 0.5 ? "warning" : "secondary"}>
               {` · copy number ${fmt(cn1, 1)} vs ${fmt(cn2, 1)}${Math.abs(cn1 - cn2) >= 0.5 ? " (expression may follow a copy-number change)" : ""}`}
             </Text>
