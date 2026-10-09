@@ -518,9 +518,9 @@ const Wrapper = styled.div`
     color: var(--sc-text-secondary, #434343);
   }
   .sc-gene-label-click {
-    cursor: pointer;
+    pointer-events: none;
   }
-  .sc-gene-label-click:hover {
+  .sc-gene-label-hover {
     color: var(--sc-link, #1677ff);
     text-decoration: underline;
   }
