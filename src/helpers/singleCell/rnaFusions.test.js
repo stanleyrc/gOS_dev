@@ -1,16 +1,23 @@
 import fixture from "./__fixtures__/rnaFusions.json";
 import {
   canonicalGene,
+  compareFusions,
+  defaultPlotCell,
   defaultRnaCells,
   dnaFusionGenes,
   filterFusions,
   fusionLoci,
+  fusionCloneDistribution,
+  fusionPlotRecord,
   fusionStrip,
+  fusionTier,
+  groupFusions,
   isDnaFusionEvent,
   matchDnaEvent,
   matchRnaFusions,
   normalizeFusions,
   parseBreakpoint,
+  parseDomains,
   rnaCellMaps,
 } from "./rnaFusions";
 import { buildIgvTracks, lociString, rnaTrackName } from "./igvTracks";
@@ -103,6 +110,7 @@ describe("cells and IGV", () => {
     expect(tracks[0]).toMatchObject({ name: "c1", url: "data/c1/reads.bam", indexURL: "data/c1/reads.bam.bai", type: "alignment" });
     expect(tracks[0].sort).toMatchObject({ chr: "chr7", position: 121900000 });
     expect(tracks[1]).toMatchObject({ id: rnaTrackName("r1"), name: rnaTrackName("r1"), url: "data/P1/rna/reads/r1.bam", indexURL: "data/P1/rna/reads/r1.bam.bai", groupBy: "tag:ZF", colorBy: "tag:ZF" });
+    expect(tracks[1].sort).toBeUndefined();
   });
 });
 
@@ -147,5 +155,80 @@ describe("mergeLoci", () => {
     const dna = [{ chromosome: "7", position: 55019017 }, { chromosome: "7", position: 55365448 }];
     const rna = [{ chromosome: "chr7", position: 55019100 }, { chromosome: "chr7", position: 55400000 }];
     expect(mergeLoci(dna, rna)).toEqual([dna[0], dna[1], rna[1]]);
+  });
+});
+
+describe("RNA fusion tiers, grouping and plots", () => {
+  const variant = (over) => ({ ...egfr, ...over });
+
+  it("uses the back end tier, else a coarse fallback", () => {
+    expect(fusionTier({ ...egfr, tier: 1 })).toBe(1);
+    // fixture has no tier: productive, in frame and DNA-matched -> 2
+    expect(egfr.tier).toBe(2);
+    expect(fusionTier(readThrough)).toBe(3);
+    expect(fusionTier({ type: "deletion/5'-5'", known: true })).toBe(3);
+    expect(filterFusions(data.fusions, { maxTier: 2 }).map((f) => f.gene1)).toEqual(["EGFR"]);
+  });
+
+  it("orders by tier, then cells, then reads", () => {
+    const a = { tier: 2, n_cells: 1, reads: 5 };
+    const b = { tier: 1, n_cells: 1, reads: 1 };
+    const c = { tier: 2, n_cells: 9, reads: 1 };
+    expect([a, b, c].sort(compareFusions)).toEqual([b, c, a]);
+  });
+
+  it("groups breakpoint variants of one gene pair under the best one", () => {
+    const v2 = variant({ id: "v2", tier: 1, breakpoint1: "chr7:55211700", n_cells: 1, reads: 3, cells: [{ rna_id: "r1", cell_id: "c1", reads: 3 }, { rna_id: "r7", cell_id: null, reads: 3 }] });
+    const rows = groupFusions([egfr, v2, met]);
+    expect(rows).toHaveLength(2);
+    const g = rows.find((r) => r.group);
+    expect(g.variants.map((v) => v.id)).toEqual(["v2", egfr.id]);
+    expect(g.children.map((v) => v.id)).toEqual([egfr.id]);
+    expect(g.tier).toBe(1);
+    // union of carriers (r1 summed over both variants), reads summed
+    expect(g.n_cells).toBe(4);
+    expect(g.cells.find((c) => c.rna_id === "r1").reads).toBe(2 + 3);
+    expect(g.reads).toBe(egfr.reads + 3);
+    expect(g.dna_match).toEqual(egfr.dna_match);
+    expect(rows.find((r) => !r.group)).toBe(met);
+  });
+
+  it("builds the pseudo DNA record for the per-cell plots", () => {
+    const r = fusionPlotRecord(egfr);
+    expect(r.location).toBe("7:55211628-55211628|7:55900000-55900000");
+    expect(r.fusion_gene_coords).toBe("7:55211628,7:55900000");
+    // DNA cells of the carriers, best supported first (r2/c3 has the most reads)
+    expect(r.cell_ids).toBe("c3,c1");
+    expect(isDnaFusionEvent(r)).toBe(true);
+    expect(defaultPlotCell(egfr)).toBe("c3");
+    expect(defaultPlotCell({ cells: [{ rna_id: "r3", cell_id: null }] })).toBeNull();
+  });
+
+  it("parses Arriba retained domains per side", () => {
+    expect(parseDomains("Protein_kinase_domain(100%),SH2_domain(40%)|PDZ_domain(100%)")).toEqual([
+      [
+        { name: "Protein kinase domain", pct: 100 },
+        { name: "SH2 domain", pct: 40 },
+      ],
+      [{ name: "PDZ domain", pct: 100 }],
+    ]);
+    expect(parseDomains(".")).toEqual([[], []]);
+    expect(parseDomains("|Tudor_domain(100%)")).toEqual([[], [{ name: "Tudor domain", pct: 100 }]]);
+  });
+
+  it("counts carriers per clone against the clone's RNA cells", () => {
+    const cells = [
+      { cell_id: "c1", clone_id: 1 },
+      { cell_id: "c2", clone_id: 1 },
+      { cell_id: "c3", clone_id: 2 },
+      { cell_id: "c4", clone_id: 2 },
+    ];
+    const rnaOf = new Map([["c1", "r1"], ["c2", "rx"], ["c3", "r2"]]);
+    const d = fusionCloneDistribution(egfr, cells, rnaOf);
+    expect(d.rnaOnly).toBe(1);
+    expect(d.clones).toEqual([
+      { clone: "2", carriers: 1, withRna: 1, fraction: 1 },
+      { clone: "1", carriers: 1, withRna: 2, fraction: 0.5 },
+    ]);
   });
 });
