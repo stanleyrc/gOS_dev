@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Empty, Input, Space, Table, Typography } from "antd";
+import { Card, Empty, Input, Select, Space, Table, Typography } from "antd";
 import { BranchesOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useContainerWidth from "../useContainerWidth";
@@ -12,6 +12,8 @@ import { cohortClusterRows, cohortPsiMatrix, filterClusters, junctionLabel } fro
 import { cohortOverview, cohortVariantRows } from "../../../helpers/singleCell/sashimi";
 import { junctionColor, psiColor, psiTextColor } from "../../../helpers/singleCell/rnaColors";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { clusterEvents, clusterTranscripts, eventPsi } from "../../../helpers/singleCell/spliceEvents";
+import CohortSpliceEvent, { useSpliceExons } from "./cohortSpliceEvent";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -60,7 +62,7 @@ function CohortPsiOverview({ rows, patients, picked, onPick }) {
             <title>{`${r.gene} ${junctionLabel(r.cluster.chromosome, r.junction || {})} (${TYPE_LABELS[r.type] || r.type}), q ${fmtQ(r.q)}`}</title>
             <rect x={0} y={0} width={width} height={rowH} fill={sel ? "rgba(22,119,255,0.12)" : "transparent"} />
             <text x={4} y={rowH / 2} dy="0.35em" fill="currentColor" fontWeight={sel ? 600 : 400}>
-              {`${r.gene} · ${TYPE_LABELS[r.type] || r.type}`}
+              {`${r.gene} · ${r.eventLabel || TYPE_LABELS[r.type] || r.type}`}
             </text>
             {r.psi.map((p, i) => (
               <g key={patients[i]} transform={`translate(${labelW + i * cellW},0)`}>
@@ -113,13 +115,35 @@ export default function CohortSplicingPanel({ dataset }) {
     const keep = new Set(filterClusters(allRows.map((r) => r.cluster), query).map((c) => c.id));
     return allRows.filter((r) => keep.has(r.id));
   }, [allRows, query]);
-  const overview = useMemo(() => (data ? cohortOverview({ ...data, clusters: rows.map((r) => r.cluster) }, { n: 30 }) : []), [data, rows]);
+  const exonModel = useSpliceExons(dataset);
+  // overview: for clusters with a cassette exon, the exon's inclusion PSI (both inclusion junctions
+  // against the skip junction) replaces the single most-variable junction, and the row is named by the exon
+  const overview = useMemo(() => {
+    if (!data) return [];
+    const base = cohortOverview({ ...data, clusters: rows.map((r) => r.cluster) }, { n: 60 });
+    const pts = data.patients || [];
+    return base
+      .map((r) => {
+        const ev = clusterEvents(r.cluster, clusterTranscripts(exonModel, r.cluster)).find((e) => e.type === "cassette");
+        if (!ev) return r;
+        const psi = pts.map((p, i) => (Number.isFinite(r.psi[i]) ? eventPsi(r.cluster.usage?.[p]?.counts || [], ev).psi : NaN));
+        const f = psi.filter(Number.isFinite);
+        return { ...r, psi, dpsi: f.length > 1 ? Math.max(...f) - Math.min(...f) : NaN, eventLabel: ev.exonNumber != null ? `exon ${ev.exonNumber} inclusion` : "cassette exon" };
+      })
+      .sort((a, b) => b.dpsi - a.dpsi || (a.q || 1) - (b.q || 1))
+      .slice(0, 30);
+  }, [data, rows, exonModel]);
   const variantRows = useMemo(() => (data ? cohortVariantRows(data).filter((v) => v.rows.some((r) => r.nCells > 0)) : []), [data]);
   useEffect(() => {
     if (rows.length && !rows.some((r) => r.id === picked)) setPicked(overview[0]?.id || rows[0].id);
   }, [rows, picked, overview]);
   const row = rows.find((r) => r.id === picked) || null;
   const matrix = useMemo(() => (row ? cohortPsiMatrix(row.cluster, data?.patients) : null), [row, data]);
+  const transcripts = useMemo(() => (row ? clusterTranscripts(exonModel, row.cluster) : []), [row, exonModel]);
+  const events = useMemo(() => (row ? clusterEvents(row.cluster, transcripts) : []), [row, transcripts]);
+  const [eventIdx, setEventIdx] = useState(0);
+  useEffect(() => setEventIdx(0), [picked]);
+  const event = events[eventIdx] || events[0] || null;
 
   const title = (
     <Space>
@@ -233,7 +257,7 @@ export default function CohortSplicingPanel({ dataset }) {
                 <SvgExportButton containerRef={plotRef} name={`sashimi-cohort-${row.gene || row.id}`} />
               </Space>
               <div ref={plotRef} style={{ overflowX: "auto" }}>
-                <SashimiPlot cluster={row.cluster} tracks={tracks} width={Math.max(520, width)} trackH={84} />
+                <SashimiPlot cluster={row.cluster} tracks={tracks} width={Math.max(520, width)} trackH={84} transcripts={transcripts} event={event} />
               </div>
               <Space size={4} wrap>
                 {(row.cluster.junctions || []).map((jn, j) => (
@@ -243,6 +267,13 @@ export default function CohortSplicingPanel({ dataset }) {
                   </Text>
                 ))}
               </Space>
+              {events.length > 1 && (
+                <Space>
+                  <Text type="secondary">{t(`${k}.event`)}</Text>
+                  <Select size="small" style={{ minWidth: 260 }} value={eventIdx} onChange={setEventIdx} options={events.map((e, i) => ({ value: i, label: e.type === "cassette" && e.exonNumber != null ? `exon ${e.exonNumber} inclusion` : e.label }))} />
+                </Space>
+              )}
+              <CohortSpliceEvent dataset={dataset} patients={patients} cluster={row.cluster} event={event} />
               <Text strong>{t(`${k}.cohort-heatmap`)}</Text>
               <div style={{ overflowX: "auto" }}>
                 <PsiHeatmap junctions={row.cluster.junctions} columns={matrix.patients} psi={matrix.psi} totals={matrix.totals} chromosome={row.cluster.chromosome} />
