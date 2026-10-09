@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Segmented, Slider, Space, Typography } from "antd";
+import { Card, Empty, Segmented, Slider, Space } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import useContainerWidth from "../useContainerWidth";
@@ -24,9 +24,9 @@ import {
 } from "../../../helpers/singleCell/walkCopies";
 import HintLine from "../hintLine";
 import RareControl, { useRareMax } from "./rareControl";
+import DisplayMenu from "./displayMenu";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
-const { Text } = Typography;
 const TREE_WIDTH = 200;
 const STRIP_W = 6; // clone strip, flush against the tree
 const COL_X0 = STRIP_W + 2; // first column starts right after the strip
@@ -248,10 +248,13 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
           <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.bars.per-cell") }, { value: "clones", label: t("components.single-cell.bars.per-clone") }, { value: "cut", label: t("components.single-cell.bars.per-clade") }]} />
           {mode === "cut" && <Slider min={2} max={12} value={k} onChange={setK} style={{ width: 80, margin: "0 6px" }} />}
           <Segmented size="small" value={view} onChange={setView} options={[{ value: "bars", label: t("components.single-cell.ecdna.tc-bars") }, { value: "heat", label: t("components.single-cell.ecdna.tc-heat") }]} />
-          <Segmented size="small" value={scaleMode} onChange={setScaleMode} options={[{ value: "column", label: t("components.single-cell.ecdna.tc-scale-column") }, { value: "shared", label: t("components.single-cell.ecdna.tc-scale-shared") }, { value: "log", label: t("components.single-cell.ecdna.tc-scale-log") }]} />
-          <RareControl />
-          <Text type="secondary">{t("components.single-cell.signatures.height")}</Text>
-          <Slider min={200} max={1600} step={20} value={height} onChange={(v) => dispatch(singleCellActions.updateLayout({ walkTreeHeight: v }))} style={{ width: 80, margin: "0 6px" }} />
+          <DisplayMenu
+            rows={[
+              { label: t("components.single-cell.ecdna.display-scale"), control: <Segmented size="small" value={scaleMode} onChange={setScaleMode} options={[{ value: "column", label: t("components.single-cell.ecdna.tc-scale-column") }, { value: "shared", label: t("components.single-cell.ecdna.tc-scale-shared") }, { value: "log", label: t("components.single-cell.ecdna.tc-scale-log") }]} /> },
+              { label: t("components.single-cell.ecdna.tc-rare"), control: <RareControl bare /> },
+              { label: t("components.single-cell.signatures.height"), control: <Slider min={200} max={1600} step={20} value={height} onChange={(v) => dispatch(singleCellActions.updateLayout({ walkTreeHeight: v }))} style={{ width: 140, margin: "0 6px" }} /> },
+            ]}
+          />
           <SvgExportButton containerRef={ref} name="ecdna-on-tree" />
         </Space>
       }
