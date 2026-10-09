@@ -15,8 +15,9 @@ describe("gene info", () => {
   });
 
   it("searches PubMed with the symbol and gene-like aliases only", () => {
-    expect(searchAliases("MARS1", ["MARS", "MetRS", "ILLD", "a"])).toEqual(["MARS1", "MARS", "ILLD"]);
-    expect(gliomaQuery("MARS1", ["MARS"])).toBe('("MARS1"[tiab] OR "MARS"[tiab]) AND (glioblastoma[tiab] OR glioma[tiab] OR GBM[tiab])');
+    expect(searchAliases("MARS1", ["MARS", "MetRS", "ILLD", "a"])).toEqual(["MARS1"]);
+    expect(searchAliases("MDM2", ["HDM2", "MGC5370", "ACTFS"])).toEqual(["MDM2", "HDM2", "MGC5370", "ACTFS"]);
+    expect(gliomaQuery("MDM2", ["HDM2"])).toBe('("MDM2"[tiab] OR "HDM2"[tiab]) AND (glioblastoma[tiab] OR glioma[tiab])');
   });
 
   it("parses a MyGene.info hit", () => {
