@@ -19,6 +19,7 @@ import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPan
 import scaActions from "../../redux/scAnalysis/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
+import { SC_GUTTER } from "../../components/singleCell/density";
 
 const { Text } = Typography;
 
@@ -57,7 +58,7 @@ export default function SingleCellRnaTab() {
 
   return (
     <Wrapper>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         {error && (
           <Col span={24}>
             <Alert type="error" showIcon message={t("components.single-cell.rna.matrix-error")} description={error} />
@@ -90,7 +91,7 @@ export default function SingleCellRnaTab() {
                 key: "overview",
                 label: t("components.single-cell.rna.section-overview"),
                 children: (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={SC_GUTTER}>
                     <Col xs={24} xxl={12}>
                       <UmapPanel />
                     </Col>
@@ -104,7 +105,7 @@ export default function SingleCellRnaTab() {
                 key: "genes",
                 label: t("components.single-cell.rna.section-genes"),
                 children: (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={SC_GUTTER}>
                     <Col span={24}>
                       <MarkersCard summary={summary} matrix={matrix} />
                     </Col>
@@ -121,7 +122,7 @@ export default function SingleCellRnaTab() {
                 key: "compare",
                 label: t("components.single-cell.rna.section-compare"),
                 children: (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={SC_GUTTER}>
                     <Col span={24}>
                       <RnaGroupsCard summary={summary} />
                     </Col>
@@ -143,7 +144,7 @@ export default function SingleCellRnaTab() {
                   </span>
                 ),
                 children: (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={SC_GUTTER}>
                     <Col span={24}>
                       <CompareGroupsPanel />
                     </Col>
