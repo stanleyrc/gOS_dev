@@ -17,6 +17,7 @@ import CohortDosagePanel from "./cohortDosagePanel";
 import CohortStateClonePanel from "./cohortStateClonePanel";
 import CohortGeneSetPanel from "./cohortGeneSetPanel";
 import CohortDePanel from "./cohortDePanel";
+import CohortSplicingPanel from "./cohortSplicingPanel";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 import { INK } from "../../../helpers/singleCell/plotTheme";
@@ -298,6 +299,9 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
               <Text type="secondary">{t("components.single-cell.cohort.rna-gene-intro")}</Text>
             )}
           </Card>
+        </Col>
+        <Col span={24}>
+          <CohortSplicingPanel dataset={(summaries[0] && datasetOf(summaries[0])) || datasets[0]} />
         </Col>
       </Row>
     </div>

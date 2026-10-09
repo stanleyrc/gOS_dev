@@ -333,6 +333,62 @@ export const PROVENANCE = {
     calc: "Cells in tree order with whole-genome SNV VAF, CN across the walk region and walk copies side by side; drawn in the browser.",
     where: "both",
   },
+  /* ---- RNA fusions / splicing / heritability / branch diff ---- */
+  rnaFusions: {
+    title: "RNA fusions",
+    source: "data/<patient>/rna/fusions.json: STAR chimeric + Arriba run per RNA cell, merged with DNA-event matches in the back end",
+    calc: "Filtering, carrier cells along the tree and DNA-match badges in the browser.",
+    where: "both",
+  },
+  splicing: {
+    title: "Splicing",
+    source: "data/<patient>/rna/splicing.json: regtools junction counts per cell, LeafCutter-style intron clusters, known variants (back end)",
+    calc: "PSI per group (clone or RNA field) and per-cell junction usage in tree order, in the browser.",
+    where: "both",
+  },
+  cohortSplicing: {
+    title: "Splicing between patients",
+    source: "data/_cohort/rna/splicing.json: clusters whose junction usage differs between patients (chi-square, BH q; back end)",
+    calc: "Search and per-patient sashimi-lite of the chosen cluster drawn in the browser.",
+    where: "both",
+  },
+  heritability: {
+    title: "Heritable vs plastic state",
+    source: `${S.RNA}; ${S.TREE}`,
+    calc: "Moran's I of per-cell state scores / genes with inverse patristic-distance weights (analytic z or permutations), in the browser.",
+    where: "browser",
+  },
+  branchDiff: {
+    title: "Branch diff",
+    source: `${S.CELL_CN}; ${S.SNV_MATRIX}; ${S.RNA}`,
+    calc: "Clade vs sister clade: CN segments and junctions that differ, SNVs mapped to the branch with a signature fit, DE — in the browser.",
+    where: "browser",
+  },
+  /* ---- Evidence (precompute) ---- */
+  cellCycle: {
+    title: "Cell cycle",
+    source: "data/<patient>/precompute/sphase.json + sphase_profiles.json (coverage vs replication timing, srctools precompute); RNA S / G2M from rna/cells.json",
+    calc: "DNA and RNA cell-cycle calls compared per cell in the browser.",
+    where: "both",
+  },
+  telomeres: {
+    title: "TERT and telomeres",
+    source: "data/<patient>/precompute/telomeres.json + region_calls.json (targeted TERT promoter calls, telomere content; srctools precompute)",
+    calc: "Per-clone summaries with TERT expression (rna/) and ATRX events, in the browser.",
+    where: "both",
+  },
+  readSlices: {
+    title: "Read evidence",
+    source: "data/<patient>/slices/ RG-tagged slice BAMs + regions.json, precompute/region_calls.json (srctools precompute)",
+    calc: "Reads shown per clone in igv.js; per-cell genotypes as precomputed.",
+    where: "backend",
+  },
+  precomputeStatus: {
+    title: "Precompute status",
+    source: "data/_precompute/status.json (gos_sc_precompute.py status) and precompute/manifest.json per patient",
+    calc: "Shown as written; no browser computation.",
+    where: "backend",
+  },
   paperFigures: {
     title: "Paper figures",
     source: `${S.WALKS}; ${S.SNV_MATRIX}; ${S.TREE}; ${S.EVENTS}`,
