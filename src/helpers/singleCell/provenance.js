@@ -349,13 +349,13 @@ export const PROVENANCE = {
   splicing: {
     title: "Splicing",
     source: "data/<patient>/rna/splicing.json: regtools junction counts per cell, LeafCutter-style intron clusters, known variants (back end)",
-    calc: "PSI per group (clone or RNA field) and per-cell junction usage in tree order, in the browser.",
+    calc: "PSI per group, cluster ranking (Kruskal–Wallis on per-cell PSI), sashimi plots, per-cell usage in tree order and variant vs CN, in the browser.",
     where: "both",
   },
   cohortSplicing: {
     title: "Splicing between patients",
     source: "data/_cohort/rna/splicing.json: clusters whose junction usage differs between patients (chi-square, BH q; back end)",
-    calc: "Search and per-patient sashimi-lite of the chosen cluster drawn in the browser.",
+    calc: "Overview heatmap, known variants per patient, search and the per-patient sashimi plot of the chosen cluster, drawn in the browser.",
     where: "both",
   },
   heritability: {
