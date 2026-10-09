@@ -295,10 +295,10 @@ export function subclonalFindings({ events = [], groups = [], cells = [], tree =
   events.forEach((e) => {
     const tier = Number(e.Tier);
     if (Number.isFinite(tier) && tier > maxTier) return;
-    if (!["Fusion", "SCNA", "Missense", "Trunc", "Splice"].includes(e.type)) return;
+    if (!["Fusion", "SCNA", "Missense", "Trunc", "Splice", "Complex SV"].includes(e.type)) return;
     const ids = `${e.cell_ids || ""}`.split(",").filter(Boolean).sort();
     const sig = `${e.type}|${e.vartype}|${ids.join(",")}`;
-    const label = e.type === "Fusion" ? e.fusion_genes || e.gene : `${e.gene} ${e.vartype || ""}`.trim();
+    const label = e.type === "Fusion" ? e.fusion_genes || e.gene : e.type === "Complex SV" ? e.Variant || e.vartype : `${e.gene} ${e.vartype || ""}`.trim();
     if (!bySet.has(sig)) bySet.set(sig, { ids, labels: [], events: [] });
     const entry = bySet.get(sig);
     if (!entry.labels.includes(label)) entry.labels.push(label);

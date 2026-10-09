@@ -1,4 +1,4 @@
-import { cnRowQc, eventClass, medianMad, oncoprintMatrix, robustOutliers, shannonDiversity, snvCategoryCounts } from "./cohortStats";
+import { cnRowQc, eventClass, eventLabel, medianMad, oncoprintMatrix, robustOutliers, shannonDiversity, snvCategoryCounts } from "./cohortStats";
 
 describe("cohort statistics", () => {
   it("counts SNV categories among CellPhy-input sites", () => {
@@ -15,6 +15,17 @@ describe("cohort statistics", () => {
   it("computes Shannon diversity without normals", () => {
     expect(shannonDiversity({ "Clone 1": 50, "Clone 2": 50, Normal: 10 })).toBeCloseTo(Math.log(2));
     expect(shannonDiversity({ "Clone 1": 10 })).toBe(0);
+  });
+
+  it("classifies and labels gGnome complex SVs", () => {
+    const cx = { type: "Complex SV", vartype: "rDel", Variant: "rDel (7,12)", gene: "" };
+    expect(eventClass(cx)).toBe("complex");
+    expect(eventClass({ type: "Complex SV", vartype: "Chromothripsis" })).toBe("complex");
+    expect(eventLabel(cx)).toBe("rDel (7,12)");
+    expect(eventLabel({ gene: "EGFR", vartype: "AMP", type: "SCNA" })).toBe("EGFR");
+    const m = oncoprintMatrix({ P1: [{ ...cx, cell_fraction: 0.4, n_cells: 40 }] });
+    expect(m.genes.map((g) => g.gene)).toEqual(["rDel (7,12)"]);
+    expect(m.genes[0].cells.P1.class).toBe("complex");
   });
 
   it("classifies events and builds the oncoprint", () => {
