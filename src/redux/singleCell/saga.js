@@ -23,6 +23,8 @@ import {
   snvFromSparse,
 } from "../../helpers/singleCell/cellFiles";
 import { parseRnaSummary } from "../../helpers/singleCell/staticRna";
+import { normalizeFusions } from "../../helpers/singleCell/rnaFusions";
+import { normalizeSplicing } from "../../helpers/singleCell/splicing";
 import {
   cnDistances,
   hasInformativeSnvs,
@@ -109,7 +111,7 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile] = yield all([
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
@@ -118,6 +120,9 @@ function* fetchSingleCellData(action = {}) {
       call(tryGet, casePath(dataset, id, "signatures.json"), { cancelToken }),
       // ecDNA / amplicon walks with per-cell copy numbers (skilift sc_export_walks)
       call(tryGet, casePath(dataset, id, "walks.json"), { cancelToken }),
+      // per-cell RNA fusions (STAR chimeric + Arriba) and splicing (regtools junctions, intron clusters); optional
+      call(tryGet, casePath(dataset, id, "rna/fusions.json"), { cancelToken }),
+      call(tryGet, casePath(dataset, id, "rna/splicing.json"), { cancelToken }),
     ]);
     const cellFiles = {};
     const genomeErrors = [];
@@ -194,6 +199,8 @@ function* fetchSingleCellData(action = {}) {
       rna,
       signatures: signaturesFile.status === "ok" ? signaturesFile : missing(),
       walks: walksFile.status === "ok" ? walksFile : missing(),
+      rnaFusions: rnaFusionsFile.status === "ok" ? attempt(() => normalizeFusions(rnaFusionsFile.data)) : missing(),
+      rnaSplicing: rnaSplicingFile.status === "ok" ? attempt(() => normalizeSplicing(rnaSplicingFile.data)) : missing(),
       cellFiles,
       selectedCellIds: [],
     });
