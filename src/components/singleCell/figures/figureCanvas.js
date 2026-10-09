@@ -37,7 +37,7 @@ export const font = (px, weight = 400) => fontCss(scaled(px), weight);
  * drawn on an overlay canvas (the figure is not redrawn while dragging) and
  * `onDragEnd({ mode, a, b, path }, event)` gets its end points / lasso path.
  */
-export default function FigureCanvas({ width, height, draw, tooltip, onClick, onHover, style, ariaLabel, hitTest, onDragStart, onDragEnd }) {
+export default function FigureCanvas({ width, height, draw, tooltip, onClick, onHover, style, ariaLabel, hitTest, onDragStart, onDragEnd, onWheel, onDoubleClick }) {
   const ref = useRef(null);
   const overlayRef = useRef(null);
   const tipRef = useRef(null);
@@ -60,6 +60,22 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
     hitsRef.current = draw(ctx, ink(styleName)) || [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, draw, pr, themeMode, styleName]);
+
+  // wheel zoom: a native, non-passive listener so the page does not scroll while zooming
+  const wheelRef = useRef(onWheel);
+  wheelRef.current = onWheel;
+  const hasWheel = !!onWheel;
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !hasWheel) return undefined;
+    const listener = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const handled = wheelRef.current?.(event.clientX - rect.left, event.clientY - rect.top, event);
+      if (handled) event.preventDefault();
+    };
+    canvas.addEventListener("wheel", listener, { passive: false });
+    return () => canvas.removeEventListener("wheel", listener);
+  }, [hasWheel]);
 
   useEffect(() => {
     const ov = overlayRef.current;
@@ -200,6 +216,11 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
         onMouseLeave={() => {
           hide();
           onHover?.(null);
+        }}
+        onDoubleClick={(event) => {
+          if (!onDoubleClick) return;
+          const [x, y] = pos(event);
+          onDoubleClick(x, y, event);
         }}
         onClick={(event) => {
           if (ref.current?.dataset.dragged) {
