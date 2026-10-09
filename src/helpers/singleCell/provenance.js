@@ -395,6 +395,67 @@ export const PROVENANCE = {
     calc: "Amplicon landscape, phylogenetic signal (Moran's I with permutations), subclonal findings and clonal amplicon views, computed in the browser.",
     where: "browser",
   },
+  rnaFindings: {
+    title: "RNA key findings",
+    source: `${S.RNA}; clone labels (datafiles.json); ${S.EVENTS}`,
+    calc: "Tumor-cell state mix; clone x state / cycling / region (Fisher vs the other tumor cells, BH); driver gene in carriers vs other cells (Wilcoxon); clone markers (Seurat-style Wilcoxon DE).",
+    where: "browser",
+  },
+  /* ---- Story tab (precomputed by analysis/story/scripts in the project folder) ---- */
+  story: {
+    title: "Single-cell story",
+    source: "_cohort/story.json (analysis/story/scripts/story.py from the outputs of junctions.R, splitreads.py, inserts.py, ecdna.py, modules.py, heritability.py, dosage.R, crossmodal.py)",
+    calc: "All text and numbers are computed by the scripts; the tab only renders them.",
+    where: "backend",
+  },
+  "story-ecdna": {
+    title: "ecDNA vignette",
+    source: `${S.WALKS}; ${S.RNA}`,
+    calc: "Per walk: carriers, variance/mean of copies; Fisher co-occurrence of species; Kruskal-Wallis of copies by clone; Spearman of a gene's summed walk copies vs its expression (BH).",
+    where: "backend",
+  },
+  "story-heritability": {
+    title: "Inherited programs",
+    source: `${S.TREE}; ${S.RNA}; module scores (modules.py)`,
+    calc: "Each cell vs its closest relative on the tree (fewest edges): shared label or Spearman of scores; null permutes within clone x region x plate (2000x). Mantel: edges vs 1 - Pearson of the top-1000 variable genes.",
+    where: "backend",
+  },
+  "story-heritable": {
+    title: "Inherited programs",
+    source: `${S.TREE}; ${S.RNA}`,
+    calc: "Closest-relative statistic with a clone x region x plate permutation null.",
+    where: "backend",
+  },
+  "story-programs": {
+    title: "Meta-programs",
+    source: S.RNA,
+    calc: "Per patient NMF (k 4-9, centred and clipped, 3000 variable genes, top-50 genes per program, robust across k); greedy clustering into meta-programs; hypergeometric labels vs GBM/3CA, Hallmark, GO BP; scores = mean expression minus matched controls.",
+    where: "backend",
+  },
+  "story-junction-mechanisms": {
+    title: "Junction mechanisms",
+    source: "per-cell JaBbA graph ALT edges (balanced_gg) merged by breakpoint; read slices data/<cell>/reads.bam",
+    calc: "Split reads with an SA alignment at the partner breakend: overlap of the two aligned parts = microhomology, gap = inserted bases (mode over reads); inserts >= 15 bp aligned with bwa mem to place their source.",
+    where: "backend",
+  },
+  "story-junctions": {
+    title: "Junction mechanisms",
+    source: "per-cell JaBbA graph ALT edges; read slices data/<cell>/reads.bam",
+    calc: "Split-read microhomology / insertion per junction; templated-insert sources from bwa mem.",
+    where: "backend",
+  },
+  "story-dosage": {
+    title: "Copy-number dosage",
+    source: "per-cell JaBbA graphs (total CN at each gene); rna/ matrix",
+    calc: "Genes with >= 10% of cells off their modal CN: Spearman CN vs expression (BH); summarized per chromosome arm.",
+    where: "backend",
+  },
+  "story-states": {
+    title: "Clones, states and place",
+    source: `${S.RNA}; clone labels (datafiles.json)`,
+    calc: "Chi-square of state x clone and region x clone.",
+    where: "backend",
+  },
 };
 
 export const provenanceOf = (id) => PROVENANCE[id] || null;

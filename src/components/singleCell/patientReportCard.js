@@ -333,7 +333,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
           )}
           {rnaState.status !== "none" && (
             <>
-              <Title level={5} className="sc-section-title">{t("components.single-cell.rna-findings.title")} <HintLine inline text={t("components.single-cell.rna-findings.help")} /></Title>
+              <Title level={5} className="sc-section-title">{t("components.single-cell.rna-findings.title")} <HintLine inline text={t("components.single-cell.rna-findings.help")} /> <Provenance id="rnaFindings" /></Title>
               <RnaFindingsList findings={rnaState.data} status={rnaState.status} cloneColors={cloneColors} driverGenes={driverGenes} />
             </>
           )}
