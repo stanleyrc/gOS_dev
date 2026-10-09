@@ -27,4 +27,13 @@ describe("branch SNVs", () => {
     expect(byNode.get(nodeOf(pruned, ["a", "b"]))).toEqual([2]);
     expect([...byNode.values()].flat()).toHaveLength(3);
   });
+
+  it("moves a site whose anchors disagree with its clade size onto a node of that size on the same lineage", () => {
+    // ((a,b),(c,(d,e))): anchors d|e (2 cells) for a site mapped to a 3-cell clade -> (c,d,e);
+    // anchors a|e (root) for a 2-cell site -> the first 2-cell node below it, (a,b)
+    const snv = { variants: [{ anchor: "d|e", clade_cells: 3 }, { anchor: "a|b", clade_cells: 2 }, { anchor: "a|e", clade_cells: 2 }] };
+    const byNode = branchVariants(snv, [0, 1, 2], full);
+    expect(byNode.get(nodeOf(full, ["c", "d", "e"]))).toEqual([0]);
+    expect(byNode.get(nodeOf(full, ["a", "b"]))).toEqual([1, 2]);
+  });
 });

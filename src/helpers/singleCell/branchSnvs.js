@@ -79,12 +79,42 @@ export function resolveAnchors(anchors, layout, full = layout) {
   });
 }
 
+/**
+ * A node of the right size for a site whose anchors resolved elsewhere: when the
+ * resolved node's leaf count differs from the site's mapped clade size
+ * (clade_cells), prefer a node of that size on the same lineage (ancestor or
+ * descendant of the resolved node), else the only node of that size. Guards
+ * against anchor pairs that do not match the backend mapping.
+ */
+function checkedNode(layout, node, cladeCells, bySize) {
+  const want = Number(cladeCells);
+  if (node == null || node < 0 || !Number.isFinite(want)) return node;
+  const n = layout.nodes[node];
+  if (n.lastLeaf - n.firstLeaf + 1 === want) return node;
+  const cands = bySize.get(want) || [];
+  const sameLineage = cands.find((k) => {
+    const c = layout.nodes[k];
+    return (c.firstLeaf <= n.firstLeaf && c.lastLeaf >= n.lastLeaf) || (n.firstLeaf <= c.firstLeaf && n.lastLeaf >= c.lastLeaf);
+  });
+  if (sameLineage != null) return sameLineage;
+  return cands.length === 1 ? cands[0] : node;
+}
+
 /** Variant indices (from `columns`) on each branch: Map nodeId -> [variant index]. */
 export function branchVariants(snv, columns, layout, full = layout) {
   const out = new Map();
   if (!snv || !layout) return out;
   const cols = columns.filter((c) => snv.variants[c]?.anchor);
-  const nodes = resolveAnchors(cols.map((c) => snv.variants[c].anchor), layout, full);
+  const resolved = resolveAnchors(cols.map((c) => snv.variants[c].anchor), layout, full);
+  const bySize = new Map();
+  layout.nodes.forEach((n, k) => {
+    if (n.isLeaf) return;
+    const size = n.lastLeaf - n.firstLeaf + 1;
+    if (!bySize.has(size)) bySize.set(size, []);
+    bySize.get(size).push(k);
+  });
+  // clade_cells counts the full tree's cells, so the size check only applies when nothing is pruned
+  const nodes = layout === full ? resolved.map((node, i) => checkedNode(layout, node, snv.variants[cols[i]].clade_cells, bySize)) : resolved;
   cols.forEach((c, i) => {
     const node = nodes[i];
     if (node == null || node < 0) return;
