@@ -9,7 +9,8 @@ import useTreeView from "./useTreeView";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { segmentNoise } from "../../helpers/singleCell/segmentNoise";
 import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
-import { AimOutlined, ExperimentOutlined, FileSearchOutlined, ProfileOutlined, SelectOutlined } from "@ant-design/icons";
+import { AimOutlined, ExperimentOutlined, FileSearchOutlined, NodeIndexOutlined, ProfileOutlined, SelectOutlined } from "@ant-design/icons";
+import { driverKey } from "../../helpers/singleCell/driverContrast";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
@@ -33,7 +34,7 @@ const MIN_CLONES_SHOWN = 6;
 const aetiology = (sig) => (signatureMetadata.metadata[sig]?.full || "").replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "");
 
 /** One driver line with actions: select carriers, zoom the heatmap, view reads. */
-function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, fit, noise = null }) {
+function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, onDeepDive, fit, noise = null }) {
   const { t } = useTranslation("common");
   const pct = d3.format(".0%");
   return (
@@ -73,6 +74,11 @@ function DriverRow({ d, cloneColors, interactive, onSelect, onZoom, onIgv, onSit
           <Tooltip title={t("components.single-cell.report.details")}>
             <Button size="small" type="text" icon={<ProfileOutlined />} onClick={() => onDetails(d)} />
           </Tooltip>
+          {d.clonality === "subclonal" && onDeepDive && (
+            <Tooltip title={t("components.single-cell.report.deep-dive")}>
+              <Button size="small" type="text" icon={<NodeIndexOutlined />} onClick={() => onDeepDive(d)} />
+            </Tooltip>
+          )}
           <Tooltip title={t("components.single-cell.report.select-cells")}>
             <Button size="small" type="text" icon={<SelectOutlined />} onClick={() => onSelect(d)} />
           </Tooltip>
@@ -218,7 +224,11 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   };
   // the same popup as a row of the Filtered Events table (alteration, plots with cell tracks, variant QC)
   const onDetails = (d) => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"));
-  const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails };
+  const onDeepDive = (d) => {
+    dispatch(singleCellActions.updateDriverFocus(driverKey(d.event)));
+    dispatch(settingsActions.updateTab("17"));
+  };
+  const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, onDeepDive };
   const row = (d) => <DriverRow key={d.label} d={d} fit={fitOf.get(d.label)} noise={noiseOf.get(d.label)} {...rowProps} />;
   const allDrivers = [...report.clonal, ...report.subclonal, ...report.rare];
   const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.replace(/<[^>]+>/g, ""));
