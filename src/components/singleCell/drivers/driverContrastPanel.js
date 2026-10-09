@@ -26,18 +26,43 @@ const { Text } = Typography;
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
 const pct = (x) => `${Math.round(x * 100)}%`;
 
-/** Cells in tree order as one strip: carriers, comparator, other tumor cells, normals. */
-function TreeStrip({ leaves, groupOf, clade }) {
+/**
+ * Cells in tree order as one strip: carriers, comparator, other tumor cells,
+ * normals. Hover a cell for its id, group, clone and plate; click selects it on
+ * the heatmap, Shift-click selects every cell of its group.
+ */
+function TreeStrip({ leaves, groupOf, clade, groupLabel, cloneOf, onSelect }) {
   const [ref, width] = useContainerWidth(600);
   const theme = usePlotTheme();
+  const [hover, setHover] = useState(null);
   const h = 22;
   const top = 14;
   const n = leaves.length || 1;
   const w = width / n;
   const color = { a: CARRIER_COLOR, b: COMPARATOR_COLOR, o: OTHER_COLOR, n: theme.empty };
+  const at = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const i = Math.floor((e.clientX - r.left) / w);
+    return i >= 0 && i < leaves.length ? i : null;
+  };
+  const hid = hover != null ? `${leaves[hover]}` : null;
   return (
-    <div ref={ref} style={{ width: "100%" }}>
-      <svg width={width} height={top + h + 2} role="img" aria-label="cells in tree order">
+    <div ref={ref} style={{ width: "100%", position: "relative" }}>
+      <svg
+        width={width}
+        height={top + h + 2}
+        role="img"
+        aria-label="cells in tree order"
+        style={{ cursor: "pointer" }}
+        onMouseMove={(e) => setHover(at(e))}
+        onMouseLeave={() => setHover(null)}
+        onClick={(e) => {
+          const i = at(e);
+          if (i == null) return;
+          const id = `${leaves[i]}`;
+          onSelect(e.shiftKey || e.metaKey ? leaves.map(String).filter((x) => groupOf(x) === groupOf(id)) : [id]);
+        }}
+      >
         {clade && (
           <g>
             <line x1={clade.first * w} x2={(clade.last + 1) * w} y1={6} y2={6} stroke={theme.textSecondary} strokeWidth={1.5} />
@@ -46,11 +71,31 @@ function TreeStrip({ leaves, groupOf, clade }) {
           </g>
         )}
         {leaves.map((id, i) => (
-          <rect key={id} x={i * w} y={top} width={Math.max(w - (w > 3 ? 0.5 : 0), 0.6)} height={h} fill={color[groupOf(id)]}>
-            <title>{id}</title>
-          </rect>
+          <rect key={id} x={i * w} y={top} width={Math.max(w - (w > 3 ? 0.5 : 0), 0.6)} height={h} fill={color[groupOf(id)]} />
         ))}
+        {hover != null && <rect x={hover * w - 1} y={top - 2} width={Math.max(w, 2) + 2} height={h + 4} fill="none" stroke={theme.text} strokeWidth={1.5} pointerEvents="none" />}
       </svg>
+      {hid && (
+        <div
+          style={{
+            position: "absolute",
+            left: Math.min(Math.max(hover * w - 80, 0), Math.max(width - 300, 0)),
+            top: top + h + 6,
+            zIndex: 2,
+            pointerEvents: "none",
+            background: theme.raised,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 4,
+            padding: "2px 8px",
+            fontSize: TYPE.tick,
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+          }}
+        >
+          {`${hid} · ${groupLabel(groupOf(hid))}${cloneOf(hid) != null ? ` · ${cloneOf(hid)}` : ""} · plate ${plateOf(hid) || "?"}`}
+        </div>
+      )}
     </div>
   );
 }
@@ -75,6 +120,7 @@ export default function DriverContrastPanel() {
     const ids = treeLayout?.leaves?.length ? treeLayout.leaves.map(String) : cells.map((c) => `${c.cell_id}`);
     return ids.filter((id) => !normal.has(id));
   }, [cells, treeLayout]);
+  const cloneOfId = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id])), [cells]);
   const normalIds = useMemo(() => new Set(cells.filter((c) => isNormalClone(c.clone_id)).map((c) => `${c.cell_id}`)), [cells]);
 
   const drivers = useMemo(() => subclonalDrivers(events || [], tumorIds, treeLayout), [events, tumorIds, treeLayout]);
@@ -200,7 +246,14 @@ export default function DriverContrastPanel() {
                 options={COMPARATOR_MODES.map((m) => ({ value: m, label: t(`components.single-cell.drivers.mode-${m}`) }))}
               />
             </Space>
-            <TreeStrip leaves={treeLayout?.leaves || []} groupOf={groupOf} clade={clade} />
+            <TreeStrip
+              leaves={treeLayout?.leaves || []}
+              groupOf={groupOf}
+              clade={clade}
+              groupLabel={(g) => ({ a: t("components.single-cell.drivers.carriers"), b: t("components.single-cell.drivers.comparator"), o: "other tumor cell", n: "normal cell" }[g] || g)}
+              cloneOf={(id) => cloneOfId.get(id)}
+              onSelect={(ids) => dispatch(singleCellActions.updateSelection(ids))}
+            />
             <Space wrap size={[16, 4]} style={{ fontSize: TYPE.tick }}>
               <span>
                 <span style={{ color: CARRIER_COLOR }}>■</span>{" "}
