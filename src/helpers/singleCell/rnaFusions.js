@@ -58,11 +58,14 @@ export function normalizeFusions(json) {
         reads: cellReads(c),
       }))
       .sort((a, b) => b.reads - a.reads || confidenceRank(b.confidence) - confidenceRank(a.confidence) || a.rna_id.localeCompare(b.rna_id));
-    return {
+    const base = {
       ...f,
       id: f.id || `${f.gene1}::${f.gene2}|${f.breakpoint1}|${f.breakpoint2}|${k}`,
       label: `${geneDisplay(f.gene1).name}::${geneDisplay(f.gene2).name}`,
       known: Boolean(f.known),
+      tier_reasons: Array.isArray(f.tier_reasons) ? f.tier_reasons : [],
+      cancer_genes: Array.isArray(f.cancer_genes) ? f.cancer_genes : [],
+      recurrence: Array.isArray(f.recurrence) ? f.recurrence : [],
       cells,
       n_cells: Number.isFinite(f.n_cells) ? f.n_cells : cells.length,
       n_cells_dna: Number.isFinite(f.n_cells_dna) ? f.n_cells_dna : cells.filter((c) => c.cell_id).length,
@@ -70,18 +73,33 @@ export function normalizeFusions(json) {
       bp1: parseBreakpoint(f.breakpoint1),
       bp2: parseBreakpoint(f.breakpoint2),
     };
+    return { ...base, tier: fusionTier(base) };
   });
   return { patient: json.patient || null, nCellsRna: Number(json.n_cells_rna) || null, fusions };
 }
 
-/** Fusions passing the table filters. */
-export function filterFusions(fusions, { minCells = 1, confidence = "low", hideReadThrough = false, query = "", keepDnaMatched = false, knownOnly = false } = {}) {
+/**
+ * Tier of a fusion: the back end's (1 known / actionable driver, 2 cancer-gene
+ * fusion with evidence, 3 other; see sc_rna_fusion_tier in skilift), or for
+ * older files without it a coarse stand-in: known or in-frame DNA-matched
+ * productive fusions 2, everything else 3.
+ */
+export function fusionTier(f) {
+  const t = Number(f?.tier);
+  if (Number.isFinite(t) && t >= 1 && t <= 3) return t;
+  const productive = !isReadThrough(f) && !isNonProductive(f);
+  return productive && (f?.known || (f?.dna_match && f?.reading_frame === "in-frame")) ? 2 : 3;
+}
+
+/** Fusions passing the table filters. `maxTier`: keep tiers <= maxTier (3 = all). */
+export function filterFusions(fusions, { minCells = 1, confidence = "low", hideReadThrough = false, query = "", keepDnaMatched = false, knownOnly = false, maxTier = 3 } = {}) {
   const minRank = confidenceRank(confidence);
   const q = `${query || ""}`.trim().toUpperCase();
   return (fusions || []).filter(
     (f) =>
       ((f.n_cells || 0) >= minCells || (keepDnaMatched && Boolean(f.dna_match))) &&
       (!knownOnly || f.known) &&
+      fusionTier(f) <= maxTier &&
       confidenceRank(f.confidence) >= minRank &&
       !(hideReadThrough && isReadThrough(f)) &&
       (!q || `${f.gene1}::${f.gene2}`.toUpperCase().includes(q) || `${f.label || ""}`.toUpperCase().includes(q))
@@ -183,4 +201,137 @@ export function defaultRnaCells(fusion, limit = 6, prefer = []) {
   const cells = [...(fusion?.cells || [])].filter((c) => c.bam);
   cells.sort((a, b) => Number(want.has(b.cell_id)) - Number(want.has(a.cell_id)) || (b.reads ?? cellReads(b)) - (a.reads ?? cellReads(a)));
   return cells.slice(0, limit).map((c) => c.rna_id);
+}
+
+/** Table order: tier (best first), then carrier cells, then reads. */
+export const compareFusions = (a, b) => fusionTier(a) - fusionTier(b) || (b.n_cells || 0) - (a.n_cells || 0) || (b.reads || 0) - (a.reads || 0);
+
+/**
+ * One row per gene pair (as displayed, 5'::3'): breakpoint variants of the
+ * same genes are collapsed under the best one (tier, then cells). Groups of
+ * several variants get `variants` (best first; each a normal fusion) and
+ * `children` (the others, for an expandable table row), the union of the
+ * carrier cells (reads summed per cell), summed reads, the best tier /
+ * confidence and any DNA match or known flag. Single variants are returned as is.
+ */
+export function groupFusions(fusions) {
+  const groups = new Map();
+  (fusions || []).forEach((f) => {
+    const key = f.label || `${f.gene1}::${f.gene2}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(f);
+  });
+  const out = [];
+  groups.forEach((variants, key) => {
+    if (variants.length === 1) {
+      out.push(variants[0]);
+      return;
+    }
+    const sorted = [...variants].sort(compareFusions);
+    const best = sorted[0];
+    const byRna = new Map();
+    sorted.forEach((v) =>
+      (v.cells || []).forEach((c) => {
+        const prev = byRna.get(c.rna_id);
+        if (prev) prev.reads += c.reads ?? cellReads(c);
+        else byRna.set(c.rna_id, { ...c, reads: c.reads ?? cellReads(c) });
+      })
+    );
+    const cells = [...byRna.values()].sort((a, b) => b.reads - a.reads || a.rna_id.localeCompare(b.rna_id));
+    out.push({
+      ...best,
+      id: `group:${key}`,
+      group: true,
+      variants: sorted,
+      children: sorted.slice(1).map((v) => ({ ...v, variantOf: `group:${key}` })),
+      cells,
+      n_cells: cells.length,
+      n_cells_dna: new Set(cells.filter((c) => c.cell_id).map((c) => c.cell_id)).size,
+      reads: sorted.reduce((s, v) => s + (v.reads || 0), 0),
+      tier: Math.min(...sorted.map(fusionTier)),
+      confidence: sorted.reduce((b, v) => (confidenceRank(v.confidence) > confidenceRank(b) ? v.confidence : b), best.confidence),
+      known: sorted.some((v) => v.known),
+      dna_match: sorted.find((v) => v.dna_match)?.dna_match || null,
+    });
+  });
+  return out;
+}
+
+/**
+ * Pseudo DNA-event record of an RNA fusion for the per-cell plots (the DNA
+ * event popup's Plots tab): both breakpoints as the location (bare
+ * chromosome names, as the genome plots use) and the DNA cells of the RNA
+ * carriers, best supported first, as the carriers.
+ */
+export function fusionPlotRecord(fusion) {
+  const loci = fusionLoci(fusion);
+  if (!fusion || !loci.length) return null;
+  const cellIds = [];
+  (fusion.cells || []).forEach((c) => c.cell_id && !cellIds.includes(c.cell_id) && cellIds.push(c.cell_id));
+  return {
+    uid: `rna:${fusion.id}`,
+    gene: fusion.label,
+    fusion_genes: fusion.label,
+    vartype: "fusion",
+    type: "RNA fusion",
+    location: loci.map((l) => `${bareChrom(l.chromosome)}:${l.position}-${l.position}`).join("|"),
+    fusion_gene_coords: loci.map((l) => `${bareChrom(l.chromosome)}:${l.position}`).join(","),
+    cell_ids: cellIds.join(","),
+  };
+}
+
+/** The carrier best suited for the per-cell plots: most reads among the carriers with a DNA cell (null if none). */
+export const defaultPlotCell = (fusion) => (fusion?.cells || []).find((c) => c.cell_id)?.cell_id || null;
+
+/** Arriba's retained protein domains, "a(100%),b(40%)|c(100%)", as [5' gene domains, 3' gene domains] of { name, pct }. */
+export function parseDomains(text) {
+  const sides = `${text || ""}`.split("|");
+  const parse = (s) =>
+    `${s || ""}`
+      .split(",")
+      .map((d) => d.trim())
+      .filter((d) => d && d !== ".")
+      .map((d) => {
+        const m = d.match(/^(.*)\((\d+)%\)$/);
+        return { name: (m ? m[1] : d).replace(/_/g, " "), pct: m ? Number(m[2]) : null };
+      });
+  return [parse(sides[0]), parse(sides[1])];
+}
+
+/**
+ * Carriers of a fusion per DNA clone: for each clone, the carrier DNA cells,
+ * the clone's cells that have RNA (`rnaOfCell`: cell_id -> rna_id) and the
+ * fraction carrying it; RNA-only carriers are counted apart. Sorted by carriers.
+ */
+export function fusionCloneDistribution(fusion, cells = [], rnaOfCell = null) {
+  const cloneOf = new Map((cells || []).map((c) => [c.cell_id, c.clone_id]));
+  const withRna = new Map();
+  (cells || []).forEach((c) => {
+    if (rnaOfCell && !rnaOfCell.has(c.cell_id)) return;
+    const k = `${c.clone_id}`;
+    withRna.set(k, (withRna.get(k) || 0) + 1);
+  });
+  const carriers = new Map();
+  let rnaOnly = 0;
+  let unplaced = 0;
+  (fusion?.cells || []).forEach((c) => {
+    if (!c.cell_id) {
+      rnaOnly += 1;
+      return;
+    }
+    const clone = cloneOf.get(c.cell_id);
+    if (clone == null) {
+      unplaced += 1;
+      return;
+    }
+    const k = `${clone}`;
+    carriers.set(k, (carriers.get(k) || 0) + 1);
+  });
+  const clones = [...new Set([...carriers.keys(), ...withRna.keys()])].map((clone) => {
+    const n = carriers.get(clone) || 0;
+    const total = withRna.get(clone) || 0;
+    return { clone, carriers: n, withRna: total, fraction: total ? n / total : null };
+  });
+  clones.sort((a, b) => b.carriers - a.carriers || (b.fraction ?? 0) - (a.fraction ?? 0) || `${a.clone}`.localeCompare(`${b.clone}`, undefined, { numeric: true }));
+  return { clones, rnaOnly, unplaced };
 }

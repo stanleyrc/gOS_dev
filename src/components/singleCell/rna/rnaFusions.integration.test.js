@@ -85,13 +85,39 @@ describe("RNA fusions card and popup", () => {
     const modal = document.body.querySelector(".sc-rna-fusion-modal"); // eslint-disable-line testing-library/no-node-access
     expect(modal).not.toBeNull();
     const m = within(modal);
+    // Summary tab: breakpoints, tier and schematic
     expect(m.getByText("chr7:55211628 · chr7:55900000")).toBeTruthy();
+    expect(m.getByText("components.single-cell.rna-fusions.tier-2")).toBeTruthy();
+    // Cells tab lists every carrier
+    fireEvent.click(m.getByRole("tab", { name: /tab-cells/ }));
     expect(m.getByText("r9")).toBeTruthy();
+    // Reads tab: RNA tracks at both breakpoints
+    fireEvent.click(m.getByRole("tab", { name: /tab-reads/ }));
     const view = igvViews[igvViews.length - 1];
     expect(view.rnaTracks.map((r) => r.rna_id)).toEqual(["r2", "r9", "r1"]);
     expect(view.rnaTracks[0]).toEqual({ rna_id: "r2", bam: "rna/reads/r2.bam", patientId: "P1" });
     expect(view.loci).toEqual([{ chromosome: "chr7", position: 55211628 }, { chromosome: "chr7", position: 55900000 }]);
     expect(view.cellIds).toEqual([]);
+  });
+
+  it("opens a carrier cell's plots with its DNA and RNA reads from the Cells tab", async () => {
+    const RnaFusionsCard = require("./rnaFusionsCard").default;
+    render(
+      <Provider store={makeStore()}>
+        <RnaFusionsCard summary={{ cells: [{ rna_id: "r1", cell_id: "c1" }, { rna_id: "r2", cell_id: "c3" }] }} />
+      </Provider>
+    );
+    fireEvent.click(screen.getByText("SEPTIN14"));
+    await screen.findByText("components.single-cell.rna-fusions.modal-title");
+    const m = within(document.body.querySelector(".sc-rna-fusion-modal")); // eslint-disable-line testing-library/no-node-access
+    fireEvent.click(m.getByRole("tab", { name: /tab-cells/ }));
+    fireEvent.click(m.getByText("r1"));
+    expect(m.getByTestId("cell-tracks")).toBeTruthy();
+    const view = igvViews[igvViews.length - 1];
+    // c1 (RNA r1) shown: its DNA reads and its RNA slice at both breakpoints
+    expect(view.cellIds).toEqual(["c1"]);
+    expect(view.rnaTracks.map((r) => r.rna_id)).toEqual(["r1"]);
+    expect(view.loci.map((l) => l.position)).toEqual([55211628, 55900000]);
   });
 
   it("shows an empty state when fusions.json is missing", () => {

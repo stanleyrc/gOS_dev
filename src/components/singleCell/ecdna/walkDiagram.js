@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Space, Tag, Typography } from "antd";
+import { Button, Card, Empty, Space, Tag, Typography } from "antd";
 import { RadarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
@@ -10,6 +10,7 @@ import { walkGenes, toGlobal } from "../../../helpers/singleCell/walks";
 import { carriersByClone, junctionRows } from "../../../helpers/singleCell/walkPanels";
 import { copiesOf } from "../../../helpers/singleCell/walkCopies";
 import HintLine, { Provenance } from "../hintLine";
+import singleCellActions from "../../../redux/singleCell/actions";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -27,6 +28,10 @@ const fmtPos = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} Mb` : `${(v / 1e3).to
 export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(700);
+  const dispatch = useDispatch();
+  // the raw region string and the ALT junction list: folded by default (remembered)
+  const details = useSelector((s) => !!s.SingleCell.layout?.walkCardDetails);
+  const setDetails = (v) => dispatch(singleCellActions.updateLayout({ walkCardDetails: v }));
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const genesState = useSelector((s) => s.Genes);
   const genes = useMemo(() => {
@@ -81,7 +86,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
             <span>{copies.length ? `median ${d3.format(".0f")(d3.median(copies))} · range ${d3.format(".0f")(d3.min(copies))}–${d3.format(".0f")(d3.max(copies))}` : "–"}</span>
             <Text type="secondary">{t("components.single-cell.ecdna.wf-structure")}</Text>
             <span>{`${walk.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")} · ${fmtPos(walk.span)} · ${t("components.single-cell.ecdna.nodes", { count: nodes.length })}${walk.n_nodes_raw > nodes.length ? ` (${walk.n_nodes_raw} graph nodes)` : ""} · ${t("components.single-cell.ecdna.alt-junctions", { count: alt.length })}`}</span>
-            {walk.coordinates && <><Text type="secondary">{t("components.single-cell.ecdna.wf-region")}</Text><span>{walk.coordinates}</span></>}
+            {details && walk.coordinates && <><Text type="secondary">{t("components.single-cell.ecdna.wf-region")}</Text><span>{walk.coordinates}</span></>}
             <Text type="secondary">{t("components.single-cell.ecdna.wf-genes")}</Text>
             <span>
               {walk.genes.map((g) => <Tag key={g} color={(walk.driver_genes || []).includes(g) ? "volcano" : undefined} style={{ margin: "0 3px 2px 0", fontSize: 12.5, lineHeight: "16px", paddingInline: 4 }}>{g}</Tag>)}
@@ -110,8 +115,13 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
               ))}
             </div>
           )}
-          {junctions.length > 0 && (
-            <div style={{ marginTop: 6 }}>
+          {(junctions.length > 0 || walk.coordinates) && (
+            <Button type="link" size="small" style={{ padding: 0, marginTop: 4 }} aria-expanded={details} onClick={() => setDetails(!details)}>
+              {t(details ? "components.single-cell.ecdna.details-hide" : "components.single-cell.ecdna.details-show", { count: junctions.length })}
+            </Button>
+          )}
+          {details && junctions.length > 0 && (
+            <div style={{ marginTop: 2 }}>
               <Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.ecdna.wf-junctions", { count: junctions.length })}</Text>
               {junctions.slice(0, 8).map((j) => (
                 <div key={j.key} style={{ fontFamily: "monospace", fontSize: 12.5, lineHeight: "16px" }}>
