@@ -5,10 +5,10 @@ import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
 import useSignatureModel from "../signatures/useSignatureModel";
 import singleCellActions from "../../../redux/singleCell/actions";
-import { branchVariants } from "../../../helpers/singleCell/branchSnvs";
+
 import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { rowMap } from "../../../helpers/singleCell/matrix";
-import { CLOCK_SIGNATURES, cellClockBurden, cladeClockTiming, clockSites, mrcaTiming } from "../../../helpers/singleCell/timing";
+import { CLOCK_SIGNATURES, cellClockBurden, cladeClockTiming, clockSites, mrcaTiming, placeByCladeSize } from "../../../helpers/singleCell/timing";
 import { Swatches, XBaseline } from "../cohort/charts";
 
 const { Text } = Typography;
@@ -44,8 +44,13 @@ export default function TimingCard() {
     const tumourRows = order.map((id, r) => (isNormalClone(cellById.get(id)?.clone_id) ? -1 : rows[r]));
     const burdens = cellClockBurden(data, tumourRows, clock);
     const mrca = mrcaTiming(data, clock, burdens);
-    // SNVs placed on each branch by their tree mapping (one branch per site); truncal sites sit at the MRCA
-    const placed = branchVariants(data, data.variants.map((v, c) => c), treeLayout);
+    // subclonal SNVs placed on the node whose tumour-cell count matches the site's mapped clade size
+    // (the backend anchors do not always resolve to the mapped node)
+    const leafRows = treeLayout.leaves.map((id) => {
+      const k = order.indexOf(id);
+      return k >= 0 ? tumourRows[k] : -1;
+    });
+    const placed = placeByCladeSize(treeLayout, data, leafRows);
     const nTumour = order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)).length;
     const tumourLeavesUnder = (node) => {
       const n = treeLayout.nodes[node];
