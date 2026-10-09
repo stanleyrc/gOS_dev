@@ -1383,6 +1383,7 @@
         "class-trunc": "Truncating",
         "class-splice": "Splice",
         "class-missense": "Missense",
+        "class-complex": "Complex SV",
         "scatter-title": "Patients compared",
         "scatter-help": "One point per patient. Click a point to open the patient.",
         "view-reports": "Key findings",

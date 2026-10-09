@@ -89,7 +89,7 @@ const DARK = {
  * the grey "other" follow the theme's ink so they stay visible on dark.
  */
 export function alterationClassColors(theme) {
-  return { amp: "#D7191C", homdel: "#2C7BB6", fusion: theme.mode === "dark" ? "#a35fc4" : "#7B3294", trunc: theme.text, splice: "#E6AB02", missense: "#1B9E77", other: theme.faint };
+  return { amp: "#D7191C", homdel: "#2C7BB6", fusion: theme.mode === "dark" ? "#a35fc4" : "#7B3294", trunc: theme.text, splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: theme.faint };
 }
 
 /**
