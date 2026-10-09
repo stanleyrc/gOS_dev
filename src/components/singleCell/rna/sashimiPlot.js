@@ -26,8 +26,10 @@ export const TYPE_LABELS = {
  *
  * tracks: [{ key, label, sublabel, counts: [per junction] }]
  */
-export default function SashimiPlot({ cluster, tracks, width = 800, trackH = 96, labelW = 132, highlight = null, svgRef = null, transcripts = null, event = null }) {
+export default function SashimiPlot({ cluster, tracks, width = 800, trackH = 96, labelW = 132, highlight = null, svgRef = null, transcripts = null, event = null, junctionIndex = null }) {
   const junctions = cluster?.junctions || [];
+  // junctionIndex: original cluster index of each drawn junction (keeps colours / numbers when a subset is drawn)
+  const gj = (j) => (junctionIndex ? junctionIndex[j] : j);
   // with exon models (helpers/singleCell/spliceEvents clusterTranscripts): one row per transcript
   // (canonical first, at most 4) instead of the cluster's collapsed exon blocks
   const txRows = (transcripts || []).slice(0, 4);
@@ -154,13 +156,13 @@ export default function SashimiPlot({ cluster, tracks, width = 800, trackH = 96,
                   <path
                     d={`M${a.xa},${base} C${a.xa},${ctrlY} ${a.xb},${ctrlY} ${a.xb},${base}`}
                     fill="none"
-                    stroke={junctionColor(a.j)}
+                    stroke={junctionColor(gj(a.j))}
                     strokeWidth={1 + 7 * Math.sqrt(c / maxCount)}
                     strokeDasharray={junctionType(junctions[a.j]) === "annotated" ? undefined : "6 3"}
                     strokeLinecap="round"
                     opacity={0.85}
                   >
-                    <title>{`${t.label} · junction ${a.j + 1} (${TYPE_LABELS[junctionType(junctions[a.j])]}) ${junctionLabel(cluster.chromosome, junctions[a.j])}: ${c} reads, PSI ${fmtPct(p)}`}</title>
+                    <title>{`${t.label} · junction ${gj(a.j) + 1} (${TYPE_LABELS[junctionType(junctions[a.j])]}) ${junctionLabel(cluster.chromosome, junctions[a.j])}: ${c} reads, PSI ${fmtPct(p)}`}</title>
                   </path>
                   <text
                     x={(a.xa + a.xb) / 2}

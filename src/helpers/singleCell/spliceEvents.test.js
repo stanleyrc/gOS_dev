@@ -73,3 +73,25 @@ describe("eventPsi / cellEventPsi", () => {
     ]);
   });
 });
+
+describe("junction focus", () => {
+  const { mainJunctions, differingJunctions, junctionEvent, groupCellPsi } = require("./spliceEvents");
+  it("main junctions hold >= 2% of reads", () => {
+    expect(mainJunctions([100, 1, 50, 0])).toEqual([0, 2]);
+  });
+  it("differing junctions come from groups with enough cells", () => {
+    const groups = [
+      { counts: [90, 10, 0], total: 100, nCells: 10 },
+      { counts: [10, 90, 0], total: 100, nCells: 10 },
+      { counts: [0, 0, 50], total: 50, nCells: 2 },
+    ];
+    expect(differingJunctions(groups, { top: 2 })).toEqual([0, 1]);
+  });
+  it("junction events and grouped per-cell PSI", () => {
+    const ev = junctionEvent(1, 3);
+    expect(ev.junctions).toEqual({ incl: [1], skip: [0, 2] });
+    const out = groupCellPsi({ cells: { a: [0, 4, 0], b: [4, 0, 0], c: [0, 1, 0] } }, ev, (id) => (id === "b" ? "B" : "A"));
+    expect(out.get("A")).toEqual([1]);
+    expect(out.get("B")).toEqual([0]);
+  });
+});

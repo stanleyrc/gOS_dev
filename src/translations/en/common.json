@@ -2302,7 +2302,16 @@
         "no-event": "No cassette exon or alternative site recognised in this cluster; see the junctions above.",
         "gene-expr": "{{gene}} expression",
         "no-cells": "No cell has 3 or more reads on this event's junctions.",
-        "pooled": "Pooled PSI (reads):"
+        "pooled": "Pooled PSI (reads):",
+        "small-groups": "{{count}} groups with < {{min}} cells",
+        "focus-differing": "Differing junctions",
+        "focus-main": "Main junctions",
+        "focus-all": "All {{count}}",
+        "focus-note": "{{shown}} of {{total}} junctions drawn (switch to \"All\" for the rest; the table below lists every junction).",
+        "delta-big": "Largest ΔPSI between groups with ≥ {{min}} cells: {{value}}",
+        "cn-flag": "{{gene}} sits at copy number {{cn}} here (median per group: {{groups}}). In amplified regions unannotated \"junctions\" can be DNA rearrangements inside the amplicon rather than splicing, and differences between groups can follow copy number.",
+        "event-by-group": "{{event}} per cell, by group",
+        "event-by-group-help": "Each dot is a cell with at least 3 reads on the event's junctions; groups with fewer than {{min}} cells are left out. Consistent shifts across many cells are more convincing than a pooled PSI from a few cells."
       },
       "help-center": {
         "button": "Help",
