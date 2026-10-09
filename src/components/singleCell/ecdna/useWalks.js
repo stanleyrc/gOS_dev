@@ -42,10 +42,21 @@ export default function useWalks(cellIds) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walksSource, cellIds.join("|")]);
   const filtered = useMemo(() => filterWalks(all, cellIds, filters), [all, cellIds, filters]);
+  // how many walk cell ids name a cell of this patient: none means the export keyed cells differently
+  const idMatch = useMemo(() => {
+    const listed = new Set();
+    all.forEach((w) => Object.keys(w.cells || {}).forEach((id) => listed.add(id)));
+    const known = new Set(cellIds);
+    let matched = 0;
+    listed.forEach((id) => {
+      if (known.has(id)) matched += 1;
+    });
+    return { listed: listed.size, matched, example: listed.size ? [...listed][0] : null };
+  }, [all, cellIds]);
   const colorOf = useMemo(() => {
     const order = all.slice().sort((a, b) => (b.ncells || 0) - (a.ncells || 0));
     const m = new Map(order.map((w, i) => [w.id, PALETTE[i % PALETTE.length]]));
     return (id) => m.get(id) || INK.faint;
   }, [all]);
-  return { status: walksSource.status, all, measured, filtered, filters, setFilters, colorOf, byId: useMemo(() => new Map(all.map((w) => [w.id, w])), [all]) };
+  return { status: walksSource.status, all, measured, filtered, filters, setFilters, colorOf, idMatch, byId: useMemo(() => new Map(all.map((w) => [w.id, w])), [all]) };
 }
