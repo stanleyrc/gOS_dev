@@ -5,7 +5,9 @@ import * as d3 from "d3";
 import { Alert, Button, Card, Col, Empty, Row, Segmented, Select, Space, Table, Typography } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
-import { ActivityBars, AetiologyLegend, FitCatalogs, Profile, loadCosmic } from "../signaturePanel";
+import { ActivityBars, AetiologyLegend, Profile, loadCosmic } from "../signaturePanel";
+import { FitEvaluation } from "./signatureFitCard";
+import { evaluateFit } from "../../../helpers/singleCell/signatureFit";
 import { bootstrapShares, decomposeFit, fitSignatures } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
 import { SC_GUTTER } from "../density";
@@ -47,7 +49,7 @@ export default function SignatureSetsCard() {
       const reference = await loadCosmic();
       await new Promise((resolve) => setTimeout(resolve, 20));
       const result = fitSignatures(profile.counts, reference);
-      setFit({ ...result, counts: profile.counts, used: profile.used, decomposition: decomposeFit(profile.counts, reference, result.activities) });
+      setFit({ ...result, counts: profile.counts, used: profile.used, decomposition: decomposeFit(profile.counts, reference, result.activities), evaluation: evaluateFit({ counts: profile.counts, reconstruction: result.reconstruction, activities: result.activities, reference }) });
       setBusy(false);
       // intervals after the plot is up
       setTimeout(() => {
@@ -147,7 +149,7 @@ export default function SignatureSetsCard() {
             )}
             {fit && fit.used > 0 && (
               <Col span={24}>
-                <FitCatalogs fit={fit} />
+                <FitEvaluation evaluation={fit.evaluation} title={t("components.single-cell.signatures.catalog-title", { n: fit.used })} />
               </Col>
             )}
           </Row>
