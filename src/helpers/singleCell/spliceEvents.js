@@ -107,3 +107,54 @@ export function cellEventPsi(cluster, event, minReads = 3) {
     .map(([id, counts]) => ({ id, ...eventPsi(counts, event) }))
     .filter((c) => c.reads >= minReads && Number.isFinite(c.psi));
 }
+
+/** Junctions with >= minShare of the cluster's reads (indices, in cluster order). */
+export function mainJunctions(counts, minShare = 0.02) {
+  const total = (counts || []).reduce((a, v) => a + num(v), 0);
+  return (counts || []).map((v, j) => (total > 0 && num(v) / total >= minShare ? j : -1)).filter((j) => j >= 0);
+}
+
+/**
+ * Junctions whose share differs most between groups with >= minCells cells
+ * (range of pooled PSI), at most `top`, in cluster order; with fewer than two
+ * such groups, the `top` junctions with most reads.
+ * @param groups [{ counts, total, nCells }]
+ */
+export function differingJunctions(groups, { minCells = 5, top = 4, minReads = 10 } = {}) {
+  const big = (groups || []).filter((g) => g.nCells >= minCells && g.total >= minReads);
+  const nJ = (groups?.[0]?.counts || []).length;
+  const idx = Array.from({ length: nJ }, (_, j) => j);
+  let order;
+  if (big.length >= 2) {
+    const range = idx.map((j) => {
+      const ps = big.map((g) => num(g.counts[j]) / g.total);
+      return Math.max(...ps) - Math.min(...ps);
+    });
+    order = idx.sort((a, b) => range[b] - range[a]);
+  } else {
+    const reads = idx.map((j) => (groups || []).reduce((a, g) => a + num(g.counts[j]), 0));
+    order = idx.sort((a, b) => reads[b] - reads[a]);
+  }
+  return order.slice(0, top).sort((a, b) => a - b);
+}
+
+/** One junction as an event: its share of the cluster's reads. */
+export function junctionEvent(j, nJunctions) {
+  return {
+    type: "junction",
+    label: `junction ${j + 1} share`,
+    junctions: { incl: [j], skip: Array.from({ length: nJunctions }, (_, k) => k).filter((k) => k !== j) },
+  };
+}
+
+/** Per-cell event PSI grouped: Map group -> number[] (groupOf(rnaId) -> group or null). */
+export function groupCellPsi(cluster, event, groupOf, minReads = 3) {
+  const out = new Map();
+  cellEventPsi(cluster, event, minReads).forEach((c) => {
+    const g = groupOf(c.id);
+    if (g == null) return;
+    if (!out.has(g)) out.set(g, []);
+    out.get(g).push(c.psi);
+  });
+  return out;
+}
