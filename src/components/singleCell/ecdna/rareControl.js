@@ -14,15 +14,15 @@ export function useRareMax() {
   return rareMaxOf(layout);
 }
 
-/** One control for that threshold; any copy of it edits the same shared value. */
-export default function RareControl() {
+/** One control for that threshold; any copy of it edits the same shared value. bare: the select alone, without its label. */
+export default function RareControl({ bare = false }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const value = useRareMax();
   return (
     <Tooltip title={t("components.single-cell.ecdna.rare-help")}>
       <Space size={4}>
-        <Text type="secondary">{t("components.single-cell.ecdna.tc-rare")}</Text>
+        {!bare && <Text type="secondary">{t("components.single-cell.ecdna.tc-rare")}</Text>}
         <Select
           size="small"
           value={value}
