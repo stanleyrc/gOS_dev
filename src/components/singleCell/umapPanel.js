@@ -14,6 +14,7 @@ import { searchGeneNames, topVariableGenes } from "../../helpers/singleCell/stat
 import { kmeans, pca, scaledExpression } from "../../helpers/singleCell/rnaStats";
 import useRnaData from "./rna/useRnaData";
 import Wrapper from "./index.style";
+import usePlotTheme from "./usePlotTheme";
 
 const { Text } = Typography;
 const HEIGHT = 440;
@@ -52,6 +53,7 @@ function insidePolygon(x, y, polygon) {
  * Colour by clone, any metadata field exported from Seurat, or a gene.
  */
 export default function UmapPanel() {
+  const pt = usePlotTheme();
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId, cn, layout } = useSelector((s) => s.SingleCell);
@@ -238,12 +240,12 @@ export default function UmapPanel() {
         ctx.fill();
       } else {
         // RNA-only cells (no DNA cell in the tree): hollow.
-        ctx.strokeStyle = scale.color(p) === NO_DATA ? "#8c8c8c" : scale.color(p);
+        ctx.strokeStyle = scale.color(p) === NO_DATA ? pt.faint : scale.color(p);
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
       if (emphasis) {
-        ctx.strokeStyle = "#262626";
+        ctx.strokeStyle = pt.text;
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }
@@ -252,15 +254,15 @@ export default function UmapPanel() {
     points.forEach((p) => p.linked && selected.has(p.cell.cell_id) && draw(p, true));
     const hovered = points.find((p) => p.linked && p.cell.cell_id === hoveredCellId);
     if (hovered) {
-      ctx.strokeStyle = "#fa541c";
+      ctx.strokeStyle = pt.hover;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(hovered.x, hovered.y, r + 4, 0, 2 * Math.PI);
       ctx.stroke();
     }
     if (lasso && lasso.length > 1) {
-      ctx.strokeStyle = "#1677ff";
-      ctx.fillStyle = "rgba(22,119,255,0.08)";
+      ctx.strokeStyle = pt.select;
+      ctx.fillStyle = pt.selectFill;
       ctx.lineWidth = 1;
       ctx.beginPath();
       lasso.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -268,7 +270,7 @@ export default function UmapPanel() {
       ctx.fill();
       ctx.stroke();
     }
-  }, [points, scale, selected, hoveredCellId, lasso, width, pixelRatio]);
+  }, [points, scale, selected, hoveredCellId, lasso, width, pixelRatio, pt]);
 
   /* ---- interaction ---- */
   const local = (event) => {

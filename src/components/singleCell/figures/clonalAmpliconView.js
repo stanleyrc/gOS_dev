@@ -14,6 +14,7 @@ import {
   packRGBA,
 } from "../../../helpers/singleCell/matrix";
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, geneSetColor, snvTreeOrder } from "../../../helpers/singleCell/figures";
+import { currentMode } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const GAP = 6;
@@ -26,8 +27,16 @@ const VAF_RGBA = Array.from({ length: 251 }, (_, v) => {
   const g = Math.round(245 - (v / 250) * 235);
   return packRGBA([g, g, g]);
 });
+// dark theme: the ramp runs dark (0) to light (1), as the Single-Cell SNV heatmap
+const VAF_RGBA_DARK = Array.from({ length: 251 }, (_, v) => {
+  const g = Math.round(40 + (v / 250) * 215);
+  return packRGBA([g, g, g]);
+});
+const vafRamp = () => (currentMode() === "dark" ? VAF_RGBA_DARK : VAF_RGBA);
 const NO_READS = packRGBA([255, 255, 255], 0);
 const WHITE = packRGBA([255, 255, 255]);
+const PANEL_DARK = packRGBA([29, 29, 29]);
+const noCopies = () => (currentMode() === "dark" ? PANEL_DARK : WHITE);
 
 /**
  * Patient figure (paper Fig 4B / 5B / 5D): cells in tree order with clone,
@@ -92,7 +101,7 @@ export default function ClonalAmpliconView({
     const nBins = Math.max(1, Math.floor((SNV - 2) * pr));
     const M = binSnvMatrix(snvPacked, rowIds, order, nBins);
     const cols = discreteColumnLookup(nBins, nBins);
-    return { M, nBins, cols, nSites: order.length, colorAt: (r, c) => (M[r * nBins + c] < 0 ? NO_READS : VAF_RGBA[M[r * nBins + c]]) };
+    return { M, nBins, cols, nSites: order.length, colorAt: (r, c) => (M[r * nBins + c] < 0 ? NO_READS : vafRamp()[M[r * nBins + c]]) };
   }, [hasSnv, snvPacked, nVariants, rowIds, SNV, pr]);
 
   /* ---- CN over the region(s) ---- */
@@ -117,7 +126,7 @@ export default function ClonalAmpliconView({
       cols,
       colorAt: (r, c) => {
         const v = Number(walks[c].cells?.[rowIds[r]]) || 0;
-        return v > 0 ? ampliconRGBA(v) : WHITE;
+        return v > 0 ? ampliconRGBA(v) : noCopies();
       },
     };
   }, [walks, rowIds, WALK, pr]);
@@ -264,7 +273,7 @@ export default function ClonalAmpliconView({
         ctx.fillStyle = c.text;
         ctx.fillText("VAF", vx, 9);
         for (let k = 0; k < 40; k += 1) {
-          const g = Math.round(245 - (k / 39) * 235);
+          const g = c.dark ? Math.round(40 + (k / 39) * 215) : Math.round(245 - (k / 39) * 235);
           ctx.fillStyle = `rgb(${g},${g},${g})`;
           ctx.fillRect(vx + 26 + k * 1.5, 2, 1.6, 8);
         }
