@@ -22,6 +22,7 @@ import useTreeView from "../../components/singleCell/useTreeView";
 import useContainerWidth from "../../components/singleCell/useContainerWidth";
 import settingsActions from "../../redux/settings/actions";
 import { toGlobal, walkFamilies, walkFootprint } from "../../helpers/singleCell/walks";
+import { defaultFocusWalk } from "../../helpers/singleCell/walkPanels";
 import HintLine from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
 
@@ -116,7 +117,8 @@ export default function SingleCellEcdnaTab() {
   }
   const labelWidth = insets?.left > 120 ? insets.left : 300;
   const rightWidth = insets?.right > 0 ? insets.right : 60;
-  const focused = (focus && (filtered.find((w) => w.id === focus) || byId.get(focus))) || shown[0];
+  // default single-walk card: the shown walk with the most carrier cells, not a one-cell variant
+  const focused = (focus && (filtered.find((w) => w.id === focus) || byId.get(focus))) || defaultFocusWalk(shown, cellIds);
   return (
     <SingleCellWrapper>
       <ScEventModal />
@@ -163,14 +165,14 @@ export default function SingleCellEcdnaTab() {
           <Col span={24}>
             <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} />
           </Col>
-          <Col xs={24} xl={14}>
-            <WalkContainmentCard walks={shown} colorOf={colorOf} />
-          </Col>
           <Col xs={24} xl={10}>
-            <WalkDiagram walk={focused} colorOf={colorOf} cellCount={cellIds.length} />
+            <WalkContainmentCard walks={shown} colorOf={colorOf} cellIds={cellIds} focus={focused?.id} onFocus={setFocus} />
+          </Col>
+          <Col xs={24} xl={14}>
+            <WalkDiagram walk={focused} colorOf={colorOf} cellIds={cellIds} />
           </Col>
           <Col span={24}>
-            <WalkCooccurrence walks={shown} cellIds={cellIds} colorOf={colorOf} />
+            <WalkCooccurrence walks={shown} families={shownFamilies} cellIds={cellIds} colorOf={colorOf} minCn={filters.minCn} />
           </Col>
         </Row>
       </ScErrorBoundary>
