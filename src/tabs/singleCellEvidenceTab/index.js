@@ -12,6 +12,7 @@ import ConvergenceCard from "../../components/singleCell/evidence/convergenceCar
 import MtdnaCard from "../../components/singleCell/evidence/mtdnaCard";
 import FitnessCard from "../../components/singleCell/evidence/fitnessCard";
 import RnaCloneCard from "../../components/singleCell/evidence/rnaCloneCard";
+import IncoherenceCard from "../../components/singleCell/evidence/incoherenceCard";
 
 const VIEWS = [
   { value: "reads", label: "Reads & genotypes" },
@@ -19,6 +20,7 @@ const VIEWS = [
   { value: "telomeres", label: "TERT & telomeres" },
   { value: "clones", label: "Clones (fish plot)" },
   { value: "convergence", label: "Convergent events" },
+  { value: "incoherence", label: "Amplicon incoherence" },
   { value: "mtdna", label: "mtDNA" },
   { value: "fitness", label: "Fitness (tree shape)" },
   { value: "rnaclone", label: "RNA → clone" },
@@ -39,6 +41,7 @@ export default function SingleCellEvidenceTab() {
           {view === "telomeres" && <TelomereCard />}
           {view === "clones" && <FishPlotCard />}
           {view === "convergence" && <ConvergenceCard />}
+          {view === "incoherence" && <IncoherenceCard />}
           {view === "mtdna" && <MtdnaCard />}
           {view === "fitness" && <FitnessCard />}
           {view === "rnaclone" && <RnaCloneCard />}
