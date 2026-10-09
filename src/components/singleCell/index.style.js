@@ -140,6 +140,54 @@ const Wrapper = styled.div`
   .sc-track-note {
     margin-bottom: 8px;
   }
+  /* Popups / drawers: one tight lane per cell, the cell name inline above
+     its tracks and the track cards stripped to a one-line header. */
+  .sc-compact-tracks {
+    .sc-cell-block {
+      margin-bottom: 4px;
+      padding-left: 6px;
+      border-left-width: 3px;
+    }
+    .sc-cell-title {
+      margin: 0 0 2px;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 20px;
+    }
+    .sc-cell-title .ant-tag {
+      margin-inline-end: 0;
+      padding-inline: 4px;
+      font-size: 11px;
+      line-height: 16px;
+    }
+    .sc-cell-title .ant-btn-sm {
+      height: 20px;
+      padding-block: 0;
+    }
+    .sc-track-note {
+      margin-bottom: 2px;
+    }
+    .sc-track-lane + .sc-track-lane {
+      margin-top: 2px;
+    }
+    .ant-card-small > .ant-card-head {
+      min-height: 22px;
+      padding: 0 6px;
+      font-size: 11px;
+    }
+    .ant-card-small > .ant-card-head .ant-card-head-title,
+    .ant-card-small > .ant-card-head .ant-card-extra {
+      padding: 1px 0;
+    }
+    .ant-card-small > .ant-card-head .ant-btn-sm {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+    }
+    .ant-card-small > .ant-card-body {
+      padding: 0 4px;
+    }
+  }
   .sc-row-labels {
     display: flex;
     flex-direction: column;
