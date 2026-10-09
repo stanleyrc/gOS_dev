@@ -1566,7 +1566,7 @@
         "filter-tag": "Picked events: {{count}} sites",
         "strong-only": "Strong events only",
         "driver-evidence": "Driver evidence",
-        "driver-evidence-help": "SNVs only. Points from the cancer-gene lists (OncoKB / COSMIC CGC 2, intOGen GBM-LGG 1), the variant (truncating or splice 2; missense: SIFT deleterious 1, PolyPhen damaging 1; truncating in a tumour suppressor 1), COSMIC (same change in ≥ 3 samples 2, ≥ 1 sample 1; ≥ 10 samples at the codon 1) and the cohort (gene mutated in ≥ 2 patients 1). likely ≥ 4, possible 2–3. Hover a tag for the evidence. Independent of the OncoKB tier.",
+        "driver-evidence-help": "SNVs only. Points from the cancer-gene lists (OncoKB / COSMIC CGC 2, intOGen GBM-LGG 1), the variant (truncating or splice 2; missense: SIFT deleterious 1, PolyPhen damaging 1; truncating in a tumour suppressor 1), COSMIC (same change in ≥ 3 samples 2, ≥ 1 sample 1; ≥ 10 samples at the codon 1; not counted when SIFT and PolyPhen both call it benign, as such changes are usually polymorphisms), the cohort (gene mutated in ≥ 2 patients 1) and −2 for HLA genes and frequently mutated long genes (FLAGS: MUC16, MUC4, TTN, …) outside the OncoKB list. likely ≥ 4, possible 2–3. Hover a tag for the evidence. Independent of the OncoKB tier.",
         "strong-help": "Hide likely noise: deletions must be in at least 10% of tumor cells, other events in at least 3 cells and 5% of tumor cells. Turn off to see every event.",
         "show-on-tree": "Show {{count}} as strips on the tree",
         "clade-score": "Clade F1",
