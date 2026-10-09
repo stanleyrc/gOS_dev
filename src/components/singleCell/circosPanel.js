@@ -14,6 +14,7 @@ import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import { cnColorer } from "../../helpers/singleCell/matrix";
 import { medianCnRow } from "../../helpers/singleCell/cellFiles";
 import HintLine from "./hintLine";
+import usePlotTheme from "./usePlotTheme";
 
 const { Text } = Typography;
 const genomeCache = new Map();
@@ -61,6 +62,7 @@ function junctionsOf(genome, toPlace) {
  * in the heatmap palette; centre: junction arcs by type.
  */
 export default function CircosPanel() {
+  const pt = usePlotTheme();
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { cells, cn, selectedCellIds, hoveredCellId, cloneColors, palette } = useSelector((s) => s.SingleCell);
@@ -224,8 +226,8 @@ export default function CircosPanel() {
           <svg width={size} height={size} style={{ display: "block", margin: "0 auto" }}>
             <defs>
               <radialGradient id="circos-bg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity={0} />
-                <stop offset="100%" stopColor="#f0f0f0" stopOpacity={0.6} />
+                <stop offset="0%" stopColor={pt.panel} stopOpacity={0} />
+                <stop offset="100%" stopColor={pt.empty} stopOpacity={pt.mode === "dark" ? 0.35 : 0.6} />
               </radialGradient>
             </defs>
             <g transform={`translate(${R},${R})`}>

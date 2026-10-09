@@ -53,6 +53,7 @@ import {
   annotationColors,
 } from "../../helpers/singleCell/matrix";
 import Wrapper from "./index.style";
+import { currentPlotTheme } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
@@ -626,7 +627,7 @@ export default function CellHeatmapPanel() {
     out.height = Math.ceil(height * pixelRatio);
     const ctx = out.getContext("2d");
     ctx.scale(pixelRatio, pixelRatio);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = currentPlotTheme().panel;
     ctx.fillRect(0, 0, base.width, height);
     holder.querySelectorAll("canvas").forEach((c) => {
       const r = c.getBoundingClientRect();
