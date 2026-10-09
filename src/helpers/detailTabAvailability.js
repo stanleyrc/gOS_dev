@@ -103,6 +103,9 @@ export const getDetailTabAvailability = (state = {}) => {
     13: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
     // Tab 14: ecDNA / amplicon walks (walks.json from sc_export_walks)
     14: state.SingleCell?.walks?.status === "ok" && (state.SingleCell?.walks?.data?.walks || []).length > 0,
+    // Tab 15: precomputed evidence (read slices, targeted genotypes, S-phase, telomeres, pipeline status);
+    // shown for every single-cell patient so "not yet computed" and the status table are reachable
+    15: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
   };
 };
 
