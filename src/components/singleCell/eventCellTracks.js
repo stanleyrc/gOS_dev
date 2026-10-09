@@ -37,26 +37,31 @@ function paddedEventDomains(chromoBins, location, pad, genomeLength) {
 /**
  * Plots tab of a filtered event on a single-cell patient: the tracks of one
  * cell carrying the event (or several, with the toggle) around its locus.
+ * Also used by the RNA fusion popup with a pseudo record (fusionPlotRecord):
+ * `rnaFusion` then supplies the RNA reads (of the shown cells), `focusCell`
+ * picks the cell shown, `cellNotes` (Map cell -> text) annotates the picker
+ * and `defaultPad` sets the initial padding.
  */
-function SingleCellEventTracks({ record }) {
+export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = null, cellNotes = null, defaultPad = DEFAULT_PAD }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength, domains } = useSelector((state) => state.Settings);
   const genesList = useSelector((state) => state.Genes?.list || []);
   const { cells, cloneColors } = useSelector((state) => state.SingleCell);
   const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
-  const [pad, setPad] = useState(DEFAULT_PAD);
+  const [pad, setPad] = useState(defaultPad);
   const [multi, setMulti] = useState(false);
   const [one, setOne] = useState(null);
   const [many, setMany] = useState([]);
-  const rnaSupport = useRnaSupport(record, multi ? many : one ? [one] : []);
+  const rnaSupport = useRnaSupport(record, multi ? many : one ? [one] : [], rnaFusion);
   // reads open by default where there is something to see at base resolution (SNVs, fusion breakpoints)
   const [showIgv, setShowIgv] = useState(() => Boolean(record?.Variant_g && /^\w+:\d+/.test(`${record.Variant_g}`)) || Boolean(record?.fusion_gene_coords && record.fusion_gene_coords !== "None"));
   const [trackRef, trackWidth] = useContainerWidth(900);
   useEffect(() => {
-    setOne(carriers[0] || null);
-    setMany(carriers.slice(0, DEFAULT_MULTI));
-  }, [carriers]);
+    const first = focusCell && carriers.includes(focusCell) ? focusCell : carriers[0] || null;
+    setOne(first);
+    setMany(first ? [first, ...carriers.filter((c) => c !== first)].slice(0, DEFAULT_MULTI) : []);
+  }, [carriers, focusCell]);
 
   const location = record?.actualLocation || record?.location;
   useEffect(() => {
@@ -71,6 +76,7 @@ function SingleCellEventTracks({ record }) {
       <span>
         {cloneOf.get(id) != null && <span className="sc-swatch" style={{ background: cloneColors[cloneOf.get(id)] }} />}
         {id}
+        {cellNotes?.get(id) ? <Text type="secondary"> · {cellNotes.get(id)}</Text> : null}
       </span>
     ),
   }));
