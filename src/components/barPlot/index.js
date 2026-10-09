@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import { measureText, mutationCatalogMetadata } from "../../helpers/utility";
 import Wrapper from "./index.style";
+import { readableInk } from "../../helpers/singleCell/contrast";
 
 const margins = {
   gap: 0,
@@ -426,8 +427,8 @@ class BarPlot extends Component {
                         0.68 * margins.barLengend
                       }
                       className="legendBarText variant-legend"
-                      fill={"#FFF"}
-                      stroke={"#FFF"}
+                      fill={readableInk(d.color)}
+                      stroke={readableInk(d.color)}
                       strokeWidth={0.5}
                       transform={`rotate(${d.distance > 0 ? 0 : -45})`}
                     >
