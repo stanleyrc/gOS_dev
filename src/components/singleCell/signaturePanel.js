@@ -14,6 +14,8 @@ import { rowMap } from "../../helpers/singleCell/matrix";
 import useContainerWidth from "./useContainerWidth";
 import signatureMetadata from "../../translations/en/signatures.json";
 import { SC_GUTTER_INNER } from "./density";
+import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
 const COSMIC_FILE = "COSMIC_v3.4_SBS_GRCh38.txt";
@@ -46,7 +48,7 @@ export function AetiologyLegend({ rows }) {
   );
   if (!sigs.length) return null;
   return (
-    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "14px 1fr", columnGap: 6, rowGap: 2, fontSize: 12 }}>
+    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "14px 1fr", columnGap: 6, rowGap: 2, fontSize: 13 }}>
       {sigs.map((sig) => (
         <React.Fragment key={sig}>
           <span style={{ width: 12, height: 12, marginTop: 3, background: signatureColor(sig), display: "inline-block", borderRadius: 2 }} />
@@ -80,7 +82,7 @@ export function ActivityBars({ rows, width }) {
         let x = labelWidth;
         return (
           <g key={row.name} transform={`translate(0, ${i * (BAR_HEIGHT + 6) + 2})`}>
-            <text x={labelWidth - 6} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" fontSize={11}>
+            <text x={labelWidth - 6} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.tick}>
               {row.name.length > 22 ? `${row.name.slice(0, 21)}…` : row.name}
             </text>
             {row.activities.map((a) => {
@@ -92,14 +94,14 @@ export function ActivityBars({ rows, width }) {
               );
               const label =
                 w > 34 ? (
-                  <text key={`${a.signature}-l`} x={x + w / 2} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff" pointerEvents="none">
+                  <text key={`${a.signature}-l`} x={x + w / 2} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">
                     {a.signature}
                   </text>
                 ) : null;
               x += w;
               return [rect, label];
             })}
-            <text x={labelWidth + barWidth + 6} y={BAR_HEIGHT / 2} dy="0.35em" fontSize={11} fill="#8c8c8c">
+            <text x={labelWidth + barWidth + 6} y={BAR_HEIGHT / 2} dy="0.35em" fontSize={TYPE.tick} fill={INK.muted}>
               {`n=${row.n}`}
             </text>
           </g>
@@ -120,12 +122,12 @@ export function Profile({ counts, reconstruction, width }) {
       {Object.entries(SBS_COLORS).map(([sub, color], k) => (
         <g key={sub}>
           <rect x={left + k * 16 * w} y={0} width={16 * w - 1} height={8} fill={color} />
-          <text x={left + (k + 0.5) * 16 * w} y={PROFILE_HEIGHT - 2} textAnchor="middle" fontSize={10}>
+          <text x={left + (k + 0.5) * 16 * w} y={PROFILE_HEIGHT - 2} textAnchor="middle" fontSize={11}>
             {sub}
           </text>
         </g>
       ))}
-      <text x={left - 4} y={y(max)} dy="0.35em" textAnchor="end" fontSize={9} fill="#8c8c8c">
+      <text x={left - 4} y={y(max)} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted}>
         {Math.round(max)}
       </text>
       {SBS96.map((ch, i) => (
@@ -278,7 +280,7 @@ export default function SignaturePanel() {
       title={
         <Space>
           <BarChartOutlined />
-          {t("components.single-cell.signatures.title")}
+          {t("components.single-cell.signatures.title")}<Provenance id="signatureSets" />
           <Text type="secondary">
             {signatures.status === "ok"
               ? t("components.single-cell.signatures.reference", { version: signatures.data.cosmic_version, genome: signatures.data.genome })

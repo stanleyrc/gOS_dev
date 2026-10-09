@@ -124,7 +124,7 @@ function SingleCellEventTracks({ record }) {
         </div>
       )}
       <div ref={trackRef} style={{ padding: "0 8px", position: "relative" }}>
-        <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.event-cells.genes")}</Text>
+        <Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.event-cells.genes")}</Text>
         {genesList.length > 0 && (
           <div style={{ position: "relative", height: GENES_H }}>
             <GenesPlot {...{ width: Math.max(200, trackWidth - 16), height: GENES_H, domains, genesList }} />

@@ -460,3 +460,65 @@ html[data-theme="dark"] svg.plot-container text {
 .sc-row-picked td {
   background: rgba(22, 119, 255, 0.08) !important;
 }
+
+/* provenance hovers (components/singleCell/hintLine.js Provenance) */
+.sc-prov-overlay {
+  max-width: 460px !important;
+}
+.sc-prov-overlay .ant-tooltip-inner {
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.sc-prov-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: normal;
+}
+.sc-prov-help {
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+.sc-prov-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 6px;
+}
+.sc-prov-key {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  padding-top: 1px;
+}
+.sc-prov-badge {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+.sc-prov-browser {
+  color: #91caff;
+}
+.sc-prov-backend {
+  color: #d3adf7;
+}
+.sc-prov-both {
+  color: #87e8de;
+}
+.sc-prov-underline {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--sc-faint, #8c8c8c);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.sc-prov-icon {
+  margin-left: 2px;
+}

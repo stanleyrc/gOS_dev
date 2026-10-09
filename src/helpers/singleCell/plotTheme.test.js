@@ -57,8 +57,18 @@ describe("plotTheme tokens", () => {
         values.forEach((v) => expect(css).toContain(`="${v}" i]`));
       })
     );
-    css.split("\n").forEach((line) => {
-      if (line.includes("{")) expect(line.startsWith('html[data-theme="dark"]')).toBe(true);
-    });
+    const ruleLines = css.split("\n").filter((line) => line.includes("{"));
+    expect(ruleLines.every((line) => line.startsWith('html[data-theme="dark"]'))).toBe(true);
+  });
+});
+
+describe("INK (light SVG attribute tokens)", () => {
+  const { INK, SVG_REMAP: REMAP, plotTheme: theme } = require("./plotTheme");
+  it("re-tints every INK colour used for SVG text and lines in dark mode", () => {
+    const listed = (role) => Object.values(REMAP[role]).flat().map((v) => v.toLowerCase());
+    ["text", "textSecondary", "muted", "faint"].forEach((k) => expect(listed("textFill")).toContain(INK[k].toLowerCase()));
+    ["panel", "panelAlt", "empty", "border"].forEach((k) => expect(listed("shapeFill")).toContain(INK[k].toLowerCase()));
+    ["grid", "border", "axis", "panel"].forEach((k) => expect(listed("stroke")).toContain(INK[k].toLowerCase()));
+    expect(INK).toBe(theme("light"));
   });
 });

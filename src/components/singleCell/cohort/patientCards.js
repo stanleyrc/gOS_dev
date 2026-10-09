@@ -6,6 +6,7 @@ import { buildPatientReport } from "../../../helpers/singleCell/patientReport";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { signatureColorOf } from "../signaturePanel";
 import { SC_GUTTER_INNER } from "../density";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -50,7 +51,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors }) {
       <Text>{t("components.single-cell.cohort.card-cells", { tumor: report.nTumorCells, normal: report.nNormalCells, clones: report.clones.length })}</Text>
       <CloneBar counts={cloneCounts} colors={cloneColors} />
       <div>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.card-clonal")}</Text>
+        <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-clonal")}</Text>
         <div>
           {report.clonal.length ? (
             report.clonal.slice(0, 8).map((d) => (
@@ -63,7 +64,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors }) {
         </div>
       </div>
       <div>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.card-subclonal", { count: report.subclonal.length })}</Text>
+        <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-subclonal", { count: report.subclonal.length })}</Text>
         <div>
           {report.subclonal.slice(0, 8).map((d) => (
             <Tag key={d.label} style={{ borderColor: CLASS_COLORS[d.class], color: CLASS_COLORS[d.class], marginBottom: 2 }}>{`${d.gene} ${d3.format(".0%")(d.fraction)}`}</Tag>
@@ -71,12 +72,12 @@ export function PatientCardBody({ report, cloneCounts, cloneColors }) {
         </div>
       </div>
       <div>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.card-signatures")}</Text>
+        <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-signatures")}</Text>
         <SigBar items={report.signatures.all} />
-        <Text type="secondary" style={{ fontSize: 11 }}>{report.signatures.all.slice(0, 3).map((x) => `${x.signature} ${d3.format(".0%")(x.share)}`).join(" · ")}</Text>
+        <Text type="secondary" style={{ fontSize: 12.5 }}>{report.signatures.all.slice(0, 3).map((x) => `${x.signature} ${d3.format(".0%")(x.share)}`).join(" · ")}</Text>
       </div>
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        {t("components.single-cell.cohort.card-burden", { truncal: report.burden.truncal, subclonal: report.burden.subclonal, private: report.burden.private })}
+      <Text type="secondary" style={{ fontSize: 13 }}>
+        <Provenance id="burden">{t("components.single-cell.cohort.card-burden", { truncal: report.burden.truncal, subclonal: report.burden.subclonal, private: report.burden.private })}</Provenance>
       </Text>
     </Space>
   );

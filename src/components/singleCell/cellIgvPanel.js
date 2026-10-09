@@ -11,6 +11,7 @@ import { casePath } from "../../redux/singleCell/loaders";
 import { domainToLoci, lociToDomains } from "../../helpers/igvUtil";
 import { toGlobal } from "../../helpers/singleCell/matrix";
 import Wrapper from "./index.style";
+import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
 const WINDOW = 60; // bp either side of the clicked site
@@ -194,7 +195,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
         size="small"
         title={
           <Space wrap>
-            <span>{t("components.single-cell.igv.title")}</span>
+            <span>{t("components.single-cell.igv.title")}</span><Provenance id="reads" />
             <Text type="secondary">
               {view.label} · {cellIds.join(", ")}
             </Text>

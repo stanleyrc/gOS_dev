@@ -10,7 +10,8 @@ import { branchGains, cladeRateTest, privateCountsPerRow } from "../../helpers/s
 import { callableMbOf } from "../../helpers/singleCell/cohortStats";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { formatP } from "../../helpers/singleCell/tests";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
+import { INK } from "../../helpers/singleCell/plotTheme";
 
 const MIN_CELLS = 3;
 
@@ -59,7 +60,7 @@ export default function BranchRatesCard() {
   const select = (r, e) => dispatch(singleCellActions.updateSelection(e?.shiftKey || e?.metaKey ? [...new Set([...selectedCellIds, ...r.ids])] : r.ids));
   const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : "–");
   const columns = [
-    { title: t("components.single-cell.rates.clade"), key: "clade", width: 150, render: (_, r) => <Space size={4}>{r.clone != null && <span style={{ width: 10, height: 10, borderRadius: 5, background: cloneColors[r.clone] || "#8c8c8c", display: "inline-block" }} />}<span>{r.clone != null ? r.clone : t("components.single-cell.rates.mixed", { count: r.nClones })}</span></Space> },
+    { title: t("components.single-cell.rates.clade"), key: "clade", width: 150, render: (_, r) => <Space size={4}>{r.clone != null && <span style={{ width: 10, height: 10, borderRadius: 5, background: cloneColors[r.clone] || INK.faint, display: "inline-block" }} />}<span>{r.clone != null ? r.clone : t("components.single-cell.rates.mixed", { count: r.nClones })}</span></Space> },
     { title: t("components.single-cell.cohort.cells"), dataIndex: "cells", width: 70, sorter: (a, b) => a.cells - b.cells },
     { title: t("components.single-cell.rates.gained"), dataIndex: "gained", width: 90, sorter: (a, b) => a.gained - b.gained },
     { title: t("components.single-cell.rates.gained-mb"), dataIndex: "gainedPerMb", width: 100, sorter: (a, b) => (a.gainedPerMb || 0) - (b.gainedPerMb || 0), render: (v) => fmt(v, 3) },
@@ -69,7 +70,7 @@ export default function BranchRatesCard() {
     { title: "p", dataIndex: "p", width: 90, sorter: (a, b) => (a.p || 1) - (b.p || 1), render: (p, r) => <Space size={4}><span>{formatP(p)}</span>{verdict(r)}</Space> },
   ];
   return (
-    <Card size="small" title={<Space><RiseOutlined />{t("components.single-cell.rates.title")}</Space>}>
+    <Card size="small" title={<Space><RiseOutlined />{t("components.single-cell.rates.title")}<Provenance id="branchRates" /></Space>}>
       <Table size="small" className="sc-events-table" columns={columns} dataSource={rows} pagination={{ pageSize: 12, size: "small", hideOnSinglePage: true }} onRow={(r) => ({ onClick: (e) => select(r, e), style: { cursor: "pointer" } })} />
       <HintLine text={t("components.single-cell.rates.help")} />
     </Card>

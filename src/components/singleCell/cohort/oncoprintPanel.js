@@ -8,7 +8,8 @@ import { EVENT_CLASS_ORDER, oncoprintMatrix } from "../../../helpers/singleCell/
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -51,7 +52,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
   return (
     <Card
       size="small"
-      title={<Space><TableOutlined />{t("components.single-cell.cohort.oncoprint-title")}</Space>}
+      title={<Space><TableOutlined />{t("components.single-cell.cohort.oncoprint-title")}<Provenance id="oncoprint" /></Space>}
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-tier")}</Text>
@@ -71,8 +72,8 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
             return (
               <g key={p} style={{ cursor: "pointer" }} onClick={() => onOpen(summaryOf(p))}>
                 <rect x={x + 4} y={32 - h} width={cellW - 8} height={h} fill="#BAB0AC" />
-                <text x={x + cellW / 2} y={30 - h - 3} textAnchor="middle" fontSize={11} fill="#595959">{perPatient[p]}</text>
-                <text x={x + cellW / 2} y={top - 10} textAnchor="middle" fontSize={FONT.label} fontWeight="600" fill="#262626">
+                <text x={x + cellW / 2} y={30 - h - 3} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{perPatient[p]}</text>
+                <text x={x + cellW / 2} y={top - 10} textAnchor="middle" fontSize={FONT.label} fontWeight="600" fill={INK.text}>
                   {p}
                 </text>
               </g>
@@ -82,11 +83,11 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
             const y = top + i * CELL_H;
             return (
               <g key={g.gene}>
-                <text x={GENE_W - 8} y={y + CELL_H / 2} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill="#262626">
+                <text x={GENE_W - 8} y={y + CELL_H / 2} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.text}>
                   {g.gene.length > 16 ? `${g.gene.slice(0, 15)}…` : g.gene}
                   <title>{g.gene}</title>
                 </text>
-                <text x={GENE_W - 8} y={y + CELL_H / 2} dy="0.35em" textAnchor="start" fontSize={10} fill="#8c8c8c" transform={`translate(${cellW * patients.length + 14},0)`}>
+                <text x={GENE_W - 8} y={y + CELL_H / 2} dy="0.35em" textAnchor="start" fontSize={11} fill={INK.muted} transform={`translate(${cellW * patients.length + 14},0)`}>
                   {`${g.nPatients}/${patients.length}`}
                 </text>
                 {patients.map((p, j) => {
@@ -105,7 +106,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                         return onOpen(summaryOf(p));
                       }}
                     >
-                      <rect x={x + 2} y={y + 2} width={cellW - 4} height={CELL_H - 4} fill="#f5f5f5" rx={2} />
+                      <rect x={x + 2} y={y + 2} width={cellW - 4} height={CELL_H - 4} fill={INK.panelAlt} rx={2} />
                       {classes.map((c, k) => {
                         const e = cell.all.filter((a) => a.class === c).sort((a, b) => (b.fraction ?? 0) - (a.fraction ?? 0))[0];
                         return (
@@ -113,7 +114,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                         );
                       })}
                       {cell && cell.fraction != null && (
-                        <text x={x + cellW / 2} y={y + CELL_H / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill={cell.fraction > 0.5 ? "#fff" : "#262626"} pointerEvents="none">
+                        <text x={x + cellW / 2} y={y + CELL_H / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill={cell.fraction > 0.5 ? "#fff" : "#262626"} pointerEvents="none">
                           {d3.format(".0%")(cell.fraction)}
                         </text>
                       )}

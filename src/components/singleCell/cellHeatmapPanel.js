@@ -6,7 +6,7 @@ import { ApartmentOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import BranchSnvDrawer from "./branchSnvDrawer";
 import SnvSiteDrawer from "./snvSiteDrawer";
@@ -698,12 +698,12 @@ export default function CellHeatmapPanel() {
         title={
           <Space wrap>
             <ApartmentOutlined />
-            <span>{t("components.single-cell.heatmap.title")}</span>
+            <span>{t("components.single-cell.heatmap.title")}</span><Provenance id={heatmapType === "snv" ? "snvHeatmap" : heatmapType === "junctions" ? "junctionHeatmap" : "cnHeatmap"} />
             <Text type="secondary">
               {t("components.single-cell.heatmap.cell-count", { count: nRows })}
             </Text>
             <Text type="secondary" className="sc-hint">
-              · {treeNote}
+              · <Provenance id="phylogeny">{treeNote}</Provenance>
             </Text>
             {missingGenomes > 0 && (
               <span className="sc-note">

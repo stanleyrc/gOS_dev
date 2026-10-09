@@ -9,6 +9,7 @@ import PhyloSignalPanel from "./phyloSignalPanel";
 import SubclonalFindingsTable from "./subclonalFindingsTable";
 import ClonalAmpliconView, { cnAt } from "./clonalAmpliconView";
 import { CloneCarrierBars, GeneCnScatter, SegmentCorrelation } from "./patientPanels";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const PAD = 1.5e6;
@@ -189,7 +190,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
         <Col span={24}>
           <Card
             size="small"
-            title={<Space><BranchesOutlined />Amplicon landscape <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3A–B</Text></Space>}
+            title={<Space><BranchesOutlined />Amplicon landscape <Provenance id="figLandscape" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3A–B</Text></Space>}
             extra={
               <Space wrap size={10}>
                 <Space size={4}><Switch size="small" checked={curatedOnly} onChange={setCuratedOnly} /><Text>Curated walks</Text></Space>
@@ -218,7 +219,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
           </Card>
         </Col>
         <Col xs={24} xxl={11}>
-          <Card size="small" title={<Space><NodeIndexOutlined />Inherited or redrawn? <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3E, every amplicon</Text></Space>}>
+          <Card size="small" title={<Space><NodeIndexOutlined />Inherited or redrawn? <Provenance id="figPhyloSignal" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3E, every amplicon</Text></Space>}>
             <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
             <Text type="secondary" style={{ fontSize: 12 }}>
               High z: copies follow the tree (cells inherit their parent&apos;s load, as for EGFR ecDNA in BWH70); near the controls: redrawn each division. Click an amplicon to open it below.
@@ -226,7 +227,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
           </Card>
         </Col>
         <Col xs={24} xxl={13}>
-          <Card size="small" title={<Space><ApartmentOutlined />Subclonal findings <Text type="secondary" style={{ fontWeight: 400 }}>· new: driver events and amplicons in part of a tumour, following the tree</Text></Space>}>
+          <Card size="small" title={<Space><ApartmentOutlined />Subclonal findings <Provenance id="figSubclonal" /> <Text type="secondary" style={{ fontWeight: 400 }}>· new: driver events and amplicons in part of a tumour, following the tree</Text></Space>}>
             <SubclonalFindingsTable
               findings={findings}
               cloneColors={cloneColors}
@@ -239,7 +240,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
           <div ref={patientRef} style={{ scrollMarginTop: 12 }} />
           <Card
             size="small"
-            title={<Space><BarChartOutlined />Clonal amplicon view <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B / 5B / 5D</Text></Space>}
+            title={<Space><BarChartOutlined />Clonal amplicon view <Provenance id="figClonalAmplicon" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B / 5B / 5D</Text></Space>}
             extra={
               <Space wrap size={8}>
                 <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); setMarked(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
