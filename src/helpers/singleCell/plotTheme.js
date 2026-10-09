@@ -166,7 +166,9 @@ export function svgRemapCss() {
   const dark = plotTheme("dark");
   const root = 'html[data-theme="dark"]';
   const rules = [];
-  const sel = (els, attr, value) => els.map((el) => `${root} svg ${el}[${attr}="${value}" i]`).join(",\n");
+  // svg inside a .sc-light-island (igv.js, which has no dark theme) keeps its light colours
+  const svg = "svg:not(.sc-light-island svg)";
+  const sel = (els, attr, value) => els.map((el) => `${root} ${svg} ${el}[${attr}="${value}" i]`).join(",\n");
   Object.entries(SVG_REMAP.textFill).forEach(([token, values]) => {
     values.forEach((v) => rules.push(`${sel(["text", "tspan"], "fill", v)} { fill: ${dark[token]}; }`));
   });
@@ -177,7 +179,7 @@ export function svgRemapCss() {
     values.forEach((v) => rules.push(`${sel(SHAPES, "stroke", v)} { stroke: ${dark[token]}; }`));
   });
   // text without any fill inherits black in SVG
-  rules.push(`${root} svg text:not([fill]), ${root} svg tspan:not([fill]) { fill: ${dark.text}; }`);
+  rules.push(`${root} ${svg} text:not([fill]), ${root} ${svg} tspan:not([fill]) { fill: ${dark.text}; }`);
   return rules.join("\n");
 }
 

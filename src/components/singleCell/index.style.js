@@ -385,6 +385,20 @@ const Wrapper = styled.div`
     min-height: 320px;
     margin-top: 8px;
   }
+  /* igv.js has no dark theme: it sits in a deliberately light, framed inset
+     (the dark SVG re-tint skips .sc-light-island, see plotTheme.svgRemapCss) */
+  .sc-light-island {
+    border: 1px solid var(--sc-border-soft, #f0f0f0);
+    border-radius: 6px;
+    padding: 4px 6px;
+  }
+  html[data-theme="dark"] & .sc-light-island {
+    background: #ffffff;
+    color: rgba(0, 0, 0, 0.88);
+    color-scheme: light;
+    border-color: var(--sc-border, #424242);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+  }
   .sc-level {
     padding: 0 6px;
     border: 1px solid var(--sc-border-soft, #f0f0f0);

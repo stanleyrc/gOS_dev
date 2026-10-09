@@ -314,7 +314,7 @@ export default function ReadSlicePanel() {
         {error && <Alert type="error" showIcon message={error} />}
         <Row gutter={12}>
           <Col xs={24} xl={site ? 13 : 24}>
-            <div ref={containerRef} style={{ minHeight: 200 }} />
+            <div ref={containerRef} className="sc-light-island" style={{ minHeight: 200 }} />
             {!tracks.length && <Text type="secondary">No reads to show for this choice.</Text>}
           </Col>
           {site && (
