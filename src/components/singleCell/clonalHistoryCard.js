@@ -18,6 +18,7 @@ import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { signatureColorOf } from "./signaturePanel";
 import { Swatches } from "./cohort/charts";
+import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -176,7 +177,7 @@ export default function ClonalHistoryCard() {
             ))}
         </svg>
         <Swatches style={{ marginTop: 6 }} items={Object.entries(CLASS_COLORS).filter(([k]) => k !== "other" && placed.some((d) => d.cls === k)).map(([k, c]) => ({ key: k, color: c, label: t(`components.single-cell.cohort.class-${k}`) }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.history.help", { count: placed.length })}</Text>
+        <HintLine text={t("components.single-cell.history.help", { count: placed.length })} />
       </div>
     </Card>
   );

@@ -17,6 +17,8 @@ import CohortDosagePanel from "./cohortDosagePanel";
 import CohortStateClonePanel from "./cohortStateClonePanel";
 import CohortGeneSetPanel from "./cohortGeneSetPanel";
 import CohortDePanel from "./cohortDePanel";
+import HintLine from "../hintLine";
+import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -160,7 +162,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
 
   return (
     <div ref={ref}>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <Space wrap>
             {progress < 100 && <Progress percent={progress} size="small" style={{ width: 160 }} />}
@@ -227,7 +229,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         <Col xs={24} xl={12}>
           <Card size="small" title={<Space><TagsOutlined />{t("components.single-cell.cohort.rna-markers", { field: chosenField })}</Space>}>
             {sharedMarkers.length ? (
-              <Row gutter={[12, 12]}>
+              <Row gutter={SC_GUTTER_INNER}>
                 {sharedMarkers.map((lv) => (
                   <Col key={lv.level} xs={24} md={12}>
                     <Text strong>{lv.level}</Text>
@@ -244,7 +246,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
             ) : (
               <Text type="secondary">{t("components.single-cell.cohort.rna-markers-empty")}</Text>
             )}
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.rna-markers-help")}</Text>
+            <HintLine text={t("components.single-cell.cohort.rna-markers-help")} />
           </Card>
         </Col>
         <Col span={24}>
@@ -289,7 +291,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
                     columns={[{ title: t("components.single-cell.cohort.patient"), dataIndex: "patient", width: 100 }, ...(composition?.levels || []).map((l) => ({ title: l, key: l, render: (_, r) => (r[l] ? `${d3.mean(r[l]).toFixed(2)} (${d3.format(".0%")(r[l].filter((v) => v > 0).length / r[l].length)})` : "–") }))]}
                   />
                 )}
-                <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.rna-gene-help")}</Text>
+                <HintLine text={t("components.single-cell.cohort.rna-gene-help")} />
               </>
             ) : (
               <Text type="secondary">{t("components.single-cell.cohort.rna-gene-intro")}</Text>

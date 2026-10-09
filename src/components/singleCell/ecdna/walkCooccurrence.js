@@ -10,6 +10,8 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import { spearman, walkCombinations } from "../../../helpers/singleCell/walks";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { Swatches } from "../cohort/charts";
+import HintLine from "../hintLine";
+import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
 
@@ -56,7 +58,7 @@ export function WalkUpset({ walks, cellIds, colorOf }) {
             </g>
           ))}
         </svg>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.upset-help")}</Text>
+        <HintLine text={t("components.single-cell.ecdna.upset-help")} />
       </div>
     </Card>
   );
@@ -106,7 +108,7 @@ export function WalkScatter({ walks, cellIds, colorOf }) {
           <text transform={`translate(12 ${(M.top + h - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={11} fill={colorOf(B.id)} fontWeight={600}>{`${B.label} copies`}</text>
         </svg>
         <Swatches items={[...new Set(pts.map((q) => q.clone).filter((c) => c != null))].map((c) => ({ key: c, color: cloneColors[c], label: c }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.scatter-help")}</Text>
+        <HintLine text={t("components.single-cell.ecdna.scatter-help")} />
       </div>
     </Card>
   );
@@ -114,7 +116,7 @@ export function WalkScatter({ walks, cellIds, colorOf }) {
 
 export default function WalkCooccurrence(props) {
   return (
-    <Row gutter={[16, 16]}>
+    <Row gutter={SC_GUTTER}>
       <Col xs={24} xl={14}><WalkUpset {...props} /></Col>
       <Col xs={24} xl={10}><WalkScatter {...props} /></Col>
     </Row>

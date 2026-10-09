@@ -7,6 +7,7 @@ import settingsActions from "../../redux/settings/actions";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { PatientCardBody } from "./cohort/patientCards";
 import { useIsSingleCellPatient } from "./eventsToHeatmap";
+import { SC_GUTTER_INNER } from "./density";
 
 /**
  * Single-cell summary on the patient's Overall tab: the same card as the
@@ -46,7 +47,7 @@ export default function ScPatientOverview() {
         </Space>
       }
     >
-      <Row gutter={[24, 12]}>
+      <Row gutter={SC_GUTTER_INNER}>
         <Col xs={24} lg={8}>
           <Space size="large" wrap>
             <Statistic title={t("components.single-cell.qc.stat-cells")} value={report.nTumorCells} suffix={`+ ${report.nNormalCells} normal`} />

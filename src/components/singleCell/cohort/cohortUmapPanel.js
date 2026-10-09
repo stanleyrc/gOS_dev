@@ -11,6 +11,7 @@ import { tryGet } from "../../../redux/singleCell/loaders";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { Swatches, patientColor } from "./charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const HEIGHT = 520;
@@ -121,7 +122,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
         ) : (
           <Swatches items={levels.map((l) => ({ key: l, color: colors[l], label: l }))} />
         )}
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.umap-help")}</Text>
+        <HintLine text={t("components.single-cell.cohort.umap-help")} />
       </div>
     </Card>
   );

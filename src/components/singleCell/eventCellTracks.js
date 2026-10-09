@@ -12,6 +12,7 @@ import settingsActions from "../../redux/settings/actions";
 import { locationToDomains } from "../../helpers/utility";
 import { useIsSingleCellPatient } from "./eventsToHeatmap";
 import { padDomains } from "../../helpers/singleCell/eventDomains";
+import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
@@ -118,7 +119,7 @@ function SingleCellEventTracks({ record }) {
       </Space>
       {showIgv && igvView && Number.isFinite(igvView.position) && (
         <div>
-          <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.event-cells.igv-help", { count: shown.length })}</Text>
+          <HintLine text={t("components.single-cell.event-cells.igv-help", { count: shown.length })} />
           <CellIgvPanel view={igvView} embedded />
         </div>
       )}
@@ -180,7 +181,7 @@ function SingleCellEventReads({ record }) {
           maxTagCount="responsive"
           showSearch
         />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.event-cells.igv-help", { count: picked.length })}</Text>
+        <HintLine text={t("components.single-cell.event-cells.igv-help", { count: picked.length })} />
       </Space>
       {view ? <CellIgvPanel view={view} embedded /> : <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-position")} />}
     </Space>

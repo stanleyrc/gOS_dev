@@ -8,6 +8,7 @@ import { EVENT_CLASS_ORDER, oncoprintMatrix } from "../../../helpers/singleCell/
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -134,7 +135,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
           style={{ marginTop: 6 }}
           items={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ key: c, color: CLASS_COLORS[c], label: t(`components.single-cell.cohort.class-${c}`) }))}
         />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.oncoprint-help")}</Text>
+        <HintLine text={t("components.single-cell.cohort.oncoprint-help")} />
       </div>
     </Card>
   );

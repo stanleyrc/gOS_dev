@@ -20,6 +20,8 @@ import { padDomains } from "../../helpers/singleCell/eventDomains";
 import { signatureColorOf } from "./signaturePanel";
 import { formatP } from "../../helpers/singleCell/tests";
 import signatureMetadata from "../../translations/en/signatures.json";
+import HintLine from "./hintLine";
+import { SC_GUTTER } from "./density";
 
 const { Text, Paragraph, Title } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -263,14 +265,12 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         </Space>
       }
     >
-      <Paragraph style={{ fontSize: 14 }}>{summary.join(" ")}</Paragraph>
-      <Row gutter={[16, 16]}>
+      <Paragraph style={{ fontSize: 13, marginBottom: 6 }}>{summary.join(" ")}</Paragraph>
+      <Row gutter={SC_GUTTER}>
         <Col xs={24} lg={14}>
-          <Title level={5}>{t("components.single-cell.report.clonal-title", { count: report.clonal.length })}</Title>
-          <Text type="secondary">{t("components.single-cell.report.clonal-help", { pct: pct(0.85) })}</Text>
+          <Title level={5} className="sc-section-title">{t("components.single-cell.report.clonal-title", { count: report.clonal.length })} <HintLine inline text={t("components.single-cell.report.clonal-help", { pct: pct(0.85) })} /></Title>
           {report.clonal.length ? report.clonal.map(row) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
-          <Title level={5} style={{ marginTop: 16 }}>{t("components.single-cell.report.subclonal-title", { count: report.subclonal.length })}</Title>
-          <Text type="secondary">{t("components.single-cell.report.subclonal-help")}</Text>
+          <Title level={5} className="sc-section-title">{t("components.single-cell.report.subclonal-title", { count: report.subclonal.length })} <HintLine inline text={t("components.single-cell.report.subclonal-help")} /></Title>
           {report.subclonal.length ? report.subclonal.map(row) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.report.none")} />}
           {report.rare.length > 0 && (
             <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
@@ -279,7 +279,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
           )}
         </Col>
         <Col xs={24} lg={10}>
-          <Title level={5}>{t("components.single-cell.report.clones-title")}</Title>
+          <Title level={5} className="sc-section-title">{t("components.single-cell.report.clones-title")}</Title>
           {report.clones.map((c) => (
             <div key={c.clone} style={{ marginBottom: 8 }}>
               <Space size={6} wrap>
@@ -301,14 +301,14 @@ export default function PatientReportCard({ patient, events, cells, variants, si
               </div>
             </div>
           ))}
-          <Title level={5} style={{ marginTop: 16 }}>{t("components.single-cell.report.burden-title")}</Title>
+          <Title level={5} className="sc-section-title">{t("components.single-cell.report.burden-title")}</Title>
           <Space size="large">
             <Statistic title={t("components.single-cell.snv.category-truncal")} value={report.burden.truncal} />
             <Statistic title={t("components.single-cell.snv.category-subclonal")} value={report.burden.subclonal} />
             <Statistic title={t("components.single-cell.snv.category-private")} value={report.burden.private} />
             <Statistic title={t("components.single-cell.report.snv-drivers")} value={report.snvDrivers.length} />
           </Space>
-          <Title level={5} style={{ marginTop: 16 }}>{t("components.single-cell.report.signatures-title")}</Title>
+          <Title level={5} className="sc-section-title">{t("components.single-cell.report.signatures-title")}</Title>
           <Descriptions size="small" column={1} colon={false}>
             <Descriptions.Item label={t("components.single-cell.report.sig-all", { n: report.signatures.n ?? "" })}><SignatureBar items={report.signatures.all} /></Descriptions.Item>
             <Descriptions.Item label={t("components.single-cell.snv.category-truncal")}><SignatureBar items={report.signatures.truncal} /></Descriptions.Item>

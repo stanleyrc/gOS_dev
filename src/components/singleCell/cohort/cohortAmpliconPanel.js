@@ -9,6 +9,8 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { spearman, walkStats } from "../../../helpers/singleCell/walks";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, Swatches, patientColor } from "./charts";
+import HintLine from "../hintLine";
+import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
 const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
@@ -125,7 +127,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
   if (!summaries.some((s) => files[s.caseReportId]?.walks)) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.amp-empty")} />;
   return (
     <div ref={ref}>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <Card
             size="small"
@@ -167,7 +169,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                 );
               })}
             </div>
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.amp-help")}</Text>
+            <HintLine text={t("components.single-cell.cohort.amp-help")} />
           </Card>
         </Col>
         <Col xs={24} xl={12}>
@@ -210,7 +212,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                 </svg>
               );
             })()}
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.amp-upset-help")}</Text>
+            <HintLine text={t("components.single-cell.cohort.amp-upset-help")} />
           </Card>
         </Col>
         <Col xs={24} xl={12}>
@@ -238,7 +240,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
               ))}
             </div>
             <Swatches items={summaries.map((s, k) => ({ key: s.caseReportId, color: patientColor(k), label: s.caseReportId }))} />
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.amp-scatter-help")}</Text>
+            <HintLine text={t("components.single-cell.cohort.amp-scatter-help")} />
           </Card>
         </Col>
       </Row>
