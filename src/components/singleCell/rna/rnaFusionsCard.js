@@ -7,16 +7,18 @@ import HintLine from "../hintLine";
 import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
 import CellStripCanvas from "./cellStripCanvas";
-import RnaFusionModal, { FusionLabel } from "./rnaFusionModal";
+import RnaFusionModal, { FusionLabel, FusionTierTag } from "./rnaFusionModal";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
-import { filterFusions, fusionStrip, isNonProductive, matchDnaEvent, rnaCellMaps } from "../../../helpers/singleCell/rnaFusions";
+import { compareFusions, filterFusions, fusionStrip, fusionTier, groupFusions, isNonProductive, matchDnaEvent, rnaCellMaps } from "../../../helpers/singleCell/rnaFusions";
 import { NO_READS_COLOR, NO_RNA_COLOR, readsColor } from "../../../helpers/singleCell/rnaColors";
+import { tierColor } from "../../../helpers/utility";
 
 const { Text } = Typography;
 const k = "components.single-cell.rna-fusions";
 const STRIP_H = 14;
 const CONFIDENCES = ["low", "medium", "high"];
 const confColor = { high: "green", medium: "gold", low: "default" };
+const TIER_FILTERS = [1, 2, 3];
 
 /** Carrier cells of one fusion on the tree order (canvas, one column per cell). */
 function FusionStrip({ fusion, order, rnaOfCell, width }) {
@@ -56,14 +58,24 @@ export default function RnaFusionsCard({ summary }) {
   const [hideReadThrough, setHideReadThrough] = useState(true);
   const [keepDna, setKeepDna] = useState(true);
   const [knownOnly, setKnownOnly] = useState(false);
+  const [maxTier, setMaxTier] = useState(3);
+  const [grouped, setGrouped] = useState(true);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(null);
   const data = source?.status === "ok" ? source.data : null;
   const { rnaOf } = useMemo(() => rnaCellMaps(data?.fusions || [], summary?.cells || []), [data, summary]);
-  const shown = useMemo(
-    () => filterFusions(data?.fusions || [], { minCells, confidence, hideReadThrough, keepDnaMatched: keepDna, knownOnly, query }),
-    [data, minCells, confidence, hideReadThrough, keepDna, knownOnly, query]
-  );
+  // filters apply to each breakpoint variant; surviving variants of a gene pair are then grouped
+  const shown = useMemo(() => {
+    const kept = filterFusions(data?.fusions || [], { minCells, confidence, hideReadThrough, keepDnaMatched: keepDna, knownOnly, query, maxTier });
+    return grouped ? groupFusions(kept) : kept;
+  }, [data, minCells, confidence, hideReadThrough, keepDna, knownOnly, query, maxTier, grouped]);
+  const nVariants = useMemo(() => shown.reduce((s, f) => s + (f.variants?.length || 1), 0), [shown]);
+  const tierCounts = useMemo(() => {
+    const c = { 1: 0, 2: 0, 3: 0 };
+    shown.forEach((f) => (c[fusionTier(f)] += 1));
+    return c;
+  }, [shown]);
+  const hasCohort = useMemo(() => (data?.fusions || []).some((f) => f.n_patients != null), [data]);
   const stripW = Math.max(160, Math.min(420, Math.round(width * 0.3)));
 
   const title = (
@@ -91,6 +103,20 @@ export default function RnaFusionsCard({ summary }) {
   };
   const columns = [
     {
+      title: (
+        <Space size={4}>
+          {t(`${k}.col-tier`)}
+          <HintLine inline text={t(`${k}.tier-help`)} />
+        </Space>
+      ),
+      key: "tier",
+      fixed: "left",
+      width: 64,
+      defaultSortOrder: "ascend",
+      sorter: compareFusions,
+      render: (_, f) => <FusionTierTag fusion={f} />,
+    },
+    {
       title: t(`${k}.col-fusion`),
       key: "fusion",
       fixed: "left",
@@ -105,6 +131,16 @@ export default function RnaFusionsCard({ summary }) {
               <Tag color="purple">{t(`${k}.known`)}</Tag>
             </Tooltip>
           )}
+          {f.cancer_genes?.length > 0 && (
+            <Tooltip title={f.cancer_genes.map((g) => `${g.gene} (${g.role})`).join(", ")}>
+              <Tag color="volcano">{t(`${k}.cancer-gene`)}</Tag>
+            </Tooltip>
+          )}
+          {f.group && (
+            <Tooltip title={t(`${k}.variants-tip`, { count: f.variants.length })}>
+              <Tag>{t(`${k}.variants-tag`, { count: f.variants.length })}</Tag>
+            </Tooltip>
+          )}
         </Space>
       ),
     },
@@ -115,7 +151,7 @@ export default function RnaFusionsCard({ summary }) {
       sorter: (a, b) => CONFIDENCES.indexOf(a.confidence) - CONFIDENCES.indexOf(b.confidence),
       render: (v) => <Tag color={confColor[v] || "default"}>{v}</Tag>,
     },
-    { title: t(`${k}.col-cells`), dataIndex: "n_cells", align: "right", defaultSortOrder: "descend", sorter: (a, b) => a.n_cells - b.n_cells || a.reads - b.reads },
+    { title: t(`${k}.col-cells`), dataIndex: "n_cells", align: "right", sorter: (a, b) => a.n_cells - b.n_cells || a.reads - b.reads },
     { title: t(`${k}.col-cells-dna`), dataIndex: "n_cells_dna", align: "right", sorter: (a, b) => a.n_cells_dna - b.n_cells_dna },
     { title: t(`${k}.col-reads`), dataIndex: "reads", align: "right", sorter: (a, b) => a.reads - b.reads },
     {
@@ -131,6 +167,29 @@ export default function RnaFusionsCard({ summary }) {
           </Tooltip>
         ) : null,
     },
+    ...(hasCohort
+      ? [
+          {
+            title: (
+              <Space size={4}>
+                {t(`${k}.col-patients`)}
+                <HintLine inline text={t(`${k}.cohort-tip`)} />
+              </Space>
+            ),
+            key: "patients",
+            align: "right",
+            sorter: (a, b) => (a.n_patients || 1) - (b.n_patients || 1),
+            render: (_, f) =>
+              f.recurrence?.length ? (
+                <Tooltip title={f.recurrence.map((r) => `${r.patient}: ${r.n_cells}`).join(", ")}>
+                  <span style={{ borderBottom: "1px dotted currentColor" }}>{f.n_patients}</span>
+                </Tooltip>
+              ) : (
+                f.n_patients ?? 1
+              ),
+          },
+        ]
+      : []),
     {
       title: t(`${k}.col-type`),
       dataIndex: "type",
@@ -165,7 +224,22 @@ export default function RnaFusionsCard({ summary }) {
           <Text>{t(`${k}.keep-dna`)}</Text>
           <Switch size="small" checked={knownOnly} onChange={setKnownOnly} />
           <Text>{t(`${k}.known-only`)}</Text>
-          <Text type="secondary">{t(`${k}.shown`, { count: shown.length, total: data.fusions.length })}</Text>
+          <Text type="secondary">{t(`${k}.tier-filter`)}</Text>
+          <Select size="small" style={{ width: 120 }} value={maxTier} onChange={setMaxTier} options={TIER_FILTERS.map((v) => ({ value: v, label: t(`${k}.tier-filter-${v}`) }))} />
+          <Switch size="small" checked={grouped} onChange={setGrouped} />
+          <Text>{t(`${k}.group-variants`)}</Text>
+          <Text type="secondary">
+            {grouped ? t(`${k}.shown-grouped`, { count: shown.length, variants: nVariants, total: data.fusions.length }) : t(`${k}.shown`, { count: shown.length, total: data.fusions.length })}
+          </Text>
+          <Space size={2}>
+            {TIER_FILTERS.map((v) => (
+              <Tooltip key={v} title={t(`${k}.tier-${v}`)}>
+                <Tag color={tierColor(v)} style={{ marginInlineEnd: 2 }}>
+                  T{v} {tierCounts[v]}
+                </Tag>
+              </Tooltip>
+            ))}
+          </Space>
         </Space>
         <Table
           size="small"
@@ -173,6 +247,7 @@ export default function RnaFusionsCard({ summary }) {
           dataSource={shown}
           columns={columns}
           pagination={{ pageSize: 15, size: "small", showSizeChanger: true, pageSizeOptions: [15, 30, 60, 100] }}
+          expandable={{ indentSize: 12 }}
           scroll={{ x: "max-content" }}
         />
       </div>
