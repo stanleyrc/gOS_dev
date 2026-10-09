@@ -281,9 +281,15 @@ export default function ReadSlicePanel() {
         {site && (
           <Space wrap size={[4, 4]}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {site.id} · {site.source || (site.hotspot ? "hotspot" : "discovered")} · prevalence {site.prevalence ?? "–"} · tumour alt {site.alt_tumor}/
-              {site.dp_tumor} · normal alt {site.alt_normal}/{site.dp_normal}
+              {site.id} · {site.source || (site.hotspot ? "hotspot" : "discovered")} · covered in {site.cells_cov} of{" "}
+              {rows.filter((r) => !/^normal$/i.test(`${r.clone || ""}`)).length} tumour cells · pooled tumour alt {site.alt_tumor}/{site.dp_tumor} · normal alt{" "}
+              {site.alt_normal}/{site.dp_normal} · estimated prevalence {site.prevalence ?? "–"}
             </Text>
+            {site.cells_cov != null && rows.length > 0 && site.cells_cov < 0.25 * rows.length && (
+              <Tag color="warning">
+                Sparse coverage (dropout): most cells have no reads here, so &quot;no call&quot; is the expected state, not wild type
+              </Tag>
+            )}
             {Object.entries(summary).map(([clone, s]) => (
               <Tag key={clone} color={cloneColors[clone]}>
                 {clone}: {s.mut} mut · {s.wt} wt · {s.nc} no call
