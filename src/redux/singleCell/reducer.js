@@ -72,6 +72,7 @@ const initState = {
   layout: storedLayout(),
   plotInsets: { left: 0, right: 0 },
   igv: null, // { cellIds, chromosome, position, label }
+  driverFocus: null, // driverKey of the driver open in the Drivers tab
   perCell: {}, // { [cellId]: { [track]: { status, data, error } } }
 };
 
@@ -205,6 +206,8 @@ export default function appReducer(state = initState, action) {
         : { ...state, plotInsets: action.insets };
     case actions.SC_IGV_OPENED:
       return { ...state, igv: action.view };
+    case actions.SC_DRIVER_FOCUS_UPDATED:
+      return { ...state, driverFocus: action.key ?? null };
     case actions.SC_IGV_CLOSED:
       return { ...state, igv: null };
     case actions.SC_HOVER_UPDATED:
