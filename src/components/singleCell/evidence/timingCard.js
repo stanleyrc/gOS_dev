@@ -146,7 +146,7 @@ export default function TimingCard() {
           <rect x={sx(0)} y={m.t - 10} width={sx(res.mrca.mrcaFraction) - sx(0)} height={6} fill="currentColor" opacity={0.25} />
           <line x1={sx(res.mrca.mrcaFraction)} x2={sx(res.mrca.mrcaFraction)} y1={m.t - 12} y2={h - m.b} stroke="currentColor" strokeDasharray="3,3" opacity={0.6} />
           <text x={sx(res.mrca.mrcaFraction) + 4} y={m.t - 4} fontSize={11} fill="currentColor">
-            tumour MRCA
+            tumor MRCA
           </text>
           {res.clades.map((c, i) => (
             <g key={c.node} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection(leavesOf(c.node)))}>
@@ -193,7 +193,7 @@ export default function TimingCard() {
           ]}
         />
         <Text type="secondary" style={{ fontSize: 11 }}>
-          Clades with ≥ 5% of tumour cells. Founding = (truncal + clock SNVs on the branches from the MRCA down to the clade) / (truncal + the
+          Clades with ≥ 5% of tumor cells. Founding = (truncal + clock SNVs on the branches from the MRCA down to the clade) / (truncal + the
           median cell&apos;s post-trunk clock SNVs); a lineage with more clock SNVs than the median cell can exceed 100% (shown as &gt;100%).
           Copy-number timing (WGD, chr7 gain / chr10 loss) from SNV multiplicity is not shown yet; amplification timing is in the Report tab.
         </Text>

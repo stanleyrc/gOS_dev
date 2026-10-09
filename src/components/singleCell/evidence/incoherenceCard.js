@@ -93,7 +93,7 @@ export default function IncoherenceCard() {
           rowKey="key"
           dataSource={rows}
           pagination={false}
-          locale={{ emptyText: "No amplified segments (CN ≥ 6 in ≥ 10% of tumour cells)" }}
+          locale={{ emptyText: "No amplified segments (CN ≥ 6 in ≥ 10% of tumor cells)" }}
           onRow={(r) => ({ onClick: () => setPick(r.key), style: { cursor: "pointer", background: sel?.key === r.key ? "rgba(24,144,255,0.08)" : undefined } })}
           columns={[
             { title: "Segment", key: "s", render: (_, r) => `chr${r.chromosome}:${mb(r.start)}–${mb(r.end)}` },

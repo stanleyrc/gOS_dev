@@ -93,7 +93,7 @@ export function SegmentCorrelation({ width, cnEntry, domains, carriers, others, 
       tooltip={(h) => {
         const up = h.j > h.i;
         const r = (up ? matrices.up : matrices.low).C[h.i * k + h.j];
-        return [up ? "Marked cells" : "Other tumour cells", ["Segment A", label(positions[h.i])], ["Segment B", label(positions[h.j])], ["Pearson r (log CN)", Number.isFinite(r) ? r.toFixed(2) : "–"]];
+        return [up ? "Marked cells" : "Other tumor cells", ["Segment A", label(positions[h.i])], ["Segment B", label(positions[h.j])], ["Pearson r (log CN)", Number.isFinite(r) ? r.toFixed(2) : "–"]];
       }}
     />
   );

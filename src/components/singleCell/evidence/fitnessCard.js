@@ -81,7 +81,7 @@ export default function FitnessCard() {
     <Card size="small" title="Fitness from tree shape (local branching index)">
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         <Text type="secondary" style={{ fontSize: 12 }}>
-          LBI: exponentially discounted tree length around each tumour cell (τ = 1/16 of the mean root-to-tip depth). High LBI = the cell sits
+          LBI: exponentially discounted tree length around each tumor cell (τ = 1/16 of the mean root-to-tip depth). High LBI = the cell sits
           in a recently expanding, bushy lineage. A single sample cannot separate selection from sampling, so read correlations as hypotheses.
         </Text>
         <Table
