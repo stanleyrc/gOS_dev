@@ -25,6 +25,7 @@ export function normalizeSplicing(json) {
     variants: (json.variants || []).map((v) => ({ ...v, cells: v.cells || {} })),
     clusters: (json.clusters || []).map((c) => ({ ...c, junctions: c.junctions || [], cells: c.cells || {} })),
     cellMap: json.cell_map || {},
+    spliceReads: json.splice_reads || {},
   };
 }
 
