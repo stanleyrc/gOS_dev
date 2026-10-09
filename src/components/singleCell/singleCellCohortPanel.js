@@ -51,6 +51,8 @@ import CohortFiguresPanel from "./figures/cohortFiguresPanel";
 import HelpDrawer from "./helpDrawer";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { SC_GUTTER } from "./density";
+import { useCohortRnaFindings } from "./rna/useRnaFindings";
+import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -162,6 +164,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     });
     return out;
   }, [cohortFiles.files, cladeFilterOn, minCladeF1]);
+  // RNA key findings of every patient (Key findings cards and reports only: loads the matrices)
+  const cohortRna = useCohortRnaFindings({ summaries, files, datafiles, datasets, enabled: view === "overview" || view === "reports" });
   const nDropped = useMemo(() => Object.entries(cohortFiles.files).reduce((n, [id, f]) => n + ((f?.events?.length || 0) - (files[id]?.events?.length || 0)), 0), [cohortFiles.files, files]);
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
@@ -444,6 +448,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 treeLayout={cohortFiles.files[s.caseReportId]?.tree || null}
                 cloneColors={cloneColors}
                 onOpen={() => openPatient(s)}
+                rna={cohortRna.of(s.caseReportId)}
               />
             </Col>
           ))}
@@ -464,9 +469,14 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           </>
         )}
         {view === "overview" && (
-          <Col span={24}>
-            <PatientCards summaries={summaries} files={files} datafiles={datafiles} cloneColors={cloneColors} onOpen={openPatient} />
-          </Col>
+          <>
+            <Col span={24}>
+              <CohortRnaHighlights cohortRna={cohortRna} />
+            </Col>
+            <Col span={24}>
+              <PatientCards summaries={summaries} files={files} datafiles={datafiles} cloneColors={cloneColors} onOpen={openPatient} rnaOf={cohortRna.of} />
+            </Col>
+          </>
         )}
         {view === "mutations" && (
           <>
