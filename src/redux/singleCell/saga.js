@@ -8,6 +8,7 @@ import actions, {
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
+import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
 import { parseNewick, treeForCells } from "../../helpers/singleCell/newick";
@@ -124,6 +125,19 @@ function* fetchSingleCellData(action = {}) {
       call(tryGet, casePath(dataset, id, "rna/fusions.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/splicing.json"), { cancelToken }),
     ]);
+    // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
+    const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
+    const precomputeFiles = yield all(
+      precomputeKeys.map((k) => call(tryGet, casePath(dataset, id, PRECOMPUTE_FILES[k]), { cancelToken }))
+    );
+    const precompute = Object.fromEntries(precomputeKeys.map((k, i) => [k, precomputeFiles[i]]));
+    const pcData = (k) => (precompute[k].status === "ok" ? precompute[k].data : null);
+    const cellsWithPrecompute = mergePrecomputeIntoCells(cells, {
+      qc: pcData("qc"),
+      sphase: pcData("sphase"),
+      telomeres: pcData("telomeres"),
+      calls: pcData("calls"),
+    });
     const cellFiles = {};
     const genomeErrors = [];
     for (let k = 0; k < cellIds.length; k += SC_FETCH_CONCURRENCY) {
@@ -189,7 +203,8 @@ function* fetchSingleCellData(action = {}) {
     yield put({
       type: actions.FETCH_SINGLE_CELL_DATA_SUCCESS,
       patient: { caseReportId: `${id}`, patientKey, datasetId: `${dataset.id}` },
-      cells,
+      cells: cellsWithPrecompute,
+      precompute,
       cloneColors: cloneColorMap(cells, metadata?.clones || own.clones || []),
       order,
       tree,

@@ -441,7 +441,8 @@
         "tab11": "Single-Cell QC",
         "tab12": "Single-Cell Report",
         "tab13": "Single-Cell Circos",
-        "tab14": "Single-Cell ecDNA"
+        "tab14": "Single-Cell ecDNA",
+        "tab15": "Single-Cell Evidence"
       }
     },
     "detail-error-view": {
@@ -1816,6 +1817,7 @@
         "section-cn": "Copy number",
         "section-calls": "Calls",
         "section-library": "Library",
+        "section-precompute": "Precomputed (ADO, doublets, S-phase, telomeres)",
         "section-rna": "RNA",
         "stat-cells": "Cells",
         "stat-flagged": "Flagged",
