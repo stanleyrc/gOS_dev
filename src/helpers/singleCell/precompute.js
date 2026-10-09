@@ -10,6 +10,7 @@ export const PRECOMPUTE_FILES = {
   sphase: "precompute/sphase.json",
   telomeres: "precompute/telomeres.json",
   calls: "precompute/region_calls.json",
+  mtdna: "precompute/mtdna.json",
   slices: "slices/regions.json",
 };
 export const PRECOMPUTE_STATUS_FILE = "_precompute/status.json";
@@ -20,6 +21,7 @@ export const PC_FIELDS = {
   dnaCycle: "DNA cycle",
   qcFlag: "QC flag",
   altLike: "ALT-like",
+  qcFlags: "pc_qc_flags",
   ado: "pc_ado",
   mapd: "pc_mapd",
   lohHet: "pc_loh_het_rate",
@@ -29,6 +31,7 @@ export const PC_FIELDS = {
   sProgression: "pc_s_progression",
   telRel: "pc_tel_rel",
   tvrFrac: "pc_tvr_frac",
+  mtCn: "pc_mt_cn",
 };
 export const PC_NUMERIC_LABELS = {
   pc_ado: "Allelic dropout (germline hets)",
@@ -40,6 +43,7 @@ export const PC_NUMERIC_LABELS = {
   pc_s_progression: "S-phase progression (DNA)",
   pc_tel_rel: "Telomere content (vs normal cells)",
   pc_tvr_frac: "Telomeric variant repeat fraction",
+  pc_mt_cn: "mtDNA copies per cell",
 };
 export const GENOTYPE_LABELS = { mut: "mutant", wt: "wild type", nc: "no call" };
 
@@ -84,18 +88,20 @@ export function hotspotGenotypes(calls, { onlyHotspots = true, minMut = 0 } = {}
  * only for hotspots with a mutant call in some cell, so silent hotspots don't
  * clutter the strip menus.
  */
-export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls } = {}) {
+export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls, mtdna } = {}) {
   const q = byCell(qc);
   const s = byCell(sphase);
   const t = byCell(telomeres);
+  const mt = byCell(mtdna);
   const gts = hotspotGenotypes(calls, { minMut: 1 });
-  if (!q.size && !s.size && !t.size && !Object.keys(gts).length) return cells;
+  if (!q.size && !s.size && !t.size && !mt.size && !Object.keys(gts).length) return cells;
   return cells.map((c) => {
     const id = `${c.cell_id}`;
     const out = { ...c };
     const qr = q.get(id);
     if (qr) {
       out[PC_FIELDS.qcFlag] = qcFlagLabel(qr);
+      out[PC_FIELDS.qcFlags] = [`${qr.flags || ""}`, qr.cn_inconsistent ? "cn_inconsistent" : ""].filter(Boolean).join(",");
       out[PC_FIELDS.ado] = num(qr.ado);
       out[PC_FIELDS.mapd] = num(qr.mapd);
       out[PC_FIELDS.lohHet] = num(qr.loh_het_rate);
@@ -114,6 +120,8 @@ export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, ca
       out[PC_FIELDS.telRel] = num(tr.tel_rel);
       out[PC_FIELDS.tvrFrac] = num(tr.tvr_frac);
     }
+    const mr = mt.get(id);
+    if (mr && mr.mt_cn != null) out[PC_FIELDS.mtCn] = num(mr.mt_cn);
     Object.entries(gts).forEach(([label, m]) => {
       const g = m[id];
       if (g != null) out[label] = GENOTYPE_LABELS[g] || g;
@@ -257,4 +265,27 @@ export function statusRows(doc) {
     return { patient, steps: st, worst, nDone: states.filter((s) => s === "done").length };
   });
   return { steps, rows: rows.sort((a, b) => a.patient.localeCompare(b.patient)) };
+}
+
+// Global cell filter: QC rules (layout.qcExcludeRules) and manually excluded
+// cells (layout.excludedCells). Rules apply to every patient; ids are unique.
+export const QC_EXCLUDE_RULES = [
+  { value: "doublet", label: "Doublets (biallelic hets in LOH)" },
+  { value: "high_ado", label: "High allelic dropout" },
+  { value: "high_mapd", label: "High MAPD (noisy coverage)" },
+  { value: "cn_inconsistent", label: "Coverage not fitting integer CN" },
+  { value: "s_phase", label: "S-phase cells (DNA)" },
+];
+
+/** Set of cell ids excluded by the rules and the manual list. */
+export function excludedCellIds(cells = [], rules = [], manual = []) {
+  const out = new Set((manual || []).map(String));
+  if (!rules?.length) return out;
+  const want = new Set(rules);
+  cells.forEach((c) => {
+    const flags = new Set(`${c[PC_FIELDS.qcFlags] || ""}`.split(",").filter(Boolean));
+    const hit = [...flags].some((f) => want.has(f)) || (want.has("s_phase") && c[PC_FIELDS.dnaCycle] === "S-phase");
+    if (hit) out.add(`${c.cell_id}`);
+  });
+  return out;
 }
