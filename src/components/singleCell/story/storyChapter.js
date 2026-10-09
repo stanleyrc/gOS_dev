@@ -9,7 +9,7 @@ const { Paragraph, Text } = Typography;
 
 /** One chapter / vignette: title, lede, the computed text, key numbers and its figure. */
 export default function StoryChapter({ section, groupColors, extra = null, provenance = "story" }) {
-  const wide = section.figure && ["bars", "dots", "table"].includes(section.figure.type);
+  const wide = section.figure && ["bars", "dots", "table", "matrix"].includes(section.figure.type);
   return (
     <Card
       size="small"
