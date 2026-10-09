@@ -142,6 +142,8 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
       const L = live.current;
       const r = el.getBoundingClientRect();
       const k = L.panelAtX(e.clientX - r.left);
+      // a pinch / Ctrl + wheel anywhere over the plot (labels, gaps) must not zoom the browser page
+      if (intent === "zoom") e.preventDefault();
       if (k < 0) return;
       e.preventDefault();
       const [a, b, d] = L.extents[k];
