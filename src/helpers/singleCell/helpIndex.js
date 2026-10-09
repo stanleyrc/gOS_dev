@@ -297,11 +297,13 @@ export const METHODS = [
   {
     id: "m-fusions-splicing",
     title: "RNA fusions and splicing",
-    keywords: "star arriba chimeric fusion regtools leafcutter psi intron cluster sashimi",
+    keywords: "star arriba chimeric fusion regtools leafcutter psi intron cluster sashimi egfrviii exon skipping novel junction",
     summary: "Per-cell STAR + Arriba fusions and regtools / LeafCutter-style splicing.",
     sections: [
       ["Fusions", "Each RNA cell is aligned with STAR (chimeric output) and called with Arriba; calls are merged per patient and matched against DNA junction events in the back end (rna/fusions.json). The browser filters them and shows carrier cells along the tree with DNA-match badges."],
-      ["Splicing", "regtools extracts junction counts per cell; junctions are grouped into LeafCutter-style intron clusters (rna/splicing.json). PSI is computed per group (clone or RNA field) in the browser. Between patients, clusters are tested by chi-square with BH q (data/_cohort/rna/splicing.json)."],
+      ["Splicing", "regtools extracts junction counts per cell; junctions are grouped into LeafCutter-style intron clusters (rna/splicing.json) and typed against the GTF (annotated, exon skip, novel donor / acceptor / pair). PSI is computed per group (clone or RNA field) in the browser; clusters are ranked by a Kruskal–Wallis test on per-cell PSI across groups (BH q). Between patients, clusters are tested by chi-square on pooled counts with BH q (data/_cohort/rna/splicing.json)."],
+      ["Sashimi plots", "Exons of all GTF transcripts of the gene are collapsed and drawn near scale with introns log-compressed; each track pools a group's reads, arcs join the exon ends of each junction (width = reads, label = reads · PSI, dashed = unannotated)."],
+      ["Known variants", "EGFRvIII (exon 1 → 8), EGFRvII, EGFR C-terminal deletions (Δ25–26, Δ25–27), MET exon 14 skipping and PDGFRA Δ8–9 are counted per cell from their alternative vs reference junction; carriers are shown along the tree with the gene's DNA copy number, and their RNA reads at the junction (rna/splice_reads/) open in IGV."],
     ],
     related: ["rnaFusions", "splicing", "cohortSplicing"],
   },
