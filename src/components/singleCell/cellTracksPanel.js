@@ -14,6 +14,7 @@ import Wrapper from "./index.style";
 
 const { Text } = Typography;
 const PLOT_HEIGHT = 160;
+const COMPACT_PLOT_HEIGHT = 120; // embedded (popup) lanes
 const noNotification = { status: null, heading: null, messages: [] };
 
 // Converted genome graphs, keyed by the raw JSON object so panels get
@@ -211,11 +212,12 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   const removeCell = (cellId) =>
     onRemove ? onRemove(cellId) : dispatch(singleCellActions.updateSelection(selectedCellIds.filter((c) => c !== cellId)));
 
+  const height = embedded ? COMPACT_PLOT_HEIGHT : PLOT_HEIGHT;
   const renderTrack = (cellId, track) => {
-    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={commonRangeY} />;
-    if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={commonRangeY} />;
+    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
+    if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
     const entry = perCell[cellId]?.[track];
-    return <TrackPlot cellId={cellId} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} />;
+    return <TrackPlot cellId={cellId} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
   };
   const orderedTracks = SC_TRACKS.filter((track) => visibleTracks.includes(track));
 
@@ -234,12 +236,13 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
           </div>
         }
       >
-        <div style={{ position: "relative" }}>
+        {/* embedded: compact lanes, one per cell, no blank space between them */}
+        <div style={{ position: "relative" }} className={embedded ? "sc-compact-tracks" : undefined}>
         {/* Pinned genes down every cell's plots (same genomic area as the heatmap). */}
         {!embedded && (
           <PinnedGenesOverlay left={plotInsets.left + 50} width={Math.max(0, tracksWidth - plotInsets.left - plotInsets.right - 100)} />
         )}
-        <Row gutter={[16, 16]} ref={tracksRef}>
+        <Row gutter={embedded ? [0, 0] : [16, 16]} ref={tracksRef}>
           {shown.length === 0 && (
             <Col span={24}>
               <Empty description={t("components.single-cell.tracks.empty")} />
@@ -276,7 +279,7 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
                       />
                     </Space>
                   </div>
-                  <Row gutter={[16, 12]} style={trackPadding}>
+                  <Row gutter={embedded ? [0, 2] : [16, 12]} style={trackPadding}>
                     {orderedTracks.map((track) => (
                       <Col span={24} key={track}>
                         {renderTrack(cellId, track)}
