@@ -14,5 +14,12 @@
       "junctions": [ { "start": 10, "end": 20, "annotated": true }, { "start": 10, "end": 30, "annotated": true } ],
       "cells": { "r1": [1, 1] } }
   ],
+  "findings": [
+    { "id": "patient_specific:clu_2:P1", "kind": "patient_specific", "patient": "P1", "gene": "PTPRZ1", "cluster_id": "clu_2", "score": 9.5, "severity": "high", "flags": [],
+      "text": "PTPRZ1: 30 of 32 reads (6 cells) use an unannotated acceptor 44 bp inside exon 3, frameshift; 0% in the 4 other patients with coverage",
+      "junction": { "chromosome": "7", "start": 10, "end": 30, "type": "novel_acceptor" }, "cells": ["r1"], "loci": [{ "chromosome": "7", "position": 9 }, { "chromosome": "7", "position": 31 }] },
+    { "id": "known_variant:EGFRvIII:P1", "kind": "known_variant", "patient": "P1", "gene": "EGFR", "variant_id": "EGFRvIII", "score": 2, "severity": "low", "flags": [],
+      "text": "EGFRvIII: 3 of 4 covered cells carry it", "junction": { "chromosome": "7", "start": 55019366, "end": 55155829, "type": "exon_skip" }, "cells": ["r1"], "loci": [] }
+  ],
   "cell_map": { "r1": "c1", "r2": "c3", "r3": "c2", "r9": null }
 }
