@@ -271,7 +271,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   if (!events && !cells?.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
 
   const summary = [
-    t("components.single-cell.report.summary-cells", { tumor: report.nTumorCells, normal: report.nNormalCells, clones: report.clones.length }),
+    t("components.single-cell.report.summary-cells", { tumor: report.nTumorCells, normal: report.nNormalCells, count: report.clones.length }),
     report.clonal.length
       ? t("components.single-cell.report.summary-clonal", { list: report.clonal.slice(0, 4).map((d) => d.label).join(", ") })
       : t("components.single-cell.report.summary-no-clonal"),
