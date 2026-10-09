@@ -34,9 +34,9 @@ export default function CohortTreeShapePanel({ summaries, files, datafiles }) {
     <Card size="small" title="Tree shape and chromosomal instability per patient">
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         <Text type="secondary" style={{ fontSize: 12 }}>
-          Trunk fraction: truncal share of tumour SNVs (mapped onto the tree). Private share: SNVs in one cell, the ongoing mutation burden.
-          Sackin / Yule: imbalance of the tumour tree (1 = as balanced as random branching; higher = caterpillar-like). LBI CV: spread of the
-          local branching index (uneven expansion). Copy-number driver events from the patient&apos;s filtered events by the share of tumour
+          Trunk fraction: truncal share of tumor SNVs (mapped onto the tree). Private share: SNVs in one cell, the ongoing mutation burden.
+          Sackin / Yule: imbalance of the tumor tree (1 = as balanced as random branching; higher = caterpillar-like). LBI CV: spread of the
+          local branching index (uneven expansion). Copy-number driver events from the patient&apos;s filtered events by the share of tumor
           cells carrying them; one-cell events include single-cell noise.
         </Text>
         <Table
@@ -47,8 +47,8 @@ export default function CohortTreeShapePanel({ summaries, files, datafiles }) {
           scroll={{ x: 900 }}
           columns={[
             { title: "Patient", dataIndex: "patient", fixed: "left" },
-            { title: "Tumour cells", dataIndex: "nCells", render: (x, r) => (r.loading ? "loading…" : x ?? "–") },
-            { title: "Tumour SNVs", dataIndex: "nSnv", render: (x) => x ?? "–" },
+            { title: "Tumor cells", dataIndex: "nCells", render: (x, r) => (r.loading ? "loading…" : x ?? "–") },
+            { title: "Tumor SNVs", dataIndex: "nSnv", render: (x) => x ?? "–" },
             { title: "Trunk fraction", dataIndex: "trunkFrac", sorter: (a, b) => (a.trunkFrac ?? -1) - (b.trunkFrac ?? -1), render: pct },
             { title: "Private SNVs", dataIndex: "privateFrac", sorter: (a, b) => (a.privateFrac ?? -1) - (b.privateFrac ?? -1), render: pct },
             { title: "Sackin / Yule", dataIndex: "sackinNorm", sorter: (a, b) => (a.sackinNorm ?? -1) - (b.sackinNorm ?? -1), render: (x) => fmt(x) },

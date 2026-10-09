@@ -324,7 +324,7 @@ export const PROVENANCE = {
   figSubclonal: {
     title: "Subclonal findings",
     source: `${S.EVENTS}; ${S.WALKS}; ${S.TREE}`,
-    calc: "Driver events and amplicons in part of a tumour; tumour-cell fraction and clade F1 per finding, events sharing carriers merged. In the browser.",
+    calc: "Driver events and amplicons in part of a tumor; tumor-cell fraction and clade F1 per finding, events sharing carriers merged. In the browser.",
     where: "browser",
   },
   figClonalAmplicon: {

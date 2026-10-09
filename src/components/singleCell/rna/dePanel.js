@@ -541,7 +541,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
       ? [
           {
             title: (
-              <Tooltip title="Phylogenetic signal of the gene's expression on the DNA tree (Moran's I, inverse patristic distance; tumour cells with DNA and RNA; BH over the passing genes). Heritable = similar in related cells; plastic = not. Computed for passing genes only.">
+              <Tooltip title="Phylogenetic signal of the gene's expression on the DNA tree (Moran's I, inverse patristic distance; tumor cells with DNA and RNA; BH over the passing genes). Heritable = similar in related cells; plastic = not. Computed for passing genes only.">
                 Heritability
               </Tooltip>
             ),

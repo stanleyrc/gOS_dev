@@ -87,7 +87,7 @@ export default function PhyloSignalPanel({ per, onSelect }) {
         height={height}
         draw={draw}
         ariaLabel="Phylogenetic signal of amplicon copies"
-        tooltip={(h) => [`${h.p.patient} · ${h.s.key}${h.s.group ? ` (ec${h.s.group.key})` : ""}`, ["Moran's I", h.s.I.toFixed(3)], ["z", h.s.z.toFixed(2)], ["Permutation p", h.s.p < 0.01 ? "< 0.01" : h.s.p.toFixed(2)], ["Tumour cells", h.s.n]]}
+        tooltip={(h) => [`${h.p.patient} · ${h.s.key}${h.s.group ? ` (ec${h.s.group.key})` : ""}`, ["Moran's I", h.s.I.toFixed(3)], ["z", h.s.z.toFixed(2)], ["Permutation p", h.s.p < 0.01 ? "< 0.01" : h.s.p.toFixed(2)], ["Tumor cells", h.s.n]]}
         onClick={(h) => h.s.group && onSelect?.({ patient: h.p.patient, key: h.s.group.key })}
       />
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0 28px" }}>

@@ -109,10 +109,10 @@ export default function HeritabilityCard({ summary, matrix }) {
     <Card size="small" title={<span>Heritable vs plastic cell state (phylogenetic signal on the DNA tree) <Provenance id="heritability" /></span>}>
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         {!w ? (
-          <Text type="secondary">Needs the DNA tree and at least 8 tumour cells with both DNA and RNA.</Text>
+          <Text type="secondary">Needs the DNA tree and at least 8 tumor cells with both DNA and RNA.</Text>
         ) : (
           <Text type="secondary" style={{ fontSize: 13 }}>
-            Moran&apos;s I over {w.n} tumour cells with DNA and RNA (inverse patristic distance; E[I] = {fmt(-1 / (w.n - 1))}). Heritable: q &lt;
+            Moran&apos;s I over {w.n} tumor cells with DNA and RNA (inverse patristic distance; E[I] = {fmt(-1 / (w.n - 1))}). Heritable: q &lt;
             0.05 with I &gt; 0, i.e. related cells share the state; plastic: no tree structure. Permutation p shuffles values over the leaves (999
             permutations).
           </Text>

@@ -78,7 +78,7 @@ export default function MtdnaCard() {
         <Text type="secondary" style={{ fontSize: 12 }}>
           {sites.length} heteroplasmic sites (VAF {mt.data.params?.min_vaf ?? 0.03}–{1 - (mt.data.params?.min_vaf ?? 0.03)} at depth ≥{" "}
           {mt.data.params?.min_depth ?? 100} in ≥ {mt.data.params?.min_cells ?? 2} cells). Signal on the tree: Moran&apos;s I of the site&apos;s VAF
-          over tumour cells; click a row to select the cells carrying it.
+          over tumor cells; click a row to select the cells carrying it.
         </Text>
         <Table
           size="small"
