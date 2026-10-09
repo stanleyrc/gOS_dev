@@ -44,11 +44,11 @@ export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortA
         format: "bam",
         type: "alignment",
         height: rnaHeight,
-        // spliced RNA reads: show junctions, group / colour by the fusion tag
+        // spliced RNA reads: show junctions, group / colour by the fusion tag. No base sort:
+        // igv.js throws ("reading 'del'") sorting spliced / chimeric RNA reads at a breakpoint.
         groupBy: `tag:${RNA_FUSION_TAG}`,
         colorBy: `tag:${RNA_FUSION_TAG}`,
         showSoftClips: true,
-        ...(sort ? { sort } : {}),
       };
     });
   return [...dna, ...rna];
