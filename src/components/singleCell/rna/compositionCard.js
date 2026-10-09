@@ -64,7 +64,8 @@ export default function CompositionCard({ summary }) {
   if (!summary || !fields.length || !data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   const levelColors = annotationColors(data.levels, themePalette(layout.theme));
   const groupColors = groupBy === "clone" ? cloneColors : annotationColors(data.keys, themePalette(layout.theme));
-  const M = { top: 12, right: 12, bottom: 56, left: 44 };
+  const rotateLabels = data.keys.length > 8;
+  const M = { top: 14, right: 12, bottom: rotateLabels ? 60 : 32, left: 44 };
   const x = d3.scaleBand().domain(data.keys).range([M.left, width - 24 - M.right]).padding(0.25);
   const y = d3.scaleLinear().domain([0, 1]).range([HEIGHT - M.bottom, M.top]);
   return (
@@ -109,7 +110,7 @@ export default function CompositionCard({ summary }) {
               </g>
             );
           })}
-          <XBandLabels scale={x} y={HEIGHT - M.bottom + 22} rotate={data.keys.length > 8} />
+          <XBandLabels scale={x} y={HEIGHT - M.bottom + 22} rotate={rotateLabels} />
         </svg>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <Swatches items={data.levels.map((l) => ({ key: l, color: levelColors[l], label: l }))} />
