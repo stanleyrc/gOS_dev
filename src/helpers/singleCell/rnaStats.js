@@ -102,13 +102,13 @@ export function wilcoxonFromNonzero(aVals, bVals, nA, nB) {
   const U = rankA - (nA * (nA + 1)) / 2;
   const mu = (nA * nB) / 2;
   const sigma = Math.sqrt(((nA * nB) / 12) * (N + 1 - ties / (N * (N - 1))));
-  if (!(sigma > 0)) return { U, p: 1 };
+  if (!(sigma > 0)) return { U, p: 1, z: 0 };
   const d = U - mu;
   const z = (d - 0.5 * Math.sign(d)) / sigma;
-  return { U, p: twoSidedP(z) };
+  return { U, p: twoSidedP(z), z };
 }
 
-const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
+export const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /**
  * Two-group DE over every gene (Seurat FindMarkers defaults): Wilcoxon test,
