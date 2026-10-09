@@ -96,3 +96,46 @@ export function cladeClockTiming(layout, gains, clock, { truncalClock, postClock
   });
   return out.sort((a, b) => a.foundedAt - b.foundedAt);
 }
+
+/**
+ * Place subclonal sites on the tree without the backend anchors: the node
+ * whose tumour-leaf count equals the site's clade_cells (the backend's
+ * mapping size); among several such nodes, the one holding most of the
+ * site's alt cells. leafRows[i] = matrix row of leaf i (-1: none / normal).
+ * Returns Map(node -> [site index]).
+ */
+export function placeByCladeSize(layout, snv, leafRows) {
+  const size = layout.nodes.map((n) => {
+    let k = 0;
+    for (let i = n.firstLeaf; i <= n.lastLeaf; i += 1) if (leafRows[i] >= 0) k += 1;
+    return k;
+  });
+  const bySize = new Map();
+  layout.nodes.forEach((n, i) => {
+    if (n.isLeaf) return;
+    if (!bySize.has(size[i])) bySize.set(size[i], []);
+    bySize.get(size[i]).push(i);
+  });
+  const out = new Map();
+  snv.variants.forEach((v, c) => {
+    if (v.category !== "subclonal") return;
+    const cands = bySize.get(Number(v.clade_cells)) || [];
+    if (!cands.length) return;
+    let best = cands[0];
+    if (cands.length > 1) {
+      let bestHits = -1;
+      cands.forEach((node) => {
+        const n = layout.nodes[node];
+        let hits = 0;
+        for (let i = n.firstLeaf; i <= n.lastLeaf; i += 1) if (leafRows[i] >= 0 && snv.status[leafRows[i]]?.[c] === 1) hits += 1;
+        if (hits > bestHits) {
+          bestHits = hits;
+          best = node;
+        }
+      });
+    }
+    if (!out.has(best)) out.set(best, []);
+    out.get(best).push(c);
+  });
+  return out;
+}
