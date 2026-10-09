@@ -16,6 +16,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import { AiOutlineDownload } from "react-icons/ai";
@@ -28,6 +29,7 @@ import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
 import { geneSetIndex, loadGmt } from "./geneSets";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
+import useGeneHeritability from "./useHeritability";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { binAt } from "../../../helpers/singleCell/matrix";
 import { differentialExpression, overRepresentation } from "../../../helpers/singleCell/rnaStats";
@@ -457,6 +459,9 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, query, onlyPassing, qCut, pCut, lfcCut]);
 
+  // Phylogenetic signal of the passing genes on the DNA tree (heritable vs plastic expression)
+  const heritability = useGeneHeritability(summary, matrix, result ? result.genes.filter(significant).map((g) => g.gene) : []);
+
   // Every passing gene, by p value, up and down; the tree heatmap takes its top N.
   useEffect(() => {
     if (!result) return;
@@ -530,6 +535,31 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     { title: "p", dataIndex: "p_val", key: "p", sorter: (a, b) => a.p_val - b.p_val, render: fmtP },
     { title: t("components.single-cell.results.p-adj"), dataIndex: "p_val_adj", key: "padj", render: fmtP },
     { title: "q (BH)", dataIndex: "q_val", key: "q", render: fmtP },
+    ...(heritability.size
+      ? [
+          {
+            title: (
+              <Tooltip title="Phylogenetic signal of the gene's expression on the DNA tree (Moran's I, inverse patristic distance; tumour cells with DNA and RNA; BH over the passing genes). Heritable = similar in related cells; plastic = not. Computed for passing genes only.">
+                Heritability
+              </Tooltip>
+            ),
+            key: "herit",
+            sorter: (a, b) => (heritability.get(a.gene)?.z ?? -99) - (heritability.get(b.gene)?.z ?? -99),
+            render: (_, r) => {
+              const h = heritability.get(r.gene);
+              if (!h) return "–";
+              const color = h.label === "heritable" ? "purple" : h.label === "weak" ? "geekblue" : "default";
+              return (
+                <Tooltip title={`I = ${fmt(h.I, 3)}, z = ${fmt(h.z, 1)}, q = ${fmtP(h.q)}`}>
+                  <Tag color={color} style={{ marginRight: 0 }}>
+                    {h.label}
+                  </Tag>
+                </Tooltip>
+              );
+            },
+          },
+        ]
+      : []),
   ];
   const termColumns = [
     { title: t("components.single-cell.results.term"), dataIndex: "term", key: "term" },
