@@ -1,6 +1,10 @@
 import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Checkbox, Divider, InputNumber, Space, Tooltip, Typography } from "antd";
+import { Badge, Button, Checkbox, Divider, InputNumber, Space, Tooltip, Typography } from "antd";
+import { FilterOutlined } from "@ant-design/icons";
+import singleCellActions from "../../../redux/singleCell/actions";
+import { changedWalkFilters } from "../../../helpers/singleCell/walkPanels";
 import RareControl, { useRareMax } from "./rareControl";
 import { familyLabel } from "../../../helpers/singleCell/walkCopies";
 import { shortLabel } from "../../../helpers/singleCell/walkPlotState";
@@ -12,8 +16,8 @@ const carriers = (w) => w.stats?.ncells ?? w.ncells ?? 0;
 const tint = (c, a) => (/^#[0-9a-f]{6}$/i.test(c) ? `${c}${Math.round(a * 255).toString(16).padStart(2, "0")}` : c);
 
 /**
- * Compact walk chooser: the filters that hide spurious walks on one line,
- * then the passing walks as toggle chips grouped by family (walks that nest
+ * Compact walk chooser: the filters that hide spurious walks (folded behind a
+ * "Filters" button that counts the ones changed from their defaults), then the passing walks as toggle chips grouped by family (walks that nest
  * in each other, named by their most widely carried gene), each with its
  * carrier count. Ticked chips are filled with the walk's colour, the
  * highlighted (focused) walk is ringed; hovering a chip marks its lane in
@@ -27,9 +31,38 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
   const all = families.flat();
   const rareMax = useRareMax();
   const nShown = all.filter((w) => sel.has(w.id)).length;
+  const dispatch = useDispatch();
+  const filtersOpen = useSelector((s) => !!s.SingleCell.layout?.walkFiltersOpen);
+  const nChanged = changedWalkFilters(filters).length;
   return (
     <div className="sc-walk-picker">
-      <Space wrap size={[14, 6]} style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+        <Text strong>{t("components.single-cell.ecdna.pick-shown", { shown: nShown, pass: all.length })}</Text>
+        <Text type="secondary">{t("components.single-cell.ecdna.showing", { shown: all.length, total, cells: nCells })}</Text>
+        <Divider type="vertical" />
+        <Space size={4}>
+          <Button size="small" onClick={() => onSelect(all.map((w) => w.id))}>{t("components.single-cell.ecdna.pick-all")}</Button>
+          <Button size="small" onClick={() => onSelect(all.filter((w) => w.curated).map((w) => w.id))} disabled={!all.some((w) => w.curated)}>{t("components.single-cell.ecdna.pick-curated")}</Button>
+          <Button size="small" onClick={() => onSelect(all.filter((w) => carriers(w) > rareMax).map((w) => w.id))}>{t("components.single-cell.ecdna.pick-common")}</Button>
+          <Button size="small" onClick={() => onSelect([])}>{t("components.single-cell.ecdna.pick-none")}</Button>
+        </Space>
+        <Space size={6} style={{ marginLeft: "auto" }}>
+        <Tooltip title={t("components.single-cell.ecdna.filters-help")}>
+          <Badge count={filtersOpen ? 0 : nChanged} size="small" offset={[-4, 2]}>
+            <Button size="small" icon={<FilterOutlined />} type={filtersOpen ? "primary" : "default"} ghost={filtersOpen} aria-expanded={filtersOpen} onClick={() => dispatch(singleCellActions.updateLayout({ walkFiltersOpen: !filtersOpen }))}>
+              {t("components.single-cell.ecdna.filters")}
+            </Button>
+          </Badge>
+        </Tooltip>
+        {onShowTable && (
+          <Button size="small" type={tableOpen ? "primary" : "default"} ghost={tableOpen} onClick={onShowTable}>
+            {t(tableOpen ? "components.single-cell.ecdna.hide-table" : "components.single-cell.ecdna.show-table")}
+          </Button>
+        )}
+        </Space>
+      </div>
+      {filtersOpen && (
+      <Space wrap size={[14, 6]} style={{ marginBottom: 10, padding: "6px 8px", borderRadius: 6, background: `var(--sc-panel-alt, ${INK.panelAlt})` }}>
         <Space size={4}>
           <Text type="secondary">{t("components.single-cell.ecdna.min-cells")}</Text>
           <InputNumber size="small" min={1} value={filters.minCells} onChange={(v) => set("minCells")(v ?? 1)} style={{ width: 60 }} />
@@ -46,22 +79,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
         <Checkbox checked={filters.curatedOnly} onChange={(e) => set("curatedOnly")(e.target.checked)}>{t("components.single-cell.ecdna.curated-only")}</Checkbox>
         <Checkbox checked={filters.driverOnly} onChange={(e) => set("driverOnly")(e.target.checked)}>{t("components.single-cell.ecdna.driver-only")}</Checkbox>
       </Space>
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-        <Text strong>{t("components.single-cell.ecdna.pick-shown", { shown: nShown, pass: all.length })}</Text>
-        <Text type="secondary">{t("components.single-cell.ecdna.showing", { shown: all.length, total, cells: nCells })}</Text>
-        <Divider type="vertical" />
-        <Space size={4}>
-          <Button size="small" onClick={() => onSelect(all.map((w) => w.id))}>{t("components.single-cell.ecdna.pick-all")}</Button>
-          <Button size="small" onClick={() => onSelect(all.filter((w) => w.curated).map((w) => w.id))} disabled={!all.some((w) => w.curated)}>{t("components.single-cell.ecdna.pick-curated")}</Button>
-          <Button size="small" onClick={() => onSelect(all.filter((w) => carriers(w) > rareMax).map((w) => w.id))}>{t("components.single-cell.ecdna.pick-common")}</Button>
-          <Button size="small" onClick={() => onSelect([])}>{t("components.single-cell.ecdna.pick-none")}</Button>
-        </Space>
-        {onShowTable && (
-          <Button size="small" type={tableOpen ? "primary" : "default"} ghost={tableOpen} onClick={onShowTable} style={{ marginLeft: "auto" }}>
-            {t(tableOpen ? "components.single-cell.ecdna.hide-table" : "components.single-cell.ecdna.show-table")}
-          </Button>
-        )}
-      </div>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 10px" }} onMouseLeave={() => onHover && onHover(null)}>
         {families.map((fam, f) => (
           <div key={f} style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", padding: "4px 6px", border: `1px solid var(--sc-border-soft, ${INK.borderSoft})`, borderRadius: 6, background: `var(--sc-panel-alt, ${INK.panelAlt})` }}>
