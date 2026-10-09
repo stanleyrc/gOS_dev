@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { SBS96, parseCosmic } from "./signatures";
 import { evaluateBackendSet, evaluateFit, fitClass, fitStats, reconstructionOf, residuals, sbsClassColors, toSbs96 } from "./signatureFit";
+import { SVG_REMAP } from "./plotTheme";
 import bwh70 from "./__fixtures__/signatures.BWH70.json";
 
 const cosmic = parseCosmic(fs.readFileSync(path.join(__dirname, "../../../public/COSMIC_v3.4_SBS_GRCh38.txt"), "utf8"));
@@ -128,5 +129,11 @@ describe("sbsClassColors", () => {
     expect(dark["C>A"]).toBe(base["C>A"]);
     expect(dark["C>G"]).not.toBe(base["C>G"]);
     expect(dark["C>G"]).not.toBe(dark["T>A"]);
+  });
+  it("avoids colours the dark SVG stylesheet re-tints", () => {
+    const remapped = new Set(Object.values(SVG_REMAP).flatMap((roles) => Object.values(roles).flat()).map((c) => c.toLowerCase()));
+    const dark = sbsClassColors("dark", base);
+    expect(remapped.has(dark["C>G"])).toBe(false);
+    expect(remapped.has(dark["T>A"])).toBe(false);
   });
 });
