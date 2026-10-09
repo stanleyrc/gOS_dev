@@ -14,8 +14,9 @@ export function ink(styleName) {
   return { ...pt, dark: pt.mode === "dark", st: figureStyle(styleName) };
 }
 
-/** The Paper figures style chosen in the layout preferences. */
+/** The chart style chosen in the layout preferences (Paper figures and the shared SVG charts). */
 export const useFigureStyleName = () => useSelector((s) => s.SingleCell.layout.figureStyle);
+export const useFigureStyle = () => figureStyle(useFigureStyleName());
 
 export { FONT_FAMILY };
 // figure text follows the app type scale: nothing below TYPE.micro, small sizes nudged up
