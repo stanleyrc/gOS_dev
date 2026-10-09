@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Space, Typography } from "antd";
+import { Card, Empty, Space } from "antd";
 import { NodeIndexOutlined } from "@ant-design/icons";
 import { walkContainment } from "../../../helpers/singleCell/walks";
+import HintLine from "../hintLine";
 
-const { Text } = Typography;
 const fmtBp = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} Mb` : `${(v / 1e3).toFixed(0)} kb`);
 
 /**
@@ -50,7 +50,7 @@ export default function WalkContainmentCard({ walks, colorOf }) {
             <span style={{ color: colorOf(walks[i].id), fontWeight: 600 }}>{walks[i].label}</span> {t("components.single-cell.ecdna.contain-in")} <span style={{ color: colorOf(walks[j].id), fontWeight: 600 }}>{walks[j].label}</span> ({d3.format(".0%")(matrix[i][j])})
           </div>
         ))}
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.contain-help")}</Text>
+        <HintLine text={t("components.single-cell.ecdna.contain-help")} />
       </div>
     </Card>
   );

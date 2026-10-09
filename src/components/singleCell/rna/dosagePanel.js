@@ -13,6 +13,8 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { FONT, YAxis } from "../cohort/charts";
+import HintLine from "../hintLine";
+import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 const M = { top: 30, right: 16, bottom: 58, left: 66 };
@@ -236,7 +238,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
   const clonesShown = [...new Set(results.flatMap((r) => (r.result ? r.result.points.map((p) => cloneOf.get(p.id)) : [])))].filter((c) => c != null);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row gutter={SC_GUTTER}>
       <Col span={24}>
         <Card
           size="small"
@@ -265,12 +267,12 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                   </Tag>
                 );
               })}
-              <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.dosage.help")}</Text>
+              <HintLine text={t("components.single-cell.dosage.help")} />
             </Space>
             {!shownGenes.length ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.dosage.add-gene")} />
             ) : (
-              <Row gutter={[16, 16]}>
+              <Row gutter={SC_GUTTER}>
                 {results.map(({ gene, result }) => {
                   const ev = eventOfGene.get(gene);
                   return (
@@ -312,7 +314,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
             {!ranking ? (
               <Text type="secondary">{t("components.single-cell.dosage.rank-intro")}</Text>
             ) : (
-              <Row gutter={[24, 16]}>
+              <Row gutter={SC_GUTTER_INNER}>
                 <Col span={24}>
                   <Space size="large" wrap>
                     <Statistic title={t("components.single-cell.dosage.stat-genes")} value={ranking.length} />
@@ -351,7 +353,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                       </svg>
                     );
                   })()}
-                  <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.dosage.by-chromosome-help")}</Text>
+                  <HintLine text={t("components.single-cell.dosage.by-chromosome-help")} />
                 </Col>
               </Row>
             )}

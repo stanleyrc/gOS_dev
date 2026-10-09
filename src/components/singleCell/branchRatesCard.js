@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Space, Table, Tag, Typography } from "antd";
+import { Card, Space, Table, Tag } from "antd";
 import { RiseOutlined } from "@ant-design/icons";
 import useTreeView from "./useTreeView";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -10,8 +10,8 @@ import { branchGains, cladeRateTest, privateCountsPerRow } from "../../helpers/s
 import { callableMbOf } from "../../helpers/singleCell/cohortStats";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { formatP } from "../../helpers/singleCell/tests";
+import HintLine from "./hintLine";
 
-const { Text } = Typography;
 const MIN_CELLS = 3;
 
 /**
@@ -71,7 +71,7 @@ export default function BranchRatesCard() {
   return (
     <Card size="small" title={<Space><RiseOutlined />{t("components.single-cell.rates.title")}</Space>}>
       <Table size="small" className="sc-events-table" columns={columns} dataSource={rows} pagination={{ pageSize: 12, size: "small", hideOnSinglePage: true }} onRow={(r) => ({ onClick: (e) => select(r, e), style: { cursor: "pointer" } })} />
-      <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.rates.help")}</Text>
+      <HintLine text={t("components.single-cell.rates.help")} />
     </Card>
   );
 }

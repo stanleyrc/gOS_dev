@@ -9,6 +9,7 @@ import SvgExportButton from "../svgExportButton";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { Swatches, patientColor } from "./charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -146,7 +147,7 @@ export default function CohortCircosPanel({ summaries, files }) {
         </svg>
       </div>
       <Swatches style={{ marginTop: 6 }} items={[...Object.entries(CLASS_COLORS).filter(([k]) => k !== "other").map(([k, c]) => ({ key: k, color: c, label: t(`components.single-cell.cohort.class-${k}`) })), ...summaries.map((s, k) => ({ key: s.caseReportId, color: patientColor(k), label: `${t("components.single-cell.circos.ring", { n: k + 1 })} ${s.caseReportId}` }))]} />
-      <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.circos-help")}</Text>
+      <HintLine text={t("components.single-cell.cohort.circos-help")} />
     </Card>
   );
 }

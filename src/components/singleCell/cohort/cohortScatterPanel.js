@@ -8,6 +8,7 @@ import { PATIENT_METRICS, patientMetrics } from "../../../helpers/singleCell/coh
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { spearman } from "../../../helpers/singleCell/dosage";
 import { FONT, YAxis, patientColor } from "./charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const HEIGHT = 360;
@@ -71,7 +72,7 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
             <text x={width - M.right} y={M.top + 4} textAnchor="end" fontSize={FONT.axis} fill="#595959">{`Spearman ρ = ${rho.toFixed(2)} (n = ${points.length})`}</text>
           )}
         </svg>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.scatter-help")}</Text>
+        <HintLine text={t("components.single-cell.cohort.scatter-help")} />
       </div>
     </Card>
   );

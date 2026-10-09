@@ -32,11 +32,19 @@ export default function useWalks(cellIds) {
     return (walksSource.data?.walks || []).map((w) => ({ ...w, id: `${w.id}`, genes: asList(w.genes), driver_genes: asList(w.driver_genes), nodes: w.nodes || [], junctions: w.junctions || [], cells: remap(w.cells) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walksSource, cellIds.join("|")]);
+  // cells that have walk counts at all (walks.json "cells"); null = unknown, treat every cell as measured
+  const measured = useMemo(() => {
+    const listed = walksSource.status === "ok" ? walksSource.data?.cells : null;
+    if (!Array.isArray(listed) || !listed.length) return null;
+    const canonical = new Map(cellIds.map((id) => [idKey(id), id]));
+    return new Set(listed.map((id) => canonical.get(idKey(id)) || `${id}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walksSource, cellIds.join("|")]);
   const filtered = useMemo(() => filterWalks(all, cellIds, filters), [all, cellIds, filters]);
   const colorOf = useMemo(() => {
     const order = all.slice().sort((a, b) => (b.ncells || 0) - (a.ncells || 0));
     const m = new Map(order.map((w, i) => [w.id, PALETTE[i % PALETTE.length]]));
     return (id) => m.get(id) || "#8c8c8c";
   }, [all]);
-  return { status: walksSource.status, all, filtered, filters, setFilters, colorOf, byId: useMemo(() => new Map(all.map((w) => [w.id, w])), [all]) };
+  return { status: walksSource.status, all, measured, filtered, filters, setFilters, colorOf, byId: useMemo(() => new Map(all.map((w) => [w.id, w])), [all]) };
 }

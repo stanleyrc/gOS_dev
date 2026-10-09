@@ -12,6 +12,7 @@ import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { BoxStrips } from "../cohort/charts";
+import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
 const UMAP_H = 300;
@@ -72,7 +73,7 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
         {gi == null ? (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.rna.unknown-gene", { gene })} />
         ) : (
-          <Row gutter={[16, 12]}>
+          <Row gutter={SC_GUTTER}>
             <Col xs={24} xl={12}>
               <Text strong>{gene}</Text> <Text type="secondary">{t("components.single-cell.rna.explorer-pct", { pct: d3.format(".0%")(pctExpr), n: values.length })}</Text>
               {hasUmap ? (

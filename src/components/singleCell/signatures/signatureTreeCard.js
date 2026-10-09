@@ -17,6 +17,7 @@ import { rowMap } from "../../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../../helpers/singleCell/snvSites";
 import { cutTree, labelRuns } from "../../../helpers/singleCell/treeGroups";
 import { fisherExact } from "../../../helpers/singleCell/tests";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const TREE_WIDTH = 240;
@@ -245,11 +246,11 @@ export default function SignatureTreeCard() {
                 { title: "Fisher p", dataIndex: "p", width: 100, render: (v, r) => <span style={{ color: v < 0.01 ? (r.inShare > r.restShare ? "#cf1322" : "#1d39c4") : undefined, fontWeight: v < 0.01 ? 600 : 400 }}>{v < 1e-4 ? "<1e-4" : v.toFixed(4)}</span> },
               ]}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.clade-vs-rest-help2")}</Text>
+            <HintLine text={t("components.single-cell.signatures.clade-vs-rest-help2")} />
           </div>
         )}
         {allSigs.length > 0 && <AetiologyLegend rows={[{ activities: allSigs.map((s) => ({ signature: s })) }]} />}
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.tree-help2")}</Text>
+        <HintLine text={t("components.single-cell.signatures.tree-help2")} />
       </div>
     </Card>
   );
