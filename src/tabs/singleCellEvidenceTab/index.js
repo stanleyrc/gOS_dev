@@ -10,6 +10,7 @@ import CellFilterControl from "../../components/singleCell/evidence/cellFilterCo
 import FishPlotCard from "../../components/singleCell/evidence/fishPlotCard";
 import ConvergenceCard from "../../components/singleCell/evidence/convergenceCard";
 import MtdnaCard from "../../components/singleCell/evidence/mtdnaCard";
+import FitnessCard from "../../components/singleCell/evidence/fitnessCard";
 
 const VIEWS = [
   { value: "reads", label: "Reads & genotypes" },
@@ -18,6 +19,7 @@ const VIEWS = [
   { value: "clones", label: "Clones (fish plot)" },
   { value: "convergence", label: "Convergent events" },
   { value: "mtdna", label: "mtDNA" },
+  { value: "fitness", label: "Fitness (tree shape)" },
   { value: "status", label: "Pipeline status" },
 ];
 
@@ -36,6 +38,7 @@ export default function SingleCellEvidenceTab() {
           {view === "clones" && <FishPlotCard />}
           {view === "convergence" && <ConvergenceCard />}
           {view === "mtdna" && <MtdnaCard />}
+          {view === "fitness" && <FitnessCard />}
           {view === "status" && <PrecomputeStatusCard />}
         </ErrorBoundary>
       </Space>
