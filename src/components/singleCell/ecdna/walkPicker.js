@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Checkbox, InputNumber, Space, Tag, Tooltip, Typography } from "antd";
+import RareControl, { useRareMax } from "./rareControl";
 
 const { Text } = Typography;
 
@@ -15,6 +16,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
   const sel = new Set(selected);
   const toggle = (id) => onSelect(sel.has(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   const all = families.flat();
+  const rareMax = useRareMax();
   return (
     <div>
       <Space wrap size={[12, 6]} style={{ marginBottom: 8 }}>
@@ -30,6 +32,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
           <Text type="secondary">{t("components.single-cell.ecdna.min-cn")}</Text>
           <InputNumber size="small" min={1} value={filters.minCn} onChange={(v) => set("minCn")(v ?? 1)} style={{ width: 64 }} />
         </Space>
+        <RareControl />
         <Checkbox checked={filters.curatedOnly} onChange={(e) => set("curatedOnly")(e.target.checked)}>{t("components.single-cell.ecdna.curated-only")}</Checkbox>
         <Checkbox checked={filters.driverOnly} onChange={(e) => set("driverOnly")(e.target.checked)}>{t("components.single-cell.ecdna.driver-only")}</Checkbox>
         <Text type="secondary">{t("components.single-cell.ecdna.showing", { shown: all.length, total, cells: nCells })}</Text>
@@ -48,7 +51,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
                 <Tooltip key={w.id} title={`${w.genes.length ? w.genes.join(", ") : w.label} · ${w.stats.ncells} cells · median ${w.stats.medianCn.toFixed(0)} copies${w.curated ? " · curated" : ""}`}>
                   <Tag
                     onClick={() => toggle(w.id)}
-                    style={{ cursor: "pointer", margin: 0, borderColor: c, background: on ? c : "transparent", color: on ? "#fff" : c, fontWeight: 600, userSelect: "none" }}
+                    style={{ cursor: "pointer", margin: 0, borderColor: c, background: on ? c : "transparent", color: on ? "#fff" : c, fontWeight: 600, userSelect: "none", opacity: w.stats.ncells <= rareMax ? 0.6 : 1, borderStyle: w.stats.ncells <= rareMax ? "dashed" : "solid" }}
                   >
                     {`${w.label.length > 28 ? `${w.label.slice(0, 27)}…` : w.label} · ${w.stats.ncells}`}
                   </Tag>

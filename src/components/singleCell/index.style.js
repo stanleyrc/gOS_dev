@@ -77,6 +77,18 @@ const Wrapper = styled.div`
     font-size: 13px;
     color: var(--sc-muted, #666);
   }
+  /* label / value grid (single-walk card facts) */
+  .sc-walk-card,
+  .sc-walk-card .ant-typography {
+    font-size: 12px;
+  }
+  .sc-walk-facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 10px;
+    row-gap: 2px;
+    align-items: baseline;
+  }
   .sc-alert {
     margin-bottom: 4px;
     padding: 3px 8px;
