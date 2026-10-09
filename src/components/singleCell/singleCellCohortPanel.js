@@ -50,6 +50,7 @@ import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import CohortFiguresPanel from "./figures/cohortFiguresPanel";
 import HelpDrawer from "./helpDrawer";
+import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { SC_GUTTER } from "./density";
 import { useCohortRnaFindings } from "./rna/useRnaFindings";
@@ -142,7 +143,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
   const cohortFiles = useCohortFiles(summaries, datasets);
-  const [view, setView] = useState("overview");
+  const [view, setView] = useState(() => (peekHelpTarget()?.scope === "cohort" && peekHelpTarget().view) || "overview");
+  useEffect(() => subscribeHelpTarget((target) => target?.scope === "cohort" && target.view && setView(target.view)), []);
   const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
   const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
   // Clade F1 filter: drop alterations whose carrier cells do not sit in one clade of the
