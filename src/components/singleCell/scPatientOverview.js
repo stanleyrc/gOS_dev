@@ -8,6 +8,7 @@ import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { PatientCardBody } from "./cohort/patientCards";
 import { useIsSingleCellPatient } from "./eventsToHeatmap";
 import { SC_GUTTER_INNER } from "./density";
+import useRnaFindings from "./rna/useRnaFindings";
 
 /**
  * Single-cell summary on the patient's Overall tab: the same card as the
@@ -21,6 +22,7 @@ export default function ScPatientOverview() {
   const { patient, cells, snv, signatures, cloneColors, tree } = useSelector((s) => s.SingleCell);
   const events = useSelector((s) => s.FilteredEvents.filteredEvents);
   const datafiles = useSelector((s) => s.CaseReports.datafiles) || [];
+  const dataset = useSelector((s) => s.Settings.dataset);
   const record = datafiles.find((r) => r.entry_type === "patient" && `${r.pair}` === `${patient?.caseReportId}`);
   const report = useMemo(
     () =>
@@ -29,6 +31,7 @@ export default function ScPatientOverview() {
         : null,
     [singleCell, patient, events, cells, snv, signatures]
   );
+  const rna = useRnaFindings({ dataset: singleCell ? dataset : null, patientId: patient?.caseReportId, cells, report });
   if (!singleCell || !report) return null;
   const cloneCounts = {};
   cells.forEach((c) => {
@@ -66,7 +69,7 @@ export default function ScPatientOverview() {
           </Space>
         </Col>
         <Col xs={24} lg={16}>
-          <PatientCardBody report={report} cloneCounts={cloneCounts} cloneColors={cloneColors} />
+          <PatientCardBody report={report} cloneCounts={cloneCounts} cloneColors={cloneColors} rna={rna} />
         </Col>
       </Row>
     </Card>
