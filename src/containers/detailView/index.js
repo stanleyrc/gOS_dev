@@ -21,6 +21,7 @@ import SingleCellReportTab from "../../tabs/singleCellReportTab";
 import SingleCellEcdnaTab from "../../tabs/singleCellEcdnaTab";
 import SingleCellCircosTab from "../../tabs/singleCellCircosTab";
 import SingleCellEvidenceTab from "../../tabs/singleCellEvidenceTab";
+import SingleCellStoryTab from "../../tabs/singleCellStoryTab";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import settingsActions from "../../redux/settings/actions";
 import {
@@ -115,13 +116,14 @@ export class DetailView extends Component {
       13: <SingleCellCircosTab />,
       14: <SingleCellEcdnaTab />,
       15: <SingleCellEvidenceTab />,
+      16: <SingleCellStoryTab />,
     };
     // The single-cell tab only exists for single-cell patient entries; it
     // leads the tab bar there and is hidden for ordinary cases.
     // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, ...[12, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
+        ? [7, ...[12, 16, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>
