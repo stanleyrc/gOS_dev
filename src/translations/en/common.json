@@ -2013,7 +2013,7 @@
         "matrix-click": "Click the name for the alteration popup; click the colour bar to select the carrier cells",
         "matrix-help": "Rows: tier 1–2 alterations ordered from the trunk down (by the tree depth of the clade their carriers fit best); right column: fraction of tumor cells · clade F1 (red when carriers are scattered, i.e. likely noise). Columns: cells in tree order under the phylogeny and clone strip. Click a name for the popup (plots, cell tracks, IGV), the colour bar to select its carriers, a cell to select it; hover highlights across views.",
         "table-title": "All report alterations with details ({{count}})",
-        "picked": "Drivers are the {{count}} alterations ticked under Add To Report in the Filtered Events tab (untick them all to go back to the strong tier 1–2 events).",
+        "picked": "Drivers follow Add To Report in the Filtered Events tab: the ticked strong tier 1–2 events plus every ticked tier 3 event ({{count}} in all). Untick everything to go back to the strong tier 1–2 events.",
         "candidates-title": "Candidate SNV drivers, tier 3 ({{count}})",
         "candidates-help": "Not curated by OncoKB but scored likely drivers (≥ 4 points) from cancer-gene lists, SIFT / PolyPhen, COSMIC recurrence and recurrence across this cohort. Hover a name for the evidence; tick it under Add To Report to make it a driver.",
         "candidate-score": "score",
