@@ -582,6 +582,13 @@ const Wrapper = styled.div`
     white-space: nowrap;
     color: var(--sc-text-secondary, #434343);
   }
+  .sc-gene-label-click {
+    pointer-events: none;
+  }
+  .sc-gene-label-hover {
+    color: var(--sc-link, #1677ff);
+    text-decoration: underline;
+  }
   .sc-violin-grid {
     display: flex;
     flex-wrap: wrap;

@@ -7,6 +7,7 @@ import HeatmapCanvas from "./heatmapCanvas";
 import useRnaData from "./rna/useRnaData";
 import { discreteColumnLookup, expressionRGBA, hexToRgb, packRGBA, wheelZoomFactor } from "../../helpers/singleCell/matrix";
 import { geneValues } from "../../helpers/singleCell/staticRna";
+import { rotatedLabelAt } from "../../helpers/singleCell/rotatedLabels";
 
 const { Text } = Typography;
 const NO_RNA = packRGBA(hexToRgb("#FFFFFF"));
@@ -21,7 +22,7 @@ const MIN_LABEL_PX = 9;
  * drag and double-click zoom the columns; names show once columns are wide
  * enough to read.
  */
-export default function ExpressionSidePanel({ genes, order, width, height, pixelRatio = 1, onRowClick, onHover, onLeave }) {
+export default function ExpressionSidePanel({ genes, order, width, height, pixelRatio = 1, onRowClick, onHover, onLeave, onGeneClick }) {
   const { t } = useTranslation("common");
   const { summary, matrix, rowOfId } = useRnaData();
   const zoomedByCmd = useSelector((state) => state.Settings.zoomedByCmd);
@@ -78,6 +79,12 @@ export default function ExpressionSidePanel({ genes, order, width, height, pixel
   );
   const colPx = width / Math.max(1, visible);
   const showLabels = colPx >= MIN_LABEL_PX;
+  // clickable labels: the rotated labels' boxes overlap, so the label is found from the point's geometry
+  const [hoverLabel, setHoverLabel] = useState(-1);
+  const labelAt = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return rotatedLabelAt(e.clientX - r.left, e.clientY - r.top, colPx, Math.max(0, e0 - s0));
+  };
 
   if (!summary) return null;
   if (!matrix) {
@@ -113,9 +120,28 @@ export default function ExpressionSidePanel({ genes, order, width, height, pixel
         onLeave={onLeave}
       />
       {showLabels ? (
-        <div className="sc-gene-labels" style={{ height: LABEL_HEIGHT }}>
+        <div
+          className={onGeneClick ? "sc-gene-labels sc-gene-labels-click" : "sc-gene-labels"}
+          style={{ height: LABEL_HEIGHT, cursor: onGeneClick && hoverLabel >= 0 ? "pointer" : undefined }}
+          title={onGeneClick && hoverLabel >= 0 && columns[s0 + hoverLabel] ? `${columns[s0 + hoverLabel].gene} (max ${columns[s0 + hoverLabel].max.toFixed(2)})` : undefined}
+          onMouseMove={onGeneClick ? (e) => setHoverLabel(labelAt(e)) : undefined}
+          onMouseLeave={onGeneClick ? () => setHoverLabel(-1) : undefined}
+          onClick={
+            onGeneClick
+              ? (e) => {
+                  const k = labelAt(e);
+                  if (k >= 0 && columns[s0 + k]) onGeneClick(columns[s0 + k].gene);
+                }
+              : undefined
+          }
+        >
           {columns.slice(s0, e0).map((c, k) => (
-            <span key={c.gene} className="sc-gene-label" style={{ left: (k + 0.5) * colPx }} title={`${c.gene} (max ${c.max.toFixed(2)})`}>
+            <span
+              key={c.gene}
+              className={onGeneClick ? `sc-gene-label sc-gene-label-click${k === hoverLabel ? " sc-gene-label-hover" : ""}` : "sc-gene-label"}
+              style={{ left: (k + 0.5) * colPx }}
+              title={onGeneClick ? undefined : `${c.gene} (max ${c.max.toFixed(2)})`}
+            >
               {c.gene}
             </span>
           ))}

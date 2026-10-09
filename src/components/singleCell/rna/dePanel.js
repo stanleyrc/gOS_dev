@@ -481,7 +481,8 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     if (!result) return;
     const passing = result.genes.filter(significant);
     const top = (sign) => passing.filter((g) => Math.sign(g.avg_log2FC) === sign).map((g) => g.gene);
-    dispatch(scaActions.setDeTop({ labels: result.labels, up: top(1), down: top(-1) }));
+    const rows = Object.fromEntries(passing.map((g) => [g.gene, g]));   // gene card "Here" line
+    dispatch(scaActions.setDeTop({ labels: result.labels, up: top(1), down: top(-1), rows }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, qCut, pCut, lfcCut]);
   const dotGenes = useMemo(() => {

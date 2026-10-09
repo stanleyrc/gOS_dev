@@ -6,6 +6,7 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { formatP } from "../../../helpers/singleCell/tests";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import ColorTag from "../colorTag";
+import { KIND_COLOR as FINDING_KIND_COLOR, SEVERITY_COLOR } from "../../../helpers/singleCell/rnaHeadlineFindings";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -64,6 +65,43 @@ function groupedHeadlines(headlines) {
 const KIND_ORDER = ["dosage", "clone-state", "clone-cycling", "clone-quiescent", "clone-region", "clone-markers", "silent-amps"];
 const KIND_COLOR = { dosage: "red", "silent-amps": "default", "clone-state": "purple", "clone-cycling": "orange", "clone-quiescent": "blue", "clone-region": "cyan", "clone-markers": "geekblue" };
 
+/** Tag of a splicing finding / fusion headline: severity colour, kind label. */
+export function FindingKindTag({ item, style }) {
+  const { t } = useTranslation("common");
+  const kind = item.kind === "fusion" ? "fusion" : item.findingKind || item.kind;
+  const color = item.severity === "high" ? SEVERITY_COLOR.high : FINDING_KIND_COLOR[kind] || "default";
+  return (
+    <Tag color={color} style={{ fontSize: TYPE.tick, ...style }}>
+      {t(`components.single-cell.rna-findings.kind-${kind}`)}
+      {item.kind === "fusion" && item.tier ? ` T${item.tier}` : ""}
+    </Tag>
+  );
+}
+
+/** Splicing findings and tier 1–2 fusions (findings.top) as tagged one-line sentences. */
+export function RnaTopFindings({ items = [], max = Infinity, onPick }) {
+  const { t } = useTranslation("common");
+  if (!items.length) return null;
+  return (
+    <div>
+      <Text strong style={{ fontSize: TYPE.label }}>{t("components.single-cell.rna-findings.top-title")}</Text>
+      {items.slice(0, max).map((h) => (
+        <div key={h.id} style={{ fontSize: TYPE.label, lineHeight: 1.5 }}>
+          <FindingKindTag item={h} />
+          {onPick ? (
+            <Typography.Link onClick={() => onPick(h)} style={{ fontSize: TYPE.label }}>
+              {h.text}
+            </Typography.Link>
+          ) : (
+            <Text>{h.text}</Text>
+          )}
+        </div>
+      ))}
+      {items.length > max && <Text type="secondary" style={{ fontSize: TYPE.tick }}>{t("components.single-cell.rna-findings.more", { count: items.length - max })}</Text>}
+    </div>
+  );
+}
+
 /** Short sentence for the report's summary paragraph. */
 export function rnaSummarySentence(findings, t) {
   if (!findings?.meta?.nRna) return null;
@@ -75,6 +113,8 @@ export function rnaSummarySentence(findings, t) {
   if (expressed.length) parts.push(t("components.single-cell.rna-findings.summary-dosage", { list: expressed.join(", ") }));
   const cloneLinked = [...new Set(headlines.filter((h) => h.kind === "clone-state" || h.kind === "clone-cycling").map((h) => h.clone))];
   if (cloneLinked.length) parts.push(t("components.single-cell.rna-findings.summary-clones", { list: cloneLinked.join(", ") }));
+  const top = (findings.top || []).slice(0, 2).map((h) => h.text);
+  if (top.length) parts.push(t("components.single-cell.rna-findings.summary-top", { list: top.join("; ") }));
   return parts.join(" ");
 }
 
@@ -82,7 +122,7 @@ export function rnaSummarySentence(findings, t) {
  * RNA key findings as tagged lines, strongest kinds first. findings: from
  * useRnaFindings; driverGenes marks marker genes that are also drivers.
  */
-export default function RnaFindingsList({ findings, status = "ok", cloneColors = {}, driverGenes = new Set(), max = Infinity, showMix = true }) {
+export default function RnaFindingsList({ findings, status = "ok", cloneColors = {}, driverGenes = new Set(), max = Infinity, showMix = true, maxTop = 3 }) {
   const { t } = useTranslation("common");
   if (status === "loading" && !findings) return <Text type="secondary">{t("components.single-cell.rna-findings.loading")}</Text>;
   if (!findings?.meta?.nRna) return <Text type="secondary">{t("components.single-cell.rna-findings.none")}</Text>;
@@ -93,6 +133,7 @@ export default function RnaFindingsList({ findings, status = "ok", cloneColors =
   const cloneTag = (clone) => <ColorTag color={cloneColors[clone]} style={{ marginRight: 4 }}>{clone}</ColorTag>;
   return (
     <Space direction="vertical" size={4} style={{ width: "100%" }}>
+      <RnaTopFindings items={findings.top || []} max={maxTop} />
       {showMix && mix && (
         <div>
           <StateMixBar mix={mix.mix} />

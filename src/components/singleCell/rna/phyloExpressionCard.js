@@ -8,6 +8,7 @@ import HeatmapCanvas from "../heatmapCanvas";
 import StripLabels from "../stripLabels";
 import HintLine, { Provenance } from "../hintLine";
 import ExpressionSidePanel from "../expressionSidePanel";
+import GeneInfoDrawer from "./geneInfoDrawer";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
 import useTreeView from "../useTreeView";
@@ -50,6 +51,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
   const dispatch = useDispatch();
   const { cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((state) => state.SingleCell);
   const { geneList, deTop } = useSelector((state) => state.ScAnalysis);
+  const [cardGene, setCardGene] = useState(null);
   const { order, treeLayout, cellById } = useTreeView();
   const { rowOfId } = useRnaData();
   const [containerRef, width] = useContainerWidth(700);
@@ -379,6 +381,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
                 onRowClick={onRowClick}
                 onHover={(row) => share(row != null && row >= 0 ? order[row] : null)}
                 onLeave={() => share(null)}
+                onGeneClick={setCardGene}
               />
             </div>
             </>
@@ -401,6 +404,12 @@ export default function PhyloExpressionCard({ summary, matrix }) {
           <HintLine text={t("components.single-cell.rna.phylo-hint")} />
         </div>
       </Card>
+      <GeneInfoDrawer
+        gene={cardGene}
+        onClose={() => setCardGene(null)}
+        row={source === "de" ? deTop?.rows?.[cardGene] : null}
+        labels={deTop?.labels}
+      />
     </Wrapper>
   );
 }
