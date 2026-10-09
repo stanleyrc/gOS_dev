@@ -26,14 +26,22 @@ export const TYPE_LABELS = {
  *
  * tracks: [{ key, label, sublabel, counts: [per junction] }]
  */
-export default function SashimiPlot({ cluster, tracks, width = 800, trackH = 96, labelW = 132, highlight = null, svgRef = null }) {
+export default function SashimiPlot({ cluster, tracks, width = 800, trackH = 96, labelW = 132, highlight = null, svgRef = null, transcripts = null, event = null }) {
   const junctions = cluster?.junctions || [];
-  const geneH = 38;
+  // with exon models (helpers/singleCell/spliceEvents clusterTranscripts): one row per transcript
+  // (canonical first, at most 4) instead of the cluster's collapsed exon blocks
+  const txRows = (transcripts || []).slice(0, 4);
+  const TX_ROW = 15;
+  const geneH = txRows.length ? 30 + txRows.length * TX_ROW : 38;
   const top = 6;
   const height = top + geneH + tracks.length * trackH + 8;
   const x0 = labelW;
   const x1 = width - 10;
-  const axis = sashimiAxis({ exons: cluster?.exons || [], junctions }, x0, x1);
+  const modelExons = txRows.length
+    ? [...new Map(txRows.flatMap((t) => t.exons).map((e) => [`${e.start}-${e.end}`, { start: e.start, end: e.end }])).values()]
+    : cluster?.exons || [];
+  const axis = sashimiAxis({ exons: modelExons, junctions }, x0, x1);
+  const isEventExon = (e) => event?.exon && e.start <= event.exon.end && e.end >= event.exon.start;
   const arcs = sashimiArcs(junctions, axis.x);
   const maxCount = Math.max(1, ...tracks.flatMap((t) => t.counts || []).map((v) => Number(v) || 0));
   const minus = cluster?.strand === "-";
@@ -46,17 +54,48 @@ export default function SashimiPlot({ cluster, tracks, width = 800, trackH = 96,
   return (
     <svg ref={svgRef} width={width} height={height} style={{ display: "block", overflow: "visible" }} role="img" fontSize={TYPE.tick}>
       {/* gene model */}
-      <text x={0} y={geneY - 4} fontSize={TYPE.label} fontWeight={600} fill="currentColor">
+      <text x={0} y={txRows.length ? top + 10 : geneY - 4} fontSize={TYPE.label} fontWeight={600} fill="currentColor">
         {cluster?.gene || "?"} {minus ? "(−)" : "(+)"}
       </text>
-      <text x={0} y={geneY + 11} fill="currentColor" opacity={0.6}>
+      <text x={0} y={txRows.length ? top + 25 : geneY + 11} fill="currentColor" opacity={0.6}>
         chr{`${cluster?.chromosome || ""}`.replace(/^chr/, "")}
       </text>
-      <line x1={x0} x2={x1} y1={geneY} y2={geneY} stroke="currentColor" opacity={0.45} />
-      {arrows.map((x) => (
+      {txRows.length > 0 &&
+        txRows.map((tx, r) => {
+          const ty = top + 14 + r * TX_ROW;
+          const xs = tx.exons.map((e) => [axis.x(e.start), axis.x(e.end + 1)]);
+          const lx = Math.min(...xs.map((v) => v[0]));
+          const rx = Math.max(...xs.map((v) => v[1]));
+          return (
+            <g key={tx.id}>
+              <line x1={lx} x2={rx} y1={ty} y2={ty} stroke="currentColor" opacity={0.4}>
+                <title>{`${tx.id}${tx.canonical ? " (Ensembl canonical)" : ""}`}</title>
+              </line>
+              {tx.exons.map((e, k) => {
+                const ex0 = axis.x(e.start);
+                const ex1 = axis.x(e.end + 1);
+                const hot = isEventExon(e);
+                return (
+                  <g key={k}>
+                    <rect x={ex0} y={ty - 5} width={Math.max(2, ex1 - ex0)} height={10} rx={1.5} fill={hot ? "#d4380d" : "currentColor"} opacity={hot ? 0.9 : tx.canonical ? 0.6 : 0.4}>
+                      <title>{`${tx.id} exon ${e.n}: ${fmtPos(e.start)}-${fmtPos(e.end)} (${e.end - e.start + 1} bp)`}</title>
+                    </rect>
+                    {r === 0 && ex1 - ex0 >= 10 && (
+                      <text x={(ex0 + ex1) / 2} y={ty - 7} textAnchor="middle" fill={hot ? "#d4380d" : "currentColor"} opacity={hot ? 1 : 0.7} fontSize={TYPE.tick} fontWeight={hot ? 700 : 400}>
+                        {e.n}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+      {!txRows.length && <line x1={x0} x2={x1} y1={geneY} y2={geneY} stroke="currentColor" opacity={0.45} />}
+      {!txRows.length && arrows.map((x) => (
         <path key={x} d={minus ? `M${x + 3},${geneY - 3} L${x},${geneY} L${x + 3},${geneY + 3}` : `M${x - 3},${geneY - 3} L${x},${geneY} L${x - 3},${geneY + 3}`} fill="none" stroke="currentColor" opacity={0.45} />
       ))}
-      {axis.exons.map((e) => (
+      {!txRows.length && axis.exons.map((e) => (
         <rect
           key={`${e.start}-${e.end}`}
           x={e.x0}

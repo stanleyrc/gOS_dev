@@ -2279,7 +2279,16 @@
         "cohort-variants": "Known splice variants per patient",
         "cohort-variants-help": "Cells with alternative-junction reads / cells covering the variant (alternative or reference junction reads), and the alternative fraction of the pooled reads.",
         "cohort-overview": "Clusters that differ most between patients",
-        "cohort-overview-help": "Rows: clusters with BH q < 0.05 (chi-square on pooled patient × junction counts); each row shows the PSI of the cluster's most variable junction per patient (blank: < 50 reads or < 5 covered cells), rows need ≥ 3 such patients and are sorted by the PSI range among them (ΔPSI column). Pooled reads are not independent, so q is a ranking aid; check the cell-level view in each patient's RNA tab. Click a row to open it below."
+        "cohort-overview-help": "Rows: clusters with BH q < 0.05 (chi-square on pooled patient × junction counts); each row shows the PSI of the cluster's most variable junction per patient (blank: < 50 reads or < 5 covered cells), rows need ≥ 3 such patients and are sorted by the PSI range among them (ΔPSI column). Pooled reads are not independent, so q is a ranking aid; check the cell-level view in each patient's RNA tab. Click a row to open it below.",
+        "split-none": "Per patient",
+        "split-by": "Split by {{field}}",
+        "event": "Event",
+        "event-help": "PSI of the event in each cell with at least 3 reads on its junctions (cassette exon: mean of the two inclusion junctions / (that + skipping)), and the gene's expression in the same patients' tumor cells. Single-cell junction counts are sparse: read the violins with their n.",
+        "cell-psi": "Per-cell PSI",
+        "no-event": "No cassette exon or alternative site recognised in this cluster; see the junctions above.",
+        "gene-expr": "{{gene}} expression",
+        "no-cells": "No cell has 3 or more reads on this event's junctions.",
+        "pooled": "Pooled PSI (reads):"
       },
       "help-center": {
         "button": "Help",

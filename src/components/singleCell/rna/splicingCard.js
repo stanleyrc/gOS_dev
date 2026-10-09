@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { useSpliceExons } from "../cohort/cohortSpliceEvent";
+import { clusterEvents, clusterTranscripts } from "../../../helpers/singleCell/spliceEvents";
 import { useTranslation } from "react-i18next";
 import { Alert, Card, Col, Empty, Input, Row, Segmented, Select, Space, Switch, Table, Tag, Typography } from "antd";
 import { BranchesOutlined } from "@ant-design/icons";
@@ -249,6 +251,7 @@ const TYPE_FILTERS = ["all", "alternative", "novel"];
 
 /** Intron clusters: ranked by difference between groups; sashimi per group, per-cell usage in tree order. */
 function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cloneStrip }) {
+  const dataset = useSelector((s) => s.Settings.dataset);
   const { t } = useTranslation("common");
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -271,6 +274,9 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   const cluster = clusters.find((c) => c.id === picked);
   const groups = useMemo(() => (cluster ? clusterByGroup(cluster, groupOf) : []), [cluster, groupOf]);
   const usage = useMemo(() => (cluster ? cellUsageMatrix(cluster, rows) : null), [cluster, rows]);
+  const exonModel = useSpliceExons(dataset);
+  const transcripts = useMemo(() => (cluster ? clusterTranscripts(exonModel, cluster) : []), [cluster, exonModel]);
+  const spliceEvent = useMemo(() => (cluster ? clusterEvents(cluster, transcripts)[0] || null : null), [cluster, transcripts]);
   if (!clusters.length) return <Text type="secondary">{t(`${k}.no-clusters`)}</Text>;
   const allCounts = groups.reduce((acc, g) => acc.map((v, j) => v + g.counts[j]), new Array(cluster?.junctions.length || 0).fill(0));
   const nCellsAll = groups.reduce((a, g) => a + g.nCells, 0);
@@ -395,7 +401,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
             <SvgExportButton containerRef={plotRef} name={`sashimi-${cluster.gene || cluster.id}`} />
           </Space>
           <div ref={plotRef} style={{ overflowX: "auto" }}>
-            <SashimiPlot cluster={cluster} tracks={tracks} width={Math.max(520, width)} highlight={highlight} />
+            <SashimiPlot cluster={cluster} tracks={tracks} width={Math.max(520, width)} highlight={highlight} transcripts={transcripts} event={spliceEvent} />
           </div>
           <Space size={4} wrap>
             {cluster.junctions.map((jn, j) => (
