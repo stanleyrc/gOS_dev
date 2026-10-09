@@ -201,6 +201,56 @@ const Wrapper = styled.div`
     max-width: 360px;
     white-space: nowrap;
   }
+  .sc-fig-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 14px;
+    margin-top: 6px;
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-text-secondary, #434343);
+    line-height: 1.6;
+  }
+  .sc-fig-legend-title {
+    color: var(--sc-muted, #666);
+    margin-right: 2px;
+  }
+  .sc-fig-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .sc-fig-subtitle {
+    font-size: var(--sc-fs-label, 12.5px);
+    font-weight: 600;
+    color: var(--sc-text, #1f1f1f);
+    margin-bottom: 4px;
+  }
+  .sc-fig-subtitle span {
+    font-weight: 400;
+    color: var(--sc-muted, #666);
+    margin-left: 6px;
+  }
+  .sc-fig-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 16px;
+    text-align: center;
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+    border: 1px dashed var(--sc-border-soft, #f0f0f0);
+    border-radius: 6px;
+    margin-top: 6px;
+  }
+  .sc-fig-caption {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
   .sc-tooltip-key {
     color: var(--sc-muted, #666);
   }
