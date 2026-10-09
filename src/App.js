@@ -20,6 +20,12 @@ import "./global.css";
 
 const { Content, Footer } = Layout;
 
+// antd's default stack minus its trailing emoji fonts: with 'Noto Color Emoji'
+// listed, Chromium on Linux (no Roboto / Helvetica / Arial installed) takes
+// digits and spaces from the emoji font ("SBS 4 0 c"). Emoji still render
+// through the system fallback; Mac / Windows resolve the first families as before.
+const APP_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', 'DejaVu Sans', sans-serif";
+
 // apply the stored theme before the first render, so plots drawn in their
 // mount effects (which run before App's) already see the right colours
 if (typeof document !== "undefined") applyAppTheme(getAppTheme());
@@ -41,7 +47,7 @@ function App() {
     return onAppThemeChange(setMode);
   }, [mode]);
   return (
-    <ConfigProvider locale={en_US} theme={{ algorithm: mode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm }}>
+    <ConfigProvider locale={en_US} theme={{ algorithm: mode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm, token: { fontFamily: APP_FONT_FAMILY } }}>
       <Provider store={store}>
         <I18nextProvider i18n={i18n}>
           <Router history={history}>
