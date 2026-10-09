@@ -13,9 +13,12 @@ import HelpDrawer from "../../components/singleCell/helpDrawer";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
 import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
+import HeritabilityCard from "../../components/singleCell/rna/heritabilityCard";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
+import RnaFusionsCard from "../../components/singleCell/rna/rnaFusionsCard";
+import SplicingCard from "../../components/singleCell/rna/splicingCard";
 import scaActions from "../../redux/scAnalysis/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
@@ -39,6 +42,9 @@ export default function SingleCellRnaTab() {
   const [violinGenes, setViolinGenes] = useState([]);
   const [section, setSection] = useState("overview");
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
+  // fusions / splicing tab only when the back end wrote either file (or it failed to parse)
+  const hasFusions = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaFusions?.status));
+  const hasSplicing = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaSplicing?.status));
   // Violins follow the genes picked in the volcano or table.
   useEffect(() => {
     if (geneList.length) setViolinGenes(geneList.slice(0, 48));
@@ -115,6 +121,9 @@ export default function SingleCellRnaTab() {
                     <Col span={24}>
                       <PhyloExpressionCard summary={summary} matrix={matrix} />
                     </Col>
+                    <Col span={24}>
+                      <HeritabilityCard summary={summary} matrix={matrix} />
+                    </Col>
                   </Row>
                 ),
               },
@@ -135,6 +144,28 @@ export default function SingleCellRnaTab() {
                   </Row>
                 ),
               },
+              ...(hasFusions || hasSplicing
+                ? [
+                    {
+                      key: "fusions",
+                      label: t("components.single-cell.rna.section-fusions"),
+                      children: (
+                        <Row gutter={SC_GUTTER}>
+                          {hasFusions && (
+                            <Col span={24}>
+                              <RnaFusionsCard summary={summary} />
+                            </Col>
+                          )}
+                          {hasSplicing && (
+                            <Col span={24}>
+                              <SplicingCard summary={summary} />
+                            </Col>
+                          )}
+                        </Row>
+                      ),
+                    },
+                  ]
+                : []),
               {
                 key: "server",
                 label: (

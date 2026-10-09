@@ -79,7 +79,8 @@ const actions = {
   SC_PER_CELL_TRACK_MISSING: "SC_PER_CELL_TRACK_MISSING",
   SC_PER_CELL_TRACK_FAILED: "SC_PER_CELL_TRACK_FAILED",
 
-  fetchSingleCellData: () => ({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST }),
+  // caseReportId: load another patient than the open case report (cohort figures)
+  fetchSingleCellData: (caseReportId) => ({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST, caseReportId }),
   updateSelection: (cellIds) => ({
     type: actions.SC_SELECTION_UPDATED,
     cellIds,

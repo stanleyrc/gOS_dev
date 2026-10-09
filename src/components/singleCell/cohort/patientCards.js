@@ -6,6 +6,7 @@ import { buildPatientReport } from "../../../helpers/singleCell/patientReport";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { signatureColorOf } from "../signaturePanel";
 import { SC_GUTTER_INNER } from "../density";
+import RnaFindingsList from "../rna/rnaFindingsList";
 import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
@@ -43,8 +44,8 @@ function SigBar({ items, width = 220 }) {
   );
 }
 
-/** Body of a patient card: cells, clone bar, clonal / subclonal drivers, signatures, burden. */
-export function PatientCardBody({ report, cloneCounts, cloneColors }) {
+/** Body of a patient card: cells, clone bar, clonal / subclonal drivers, signatures, burden, RNA. */
+export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }) {
   const { t } = useTranslation("common");
   return (
     <Space direction="vertical" size={6} style={{ width: "100%" }}>
@@ -79,12 +80,18 @@ export function PatientCardBody({ report, cloneCounts, cloneColors }) {
       <Text type="secondary" style={{ fontSize: 13 }}>
         <Provenance id="burden">{t("components.single-cell.cohort.card-burden", { truncal: report.burden.truncal, subclonal: report.burden.subclonal, private: report.burden.private })}</Provenance>
       </Text>
+      {rna && rna.status !== "none" && (
+        <div onClick={(e) => e.stopPropagation()} role="presentation">
+          <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.rna-findings.title")}</Text>
+          <RnaFindingsList findings={rna.data} status={rna.status} cloneColors={cloneColors} driverGenes={new Set([...report.clonal, ...report.subclonal].flatMap((d) => `${d.gene || ""}`.split("::")))} max={4} />
+        </div>
+      )}
     </Space>
   );
 }
 
 /** One card per patient: cells, clones, clonal drivers, top signatures. */
-export default function PatientCards({ summaries, files, datafiles, cloneColors, onOpen }) {
+export default function PatientCards({ summaries, files, datafiles, cloneColors, onOpen, rnaOf = null }) {
   const { t } = useTranslation("common");
   const reports = useMemo(
     () =>
@@ -116,7 +123,7 @@ export default function PatientCards({ summaries, files, datafiles, cloneColors,
             }
             extra={<Button type="link" size="small" onClick={(e) => { e.stopPropagation(); onOpen(s); }}>{t("components.single-cell.cohort.open")}</Button>}
           >
-            <PatientCardBody report={report} cloneCounts={s.cloneCounts} cloneColors={cloneColors} />
+            <PatientCardBody report={report} cloneCounts={s.cloneCounts} cloneColors={cloneColors} rna={rnaOf ? rnaOf(s.caseReportId) : null} />
           </Card>
         </Col>
       ))}

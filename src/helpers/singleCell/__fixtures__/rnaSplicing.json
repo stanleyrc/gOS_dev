@@ -1,0 +1,18 @@
+{
+  "format": "gos-sc-splicing/1", "patient": "P1",
+  "variants": [
+    { "id": "EGFRvIII", "gene": "EGFR", "description": "EGFR exon 1 → exon 8 (Δ2–7)",
+      "alt_junction": { "chromosome": "7", "start": 55019366, "end": 55155829 },
+      "ref_junction": { "chromosome": "7", "start": 55019366, "end": 55142285 },
+      "cells": { "r1": [4, 1], "r2": [0, 3], "r3": [2, 2], "r9": [1, 0] } }
+  ],
+  "clusters": [
+    { "id": "clu_1", "gene": "EGFR", "chromosome": "7", "strand": "+",
+      "junctions": [ { "start": 100, "end": 200, "annotated": true }, { "start": 100, "end": 300, "annotated": true }, { "start": 250, "end": 300, "annotated": false } ],
+      "cells": { "r1": [3, 1, 0], "r2": [0, 4, 0], "r3": [1, 1, 2], "r9": [0, 0, 0] } },
+    { "id": "clu_2", "gene": "PTPRZ1", "chromosome": "7", "strand": "-",
+      "junctions": [ { "start": 10, "end": 20, "annotated": true }, { "start": 10, "end": 30, "annotated": true } ],
+      "cells": { "r1": [1, 1] } }
+  ],
+  "cell_map": { "r1": "c1", "r2": "c3", "r3": "c2", "r9": null }
+}
