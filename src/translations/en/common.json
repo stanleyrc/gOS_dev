@@ -991,7 +991,7 @@
         "fold": "Fold",
         "faster": "faster",
         "slower": "slower",
-        "help": "Each row is a clade of ≥ 3 cells: SNV sites gained on the branch above it (with alt reads in the clade, in none of its sibling clades), divided by the median callable megabases of its cells, and the per-cell rate of private SNVs per callable Mb inside the clade versus the rest of the tumour (median, fold change, two-sided Mann-Whitney). Clades flagged faster/slower (p < 0.01, fold ≥ 1.5) have a different ongoing mutation rate. Click a row to select the clade."
+        "help": "Each row is a clade of ≥ 3 cells: SNV sites gained on the branch above it (with alt reads in the clade, in none of its sibling clades), divided by the median callable megabases of its cells, and the per-cell rate of private SNVs per callable Mb inside the clade versus the rest of the tumour (median, fold change, two-sided Mann-Whitney). Clades flagged faster/slower (p < 0.01, fold ≥ 1.5) have a different ongoing mutation rate. Click a row to select the clade. Normal cells are left out of every clade and comparison."
       },
       "timing": {
         "title": "Amplification timing",

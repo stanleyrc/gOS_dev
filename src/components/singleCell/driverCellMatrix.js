@@ -23,7 +23,7 @@ const ROW_H = 24;
 const LABEL_W = 240;
 const RIGHT_W = 90;
 const STRIP_H = 12;
-const TREE_H = 130;
+const TREE_H = 160;
 const SETTLE_MS = 140; // a wheel gesture commits to React once idle this long
 
 /**
