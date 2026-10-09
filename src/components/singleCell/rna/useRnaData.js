@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
+import { excludedCellIds } from "../../../helpers/singleCell/precompute";
 
 /** RNA cell kept when "tumor cells only": linked to a non-normal clone, or (RNA-only) typed Malignant. */
 export function isTumorRnaCell(cell, cloneOf) {
@@ -70,14 +71,20 @@ export default function useRnaData() {
     };
   }, [fullSummary, patient, dataset]);
 
+  // global cell filter (QC rules + manual exclusions) applies to RNA views too
+  const qcRules = useSelector((state) => state.SingleCell.layout.qcExcludeRules);
+  const manualExcluded = useSelector((state) => state.SingleCell.layout.excludedCells);
+  const qcExcluded = useMemo(() => excludedCellIds(cells, qcRules, manualExcluded), [cells, qcRules, manualExcluded]);
   const { summary, matrix, excluded } = useMemo(() => {
     if (!fullSummary) return { summary: null, matrix: null, excluded: 0 };
-    if (!tumorOnly) return { summary: fullSummary, matrix: fullMatrix, excluded: 0 };
+    if (!tumorOnly && !qcExcluded.size) return { summary: fullSummary, matrix: fullMatrix, excluded: 0 };
     const cloneOf = new Map(cells.map((c) => [c.cell_id, c.clone_id]));
-    const keep = fullSummary.cells.map((c, k) => (isTumorRnaCell(c, cloneOf) ? k : -1)).filter((k) => k >= 0);
+    const keep = fullSummary.cells
+      .map((c, k) => ((!tumorOnly || isTumorRnaCell(c, cloneOf)) && !(c.cell_id && qcExcluded.has(`${c.cell_id}`)) ? k : -1))
+      .filter((k) => k >= 0);
     const sub = subsetRna(fullSummary, fullMatrix, keep);
     return { ...sub, excluded: fullSummary.cells.length - keep.length };
-  }, [fullSummary, fullMatrix, tumorOnly, cells]);
+  }, [fullSummary, fullMatrix, tumorOnly, cells, qcExcluded]);
 
   // Every ID a cell may be referred to by -> its matrix row.
   const rowOfId = useMemo(() => {
