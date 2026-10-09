@@ -40,7 +40,8 @@ import { buildColumnsFromSettings } from "./columnBuilders";
 import getDefaultVisibleFilteredEventsColumnKeys, {
   orderFilteredEventsColumns,
 } from "./defaultVisibleFilteredEventsColumns";
-import { moveColumnKey, orderMovableColumns } from "./columnOrder";
+import { applyColumnPins, moveColumnKey, orderMovableColumns } from "./columnOrder";
+import ColumnPinControl from "./columnPinControl";
 import ResizableTitle, {
   ColumnSortControl,
   clampColumnWidth,
@@ -177,6 +178,7 @@ export class FilteredEventsListPanel extends Component {
     },
     columnWidths: {},
     columnOrderKeys: [],
+    pinnedColumnKeys: [],
     draggingColumnKey: null,
     pageSize: 50,
     filteredEventDetailsModalPresented: false,
@@ -365,6 +367,22 @@ export class FilteredEventsListPanel extends Component {
     });
   };
 
+  handleColumnPinToggle = (columnKey) => {
+    if (this.unmounted) return;
+    const configured = [
+      ...(this.props.data?.filteredEventsColumns || []),
+      ...(this.props.dataset?.optionalFilteredEventsColumns || []),
+    ].some((column) => column.id === columnKey);
+    if (!configured) return;
+
+    this.setState(({ pinnedColumnKeys }) => ({
+      pinnedColumnKeys: pinnedColumnKeys.includes(columnKey)
+        ? pinnedColumnKeys.filter((key) => key !== columnKey)
+        : [...pinnedColumnKeys, columnKey],
+      draggingColumnKey: null,
+    }), () => this.persistColumnLayout({ pinnedColumnKeys: this.state.pinnedColumnKeys }));
+  };
+
   handleColumnDragStart = (columnKey) => {
     this.setState({ draggingColumnKey: columnKey });
   };
@@ -494,6 +512,7 @@ export class FilteredEventsListPanel extends Component {
       sortState,
       columnWidths,
       columnOrderKeys,
+      pinnedColumnKeys,
       draggingColumnKey,
       pageSize,
       filteredEventDetailsModalPresented,
@@ -530,7 +549,7 @@ export class FilteredEventsListPanel extends Component {
       columnOrderKeys,
     );
     const movableColumnKeys = orderedColumns
-      .filter((column) => !column.fixed)
+      .filter((column) => !column.fixed && !pinnedColumnKeys.includes(column.key))
       .map((column) => column.key);
     const withHeaderControls = (column, movable = false) => ({
       ...column,
@@ -547,6 +566,7 @@ export class FilteredEventsListPanel extends Component {
         : {}),
       onHeaderCell: (currentColumn) => ({
         ...column.onHeaderCell?.(currentColumn),
+        headerLabel: getColumnTitle(column.title),
         sortControlOnly: Boolean(column.sorter),
         ...(movable
           ? {
@@ -560,7 +580,24 @@ export class FilteredEventsListPanel extends Component {
       }),
     });
     const columnsWithSortState = orderedColumns.map((column) => {
-      const col = withHeaderControls(column, !column.fixed);
+      const pinned = pinnedColumnKeys.includes(column.key);
+      const col = withHeaderControls(column, !column.fixed && !pinned);
+      if (!column.fixed) {
+        const title = getColumnTitle(column.title);
+        col.title = (
+          <span className="filtered-events-column-title">
+            <span className="filtered-events-column-title-text">{column.title}</span>
+            <ColumnPinControl
+              columnKey={column.key}
+              pinned={pinned}
+              label={t(`components.filtered-events-panel.${pinned ? "unpin-column" : "pin-column"}`, { title })}
+              onToggle={this.handleColumnPinToggle}
+            />
+          </span>
+        );
+        // Reserve the hidden button's space so hover never shifts the title.
+        col.width = (Number(column.width) || 120) + 28;
+      }
       if (!col.sorter) return col;
       return {
         ...col,
@@ -568,10 +605,10 @@ export class FilteredEventsListPanel extends Component {
       };
     });
 
-    const selectedDataColumns = [
+    const selectedDataColumns = applyColumnPins([
       ...(additionalColumns || []).map((column) => withHeaderControls(column)),
       ...columnsWithSortState,
-    ].filter((column) => selectedColumnKeys.includes(column.key));
+    ].filter((column) => selectedColumnKeys.includes(column.key)), pinnedColumnKeys);
     const filteredRecords = this.getRecordsMatchingColumnFilters(
       records,
       selectedDataColumns
@@ -806,7 +843,7 @@ const mapStateToProps = (state) => {
     originalFilteredEvents: state.FilteredEvents.originalFilteredEvents,
     selectedFilteredEvent: mergedEvents.selectedFilteredEvent,
     selectedEventUids: selectReportEventUids(state),
-    columnFilters: state.FilteredEvents.columnFilters || { tier: [1, 2, 3] },
+    columnFilters: state.FilteredEvents.columnFilters || {},
     viewMode: state.FilteredEvents.viewMode,
     error: state.FilteredEvents.error,
     missing: state.FilteredEvents.missing,

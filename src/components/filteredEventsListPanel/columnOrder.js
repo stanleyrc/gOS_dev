@@ -14,6 +14,22 @@ export function moveColumnKey(keys, sourceKey, targetKey) {
   return orderedKeys;
 }
 
+/** Project user pins without changing base order or caller-owned fixed columns. */
+export function applyColumnPins(columns, pinnedKeys) {
+  const pins = new Set(pinnedKeys);
+  const pinned = columns.filter((column) => !column.fixed && pins.has(column.key));
+  if (pinned.length === 0) return columns;
+
+  return [
+    ...columns.filter((column) => column.fixed === "left" || column.fixed === true),
+    ...pinned.map((column) => ({ ...column, fixed: "left" })),
+    ...columns.filter((column) =>
+      column.fixed !== "left" && column.fixed !== true &&
+      (column.fixed || !pins.has(column.key)),
+    ),
+  ];
+}
+
 /** Apply key order within non-fixed slots; caller-owned columns stay outside. */
 export function orderMovableColumns(columns, keys) {
   const movableColumns = orderFilteredEventsColumns(
