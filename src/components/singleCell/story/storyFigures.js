@@ -103,7 +103,7 @@ export function StoryDots({ figure }) {
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(600);
   const rows = figure.rows || [];
-  const left = 260;
+  const left = Math.min(300, Math.max(160, 8 + 6.6 * (d3.max(rows, (r) => r.label.length) || 20)));
   const w = Math.max(160, Math.min(420, width - left - 70));
   const x = d3.scaleLinear().domain([Math.min(-0.2, d3.min(rows, (r) => r.null) ?? 0), Math.max(0.8, d3.max(rows, (r) => r.observed) ?? 1)]).nice().range([0, w]);
   const rowH = 18;
@@ -121,7 +121,7 @@ export function StoryDots({ figure }) {
           const sig = r.p < (figure.alpha ?? 0.05) && r.observed > r.null;
           return (
             <g key={r.label} transform={`translate(0,${i * rowH})`}>
-              <text x={left - 8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={theme.textSecondary}>{r.label.length > 44 ? `${r.label.slice(0, 43)}…` : r.label}</text>
+              <text x={left - 8} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={theme.textSecondary}>{r.label.length > 46 ? `${r.label.slice(0, 45)}…` : r.label}</text>
               <line x1={left + x(r.null)} x2={left + x(r.observed)} y1={rowH / 2} y2={rowH / 2} stroke={theme.axis} strokeWidth={2} />
               <rect x={left + x(r.null) - 1} y={rowH / 2 - 5} width={2} height={10} fill={theme.axis} />
               <circle cx={left + x(r.observed)} cy={rowH / 2} r={5} fill={sig ? accent : theme.empty} stroke={theme.panel} strokeWidth={2}>
@@ -143,6 +143,7 @@ export function StoryDots({ figure }) {
 /** Rows x columns heatmap; diverging (blue - neutral - red) when figure.diverging. */
 export function StoryMatrix({ figure }) {
   const theme = usePlotTheme();
+  const [ref, width] = useContainerWidth(600);
   const rows = figure.rows || [];
   const cols = figure.cols || [];
   const vals = figure.values || [];
@@ -153,11 +154,11 @@ export function StoryMatrix({ figure }) {
     const t = Math.max(-1, Math.min(1, v / ext));
     return t < 0 ? d3.interpolateLab(theme.empty, pal[0])(-t) : d3.interpolateLab(theme.empty, pal[7])(t);
   };
-  const left = 200;
-  const cw = 62;
+  const left = Math.min(220, 8 + 7 * d3.max(rows, (r) => r.length) || 120);
+  const cw = Math.max(36, Math.min(80, Math.floor((width - left - 8) / Math.max(1, cols.length))));
   const ch = 22;
   return (
-    <div>
+    <div ref={ref}>
       <svg width={left + cols.length * cw + 8} height={rows.length * ch + 24} role="img" aria-label={figure.valueLabel}>
         {cols.map((c, j) => (
           <text key={c} x={left + j * cw + cw / 2} y={12} textAnchor="middle" fontSize={TYPE.tick} fill={theme.textSecondary}>{c}</text>
