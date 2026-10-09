@@ -55,6 +55,7 @@ const initState = {
   rna: emptySource, // static rna/ summary: { cells, genes, fields, hasUmap }
   signatures: emptySource, // signatures.json: { cosmic_version, genome, sets: [{ name, n, activities }] }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
+  precompute: {}, // { manifest, qc, sphase, telomeres, calls, slices }: each { status, data } (helpers/singleCell/precompute.js)
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
   selectedCellIds: [],
@@ -122,6 +123,7 @@ export default function appReducer(state = initState, action) {
         rna: action.rna || emptySource,
         signatures: action.signatures || emptySource,
         walks: action.walks || emptySource,
+        precompute: action.precompute || {},
         cellFiles: action.cellFiles,
         selectedCellIds: action.selectedCellIds,
         heatmapType:
