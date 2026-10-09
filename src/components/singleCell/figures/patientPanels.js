@@ -135,7 +135,7 @@ export function GeneCnScatter({ width, height = 230, xs, ys, ids, cells, cloneCo
         ctx.lineTo(px(x1), py(Math.max(0, f.intercept + f.slope * x1)));
         ctx.stroke();
         ctx.lineWidth = 1;
-        const ty = M.t + 6 + k * 30;
+        const ty = M.t + 6 + k * 40;
         ctx.fillStyle = col;
         ctx.fillRect(width - LEG + 4, ty - 4, 8, 8);
         ctx.fillStyle = c.text;
@@ -143,8 +143,9 @@ export function GeneCnScatter({ width, height = 230, xs, ys, ids, cells, cloneCo
         ctx.fillText(f.clone, width - LEG + 16, ty);
         ctx.font = font(10);
         ctx.fillStyle = c.muted;
-        ctx.fillText(`slope ${f.slope.toFixed(2)} · R² ${f.r2.toFixed(2)} · ratio ${f.ratio.toFixed(2)}`.slice(0, 40), width - LEG + 4, ty + 12);
-        hits.push({ x0: width - LEG, x1: width, y0: ty - 8, y1: ty + 18, f });
+        ctx.fillText(`slope ${f.slope.toFixed(2)} · R² ${f.r2.toFixed(2)}`, width - LEG + 4, ty + 12);
+        ctx.fillText(`${geneB}/${geneA} ${f.ratio.toFixed(2)} · n ${f.n}`, width - LEG + 4, ty + 24);
+        hits.push({ x0: width - LEG, x1: width, y0: ty - 8, y1: ty + 30, f });
       });
       return hits;
     },

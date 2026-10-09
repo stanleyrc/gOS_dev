@@ -48,14 +48,14 @@ export default function SubclonalFindingsTable({ findings, cloneColors, selected
     {
       title: "Tumour cells",
       key: "n",
-      width: 120,
+      width: 136,
       sorter: (a, b) => a.fraction - b.fraction,
       render: (_, r) => (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 50, height: 8, background: "rgba(127,127,127,0.15)" }}>
             <div style={{ width: `${100 * r.fraction}%`, height: 8, background: "#595959" }} />
           </div>
-          <Text style={{ fontSize: 12 }}>{`${r.n} · ${Math.round(100 * r.fraction)}%`}</Text>
+          <Text style={{ fontSize: 12, whiteSpace: "nowrap" }}>{`${r.n} · ${Math.round(100 * r.fraction)}%`}</Text>
         </div>
       ),
     },

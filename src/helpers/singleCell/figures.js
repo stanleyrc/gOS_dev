@@ -276,7 +276,7 @@ export function linearFit(xs, ys) {
  * whose carriers follow the tree (clade F1 >= minF1).
  * Returns [{ kind, label, type, carriers: Set, n, fraction, f1, clones, event?, group? }].
  */
-export function subclonalFindings({ events = [], groups = [], cells = [], tree = null, minFraction = 0.05, maxFraction = 0.85, minF1 = 0.5, minCells = 3, maxTier = 2 }) {
+export function subclonalFindings({ events = [], groups = [], cells = [], tree = null, minFraction = 0.05, maxFraction = 0.85, minF1 = 0.5, minCells = 5, maxTier = 2 }) {
   const tumour = cells.filter((c) => !isNormalClone(c.clone_id));
   const tumourIds = new Set(tumour.map((c) => c.cell_id));
   const nT = tumour.length || 1;
@@ -290,18 +290,23 @@ export function subclonalFindings({ events = [], groups = [], cells = [], tree =
     if (Number.isFinite(fit.score) && fit.score < minF1) return;
     out.push({ kind, label, type, carriers, n, fraction, f1: fit.score, clones: cloneFractions(tumour, carriers), ...extra });
   };
-  const seen = new Set();
+  // events listed once per partner pair / gene share a carrier set: one row per set
+  const bySet = new Map();
   events.forEach((e) => {
     const tier = Number(e.Tier);
     if (Number.isFinite(tier) && tier > maxTier) return;
     if (!["Fusion", "SCNA", "Missense", "Trunc", "Splice"].includes(e.type)) return;
-    const ids = `${e.cell_ids || ""}`.split(",").filter(Boolean);
-    // fusions are listed once per partner pair; keep one per carrier set
+    const ids = `${e.cell_ids || ""}`.split(",").filter(Boolean).sort();
+    const sig = `${e.type}|${e.vartype}|${ids.join(",")}`;
     const label = e.type === "Fusion" ? e.fusion_genes || e.gene : `${e.gene} ${e.vartype || ""}`.trim();
-    const sig = `${e.type}|${ids.length}|${ids.slice(0, 5).join(",")}|${(e.fusion_genes || "").split("::")[0]}`;
-    if (seen.has(sig)) return;
-    seen.add(sig);
-    add("event", label, e.vartype || e.type, ids, { event: e });
+    if (!bySet.has(sig)) bySet.set(sig, { ids, labels: [], events: [] });
+    const entry = bySet.get(sig);
+    if (!entry.labels.includes(label)) entry.labels.push(label);
+    entry.events.push(e);
+  });
+  bySet.forEach(({ ids, labels, events: evs }) => {
+    const label = labels.length > 2 ? `${labels.slice(0, 2).join(" · ")} +${labels.length - 2}` : labels.join(" · ");
+    add("event", label, evs[0].vartype || evs[0].type, ids, { event: evs[0], events: evs, labels });
   });
   groups.forEach((g) => {
     const ids = [];

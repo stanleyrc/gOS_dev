@@ -94,10 +94,12 @@ describe("findings", () => {
   test("a fusion in one clone is subclonal; a clonal one is not", () => {
     const events = [
       { type: "Fusion", vartype: "fusion", fusion_genes: "ZNF345::MLLT3", gene: "ZNF345::MLLT3", Tier: 2, cell_ids: "a,b,c" },
+      { type: "Fusion", vartype: "fusion", fusion_genes: "ZNF345::AL1", gene: "ZNF345::AL1", Tier: 2, cell_ids: "c,b,a" },
       { type: "SCNA", vartype: "AMP", gene: "CDK4", Tier: 2, cell_ids: "a,b,c,d,e,f" },
     ];
-    const out = subclonalFindings({ events, cells: cellRecs, tree: layout });
-    expect(out.map((x) => x.label)).toEqual(["ZNF345::MLLT3"]);
+    const out = subclonalFindings({ events, cells: cellRecs, tree: layout, minCells: 2 });
+    expect(out.map((x) => x.label)).toEqual(["ZNF345::MLLT3 · ZNF345::AL1"]);
+    expect(out[0].events).toHaveLength(2);
     expect(out[0].f1).toBeCloseTo(1);
     expect(out[0].clones.find((c) => c.clone === "Clone 1").fraction).toBe(1);
   });

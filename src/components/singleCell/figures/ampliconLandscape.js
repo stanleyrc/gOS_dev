@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import FigureCanvas, { fitText, font, jitter } from "./figureCanvas";
+import useContainerWidth from "../useContainerWidth";
 import { geneSetColor, logDensity, quantiles } from "../../../helpers/singleCell/figures";
 
 const LO = 1;
@@ -13,7 +14,9 @@ const pct = (f) => `${Math.round(100 * f)}%`;
  * (violin + cells as dots, log axis) and the number of walk structures.
  * per: [{ patient, cellIds, groups }]; onSelect({ patient, key, cell? }).
  */
-export function AmpliconViolins({ per, width, selected, onSelect }) {
+export function AmpliconViolins({ per, selected, onSelect }) {
+  const [ref, measured] = useContainerWidth(700);
+  const width = Math.max(420, measured);
   const ROW = 30;
   const HEAD = 30;
   const PAT = 74;
@@ -143,8 +146,9 @@ export function AmpliconViolins({ per, width, selected, onSelect }) {
     if (h.kind === "patient") return [h.p.patient, ["Amplicon sets", h.p.groups.length]];
     return null;
   };
-  if (!rows.length) return null;
+  if (!rows.length) return <div ref={ref} />;
   return (
+    <div ref={ref}>
     <FigureCanvas
       width={width}
       height={height}
@@ -153,6 +157,7 @@ export function AmpliconViolins({ per, width, selected, onSelect }) {
       ariaLabel="Amplicon copies per cell by patient and gene set"
       onClick={(h) => h.kind !== "patient" && onSelect?.({ patient: h.p.patient, key: h.g.key, cell: h.cell })}
     />
+    </div>
   );
 }
 
@@ -161,7 +166,9 @@ export function AmpliconViolins({ per, width, selected, onSelect }) {
  * same cell (dots + connecting line) and the percent of cells with each.
  * onSelect({ patient, combo }) marks those cells in the patient view.
  */
-export function AmpliconUpset({ per, width, maxCombos = 6, selected, onSelect }) {
+export function AmpliconUpset({ per, maxCombos = 6, selected, onSelect }) {
+  const [ref, measured] = useContainerWidth(600);
+  const width = Math.max(360, measured);
   const ROW = 20;
   const PAT = 74;
   const sets = useMemo(() => {
@@ -256,8 +263,9 @@ export function AmpliconUpset({ per, width, maxCombos = 6, selected, onSelect })
     },
     [sets, blocks, nRows, width, colW, mx0, bx0, bx1, HEAD, selected]
   );
-  if (!nRows) return null;
+  if (!nRows) return <div ref={ref} />;
   return (
+    <div ref={ref}>
     <FigureCanvas
       width={width}
       height={height}
@@ -266,5 +274,6 @@ export function AmpliconUpset({ per, width, maxCombos = 6, selected, onSelect })
       tooltip={(h) => [`${h.p.patient} · ${h.combo.keys.join(" + ")}`, ["Cells", `${h.combo.n} (${pct(h.f)})`], ["Click", "mark these cells below"]]}
       onClick={(h) => onSelect?.({ patient: h.p.patient, combo: h.combo.keys.join("|"), cells: h.combo.cells, label: h.combo.keys.join(" + ") })}
     />
+    </div>
   );
 }
