@@ -3,20 +3,47 @@ import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Alert, Card, Col, Empty, Row, Segmented, Space, Table, Tag, Tooltip, Typography } from "antd";
-import { CheckCircleOutlined, ExclamationCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import styled from "styled-components";
 import BarPlotPanel from "../../barPlotPanel";
 import { SBS96, SBS_COLORS } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
 import { evaluateBackendSet, fitClass } from "../../../helpers/singleCell/signatureFit";
 import { mutationFilterTypes, mutationsColorPalette, mutationsGroups } from "../../../helpers/utility";
-import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { FONT_FAMILY, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { aetiologyText, catalogPoints, loadCosmic, signatureColorOf } from "../signaturePanel";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
-import HintLine, { Provenance } from "../hintLine";
+import { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 
 const { Text } = Typography;
+
+// antd's token font stack ends in "Apple Color Emoji", "Segoe UI Emoji",
+// "Segoe UI Symbol", "Noto Color Emoji" and has no generic family. On a
+// machine with none of its text fonts (Linux without Roboto / Helvetica /
+// Arial, e.g. headless Chromium) digits, spaces and '#*' fall through to
+// Noto Color Emoji, whose wide keycap-base glyphs make "SBS40c" read
+// "SBS 4 0 c". The app's plot stack ends in sans-serif, so text never
+// reaches an emoji font; the doubled class outranks antd's :where() rules.
+const FontScope = styled.div`
+  &.sc-sigfit-font,
+  &.sc-sigfit-font.sc-sigfit-font * {
+    font-family: ${FONT_FAMILY};
+  }
+`;
+
+/** Explanatory footnote that wraps (the card's help is short enough to show in full). */
+function Footnote({ text }) {
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "baseline", marginTop: 4 }}>
+      <InfoCircleOutlined style={{ fontSize: TYPE.tick, flex: "none" }} />
+      <Text type="secondary" style={{ fontSize: TYPE.tick, whiteSpace: "normal" }}>
+        {text}
+      </Text>
+    </div>
+  );
+}
 const pct = d3.format(".0%");
 const fmt3 = d3.format(".3f");
 const CLASS_ICON = { success: <CheckCircleOutlined />, warning: <ExclamationCircleOutlined />, error: <WarningOutlined /> };
@@ -71,7 +98,11 @@ export function ResidualPlot({ evaluation, width }) {
   const w = (width - left - right) / 96;
   const values = SBS96.map((_, i) => evaluation.counts[i] - evaluation.reconstruction[i]);
   const max = Math.max(1, ...values.map(Math.abs));
-  const y = d3.scaleLinear().domain([-max, max]).range([RESIDUAL_HEIGHT - bottom, top]).nice();
+  const y = d3
+    .scaleLinear()
+    .domain([-max, max])
+    .range([RESIDUAL_HEIGHT - bottom, top])
+    .nice();
   const ticks = y.ticks(5);
   return (
     <svg width={width} height={RESIDUAL_HEIGHT} role="img" aria-label="SBS96 residuals (observed minus fitted)">
@@ -159,95 +190,91 @@ export function FitEvaluation({ evaluation, title }) {
   };
   const worst = evaluation.residuals.slice(0, 4);
   return (
-    <div ref={ref}>
-    <Space direction="vertical" size="middle" style={{ display: "flex" }}>
-      {mode === "catalog" && (
-        <BarPlotPanel
-          {...common}
-          title={
-            <Space size={6}>
-              <span>{title || t("components.mutation-catalog-panel.title")}</span>
-              <span>{t("general.mutation", { count: Math.round(evaluation.total) }).replace(/<[^>]+>/g, "")}</span>
-              <CosineTag value={evaluation.stats.cosine} />
-            </Space>
-          }
-          dataPoints={catalogPoints(evaluation.counts, "obs")}
-          referenceDataPoints={catalogPoints(evaluation.reconstruction, "fit")}
-        />
-      )}
-      {mode === "residual" && (
-        <Card
-          size="small"
-          title={
-            <Space size={6}>
-              <span>{t("components.single-cell.signatures.fit-residual-title")}</span>
-              <CosineTag value={evaluation.stats.cosine} />
-            </Space>
-          }
-          extra={<Segmented size="small" options={options} value={mode} onChange={setMode} />}
-        >
-          <ResidualPlot evaluation={evaluation} width={Math.max(320, width - 26)} />
-          <Text type="secondary">
-            {t("components.single-cell.signatures.fit-worst", {
-              list: worst.map((r) => `${r.channel} ${r.residual >= 0 ? "+" : ""}${r.residual.toFixed(1)} (${r.observed} vs ${r.fitted.toFixed(1)})`).join(" · "),
-            })}
-          </Text>
-        </Card>
-      )}
-      {mode === "decomposed" &&
-        evaluation.decomposition.map((d) => (
+    <FontScope ref={ref} className="sc-sigfit-font">
+      <Space direction="vertical" size="middle" style={{ display: "flex" }}>
+        {mode === "catalog" && (
           <BarPlotPanel
-            key={d.signature}
             {...common}
             title={
               <Space size={6}>
-                <span>{d.signature}</span>
-                <Text type="secondary">{aetiologyText(d.signature)}</Text>
-                <span>{`${Math.round(d.activity)} mutations (${pct(d.share)})`}</span>
-                <CosineTag value={d.cosine} />
+                <span>{title || t("components.mutation-catalog-panel.title")}</span>
+                <span>{t("general.mutation", { count: Math.round(evaluation.total) }).replace(/<[^>]+>/g, "")}</span>
+                <CosineTag value={evaluation.stats.cosine} />
               </Space>
             }
-            dataPoints={catalogPoints(d.decomposed, `${d.signature}-dec`)}
-            referenceDataPoints={catalogPoints(d.expected, `${d.signature}-ref`)}
+            dataPoints={catalogPoints(evaluation.counts, "obs")}
+            referenceDataPoints={catalogPoints(evaluation.reconstruction, "fit")}
           />
-        ))}
-      {evaluation.decomposition.length > 0 && (
-        <Table
-          size="small"
-          rowKey="signature"
-          pagination={false}
-          dataSource={evaluation.decomposition}
-          columns={[
-            {
-              title: t("components.single-cell.signatures.signature"),
-              dataIndex: "signature",
-              width: 110,
-              render: (s) => (
+        )}
+        {mode === "residual" && (
+          <Card
+            size="small"
+            title={
+              <Space size={6}>
+                <span>{t("components.single-cell.signatures.fit-residual-title")}</span>
+                <CosineTag value={evaluation.stats.cosine} />
+              </Space>
+            }
+            extra={<Segmented size="small" options={options} value={mode} onChange={setMode} />}
+          >
+            <ResidualPlot evaluation={evaluation} width={Math.max(320, width - 26)} />
+            <Text type="secondary">
+              {t("components.single-cell.signatures.fit-worst", {
+                list: worst.map((r) => `${r.channel} ${r.residual >= 0 ? "+" : ""}${r.residual.toFixed(1)} (${r.observed} vs ${r.fitted.toFixed(1)})`).join(" · "),
+              })}
+            </Text>
+          </Card>
+        )}
+        {mode === "decomposed" &&
+          evaluation.decomposition.map((d) => (
+            <BarPlotPanel
+              key={d.signature}
+              {...common}
+              title={
                 <Space size={6}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: signatureColorOf(s), display: "inline-block" }} />
-                  {s}
+                  <span>{d.signature}</span>
+                  <Text type="secondary">{aetiologyText(d.signature)}</Text>
+                  <span>{`${Math.round(d.activity)} mutations (${pct(d.share)})`}</span>
+                  <CosineTag value={d.cosine} />
                 </Space>
-              ),
-            },
-            { title: t("components.single-cell.signatures.aetiology"), dataIndex: "signature", key: "aet", render: (s) => <Text type="secondary">{aetiologyText(s)}</Text> },
-            { title: t("components.single-cell.signatures.mutations"), dataIndex: "activity", width: 100, align: "right", render: (v) => Math.round(v) },
-            { title: t("components.single-cell.signatures.share"), dataIndex: "share", width: 80, align: "right", render: (v) => pct(v) },
-            {
-              title: (
-                <Tooltip title={t("components.single-cell.signatures.fit-sig-cos-tip")}>
-                  {t("components.single-cell.signatures.fit-sig-cos")}
-                </Tooltip>
-              ),
-              dataIndex: "cosine",
-              width: 150,
-              render: (v) => <CosineTag value={v} prefix="" />,
-            },
-          ]}
-        />
-      )}
-      <HintLine text={t("components.single-cell.signatures.fit-help")} />
-    </Space>
-    </div>
+              }
+              dataPoints={catalogPoints(d.decomposed, `${d.signature}-dec`)}
+              referenceDataPoints={catalogPoints(d.expected, `${d.signature}-ref`)}
+            />
+          ))}
+        {evaluation.decomposition.length > 0 && (
+          <Table
+            size="small"
+            rowKey="signature"
+            pagination={false}
+            dataSource={evaluation.decomposition}
+            columns={[
+              {
+                title: t("components.single-cell.signatures.signature"),
+                dataIndex: "signature",
+                width: 110,
+                render: (s) => (
+                  <Space size={6}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: signatureColorOf(s), display: "inline-block" }} />
+                    {s}
+                  </Space>
+                ),
+              },
+              { title: t("components.single-cell.signatures.aetiology"), dataIndex: "signature", key: "aet", render: (s) => <Text type="secondary">{aetiologyText(s)}</Text> },
+              { title: t("components.single-cell.signatures.mutations"), dataIndex: "activity", width: 100, align: "right", render: (v) => Math.round(v) },
+              { title: t("components.single-cell.signatures.share"), dataIndex: "share", width: 80, align: "right", render: (v) => pct(v) },
+              {
+                title: <Tooltip title={t("components.single-cell.signatures.fit-sig-cos-tip")}>{t("components.single-cell.signatures.fit-sig-cos")}</Tooltip>,
+                dataIndex: "cosine",
+                width: 150,
+                render: (v) => <CosineTag value={v} prefix="" />,
+              },
+            ]}
+          />
+        )}
+        <Footnote text={t("components.single-cell.signatures.fit-help")} />
+      </Space>
+    </FontScope>
   );
 }
 
@@ -284,7 +311,7 @@ export default function SignatureFitCard() {
           return evaluateBackendSet(set, { channels, profileCounts, reference });
         })
         .filter(Boolean),
-    [backend, channels, siteSets, snvData, reference]
+    [backend, channels, siteSets, snvData, reference],
   );
   const [key, setKey] = useState("all");
   const selected = evaluations.find((e) => e.name === key) || evaluations[0];
@@ -299,79 +326,87 @@ export default function SignatureFitCard() {
   const exported = evaluations.some((e) => e.countsSource === "export");
 
   return (
-    <Card
-      size="small"
-      title={
-        <Space>
-          <CheckCircleOutlined />
-          {t("components.single-cell.signatures.fit-title")}
-          <Provenance id="signatureFit" />
-        </Space>
-      }
-    >
-      {!exported && <Alert type="info" showIcon style={{ marginBottom: 8 }} message={t("components.single-cell.signatures.fit-no-export")} />}
-      {refError && <Alert type="warning" showIcon style={{ marginBottom: 8 }} message={refError} />}
-      {!evaluations.length ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.model-loading")} />
-      ) : (
-        <Row gutter={SC_GUTTER}>
-          <Col span={24}>
-            <Table
-              size="small"
-              rowKey="name"
-              pagination={false}
-              dataSource={evaluations}
-              rowClassName={(e) => (e.name === selected?.name ? "ant-table-row-selected" : "")}
-              onRow={(e) => ({ onClick: () => setKey(e.name), style: { cursor: "pointer" } })}
-              columns={[
-                { title: t("components.single-cell.signatures.set"), dataIndex: "name", render: (v, e) => `${v}${e.countsSource === "browser" ? " *" : ""}` },
-                { title: "SNVs", dataIndex: "total", align: "right", width: 70, render: (v) => Math.round(v) },
-                {
-                  title: t("components.single-cell.signatures.signatures"),
-                  key: "sigs",
-                  render: (_, e) => (
-                    <Space size={2} wrap>
-                      {e.activities.map((a) => (
-                        <Tag key={a.signature} bordered={false} style={{ marginInlineEnd: 0, borderLeft: `3px solid ${signatureColorOf(a.signature)}` }}>
-                          {a.signature}
-                        </Tag>
-                      ))}
-                    </Space>
-                  ),
-                },
-                { title: t("components.single-cell.signatures.fit-cosine"), key: "cos", width: 120, render: (_, e) => <CosineTag value={e.stats.cosine} prefix="" /> },
-                { title: <Tooltip title={t("components.single-cell.signatures.fit-l1-tip")}>L1 %</Tooltip>, key: "l1", align: "right", width: 70, render: (_, e) => d3.format(".1f")(e.stats.l1Pct) },
-                { title: <Tooltip title={t("components.single-cell.signatures.fit-l2-tip")}>L2 %</Tooltip>, key: "l2", align: "right", width: 70, render: (_, e) => d3.format(".1f")(e.stats.l2Pct) },
-                { title: <Tooltip title={t("components.single-cell.signatures.fit-kl-tip")}>KL</Tooltip>, key: "kl", align: "right", width: 70, render: (_, e) => d3.format(".3f")(e.stats.kl) },
-                { title: <Tooltip title={t("components.single-cell.signatures.fit-r-tip")}>r</Tooltip>, key: "r", align: "right", width: 60, render: (_, e) => d3.format(".2f")(e.stats.correlation) },
-                {
-                  title: t("components.single-cell.signatures.fit-worst-col"),
-                  key: "worst",
-                  render: (_, e) => {
-                    const r = e.residuals[0];
-                    return r ? <Text type="secondary">{`${r.channel} ${r.residual >= 0 ? "+" : ""}${r.residual.toFixed(1)}`}</Text> : null;
-                  },
-                },
-              ]}
-            />
-            <HintLine text={t("components.single-cell.signatures.fit-table-help")} />
-          </Col>
-          {selected && (
+    <FontScope className="sc-sigfit-font">
+      <Card
+        size="small"
+        title={
+          <Space>
+            <CheckCircleOutlined />
+            {t("components.single-cell.signatures.fit-title")}
+            <Provenance id="signatureFit" />
+          </Space>
+        }
+      >
+        {!exported && <Alert type="info" showIcon style={{ marginBottom: 8 }} message={t("components.single-cell.signatures.fit-no-export")} />}
+        {refError && <Alert type="warning" showIcon style={{ marginBottom: 8 }} message={refError} />}
+        {!evaluations.length ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.model-loading")} />
+        ) : (
+          <Row gutter={SC_GUTTER}>
             <Col span={24}>
-              <div style={{ margin: "4px 0 8px" }}>
-                <Space wrap>
-                  <Text strong>{selected.name}</Text>
-                  <FitStatsLine stats={selected.stats} source={selected.statsSource} />
-                </Space>
-                {selected.nMismatch && (
-                  <Alert type="warning" showIcon style={{ marginTop: 6 }} message={t("components.single-cell.signatures.fit-n-mismatch", { n: selected.n, m: Math.round(selected.total) })} />
-                )}
-              </div>
-              <FitEvaluation key={selected.name} evaluation={selected} title={t("components.single-cell.signatures.fit-catalog-title", { set: selected.name })} />
+              <Table
+                size="small"
+                rowKey="name"
+                pagination={false}
+                dataSource={evaluations}
+                rowClassName={(e) => (e.name === selected?.name ? "ant-table-row-selected" : "")}
+                onRow={(e) => ({ onClick: () => setKey(e.name), style: { cursor: "pointer" } })}
+                columns={[
+                  { title: t("components.single-cell.signatures.set"), dataIndex: "name", render: (v, e) => `${v}${e.countsSource === "browser" ? " *" : ""}` },
+                  { title: "SNVs", dataIndex: "total", align: "right", width: 70, render: (v) => Math.round(v) },
+                  {
+                    title: t("components.single-cell.signatures.signatures"),
+                    key: "sigs",
+                    render: (_, e) => (
+                      <Space size={2} wrap>
+                        {e.activities.map((a) => (
+                          <Tag key={a.signature} bordered={false} style={{ marginInlineEnd: 0, borderLeft: `3px solid ${signatureColorOf(a.signature)}` }}>
+                            {a.signature}
+                          </Tag>
+                        ))}
+                      </Space>
+                    ),
+                  },
+                  { title: t("components.single-cell.signatures.fit-cosine"), key: "cos", width: 120, render: (_, e) => <CosineTag value={e.stats.cosine} prefix="" /> },
+                  { title: <Tooltip title={t("components.single-cell.signatures.fit-l1-tip")}>L1 %</Tooltip>, key: "l1", align: "right", width: 70, render: (_, e) => d3.format(".1f")(e.stats.l1Pct) },
+                  { title: <Tooltip title={t("components.single-cell.signatures.fit-l2-tip")}>L2 %</Tooltip>, key: "l2", align: "right", width: 70, render: (_, e) => d3.format(".1f")(e.stats.l2Pct) },
+                  { title: <Tooltip title={t("components.single-cell.signatures.fit-kl-tip")}>KL</Tooltip>, key: "kl", align: "right", width: 70, render: (_, e) => d3.format(".3f")(e.stats.kl) },
+                  {
+                    title: <Tooltip title={t("components.single-cell.signatures.fit-r-tip")}>r</Tooltip>,
+                    key: "r",
+                    align: "right",
+                    width: 60,
+                    render: (_, e) => d3.format(".2f")(e.stats.correlation),
+                  },
+                  {
+                    title: t("components.single-cell.signatures.fit-worst-col"),
+                    key: "worst",
+                    render: (_, e) => {
+                      const r = e.residuals[0];
+                      return r ? <Text type="secondary">{`${r.channel} ${r.residual >= 0 ? "+" : ""}${r.residual.toFixed(1)}`}</Text> : null;
+                    },
+                  },
+                ]}
+              />
+              <Footnote text={t("components.single-cell.signatures.fit-table-help")} />
             </Col>
-          )}
-        </Row>
-      )}
-    </Card>
+            {selected && (
+              <Col span={24}>
+                <div style={{ margin: "4px 0 8px" }}>
+                  <Space wrap>
+                    <Text strong>{selected.name}</Text>
+                    <FitStatsLine stats={selected.stats} source={selected.statsSource} />
+                  </Space>
+                  {selected.nMismatch && (
+                    <Alert type="warning" showIcon style={{ marginTop: 6 }} message={t("components.single-cell.signatures.fit-n-mismatch", { n: selected.n, m: Math.round(selected.total) })} />
+                  )}
+                </div>
+                <FitEvaluation key={selected.name} evaluation={selected} title={t("components.single-cell.signatures.fit-catalog-title", { set: selected.name })} />
+              </Col>
+            )}
+          </Row>
+        )}
+      </Card>
+    </FontScope>
   );
 }
