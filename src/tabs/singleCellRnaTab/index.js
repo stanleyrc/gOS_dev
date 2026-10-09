@@ -13,6 +13,7 @@ import HelpDrawer from "../../components/singleCell/helpDrawer";
 import DePanel from "../../components/singleCell/rna/dePanel";
 import ViolinPanel from "../../components/singleCell/rna/violinPanel";
 import PhyloExpressionCard from "../../components/singleCell/rna/phyloExpressionCard";
+import HeritabilityCard from "../../components/singleCell/rna/heritabilityCard";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
@@ -113,6 +114,9 @@ export default function SingleCellRnaTab() {
                     </Col>
                     <Col span={24}>
                       <PhyloExpressionCard summary={summary} matrix={matrix} />
+                    </Col>
+                    <Col span={24}>
+                      <HeritabilityCard summary={summary} matrix={matrix} />
                     </Col>
                   </Row>
                 ),

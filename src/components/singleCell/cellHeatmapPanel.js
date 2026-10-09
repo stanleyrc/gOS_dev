@@ -7,7 +7,7 @@ import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomO
 import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
 import PhylogenyCanvas from "./phylogenyCanvas";
-import BranchSnvDrawer from "./branchSnvDrawer";
+import BranchDiffDrawer from "./branch/branchDiffDrawer";
 import SnvSiteDrawer from "./snvSiteDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
@@ -1056,7 +1056,7 @@ export default function CellHeatmapPanel() {
                 hoverRow={hoverRow}
                 onSelectRange={handleTreeSelect}
                 branchCounts={branchCounts}
-                onSelectNode={(k) => snvsByBranch?.has(k) && setBranchNode(k)}
+                onSelectNode={(k) => (snvsByBranch?.has(k) || treeLayout?.nodes[k]?.isLeaf === false) && setBranchNode(k)}
                 hoverRange={hoverRange}
                 onHoverNode={(node, event) => {
                   if (!node) return clearHover();
@@ -1296,13 +1296,14 @@ export default function CellHeatmapPanel() {
       {siteDrawer && snvReady && snv.data.variants[siteDrawer.c] && (
         <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} cnInfo={snvCn?.[siteDrawer.c] || null} />
       )}
-      {snvsByBranch && branchNode != null && treeLayout?.nodes[branchNode] && (
-        <BranchSnvDrawer
+      {branchNode != null && treeLayout?.nodes[branchNode] && (
+        <BranchDiffDrawer
           open
           onClose={() => setBranchNode(null)}
-          snv={snv.data}
-          variantIdx={snvsByBranch.get(branchNode) || []}
-          cellIds={treeLayout.leaves.slice(treeLayout.nodes[branchNode].firstLeaf, treeLayout.nodes[branchNode].lastLeaf + 1)}
+          layout={treeLayout}
+          node={branchNode}
+          snv={snvsByBranch ? snv.data : null}
+          variantIdx={snvsByBranch?.get(branchNode) || []}
         />
       )}
     </Wrapper>
