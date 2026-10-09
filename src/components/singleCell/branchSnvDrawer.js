@@ -17,7 +17,7 @@ const categoryColor = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.col
  * The SNVs mapped to one branch of the tree (the node a site's one-gain
  * mapping places it on), with a browser SBS fit of just those sites.
  */
-export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellIds }) {
+export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellIds, embedded = false }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [fit, setFit] = useState(null);
@@ -97,13 +97,7 @@ export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellId
     { title: "SBS96", dataIndex: "context", key: "context", render: (c) => c || "–" },
   ];
 
-  return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      width={WIDTH}
-      title={t("components.single-cell.branch.title", { count: rows.length, cells: cellIds.length })}
-    >
+  const body = (
       <Space direction="vertical" style={{ width: "100%" }}>
         <Text type="secondary">{t("components.single-cell.branch.help")}</Text>
         <Space>
@@ -127,6 +121,17 @@ export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellId
         )}
         <Table size="small" rowKey="id" columns={columns} dataSource={rows} pagination={{ pageSize: 25 }} />
       </Space>
+  );
+  // embedded: the content only, e.g. as a tab of the branch diff drawer
+  if (embedded) return body;
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      width={WIDTH}
+      title={t("components.single-cell.branch.title", { count: rows.length, cells: cellIds.length })}
+    >
+      {body}
     </Drawer>
   );
 }

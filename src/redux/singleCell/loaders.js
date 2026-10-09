@@ -9,7 +9,7 @@ import {
 } from "../../helpers/dataAvailability";
 import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utility";
 import { SC_FETCHED_TRACKS } from "./actions";
-import { readMatrixBuffers } from "../../helpers/singleCell/staticRna";
+import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 
 export const casePath = (dataset, caseReportId, filename) =>
   `${dataset.dataPath}${caseReportId}/${filename}`;
@@ -74,6 +74,21 @@ export function arrowScatter(buffer, slope, intercept) {
     dataPointsColor: Array.from(table.getChild("color").toArray()),
     hasFit,
   };
+}
+
+const rnaSummaryCache = new Map();
+/** A patient's rna/cells.json + genes.tsv parsed (null when the patient has no RNA), fetched once. */
+export async function loadRnaSummary(dataset, patientId) {
+  const key = `${dataset.dataPath}${patientId}`;
+  if (!rnaSummaryCache.has(key)) {
+    const promise = Promise.all([
+      tryGet(casePath(dataset, patientId, "rna/cells.json")),
+      tryGet(casePath(dataset, patientId, "rna/genes.tsv"), { responseType: "text" }),
+    ]).then(([cells, genes]) => (cells.status === "ok" && genes.status === "ok" ? parseRnaSummary(cells.data, genes.data) : null));
+    promise.catch(() => rnaSummaryCache.delete(key));
+    rnaSummaryCache.set(key, promise);
+  }
+  return rnaSummaryCache.get(key);
 }
 
 const rnaMatrixCache = new Map();

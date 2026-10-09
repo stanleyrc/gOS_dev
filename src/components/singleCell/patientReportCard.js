@@ -21,6 +21,8 @@ import { signatureColorOf } from "./signaturePanel";
 import { formatP } from "../../helpers/singleCell/tests";
 import signatureMetadata from "../../translations/en/signatures.json";
 import HintLine, { Provenance, ProvenanceTip } from "./hintLine";
+import useRnaFindings from "./rna/useRnaFindings";
+import RnaFindingsList, { CloneRnaLine, rnaSummarySentence } from "./rna/rnaFindingsList";
 import { SC_GUTTER } from "./density";
 
 const { Text, Paragraph, Title } = Typography;
@@ -128,13 +130,18 @@ function SignatureBar({ items, width = 320 }) {
  * Key findings of a single-cell patient as an interactive report: clonal
  * (truncal) drivers, subclonal drivers and the clones they define, mutation
  * burden by tree position, signatures, and caveats. `interactive` enables
- * the heatmap / IGV actions (only on the patient's own page).
+ * the heatmap / IGV actions (only on the patient's own page). RNA findings
+ * come from `rna` ({ status, data }, the cohort computes them for every
+ * patient) or are computed here from `dataset` (default: the open dataset).
  */
-export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null }) {
+export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null, rna = null, dataset = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength } = useSelector((state) => state.Settings);
   const report = useMemo(() => buildPatientReport({ patient, events: events || [], cells: cells || [], variants: variants || [], signatures }), [patient, events, cells, variants, signatures]);
+  const openDataset = useSelector((state) => state.Settings.dataset);
+  const ownRna = useRnaFindings({ dataset: rna ? null : dataset || (interactive ? openDataset : null), patientId: patient, cells, report });
+  const rnaState = rna || ownRna;
   // clade fit of each driver's carriers: the displayed tree on the patient page, the patient's tree.nwk on the cohort page
   const { treeLayout: ownTree } = useTreeView();
   const tree = interactive ? ownTree : treeProp;
@@ -248,7 +255,9 @@ export default function PatientReportCard({ patient, events, cells, variants, si
       : t("components.single-cell.report.summary-no-clonal"),
     report.subclonal.length ? t("components.single-cell.report.summary-subclonal", { count: report.subclonal.length }) : null,
     report.signatures.all.length ? t("components.single-cell.report.summary-signatures", { list: report.signatures.all.slice(0, 3).map((s) => `${s.signature} ${pct(s.share)}`).join(", ") }) : null,
+    rnaSummarySentence(rnaState.data, t),
   ].filter(Boolean);
+  const driverGenes = new Set(allDrivers.flatMap((d) => `${d.gene || ""}`.split("::")));
 
   return (
     <Card
@@ -298,6 +307,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
                   <Text type="secondary">{t("components.single-cell.report.clone-no-defining")}</Text>
                 )}
                 {c.carried.length > 0 && <div><Text type="secondary">{t("components.single-cell.report.clone-carried", { list: c.carried.map((d) => d.label).join(", ") })}</Text></div>}
+                <CloneRnaLine findings={rnaState.data} clone={c.clone} />
               </div>
             </div>
           ))}
@@ -320,6 +330,12 @@ export default function PatientReportCard({ patient, events, cells, variants, si
               showIcon
               message={t("components.single-cell.report.emerging", { list: report.signatures.emerging.map((s) => `${s.signature} (${pct(s.share)}${aetiology(s.signature) ? `, ${aetiology(s.signature)}` : ""})`).join("; ") })}
             />
+          )}
+          {rnaState.status !== "none" && (
+            <>
+              <Title level={5} className="sc-section-title">{t("components.single-cell.rna-findings.title")} <HintLine inline text={t("components.single-cell.rna-findings.help")} /></Title>
+              <RnaFindingsList findings={rnaState.data} status={rnaState.status} cloneColors={cloneColors} driverGenes={driverGenes} />
+            </>
           )}
         </Col>
         {interactive && allDrivers.length > 0 && (

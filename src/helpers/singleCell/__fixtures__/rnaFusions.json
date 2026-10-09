@@ -1,0 +1,40 @@
+{
+  "format": "gos-sc-rna-fusions/1",
+  "patient": "P1",
+  "n_cells_rna": 6,
+  "fusions": [
+    {
+      "id": "EGFR::SEPT14|chr7:55211628|chr7:55900000",
+      "gene1": "EGFR", "gene2": "SEPTIN14",
+      "breakpoint1": "chr7:55211628", "breakpoint2": "chr7:55900000",
+      "strand1": "+/+", "strand2": "-/+", "site1": "splice-site", "site2": "splice-site",
+      "type": "deletion", "reading_frame": "in-frame", "confidence": "high",
+      "n_cells": 3, "n_cells_dna": 2, "split_reads": 9, "discordant_mates": 2,
+      "dna_match": { "kind": "gene_pair", "event_gene": "EGFR::SEPT14", "distance": 1234 },
+      "cells": [
+        { "rna_id": "r1", "cell_id": "c1", "split1": 1, "split2": 1, "discordant": 0, "confidence": "medium", "bam": "rna/reads/r1.bam" },
+        { "rna_id": "r2", "cell_id": "c3", "split1": 3, "split2": 2, "discordant": 1, "confidence": "high", "bam": "rna/reads/r2.bam" },
+        { "rna_id": "r9", "cell_id": null, "split1": 1, "split2": 1, "discordant": 1, "confidence": "low", "bam": "rna/reads/r9.bam" }
+      ]
+    },
+    {
+      "id": "GENEA::GENEB|chr1:1000|chr1:5000",
+      "gene1": "GENEA", "gene2": "GENEB(1234),GENEC(55)",
+      "breakpoint1": "chr1:1000", "breakpoint2": "chr1:5000",
+      "type": "deletion/read-through", "reading_frame": ".", "confidence": "low",
+      "n_cells": 1, "split_reads": 2, "discordant_mates": 0, "dna_match": null,
+      "cells": [ { "rna_id": "r3", "cell_id": "c2", "split1": 1, "split2": 1, "discordant": 0, "confidence": "low", "bam": "rna/reads/r3.bam" } ]
+    },
+    {
+      "id": "MET::PTPRZ1|chr7:116700000|chr7:121900000",
+      "gene1": "PTPRZ1", "gene2": "MET",
+      "breakpoint1": "7:121900000", "breakpoint2": "7:116700000",
+      "type": "inversion", "reading_frame": "out-of-frame", "confidence": "medium",
+      "n_cells": 2, "n_cells_dna": 2, "split_reads": 6, "discordant_mates": 1, "dna_match": null,
+      "cells": [
+        { "rna_id": "r1", "cell_id": "c1", "split1": 2, "split2": 1, "discordant": 1, "confidence": "medium", "bam": "rna/reads/r1.bam" },
+        { "rna_id": "r4", "cell_id": "c4", "split1": 1, "split2": 1, "discordant": 0, "confidence": "low", "bam": "rna/reads/r4.bam" }
+      ]
+    }
+  ]
+}
