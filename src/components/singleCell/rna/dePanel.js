@@ -721,7 +721,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                   />
                 </Space>
                 <DotPlot genes={dotGenes} groups={dotGroups} summary={summary} matrix={matrix} onGene={onGene} selectedGene={selectedGene} />
-                <GeneInfoCard gene={selectedGene} row={result.genes.find((g) => g.gene === selectedGene)} labels={result.labels} />
+                <GeneInfoCard gene={selectedGene} row={result.genes.find((g) => g.gene === selectedGene)} labels={result.labels} cn={cnByGene?.get(selectedGene)} />
               </Col>
               <Col span={24}>
                 <Space wrap style={{ marginBottom: 8 }}>

@@ -61,16 +61,21 @@ export function gbmPrograms(gene, gmt = []) {
   return [...builtin, ...meta];
 }
 
-/** Aliases worth searching PubMed with: gene-like symbols, not short or common words. */
+/**
+ * Aliases worth searching PubMed with: upper-case gene-like symbols that
+ * carry a digit or are 5+ characters, so words such as "MARS" (MARS1) or
+ * "CAT" do not pull in unrelated papers.
+ */
 export function searchAliases(symbol, aliases = []) {
   const list = Array.isArray(aliases) ? aliases : [aliases];
-  return [...new Set([symbol, ...list.filter((a) => /^[A-Z][A-Z0-9-]{2,}$/.test(`${a}`) && a !== symbol)])].slice(0, 5);
+  const geneLike = (a) => /^[A-Z][A-Z0-9-]{2,}$/.test(`${a}`) && (/\d/.test(a) || a.length >= 5);
+  return [...new Set([symbol, ...list.filter((a) => a !== symbol && geneLike(a))])].slice(0, 5);
 }
 
 const tiab = (terms) => terms.map((x) => `"${x}"[tiab]`).join(" OR ");
 
-/** PubMed query for the gene (and its aliases) in glioblastoma / glioma. */
-export const gliomaQuery = (symbol, aliases = []) => `(${tiab(searchAliases(symbol, aliases))}) AND (glioblastoma[tiab] OR glioma[tiab] OR GBM[tiab])`;
+/** PubMed query for the gene (and its aliases) in glioblastoma / glioma ("GBM" alone also means gradient boosting machine). */
+export const gliomaQuery = (symbol, aliases = []) => `(${tiab(searchAliases(symbol, aliases))}) AND (glioblastoma[tiab] OR glioma[tiab])`;
 
 export const pubmedSearchUrl = (query) => `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(query)}`;
 
