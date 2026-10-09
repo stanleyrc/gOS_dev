@@ -493,7 +493,9 @@
     "genome-range-panel": {
       "reset": "Reset to full genome view"
     },
-    "cbioportal-modal": { "title": "cBioPortal" },
+    "cbioportal-modal": {
+      "title": "cBioPortal"
+    },
     "clinical-trials-modal": {
       "title": "Clinical Trials",
       "scatterplot-tab": "Scatterplot",
@@ -1008,7 +1010,13 @@
         "show-sigs": "Signature shifts",
         "shift": "{{signature}} rises to {{share}} of the mutations gained on this branch ({{delta}} vs the parent clade)",
         "click": "Click for the alteration popup",
-        "help": "{{count}} tier 1–2 alterations placed on the branch above the clade their carrier cells fit best (trunk events at the root); grey numbers are SNV sites gained on a branch (seen in the clade, absent from its siblings), coloured tags the signature whose share rises most on that branch. Click a node to select its cells, an alteration for its popup."
+        "help": "Phylogeny collapsed to clades of at least {{min}} cells (wedges, one row each; lower 'Min clade' for more detail). {{count}} tier 1–2 alterations sit at the end of the branch leading to the clade their carrier cells fit best (truncal ones on the root stem); grey numbers are SNV sites gained on a branch (seen in the clade, absent from its siblings), coloured tags the signature whose share rises most on that branch. Click a node or wedge to select its cells, an alteration for its popup.",
+        "min-clade": "Min clade",
+        "equal": "Equal branches",
+        "row-height": "Row height",
+        "folded": "{{count}} more cells in clades below the size cut (folded in here)",
+        "select": "Click to select these cells (Shift adds)",
+        "gained": "{{count}} SNV sites gained on this branch"
       },
       "help": {
         "walks-name": "ecDNA walks",
