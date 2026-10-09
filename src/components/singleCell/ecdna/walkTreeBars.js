@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Segmented, Select, Slider, Space, Typography } from "antd";
+import { Card, Empty, Segmented, Slider, Space, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import useContainerWidth from "../useContainerWidth";
@@ -23,6 +23,7 @@ import {
   walkColumnBlocks,
 } from "../../../helpers/singleCell/walkCopies";
 import HintLine from "../hintLine";
+import RareControl, { useRareMax } from "./rareControl";
 
 const { Text } = Typography;
 const TREE_WIDTH = 200;
@@ -35,7 +36,6 @@ const LABEL_H = 14; // column labels
 const HEAD_H = FAM_H + LABEL_H + 2;
 const SUM_ROW = 14; // one clone row in the summary
 const TOTAL_COLOR = "#595959";
-const RARE_OPTIONS = [0, 1, 2, 3, 5, 10];
 const heat = (v) => d3.interpolateYlOrRd(0.08 + 0.92 * Math.max(0, Math.min(1, v)));
 
 /**
@@ -59,7 +59,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
   const [k, setK] = useState(6);
   const [view, setView] = useState("bars");
   const [scaleMode, setScaleMode] = useState("column");
-  const [rareMax, setRareMax] = useState(3);
+  const rareMax = useRareMax();
   const [hoverRange, setHoverRange] = useState(null);
   const [tip, setTip] = useState(null); // { x, y, row }
   const height = layout.walkTreeHeight || 440;
@@ -248,8 +248,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
           {mode === "cut" && <Slider min={2} max={12} value={k} onChange={setK} style={{ width: 80, margin: "0 6px" }} />}
           <Segmented size="small" value={view} onChange={setView} options={[{ value: "bars", label: t("components.single-cell.ecdna.tc-bars") }, { value: "heat", label: t("components.single-cell.ecdna.tc-heat") }]} />
           <Segmented size="small" value={scaleMode} onChange={setScaleMode} options={[{ value: "column", label: t("components.single-cell.ecdna.tc-scale-column") }, { value: "shared", label: t("components.single-cell.ecdna.tc-scale-shared") }, { value: "log", label: t("components.single-cell.ecdna.tc-scale-log") }]} />
-          <Text type="secondary">{t("components.single-cell.ecdna.tc-rare")}</Text>
-          <Select size="small" value={rareMax} onChange={setRareMax} style={{ width: 62 }} options={RARE_OPTIONS.map((v) => ({ value: v, label: v ? `${v}` : t("components.single-cell.ecdna.tc-rare-off") }))} />
+          <RareControl />
           <Text type="secondary">{t("components.single-cell.signatures.height")}</Text>
           <Slider min={200} max={1600} step={20} value={height} onChange={(v) => dispatch(singleCellActions.updateLayout({ walkTreeHeight: v }))} style={{ width: 80, margin: "0 6px" }} />
           <SvgExportButton containerRef={ref} name="ecdna-on-tree" />

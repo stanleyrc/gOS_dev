@@ -1,4 +1,6 @@
 import {
+  attachRare,
+  subMatrix,
   bestPair,
   carriersByClone,
   carriersOf,
@@ -94,5 +96,19 @@ describe("ecDNA panel helpers", () => {
   it("defaults the single-walk card to the best supported walk", () => {
     expect(defaultFocusWalk([rec1, MAP3K1, sEGFR, wEGFR], ids).id).toBe("s");
     expect(defaultFocusWalk([], ids)).toBeNull();
+  });
+
+  it("attaches rare walks to the visible walk they overlap most", () => {
+    const m = [
+      [1, 0.2, 0.9, 0],
+      [0.3, 1, 0.1, 0],
+      [0.4, 0.6, 1, 0],
+      [0, 0, 0, 1],
+    ];
+    // rare 2 overlaps 0 (0.9 one way) more than 1 (0.6); rare 3 overlaps nothing
+    const a = attachRare(m, [2, 3], [0, 1]);
+    expect(a.get(0)).toEqual([2]);
+    expect(a.get(-1)).toEqual([3]);
+    expect(subMatrix(m, [2, 0])).toEqual([[1, 0.4], [0.9, 1]]);
   });
 });
