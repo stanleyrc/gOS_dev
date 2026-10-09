@@ -39,6 +39,20 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
   const label = (k) => PATIENT_METRICS.find(([key]) => key === k)?.[1] || k;
   const rho = points.length >= 3 ? spearman(points.map((p) => p[xKey]), points.map((p) => p[yKey])) : NaN;
   const options = PATIENT_METRICS.map(([value, text]) => ({ value, label: text }));
+  // labels sit right of their point, flip left near the right edge, and step down when they would collide
+  const placedLabels = [];
+  const labelPos = new Map();
+  [...points].sort((a, b) => y(a[yKey]) - y(b[yKey])).forEach((p) => {
+    const w = `${p.patient}`.length * FONT.axis * 0.6;
+    const right = x(p[xKey]) + 9 + w < width - M.right;
+    const lx = right ? x(p[xKey]) + 9 : x(p[xKey]) - 9 - w;
+    const collides = (yy) => placedLabels.some((q) => Math.abs(q.y - yy) < FONT.axis + 1 && q.x < lx + w && lx < q.x + q.w);
+    let ly = y(p[yKey]);
+    for (let k = 0; k < 6 && collides(ly); k += 1) ly += FONT.axis + 2;
+    placedLabels.push({ x: lx, y: ly, w });
+    labelPos.set(p, { x: right ? lx : lx + w, y: ly, textAnchor: right ? "start" : "end" });
+  });
+  const labelAt = (p) => labelPos.get(p);
   return (
     <Card
       size="small"
@@ -65,7 +79,7 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
           {points.map((p) => (
             <g key={p.patient} style={{ cursor: "pointer" }} onClick={() => onOpen(p.summary)}>
               <circle cx={x(p[xKey])} cy={y(p[yKey])} r={7} fill={patientColor(p.k)} stroke={INK.panel} strokeWidth={1.5} />
-              <text x={x(p[xKey]) + 10} y={y(p[yKey])} dy="0.35em" fontSize={FONT.axis} fill={INK.text}>{p.patient}</text>
+              <text {...labelAt(p)} dy="0.35em" fontSize={FONT.axis} fill={INK.textSecondary}>{p.patient}</text>
               <title>{`${p.patient}\n${label(xKey)}: ${d3.format("~g")(p[xKey])}\n${label(yKey)}: ${d3.format("~g")(p[yKey])}`}</title>
             </g>
           ))}
