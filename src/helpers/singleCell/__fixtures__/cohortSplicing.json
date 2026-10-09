@@ -1,0 +1,11 @@
+{
+  "format": "gos-sc-splicing-cohort/1", "patients": ["P1", "P2", "P3"],
+  "clusters": [
+    { "id": "clu_9", "gene": "PTPRZ1", "chromosome": "7", "strand": "-", "start": 10, "end": 30, "p": 0.001, "q": 0.01, "max_dpsi": 0.2,
+      "junctions": [ { "start": 10, "end": 20, "annotated": true }, { "start": 10, "end": 30, "annotated": true } ],
+      "usage": { "P1": { "counts": [5, 5], "total": 10, "n_cells": 4 }, "P2": { "counts": [0, 0], "total": 0, "n_cells": 0 } } },
+    { "id": "clu_1", "gene": "EGFR", "chromosome": "7", "strand": "+", "start": 100, "end": 300, "p": 1e-20, "q": 1e-17, "max_dpsi": 0.42,
+      "junctions": [ { "start": 100, "end": 200, "annotated": true }, { "start": 100, "end": 300, "annotated": true }, { "start": 250, "end": 300, "annotated": false } ],
+      "usage": { "P1": { "counts": [8, 2, 0], "total": 10, "n_cells": 5 }, "P2": { "counts": [1, 3, 0], "total": 4, "n_cells": 2 }, "P3": { "counts": [0, 0, 6], "total": 6, "n_cells": 3 } } }
+  ]
+}
