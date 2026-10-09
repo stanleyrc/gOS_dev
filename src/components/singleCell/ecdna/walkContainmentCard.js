@@ -51,7 +51,7 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
 
   const { rows, cols } = display;
   const maxDepth = d3.max(rows, (r) => r.depth) || 0;
-  const TREE_W = 250 + maxDepth * INDENT;
+  const TREE_W = 330 + maxDepth * INDENT;
   const TOP = 16;
   const matX = TREE_W + 8;
   const num = new Map(cols.map((i, c) => [i, c + 1]));
@@ -104,7 +104,7 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
                 <text x={x0} y={cy} dy="0.35em" fontSize={9} fill={MUTED}>{num.get(r.i)}</text>
                 <circle cx={x0 + 17} cy={cy} r={4.5} fill={colorOf(wk.id)} />
                 <text x={x0 + 26} y={cy} dy="0.35em" fontSize={11.5} fill="currentColor" fontWeight={isRare ? 400 : 600} fontStyle={isRare ? "italic" : "normal"}>
-                  {wk.label.length > 22 ? `${wk.label.slice(0, 21)}…` : wk.label}
+                  {wk.label.length > 20 ? `${wk.label.slice(0, 19)}…` : wk.label}
                   <tspan fill={MUTED} fontWeight={400} fontStyle="normal" fontSize={10}>{`  ${fmtBp(lengths[r.i])} · ${carriers.get(wk.id) || 0} cells`}</tspan>
                   <title>{`${wk.label}${r.parent >= 0 ? `\n${d3.format(".0%")(r.share)} inside ${walks[r.parent].label}` : ""}`}</title>
                 </text>
