@@ -2,23 +2,26 @@ import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Space, Table, Tag, Typography } from "antd";
+import { Card, Space, Table, Tag } from "antd";
 import { RiseOutlined } from "@ant-design/icons";
 import useTreeView from "./useTreeView";
 import singleCellActions from "../../redux/singleCell/actions";
 import { branchGains, cladeRateTest, privateCountsPerRow } from "../../helpers/singleCell/branchBurden";
 import { callableMbOf } from "../../helpers/singleCell/cohortStats";
+import { isNormalClone } from "../../helpers/singleCell/figures";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { formatP } from "../../helpers/singleCell/tests";
+import HintLine from "./hintLine";
 
-const { Text } = Typography;
 const MIN_CELLS = 3;
 
 /**
  * Mutation rates along the tree: for every clade of ≥ 3 cells, the SNV
  * sites gained on the branch above it (per callable Mb of its cells) and
  * the private-SNV rate of its cells against the rest of the tumour
- * (Mann-Whitney), flagging clades that mutate faster or slower.
+ * (Mann-Whitney), flagging clades that mutate faster or slower. Normal
+ * cells are left out: they carry no somatic SNVs, so a normal clade always
+ * looked "slower" and any clade compared against them "faster".
  */
 export default function BranchRatesCard() {
   const { t } = useTranslation("common");
@@ -31,20 +34,29 @@ export default function BranchRatesCard() {
     const gains = branchGains(treeLayout, snv.data, matrixRows, { minCells: MIN_CELLS });
     const privCounts = privateCountsPerRow(snv.data);
     const mbOf = (id) => callableMbOf([cellById.get(id)].filter(Boolean));
+    const normal = order.map((id) => isNormalClone(cellById.get(id)?.clone_id));
     const rate = order.map((id, r) => {
       const p = matrixRows[r];
+      if (normal[r]) return NaN;
       const mb = mbOf(id);
       return p >= 0 && Number.isFinite(mb) && mb > 0 ? privCounts[p] / mb : NaN;
     });
     return [...gains.entries()]
-      .filter(([id]) => !treeLayout.nodes[id].isLeaf)
+      .filter(([id]) => {
+        const n = treeLayout.nodes[id];
+        if (n.isLeaf) return false;
+        // at least MIN_CELLS tumour cells in the clade and some outside it to compare against
+        const tumourIn = d3.range(n.firstLeaf, n.lastLeaf + 1).filter((r) => !normal[r]).length;
+        const tumourAll = normal.filter((x) => !x).length;
+        return tumourIn >= MIN_CELLS && tumourIn < tumourAll;
+      })
       .map(([id, g]) => {
         const n = treeLayout.nodes[id];
         const ids = order.slice(n.firstLeaf, n.lastLeaf + 1);
         const inClade = order.map((_, r) => r >= n.firstLeaf && r <= n.lastLeaf);
         const test = cladeRateTest(rate, inClade);
         const mb = d3.median(ids.map(mbOf).filter(Number.isFinite));
-        const clones = new Set(ids.map((c) => cellById.get(c)?.clone_id).filter((c) => c != null));
+        const clones = new Set(ids.map((c) => cellById.get(c)?.clone_id).filter((c) => c != null && !isNormalClone(c)));
         return { key: id, node: id, cells: g.cells, clone: clones.size === 1 ? [...clones][0] : null, nClones: clones.size, gained: g.gained.length, gainedPerMb: Number.isFinite(mb) && mb > 0 ? g.gained.length / mb : NaN, ...test, ids };
       })
       .sort((a, b) => (Number.isFinite(a.p) ? a.p : 2) - (Number.isFinite(b.p) ? b.p : 2) || b.cells - a.cells);
@@ -71,7 +83,7 @@ export default function BranchRatesCard() {
   return (
     <Card size="small" title={<Space><RiseOutlined />{t("components.single-cell.rates.title")}</Space>}>
       <Table size="small" className="sc-events-table" columns={columns} dataSource={rows} pagination={{ pageSize: 12, size: "small", hideOnSinglePage: true }} onRow={(r) => ({ onClick: (e) => select(r, e), style: { cursor: "pointer" } })} />
-      <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.rates.help")}</Text>
+      <HintLine text={t("components.single-cell.rates.help")} />
     </Card>
   );
 }

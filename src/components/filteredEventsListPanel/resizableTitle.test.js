@@ -12,6 +12,24 @@ import ResizableTitle, {
 } from "./resizableTitle";
 
 describe("resizable filtered-events columns", () => {
+  test("retains the accessible header label when AntD sees a title with pin controls", () => {
+    const view = renderToStaticMarkup(
+      <Table
+        components={{ header: { cell: ResizableTitle } }}
+        columns={[{
+          key: "gene",
+          title: <span>Gene<button type="button">Pin</button></span>,
+          sorter: true,
+          onHeaderCell: () => ({ headerLabel: "Gene", sortControlOnly: true }),
+        }]}
+        dataSource={[]}
+        pagination={false}
+      />,
+    );
+    expect(view).toMatch(/<th[^>]*aria-label="Gene"/);
+    expect(view).not.toContain("headerLabel=");
+  });
+
   const previewFixture = () => {
     const tables = [0, 1].map(() => {
       const column = { style: { width: "120px" } };

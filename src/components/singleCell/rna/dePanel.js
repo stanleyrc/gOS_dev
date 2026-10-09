@@ -33,6 +33,7 @@ import useGeneHeritability from "./useHeritability";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { binAt } from "../../../helpers/singleCell/matrix";
 import { differentialExpression, overRepresentation } from "../../../helpers/singleCell/rnaStats";
+import { SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
@@ -336,7 +337,7 @@ function MultiGroupDe({ summary, matrix, rowsFor, minPct, significant, onView, v
       )}
       {progress != null && <Progress percent={progress} size="small" />}
       {results.length > 0 && (
-        <Row gutter={[24, 12]}>
+        <Row gutter={SC_GUTTER_INNER}>
           <Col xs={24} xl={14}>
             <Table size="small" rowKey="key" columns={columns} dataSource={results} pagination={{ pageSize: 8 }} scroll={{ x: true }} />
           </Col>
@@ -639,7 +640,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
             {(result.nA < 20 || result.nB < 20) && (
               <Alert type="info" showIcon message={t("components.single-cell.rna.exploratory")} />
             )}
-            <Row gutter={[24, 16]}>
+            <Row gutter={SC_GUTTER_INNER}>
               <Col xs={24} xl={14}>
                 <VolcanoPlot
                   genes={result.genes}

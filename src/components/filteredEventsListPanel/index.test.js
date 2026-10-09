@@ -78,6 +78,7 @@ import { createPortal } from "react-dom";
 import { buildColumnsFromSettings } from "./columnBuilders";
 import { FilteredEventsListPanel } from "./index";
 import ResizableTitle, { ColumnSortControl } from "./resizableTitle";
+import ColumnPinControl from "./columnPinControl";
 import { getCurrentUserId, userAuthRepository } from "../../helpers/userAuth";
 import { COLUMN_LAYOUT_STORAGE_KEY, readColumnLayout, saveColumnLayout } from "../../helpers/filteredEventsColumnLayout";
 
@@ -152,7 +153,7 @@ describe("FilteredEventsListPanel saved browser layout", () => {
     reorder(panel);
     const restored = makePanel("case-2", { id: "other-dataset", defaultVisibleFilteredEventsColumns: ["gene"] });
     expect(restored.state).toMatchObject({ columnWidths: { gene: 340 }, columnOrderKeys: ["tier", "gene"], selectedColumnKeys: ["gene", "caller"], pageSize: 50 });
-    expect(Object.keys(JSON.parse(storage.getItem(COLUMN_LAYOUT_STORAGE_KEY)))).toEqual(["columnWidths", "columnOrderKeys"]);
+    expect(Object.keys(JSON.parse(storage.getItem(COLUMN_LAYOUT_STORAGE_KEY)))).toEqual(["columnWidths", "columnOrderKeys", "pinnedColumnKeys"]);
     expect(getCurrentUserId).not.toHaveBeenCalled();
     const previousProps = restored.props;
     restored.props = { ...restored.props, dataset: { defaultVisibleFilteredEventsColumns: ["tier"] } };
@@ -164,10 +165,30 @@ describe("FilteredEventsListPanel saved browser layout", () => {
     saveColumnLayout({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: ["gene", "extra", "tier"] });
     const panel = makePanel();
     reorder(panel);
-    expect(readColumnLayout()).toEqual({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: ["tier", "extra", "gene"] });
+    expect(readColumnLayout()).toEqual({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: ["tier", "extra", "gene"], pinnedColumnKeys: [] });
     panel.handleResetFilters();
-    expect(readColumnLayout()).toEqual({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: [] });
+    expect(readColumnLayout()).toEqual({ columnWidths: { gene: 340, extra: 450 }, columnOrderKeys: [], pinnedColumnKeys: [] });
     expect(panel.state.columnWidths.gene).toBe(340);
+  });
+
+  it("restores pins across cases, preserves absent/hidden pins and retains them on filter reset", () => {
+    saveColumnLayout({ pinnedColumnKeys: ["dataset-only"] });
+    const panel = makePanel();
+    panel.handleColumnPinToggle("gene");
+    panel.handleColumnPinToggle("caller");
+    panel.handleColumnPinToggle("unknown");
+    expect(readColumnLayout().pinnedColumnKeys).toEqual(["dataset-only", "gene"]);
+    const restored = makePanel("case-2", { defaultVisibleFilteredEventsColumns: ["tier"] });
+    expect(restored.state.pinnedColumnKeys).toEqual(["dataset-only", "gene"]);
+    panel.handleResetFilters();
+    expect(readColumnLayout().pinnedColumnKeys).toEqual(["dataset-only", "gene"]);
+    panel.handleColumnPinToggle("gene");
+    expect(readColumnLayout().pinnedColumnKeys).toEqual(["dataset-only"]);
+    for (const callback of listeners.keys()) callback({ key: COLUMN_LAYOUT_STORAGE_KEY });
+    expect(restored.state.pinnedColumnKeys).toEqual(["dataset-only"]);
+    panel.componentWillUnmount();
+    panel.handleColumnPinToggle("tier");
+    expect(readColumnLayout().pinnedColumnKeys).toEqual(["dataset-only"]);
   });
 
   it("does not share caller-owned column widths", () => {
@@ -216,7 +237,8 @@ describe("FilteredEventsListPanel saved browser layout", () => {
     const panel = makePanel();
     panel.handleColumnResizeStop("gene")(null, { size: { width: 350 } });
     reorder(panel);
-    expect(panel.state).toMatchObject({ columnWidths: { gene: 350 }, columnOrderKeys: ["tier", "gene"] });
+    panel.handleColumnPinToggle("gene");
+    expect(panel.state).toMatchObject({ columnWidths: { gene: 350 }, columnOrderKeys: ["tier", "gene"], pinnedColumnKeys: ["gene"] });
   });
 });
 
@@ -427,6 +449,56 @@ describe("FilteredEventsListPanel header interactions", () => {
     expect(panel.state.draggingColumnKey).toBeNull();
   });
 
+  it("toggles header pins without sorting and restores base order on unpin", () => {
+    const panel = makePanel();
+    const pin = (key) => findElementByType(table(panel).props.columns.find((column) => column.key === key).title, ColumnPinControl);
+    expect(pin("caller")).toBeNull();
+    expect(pin("select")).toBeNull();
+    expect(pin("pinned")).toBeNull();
+    expect(pin("gene").props.pinned).toBe(false);
+    header(panel, "gene").onColumnDragStart("gene");
+    pin("gene").props.onToggle("gene");
+    expect(panel.state.draggingColumnKey).toBeNull();
+    expect(pin("gene").props.pinned).toBe(true);
+    expect(keys(panel)).toEqual(["select", "pinned", "gene", "caller", "tier", "location"]);
+    const gene = table(panel).props.columns.find((column) => column.key === "gene");
+    expect(gene.fixed).toBe("left");
+    expect(header(panel, "gene").onColumnDragStart).toBeUndefined();
+    header(panel, "gene").onResizeStop(null, { size: { width: 320 } });
+    expect(table(panel).props.columns.find((column) => column.key === "gene").width).toBe(320);
+    expect(panel.state.sortState).toEqual({ columnKey: null, order: null });
+    expect(panel.props.setColumnFilters).not.toHaveBeenCalled();
+    pin("gene").props.onToggle("gene");
+    expect(keys(panel)).toEqual(["select", "caller", "gene", "tier", "pinned", "location"]);
+    expect(header(panel, "gene").onColumnDragStart).toEqual(expect.any(Function));
+  });
+
+  it("keeps multiple pins through hide/show and reorders only unpinned columns", () => {
+    const panel = makePanel();
+    panel.handleColumnPinToggle("tier");
+    panel.handleColumnPinToggle("gene");
+    expect(keys(panel)).toEqual(["select", "pinned", "gene", "tier", "caller", "location"]);
+    panel.handleColumnSelectionChange(["caller", "tier", "location"]);
+    expect(keys(panel)).toEqual(["select", "tier", "caller", "location"]);
+    panel.handleColumnSelectionChange(["caller", "gene", "tier", "location"]);
+    expect(keys(panel)).toEqual(["select", "gene", "tier", "caller", "location"]);
+    panel.handleColumnPinToggle("tier");
+    header(panel, "location").onColumnDragStart("location");
+    header(panel, "tier").onColumnDrop("tier");
+    expect(keys(panel)).toEqual(["select", "gene", "caller", "location", "tier"]);
+    expect(panel.state.pinnedColumnKeys).toEqual(["gene"]);
+    panel.handleColumnPinToggle("gene");
+    expect(keys(panel)).toEqual(["select", "caller", "location", "tier", "gene"]);
+  });
+
+  it("reveals pin controls only on header hover or keyboard focus", () => {
+    const styles = jest.requireActual("./index.style").default.componentStyle.rules.join("");
+    expect(styles).toMatch(/\.filtered-events-pin-control\s*\{[^}]*opacity: 0;[^}]*pointer-events: none/);
+    expect(styles).toMatch(/th:hover \.filtered-events-pin-control,[^{]*\.filtered-events-pin-control:focus-visible\s*\{[^}]*opacity: 1;[^}]*pointer-events: auto/);
+    expect(styles).not.toContain(".filtered-events-pin-control:focus {");
+    expect(styles).toMatch(/\.ant-table-cell-fix-left \.filtered-events-resize-handle\s*\{[^}]*right: 0/);
+  });
+
   it("preserves order, widths, sorting and page size across hide/show and equivalent props", () => {
     const panel = makePanel();
     header(panel, "location").onColumnDragStart("location");
@@ -469,7 +541,7 @@ describe("FilteredEventsListPanel header interactions", () => {
       const control = column.sortIcon({ sortOrder: "ascend" });
       expect(control.type).toBe(ColumnSortControl);
       expect(control.props.sortOrder).toBe("ascend");
-      expect(control.props.title).toBe(column.title);
+      expect(control.props.title).toBe({ gene: "Gene", tier: "Tier", caller: "Caller" }[key]);
     }
     expect(header(panel, "location").sortControlOnly).toBe(false);
     header(panel, "gene").onResize(null, { size: { width: 310 } });
@@ -761,7 +833,7 @@ describe("FilteredEventsListPanel report selection", () => {
         children: "components.filtered-events-panel.add-to-report",
       },
     });
-    expect(table.props.columns[1].width).toBe(140);
+    expect(table.props.columns[1].width).toBe(168); // Includes the header pin control.
 
     selectionColumn.title.props.onChange();
     expect(setSelectedEventUids).toHaveBeenCalledWith([

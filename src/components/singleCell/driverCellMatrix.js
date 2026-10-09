@@ -15,6 +15,7 @@ import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { eventTooltipLines } from "../../helpers/singleCell/cohortStats";
 import { bufferedColumns, carrierMasks, clampView, drawMatrix, isFullView, matrixHit, panView, viewTransform, wheelFactor, wheelPixels, zoomView } from "../../helpers/singleCell/matrixZoom";
 import { Swatches } from "./cohort/charts";
+import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -22,7 +23,7 @@ const ROW_H = 24;
 const LABEL_W = 240;
 const RIGHT_W = 90;
 const STRIP_H = 12;
-const TREE_H = 130;
+const TREE_H = 160;
 const SETTLE_MS = 140; // a wheel gesture commits to React once idle this long
 
 /**
@@ -410,7 +411,7 @@ export default function DriverCellMatrix({ drivers }) {
           />
         </div>
         <Swatches style={{ marginTop: 6 }} items={Object.entries(CLASS_COLORS).filter(([k]) => k !== "other" && rows.some((r) => r.class === k)).map(([k, c]) => ({ key: k, color: c, label: t(`components.single-cell.cohort.class-${k}`) }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.report.matrix-help2")}</Text>
+        <HintLine text={t("components.single-cell.report.matrix-help2")} />
       </div>
     </Card>
   );

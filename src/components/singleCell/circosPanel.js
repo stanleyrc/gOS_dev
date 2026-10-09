@@ -13,6 +13,7 @@ import singleCellActions from "../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import { cnColorer } from "../../helpers/singleCell/matrix";
 import { medianCnRow } from "../../helpers/singleCell/cellFiles";
+import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const genomeCache = new Map();
@@ -170,7 +171,9 @@ export default function CircosPanel() {
   const rowOf = new Map(order.map((id, i) => [id, i]));
   const selectedRows = new Set(selectedCellIds.map((id) => rowOf.get(id)).filter((r) => r != null));
   const leafClones = order.map((id) => cellById.get(id)?.clone_id ?? null);
-  const treeHeight = Math.max(360, Math.min(size, nRows * 4));
+  // tree as tall as the circle and widened into the spare width; legends sit beside the circle, not centred under a gap
+  const treeHeight = size;
+  const treeWidth = Math.min(420, Math.max(TREE_WIDTH, width - size - 340));
 
   return (
     <Card
@@ -194,11 +197,11 @@ export default function CircosPanel() {
       <div ref={ref} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
         {treeLayout && (
           <div style={{ flex: "none" }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.circos.tree-help")}</Text>
+            <HintLine text={t("components.single-cell.circos.tree-help")} />
             <PhylogenyCanvas
               layout={treeLayout}
               nRows={nRows}
-              width={TREE_WIDTH}
+              width={treeWidth}
               height={treeHeight}
               pixelRatio={pixelRatio}
               leafClones={leafClones}
@@ -218,9 +221,10 @@ export default function CircosPanel() {
             />
           </div>
         )}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
+          <div style={{ flex: "none" }}>
           {progress != null && <Progress percent={progress} size="small" style={{ width: 240 }} />}
-          <svg width={size} height={size} style={{ display: "block", margin: "0 auto" }}>
+          <svg width={size} height={size} style={{ display: "block" }}>
             <defs>
               <radialGradient id="circos-bg" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#ffffff" stopOpacity={0} />
@@ -292,7 +296,9 @@ export default function CircosPanel() {
               <text x={0} y={12} textAnchor="middle" fontSize={11} fill="#595959">{t("components.single-cell.circos.centre-junctions", { count: d3.sum(sources, (s) => (junctionData[s.key] ? (mode === "clones" ? junctionData[s.key].junctions.filter((j) => j.n / Math.max(1, junctionData[s.key].nCells) >= minShare).length : junctionData[s.key].junctions.length) : 0)) })}</text>
             </g>
           </svg>
-          <Space wrap size={[12, 4]} style={{ marginTop: 6, fontSize: 12 }}>
+          </div>
+          <div style={{ flex: "1 1 220px", minWidth: 220, paddingTop: 8 }}>
+          <Space direction="vertical" size={4} style={{ fontSize: 12 }}>
             {sources.map((src, i) => (
               <span key={src.key} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 12, height: 12, background: src.color, borderRadius: 2 }} />
@@ -300,12 +306,13 @@ export default function CircosPanel() {
               </span>
             ))}
           </Space>
-          <Space wrap size={[12, 4]} style={{ marginTop: 4, fontSize: 12 }}>
+          <Space wrap size={[12, 4]} style={{ marginTop: 10, fontSize: 12 }}>
             {Object.entries(JUNCTION_COLORS).map(([k, c]) => (
               <span key={k}><span className="sc-swatch" style={{ background: c }} />{k}</span>
             ))}
-            <Text type="secondary">{t("components.single-cell.circos.help2")}</Text>
           </Space>
+          <div style={{ marginTop: 10, fontSize: 12 }}><Text type="secondary">{t("components.single-cell.circos.help2")}</Text></div>
+          </div>
         </div>
       </div>
     </Card>

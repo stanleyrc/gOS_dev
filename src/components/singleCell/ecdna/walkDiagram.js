@@ -7,6 +7,9 @@ import { RadarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { walkGenes, toGlobal } from "../../../helpers/singleCell/walks";
+import { carriersByClone, junctionRows } from "../../../helpers/singleCell/walkPanels";
+import { copiesOf } from "../../../helpers/singleCell/walkCopies";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const CHR_ORDER = [...d3.range(1, 23).map(String), "X", "Y"];
@@ -20,7 +23,7 @@ const fmtPos = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} Mb` : `${(v / 1e3).to
  * are joined, genes overlapping the nodes labelled outside; below, the
  * same nodes laid on their chromosomes so the genomic composition is clear.
  */
-export default function WalkDiagram({ walk, colorOf, cellCount }) {
+export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(700);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
@@ -30,12 +33,19 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
     return optionsList.map((o) => ({ name: o.label, start: Number(genesStartPoint[o.value]), end: Number(genesEndPoint[o.value]) })).filter((g) => Number.isFinite(g.start) && Number.isFinite(g.end));
   }, [genesState]);
   const hits = useMemo(() => (walk ? walkGenes(walk, genes, chromoBins) : []), [walk, genes, chromoBins]);
+  const { cells, cloneColors } = useSelector((s) => s.SingleCell);
+  const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
+  const byClone = useMemo(() => (walk ? carriersByClone(walk, cellIds, (id) => cloneOf.get(id)) : []), [walk, cellIds, cloneOf]);
+  const junctions = useMemo(() => (walk ? junctionRows(walk) : []), [walk]);
+  const copies = useMemo(() => (walk ? cellIds.map((id) => copiesOf(walk, id)).filter((v) => v > 0) : []), [walk, cellIds]);
   if (!walk) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.pick-walk")} />;
   const nodes = walk.nodes;
   const total = d3.sum(nodes, (n) => n.end - n.start + 1) || 1;
   const w = Math.max(420, width - 16);
-  const size = Math.min(w, 400);
-  const R = size / 2 - 70;
+  // ring only where it shows structure (3+ nodes); kept small next to the facts
+  const showRing = walk.circular && nodes.length > 2;
+  const size = Math.min(320, Math.max(240, w * 0.4));
+  const R = size / 2 - 58;
   const cx = size / 2;
   const cy = size / 2;
   // cumulative angle per node (circular) or x position (linear)
@@ -61,13 +71,60 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
       extra={<SvgExportButton containerRef={ref} name={`walk-${walk.label}`} />}
     >
       <div ref={ref}>
-        <Space wrap size={4} style={{ marginBottom: 6 }}>
-          {walk.genes.map((g) => <Tag key={g} color="volcano" style={{ margin: 0 }}>{g}</Tag>)}
-          {walk.coordinates && <Text type="secondary" style={{ fontSize: 12 }}>{walk.coordinates}</Text>}
-          <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.diagram-cells", { cells: walk.stats?.ncells ?? walk.ncells, total: cellCount, median: (walk.stats?.medianCn ?? walk.median_cn ?? 0).toFixed(0) })}</Text>
-        </Space>
-        {walk.circular ? (
-          <svg width={size} height={size} style={{ display: "block", margin: "0 auto" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
+        <div className="sc-walk-card" style={{ flex: "1 1 280px", minWidth: 260 }}>
+          <div className="sc-walk-facts">
+            <Text type="secondary">{t("components.single-cell.ecdna.wf-carriers")}</Text>
+            <span><b>{copies.length}</b>{` / ${cellIds.length} cells (${d3.format(".0%")(cellIds.length ? copies.length / cellIds.length : 0)})`}</span>
+            <Text type="secondary">{t("components.single-cell.ecdna.wf-copies")}</Text>
+            <span>{copies.length ? `median ${d3.format(".0f")(d3.median(copies))} · range ${d3.format(".0f")(d3.min(copies))}–${d3.format(".0f")(d3.max(copies))}` : "–"}</span>
+            <Text type="secondary">{t("components.single-cell.ecdna.wf-structure")}</Text>
+            <span>{`${walk.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")} · ${fmtPos(walk.span)} · ${t("components.single-cell.ecdna.nodes", { count: nodes.length })}${walk.n_nodes_raw > nodes.length ? ` (${walk.n_nodes_raw} graph nodes)` : ""} · ${t("components.single-cell.ecdna.alt-junctions", { count: alt.length })}`}</span>
+            {walk.coordinates && <><Text type="secondary">{t("components.single-cell.ecdna.wf-region")}</Text><span>{walk.coordinates}</span></>}
+            <Text type="secondary">{t("components.single-cell.ecdna.wf-genes")}</Text>
+            <span>
+              {walk.genes.map((g) => <Tag key={g} color={(walk.driver_genes || []).includes(g) ? "volcano" : undefined} style={{ margin: "0 3px 2px 0", fontSize: 11, lineHeight: "16px", paddingInline: 4 }}>{g}</Tag>)}
+              {/* other genes overlapping the nodes (all of them when the walk names none) */}
+              {(() => {
+                const others = [...new Set(hits.map((g) => g.name))].filter((g) => !walk.genes.includes(g));
+                if (!others.length) return walk.genes.length ? null : "–";
+                const shown = others.slice(0, walk.genes.length ? 6 : 12);
+                return <Text type="secondary" title={others.join(", ")}>{`${walk.genes.length ? "also " : ""}${shown.join(", ")}${others.length > shown.length ? ` +${others.length - shown.length}` : ""}`}</Text>;
+              })()}
+            </span>
+          </div>
+          {byClone.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.ecdna.wf-by-clone")}</Text>
+              {byClone.map((r) => (
+                <div key={r.clone} style={{ display: "flex", alignItems: "center", gap: 6, lineHeight: "17px" }}>
+                  <span className="sc-swatch" style={{ background: cloneColors[r.clone] || "#8c8c8c" }} />
+                  <span style={{ width: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.clone}</span>
+                  <span style={{ flex: "0 0 90px", height: 8, background: "rgba(128,128,128,0.15)", borderRadius: 2, overflow: "hidden" }}>
+                    <span style={{ display: "block", height: "100%", width: `${r.n ? (100 * r.carriers) / r.n : 0}%`, background: colorOf(walk.id) }} />
+                  </span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{`${r.carriers}/${r.n}`}</span>
+                  <Text type="secondary">{r.carriers ? `· median ${d3.format(".0f")(r.median)}×` : ""}</Text>
+                </div>
+              ))}
+            </div>
+          )}
+          {junctions.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.ecdna.wf-junctions", { count: junctions.length })}</Text>
+              {junctions.slice(0, 8).map((j) => (
+                <div key={j.key} style={{ fontFamily: "monospace", fontSize: 11, lineHeight: "16px" }}>
+                  <span style={{ color: "#cf1322" }}>●</span>{` ${j.from} → ${j.to}`}
+                  {j.span != null && <Text type="secondary" style={{ fontFamily: "inherit", fontSize: 11 }}>{` (${fmtPos(j.span)})`}</Text>}
+                  {j.via && <Text type="secondary" style={{ fontFamily: "inherit", fontSize: 11 }}>{` via ${j.via}`}</Text>}
+                </div>
+              ))}
+              {junctions.length > 8 && <Text type="secondary" style={{ fontSize: 11 }}>{`+${junctions.length - 8} more`}</Text>}
+            </div>
+          )}
+        </div>
+        {showRing ? (
+          <svg width={size} height={size} style={{ display: "block", flex: "none" }}>
             {placed.map((n) => {
               const path = arc({ innerRadius: R - 14, outerRadius: R, startAngle: n.a0, endAngle: n.a1 });
               const mid = (n.a0 + n.a1) / 2;
@@ -113,10 +170,10 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
                 </g>
               );
             })}
-            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={14} fontWeight={600} fill="#262626">{walk.label}</text>
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={13} fontWeight={600} fill="currentColor">{walk.label}</text>
             <text x={cx} y={cy + 10} textAnchor="middle" fontSize={11} fill="#8c8c8c">{fmtPos(walk.span)}</text>
           </svg>
-        ) : (
+        ) : !walk.circular && nodes.length > 2 ? (
           <svg width={w} height={70}>
             {placed.map((n) => (
               <rect key={n.i} x={20 + n.f0 * (w - 40)} y={20} width={Math.max(1, (n.f1 - n.f0) * (w - 40))} height={20} fill={chrColor(n.chromosome)} stroke="#fff" strokeWidth={0.5}>
@@ -129,7 +186,8 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
               return <text key={g.name} x={x} y={k % 2 ? 12 : 58} textAnchor="middle" fontSize={9} fill="#595959">{g.name}</text>;
             })}
           </svg>
-        )}
+        ) : null}
+        </div>
         {/* genomic composition: the nodes on their chromosomes */}
         <svg width={w} height={chromosomes.length * 34 + 10}>
           {chromosomes.map((chr, r) => {
@@ -159,7 +217,7 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
             );
           })}
         </svg>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.diagram-help")}</Text>
+        <HintLine text={t("components.single-cell.ecdna.diagram-help")} />
       </div>
     </Card>
   );
