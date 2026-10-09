@@ -9,6 +9,7 @@ import StripLabels from "./stripLabels";
 import HintLine, { Provenance } from "./hintLine";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import BranchDiffDrawer from "./branch/branchDiffDrawer";
+import GeneInfoDrawer from "./rna/geneInfoDrawer";
 import SnvSiteDrawer from "./snvSiteDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
@@ -110,6 +111,7 @@ export default function CellHeatmapPanel() {
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
   const [hover, setHover] = useState(null);
+  const [cardGene, setCardGene] = useState(null);   // gene label clicked in the RNA side panel
   const anchorRow = useRef(null);
   const canvasHolder = useRef(null);
 
@@ -1213,6 +1215,7 @@ export default function CellHeatmapPanel() {
                 onRowClick={handleRowClick}
                 onHover={(row, lines, event) => hoverCell(row, lines, event)}
                 onLeave={clearHover}
+                onGeneClick={setCardGene}
               />
               </div>
             )}
@@ -1308,6 +1311,7 @@ export default function CellHeatmapPanel() {
           variantIdx={snvsByBranch?.get(branchNode) || []}
         />
       )}
+      <GeneInfoDrawer gene={cardGene} onClose={() => setCardGene(null)} />
     </Wrapper>
   );
 }
