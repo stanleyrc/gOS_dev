@@ -76,6 +76,10 @@ const Wrapper = styled.div`
     color: #8c8c8c;
   }
   /* label / value grid (single-walk card facts) */
+  .sc-walk-card,
+  .sc-walk-card .ant-typography {
+    font-size: 12px;
+  }
   .sc-walk-facts {
     display: grid;
     grid-template-columns: max-content 1fr;
