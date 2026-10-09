@@ -27,14 +27,21 @@ function median(values) {
 }
 
 /**
- * Short name for a family of nested walks: the driver / first gene shared
- * by its most prevalent walk, else that walk's label.
+ * Short name for a family of nested walks: the gene carried most widely
+ * across its walks (driver genes count double, weighted by carriers), else
+ * the label of its most prevalent walk not named "Other".
  */
 export function familyLabel(fam, carriers) {
-  const top = fam.slice().sort((a, b) => carriers(b) - carriers(a))[0];
-  if (!top) return "";
-  const genes = [...(top.driver_genes || []), ...(top.genes || [])].filter(Boolean);
-  return genes.length ? genes[0] : top.label;
+  const score = new Map();
+  fam.forEach((w) => {
+    const c = Math.max(1, carriers(w));
+    (w.driver_genes || []).filter(Boolean).forEach((g) => score.set(g, (score.get(g) || 0) + 2 * c));
+    (w.genes || []).filter(Boolean).forEach((g) => score.set(g, (score.get(g) || 0) + c));
+  });
+  if (score.size) return [...score.entries()].sort((a, b) => b[1] - a[1] || `${a[0]}`.localeCompare(`${b[0]}`))[0][0];
+  const ranked = fam.slice().sort((a, b) => carriers(b) - carriers(a));
+  const named = ranked.find((w) => !/^other\b/i.test(`${w.label}`));
+  return (named || ranked[0])?.label ?? "";
 }
 
 /**
@@ -98,7 +105,7 @@ export function columnMax(col, rows) {
  * narrow width (rareWidth per walk, capped). `gap` between columns,
  * `blockGap` between families. Returns widths in block/column order.
  */
-export function columnWidths(blocks, width, nCells, { min = 44, rareWidth = 9, rareMin = 22, rareMaxWidth = 64, gap = 3, blockGap = 10 } = {}) {
+export function columnWidths(blocks, width, nCells, { min = 44, rareWidth = 9, rareMin = 26, rareMaxWidth = 64, gap = 3, blockGap = 10 } = {}) {
   const cols = blocks.flatMap((b) => b.columns);
   if (!cols.length) return [];
   const gaps = gap * (cols.length - blocks.length) + blockGap * Math.max(0, blocks.length - 1);
