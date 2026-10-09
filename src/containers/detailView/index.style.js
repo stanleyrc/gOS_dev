@@ -8,7 +8,7 @@ const Wrapper = styled.div`
     padding-bottom: 0px;
   }
   .ant-home-content-container {
-    margin: 24px;
+    margin: 12px;
     margin-top: -45.5px;
   }
   .ant-panel-container {
@@ -28,6 +28,11 @@ const Wrapper = styled.div`
     padding: 0 8px;
     margin-left: -8px;
     margin-right: -8px;
+    margin-bottom: 8px;
+  }
+  /* denser tab strip: more tabs per line before it wraps */
+  .ant-home-content-container > .ant-tabs > .ant-tabs-nav .ant-tabs-tab + .ant-tabs-tab {
+    margin-left: 20px;
   }
   .ant-home-content-container .ant-tabs-tab-btn:focus,
   .ant-home-content-container .ant-tabs-tab-btn:focus-visible {

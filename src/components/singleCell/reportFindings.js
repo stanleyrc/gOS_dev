@@ -14,6 +14,8 @@ import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { chiSquareUpper } from "../../helpers/singleCell/tests";
 import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
+import HintLine from "./hintLine";
+import { SC_GUTTER_INNER } from "./density";
 
 const { Text, Title } = Typography;
 const pct = d3.format(".0%");
@@ -145,10 +147,10 @@ export default function ReportFindings({ report, cloneColors }) {
 
   return (
     <Card size="small" title={<Space><BulbOutlined />{t("components.single-cell.report.findings-title")}</Space>}>
-      <Row gutter={[24, 16]}>
+      <Row gutter={SC_GUTTER_INNER}>
         {cladeSigs && (
           <Col xs={24} xl={8}>
-            <Title level={5}>{t("components.single-cell.report.findings-sigs")}</Title>
+            <Title level={5} className="sc-section-title">{t("components.single-cell.report.findings-sigs")}</Title>
             <Text type="secondary">{t("components.single-cell.report.findings-sigs-trunk", { list: cladeSigs.truncal.map((s) => `${s.signature} ${pct(s.share)}`).join(", ") })}</Text>
             {cladeSigs.clones.map((c) => (
               <div key={c.clone} style={{ marginTop: 6 }}>
@@ -167,7 +169,7 @@ export default function ReportFindings({ report, cloneColors }) {
         )}
         {states && (
           <Col xs={24} xl={8}>
-            <Title level={5}>{t("components.single-cell.report.findings-rna")}</Title>
+            <Title level={5} className="sc-section-title">{t("components.single-cell.report.findings-rna")}</Title>
             <Text type="secondary">
               {t("components.single-cell.report.findings-rna-test", { field: states.field, p: Number.isFinite(states.p) ? (states.p < 1e-4 ? "p < 1e-4" : `p = ${states.p.toFixed(3)}`) : "n/a" })}
             </Text>
@@ -198,7 +200,7 @@ export default function ReportFindings({ report, cloneColors }) {
         )}
         {amplifiedSnvs.length > 0 && (
           <Col xs={24} xl={8}>
-            <Title level={5}>{t("components.single-cell.report.findings-amplified")}</Title>
+            <Title level={5} className="sc-section-title">{t("components.single-cell.report.findings-amplified")}</Title>
             <Text type="secondary">{t("components.single-cell.report.findings-amplified-help", { count: amplifiedSnvs.length })}</Text>
             {amplifiedSnvs.slice(0, 12).map(({ v, i }) => (
               <div key={v.id} style={{ marginTop: 4 }}>
@@ -212,7 +214,7 @@ export default function ReportFindings({ report, cloneColors }) {
         )}
         {dosage.length > 0 && (
           <Col xs={24} xl={8}>
-            <Title level={5}>{t("components.single-cell.report.findings-dosage")}</Title>
+            <Title level={5} className="sc-section-title">{t("components.single-cell.report.findings-dosage")}</Title>
             {dosage.map((d) => (
               <div key={d.label} style={{ marginTop: 6 }}>
                 <Text strong>{d.gene}</Text>{" "}
@@ -220,7 +222,7 @@ export default function ReportFindings({ report, cloneColors }) {
                 {Number.isFinite(d.p) && d.p < 0.01 && Math.abs(d.rho) >= 0.3 && <Tag color={d.rho > 0 ? "red" : "blue"} style={{ marginLeft: 6 }}>{d.rho > 0 ? t("components.single-cell.report.findings-expressed") : t("components.single-cell.report.findings-anticorrelated")}</Tag>}
               </div>
             ))}
-            <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.report.findings-dosage-help")}</Text>
+            <HintLine text={t("components.single-cell.report.findings-dosage-help")} />
           </Col>
         )}
       </Row>

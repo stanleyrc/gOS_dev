@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Segmented, Space, Typography } from "antd";
+import { Card, Empty, Segmented, Space } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import { callableMbOf, snvCategoryCounts } from "../../../helpers/singleCell/cohortStats";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
+import HintLine from "../hintLine";
 
-const { Text } = Typography;
 const CATS = [
   ["truncal", "#2F6DB5"],
   ["subclonal", "#F28E2B"],
@@ -92,7 +92,7 @@ export default function TmbPanel({ summaries, files, datafiles = [], onOpen }) {
           <XBandLabels scale={x} y={HEIGHT - M.bottom + 20} rotate={rows.length > 8} onClick={(p) => onOpen(rows.find((r) => r.patient === p)?.summary)} />
         </svg>
         <Swatches items={CATS.map(([k, color]) => ({ key: k, color, label: t(`components.single-cell.snv.category-${k}`) }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.tmb-help")}</Text>
+        <HintLine text={t("components.single-cell.cohort.tmb-help")} />
       </div>
     </Card>
   );

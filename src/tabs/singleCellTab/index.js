@@ -16,6 +16,7 @@ import HeightHandle from "../../components/singleCell/heightHandle";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import Wrapper from "./index.style";
+import { SC_GUTTER } from "../../components/singleCell/density";
 
 const { Text } = Typography;
 
@@ -105,7 +106,7 @@ export default function SingleCellTab() {
     <Wrapper style={{ "--sc-sticky-top": `${headerHeight + (pinned ? navHeight : 0)}px` }}>
       <PendingEventOpener />
       <ScEventModal />
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <Space wrap size={[16, 4]} className="sc-tab-toggles">
             <HelpDrawer compact />
