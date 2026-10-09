@@ -38,6 +38,7 @@ import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
+import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
 import PatientReportCard from "./patientReportCard";
 import CohortGenePanel from "./cohort/cohortGenePanel";
 import PatientCards from "./cohort/patientCards";
@@ -417,6 +418,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
     { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
     { key: "qc", label: t("components.single-cell.cohort.view-qc") },
+    { key: "treeshape", label: t("components.single-cell.cohort.view-treeshape") },
   ];
 
   return (
@@ -535,6 +537,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 if (s) dispatch(datasetsActions.openCaseReport(s.record.datasetId, cellId));
               }}
             />
+          </Col>
+        )}
+        {view === "treeshape" && (
+          <Col span={24}>
+            <CohortTreeShapePanel summaries={summaries} files={files} datafiles={datafiles} />
           </Col>
         )}
         {view === "qc" && (

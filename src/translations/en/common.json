@@ -1344,6 +1344,7 @@
         "view-mutations": "Mutation burden & signatures",
         "view-scatter": "Patient scatter",
         "view-qc": "Cell QC",
+        "view-treeshape": "Tree shape & CIN",
         "tmb-title": "Mutation burden by tree position",
         "tmb-count": "Counts",
         "tmb-fraction": "Fractions",
