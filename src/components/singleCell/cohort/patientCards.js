@@ -7,6 +7,7 @@ import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { signatureColorOf } from "../signaturePanel";
 import { SC_GUTTER_INNER } from "../density";
 import RnaFindingsList from "../rna/rnaFindingsList";
+import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
@@ -82,7 +83,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
       </Text>
       {rna && rna.status !== "none" && (
         <div onClick={(e) => e.stopPropagation()} role="presentation">
-          <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.rna-findings.title")}</Text>
+          <Text type="secondary" style={{ fontSize: TYPE.label }}>{t("components.single-cell.rna-findings.title")}</Text>
           <RnaFindingsList findings={rna.data} status={rna.status} cloneColors={cloneColors} driverGenes={new Set([...report.clonal, ...report.subclonal].flatMap((d) => `${d.gene || ""}`.split("::")))} max={4} />
         </div>
       )}
