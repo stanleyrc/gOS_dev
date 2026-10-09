@@ -109,7 +109,7 @@ export default function UmapPanel() {
   const hoveredRef = useRef(null);
 
   // the plot fills the card next to the legend; height follows the width within bounds
-  const width = Math.max(240, containerWidth - LEGEND_WIDTH - 16);
+  const width = Math.max(240, containerWidth - LEGEND_WIDTH - 22); // 16 px gap + plot border
   const height = Math.round(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, width * 0.55)));
   const inTree = useMemo(() => new Set(order), [order]);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
