@@ -69,7 +69,7 @@ export default function SingleCellEcdnaTab() {
   const { chromoBins, domains } = useSelector((s) => s.Settings);
   const genesList = useSelector((s) => s.Genes?.list || []);
   const cellIds = useMemo(() => (order.length ? order : cellsAll.map((c) => c.cell_id)), [order, cellsAll]);
-  const { status, all, filtered, filters, setFilters, colorOf, byId } = useWalks(cellIds);
+  const { status, all, measured, filtered, filters, setFilters, colorOf, byId } = useWalks(cellIds);
   const [selected, setSelected] = useState([]);
   const [focus, setFocus] = useState(null);
   const [pad, setPad] = useState(2.5e5);
@@ -161,7 +161,7 @@ export default function SingleCellEcdnaTab() {
             <CellHeatmapPanel />
           </Col>
           <Col span={24}>
-            <WalkTreeBars walks={shown} colorOf={colorOf} />
+            <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} />
           </Col>
           <Col xs={24} xl={14}>
             <WalkContainmentCard walks={shown} colorOf={colorOf} />
