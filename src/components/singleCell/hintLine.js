@@ -41,13 +41,13 @@ export function Provenance({ id, text, children, placement = "bottomLeft" }) {
   if (children) {
     return (
       <Tooltip title={tip} overlayClassName="sc-prov-overlay" placement={placement} mouseEnterDelay={0.15}>
-        <span className="sc-prov-underline">{children}</span>
+        <span className="sc-prov-underline" data-help-id={id}>{children}</span>
       </Tooltip>
     );
   }
   return (
     <Tooltip title={tip} overlayClassName="sc-prov-overlay" placement={placement}>
-      <DatabaseOutlined className="sc-hint-icon sc-prov-icon" aria-label={`Data source: ${provenanceOf(id).title}`} />
+      <DatabaseOutlined className="sc-hint-icon sc-prov-icon" data-help-id={id} aria-label={`Data source: ${provenanceOf(id).title}`} />
     </Tooltip>
   );
 }
