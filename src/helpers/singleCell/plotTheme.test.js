@@ -41,6 +41,8 @@ describe("plotTheme tokens", () => {
     expect(inkOn("#ffffff")).toBe("#111111");
     expect(inkOn("#1f1f1f")).toBe("#ffffff");
     expect(inkOn("#F28E2B")).toBe("#111111"); // tableau orange: dark text reads better
+    expect(inkOn("rgb(8, 48, 107)")).toBe("#ffffff"); // d3 scales return rgb()
+    expect(inkOn("rgb(247, 251, 255)")).toBe("#111111");
   });
 
   it("generates a dark re-tint rule for every listed SVG literal", () => {
