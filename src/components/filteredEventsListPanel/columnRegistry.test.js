@@ -12,6 +12,7 @@ jest.mock("./columnRenderers", () => ({
   GnomadAfRenderer: "GnomadAfRenderer",
 }));
 
+import VafRenderer from "./columnRenderers/vafRenderer";
 import {
   filteredEventsColumnRegistry,
   getColumnRenderer,
@@ -40,6 +41,12 @@ describe("filteredEventsColumnRegistry", () => {
     expect(getColumnRenderer("class-icon", "clinvar")).toBe(
       "ClinvarIconRenderer",
     );
+  });
+
+  it("formats semantic VAF columns as percentages despite legacy numeric configuration", () => {
+    expect(getColumnRenderer("formatted-number", "vaf")).toBe(VafRenderer);
+    expect(getColumnRenderer("string-basic", "vaf")).toBe(VafRenderer);
+    expect(getColumnRenderer("formatted-number", "coverage")).toBe("FormattedNumberRenderer");
   });
 
   it("keeps basic strings noninteractive", () => {
