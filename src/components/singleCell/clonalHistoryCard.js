@@ -20,14 +20,15 @@ import { collapseTree, dominantValue, placeLabels } from "../../helpers/singleCe
 import { signatureColorOf } from "./signaturePanel";
 import { Swatches } from "./cohort/charts";
 import HintLine from "./hintLine";
+import usePlotTheme from "./usePlotTheme";
+import { TYPE, alterationClassColors } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
 const PAD = { left: 12, right: 150, top: 18, bottom: 12 };
 const ROOT_STUB = 150; // trunk branch drawn left of the root, room for truncal alterations
 const WEDGE = 46; // collapsed-clade wedge length with equal branch lengths
 const CHIP_H = 15;
-const CHIP_FONT = 11;
+const CHIP_FONT = TYPE.tick;
 const chipWidth = (s, font = CHIP_FONT) => s.length * font * 0.6 + 12;
 
 const shortLabel = (e) => {
@@ -48,6 +49,8 @@ const shortLabel = (e) => {
  * alteration for its popup, a node or clade to select its cells.
  */
 export default function ClonalHistoryCard() {
+  const pt = usePlotTheme();
+  const CLASS_COLORS = alterationClassColors(pt);
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(1000);
@@ -128,7 +131,7 @@ export default function ClonalHistoryCard() {
   };
   const colorOf = (c) => {
     const clone = cloneOf(c);
-    return (clone != null && cloneColors[clone]) || "#8c8c8c";
+    return (clone != null && cloneColors[clone]) || pt.branch;
   };
   const isSel = (c) => {
     if (!selected.size) return false;
@@ -200,11 +203,11 @@ export default function ClonalHistoryCard() {
       <div ref={ref}>
         <svg width={width} height={height} viewBox={`0 ${contentTop} ${width} ${height}`} style={{ display: "block", fontFamily: "inherit" }}>
           {/* root stem */}
-          <line x1={PAD.left} x2={X(root)} y1={Y(root)} y2={Y(root)} stroke="#8c8c8c" strokeWidth={2} />
+          <line x1={PAD.left} x2={X(root)} y1={Y(root)} y2={Y(root)} stroke={pt.branch} strokeWidth={2} />
           {nodes.map((c) => {
             const parent = c.parent >= 0 ? collapsed.nodes.get(c.parent) : null;
             const sel = isSel(c);
-            const color = sel ? "#1677ff" : colorOf(c);
+            const color = sel ? pt.select : colorOf(c);
             const sw = sel ? 3 : 2;
             const kids = c.children.map((k) => collapsed.nodes.get(k));
             const half = Math.min(rowH * 0.42, 3 + Math.log2(c.size + 1) * 2.2);
@@ -215,7 +218,7 @@ export default function ClonalHistoryCard() {
                 {c.tip && (
                   <g style={{ cursor: "pointer" }} onClick={(e) => selectNode(c, e)}>
                     <path d={`M${X(c)},${Y(c)} L${tipEnd(c)},${Y(c) - half} L${tipEnd(c)},${Y(c) + half} Z`} fill={color} fillOpacity={0.3} stroke={color} strokeWidth={1.2} />
-                    <text x={tipEnd(c) + 6} y={Y(c)} dy="0.35em" fontSize={11} fill="#595959">
+                    <text x={tipEnd(c) + 6} y={Y(c)} dy="0.35em" fontSize={TYPE.tick} fill={pt.textSecondary}>
                       {`${c.size} cells`}
                       {cloneOf(c) != null && <tspan fill={colorOf(c)} fontWeight={600}>{` · ${cloneOf(c)}`}</tspan>}
                     </text>
@@ -223,7 +226,7 @@ export default function ClonalHistoryCard() {
                   </g>
                 )}
                 {!c.tip && (
-                  <circle cx={X(c)} cy={Y(c)} r={byNode.has(c.id) ? 5 : 3.5} fill={byNode.has(c.id) ? "#262626" : "#fff"} stroke={byNode.has(c.id) ? "#fff" : color} strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={(e) => selectNode(c, e)}>
+                  <circle cx={X(c)} cy={Y(c)} r={byNode.has(c.id) ? 5 : 3.5} fill={byNode.has(c.id) ? pt.text : pt.panel} stroke={byNode.has(c.id) ? pt.panel : color} strokeWidth={1.5} style={{ cursor: "pointer" }} onClick={(e) => selectNode(c, e)}>
                     <title>{nodeTitle(c)}</title>
                   </circle>
                 )}
@@ -232,23 +235,23 @@ export default function ClonalHistoryCard() {
           })}
           {labels.map((b) => (
             <g key={`${b.kind}-${b.node}`}>
-              {Math.abs(b.shifted) > 1 && <line x1={b.ax} y1={b.ay} x2={b.x + b.w} y2={b.kind === "events" ? b.y + b.h : b.y + 6} stroke="#bfbfbf" strokeDasharray="2,2" />}
+              {Math.abs(b.shifted) > 1 && <line x1={b.ax} y1={b.ay} x2={b.x + b.w} y2={b.kind === "events" ? b.y + b.h : b.y + 6} stroke={pt.axis} strokeDasharray="2,2" />}
               {b.kind === "events" &&
                 b.list.map((d, k) => (
                   <g key={d.label} transform={`translate(${b.x + b.w - chipWidth(d.label)},${b.y + k * (CHIP_H + 2)})`} style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"))}>
-                    <rect width={chipWidth(d.label)} height={CHIP_H} rx={3} fill="#fff" stroke={CLASS_COLORS[d.cls]} />
+                    <rect width={chipWidth(d.label)} height={CHIP_H} rx={3} fill={pt.raised} stroke={CLASS_COLORS[d.cls]} />
                     <rect width={4} height={CHIP_H} rx={1} fill={CLASS_COLORS[d.cls]} />
-                    <text x={8} y={CHIP_H / 2} dy="0.35em" fontSize={CHIP_FONT} fill="#262626">{d.label}</text>
+                    <text x={8} y={CHIP_H / 2} dy="0.35em" fontSize={CHIP_FONT} fill={pt.text}>{d.label}</text>
                     <title>{[shortLabel(d.event), ...eventTooltipLines(d.event), `clade F1 ${d.fit.score.toFixed(2)} (best clade ${d.fit.clade} cells)`, t("components.single-cell.history.click")].join("\n")}</title>
                   </g>
                 ))}
               {b.kind === "branch" && (
                 <g transform={`translate(${b.x},${b.y})`}>
-                  {b.num && <text x={0} y={6.5} dy="0.35em" fontSize={10} fill="#8c8c8c">{b.num}<title>{t("components.single-cell.history.gained", { count: Number(b.num) })}</title></text>}
+                  {b.num && <text x={0} y={6.5} dy="0.35em" fontSize={TYPE.micro} fill={pt.muted}>{b.num}<title>{t("components.single-cell.history.gained", { count: Number(b.num) })}</title></text>}
                   {b.sig && (
                     <g transform={`translate(${b.num ? b.num.length * 6 + 4 : 0},0)`}>
                       <rect width={chipWidth(`${b.sig.signature} ↑`, 10)} height={13} rx={3} fill={signatureColorOf(b.sig.signature)} fillOpacity={0.9} />
-                      <text x={6} y={6.5} dy="0.35em" fontSize={10} fill="#fff">{`${b.sig.signature} ↑`}</text>
+                      <text x={6} y={6.5} dy="0.35em" fontSize={TYPE.micro} fill="#fff">{`${b.sig.signature} ↑`}</text>
                       <title>{t("components.single-cell.history.shift", { signature: b.sig.signature, share: d3.format(".0%")(b.sig.share), delta: d3.format("+.0%")(b.sig.delta) })}</title>
                     </g>
                   )}

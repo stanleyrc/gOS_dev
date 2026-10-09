@@ -83,6 +83,15 @@ const DARK = {
   pinned: "#b37feb",
 };
 
+/**
+ * Alteration class colours (amp / homdel / fusion / truncating / splice /
+ * missense) for a theme: the hues are fixed, the near-black truncating and
+ * the grey "other" follow the theme's ink so they stay visible on dark.
+ */
+export function alterationClassColors(theme) {
+  return { amp: "#D7191C", homdel: "#2C7BB6", fusion: theme.mode === "dark" ? "#a35fc4" : "#7B3294", trunc: theme.text, splice: "#E6AB02", missense: "#1B9E77", other: theme.faint };
+}
+
 /** Resolved colour tokens for "light" / "dark". */
 export function plotTheme(mode) {
   return mode === "dark" ? DARK : LIGHT;
@@ -122,7 +131,7 @@ const SHAPES = ["rect", "path", "circle", "ellipse", "polygon", "polyline", "lin
 // literal light colour -> dark token, per role
 export const SVG_REMAP = {
   textFill: {
-    text: ["#000", "#000000", "black", "#141414", "#1f1f1f", "#262626", "#333", "#333333", "#222", "#222222"],
+    text: ["#000", "#000000", "black", "#141414", "#1a1a1a", "#1f1f1f", "#262626", "#333", "#333333", "#222", "#222222"],
     textSecondary: ["#434343", "#555", "#555555", "#595959", "#666", "#666666"],
     muted: ["#8c8c8c", "#888", "#888888", "#999", "#999999", "#aaa", "#aaaaaa", "#bfbfbf", "#bbb"],
   },
@@ -132,6 +141,8 @@ export const SVG_REMAP = {
     empty: ["#f0f0f0", "#eee", "#eeeeee", "#e8e8e8", "#ebebeb", "#efefef"],
     border: ["#d9d9d9", "#ddd", "#dddddd", "#e0e0e0"],
     labelBg: ["rgba(255,255,255,0.8)", "rgba(255,255,255,0.85)", "rgba(255,255,255,0.9)"],
+    // the truncating-alteration class colour (near black) used by the cohort / report panels
+    textSecondary: ["#1a1a1a"],
   },
   stroke: {
     panel: ["#fff", "#ffffff", "white"],
@@ -169,12 +180,21 @@ function channel(v) {
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-/** Relative luminance of #rgb / #rrggbb. */
-export function luminance(hex) {
-  let h = `${hex}`.replace("#", "");
+/** [r, g, b] of #rgb / #rrggbb / rgb(r, g, b) / rgba(...). */
+export function parseColor(color) {
+  const str = `${color}`.trim();
+  const m = str.match(/^rgba?\(([^)]+)\)/i);
+  if (m) return m[1].split(/[ ,/]+/).filter(Boolean).slice(0, 3).map(Number);
+  let h = str.replace("#", "");
   if (h.length === 3) h = h.split("").map((c) => c + c).join("");
   const n = parseInt(h, 16);
-  return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Relative luminance of a hex or rgb() colour. */
+export function luminance(color) {
+  const [r, g, b] = parseColor(color);
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
 export function contrastRatio(a, b) {
