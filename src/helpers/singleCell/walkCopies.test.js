@@ -26,6 +26,9 @@ describe("walk copies panel helpers", () => {
   it("names a family by its most prevalent walk's gene", () => {
     expect(familyLabel([rec1, sEGFR], (w) => carrierCount(w, ids))).toBe("EGFR");
     expect(familyLabel([rec1], () => 1)).toBe("recombine1");
+    expect(familyLabel([{ id: "x", label: "Other 1", cells: {} }, { id: "y", label: "MDM2 1", cells: {} }], () => 1)).toBe("MDM2 1");
+    // the gene shared most widely wins over one walk's first gene
+    expect(familyLabel([{ id: "x", label: "a", genes: ["GLI1", "CDK4"] }, { id: "y", label: "b", genes: ["CDK4"] }], () => 1)).toBe("CDK4");
   });
 
   it("builds a total, common and rare column per family", () => {
@@ -58,8 +61,8 @@ describe("walk copies panel helpers", () => {
     const blocks = walkColumnBlocks([[sEGFR, wEGFR, rec1, rec2], [MAP3K1]], ids, { rareMax: 2 });
     const w = columnWidths(blocks, 600, ids.length, { min: 44, gap: 0, blockGap: 0 });
     expect(w).toHaveLength(5);
-    expect(w[3]).toBe(22); // two rare walks: max(22, 2 * 9)
-    w.forEach((x) => expect(x).toBeGreaterThanOrEqual(22));
+    expect(w[3]).toBe(26); // two rare walks: max(26, 2 * 9)
+    w.forEach((x) => expect(x).toBeGreaterThanOrEqual(26));
     expect(w[0]).toBeGreaterThan(w[2]); // total (5 carriers) wider than wEGFR (3)
     expect(w.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(600);
     // tiny width: everything at its minimum
