@@ -63,7 +63,7 @@ export default function FitnessCard() {
 
   const rows = useMemo(() => {
     const feats = [];
-    Object.entries(scores || {}).forEach(([k, values]) => feats.push({ key: k, label: PROGRAM_LABEL[k] || k, kind: "RNA programme", get: (id) => values[id] }));
+    Object.entries(scores || {}).forEach(([k, values]) => feats.push({ key: k, label: PROGRAM_LABEL[k] || k, kind: "RNA program", get: (id) => values[id] }));
     const cellById = new Map(cells.map((c) => [`${c.cell_id}`, c]));
     Object.entries(PC_NUMERIC_LABELS).forEach(([k, label]) => {
       if (cells.some((c) => Number.isFinite(c[k]))) feats.push({ key: k, label, kind: /ado|mapd|loh|resid/.test(k) ? "QC (confound check)" : "DNA", get: (id) => cellById.get(id)?.[k] });
@@ -104,7 +104,7 @@ export default function FitnessCard() {
           locale={{ emptyText: "No per-cell features yet (RNA or precomputed DNA)" }}
           columns={[
             { title: "Feature", dataIndex: "label" },
-            { title: "Kind", dataIndex: "kind", filters: ["RNA programme", "DNA", "QC (confound check)"].map((v) => ({ value: v, text: v })), onFilter: (v, r) => r.kind === v },
+            { title: "Kind", dataIndex: "kind", filters: ["RNA program", "DNA", "QC (confound check)"].map((v) => ({ value: v, text: v })), onFilter: (v, r) => r.kind === v },
             { title: "Cells", dataIndex: "n" },
             {
               title: "rho with LBI",

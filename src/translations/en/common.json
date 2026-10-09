@@ -1821,7 +1821,7 @@
         "section-cn": "Copy number",
         "section-calls": "Calls",
         "section-library": "Library",
-        "section-precompute": "Precomputed (ADO, doublets, S-phase, telomeres)",
+        "section-precompute": "Precomputed",
         "section-rna": "RNA",
         "stat-cells": "Cells",
         "stat-flagged": "Flagged",

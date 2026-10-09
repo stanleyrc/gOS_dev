@@ -78,7 +78,7 @@ export default function HeritabilityCard({ summary, matrix }) {
   const rows = useMemo(() => {
     if (!w || !scores) return [];
     const feats = [];
-    Object.entries(scores).forEach(([k, values]) => feats.push({ key: k, label: PROGRAM_LABEL[k] || k, kind: "programme", values, perm: true }));
+    Object.entries(scores).forEach(([k, values]) => feats.push({ key: k, label: PROGRAM_LABEL[k] || k, kind: "program", values, perm: true }));
     const levels = [...new Set(w.ids.map((id) => stateField.get(id)).filter((x) => x != null && x !== ""))];
     if (levels.length >= 2 && levels.length <= 8)
       levels.forEach((lv) => {
@@ -140,14 +140,14 @@ export default function HeritabilityCard({ summary, matrix }) {
               title: "Kind",
               dataIndex: "kind",
               width: 100,
-              filters: ["programme", "state", "gene"].map((v) => ({ value: v, text: v })),
+              filters: ["program", "state", "gene"].map((v) => ({ value: v, text: v })),
               onFilter: (v, r) => r.kind === v,
             },
             { title: "On the tree (leaf order)", key: "strip", render: (_, r) => <Strip ids={w?.ids || []} values={r.values} /> },
             { title: "Moran's I", dataIndex: "I", width: 90, sorter: (a, b) => a.I - b.I, render: (x) => fmt(x) },
             { title: "z", dataIndex: "z", width: 70, defaultSortOrder: "descend", sorter: (a, b) => (a.z || -99) - (b.z || -99), render: (x) => fmt(x, 1) },
             { title: "q (BH)", dataIndex: "q", width: 80, render: fmtP },
-            { title: <Tooltip title="Tree permutation test (programmes and states)">perm p</Tooltip>, dataIndex: "permP", width: 80, render: fmtP },
+            { title: <Tooltip title="Tree permutation test (programs and states)">perm p</Tooltip>, dataIndex: "permP", width: 80, render: fmtP },
             { title: "Call", dataIndex: "call", width: 120, render: (c) => <Tag color={LABEL_COLOR[c]}>{c}</Tag> },
           ]}
         />
