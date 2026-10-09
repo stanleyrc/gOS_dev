@@ -47,6 +47,7 @@ import CohortEventDrawer from "./cohort/cohortEventDrawer";
 import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
+import CohortFiguresPanel from "./figures/cohortFiguresPanel";
 import HelpDrawer from "./helpDrawer";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 
@@ -402,6 +403,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "reports", label: t("components.single-cell.cohort.view-reports") },
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
     { key: "amplicons", label: t("components.single-cell.cohort.view-amplicons") },
+    { key: "figures", label: t("components.single-cell.cohort.view-figures") },
     { key: "events", label: t("components.single-cell.cohort.view-events") },
     { key: "rna", label: t("components.single-cell.cohort.view-rna") },
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
@@ -493,6 +495,22 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "amplicons" && (
           <Col span={24}>
             <CohortAmpliconPanel summaries={summaries} files={files} cnRows={rows} chromoBins={chromoBins} />
+          </Col>
+        )}
+        {view === "figures" && (
+          <Col span={24}>
+            <CohortFiguresPanel
+              summaries={summaries}
+              files={files}
+              datafiles={datafiles}
+              cnRows={rows}
+              chromoBins={chromoBins}
+              cloneColors={cloneColors}
+              onOpenCell={(cellId) => {
+                const s = summaries.find((x) => cellsForPatient(datafiles, x.patientKey).some((c) => c.cell_id === cellId));
+                if (s) dispatch(datasetsActions.openCaseReport(s.record.datasetId, cellId));
+              }}
+            />
           </Col>
         )}
         {view === "qc" && (
