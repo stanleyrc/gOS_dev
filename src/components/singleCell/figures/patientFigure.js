@@ -78,7 +78,14 @@ export function useFocusFamily(focusWalkId) {
   const { order, treeLayout, cellById } = useTreeView();
   const { all, filtered, colorOf, measured } = useWalks(order);
   const families = useMemo(() => walkFamilies(filtered.length ? filtered : all), [filtered, all]);
-  const focusWalk = useMemo(() => all.find((w) => w.id === `${focusWalkId}`) || defaultFocusWalk(families[0] || [], order) || null, [all, focusWalkId, families, order]);
+  // default: the driver ecDNA (walk with driver genes) carried by the most cells
+  const focusWalk = useMemo(() => {
+    const picked = all.find((w) => w.id === `${focusWalkId}`);
+    if (picked) return picked;
+    const pool = filtered.length ? filtered : all;
+    const drivers = pool.filter((w) => (w.driver_genes || []).length);
+    return defaultFocusWalk(drivers.length ? drivers : families[0] || [], order) || null;
+  }, [all, filtered, focusWalkId, families, order]);
   const family = useMemo(() => (focusWalk ? families.find((f) => f.some((w) => w.id === focusWalk.id)) || [focusWalk] : []), [families, focusWalk]);
   return { order, treeLayout, cellById, all, colorOf, measured, families, focusWalk, family };
 }
@@ -307,7 +314,10 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             if (!Number.isFinite(p)) return;
             const pp = nd.parent >= 0 ? anc.p[nd.parent] : NaN;
             const lost = p < 0.5 && pp >= 0.5;
-            if (p < 0.5 && !lost) return;
+            const gained = p >= 0.5 && !(pp >= 0.5);
+            const unsure = p > 0.1 && p < 0.9;
+            // only nodes that say something: where the variant is gained or lost, or the state is uncertain
+            if (!lost && !gained && !unsure) return;
             const like = Math.max(p, 1 - p);
             ctx.beginPath();
             ctx.arc(x, y, 1.6 + 3.2 * (like - 0.5) * 2, 0, 2 * Math.PI);
@@ -627,7 +637,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         <Select size="small" style={{ width: 260 }} value={focusWalk?.id} options={familyOptions} onChange={(v) => onFocusWalk?.(v)} placeholder="No ecDNA walks" />
         <Space size={4}>
           <Switch size="small" checked={showAnc} onChange={setShowAnc} />
-          <Tooltip title="Marginal ancestral state of the focused variant on each node (two-state model on the tree): green = retained, red = lost where the parent had it; size = likelihood.">
+          <Tooltip title="Marginal ancestral state of the focused variant (two-state model on the tree), shown where it changes or is uncertain: green = present (gained or retained), red = lost where the parent had it; size = likelihood. Hover a node for its probability.">
             <Text type="secondary">Ancestral state</Text>
           </Tooltip>
         </Space>
