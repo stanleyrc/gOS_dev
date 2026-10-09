@@ -47,9 +47,10 @@ describe("plotTheme tokens", () => {
 
   it("generates a dark re-tint rule for every listed SVG literal", () => {
     const css = svgRemapCss();
-    expect(css).toContain(`svg text[fill="#262626" i]`);
+    expect(css).toContain(`text[fill="#262626" i]`);
+    expect(css).toContain("svg:not(.sc-light-island svg)");
     expect(css).toContain(`fill: ${dark.text}`);
-    expect(css).toContain(`svg line[stroke="#f0f0f0" i]`);
+    expect(css).toContain(`line[stroke="#f0f0f0" i]`);
     expect(css).toContain(`stroke: ${dark.grid}`);
     Object.values(SVG_REMAP).forEach((roles) =>
       Object.entries(roles).forEach(([token, values]) => {
