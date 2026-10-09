@@ -313,14 +313,15 @@ export default function ReadSlicePanel() {
         )}
         {error && <Alert type="error" showIcon message={error} />}
         <Row gutter={12}>
-          <Col xs={24} xl={site ? 14 : 24}>
+          <Col xs={24} xl={site ? 13 : 24}>
             <div ref={containerRef} style={{ minHeight: 200 }} />
             {!tracks.length && <Text type="secondary">No reads to show for this choice.</Text>}
           </Col>
           {site && (
-            <Col xs={24} xl={10}>
+            <Col xs={24} xl={11}>
               <Table
                 size="small"
+                className="sc-nowrap-head"
                 rowKey="id"
                 dataSource={rows}
                 columns={columns}

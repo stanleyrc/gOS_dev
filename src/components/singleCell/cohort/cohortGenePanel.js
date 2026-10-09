@@ -78,7 +78,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const pct = d3.format(".0%");
 
   const columns = [
-    { title: t("components.single-cell.results.gene"), dataIndex: "gene", key: "gene", fixed: "left", width: 120, render: (g) => <Text strong>{g}</Text> },
+    { title: t("components.single-cell.results.gene"), dataIndex: "gene", key: "gene", fixed: "left", width: 150, render: (g) => <Text strong style={{ whiteSpace: "nowrap" }}>{g}</Text> },
     { title: t("components.single-cell.cohort.patients"), dataIndex: "patients", key: "patients", width: 80, sorter: (a, b) => a.patients - b.patients, defaultSortOrder: "descend" },
     { title: t("components.single-cell.cohort.cells"), dataIndex: "cells", key: "cells", width: 80, sorter: (a, b) => a.cells - b.cells },
     ...patients.map((p) => ({
