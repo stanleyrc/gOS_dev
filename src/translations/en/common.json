@@ -442,7 +442,8 @@
         "tab12": "Single-Cell Report",
         "tab13": "Single-Cell Circos",
         "tab14": "Single-Cell ecDNA",
-        "tab15": "Single-Cell Evidence"
+        "tab15": "Single-Cell Evidence",
+        "tab16": "Single-Cell Story"
       }
     },
     "detail-error-view": {
@@ -1368,6 +1369,7 @@
         "scatter-title": "Patients compared",
         "scatter-help": "One point per patient. Click a point to open the patient.",
         "view-reports": "Key findings",
+        "view-story": "Story",
         "tmb-per-mb": "Per Mb (approx.)",
         "tmb-y-per-mb": "SNV sites per callable Mb",
         "genes-title": "Altered genes across patients",
@@ -1890,6 +1892,16 @@
         "cohort-silent": "Amplified but not over-expressed",
         "cohort-markers": "Clone marker genes shared by ≥ 2 patients",
         "cohort-none": "none"
+      },
+      "story": {
+        "none": "No story for this dataset yet (_cohort/story.json is built by analysis/story/scripts/story.py).",
+        "none-patient": "This patient is not in the single-cell story yet.",
+        "subtitle": "Computed by the analysis/story scripts on {{date}}; every number in the text comes from those outputs.",
+        "patients": "Patient vignettes",
+        "patient-title": "{{patient}}: the story so far",
+        "in-cohort": "In the cohort chapters",
+        "in-cohort-lede": "What the cohort-level analyses say about this patient.",
+        "caveat": "Exploratory: tests are per analysis (BH within an analysis, not across the whole story), cells per patient are few (78-155 with DNA and RNA), and sampled region, clone and plate are partly confounded. Treat each vignette as a lead to check in the patient's tabs."
       },
       "report": {
         "segment": "segment {{mb}} Mb",

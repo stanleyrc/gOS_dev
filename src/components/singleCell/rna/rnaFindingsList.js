@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { Space, Tag, Tooltip, Typography } from "antd";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { formatP } from "../../../helpers/singleCell/tests";
+import { TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -94,12 +95,12 @@ export default function RnaFindingsList({ findings, status = "ok", cloneColors =
       {showMix && mix && (
         <div>
           <StateMixBar mix={mix.mix} />
-          <Text style={{ fontSize: 12 }}>{headlineText(mix, t)}</Text>
+          <Text style={{ fontSize: TYPE.label }}>{headlineText(mix, t)}</Text>
         </div>
       )}
       {shown.map((h, i) => (
-        <div key={`${h.kind}-${h.clone || h.gene || i}`} style={{ fontSize: 12, lineHeight: 1.5 }}>
-          <Tag color={KIND_COLOR[h.kind]} style={{ fontSize: 11 }}>{t(`components.single-cell.rna-findings.kind-${h.kind}`)}</Tag>
+        <div key={`${h.kind}-${h.clone || h.gene || i}`} style={{ fontSize: TYPE.label, lineHeight: 1.5 }}>
+          <Tag color={KIND_COLOR[h.kind]} style={{ fontSize: TYPE.tick }}>{t(`components.single-cell.rna-findings.kind-${h.kind}`)}</Tag>
           {h.clone && cloneTag(h.clone)}
           {h.kind === "silent-amps" ? (
             <Tooltip title={h.items.map((x) => `${x.gene}: log2FC ${fc(x.log2FC)}, ${x.nA} carriers vs ${x.nB}, ${formatP(x.p)}`).join("\n")}>
@@ -123,9 +124,9 @@ export default function RnaFindingsList({ findings, status = "ok", cloneColors =
           )}
         </div>
       ))}
-      {items.length > shown.length && <Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.rna-findings.more", { count: items.length - shown.length })}</Text>}
-      {!items.length && <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.rna-findings.no-clone-differences")}</Text>}
-      <Text type="secondary" style={{ fontSize: 11 }}>
+      {items.length > shown.length && <Text type="secondary" style={{ fontSize: TYPE.tick }}>{t("components.single-cell.rna-findings.more", { count: items.length - shown.length })}</Text>}
+      {!items.length && <Text type="secondary" style={{ fontSize: TYPE.label }}>{t("components.single-cell.rna-findings.no-clone-differences")}</Text>}
+      <Text type="secondary" style={{ fontSize: TYPE.tick }}>
         {t("components.single-cell.rna-findings.footer", { rna: meta.nRna, matched: meta.nTumorMatched, tumor: meta.nTumorDna })}
         {!expr && status === "ok" ? ` ${t("components.single-cell.rna-findings.no-matrix")}` : ""}
       </Text>
@@ -147,7 +148,7 @@ export function CloneRnaLine({ findings, clone }) {
   const markers = findings.expr?.markers.find((m) => m.clone === clone)?.up || [];
   return (
     <div>
-      <Text type="secondary" style={{ fontSize: 12 }}>
+      <Text type="secondary" style={{ fontSize: TYPE.label }}>
         {t("components.single-cell.rna-findings.clone-line", { n })}{" "}
         {top.map(([l, v], k) => (
           <React.Fragment key={l}>

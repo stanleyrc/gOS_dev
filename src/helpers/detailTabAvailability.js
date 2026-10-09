@@ -106,6 +106,8 @@ export const getDetailTabAvailability = (state = {}) => {
     // Tab 15: precomputed evidence (read slices, targeted genotypes, S-phase, telomeres, pipeline status);
     // shown for every single-cell patient so "not yet computed" and the status table are reachable
     15: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
+    // Tab 16: the patient's part of the precomputed story (_cohort/story.json); the tab shows an empty state without it
+    16: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
   };
 };
 
