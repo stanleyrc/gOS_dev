@@ -47,8 +47,12 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
     const right = x(p[xKey]) + 9 + w < width - M.right;
     const lx = right ? x(p[xKey]) + 9 : x(p[xKey]) - 9 - w;
     const collides = (yy) => placedLabels.some((q) => Math.abs(q.y - yy) < FONT.axis + 1 && q.x < lx + w && lx < q.x + q.w);
-    let ly = y(p[yKey]);
-    for (let k = 0; k < 6 && collides(ly); k += 1) ly += FONT.axis + 2;
+    // nearest free line above or below the point, kept inside the plot (off the x axis)
+    const step = FONT.axis + 2;
+    const inside = (yy) => yy >= M.top && yy <= HEIGHT - M.bottom - step / 2;
+    const y0 = y(p[yKey]);
+    const tries = [0, -1, 1, -2, 2, -3, 3, -4, 4].map((k) => y0 + k * step).filter(inside);
+    const ly = tries.find((yy) => !collides(yy)) ?? (tries[0] ?? y0);
     placedLabels.push({ x: lx, y: ly, w });
     labelPos.set(p, { x: right ? lx : lx + w, y: ly, textAnchor: right ? "start" : "end" });
   });

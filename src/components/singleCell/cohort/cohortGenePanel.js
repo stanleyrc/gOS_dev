@@ -14,7 +14,7 @@ import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
-const HEIGHT = 320;
+const HEIGHT = 336;
 
 /**
  * Aggregate of the filtered events across patients. Pick genes (default:
@@ -67,7 +67,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const patients = summaries.map((s) => s.caseReportId);
   if (!ranked.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.oncoprint-empty")} />;
 
-  const M = { top: 16, right: 12, bottom: 64, left: 60 };
+  const M = { top: 16, right: 12, bottom: 82, left: 60 };
   const x0 = d3.scaleBand().domain(genes).range([M.left, width - M.right]).paddingInner(0.25);
   const x1 = d3.scaleBand().domain(patients).range([0, x0.bandwidth()]).padding(0.1);
   const valueOf = (c) => (mode === "fraction" ? c.fraction : c.cells);
@@ -160,7 +160,10 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                         </rect>
                       );
                     })}
-                    <text x={x1(p) + x1.bandwidth() / 2} y={HEIGHT - M.bottom + 12} textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted} transform={`rotate(-50 ${x1(p) + x1.bandwidth() / 2} ${HEIGHT - M.bottom + 12})`}>{p}</text>
+                    {x1.bandwidth() >= 7 && (
+                      // slanted patient names hang from the bar's foot (end-anchored), so neighbours do not collide
+                      <text x={x1(p) + x1.bandwidth() / 2} y={HEIGHT - M.bottom + 8} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted} transform={`rotate(-55 ${x1(p) + x1.bandwidth() / 2} ${HEIGHT - M.bottom + 8})`}>{p}</text>
+                    )}
                   </g>
                 );
               })}

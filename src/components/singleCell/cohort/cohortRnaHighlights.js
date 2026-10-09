@@ -10,6 +10,7 @@ import usePlotTheme from "../usePlotTheme";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { STORY_SERIES } from "../../../helpers/singleCell/story";
 import { SC_GUTTER_INNER } from "../density";
+import ColorTag from "../colorTag";
 
 const { Text, Title } = Typography;
 const pct = d3.format(".0%");
@@ -37,7 +38,7 @@ export default function CohortRnaHighlights({ cohortRna }) {
           {h.dominant.length ? h.dominant.map((d) => (
             <div key={d.patient} style={{ fontSize: TYPE.label }}>
               <Text strong style={{ display: "inline-block", width: 64 }}>{d.patient}</Text>
-              <Tag color={stateColors[d.state]}>{d.state}</Tag>
+              <ColorTag color={stateColors[d.state]}>{d.state}</ColorTag>
               <Text type="secondary">{pct(d.share)}</Text>
             </div>
           )) : none}
@@ -72,7 +73,7 @@ export default function CohortRnaHighlights({ cohortRna }) {
             <div key={`${x.patient}-${x.clone}-${x.state}`} style={{ fontSize: TYPE.label }}>
               <Text strong style={{ display: "inline-block", width: 64 }}>{x.patient}</Text>
               <Text>{`${x.clone}: `}</Text>
-              <Tag color={annotationColors([x.state])[x.state]}>{x.state}</Tag>
+              <ColorTag color={annotationColors([x.state])[x.state]}>{x.state}</ColorTag>
               <Text type="secondary">{`${pct(x.fraction)} · q ${x.q < 1e-4 ? "< 1e-4" : x.q.toFixed(3)}`}</Text>
             </div>
           )) : none}
