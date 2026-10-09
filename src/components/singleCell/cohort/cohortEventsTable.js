@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Card, Input, Select, Space, Switch, Table, Tag, Typography } from "antd";
 import { UnorderedListOutlined } from "@ant-design/icons";
-import { EVENT_CLASS_ORDER, eventClass } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, eventClass, eventLabel } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { patientColor } from "./charts";
 import { INK } from "../../../helpers/singleCell/plotTheme";
@@ -11,7 +11,7 @@ import { Provenance } from "../hintLine";
 import ColorTag from "../colorTag";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
+const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
 const pct = d3.format(".0%");
 
 /**
@@ -34,7 +34,7 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
           k,
           patient: s.caseReportId,
           event: e,
-          gene: e.gene || e.fusion_genes || e.name || "",
+          gene: eventLabel(e),
           cls: eventClass(e),
           variant: e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "",
           tier: Number(e.Tier ?? 9),
