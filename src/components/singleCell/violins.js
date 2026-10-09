@@ -70,9 +70,13 @@ export default function Violins({ groups, height = 240, domain = null, yTitle = 
               </text>
             );
           }
-          const d = kernelDensity(v, pts, (hi - lo) / 40);
+          // all values equal (e.g. per-cell PSI all 0 or all 1): no density to draw, a flat bar at the value
+          const flat = Math.max(...v) - Math.min(...v) < 1e-9;
+          const d = flat ? pts.map(() => 0) : kernelDensity(v, pts, (hi - lo) / 40);
           const dmax = Math.max(...d) || 1;
-          const path =
+          const path = flat
+            ? `M${(cx - half * 0.8).toFixed(1)},${(y(v[0]) - 2).toFixed(1)}h${(half * 1.6).toFixed(1)}v4h${(-half * 1.6).toFixed(1)}Z`
+            :
             pts.map((p, k) => `${k ? "L" : "M"}${(cx - (d[k] / dmax) * half).toFixed(1)},${y(p).toFixed(1)}`).join("") +
             pts
               .slice()
