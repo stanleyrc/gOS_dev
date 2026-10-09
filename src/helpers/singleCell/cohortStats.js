@@ -28,6 +28,8 @@ export function shannonDiversity(counts = {}) {
 export function eventClass(event = {}) {
   const vt = `${event.vartype || ""}`.toLowerCase();
   const ty = `${event.type || ""}`.toLowerCase();
+  // gGnome events() complex SVs (chromothripsis, BFB, TIC, rDel ...): vartype holds the class
+  if (ty === "complex sv") return "complex";
   if (vt === "amp" || /amp/.test(ty)) return "amp";
   if (vt === "homdel" || /homdel|del/.test(ty)) return "homdel";
   if (/fusion/.test(vt) || /fusion/.test(ty)) return "fusion";
@@ -37,7 +39,12 @@ export function eventClass(event = {}) {
   return "other";
 }
 
-export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", "missense", "other"];
+/** Row label of an event: gene, fusion pair, or for complex SVs the class and chromosomes. */
+export function eventLabel(e = {}) {
+  return e.gene || e.fusion_genes || e.name || (eventClass(e) === "complex" ? e.Variant || e.vartype : "") || "";
+}
+
+export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", "missense", "complex", "other"];
 
 /**
  * Oncoprint matrix: for each gene (or fusion pair) and patient, the strongest
@@ -53,7 +60,7 @@ export function oncoprintMatrix(eventsByPatient = {}, { maxTier = 2, filter = nu
       const tier = Number(e.Tier ?? e.tier);
       if (Number.isFinite(tier) && tier > maxTier) return;
       if (filter && !filter(e)) return;
-      const gene = e.gene || e.fusion_genes || e.name;
+      const gene = eventLabel(e);
       if (!gene) return;
       const fraction = Number(e.cell_fraction);
       const n = Number(e.n_cells);
