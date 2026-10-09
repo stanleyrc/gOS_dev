@@ -32,7 +32,7 @@ export function WalkUpset({ walks, families, cellIds, colorOf, minCn = 1 }) {
   const combos = useMemo(() => walkCombinations(rows, cellIds, minCn).filter((c) => c.walks.length && c.n >= 2).slice(0, 24), [rows, cellIds, minCn]);
   if (!walks.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.none-selected")} />;
   const rowColor = (w) => (w.rare ? MUTED : colorOf(w.id));
-  const LEFT = 170;
+  const LEFT = 200;
   const RIGHT = 44;
   const rowH = 24;
   const colW = Math.max(22, Math.min(220, (width - LEFT - RIGHT - 8) / Math.max(1, combos.length)));
@@ -59,7 +59,7 @@ export function WalkUpset({ walks, families, cellIds, colorOf, minCn = 1 }) {
             <g key={w.id}>
               <rect x={0} y={top + i * rowH} width={plotW + RIGHT} height={rowH} fill={i % 2 ? "rgba(128,128,128,0.06)" : "transparent"} />
               <text x={LEFT - 10} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={12} fill={rowColor(w)} fontWeight={w.rare ? 400 : 600} fontStyle={w.rare ? "italic" : "normal"}>
-                {w.label.length > 24 ? `${w.label.slice(0, 23)}…` : w.label}
+                {w.label.length > 26 ? `${w.label.slice(0, 25)}…` : w.label}
                 <title>{w.rare ? w.members.map((m) => m.label).join(", ") : w.label}</title>
               </text>
               <text x={plotW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={11} fill={MUTED}>{nCarry(w)}</text>
