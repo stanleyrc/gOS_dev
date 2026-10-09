@@ -17,16 +17,20 @@ export function YAxis({ scale, x0, x1, title, ticks = 5, format = (v) => formatT
   const st = useFigureStyle();
   // log scales: only powers of ten (and 2x / 5x when few decades)
   const isLog = typeof scale.base === "function";
-  let values = scale.ticks(ticks);
+  const [r0, r1] = scale.range();
+  // no more ticks than fit at ~22 px apart (small multiples are only ~70 px tall)
+  const fit = Math.max(2, Math.floor(Math.abs(r0 - r1) / 22));
+  let values = scale.ticks(Math.min(ticks, fit));
   if (isLog) {
     const [lo, hi] = scale.domain();
     const decades = Math.log10(hi) - Math.log10(lo);
     values = scale.ticks().filter((v) => {
       const m = v / 10 ** Math.floor(Math.log10(v) + 1e-9);
-      return Math.abs(m - 1) < 1e-6 || (decades < 2.5 && (Math.abs(m - 2) < 1e-6 || Math.abs(m - 5) < 1e-6));
+      return Math.abs(m - 1) < 1e-6 || (decades < 2.5 && decades * 3 <= fit && (Math.abs(m - 2) < 1e-6 || Math.abs(m - 5) < 1e-6));
     });
+    // still crowded: every other power of ten
+    if (values.length > fit) values = values.filter((v, i) => (values.length - 1 - i) % 2 === 0);
   }
-  const [r0, r1] = scale.range();
   const tickFs = styleFontSize(st, "tick");
   const labels = values.map((v) => `${format(v)}`);
   const labelW = Math.max(0, ...labels.map((l) => l.length)) * tickFs * 0.58;
@@ -63,6 +67,9 @@ export function XBaseline({ x0, x1, y }) {
 export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, fontSize }) {
   const st = useFigureStyle();
   const fs = fontSize ?? styleFontSize(st, "label");
+  // narrow bands slant steeper so neighbouring names do not overlap (line gap = band x sin(angle))
+  const bw = scale.bandwidth();
+  const angle = bw < fs * 1.1 ? -90 : bw < fs * 2.2 ? -65 : -40;
   return (
     <g>
       {scale.domain().map((k) => (
@@ -71,7 +78,7 @@ export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, 
           x={scale(k) + scale.bandwidth() / 2}
           y={y}
           textAnchor={rotate ? "end" : "middle"}
-          transform={rotate ? `rotate(-40 ${scale(k) + scale.bandwidth() / 2} ${y})` : undefined}
+          transform={rotate ? `rotate(${angle} ${scale(k) + scale.bandwidth() / 2} ${y})` : undefined}
           fontSize={fs}
           fontWeight={styleFontWeight(st, "label")}
           fill={INK.textSecondary}
