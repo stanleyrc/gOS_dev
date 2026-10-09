@@ -9,6 +9,7 @@ import CellIgvPanel from "../cellIgvPanel";
 import GenesPlot from "../../genesPlotHiglass";
 import HoverLine from "../../hoverLine";
 import useContainerWidth from "../useContainerWidth";
+import Wrapper from "../index.style";
 import settingsActions from "../../../redux/settings/actions";
 import datasetsActions from "../../../redux/datasets/actions";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
@@ -149,22 +150,29 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
               <HoverLine width={Math.max(300, width - 8)} height={130} margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }} />
             </div>
           )}
-          {picked.map((id) => (
-            <div key={id} className="sc-cell-block" style={{ borderLeftColor: cloneOf.get(id) != null ? cloneColors[cloneOf.get(id)] : undefined }}>
-              <div className="sc-cell-title">
-                <Text strong>{id}</Text>
-                {cloneOf.get(id) != null && <Tag color={cloneColors[cloneOf.get(id)]}>{cloneOf.get(id)}</Tag>}
-              </div>
-              {SC_TRACKS.filter((track) => tracks.includes(track)).map((track) => {
-                const entry = loaded[`${id}|${track}`];
-                return (
-                  <div key={track} style={{ marginBottom: 8 }}>
-                    <TrackPlot cellId={id} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} height={150} />
+          {/* the drawer portals to <body>: bring the single-cell styles along for compact per-cell lanes */}
+          {picked.length > 0 && (
+            <Wrapper>
+              <div className="sc-compact-tracks">
+                {picked.map((id) => (
+                  <div key={id} className="sc-cell-block" style={{ borderLeftColor: cloneOf.get(id) != null ? cloneColors[cloneOf.get(id)] : undefined }}>
+                    <div className="sc-cell-title">
+                      <Text strong>{id}</Text>
+                      {cloneOf.get(id) != null && <Tag color={cloneColors[cloneOf.get(id)]}>{cloneOf.get(id)}</Tag>}
+                    </div>
+                    {SC_TRACKS.filter((track) => tracks.includes(track)).map((track) => {
+                      const entry = loaded[`${id}|${track}`];
+                      return (
+                        <div key={track} className="sc-track-lane">
+                          <TrackPlot cellId={id} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} height={120} />
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                ))}
+              </div>
+            </Wrapper>
+          )}
           {showIgv && igvView && Number.isFinite(igvView.position) && <CellIgvPanel view={igvView} embedded dataset={dataset} />}
         </Space>
       </div>

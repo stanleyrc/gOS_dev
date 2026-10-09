@@ -1,17 +1,21 @@
-import React from "react";
+import React, { memo } from "react";
+import { selectedInRange, selectionPrefix } from "../../helpers/singleCell/matrixZoom";
 
 /**
  * A phylogeny drawn with the leaves along x (root at the top), to sit above
  * a matrix whose columns are cells in tree order. `layout` is a layoutTree()
  * result; `cellW` the column width; `height` the tree height in px.
+ * Memoised: pass stable callbacks so hovering elsewhere does not redraw it.
  */
-export default function TreeTop({ layout, cellW, height = 90, left = 0, leafClones = [], cloneColors = {}, selectedCols = null, hoverCol = null, onSelectRange, onHover }) {
+function TreeTop({ layout, cellW, height = 90, left = 0, leafClones = [], cloneColors = {}, selectedCols = null, hoverCol = null, onSelectRange, onHover }) {
   if (!layout) return null;
   const span = Math.max(layout.maxX, 1e-9);
   const y = (x) => 4 + (x / span) * (height - 8);
   const cx = (leaf) => left + (leaf + 0.5) * cellW;
   const nodeX = (n) => (cx(n.firstLeaf) + cx(n.lastLeaf)) / 2;
-  const picked = (n) => selectedCols && selectedCols.size && Array.from({ length: n.lastLeaf - n.firstLeaf + 1 }, (_, i) => n.firstLeaf + i).every((c) => selectedCols.has(c));
+  // prefix counts: "whole clade selected" in O(1) per node instead of a scan of its leaves
+  const prefix = selectedCols && selectedCols.size ? selectionPrefix(layout.nodes.reduce((m, n) => Math.max(m, n.lastLeaf + 1), 0), selectedCols) : null;
+  const picked = (n) => Boolean(prefix) && selectedInRange(prefix, n.firstLeaf, n.lastLeaf) === n.lastLeaf - n.firstLeaf + 1;
   return (
     <g>
       {layout.nodes.map((n, k) => {
@@ -31,3 +35,5 @@ export default function TreeTop({ layout, cellW, height = 90, left = 0, leafClon
     </g>
   );
 }
+
+export default memo(TreeTop);
