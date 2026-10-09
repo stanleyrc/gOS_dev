@@ -104,22 +104,39 @@ export function mostVariableJunction(psiByColumn) {
 }
 
 /**
- * Cohort overview: per cluster (most significant first) the PSI of its most
- * between-patient-variable junction in every patient ({ id, gene, j, psi:
- * [patient], totals: [patient], q, max_dpsi }); patients with fewer than
- * `minReads` reads get NaN.
+ * Cohort overview: per cluster the PSI of its most between-patient-variable
+ * junction in every patient ({ id, gene, j, psi: [patient], totals, dpsi,
+ * q, max_dpsi }). Patients with fewer than `minReads` reads or `minCells`
+ * covered cells get NaN (so a handful of cells cannot drive a row); rows need
+ * `minPatients` such patients and are sorted by the range of those PSIs.
  */
-export function cohortOverview(cohort, { n = 40, minReads = 20 } = {}) {
+export function cohortOverview(cohort, { n = 40, minReads = 50, minCells = 5, minPatients = 3 } = {}) {
   const patients = cohort?.patients || [];
   const rows = (cohort?.clusters || []).map((c) => {
     const totals = patients.map((p) => (c.usage?.[p]?.counts || []).reduce((a, v) => a + num(v), 0));
-    const ps = patients.map((p, i) => (totals[i] >= minReads ? psi(c.usage?.[p]?.counts || []) : (c.junctions || []).map(() => NaN)));
+    const ok = patients.map((p, i) => totals[i] >= minReads && (c.usage?.[p]?.n_cells == null || num(c.usage[p].n_cells) >= minCells));
+    const ps = patients.map((p, i) => (ok[i] ? psi(c.usage?.[p]?.counts || []) : (c.junctions || []).map(() => NaN)));
     const j = mostVariableJunction(ps);
-    return { id: c.id, gene: c.gene || "?", j, junction: c.junctions?.[j], type: junctionType(c.junctions?.[j]), psi: ps.map((v) => v[j]), totals, q: Number(c.q), max_dpsi: Number(c.max_dpsi), cluster: c };
+    const v = ps.map((x) => x[j]);
+    const f = v.filter(Number.isFinite);
+    return {
+      id: c.id,
+      gene: c.gene || "?",
+      j,
+      junction: c.junctions?.[j],
+      type: junctionType(c.junctions?.[j]),
+      psi: v,
+      totals,
+      nOk: f.length,
+      dpsi: f.length > 1 ? Math.max(...f) - Math.min(...f) : NaN,
+      q: Number(c.q),
+      max_dpsi: Number(c.max_dpsi),
+      cluster: c,
+    };
   });
   return rows
-    .filter((r) => r.psi.filter(Number.isFinite).length > 1)
-    .sort((a, b) => (b.max_dpsi || 0) - (a.max_dpsi || 0) || (a.q || 1) - (b.q || 1))
+    .filter((r) => r.nOk >= Math.min(minPatients, patients.length))
+    .sort((a, b) => b.dpsi - a.dpsi || (a.q || 1) - (b.q || 1))
     .slice(0, n);
 }
 

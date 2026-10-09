@@ -77,7 +77,7 @@ const cohort = {
 
 describe("cohort overview", () => {
   it("picks the most variable junction and masks low-coverage patients", () => {
-    const rows = cohortOverview(cohort, { minReads: 20 });
+    const rows = cohortOverview(cohort, { minReads: 20, minPatients: 2 });
     expect(rows.map((r) => r.id)).toEqual(["x", "y"]);
     expect(rows[0].psi[0]).toBeCloseTo(0.9);
     expect(rows[0].psi[1]).toBeCloseTo(0.3);
