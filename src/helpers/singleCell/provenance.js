@@ -229,6 +229,12 @@ export const PROVENANCE = {
     calc: "Backend SigProfiler fits where present; other sets fitted by NNLS on the patient's signatures in the browser (bootstrap intervals).",
     where: "both",
   },
+  signatureFit: {
+    title: "Signature fit quality",
+    source: `${S.SIGS}: per set the SigProfiler input SBS96, its reconstruction and fit stats (skilift sc_add_signature_fit_quality)`,
+    calc: "Residual per channel; decomposed catalogs (channels split by activity × COSMIC profile) and their cosine to the scaled profile, as in bulk.",
+    where: "both",
+  },
   signatureCompare: {
     title: "Signatures across site sets",
     source: `${SIGS}; SBS96 contexts on snv_matrix.json variants`,
