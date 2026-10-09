@@ -2,11 +2,12 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Space, Typography } from "antd";
 import {
-  SNV_MISSING_COLOR,
   countTicks,
   expressionRGB,
   junctionColor,
   normalizePalette,
+  snvMissingColor,
+  vafRGB,
 } from "../../helpers/singleCell/matrix";
 
 const { Text } = Typography;
@@ -18,10 +19,7 @@ const Swatch = ({ color, label }) => (
   </span>
 );
 
-const grey = (v) => {
-  const c = Math.round(255 * (1 - v));
-  return `rgb(${c},${c},${c})`;
-};
+const grey = (v) => `rgb(${vafRGB(v).join(",")})`;
 const countColor = (value, max) => {
   const t = Math.log1p(Math.max(0, Math.min(max, value))) / Math.log1p(Math.max(1, max));
   return `rgb(${Math.round(255 * t)},128,${Math.round(255 * (1 - t))})`;
@@ -68,7 +66,7 @@ export default function HeatmapLegend({
     groups.push({
       key: "snv",
       title: t(`components.single-cell.metric.${snvMetric}`),
-      items: [...items, { color: SNV_MISSING_COLOR, label: t("components.single-cell.side.no-reads") }],
+      items: [...items, { color: snvMissingColor(), label: t("components.single-cell.side.no-reads") }],
       note: t("components.single-cell.legend.binned"),
     });
   }
