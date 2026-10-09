@@ -67,7 +67,9 @@ export function patientTreeStats({ layout, variants, events, tumourIds }) {
     const scna = events.filter((e) => `${e.type || ""}`.toUpperCase() === "SCNA");
     const frac = (e) => Number(e.cell_fraction);
     out.nScna = scna.length;
-    out.scnaSubclonalFrac = scna.length ? scna.filter((e) => Number.isFinite(frac(e)) && frac(e) < 0.9).length / scna.length : NaN;
+    // most single-cell SCNA calls sit in one cell; count clonal / subclonal / one-cell tiers rather than a fraction
+    out.scnaClonal = scna.filter((e) => frac(e) >= 0.9).length;
+    out.scnaSubclonal = scna.filter((e) => frac(e) < 0.9 && Number(e.n_cells) >= 2).length;
     out.scnaPrivate = scna.filter((e) => Number(e.n_cells) === 1).length;
   }
   return out;

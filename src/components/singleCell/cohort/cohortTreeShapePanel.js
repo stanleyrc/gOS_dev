@@ -36,8 +36,8 @@ export default function CohortTreeShapePanel({ summaries, files, datafiles }) {
         <Text type="secondary" style={{ fontSize: 12 }}>
           Trunk fraction: truncal share of tumour SNVs (mapped onto the tree). Private share: SNVs in one cell, the ongoing mutation burden.
           Sackin / Yule: imbalance of the tumour tree (1 = as balanced as random branching; higher = caterpillar-like). LBI CV: spread of the
-          local branching index (uneven expansion). Copy-number events from the patient&apos;s filtered events (subclonal: in &lt; 90% of tumour
-          cells).
+          local branching index (uneven expansion). Copy-number driver events from the patient&apos;s filtered events by the share of tumour
+          cells carrying them; one-cell events include single-cell noise.
         </Text>
         <Table
           size="small"
@@ -54,7 +54,8 @@ export default function CohortTreeShapePanel({ summaries, files, datafiles }) {
             { title: "Sackin / Yule", dataIndex: "sackinNorm", sorter: (a, b) => (a.sackinNorm ?? -1) - (b.sackinNorm ?? -1), render: (x) => fmt(x) },
             { title: "LBI CV", dataIndex: "lbiCv", render: (x) => fmt(x) },
             { title: "SCNA events", dataIndex: "nScna", render: (x) => x ?? "–" },
-            { title: "Subclonal SCNA", dataIndex: "scnaSubclonalFrac", render: pct },
+            { title: "Clonal SCNA (≥ 90%)", dataIndex: "scnaClonal", render: (x) => x ?? "–" },
+            { title: "Subclonal SCNA (≥ 2 cells)", dataIndex: "scnaSubclonal", sorter: (a, b) => (a.scnaSubclonal ?? -1) - (b.scnaSubclonal ?? -1), render: (x) => x ?? "–" },
             { title: "One-cell SCNA", dataIndex: "scnaPrivate", render: (x) => x ?? "–" },
           ]}
         />

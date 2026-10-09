@@ -41,10 +41,11 @@ describe("tree shape", () => {
       events: [
         { type: "SCNA", cell_fraction: 1, n_cells: 4 },
         { type: "SCNA", cell_fraction: 0.25, n_cells: 1 },
+        { type: "SCNA", cell_fraction: 0.5, n_cells: 2 },
         { type: "Missense", cell_fraction: 0.5 },
       ],
     });
-    expect(s).toMatchObject({ nCells: 4, nSnv: 4, trunkFrac: 0.5, privateFrac: 0.25, nScna: 2, scnaSubclonalFrac: 0.5, scnaPrivate: 1 });
+    expect(s).toMatchObject({ nCells: 4, nSnv: 4, trunkFrac: 0.5, privateFrac: 0.25, nScna: 3, scnaClonal: 1, scnaSubclonal: 1, scnaPrivate: 1 });
     expect(s.sackinNorm).toBeGreaterThan(sackin(balanced, tumour).sackin / yuleSackin(4));
   });
 });
