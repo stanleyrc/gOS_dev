@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Card, Col, Row, Space, Table, Tag, Tooltip, Typography } from "antd";
 import useRnaData from "../rna/useRnaData";
-import { hotspotGenotypes } from "../../../helpers/singleCell/precompute";
+import { hotspotGenotypes, normaliseTelomeres } from "../../../helpers/singleCell/precompute";
 import { expressionByCell } from "../../../helpers/singleCell/staticRna";
 import NotComputed, { pcFile } from "./notComputed";
 import { Provenance } from "../hintLine";
@@ -25,7 +25,8 @@ const fmt = (x, d = 2) => (x == null ? "–" : x.toFixed(d));
  */
 export default function TelomereCard() {
   const { cells, cloneColors, precompute } = useSelector((s) => s.SingleCell);
-  const tel = pcFile(precompute, "telomeres");
+  const telRaw = pcFile(precompute, "telomeres");
+  const tel = useMemo(() => (telRaw.ok ? { ...telRaw, data: normaliseTelomeres(telRaw.data) } : telRaw), [telRaw.ok, telRaw.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const calls = pcFile(precompute, "calls");
   const { summary: rna, matrix } = useRnaData();
 

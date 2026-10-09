@@ -88,10 +88,46 @@ export function hotspotGenotypes(calls, { onlyHotspots = true, minMut = 0 } = {}
  * only for hotspots with a mutant call in some cell, so silent hotspots don't
  * clutter the strip menus.
  */
+/**
+ * Telomere rows with tel_rel (content relative to the normal cells' median, else all cells) and alt_like
+ * filled in when the file has only tel_content / tel_rpm (TelSeq-style output): ALT-like = telomere content
+ * and variant-repeat fraction both > 2 robust SD above the patient median.
+ */
+export function normaliseTelomeres(doc) {
+  const rows = doc?.cells || [];
+  if (!rows.length || rows.every((r) => r.tel_rel != null)) return doc;
+  const val = (r) => num(r.tel_content ?? r.tel_rpm);
+  const med = (v) => {
+    const x = v.filter((y) => y != null && Number.isFinite(y)).sort((a, b) => a - b);
+    if (!x.length) return null;
+    const k = x.length >> 1;
+    return x.length % 2 ? x[k] : (x[k - 1] + x[k]) / 2;
+  };
+  const normals = rows.filter((r) => r.normal === true || /^normal$/i.test(`${r.clone_id || ""}`));
+  const ref = med((normals.length >= 3 ? normals : rows).map(val));
+  const rz = (vals) => {
+    const m = med(vals);
+    const mad = med(vals.map((v) => (v == null ? null : Math.abs(v - m))));
+    return (v) => (v == null || m == null || !mad ? null : (v - m) / (1.4826 * mad));
+  };
+  const logRel = rows.map((r) => (val(r) && ref ? Math.log2(val(r) / ref) : null));
+  const zTel = rz(logRel);
+  const zTvr = rz(rows.map((r) => num(r.tvr_frac)));
+  return {
+    ...doc,
+    reference: doc.reference || (normals.length >= 3 ? "normal cells" : "all cells"),
+    cells: rows.map((r, i) => ({
+      ...r,
+      tel_rel: r.tel_rel ?? (val(r) && ref ? val(r) / ref : null),
+      alt_like: r.alt_like ?? ((zTel(logRel[i]) ?? 0) > 2 && (zTvr(num(r.tvr_frac)) ?? 0) > 2),
+    })),
+  };
+}
+
 export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls, mtdna } = {}) {
   const q = byCell(qc);
   const s = byCell(sphase);
-  const t = byCell(telomeres);
+  const t = byCell(normaliseTelomeres(telomeres));
   const mt = byCell(mtdna);
   const gts = hotspotGenotypes(calls, { minMut: 1 });
   if (!q.size && !s.size && !t.size && !mt.size && !Object.keys(gts).length) return cells;

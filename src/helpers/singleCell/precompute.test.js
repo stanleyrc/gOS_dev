@@ -1,4 +1,5 @@
 import {
+  normaliseTelomeres,
   excludedCellIds,
   cellCycleConcordance,
   hotspotGenotypes,
@@ -125,5 +126,25 @@ describe("precompute helpers", () => {
     expect([...excludedCellIds(cells, ["cn_inconsistent", "s_phase"])].sort()).toEqual(["b", "c"]);
     expect([...excludedCellIds(cells, [], ["d"])]).toEqual(["d"]);
     expect(excludedCellIds(cells).size).toBe(0);
+  });
+
+  it("derives tel_rel and alt_like from TelSeq-style telomere output", () => {
+    const doc = {
+      cells: [
+        { cell_id: "n1", clone_id: "Normal", tel_content: 100, tvr_frac: 0.2 },
+        { cell_id: "n2", clone_id: "Normal", tel_content: 100, tvr_frac: 0.21 },
+        { cell_id: "n3", clone_id: "Normal", tel_content: 100, tvr_frac: 0.22 },
+        { cell_id: "t1", clone_id: "C1", tel_content: 50, tvr_frac: 0.2 },
+        { cell_id: "t2", clone_id: "C1", tel_content: 110, tvr_frac: 0.21 },
+        { cell_id: "t3", clone_id: "C1", tel_content: 900, tvr_frac: 0.6 },
+      ],
+    };
+    const out = normaliseTelomeres(doc);
+    expect(out.reference).toBe("normal cells");
+    expect(out.cells[3].tel_rel).toBeCloseTo(0.5);
+    expect(out.cells[5].alt_like).toBe(true);
+    expect(out.cells[3].alt_like).toBe(false);
+    const done = { cells: [{ cell_id: "a", tel_rel: 1 }] };
+    expect(normaliseTelomeres(done)).toBe(done);
   });
 });
