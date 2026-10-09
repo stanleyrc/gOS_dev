@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { Col, Row } from "antd";
 import SignatureSetsCard from "../../components/singleCell/signatures/signatureSetsCard";
 import SignatureComparisonCard from "../../components/singleCell/signatures/signatureComparisonCard";
+import SignatureFitCard from "../../components/singleCell/signatures/signatureFitCard";
 import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import { SC_GUTTER } from "../../components/singleCell/density";
@@ -10,7 +11,8 @@ import { SC_GUTTER } from "../../components/singleCell/density";
 /**
  * SBS signatures of a single-cell patient: one site set in depth (catalog,
  * backend and browser fits with bootstrap intervals, decomposed catalogs),
- * every set compared, and signatures along the phylogeny per clone / clade.
+ * every set compared, the goodness of fit of the precomputed fits (observed vs
+ * reconstructed, residuals, decomposed catalogs), and signatures along the phylogeny per clone / clade.
  */
 export default function SingleCellSignaturesTab() {
   const hasTree = useSelector((state) => state.SingleCell.tree.status === "ok");
@@ -19,6 +21,9 @@ export default function SingleCellSignaturesTab() {
       <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <SignatureComparisonCard />
+        </Col>
+        <Col span={24}>
+          <SignatureFitCard />
         </Col>
         <Col span={24}>
           <SignatureSetsCard />
