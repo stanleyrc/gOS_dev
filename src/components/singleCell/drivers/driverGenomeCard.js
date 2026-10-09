@@ -15,6 +15,7 @@ import { CARRIER_COLOR, COMPARATOR_COLOR } from "./useDriverEvidence";
 
 const { Text } = Typography;
 const STEP = 1e6;
+const Y_CAP = 8;
 
 /** Chromosome and local position of a global coordinate. */
 export function toLocal(chromoBins, g) {
@@ -30,7 +31,10 @@ function CnLines({ contrast, chromoBins, genomeLength }) {
   const H = 150;
   const plotW = Math.max(width - M.left - M.right, 10);
   const plotH = H - M.top - M.bottom;
-  const ymax = Math.max(4, Math.ceil(Math.max(...contrast.meanA.filter(Number.isFinite), ...contrast.meanB.filter(Number.isFinite), 0)));
+  // y capped at CN 8 so amplicons (tens of copies) do not flatten everything else; clipped values hit the top edge
+  const top = Math.max(...contrast.meanA.filter(Number.isFinite), ...contrast.meanB.filter(Number.isFinite), 0);
+  const ymax = Math.min(Y_CAP, Math.max(4, Math.ceil(top)));
+  const clipped = top > ymax;
   const x = (g) => M.left + (g / genomeLength) * plotW;
   const y = (v) => M.top + plotH - (Math.min(v, ymax) / ymax) * plotH;
   const path = (vals) => {
@@ -49,6 +53,7 @@ function CnLines({ contrast, chromoBins, genomeLength }) {
   };
   const chroms = Object.entries(chromoBins || {}).filter(([, v]) => v.endPlace <= genomeLength + 1);
   const ticks = Array.from({ length: ymax + 1 }, (_, k) => k).filter((k) => ymax <= 6 || k % 2 === 0);
+  const tickLabel = (k) => (clipped && k === ymax ? `≥${k}` : `${k}`);
   return (
     <div ref={ref} style={{ width: "100%" }}>
       <svg width={width} height={H} role="img" aria-label="mean copy number of carriers and comparator along the genome">
@@ -59,7 +64,7 @@ function CnLines({ contrast, chromoBins, genomeLength }) {
           <g key={k}>
             <line x1={M.left} x2={M.left + plotW} y1={y(k)} y2={y(k)} stroke={theme.grid} />
             <text x={M.left - 6} y={y(k) + 4} textAnchor="end" fontSize={TYPE.tick} fill={theme.muted}>
-              {k}
+              {tickLabel(k)}
             </text>
           </g>
         ))}

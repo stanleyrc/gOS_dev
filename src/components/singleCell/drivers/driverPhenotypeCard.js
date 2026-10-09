@@ -41,7 +41,10 @@ export default function DriverPhenotypeCard({ carriers, others, rna }) {
   const a = useMemo(() => carriers.filter((id) => rowOfId?.has(id)), [carriers, rowOfId]);
   const b = useMemo(() => others.filter((id) => rowOfId?.has(id)), [others, rowOfId]);
   const cats = useMemo(
-    () => balanceTable(a, b, CATEGORICAL.filter((f) => fields.has(f) && !fields.get(f).numeric), (id, f) => cellOf.get(id)?.[f] ?? null),
+    () =>
+      balanceTable(a, b, CATEGORICAL.filter((f) => fields.has(f) && !fields.get(f).numeric), (id, f) => cellOf.get(id)?.[f] ?? null).filter(
+        (c) => c.levels.length > 1
+      ),
     [a, b, fields, cellOf]
   );
   const nums = useMemo(
