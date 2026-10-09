@@ -53,6 +53,7 @@ import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { SC_GUTTER } from "./density";
 import { useCohortRnaFindings } from "./rna/useRnaFindings";
 import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
+import CohortStory from "./story/cohortStory";
 import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
@@ -407,6 +408,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const analysisTabs = [
     { key: "overview", label: t("components.single-cell.cohort.view-overview") },
     { key: "reports", label: t("components.single-cell.cohort.view-reports") },
+    { key: "story", label: t("components.single-cell.cohort.view-story") },
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
     { key: "amplicons", label: t("components.single-cell.cohort.view-amplicons") },
     { key: "figures", label: t("components.single-cell.cohort.view-figures") },
@@ -437,6 +439,16 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           </Space>
           <Tabs size="small" activeKey={view} onChange={setView} items={analysisTabs} />
         </Col>
+        {view === "story" && (
+          <Col span={24}>
+            <CohortStory
+              dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null}
+              summaries={summaries}
+              cloneColors={cloneColors}
+              onOpen={openPatient}
+            />
+          </Col>
+        )}
         {view === "reports" &&
           summaries.map((s) => (
             <Col span={24} key={s.caseReportId}>
