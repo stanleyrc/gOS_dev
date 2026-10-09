@@ -12,7 +12,9 @@ import settingsActions from "../../redux/settings/actions";
 import { locationToDomains } from "../../helpers/utility";
 import { useIsSingleCellPatient } from "./eventsToHeatmap";
 import { padDomains } from "../../helpers/singleCell/eventDomains";
+import { mergeLoci } from "../../helpers/singleCell/igvTracks";
 import HintLine from "./hintLine";
+import { RnaSupportSection, useRnaSupport } from "./rna/rnaSupport";
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
@@ -47,6 +49,7 @@ function SingleCellEventTracks({ record }) {
   const [multi, setMulti] = useState(false);
   const [one, setOne] = useState(null);
   const [many, setMany] = useState([]);
+  const rnaSupport = useRnaSupport(record, multi ? many : one ? [one] : []);
   // reads open by default where there is something to see at base resolution (SNVs, fusion breakpoints)
   const [showIgv, setShowIgv] = useState(() => Boolean(record?.Variant_g && /^\w+:\d+/.test(`${record.Variant_g}`)) || Boolean(record?.fusion_gene_coords && record.fusion_gene_coords !== "None"));
   const [trackRef, trackWidth] = useContainerWidth(900);
@@ -75,18 +78,8 @@ function SingleCellEventTracks({ record }) {
     return <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-cells")} />;
   }
   const shown = multi ? many : one ? [one] : [];
-  // IGV at the event: SNVs at the variant position, fusions at both breakpoints, CNAs at the gene start
-  const bps = `${record?.fusion_gene_coords || ""}`.split(",").map((s) => s.match(/^(\w+):(\d+)/)).filter(Boolean).map((m) => ({ chromosome: m[1], position: Number(m[2]) }));
-  const snvPos = `${record?.Variant_g || ""}`.match(/^(\w+):(\d+)/);
-  const igvView = shown.length
-    ? {
-        cellIds: shown,
-        chromosome: bps.length ? bps[0].chromosome : snvPos ? snvPos[1] : `${record?.seqnames}`,
-        position: bps.length ? bps[0].position : snvPos ? Number(snvPos[2]) : Number(record?.start),
-        loci: bps.length > 1 ? bps : undefined,
-        label: record?.gene || record?.fusion_genes,
-      }
-    : null;
+  // IGV at the event (SNVs at the variant, fusions at both breakpoints), plus RNA slices of supporting cells
+  const igvView = shown.length || rnaSupport.rnaTracks.length ? eventIgvView(record, shown, rnaSupport.rnaTracks, rnaSupport.rnaLoci) : null;
 
   return (
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
@@ -117,6 +110,7 @@ function SingleCellEventTracks({ record }) {
         <Switch size="small" checked={showIgv} onChange={setShowIgv} />
         <Text>{t("components.single-cell.event-cells.igv")}</Text>
       </Space>
+      <RnaSupportSection record={record} support={rnaSupport} />
       {showIgv && igvView && Number.isFinite(igvView.position) && (
         <div>
           <HintLine text={t("components.single-cell.event-cells.igv-help", { count: shown.length })} />
@@ -142,8 +136,13 @@ function SingleCellEventTracks({ record }) {
   );
 }
 
-/** IGV view of an event for the given cells: SNVs at the variant, fusions at both breakpoints, CNAs at the gene start. */
-export function eventIgvView(record, cellIds) {
+/**
+ * IGV view of an event for the given cells: SNVs at the variant, fusions at
+ * both breakpoints, CNAs at the gene start. rnaTracks (per-cell RNA slices,
+ * see CellIgvPanel) are shown below the DNA cells; their breakpoints
+ * (rnaLoci, where the slices have reads) join the loci shown side by side.
+ */
+export function eventIgvView(record, cellIds, rnaTracks = [], rnaLoci = []) {
   const bps = `${record?.fusion_gene_coords || ""}`.split(",").map((s) => s.match(/^(\w+):(\d+)/)).filter(Boolean).map((m) => ({ chromosome: m[1], position: Number(m[2]) }));
   const snvPos = `${record?.Variant_g || ""}`.match(/^(\w+):(\d+)/);
   const view = {
@@ -152,7 +151,14 @@ export function eventIgvView(record, cellIds) {
     position: bps.length ? bps[0].position : snvPos ? Number(snvPos[2]) : Number(record?.start),
     loci: bps.length > 1 ? bps : undefined,
     label: record?.gene || record?.fusion_genes,
+    ...(rnaTracks?.length ? { rnaTracks } : {}),
   };
+  if (rnaTracks?.length && rnaLoci?.length) {
+    const dnaLoci = view.loci || (Number.isFinite(view.position) ? [{ chromosome: view.chromosome, position: view.position }] : []);
+    view.loci = mergeLoci(dnaLoci, rnaLoci);
+    if (!Number.isFinite(view.position)) Object.assign(view, { chromosome: rnaLoci[0].chromosome, position: rnaLoci[0].position });
+    view.window = 100;
+  }
   return Number.isFinite(view.position) ? view : null;
 }
 
@@ -163,9 +169,10 @@ function SingleCellEventReads({ record }) {
   const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
   const [picked, setPicked] = useState([]);
   useEffect(() => setPicked(carriers.slice(0, 3)), [carriers]);
+  const rnaSupport = useRnaSupport(record, picked);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   if (!carriers.length) return <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-cells")} />;
-  const view = picked.length ? eventIgvView(record, picked) : null;
+  const view = picked.length || rnaSupport.rnaTracks.length ? eventIgvView(record, picked, rnaSupport.rnaTracks, rnaSupport.rnaLoci) : null;
   return (
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
       <Space wrap>
@@ -183,6 +190,7 @@ function SingleCellEventReads({ record }) {
         />
         <HintLine text={t("components.single-cell.event-cells.igv-help", { count: picked.length })} />
       </Space>
+      <RnaSupportSection record={record} support={rnaSupport} />
       {view ? <CellIgvPanel view={view} embedded /> : <Alert type="info" showIcon message={t("components.single-cell.event-cells.no-position")} />}
     </Space>
   );

@@ -8,6 +8,7 @@ import actions, {
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
+import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
 import { parseNewick, treeForCells } from "../../helpers/singleCell/newick";
@@ -23,6 +24,8 @@ import {
   snvFromSparse,
 } from "../../helpers/singleCell/cellFiles";
 import { parseRnaSummary } from "../../helpers/singleCell/staticRna";
+import { normalizeFusions } from "../../helpers/singleCell/rnaFusions";
+import { normalizeSplicing } from "../../helpers/singleCell/splicing";
 import {
   cnDistances,
   hasInformativeSnvs,
@@ -84,10 +87,11 @@ function buildTree(treeFile, cellIds, snv, cn, genomeLength) {
   return { ...missing(), method: null };
 }
 
-function* fetchSingleCellData() {
+function* fetchSingleCellData(action = {}) {
   const state = yield select(getState);
   const { dataset, chromoBins, genomeLength } = state.Settings;
-  const { id, metadata } = state.CaseReport;
+  const id = action.caseReportId ?? state.CaseReport.id;
+  const metadata = `${id}` === `${state.CaseReport.id}` ? state.CaseReport.metadata : undefined;
   if (!dataset || !id) return;
   const cancelToken = getCancelToken();
 
@@ -108,7 +112,7 @@ function* fetchSingleCellData() {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile] = yield all([
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
@@ -117,7 +121,23 @@ function* fetchSingleCellData() {
       call(tryGet, casePath(dataset, id, "signatures.json"), { cancelToken }),
       // ecDNA / amplicon walks with per-cell copy numbers (skilift sc_export_walks)
       call(tryGet, casePath(dataset, id, "walks.json"), { cancelToken }),
+      // per-cell RNA fusions (STAR chimeric + Arriba) and splicing (regtools junctions, intron clusters); optional
+      call(tryGet, casePath(dataset, id, "rna/fusions.json"), { cancelToken }),
+      call(tryGet, casePath(dataset, id, "rna/splicing.json"), { cancelToken }),
     ]);
+    // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
+    const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
+    const precomputeFiles = yield all(
+      precomputeKeys.map((k) => call(tryGet, casePath(dataset, id, PRECOMPUTE_FILES[k]), { cancelToken }))
+    );
+    const precompute = Object.fromEntries(precomputeKeys.map((k, i) => [k, precomputeFiles[i]]));
+    const pcData = (k) => (precompute[k].status === "ok" ? precompute[k].data : null);
+    const cellsWithPrecompute = mergePrecomputeIntoCells(cells, {
+      qc: pcData("qc"),
+      sphase: pcData("sphase"),
+      telomeres: pcData("telomeres"),
+      calls: pcData("calls"),
+    });
     const cellFiles = {};
     const genomeErrors = [];
     for (let k = 0; k < cellIds.length; k += SC_FETCH_CONCURRENCY) {
@@ -183,7 +203,8 @@ function* fetchSingleCellData() {
     yield put({
       type: actions.FETCH_SINGLE_CELL_DATA_SUCCESS,
       patient: { caseReportId: `${id}`, patientKey, datasetId: `${dataset.id}` },
-      cells,
+      cells: cellsWithPrecompute,
+      precompute,
       cloneColors: cloneColorMap(cells, metadata?.clones || own.clones || []),
       order,
       tree,
@@ -193,6 +214,8 @@ function* fetchSingleCellData() {
       rna,
       signatures: signaturesFile.status === "ok" ? signaturesFile : missing(),
       walks: walksFile.status === "ok" ? walksFile : missing(),
+      rnaFusions: rnaFusionsFile.status === "ok" ? attempt(() => normalizeFusions(rnaFusionsFile.data)) : missing(),
+      rnaSplicing: rnaSplicingFile.status === "ok" ? attempt(() => normalizeSplicing(rnaSplicingFile.data)) : missing(),
       cellFiles,
       selectedCellIds: [],
     });
