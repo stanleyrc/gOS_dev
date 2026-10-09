@@ -3,7 +3,7 @@ import { Typography } from "antd";
 import HeatmapCanvas from "../heatmapCanvas";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import usePixelRatio from "../usePixelRatio";
-import FigureCanvas, { fitText, font } from "./figureCanvas";
+import FigureCanvas, { fitText } from "./figureCanvas";
 import {
   annotationColors,
   binAt,
@@ -15,6 +15,8 @@ import {
 } from "../../../helpers/singleCell/matrix";
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, geneSetColor, snvTreeOrder } from "../../../helpers/singleCell/figures";
 import { currentMode } from "../../../helpers/singleCell/plotTheme";
+import { clipLongBranches, longBranchCap } from "../../../helpers/singleCell/newick";
+import { textRole } from "./figureKit";
 
 const { Text } = Typography;
 const GAP = 6;
@@ -65,6 +67,8 @@ export default function ClonalAmpliconView({
   const [hover, setHover] = useState(null); // { row, text }
   const rec = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const rowIds = useMemo(() => (layout ? layout.leaves : cells.map((c) => c.cell_id)), [layout, cells]);
+  // one long (often normal / outgroup) branch would squeeze the whole tree into a few pixels
+  const treeShown = useMemo(() => (layout ? clipLongBranches(layout, longBranchCap(layout)) : null), [layout]);
   const n = rowIds.length;
   const height = Math.max(300, Math.min(560, n * 3.4));
   const stateColors = useMemo(() => annotationColors(cells.map((c) => c.state).filter(Boolean)), [cells]);
@@ -206,12 +210,11 @@ export default function ClonalAmpliconView({
   /* ---- header: titles and walk labels; footer: region axis and legends ---- */
   const drawHeader = useCallback(
     (ctx, c) => {
-      ctx.font = font(12, 600);
-      ctx.fillStyle = c.text;
+      textRole(ctx, c, "head");
       ctx.textAlign = "center";
       if (TREE) ctx.fillText("Phylogeny", xTree + TREE / 2, HEAD - 10);
       ctx.save();
-      ctx.font = font(10);
+      textRole(ctx, c, "tick");
       [["Clone", 0], ["State", STRIP + 2], ["Marked", 2 * STRIP + 4]].forEach(([label, dx]) => {
         ctx.save();
         ctx.translate(xStrips + dx + STRIP / 2, HEAD - 4);
@@ -225,7 +228,7 @@ export default function ClonalAmpliconView({
       ctx.fillText(fitText(ctx, `Copy number · ${regionLabel}`, CN), xCn + CN / 2, HEAD - 10);
       if (BARS) ctx.fillText("Copies", xBars + BARS / 2, HEAD - 10);
       if (WALK) {
-        ctx.font = font(10);
+        textRole(ctx, c, "tick");
         const cw = WALK / walks.length;
         walks.forEach((w, k) => {
           if (cw < 7 && k % Math.ceil(7 / cw)) return;
@@ -244,8 +247,7 @@ export default function ClonalAmpliconView({
   );
   const drawFooter = useCallback(
     (ctx, c) => {
-      ctx.font = font(10);
-      ctx.fillStyle = c.muted;
+      textRole(ctx, c, "tick");
       ctx.textAlign = "center";
       const ticks = genomicTicks(chromoBins, cn.extents, { minSpan: 40, spacing: 70 });
       ticks.forEach((t) => {
@@ -254,18 +256,18 @@ export default function ClonalAmpliconView({
       });
       cn.extents.forEach(([a, b, d]) => {
         const chr = Object.keys(chromoBins).find((k) => chromoBins[k].startPlace <= d[0] && chromoBins[k].endPlace >= d[0]);
-        ctx.fillStyle = c.text;
-        ctx.fillText(`chr${chr} (Mb)`, xCn + (a + b) / 2, 25);
+        textRole(ctx, c, "head");
+        ctx.fillText(`chr${chr} (Mb)`, xCn + (a + b) / 2, 26);
       });
-      // amplicon CN legend under the SNV panel (or tree)
-      const lx = SNV ? xSnv : xStrips;
+      // amplicon CN legend under the SNV panel, or under the tree, clear of the CN axis labels
+      const lx = SNV ? xSnv : 0;
       ctx.textAlign = "left";
-      ctx.fillStyle = c.text;
+      textRole(ctx, c, "tick", "textSecondary");
       ctx.fillText("CN", lx, 9);
       AMP_LEGEND.forEach((v, k) => {
         ctx.fillStyle = ampliconCss(v);
         ctx.fillRect(lx + 20 + k * 22, 2, 22, 8);
-        ctx.fillStyle = c.muted;
+        textRole(ctx, c, "tick");
         ctx.fillText(`${v}`, lx + 20 + k * 22, 20);
       });
       if (SNV) {
@@ -283,7 +285,7 @@ export default function ClonalAmpliconView({
       }
       return [];
     },
-    [chromoBins, cn.extents, xCn, SNV, xSnv, xStrips]
+    [chromoBins, cn.extents, xCn, SNV, xSnv]
   );
 
   const onCnHover = ({ row, col }) => {
@@ -317,7 +319,7 @@ export default function ClonalAmpliconView({
         {TREE > 0 && (
           <div style={{ width: TREE, marginRight: GAP }}>
             <PhylogenyCanvas
-              layout={layout}
+              layout={treeShown}
               nRows={n}
               width={TREE}
               height={height}

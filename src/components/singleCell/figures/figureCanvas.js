@@ -1,21 +1,21 @@
 import React, { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import { FONT_FAMILY, TYPE, currentPlotTheme, fontCss } from "../../../helpers/singleCell/plotTheme";
+import { figureStyle } from "../../../helpers/singleCell/figureStyle";
 
-/** Text / grid colours for the current theme (tokens from helpers/singleCell/plotTheme). */
-export function ink() {
+/**
+ * Colour tokens of the current theme (helpers/singleCell/plotTheme) plus the
+ * figure style `st` (helpers/singleCell/figureStyle) that draw() receives.
+ */
+export function ink(styleName) {
   const pt = currentPlotTheme();
-  return {
-    dark: pt.mode === "dark",
-    text: pt.text,
-    muted: pt.muted,
-    grid: pt.grid,
-    band: pt.band,
-    empty: pt.empty,
-    panel: pt.panel,
-  };
+  return { ...pt, dark: pt.mode === "dark", st: figureStyle(styleName) };
 }
+
+/** The Paper figures style chosen in the layout preferences. */
+export const useFigureStyleName = () => useSelector((s) => s.SingleCell.layout.figureStyle);
 
 export { FONT_FAMILY };
 // figure text follows the app type scale: nothing below TYPE.micro, small sizes nudged up
@@ -35,6 +35,7 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
   const hitsRef = useRef([]);
   const pr = usePixelRatio();
   const themeMode = usePlotTheme().mode; // redraw on a light / dark switch
+  const styleName = useFigureStyleName(); // and on a figure style switch
 
   useEffect(() => {
     const canvas = ref.current;
@@ -46,9 +47,9 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
     ctx.setTransform(pr, 0, 0, pr, 0, 0);
     ctx.clearRect(0, 0, width, height);
     ctx.textBaseline = "middle";
-    hitsRef.current = draw(ctx, ink()) || [];
+    hitsRef.current = draw(ctx, ink(styleName)) || [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, height, draw, pr, themeMode]);
+  }, [width, height, draw, pr, themeMode, styleName]);
 
   const find = (event) => {
     const rect = ref.current.getBoundingClientRect();

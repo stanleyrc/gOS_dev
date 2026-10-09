@@ -1,4 +1,6 @@
 import React, { useCallback, useMemo } from "react";
+import { textRole } from "./figureKit";
+import { formatTick } from "../../../helpers/singleCell/figureStyle";
 import FigureCanvas, { font } from "./figureCanvas";
 import { binAt, domainExtents, naturalCompare } from "../../../helpers/singleCell/matrix";
 import { cloneFractions, columnCorrelations, geneSetColor, isNormalClone, linearFit, quantiles } from "../../../helpers/singleCell/figures";
@@ -17,21 +19,35 @@ export function CloneCarrierBars({ width, height = 210, groups, cells, cloneColo
       }),
     [groups, cells, minCn]
   );
-  const M = { l: 34, r: 8, t: 10, b: 34 };
+  const M = { l: 58, r: 8, t: 10, b: 44 };
   const draw = useCallback(
     (ctx, c) => {
       const hits = [];
       const y = (f) => height - M.b - f * (height - M.t - M.b);
-      ctx.font = font(10);
-      ctx.textAlign = "right";
+      const x1 = width - M.r;
       [0, 0.25, 0.5, 0.75, 1].forEach((f) => {
-        ctx.fillStyle = c.muted;
-        ctx.fillText(f.toFixed(2), M.l - 4, y(f));
-        ctx.fillStyle = c.grid;
-        ctx.fillRect(M.l, Math.round(y(f)), width - M.l - M.r, 1);
+        if (c.st.grid !== "none") {
+          ctx.fillStyle = c.grid;
+          ctx.fillRect(M.l, Math.round(y(f)), x1 - M.l, 1);
+        }
+        textRole(ctx, c, "tick");
+        ctx.textAlign = "right";
+        ctx.fillText(formatTick(f, { percent: true }), M.l - 6, y(f));
       });
-      const cw = (width - M.l - M.r) / Math.max(1, clones.length);
-      const bw = Math.min(22, (cw * 0.8) / Math.max(1, data.length));
+      ctx.fillStyle = c[c.st.axisInk] || c.axis;
+      ctx.fillRect(M.l, Math.round(y(0)), x1 - M.l, 1);
+      ctx.save();
+      ctx.translate(10, (M.t + y(0)) / 2);
+      ctx.rotate(-Math.PI / 2);
+      textRole(ctx, c, "head");
+      ctx.textAlign = "center";
+      ctx.fillText("Cells carrying", 0, 0);
+      ctx.restore();
+      const cw = (x1 - M.l) / Math.max(1, clones.length);
+      const bw = Math.min(14, (cw * 0.78) / Math.max(1, data.length));
+      textRole(ctx, c, "tick", "textSecondary");
+      const short = (clone) => `${clone}`.replace(/^clone\s*/i, "");
+      const rotate = clones.some((clone) => ctx.measureText(short(clone)).width > cw - 3);
       clones.forEach((clone, i) => {
         const cx = M.l + (i + 0.5) * cw;
         data.forEach((d, j) => {
@@ -39,15 +55,27 @@ export function CloneCarrierBars({ width, height = 210, groups, cells, cloneColo
           if (!f) return;
           const x = cx - (data.length * bw) / 2 + j * bw;
           ctx.fillStyle = geneSetColor(d.g.key);
-          ctx.fillRect(x, y(f.fraction), bw - 1, y(0) - y(f.fraction));
+          ctx.fillRect(x + 0.5, y(f.fraction), bw - 1, y(0) - y(f.fraction));
           hits.push({ x0: x, x1: x + bw, y0: M.t, y1: y(0), clone, f, g: d.g });
         });
         ctx.fillStyle = cloneColors[clone] || c.muted;
-        ctx.fillRect(cx - cw * 0.4, height - M.b + 4, cw * 0.8, 3);
-        ctx.fillStyle = c.text;
-        ctx.textAlign = "center";
-        ctx.fillText(clone, cx, height - M.b + 16);
+        ctx.fillRect(cx - cw * 0.38, y(0) + 3, cw * 0.76, 3);
+        textRole(ctx, c, "tick", "textSecondary");
+        if (rotate) {
+          ctx.save();
+          ctx.translate(cx, y(0) + 11);
+          ctx.rotate(-Math.PI / 4);
+          ctx.textAlign = "right";
+          ctx.fillText(short(clone), 0, 0);
+          ctx.restore();
+        } else {
+          ctx.textAlign = "center";
+          ctx.fillText(short(clone), cx, y(0) + 15);
+        }
       });
+      textRole(ctx, c, "head");
+      ctx.textAlign = "center";
+      ctx.fillText("Clone", (M.l + x1) / 2, height - 6);
       return hits;
     },
     [width, height, clones, data, cloneColors] // eslint-disable-line react-hooks/exhaustive-deps
