@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { useSpliceExons } from "../cohort/cohortSpliceEvent";
+import { clusterEvents, clusterTranscripts, differingJunctions, eventPsi, groupCellPsi, junctionEvent, mainJunctions } from "../../../helpers/singleCell/spliceEvents";
+import { resolveChromosome } from "../../../helpers/singleCell/matrix";
+import Violins from "../violins";
 import { useTranslation } from "react-i18next";
 import { Alert, Card, Col, Empty, Input, Row, Segmented, Select, Space, Switch, Table, Tag, Typography } from "antd";
 import { BranchesOutlined } from "@ant-design/icons";
@@ -264,7 +268,10 @@ function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cell
 const TYPE_FILTERS = ["all", "alternative", "novel"];
 
 /** Intron clusters: ranked by difference between groups; sashimi per group, per-cell usage in tree order. */
+const MIN_GROUP_CELLS = 5;
+
 function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cloneStrip, request }) {
+  const dataset = useSelector((s) => s.Settings.dataset);
   const { t } = useTranslation("common");
   const [query, setQuery] = useState("");
   const [queryText, setQueryText] = useState("");
@@ -275,7 +282,10 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   const [picked, setPicked] = useState(null);
   const [mode, setMode] = useState("groups");
   const [highlight, setHighlight] = useState(null);
+  const [focus, setFocus] = useState("differing");
   const plotRef = useRef(null);
+  const cnSource = useSelector((s) => s.SingleCell.cn);
+  const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const ranked = useMemo(() => rankClustersByGroup(clusters, groupOf), [clusters, groupOf]);
   const tableRows = useMemo(() => {
     const keep = new Set(filterClusters(clusters, query).map((c) => c.id));
@@ -314,6 +324,63 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   const cluster = clusters.find((c) => c.id === picked);
   const groups = useMemo(() => (cluster ? clusterByGroup(cluster, groupOf) : []), [cluster, groupOf]);
   const usage = useMemo(() => (cluster ? cellUsageMatrix(cluster, rows) : null), [cluster, rows]);
+  const exonModel = useSpliceExons(dataset);
+  const transcripts = useMemo(() => (cluster ? clusterTranscripts(exonModel, cluster) : []), [cluster, exonModel]);
+  const spliceEvent = useMemo(() => (cluster ? clusterEvents(cluster, transcripts)[0] || null : null), [cluster, transcripts]);
+  // groups with too few cells are pooled: a 2-cell clone's PSI is mostly sampling noise
+  const bigGroups = useMemo(() => groups.filter((g) => g.nCells >= MIN_GROUP_CELLS), [groups]);
+  const smallGroups = useMemo(() => groups.filter((g) => g.nCells < MIN_GROUP_CELLS), [groups]);
+  const shownIdx = useMemo(() => {
+    if (!cluster) return [];
+    const all = cluster.junctions.map((_, j) => j);
+    if (focus === "all") return all;
+    const tot = groups.reduce((acc, g) => acc.map((v, j) => v + g.counts[j]), new Array(cluster.junctions.length).fill(0));
+    if (focus === "main") return mainJunctions(tot);
+    const keep = new Set(differingJunctions(groups, { minCells: MIN_GROUP_CELLS, top: 4 }));
+    (spliceEvent ? [...spliceEvent.junctions.incl, ...spliceEvent.junctions.skip] : []).forEach((j) => keep.add(j));
+    return all.filter((j) => keep.has(j));
+  }, [cluster, groups, focus, spliceEvent]);
+  // event shown per cell: the named event, else the junction that differs most between the groups
+  const viewEvent = useMemo(() => {
+    if (!cluster) return null;
+    // the named event, unless it barely differs between the groups (then the most differing junction says more)
+    if (spliceEvent) {
+      const ps = bigGroups.filter((g) => g.total >= 10).map((g) => eventPsi(g.counts, spliceEvent).psi).filter(Number.isFinite);
+      if (ps.length < 2 || Math.max(...ps) - Math.min(...ps) >= 0.05) return spliceEvent;
+    }
+    const [j] = differingJunctions(groups, { minCells: MIN_GROUP_CELLS, top: 1 });
+    return j != null ? junctionEvent(j, cluster.junctions.length) : null;
+  }, [cluster, spliceEvent, groups, bigGroups]);
+  const eventGroups = useMemo(() => {
+    if (!cluster || !viewEvent) return [];
+    const big = new Set(bigGroups.map((g) => g.group));
+    const m = groupCellPsi(cluster, viewEvent, (rnaId) => {
+      const g = groupOf(rnaId);
+      return big.has(g) ? g : null;
+    });
+    return bigGroups.filter((g) => m.has(g.group)).map((g) => ({ key: g.group, label: g.group, color: groupColor?.(g.group) || "#8c8c8c", values: m.get(g.group) }));
+  }, [cluster, viewEvent, bigGroups, groupOf, groupColor]);
+  // copy number at the cluster: amplified genes give DNA-rearrangement "junctions" and CN-driven differences
+  const cnInfo = useMemo(() => {
+    const cnData = cnSource?.status === "ok" ? cnSource.data : null;
+    if (!cluster || !cnData || !chromoBins) return null;
+    const key = resolveChromosome(`${cluster.chromosome}`, chromoBins);
+    if (!key) return null;
+    const at = cnAtPosition(cnData, chromoBins[key].startPlace + (clusterStart(cluster) + clusterEnd(cluster)) / 2);
+    const cellOfRna = new Map(rows.map((r) => [r.rna_id, r.cell_id]));
+    const med = (v) => {
+      const x = v.filter(Number.isFinite).sort((a, b) => a - b);
+      return x.length ? x[Math.floor((x.length - 1) / 2)] : NaN;
+    };
+    const byGroup = bigGroups.map((g) => {
+      const ids = Object.keys(cluster.cells || {}).filter((r) => groupOf(r) === g.group).map((r) => cellOfRna.get(r)).filter(Boolean);
+      return { group: g.group, cn: med(ids.map((id) => at.get(id))) };
+    });
+    const all = med([...at.values()]);
+    const cns = byGroup.map((g) => g.cn).filter(Number.isFinite);
+    const spread = cns.length > 1 ? Math.max(...cns) - Math.min(...cns) : 0;
+    return { all, byGroup, flag: all >= 6 || spread >= 2 };
+  }, [cluster, cnSource, chromoBins, rows, bigGroups, groupOf]);
   if (!clusters.length) return <Text type="secondary">{t(`${k}.no-clusters`)}</Text>;
   const allCounts = groups.reduce((acc, g) => acc.map((v, j) => v + g.counts[j]), new Array(cluster?.junctions.length || 0).fill(0));
   const nCellsAll = groups.reduce((a, g) => a + g.nCells, 0);
@@ -321,10 +388,23 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
     ? [
         { key: "__all", label: t(`${k}.all-cells`), sublabel: `${t(`${k}.cells`, { count: nCellsAll })} · n=${allCounts.reduce((a, v) => a + v, 0)}`, counts: allCounts },
         ...(mode === "groups"
-          ? sashimiGroups(groups, MAX_TRACKS, t(`${k}.other-groups`)).map((g) => ({
+          ? [
+              ...sashimiGroups(bigGroups, MAX_TRACKS, t(`${k}.other-groups`)),
+              ...(smallGroups.length
+                ? [
+                    {
+                      group: t(`${k}.small-groups`, { count: smallGroups.length, min: MIN_GROUP_CELLS }),
+                      counts: smallGroups.reduce((acc, g) => acc.map((v, j) => v + g.counts[j]), new Array(cluster.junctions.length).fill(0)),
+                      nCells: smallGroups.reduce((a, g) => a + g.nCells, 0),
+                      total: smallGroups.reduce((a, g) => a + g.total, 0),
+                      small: true,
+                    },
+                  ]
+                : []),
+            ].map((g) => ({
               key: g.group,
               label: g.group,
-              swatch: groupColor?.(g.group),
+              swatch: g.small ? null : groupColor?.(g.group),
               sublabel: `${t(`${k}.cells`, { count: g.nCells })} · n=${g.total}`,
               counts: g.counts,
             }))
@@ -458,12 +538,51 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
               ]}
             />
             <HintLine inline text={t(`${k}.sashimi-help`)} />
-            {groups.length > 1 && <Text type="secondary">{t(`${k}.delta`, { value: maxDeltaPsi(groups).toFixed(2) })}</Text>}
+            <Segmented
+              size="small"
+              value={focus}
+              onChange={setFocus}
+              options={["differing", "main", "all"].map((f) => ({ value: f, label: t(`${k}.focus-${f}`, { count: f === "all" ? cluster.junctions.length : undefined }) }))}
+            />
+            {bigGroups.length > 1 && <Text type="secondary">{t(`${k}.delta-big`, { value: maxDeltaPsi(bigGroups).toFixed(2), min: MIN_GROUP_CELLS })}</Text>}
             <SvgExportButton containerRef={plotRef} name={`sashimi-${cluster.gene || cluster.id}`} />
           </Space>
           <div ref={plotRef} style={{ overflowX: "auto" }}>
-            <SashimiPlot cluster={cluster} tracks={tracks} width={Math.max(520, width)} highlight={highlight} />
+            <SashimiPlot
+              cluster={{ ...cluster, junctions: shownIdx.map((j) => cluster.junctions[j]) }}
+              tracks={tracks.map((tr) => ({ ...tr, counts: shownIdx.map((j) => tr.counts[j]) }))}
+              junctionIndex={shownIdx}
+              width={Math.max(520, width)}
+              highlight={highlight == null ? null : shownIdx.indexOf(highlight)}
+              transcripts={transcripts}
+              event={spliceEvent}
+            />
           </div>
+          {shownIdx.length < cluster.junctions.length && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {t(`${k}.focus-note`, { shown: shownIdx.length, total: cluster.junctions.length })}
+            </Text>
+          )}
+          {cnInfo?.flag && (
+            <Alert
+              type="warning"
+              showIcon
+              message={t(`${k}.cn-flag`, {
+                gene: cluster.gene || "this gene",
+                cn: Number.isFinite(cnInfo.all) ? cnInfo.all.toFixed(0) : "?",
+                groups: cnInfo.byGroup.filter((g) => Number.isFinite(g.cn)).map((g) => `${g.group} ${g.cn.toFixed(0)}`).join(", ") || "–",
+              })}
+            />
+          )}
+          {viewEvent && eventGroups.length > 0 && (
+            <div>
+              <Space size={6} wrap>
+                <Text strong>{t(`${k}.event-by-group`, { event: viewEvent.type === "cassette" && viewEvent.exonNumber != null ? `exon ${viewEvent.exonNumber} inclusion` : viewEvent.label })}</Text>
+                <HintLine inline text={t(`${k}.event-by-group-help`, { min: MIN_GROUP_CELLS })} />
+              </Space>
+              <Violins groups={eventGroups} domain={[0, 1]} yTitle="PSI" height={200} />
+            </div>
+          )}
           <Space size={4} wrap>
             {cluster.junctions.map((jn, j) => (
               <Tag
