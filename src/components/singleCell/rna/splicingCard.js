@@ -22,11 +22,13 @@ import {
   variantByGroup,
   variantSummary,
 } from "../../../helpers/singleCell/splicing";
-import { byGroupEvidence, junctionType, rankClustersByGroup, sashimiGroups, variantLoci, variantSliceCells, variantVsCopyNumber } from "../../../helpers/singleCell/sashimi";
+import { junctionType, rankClustersByGroup, sashimiGroups, variantLoci, variantSliceCells, variantVsCopyNumber } from "../../../helpers/singleCell/sashimi";
 import { cnAtPosition, geneLocus } from "../../../helpers/singleCell/dosage";
 import { formatP } from "../../../helpers/singleCell/tests";
 import { NO_READS_COLOR, junctionColor, psiColor, readsColor } from "../../../helpers/singleCell/rnaColors";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
+import { byNotability, clusterNotability, pageOf } from "../../../helpers/singleCell/rnaHeadlineFindings";
+import SpliceFindingsList from "./spliceFindingsList";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -46,6 +48,12 @@ const cnColor = (cn) => {
 const clusterStart = (c) => Math.min(...c.junctions.map((j) => Number(j.start)));
 const clusterEnd = (c) => Math.max(...c.junctions.map((j) => Number(j.end)));
 const chrLabel = (c) => `chr${`${c}`.replace(/^chr/, "")}`;
+const PAGE_SIZE = 8;
+/** Scroll an element into view after the next paint (the picked cluster / variant re-renders first). */
+const scrollSoon = (ref) =>
+  setTimeout(() => {
+    if (ref.current?.scrollIntoView) ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 120);
 
 /** Group-by choices: the DNA clone, then categorical rna/cells.json fields. */
 function useGroupFields(summary) {
@@ -85,7 +93,7 @@ function LabelledStrips({ rows, nTree, width, strips, ariaLabel }) {
 }
 
 /** Known splice variants (EGFRvIII, MET exon 14 skipping, ...): summary, per-cell strips with clone and gene CN, per-group table, CN link, IGV. */
-function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cellOf, spliceReads }) {
+function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cellOf, spliceReads, request }) {
   const { t } = useTranslation("common");
   const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const cn = useSelector((s) => s.SingleCell.cn);
@@ -93,6 +101,14 @@ function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cell
   const shown = useMemo(() => variants.filter((v) => Object.keys(v.cells || {}).length > 0), [variants]);
   const [picked, setPicked] = useState(null);
   useEffect(() => setPicked((p) => (shown.some((v) => v.id === p) ? p : [...shown].sort((a, b) => (b.n_cells_alt || 0) - (a.n_cells_alt || 0))[0]?.id)), [shown]);
+  const boxRef = useRef(null);
+  // a finding picked above: open its variant and scroll to it
+  useEffect(() => {
+    if (!request || !shown.some((v) => v.id === request.id)) return;
+    setPicked(request.id);
+    scrollSoon(boxRef);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request]);
   const variant = shown.find((v) => v.id === picked);
   const summaries = useMemo(() => shown.map((v) => ({ ...v, key: v.id, ...variantSummary(v) })), [shown]);
   const groups = useMemo(() => (variant ? variantByGroup(variant, groupOf) : []), [variant, groupOf]);
@@ -161,7 +177,7 @@ function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cell
         }
       : null;
   return (
-    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+    <Space direction="vertical" size={8} style={{ width: "100%" }} ref={boxRef}>
       <Space size={4}>
         <Text strong>{t(`${k}.variants-title`)}</Text>
         <HintLine inline text={t(`${k}.variants-help`)} />
@@ -248,9 +264,13 @@ function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cell
 const TYPE_FILTERS = ["all", "alternative", "novel"];
 
 /** Intron clusters: ranked by difference between groups; sashimi per group, per-cell usage in tree order. */
-function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cloneStrip }) {
+function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cloneStrip, request }) {
   const { t } = useTranslation("common");
   const [query, setQuery] = useState("");
+  const [queryText, setQueryText] = useState("");
+  const [page, setPage] = useState(1);
+  const pending = useRef(null);
+  const boxRef = useRef(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [picked, setPicked] = useState(null);
   const [mode, setMode] = useState("groups");
@@ -262,9 +282,32 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
     return ranked
       .filter((r) => keep.has(r.id))
       .filter((r) => typeFilter === "all" || (typeFilter === "novel" ? r.types.some((x) => x.startsWith("novel")) : r.types.some((x) => x !== "annotated")))
-      .sort(byGroupEvidence);
+      .sort(byNotability);
   }, [ranked, clusters, query, typeFilter]);
+  // a finding picked above: clear the filters, then select its cluster, show its table page and scroll to the plots
   useEffect(() => {
+    if (!request) return;
+    if (!query && typeFilter === "all" && tableRows.some((r) => r.id === request.id)) {
+      setPicked(request.id);
+      setPage(pageOf(tableRows, request.id, PAGE_SIZE));
+      scrollSoon(boxRef);
+      return;
+    }
+    pending.current = request.id;
+    setQuery("");
+    setQueryText("");
+    setTypeFilter("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request]);
+  useEffect(() => {
+    const id = pending.current;
+    if (id && tableRows.some((r) => r.id === id)) {
+      pending.current = null;
+      setPicked(id);
+      setPage(pageOf(tableRows, id, PAGE_SIZE));
+      scrollSoon(boxRef);
+      return;
+    }
     if (tableRows.length && !tableRows.some((r) => r.id === picked)) setPicked(tableRows[0].id);
   }, [tableRows, picked]);
   useEffect(() => setHighlight(null), [picked]);
@@ -314,8 +357,22 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
       <Space wrap>
         <Text strong>{t(`${k}.clusters-title`)}</Text>
-        <HintLine inline text={t(`${k}.rank-help`)} />
-        <Input.Search size="small" allowClear placeholder={t(`${k}.search-gene`)} style={{ width: 180 }} onSearch={setQuery} onChange={(e) => !e.target.value && setQuery("")} />
+        <HintLine inline text={`${t(`${k}.rank-help`)} ${t(`${k}.notability-help`)}`} />
+        <Input.Search
+          size="small"
+          allowClear
+          placeholder={t(`${k}.search-gene`)}
+          style={{ width: 180 }}
+          value={queryText}
+          onSearch={(v) => {
+            setQuery(v);
+            setPage(1);
+          }}
+          onChange={(e) => {
+            setQueryText(e.target.value);
+            if (!e.target.value) setQuery("");
+          }}
+        />
         <Segmented size="small" value={typeFilter} onChange={setTypeFilter} options={TYPE_FILTERS.map((f) => ({ value: f, label: t(`${k}.filter-${f}`) }))} />
         <Text type="secondary">
           {tableRows.length} / {clusters.length}
@@ -325,7 +382,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
         size="small"
         rowKey="id"
         dataSource={tableRows}
-        pagination={{ pageSize: 8, size: "small", showSizeChanger: false }}
+        pagination={{ pageSize: PAGE_SIZE, size: "small", showSizeChanger: false, current: page, onChange: setPage }}
         rowClassName={(r) => (r.id === picked ? "ant-table-row-selected" : "")}
         onRow={(r) => ({ onClick: () => setPicked(r.id), style: { cursor: "pointer" } })}
         scroll={{ x: "max-content" }}
@@ -339,7 +396,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
                 {(r.cluster.selected_by || (r.cluster.cohort ? ["cohort"] : []))
                   .filter((x) => x !== "dispersion")
                   .map((x) => (
-                    <Tag key={x} bordered={false}>
+                    <Tag key={x} bordered={false} color={x === "finding" ? "red" : undefined}>
                       {t(`${k}.why-${x}`)}
                     </Tag>
                   ))}
@@ -363,6 +420,16 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
             ),
           },
           { title: t(`${k}.col-junctions`), key: "nj", align: "right", render: (_, r) => r.cluster.junctions.length },
+          {
+            title: t(`${k}.col-notability`),
+            key: "notability",
+            align: "right",
+            render: (_, r) => {
+              const n = clusterNotability(r);
+              return <Text strong={n.hasFinding}>{n.score.toFixed(1)}</Text>;
+            },
+            sorter: (a, b) => -byNotability(a, b),
+          },
           { title: t(`${k}.col-cells-reads`), dataIndex: "nCells", align: "right", sorter: (a, b) => a.nCells - b.nCells },
           { title: t(`${k}.col-dpsi-groups`), dataIndex: "dpsi", align: "right", render: (v) => (Number.isFinite(v) ? v.toFixed(2) : "–"), sorter: (a, b) => (a.dpsi || 0) - (b.dpsi || 0) },
           { title: t(`${k}.col-q-groups`), dataIndex: "q", align: "right", render: fmtQ, sorter: (a, b) => (Number.isFinite(a.q) ? a.q : 2) - (Number.isFinite(b.q) ? b.q : 2) },
@@ -377,7 +444,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
       />
       {cluster && (
         <>
-          <Space wrap>
+          <Space wrap ref={boxRef}>
             <Text strong>
               {cluster.gene || "?"} · {junctionLabel(chrLabel(cluster.chromosome), { start: clusterStart(cluster), end: clusterEnd(cluster) })}
             </Text>
@@ -451,7 +518,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
  * variants with IGV slices); PSI per group (DNA clone, cell state, region,
  * ...) is pooled here and clusters are ranked by per-cell differences.
  */
-export default function SplicingCard({ summary }) {
+export default function SplicingCard({ summary, focus = null }) {
   const { t } = useTranslation("common");
   const source = useSelector((s) => s.SingleCell.rnaSplicing);
   const dnaCells = useSelector((s) => s.SingleCell.cells);
@@ -460,7 +527,22 @@ export default function SplicingCard({ summary }) {
   const [ref, width] = useContainerWidth(1000);
   const fields = useGroupFields(summary);
   const [field, setField] = useState("clone");
+  const [variantRequest, setVariantRequest] = useState(null);
+  const [clusterRequest, setClusterRequest] = useState(null);
+  const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const data = source?.status === "ok" ? source.data : null;
+  const findings = useMemo(() => data?.findings || [], [data]);
+  const pickFinding = (f) => {
+    if (!f) return;
+    if (f.kind === "clone_differential" && field !== "clone") setField("clone");
+    if (f.variantId) setVariantRequest({ id: f.variantId, at: Date.now() });
+    else if (f.clusterId) setClusterRequest({ id: f.clusterId, at: Date.now() });
+  };
+  // a finding picked in the RNA tab's findings strip
+  useEffect(() => {
+    if (focus?.id) pickFinding(findings.find((f) => f.id === focus.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, findings]);
   const { cellOf } = useMemo(() => rnaCellMaps([], summary?.cells || [], data?.cellMap), [summary, data]);
   const cloneOf = useMemo(() => new Map(dnaCells.map((c) => [c.cell_id, c.clone_id])), [dnaCells]);
   const groupOf = useMemo(() => rnaGrouping(field, summary?.cells || [], cloneOf, cellOf), [field, summary, cloneOf, cellOf]);
@@ -515,13 +597,26 @@ export default function SplicingCard({ summary }) {
     >
       <div ref={ref}>
         <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <SpliceFindingsList findings={findings} onPick={pickFinding} spliceReads={data.spliceReads} patientId={patientId} />
+          </Col>
           {data.variants.length > 0 && (
             <Col span={24}>
-              <KnownVariants variants={data.variants} rows={rows} nTree={nTree} groupOf={groupOf} width={innerW} cloneStrip={cloneStrip} cellOf={cellOf} spliceReads={data.spliceReads} />
+              <KnownVariants
+                variants={data.variants}
+                rows={rows}
+                nTree={nTree}
+                groupOf={groupOf}
+                width={innerW}
+                cloneStrip={cloneStrip}
+                cellOf={cellOf}
+                spliceReads={data.spliceReads}
+                request={variantRequest}
+              />
             </Col>
           )}
           <Col span={24}>
-            <ClusterExplorer clusters={data.clusters} rows={rows} nTree={nTree} groupOf={groupOf} groupColor={groupColor} width={innerW} cloneStrip={cloneStrip} />
+            <ClusterExplorer clusters={data.clusters} rows={rows} nTree={nTree} groupOf={groupOf} groupColor={groupColor} width={innerW} cloneStrip={cloneStrip} request={clusterRequest} />
           </Col>
         </Row>
       </div>
