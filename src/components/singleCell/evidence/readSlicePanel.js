@@ -214,14 +214,14 @@ export default function ReadSlicePanel() {
     {
       title: "DNA alt / total",
       key: "dna",
-      width: 110,
+      width: 136,
       sorter: (a, b) => (a.alt ?? -1) - (b.alt ?? -1),
       render: (_, r) => (r.dp == null ? "–" : `${r.alt} / ${r.dp}`),
     },
     {
       title: "P(mutant)",
       dataIndex: "p",
-      width: 90,
+      width: 108,
       sorter: (a, b) => (a.p ?? -1) - (b.p ?? -1),
       render: (p) => (p == null ? "–" : p.toFixed(2)),
     },
@@ -240,7 +240,7 @@ export default function ReadSlicePanel() {
         </Tooltip>
       ),
       dataIndex: "miss",
-      width: 110,
+      width: 130,
       sorter: (a, b) => (a.miss ?? 2) - (b.miss ?? 2),
       render: (m) =>
         m == null ? "–" : (
@@ -326,7 +326,7 @@ export default function ReadSlicePanel() {
                 dataSource={rows}
                 columns={columns}
                 pagination={{ pageSize: 25, size: "small" }}
-                scroll={{ x: 790 }}
+                scroll={{ x: 880 }}
                 onRow={(r) => ({
                   onClick: () => toggle(r.id),
                   style: { cursor: "pointer", background: selected.has(r.id) ? "rgba(24,144,255,0.12)" : undefined },
