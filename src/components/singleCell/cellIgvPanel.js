@@ -190,7 +190,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
     return (
       <Wrapper>
         {error && <Alert type="warning" showIcon className="sc-alert" message={error} />}
-        <div ref={containerRef} className="sc-igv" />
+        <div ref={containerRef} className="sc-igv sc-light-island" />
       </Wrapper>
     );
   }
@@ -236,7 +236,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
         {error && <Alert type="warning" showIcon className="sc-alert" message={error} />}
         <div
           ref={containerRef}
-          className="sc-igv"
+          className="sc-igv sc-light-island"
           style={{
             marginLeft: Math.max(0, plotInsets.left + IGV_GUTTER.left),
             marginRight: Math.max(0, plotInsets.right + IGV_GUTTER.right),
