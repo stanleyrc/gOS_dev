@@ -121,6 +121,17 @@ describe("mutation colours and bins", () => {
     expect(vafRGBA(1)).toBe(rgba("#000000"));
   });
 
+  it("draws VAF dark grey to light grey in the dark theme, no reads darkest", () => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    try {
+      expect(vafRGBA(0)).toBe(rgba("#2C2C2C"));
+      expect(vafRGBA(1)).toBe(rgba("#C8C8C8"));
+      expect(vafRGBA(null)).toBe(rgba("#191919"));
+    } finally {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  });
+
   it("bins sites when they outnumber pixels, else spreads them", () => {
     const many = columnBins(1000, 100);
     expect(many.binned).toBe(true);

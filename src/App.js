@@ -41,8 +41,11 @@ function App() {
     if ((preset === "pgv" || preset === "pgvDark") && preset !== want) {
       store.dispatch(singleCellActions.updatePalette({ preset: want, ...CN_PALETTE_PRESETS[want] }));
     } else if (preset === want) {
-      // force heatmaps to redraw with the theme-aware neutral colours
-      store.dispatch(singleCellActions.updatePalette({ ...store.getState().SingleCell.palette }));
+      // force heatmaps to redraw with the theme-aware neutral colours; a stored
+      // dark palette still carrying the retired magenta 11+ gets the new one
+      const palette = store.getState().SingleCell.palette;
+      const retired = (list) => (list || []).map((c) => (`${c}`.toLowerCase() === "#f759ab" ? CN_PALETTE_PRESETS.pgvDark.total[11] : c));
+      store.dispatch(singleCellActions.updatePalette(preset === "pgvDark" ? { ...palette, total: retired(palette.total), allelic: retired(palette.allelic) } : { ...palette }));
     }
     return onAppThemeChange(setMode);
   }, [mode]);
