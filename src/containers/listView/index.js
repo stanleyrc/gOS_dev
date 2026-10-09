@@ -56,6 +56,7 @@ import {
 } from "../../helpers/browseScope";
 import { userAuthRepository } from "../../helpers/userAuth";
 import SingleCellCohortPanel from "../../components/singleCell/singleCellCohortPanel";
+import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import {
   isCellRecord,
   isPatientRecord,
@@ -83,7 +84,10 @@ export class ListView extends Component {
     super(props);
     this.state = {
       isChatOpen: false,
-      activeTab: props.listViewTarget?.tab || "cases",
+      activeTab:
+        peekHelpTarget()?.scope === "cohort"
+          ? "singleCellCohort"
+          : props.listViewTarget?.tab || "cases",
       favoriteModalOpen: false,
       favoriteName: "",
       editingFavoriteSearch: null,
@@ -123,9 +127,15 @@ export class ListView extends Component {
       this.handleSavedSearchUserChanged,
     );
     this.props.fetchFavoriteSearches();
+    // Help Center "Go" to a single-cell cohort view
+    this.unsubscribeHelpTarget = subscribeHelpTarget((target) => {
+      if (target?.scope === "cohort")
+        this.setState({ activeTab: "singleCellCohort" });
+    });
   }
 
   componentWillUnmount() {
+    if (this.unsubscribeHelpTarget) this.unsubscribeHelpTarget();
     userAuthRepository.emitter.off(
       "userChanged",
       this.handleSavedSearchUserChanged,
