@@ -2333,7 +2333,8 @@
         "evidence-hint-fusion": "Expression of both partners (mean log-normalised · share of cells detecting it), chimeric RNA reads joining them and each partner's expression per exon (counts per million; dashed line: DNA breakpoint, the fusion keeps the 5′ partner's exons before it and the 3′ partner's exons after it).",
         "no-evidence": "Exon-level and chimeric-read evidence has not been exported for this patient yet.",
         "chimeric": "{{cells}} of {{withRna}} cells with chimeric reads ({{reads}} reads in Arriba calls, {{discarded}} in discarded calls)",
-        "exon-caption": "{{transcript}}, {{n}} exons; {{side}} partner, DNA breakpoint at exon {{exon}}"
+        "exon-caption": "{{transcript}}, {{n}} exons; {{side}} partner, DNA breakpoint at exon {{exon}}",
+        "small-strata": "Few cells share a plate with the other group, so the test has little power. \"Same plates\" usually gives the largest within-plate comparison; \"Sister clade\" the closest genetic match."
       }
     },
     "tracks-modal": {
