@@ -29,6 +29,7 @@ import { shortLabel } from "../../helpers/singleCell/walkPlotState";
 import WalksLegend from "../../components/singleCell/ecdna/walksLegend";
 import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
+import { linkAppliesTo, readDeepLink, walkIdsForLabels } from "../../helpers/singleCell/deepLink";
 
 const { Text } = Typography;
 const PADS = [5e4, 1e5, 2.5e5, 5e5, 1e6, 2e6];
@@ -87,6 +88,17 @@ export default function SingleCellEcdnaTab() {
   const [genesRef, genesWidth] = useContainerWidth(1200);
 
   const families = useMemo(() => walkFamilies(filtered), [filtered]);
+  // ?walk=<label>,<label> draws those walks and highlights the first, once per patient
+  const linkedFor = useRef(null);
+  useEffect(() => {
+    if (!all.length || linkedFor.current === patient) return;
+    linkedFor.current = patient;
+    const link = readDeepLink();
+    const ids = linkAppliesTo(link, patient) ? walkIdsForLabels(all, link.walks) : [];
+    if (!ids.length) return;
+    setSelected(ids);
+    setFocus(ids[0]);
+  }, [all, patient]);
   useEffect(() => {
     if (!filtered.length) return;
     setSelected((prev) => {
