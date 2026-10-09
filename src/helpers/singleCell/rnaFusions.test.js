@@ -105,3 +105,38 @@ describe("cells and IGV", () => {
     expect(tracks[1]).toMatchObject({ id: rnaTrackName("r1"), name: rnaTrackName("r1"), url: "data/P1/rna/reads/r1.bam", indexURL: "data/P1/rna/reads/r1.bam.bai", groupBy: "tag:ZF", colorBy: "tag:ZF" });
   });
 });
+
+describe("real BWH70 fusions.json (no BAM slices yet)", () => {
+  const real = require("./__fixtures__/rnaFusions.BWH70.json");
+  const { geneDisplay, isNonProductive } = require("./rnaFusions");
+  it("normalises 800 fusions quickly", () => {
+    const t0 = Date.now();
+    const out = normalizeFusions(real);
+    expect(out.fusions.length).toBe(802);
+    expect(Date.now() - t0).toBeLessThan(500);
+    const mast = out.fusions.find((f) => f.gene1 === "MAST4");
+    expect(mast.label).toBe("MAST4::MOCS2-DT");
+    expect(typeof mast.known).toBe("boolean");
+  });
+  it("splits intergenic gene strings for display", () => {
+    expect(geneDisplay("MOCS2-DT(168033),ENSG00000285831(2166)")).toEqual({ name: "MOCS2-DT", rest: ["ENSG00000285831(2166)"], full: "MOCS2-DT(168033),ENSG00000285831(2166)", intergenic: true });
+    expect(isNonProductive({ type: "inversion/3'-3'" })).toBe(true);
+    expect(isNonProductive({ type: "translocation" })).toBe(false);
+  });
+  it("finds the RNA support of the DNA fusion events", () => {
+    const out = normalizeFusions(real);
+    ["EGFR::LANCL2", "LANCL2::EGFR", "PDE10A::DYNLT1", "PRDM16::AGO3"].forEach((gene) => {
+      expect(matchRnaFusions({ gene, vartype: "fusion" }, out.fusions).length).toBeGreaterThan(0);
+    });
+    expect(matchRnaFusions({ gene: "ARID1A::PPP1R8", vartype: "fusion" }, out.fusions)).toEqual([]);
+  });
+  it("keeps DNA-matched fusions below the cell threshold, hides read-through", () => {
+    const out = normalizeFusions(real);
+    const shown = filterFusions(out.fusions, { minCells: 2, hideReadThrough: true, keepDnaMatched: true });
+    expect(shown.some((f) => f.dna_match)).toBe(true);
+    expect(shown.some((f) => /read-?through/.test(f.type))).toBe(false);
+    expect(shown.length).toBeLessThan(60);
+    // cells without slices: no default IGV cells
+    expect(defaultRnaCells(out.fusions[0], 6)).toEqual([]);
+  });
+});
