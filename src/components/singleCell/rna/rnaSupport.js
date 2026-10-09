@@ -15,25 +15,33 @@ const k = "components.single-cell.rna-fusions";
  * chosen for IGV and their tracks (per-cell RNA slices) to show next to the
  * DNA reads. `preferCells`: DNA cells already shown, whose RNA comes first.
  */
-export function useRnaSupport(record, preferCells = []) {
+export function useRnaSupport(record, preferCells = [], rnaFusion = null) {
   const source = useSelector((s) => s.SingleCell.rnaFusions);
   const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const fusion = isDnaFusionEvent(record) ? record : null;
-  const matches = useMemo(() => (fusion && source?.status === "ok" ? matchRnaFusions(fusion, source.data.fusions) : []), [fusion, source]);
+  // rnaFusion (the RNA fusion popup's plots): that fusion only, with the RNA of the shown DNA cells
+  const matches = useMemo(
+    () => (rnaFusion ? [rnaFusion] : fusion && source?.status === "ok" ? matchRnaFusions(fusion, source.data.fusions) : []),
+    [rnaFusion, fusion, source]
+  );
   const [index, setIndex] = useState(0);
   const best = matches[Math.min(index, Math.max(0, matches.length - 1))] || null;
   const [picked, setPicked] = useState([]);
   const [enabled, setEnabled] = useState(true);
   const preferKey = (preferCells || []).join("|");
   useEffect(() => {
-    setPicked(best ? defaultRnaCells(best, RNA_IGV_DEFAULT_CELLS, preferCells) : []);
+    if (rnaFusion && best) {
+      const want = new Set(preferCells || []);
+      setPicked(best.cells.filter((c) => c.bam && want.has(c.cell_id)).map((c) => c.rna_id));
+    } else setPicked(best ? defaultRnaCells(best, RNA_IGV_DEFAULT_CELLS, preferCells) : []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [best, preferKey]);
   useEffect(() => setIndex(0), [record]);
   const rnaTracks = enabled && best ? rnaTracksFor(best, picked, patientId) : [];
   return {
-    applies: Boolean(fusion),
-    status: source?.status,
+    applies: Boolean(fusion || rnaFusion),
+    own: Boolean(rnaFusion),
+    status: rnaFusion ? "ok" : source?.status,
     fusion: best,
     matches,
     index,
@@ -54,6 +62,16 @@ export function RnaSupportSection({ record, support }) {
   const [open, setOpen] = useState(null);
   const carriers = useMemo(() => new Set(`${record?.cell_ids || ""}`.split(",").filter(Boolean)), [record]);
   if (!support.applies) return null;
+  if (support.own) {
+    // the RNA fusion popup already lists the cells: just the toggle for the shown cells' RNA reads
+    return (
+      <Space wrap>
+        <Switch size="small" checked={support.enabled} onChange={support.setEnabled} />
+        <Text>{t(`${k}.plots-rna-reads`)}</Text>
+        <Text type="secondary">{support.picked.length ? support.picked.join(", ") : t(`${k}.plots-no-rna-slice`)}</Text>
+      </Space>
+    );
+  }
   if (support.status !== "ok") return <Text type="secondary">{t(`${k}.support-title`)} · {t(`${k}.support-no-file`)}</Text>;
   const f = support.fusion;
   if (!f) return <Text type="secondary">{t(`${k}.support-title`)} · {t(`${k}.support-none`)}</Text>;
