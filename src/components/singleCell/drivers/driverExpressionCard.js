@@ -133,6 +133,9 @@ export default function DriverExpressionCard({ driver, carriers, others, rna }) 
                 })}
               </Text>
             )}
+            {!result.pooled && Math.min(result.strata.reduce((s, x) => s + x.nA, 0), result.strata.reduce((s, x) => s + x.nB, 0)) < 10 && (
+              <Alert type="info" showIcon message={t("components.single-cell.drivers.small-strata")} />
+            )}
             <VolcanoPlot genes={result.rows} labels={labels} qCut={Q_CUT} lfcCut={LFC_CUT} selectedGene={gene} onGene={setGene} />
             <Space wrap>
               <Segmented
