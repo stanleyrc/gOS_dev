@@ -28,7 +28,7 @@ import { SC_GUTTER } from "../../components/singleCell/density";
 const { Text } = Typography;
 const PADS = [5e4, 1e5, 2.5e5, 5e5, 1e6, 2e6];
 const padLabel = (p) => (p >= 1e6 ? `${p / 1e6} Mb` : `${p / 1e3} kb`);
-const GENES_H = 72;
+const GENES_H = 76;
 
 /** Padded, merged genomic domains covering the given walks (at most six panels). */
 function walksDomains(walks, chromoBins, pad) {
@@ -149,7 +149,7 @@ export default function SingleCellEcdnaTab() {
               }
             >
               <WalksPlot walks={shown} families={shownFamilies} colorOf={colorOf} focus={focus} onFocus={(id) => setFocus((f) => (f === id ? null : id))} labelWidth={labelWidth} rightWidth={rightWidth} laneHeight={laneHeight} colorBy={colorBy} />
-              <div ref={genesRef} style={{ position: "relative", marginLeft: labelWidth, marginRight: rightWidth, height: GENES_H, marginTop: 0 }}>
+              <div ref={genesRef} style={{ position: "relative", marginLeft: labelWidth, marginRight: rightWidth, height: GENES_H, marginTop: 4 }}>
                 {genesList.length > 0 && domains?.length > 0 && genesWidth > 200 && (
                   <>
                     <GenesPlot {...{ width: genesWidth, height: GENES_H, domains, genesList }} />

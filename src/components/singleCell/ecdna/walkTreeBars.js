@@ -123,7 +123,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
     if (scaleMode === "log") return Math.log1p(v) / Math.log1p(sharedMax);
     return v / (scaleMode === "shared" ? sharedMax : colMax[ci]);
   };
-  const colLabel = (c) => (c.type === "total" ? t("components.single-cell.ecdna.tc-total", { family: c.block.label }) : c.type === "rare" ? t("components.single-cell.ecdna.tc-rare-col") : c.walks[0].label);
+  const colLabel = (c, w = Infinity) => (c.type === "total" ? t("components.single-cell.ecdna.tc-total", { family: c.block.label }) : c.type === "rare" ? (w < 30 ? `${c.walks.length}r` : t("components.single-cell.ecdna.tc-rare-col")) : c.walks[0].label);
   const colColor = (c) => (c.type === "walk" ? colorOf(c.walks[0].id) : TOTAL_COLOR);
   const fmt = (v) => (v >= 100 ? d3.format(".0f")(v) : v >= 10 ? d3.format(".0f")(v) : d3.format(".1~f")(v));
   const clip = (s, w, px = 6.2) => {
@@ -277,7 +277,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               const w = widths[ci];
               const max = c.type === "rare" ? null : scaleMode === "column" ? colMax[ci] : sharedMax;
               const maxTxt = max != null && scaleMode === "column" ? fmt(max) : "";
-              const label = colLabel(c);
+              const label = colLabel(c, w);
               const room = w - (maxTxt && w > 70 ? maxTxt.length * 5.6 + 4 : 0);
               return (
                 <g key={c.key}>
@@ -356,9 +356,9 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               const y = si * SUM_ROW + 2;
               return (
                 <g key={`${s.clone}`}>
-                  <rect x={TREE_WIDTH - 70} y={y + 2} width={8} height={SUM_ROW - 4} fill={cloneColors[s.clone] || "#bfbfbf"} rx={1} />
-                  <text x={TREE_WIDTH - 58} y={y + SUM_ROW / 2} dy="0.35em" fontSize={10} fill="#434343">
-                    {clip(t("components.single-cell.ecdna.tc-clone-row", { clone: s.clone, measured: s.measured, n: s.n }), 58, 5.6)}
+                  <rect x={TREE_WIDTH - 118} y={y + 2} width={8} height={SUM_ROW - 4} fill={cloneColors[s.clone] || "#bfbfbf"} rx={1} />
+                  <text x={TREE_WIDTH - 106} y={y + SUM_ROW / 2} dy="0.35em" fontSize={10} fill="#434343">
+                    {clip(t("components.single-cell.ecdna.tc-clone-row", { clone: s.clone, measured: s.measured, n: s.n }), 104, 5.6)}
                     <title>{`${s.clone}: ${s.measured} of ${s.n} cells with walk counts`}</title>
                   </text>
                   {cols.map((c, ci) => {
