@@ -1,4 +1,5 @@
 import {
+  excludedCellIds,
   cellCycleConcordance,
   hotspotGenotypes,
   mergePrecomputeIntoCells,
@@ -113,5 +114,16 @@ describe("precompute helpers", () => {
       ["P3", "failed", 0],
     ]);
     expect(statusRows(null)).toEqual({ steps: [], rows: [] });
+  });
+
+  it("excludes cells by QC rules and a manual list", () => {
+    const cells = mergePrecomputeIntoCells([{ cell_id: "a" }, { cell_id: "b" }, { cell_id: "c" }, { cell_id: "d" }], {
+      qc: { cells: [{ cell_id: "a", flags: "doublet" }, { cell_id: "b", flags: "high_mapd", cn_inconsistent: true }, { cell_id: "c", flags: "" }] },
+      sphase: { cells: [{ cell_id: "c", rt_cor: 0.2, s_call: true }] },
+    });
+    expect([...excludedCellIds(cells, ["doublet"])]).toEqual(["a"]);
+    expect([...excludedCellIds(cells, ["cn_inconsistent", "s_phase"])].sort()).toEqual(["b", "c"]);
+    expect([...excludedCellIds(cells, [], ["d"])]).toEqual(["d"]);
+    expect(excludedCellIds(cells).size).toBe(0);
   });
 });
