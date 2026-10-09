@@ -12,6 +12,7 @@ export function normalizeColumnLayout(value) {
         .filter(([key, width]) => isColumnKey(key) && Number.isFinite(width) && width > 0),
     ),
     columnOrderKeys: uniqueKeys(value?.columnOrderKeys),
+    pinnedColumnKeys: uniqueKeys(value?.pinnedColumnKeys),
   };
 }
 
@@ -50,6 +51,9 @@ export function saveColumnLayout(patch, storage = getStorage()) {
     columnOrderKeys: Array.isArray(patch?.columnOrderKeys)
       ? mergeColumnOrder(previous.columnOrderKeys, normalized.columnOrderKeys)
       : previous.columnOrderKeys,
+    pinnedColumnKeys: Array.isArray(patch?.pinnedColumnKeys)
+      ? normalized.pinnedColumnKeys
+      : previous.pinnedColumnKeys,
   };
   try {
     storage.setItem(COLUMN_LAYOUT_STORAGE_KEY, JSON.stringify(layout));

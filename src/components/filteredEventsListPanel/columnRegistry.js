@@ -8,6 +8,7 @@ import {
   ClinvarIconRenderer,
   GnomadAfRenderer,
 } from "./columnRenderers";
+import VafRenderer from "./columnRenderers/vafRenderer";
 
 /**
  * filteredEventsColumnRegistry
@@ -34,6 +35,7 @@ export const filteredEventsColumnRegistry = {
 };
 
 const filteredEventsColumnIdRegistry = {
+  vaf: VafRenderer,
   clinvar: ClinvarIconRenderer,
   gnomad_af: GnomadAfRenderer,
 };

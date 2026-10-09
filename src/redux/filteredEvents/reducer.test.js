@@ -1,21 +1,23 @@
 /** @jest-environment node */
 
-jest.mock("../../helpers/userAuth", () => ({
-  getCurrentUserId: () => "user-1",
-}));
-
 import actions from "./actions";
 import reducer from "./reducer";
 import { selectReportEventUids } from "./selectors";
 
+jest.mock("../../helpers/userAuth", () => ({
+  getCurrentUserId: () => "user-1",
+}));
+
 describe("FilteredEvents report selection", () => {
-  it("shows all tiers by default and restores that default for a new fetch", () => {
+  it("starts with no checked tier options and clears filters on new fetch or reset", () => {
     const initial = reducer(undefined, { type: "@@INIT" });
-    expect(initial.columnFilters).toEqual({ tier: [1, 2, 3] });
+    expect(initial.columnFilters).toEqual({});
 
     const changed = reducer(initial, actions.setColumnFilters({ tier: [1] }));
+    expect(changed.columnFilters).toEqual({ tier: [1] });
     const next = reducer(changed, actions.fetchFilteredEvents());
-    expect(next.columnFilters).toEqual({ tier: [1, 2, 3] });
+    expect(next.columnFilters).toEqual({});
+    expect(reducer(changed, actions.resetColumnFilters()).columnFilters).toEqual({});
   });
 
   it("tracks canonical event UIDs selected for the report", () => {

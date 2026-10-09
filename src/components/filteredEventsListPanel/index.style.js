@@ -149,6 +149,54 @@ const Wrapper = styled.div`
     content: none;
   }
 
+  .filtered-events-column-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .filtered-events-column-title-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .filtered-events-pin-control {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .ant-table-thead th:hover .filtered-events-pin-control,
+  .filtered-events-pin-control:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filtered-events-pin-control[aria-pressed="true"],
+  .filtered-events-pin-control:hover {
+    color: #1677ff;
+  }
+
+  .filtered-events-pin-control:focus-visible {
+    outline: 2px solid #1677ff;
+    outline-offset: 1px;
+  }
+
   .filtered-events-sort-control {
     appearance: none;
     border: 0;
@@ -190,6 +238,12 @@ const Wrapper = styled.div`
     cursor: col-resize;
     touch-action: none;
     user-select: none;
+  }
+
+  /* Keep a pinned header's handle inside its cell so the next sticky
+     header cannot cover the hit target with its own stacking context. */
+  .ant-table-cell-fix-left .filtered-events-resize-handle {
+    right: 0;
   }
 
   .filtered-events-resize-handle::after {

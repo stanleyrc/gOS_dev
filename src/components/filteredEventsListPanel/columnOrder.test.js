@@ -1,6 +1,33 @@
 /** @jest-environment node */
 
-import { moveColumnKey, orderMovableColumns } from "./columnOrder";
+import { applyColumnPins, moveColumnKey, orderMovableColumns } from "./columnOrder";
+
+describe("applyColumnPins", () => {
+  const columns = Object.freeze([
+    Object.freeze({ key: "select", fixed: "left" }),
+    Object.freeze({ key: "caller" }),
+    Object.freeze({ key: "gene", width: 240 }),
+    Object.freeze({ key: "tier", width: 120 }),
+    Object.freeze({ key: "actions", fixed: "right" }),
+  ]);
+
+  test("groups visible pins on the left in base order, retaining system-fixed sides", () => {
+    const result = applyColumnPins(columns, ["tier", "gene", "gene", "absent", "actions"]);
+    expect(result.map((column) => column.key)).toEqual(["select", "gene", "tier", "caller", "actions"]);
+    expect(result[1]).toEqual({ key: "gene", width: 240, fixed: "left" });
+    expect(result[2].fixed).toBe("left");
+    expect(result[4]).toBe(columns[4]);
+    expect(columns[2].fixed).toBeUndefined();
+  });
+
+  test("unpinning restores the untouched base order and ignores hidden/unknown keys", () => {
+    expect(applyColumnPins(columns, [])).toBe(columns);
+    expect(applyColumnPins(columns, ["absent"])).toBe(columns);
+    expect(applyColumnPins([], ["gene"])).toEqual([]);
+    expect(applyColumnPins(columns, ["tier"]).map((column) => column.key))
+      .toEqual(["select", "tier", "caller", "gene", "actions"]);
+  });
+});
 
 describe("moveColumnKey", () => {
   test.each([
