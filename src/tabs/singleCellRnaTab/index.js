@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Col, Empty, Row, Space, Switch, Tabs, Typography } from "antd";
@@ -19,6 +19,8 @@ import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
 import RnaFusionsCard from "../../components/singleCell/rna/rnaFusionsCard";
 import SplicingCard from "../../components/singleCell/rna/splicingCard";
+import RnaFindingsStrip from "../../components/singleCell/rna/rnaFindingsStrip";
+import { rnaFindingCounts } from "../../helpers/singleCell/rnaHeadlineFindings";
 import scaActions from "../../redux/scAnalysis/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
@@ -46,6 +48,12 @@ export default function SingleCellRnaTab() {
   // fusions / splicing tab only when the back end wrote either file (or it failed to parse)
   const hasFusions = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaFusions?.status));
   const hasSplicing = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaSplicing?.status));
+  // notable splicing findings + tier 1–2 fusion pairs, on the sub-tab label
+  const splicingFindings = useSelector((state) => (state.SingleCell.rnaSplicing?.status === "ok" ? state.SingleCell.rnaSplicing.data.findings : null));
+  const fusionList = useSelector((state) => (state.SingleCell.rnaFusions?.status === "ok" ? state.SingleCell.rnaFusions.data.fusions : null));
+  const findingCount = useMemo(() => rnaFindingCounts({ splicing: splicingFindings || [], fusions: fusionList || [] }).total, [splicingFindings, fusionList]);
+  // a splicing finding picked in the strip: open the sub-tab and the finding in the splicing card
+  const [spliceFocus, setSpliceFocus] = useState(null);
   // Violins follow the genes picked in the volcano or table.
   useEffect(() => {
     if (geneList.length) setViolinGenes(geneList.slice(0, 48));
@@ -88,6 +96,15 @@ export default function SingleCellRnaTab() {
         </Col>
         <Col span={24}>
           <SavedGroupsBar />
+        </Col>
+        <Col span={24}>
+          <RnaFindingsStrip
+            onPickSplicing={(f) => {
+              setSection("fusions");
+              setSpliceFocus({ id: f.id, at: Date.now() });
+            }}
+            onShowAll={() => setSection("fusions")}
+          />
         </Col>
         <Col span={24}>
           <Tabs
@@ -150,7 +167,12 @@ export default function SingleCellRnaTab() {
                 ? [
                     {
                       key: "fusions",
-                      label: t("components.single-cell.rna.section-fusions"),
+                      label: (
+                        <span>
+                          {t("components.single-cell.rna.section-fusions")}
+                          {findingCount > 0 && <Text type="danger"> · {t("components.single-cell.rna.section-fusions-count", { count: findingCount })}</Text>}
+                        </span>
+                      ),
                       children: (
                         <Row gutter={SC_GUTTER}>
                           {hasFusions && (
@@ -160,7 +182,7 @@ export default function SingleCellRnaTab() {
                           )}
                           {hasSplicing && (
                             <Col span={24}>
-                              <SplicingCard summary={summary} />
+                              <SplicingCard summary={summary} focus={spliceFocus} />
                             </Col>
                           )}
                         </Row>
