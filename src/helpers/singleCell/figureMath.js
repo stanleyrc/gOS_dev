@@ -280,3 +280,33 @@ export function countBy(cells, field) {
   });
   return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], undefined, { numeric: true }));
 }
+
+/**
+ * Display depths for a tree layout with over-long branches shortened (the
+ * paper's "//" breaks): a branch longer than `factor` x the median branch
+ * length (and longer than `minFrac` of the tree depth) is drawn at that cap. Returns { x: Float64Array per node, broken: Uint8Array per node
+ * (1 = the branch above the node was cut), maxX }.
+ */
+export function compressLongBranches(layout, { factor = 8, minFrac = 0.06 } = {}) {
+  const nodes = layout?.nodes || [];
+  const x = new Float64Array(nodes.length);
+  const broken = new Uint8Array(nodes.length);
+  if (!nodes.length) return { x, broken, maxX: 0 };
+  const lens = nodes.filter((n) => n.parent >= 0).map((n) => Math.max(0, n.x - nodes[n.parent].x)).sort((a, b) => a - b);
+  const med = lens.length ? lens[Math.floor(0.5 * (lens.length - 1))] : 0;
+  const cap = Math.max(med * factor, (layout.maxX || 0) * minFrac);
+  let maxX = 0;
+  // node ids are assigned in pre-order, so a parent always precedes its children
+  nodes.forEach((n, i) => {
+    if (n.parent < 0) {
+      x[i] = 0;
+      return;
+    }
+    const len = Math.max(0, n.x - nodes[n.parent].x);
+    const use = cap > 0 && len > cap ? cap : len;
+    broken[i] = cap > 0 && len > cap ? 1 : 0;
+    x[i] = x[n.parent] + use;
+    if (x[i] > maxX) maxX = x[i];
+  });
+  return { x, broken, maxX };
+}
