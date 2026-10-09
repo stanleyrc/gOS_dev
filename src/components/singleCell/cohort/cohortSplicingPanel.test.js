@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import cohort from "../../../helpers/singleCell/__fixtures__/cohortSplicing.json";
 import CohortSplicingPanel from "./cohortSplicingPanel";
 
@@ -12,14 +12,12 @@ if (!window.matchMedia) {
 
 describe("CohortSplicingPanel", () => {
   it("lists clusters by q and draws one panel per patient plus the PSI heatmap", async () => {
-    await act(async () => {
-      render(<CohortSplicingPanel dataset={{ id: "gbm-sc", dataPath: "data/" }} />);
-    });
+    render(<CohortSplicingPanel dataset={{ id: "gbm-sc", dataPath: "data/" }} />);
+    expect(await screen.findByText("1.0e-17")).toBeTruthy();
     expect(cohort.clusters.length).toBe(2);
     expect(screen.getAllByText("EGFR").length).toBeGreaterThan(0);
-    expect(screen.getByText("1.0e-17")).toBeTruthy();
     // P3: small-multiple title + heatmap column header
-    expect(screen.getAllByText("P3").length).toBeGreaterThanOrEqual(2);
+    expect((await screen.findAllByText("P3")).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("0.80")).toBeTruthy();
   });
 });

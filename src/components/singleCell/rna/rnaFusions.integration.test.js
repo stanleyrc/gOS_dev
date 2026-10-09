@@ -80,9 +80,8 @@ describe("RNA fusions card and popup", () => {
     expect(screen.getByText("SEPTIN14")).toBeTruthy();
     expect(screen.getByText("PTPRZ1")).toBeTruthy();
     expect(screen.queryByText("GENEA")).toBeNull();
-    await act(async () => {
-      fireEvent.click(screen.getByText("SEPTIN14"));
-    });
+    fireEvent.click(screen.getByText("SEPTIN14"));
+    expect(await screen.findByText("components.single-cell.rna-fusions.modal-title")).toBeTruthy();
     const modal = document.body.querySelector(".sc-rna-fusion-modal"); // eslint-disable-line testing-library/no-node-access
     expect(modal).not.toBeNull();
     const m = within(modal);
