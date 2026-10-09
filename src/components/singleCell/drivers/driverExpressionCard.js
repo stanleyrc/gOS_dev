@@ -40,8 +40,8 @@ function GeneDots({ gene, groups, row, labels }) {
   const [ref, width] = useContainerWidth(260);
   const theme = usePlotTheme();
   const [hover, setHover] = useState(null);
-  const M = { left: 36, right: 8, top: 22, bottom: 22 };
-  const H = 170;
+  const M = { left: 36, right: 8, top: 22, bottom: 36 };
+  const H = 184;
   const plotH = H - M.top - M.bottom;
   const max = Math.max(1e-9, ...groups.flatMap((g) => g.values.map((v) => v.v)));
   const y = (v) => M.top + plotH - (v / max) * plotH;
@@ -87,8 +87,12 @@ function GeneDots({ gene, groups, row, labels }) {
                 />
               ))}
               <line x1={cx - band * 0.3} x2={cx + band * 0.3} y1={y(med)} y2={y(med)} stroke={theme.text} strokeWidth={2} />
-              <text x={cx} y={H - 6} textAnchor="middle" fontSize={TYPE.tick} fill={theme.textSecondary}>
-                {`${g.label} (${g.values.length}, ${Math.round(det * 100)}% > 0)`}
+              {/* two lines: the group names are long and the panel is narrow */}
+              <text x={cx} y={H - 20} textAnchor="middle" fontSize={TYPE.tick} fill={theme.textSecondary}>
+                {g.label}
+              </text>
+              <text x={cx} y={H - 6} textAnchor="middle" fontSize={TYPE.tick} fill={theme.muted}>
+                {`${g.values.length} cells · ${Math.round(det * 100)}% > 0`}
               </text>
             </g>
           );
