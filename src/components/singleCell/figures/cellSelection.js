@@ -45,9 +45,10 @@ export function useSelectedIn(patient) {
 
 /** Sticky bar: what is selected, open the popup, clear. */
 export function SelectionBar() {
-  const { selection, clear, setOpen } = useCellSelection();
+  const { selection, clear, open, setOpen } = useCellSelection();
+  // the floating bar steps aside while the popup is open
   return (
-    <div className={`sc-fig-selbar${selection ? " is-active" : ""}`}>
+    <div className={`sc-fig-selbar${selection && !open ? " is-active" : ""}`}>
       {selection ? (
         <Space size={8} wrap>
           <Tag color="blue" style={{ marginInlineEnd: 0 }}>{`${selection.cells.size} cell${selection.cells.size === 1 ? "" : "s"}`}</Tag>
