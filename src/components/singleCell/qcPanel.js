@@ -29,12 +29,21 @@ const DNA_METRICS = [
   ["junction_count", "Junctions per cell", true, "high", "calls"],
   ...CELL_QC_METRICS.filter(([k]) => !["ploidy", "snv_count", "junction_count"].includes(k)).map(([k, l, log]) => [k, l, log, "both", "library"]),
 ];
+// Precomputed per-cell QC, S-phase and telomere metrics (srctools precompute; merged into the cell records)
+const PRECOMPUTE_METRICS = [
+  ["pc_ado", "Allelic dropout at germline hets", false, "high", "precompute"],
+  ["pc_mapd", "MAPD (500 kb bins)", false, "high", "precompute"],
+  ["pc_loh_het_rate", "Biallelic hets inside LOH (doublet signal)", false, "high", "precompute"],
+  ["pc_cn_resid", "Coverage vs JaBbA CN residual", false, "high", "precompute"],
+  ["pc_rt_cor", "Coverage vs replication timing (S-phase)", false, "high", "precompute"],
+  ["pc_tel_rel", "Telomere content (× normal cells)", false, "both", "precompute"],
+];
 const RNA_METRICS = [
   ["nCount_RNA", "RNA counts per cell", true, "both", "rna"],
   ["nFeature_RNA", "Genes detected per cell", true, "both", "rna"],
   ["percent_mt", "Mitochondrial reads (%)", false, "high", "rna"],
 ];
-const SECTIONS = ["cn", "calls", "library", "rna"];
+const SECTIONS = ["cn", "calls", "library", "precompute", "rna"];
 
 /**
  * QC of one patient's cells: copy-number metrics computed here from each
@@ -81,7 +90,7 @@ export default function QcPanel() {
     [cells, cnQc, tumorOnly, rnaById]
   );
   const metrics = useMemo(
-    () => [...DNA_METRICS, ...RNA_METRICS].filter(([k]) => rows.some((r) => Number.isFinite(Number(r[k])))),
+    () => [...DNA_METRICS, ...PRECOMPUTE_METRICS, ...RNA_METRICS].filter(([k]) => rows.some((r) => Number.isFinite(Number(r[k])))),
     [rows]
   );
   const shownMetrics = metrics.filter(([, , , , sec]) => section === "all" || sec === section);
