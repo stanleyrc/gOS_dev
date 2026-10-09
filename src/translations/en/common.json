@@ -1672,6 +1672,7 @@
         "color-clone": "Clone",
         "color-gene": "Gene: {{gene}}",
         "rna-only": "RNA only",
+        "clip": "Pin outliers to the edge ({{count}} ringed)",
         "not-in-tree": "no DNA cell in the tree",
         "no-umap": "No UMAP coordinates for this patient",
         "hint": "Hover to find a cell in the tree · click to select · ⌘/Ctrl-click to toggle · drag to lasso (Shift adds)",

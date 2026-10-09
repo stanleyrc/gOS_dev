@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { AutoComplete, Button, Card, Select, Space, Tag, Typography } from "antd";
+import { AutoComplete, Button, Card, Select, Space, Switch, Tag, Typography } from "antd";
 import { DotChartOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import scaActions from "../../redux/scAnalysis/actions";
@@ -17,9 +17,11 @@ import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
 import { Provenance } from "./hintLine";
 import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
+import { layoutEmbedding } from "../../helpers/singleCell/umapLayout";
 
 const { Text } = Typography;
-const HEIGHT = 440;
+const MIN_HEIGHT = 400;
+const MAX_HEIGHT = 560;
 const LEGEND_WIDTH = 240;
 const PAD = 14;
 const HIT_RADIUS = 8;
@@ -82,6 +84,8 @@ export default function UmapPanel() {
   const { matrix, summary } = useRnaData();
   const [k, setK] = useState(4);
   const [clustering, setClustering] = useState(false);
+  // clip far-away cells to the plot edge so they do not squash the rest
+  const [clip, setClip] = useState(true);
   // Quick clustering: PCA (10 PCs) on the 2,000 most variable genes, then
   // k-means; the labels become a metadata field usable everywhere.
   const runClustering = () => {
@@ -104,7 +108,9 @@ export default function UmapPanel() {
   const dragRef = useRef(null);
   const hoveredRef = useRef(null);
 
-  const width = Math.max(240, Math.min(containerWidth - LEGEND_WIDTH - 16, 820));
+  // the plot fills the card next to the legend; height follows the width within bounds
+  const width = Math.max(240, containerWidth - LEGEND_WIDTH - 16);
+  const height = Math.round(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, width * 0.55)));
   const inTree = useMemo(() => new Set(order), [order]);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   const selected = useMemo(() => new Set(selectedCellIds), [selectedCellIds]);
@@ -125,23 +131,17 @@ export default function UmapPanel() {
       (c) => Number.isFinite(c[xKey]) && Number.isFinite(c[yKey]) && (view === "all" || hasDna(c))
     );
     if (!list.length) return [];
-    const xs = list.map((c) => c[xKey]);
-    const ys = list.map((c) => c[yKey]);
-    const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
-    const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
-    const sx = (width - 2 * PAD) / Math.max(1e-9, x1 - x0);
-    const sy = (HEIGHT - 2 * PAD) / Math.max(1e-9, y1 - y0);
-    const s = Math.min(sx, sy);
-    const ox = (width - s * (x1 - x0)) / 2;
-    const oy = (HEIGHT - s * (y1 - y0)) / 2;
-    return list.map((c) => ({
+    const placed = layoutEmbedding(list.map((c) => ({ x: c[xKey], y: c[yKey] })), { width, height, margin: PAD, robust: clip });
+    return list.map((c, i) => ({
       cell: c,
       id: c.displayId,
       linked: c.cell_id != null && inTree.has(c.cell_id),
-      x: ox + (c[xKey] - x0) * s,
-      y: HEIGHT - (oy + (c[yKey] - y0) * s),
+      x: placed[i].px,
+      y: placed[i].py,
+      clipped: placed[i].clipped,
     }));
-  }, [summary, width, inTree, view]);
+  }, [summary, width, height, inTree, view, clip]);
+  const nClipped = points.filter((p) => p.clipped).length;
 
   /* ---- colour scale ---- */
   const field = summary?.fields.find((f) => f.name === colorBy) || null;
@@ -228,10 +228,10 @@ export default function UmapPanel() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.width = Math.floor(width * pixelRatio);
-    canvas.height = Math.floor(HEIGHT * pixelRatio);
+    canvas.height = Math.floor(height * pixelRatio);
     const ctx = canvas.getContext("2d");
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    ctx.clearRect(0, 0, width, HEIGHT);
+    ctx.clearRect(0, 0, width, height);
     const r = points.length > 2000 ? 2.5 : 4;
     // Unselected first, then selected on top, then the hovered cell.
     const draw = (p, emphasis) => {
@@ -244,6 +244,14 @@ export default function UmapPanel() {
         // RNA-only cells (no DNA cell in the tree): hollow.
         ctx.strokeStyle = scale.color(p) === NO_DATA ? pt.faint : scale.color(p);
         ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      if (p.clipped) {
+        // pinned at the edge: a ring marks that the cell lies further out
+        ctx.strokeStyle = pt.muted || pt.text;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r + 2.5, 0, 2 * Math.PI);
         ctx.stroke();
       }
       if (emphasis) {
@@ -272,7 +280,7 @@ export default function UmapPanel() {
       ctx.fill();
       ctx.stroke();
     }
-  }, [points, scale, selected, hoveredCellId, lasso, width, pixelRatio, pt]);
+  }, [points, scale, selected, hoveredCellId, lasso, width, height, pixelRatio, pt]);
 
   /* ---- interaction ---- */
   const local = (event) => {
@@ -454,10 +462,10 @@ export default function UmapPanel() {
           <Text type="secondary">{t("components.single-cell.umap.no-umap")}</Text>
         ) : (
           <div ref={containerRef} className="sc-umap">
-            <div className="sc-umap-plot" style={{ width, height: HEIGHT }}>
+            <div className="sc-umap-plot" style={{ width, height }}>
               <canvas
                 ref={canvasRef}
-                style={{ width, height: HEIGHT, display: "block", cursor: lasso ? "crosshair" : "default" }}
+                style={{ width, height, display: "block", cursor: lasso ? "crosshair" : "default" }}
                 onMouseDown={onMouseDown}
                 onMouseMove={onMouseMove}
                 onMouseUp={onMouseUp}
@@ -500,6 +508,10 @@ export default function UmapPanel() {
               <span className="sc-legend-item">
                 <span className="sc-legend-swatch sc-legend-hollow" />
                 <Text type="secondary">{t("components.single-cell.umap.rna-only")}</Text>
+              </span>
+              <span className="sc-legend-item">
+                <Switch size="small" checked={clip} onChange={setClip} />
+                <Text type="secondary">{t("components.single-cell.umap.clip", { count: clip ? nClipped : 0 })}</Text>
               </span>
               <Text type="secondary" className="sc-hint">
                 {t("components.single-cell.umap.hint")}
