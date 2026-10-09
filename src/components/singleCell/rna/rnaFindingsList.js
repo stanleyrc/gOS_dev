@@ -150,7 +150,7 @@ export function CloneRnaLine({ findings, clone }) {
   return (
     <div>
       <Text type="secondary" style={{ fontSize: TYPE.label }}>
-        {t("components.single-cell.rna-findings.clone-line", { n })}{" "}
+        {t("components.single-cell.rna-findings.clone-line", { count: n })}{" "}
         {top.map(([l, v], k) => (
           <React.Fragment key={l}>
             {k > 0 && ", "}
