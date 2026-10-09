@@ -204,12 +204,11 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
             ) : (
               <Row gutter={16}>
                 <Col xs={24} xl={13}>
-                  <AmpliconViolins per={withAmps} width={width >= 1200 ? Math.floor((width - 40) * 0.54) - 8 : width - 26} selected={selectedViolin} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+                  <AmpliconViolins per={withAmps} selected={selectedViolin} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
                 </Col>
                 <Col xs={24} xl={11}>
                   <AmpliconUpset
                     per={withAmps}
-                    width={width >= 1200 ? Math.floor((width - 40) * 0.46) - 8 : width - 26}
                     selected={marked?.key?.startsWith("c:") ? { patient: current?.patient, combo: marked.key.split(":").slice(2).join(":") } : null}
                     onSelect={({ patient: p, combo, cells, label }) => focus(p, { marked: { cells: new Set(cells), label: `cells with ${label}`, key: `c:${p}:${combo}` } })}
                   />
@@ -220,7 +219,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
         </Col>
         <Col xs={24} xxl={11}>
           <Card size="small" title={<Space><NodeIndexOutlined />Inherited or redrawn? <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3E, every amplicon</Text></Space>}>
-            <PhyloSignalPanel per={per} width={width >= 1600 ? Math.floor((width - 16) * 0.458) - 26 : width - 26} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+            <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
             <Text type="secondary" style={{ fontSize: 12 }}>
               High z: copies follow the tree (cells inherit their parent&apos;s load, as for EGFR ecDNA in BWH70); near the controls: redrawn each division. Click an amplicon to open it below.
             </Text>

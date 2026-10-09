@@ -1,5 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import FigureCanvas, { font } from "./figureCanvas";
+import useContainerWidth from "../useContainerWidth";
+import { niceStep } from "../../../helpers/singleCell/matrix";
 import { Swatches } from "../cohort/charts";
 import { geneSetColor, isNormalClone, phyloSignal } from "../../../helpers/singleCell/figures";
 
@@ -16,7 +18,9 @@ const CONTROLS = [
  * inherited along the tree rather than redrawn in every cell.
  * per: [{ patient, tree, cells, cellIds, groups }].
  */
-export default function PhyloSignalPanel({ per, width, onSelect }) {
+export default function PhyloSignalPanel({ per, onSelect }) {
+  const [ref, measured] = useContainerWidth(600);
+  const width = Math.max(320, measured);
   const results = useMemo(
     () =>
       per
@@ -24,10 +28,10 @@ export default function PhyloSignalPanel({ per, width, onSelect }) {
         .map((p) => {
           const rec = new Map(p.cells.map((c) => [c.cell_id, c]));
           const tumour = p.cellIds.filter((id) => rec.has(id) && !isNormalClone(rec.get(id).clone_id));
-          const col = new Map(p.cellIds.map((id, i) => [id, i]));
           const vars = [
             ...CONTROLS.map((v) => ({ key: v.key, color: v.color, value: (id) => Number(rec.get(id)?.[v.field]) })),
-            ...p.groups.map((g) => ({ key: g.key, color: geneSetColor(g.key), group: g, value: (id) => Math.log1p(g.cn[col.get(id)] || 0) })),
+            // each walk on its own: summing a gene set's walks hides clade-specific variants (e.g. short vs long ecEGFR)
+            ...p.groups.flatMap((g) => g.walks.map((w) => ({ key: w.label || w.name || `${w.id}`, color: geneSetColor(g.key), group: g, value: (id) => Math.log1p(Number(w.cells?.[id]) || 0) }))),
           ];
           const stats = phyloSignal(p.tree, tumour, vars, { nPerm: 199 });
           return { p, rows: stats.map((s, k) => ({ ...s, color: vars[k].color, group: vars[k].group })).filter((s) => Number.isFinite(s.z)) };
@@ -50,8 +54,8 @@ export default function PhyloSignalPanel({ per, width, onSelect }) {
       ctx.font = font(10);
       ctx.textAlign = "center";
       ctx.fillStyle = c.muted;
-      const step = zMax - zMin > 30 ? 10 : zMax - zMin > 12 ? 4 : 2;
-      for (let z = Math.ceil(zMin / step) * step; z <= zMax; z += step) {
+      const step = niceStep((zMax - zMin) / 6);
+      for (let z = Math.ceil(zMin / step) * step; z <= zMax + 1e-9; z += step) {
         const x = sx(z);
         ctx.fillText(`${z}`, x, HEAD - 8);
         ctx.strokeStyle = c.grid;
@@ -100,20 +104,20 @@ export default function PhyloSignalPanel({ per, width, onSelect }) {
     },
     [results, width, height, zMin, zMax] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  if (!results.length) return null;
+  if (!results.length) return <div ref={ref} />;
   const legend = [
     ...CONTROLS.map((v) => ({ key: v.key, color: v.color, label: `${v.key} (control)` })),
-    ...[...new Set(results.flatMap((r) => r.rows.filter((s) => s.group).map((s) => s.key)))].map((k) => ({ key: k, color: geneSetColor(k), label: `ec${k}` })),
+    ...[...new Set(results.flatMap((r) => r.rows.filter((s) => s.group).map((s) => s.group.key)))].map((k) => ({ key: k, color: geneSetColor(k), label: `ec${k} walks` })),
   ];
   return (
-    <div>
+    <div ref={ref}>
       <FigureCanvas
         width={width}
         height={height}
         draw={draw}
         ariaLabel="Phylogenetic signal of amplicon copies"
-        tooltip={(h) => [`${h.p.patient} · ${h.s.group ? `ec${h.s.key}` : h.s.key}`, ["Moran's I", h.s.I.toFixed(3)], ["z", h.s.z.toFixed(2)], ["Permutation p", h.s.p < 0.01 ? "< 0.01" : h.s.p.toFixed(2)], ["Tumour cells", h.s.n]]}
-        onClick={(h) => h.s.group && onSelect?.({ patient: h.p.patient, key: h.s.key })}
+        tooltip={(h) => [`${h.p.patient} · ${h.s.key}${h.s.group ? ` (ec${h.s.group.key})` : ""}`, ["Moran's I", h.s.I.toFixed(3)], ["z", h.s.z.toFixed(2)], ["Permutation p", h.s.p < 0.01 ? "< 0.01" : h.s.p.toFixed(2)], ["Tumour cells", h.s.n]]}
+        onClick={(h) => h.s.group && onSelect?.({ patient: h.p.patient, key: h.s.group.key })}
       />
       <Swatches items={legend} style={{ marginTop: 4 }} />
     </div>
