@@ -86,10 +86,11 @@ function buildTree(treeFile, cellIds, snv, cn, genomeLength) {
   return { ...missing(), method: null };
 }
 
-function* fetchSingleCellData() {
+function* fetchSingleCellData(action = {}) {
   const state = yield select(getState);
   const { dataset, chromoBins, genomeLength } = state.Settings;
-  const { id, metadata } = state.CaseReport;
+  const id = action.caseReportId ?? state.CaseReport.id;
+  const metadata = `${id}` === `${state.CaseReport.id}` ? state.CaseReport.metadata : undefined;
   if (!dataset || !id) return;
   const cancelToken = getCancelToken();
 
