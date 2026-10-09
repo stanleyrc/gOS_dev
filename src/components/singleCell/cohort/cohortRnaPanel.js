@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Select, Space, Table, Tag, Typography } from "antd";
+import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Segmented, Select, Space, Table, Tag, Typography } from "antd";
 import { DotChartOutlined, ExperimentOutlined, PieChartOutlined, TagsOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
@@ -12,6 +12,8 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { chiSquareTable, compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, FONT, Swatches, XBandLabels, patientColor } from "./charts";
+import CohortSelectionPanel from "./cohortSelectionPanel";
+import Violins from "../violins";
 import CohortUmapPanel from "./cohortUmapPanel";
 import CohortDosagePanel from "./cohortDosagePanel";
 import CohortStateClonePanel from "./cohortStateClonePanel";
@@ -61,6 +63,8 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   const [geneBusy, setGeneBusy] = useState(false);
   const [scores, setScores] = useState(null);
   const [umapSelection, setUmapSelection] = useState(new Set());
+  const [geneSplit, setGeneSplit] = useState("patient");
+  const geneCardRef = useRef(null);
   const selectUmap = (keys, add) => setUmapSelection((prev) => (add ? new Set([...prev, ...keys]) : new Set(keys)));
   const datasetOf = (s) => datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
 
@@ -143,7 +147,13 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         const matrix = await loadRnaMatrix(ds, s.caseReportId);
         const v = geneValues(matrix, summary.cells.length, gi);
         const keep = cellsOf(s).map((c) => summary.cells.indexOf(c));
-        out.push({ patient: s.caseReportId, values: keep.map((k) => v[k]), byLevel: chosenField ? d3.rollup(keep, (idx) => idx.map((k) => v[k]), (k) => `${summary.cells[k][chosenField] ?? "NA"}`) : null });
+        out.push({
+          patient: s.caseReportId,
+          values: keep.map((k) => v[k]),
+          keys: keep.map((k) => `${s.caseReportId}::${summary.cells[k].rna_id}`),
+          levels: keep.map((k) => (chosenField ? summary.cells[k][chosenField] : null)),
+          byLevel: chosenField ? d3.rollup(keep, (idx) => idx.map((k) => v[k]), (k) => `${summary.cells[k][chosenField] ?? "NA"}`) : null,
+        });
       } catch (error) {
         // matrix missing: skip the patient
       }
@@ -162,6 +172,24 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   const x = d3.scaleBand().domain(loaded.map((s) => s.caseReportId)).range([M.left, compW - M.right]).padding(0.3);
   const y = d3.scaleLinear().domain([0, 1]).range([240 - M.bottom, M.top]);
   const geneTest = geneData && geneData.length >= 2 ? compareGroups(geneData.map((g) => ({ key: g.patient, values: g.values }))) : null;
+  const split = geneSplit === "selection" && !umapSelection.size ? "patient" : geneSplit;
+  const geneViolinGroups = !geneData
+    ? []
+    : geneData.flatMap((g, i) => {
+        if (split === "field" && composition) {
+          return composition.levels
+            .map((l) => ({ key: `${g.patient}:${l}`, cluster: g.patient, label: l, color: levelColors[l], values: g.values.filter((_, k) => `${g.levels?.[k]}` === l) }))
+            .filter((x) => x.values.length);
+        }
+        if (split === "selection") {
+          const isSel = (k) => umapSelection.has(g.keys?.[k]);
+          return [
+            { key: `${g.patient}:sel`, cluster: g.patient, label: t("components.single-cell.cohort.gene-selected"), color: "#d4380d", values: g.values.filter((_, k) => isSel(k)) },
+            { key: `${g.patient}:rest`, cluster: g.patient, label: t("components.single-cell.cohort.gene-rest"), color: "#8c8c8c", values: g.values.filter((_, k) => !isSel(k)) },
+          ].filter((x) => x.values.length);
+        }
+        return [{ key: g.patient, label: g.patient, color: patientColor(i), values: g.values }];
+      });
 
   return (
     <div ref={ref}>
@@ -178,6 +206,25 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         <Col span={24}>
           <CohortUmapPanel summaries={summaries} datasets={datasets} overlay={scores} selection={umapSelection} onSelect={selectUmap} />
         </Col>
+        {umapSelection.size > 0 && (
+          <Col span={24}>
+            <CohortSelectionPanel
+              selection={umapSelection}
+              loaded={loaded}
+              rna={rna}
+              cellsOf={cellsOf}
+              field={chosenField}
+              datasetOf={datasetOf}
+              onClear={() => setUmapSelection(new Set())}
+              onGene={(g) => {
+                setGeneSplit("selection");
+                setGeneQuery(g);
+                runGene(g);
+                geneCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          </Col>
+        )}
         {composition && (
           <Col xs={24} xl={10}>
             <Card
@@ -269,7 +316,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         <Col span={24}>
           <CohortDosagePanel summaries={summaries} files={filesProp} rna={rna} cnRows={cnRows} datasets={datasets} />
         </Col>
-        <Col span={24}>
+        <Col span={24} ref={geneCardRef}>
           <Card
             size="small"
             title={<Space><DotChartOutlined />{t("components.single-cell.cohort.rna-gene")}<Provenance id="cohortRna" /></Space>}
@@ -283,7 +330,19 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
             {geneData ? (
               <>
                 <Text strong>{gene}</Text> <Text type="secondary">{geneTest ? `${geneTest.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(geneTest.p)}` : ""}</Text>
-                <BoxStrips groups={geneData.map((g, i) => ({ key: g.patient, label: g.patient, color: patientColor(i), values: g.values, ids: g.values.map(() => g.patient) }))} width={compW} height={240} yTitle={`${gene} (log-normalized)`} />
+                <div style={{ margin: "6px 0" }}>
+                  <Segmented
+                    size="small"
+                    value={geneSplit === "selection" && !umapSelection.size ? "patient" : geneSplit}
+                    onChange={setGeneSplit}
+                    options={[
+                      { value: "patient", label: t("components.single-cell.cohort.gene-split-patient") },
+                      ...(chosenField ? [{ value: "field", label: t("components.single-cell.cohort.gene-split-field", { field: fieldLabel(chosenField) }) }] : []),
+                      ...(umapSelection.size ? [{ value: "selection", label: t("components.single-cell.cohort.gene-split-selection") }] : []),
+                    ]}
+                  />
+                </div>
+                <Violins groups={geneViolinGroups} height={260} yTitle={`${gene} (log-normalized)`} showDetected />
                 {chosenField && (
                   <Table
                     size="small"
