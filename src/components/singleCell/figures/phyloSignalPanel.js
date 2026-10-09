@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo } from "react";
-import FigureCanvas, { font } from "./figureCanvas";
+import FigureCanvas, { useFigureStyleName } from "./figureCanvas";
+import { FigureLegend, axisDepth, drawGroups, drawMarker, drawRefLine, drawXAxis, textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
-import { niceStep } from "../../../helpers/singleCell/matrix";
-import { Swatches } from "../cohort/charts";
+import { figureStyle, linearTicks } from "../../../helpers/singleCell/figureStyle";
 import { geneSetColor, isNormalClone, phyloSignal } from "../../../helpers/singleCell/figures";
 
 const CONTROLS = [
-  { key: "Seq. depth", field: "qc_depth", color: "#8c8c8c" },
-  { key: "Ploidy", field: "ploidy", color: "#595959" },
-  { key: "SNVs / cell", field: "snv_count", color: "#262626" },
+  { key: "Seq. depth", field: "qc_depth", color: "#b4b4b4" },
+  { key: "Ploidy", field: "ploidy", color: "#7f7f7f" },
+  { key: "SNVs / cell", field: "snv_count", color: "#3d3d3d" },
 ];
 
 /**
@@ -38,77 +38,48 @@ export default function PhyloSignalPanel({ per, onSelect }) {
         }),
     [per]
   );
-  const ROW = 30;
-  const HEAD = 22;
-  const PAT = 74;
-  const zMax = Math.max(6, ...results.flatMap((r) => r.rows.map((s) => s.z))) * 1.05;
+  const styleName = useFigureStyleName();
+  const st = figureStyle(styleName);
+  const ROW = Math.round(28 * st.rowScale);
+  const TOP = 8;
+  const PAT = 78;
+  const zMax = Math.max(6, ...results.flatMap((r) => r.rows.map((s) => s.z))) * 1.04;
   const zMin = Math.min(-2, ...results.flatMap((r) => r.rows.map((s) => s.z)));
-  const x0 = PAT + 8;
-  const x1 = width - 16;
+  const x0 = PAT + 10;
+  const x1 = width - 12;
   const sx = (z) => x0 + ((z - zMin) / (zMax - zMin)) * (x1 - x0);
-  const height = HEAD + results.length * ROW + 20;
+  const plotH = results.length * ROW;
+  const height = TOP + plotH + axisDepth({ st }, true) + 4;
 
   const draw = useCallback(
     (ctx, c) => {
       const hits = [];
-      ctx.font = font(10);
-      ctx.textAlign = "center";
-      ctx.fillStyle = c.muted;
-      const step = niceStep((zMax - zMin) / 6);
-      for (let z = Math.ceil(zMin / step) * step; z <= zMax + 1e-9; z += step) {
-        const x = sx(z);
-        ctx.fillText(`${z}`, x, HEAD - 8);
-        ctx.strokeStyle = c.grid;
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, HEAD);
-        ctx.lineTo(x + 0.5, HEAD + results.length * ROW);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = "#cf1322";
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(sx(1.96) + 0.5, HEAD);
-      ctx.lineTo(sx(1.96) + 0.5, HEAD + results.length * ROW);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      const yAxis = TOP + plotH;
+      drawGroups(ctx, c, results.map((r, i) => ({ y0: TOP + i * ROW, y1: TOP + (i + 1) * ROW })), 0, width);
+      drawXAxis(ctx, c, { ticks: linearTicks(zMin, zMax, 6).map((v) => ({ v, x: sx(v) })), x0, x1, y: yAxis, at: "bottom", title: "Phylogenetic signal (Moran's I z-score)", gridFrom: TOP, gridTo: yAxis });
+      drawRefLine(ctx, c, sx(1.96), TOP, yAxis, "p = 0.05");
       results.forEach((r, i) => {
-        const y = HEAD + i * ROW;
-        const cy = y + ROW / 2;
-        if (i % 2 === 0) {
-          ctx.fillStyle = c.band;
-          ctx.fillRect(0, y, width, ROW);
-        }
-        ctx.font = font(13, 600);
-        ctx.fillStyle = c.text;
+        const cy = TOP + i * ROW + ROW / 2;
+        textRole(ctx, c, "group");
         ctx.textAlign = "left";
-        ctx.fillText(r.p.patient, 4, cy);
-        r.rows.forEach((s, k) => {
+        ctx.fillText(r.p.patient, 2, cy);
+        // spread markers that would overlap: alternate small vertical offsets by x order
+        const placed = [];
+        [...r.rows].sort((a, b) => a.z - b.z).forEach((s) => {
           const x = sx(s.z);
-          const dy = ((k % 3) - 1) * 6;
-          const isControl = !s.group;
-          ctx.fillStyle = s.color;
-          ctx.strokeStyle = c.panel;
-          ctx.beginPath();
-          if (isControl) ctx.rect(x - 4, cy + dy - 4, 8, 8);
-          else ctx.arc(x, cy + dy, 5, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.stroke();
+          const near = placed.filter((q) => Math.abs(q.x - x) < st.markerR * 2.2).length;
+          const dy = near ? (near % 2 ? -1 : 1) * Math.ceil(near / 2) * st.markerR * 1.3 : 0;
+          placed.push({ x });
+          drawMarker(ctx, c, x, cy + dy, s.color, s.group ? "circle" : "square");
           hits.push({ x0: x - 6, y0: cy + dy - 6, x1: x + 6, y1: cy + dy + 6, p: r.p, s });
         });
       });
-      ctx.font = font(11);
-      ctx.fillStyle = c.muted;
-      ctx.textAlign = "center";
-      ctx.fillText("Phylogenetic autocorrelation (Moran's I, z vs 199 permutations); dashed line z = 1.96", (x0 + x1) / 2, height - 8);
       return hits;
     },
-    [results, width, height, zMin, zMax] // eslint-disable-line react-hooks/exhaustive-deps
+    [results, width, plotH, zMin, zMax, ROW, st] // eslint-disable-line react-hooks/exhaustive-deps
   );
   if (!results.length) return <div ref={ref} />;
-  const legend = [
-    ...CONTROLS.map((v) => ({ key: v.key, color: v.color, label: `${v.key} (control)` })),
-    ...[...new Set(results.flatMap((r) => r.rows.filter((s) => s.group).map((s) => s.group.key)))].map((k) => ({ key: k, color: geneSetColor(k), label: `ec${k} walks` })),
-  ];
+  const walkSets = [...new Set(results.flatMap((r) => r.rows.filter((s) => s.group).map((s) => s.group.key)))];
   return (
     <div ref={ref}>
       <FigureCanvas
@@ -119,7 +90,10 @@ export default function PhyloSignalPanel({ per, onSelect }) {
         tooltip={(h) => [`${h.p.patient} · ${h.s.key}${h.s.group ? ` (ec${h.s.group.key})` : ""}`, ["Moran's I", h.s.I.toFixed(3)], ["z", h.s.z.toFixed(2)], ["Permutation p", h.s.p < 0.01 ? "< 0.01" : h.s.p.toFixed(2)], ["Tumour cells", h.s.n]]}
         onClick={(h) => h.s.group && onSelect?.({ patient: h.p.patient, key: h.s.group.key })}
       />
-      <Swatches items={legend} style={{ marginTop: 4 }} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0 28px" }}>
+        <FigureLegend title="Controls" items={CONTROLS.map((v) => ({ key: v.key, color: v.color, label: v.key, shape: "square" }))} />
+        <FigureLegend title="Amplicon walks" items={walkSets.map((k) => ({ key: k, color: geneSetColor(k), label: `ec${k}` }))} />
+      </div>
     </div>
   );
 }

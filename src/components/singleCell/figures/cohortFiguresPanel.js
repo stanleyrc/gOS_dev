@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { useDispatch } from "react-redux";
 import { Button, Card, Col, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
@@ -10,6 +11,9 @@ import SubclonalFindingsTable from "./subclonalFindingsTable";
 import { SegmentCorrelation } from "./patientPanels";
 import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
+import { useFigureStyleName } from "./figureCanvas";
+import singleCellActions from "../../../redux/singleCell/actions";
+import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
 
 const { Text } = Typography;
 const PAD = 1.5e6;
@@ -59,6 +63,8 @@ function eventLoci(e) {
  * correlation (5C). Every top panel selects what the patient view shows.
  */
 export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows = {}, chromoBins, cloneColors }) {
+  const dispatch = useDispatch();
+  const styleName = useFigureStyleName();
   const [ref, width] = useContainerWidth(1200);
   const patientRef = useRef(null);
   const [curatedOnly, setCuratedOnly] = useState(true);
@@ -165,6 +171,12 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
     <div ref={ref}>
       <Row gutter={[16, 16]}>
         <Col span={24}>
+          <Space size={8} wrap>
+            <Text type="secondary">Figure style</Text>
+            <Segmented size="small" value={styleName || DEFAULT_FIGURE_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figureStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
+          </Space>
+        </Col>
+        <Col span={24}>
           <Card
             size="small"
             title={<Space><BranchesOutlined />Amplicon landscape <Provenance id="figLandscape" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3A–B</Text></Space>}
@@ -198,9 +210,9 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
         <Col xs={24} xxl={11}>
           <Card size="small" title={<Space><NodeIndexOutlined />Inherited or redrawn? <Provenance id="figPhyloSignal" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3E, every amplicon</Text></Space>}>
             <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              High z: copies follow the tree (cells inherit their parent&apos;s load, as for EGFR ecDNA in BWH70); near the controls: redrawn each division. Click an amplicon to open it below.
-            </Text>
+            <div className="sc-fig-caption">
+              Above the dashed line, copies follow the tree: cells inherit their parent&apos;s load (as for EGFR ecDNA in BWH70). Near the controls, copies are redrawn at each division. Click a walk to open it below.
+            </div>
           </Card>
         </Col>
         <Col xs={24} xxl={13}>
@@ -234,7 +246,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
             <Row gutter={16} style={{ marginTop: 8 }}>
               <Col xs={24} xl={12}>
                 <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the marked cells (upper triangle) and the other tumour cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
-                  <Text strong style={{ fontSize: 12 }}>Segment co-variation</Text> <Text type="secondary" style={{ fontSize: 12 }}>· Fig 5C{corrSets ? ` · ${corrSets.label}` : ""}</Text>
+                  <div className="sc-fig-subtitle">Segment co-variation <span>Fig 5C{corrSets ? ` · ${corrSets.label}` : ""}</span></div>
                 </Tooltip>
                 {corrSets && cnRows[current?.patient]?.cellRows?.length ? (
                   <SegmentCorrelation width={half} cnEntry={cnRows[current.patient]} domains={domains} carriers={corrSets.carriers} others={corrSets.others} chromoBins={chromoBins} />
