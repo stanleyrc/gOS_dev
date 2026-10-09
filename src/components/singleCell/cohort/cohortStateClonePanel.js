@@ -7,6 +7,7 @@ import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { chiSquareTable } from "../../../helpers/singleCell/tests";
 import { Swatches } from "./charts";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -106,7 +107,7 @@ export default function CohortStateClonePanel({ groups, fields, defaultFill = "s
           })}
         </svg>
         <Swatches style={{ marginTop: 6 }} items={data.levels.map((l) => ({ key: l, color: colors[l], label: l }))} />
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.cohort.sc-help")}</Text>
+        <HintLine text={t("components.single-cell.cohort.sc-help")} />
       </div>
     </Card>
   );

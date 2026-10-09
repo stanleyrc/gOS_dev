@@ -5,6 +5,7 @@ import { Button, Card, Col, Row, Space, Tag, Typography } from "antd";
 import { buildPatientReport } from "../../../helpers/singleCell/patientReport";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { signatureColorOf } from "../signaturePanel";
+import { SC_GUTTER_INNER } from "../density";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -99,7 +100,7 @@ export default function PatientCards({ summaries, files, datafiles, cloneColors,
     [summaries, files, datafiles]
   );
   return (
-    <Row gutter={[12, 12]}>
+    <Row gutter={SC_GUTTER_INNER}>
       {reports.map(({ s, report }) => (
         <Col key={s.caseReportId} xs={24} md={12} xl={8} xxl={6}>
           <Card

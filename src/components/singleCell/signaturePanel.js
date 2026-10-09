@@ -13,6 +13,7 @@ import { filterSnvColumns, sitesSeenInRows } from "../../helpers/singleCell/snvS
 import { rowMap } from "../../helpers/singleCell/matrix";
 import useContainerWidth from "./useContainerWidth";
 import signatureMetadata from "../../translations/en/signatures.json";
+import { SC_GUTTER_INNER } from "./density";
 
 const { Text } = Typography;
 const COSMIC_FILE = "COSMIC_v3.4_SBS_GRCh38.txt";
@@ -287,7 +288,7 @@ export default function SignaturePanel() {
       }
     >
       <div ref={containerRef}>
-        <Row gutter={[24, 12]}>
+        <Row gutter={SC_GUTTER_INNER}>
           <Col xs={24} xl={12}>
             <Text strong>{t("components.single-cell.signatures.backend")}</Text>
             <div>

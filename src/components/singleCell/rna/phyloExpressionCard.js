@@ -6,6 +6,7 @@ import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import HeatmapCanvas from "../heatmapCanvas";
 import StripLabels from "../stripLabels";
+import HintLine from "../hintLine";
 import ExpressionSidePanel from "../expressionSidePanel";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
@@ -396,11 +397,7 @@ export default function PhyloExpressionCard({ summary, matrix }) {
                 </Space>
               ))}
           </Space>
-          <div>
-            <Text type="secondary" className="sc-hint">
-              {t("components.single-cell.rna.phylo-hint")}
-            </Text>
-          </div>
+          <HintLine text={t("components.single-cell.rna.phylo-hint")} />
         </div>
       </Card>
     </Wrapper>

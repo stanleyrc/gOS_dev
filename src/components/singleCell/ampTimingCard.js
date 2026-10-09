@@ -9,6 +9,7 @@ import { amplificationTiming } from "../../helpers/singleCell/snvCopyNumber";
 import { eventClass } from "../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../helpers/singleCell/strongEvents";
 import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
+import HintLine from "./hintLine";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -67,7 +68,7 @@ export default function AmpTimingCard() {
   return (
     <Card size="small" title={<Space><FieldTimeOutlined />{t("components.single-cell.timing.title")}</Space>}>
       <Table size="small" className="sc-events-table" columns={columns} dataSource={rows} pagination={false} />
-      <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.timing.help")}</Text>
+      <HintLine text={t("components.single-cell.timing.help")} />
     </Card>
   );
 }

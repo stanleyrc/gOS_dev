@@ -7,6 +7,7 @@ import { RadarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { walkGenes, toGlobal } from "../../../helpers/singleCell/walks";
+import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const CHR_ORDER = [...d3.range(1, 23).map(String), "X", "Y"];
@@ -159,7 +160,7 @@ export default function WalkDiagram({ walk, colorOf, cellCount }) {
             );
           })}
         </svg>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.ecdna.diagram-help")}</Text>
+        <HintLine text={t("components.single-cell.ecdna.diagram-help")} />
       </div>
     </Card>
   );

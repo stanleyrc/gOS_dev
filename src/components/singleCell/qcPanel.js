@@ -16,6 +16,8 @@ import { spearman } from "../../helpers/singleCell/dosage";
 import { correlationP, formatP } from "../../helpers/singleCell/tests";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
 import SvgExportButton from "./svgExportButton";
+import HintLine from "./hintLine";
+import { SC_GUTTER, SC_GUTTER_INNER } from "./density";
 
 const { Text } = Typography;
 
@@ -128,7 +130,7 @@ export default function QcPanel() {
 
   return (
     <div ref={ref}>
-      <Row gutter={[16, 16]}>
+      <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <Card
             size="small"
@@ -163,18 +165,16 @@ export default function QcPanel() {
               {Number.isFinite(med("qc_depth")) && <Statistic title={t("components.single-cell.qc.stat-depth")} value={`${fmt(med("qc_depth"), 1)}×`} />}
               {withRna > 0 && <Statistic title={t("components.single-cell.qc.stat-rna")} value={`${withRna}/${rows.length}`} />}
             </Space>
-            <div style={{ marginTop: 8 }}>
-              <Text type="secondary">{t("components.single-cell.qc.help")}</Text>
-            </div>
+            <HintLine text={t("components.single-cell.qc.help")} />
           </Card>
         </Col>
         <Col span={24}>
           <div ref={plotsRef}>
-            <Row gutter={[16, 16]}>
+            <Row gutter={SC_GUTTER}>
               {shownMetrics.map(([k, label, log]) => (
                 <Col key={k} span={24 / cols}>
-                  <Card size="small" title={<span style={{ fontSize: 12 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "2px 6px" }} headStyle={{ minHeight: 32 }}>
-                    <BoxStrips groups={groupsFor(k)} width={plotWidth} height={170} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
+                  <Card size="small" title={<span style={{ fontSize: 12 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 11 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "2px 6px" }} headStyle={{ minHeight: 26 }}>
+                    <BoxStrips groups={groupsFor(k)} width={plotWidth} height={140} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
                   </Card>
                 </Col>
               ))}
@@ -184,7 +184,7 @@ export default function QcPanel() {
         {(section === "all") && PAIRS.length > 0 && (
           <Col span={24}>
             <Card size="small" title={t("components.single-cell.qc.correlations")} bodyStyle={{ padding: "4px 8px" }}>
-              <Row gutter={[12, 12]}>
+              <Row gutter={SC_GUTTER_INNER}>
                 {PAIRS.map(([a, b]) => {
                   const pts = rows.filter((r) => Number.isFinite(Number(r[a])) && Number.isFinite(Number(r[b]))).map((r) => ({ id: r.cell_id, x: Number(r[a]), y: Number(r[b]), g: `${r[groupBy] ?? "NA"}` }));
                   if (pts.length < 5) return null;

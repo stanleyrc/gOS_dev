@@ -10,10 +10,11 @@ import useContainerWidth from "../useContainerWidth";
 
 const { Text } = Typography;
 const GAP_X = 50; // same outer margin / inter-domain gap as the heatmap and the genes plot
-const BAR = 12;
+const BAR_MAX = 12;
+const FAMILY_GAP = 4; // between walk families
 const ARROW = 5;
-const AXIS_H = 22;
-const HEAD_H = 18; // chromosome / range header above each panel
+const AXIS_H = 16;
+const HEAD_H = 14; // chromosome / range header above each panel
 // the heatmap draws its genomic columns 10 px further right than its reported inset
 const HEATMAP_OFFSET = 10;
 
@@ -37,7 +38,7 @@ function intervalPoints(w, h, strand) {
  * strips) where the lane labels go; the plot area itself starts at
  * labelWidth + GAP_X like the heatmap's genomic columns.
  */
-export default function WalksPlot({ walks, families, colorOf, focus, onFocus, labelWidth, rightWidth = 0, laneHeight = 30, colorBy = "walk" }) {
+export default function WalksPlot({ walks, families, colorOf, focus, onFocus, labelWidth, rightWidth = 0, laneHeight = 18, colorBy = "walk" }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(1200);
@@ -45,6 +46,9 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
   const [hover, setHover] = useState(null); // { walkId, x, y, lines }
   const drag = useRef(null);
   const svgRef = useRef(null);
+  const BAR = Math.max(6, Math.min(BAR_MAX, Math.round(laneHeight * 0.45)));
+  // anchor stub length: stays inside the lane
+  const stub = Math.max(3, Math.min(8, laneHeight / 2 - BAR / 2 - 4));
 
   const stageW = Math.max(200, width - labelWidth - rightWidth - 2 * GAP_X);
   const x0 = labelWidth + GAP_X + HEATMAP_OFFSET;
@@ -58,15 +62,15 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
   // lanes: families in order, separated by a small gap
   const lanes = useMemo(() => {
     const out = [];
-    let y = HEAD_H + 4;
+    let y = HEAD_H + 2;
     families.forEach((fam, f) => {
-      if (f > 0) y += 10;
+      if (f > 0) y += FAMILY_GAP;
       fam.forEach((w) => {
         out.push({ walk: w, y, family: f });
         y += laneHeight;
       });
     });
-    return { rows: out, height: y + 4 };
+    return { rows: out, height: y + 2 };
   }, [families, laneHeight]);
   const height = lanes.height + AXIS_H;
   const chrColor = (chr) => chromoBins?.[`${chr}`]?.color || "#8c8c8c";
@@ -180,7 +184,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
           return (
             <g key={`h${k}`}>
               <rect x={xa} y={0} width={xb - xa} height={HEAD_H} fill={chr?.color || "#d9d9d9"} fillOpacity={0.18} />
-              <text x={(xa + xb) / 2} y={HEAD_H / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#262626">
+              <text x={(xa + xb) / 2} y={HEAD_H / 2} dy="0.35em" textAnchor="middle" fontSize={10.5} fill="#262626">
                 <tspan fontWeight={700}>{chr ? `chr${chr.chromosome}` : ""}</tspan>
                 {chr && xb - xa > 140 ? `  ${fmtPos(ga, chr)} – ${fmtPos(gb, chr)}` : ""}
               </text>
@@ -212,12 +216,13 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
             >
               <rect x={0} y={y} width={width} height={laneHeight} fill={isFocus ? "#e6f4ff" : i % 2 ? "#fafafa" : "#fff"} fillOpacity={0.9} />
               {/* label */}
-              <circle cx={10} cy={cy} r={5} fill={color} />
-              <text x={20} y={cy - 3} fontSize={12} fontWeight={isFocus ? 700 : 600} fill="#262626">
-                {w.label.length > 34 ? `${w.label.slice(0, 33)}…` : w.label}
-                {w.curated && <tspan fill="#389e0d" fontSize={10} fontWeight={500}>{"  ✓ curated"}</tspan>}
+              {/* label: name, curated tick and cells / copies / size on one line (full detail in the tooltip) */}
+              <circle cx={10} cy={cy} r={Math.min(5, laneHeight / 3.5)} fill={color} />
+              <text x={20} y={cy} dy="0.35em" fontSize={laneHeight < 16 ? 10.5 : 11.5} fill="#262626">
+                <tspan fontWeight={isFocus ? 700 : 600}>{w.label.length > 22 ? `${w.label.slice(0, 21)}…` : w.label}</tspan>
+                {w.curated && <tspan fill="#389e0d" fontWeight={600}>{" ✓"}</tspan>}
+                {labelWidth > 180 && <tspan fill="#8c8c8c" fontSize={laneHeight < 16 ? 9.5 : 10.5}>{`  ${meta} · ${d3.format(".2s")(w.span)}b`}</tspan>}
               </text>
-              <text x={20} y={cy + 11} fontSize={10.5} fill="#8c8c8c">{`${meta} · ${d3.format(".2s")(w.span)}b`}</text>
               {/* nodes */}
               {extents.map(([a, b, d], k) => (
                 <g key={k} clipPath={`url(#walks-clip-${k})`}>
@@ -277,8 +282,8 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
                 const xv = px(visible.g, visible.k);
                 return (
                   <g key={ji} onClick={(e) => { e.stopPropagation(); addAnchorDomain(visible.other.chromosome, visible.otherPos); }}>
-                    <line x1={xv} x2={xv} y1={cy - BAR / 2} y2={cy - BAR / 2 - 8} stroke="#cf1322" strokeWidth={1.4} />
-                    <circle cx={xv} cy={cy - BAR / 2 - 10} r={3.5} fill={chrColor(visible.other.chromosome)} stroke="#cf1322" />
+                    <line x1={xv} x2={xv} y1={cy - BAR / 2} y2={cy - BAR / 2 - stub} stroke="#cf1322" strokeWidth={1.4} />
+                    <circle cx={xv} cy={cy - BAR / 2 - stub - 2} r={laneHeight < 22 ? 2.5 : 3.5} fill={chrColor(visible.other.chromosome)} stroke="#cf1322" />
                     <title>{`${tip}\n${t("components.single-cell.ecdna.plot-anchor")}`}</title>
                   </g>
                 );
@@ -302,7 +307,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, la
             {vals.map((v) => (
               <g key={v}>
                 <line x1={scale(v)} x2={scale(v)} y1={lanes.height + 2} y2={lanes.height + 6} stroke="#8c8c8c" />
-                <text x={scale(v)} y={lanes.height + 17} textAnchor="middle" fontSize={10} fill="#595959">{fmtPos(v, chr)}</text>
+                <text x={scale(v)} y={lanes.height + 14} textAnchor="middle" fontSize={9.5} fill="#595959">{fmtPos(v, chr)}</text>
               </g>
             ))}
 

@@ -245,7 +245,7 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
         <Row gutter={embedded ? [0, 0] : [16, 16]} ref={tracksRef}>
           {shown.length === 0 && (
             <Col span={24}>
-              <Empty description={t("components.single-cell.tracks.empty")} />
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.tracks.empty")} />
             </Col>
           )}
           {listed.length > SC_MAX_TRACK_CELLS && (
