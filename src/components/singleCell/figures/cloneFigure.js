@@ -4,7 +4,7 @@ import { textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
 import { binAt, domainExtents, annotationColors } from "../../../helpers/singleCell/matrix";
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, geneSetColor, isNormalClone, snvTreeOrder } from "../../../helpers/singleCell/figures";
-import { figureRows, leavesUnder, pruneLayout } from "../../../helpers/singleCell/figureMath";
+import { compressLongBranches, figureRows, leavesUnder, pruneLayout } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
 
 const TOP = 28;
@@ -162,10 +162,12 @@ export default function CloneFigure({
     return m;
   }, [selected, rows, n]);
 
+  // long branches (e.g. normals vs tumour) drawn shortened with a "//" break
   const nodePx = useMemo(() => {
     if (!tree) return [];
-    const sx = (L.treeW - 8) / Math.max(1e-9, tree.maxX);
-    return tree.nodes.map((nd) => ({ nd, x: 4 + nd.x * sx, y: TOP + (nd.y + 0.5) * rh }));
+    const { x, broken, maxX } = compressLongBranches(tree);
+    const sx = (L.treeW - 8) / Math.max(1e-9, maxX);
+    return tree.nodes.map((nd, i) => ({ nd, x: 4 + x[i] * sx, y: TOP + (nd.y + 0.5) * rh, broken: broken[i] === 1 }));
   }, [tree, L.treeW, rh]);
 
   const draw = useCallback(
@@ -195,6 +197,21 @@ export default function CloneFigure({
         };
         stroke(null, c.dark ? "rgba(220,220,220,0.75)" : "rgba(40,40,40,0.75)", rh >= 3 ? 1 : 0.75);
         if (allSel) stroke(allSel, c.dark ? "#69b1ff" : "#1677ff", 1.6);
+        // "//" on shortened branches
+        ctx.strokeStyle = c.text;
+        ctx.lineWidth = 1;
+        nodePx.forEach(({ nd, x, y, broken }) => {
+          if (!broken || nd.parent < 0) return;
+          const mx = (nodePx[nd.parent].x + x) / 2;
+          ctx.fillStyle = c.panel;
+          ctx.fillRect(mx - 3, y - 4, 6, 8);
+          ctx.beginPath();
+          ctx.moveTo(mx - 4, y + 4);
+          ctx.lineTo(mx - 1, y - 4);
+          ctx.moveTo(mx + 1, y + 4);
+          ctx.lineTo(mx + 4, y - 4);
+          ctx.stroke();
+        });
         // leaf ticks to the strips
         ctx.fillStyle = c.dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)";
         if (rh >= 3) nodePx.forEach(({ nd, x, y }) => nd.isLeaf && ctx.fillRect(x, y - 0.25, L.clade - x - 1, 0.5));
@@ -265,19 +282,31 @@ export default function CloneFigure({
       // top: gene markers over the CN panel; column heads
       textRole(ctx, c, "label", "text");
       if (cnImg) {
-        genes.forEach(({ name, g }) => {
-          const ext = cnImg.ext.find(([, , d]) => g >= d[0] && g <= d[1]);
-          if (!ext) return;
-          const [a, b, d] = ext;
-          const x = L.cnX + a + ((g - d[0]) / (d[1] - d[0])) * (b - a);
-          ctx.fillStyle = c.text;
+        // amplicon genes first; a label is dropped (marker kept) when it would overlap a placed one
+        const ampGenes = new Set(shownGroups.flatMap((g) => g.genes || []));
+        const placed = [];
+        const marks = genes
+          .map(({ name, g }) => {
+            const ext = cnImg.ext.find(([, , d]) => g >= d[0] && g <= d[1]);
+            if (!ext) return null;
+            const [a, b, d] = ext;
+            return { name, x: L.cnX + a + ((g - d[0]) / (d[1] - d[0])) * (b - a), amp: ampGenes.has(name) };
+          })
+          .filter(Boolean)
+          .sort((u, v) => v.amp - u.amp);
+        marks.forEach(({ name, x, amp }) => {
+          ctx.fillStyle = amp ? c.text : c.muted;
           ctx.beginPath();
           ctx.moveTo(x - 4, TOP - 9);
           ctx.lineTo(x + 4, TOP - 9);
           ctx.lineTo(x, TOP - 3);
           ctx.closePath();
           ctx.fill();
-          ctx.font = ctx.font.replace(/^(\d+ )?/, "italic 600 ");
+          ctx.font = ctx.font.replace(/^(\d+ )?/, amp ? "italic 600 " : "italic 400 ");
+          const w = ctx.measureText(name).width;
+          const box = [x - w / 2 - 3, x + w / 2 + 3];
+          if (placed.some(([l, r]) => box[0] < r && box[1] > l)) return textRole(ctx, c, "label", "text");
+          placed.push(box);
           ctx.textAlign = "center";
           ctx.fillText(name, x, TOP - 17);
           textRole(ctx, c, "label", "text");
@@ -340,7 +369,7 @@ export default function CloneFigure({
       ctx.textBaseline = "middle";
       return [];
     },
-    [tree, nodePx, selMask, n, nTree, rh, rows, info, cloneColors, stateColors, L, snvImg, cnImg, groupCn, plotH, width, genes, chromoBins]
+    [tree, nodePx, selMask, n, nTree, rh, rows, info, cloneColors, stateColors, L, snvImg, cnImg, groupCn, plotH, width, genes, chromoBins, shownGroups]
   );
 
   const rowAt = (y) => {
@@ -414,13 +443,13 @@ export default function CloneFigure({
           if (r1 >= r0) pick(rows.slice(r0, r1 + 1), `${r1 - r0 + 1} rows (brushed)`, event);
         }}
       />
-      <CloneFigureLegend cells={cells} cloneColors={cloneColors} stateColors={stateColors} hasSnv={!!snvImg} hasCn={!!cnImg} />
+      <CloneFigureLegend cells={cells} cloneColors={cloneColors} stateColors={stateColors} hasSnv={!!snvImg} hasCn={!!cnImg} noSnv={showSnv && !snv?.packed} />
     </div>
   );
 }
 
 /** Clade, state, VAF and copy-number keys under the clone figure (DOM, cheap). */
-export function CloneFigureLegend({ cells, cloneColors, stateColors, hasSnv, hasCn }) {
+export function CloneFigureLegend({ cells, cloneColors, stateColors, hasSnv, hasCn, noSnv }) {
   const clones = [...new Set(cells.map((c) => c.clone_id).filter((v) => v != null))].sort((a, b) => `${a}`.localeCompare(`${b}`, undefined, { numeric: true }));
   const sw = (color) => <span className="sc-fig-swatch" style={{ background: color }} />;
   const cnStops = AMP_LEGEND.map((v, k) => `${ampliconCss(v)} ${(100 * k) / (AMP_LEGEND.length - 1)}%`).join(",");
@@ -461,6 +490,7 @@ export function CloneFigureLegend({ cells, cloneColors, stateColors, hasSnv, has
           <span>{AMP_LEGEND.join(" · ")}</span>
         </span>
       )}
+      {noSnv && <span className="sc-fig-key">No SNV matrix exported for this patient (snv_matrix.json), so the SNV panel is left out.</span>}
     </div>
   );
 }

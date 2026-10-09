@@ -253,10 +253,16 @@ const Wrapper = styled.div`
   }
   /* Paper figures: sticky cell-selection bar and compact legend keys */
   .sc-fig-selbar-wrap {
-    position: sticky;
-    top: 0;
-    z-index: 6;
     margin-bottom: 10px;
+  }
+  /* while cells are selected the bar floats at the bottom of the screen */
+  .sc-fig-selbar.is-active {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 1001;
+    max-width: min(900px, 92vw);
   }
   .sc-fig-selbar {
     display: flex;
