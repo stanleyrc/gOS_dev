@@ -26,6 +26,7 @@ import {
 } from "../../redux/interpretations/selectors";
 import { createExactEventKey } from "../../helpers/interpretationHistory";
 import { selectReportEventUids } from "../../redux/filteredEvents/selectors";
+import { downloadTsv, eventsToTsv, sortForExport } from "../../helpers/filteredEventsTsv";
 import EventInterpretation from "../../helpers/EventInterpretation";
 import {
   COLUMN_LAYOUT_STORAGE_KEY,
@@ -424,6 +425,13 @@ export class FilteredEventsListPanel extends Component {
     );
   };
 
+  // the rows as filtered (event type, page filter, column filters) and sorted in the table
+  handleExportTsv = (records, columns) => {
+    const rows = sortForExport(records, columns, this.state.sortState);
+    const name = `${this.props.id || "case"}_filtered_events${this.state.eventType === "all" ? "" : `_${this.state.eventType}`}.tsv`;
+    downloadTsv(eventsToTsv(rows, columns.filter((column) => typeof column.exportValue === "function")), name);
+  };
+
   handleTableChange = (pagination, filters, sorter) => {
     const columnFilters = {};
     Object.keys(filters).forEach((key) => {
@@ -717,6 +725,14 @@ export class FilteredEventsListPanel extends Component {
               )}
               {inViewport && (
                 <Col style={{ textAlign: "right" }} flex="none">
+                  <Button
+                    type="link"
+                    className="export-tsv-btn"
+                    disabled={filteredRecords.length === 0}
+                    onClick={() => this.handleExportTsv(filteredRecords, selectedDataColumns)}
+                  >
+                    {t("components.filtered-events-panel.export-tsv", { count: filteredRecords.length })}
+                  </Button>
                   <Button
                     type="link"
                     onClick={this.handleResetFilters}
