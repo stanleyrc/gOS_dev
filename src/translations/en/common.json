@@ -1185,6 +1185,7 @@
         "clade-filter-help": "Hide alterations whose carrier cells do not match one clade of the patient's phylogeny (best F1 below the threshold); scattered subclonal drivers are mostly noise. Applies to the patient cards, oncoprint, convergence, event table and reports.",
         "clade-filter-dropped": "{{count}} alterations hidden",
         "view-amplicons": "ecDNA / amplicons",
+        "view-figures": "Paper figures",
         "amp-title": "Amplicon copies per cell",
         "amp-y": "walk copies (carriers)",
         "amp-pct": "cells",

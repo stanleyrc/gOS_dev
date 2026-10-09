@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { layoutTree, parseNewick } from "../../../helpers/singleCell/newick";
+import { packSnvCells } from "../../../helpers/singleCell/figures";
 
 // Patient-level files of every single-cell patient, for the cohort views:
 // SNV sites (with tree categories), SBS signature fits and filtered events.
@@ -29,6 +30,8 @@ async function loadPatient(dataset, summary, cancelToken) {
   }
   const out = {
     variants: snv.status === "ok" ? snv.data?.variants || [] : null,
+    // per-cell reads at the sites, packed (Figures tab SNV panel)
+    snvCells: snv.status === "ok" && snv.data?.cells ? packSnvCells(snv.data.cells) : null,
     signatures: signatures.status === "ok" ? signatures.data : null,
     events: events.status === "ok" ? (Array.isArray(events.data) ? events.data : []) : null,
     tree: treeLayout,
