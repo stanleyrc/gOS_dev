@@ -26,14 +26,23 @@ export const font = (px, weight = 400) => fontCss(scaled(px), weight);
 /**
  * One canvas per figure panel. `draw(ctx, ink)` paints in CSS pixels (the
  * context is pre-scaled to the device pixel ratio) and returns hit regions
- * [{ x0, y0, x1, y1, ...data }] (later regions win). Hovering shows
+ * [{ x0, y0, x1, y1, ...data }] (later regions win). `hitTest(x, y)` can
+ * replace the regions for dense panels (one row per cell). Hovering shows
  * `tooltip(hit)` lines in a DOM tooltip without re-rendering React; clicks
- * call onClick(hit).
+ * call onClick(hit, event).
+ *
+ * `onDragStart(x, y, event)` turns a press-and-drag into a selection gesture:
+ * return { mode: "band-y" | "band-x" | "rect" | "lasso", x0, x1, y0, y1 }
+ * (the bounds the gesture is clipped to) or null to ignore. The gesture is
+ * drawn on an overlay canvas (the figure is not redrawn while dragging) and
+ * `onDragEnd({ mode, a, b, path }, event)` gets its end points / lasso path.
  */
-export default function FigureCanvas({ width, height, draw, tooltip, onClick, onHover, style, ariaLabel }) {
+export default function FigureCanvas({ width, height, draw, tooltip, onClick, onHover, style, ariaLabel, hitTest, onDragStart, onDragEnd }) {
   const ref = useRef(null);
+  const overlayRef = useRef(null);
   const tipRef = useRef(null);
   const hitsRef = useRef([]);
+  const dragRef = useRef(null);
   const pr = usePixelRatio();
   const themeMode = usePlotTheme().mode; // redraw on a light / dark switch
   const styleName = useFigureStyleName(); // and on a figure style switch
@@ -52,10 +61,62 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, draw, pr, themeMode, styleName]);
 
-  const find = (event) => {
+  useEffect(() => {
+    const ov = overlayRef.current;
+    if (!ov || width <= 0 || height <= 0) return;
+    ov.width = Math.floor(width * pr);
+    ov.height = Math.floor(height * pr);
+  }, [width, height, pr]);
+
+  const paintGesture = () => {
+    const ov = overlayRef.current;
+    const g = dragRef.current;
+    if (!ov) return;
+    const ctx = ov.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(pr, 0, 0, pr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    if (!g || !g.moved) return;
+    const c = ink(styleName);
+    ctx.fillStyle = c.dark ? "rgba(120,170,255,0.18)" : "rgba(24,144,255,0.12)";
+    ctx.strokeStyle = c.dark ? "rgba(140,185,255,0.95)" : "rgba(24,144,255,0.9)";
+    ctx.lineWidth = 1.25;
+    const clampX = (v) => Math.max(g.x0, Math.min(g.x1, v));
+    const clampY = (v) => Math.max(g.y0, Math.min(g.y1, v));
+    if (g.mode === "lasso") {
+      ctx.beginPath();
+      g.path.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.fill();
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
+    let [ax, ay] = g.a;
+    let [bx, by] = g.b;
+    if (g.mode === "band-y") {
+      ax = g.x0;
+      bx = g.x1;
+    } else if (g.mode === "band-x") {
+      ay = g.y0;
+      by = g.y1;
+    }
+    const x0 = clampX(Math.min(ax, bx));
+    const x1 = clampX(Math.max(ax, bx));
+    const y0 = clampY(Math.min(ay, by));
+    const y1 = clampY(Math.max(ay, by));
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.strokeRect(x0 + 0.5, y0 + 0.5, Math.max(0, x1 - x0 - 1), Math.max(0, y1 - y0 - 1));
+  };
+
+  const pos = (event) => {
     const rect = ref.current.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    return [event.clientX - rect.left, event.clientY - rect.top];
+  };
+  const find = (event) => {
+    const [x, y] = pos(event);
+    if (hitTest) return { hit: hitTest(x, y) || null, x, y };
     const hits = hitsRef.current;
     for (let k = hits.length - 1; k >= 0; k -= 1) {
       const h = hits[k];
@@ -67,6 +128,20 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
     if (tipRef.current) tipRef.current.style.display = "none";
   };
   const move = (event) => {
+    const g = dragRef.current;
+    if (g) {
+      const [x, y] = pos(event);
+      if (!g.moved && Math.hypot(x - g.a[0], y - g.a[1]) < 4) return;
+      g.moved = true;
+      g.b = [x, y];
+      if (g.mode === "lasso") {
+        const last = g.path[g.path.length - 1];
+        if (Math.hypot(x - last[0], y - last[1]) >= 3) g.path.push([Math.max(g.x0, Math.min(g.x1, x)), Math.max(g.y0, Math.min(g.y1, y))]);
+      }
+      hide();
+      paintGesture();
+      return;
+    }
     const { hit, x, y } = find(event);
     if (ref.current) ref.current.style.cursor = hit && onClick ? "pointer" : "default";
     onHover?.(hit);
@@ -101,17 +176,41 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
         ref={ref}
         role="img"
         aria-label={ariaLabel}
-        style={{ width, height, display: "block" }}
-        onMouseMove={move}
+        style={{ width, height, display: "block", touchAction: onDragStart ? "none" : undefined }}
+        onPointerDown={(event) => {
+          if (!onDragStart || event.button !== 0) return;
+          const [x, y] = pos(event);
+          const spec = onDragStart(x, y, event);
+          if (!spec) return;
+          dragRef.current = { x0: 0, x1: width, y0: 0, y1: height, ...spec, a: [x, y], b: [x, y], path: [[x, y]], moved: false };
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        }}
+        onPointerMove={move}
+        onPointerUp={(event) => {
+          const g = dragRef.current;
+          if (!g) return;
+          dragRef.current = null;
+          paintGesture();
+          if (g.moved) {
+            event.preventDefault();
+            onDragEnd?.({ mode: g.mode, a: g.a, b: g.b, path: g.path }, event);
+            ref.current.dataset.dragged = "1";
+          }
+        }}
         onMouseLeave={() => {
           hide();
           onHover?.(null);
         }}
         onClick={(event) => {
+          if (ref.current?.dataset.dragged) {
+            delete ref.current.dataset.dragged;
+            return;
+          }
           const { hit } = find(event);
           if (hit && onClick) onClick(hit, event);
         }}
       />
+      {onDragStart && <canvas ref={overlayRef} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width, height, pointerEvents: "none" }} />}
       <div ref={tipRef} className="sc-tooltip" style={{ display: "none", pointerEvents: "none", zIndex: 5 }} />
     </div>
   );

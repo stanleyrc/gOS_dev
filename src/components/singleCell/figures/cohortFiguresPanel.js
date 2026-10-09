@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { Button, Card, Col, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
+import { Card, Col, Collapse, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tooltip, Typography } from "antd";
 import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
@@ -14,6 +14,11 @@ import { Provenance } from "../hintLine";
 import { useFigureStyleName } from "./figureCanvas";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
+import CloneFigure from "./cloneFigure";
+import GenePairScatter from "./genePairScatter";
+import CladeCarrierBars from "./cladeCarrierBars";
+import SelectedCellsModal from "./selectedCellsModal";
+import { CellSelectionProvider, SelectionBar, useCellSelection } from "./cellSelection";
 
 const { Text } = Typography;
 const PAD = 1.5e6;
@@ -58,12 +63,28 @@ function eventLoci(e) {
 /**
  * Cohort "Figures" tab: the paper's figures 3-5 rebuilt from the live data.
  * Top: amplicon landscape (Fig 3A/B), phylogenetic signal (3E) and
- * subclonal findings. Bottom: one patient's clonal amplicon view (4B/5B/5D)
- * with clone carrier fractions (4F), gene-vs-gene copies (5E) and segment
- * correlation (5C). Every top panel selects what the patient view shows.
+ * subclonal findings. Bottom: one patient's clonal amplicon figure (4B/5B/5D)
+ * with gene-vs-gene copies (5E), clade carrier fractions (4F) and segment
+ * correlation (5C). Every panel selects cells into one shared selection,
+ * shown in a popup (SelectedCellsModal).
  */
-export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows = {}, chromoBins, cloneColors }) {
+export default function CohortFiguresPanel(props) {
+  return (
+    <CellSelectionProvider>
+      <FiguresBody {...props} />
+    </CellSelectionProvider>
+  );
+}
+
+function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, cloneColors = {}, onOpenCell }) {
   const dispatch = useDispatch();
+  const { selection, select, clear } = useCellSelection();
+  const [showLive, setShowLive] = useState([]);
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && clear();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [clear]);
   const styleName = useFigureStyleName();
   const [ref, width] = useContainerWidth(1200);
   const patientRef = useRef(null);
@@ -96,8 +117,8 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
   // patient view selection
   const [patient, setPatient] = useState(null);
   const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "gene:<name>" | "f:<finding key>"
-  const [marked, setMarked] = useState(null); // { cells: Set, label, key }
   const current = per.find((p) => p.patient === patient) || withAmps[0] || per[0];
+  const marked = useMemo(() => (selection && selection.patient === current?.patient ? { cells: selection.cells, label: selection.label, key: `sel:${selection.label}` } : null), [selection, current]);
 
   const genePositions = useMemo(() => {
     const m = new Map();
@@ -135,14 +156,35 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
   const focus = (p, next = {}) => {
     setPatient(p);
     if (next.region !== undefined) setRegionKey(next.region);
-    if (next.marked !== undefined) setMarked(next.marked);
-    setTimeout(() => patientRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    if (next.marked) select(p, [...next.marked.cells], { label: next.marked.label, mode: next.mode || "replace" });
+    if (next.scroll !== false) setTimeout(() => patientRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   };
   const markGroup = (p, key) => {
     const g = p.groups.find((x) => x.key === key);
     if (!g) return null;
-    return { cells: new Set(g.cellIds.filter((id, k) => g.cn[k] >= minCn)), label: `ec${key} carriers`, key: `g:${p.patient}:${key}` };
+    return { cells: new Set(g.cellIds.filter((id, k) => g.cn[k] >= minCn)), label: `ec${key} carriers` };
   };
+  // genes for the figure markers (inside the region) and the scatter (amplified or in the region)
+  const genesInRegion = useMemo(() => {
+    const out = [];
+    genePositions.forEach(([chr, s, e], name) => {
+      const g = globalPos(chromoBins, chr, (s + e) / 2);
+      if (Number.isFinite(g) && domains.some(([a, b]) => g >= a && g <= b)) out.push({ name, g });
+    });
+    return out.slice(0, 16);
+  }, [genePositions, chromoBins, domains]);
+  const scatterGenes = useMemo(() => {
+    const amp = new Set((current?.events || []).filter((e) => e.vartype === "AMP").map((e) => `${e.gene}`));
+    const out = [];
+    genePositions.forEach(([chr, s, e], name) => {
+      if (!amp.has(name) && !genesInRegion.some((x) => x.name === name)) return;
+      const g = globalPos(chromoBins, chr, (s + e) / 2);
+      if (Number.isFinite(g)) out.push({ name, g });
+    });
+    return out.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 40);
+  }, [current, genePositions, genesInRegion, chromoBins]);
+  const selectHere = (ids, { label, mode }) => current && select(current.patient, ids, { label, mode });
+  const selectedHere = selection && selection.patient === current?.patient ? selection.cells : null;
 
   const corrSets = useMemo(() => {
     if (!current) return null;
@@ -165,10 +207,13 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
     ...(regionKey?.startsWith("f:") ? [{ value: regionKey, label: region.label }] : []),
     ...[...genePositions.keys()].sort().map((g) => ({ value: `gene:${g}`, label: g })),
   ];
-  const selectedViolin = marked?.key?.startsWith("g:") ? { patient: current?.patient, key: marked.key.split(":").slice(2).join(":") } : null;
+  const selectedViolin = region.group ? { patient: current?.patient, key: region.group.key } : null;
 
   return (
     <div ref={ref}>
+      <div className="sc-fig-selbar-wrap">
+        <SelectionBar />
+      </div>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space size={8} wrap>
@@ -194,13 +239,19 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
             ) : (
               <Row gutter={16}>
                 <Col xs={24} xl={13}>
-                  <AmpliconViolins per={withAmps} selected={selectedViolin} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+                  <AmpliconViolins
+                    per={withAmps}
+                    selected={selectedViolin}
+                    selection={selection}
+                    onSelectCells={(p, ids, opts) => select(p, ids, opts)}
+                    onSelect={({ patient: p, key }, event) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key), mode: event?.shiftKey ? "add" : "replace" })}
+                  />
                 </Col>
                 <Col xs={24} xl={11}>
                   <AmpliconUpset
                     per={withAmps}
-                    selected={marked?.key?.startsWith("c:") ? { patient: current?.patient, combo: marked.key.split(":").slice(2).join(":") } : null}
-                    onSelect={({ patient: p, combo, cells, label }) => focus(p, { marked: { cells: new Set(cells), label: `cells with ${label}`, key: `c:${p}:${combo}` } })}
+                    selected={null}
+                    onSelect={({ patient: p, cells, label }) => focus(p, { marked: { cells: new Set(cells), label: `cells with ${label}` }, scroll: false })}
                   />
                 </Col>
               </Row>
@@ -232,37 +283,64 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
             title={<Space><BarChartOutlined />Clonal amplicon view <Provenance id="figClonalAmplicon" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B / 5B / 5D</Text></Space>}
             extra={
               <Space wrap size={8}>
-                <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); setMarked(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
+                <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
                 <Select size="small" showSearch style={{ width: 220 }} value={region.key || undefined} placeholder="Region" options={regionOptions} onChange={(v) => setRegionKey(v)} />
-                {marked && (
-                  <Tag closable onClose={() => setMarked(null)} color="default" style={{ marginInlineEnd: 0 }}>
-                    {`Marked: ${marked.label} (${marked.cells.size})`}
-                  </Tag>
-                )}
               </Space>
             }
           >
-            {current && <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={marked} />}
-            <Row gutter={16} style={{ marginTop: 8 }}>
-              <Col xs={24} xl={12}>
-                <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the marked cells (upper triangle) and the other tumor cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
+            {current && (
+              <CloneFigure
+                patient={current.patient}
+                layout={current.tree}
+                cells={current.cells}
+                groups={current.groups}
+                snv={current.snvPacked ? { packed: current.snvPacked, nVariants: current.nVariants } : null}
+                cnEntry={cnRows[current.patient]}
+                domains={domains}
+                chromoBins={chromoBins}
+                genes={genesInRegion}
+                cloneColors={cloneColors}
+                selected={selectedHere}
+                onSelect={selectHere}
+              />
+            )}
+            <Row gutter={[24, 16]} style={{ marginTop: 14 }}>
+              <Col xs={24} xl={9}>
+                <div className="sc-fig-subtitle">Copies of one amplicon against another <span>Fig 5E · lasso to select</span></div>
+                {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
+              </Col>
+              <Col xs={24} xl={7}>
+                <div className="sc-fig-subtitle">Carriers per clade <span>Fig 4F · click a bar</span></div>
+                {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
+              </Col>
+              <Col xs={24} xl={8}>
+                <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the selected cells (upper triangle) and the other tumor cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
                   <div className="sc-fig-subtitle">Segment co-variation <span>Fig 5C{corrSets ? ` · ${corrSets.label}` : ""}</span></div>
                 </Tooltip>
                 {corrSets && cnRows[current?.patient]?.cellRows?.length ? (
                   <SegmentCorrelation width={half} cnEntry={cnRows[current.patient]} domains={domains} carriers={corrSets.carriers} others={corrSets.others} chromoBins={chromoBins} />
                 ) : (
-                  <div><Text type="secondary" style={{ fontSize: 12 }}>{corrSets ? "Loading cell copy number…" : "Mark cells (tree node, upset row or finding) to compare them with the rest."}</Text></div>
+                  <div className="sc-fig-empty">{corrSets ? "Loading cell copy number…" : "Select cells (rows, tree node, bar or lasso) to compare them with the rest."}</div>
                 )}
               </Col>
             </Row>
-            {marked && (
-              <Button size="small" type="link" onClick={() => setMarked(null)} style={{ padding: 0 }}>
-                Clear marked cells
-              </Button>
-            )}
+            <Collapse
+              ghost
+              style={{ marginTop: 8 }}
+              activeKey={showLive}
+              onChange={(k) => setShowLive(Array.isArray(k) ? k : [k])}
+              items={[
+                {
+                  key: "live",
+                  label: <Text type="secondary">Live report panels for {current?.patient}: zoomable heatmap, walk copies along the tree, walk structures and co-occurrence</Text>,
+                  children: showLive.includes("live") && current ? <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={marked} /> : null,
+                },
+              ]}
+            />
           </Card>
         </Col>
       </Row>
+      <SelectedCellsModal per={per} cnRows={cnRows} chromoBins={chromoBins} cloneColors={cloneColors} domains={domains} genes={genesInRegion} onOpenCell={onOpenCell} />
     </div>
   );
 }
