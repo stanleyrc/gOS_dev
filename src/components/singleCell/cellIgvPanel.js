@@ -10,6 +10,7 @@ import settingsActions from "../../redux/settings/actions";
 import { casePath } from "../../redux/singleCell/loaders";
 import { domainToLoci, lociToDomains } from "../../helpers/igvUtil";
 import { toGlobal } from "../../helpers/singleCell/matrix";
+import { buildIgvTracks, DNA_READS_FILE, lociString } from "../../helpers/singleCell/igvTracks";
 import Wrapper from "./index.style";
 
 const { Text } = Typography;
@@ -18,7 +19,9 @@ const WINDOW = 60; // bp either side of the clicked site
 // gear/scrollbar on the right: the same margins as gOS genome plots, so the
 // navigation insets line its data area up with the heatmap columns.
 const IGV_GUTTER = { left: 0, right: 0 };
-export const SC_READS_FILE = "reads.bam";
+export const SC_READS_FILE = DNA_READS_FILE;
+// RNA slices shown alongside the DNA cells (event popup, RNA fusion popup)
+export const SC_MAX_RNA_TRACKS = 12;
 
 let genomeListPromise = null;
 const loadGenomeList = () => {
@@ -29,7 +32,6 @@ const loadGenomeList = () => {
   return genomeListPromise;
 };
 
-const chr = (c) => (`${c}`.startsWith("chr") ? `${c}` : `chr${c}`);
 const sameDomain = (a, b, tolerance = 2) =>
   a && b && Math.abs(a[0] - b[0]) <= tolerance && Math.abs(a[1] - b[1]) <= tolerance;
 
@@ -38,6 +40,10 @@ const sameDomain = (a, b, tolerance = 2) =>
  * heatmaps). Each cell folder holds reads.bam (+ .bai): reads around the
  * patient's mutation sites and the cell's junction breakpoints, cut from the
  * cell's full alignment so it can be served from the web folder.
+ *
+ * view.rnaTracks ([{ rna_id, bam, patientId }]) adds per-cell RNA slices
+ * (rna/reads/<rna_id>.bam, grouped and coloured by the ZF fusion tag);
+ * view.window overrides the bp shown either side of each locus.
  *
  * Laid out on the heatmap's genomic columns. With "zoom genome views" on, the
  * heatmap, navigation and cell tracks follow IGV's window and vice versa.
@@ -63,9 +69,10 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
 
   // one locus, or several (e.g. both fusion breakpoints) shown side by side
   const loci = view ? (view.loci?.length ? view.loci : [{ chromosome: view.chromosome, position: view.position }]) : [];
-  const locus = view ? loci.map((l) => `${chr(l.chromosome)}:${Math.max(1, l.position - WINDOW)}-${l.position + WINDOW}`).join(" ") : null;
-  const cellIds = view ? view.cellIds.slice(0, SC_MAX_TRACK_CELLS) : [];
-  const key = cellIds.join("|");
+  const locus = view ? lociString(loci, view.window || WINDOW) : null;
+  const cellIds = view ? (view.cellIds || []).slice(0, SC_MAX_TRACK_CELLS) : [];
+  const rnaTracks = view ? (view.rnaTracks || []).slice(0, SC_MAX_RNA_TRACKS) : [];
+  const key = [...cellIds, ...rnaTracks.map((r) => `rna:${r.patientId}/${r.rna_id}`)].join("|");
 
   // Opening a site (or turning sync on) zooms every genome view to it.
   useEffect(() => {
@@ -98,16 +105,14 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
   useEffect(() => {
     if (!view || !containerRef.current) return undefined;
     let cancelled = false;
-    const tracks = cellIds.map((cellId) => ({
-      id: cellId,
-      name: cellId,
-      url: casePath(dataset, cellId, SC_READS_FILE),
-      indexURL: casePath(dataset, cellId, `${SC_READS_FILE}.bai`),
-      format: "bam",
-      type: "alignment",
-      height: 260,
-      sort: { chr: chr(view.chromosome), position: view.position, option: "BASE", direction: "ASC" },
-    }));
+    const tracks = buildIgvTracks({
+      dnaCellIds: cellIds,
+      rnaTracks,
+      pathFor: (folder, file) => casePath(dataset, folder, file),
+      sortAt: { chromosome: view.chromosome, position: view.position },
+      dnaHeight: rnaTracks.length ? 200 : 260,
+    });
+    const ids = tracks.map((tr) => tr.id);
     const run = async () => {
       try {
         setError(null);
@@ -146,7 +151,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
         }
         const browser = browserRef.current;
         const loaded = (browser.findTracks ? browser.findTracks("type", "alignment") : []).map((tr) => tr.id);
-        loaded.filter((id) => !cellIds.includes(id)).forEach((id) => browser.removeTrackByName(id));
+        loaded.filter((id) => !ids.includes(id)).forEach((id) => browser.removeTrackByName(id));
         const fresh = tracks.filter((tr) => !loaded.includes(tr.id));
         if (fresh.length) await browser.loadTrackList(fresh);
         await browser.search(locus);
