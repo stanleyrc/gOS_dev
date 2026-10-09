@@ -6,10 +6,26 @@ import { BgColorsOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
 import { THEMES } from "../../helpers/singleCell/themes";
+import { DEFAULT_FIGURE_STYLE, FIGURE_STYLES } from "../../helpers/singleCell/figureStyle";
 
 const { Text } = Typography;
 
 const stateLabel = (k, n) => (k === n - 1 ? `${k}+` : `${k}`);
+
+/** Pick the chart drawing style (axes, grid, weights, spacing) for every chart and Paper figure. */
+export function ChartStyleSelect({ style }) {
+  const dispatch = useDispatch();
+  const value = useSelector((state) => state.SingleCell.layout.figureStyle) || DEFAULT_FIGURE_STYLE;
+  return (
+    <Select
+      size="small"
+      style={{ width: 150, ...style }}
+      value={value}
+      onChange={(v) => dispatch(singleCellActions.updateLayout({ figureStyle: v }))}
+      options={Object.entries(FIGURE_STYLES).map(([v, st]) => ({ value: v, label: st.label }))}
+    />
+  );
+}
 
 /** Pick the categorical colour theme (persists in this browser with the layout). */
 export function ThemeSelect({ style }) {
@@ -75,6 +91,8 @@ export default function PaletteEditor() {
       <Space wrap>
         <Text strong>{t("components.single-cell.palette.theme")}</Text>
         <ThemeSelect />
+        <Text strong>Chart style</Text>
+        <ChartStyleSelect />
       </Space>
       <Text type="secondary" style={{ fontSize: 13 }}>
         {t("components.single-cell.palette.theme-help")}
