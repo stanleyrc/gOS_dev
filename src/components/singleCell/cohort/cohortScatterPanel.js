@@ -8,7 +8,8 @@ import { PATIENT_METRICS, patientMetrics } from "../../../helpers/singleCell/coh
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { spearman } from "../../../helpers/singleCell/dosage";
 import { FONT, YAxis, patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const HEIGHT = 360;
@@ -41,7 +42,7 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
   return (
     <Card
       size="small"
-      title={<Space><DotChartOutlined />{t("components.single-cell.cohort.scatter-title")}</Space>}
+      title={<Space><DotChartOutlined />{t("components.single-cell.cohort.scatter-title")}<Provenance id="cohortScatter" /></Space>}
       extra={
         <Space>
           <Text type="secondary">x</Text>
@@ -56,20 +57,20 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
           <YAxis scale={y} x0={M.left} x1={width - M.right} title={label(yKey)} format={d3.format("~g")} />
           {x.ticks(6).map((v) => (
             <g key={v} transform={`translate(${x(v)},0)`}>
-              <line y1={M.top} y2={HEIGHT - M.bottom} stroke="#f0f0f0" />
-              <text y={HEIGHT - M.bottom + 16} textAnchor="middle" fontSize={FONT.axis} fill="#595959">{d3.format("~g")(v)}</text>
+              <line y1={M.top} y2={HEIGHT - M.bottom} stroke={INK.grid} />
+              <text y={HEIGHT - M.bottom + 16} textAnchor="middle" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(v)}</text>
             </g>
           ))}
-          <text x={(M.left + width - M.right) / 2} y={HEIGHT - 10} textAnchor="middle" fontSize={FONT.label} fill="#262626">{label(xKey)}</text>
+          <text x={(M.left + width - M.right) / 2} y={HEIGHT - 10} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>{label(xKey)}</text>
           {points.map((p) => (
             <g key={p.patient} style={{ cursor: "pointer" }} onClick={() => onOpen(p.summary)}>
-              <circle cx={x(p[xKey])} cy={y(p[yKey])} r={7} fill={patientColor(p.k)} stroke="#fff" strokeWidth={1.5} />
-              <text x={x(p[xKey]) + 10} y={y(p[yKey])} dy="0.35em" fontSize={FONT.axis} fill="#262626">{p.patient}</text>
+              <circle cx={x(p[xKey])} cy={y(p[yKey])} r={7} fill={patientColor(p.k)} stroke={INK.panel} strokeWidth={1.5} />
+              <text x={x(p[xKey]) + 10} y={y(p[yKey])} dy="0.35em" fontSize={FONT.axis} fill={INK.text}>{p.patient}</text>
               <title>{`${p.patient}\n${label(xKey)}: ${d3.format("~g")(p[xKey])}\n${label(yKey)}: ${d3.format("~g")(p[yKey])}`}</title>
             </g>
           ))}
           {Number.isFinite(rho) && (
-            <text x={width - M.right} y={M.top + 4} textAnchor="end" fontSize={FONT.axis} fill="#595959">{`Spearman ρ = ${rho.toFixed(2)} (n = ${points.length})`}</text>
+            <text x={width - M.right} y={M.top + 4} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{`Spearman ρ = ${rho.toFixed(2)} (n = ${points.length})`}</text>
           )}
         </svg>
         <HintLine text={t("components.single-cell.cohort.scatter-help")} />

@@ -15,7 +15,8 @@ import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { eventTooltipLines } from "../../helpers/singleCell/cohortStats";
 import { bufferedColumns, carrierMasks, clampView, drawMatrix, isFullView, matrixHit, panView, viewTransform, wheelFactor, wheelPixels, zoomView } from "../../helpers/singleCell/matrixZoom";
 import { Swatches } from "./cohort/charts";
-import HintLine from "./hintLine";
+import HintLine, { Provenance } from "./hintLine";
+import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", other: "#8c8c8c" };
@@ -264,7 +265,7 @@ export default function DriverCellMatrix({ drivers }) {
   return (
     <Card
       size="small"
-      title={<Space><TableOutlined />{t("components.single-cell.report.matrix-title")}</Space>}
+      title={<Space><TableOutlined />{t("components.single-cell.report.matrix-title")}<Provenance id="driverMatrix" /></Space>}
       extra={
         <Space wrap>
           <Checkbox checked={zoomOnClick} onChange={(e) => setZoomOnClick(e.target.checked)}>{t("components.single-cell.report.matrix-zoom-click")}</Checkbox>
@@ -305,7 +306,7 @@ export default function DriverCellMatrix({ drivers }) {
           </div>
           {/* overlaid (not in the flow) so zooming never shifts the plot down */}
           {!full && (
-            <Text type="secondary" style={{ position: "absolute", right: RIGHT_W, top: 0, zIndex: 3, fontSize: 12, pointerEvents: "none", background: "rgba(255,255,255,0.85)", padding: "0 4px" }}>
+            <Text type="secondary" style={{ position: "absolute", right: RIGHT_W, top: 0, zIndex: 3, fontSize: 13, pointerEvents: "none", background: "rgba(255,255,255,0.85)", padding: "0 4px" }}>
               {t("components.single-cell.report.matrix-window", { shown: nVis, total: n })}
             </Text>
           )}
@@ -354,7 +355,7 @@ export default function DriverCellMatrix({ drivers }) {
                       >
                         <rect x={x0} y={0} width={Math.max(1, x1 - x0)} height={STRIP_H} fill={cloneColors[b.clone] || "#d9d9d9"} />
                         {lx1 - lx0 > 46 && (
-                          <text x={(lx0 + lx1) / 2} y={STRIP_H / 2} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff" fontWeight={600} pointerEvents="none">
+                          <text x={(lx0 + lx1) / 2} y={STRIP_H / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" fontWeight={600} pointerEvents="none">
                             {b.clone ?? "–"}
                           </text>
                         )}
@@ -366,13 +367,13 @@ export default function DriverCellMatrix({ drivers }) {
                 {hoverCol != null && <rect x={xOf(hoverCol)} y={0} width={Math.max(1, cellW)} height={height} fill="rgba(22,119,255,0.18)" pointerEvents="none" />}
                 {cellW >= 56 &&
                   order.slice(b0, b1 + 1).map((id, j) => (
-                    <text key={id} x={xOf(b0 + j) + cellW / 2} y={height - 3} textAnchor="middle" fontSize={9} fill="#8c8c8c">
+                    <text key={id} x={xOf(b0 + j) + cellW / 2} y={height - 3} textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted}>
                       {id.replace(/^.*?_(MR_?\d+)_/, "$1 ")}
                     </text>
                   ))}
               </g>
             </g>
-            <text x={LABEL_W - 8} y={(treeLayout ? TREE_H + 6 : 0) + STRIP_H - 2} textAnchor="end" fontSize={10} fill="#8c8c8c">{t("components.single-cell.heatmap.strip-clone")}</text>
+            <text x={LABEL_W - 8} y={(treeLayout ? TREE_H + 6 : 0) + STRIP_H - 2} textAnchor="end" fontSize={11} fill={INK.muted}>{t("components.single-cell.heatmap.strip-clone")}</text>
             {rows.map((r, k) => {
               const y = top + k * ROW_H;
               return (
@@ -384,11 +385,11 @@ export default function DriverCellMatrix({ drivers }) {
                   <rect x={18} y={y} width={LABEL_W - 18} height={ROW_H} fill="transparent" pointerEvents="all" style={{ cursor: "pointer" }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(r.event, "plots"))}>
                     <title>{[r.label, ...eventTooltipLines(r.event), t("components.single-cell.report.matrix-click")].join("\n")}</title>
                   </rect>
-                  <text x={20} y={y + ROW_H / 2} dy="0.35em" fontSize={12} fill="#1677ff" pointerEvents="none">
+                  <text x={20} y={y + ROW_H / 2} dy="0.35em" fontSize={TYPE.label} fill="#1677ff" pointerEvents="none">
                     {r.label.length > 34 ? `${r.label.slice(0, 33)}…` : r.label}
                     <title>{[r.label, ...eventTooltipLines(r.event), ...(Number.isFinite(r.fit.score) ? [`clade F1 ${r.fit.score.toFixed(2)} (best clade ${r.fit.clade} cells)`] : []), t("components.single-cell.report.matrix-click")].join("\n")}</title>
                   </text>
-                  <text x={LABEL_W + matW + 8} y={y + ROW_H / 2} dy="0.35em" fontSize={11} fill={Number.isFinite(r.fit.score) && r.fit.score < 0.5 ? "#cf1322" : "#8c8c8c"}>
+                  <text x={LABEL_W + matW + 8} y={y + ROW_H / 2} dy="0.35em" fontSize={TYPE.tick} fill={Number.isFinite(r.fit.score) && r.fit.score < 0.5 ? "#cf1322" : "#8c8c8c"}>
                     {`${pct(r.fraction)}${Number.isFinite(r.fit.score) ? ` · ${r.fit.score.toFixed(2)}` : ""}`}
                   </text>
                 </g>
@@ -407,7 +408,7 @@ export default function DriverCellMatrix({ drivers }) {
           />
           <div
             ref={tipRef}
-            style={{ display: "none", position: "absolute", zIndex: 4, pointerEvents: "none", whiteSpace: "pre", fontSize: 11, lineHeight: "15px", padding: "3px 6px", borderRadius: 4, background: "rgba(0,0,0,0.78)", color: "#fff" }}
+            style={{ display: "none", position: "absolute", zIndex: 4, pointerEvents: "none", whiteSpace: "pre", fontSize: 12.5, lineHeight: "15px", padding: "3px 6px", borderRadius: 4, background: "rgba(0,0,0,0.78)", color: "#fff" }}
           />
         </div>
         <Swatches style={{ marginTop: 6 }} items={Object.entries(CLASS_COLORS).filter(([k]) => k !== "other" && rows.some((r) => r.class === k)).map(([k, c]) => ({ key: k, color: c, label: t(`components.single-cell.cohort.class-${k}`) }))} />

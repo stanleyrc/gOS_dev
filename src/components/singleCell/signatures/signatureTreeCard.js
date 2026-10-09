@@ -17,7 +17,8 @@ import { rowMap } from "../../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../../helpers/singleCell/snvSites";
 import { cutTree, labelRuns } from "../../../helpers/singleCell/treeGroups";
 import { fisherExact } from "../../../helpers/singleCell/tests";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const TREE_WIDTH = 240;
@@ -125,7 +126,7 @@ export default function SignatureTreeCard() {
   return (
     <Card
       size="small"
-      title={<Space><ApartmentOutlined />{t("components.single-cell.signatures.tree-title")}</Space>}
+      title={<Space><ApartmentOutlined />{t("components.single-cell.signatures.tree-title")}<Provenance id="signatureTree" /></Space>}
       extra={
         <Space wrap>
           <Select size="small" style={{ width: 150 }} value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.bars.per-cell") }, { value: "clones", label: t("components.single-cell.bars.per-clone") }, { value: "cut", label: t("components.single-cell.bars.per-clade") }]} />
@@ -146,7 +147,7 @@ export default function SignatureTreeCard() {
       }
     >
       <div ref={containerRef}>
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <Text type="secondary" style={{ fontSize: 13 }}>
           {model.ready
             ? t("components.single-cell.signatures.model-note", { source: model.source === "backend" ? "SigProfilerAssignment" : t("components.single-cell.signatures.browser-short"), list: model.activities.filter((a) => a.activity > 0).map((a) => a.signature).join(", ") })
             : t("components.single-cell.signatures.model-loading")}
@@ -192,16 +193,16 @@ export default function SignatureTreeCard() {
                 <g key={c.key} style={{ cursor: "pointer" }} onClick={(e) => selectClade(c, e)} onMouseEnter={() => mode === "cells" && share(c.key)}>
                   <rect x={0} y={y0} width={width} height={h} fill={focus === c.key ? "#e6f4ff" : mode === "cells" ? "#ffffff" : i % 2 ? "#fafafa" : "#f5f5f5"} fillOpacity={selected ? 0.5 : 0.8} />
                   {mode === "cells" && hoverRow === c.first && <rect x={0} y={y0} width={width} height={h} fill="rgba(22,119,255,0.18)" />}
-                  <rect x={0} y={y0 + 1} width={5} height={Math.max(1, h - 2)} fill={(c.clone != null && cloneColors[c.clone]) || "#8c8c8c"} />
+                  <rect x={0} y={y0 + 1} width={5} height={Math.max(1, h - 2)} fill={(c.clone != null && cloneColors[c.clone]) || INK.faint} />
                   {mode === "cells" && h < 22 ? (
-                    h >= 9 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(10, h - 1)} fill="#595959">{c.label}</text>
+                    h >= 9 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(10, h - 1)} fill={INK.textSecondary}>{c.label}</text>
                   ) : h >= 22 ? (
                     <>
-                      <text x={10} y={cy - 5} fontSize={12} fontWeight={600} fill="#262626">{c.label.length > 18 ? `${c.label.slice(0, 17)}…` : c.label}</text>
-                      <text x={10} y={cy + 9} fontSize={10} fill="#8c8c8c">{t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}</text>
+                      <text x={10} y={cy - 5} fontSize={TYPE.label} fontWeight={600} fill={INK.text}>{c.label.length > 18 ? `${c.label.slice(0, 17)}…` : c.label}</text>
+                      <text x={10} y={cy + 9} fontSize={11} fill={INK.muted}>{t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}</text>
                     </>
                   ) : (
-                    h >= 11 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(10, h - 1)} fill="#262626">{c.label}</text>
+                    h >= 11 && <text x={10} y={cy} dy="0.35em" fontSize={Math.min(TYPE.tick, h - 1)} fill={INK.text}>{c.label}</text>
                   )}
                   <title>{`${c.label} · ${t("components.single-cell.signatures.clade-meta2", { cells: c.last - c.first + 1, n: b?.assigned ?? "…" })}`}</title>
                   {b &&
@@ -212,7 +213,7 @@ export default function SignatureTreeCard() {
                       const rect = (
                         <g key={s}>
                           <rect x={bx + x} y={cy - barH / 2} width={Math.max(0, w - 0.6)} height={barH} fill={signatureColorOf(s)} rx={1} />
-                          {w > 34 && barH >= 11 && <text x={bx + x + w / 2} y={cy} dy="0.35em" textAnchor="middle" fontSize={10} fill="#fff" pointerEvents="none">{s}</text>}
+                          {w > 34 && barH >= 12 && <text x={bx + x + w / 2} y={cy} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">{s}</text>}
                           <title>{`${c.label} · ${s}: ${n} mutations (${pct(n / Math.max(1, b.assigned))})`}</title>
                         </g>
                       );
@@ -224,8 +225,8 @@ export default function SignatureTreeCard() {
             })}
             {unit === "count" && xScale.ticks(5).map((v) => (
               <g key={v} transform={`translate(${LABEL_W + xScale(v)},0)`}>
-                <line y1={0} y2={height} stroke="#e8e8e8" strokeDasharray="2 3" />
-                <text y={height - 2} textAnchor="middle" fontSize={9} fill="#8c8c8c">{v}</text>
+                <line y1={0} y2={height} stroke={INK.grid} strokeDasharray="2 3" />
+                <text y={height - 2} textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted}>{v}</text>
               </g>
             ))}
           </svg>
@@ -233,7 +234,7 @@ export default function SignatureTreeCard() {
         {focus && focusStats && (
           <div style={{ marginTop: 10 }}>
             <Text strong>{t("components.single-cell.signatures.clade-vs-rest", { clade: clades.find((c) => c.key === focus)?.label || focus })}</Text>
-            <div><Text type="secondary" style={{ fontSize: 12 }}>{t("components.single-cell.signatures.clade-vs-rest-meta2", { nClade: focusStats.nClade, nRest: focusStats.nRest })}</Text></div>
+            <div><Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.signatures.clade-vs-rest-meta2", { nClade: focusStats.nClade, nRest: focusStats.nRest })}</Text></div>
             <Table
               size="small"
               rowKey="signature"

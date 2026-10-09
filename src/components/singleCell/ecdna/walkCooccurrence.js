@@ -12,11 +12,12 @@ import { bestPair, foldRareWalks, splitRare, MIN_PAIR_N } from "../../../helpers
 import RareControl, { useRareMax } from "./rareControl";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { Swatches } from "../cohort/charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
-const MUTED = "#8c8c8c";
+const MUTED = INK.muted;
 
 /**
  * Upset-style co-occurrence of the selected walks in cells (sets present at
@@ -45,27 +46,27 @@ export function WalkUpset({ walks, families, cellIds, colorOf, minCn = 1 }) {
   const plotW = LEFT + combos.length * colW;
   const nCarry = (w) => cellIds.filter((id) => (Number(w.cells[id]) || 0) >= minCn && (Number(w.cells[id]) || 0) > 0).length;
   return (
-    <Card size="small" title={<Space size={6}><TableOutlined />{t("components.single-cell.ecdna.upset-title")}<HintLine inline text={t("components.single-cell.ecdna.upset-help")} /></Space>} extra={<Space size={8}><RareControl /><SvgExportButton containerRef={ref} name="ecdna-cooccurrence" /></Space>}>
+    <Card size="small" title={<Space size={6}><TableOutlined />{t("components.single-cell.ecdna.upset-title")}<HintLine inline provenance="walkCooccurrence" text={t("components.single-cell.ecdna.upset-help")} /></Space>} extra={<Space size={8}><RareControl /><SvgExportButton containerRef={ref} name="ecdna-cooccurrence" /></Space>}>
       <div ref={ref}>
         <svg width={Math.max(width - 4, plotW + RIGHT)} height={h} style={{ display: "block" }}>
           {y.ticks(4).map((tk) => (
             <g key={`t${tk}`}>
               <line x1={LEFT - 4} x2={plotW} y1={y(tk)} y2={y(tk)} stroke={MUTED} strokeOpacity={0.15} />
-              <text x={LEFT - 8} y={y(tk)} dy="0.35em" textAnchor="end" fontSize={10} fill={MUTED}>{tk}</text>
+              <text x={LEFT - 8} y={y(tk)} dy="0.35em" textAnchor="end" fontSize={11} fill={MUTED}>{tk}</text>
             </g>
           ))}
-          <text x={LEFT - 8} y={8} textAnchor="end" fontSize={10} fill={MUTED}>{t("components.single-cell.ecdna.upset-cells")}</text>
+          <text x={LEFT - 8} y={8} textAnchor="end" fontSize={11} fill={MUTED}>{t("components.single-cell.ecdna.upset-cells")}</text>
           {rows.map((w, i) => (
             <g key={w.id}>
               <rect x={0} y={top + i * rowH} width={plotW + RIGHT} height={rowH} fill={i % 2 ? "rgba(128,128,128,0.06)" : "transparent"} />
-              <text x={LEFT - 10} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={12} fill={rowColor(w)} fontWeight={w.rare ? 400 : 600} fontStyle={w.rare ? "italic" : "normal"}>
+              <text x={LEFT - 10} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fill={rowColor(w)} fontWeight={w.rare ? 400 : 600} fontStyle={w.rare ? "italic" : "normal"}>
                 {w.label.length > 26 ? `${w.label.slice(0, 25)}…` : w.label}
                 <title>{w.rare ? w.members.map((m) => m.label).join(", ") : w.label}</title>
               </text>
-              <text x={plotW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={11} fill={MUTED}>{nCarry(w)}</text>
+              <text x={plotW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={TYPE.tick} fill={MUTED}>{nCarry(w)}</text>
             </g>
           ))}
-          <text x={plotW + 6} y={top - 4} fontSize={9} fill={MUTED}>{t("components.single-cell.ecdna.upset-carriers")}</text>
+          <text x={plotW + 6} y={top - 4} fontSize={TYPE.micro} fill={MUTED}>{t("components.single-cell.ecdna.upset-carriers")}</text>
           {combos.map((c, j) => {
             const cx = LEFT + (j + 0.5) * colW;
             const idx = c.walks.map((id) => rows.findIndex((w) => w.id === id)).filter((i) => i >= 0);
@@ -74,7 +75,7 @@ export function WalkUpset({ walks, families, cellIds, colorOf, minCn = 1 }) {
               <g key={c.walks.join("|")} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection(c.cells))}>
                 <rect x={cx - colW / 2} y={0} width={colW} height={h} fill="transparent" />
                 <rect x={cx - barW / 2} y={y(c.n)} width={barW} height={barH - y(c.n)} fill={single ? rowColor(single) : MUTED} rx={2} />
-                <text x={cx} y={y(c.n) - 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="currentColor">{c.n}</text>
+                <text x={cx} y={y(c.n) - 4} textAnchor="middle" fontSize={TYPE.label} fontWeight={600} fill="currentColor">{c.n}</text>
                 {idx.length > 1 && <line x1={cx} x2={cx} y1={top + (Math.min(...idx) + 0.5) * rowH} y2={top + (Math.max(...idx) + 0.5) * rowH} stroke={MUTED} strokeWidth={2.5} />}
                 {rows.map((w, i) => {
                   const on = c.walks.includes(w.id);
@@ -122,7 +123,7 @@ export function WalkScatter({ walks, cellIds, colorOf }) {
   const nBoth = pts.filter((q) => q.x > 0 && q.y > 0).length;
   const enough = nBoth >= MIN_PAIR_N;
   return (
-    <Card size="small" title={<Space><DotChartOutlined />{t("components.single-cell.ecdna.scatter-title")}</Space>} extra={<SvgExportButton containerRef={ref} name="ecdna-cn-vs-cn" />}>
+    <Card size="small" title={<Space><DotChartOutlined />{t("components.single-cell.ecdna.scatter-title")}<Provenance id="walkCooccurrence" /></Space>} extra={<SvgExportButton containerRef={ref} name="ecdna-cn-vs-cn" />}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Text type="secondary">x</Text>
         <Select size="small" style={{ width: 190 }} value={A.id} onChange={setXa} options={opts} />
@@ -136,15 +137,15 @@ export function WalkScatter({ walks, cellIds, colorOf }) {
       </Space>
       <div ref={ref}>
         <svg width={w} height={h}>
-          {x.ticks(6).map((tk) => <g key={`x${tk}`}><line x1={x(tk)} x2={x(tk)} y1={M.top} y2={h - M.bottom} stroke="#f0f0f0" /><text x={x(tk)} y={h - M.bottom + 14} textAnchor="middle" fontSize={10} fill="#8c8c8c">{tk}</text></g>)}
-          {y.ticks(6).map((tk) => <g key={`y${tk}`}><line x1={M.left} x2={w - M.right} y1={y(tk)} y2={y(tk)} stroke="#f0f0f0" /><text x={M.left - 6} y={y(tk)} dy="0.35em" textAnchor="end" fontSize={10} fill="#8c8c8c">{tk}</text></g>)}
+          {x.ticks(6).map((tk) => <g key={`x${tk}`}><line x1={x(tk)} x2={x(tk)} y1={M.top} y2={h - M.bottom} stroke={INK.grid} /><text x={x(tk)} y={h - M.bottom + 14} textAnchor="middle" fontSize={11} fill={INK.muted}>{tk}</text></g>)}
+          {y.ticks(6).map((tk) => <g key={`y${tk}`}><line x1={M.left} x2={w - M.right} y1={y(tk)} y2={y(tk)} stroke={INK.grid} /><text x={M.left - 6} y={y(tk)} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.muted}>{tk}</text></g>)}
           {pts.map((q) => (
-            <circle key={q.id} cx={x(q.x)} cy={y(q.y)} r={selected.has(q.id) ? 5 : 3.5} fill={(q.clone != null && cloneColors[q.clone]) || "#8c8c8c"} fillOpacity={0.8} stroke={selected.has(q.id) ? "#141414" : "none"} style={{ cursor: "pointer" }} onClick={(e) => dispatch(singleCellActions.updateSelection(e.shiftKey || e.metaKey ? [...new Set([...selectedCellIds, q.id])] : [q.id]))}>
+            <circle key={q.id} cx={x(q.x)} cy={y(q.y)} r={selected.has(q.id) ? 5 : 3.5} fill={(q.clone != null && cloneColors[q.clone]) || INK.faint} fillOpacity={0.8} stroke={selected.has(q.id) ? "#141414" : "none"} style={{ cursor: "pointer" }} onClick={(e) => dispatch(singleCellActions.updateSelection(e.shiftKey || e.metaKey ? [...new Set([...selectedCellIds, q.id])] : [q.id]))}>
               <title>{`${q.id}${q.clone != null ? ` · ${q.clone}` : ""}\n${A.label}: ${q.x} · ${B.label}: ${q.y}`}</title>
             </circle>
           ))}
-          <text x={(M.left + w - M.right) / 2} y={h - 6} textAnchor="middle" fontSize={11} fill={colorOf(A.id)} fontWeight={600}>{`${A.label} copies`}</text>
-          <text transform={`translate(12 ${(M.top + h - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={11} fill={colorOf(B.id)} fontWeight={600}>{`${B.label} copies`}</text>
+          <text x={(M.left + w - M.right) / 2} y={h - 6} textAnchor="middle" fontSize={TYPE.tick} fill={colorOf(A.id)} fontWeight={600}>{`${A.label} copies`}</text>
+          <text transform={`translate(12 ${(M.top + h - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.tick} fill={colorOf(B.id)} fontWeight={600}>{`${B.label} copies`}</text>
         </svg>
         <Swatches items={[...new Set(pts.map((q) => q.clone).filter((c) => c != null))].map((c) => ({ key: c, color: cloneColors[c], label: c }))} />
         <HintLine text={t("components.single-cell.ecdna.scatter-help")} />

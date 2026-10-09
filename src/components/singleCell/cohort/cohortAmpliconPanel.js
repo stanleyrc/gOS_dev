@@ -9,8 +9,9 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { spearman, walkStats } from "../../../helpers/singleCell/walks";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, Swatches, patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
@@ -131,7 +132,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
         <Col span={24}>
           <Card
             size="small"
-            title={<Space><BranchesOutlined />{t("components.single-cell.cohort.amp-title")}</Space>}
+            title={<Space><BranchesOutlined />{t("components.single-cell.cohort.amp-title")}<Provenance id="cohortAmplicons" /></Space>}
             extra={
               <Space wrap>
                 <Text type="secondary">{t("components.single-cell.ecdna.min-cells")}</Text>
@@ -158,12 +159,12 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                         return (
                           <g key={g.key} transform={`translate(${64 + i * bw},0)`}>
                             <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={g.color} />
-                            <text x={bw / 2} y={41 - g.fraction * 40} textAnchor="middle" fontSize={12} fill="#262626">{d3.format(".0%")(g.fraction)}</text>
+                            <text x={bw / 2} y={41 - g.fraction * 40} textAnchor="middle" fontSize={TYPE.label} fill={INK.text}>{d3.format(".0%")(g.fraction)}</text>
                             <title>{`${g.label}: ${g.ids.length} cells (${d3.format(".0%")(g.fraction)})`}</title>
                           </g>
                         );
                       })}
-                      <text x={60} y={28} textAnchor="end" fontSize={12} fill="#595959">{t("components.single-cell.cohort.amp-pct")}</text>
+                      <text x={60} y={28} textAnchor="end" fontSize={TYPE.label} fill={INK.textSecondary}>{t("components.single-cell.cohort.amp-pct")}</text>
                     </svg>
                   </div>
                 );
@@ -173,7 +174,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
           </Card>
         </Col>
         <Col xs={24} xl={12}>
-          <Card size="small" title={<Space><TableOutlined />{t("components.single-cell.cohort.amp-upset-title")}</Space>} extra={<Space><Text type="secondary">{t("components.single-cell.ecdna.min-cn")}</Text><InputNumber size="small" min={1} value={minCn} onChange={(v) => setMinCn(v ?? 1)} style={{ width: 64 }} /></Space>}>
+          <Card size="small" title={<Space><TableOutlined />{t("components.single-cell.cohort.amp-upset-title")}<Provenance id="cohortAmplicons" /></Space>} extra={<Space><Text type="secondary">{t("components.single-cell.ecdna.min-cn")}</Text><InputNumber size="small" min={1} value={minCn} onChange={(v) => setMinCn(v ?? 1)} style={{ width: 64 }} /></Space>}>
             {(() => {
               const LEFT = 150;
               const rowH = 22;
@@ -188,12 +189,12 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
               return (
                 <svg width={Math.max(w / 2 - 24, LEFT + allSets.length * colW + barW + 40)} height={y + 90}>
                   {allSets.map((s, j) => (
-                    <text key={s} transform={`translate(${LEFT + (j + 0.5) * colW},${y + 6}) rotate(-60)`} fontSize={12} fontWeight={600} fill={GENE_PALETTE(s)} textAnchor="end" dy="0.35em">{s}</text>
+                    <text key={s} transform={`translate(${LEFT + (j + 0.5) * colW},${y + 6}) rotate(-60)`} fontSize={TYPE.label} fontWeight={600} fill={GENE_PALETTE(s)} textAnchor="end" dy="0.35em">{s}</text>
                   ))}
                   {blocks.map((p) => (
                     <g key={p.patient} transform={`translate(0,${p.top})`}>
                       <rect x={0} y={0} width={4} height={14 + Math.max(1, p.combos.length) * rowH} fill={patientColor(p.k)} />
-                      <text x={10} y={10} dy="0.35em" fontSize={14} fontWeight={600} fill="#262626">{p.patient}</text>
+                      <text x={10} y={10} dy="0.35em" fontSize={14} fontWeight={600} fill={INK.text}>{p.patient}</text>
                       {p.combos.map((c, i) => {
                         const cy = 20 + (i + 0.5) * rowH;
                         const idx = c.sets.map((s) => allSets.indexOf(s)).filter((v) => v >= 0);
@@ -201,9 +202,9 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                         return (
                           <g key={c.sets.join("|")}>
                             {allSets.map((s, j) => <circle key={s} cx={LEFT + (j + 0.5) * colW} cy={cy} r={c.sets.includes(s) ? 5 : 2.5} fill={c.sets.includes(s) ? GENE_PALETTE(s) : "#e8e8e8"} />)}
-                            {idx.length > 1 && <line x1={LEFT + (Math.min(...idx) + 0.5) * colW} x2={LEFT + (Math.max(...idx) + 0.5) * colW} y1={cy} y2={cy} stroke="#262626" strokeWidth={2} />}
+                            {idx.length > 1 && <line x1={LEFT + (Math.min(...idx) + 0.5) * colW} x2={LEFT + (Math.max(...idx) + 0.5) * colW} y1={cy} y2={cy} stroke={INK.text} strokeWidth={2} />}
                             <rect x={LEFT + allSets.length * colW + 10} y={cy - 6} width={frac * barW} height={12} fill={c.sets.length === 1 ? GENE_PALETTE(c.sets[0]) : "#8c8c8c"} />
-                            <text x={LEFT + allSets.length * colW + 14 + frac * barW} y={cy} dy="0.35em" fontSize={12} fill="#262626">{`${d3.format(".0%")(frac)} (${c.n})`}</text>
+                            <text x={LEFT + allSets.length * colW + 14 + frac * barW} y={cy} dy="0.35em" fontSize={TYPE.label} fill={INK.text}>{`${d3.format(".0%")(frac)} (${c.n})`}</text>
                           </g>
                         );
                       })}
@@ -218,7 +219,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
         <Col xs={24} xl={12}>
           <Card
             size="small"
-            title={<Space><DotChartOutlined />{t("components.single-cell.cohort.amp-scatter-title")}</Space>}
+            title={<Space><DotChartOutlined />{t("components.single-cell.cohort.amp-scatter-title")}<Provenance id="cohortAmplicons" /></Space>}
             extra={
               <Space>
                 <Select size="small" showSearch style={{ width: 120 }} value={gA} onChange={setGeneA} options={geneOptions.map((g) => ({ value: g, label: g }))} />
@@ -230,12 +231,12 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {scatter.map((s) => (
                 <svg key={s.patient} width={sw} height={sh}>
-                  <text x={M.left} y={12} fontSize={13} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · ρ ${Number.isFinite(s.rho) ? s.rho.toFixed(2) : "–"} ${formatP(s.p)}`}</text>
-                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxX)).map((v) => <g key={`x${v}`}><line x1={xs(v)} x2={xs(v)} y1={M.top} y2={sh - M.bottom} stroke="#f0f0f0" /><text x={xs(v)} y={sh - M.bottom + 14} textAnchor="middle" fontSize={11} fill="#595959">{v}</text></g>)}
-                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxY)).map((v) => <g key={`y${v}`}><line x1={M.left} x2={sw - M.right} y1={ys(v)} y2={ys(v)} stroke="#f0f0f0" /><text x={M.left - 6} y={ys(v)} dy="0.35em" textAnchor="end" fontSize={11} fill="#595959">{v}</text></g>)}
+                  <text x={M.left} y={12} fontSize={TYPE.body} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · ρ ${Number.isFinite(s.rho) ? s.rho.toFixed(2) : "–"} ${formatP(s.p)}`}</text>
+                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxX)).map((v) => <g key={`x${v}`}><line x1={xs(v)} x2={xs(v)} y1={M.top} y2={sh - M.bottom} stroke={INK.grid} /><text x={xs(v)} y={sh - M.bottom + 14} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{v}</text></g>)}
+                  {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxY)).map((v) => <g key={`y${v}`}><line x1={M.left} x2={sw - M.right} y1={ys(v)} y2={ys(v)} stroke={INK.grid} /><text x={M.left - 6} y={ys(v)} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.textSecondary}>{v}</text></g>)}
                   {s.pts.map((q) => <circle key={q.id} cx={xs(Math.max(1, q.x))} cy={ys(Math.max(1, q.y))} r={3.5} fill={patientColor(s.k)} fillOpacity={0.7}><title>{`${q.id}: ${gA} ${q.x.toFixed(1)} · ${gB} ${q.y.toFixed(1)}`}</title></circle>)}
-                  <text x={(M.left + sw - M.right) / 2} y={sh - 6} textAnchor="middle" fontSize={13} fill="#262626">{`${gA} copies`}</text>
-                  <text transform={`translate(14 ${(M.top + sh - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={13} fill="#262626">{`${gB} copies`}</text>
+                  <text x={(M.left + sw - M.right) / 2} y={sh - 6} textAnchor="middle" fontSize={TYPE.body} fill={INK.text}>{`${gA} copies`}</text>
+                  <text transform={`translate(14 ${(M.top + sh - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.body} fill={INK.text}>{`${gB} copies`}</text>
                 </svg>
               ))}
             </div>

@@ -24,6 +24,7 @@ import {
 } from "../../../helpers/singleCell/walkCopies";
 import HintLine from "../hintLine";
 import RareControl, { useRareMax } from "./rareControl";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const TREE_WIDTH = 200;
@@ -35,7 +36,7 @@ const FAM_H = 14; // family band in the header
 const LABEL_H = 14; // column labels
 const HEAD_H = FAM_H + LABEL_H + 2;
 const SUM_ROW = 14; // one clone row in the summary
-const TOTAL_COLOR = "#595959";
+const TOTAL_COLOR = INK.textSecondary;
 const heat = (v) => d3.interpolateYlOrRd(0.08 + 0.92 * Math.max(0, Math.min(1, v)));
 
 /**
@@ -190,7 +191,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
     return (
       <g key={g.key} style={{ cursor: "pointer" }} onClick={(e) => select(g, e)}>
         <rect x={0} y={y0} width={svgW} height={h} fill={!single && gi % 2 ? "#fafafa" : "#fff"} />
-        <rect x={0} y={y0} width={STRIP_W} height={Math.max(0.6, h - (single ? 0 : 1))} fill={(g.clone != null && cloneColors[g.clone]) || "#bfbfbf"} />
+        <rect x={0} y={y0} width={STRIP_W} height={Math.max(0.6, h - (single ? 0 : 1))} fill={(g.clone != null && cloneColors[g.clone]) || INK.faint} />
         {noData ? (
           <rect x={COL_X0} y={y0} width={colsRight - COL_X0} height={h} fill="url(#wtb-hatch)" />
         ) : (
@@ -227,7 +228,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
             );
           })
         )}
-        {!single && h >= 12 && <text x={colsRight + 4} y={cy} dy="0.35em" fontSize={9} fill="#8c8c8c">{`n=${g.ids.length}`}</text>}
+        {!single && h >= 12 && <text x={colsRight + 4} y={cy} dy="0.35em" fontSize={TYPE.micro} fill={INK.muted}>{`n=${g.ids.length}`}</text>}
       </g>
     );
   };
@@ -239,7 +240,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
         <Space size={6}>
           <ApartmentOutlined />
           {t("components.single-cell.ecdna.tree-title")}
-          <HintLine inline text={t("components.single-cell.ecdna.tree-help")} />
+          <HintLine inline provenance="walkCopies" text={t("components.single-cell.ecdna.tree-help")} />
         </Space>
       }
       extra={
@@ -265,8 +266,8 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               const x1 = colX[idx[idx.length - 1]] + widths[idx[idx.length - 1]];
               return (
                 <g key={b.key}>
-                  <rect x={x0} y={0} width={x1 - x0} height={FAM_H - 1} fill="#f0f0f0" rx={2} />
-                  <text x={x0 + 4} y={FAM_H / 2} dy="0.35em" fontSize={10.5} fontWeight={700} fill="#434343">
+                  <rect x={x0} y={0} width={x1 - x0} height={FAM_H - 1} fill={INK.empty} rx={2} />
+                  <text x={x0 + 4} y={FAM_H / 2} dy="0.35em" fontSize={TYPE.tick} fontWeight={700} fill={INK.textSecondary}>
                     {clip(`${b.label} · ${b.walks.length} walk${b.walks.length > 1 ? "s" : ""}`, x1 - x0 - 6, 6.4)}
                   </text>
                 </g>
@@ -280,11 +281,11 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               const room = w - (maxTxt && w > 70 ? maxTxt.length * 5.6 + 4 : 0);
               return (
                 <g key={c.key}>
-                  <text x={colX[ci] + 1} y={FAM_H + LABEL_H / 2 + 1} dy="0.35em" fontSize={10.5} fontWeight={c.type === "walk" ? 600 : 500} fill={c.type === "walk" ? colColor(c) : "#595959"} fontStyle={c.type === "rare" ? "italic" : "normal"}>
+                  <text x={colX[ci] + 1} y={FAM_H + LABEL_H / 2 + 1} dy="0.35em" fontSize={TYPE.tick} fontWeight={c.type === "walk" ? 600 : 500} fill={c.type === "walk" ? colColor(c) : "#595959"} fontStyle={c.type === "rare" ? "italic" : "normal"}>
                     {clip(label, room)}
                   </text>
                   {maxTxt && w > 70 && (
-                    <text x={colX[ci] + w - 1} y={FAM_H + LABEL_H / 2 + 1} dy="0.35em" textAnchor="end" fontSize={9} fill="#8c8c8c">{maxTxt}</text>
+                    <text x={colX[ci] + w - 1} y={FAM_H + LABEL_H / 2 + 1} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted}>{maxTxt}</text>
                   )}
                   <title>
                     {c.type === "rare"
@@ -295,7 +296,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               );
             })}
             {scaleMode !== "column" && (
-              <text x={svgW - 2} y={FAM_H / 2} dy="0.35em" textAnchor="end" fontSize={9} fill="#8c8c8c">
+              <text x={svgW - 2} y={FAM_H / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted}>
                 {`${scaleMode === "log" ? "log · " : ""}${t("components.single-cell.ecdna.tc-max", { value: fmt(sharedMax) })}`}
               </text>
             )}
@@ -329,23 +330,23 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
           <svg ref={plotRef} width={svgW} height={height} style={{ display: "block" }} onMouseMove={onMove}>
             <defs>
               <pattern id="wtb-hatch" width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <rect width={5} height={5} fill="#fafafa" />
-                <line x1={0} y1={0} x2={0} y2={5} stroke="#d9d9d9" strokeWidth={1.5} />
+                <rect width={5} height={5} fill={INK.panelAlt} />
+                <line x1={0} y1={0} x2={0} y2={5} stroke={INK.border} strokeWidth={1.5} />
               </pattern>
             </defs>
             {groups.map(renderCell)}
             {/* column frames */}
             {cols.map((c, ci) => (
-              <rect key={`f${c.key}`} x={colX[ci] - 0.5} y={0} width={widths[ci] + 1} height={height} fill="none" stroke="#f0f0f0" pointerEvents="none" />
+              <rect key={`f${c.key}`} x={colX[ci] - 0.5} y={0} width={widths[ci] + 1} height={height} fill="none" stroke={INK.grid} pointerEvents="none" />
             ))}
             {/* selection + hover across all columns */}
             {mode === "cells" &&
               [...selectedRows].map((r) => <rect key={`s${r}`} x={0} y={r * rowH} width={svgW} height={Math.max(1, rowH)} fill="rgba(22,119,255,0.12)" pointerEvents="none" />)}
-            {hoverRange && <rect x={0} y={hoverRange[0] * rowH} width={svgW} height={(hoverRange[1] - hoverRange[0] + 1) * rowH} fill="none" stroke="#fa541c" pointerEvents="none" />}
+            {hoverRange && <rect x={0} y={hoverRange[0] * rowH} width={svgW} height={(hoverRange[1] - hoverRange[0] + 1) * rowH} fill="none" stroke={INK.hover} pointerEvents="none" />}
             {tip && groups[tip.gi] && (
-              <rect x={0} y={groups[tip.gi].first * rowH} width={svgW} height={Math.max(1.5, (groups[tip.gi].last - groups[tip.gi].first + 1) * rowH)} fill="rgba(22,119,255,0.16)" stroke="#1677ff" strokeWidth={0.6} pointerEvents="none" />
+              <rect x={0} y={groups[tip.gi].first * rowH} width={svgW} height={Math.max(1.5, (groups[tip.gi].last - groups[tip.gi].first + 1) * rowH)} fill={INK.selectFill} stroke={INK.select} strokeWidth={0.6} pointerEvents="none" />
             )}
-            {!tip && mode === "cells" && hoverRow != null && <rect x={0} y={hoverRow * rowH} width={svgW} height={Math.max(1.5, rowH)} fill="rgba(22,119,255,0.16)" pointerEvents="none" />}
+            {!tip && mode === "cells" && hoverRow != null && <rect x={0} y={hoverRow * rowH} width={svgW} height={Math.max(1.5, rowH)} fill={INK.selectFill} pointerEvents="none" />}
           </svg>
         </div>
         {/* per-clone summary: % of measured cells carrying, median copies in carriers */}
@@ -355,8 +356,8 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
               const y = si * SUM_ROW + 2;
               return (
                 <g key={`${s.clone}`}>
-                  <rect x={TREE_WIDTH - 118} y={y + 2} width={8} height={SUM_ROW - 4} fill={cloneColors[s.clone] || "#bfbfbf"} rx={1} />
-                  <text x={TREE_WIDTH - 106} y={y + SUM_ROW / 2} dy="0.35em" fontSize={10} fill="#434343">
+                  <rect x={TREE_WIDTH - 118} y={y + 2} width={8} height={SUM_ROW - 4} fill={cloneColors[s.clone] || INK.faint} rx={1} />
+                  <text x={TREE_WIDTH - 106} y={y + SUM_ROW / 2} dy="0.35em" fontSize={11} fill={INK.textSecondary}>
                     {clip(t("components.single-cell.ecdna.tc-clone-row", { clone: s.clone, measured: s.measured, n: s.n }), 104, 5.6)}
                     <title>{`${s.clone}: ${s.measured} of ${s.n} cells with walk counts`}</title>
                   </text>
@@ -367,9 +368,9 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
                     const txt = c.type === "rare" ? (st.fraction > 0 ? d3.format(".0%")(st.fraction) : "") : st.fraction > 0 ? (w >= 64 ? `${d3.format(".0%")(st.fraction)} · ${fmt(st.median)}×` : d3.format(".0%")(st.fraction)) : "–";
                     return (
                       <g key={c.key}>
-                        <rect x={x} y={y + 1} width={w} height={SUM_ROW - 2} fill="#fafafa" />
+                        <rect x={x} y={y + 1} width={w} height={SUM_ROW - 2} fill={INK.panelAlt} />
                         <rect x={x} y={y + 1} width={Math.max(0, st.fraction * w)} height={SUM_ROW - 2} fill={colColor(c)} fillOpacity={0.22} />
-                        <text x={x + 3} y={y + SUM_ROW / 2} dy="0.35em" fontSize={9.5} fill="#262626">{clip(txt, w - 4, 5.4)}</text>
+                        <text x={x + 3} y={y + SUM_ROW / 2} dy="0.35em" fontSize={11} fill={INK.text}>{clip(txt, w - 4, 5.4)}</text>
                         <title>
                           {t("components.single-cell.ecdna.tc-summary-tip", { clone: s.clone, pct: d3.format(".0%")(st.fraction), measured: s.measured, walk: colLabel(c), median: fmt(st.median) })}
                         </title>
@@ -382,7 +383,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
           </svg>
         )}
         {view === "heat" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: TREE_WIDTH + COL_X0, marginTop: 2, fontSize: 10, color: "#8c8c8c" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: TREE_WIDTH + COL_X0, marginTop: 2, fontSize: 11.5, color: "var(--sc-muted)" }}>
             <span>0</span>
             <span style={{ width: 120, height: 8, borderRadius: 2, background: `linear-gradient(to right, ${d3.range(0, 1.01, 0.1).map((v) => heat(v)).join(",")})` }} />
             <span>{scaleMode === "column" ? "column max" : fmt(sharedMax)}</span>

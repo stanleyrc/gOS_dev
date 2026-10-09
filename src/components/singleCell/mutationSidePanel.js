@@ -25,7 +25,7 @@ export const SNV_CATEGORIES = [
   { key: "truncal", color: "#6a3d9a" },
   { key: "subclonal", color: "#ff7f00" },
   { key: "private", color: "#33a02c" },
-  { key: "outside_tumor", color: "#8c8c8c" },
+  { key: "outside_tumor", color: "var(--sc-muted)" },
   { key: "unmapped", color: "#d9d9d9" },
 ];
 const CATEGORY_COLOR = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.color]));

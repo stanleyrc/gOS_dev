@@ -13,8 +13,9 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips, Swatches, patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER_INNER } from "../density";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 
@@ -125,7 +126,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
   return (
     <Card
       size="small"
-      title={<Space><FunctionOutlined />{t("components.single-cell.cohort.gs-title")}</Space>}
+      title={<Space><FunctionOutlined />{t("components.single-cell.cohort.gs-title")}<Provenance id="cohortRna" /></Space>}
       extra={
         <Space wrap>
           <Segmented size="small" value={view} onChange={setView} options={[{ value: "score", label: t("components.single-cell.cohort.gs-view-score") }, { value: "dots", label: t("components.single-cell.cohort.gs-view-dots") }]} />
@@ -145,7 +146,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                   {result && <Text type="secondary">{t("components.single-cell.cohort.gs-used", { used: d3.max(result.out, (p) => p.used.length) || 0, total: result.genes.length })}</Text>}
                 </Space>
                 {result && result.out.some((p) => p.missing.length) && (
-                  <div>{[...new Set(result.out.flatMap((p) => p.missing))].slice(0, 12).map((g) => <Tag key={g} style={{ marginBottom: 2 }}>{g}</Tag>)}<Text type="secondary" style={{ fontSize: 12 }}> {t("components.single-cell.cohort.gs-missing")}</Text></div>
+                  <div>{[...new Set(result.out.flatMap((p) => p.missing))].slice(0, 12).map((g) => <Tag key={g} style={{ marginBottom: 2 }}>{g}</Tag>)}<Text type="secondary" style={{ fontSize: 13 }}> {t("components.single-cell.cohort.gs-missing")}</Text></div>
                 )}
               </Space>
             </Col>
@@ -156,7 +157,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                   {levels.length > 1 && (
                     <BoxStrips groups={levels.map((l) => ({ key: l, label: l, color: levelColors[l], values: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.score)), ids: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.rna_id)) }))} width={Math.max(260, Math.floor((w * 16) / 24 / 2) - 12)} height={260} yTitle={`${t("components.single-cell.cohort.gs-score")} · ${field}`} />
                   )}
-                  {levels.length > 1 && (() => { const test = compareGroups(levels.map((l) => ({ key: l, values: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.score)) }))); return <Text type="secondary" style={{ fontSize: 12, width: "100%" }}>{`${test?.test || ""} ${formatP(test?.p)}`}</Text>; })()}
+                  {levels.length > 1 && (() => { const test = compareGroups(levels.map((l) => ({ key: l, values: result.out.flatMap((p) => p.cells.filter((c) => c.level === l).map((c) => c.score)) }))); return <Text type="secondary" style={{ fontSize: 13, width: "100%" }}>{`${test?.test || ""} ${formatP(test?.p)}`}</Text>; })()}
                 </div>
               ) : (
                 <Text type="secondary">{t("components.single-cell.cohort.gs-intro")}</Text>
@@ -188,12 +189,12 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                     {dotCols.map((c, j) => (
                       <g key={c.key} transform={`translate(${LEFT + (j + 0.5) * colW},${TOP - 8})`}>
                         <rect x={-colW / 2 + 1} y={-TOP + 4} width={colW - 2} height={6} fill={lvlColors[c.level]} />
-                        <text transform="rotate(-55)" fontSize={10} fill={c.patient ? patientColor(c.k) : "#262626"} textAnchor="start" dy="0.35em">{c.patient ? `${c.level} · ${c.patient}` : c.level}</text>
+                        <text transform="rotate(-55)" fontSize={11} fill={c.patient ? patientColor(c.k) : "#262626"} textAnchor="start" dy="0.35em">{c.patient ? `${c.level} · ${c.patient}` : c.level}</text>
                       </g>
                     ))}
                     {dots.genes.map((g, i) => (
                       <g key={g} transform={`translate(0,${TOP + i * rowH + rowH / 2})`}>
-                        <text x={LEFT - 6} dy="0.35em" textAnchor="end" fontSize={11} fill="#262626">{g}</text>
+                        <text x={LEFT - 6} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.text}>{g}</text>
                         {dotCols.map((c, j) => {
                           const cell = dotCell(g, c);
                           if (!cell) return null;
@@ -207,17 +208,17 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                       </g>
                     ))}
                     <g transform={`translate(${LEFT + dotCols.length * colW + 20},${TOP})`}>
-                      <text fontSize={10} fill="#595959">{t("components.single-cell.cohort.gs-fraction")}</text>
+                      <text fontSize={11} fill={INK.textSecondary}>{t("components.single-cell.cohort.gs-fraction")}</text>
                       {[0.25, 0.5, 1].map((f, k) => (
                         <g key={f} transform={`translate(8,${16 + k * 18})`}>
-                          <circle r={Math.sqrt(f) * maxR} fill="#8c8c8c" />
-                          <text x={14} dy="0.35em" fontSize={9} fill="#595959">{d3.format(".0%")(f)}</text>
+                          <circle r={Math.sqrt(f) * maxR} fill={INK.faint} />
+                          <text x={14} dy="0.35em" fontSize={TYPE.micro} fill={INK.textSecondary}>{d3.format(".0%")(f)}</text>
                         </g>
                       ))}
-                      <text y={80} fontSize={10} fill="#595959">{t("components.single-cell.cohort.gs-z")}</text>
+                      <text y={80} fontSize={11} fill={INK.textSecondary}>{t("components.single-cell.cohort.gs-z")}</text>
                       {d3.range(-2, 2.01, 0.5).map((z, k) => <rect key={z} x={k * 10} y={86} width={10} height={8} fill={color(z)} />)}
-                      <text y={104} fontSize={9} fill="#595959">−2</text>
-                      <text x={80} y={104} fontSize={9} fill="#595959" textAnchor="end">+2</text>
+                      <text y={104} fontSize={TYPE.micro} fill={INK.textSecondary}>−2</text>
+                      <text x={80} y={104} fontSize={TYPE.micro} fill={INK.textSecondary} textAnchor="end">+2</text>
                     </g>
                   </svg>
                   <Swatches items={lvls.map((l) => ({ key: l, color: lvlColors[l], label: l }))} />

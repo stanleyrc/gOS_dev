@@ -11,7 +11,8 @@ import { tryGet } from "../../../redux/singleCell/loaders";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { Swatches, patientColor } from "./charts";
-import HintLine from "../hintLine";
+import HintLine, { Provenance } from "../hintLine";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const HEIGHT = 520;
@@ -87,7 +88,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   return (
     <Card
       size="small"
-      title={<Space><DotChartOutlined />{t("components.single-cell.cohort.umap-title", { count: shown.length })}</Space>}
+      title={<Space><DotChartOutlined />{t("components.single-cell.cohort.umap-title", { count: shown.length })}<Provenance id="cohortRna" /></Space>}
       extra={
         <Space wrap>
           <Select size="small" style={{ width: 170 }} value={colorBy} onChange={setColorBy} options={[{ value: "patient", label: t("components.single-cell.cohort.patient") }, ...(overlay ? [{ value: "__score", label: `${t("components.single-cell.cohort.umap-score")}: ${overlay.label}` }] : []), ...fields.map((f) => ({ value: f, label: f }))]} />
@@ -109,11 +110,11 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
               <title>{`${c.patient} · ${c.rna_id}${c.state ? ` · ${c.state}` : ""}${c.Phase ? ` · ${c.Phase}` : ""}`}</title>
             </circle>
           ))}
-          <text x={w - 8} y={HEIGHT - 8} textAnchor="end" fontSize={11} fill="#8c8c8c">{data.method || "integrated UMAP"}</text>
-          {drag && <rect x={Math.min(drag.x0, drag.x1)} y={Math.min(drag.y0, drag.y1)} width={Math.abs(drag.x1 - drag.x0)} height={Math.abs(drag.y1 - drag.y0)} fill="rgba(22,119,255,0.08)" stroke="#1677ff" strokeDasharray="4 3" pointerEvents="none" />}
+          <text x={w - 8} y={HEIGHT - 8} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>{data.method || "integrated UMAP"}</text>
+          {drag && <rect x={Math.min(drag.x0, drag.x1)} y={Math.min(drag.y0, drag.y1)} width={Math.abs(drag.x1 - drag.x0)} height={Math.abs(drag.y1 - drag.y0)} fill="rgba(22,119,255,0.08)" stroke={INK.select} strokeDasharray="4 3" pointerEvents="none" />}
         </svg>
         {byScore ? (
-          <Space size={4} style={{ fontSize: 11 }}>
+          <Space size={4} style={{ fontSize: 12.5 }}>
             <span>{scoreScale.domain()[0].toFixed(2)}</span>
             <svg width={120} height={10}>{d3.range(0, 1.001, 0.05).map((f) => <rect key={f} x={f * 120} width={6} height={10} fill={scoreScale(scoreScale.domain()[0] + f * (scoreScale.domain()[1] - scoreScale.domain()[0]))} />)}</svg>
             <span>{scoreScale.domain()[1].toFixed(2)}</span>

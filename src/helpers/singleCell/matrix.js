@@ -560,8 +560,10 @@ const MAGMA_TOTAL = ["#000004", "#180F3E", "#451077", "#721F81", "#9F2F7F", "#CD
 // Zissou-inspired: cool losses, warm gains, 2 = pale.
 const ZISSOU_TOTAL = ["#3B9AB2", "#78B7C5", "#EEEEE6", "#EBCC2A", "#E1AF00", "#F2AD00", "#F98400", "#F21A00", "#C81400", "#9A0E00", "#6B0A00", "#2B0400"];
 
-// dark-theme variant of the pgv palette: CN 2 is dark grey instead of white
-const PGV_DARK = PGV_TOTAL.map((c, k) => (k === 2 ? "#2e2e2e" : c));
+// dark-theme variant of the pgv palette: CN 2 is dark grey instead of white,
+// and 11+ (black in pgv) is a bright magenta so the highest amplifications
+// neither vanish into the dark background nor glare white
+const PGV_DARK = PGV_TOTAL.map((c, k) => (k === 2 ? "#2e2e2e" : k === 11 ? "#f759ab" : c));
 
 export const CN_PALETTE_PRESETS = {
   pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },

@@ -10,6 +10,8 @@ import { geneValues, searchGeneNames } from "../../../helpers/singleCell/staticR
 import { kernelDensity, quartiles } from "../../../helpers/singleCell/rnaStats";
 import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
+import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const ROW_HEIGHT = 240;
@@ -75,11 +77,11 @@ function GeneViolins({ gene, values, groups, width, test }) {
   const half = Math.min(band.bandwidth() / 2, 70);
   return (
     <svg width={width} height={ROW_HEIGHT} role="img" aria-label={`${gene} violin plot`}>
-      <text x={M.left} y={14} fontSize="15" fontWeight="600" fill="#262626">
+      <text x={M.left} y={14} fontSize="15" fontWeight="600" fill={INK.text}>
         {gene}
       </text>
       {test && (
-        <text x={M.left + plotW} y={14} textAnchor="end" fontSize="12" fill={test.p < 0.05 ? "#cf1322" : "#8c8c8c"}>
+        <text x={M.left + plotW} y={14} textAnchor="end" fontSize={TYPE.label} fill={test.p < 0.05 ? "#cf1322" : "#8c8c8c"}>
           {`${test.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(test.p)}`}
           <title>
             {test.pairs.length
@@ -90,8 +92,8 @@ function GeneViolins({ gene, values, groups, width, test }) {
       )}
       {y.ticks(4).map((tk) => (
         <g key={tk}>
-          <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke="#f0f0f0" />
-          <text x={M.left - 6} y={y(tk) + 4} textAnchor="end" fontSize="12" fill="#595959">
+          <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke={INK.grid} />
+          <text x={M.left - 6} y={y(tk) + 4} textAnchor="end" fontSize={TYPE.label} fill={INK.textSecondary}>
             {tk}
           </text>
         </g>
@@ -107,7 +109,7 @@ function GeneViolins({ gene, values, groups, width, test }) {
           .curve(d3.curveBasis);
         return (
           <g key={g.key}>
-            <rect x={cx - band.bandwidth() / 2} y={M.top} width={band.bandwidth()} height={ROW_HEIGHT - M.top - M.bottom} fill="#FAFAFA" rx={4} />
+            <rect x={cx - band.bandwidth() / 2} y={M.top} width={band.bandwidth()} height={ROW_HEIGHT - M.top - M.bottom} fill={INK.panelAlt} rx={4} />
             <path d={area(grid.map((x, i) => ({ x, d: density[i] })))} fill={g.color} fillOpacity={0.35} stroke={g.color} strokeWidth={1.5} />
             {v.map((val, k) => {
               // Spread points by the density at their value so they fill the violin.
@@ -115,18 +117,18 @@ function GeneViolins({ gene, values, groups, width, test }) {
               return <circle key={k} cx={cx + jitter(k + 1) * half * 1.7 * at} cy={y(val)} r={1.7} fill={g.color} fillOpacity={0.75} />;
             })}
             <rect x={cx - 3} y={y(stats.q3)} width={6} height={Math.max(1, y(stats.q1) - y(stats.q3))} fill="#262626" fillOpacity={0.6} />
-            <line x1={cx - 8} x2={cx + 8} y1={y(stats.median)} y2={y(stats.median)} stroke="#262626" strokeWidth={2} />
+            <line x1={cx - 8} x2={cx + 8} y1={y(stats.median)} y2={y(stats.median)} stroke={INK.text} strokeWidth={2} />
             <title>{`${g.label}: n=${v.length}, median ${stats.median.toFixed(2)}, ${Math.round(pct * 100)}% expressing`}</title>
-            <text x={cx} y={ROW_HEIGHT - M.bottom + 18} textAnchor="middle" fontSize="13" fontWeight="500" fill="#262626">
+            <text x={cx} y={ROW_HEIGHT - M.bottom + 18} textAnchor="middle" fontSize={TYPE.body} fontWeight="500" fill={INK.text}>
               {g.label.length > 22 ? `${g.label.slice(0, 21)}…` : g.label}
             </text>
-            <text x={cx} y={ROW_HEIGHT - M.bottom + 36} textAnchor="middle" fontSize="12" fill="#8c8c8c">
+            <text x={cx} y={ROW_HEIGHT - M.bottom + 36} textAnchor="middle" fontSize={TYPE.label} fill={INK.muted}>
               {`n=${v.length} · ${Math.round(pct * 100)}%`}
             </text>
           </g>
         );
       })}
-      <text transform={`translate(14 ${(M.top + ROW_HEIGHT - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize="12" fill="#595959">
+      <text transform={`translate(14 ${(M.top + ROW_HEIGHT - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
         log-normalized
       </text>
     </svg>
@@ -211,7 +213,7 @@ export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesCh
   return (
     <Card
       size="small"
-      title={<Space><BoxPlotOutlined />{t("components.single-cell.rna.violin-title")}</Space>}
+      title={<Space><BoxPlotOutlined />{t("components.single-cell.rna.violin-title")}<Provenance id="violin" /></Space>}
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.rna.group-by")}</Text>
