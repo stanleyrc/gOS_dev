@@ -36,5 +36,25 @@ describe("patient report", () => {
     expect(r.clones.find((c) => c.clone === "Clone 2").defining.map((d) => d.gene)).toEqual(["PTEN"]);
     expect(r.caveats).toEqual(["fusions-unverified", "homdel-noise"]);
     expect(r.burden.truncal).toBe(1);
+    expect(r.picked).toBe(false);
+  });
+
+  it("uses the Add-to-report selection when one is given, whatever the tier", () => {
+    const has2 = { uid: "8:1-8:1", gene: "HAS2", vartype: "SNV", type: "Missense", Variant: "p.F44L", Tier: 3, cell_fraction: "0.95", n_cells: "19", cells: "19/20", cell_ids: ids("a", 10) };
+    const all = [...events.map((e, i) => ({ ...e, uid: `u${i}` })), has2];
+    const r = buildPatientReport({ patient: "P", events: all, cells, selectedUids: ["8:1-8:1", "u1"] });
+    expect(r.picked).toBe(true);
+    expect([...r.clonal, ...r.subclonal, ...r.rare].map((d) => d.gene).sort()).toEqual(["HAS2", "PTEN"]);
+    // nothing ticked: back to the strong tier 1-2 events
+    expect(buildPatientReport({ patient: "P", events: all, cells, selectedUids: [] }).clonal.map((d) => d.gene)).toEqual(["EGFR", "X::Y"]);
+  });
+
+  it("takes the re-tiered tier and lists Tier 3 likely drivers as candidates", () => {
+    const akap = { gene: "AKAP3", vartype: "SNV", type: "Missense", Variant: "p.Y86N", Tier: 3, tier: "2", cell_fraction: "0.9", n_cells: "18", cells: "18/20", cell_ids: ids("a", 9) };
+    const cand = { gene: "NF1", vartype: "SNV", type: "Missense", Variant: "p.R1276Q", Tier: 3, cell_fraction: "0.3", n_cells: "6", cells: "6/20", cell_ids: ids("b", 6), driver_class: "likely", driver_score: 5, driver_evidence: "OncoKB cancer gene" };
+    const r = buildPatientReport({ patient: "P", events: [akap, cand], cells });
+    expect(r.clonal.map((d) => d.gene)).toEqual(["AKAP3"]);
+    expect(r.clonal[0].tier).toBe(2);
+    expect(r.candidates.map((c) => [c.gene, c.score])).toEqual([["NF1", 5]]);
   });
 });

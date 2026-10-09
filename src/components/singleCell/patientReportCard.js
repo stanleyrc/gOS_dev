@@ -155,12 +155,12 @@ function SignatureBar({ items, width = 320 }) {
  * come from `rna` ({ status, data }, the cohort computes them for every
  * patient) or are computed here from `dataset` (default: the open dataset).
  */
-export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null, rna = null, dataset = null }) {
+export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null, rna = null, dataset = null, selectedUids = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [allClones, setAllClones] = useState(false);
   const { chromoBins, genomeLength } = useSelector((state) => state.Settings);
-  const report = useMemo(() => buildPatientReport({ patient, events: events || [], cells: cells || [], variants: variants || [], signatures }), [patient, events, cells, variants, signatures]);
+  const report = useMemo(() => buildPatientReport({ patient, events: events || [], cells: cells || [], variants: variants || [], signatures, selectedUids }), [patient, events, cells, variants, signatures, selectedUids]);
   const openDataset = useSelector((state) => state.Settings.dataset);
   const ownRna = useRnaFindings({ dataset: rna ? null : dataset || (interactive ? openDataset : null), patientId: patient, cells, report });
   const rnaState = rna || ownRna;
@@ -241,6 +241,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
       ["Alt / ref reads", e.alt != null && e.ref != null && (Number(e.alt) || Number(e.ref)) ? `${e.alt} / ${e.ref}` : null],
       ["Copies", text(e.estimated_altered_copies)],
       ["Fusion CN", text(e.fusion_cn)],
+      ["Driver evidence", e.driver_class ? `${e.driver_class} (${e.driver_score})` : null],
     ].filter(([, v]) => v);
     return (
       <Space direction="vertical" size={6} style={{ width: "100%" }}>
@@ -250,6 +251,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         {text(e.effect_description) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Effect: </Text>{text(e.effect_description)}</Paragraph>}
         {text(e.variant_summary) && <Paragraph style={{ marginBottom: 4 }}>{text(e.variant_summary)}</Paragraph>}
         {text(e.gene_summary) && <Paragraph type="secondary" style={{ marginBottom: 4 }}>{text(e.gene_summary)}</Paragraph>}
+        {text(e.driver_evidence) && <Paragraph type="secondary" style={{ marginBottom: 4 }}><Text strong>Driver evidence: </Text>{text(e.driver_evidence)}</Paragraph>}
         {text(e.therapeutics) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Therapeutics: </Text>{text(e.therapeutics)}</Paragraph>}
         {text(e.prognoses) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Prognosis: </Text>{text(e.prognoses)}</Paragraph>}
         <Paragraph style={{ marginBottom: 0 }}>
@@ -300,12 +302,28 @@ export default function PatientReportCard({ patient, events, cells, variants, si
       }
     >
       <Paragraph style={{ fontSize: 13.5, marginBottom: 6 }}>{summary.join(" ")}</Paragraph>
+      {report.picked && <Alert type="info" showIcon style={{ marginBottom: 8 }} message={t("components.single-cell.report.picked", { count: allDrivers.length })} />}
       <Row gutter={SC_GUTTER}>
         <Col xs={24} lg={14}>
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.clonal-title", { count: report.clonal.length })} <HintLine inline text={t("components.single-cell.report.clonal-help", { pct: pct(0.85) })} /></Title>
           {report.clonal.length ? report.clonal.map(row) : <Text type="secondary" className="sc-none">{t("components.single-cell.report.none")}</Text>}
           <Title level={5} className="sc-section-title">{t("components.single-cell.report.subclonal-title", { count: report.subclonal.length })} <HintLine inline text={t("components.single-cell.report.subclonal-help")} /></Title>
           {report.subclonal.length ? report.subclonal.map(row) : <Text type="secondary" className="sc-none">{t("components.single-cell.report.none")}</Text>}
+          {report.candidates.length > 0 && (
+            <>
+              <Title level={5} className="sc-section-title">{t("components.single-cell.report.candidates-title", { count: report.candidates.length })} <HintLine inline text={t("components.single-cell.report.candidates-help")} /></Title>
+              {report.candidates.map((c) => (
+                <div key={c.label} style={{ marginBottom: 4 }}>
+                  <Space size={6} wrap>
+                    <Tooltip title={c.evidence}><Text>{c.label}</Text></Tooltip>
+                    <Tag>{`${t("components.single-cell.report.candidate-score")} ${c.score}`}</Tag>
+                    <Text type="secondary">{c.event.cells}</Text>
+                    {interactive && <Button size="small" type="link" style={{ padding: 0 }} onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(c.event, "plots"))}>{t("components.single-cell.report.details")}</Button>}
+                  </Space>
+                </div>
+              ))}
+            </>
+          )}
           {report.rare.length > 0 && (
             <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
               {t("components.single-cell.report.rare", { count: report.rare.length, list: report.rare.slice(0, 6).map((d) => `${d.label} (${d.cells})`).join("; ") })}

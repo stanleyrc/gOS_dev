@@ -71,8 +71,11 @@ export function eventLabel(event) {
  * @param cells manifest cell records ({ cell_id, clone_id, ... })
  * @param variants snv_matrix variants (with category / cellphy_input / driver)
  * @param signatures signatures.json ({ sets: [{ name, n, activities }] })
+ * @param selectedUids uids ticked under "Add to report" in the Filtered Events
+ *   table; when non-empty the drivers are exactly those events, else the
+ *   strong Tier 1-2 events
  */
-export function buildPatientReport({ patient, events = [], cells = [], variants = [], signatures = null }) {
+export function buildPatientReport({ patient, events = [], cells = [], variants = [], signatures = null, selectedUids = null }) {
   const cloneOf = new Map(cells.map((c) => [c.cell_id, c.clone_id]));
   const tumor = cells.filter((c) => !isNormal(c.clone_id));
   const cloneSizes = {};
@@ -81,8 +84,10 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
     cloneSizes[clone] = (cloneSizes[clone] || 0) + 1;
   });
 
+  const tierOf = (e) => num(e.tier ?? e.Tier); // tier: as re-tiered by the user (merged interpretations)
+  const picked = Array.isArray(selectedUids) && selectedUids.length ? new Set(selectedUids) : null;
   const drivers = events
-    .filter((e) => (num(e.Tier) ?? 9) <= 2 && isStrongEvent(e))
+    .filter((e) => (picked ? e.uid != null && picked.has(e.uid) : (tierOf(e) ?? 9) <= 2 && isStrongEvent(e)))
     .map((e) => {
       const fraction = num(e.cell_fraction) ?? 0;
       const fractions = cloneFractions(e, cloneOf, cloneSizes);
@@ -91,7 +96,7 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
         label: eventLabel(e),
         gene: e.gene || e.fusion_genes,
         class: eventClass(e),
-        tier: num(e.Tier),
+        tier: tierOf(e),
         role: e.role && e.role !== "None" ? e.role : null,
         effect: e.effect && e.effect !== "None" ? e.effect : null,
         fraction,
@@ -144,8 +149,17 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
   const sigSub = share(setOf("subclonal"));
   const emerging = sigSub.filter((s) => s.share >= 0.1 && (sigTruncal.find((x) => x.signature === s.signature)?.share || 0) < 0.03);
 
+  // Tier 3 SNVs the pipeline's driver evidence (gos_sc_snv_evidence.R) calls likely drivers
+  const inReport = new Set(dedup.map((d) => d.event));
+  const candidates = events
+    .filter((e) => e.driver_class === "likely" && !inReport.has(e) && (tierOf(e) ?? 9) > 2)
+    .map((e) => ({ event: e, label: eventLabel(e), gene: e.gene, score: num(e.driver_score), evidence: e.driver_evidence || "", fraction: num(e.cell_fraction) ?? 0 }))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.fraction - a.fraction);
+
   return {
     patient,
+    picked: Boolean(picked),
+    candidates,
     nCells: cells.length,
     nTumorCells: tumor.length,
     nNormalCells: cells.length - tumor.length,
