@@ -294,9 +294,9 @@ export function siteCloneSummary(rows) {
 export function statusRows(doc) {
   if (!doc?.patients) return { steps: [], rows: [] };
   const steps = (doc.steps || []).map((s) => s.id);
-  const order = { failed: 0, running: 1, stale: 2, missing: 3, done: 4 };
+  const order = { failed: 0, running: 1, stale: 2, missing: 3, done: 4, "n/a": 5 };
   const rows = Object.entries(doc.patients).map(([patient, st]) => {
-    const states = steps.map((s) => st[s]?.state || "missing");
+    const states = steps.map((s) => st[s]?.state || "missing").filter((x) => x !== "n/a");
     const worst = states.reduce((w, s) => ((order[s] ?? 9) < (order[w] ?? 9) ? s : w), "done");
     return { patient, steps: st, worst, nDone: states.filter((s) => s === "done").length };
   });

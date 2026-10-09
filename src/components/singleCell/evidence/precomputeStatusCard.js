@@ -7,7 +7,7 @@ import { pcFile } from "./notComputed";
 import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
-const STATE_COLOR = { done: "green", stale: "gold", missing: "default", failed: "red", running: "blue" };
+const STATE_COLOR = { done: "green", stale: "gold", missing: "default", failed: "red", running: "blue", "n/a": "default" };
 
 /**
  * Precompute pipeline status: every patient x step from data/_precompute/status.json
