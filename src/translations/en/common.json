@@ -2279,7 +2279,7 @@
         "cohort-variants": "Known splice variants per patient",
         "cohort-variants-help": "Cells with alternative-junction reads / cells covering the variant (alternative or reference junction reads), and the alternative fraction of the pooled reads.",
         "cohort-overview": "Clusters that differ most between patients",
-        "cohort-overview-help": "Rows: clusters with BH q < 0.05 (chi-square on pooled patient × junction counts), largest ΔPSI first; each row shows the PSI of the cluster's most variable junction per patient (blank: < 20 reads). Pooled reads are not independent, so q is a ranking aid; check the cell-level view in each patient's RNA tab. Click a row to open it below."
+        "cohort-overview-help": "Rows: clusters with BH q < 0.05 (chi-square on pooled patient × junction counts); each row shows the PSI of the cluster's most variable junction per patient (blank: < 50 reads or < 5 covered cells), rows need ≥ 3 such patients and are sorted by the PSI range among them (ΔPSI column). Pooled reads are not independent, so q is a ranking aid; check the cell-level view in each patient's RNA tab. Click a row to open it below."
       },
       "help-center": {
         "button": "Help",
