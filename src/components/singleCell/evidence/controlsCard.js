@@ -3,10 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { Button, Card, Space, Table, Tag, Typography } from "antd";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
-import { scaledExpression } from "../../../helpers/singleCell/rnaStats";
+import { pca, scaledExpression } from "../../../helpers/singleCell/rnaStats";
 import { topVariableGenes } from "../../../helpers/singleCell/staticRna";
 import { PC_NUMERIC_LABELS } from "../../../helpers/singleCell/precompute";
-import { alteredFraction, noiseFloor, normalLikeness } from "../../../helpers/singleCell/controls";
+import { alteredFraction, noiseFloor, normalNeighbourFraction } from "../../../helpers/singleCell/controls";
 
 const { Text } = Typography;
 const fmt = (x, d = 3) => (Number.isFinite(x) ? x.toFixed(d) : "–");
@@ -69,7 +69,8 @@ export default function ControlsCard() {
     const genes = topVariableGenes(summary, matrix, 500);
     const idx = genes.map((g) => summary.geneIndex.get(g)).filter((g) => g != null);
     const X = scaledExpression(matrix, idx, n);
-    const res = normalLikeness(X, idx.length, normalRows, tumourRows, query);
+    const P = pca(X, n, idx.length, 15).scores;
+    const res = normalNeighbourFraction(P, normalRows, tumourRows, query, 15).map((r) => ({ ...r, score: r.fraction }));
     const rows = res
       .map((r) => {
         const c = summary.cells[r.row];
@@ -80,11 +81,16 @@ export default function ControlsCard() {
     return { normalRows, tumourRows, rows };
   }, [summary, matrix, cells, fga]);
 
-  const flagged = (likeness?.rows || []).filter((r) => r.score > 0);
+  const flagged = (likeness?.rows || []).filter((r) => r.score >= 0.5);
   return (
     <Card size="small" title="Non-tumour cells as internal controls">
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         <Text strong>Noise floor ({nNormal} normal cells by DNA)</Text>
+        {nNormal > 0 && !floor.some((r) => r.key === "fga") && (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            The normal cells have no copy-number profiles (no JaBbA graphs), so the false-positive copy-number rate cannot be measured here.
+          </Text>
+        )}
         {nNormal === 0 ? (
           <Text type="secondary">No normal cells on the DNA tree for this patient.</Text>
         ) : (
@@ -113,12 +119,13 @@ export default function ControlsCard() {
         ) : (
           <>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Score = r(normal centroid) − r(malignant centroid, cell left out) over the 500 most variable genes; reference: {likeness.normalRows.length}{" "}
-              non-malignant cells (DNA normal or RNA cell type), {likeness.tumourRows.length} DNA-tumour cells. Positive = closer to the normal
-              cells; with a high altered-genome fraction these are tumour cells RNA alone would miss.
+              Score = share of non-malignant cells among the cell&apos;s 15 nearest neighbours in expression space (PCs 1–15 of the 500 most
+              variable genes); reference: {likeness.normalRows.length} non-malignant cells (DNA normal or RNA cell type),{" "}
+              {likeness.tumourRows.length} DNA-tumour cells. ≥ 0.5 = the cell sits among normal cells; with an altered genome these are tumour
+              cells RNA alone would miss.
             </Text>
             <Space>
-              <Tag color={flagged.length ? "orange" : "default"}>{flagged.length} DNA-tumour cells closer to normal</Tag>
+              <Tag color={flagged.length ? "orange" : "default"}>{flagged.length} DNA-tumour cells among normal cells by expression</Tag>
               <Button size="small" disabled={!flagged.length} onClick={() => dispatch(singleCellActions.updateSelection(flagged.map((r) => r.id)))}>
                 select them
               </Button>
@@ -133,9 +140,13 @@ export default function ControlsCard() {
                 { title: "Clone (DNA)", dataIndex: "clone", render: (c) => <Tag color={cloneColors[c]}>{c}</Tag> },
                 { title: "RNA cell type", dataIndex: "cellType", render: (t) => t || "–" },
                 { title: "Genome altered", dataIndex: "fga", render: (x) => fmt(x, 2) },
-                { title: "r normal", dataIndex: "rNormal", render: (x) => fmt(x, 2) },
-                { title: "r malignant", dataIndex: "rTumour", render: (x) => fmt(x, 2) },
-                { title: "Score", dataIndex: "score", defaultSortOrder: "descend", sorter: (a, b) => a.score - b.score, render: (x) => <Text type={x > 0 ? "warning" : undefined}>{fmt(x, 2)}</Text> },
+                {
+                  title: "Normal neighbours",
+                  dataIndex: "score",
+                  defaultSortOrder: "descend",
+                  sorter: (a, b) => a.score - b.score,
+                  render: (x) => <Text type={x >= 0.5 ? "warning" : undefined}>{Number.isFinite(x) ? `${Math.round(100 * x)}%` : "–"}</Text>,
+                },
               ]}
             />
           </>

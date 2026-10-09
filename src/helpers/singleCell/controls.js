@@ -97,3 +97,28 @@ export function normalLikeness(X, nGenes, normalRows, tumourRows, queryRows) {
     return { row: r, rNormal, rTumour, score: rNormal - rTumour };
   });
 }
+
+/**
+ * Normal-neighbourhood fraction: for each query row, the share of its k nearest
+ * reference rows (P = [dims][nCells], e.g. expression PCs; the cell itself
+ * excluded) that are normal. Robust where centroid correlations of sparse
+ * single-cell profiles are near zero for everyone.
+ */
+export function normalNeighbourFraction(P, normalRows, tumourRows, queryRows, k = 15) {
+  const normal = new Set(normalRows);
+  const ref = [...normalRows, ...tumourRows];
+  const d2 = (a, b) => {
+    let s = 0;
+    for (let d = 0; d < P.length; d += 1) s += (P[d][a] - P[d][b]) ** 2;
+    return s;
+  };
+  return queryRows.map((q) => {
+    const near = ref
+      .filter((r) => r !== q)
+      .map((r) => [d2(q, r), r])
+      .sort((x, y) => x[0] - y[0])
+      .slice(0, k);
+    const nNormal = near.filter(([, r]) => normal.has(r)).length;
+    return { row: q, fraction: near.length ? nNormal / near.length : NaN, k: near.length };
+  });
+}

@@ -1,4 +1,4 @@
-import { alteredFraction, noiseFloor, normalLikeness } from "./controls";
+import { alteredFraction, noiseFloor, normalLikeness, normalNeighbourFraction } from "./controls";
 import { buildBinIndex } from "./matrix";
 
 describe("non-tumour controls", () => {
@@ -34,5 +34,13 @@ describe("non-tumour controls", () => {
     const out = normalLikeness(X, 3, [0, 1], [2, 3], [2, 4]);
     expect(out[0].score).toBeLessThan(0);
     expect(out[1].score).toBeGreaterThan(0);
+  });
+
+  it("counts normal cells among each query cell's nearest neighbours", () => {
+    // 1-D: normals at 0, 0.1, 0.2; tumour at 5, 5.1, 5.2; query 0.15 (tumour by DNA) sits among normals
+    const P = [Float64Array.from([0, 0.1, 0.2, 5, 5.1, 5.2, 0.15])];
+    const out = normalNeighbourFraction(P, [0, 1, 2], [3, 4, 5, 6], [6, 3], 3);
+    expect(out[0].fraction).toBe(1);
+    expect(out[1].fraction).toBe(0);
   });
 });
