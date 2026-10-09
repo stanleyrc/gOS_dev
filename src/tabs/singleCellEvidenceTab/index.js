@@ -13,6 +13,7 @@ import MtdnaCard from "../../components/singleCell/evidence/mtdnaCard";
 import FitnessCard from "../../components/singleCell/evidence/fitnessCard";
 import RnaCloneCard from "../../components/singleCell/evidence/rnaCloneCard";
 import IncoherenceCard from "../../components/singleCell/evidence/incoherenceCard";
+import ControlsCard from "../../components/singleCell/evidence/controlsCard";
 
 const VIEWS = [
   { value: "reads", label: "Reads & genotypes" },
@@ -24,6 +25,7 @@ const VIEWS = [
   { value: "mtdna", label: "mtDNA" },
   { value: "fitness", label: "Fitness (tree shape)" },
   { value: "rnaclone", label: "RNA → clone" },
+  { value: "controls", label: "Normal-cell controls" },
   { value: "status", label: "Pipeline status" },
 ];
 
@@ -45,6 +47,7 @@ export default function SingleCellEvidenceTab() {
           {view === "mtdna" && <MtdnaCard />}
           {view === "fitness" && <FitnessCard />}
           {view === "rnaclone" && <RnaCloneCard />}
+          {view === "controls" && <ControlsCard />}
           {view === "status" && <PrecomputeStatusCard />}
         </ErrorBoundary>
       </Space>
