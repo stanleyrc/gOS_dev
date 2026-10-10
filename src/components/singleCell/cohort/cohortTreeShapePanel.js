@@ -1,8 +1,11 @@
 import React, { useMemo } from "react";
-import { Card, Space, Table, Typography } from "antd";
+import { Card, Space, Table } from "antd";
 import { patientTreeStats } from "../../../helpers/singleCell/treeShape";
+import HintLine from "../hintLine";
 
-const { Text } = Typography;
+const TREE_HELP =
+  "Trunk fraction: truncal share of tumor SNVs (mapped onto the tree). Private share: SNVs in one cell, the ongoing mutation burden. Sackin / Yule: imbalance of the tumor tree (1 = as balanced as random branching; higher = caterpillar-like). LBI CV: spread of the local branching index (uneven expansion). Copy-number driver events from the patient's filtered events by the share of tumor cells carrying them; one-cell events include single-cell noise.";
+
 const pct = (x) => (Number.isFinite(x) ? `${Math.round(100 * x)}%` : "–");
 const fmt = (x, d = 2) => (Number.isFinite(x) ? x.toFixed(d) : "–");
 
@@ -33,12 +36,7 @@ export default function CohortTreeShapePanel({ summaries, files, datafiles }) {
   return (
     <Card size="small" title="Tree shape and chromosomal instability per patient">
       <Space direction="vertical" style={{ width: "100%" }} size="small">
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Trunk fraction: truncal share of tumor SNVs (mapped onto the tree). Private share: SNVs in one cell, the ongoing mutation burden.
-          Sackin / Yule: imbalance of the tumor tree (1 = as balanced as random branching; higher = caterpillar-like). LBI CV: spread of the
-          local branching index (uneven expansion). Copy-number driver events from the patient&apos;s filtered events by the share of tumor
-          cells carrying them; one-cell events include single-cell noise.
-        </Text>
+        <HintLine text={TREE_HELP} />
         <Table
           size="small"
           rowKey="patient"

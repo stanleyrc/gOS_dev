@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Segmented, Select, Space, Table, Tag, Typography } from "antd";
+import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Segmented, Select, Space, Table, Typography } from "antd";
+import NeutralTag from "../neutralTag";
 import { DotChartOutlined, ExperimentOutlined, PieChartOutlined, TagsOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
@@ -28,7 +29,7 @@ import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 const { Text } = Typography;
 const rnaCache = new Map();
 
-async function loadRna(dataset, id) {
+export async function loadRna(dataset, id) {
   const key = `${dataset.id}/${id}`;
   if (!rnaCache.has(key)) {
     rnaCache.set(
@@ -285,9 +286,9 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
                     <Text strong>{lv.level}</Text>
                     <div style={{ marginTop: 4 }}>
                       {lv.genes.slice(0, 20).map((g) => (
-                        <Tag key={g.gene} color={g.n >= Math.max(2, loaded.length - 1) ? "green" : g.n >= 2 ? "blue" : "default"} style={{ marginBottom: 2, cursor: "pointer" }} onClick={() => runGene(g.gene)} title={g.patients.join(", ")}>
+                        <NeutralTag key={g.gene} strong={g.n >= 2} style={{ marginBottom: 2, cursor: "pointer" }} onClick={() => runGene(g.gene)} title={g.patients.join(", ")}>
                           {`${g.gene} ${g.n}/${loaded.length}`}
-                        </Tag>
+                        </NeutralTag>
                       ))}
                     </div>
                   </Col>
