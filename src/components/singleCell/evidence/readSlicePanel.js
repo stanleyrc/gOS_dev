@@ -77,7 +77,7 @@ export default function ReadSlicePanel() {
   const options = useMemo(() => siteOptions(calls.data, slices.data), [calls.data, slices.data]);
   const [choice, setChoice] = useState(null);
   const [onlySelected, setOnlySelected] = useState(false);
-  const [layers, setLayers] = useState("DNA + RNA");
+  const [layers, setLayers] = useState("DNA"); // RNA per clone doubles the track count; opt in
   const [groupByCell, setGroupByCell] = useState(false);
   const containerRef = useRef(null);
   const browserRef = useRef(null);
