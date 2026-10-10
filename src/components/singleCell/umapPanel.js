@@ -18,6 +18,7 @@ import usePlotTheme from "./usePlotTheme";
 import { Provenance } from "./hintLine";
 import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 import { layoutEmbedding } from "../../helpers/singleCell/umapLayout";
+import { linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
 
 const { Text } = Typography;
 const MIN_HEIGHT = 400;
@@ -120,6 +121,25 @@ export default function UmapPanel() {
     if (geneReady) setColorBy("gene");
     else setColorBy((current) => (current === "gene" ? "clone" : current));
   }, [geneReady, expression.gene]);
+
+  // ?umap=cn:<GENE> | gene:<GENE> | <field> opens the UMAP with that colouring, once per patient
+  const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
+  const linkedFor = useRef(null);
+  useEffect(() => {
+    if (!summary || !patientId || linkedFor.current === patientId) return;
+    linkedFor.current = patientId;
+    const link = readDeepLink();
+    if (!linkAppliesTo(link, patientId) || !link.umap) return;
+    const { kind, gene, field } = link.umap;
+    if (kind === "cn") {
+      setCnGene(gene);
+      setColorBy("cn");
+    } else if (kind === "gene") {
+      dispatch(scaActions.fetchExpression(gene));
+    } else if (summary.fields.some((f) => f.name === field)) {
+      setColorBy(field);
+    }
+  }, [summary, patientId, dispatch]);
 
   const points = useMemo(() => {
     if (!summary?.hasUmap) return [];
