@@ -136,25 +136,28 @@ export function EvidenceDrawer({ drawer, onClose }) {
   );
 }
 
-/** Clone structure: one compact line, clone chips select the clone. */
+/** Clone structure: clones with a defining event as chips + labels; the rest folded into one muted line. */
 export function CloneLine({ vignette, cloneColors = {}, onRun = null }) {
   if (!vignette.clones.list.length) return <Text type="secondary">{vignette.clones.text}</Text>;
+  const defined = vignette.clones.list.filter((c) => c.defining.length);
+  const plain = vignette.clones.list.filter((c) => !c.defining.length);
   const tail = vignette.clones.text.split(" · ").filter((s) => !vignette.clones.list.some((c) => s.startsWith(`${c.clone} (`)));
+  const select = (c) => (onRun && c.cells ? () => onRun({ type: "select", tab: "7", select: groupCells(vignette, c.cells) }) : undefined);
   return (
     <div style={{ fontSize: TYPE.label, lineHeight: 1.9 }}>
-      {vignette.clones.list.map((c) => (
+      {defined.map((c) => (
         <span key={c.clone} style={{ marginRight: 14, whiteSpace: "nowrap" }}>
-          <ColorTag
-            color={cloneColors[c.clone]}
-            style={{ cursor: onRun && c.cells ? "pointer" : undefined, marginRight: 4 }}
-            onClick={onRun && c.cells ? () => onRun({ type: "select", tab: "7", select: groupCells(vignette, c.cells) }) : undefined}
-          >
+          <ColorTag color={cloneColors[c.clone]} style={{ cursor: select(c) ? "pointer" : undefined, marginRight: 4 }} onClick={select(c)}>
             {`${c.clone} · ${c.n}`}
           </ColorTag>
-          <Text type={c.defining.length ? undefined : "secondary"}>{c.defining.length ? c.defining.join(", ") : "no defining event"}</Text>
+          <Text>{c.defining.join(", ")}</Text>
         </span>
       ))}
-      {tail.length > 0 && <Text type="secondary">{tail.join(" · ")}</Text>}
+      {(plain.length > 0 || tail.length > 0) && (
+        <Text type="secondary">
+          {[plain.length ? `no defining event: ${plain.map((c) => `${c.clone} (${c.n})`).join(", ")}` : null, ...tail].filter(Boolean).join(" · ")}
+        </Text>
+      )}
     </div>
   );
 }
