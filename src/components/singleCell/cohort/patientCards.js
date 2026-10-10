@@ -128,7 +128,7 @@ export default function PatientSummaryTable({ patients, cloneColors, onOpen }) {
     {
       title: k("col-tumor-normal"),
       key: "cells",
-      width: 120,
+      width: 110,
       sorter: (a, b) => a.report.nTumorCells - b.report.nTumorCells,
       render: (_, p) => (
         <Text style={{ fontVariantNumeric: "tabular-nums" }}>
