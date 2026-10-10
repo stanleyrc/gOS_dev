@@ -12,7 +12,7 @@ const MIN_GROUP = 8; // fewer cells than this: no correlation drawn
 /**
  * Fig 5C, live: correlation of log copy number between positions across the
  * figure's windows, as a triangle (pairs at 45°): the carriers / selected
- * cells above the axis, the other tumour cells mirrored below, the walk's
+ * cells above the axis, the other tumor cells mirrored below, the walk's
  * segments and genes along the axis. Red off-diagonal blocks = segments that
  * rise and fall together, i.e. carried on the same molecule.
  */
@@ -111,7 +111,7 @@ export default function TriangleCorrelation({ order = [], cnById, domains = [], 
       else {
         textRole(ctx, c, "caption");
         ctx.textAlign = "center";
-        ctx.fillText(`Only ${groupB.length} other tumour cell${groupB.length === 1 ? "" : "s"}: too few to correlate. Select a clade to compare it with the rest.`, x0 + (k * cw) / 2, ax + AXIS / 2 + 30);
+        ctx.fillText(`Only ${groupB.length} other tumor cell${groupB.length === 1 ? "" : "s"}: too few to correlate. Select a clade to compare it with the rest.`, x0 + (k * cw) / 2, ax + AXIS / 2 + 30);
       }
       // colour key
       const kx = width - 96;

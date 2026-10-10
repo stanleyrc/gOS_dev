@@ -118,8 +118,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const dark = useDarkTheme();
 
   // ---- amplicons: every main amplicon of the patient by default (hide / reorder with the chips)
-  const tumourIds = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
-  const amps = useMemo(() => mainAmplicons(all, tumourIds), [all, tumourIds]);
+  const tumorIds = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
+  const amps = useMemo(() => mainAmplicons(all, tumorIds), [all, tumorIds]);
   const [ampState, setAmpState] = useState(null); // { order: [key], shown: [key] } once the user changes it
   useEffect(() => setAmpState(null), [patient]);
   const ampOrder = useMemo(() => {
@@ -139,8 +139,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
 
   // bar columns: one per shown amplicon, split into the paper's variant groups where defined (BWH70: long / short EGFR); each stacks its variants
   const columns = useMemo(() => {
-    const carriers = (w) => tumourIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
-    const total = (w) => tumourIds.reduce((t, id) => t + (Number(w.cells?.[id]) || 0), 0);
+    const carriers = (w) => tumorIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
+    const total = (w) => tumorIds.reduce((t, id) => t + (Number(w.cells?.[id]) || 0), 0);
     const out = [];
     shownAmps.forEach((amp) => {
       const inAmp = new Set(amp.walks.map((w) => w.id));
@@ -154,29 +154,29 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       });
     });
     return out;
-  }, [shownAmps, grouping, tumourIds]);
+  }, [shownAmps, grouping, tumorIds]);
   const ampWalks = useMemo(() => shownAmps.flatMap((x) => x.walks), [shownAmps]);
   // walk lanes for the genome tracks: the shown amplicons' walks with carriers, most carried first
   const laneWalks = useMemo(() => {
-    const nc = (w) => tumourIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
+    const nc = (w) => tumorIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
     return ampWalks
       .map((w) => [w, nc(w)])
       .filter(([, k]) => k > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 16)
       .map(([w]) => w);
-  }, [ampWalks, tumourIds]);
+  }, [ampWalks, tumorIds]);
   // cells for the genome graph tracks: the selection (up to 3), else the top and a median carrier of the focused variant
   const trackCells = useMemo(() => {
     const sel = sc.selectedCellIds || [];
     if (sel.length && sel.length <= 6) return sel.slice(0, 3).map((id) => ({ id, why: "selected" }));
     if (!focusWalk) return [];
     const cn = (id) => Number(focusWalk.cells?.[id]) || 0;
-    const car = tumourIds.filter((id) => cn(id) >= 1).sort((a, b) => cn(b) - cn(a));
+    const car = tumorIds.filter((id) => cn(id) >= 1).sort((a, b) => cn(b) - cn(a));
     const out = car.length ? [{ id: car[0], why: `highest ${nameOf(focusWalk)} copies` }] : [];
     if (car.length > 2) out.push({ id: car[Math.floor(car.length / 2)], why: "median carrier" });
     return out;
-  }, [sc.selectedCellIds, focusWalk, tumourIds, nameOf]);
+  }, [sc.selectedCellIds, focusWalk, tumorIds, nameOf]);
   const baseDomains = useMemo(() => {
     const wins = ampliconWindows(shownAmps)
       .map(([chr, a, b]) => (chromoBins?.[chr] ? [chromoBins[chr].startPlace + a, chromoBins[chr].startPlace + Math.min(b, chromoBins[chr].endPoint || b)] : null))
@@ -878,7 +878,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             };
             return (
               <span key={k} className={`sc-fig-amp${on ? " is-on" : ""}${amp.main ? " is-main" : ""}`}>
-                <Tooltip title={`${amp.carriers} tumour cells (${Math.round(100 * amp.frac)}%) · median ${Math.round(amp.medianCn)} copies in carriers · ${amp.walks.length} walk${amp.walks.length === 1 ? "" : "s"}${amp.main ? " · main amplicon" : " · minor (below 15% of tumour cells or median 8 copies)"}`}>
+                <Tooltip title={`${amp.carriers} tumor cells (${Math.round(100 * amp.frac)}%) · median ${Math.round(amp.medianCn)} copies in carriers · ${amp.walks.length} walk${amp.walks.length === 1 ? "" : "s"}${amp.main ? " · main amplicon" : " · minor (below 15% of tumor cells or median 8 copies)"}`}>
                   <Checkbox checked={on} onChange={toggle}>
                     <span style={{ color: colorOf(amp.dominant.id), fontWeight: 600 }}>ec{amp.label}</span>
                     <span className="sc-fig-amp-n">{Math.round(100 * amp.frac)}%</span>
@@ -1050,7 +1050,7 @@ export function PatientVariants({ patient, events = [], focusWalkId, onFocusWalk
 /**
  * Fig 4E + 5C row: copy-number profiles of the selected (or representative)
  * cells, and segment co-variation triangles of the selected cells (else the
- * focused variant's carriers) against the other tumour cells, both over the
+ * focused variant's carriers) against the other tumor cells, both over the
  * figure's current windows.
  */
 export function PatientProfiles({ patient, focusWalkId, domains = [], events = [] }) {
@@ -1062,13 +1062,13 @@ export function PatientProfiles({ patient, focusWalkId, domains = [], events = [
     const d = sc.cn.status === "ok" ? sc.cn.data : null;
     return d ? new Map(d.cells.map((id, i) => [id, d.rows[i]])) : new Map();
   }, [sc.cn]);
-  const tumour = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
+  const tumor = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
   const sel = useMemo(() => sc.selectedCellIds || [], [sc.selectedCellIds]);
-  const groupA = useMemo(() => (sel.length >= 3 ? sel : focusWalk ? tumour.filter((id) => (Number(focusWalk.cells?.[id]) || 0) >= 1) : []), [sel, focusWalk, tumour]);
+  const groupA = useMemo(() => (sel.length >= 3 ? sel : focusWalk ? tumor.filter((id) => (Number(focusWalk.cells?.[id]) || 0) >= 1) : []), [sel, focusWalk, tumor]);
   const groupB = useMemo(() => {
     const a = new Set(groupA);
-    return tumour.filter((id) => !a.has(id));
-  }, [groupA, tumour]);
+    return tumor.filter((id) => !a.has(id));
+  }, [groupA, tumor]);
   const genes = useMemo(() => {
     const amp = new Set((focusWalk?.driver_genes || []).map(String));
     const seen = new Set();
@@ -1086,8 +1086,8 @@ export function PatientProfiles({ patient, focusWalkId, domains = [], events = [
   if (!ready || !domains.length) return null;
   return (
     <>
-      <PanelHead letter="C" title="Segment co-variation" fig="Fig 5C" hint={`${sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumour cells (down) · one triangle per window`} />
-      <TriangleCorrelation order={order} cnById={cnById} domains={domains} groupA={groupA} groupB={groupB} labelA={sel.length >= 3 ? "Selected cells" : `${focusWalk?.label || "variant"} carriers`} labelB="Other tumour cells" walk={focusWalk} colorOf={colorOf} genes={genes} />
+      <PanelHead letter="C" title="Segment co-variation" fig="Fig 5C" hint={`${sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumor cells (down) · one triangle per window`} />
+      <TriangleCorrelation order={order} cnById={cnById} domains={domains} groupA={groupA} groupB={groupB} labelA={sel.length >= 3 ? "Selected cells" : `${focusWalk?.label || "variant"} carriers`} labelB="Other tumor cells" walk={focusWalk} colorOf={colorOf} genes={genes} />
     </>
   );
 }
@@ -1101,10 +1101,10 @@ export function PatientVariantCopies({ patient, focusWalkId, onFocusWalk, select
   const { ready } = usePatientLoaded(patient);
   const { order, all, cellById, colorOf, focusWalk } = useFocusFamily(focusWalkId);
   const walks = useMemo(() => {
-    const tumour = order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id));
+    const tumor = order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id));
     const { nameOf, groups } = variantGrouping(patient, all);
     const out = [];
-    mainAmplicons(all, tumour)
+    mainAmplicons(all, tumor)
       .filter((x) => x.main)
       .forEach((amp) => {
         const ids = new Set(amp.walks.map((w) => w.id));

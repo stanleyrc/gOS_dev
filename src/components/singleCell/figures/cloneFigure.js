@@ -161,7 +161,7 @@ export default function CloneFigure({
     return m;
   }, [selected, rows, n]);
 
-  // long branches (e.g. normals vs tumour) drawn shortened with a "//" break
+  // long branches (e.g. normals vs tumor) drawn shortened with a "//" break
   const nodePx = useMemo(() => {
     if (!tree) return [];
     const { x, broken, maxX } = compressLongBranches(tree);
