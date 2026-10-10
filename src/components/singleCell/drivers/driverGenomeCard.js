@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Button, Card, Col, Empty, Row, Space, Table, Typography } from "antd";
@@ -24,9 +24,11 @@ export function toLocal(chromoBins, g) {
 }
 const mb = (bp) => `${(bp / 1e6).toFixed(1)} Mb`;
 
-function CnLines({ contrast, chromoBins, genomeLength }) {
+/** Mean CN of carriers and comparator along the genome; hover reads both values out, click zooms the genome view there. */
+function CnLines({ contrast, chromoBins, genomeLength, onZoom }) {
   const [ref, width] = useContainerWidth(800);
   const theme = usePlotTheme();
+  const [hover, setHover] = useState(null); // index into contrast.positions
   const M = { left: 34, right: 8, top: 8, bottom: 22 };
   const H = 150;
   const plotW = Math.max(width - M.left - M.right, 10);
@@ -54,9 +56,37 @@ function CnLines({ contrast, chromoBins, genomeLength }) {
   const chroms = Object.entries(chromoBins || {}).filter(([, v]) => v.endPlace <= genomeLength + 1);
   const ticks = Array.from({ length: ymax + 1 }, (_, k) => k).filter((k) => ymax <= 6 || k % 2 === 0);
   const tickLabel = (k) => (clipped && k === ymax ? `≥${k}` : `${k}`);
+  const indexAt = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const g = ((e.clientX - r.left - M.left) / plotW) * genomeLength;
+    if (g < 0 || g > genomeLength) return null;
+    const i = Math.round((g - contrast.positions[0]) / STEP);
+    return Math.max(0, Math.min(contrast.positions.length - 1, i));
+  };
+  const region = hover != null ? contrast.regions.find((r) => contrast.positions[hover] >= r.start && contrast.positions[hover] <= r.end) : null;
+  const hx = hover != null ? x(contrast.positions[hover]) : null;
+  const where = hover != null ? toLocal(chromoBins, contrast.positions[hover]) : null;
+  const fmt = (v) => (Number.isFinite(v) ? v.toFixed(2) : "–");
   return (
-    <div ref={ref} style={{ width: "100%" }}>
-      <svg width={width} height={H} role="img" aria-label="mean copy number of carriers and comparator along the genome">
+    <div ref={ref} style={{ width: "100%", position: "relative" }}>
+      <svg
+        width={width}
+        height={H}
+        role="img"
+        aria-label="mean copy number of carriers and comparator along the genome"
+        style={{ cursor: "zoom-in" }}
+        onMouseMove={(e) => setHover(indexAt(e))}
+        onMouseLeave={() => setHover(null)}
+        onClick={(e) => {
+          const i = indexAt(e);
+          if (i == null) return;
+          // a shaded region zooms to the region, elsewhere to 10 Mb around the position
+          const g = contrast.positions[i];
+          const r = contrast.regions.find((q) => g >= q.start && g <= q.end);
+          if (r) onZoom(r.start - STEP / 2, r.end + STEP / 2);
+          else onZoom(g - 5e6, g + 5e6);
+        }}
+      >
         {contrast.regions.map((r, i) => (
           <rect key={i} x={x(r.start - STEP / 2)} width={Math.max(x(r.end + STEP / 2) - x(r.start - STEP / 2), 2)} y={M.top} height={plotH} fill={theme.hoverFill} />
         ))}
@@ -78,12 +108,46 @@ function CnLines({ contrast, chromoBins, genomeLength }) {
             )}
           </g>
         ))}
+        {region && (
+          <rect x={x(region.start - STEP / 2)} width={Math.max(x(region.end + STEP / 2) - x(region.start - STEP / 2), 2)} y={M.top} height={plotH} fill="none" stroke={theme.hover} pointerEvents="none" />
+        )}
         <path d={path(contrast.meanB)} fill="none" stroke={COMPARATOR_COLOR} strokeWidth={1.4} />
         <path d={path(contrast.meanA)} fill="none" stroke={CARRIER_COLOR} strokeWidth={1.4} />
+        {hover != null && (
+          <g pointerEvents="none">
+            <line x1={hx} x2={hx} y1={M.top} y2={M.top + plotH} stroke={theme.textSecondary} strokeDasharray="3 3" />
+            {Number.isFinite(contrast.meanA[hover]) && <circle cx={hx} cy={y(contrast.meanA[hover])} r={3.5} fill={CARRIER_COLOR} />}
+            {Number.isFinite(contrast.meanB[hover]) && <circle cx={hx} cy={y(contrast.meanB[hover])} r={3.5} fill={COMPARATOR_COLOR} />}
+          </g>
+        )}
         <text x={4} y={M.top + plotH / 2} fontSize={TYPE.tick} fill={theme.textSecondary} transform={`rotate(-90 10 ${M.top + plotH / 2})`} textAnchor="middle">
           CN
         </text>
       </svg>
+      {hover != null && where && (
+        <div
+          style={{
+            position: "absolute",
+            left: Math.min(Math.max(hx + 10, 0), Math.max(width - 260, 0)),
+            top: M.top,
+            pointerEvents: "none",
+            background: theme.raised,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 4,
+            padding: "2px 8px",
+            fontSize: TYPE.tick,
+            lineHeight: 1.5,
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>{`${where.chrom}:${mb(where.pos)}`}</div>
+          <div style={{ color: CARRIER_COLOR }}>{`carriers ${fmt(contrast.meanA[hover])}`}</div>
+          <div style={{ color: COMPARATOR_COLOR }}>{`comparator ${fmt(contrast.meanB[hover])}`}</div>
+          <div style={{ color: theme.muted }}>{region ? `region Δ ${region.diff > 0 ? "+" : ""}${region.diff.toFixed(2)} · click to zoom` : "click to zoom (10 Mb)"}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -126,7 +190,7 @@ export default function DriverGenomeCard({ driver, carriers, others }) {
       <Space direction="vertical" size={8} style={{ width: "100%" }}>
         <HintLine text={t("components.single-cell.drivers.genome-hint")} />
         {contrast ? (
-          <CnLines contrast={contrast} chromoBins={chromoBins} genomeLength={genomeLength} />
+          <CnLines contrast={contrast} chromoBins={chromoBins} genomeLength={genomeLength} onZoom={(a, b) => zoom(a, b)} />
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.drivers.no-cn")} />
         )}
