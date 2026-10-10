@@ -299,6 +299,7 @@ export function siteStats(site, ev, cellRows = [], { preset = "caller" } = {}) {
     coveredNormal: normalCells.filter((c) => c.dp > 0).length,
     carrierCells: carriers.length,
     normalCarriers: normalCells.filter((c) => c.alt > 0).length,
+    clonality: clonality(tumourCells, tVaf),
     clonesWithCarriers: [...clones.entries()].filter(([, e]) => e.carriers > 0).map(([k]) => k),
     clonesCovered: [...clones.entries()].filter(([, e]) => e.covered > 0).map(([k]) => k),
     // power: chance of zero alt reads in the tumour if the site were a clonal het (VAF 0.5) or a 25% subclone
@@ -306,6 +307,20 @@ export function siteStats(site, ev, cellRows = [], { preset = "caller" } = {}) {
     log10pMissSubclonal: tumor.dp ? tumor.dp * Math.log10(1 - 0.125) : null,
     reads: ev ? { total: ev.n_reads, dup: ev.n_dup, lowMq: ev.n_lowmq, unassigned: ev.n_unassigned, sampleEvery: ev.sample_every || 1 } : null,
   };
+}
+
+/**
+ * Carrier cells expected if every covered tumour cell carried the mutation at the pooled VAF v: a cell with d reads
+ * shows an alt read with probability 1 - (1 - v)^d. observed / expected estimates the fraction of tumour cells that
+ * carry it (dropout-aware: a covered cell without alt reads is not counted as wild type).
+ */
+export function clonality(tumourCells = [], v) {
+  if (v == null || v <= 0) return null;
+  const covered = tumourCells.filter((c) => c.dp > 0);
+  const expected = covered.reduce((sum, c) => sum + 1 - (1 - Math.min(v, 0.999)) ** c.dp, 0);
+  const observed = covered.filter((c) => c.alt > 0).length;
+  if (!expected) return null;
+  return { observed, expected, fraction: Math.min(1, observed / expected) };
 }
 
 /** log10 P(X <= k), X ~ Binomial(n, p). */
@@ -317,6 +332,18 @@ export function log10BinomLower(k, n, p) {
   for (let i = 0; i <= k; i += 1) terms.push(logChoose(n, i) + i * Math.log(p) + (n - i) * Math.log1p(-p));
   return Math.min(0, logSumExp(terms) / LN10);
 }
+
+// short reasons for the findings list
+const CONCERN = {
+  signal: "weak signal over the error rate",
+  cells: "fewer than 3 carrier cells",
+  normal: "normal cells carry it at a similar rate",
+  cohort: "recurs in patients without the mutation",
+  strand: "alt reads on one strand",
+  bq: "alt bases have low base quality",
+  end: "alt bases sit at read ends",
+  vaf: "low VAF spread over many cells (error pattern of amplified regions)",
+};
 
 const pct = (x) => (x == null ? "–" : `${Math.round(100 * x)}%`);
 
@@ -355,6 +382,17 @@ export function siteVerdict(stats) {
       s.clonesWithCarriers.length ? `; in ${s.clonesWithCarriers.length} of ${s.clonesCovered.length} covered clones` : ""
     }`,
   });
+  if (s.clonality && t.alt > 0 && s.carrierCells >= 3 && s.tVaf >= 0.05) {
+    const c = s.clonality;
+    const clonal = c.fraction >= 0.8;
+    checks.push({
+      key: "clonality",
+      status: "info",
+      text: `Clonality: ${c.observed} carriers vs ${c.expected.toFixed(0)} expected if every covered tumour cell carried it at VAF ${pct(s.tVaf)} → in ~${Math.round(
+        100 * c.fraction
+      )}% of tumour cells (${clonal ? "clonal / truncal" : "subclonal"}); covered cells without alt reads are what sampling one or two reads of a heterozygous site gives`,
+    });
+  }
   // 3. normal cells
   let normalStatus = "na";
   let normalText = `Normal cells: no reads (${s.nNormalCells} normal cells)`;
@@ -438,8 +476,8 @@ export function siteVerdict(stats) {
     summary = `No alt reads in ${t.dp} tumour reads from ${s.coveredTumour} cells; a clonal het would have shown alt reads (P(miss) = ${fmtLog10P(s.log10pMissClonal)}).`;
   else if (level === "uninformative") summary = `Only ${t.dp} tumour reads: coverage too low to say.`;
   else if (level === "germline") summary = `Normal cells carry it at VAF ${pct(s.nVaf)}: germline or a shared artefact, not somatic.`;
-  else if (level === "artefact") summary = `Fails: ${failed.map((x) => x.key).join(", ") || "signal"} — see checks.`;
-  else summary = `Above background but ${warned.map((w) => w.key).join(", ") || "few reads"} limit confidence.`;
+  else if (level === "artefact") summary = `Artefact-like: ${(failed.length ? failed : warned).map((x) => CONCERN[x.key] || x.key).join("; ") || "no signal above error"}.`;
+  else summary = `Above error, but ${warned.map((w) => CONCERN[w.key] || w.key).join("; ") || "few reads"}.`;
   return { level, ...VERDICTS[level], summary, checks };
 }
 
