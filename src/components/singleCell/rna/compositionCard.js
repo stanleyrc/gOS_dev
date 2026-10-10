@@ -87,7 +87,18 @@ export default function CompositionCard({ summary }) {
     return { levels, groups, keys, p };
   }, [summary, field, groupBy, cloneOf, groupsOfCell]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!summary || !fields.length || !data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
-  const levelColors = annotationColors(data.levels, themePalette(layout.theme));
+  // distinct colour per level (fixed annotation colours can collide, e.g. two "Non-Enhancing" regions)
+  const levelColors = (() => {
+    const base = annotationColors(data.levels, themePalette(layout.theme));
+    const spare = themePalette(layout.theme).filter((c) => !Object.values(base).includes(c));
+    const used = new Set();
+    const out = {};
+    data.levels.forEach((l) => {
+      out[l] = used.has(base[l]) && spare.length ? spare.shift() : base[l];
+      used.add(out[l]);
+    });
+    return out;
+  })();
   const groupColors = groupBy === "clone" ? cloneColors : annotationColors(data.keys, themePalette(layout.theme));
   const maxTotal = Math.max(1, ...data.keys.map((k) => data.groups.get(k).total));
   const rotateLabels = data.keys.length > 8;

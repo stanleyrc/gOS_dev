@@ -13,7 +13,7 @@ import { walkGeneSet } from "../../../helpers/singleCell/figures";
 import { readViewLink } from "../../../helpers/singleCell/deepLink";
 import { formatP } from "../../../helpers/singleCell/tests";
 import { isNormalClone } from "../../../helpers/singleCell/figures";
-import { FONT, YAxis, patientColor } from "./charts";
+import { FONT, YAxis } from "./charts";
 import { loadRna } from "./cohortRnaPanel";
 import HintLine from "../hintLine";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
@@ -78,7 +78,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380 }) {
                 {t && (
                   <text x={width - M.right - 4} y={M.top + 14 + gi * 34} textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={GENE_INK[gi % GENE_INK.length]}>
                     <tspan x={width - M.right - 4}>{`rho = ${fmtRho(t.rho)}`}</tspan>
-                    <tspan x={width - M.right - 4} dy="1.15em">{`p = ${formatP(t.p)}`}</tspan>
+                    <tspan x={width - M.right - 4} dy="1.15em">{formatP(t.p)}</tspan>
                   </text>
                 )}
               </g>
@@ -102,7 +102,8 @@ function StoufferDots({ rows, width, title }) {
   const M = { top: 34, right: 90, bottom: 44, left: 120 };
   const height = M.top + rows.length * ROW + (groups.length - 1) * 12 + M.bottom;
   const vals = rows.map((r) => r.score).filter(Number.isFinite);
-  const lim = Math.max(3, d3.max(vals.map(Math.abs)) || 3);
+  const CAP = 12;
+  const lim = Math.min(CAP, Math.max(3, d3.max(vals.map(Math.abs)) || 3));
   const x = d3.scaleLinear().domain([-lim * 1.05, lim * 1.05]).range([M.left, width - M.right]).nice();
   const size = d3.scaleSqrt().domain([0, 0.6]).range([2, 11]).clamp(true);
   let yy = M.top;
@@ -121,9 +122,12 @@ function StoufferDots({ rows, width, title }) {
       {placed.map((r) => (
         <g key={r.key}>
           <text x={M.left - 8} y={r.y} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={INK.textSecondary}>{r.label}</text>
+          {Number.isFinite(r.score) && Math.abs(r.score) > lim && (
+            <text x={x(Math.sign(r.score) * lim) + Math.sign(r.score) * 14} y={r.y} dy="0.35em" textAnchor={r.score > 0 ? "start" : "end"} fontSize={FONT.axis} fill={INK.textSecondary}>{`${r.score > 0 ? "→" : "←"} ${Math.abs(r.score).toFixed(0)}`}</text>
+          )}
           {Number.isFinite(r.score) && (
-            <circle cx={x(r.score)} cy={r.y} r={size(Math.abs(r.rho) || 0)} fill={r.color || INK.text}>
-              <title>{`${r.label}: weighted rho ${fmtRho(r.rho)}, Stouffer p ${formatP(r.p)} (${r.n} cells)`}</title>
+            <circle cx={x(Math.max(-lim, Math.min(lim, r.score)))} cy={r.y} r={size(Math.abs(r.rho) || 0)} fill={r.color || INK.text}>
+              <title>{`${r.label}: weighted rho ${fmtRho(r.rho)}, Stouffer ${formatP(r.p)} (${r.n} cells)`}</title>
             </circle>
           )}
         </g>
@@ -250,7 +254,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
     { key: "_pooled", patient: "Pooled (all cells)", n: records.length, medianCn: d3.median(records, (r) => r.cn), res: stats.pooled },
     { key: "_stouffer", patient: "Stouffer across patients", n: records.length, res: Object.fromEntries(keys.map((k) => [k, stats.combined[k]])), combined: true },
   ];
-  const cell = (t) => (t && Number.isFinite(t.rho) ? <span style={{ color: t.p < 0.05 ? INK.text : INK.muted, fontWeight: t.p < 0.05 ? 600 : 400 }}>{`${fmtRho(t.rho)} (p ${formatP(t.p)})`}</span> : "–");
+  const cell = (t) => (t && Number.isFinite(t.rho) ? <span style={{ color: t.p < 0.05 ? INK.text : INK.muted, fontWeight: t.p < 0.05 ? 600 : 400 }}>{`${fmtRho(t.rho)} (${formatP(t.p)})`}</span> : "–");
   const half = width >= 1100 ? Math.floor((width - 40) / 2) : width - 24;
 
   return (
@@ -282,7 +286,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
           <>
             <Space wrap style={{ marginBottom: 6 }} className="sc-cnexpr-patients">
               <Text type="secondary">Patients with {cnGene} ecDNA:</Text>
-              <Segmented size="small" value={shown} onChange={setShown} options={[{ value: "pooled", label: `Pooled (${records.length} cells)` }, ...withData.map((p) => ({ value: p, label: <span style={{ color: patientColor(summaries.findIndex((s) => s.caseReportId === p)) }}>{`${p} (${records.filter((r) => r.patient === p).length})`}</span> }))]} />
+              <Segmented size="small" value={shown} onChange={setShown} options={[{ value: "pooled", label: `Pooled (${records.length} cells)` }, ...withData.map((p) => ({ value: p, label: `${p} (${records.filter((r) => r.patient === p).length})` }))]} />
             </Space>
             <Row gutter={16}>
               <Col xs={24} xl={12}>
