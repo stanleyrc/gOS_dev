@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import useContainerWidth from "../useContainerWidth";
+import usePlotTheme from "../usePlotTheme";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 export const COLOR_UP = "#C2185B";
@@ -9,6 +10,7 @@ const COLOR_NS = "#C9CED6";
 const M = { top: 28, right: 24, bottom: 46, left: 56 };
 const N_LABELS = 8;
 const MAX_SELECTED_LABELS = 25;
+const fmtP = (v) => (!Number.isFinite(v) ? "–" : v < 1e-3 ? v.toExponential(1) : v.toFixed(3));
 
 function insidePolygon(x, y, polygon) {
   let inside = false;
@@ -24,11 +26,15 @@ function insidePolygon(x, y, polygon) {
  * Volcano plot of a DE result: log2 fold change vs -log10 p, dashed lines at
  * the fold-change and q thresholds, top genes labelled on each side.
  * Click a point to pick that gene; Shift/Cmd-click adds or removes it; drag
- * on empty space to lasso genes (Shift/Cmd adds to the current pick).
+ * on empty space to lasso genes (Shift/Cmd adds to the current pick). Hover
+ * finds the nearest gene (any point, significant or not) and shows its
+ * numbers. With no gene past the thresholds, the top nominal genes (by p) are
+ * labelled in grey instead.
  */
-export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene, selectedGenes = [], onGene, onSelectGenes }) {
+export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene, selectedGenes = [], onGene = () => {}, onSelectGenes = () => {} }) {
   const [ref, width] = useContainerWidth(700);
   const [hover, setHover] = useState(null);
+  const theme = usePlotTheme();
   const [lasso, setLasso] = useState(null);
   const svgRef = useRef(null);
   const drag = useRef(null);
@@ -44,6 +50,10 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         gene: g.gene,
         x: g.avg_log2FC,
         y: -Math.log10(Math.max(g.p_val, 1e-300)),
+        p: g.p_val,
+        q: g.q_val,
+        pct1: g.pct_1,
+        pct2: g.pct_2,
         sig: g.q_val < qCut && Math.abs(g.avg_log2FC) >= lfcCut,
       })),
     [genes, qCut, lfcCut]
@@ -55,10 +65,12 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
   // p at the q threshold: the largest p among genes passing q.
   const pAtQ = d3.max(genes.filter((g) => g.q_val < qCut), (g) => g.p_val);
 
+  const anySig = points.some((p) => p.sig);
   const labelled = useMemo(() => {
+    // nothing significant: label the strongest nominal genes so the plot is still readable
     const top = (sign) =>
       points
-        .filter((p) => p.sig && Math.sign(p.x) === sign)
+        .filter((p) => (anySig ? p.sig : p.p < 0.05 && Math.abs(p.x) >= lfcCut) && Math.sign(p.x) === sign)
         .sort((a, b) => b.y - a.y || Math.abs(b.x) - Math.abs(a.x))
         .slice(0, N_LABELS);
     const chosen = picked.size && picked.size <= MAX_SELECTED_LABELS ? points.filter((p) => picked.has(p.gene)) : [];
@@ -81,7 +93,16 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
     };
     const all = [...byGene.values()];
     return [...place(all.filter((p) => p.x >= 0), 1), ...place(all.filter((p) => p.x < 0), -1)];
-  }, [points, picked, x, y]);
+  }, [points, picked, x, y, anySig, lfcCut]);
+
+  // nearest point under the cursor (all genes, not only significant ones)
+  const delaunay = useMemo(() => d3.Delaunay.from(points, (p) => x(p.x), (p) => y(p.y)), [points, x, y]);
+  const nearest = (px, py) => {
+    if (!points.length) return null;
+    const i = delaunay.find(px, py);
+    const p = points[i];
+    return p && Math.hypot(x(p.x) - px, y(p.y) - py) <= 12 ? p : null;
+  };
 
   const colour = (p) => (!p.sig ? COLOR_NS : p.x > 0 ? COLOR_UP : COLOR_DOWN);
   const ns = points.filter((p) => !p.sig && !picked.has(p.gene));
@@ -110,7 +131,12 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
   };
   const onMouseMove = (e) => {
     const d = drag.current;
-    if (!d) return;
+    if (!d) {
+      const [px, py] = local(e);
+      const p = nearest(px, py);
+      if (p?.gene !== hover?.gene) setHover(p);
+      return;
+    }
     const pt = local(e);
     const [x0, y0] = d.path[0];
     if (!d.moved && Math.hypot(pt[0] - x0, pt[1] - y0) < 4) return;
@@ -118,10 +144,16 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
     d.path.push(pt);
     setLasso([...d.path]);
   };
-  const onMouseUp = () => {
+  const onMouseUp = (e) => {
     const d = drag.current;
     drag.current = null;
     setLasso(null);
+    if (d && !d.moved && e?.type === "mouseup") {
+      // a click near a point (small grey dots are hard to hit exactly)
+      const p = nearest(...d.path[0]);
+      if (p) clickPoint(p, e);
+      return;
+    }
     if (!d || !d.moved || d.path.length < 3) return;
     const inside = points.filter((p) => insidePolygon(x(p.x), y(p.y), d.path)).map((p) => p.gene);
     onSelectGenes(d.additive ? [...new Set([...selectedGenes, ...inside])] : inside);
@@ -135,11 +167,14 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         height={HEIGHT}
         role="img"
         aria-label="Volcano plot"
-        style={{ fontFamily: "inherit", cursor: lasso ? "crosshair" : "default" }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
+        onMouseLeave={(e) => {
+          onMouseUp(e);
+          setHover(null);
+        }}
+        style={{ fontFamily: "inherit", cursor: lasso ? "crosshair" : hover ? "pointer" : "default" }}
       >
         <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="#FCFCFD" stroke={INK.grid} />
         {x.ticks(8).map((tk) => (
@@ -176,7 +211,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
           {`higher in ${labels.A} →`}
         </text>
         {ns.map((p) => (
-          <circle key={p.gene} cx={x(p.x)} cy={y(p.y)} r={2} fill={COLOR_NS} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => clickPoint(p, e)} />
+          <circle key={p.gene} cx={x(p.x)} cy={y(p.y)} r={2} fill={COLOR_NS} />
         ))}
         {sig.map((p) => (
           <circle
@@ -187,10 +222,6 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
             fill={colour(p)}
             fillOpacity={0.8}
             style={{ cursor: "pointer" }}
-            onMouseEnter={() => setHover(p)}
-            onMouseLeave={() => setHover(null)}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => clickPoint(p, e)}
           />
         ))}
         {chosenPts.map((p) => (
@@ -203,10 +234,6 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
             stroke="#141414"
             strokeWidth={1.5}
             style={{ cursor: "pointer" }}
-            onMouseEnter={() => setHover(p)}
-            onMouseLeave={() => setHover(null)}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => clickPoint(p, e)}
           />
         ))}
         {labelled.map((p) => (
@@ -218,8 +245,8 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
               textAnchor={p.anchor}
               fontSize={TYPE.tick}
               fontWeight={picked.has(p.gene) ? 700 : 400}
-              fill={INK.text}
-              stroke={INK.panel}
+              fill={anySig || picked.has(p.gene) ? INK.text : INK.textSecondary}
+              stroke={theme.panel}
               strokeWidth="3"
               paintOrder="stroke"
             >
@@ -231,7 +258,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
           <g pointerEvents="none">
             <circle cx={x(focus.x)} cy={y(focus.y)} r={7} fill="none" stroke={INK.hover} strokeWidth={2} />
             {!focusLabelled && (
-              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={TYPE.label} fontWeight="600" fill="#FA541C" stroke={INK.panel} strokeWidth="3" paintOrder="stroke">
+              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={TYPE.label} fontWeight="600" fill="#FA541C" stroke={theme.panel} strokeWidth="3" paintOrder="stroke">
                 {`${focus.gene}  log2FC ${focus.x.toFixed(2)}`}
               </text>
             )}
@@ -253,6 +280,31 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
           −log10 p
         </text>
       </svg>
+      {hover && !lasso && (
+        <div
+          style={{
+            position: "absolute",
+            left: Math.min(x(hover.x) + 12, width - 230),
+            top: Math.max(y(hover.y) - 70, 0),
+            pointerEvents: "none",
+            background: theme.raised,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 4,
+            padding: "4px 8px",
+            fontSize: TYPE.tick,
+            lineHeight: 1.5,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>{hover.gene}</div>
+          <div>{`log2 FC ${hover.x.toFixed(2)} (${hover.x > 0 ? labels.A : labels.B} higher)`}</div>
+          <div>{`p ${fmtP(hover.p)} · q ${fmtP(hover.q)}`}</div>
+          {Number.isFinite(hover.pct1) && Number.isFinite(hover.pct2) && <div>{`detected in ${Math.round(hover.pct1 * 100)}% vs ${Math.round(hover.pct2 * 100)}%`}</div>}
+          <div style={{ color: theme.muted }}>click to pick · shift-click to add</div>
+        </div>
+      )}
     </div>
   );
 }
