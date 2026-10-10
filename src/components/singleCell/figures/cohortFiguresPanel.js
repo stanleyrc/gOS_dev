@@ -12,9 +12,10 @@ import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
 import { useFigureStyleName } from "./figureCanvas";
 import { PanelHead } from "./figureKit";
+import { dominantGroupIndex } from "../../../helpers/singleCell/figureDefaults";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
-import PatientFigure, { PatientCladeStates, PatientProfiles, PatientVariants } from "./patientFigure";
+import PatientFigure, { PatientCladeStates, PatientProfiles, PatientVariantCopies } from "./patientFigure";
 import ScEventModal from "../scEventModal";
 import GenePairScatter from "./genePairScatter";
 import CladeCarrierBars from "./cladeCarrierBars";
@@ -158,7 +159,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
 
   const region = useMemo(() => {
     if (!current) return { domains: [], label: "" };
-    const key = regionKey && current.groups.some((g) => `g:${g.key}` === regionKey) ? regionKey : regionKey?.startsWith("gene:") || regionKey?.startsWith("f:") ? regionKey : current.groups[0] ? `g:${current.groups[0].key}` : null;
+    const key = regionKey && current.groups.some((g) => `g:${g.key}` === regionKey) ? regionKey : regionKey?.startsWith("gene:") || regionKey?.startsWith("f:") ? regionKey : current.groups.length ? `g:${current.groups[Math.max(0, dominantGroupIndex(current.groups, minCn))].key}` : null;
     if (key?.startsWith("g:")) {
       const g = current.groups.find((x) => `g:${x.key}` === key);
       if (g) return { key, domains: lociDomains(walkLoci(g.walks), chromoBins), label: `ec${g.key} walks`, group: g };
@@ -176,7 +177,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     const amp = current.events.find((e) => e.vartype === "AMP");
     const loci = amp ? eventLoci(amp) : [["7", 55e6, 55.3e6]];
     return { key: null, domains: lociDomains(loci, chromoBins, 4e6), label: amp ? `${amp.gene} AMP` : "chr7" };
-  }, [current, regionKey, genePositions, chromoBins, findings]);
+  }, [current, regionKey, genePositions, chromoBins, findings, minCn]);
   const domains = useMemo(() => region.domains.map(([a, b]) => [a, b]), [region]);
 
   const focus = (p, next = {}) => {
@@ -311,27 +312,26 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 onView={setFigDomains}
               />
             )}
-            {current && (
-              <PatientVariants
-                patient={current.patient}
-                events={current.events}
-                focusWalkId={focusWalkId}
-                onFocusWalk={setFocusWalkId}
-                onSelectCells={(ids, label) => select(current.patient, ids, { label })}
-              />
-            )}
-            {current && <PatientProfiles patient={current.patient} focusWalkId={focusWalkId} domains={figDomains} events={current.events} />}
+            <Row gutter={[24, 16]} className="sc-fig-block">
+              <Col xs={24} xl={14}>
+                {current && <PatientProfiles patient={current.patient} focusWalkId={focusWalkId} domains={figDomains} events={current.events} />}
+              </Col>
+              <Col xs={24} xl={10}>
+                <PanelHead letter="D" title="Amplicon copies per variant" fig="Fig 4 right" hint="carriers only · rank-sum test vs the focused variant · click a box or dot to select, a name to focus" />
+                {current && <PatientVariantCopies patient={current.patient} focusWalkId={focusWalkId} onFocusWalk={setFocusWalkId} selected={selectedHere} onSelect={selectHere} />}
+              </Col>
+            </Row>
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={9}>
-                <PanelHead letter="F" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select" />
+                <PanelHead letter="E" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select" />
                 {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={7}>
-                <PanelHead letter="G" title="Carriers per clade" fig="Fig 4F" hint="click a bar" />
+                <PanelHead letter="F" title="Carriers per clade" fig="Fig 4F" hint="click a bar" />
                 {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={8}>
-                <PanelHead letter="H" title="Amplicon state per clade" fig="Fig 5F" hint="focused variant · click a clade" />
+                <PanelHead letter="G" title="Amplicon state per clade" fig="Fig 5F" hint="focused variant · click a clade" />
                 {current && <PatientCladeStates patient={current.patient} focusWalkId={focusWalkId} onSelectCells={(ids, label) => select(current.patient, ids, { label })} />}
               </Col>
             </Row>

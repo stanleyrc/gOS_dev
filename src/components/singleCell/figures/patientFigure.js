@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Col, Progress, Row, Select, Space, Switch, Tooltip, Typography } from "antd";
+import { Button, Checkbox, Col, Progress, Row, Select, Space, Switch, Tooltip, Typography } from "antd";
 import FigureCanvas, { fitText } from "./figureCanvas";
 import { PanelHead, textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
@@ -9,18 +9,21 @@ import useWalks from "../ecdna/useWalks";
 import SnvSiteDrawer from "../snvSiteDrawer";
 import WalkDiagram from "../ecdna/walkDiagram";
 import VariantTree from "./variantTree";
-import CellProfiles from "./cellProfiles";
 import TriangleCorrelation from "./triangleCorrelation";
 import CladeStateTree from "./cladeStateTree";
+import GenomeTracks from "./genomeTracks";
+import VariantCopiesBox from "./variantCopiesBox";
 import singleCellActions from "../../../redux/singleCell/actions";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
-import { annotationColors, binAt, rowMap } from "../../../helpers/singleCell/matrix";
+import { annotationColors, binAt, domainExtents, rowMap } from "../../../helpers/singleCell/matrix";
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, isNormalClone, snvTreeOrder } from "../../../helpers/singleCell/figures";
 import { ancestralBinary, packStoreSnv, walkDomains } from "../../../helpers/singleCell/figureMath";
+import { ampliconWindows, dominantWalk, mainAmplicons, variantGrouping } from "../../../helpers/singleCell/figureDefaults";
+import settingsActions from "../../../redux/settings/actions";
 import { walkFamilies } from "../../../helpers/singleCell/walks";
 import { defaultFocusWalk } from "../../../helpers/singleCell/walkPanels";
 import { selectMode } from "./cellSelection";
-import { isDark, onAppThemeChange } from "../../../helpers/appTheme";
+import { NO_READS_DARK, NO_READS_LIGHT, useDarkTheme, vafGray } from "./darkTheme";
 
 const { Text } = Typography;
 const STRIP = 10;
@@ -30,7 +33,7 @@ const GENE_ROW = HEAD_H - 22; // gene marker baseline
 const TRACK_H = 14;
 const AXIS_H = 16;
 const IDEO_H = 40;
-const MAX_BARS = 4;
+const GENOME_GAP = 50; // px between genome windows, as in the gOS genome / genes / walk tracks
 const RETAINED = "#2e7d32";
 const LOST = "#c62828";
 const ACCENT = "#1677ff";
@@ -47,20 +50,9 @@ const toCanvas = (cols, rows, fill) => {
   ctx.putImageData(img, 0, 0);
   return cv;
 };
-// VAF (0-250 scale) to grey: white -> black in light mode, dark -> light in dark mode
-const gray = (vaf, dark) => {
-  const t = Math.min(250, vaf) / 250;
-  const v = Math.round(dark ? 38 + t * 200 : 255 - t * 235);
-  return ((255 << 24) | (v << 16) | (v << 8) | v) >>> 0;
-};
-const WHITE = 0xffffffff;
-const DARK_BG = 0xff262626;
-/** Current app theme (light / dark), following theme switches. */
-function useDarkTheme() {
-  const [dark, setDark] = useState(isDark());
-  useEffect(() => onAppThemeChange((t) => setDark(t === "dark")), []);
-  return dark;
-}
+const WHITE = NO_READS_LIGHT;
+const DARK_BG = NO_READS_DARK;
+const gray = vafGray;
 const NO_CN = 0xffeeeeee;
 const STAIN = { gneg: "#ffffff", gpos25: "#c8c8c8", gpos50: "#969696", gpos75: "#5a5a5a", gpos100: "#1e1e1e", acen: "#d65c5c", gvar: "#dcdcdc", stalk: "#a0a0a0" };
 const chromOf = (chromoBins, g) => {
@@ -97,9 +89,9 @@ export function useFocusFamily(focusWalkId) {
   const focusWalk = useMemo(() => {
     const picked = all.find((w) => w.id === `${focusWalkId}`);
     if (picked) return picked;
-    const pool = filtered.length ? filtered : all;
-    const drivers = pool.filter((w) => (w.driver_genes || []).length);
-    return defaultFocusWalk(drivers.length ? drivers : families[0] || [], order) || null;
+    // default: the dominant driver amplicon (most ecDNA copies over its carriers; BWH69 -> MYCN)
+    const pool = all.length ? all : filtered;
+    return dominantWalk(pool, order) || defaultFocusWalk(families[0] || [], order) || null;
   }, [all, filtered, focusWalkId, families, order]);
   const family = useMemo(() => (focusWalk ? families.find((f) => f.some((w) => w.id === focusWalk.id)) || [focusWalk] : []), [families, focusWalk]);
   return { order, treeLayout, cellById, all, colorOf, measured, families, focusWalk, family };
@@ -120,28 +112,95 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const sc = useSelector((s) => s.SingleCell);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const cytobands = useSelector((s) => s.Cytobands?.data || []);
-  const { order, treeLayout, cellById, colorOf, measured, families, focusWalk, family } = useFocusFamily(focusWalkId);
+  const { order, treeLayout, cellById, all, colorOf, measured, families, focusWalk, family } = useFocusFamily(focusWalkId);
   const [ref, measuredW] = useContainerWidth(1200);
   const width = Math.max(760, measuredW);
   const dark = useDarkTheme();
 
-  // ---- focused ecDNA family / variant
-  const shownWalks = useMemo(() => {
-    const byCells = family.slice().sort((a, b) => (b.stats?.ncells ?? b.ncells ?? 0) - (a.stats?.ncells ?? a.ncells ?? 0));
-    const carriers = (w) => Object.values(w.cells || {}).filter((v) => Number(v) >= 1).length;
-    const rest = byCells.filter((w) => w.id !== focusWalk?.id && carriers(w) >= 3);
-    return (focusWalk ? [focusWalk, ...rest] : rest).slice(0, MAX_BARS);
-  }, [family, focusWalk]);
-  const baseDomains = useMemo(() => walkDomains(family, chromoBins), [family, chromoBins]);
-  const [view, setView] = useState(null); // zoomed genome windows (null = the family's region)
-  useEffect(() => setView(null), [focusWalk?.id, patient]);
+  // ---- amplicons: every main amplicon of the patient by default (hide / reorder with the chips)
+  const tumourIds = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
+  const amps = useMemo(() => mainAmplicons(all, tumourIds), [all, tumourIds]);
+  const [ampState, setAmpState] = useState(null); // { order: [key], shown: [key] } once the user changes it
+  useEffect(() => setAmpState(null), [patient]);
+  const ampOrder = useMemo(() => {
+    const keys = amps.map((x) => x.key);
+    const o = (ampState?.order || []).filter((k) => keys.includes(k));
+    return [...o, ...keys.filter((k) => !o.includes(k))];
+  }, [amps, ampState]);
+  const shownKeys = useMemo(() => {
+    if (ampState?.shown) return new Set(ampState.shown);
+    const main = amps.filter((x) => x.main).map((x) => x.key);
+    return new Set(main.length ? main : amps.slice(0, 1).map((x) => x.key));
+  }, [amps, ampState]);
+  const shownAmps = useMemo(() => ampOrder.map((k) => amps.find((x) => x.key === k)).filter((x) => x && shownKeys.has(x.key)), [ampOrder, amps, shownKeys]);
+  const setAmps = (orderKeys, shown) => setAmpState({ order: orderKeys, shown: [...shown] });
+  const grouping = useMemo(() => variantGrouping(patient, all), [patient, all]);
+  const nameOf = grouping.nameOf;
+
+  // bar columns: one per shown amplicon, split into the paper's variant groups where defined (BWH70: long / short EGFR); each stacks its variants
+  const columns = useMemo(() => {
+    const carriers = (w) => tumourIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
+    const total = (w) => tumourIds.reduce((t, id) => t + (Number(w.cells?.[id]) || 0), 0);
+    const out = [];
+    shownAmps.forEach((amp) => {
+      const inAmp = new Set(amp.walks.map((w) => w.id));
+      const groups = grouping.groups.filter((g) => g.walks.some((w) => inAmp.has(w.id)));
+      const sets = groups.length
+        ? groups.map((g) => ({ label: g.label, anchor: g.walks.find((w) => w.id === g.anchorId), walks: g.walks.filter((w) => inAmp.has(w.id)) }))
+        : [{ label: `ec${amp.label}`, anchor: amp.dominant, walks: amp.walks }];
+      sets.forEach((set) => {
+        const ws = set.walks.filter((w) => carriers(w) > 0).sort((x, y) => (x.id === set.anchor?.id ? -1 : y.id === set.anchor?.id ? 1 : total(y) - total(x)));
+        out.push({ key: `${amp.key}:${set.label}`, label: set.label, amp, anchor: set.anchor || ws[0], parts: ws.slice(0, 6), rest: ws.slice(6) });
+      });
+    });
+    return out;
+  }, [shownAmps, grouping, tumourIds]);
+  const ampWalks = useMemo(() => shownAmps.flatMap((x) => x.walks), [shownAmps]);
+  // walk lanes for the genome tracks: the shown amplicons' walks with carriers, most carried first
+  const laneWalks = useMemo(() => {
+    const nc = (w) => tumourIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
+    return ampWalks
+      .map((w) => [w, nc(w)])
+      .filter(([, k]) => k > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 16)
+      .map(([w]) => w);
+  }, [ampWalks, tumourIds]);
+  // cells for the genome graph tracks: the selection (up to 3), else the top and a median carrier of the focused variant
+  const trackCells = useMemo(() => {
+    const sel = sc.selectedCellIds || [];
+    if (sel.length && sel.length <= 6) return sel.slice(0, 3).map((id) => ({ id, why: "selected" }));
+    if (!focusWalk) return [];
+    const cn = (id) => Number(focusWalk.cells?.[id]) || 0;
+    const car = tumourIds.filter((id) => cn(id) >= 1).sort((a, b) => cn(b) - cn(a));
+    const out = car.length ? [{ id: car[0], why: `highest ${nameOf(focusWalk)} copies` }] : [];
+    if (car.length > 2) out.push({ id: car[Math.floor(car.length / 2)], why: "median carrier" });
+    return out;
+  }, [sc.selectedCellIds, focusWalk, tumourIds, nameOf]);
+  const baseDomains = useMemo(() => {
+    const wins = ampliconWindows(shownAmps)
+      .map(([chr, a, b]) => (chromoBins?.[chr] ? [chromoBins[chr].startPlace + a, chromoBins[chr].startPlace + Math.min(b, chromoBins[chr].endPoint || b)] : null))
+      .filter(Boolean);
+    return wins.length ? wins : walkDomains(family, chromoBins);
+  }, [shownAmps, family, chromoBins]);
+  const [view, setView] = useState(null); // zoomed genome windows (null = the amplicons' windows)
+  const ampKey = shownAmps.map((x) => x.key).join("|");
+  useEffect(() => setView(null), [ampKey, patient]);
   const domains = view || baseDomains;
-  // report the shown genome windows (cell profiles follow the zoom)
+  // report the shown genome windows, and share them with the report's genome tracks (Settings domains)
   const domainsKey = JSON.stringify(domains);
+  const storeDomains = useSelector((st) => st.Settings.domains);
   useEffect(() => {
     onView?.(domains);
+    if (ready && domains.length && JSON.stringify(storeDomains) !== domainsKey) dispatch(settingsActions.updateDomains(domains));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domainsKey]);
+  }, [domainsKey, ready]);
+  useEffect(() => {
+    // zoom / pan in the genome tracks (walk lanes) moves the heatmap too: adopt store windows that overlap ours one to one
+    if (!storeDomains?.length || storeDomains.length !== domains.length || JSON.stringify(storeDomains) === domainsKey) return;
+    if (storeDomains.every((d, k) => d[1] > domains[k][0] && d[0] < domains[k][1])) setView(storeDomains);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(storeDomains)]);
   const [rowWin, setRowWin] = useState(null); // [r0, r1) rows shown (tree zoom)
   useEffect(() => setRowWin(null), [patient]);
   const [showAnc, setShowAnc] = useState(true);
@@ -164,9 +223,10 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     return d ? new Map(d.cells.map((id, i) => [id, d.rows[i]])) : new Map();
   }, [sc.cn]);
   const ecSites = useMemo(() => {
-    if (!snvData || !family.length) return [];
+    const pool = ampWalks.length ? ampWalks : family;
+    if (!snvData || !pool.length) return [];
     const ivals = [];
-    family.forEach((w) =>
+    pool.forEach((w) =>
       (w.nodes || []).forEach((nd) => {
         const chr = `${nd.chromosome}`.replace(/^chr/, "");
         if (!chromoBins?.[chr]) return;
@@ -176,7 +236,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       })
     );
     return snvData.variants.filter((v) => Number.isFinite(v.global) && ivals.some(([s, e]) => v.global >= s && v.global <= e)).sort((a, b) => a.global - b.global);
-  }, [snvData, family, chromoBins]);
+  }, [snvData, ampWalks, family, chromoBins]);
   const stateColors = useMemo(() => annotationColors(sc.cells.map((c) => c.state).filter((s) => s != null && s !== "")), [sc.cells]);
 
   // ---- ancestral state of the focused variant
@@ -207,21 +267,22 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     const clade = treeW + 6;
     const state = clade + STRIP + 5;
     const data0 = state + STRIP + GAP + 2;
-    const barsW = shownWalks.length ? Math.max(58 * shownWalks.length, Math.min(90 * shownWalks.length, width * 0.2)) : 0;
-    const rest = width - data0 - barsW - (shownWalks.length ? GAP * 2 : 0) - 4;
+    const nb = columns.length;
+    const barsW = nb ? Math.max(58 * nb, Math.min(90 * nb, width * 0.22)) : 0;
+    const rest = width - data0 - barsW - (nb ? GAP * 2 : 0) - 4;
     const snvW = packed ? Math.round(rest * 0.3) : 0;
-    const ecW = ecSites.length ? Math.round(Math.min(rest * 0.14, Math.max(40, ecSites.length * 6))) : 0;
+    const ecW = ecSites.length ? Math.round(Math.min(rest * 0.14, Math.max(52, ecSites.length * 6))) : 0;
     const cnW = rest - snvW - ecW - (snvW ? GAP : 0) - (ecW ? GAP : 0);
     const snvX = data0;
     const ecX = snvX + snvW + (snvW ? GAP : 0);
     const cnX = ecX + ecW + (ecW ? GAP : 0);
-    const barsX = cnX + cnW + (shownWalks.length ? GAP * 2 : 0);
-    const barW = shownWalks.length ? (barsW - GAP * (shownWalks.length - 1)) / shownWalks.length : 0;
+    const barsX = cnX + cnW + (nb ? GAP * 2 : 0);
+    const barW = nb ? (barsW - GAP * (nb - 1)) / nb : 0;
     return { treeW, clade, state, data0, snvX, snvW, ecX, ecW, cnX, cnW, barsX, barW };
-  }, [treeLayout, width, shownWalks.length, packed, ecSites.length]);
+  }, [treeLayout, width, columns.length, packed, ecSites.length]);
   const TOP = HEAD_H + TRACK_H + 4;
   // bar labels are written vertically under the bars
-  const barLabH = shownWalks.length ? Math.min(130, 18 + 7.4 * Math.max(...shownWalks.map((w) => `${w.label || w.name || w.id}`.length))) : 0;
+  const barLabH = columns.length ? Math.min(130, 18 + 7.4 * Math.max(...columns.map((col) => col.label.length))) : 0;
   const height = TOP + plotH + Math.max(AXIS_H + IDEO_H + 24, barLabH + 18);
 
   // ---- prebuilt images (all rows; zoomed rows are a source crop)
@@ -250,9 +311,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const cnGeo = useMemo(() => {
     const cols = Math.max(0, Math.floor(L.cnW));
     if (!cols || !domains.length) return null;
-    const gapPx = 4;
-    const share = (cols - gapPx * (domains.length - 1)) / domains.length;
-    const ext = domains.map((d, k) => [Math.round(k * (share + gapPx)), Math.round(k * (share + gapPx) + share), d]);
+    // same split as the gOS genome tracks below (equal panels, GENOME_GAP px apart), so they line up
+    const ext = domainExtents(domains, cols, GENOME_GAP);
     const gOf = new Float64Array(cols).fill(NaN);
     ext.forEach(([a, b, d]) => {
       for (let x = a; x < b; x += 1) gOf[x] = d[0] + ((x + 0.5 - a) / (b - a)) * (d[1] - d[0]);
@@ -278,22 +338,29 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   }, [cnGeo, cnById, order, n]);
   const bars = useMemo(
     () =>
-      shownWalks.map((w) => {
-        const vals = new Float32Array(n);
-        let max = 0;
-        order.forEach((id, r) => {
-          const v = Number(w.cells?.[id]);
-          vals[r] = Number.isFinite(v) ? v : NaN;
-          if (vals[r] > max) max = vals[r];
+      columns.map((col) => {
+        // per cell: the stacked parts (walk copies) and the rest summed
+        const parts = col.parts.map((w) => {
+          const v = new Float32Array(n);
+          order.forEach((id, r) => (v[r] = Number(w.cells?.[id]) || 0));
+          return { w, v };
         });
-        return { w, vals, max: max || 1 };
+        const rest = new Float32Array(n);
+        col.rest.forEach((w) => order.forEach((id, r) => (rest[r] += Number(w.cells?.[id]) || 0)));
+        const sum = new Float32Array(n);
+        let max = 0;
+        for (let r = 0; r < n; r += 1) {
+          sum[r] = parts.reduce((t, p) => t + p.v[r], rest[r]);
+          if (sum[r] > max) max = sum[r];
+        }
+        return { col, w: col.anchor, parts, rest, sum, vals: sum, max: max || 1 };
       }),
-    [shownWalks, order, n]
+    [columns, order, n]
   );
   const barMax = useMemo(() => Math.max(1, ...bars.map((b) => b.max)), [bars]);
   const geneMarks = useMemo(() => {
     if (!cnGeo) return [];
-    const amp = new Set(shownWalks.flatMap((w) => w.driver_genes || []));
+    const amp = new Set(shownAmps.flatMap((x) => x.key.split("+")));
     const seen = new Set();
     const out = [];
     events.forEach((e) => {
@@ -309,7 +376,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       out.push({ gene: g, event: e, x: L.cnX + a + ((gx - d[0]) / (d[1] - d[0])) * (b - a), amp: amp.has(g) });
     });
     return out.sort((a, b) => b.amp - a.amp);
-  }, [events, cnGeo, chromoBins, shownWalks, L.cnX]);
+  }, [events, cnGeo, chromoBins, shownAmps, L.cnX]);
 
   // ---- tree geometry (rows in the window)
   const yOfRow = useCallback((r) => TOP + (r - r0 + 0.5) * rh, [TOP, r0, rh]);
@@ -399,17 +466,25 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       blit(ecImg, L.ecX, L.ecW);
       blit(cnImg, L.cnX, L.cnW);
       // per-variant copies (shared scale, light column background, faint 50-copy guides)
-      bars.forEach(({ w, vals }, k) => {
+      // stacked copies per cell: the column's variants (anchor first), the rest in grey
+      bars.forEach(({ parts, rest }, k) => {
         const x0 = L.barsX + k * (L.barW + GAP);
         ctx.fillStyle = c.dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.022)";
         ctx.fillRect(x0, TOP, L.barW, plotH);
-        ctx.fillStyle = colorOf(w.id);
         const bh = Math.max(1, rh * 0.82);
-        for (let r = r0; r < r1; r += 1) {
-          const v = vals[r];
-          if (!(v > 0)) continue;
-          ctx.fillRect(x0, TOP + (r - r0) * rh + (rh - bh) / 2, Math.max(1, (v / barMax) * (L.barW - 2)), bh);
-        }
+        const sx = (L.barW - 2) / barMax;
+        const acc = new Float32Array(r1 - r0);
+        const layer = (v, color) => {
+          ctx.fillStyle = color;
+          for (let r = r0; r < r1; r += 1) {
+            if (!(v[r] > 0)) continue;
+            const a = acc[r - r0];
+            ctx.fillRect(x0 + a * sx, TOP + (r - r0) * rh + (rh - bh) / 2, Math.max(0.8, v[r] * sx), bh);
+            acc[r - r0] = a + v[r];
+          }
+        };
+        parts.forEach((p) => layer(p.v, colorOf(p.w.id)));
+        layer(rest, c.dark ? "#8c8c8c" : "#bfbfbf");
       });
       // selection shading + hover line
       if (selected.size) {
@@ -532,7 +607,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           ctx.textAlign = "right";
           ctx.textBaseline = "middle";
           const room = L.cnX - (L.ecW ? L.ecX : L.snvW ? L.snvX + L.snvW : L.data0) - 6;
-          if (room > 30) ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, room), L.cnX - 4, y);
+          if (room > 30) ctx.fillText(fitText(ctx, nameOf(w), room), L.cnX - 4, y);
         }
       }
       const placed = [];
@@ -561,7 +636,11 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       ctx.textBaseline = "top";
       ctx.textAlign = "center";
       if (snvImg) ctx.fillText(fitText(ctx, `Whole-genome SNVs (${snvImg.nSites.toLocaleString()})`, L.snvW), L.snvX + L.snvW / 2, yb + 3);
-      if (ecImg) ctx.fillText(fitText(ctx, `ecDNA SNVs (${ecSites.length})`, L.ecW + 24), L.ecX + L.ecW / 2, yb + 3);
+      if (ecImg) {
+        // narrow column: two short lines
+        ctx.fillText("ecDNA", L.ecX + L.ecW / 2, yb + 3);
+        ctx.fillText(`SNVs (${ecSites.length})`, L.ecX + L.ecW / 2, yb + 17);
+      }
       if (cnGeo) {
         cnGeo.ext.forEach(([a, b, d]) => {
           const p0 = chromOf(chromoBins, d[0]);
@@ -611,23 +690,23 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           ctx.fillText(`chr${p0.chr}`, ix0 + iw / 2, iy + 13);
         });
       }
-      bars.forEach(({ w }, k) => {
+      bars.forEach(({ col, w }, k) => {
         const x0 = L.barsX + k * (L.barW + GAP);
         ctx.save();
         ctx.translate(x0 + L.barW / 2, yb + 3);
         ctx.rotate(-Math.PI / 2);
         textRole(ctx, c, "label", "text");
-        ctx.fillStyle = colorOf(w.id);
-        ctx.font = ctx.font.replace(/^(\d+ )?/, w.id === focusWalk?.id ? "700 " : "500 ");
+        ctx.fillStyle = w ? colorOf(w.id) : c.text;
+        ctx.font = ctx.font.replace(/^(\d+ )?/, col.parts.some((p) => p.id === focusWalk?.id) || w?.id === focusWalk?.id ? "700 " : "600 ");
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
-        ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, barLabH - 6), 0, 0);
+        ctx.fillText(fitText(ctx, col.label, barLabH - 6), 0, 0);
         ctx.restore();
       });
       ctx.textBaseline = "middle";
       return [];
     },
-    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, cellById, sc.cloneColors, stateColors, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
+    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, sc.cloneColors, stateColors, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
   );
 
   // ---- interaction
@@ -644,13 +723,13 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       if (y >= HEAD_H && focusWalk && x >= L.cnX - 140 && x < L.cnX + L.cnW) return { kind: "walk", w: focusWalk };
       if (x >= L.barsX && bars.length) {
         const k = Math.floor((x - L.barsX) / (L.barW + GAP));
-        return k >= 0 && k < bars.length ? { kind: "walk", w: bars[k].w } : null;
+        return k >= 0 && k < bars.length ? { kind: "column", b: bars[k] } : null;
       }
       return null;
     }
     if (y >= TOP + plotH) {
       const k = Math.floor((x - L.barsX) / (L.barW + GAP));
-      return k >= 0 && k < bars.length && x >= L.barsX ? { kind: "walk", w: bars[k].w } : null;
+      return k >= 0 && k < bars.length && x >= L.barsX ? { kind: "column", b: bars[k] } : null;
     }
     if (treeLayout && x < L.treeW + 2) {
       let best = null;
@@ -685,7 +764,11 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     if (h.kind === "gene") return [h.m.gene, ["Event", `${h.m.event.vartype || h.m.event.type || ""}`], ["Click", "open the gene's event card"]];
     if (h.kind === "walk") {
       const ncar = order.filter((id) => (Number(h.w.cells?.[id]) || 0) >= 1).length;
-      return [h.w.label || h.w.name || `walk ${h.w.id}`, ["Carriers", `${ncar} cells`], ["Nodes", (h.w.nodes || []).length], ["Click", "focus this variant and select its carriers"]];
+      return [nameOf(h.w), ["Carriers", `${ncar} cells`], ["Nodes", (h.w.nodes || []).length], ["Click", "focus this variant and select its carriers"]];
+    }
+    if (h.kind === "column") {
+      const ncar = h.b.sum.reduce((t, v) => t + (v >= 1 ? 1 : 0), 0);
+      return [h.b.col.label, ["Amplicon", h.b.col.amp.label], ["Carriers", `${ncar} cells`], ["Stacked", h.b.col.parts.map((w) => nameOf(w)).join(", ") + (h.b.col.rest.length ? ` + ${h.b.col.rest.length} more (grey)` : "")], ["Click", "select its carriers and focus its main variant"]];
     }
     if (h.kind === "node") {
       const ids = leavesOf(h.nd);
@@ -695,7 +778,11 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     if (h.kind === "site") return [h.v.id, ["Gene", h.v.gene || "–"], ["Cell", order[h.r]], ["Click", "open the SNV site"]];
     const cell = cellById.get(h.id) || {};
     const lines = [h.id, ["Clone", cell.clone_id ?? "–"], ["State", cell.state ?? "–"]];
-    bars.forEach(({ w, vals }) => lines.push([w.label || `walk ${w.id}`, Number.isFinite(vals[h.r]) ? vals[h.r].toFixed(1) : "–"]));
+    bars.forEach(({ col, parts, sum }) => {
+      if (!(sum[h.r] > 0)) return lines.push([col.label, "–"]);
+      const bits = parts.filter((p) => p.v[h.r] > 0).map((p) => `${nameOf(p.w)} ${p.v[h.r].toFixed(0)}`);
+      return lines.push([col.label, `${sum[h.r].toFixed(0)}${bits.length > 1 || (bits.length === 1 && parts[0].v[h.r] !== sum[h.r]) ? ` (${bits.join(", ")})` : ""}`]);
+    });
     if (cnGeo && h.x >= L.cnX && h.x < L.cnX + L.cnW) {
       const g = cnGeo.gOf[Math.floor(h.x - L.cnX)];
       const row = cnById.get(h.id);
@@ -751,7 +838,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       </Space>
     );
   }
-  const familyOptions = families.map((f) => ({ label: f.map((w) => w.label || w.name || w.id).slice(0, 3).join(" · ") + (f.length > 3 ? ` +${f.length - 3}` : ""), options: f.map((w) => ({ value: w.id, label: `${w.label || w.name || `walk ${w.id}`} (${order.filter((id) => (Number(w.cells?.[id]) || 0) >= 1).length} cells)` })) }));
+  const familyOptions = families.map((f) => ({ label: f.map((w) => nameOf(w)).slice(0, 3).join(" · ") + (f.length > 3 ? ` +${f.length - 3}` : ""), options: f.map((w) => ({ value: w.id, label: `${nameOf(w)} (${order.filter((id) => (Number(w.cells?.[id]) || 0) >= 1).length} cells)` })) }));
   return (
     <div ref={ref}>
       <Space size={10} wrap align="center" style={{ marginBottom: 4 }}>
@@ -770,7 +857,41 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           </Button>
         )}
       </Space>
-      <PanelHead letter="A" title="Clonal structure of the amplicon" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" />
+      {amps.length > 0 && (
+        <div className="sc-fig-amps">
+          <Text type="secondary">Amplicons</Text>
+          {ampOrder.map((k, i) => {
+            const amp = amps.find((x) => x.key === k);
+            const on = shownKeys.has(k);
+            const toggle = () => {
+              const next = new Set(shownKeys);
+              if (on) next.delete(k);
+              else next.add(k);
+              if (next.size) setAmps(ampOrder, next);
+            };
+            const move = (d) => {
+              const o = ampOrder.slice();
+              const j = i + d;
+              if (j < 0 || j >= o.length) return;
+              [o[i], o[j]] = [o[j], o[i]];
+              setAmps(o, shownKeys);
+            };
+            return (
+              <span key={k} className={`sc-fig-amp${on ? " is-on" : ""}${amp.main ? " is-main" : ""}`}>
+                <Tooltip title={`${amp.carriers} tumour cells (${Math.round(100 * amp.frac)}%) · median ${Math.round(amp.medianCn)} copies in carriers · ${amp.walks.length} walk${amp.walks.length === 1 ? "" : "s"}${amp.main ? " · main amplicon" : " · minor (below 15% of tumour cells or median 8 copies)"}`}>
+                  <Checkbox checked={on} onChange={toggle}>
+                    <span style={{ color: colorOf(amp.dominant.id), fontWeight: 600 }}>ec{amp.label}</span>
+                    <span className="sc-fig-amp-n">{Math.round(100 * amp.frac)}%</span>
+                  </Checkbox>
+                </Tooltip>
+                <Button size="small" type="text" disabled={i === 0} onClick={() => move(-1)} aria-label={`move ec${amp.label} left`}>‹</Button>
+                <Button size="small" type="text" disabled={i === ampOrder.length - 1} onClick={() => move(1)} aria-label={`move ec${amp.label} right`}>›</Button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+      <PanelHead letter="A" title="Clonal structure of the amplicons" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" />
       <FigureCanvas
         width={width}
         height={height}
@@ -792,9 +913,12 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         ariaLabel={`${patient}: clonal amplicon figure`}
         onClick={(h, event) => {
           if (h.kind === "gene") dispatch(filteredEventsActions.selectFilteredEvent({ ...h.m.event, uid: h.m.event.uid ?? `${patient}-${h.m.gene}` }, "plots"));
-          else if (h.kind === "walk") {
+          else if (h.kind === "column") {
+            if (h.b.w) onFocusWalk?.(h.b.w.id);
+            select(order.filter((id, r) => h.b.sum[r] >= 1), `${h.b.col.label} carriers`, event);
+          } else if (h.kind === "walk") {
             onFocusWalk?.(h.w.id);
-            select(order.filter((id) => (Number(h.w.cells?.[id]) || 0) >= 1), `${h.w.label || "walk " + h.w.id} carriers`, event);
+            select(order.filter((id) => (Number(h.w.cells?.[id]) || 0) >= 1), `${nameOf(h.w)} carriers`, event);
           } else if (h.kind === "node") select(leavesOf(h.nd), `clade of ${h.nd.lastLeaf - h.nd.firstLeaf + 1} cells`, event);
           else if (h.kind === "site") setSiteDrawer({ c: h.v.index, row: h.r });
           else if (h.kind === "row") {
@@ -845,6 +969,42 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           </span>
         )}
         {!snvData && <span className="sc-fig-key">No SNV matrix for this patient: SNV panels left out.</span>}
+      </div>
+      {bars.some((b) => b.parts.length > 1 || b.rest.length) && (
+        <div className="sc-fig-keys">
+          {bars.map(({ col }) => (
+            <span key={col.key} className="sc-fig-key">
+              <b>{col.label}</b>
+              {col.parts.map((w) => (
+                <span key={w.id}>
+                  <span className="sc-fig-swatch" style={{ background: colorOf(w.id) }} />
+                  {nameOf(w)}
+                </span>
+              ))}
+              {col.rest.length > 0 && (
+                <span>
+                  <span className="sc-fig-swatch" style={{ background: "#bfbfbf" }} />
+                  {`${col.rest.length} more`}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="sc-fig-block">
+        <PanelHead letter="B" title="Genome graph and walks" fig="Fig 4C · 4E" hint="the report's gene, walk, JaBbA graph and coverage tracks on A's windows, aligned to its heatmap · zoom the walk lanes (Ctrl/⌘ + wheel) to move A too" />
+        <GenomeTracks
+          width={width}
+          cnX={L.cnX}
+          cnW={L.cnW}
+          walks={laneWalks}
+          colorOf={colorOf}
+          nameOf={nameOf}
+          cells={trackCells}
+          cellNote={trackCells.length ? `Cells: ${trackCells.map((c) => `${c.id} (${c.why})`).join(" · ")} — select 1–3 cells to show yours` : "Select 1–3 cells to show their genome graphs"}
+          focusId={focusWalk?.id}
+          onFocus={(id) => onFocusWalk?.(id)}
+        />
       </div>
       {siteDrawer && snvData && (
         <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snvData.variants[siteDrawer.c]} order={order} rows={rowMap(order, snvData.cells)} clickedRow={siteDrawer.row} />
@@ -925,17 +1085,37 @@ export function PatientProfiles({ patient, focusWalkId, domains = [], events = [
   }, [events, focusWalk, chromoBins]);
   if (!ready || !domains.length) return null;
   return (
-    <Row gutter={[24, 12]} className="sc-fig-block">
-      <Col xs={24} xl={13}>
-        <PanelHead letter="D" title="Single-cell copy-number profiles" fig="Fig 4E" hint="selected cells (up to 3), else carriers and a non-carrier · follows A's zoom" />
-        <CellProfiles order={order} focusWalk={focusWalk} domains={domains} cellById={cellById} />
-      </Col>
-      <Col xs={24} xl={11}>
-        <PanelHead letter="E" title="Segment co-variation" fig="Fig 5C" hint={`${sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumour cells (down)`} />
-        <TriangleCorrelation order={order} cnById={cnById} domains={domains} groupA={groupA} groupB={groupB} labelA={sel.length >= 3 ? "Selected cells" : `${focusWalk?.label || "variant"} carriers`} labelB="Other tumour cells" walk={focusWalk} colorOf={colorOf} genes={genes} />
-      </Col>
-    </Row>
+    <>
+      <PanelHead letter="C" title="Segment co-variation" fig="Fig 5C" hint={`${sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumour cells (down) · one triangle per window`} />
+      <TriangleCorrelation order={order} cnById={cnById} domains={domains} groupA={groupA} groupB={groupB} labelA={sel.length >= 3 ? "Selected cells" : `${focusWalk?.label || "variant"} carriers`} labelB="Other tumour cells" walk={focusWalk} colorOf={colorOf} genes={genes} />
+    </>
   );
+}
+
+/**
+ * Fig 4 (right): copies per carrier of each main amplicon's variants (the
+ * paper's groups where defined, e.g. BWH70 long / short EGFR and ecMAP3K1),
+ * with rank-sum brackets against the focused one.
+ */
+export function PatientVariantCopies({ patient, focusWalkId, onFocusWalk, selected, onSelect }) {
+  const { ready } = usePatientLoaded(patient);
+  const { order, all, cellById, colorOf, focusWalk } = useFocusFamily(focusWalkId);
+  const walks = useMemo(() => {
+    const tumour = order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id));
+    const { nameOf, groups } = variantGrouping(patient, all);
+    const out = [];
+    mainAmplicons(all, tumour)
+      .filter((x) => x.main)
+      .forEach((amp) => {
+        const ids = new Set(amp.walks.map((w) => w.id));
+        const gs = groups.filter((g) => ids.has(g.anchorId));
+        (gs.length ? gs.map((g) => all.find((w) => w.id === g.anchorId)) : [amp.dominant]).forEach((w) => w && out.push({ ...w, label: gs.length ? nameOf(w) : `ec${amp.label}` }));
+      });
+    return out;
+  }, [patient, all, order, cellById]);
+  if (!ready) return null;
+  const focusId = walks.some((w) => w.id === focusWalk?.id) ? focusWalk.id : walks[0]?.id;
+  return <VariantCopiesBox walks={walks} order={order} focusId={focusId} colorOf={colorOf} selected={selected} onSelect={onSelect} onFocus={onFocusWalk} />;
 }
 
 /** Fig 5F: the clade-state tree of the focused variant. */

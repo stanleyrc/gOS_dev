@@ -485,3 +485,50 @@ export function packStoreSnv(data) {
   });
   return out;
 }
+
+/** Standard normal upper-tail probability (Abramowitz-Stegun 26.2.17). */
+function normalTail(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989422804014327 * Math.exp((-z * z) / 2);
+  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return z >= 0 ? p : 1 - p;
+}
+
+/**
+ * Two-sided Wilcoxon rank-sum (Mann-Whitney U) test, normal approximation
+ * with tie correction and continuity correction. Returns { u, p } (p = NaN
+ * when either sample has fewer than 2 values).
+ */
+export function mannWhitney(a, b) {
+  const x = a.filter(Number.isFinite);
+  const y = b.filter(Number.isFinite);
+  const n1 = x.length;
+  const n2 = y.length;
+  if (n1 < 2 || n2 < 2) return { u: NaN, p: NaN };
+  const all = [...x.map((v) => [v, 0]), ...y.map((v) => [v, 1])].sort((p, q) => p[0] - q[0]);
+  const ranks = new Float64Array(all.length);
+  let tie = 0;
+  for (let i = 0; i < all.length; ) {
+    let j = i;
+    while (j + 1 < all.length && all[j + 1][0] === all[i][0]) j += 1;
+    const r = (i + j + 2) / 2;
+    for (let k = i; k <= j; k += 1) ranks[k] = r;
+    const t = j - i + 1;
+    tie += t * t * t - t;
+    i = j + 1;
+  }
+  let r1 = 0;
+  all.forEach(([, g], k) => {
+    if (g === 0) r1 += ranks[k];
+  });
+  const u = r1 - (n1 * (n1 + 1)) / 2;
+  const N = n1 + n2;
+  const mu = (n1 * n2) / 2;
+  const sigma = Math.sqrt(((n1 * n2) / 12) * (N + 1 - tie / (N * (N - 1))));
+  if (!(sigma > 0)) return { u, p: 1 };
+  const z = (Math.abs(u - mu) - 0.5) / sigma;
+  return { u, p: Math.min(1, 2 * normalTail(Math.max(0, z))) };
+}
+
+/** Significance stars as in ggpubr: **** < 1e-4, *** < 1e-3, ** < 0.01, * < 0.05, else "ns". */
+export const pStars = (p) => (!Number.isFinite(p) ? "" : p < 1e-4 ? "****" : p < 1e-3 ? "***" : p < 0.01 ? "**" : p < 0.05 ? "*" : "ns");

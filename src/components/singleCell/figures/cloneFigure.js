@@ -6,6 +6,7 @@ import { binAt, domainExtents, annotationColors } from "../../../helpers/singleC
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, geneSetColor, isNormalClone, snvTreeOrder } from "../../../helpers/singleCell/figures";
 import { compressLongBranches, figureRows, leavesUnder, pruneLayout } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
+import { NO_READS_DARK, useDarkTheme, vafGray } from "./darkTheme";
 
 const TOP = 28;
 const BOTTOM = 46;
@@ -36,10 +37,7 @@ const toCanvas = (img) => {
   cv.getContext("2d")?.putImageData(img, 0, 0);
   return cv;
 };
-const grayRGBA = (vaf) => {
-  const v = Math.round(255 - (Math.min(250, vaf) / 250) * 235);
-  return ((255 << 24) | (v << 16) | (v << 8) | v) >>> 0;
-};
+
 
 /**
  * Fig 4B / 5B / 5D: one patient's cells in tree order: phylogeny, clade and
@@ -97,6 +95,7 @@ export default function CloneFigure({
   }, [tree, width, hasSnv, hasCn, shownGroups.length]);
 
   // SNV panel: variants ordered along the tree, max VAF per pixel column
+  const dark = useDarkTheme();
   const snvImg = useMemo(() => {
     if (!hasSnv || L.snvW < 4) return null;
     const rowOf = new Map(rows.map((id, i) => [id, i]));
@@ -104,8 +103,8 @@ export default function CloneFigure({
     if (!order.length) return null;
     const cols = Math.max(4, Math.min(Math.floor(L.snvW), order.length));
     const m = binSnvMatrix(snv.packed, rows, order, cols);
-    return { canvas: toCanvas(paintImage(cols, n, (r, c) => (m[r * cols + c] < 0 ? NO_READS : grayRGBA(m[r * cols + c])))), nSites: order.length };
-  }, [hasSnv, snv, rows, n, L.snvW]);
+    return { canvas: toCanvas(paintImage(cols, n, (r, c) => (m[r * cols + c] < 0 ? (dark ? NO_READS_DARK : NO_READS) : vafGray(m[r * cols + c], dark)))), nSites: order.length };
+  }, [hasSnv, snv, rows, n, L.snvW, dark]);
 
   // copy number across the region(s), one pixel column per position
   const cnImg = useMemo(() => {
