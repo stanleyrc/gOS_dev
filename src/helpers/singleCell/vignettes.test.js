@@ -1,4 +1,4 @@
-import { boxStats, cohortVignetteRows, evidenceAction, extent, groupCells, jitter, linear, normalizeVignettes, splitLead, VIGNETTES_FORMAT } from "./vignettes";
+import { boxStats, displayText, cohortVignetteRows, evidenceAction, extent, groupCells, jitter, linear, normalizeVignettes, splitLead, VIGNETTES_FORMAT } from "./vignettes";
 import { peekEvidence, requestEvidence, subscribeEvidence, takeEvidence } from "./evidenceFocus";
 
 const raw = {
@@ -143,5 +143,13 @@ describe("evidenceFocus", () => {
     unsub();
     requestEvidence(null);
     expect(seen).toEqual(["walks"]);
+  });
+});
+
+describe("displayText", () => {
+  it("drops the clonality word the category tag already shows", () => {
+    expect(displayText({ category: "truncal", text: "Truncal MDM2 ecDNA amplification (12q): x" })).toBe("MDM2 ecDNA amplification (12q): x");
+    expect(displayText({ category: "subclonal", text: "Subclonal A::B fusion: y" })).toBe("A::B fusion: y");
+    expect(displayText({ category: "rna", text: "TP53 cryptic splicing: z" })).toBe("TP53 cryptic splicing: z");
   });
 });

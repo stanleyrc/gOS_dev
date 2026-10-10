@@ -7,7 +7,7 @@ import filteredEventsActions from "../../../redux/filteredEvents/actions";
 import { driverKey } from "../../../helpers/singleCell/driverContrast";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { locationToDomains } from "../../../helpers/utility";
-import { evidenceAction, groupCells, splitLead } from "../../../helpers/singleCell/vignettes";
+import { displayText, evidenceAction, groupCells, splitLead } from "../../../helpers/singleCell/vignettes";
 import { requestEvidence } from "../../../helpers/singleCell/evidenceFocus";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { findingIgvView, normalizeSpliceFindings } from "../../../helpers/singleCell/rnaHeadlineFindings";
@@ -97,7 +97,7 @@ export function EvidenceChips({ finding, vignette, onRun, size = "small" }) {
 }
 
 function FindingRow({ finding, vignette, onRun, major }) {
-  const { lead, rest } = splitLead(finding.text);
+  const { lead, rest } = splitLead(displayText(finding));
   return (
     <li className={`sc-vignette-finding${major ? " major" : ""}`} data-finding={finding.id}>
       <div style={{ fontSize: TYPE.body, lineHeight: 1.5 }}>
@@ -108,7 +108,7 @@ function FindingRow({ finding, vignette, onRun, major }) {
             <Text>{rest}</Text>
           </>
         ) : (
-          <Text strong={major}>{finding.text}</Text>
+          <Text strong={major}>{displayText(finding)}</Text>
         )}
       </div>
       {onRun && (
