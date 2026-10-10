@@ -80,9 +80,12 @@ const actions = {
   SC_PER_CELL_TRACK_SUCCESS: "SC_PER_CELL_TRACK_SUCCESS",
   SC_PER_CELL_TRACK_MISSING: "SC_PER_CELL_TRACK_MISSING",
   SC_PER_CELL_TRACK_FAILED: "SC_PER_CELL_TRACK_FAILED",
+  SC_DRIVER_FOCUS_UPDATED: "SC_DRIVER_FOCUS_UPDATED",
 
   // caseReportId: load another patient than the open case report (cohort figures)
   fetchSingleCellData: (caseReportId) => ({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST, caseReportId }),
+  /** Driver opened in the Drivers tab: driverKey(event) from helpers/singleCell/driverContrast, or null. */
+  updateDriverFocus: (key) => ({ type: actions.SC_DRIVER_FOCUS_UPDATED, key }),
   updateSelection: (cellIds) => ({
     type: actions.SC_SELECTION_UPDATED,
     cellIds,
