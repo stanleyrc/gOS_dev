@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import * as d3 from "d3";
 import useContainerWidth from "./useContainerWidth";
 import usePlotTheme from "./usePlotTheme";
-import { XBaseline, YAxis, useChartText } from "./cohort/charts";
+import { XBaseline, YAxis, linearScale, useChartText } from "./chartAxes";
 import { kernelDensity, quartiles } from "../../helpers/singleCell/rnaStats";
 
 const fmt = (v) => (Math.abs(v) >= 10 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(1) : v.toFixed(2));
@@ -26,7 +25,7 @@ export default function Violins({ groups, height = 240, domain = null, yTitle = 
   const all = groups.flatMap((g) => g.values).filter(Number.isFinite);
   const lo = domain ? domain[0] : Math.min(0, ...all);
   const hi = domain ? domain[1] : Math.max(lo + 1e-9, ...all);
-  const y = d3.scaleLinear().domain([lo, hi > lo ? hi : lo + 1]).range([M.top + plotH, M.top]).clamp(true);
+  const y = linearScale([lo, hi > lo ? hi : lo + 1], [M.top + plotH, M.top], { clamp: true });
   // horizontal layout: a gap between clusters
   const gaps = groups.reduce((acc, g, i) => acc + (i > 0 && g.cluster != null && g.cluster !== groups[i - 1].cluster ? 1 : 0), 0);
   const unit = (width - M.left - M.right) / Math.max(1, groups.length + gaps * 0.6);
