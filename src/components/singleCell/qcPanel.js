@@ -11,7 +11,7 @@ import datasetsActions from "../../redux/datasets/actions";
 import { cnRowQc, medianMad, robustOutliers } from "../../helpers/singleCell/cohortStats";
 import { annotationColors } from "../../helpers/singleCell/matrix";
 import { themePalette } from "../../helpers/singleCell/themes";
-import { BoxStrips, FONT, YAxis } from "./cohort/charts";
+import { BoxStrips, XAxis, YAxis, useChartText } from "./cohort/charts";
 import { spearman } from "../../helpers/singleCell/dosage";
 import { correlationP, formatP } from "../../helpers/singleCell/tests";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
@@ -20,7 +20,7 @@ import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 import SvgExportButton from "./svgExportButton";
 import HintLine, { Provenance } from "./hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "./density";
-import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import { INK } from "../../helpers/singleCell/plotTheme";
 import ColorTag from "./colorTag";
 
 const { Text } = Typography;
@@ -63,6 +63,7 @@ export default function QcPanel() {
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(1000);
   const plotsRef = useRef(null);
+  const txt = useChartText();
   const { cells, cn, cloneColors, layout, patient } = useSelector((state) => state.SingleCell);
   const { summary: rna } = useRnaData();
   const [groupBy, setGroupBy] = useState("clone_id");
@@ -211,18 +212,15 @@ export default function QcPanel() {
                     <Col key={`${a}-${b}`} span={24 / cols}>
                       <svg width={w} height={h}>
                         <YAxis scale={ys} x0={Mm.left} x1={w - Mm.right} title={labelOf(b).length > 30 ? `${labelOf(b).slice(0, 29)}…` : labelOf(b)} ticks={4} format={(v) => formatTick(v)} />
-                        {xs.ticks(4).map((v) => (
-                          <text key={v} x={xs(v)} y={h - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{formatTick(v)}</text>
-                        ))}
-                        <text x={(Mm.left + w - Mm.right) / 2} y={h - 6} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>{labelOf(a)}</text>
+                        <XAxis scale={xs} y0={h - Mm.bottom} y1={Mm.top} ticks={4} title={labelOf(a)} />
                         {pts.map((p) => (
-                          <circle key={p.id} cx={xs(p.x)} cy={ys(p.y)} r={flaggedIds.has(p.id) ? 3.5 : 2.6} fill={colors[p.g] || INK.faint} fillOpacity={0.8} stroke={flaggedIds.has(p.id) ? "#cf1322" : "none"} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection([p.id]))}>
+                          <circle key={p.id} cx={xs(p.x)} cy={ys(p.y)} r={flaggedIds.has(p.id) ? 3.4 : 2.6} fill={flaggedIds.has(p.id) ? INK.danger : colors[p.g] || INK.faint} fillOpacity={flaggedIds.has(p.id) ? 0.85 : 0.75} stroke={flaggedIds.has(p.id) ? INK.panel : "none"} style={{ cursor: "pointer" }} onClick={() => dispatch(singleCellActions.updateSelection([p.id]))}>
                             <title>{`${p.id}
 ${labelOf(a)}: ${d3.format("~g")(p.x)}
 ${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
                           </circle>
                         ))}
-                        <text x={w - Mm.right} y={Mm.top + 2} textAnchor="end" fontSize={TYPE.tick} fill={INK.textSecondary}>{`ρ ${Number.isFinite(rho) ? rho.toFixed(2) : "–"} · ${formatP(correlationP(rho, pts.length))}`}</text>
+                        <text x={w - Mm.right} y={Mm.top + 2} textAnchor="end" {...txt.caption}>{`ρ ${Number.isFinite(rho) ? rho.toFixed(2) : "–"} · ${formatP(correlationP(rho, pts.length))}`}</text>
                       </svg>
                     </Col>
                   );
