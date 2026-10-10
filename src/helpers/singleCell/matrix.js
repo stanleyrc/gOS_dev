@@ -566,6 +566,34 @@ const ZISSOU_TOTAL = ["#3B9AB2", "#78B7C5", "#EEEEE6", "#EBCC2A", "#E1AF00", "#F
 // ramp the way black does in light mode, without a stray hue or a white glare
 const PGV_DARK = PGV_TOTAL.map((c, k) => (k === 2 ? "#2e2e2e" : k === 11 ? "#d9d9d9" : c));
 
+// Amplicon ("deck") palette: one colour per CN state 0..100 (100+), as in the
+// lab's JaBbA amplicon heatmaps: blue losses, white 2, peach to orange low
+// gains, red 20-50, black 100. Lets ecDNA copy differences (20 vs 100) show,
+// which the 11+ palettes fold into one colour.
+const DECK_ANCHORS = [
+  [0, "#2C49A4"], [1, "#9DB4DA"], [2, "#FFFFFF"], [3, "#FEE6C2"], [4, "#FDCB8A"], [5, "#FBA751"],
+  [8, "#F7792B"], [12, "#F04A25"], [20, "#E31A1C"], [35, "#B3151B"], [50, "#861317"], [75, "#3D0A0C"], [100, "#000000"],
+];
+export function interpolateAnchors(anchors, n) {
+  const hex = (v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0");
+  const rgb = (c) => [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16));
+  const out = [];
+  for (let s = 0; s < n; s += 1) {
+    let k = 0;
+    while (k < anchors.length - 2 && anchors[k + 1][0] < s) k += 1;
+    const [s0, c0] = anchors[k];
+    const [s1, c1] = anchors[k + 1];
+    const t = s1 > s0 ? Math.max(0, Math.min(1, (s - s0) / (s1 - s0))) : 0;
+    const a = rgb(c0);
+    const b = rgb(c1);
+    out.push(`#${[0, 1, 2].map((j) => hex(a[j] + t * (b[j] - a[j]))).join("")}`.toUpperCase());
+  }
+  return out;
+}
+const DECK_TOTAL = interpolateAnchors(DECK_ANCHORS, 101);
+// legend ticks for long (per-state) palettes
+export const LONG_PALETTE_TICKS = [0, 1, 2, 3, 5, 10, 20, 50, 100];
+
 export const CN_PALETTE_PRESETS = {
   pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
   pgvDark: { total: PGV_DARK, allelic: shiftForAllelic(PGV_DARK), missing: "#1a1a1a" },
@@ -573,6 +601,7 @@ export const CN_PALETTE_PRESETS = {
   zissou: { total: ZISSOU_TOTAL, allelic: shiftForAllelic(ZISSOU_TOTAL), missing: "#EEEEEE" },
   viridis: { total: VIRIDIS_TOTAL, allelic: shiftForAllelic(VIRIDIS_TOTAL), missing: "#EEEEEE" },
   magma: { total: MAGMA_TOTAL, allelic: shiftForAllelic(MAGMA_TOTAL), missing: "#EEEEEE" },
+  deck: { total: DECK_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
   scwgs: {
     total: CN_STATE_COLORS,
     allelic: shiftForAllelic(CN_STATE_COLORS).map((c, k) => (k === 1 ? "#CCCCCC" : c)),
@@ -598,7 +627,7 @@ export function normalizePalette(palette, preset = DEFAULT_CN_PALETTE) {
 
 /** Packed-RGBA lookup for one CN mode: state -> colour (11+ share the last colour). */
 export function cnColorer(palette, mode = "total") {
-  const p = normalizePalette(palette);
+  const p = normalizePalette(palette, palette?.preset);
   const colors = (mode === "total" ? p.total : p.allelic).map((c) => packRGBA(hexToRgb(c)));
   const missing = packRGBA(hexToRgb(p.missing));
   return (state) =>
