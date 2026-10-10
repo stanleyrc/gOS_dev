@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import useTreeView from "./useTreeView";
@@ -9,6 +9,8 @@ import { eventGlobalPosition } from "../../helpers/singleCell/eventDomains";
 import { eventClass } from "../../helpers/singleCell/cohortStats";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
 import { EventsToHeatmapBar, isStrongEvent, selectEventColumn, useIsSingleCellPatient } from "./eventsToHeatmap";
+import { announceEvidenceSite, findingsByGene, rankFindings, recordGenes } from "../../helpers/singleCell/siteEvidence";
+import settingsActions from "../../redux/settings/actions";
 
 /**
  * The filtered events table with the single-cell extras (strong-events
@@ -49,6 +51,17 @@ export default function ScEventsPanel() {
   };
   useEffect(() => noiseCache.current.clear(), [cn]);
   const columnFilters = useSelector((s) => s.FilteredEvents.columnFilters) || {};
+  // single-cell point-mutation evidence per gene (Evidence tab findings), linked from the gene's events
+  const dispatch = useDispatch();
+  const precompute = useSelector((s) => s.SingleCell.precompute);
+  const scCells = useSelector((s) => s.SingleCell.cells);
+  const siteByGene = useMemo(() => {
+    const calls = precompute?.calls?.status === "ok" ? precompute.calls.data : null;
+    if (!calls) return new Map();
+    const ev = precompute?.siteEvidence?.status === "ok" ? precompute.siteEvidence.data : null;
+    const cloneOf = new Map((scCells || []).map((c) => [`${c.cell_id}`, c.clone_id ?? "unassigned"]));
+    return findingsByGene(rankFindings(calls, ev, cloneOf));
+  }, [precompute, scCells]);
   const [picked, setPicked] = useState(new Map()); // uid -> event
   const toggle = (record, on) =>
     setPicked((prev) => {
@@ -136,6 +149,41 @@ export default function ScEventsPanel() {
         },
       ]
     : [];
+  const siteOfRecord = (record) => recordGenes(record).map((g) => siteByGene.get(g)).find(Boolean);
+  const siteColumn = siteByGene.size
+    ? [
+        {
+          title: (
+            <Tooltip title={t("components.single-cell.events.site-evidence-help", "Point mutation in this gene genotyped in the single cells (Single-Cell Evidence tab); click to open its evidence")}>
+              <span style={{ whiteSpace: "nowrap" }}>{t("components.single-cell.events.site-evidence", "SC mutation")}</span>
+            </Tooltip>
+          ),
+          key: "scSiteEvidence",
+          width: 170,
+          exportTitle: "sc_site_evidence",
+          exportValue: (record) => (siteOfRecord(record) ? `${siteOfRecord(record).name}: ${siteOfRecord(record).verdict.label}` : null),
+          render: (_, record) => {
+            const f = siteOfRecord(record);
+            if (!f) return "–";
+            return (
+              <Tooltip title={f.verdict.summary}>
+                <Tag
+                  color={f.verdict.color}
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    announceEvidenceSite(f.id);
+                    dispatch(settingsActions.updateTab(15));
+                  }}
+                >
+                  {`${f.name} · ${f.verdict.label} ›`}
+                </Tag>
+              </Tooltip>
+            );
+          },
+        },
+      ]
+    : [];
   const recordFilter = (record) => (!strongOnly || isStrongEvent(record)) && (!minClade || !treeLayout || !(cladeOf(record).score < minClade));
   return (
     <>
@@ -152,7 +200,7 @@ export default function ScEventsPanel() {
         )}
       </Space>
       <EventsToHeatmapBar picked={picked} onClear={() => setPicked(new Map())} />
-      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
+      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
     </>
   );
 }
