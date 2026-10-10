@@ -123,9 +123,20 @@ function DriverCard({ s, rank, focused, onEvidence, onFocus }) {
           <Paragraph style={{ marginBottom: 4, marginTop: 4 }}>{s.alteration}</Paragraph>
           {s.coTravellers.length > 0 && (
             <Tooltip title={s.coTravellers.join(", ")}>
-              <Text type="secondary" style={{ fontSize: TYPE.label, cursor: "help" }}>
-                {`Same cells also carry ${s.coTravellers.length} other event${s.coTravellers.length > 1 ? "s" : ""}: ${s.coTravellers.slice(0, 4).join(", ")}${s.coTravellers.length > 4 ? ", …" : ""}`}
-              </Text>
+              <div style={{ fontSize: TYPE.label, cursor: "help" }}>
+                <Text type="secondary">{`Same cells also carry ${s.coTravellers.length} other event${s.coTravellers.length > 1 ? "s" : ""}: `}</Text>
+                {s.keyCoTravellers.slice(0, 5).map((k) => (
+                  <Tag key={k.label} color={k.gbm ? "red" : "volcano"} style={{ marginInlineEnd: 4 }}>
+                    {k.label}
+                  </Tag>
+                ))}
+                <Text type="secondary">
+                  {(() => {
+                    const rest = s.coTravellers.filter((l) => !s.keyCoTravellers.slice(0, 5).some((k) => k.label === l));
+                    return rest.length ? `${s.keyCoTravellers.length ? "+ " : ""}${rest.slice(0, 3).join(", ")}${rest.length > 3 ? `, … (${rest.length - 3} more)` : ""}` : "";
+                  })()}
+                </Text>
+              </div>
             </Tooltip>
           )}
         </div>
@@ -146,7 +157,7 @@ function DriverCard({ s, rank, focused, onEvidence, onFocus }) {
                   strong={g.agrees}
                   tip={`${g.gene} RNA, carriers vs other tumor cells: mean ${(2 ** g.log2fc).toFixed(2)}×, detected in ${pct(g.detA)} vs ${pct(g.detB)} of cells, AUC ${g.auc.toFixed(2)}, ${formatP(g.p)}.${g.expected ? ` Expected ${g.expected > 0 ? "higher" : "lower"} for this alteration${g.agrees ? " — as expected." : "."}` : ""}`}
                 >
-                  {`${g.gene} RNA ${effectWord(g.log2fc, g.p)}${g.agrees ? " ✓" : ""}`}
+                  {`${g.gene} RNA ${effectWord(g.log2fc, g.p)}${g.agrees ? " ✓ as expected" : g.opposite ? " (unexpected)" : ""}`}
                 </Effect>
               ))}
               {s.cn.slice(0, 2).map((r) => (
