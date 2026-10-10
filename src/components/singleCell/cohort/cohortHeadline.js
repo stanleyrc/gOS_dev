@@ -53,7 +53,7 @@ export default function CohortHeadline({ patients, nPatients, nCells, loading = 
                 {h.patients.map((p, i) => (
                   <React.Fragment key={p}>
                     {i > 0 && <span className="sc-headline-sep">·</span>}
-                    <Typography.Link onClick={() => onPatient(p)} style={{ fontSize: TYPE.tick }}>{p}</Typography.Link>
+                    <button type="button" className="sc-headline-patient" onClick={() => onPatient(p)}>{p}</button>
                   </React.Fragment>
                 ))}
                 <Button size="small" type="link" onClick={() => onView(h.view)} style={{ paddingInline: 6, fontSize: TYPE.tick }}>
