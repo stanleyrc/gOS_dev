@@ -9,6 +9,9 @@ import useWalks from "../ecdna/useWalks";
 import SnvSiteDrawer from "../snvSiteDrawer";
 import WalkDiagram from "../ecdna/walkDiagram";
 import VariantTree from "./variantTree";
+import CellProfiles from "./cellProfiles";
+import TriangleCorrelation from "./triangleCorrelation";
+import CladeStateTree from "./cladeStateTree";
 import singleCellActions from "../../../redux/singleCell/actions";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
 import { annotationColors, binAt, rowMap } from "../../../helpers/singleCell/matrix";
@@ -99,7 +102,7 @@ export function useFocusFamily(focusWalkId) {
  * genome, over the tree zooms the rows; double-click resets. Click a node,
  * row, variant header, gene or SNV for its cells / card.
  */
-export default function PatientFigure({ patient, events = [], focusWalkId, onFocusWalk, onSelectCells, maxPlotHeight = 640 }) {
+export default function PatientFigure({ patient, events = [], focusWalkId, onFocusWalk, onSelectCells, onView, maxPlotHeight = 640 }) {
   const dispatch = useDispatch();
   const { ready, loading, pct } = usePatientLoaded(patient);
   const sc = useSelector((s) => s.SingleCell);
@@ -115,6 +118,12 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const [view, setView] = useState(null); // zoomed genome windows (null = the family's region)
   useEffect(() => setView(null), [focusWalk?.id, patient]);
   const domains = view || baseDomains;
+  // report the shown genome windows (cell profiles follow the zoom)
+  const domainsKey = JSON.stringify(domains);
+  useEffect(() => {
+    onView?.(domains);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domainsKey]);
   const [rowWin, setRowWin] = useState(null); // [r0, r1) rows shown (tree zoom)
   useEffect(() => setRowWin(null), [patient]);
   const [showAnc, setShowAnc] = useState(true);
@@ -568,7 +577,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     if (h.kind === "node") {
       const ids = leavesOf(h.nd);
       const p = anc?.p[h.i];
-      return [`Clade of ${ids.length} cells`, ...(Number.isFinite(p) && focusWalk ? [[`${focusWalk.label || "variant"} present`, `${Math.round(100 * p)}%`]] : []), ["Click", "select the clade (Cmd adds)"]];
+      return [`Clade of ${ids.length} cells`, ...(Number.isFinite(p) && focusWalk ? [[`${focusWalk.label || "variant"} present`, `${Math.round(100 * p)}%`]] : []), ["Click", "select the clade (Cmd adds)"], ["Double-click", "zoom to the clade"]];
     }
     if (h.kind === "site") return [h.v.id, ["Gene", h.v.gene || "–"], ["Cell", order[h.r]], ["Click", "open the SNV site"]];
     const cell = cellById.get(h.id) || {};
@@ -646,7 +655,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             Reset zoom
           </Button>
         )}
-        <Text type="secondary" style={{ fontSize: 12 }}>Scroll over the heatmap to zoom the genome, over the tree to zoom the rows; double-click resets.</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>Scroll over the heatmap to zoom the genome, over the tree to zoom the rows; double-click a node to zoom to its clade, elsewhere to reset.</Text>
       </Space>
       <FigureCanvas
         width={width}
@@ -656,7 +665,13 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         tooltip={tooltip}
         onHover={onHover}
         onWheel={onWheel}
-        onDoubleClick={() => {
+        onDoubleClick={(x, y) => {
+          // double-click a tree node: zoom the rows to its clade (Fig 4D); elsewhere: reset
+          const h = hitTest(x, y);
+          if (h?.kind === "node") {
+            setRowWin([h.nd.firstLeaf, h.nd.lastLeaf + 1]);
+            return;
+          }
           setView(null);
           setRowWin(null);
         }}
@@ -765,5 +780,78 @@ export function PatientVariants({ patient, events = [], focusWalkId, onFocusWalk
         {focusWalk && <WalkDiagram walk={focusWalk} colorOf={colorOf} cellIds={order} />}
       </Col>
     </Row>
+  );
+}
+
+/**
+ * Fig 4E + 5C row: copy-number profiles of the selected (or representative)
+ * cells, and segment co-variation triangles of the selected cells (else the
+ * focused variant's carriers) against the other tumour cells, both over the
+ * figure's current windows.
+ */
+export function PatientProfiles({ patient, focusWalkId, domains = [], events = [] }) {
+  const { ready } = usePatientLoaded(patient);
+  const { order, focusWalk, cellById, colorOf } = useFocusFamily(focusWalkId);
+  const sc = useSelector((st) => st.SingleCell);
+  const chromoBins = useSelector((st) => st.Settings.chromoBins);
+  const cnById = useMemo(() => {
+    const d = sc.cn.status === "ok" ? sc.cn.data : null;
+    return d ? new Map(d.cells.map((id, i) => [id, d.rows[i]])) : new Map();
+  }, [sc.cn]);
+  const tumour = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
+  const sel = useMemo(() => sc.selectedCellIds || [], [sc.selectedCellIds]);
+  const groupA = useMemo(() => (sel.length >= 3 ? sel : focusWalk ? tumour.filter((id) => (Number(focusWalk.cells?.[id]) || 0) >= 1) : []), [sel, focusWalk, tumour]);
+  const groupB = useMemo(() => {
+    const a = new Set(groupA);
+    return tumour.filter((id) => !a.has(id));
+  }, [groupA, tumour]);
+  const genes = useMemo(() => {
+    const amp = new Set((focusWalk?.driver_genes || []).map(String));
+    const seen = new Set();
+    const out = [];
+    events.forEach((e) => {
+      const g = `${e.gene || ""}`;
+      if (!amp.has(g) || seen.has(g)) return;
+      const chr = `${e.seqnames}`.replace(/^chr/, "");
+      if (!chromoBins?.[chr]) return;
+      seen.add(g);
+      out.push({ name: g, g: chromoBins[chr].startPlace + (Number(e.start) + (Number(e.end) || Number(e.start))) / 2 });
+    });
+    return out;
+  }, [events, focusWalk, chromoBins]);
+  if (!ready || !domains.length) return null;
+  return (
+    <Row gutter={[24, 12]} style={{ marginTop: 14 }}>
+      <Col xs={24} xl={13}>
+        <div className="sc-fig-subtitle">Cell copy-number profiles <span>Fig 4E · selected cells (up to 3), else carriers and a non-carrier · follows the figure&apos;s zoom</span></div>
+        <CellProfiles order={order} focusWalk={focusWalk} domains={domains} cellById={cellById} />
+      </Col>
+      <Col xs={24} xl={11}>
+        <div className="sc-fig-subtitle">Segment co-variation <span>Fig 5C · {sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumour cells (down)</span></div>
+        <TriangleCorrelation order={order} cnById={cnById} domains={domains} groupA={groupA} groupB={groupB} labelA={sel.length >= 3 ? "Selected cells" : `${focusWalk?.label || "variant"} carriers`} labelB="Other tumour cells" walk={focusWalk} colorOf={colorOf} genes={genes} />
+      </Col>
+    </Row>
+  );
+}
+
+/** Fig 5F: the clade-state tree of the focused variant. */
+export function PatientCladeStates({ patient, focusWalkId, onSelectCells }) {
+  const dispatch = useDispatch();
+  const { ready } = usePatientLoaded(patient);
+  const { order, treeLayout, cellById, focusWalk } = useFocusFamily(focusWalkId);
+  const cloneColors = useSelector((st) => st.SingleCell.cloneColors);
+  if (!ready || !treeLayout) return null;
+  return (
+    <CladeStateTree
+      treeLayout={treeLayout}
+      order={order}
+      cellById={cellById}
+      cloneColors={cloneColors}
+      walk={focusWalk}
+      onSelect={(ids, { label }) => {
+        dispatch(singleCellActions.updateSelection(ids));
+        onSelectCells?.(ids, label);
+      }}
+    />
   );
 }
