@@ -176,6 +176,21 @@ describe("splicing card", () => {
     // one sashimi panel per clone group (1, 2, RNA-only) of clu_1
     expect(screen.getAllByRole("img").length).toBeGreaterThanOrEqual(3);
   });
+  it("lists the splicing findings first and opens a finding's cluster on click", async () => {
+    const SplicingCard = require("./splicingCard").default;
+    render(
+      <Provider store={makeStore({ splicing: true })}>
+        <SplicingCard summary={{ cells: [{ rna_id: "r1", cell_id: "c1" }, { rna_id: "r2", cell_id: "c3" }, { rna_id: "r3", cell_id: "c2" }], fields: [] }} />
+      </Provider>
+    );
+    expect(screen.getByText("components.single-cell.splicing.findings-title")).toBeTruthy();
+    const line = screen.getByText(/PTPRZ1: 30 of 32 reads/);
+    // the low-score finding is folded away
+    expect(screen.queryByText(/EGFRvIII: 3 of 4 covered cells/)).toBeNull();
+    expect(screen.queryByText(/^PTPRZ1 · /)).toBeNull();
+    fireEvent.click(line);
+    expect(await screen.findByText(/^PTPRZ1 · /)).toBeTruthy();
+  });
 });
 
 describe("real BWH70 fusions.json", () => {

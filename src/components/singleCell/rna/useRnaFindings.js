@@ -1,13 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadRnaMatrix, loadRnaSummary } from "../../../redux/singleCell/loaders";
+import { casePath, loadRnaMatrix, loadRnaSummary, tryGet } from "../../../redux/singleCell/loaders";
 import { buildPatientReport } from "../../../helpers/singleCell/patientReport";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { rnaExpressionFindings, rnaHeadlines, rnaMetaFindings } from "../../../helpers/singleCell/rnaFindings";
+import { normalizeSpliceFindings, rnaFindingCounts, rnaHeadlineItems } from "../../../helpers/singleCell/rnaHeadlineFindings";
+import { normalizeFusions } from "../../../helpers/singleCell/rnaFusions";
 
-// RNA key findings of a patient ({ meta, expr, headlines }), computed once per
-// dataset / patient / driver set and shared by the report, the overview card
-// and the cohort cards. meta needs only rna/cells.json; expr loads the matrix.
+// RNA key findings of a patient ({ meta, expr, headlines, top, counts }),
+// computed once per dataset / patient / driver set and shared by the report,
+// the overview card and the cohort cards. meta needs only rna/cells.json;
+// expr loads the matrix; top / counts are the splicing findings and tier 1–2
+// fusions (rna/splicing.json, rna/fusions.json; empty when missing).
 const cache = new Map();
+
+/** Splicing findings and tier 1–2 fusions of a patient: { top, counts }. */
+export async function loadRnaExtraFindings(dataset, patientId) {
+  const [spl, fus] = await Promise.all([
+    tryGet(casePath(dataset, patientId, "rna/splicing.json")).catch(() => ({ status: "error" })),
+    tryGet(casePath(dataset, patientId, "rna/fusions.json")).catch(() => ({ status: "error" })),
+  ]);
+  const splicing = spl.status === "ok" ? normalizeSpliceFindings(spl.data?.findings) : [];
+  let fusions = [];
+  let nCellsRna = null;
+  if (fus.status === "ok") {
+    try {
+      ({ fusions, nCellsRna } = normalizeFusions(fus.data));
+    } catch (error) {
+      fusions = [];
+    }
+  }
+  return { top: rnaHeadlineItems({ splicing, fusions, nCellsRna, max: 6 }), counts: rnaFindingCounts({ splicing, fusions }) };
+}
 
 const driversOf = (report) => (report ? [...report.clonal, ...report.subclonal, ...report.rare] : []);
 
@@ -17,6 +40,7 @@ export function computeRnaFindings(dataset, patientId, cells, report) {
   if (!cache.has(key)) {
     const promise = loadRnaSummary(dataset, patientId).then(async (summary) => {
       if (!summary) return null;
+      const extras = loadRnaExtraFindings(dataset, patientId).catch(() => ({ top: [], counts: { splicing: 0, fusions: 0, total: 0 } }));
       const meta = rnaMetaFindings({ rnaCells: summary.cells, cells });
       let expr = null;
       try {
@@ -25,7 +49,8 @@ export function computeRnaFindings(dataset, patientId, cells, report) {
       } catch (error) {
         expr = null; // metadata findings still stand without the matrix
       }
-      return { meta, expr, headlines: rnaHeadlines(meta, expr) };
+      const { top, counts } = await extras;
+      return { meta, expr, headlines: rnaHeadlines(meta, expr), top, counts };
     });
     promise.catch(() => cache.delete(key));
     cache.set(key, promise);
