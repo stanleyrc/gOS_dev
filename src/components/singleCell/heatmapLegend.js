@@ -5,6 +5,7 @@ import {
   countTicks,
   expressionRGB,
   junctionColor,
+  LONG_PALETTE_TICKS,
   normalizePalette,
   snvMissingColor,
   vafRGB,
@@ -39,13 +40,15 @@ export default function HeatmapLegend({
   const { t } = useTranslation("common");
   const groups = [];
   if (type === "cn") {
-    const p = normalizePalette(palette);
+    const p = normalizePalette(palette, palette?.preset);
     const colors = cnMode === "total" ? p.total : p.allelic;
+    // long per-state palettes (deck: 0..100) show a few ticks instead of every state
+    const states = colors.length > 16 ? LONG_PALETTE_TICKS.filter((k) => k < colors.length) : colors.map((c, k) => k);
     groups.push({
       key: "cn",
       title: `${t("components.single-cell.legend.cn")} (${t(`components.single-cell.cn-mode.${cnMode}`)})`,
       items: [
-        ...colors.map((color, k) => ({ color, label: k === colors.length - 1 ? `${k}+` : `${k}` })),
+        ...states.map((k) => ({ color: colors[k], label: k === colors.length - 1 ? `${k}+` : `${k}` })),
         { color: p.missing, label: t("components.single-cell.legend.missing") },
       ],
     });

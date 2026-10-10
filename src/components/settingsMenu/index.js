@@ -25,7 +25,7 @@ export default function SettingsMenu() {
   const theme = layout.theme || "tableau";
   const swatches = (colors) => (
     <span style={{ display: "inline-flex", gap: 1, marginRight: 6 }}>
-      {colors.slice(0, 8).map((c, i) => (
+      {(colors.length > 16 ? [0, 2, 4, 6, 12, 20, 50, 100].map((k) => colors[Math.min(k, colors.length - 1)]) : colors.slice(0, 8)).map((c, i) => (
         <span key={`${c}-${i}`} style={{ width: 9, height: 12, background: c, display: "inline-block", borderRadius: 1 }} />
       ))}
     </span>
