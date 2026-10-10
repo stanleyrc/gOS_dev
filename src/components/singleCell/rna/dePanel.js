@@ -26,6 +26,7 @@ import scaActions from "../../../redux/scAnalysis/actions";
 import singleCellActions from "../../../redux/singleCell/actions";
 import settingsActions from "../../../redux/settings/actions";
 import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
+import GeneInfoCard from "./geneInfoCard";
 import { geneSetIndex, loadGmt } from "./geneSets";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
@@ -45,7 +46,7 @@ const DE_COLUMNS = ["gene", "avg_log2FC", "pct_1", "pct_2", "cn_1", "cn_2", "p_v
 
 
 /** Dot plot: genes x groups, dot size = % expressing, colour = mean expression scaled per gene. */
-function DotPlot({ genes, groups, summary, matrix }) {
+function DotPlot({ genes, groups, summary, matrix, onGene, selectedGene }) {
   const [ref, width] = useContainerWidth(900);
   const cell = 26;
   const left = 110;
@@ -80,7 +81,17 @@ function DotPlot({ genes, groups, summary, matrix }) {
         ))}
         {data.map((row, i) => (
           <g key={row.gene}>
-            <text x={left - 6} y={top + i * cell + cell / 2 + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.text}>
+            <text
+              x={left - 6}
+              y={top + i * cell + cell / 2 + 4}
+              textAnchor="end"
+              fontSize={TYPE.tick}
+              fontWeight={row.gene === selectedGene ? 700 : 400}
+              fill={INK.text}
+              style={{ cursor: onGene ? "pointer" : "default" }}
+              onClick={() => onGene?.(row.gene)}
+            >
+              <title>{`${row.gene}: click for what it does and its role in GBM`}</title>
               {row.gene}
             </text>
             {row.stats.map((s, j) => (
@@ -470,7 +481,8 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     if (!result) return;
     const passing = result.genes.filter(significant);
     const top = (sign) => passing.filter((g) => Math.sign(g.avg_log2FC) === sign).map((g) => g.gene);
-    dispatch(scaActions.setDeTop({ labels: result.labels, up: top(1), down: top(-1) }));
+    const rows = Object.fromEntries(passing.map((g) => [g.gene, g]));   // gene card "Here" line
+    dispatch(scaActions.setDeTop({ labels: result.labels, up: top(1), down: top(-1), rows }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, qCut, pCut, lfcCut]);
   const dotGenes = useMemo(() => {
@@ -709,7 +721,8 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                     options={[5, 10, 15, 25].map((n) => ({ value: n, label: t("components.single-cell.rna.top-n", { n }) }))}
                   />
                 </Space>
-                <DotPlot genes={dotGenes} groups={dotGroups} summary={summary} matrix={matrix} />
+                <DotPlot genes={dotGenes} groups={dotGroups} summary={summary} matrix={matrix} onGene={onGene} selectedGene={selectedGene} />
+                <GeneInfoCard gene={selectedGene} row={result.genes.find((g) => g.gene === selectedGene)} labels={result.labels} cn={cnByGene?.get(selectedGene)} />
               </Col>
               <Col span={24}>
                 <Space wrap style={{ marginBottom: 8 }}>
