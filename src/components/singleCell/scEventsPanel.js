@@ -116,11 +116,11 @@ export default function ScEventsPanel() {
         {
           title: (
             <Tooltip title={t("components.single-cell.events.driver-evidence-help")}>
-              <span>{t("components.single-cell.events.driver-evidence")}</span>
+              <span style={{ whiteSpace: "nowrap" }}>{t("components.single-cell.events.driver-evidence")}</span>
             </Tooltip>
           ),
           key: "driverEvidence",
-          width: 110,
+          width: 160,
           sorter: (a, b) => (num(a.driver_score) ?? -1) - (num(b.driver_score) ?? -1),
           filters: ["likely", "possible", "unlikely"].map((v) => ({ text: v, value: v })),
           filteredValue: columnFilters.driverEvidence || null,
