@@ -1,4 +1,4 @@
-import { cellsOfGroups, linkAppliesTo, readDeepLink, singleCellStillLoading, walkIdsForLabels } from "./deepLink";
+import { cellsOfGroups, linkAppliesTo, readDeepLink, readViewLink, singleCellStillLoading, walkIdsForLabels, withCloneOverrides } from "./deepLink";
 
 describe("readDeepLink", () => {
   it("parses groups, heatmap, walks and umap colouring", () => {
@@ -61,5 +61,39 @@ describe("singleCellStillLoading", () => {
     expect(singleCellStillLoading({ loading: false, patient: null, missing: false, error: null })).toBe(true);
     expect(singleCellStillLoading({ loading: false, patient: { caseReportId: "P" } })).toBe(false);
     expect(singleCellStillLoading({ loading: false, patient: null, missing: true })).toBe(false);
+  });
+});
+
+describe("readViewLink", () => {
+  it("parses palette, clone colours, tracks and figure/composition/dosage params", () => {
+    const link = readViewLink(
+      "?cnpal=deck&clonecolors=Clone1:3b53a4,Clone%202:%232CA6A4,bad:xyz&tracks=total,coverage&figpatient=BWH69&figwalk=MYCN%203&figgenes=CDK4,MDM2,X&comp=Region&compby=groups&compcount=1&cngene=EGFR&exprgenes=EGFR,SOX4"
+    );
+    expect(link.cnPalette).toBe("deck");
+    expect(link.cloneColors).toEqual({ Clone1: "#3B53A4", "Clone 2": "#2CA6A4" });
+    expect(link.tracks).toEqual(["total", "coverage"]);
+    expect(link.figPatient).toBe("BWH69");
+    expect(link.figWalk).toBe("MYCN 3");
+    expect(link.figGenes).toEqual(["CDK4", "MDM2"]);
+    expect(link.composition).toBe("Region");
+    expect(link.compositionBy).toBe("groups");
+    expect(link.compositionCounts).toBe(true);
+    expect(link.cnGene).toBe("EGFR");
+    expect(link.exprGenes).toEqual(["EGFR", "SOX4"]);
+  });
+
+  it("defaults to nothing", () => {
+    const link = readViewLink("");
+    expect(link.cnPalette).toBeNull();
+    expect(link.cloneColors).toEqual({});
+    expect(link.cloneLabels).toEqual({});
+    expect(readViewLink("?clonelabels=Clone%204:CI,Clone%201:EC1").cloneLabels).toEqual({ "Clone 4": "CI", "Clone 1": "EC1" });
+    expect(link.compositionCounts).toBe(false);
+  });
+});
+
+describe("withCloneOverrides", () => {
+  it("replaces only known clones", () => {
+    expect(withCloneOverrides({ A: "#000000", B: "#111111" }, { B: "#222222", C: "#333333" })).toEqual({ A: "#000000", B: "#222222" });
   });
 });
