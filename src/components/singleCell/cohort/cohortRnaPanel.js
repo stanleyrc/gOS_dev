@@ -29,7 +29,7 @@ import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 const { Text } = Typography;
 const rnaCache = new Map();
 
-async function loadRna(dataset, id) {
+export async function loadRna(dataset, id) {
   const key = `${dataset.id}/${id}`;
   if (!rnaCache.has(key)) {
     rnaCache.set(

@@ -1238,6 +1238,7 @@
         "clade-filter-dropped": "{{count}} alterations hidden",
         "view-amplicons": "ecDNA",
         "view-figures": "Paper figures",
+        "view-cnexpr": "CN vs expression",
         "amp-title": "Amplicon copies per cell",
         "amp-y": "walk copies (carriers)",
         "amp-pct": "cells",
@@ -1496,7 +1497,8 @@
         "col-truncal": "Truncal drivers",
         "col-subclonal": "Subclonal drivers",
         "col-ecdna": "ecDNA oncogenes",
-        "empty-view": "Nothing to show yet for this view."
+        "empty-view": "Nothing to show yet for this view.",
+        "purpose-cnexpr": "How each tumor's copy-number changes move the expression of the genes they carry, cell by cell."
       },
       "compare": {
         "title": "Compare groups",
@@ -1594,7 +1596,8 @@
           "zissou": "Zissou (cool losses, warm gains)",
           "viridis": "Viridis (sequential)",
           "magma": "Magma (sequential)",
-          "pgvDark": "pgv dark (CN 2 = dark grey)"
+          "pgvDark": "pgv dark (CN 2 = dark grey)",
+          "deck": "Amplicon (0-100+, as in the lab's JaBbA heatmaps)"
         },
         "theme": "Categorical theme",
         "theme-help": "Colours for clones, groups, UMAP fields, violins, signatures and saved groups. The heatmap copy-number colours are set separately below."
