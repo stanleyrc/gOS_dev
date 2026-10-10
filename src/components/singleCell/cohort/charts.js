@@ -62,6 +62,103 @@ export function XBaseline({ x0, x1, y }) {
   return <line x1={x0} x2={x1} y1={Math.round(y) + 0.5} y2={Math.round(y) + 0.5} stroke={INK[st.axisInk] || INK.axis} strokeWidth={st.axisWidth} />;
 }
 
+/**
+ * Linear x axis under a plot (the x twin of YAxis): vertical grid lines up to
+ * y1 (omit y1 for none), baseline, tick marks, labels and a title per the
+ * chart style. `values` overrides the ticks.
+ */
+export function XAxis({ scale, y0, y1 = null, title, ticks = 6, values = null, format = (v) => formatTick(v) }) {
+  const st = useFigureStyle();
+  const [r0, r1] = scale.range();
+  // no more ticks than fit at ~48 px apart
+  const fit = Math.max(2, Math.floor(Math.abs(r1 - r0) / 48));
+  const vals = values || scale.ticks(Math.min(ticks, fit));
+  const tickFs = styleFontSize(st, "tick");
+  const axisInk = INK[st.axisInk] || INK.axis;
+  const by = Math.round(y0) + 0.5;
+  const labelY = y0 + st.tickLen + 3;
+  return (
+    <g>
+      {vals.map((v) => (
+        <g key={v} transform={`translate(${scale(v)},0)`}>
+          {st.grid !== "none" && y1 != null && <line y1={y1} y2={y0} stroke={INK.grid} strokeDasharray={st.gridDash ? st.gridDash.join(" ") : undefined} />}
+          {st.tickLen > 0 && st.axisLine && <line y1={by} y2={by + st.tickLen} stroke={axisInk} strokeWidth={st.axisWidth} />}
+          <text y={labelY} dy="0.8em" textAnchor="middle" fontSize={tickFs} fontWeight={styleFontWeight(st, "tick")} fill={INK[st.tickInk] || INK.muted}>
+            {format(v)}
+          </text>
+        </g>
+      ))}
+      {st.axisLine && <line x1={Math.min(r0, r1)} x2={Math.max(r0, r1)} y1={by} y2={by} stroke={axisInk} strokeWidth={st.axisWidth} />}
+      {title && (
+        <text x={(r0 + r1) / 2} y={labelY + tickFs + 8} dy="0.8em" textAnchor="middle" fontSize={styleFontSize(st, "head")} fontWeight={styleFontWeight(st, "head")} fill={INK.textSecondary}>
+          {title}
+        </text>
+      )}
+    </g>
+  );
+}
+
+/** Dashed reference line (thresholds, 50 %, fits) per the chart style, with an optional caption at its end. */
+export function RefLine({ x1, x2, y1, y2, label, labelAnchor = "end", opacity = 1 }) {
+  const st = useFigureStyle();
+  const ink = INK[st.refInk] || INK.muted;
+  return (
+    <g pointerEvents="none">
+      <line x1={x1} x2={x2} y1={y1} y2={y2} stroke={ink} strokeOpacity={opacity} strokeDasharray={st.refDash ? st.refDash.join(" ") : undefined} />
+      {label && (
+        <text x={labelAnchor === "end" ? Math.max(x1, x2) - 4 : Math.min(x1, x2) + 4} y={Math.min(y1, y2) - 4} textAnchor={labelAnchor} fontSize={styleFontSize(st, "caption")} fill={INK.muted}>
+          {label}
+        </text>
+      )}
+    </g>
+  );
+}
+
+/**
+ * SVG text attributes per role in the chart style, for text a chart places
+ * itself (panel titles, group names, captions): <text {...txt.label}>.
+ */
+export function useChartText() {
+  const st = useFigureStyle();
+  const role = (r, fill) => ({ fontSize: styleFontSize(st, r), fontWeight: styleFontWeight(st, r), fill });
+  return {
+    st,
+    tick: role("tick", INK[st.tickInk] || INK.muted),
+    label: role("label", INK.textSecondary),
+    group: role("group", INK.text),
+    head: role("head", INK.textSecondary),
+    title: role("title", INK.text),
+    caption: role("caption", INK.muted),
+  };
+}
+
+/** Hover card over an SVG chart in the shared tooltip look (.sc-tooltip), at container coordinates. */
+export function ChartTooltip({ x, y, children }) {
+  return (
+    <div
+      className="sc-tooltip"
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        zIndex: 10,
+        pointerEvents: "none",
+        background: "var(--sc-raised, #fff)",
+        color: "var(--sc-text, #1f1f1f)",
+        border: "1px solid var(--sc-border, #d9d9d9)",
+        borderRadius: 4,
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)",
+        padding: "6px 9px",
+        fontSize: "var(--sc-fs-tick, 11.5px)",
+        lineHeight: 1.5,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 /** Category labels under a band scale; rotated when crowded. */
 export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, fontSize }) {
   const st = useFigureStyle();
