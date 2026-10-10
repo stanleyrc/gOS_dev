@@ -34,6 +34,7 @@ export const ASE_CLASS_FILL = {
   "beyond-dna": "#d46b08",
   buffered: "#08979c",
   dosage: "#1d39c4",
+  "clone-switch": "#722ed1",
   none: "#8c8c8c",
 };
 
