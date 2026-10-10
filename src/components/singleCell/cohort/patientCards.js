@@ -12,7 +12,9 @@ import { Provenance } from "../hintLine";
 const { Text } = Typography;
 
 const CLASS_SHORT = { amp: "amp", homdel: "del", fusion: "fusion", trunc: "trunc", splice: "splice", missense: "mis", complex: "SV", other: "" };
-const driverText = (d, withFraction = false) => `${d.gene}${CLASS_SHORT[d.class] ? ` ${CLASS_SHORT[d.class]}` : ""}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}`;
+// complex SVs have no gene: name them by their pattern (e.g. "TIC (19,20)", "DM (7)")
+const driverName = (d) => d.gene || (d.class === "complex" ? `${d.event?.Variant || d.event?.vartype || ""}`.trim() : "") || "?";
+const driverText = (d, withFraction = false) => `${driverName(d)}${CLASS_SHORT[d.class] && !(d.class === "complex" && !d.gene) ? ` ${CLASS_SHORT[d.class]}` : ""}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}`;
 
 function CloneBar({ counts, colors, width = 220 }) {
   const total = d3.sum(Object.values(counts)) || 1;

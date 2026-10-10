@@ -161,7 +161,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                         const bw = (pw - 76) / Math.max(1, p.groups.length);
                         return (
                           <g key={g.key} transform={`translate(${64 + i * bw},0)`}>
-                            <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={g.color} />
+                            <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={theme.faint} />
                             <text x={bw / 2} y={41 - g.fraction * 40} textAnchor="middle" fontSize={TYPE.label} fill={INK.text}>{d3.format(".0%")(g.fraction)}</text>
                             <title>{`${g.label}: ${g.ids.length} cells (${d3.format(".0%")(g.fraction)})`}</title>
                           </g>
