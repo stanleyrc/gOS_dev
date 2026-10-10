@@ -36,7 +36,7 @@ export function driverLoci(event, chromoBins) {
 }
 
 /** Expression of one gene per cell, carriers vs comparator, jittered dots with the median; hover a dot for the cell. */
-function GeneDots({ gene, groups, row, labels }) {
+export function GeneDots({ gene, groups, row, showDetected = true }) {
   const [ref, width] = useContainerWidth(260);
   const theme = usePlotTheme();
   const [hover, setHover] = useState(null);
@@ -92,7 +92,7 @@ function GeneDots({ gene, groups, row, labels }) {
                 {g.label}
               </text>
               <text x={cx} y={H - 6} textAnchor="middle" fontSize={TYPE.tick} fill={theme.muted}>
-                {`${g.values.length} cells · ${Math.round(det * 100)}% > 0`}
+                {showDetected ? `${g.values.length} cells · ${Math.round(det * 100)}% > 0` : `${g.values.length} cells`}
               </text>
             </g>
           );
@@ -245,7 +245,7 @@ export default function DriverExpressionCard({ driver, carriers, others, rna }) 
               <Row gutter={[12, 8]}>
                 {dots.map((d) => (
                   <Col key={d.gene} xs={24} md={12} xl={8}>
-                    <GeneDots gene={d.gene} groups={d.groups} row={d.row} labels={labels} />
+                    <GeneDots gene={d.gene} groups={d.groups} row={d.row} />
                   </Col>
                 ))}
               </Row>
