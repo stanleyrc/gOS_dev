@@ -357,7 +357,14 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       }),
     [columns, order, n]
   );
-  const barMax = useMemo(() => Math.max(1, ...bars.map((b) => b.max)), [bars]);
+  // shared copy scale, robust to a few extreme cells (98th percentile of the stacked totals; longer bars are clipped)
+  const barMax = useMemo(() => {
+    const v = [];
+    bars.forEach((b) => b.sum.forEach((x) => x > 0 && v.push(x)));
+    if (!v.length) return 1;
+    v.sort((x, y) => x - y);
+    return Math.max(1, v[Math.min(v.length - 1, Math.floor(0.98 * v.length))]);
+  }, [bars]);
   const geneMarks = useMemo(() => {
     if (!cnGeo) return [];
     const amp = new Set(shownAmps.flatMap((x) => x.key.split("+")));
@@ -479,7 +486,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           for (let r = r0; r < r1; r += 1) {
             if (!(v[r] > 0)) continue;
             const a = acc[r - r0];
-            ctx.fillRect(x0 + a * sx, TOP + (r - r0) * rh + (rh - bh) / 2, Math.max(0.8, v[r] * sx), bh);
+            const w = Math.min(v[r] * sx, L.barW - 2 - a * sx);
+            if (w > 0) ctx.fillRect(x0 + a * sx, TOP + (r - r0) * rh + (rh - bh) / 2, Math.max(0.8, w), bh);
             acc[r - r0] = a + v[r];
           }
         };
