@@ -215,3 +215,14 @@ describe("amplicon-style and quality checks", () => {
     expect(v.level).toBe("supported");
   });
 });
+
+describe("clonality", () => {
+  test("one-read cells at VAF 0.7 with 70% carriers look clonal", () => {
+    const { clonality } = require("./siteEvidence");
+    const cells = Array.from({ length: 100 }, (_, i) => ({ dp: 1, alt: i < 70 ? 1 : 0 }));
+    const c = clonality(cells, 0.7);
+    expect(c.expected).toBeCloseTo(70, 5);
+    expect(c.fraction).toBeCloseTo(1, 5);
+    expect(clonality(cells.map((x, i) => ({ ...x, alt: i < 20 ? 1 : 0 })), 0.7).fraction).toBeCloseTo(20 / 70, 5);
+  });
+});

@@ -124,15 +124,14 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
   }, [reads, hideDup, minMq]);
 
   const columns = [
-    { title: "Cell", dataIndex: "cell", width: 170, ellipsis: true, render: (c) => c || <Text type="secondary">no RG</Text> },
+    { title: "Cell", dataIndex: "cell", width: 150, ellipsis: true, render: (c) => c || <Text type="secondary">no RG</Text> },
     { title: "Clone", dataIndex: "clone", width: 100, render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
     { title: "Allele", dataIndex: "allele", width: 70, render: (a) => <Tag color={ALLELE_COLOR[a]}>{a}</Tag> },
     { title: "Strand", dataIndex: "strand", width: 64, align: "center" },
     { title: "BQ", dataIndex: "bq", width: 56, sorter: (a, b) => a.bq - b.bq, render: (q, r) => (r.allele === "del" ? "–" : <Text type={q < 13 ? "danger" : undefined}>{q}</Text>) },
     { title: "MAPQ", dataIndex: "mq", width: 64, sorter: (a, b) => a.mq - b.mq, render: (q) => <Text type={q < 20 ? "danger" : undefined}>{q}</Text> },
     { title: "Dup", dataIndex: "dup", width: 52, render: (d) => (d ? <Tag color="warning">dup</Tag> : "") },
-    { title: "From end", dataIndex: "end", width: 80, sorter: (a, b) => a.end - b.end, render: (e, r) => (r.allele === "del" ? "–" : <Text type={e < 5 ? "warning" : undefined}>{e} bp</Text>) },
-    { title: "NM", dataIndex: "nm", width: 52 },
+    { title: "From end", dataIndex: "end", width: 76, sorter: (a, b) => a.end - b.end, render: (e, r) => (r.allele === "del" ? "–" : <Text type={e < 5 ? "warning" : undefined}>{e} bp</Text>) },
   ];
 
   return (
@@ -154,14 +153,14 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
       </Space>
       {error && <Alert type="error" showIcon message={`IGV: ${error}`} />}
       <Row gutter={12}>
-        <Col xs={24} xxl={14}>
+        <Col xs={24} xxl={13}>
           {groups.length ? (
             <div ref={containerRef} className="sc-light-island" style={{ minHeight: 200 }} />
           ) : (
             <Text type="secondary">No cell has reads at this site.</Text>
           )}
         </Col>
-        <Col xs={24} xxl={10}>
+        <Col xs={24} xxl={11}>
           {reads?.length ? (
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
               <Space wrap size={[8, 4]}>
@@ -185,7 +184,7 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
                 dataSource={alleleFilter === "other" ? (reads || []).filter((r) => readPasses(r, { hideDup, minMq }) && (r.allele === "other" || r.allele === "del")) : shown}
                 columns={columns}
                 pagination={{ pageSize: 12, size: "small", hideOnSinglePage: true }}
-                scroll={{ x: 720 }}
+                scroll={{ x: 640 }}
               />
             </Space>
           ) : (
