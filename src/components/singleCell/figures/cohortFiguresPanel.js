@@ -14,6 +14,8 @@ import { Provenance } from "../hintLine";
 import { useFigureStyleName } from "./figureCanvas";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
+import { readViewLink, walkIdsForLabels, withCloneOverrides } from "../../../helpers/singleCell/deepLink";
+import GeneCnScatter from "./geneCnScatter";
 
 const { Text } = Typography;
 const PAD = 1.5e6;
@@ -93,11 +95,24 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
     [per]
   );
 
-  // patient view selection
-  const [patient, setPatient] = useState(null);
-  const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "gene:<name>" | "f:<finding key>"
+  // patient view selection; ?figpatient=&figwalk=&figgenes= open it on a patient, walk and gene pair
+  const link = useMemo(() => readViewLink(), []);
+  const [patient, setPatient] = useState(link.figPatient);
+  const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "w:<walk id>" | "gene:<name>" | "f:<finding key>"
   const [marked, setMarked] = useState(null); // { cells: Set, label, key }
+  const [pairGenes, setPairGenes] = useState(link.figGenes.length === 2 ? link.figGenes : null);
   const current = per.find((p) => p.patient === patient) || withAmps[0] || per[0];
+  const allWalks = useMemo(() => files[current?.patient]?.walks?.walks || [], [files, current?.patient]);
+  const linkedWalk = React.useRef(false);
+  React.useEffect(() => {
+    if (linkedWalk.current || !link.figWalk || !current || current.patient !== link.figPatient || !allWalks.length) return;
+    linkedWalk.current = true;
+    const [id] = walkIdsForLabels(allWalks, [link.figWalk]);
+    const w = allWalks.find((x) => `${x.id}` === `${id}`);
+    if (!w) return;
+    setRegionKey(`w:${w.id}`);
+    setMarked({ cells: new Set(current.cellIds.filter((c) => (Number(w.cells?.[c]) || 0) >= minCn)), label: `${w.label} carriers`, key: `w:${current.patient}:${w.id}` });
+  }, [current, allWalks, link, minCn]);
 
   const genePositions = useMemo(() => {
     const m = new Map();
@@ -112,6 +127,10 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
   const region = useMemo(() => {
     if (!current) return { domains: [], label: "" };
     const key = regionKey && current.groups.some((g) => `g:${g.key}` === regionKey) ? regionKey : regionKey?.startsWith("gene:") || regionKey?.startsWith("f:") ? regionKey : current.groups[0] ? `g:${current.groups[0].key}` : null;
+    if (regionKey?.startsWith("w:")) {
+      const w = allWalks.find((x) => `w:${x.id}` === regionKey);
+      if (w) return { key: regionKey, domains: lociDomains(walkLoci([w]), chromoBins), label: `${w.label} walk`, group: { key: w.label, walks: [w], cellIds: current.cellIds, cn: Float32Array.from(current.cellIds, (c) => Number(w.cells?.[c]) || 0) } };
+    }
     if (key?.startsWith("g:")) {
       const g = current.groups.find((x) => `g:${x.key}` === key);
       if (g) return { key, domains: lociDomains(walkLoci(g.walks), chromoBins), label: `ec${g.key} walks`, group: g };
@@ -129,7 +148,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
     const amp = current.events.find((e) => e.vartype === "AMP");
     const loci = amp ? eventLoci(amp) : [["7", 55e6, 55.3e6]];
     return { key: null, domains: lociDomains(loci, chromoBins, 4e6), label: amp ? `${amp.gene} AMP` : "chr7" };
-  }, [current, regionKey, genePositions, chromoBins, findings]);
+  }, [current, regionKey, genePositions, chromoBins, findings, allWalks]);
   const domains = useMemo(() => region.domains.map(([a, b]) => [a, b]), [region]);
 
   const focus = (p, next = {}) => {
@@ -158,11 +177,12 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
     return { carriers, others: new Set(tumour.filter((id) => !carriers.has(id))), label };
   }, [current, marked, region, minCn]);
 
+  const genePair = pairGenes?.length === 2 ? pairGenes : region.group?.genes?.length >= 2 ? region.group.genes.slice(0, 2) : null;
   if (!per.length) return <Empty />;
   const half = width >= 1100 ? Math.floor((width - 32) / 2) - 26 : width - 26;
   const regionOptions = [
     ...(current?.groups || []).map((g) => ({ value: `g:${g.key}`, label: `ec${g.key} (${g.walks.length} walk${g.walks.length === 1 ? "" : "s"})` })),
-    ...(regionKey?.startsWith("f:") ? [{ value: regionKey, label: region.label }] : []),
+    ...(regionKey?.startsWith("f:") || regionKey?.startsWith("w:") ? [{ value: regionKey, label: region.label }] : []),
     ...[...genePositions.keys()].sort().map((g) => ({ value: `gene:${g}`, label: g })),
   ];
   const selectedViolin = marked?.key?.startsWith("g:") ? { patient: current?.patient, key: marked.key.split(":").slice(2).join(":") } : null;
@@ -178,6 +198,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
         </Col>
         <Col span={24}>
           <Card
+            id="sc-fig-landscape"
             size="small"
             title={<Space><BranchesOutlined />Amplicon landscape <Provenance id="figLandscape" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3A–B</Text></Space>}
             extra={
@@ -228,11 +249,12 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
         <Col span={24}>
           <div ref={patientRef} style={{ scrollMarginTop: 12 }} />
           <Card
+            id="sc-fig-patient"
             size="small"
             title={<Space><BarChartOutlined />Clonal amplicon view <Provenance id="figClonalAmplicon" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B / 5B / 5D</Text></Space>}
             extra={
               <Space wrap size={8}>
-                <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); setMarked(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
+                <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); setMarked(null); setPairGenes(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
                 <Select size="small" showSearch style={{ width: 220 }} value={region.key || undefined} placeholder="Region" options={regionOptions} onChange={(v) => setRegionKey(v)} />
                 {marked && (
                   <Tag closable onClose={() => setMarked(null)} color="default" style={{ marginInlineEnd: 0 }}>
@@ -252,6 +274,17 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
                   <SegmentCorrelation width={half} cnEntry={cnRows[current.patient]} domains={domains} carriers={corrSets.carriers} others={corrSets.others} chromoBins={chromoBins} />
                 ) : (
                   <div><Text type="secondary" style={{ fontSize: 12 }}>{corrSets ? "Loading cell copy number…" : "Mark cells (tree node, upset row or finding) to compare them with the rest."}</Text></div>
+                )}
+              </Col>
+              <Col xs={24} xl={12} id="sc-fig-genepair">
+                <div className="sc-fig-subtitle">
+                  Gene vs gene copy number <span>per clone · ecDNA vs integrated</span>{" "}
+                  <Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} />
+                </div>
+                {genePair ? (
+                  <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={genePair} cloneColors={withCloneOverrides(cloneColors, link.cloneColors)} cloneLabels={link.cloneLabels} width={half} />
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>Pick two genes on one amplicon (e.g. CDK4 and MDM2).</Text>
                 )}
               </Col>
             </Row>

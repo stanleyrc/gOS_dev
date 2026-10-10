@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Button, Card, Col, Empty, Row, Segmented, Skeleton, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Col, Empty, Row, Segmented, Skeleton, Space, Table, Typography } from "antd";
 import {
   EVENT_CLASSES,
   EVENT_CLASS_LABEL,
@@ -20,6 +20,7 @@ import usePlotTheme from "../usePlotTheme";
 import useCohortExport from "./useCohortExport";
 import EvoTreeSvg from "./evoTreeSvg";
 import EvoFindings from "./evoFindings";
+import NeutralTag from "../neutralTag";
 
 const { Text, Paragraph } = Typography;
 
@@ -136,7 +137,7 @@ function FocusDetail({ focus, aligned, patients, labelOf, onOpen, theme, width }
             <div style={{ border: `1px solid ${theme.borderSoft}`, borderRadius: 4, padding: 6 }}>
               <Space size={6} wrap>
                 <Text strong>{P}</Text>
-                {p.old_tree && <Tag>older tree</Tag>}
+                {p.old_tree && <NeutralTag>older tree</NeutralTag>}
                 {rel && (
                   <Text style={{ fontSize: TYPE.tick }}>
                     {rel === "a_first" ? `${labelOf(ids[0])} first` : rel === "b_first" ? `${labelOf(ids[1])} first` : RELATION_LABEL[rel]}
@@ -289,7 +290,7 @@ export default function CohortAlignedTreesPanel({ dataset, summaries = [], onOpe
                     <Space size={6}>
                       <Button type="link" size="small" style={{ padding: 0, fontWeight: 600 }} onClick={() => openP(P)}>{P}</Button>
                       <Text type="secondary" style={{ fontSize: TYPE.tick }}>{`${p.n_tumour} cells`}</Text>
-                      {p.old_tree && <Tag style={{ fontSize: TYPE.micro }}>older tree</Tag>}
+                      {p.old_tree && <NeutralTag style={{ fontSize: TYPE.micro }}>older tree</NeutralTag>}
                     </Space>
                     <EvoTreeSvg
                       tree={p.tree}

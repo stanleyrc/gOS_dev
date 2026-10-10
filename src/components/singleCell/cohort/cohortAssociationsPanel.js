@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Button, Card, Col, Empty, Row, Skeleton, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Col, Empty, Row, Skeleton, Space, Table, Typography } from "antd";
 import {
   cellsStrip,
   concordanceRows,
@@ -17,6 +17,7 @@ import usePlotTheme from "../usePlotTheme";
 import useCohortExport from "./useCohortExport";
 import EvoTreeSvg from "./evoTreeSvg";
 import EvoFindings from "./evoFindings";
+import NeutralTag from "../neutralTag";
 
 const { Text, Paragraph } = Typography;
 const STATES = ["MES", "AC", "NPC", "OPC"];
@@ -158,7 +159,7 @@ function AssocDetail({ focus, assoc, aligned, onOpen, theme, width }) {
             <div style={{ border: `1px solid ${theme.borderSoft}`, borderRadius: 4, padding: 6 }}>
               <Space size={6} wrap>
                 <Text strong>{P}</Text>
-                {a.old_tree && <Tag>older tree</Tag>}
+                {a.old_tree && <NeutralTag>older tree</NeutralTag>}
                 <Button size="small" type="link" onClick={() => onOpen(P)}>Open patient</Button>
               </Space>
               <EvoTreeSvg tree={p.tree} events={ev ? [ev] : []} focus={ev ? new Set([ev.id]) : null} highlights={ev && ev.placed && !ev.truncal ? [{ node: ev.node, color: eventClassColor(ev.class, theme.mode) }] : []} width={w} height={Math.min(260, Math.max(140, n * 0.6))} strips={strips} showAxis />
@@ -292,7 +293,7 @@ export default function CohortAssociationsPanel({ dataset, summaries = [], onOpe
               dataSource={patients.map((P) => ({ patient: P, ...assoc.patients[P] }))}
               onRow={(r) => ({ onClick: () => r.cells && (setSelected(null), setFocus({ patients: [r.patient], title: `${r.patient}: lineage × state` })), style: { cursor: r.cells ? "pointer" : "default" } })}
               columns={[
-                { title: "Patient", dataIndex: "patient", render: (P, r) => <Space size={4}><Text strong>{P}</Text>{r.old_tree && <Tag style={{ fontSize: TYPE.micro }}>older tree</Tag>}</Space> },
+                { title: "Patient", dataIndex: "patient", render: (P, r) => <Space size={4}><Text strong>{P}</Text>{r.old_tree && <NeutralTag style={{ fontSize: TYPE.micro }}>older tree</NeutralTag>}</Space> },
                 { title: "Tumor cells with RNA", dataIndex: "n_rna", align: "right" },
                 { title: "Lineages from", dataIndex: "lineage_source", render: (x, r) => (r.skipped ? <Text type="secondary">{r.skipped}</Text> : x === "clone" ? "clone table" : "major tree clades") },
                 { title: "Composition", dataIndex: "composition", render: (c) => (c ? <Composition comp={c} theme={theme} /> : null) },
