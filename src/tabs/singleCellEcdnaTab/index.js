@@ -30,6 +30,7 @@ import WalksLegend from "../../components/singleCell/ecdna/walksLegend";
 import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
 import { linkAppliesTo, readDeepLink, walkIdsForLabels } from "../../helpers/singleCell/deepLink";
+import { subscribeEvidence, takeEvidence } from "../../helpers/singleCell/evidenceFocus";
 
 const { Text } = Typography;
 const PADS = [5e4, 1e5, 2.5e5, 5e5, 1e6, 2e6];
@@ -98,6 +99,19 @@ export default function SingleCellEcdnaTab() {
     if (!ids.length) return;
     setSelected(ids);
     setFocus(ids[0]);
+  }, [all, patient]);
+  // walks queued by a vignette's "ecDNA walks" chip: draw them and highlight the first
+  useEffect(() => {
+    if (!all.length) return undefined;
+    const apply = () => {
+      const req = takeEvidence("walks", patient);
+      const ids = req ? walkIdsForLabels(all, req.walks || []) : [];
+      if (!ids.length) return;
+      setSelected(ids);
+      setFocus(ids[0]);
+    };
+    apply();
+    return subscribeEvidence(apply);
   }, [all, patient]);
   useEffect(() => {
     if (!filtered.length) return;

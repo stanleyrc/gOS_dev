@@ -255,6 +255,12 @@ export const PROVENANCE = {
     where: "both",
   },
   /* ---- cohort ---- */
+  cohortHeadline: {
+    title: "Major findings",
+    source: "Each patient's filtered.events.json (after the clade F1 filter) and walks.json",
+    calc: "Truncal = Tier 1-2 driver in >= 85% of tumor cells (shared: >= 2 patients); ecDNA = circular walk, >= 3 cells, median CN >= 4.",
+    where: "browser",
+  },
   cohortOverview: {
     title: "Single-cell patients",
     source: "datafiles.json (clone_id per cell from the `dataset` step) and each patient's metadata.json",
