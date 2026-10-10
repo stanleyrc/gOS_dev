@@ -700,6 +700,12 @@ const Wrapper = styled.div`
   }
   .sc-text-button:hover .ant-typography {
     text-decoration: underline;
+  /* Evidence tab: the chosen row of a findings / preset table */
+  .ant-table-tbody > tr.sc-row-active > td {
+    background: var(--sc-select-fill, rgba(22, 119, 255, 0.14));
+  }
+  .sc-site-head .ant-statistic-content {
+    font-size: 20px;
   }
 `;
 
