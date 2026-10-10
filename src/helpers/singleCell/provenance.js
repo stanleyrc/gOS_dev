@@ -216,6 +216,12 @@ export const PROVENANCE = {
     calc: "Genes from DE / picks / most variable / gene sets; z-scored per gene and aligned to the tree rows in the browser.",
     where: "browser",
   },
+  ase: {
+    title: "Allele-specific expression vs allelic copy number",
+    source: "rna/ase.json (srctools gos_sc_ase.py): Eagle-phased exonic germline hets, RNA reads per haplotype per cell; allelic CN from <cell>/allelic.json",
+    calc: "RNA share of haplotype A vs CN_A / (CN_A + CN_B) per cell; cells-as-units test, BH; clone switches by Fisher test.",
+    where: "backend",
+  },
   dosage: {
     title: "Dosage vs expression",
     source: `${S.CELL_CN}; ${S.RNA}`,
