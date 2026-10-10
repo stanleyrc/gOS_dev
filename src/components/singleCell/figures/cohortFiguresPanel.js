@@ -1,20 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Col, Collapse, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Tooltip, Typography } from "antd";
+import { Card, Col, Collapse, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Typography } from "antd";
 import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
-import { groupCombinations, isNormalClone, subclonalFindings, walkGroups } from "../../../helpers/singleCell/figures";
+import { groupCombinations, subclonalFindings, walkGroups } from "../../../helpers/singleCell/figures";
 import { AmpliconUpset, AmpliconViolins } from "./ampliconLandscape";
 import PhyloSignalPanel from "./phyloSignalPanel";
 import SubclonalFindingsTable from "./subclonalFindingsTable";
-import { SegmentCorrelation } from "./patientPanels";
 import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
 import { useFigureStyleName } from "./figureCanvas";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
-import PatientFigure, { PatientVariants } from "./patientFigure";
+import PatientFigure, { PatientCladeStates, PatientProfiles, PatientVariants } from "./patientFigure";
 import ScEventModal from "../scEventModal";
 import GenePairScatter from "./genePairScatter";
 import CladeCarrierBars from "./cladeCarrierBars";
@@ -88,7 +87,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     return () => window.removeEventListener("keydown", onKey);
   }, [clear, popupOpen]);
   const styleName = useFigureStyleName();
-  const [ref, width] = useContainerWidth(1200);
+  const [ref] = useContainerWidth(1200);
   const rootRef = useRef(null);
   const rootDiv = useCallback(
     (el) => {
@@ -132,6 +131,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const richest = useMemo(() => [...withAmps].sort((a, b) => (b.nVariants > 0) - (a.nVariants > 0) || b.groups.reduce((s, g) => s + g.walks.length, 0) - a.groups.reduce((s, g) => s + g.walks.length, 0))[0], [withAmps]);
   const current = per.find((p) => p.patient === patient) || richest || per[0];
   const [focusWalkId, setFocusWalkId] = useState(null);
+  const [figDomains, setFigDomains] = useState([]);
   useEffect(() => setFocusWalkId(null), [current?.patient]);
   // the cohort selection drives the loaded patient's selection (tree, heatmap, report side panels)
   const storePatient = useSelector((s) => s.SingleCell.patient?.caseReportId);
@@ -211,22 +211,8 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const selectHere = (ids, { label, mode }) => current && select(current.patient, ids, { label, mode });
   const selectedHere = selection && selection.patient === current?.patient ? selection.cells : null;
 
-  const corrSets = useMemo(() => {
-    if (!current) return null;
-    const tumour = current.cells.filter((c) => !isNormalClone(c.clone_id)).map((c) => c.cell_id);
-    let carriers = marked?.cells;
-    let label = marked?.label;
-    if (!carriers?.size && region.group) {
-      const g = region.group;
-      carriers = new Set(g.cellIds.filter((id, k) => g.cn[k] >= minCn));
-      label = `ec${g.key} carriers`;
-    }
-    if (!carriers?.size) return null;
-    return { carriers, others: new Set(tumour.filter((id) => !carriers.has(id))), label };
-  }, [current, marked, region, minCn]);
 
   if (!per.length) return <Empty />;
-  const half = width >= 1100 ? Math.floor((width - 32) / 2) - 26 : width - 26;
   const regionOptions = [
     ...(current?.groups || []).map((g) => ({ value: `g:${g.key}`, label: `ec${g.key} (${g.walks.length} walk${g.walks.length === 1 ? "" : "s"})` })),
     ...(regionKey?.startsWith("f:") ? [{ value: regionKey, label: region.label }] : []),
@@ -320,6 +306,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 focusWalkId={focusWalkId}
                 onFocusWalk={setFocusWalkId}
                 onSelectCells={(ids, label) => select(current.patient, ids, { label })}
+                onView={setFigDomains}
               />
             )}
             {current && (
@@ -331,6 +318,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 onSelectCells={(ids, label) => select(current.patient, ids, { label })}
               />
             )}
+            {current && <PatientProfiles patient={current.patient} focusWalkId={focusWalkId} domains={figDomains} events={current.events} />}
             <Row gutter={[24, 16]} style={{ marginTop: 14 }}>
               <Col xs={24} xl={9}>
                 <div className="sc-fig-subtitle">Copies of one amplicon against another <span>Fig 5E · lasso to select</span></div>
@@ -341,14 +329,8 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={8}>
-                <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the selected cells (upper triangle) and the other tumor cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
-                  <div className="sc-fig-subtitle">Segment co-variation <span>Fig 5C{corrSets ? ` · ${corrSets.label}` : ""}</span></div>
-                </Tooltip>
-                {corrSets && cnRows[current?.patient]?.cellRows?.length ? (
-                  <SegmentCorrelation width={half} cnEntry={cnRows[current.patient]} domains={domains} carriers={corrSets.carriers} others={corrSets.others} chromoBins={chromoBins} />
-                ) : (
-                  <div className="sc-fig-empty">{corrSets ? "Loading cell copy number…" : "Select cells (rows, tree node, bar or lasso) to compare them with the rest."}</div>
-                )}
+                <div className="sc-fig-subtitle">Amplicon state per clade <span>Fig 5F · of the focused variant · click a clade</span></div>
+                {current && <PatientCladeStates patient={current.patient} focusWalkId={focusWalkId} onSelectCells={(ids, label) => select(current.patient, ids, { label })} />}
               </Col>
             </Row>
             <Collapse
