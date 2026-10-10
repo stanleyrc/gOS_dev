@@ -1,17 +1,18 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Button, Card, Col, Row, Space, Tag, Typography } from "antd";
-import { buildPatientReport } from "../../../helpers/singleCell/patientReport";
-import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
+import { Card, Space, Table, Typography } from "antd";
+import { naturalCompare } from "../../../helpers/singleCell/matrix";
+import NeutralTag from "../neutralTag";
 import { signatureColorOf } from "../signaturePanel";
-import { SC_GUTTER_INNER } from "../density";
 import RnaFindingsList from "../rna/rnaFindingsList";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
+
+const CLASS_SHORT = { amp: "amp", homdel: "del", fusion: "fusion", trunc: "trunc", splice: "splice", missense: "mis", complex: "SV", other: "" };
+const driverText = (d, withFraction = false) => `${d.gene}${CLASS_SHORT[d.class] ? ` ${CLASS_SHORT[d.class]}` : ""}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}`;
 
 function CloneBar({ counts, colors, width = 220 }) {
   const total = d3.sum(Object.values(counts)) || 1;
@@ -57,7 +58,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
         <div>
           {report.clonal.length ? (
             report.clonal.slice(0, 8).map((d) => (
-              <Tag key={d.label} style={{ borderColor: CLASS_COLORS[d.class], color: CLASS_COLORS[d.class], marginBottom: 2 }}>{d.gene}</Tag>
+              <NeutralTag key={d.label} style={{ marginBottom: 2 }}>{driverText(d)}</NeutralTag>
             ))
           ) : (
             <Text type="secondary">–</Text>
@@ -69,7 +70,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
         <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-subclonal", { count: report.subclonal.length })}</Text>
         <div>
           {report.subclonal.slice(0, 8).map((d) => (
-            <Tag key={d.label} style={{ borderColor: CLASS_COLORS[d.class], color: CLASS_COLORS[d.class], marginBottom: 2 }}>{`${d.gene} ${d3.format(".0%")(d.fraction)}`}</Tag>
+            <NeutralTag key={d.label} style={{ marginBottom: 2 }}>{driverText(d, true)}</NeutralTag>
           ))}
         </div>
       </div>
@@ -97,43 +98,73 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
   );
 }
 
-/** One card per patient: cells, clones, clonal drivers, top signatures. */
-export default function PatientCards({ summaries, files, datafiles, cloneColors, onOpen, rnaOf = null }) {
-  const { t } = useTranslation("common");
-  const reports = useMemo(
-    () =>
-      summaries.map((s) => ({
-        s,
-        report: buildPatientReport({
-          patient: s.caseReportId,
-          events: files[s.caseReportId]?.events || [],
-          cells: cellsForPatient(datafiles, s.patientKey),
-          variants: files[s.caseReportId]?.variants || [],
-          signatures: files[s.caseReportId]?.signatures || null,
-        }),
-      })),
-    [summaries, files, datafiles]
-  );
+function DriverList({ items, max, withFraction = false }) {
+  if (!items.length) return <Text type="secondary">–</Text>;
   return (
-    <Row gutter={SC_GUTTER_INNER}>
-      {reports.map(({ s, report }) => (
-        <Col key={s.caseReportId} xs={24} md={12} xl={8} xxl={6}>
-          <Card
-            size="small"
-            hoverable
-            onClick={() => onOpen(s)}
-            title={
-              <Space>
-                <Text strong style={{ fontSize: 15 }}>{s.caseReportId}</Text>
-                <Text type="secondary">{s.record.tumor_type || s.record.disease || ""}</Text>
-              </Space>
-            }
-            extra={<Button type="link" size="small" onClick={(e) => { e.stopPropagation(); onOpen(s); }}>{t("components.single-cell.cohort.open")}</Button>}
-          >
-            <PatientCardBody report={report} cloneCounts={s.cloneCounts} cloneColors={cloneColors} rna={rnaOf ? rnaOf(s.caseReportId) : null} />
-          </Card>
-        </Col>
-      ))}
-    </Row>
+    <span>
+      {items.slice(0, max).map((d) => <NeutralTag key={d.label}>{driverText(d, withFraction)}</NeutralTag>)}
+      {items.length > max && <Text type="secondary" style={{ fontSize: TYPE.tick }}>{`+${items.length - max}`}</Text>}
+    </span>
+  );
+}
+
+/**
+ * Every patient in one compact, neutral table: cells, clone mix (clone
+ * colours are data), truncal / subclonal drivers and ecDNA oncogenes.
+ * Rows open the patient; the full per-patient findings are in Key findings.
+ * patients: [{ s (cohort summary), report (buildPatientReport), ecdna: string[] | null }]
+ */
+export default function PatientSummaryTable({ patients, cloneColors, onOpen }) {
+  const { t } = useTranslation("common");
+  const k = (key, opts) => t(`components.single-cell.cohort.${key}`, opts);
+  const columns = [
+    {
+      title: k("patient"),
+      key: "patient",
+      width: 110,
+      sorter: (a, b) => naturalCompare(a.s.caseReportId, b.s.caseReportId),
+      render: (_, p) => <Typography.Link strong onClick={() => onOpen(p.s)}>{p.s.caseReportId}</Typography.Link>,
+    },
+    {
+      title: k("col-tumor-normal"),
+      key: "cells",
+      width: 120,
+      sorter: (a, b) => a.report.nTumorCells - b.report.nTumorCells,
+      render: (_, p) => (
+        <Text style={{ fontVariantNumeric: "tabular-nums" }}>
+          {p.report.nTumorCells}
+          <Text type="secondary">{` / ${p.report.nNormalCells}`}</Text>
+        </Text>
+      ),
+    },
+    {
+      title: k("clones"),
+      key: "clones",
+      width: 190,
+      sorter: (a, b) => a.report.clones.length - b.report.clones.length,
+      render: (_, p) => (
+        <Space size={6}>
+          <Text style={{ display: "inline-block", width: 18, textAlign: "right" }}>{p.report.clones.length}</Text>
+          <CloneBar counts={p.s.cloneCounts} colors={cloneColors} width={140} />
+        </Space>
+      ),
+    },
+    { title: k("col-truncal"), key: "truncal", render: (_, p) => <DriverList items={p.report.clonal} max={5} /> },
+    {
+      title: k("col-subclonal"),
+      key: "subclonal",
+      sorter: (a, b) => a.report.subclonal.length - b.report.subclonal.length,
+      render: (_, p) => <DriverList items={p.report.subclonal} max={4} withFraction />,
+    },
+    {
+      title: k("col-ecdna"),
+      key: "ecdna",
+      render: (_, p) => (p.ecdna == null ? <Text type="secondary">n/a</Text> : p.ecdna.length ? <Text>{p.ecdna.join(", ")}</Text> : <Text type="secondary">–</Text>),
+    },
+  ];
+  return (
+    <Card size="small" title={<Space size={6}>{k("patients-title")}<Provenance id="cohortOverview" /></Space>}>
+      <Table size="small" rowKey={(p) => p.s.caseReportId} columns={columns} dataSource={patients} pagination={{ pageSize: 25, hideOnSinglePage: true }} />
+    </Card>
   );
 }
