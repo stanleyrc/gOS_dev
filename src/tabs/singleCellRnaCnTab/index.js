@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Col, Empty, Row } from "antd";
 import DosagePanel from "../../components/singleCell/rna/dosagePanel";
+import AsePanel from "../../components/singleCell/rna/asePanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
 import useRnaData from "../../components/singleCell/rna/useRnaData";
 import SingleCellWrapper from "../../components/singleCell/index.style";
@@ -9,7 +10,8 @@ import { SC_GUTTER } from "../../components/singleCell/density";
 
 /**
  * How copy number and expression relate in the same cells (DNA + RNA):
- * dosage vs expression per gene and the genome-wide dosage ranking.
+ * dosage vs expression per gene and the genome-wide dosage ranking, then
+ * allele-specific expression against the cells' allelic copy number.
  */
 export default function SingleCellRnaCnTab() {
   const { t } = useTranslation("common");
@@ -20,6 +22,9 @@ export default function SingleCellRnaCnTab() {
       <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <DosagePanel summary={summary} matrix={matrix} rowOfId={rowOfId} />
+        </Col>
+        <Col span={24}>
+          <AsePanel />
         </Col>
         <Col span={24}>
           <PhyloBarsCard defaultTracks={["genecn", "geneexpr"]} defaultGene="EGFR" title={t("components.single-cell.bars.rna-cn-title")} />
