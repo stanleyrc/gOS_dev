@@ -232,7 +232,13 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const selectedHere = selection && selection.patient === current?.patient ? selection.cells : null;
 
 
-  const genePair = pairGenes?.length === 2 ? pairGenes : region.group?.genes?.length >= 2 ? region.group.genes.slice(0, 2) : null;
+  // default pair: the driver genes of the patient's two dominant amplicon groups (MGH303: MDM2 vs CDK4)
+  const defaultPair = useMemo(() => {
+    const gs = (current?.groups || []).slice().sort((x, y) => (y.cn || []).reduce((t, v) => t + v, 0) - (x.cn || []).reduce((t, v) => t + v, 0));
+    const genes = [...new Set(gs.flatMap((g) => `${g.key}`.split("+")))].filter((g) => genePositions.has(g));
+    return genes.length >= 2 ? genes.slice(0, 2) : null;
+  }, [current, genePositions]);
+  const genePair = pairGenes?.length === 2 ? pairGenes : region.group?.genes?.length >= 2 ? region.group.genes.slice(0, 2) : defaultPair;
   if (!per.length) return <Empty />;
   const regionOptions = [
     ...(current?.groups || []).map((g) => ({ value: `g:${g.key}`, label: `ec${g.key} (${g.walks.length} walk${g.walks.length === 1 ? "" : "s"})` })),
