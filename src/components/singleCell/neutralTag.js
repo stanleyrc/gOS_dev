@@ -23,3 +23,13 @@ export default function NeutralTag({ style, strong = false, ...rest }) {
     />
   );
 }
+
+/** A small colour swatch + neutral text: keeps a data colour (alteration class, state) without a filled pill. */
+export function DataSwatch({ color, children, style }) {
+  return (
+    <span style={{ whiteSpace: "nowrap", ...style }}>
+      <span aria-hidden style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: color, marginRight: 6, verticalAlign: "baseline" }} />
+      {children}
+    </span>
+  );
+}

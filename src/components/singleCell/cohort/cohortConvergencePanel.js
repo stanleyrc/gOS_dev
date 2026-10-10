@@ -1,16 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Select, Space, Switch, Table, Tag, Typography } from "antd";
+import { Card, Select, Space, Switch, Table, Typography } from "antd";
 import { BranchesOutlined } from "@ant-design/icons";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
-import { patientColor } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
-const CLONALITY_COLORS = { clonal: "#237804", subclonal: "#d46b08", rare: "#8c8c8c" };
 const clonalityOf = (f) => (f >= 0.85 ? "clonal" : f >= 0.1 ? "subclonal" : "rare");
 
 /**
@@ -57,11 +55,11 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
   }, [summaries, files, maxTier, strongOnly, minPatients]);
   const pct = d3.format(".0%");
   const columns = [
-    { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 120, render: (g, r) => <Space size={4}>{r.classes.map((c) => <span key={c} style={{ width: 8, height: 8, borderRadius: 2, background: CLASS_COLORS[c], display: "inline-block" }} />)}<Text strong>{g}</Text></Space> },
-    { title: t("components.single-cell.cohort.conv-pattern"), dataIndex: "pattern", width: 170, filters: ["truncal-everywhere", "parallel-subclonal", "mixed", "other"].map((p) => ({ text: t(`components.single-cell.cohort.conv-${p}`), value: p })), onFilter: (v, r) => r.pattern === v, render: (p) => <Tag color={p === "parallel-subclonal" ? "volcano" : p === "truncal-everywhere" ? "green" : p === "mixed" ? "gold" : "default"}>{t(`components.single-cell.cohort.conv-${p}`)}</Tag> },
+    { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 130, render: (g, r) => <Space size={4} style={{ whiteSpace: "nowrap" }}>{r.classes.map((c) => <span key={c} style={{ width: 8, height: 8, borderRadius: 2, background: CLASS_COLORS[c], display: "inline-block" }} />)}<Text strong>{g}</Text></Space> },
+    { title: t("components.single-cell.cohort.conv-pattern"), dataIndex: "pattern", width: 170, filters: ["truncal-everywhere", "parallel-subclonal", "mixed", "other"].map((p) => ({ text: t(`components.single-cell.cohort.conv-${p}`), value: p })), onFilter: (v, r) => r.pattern === v, render: (p) => <Text strong={p === "parallel-subclonal"} type={p === "other" ? "secondary" : undefined}>{t(`components.single-cell.cohort.conv-${p}`)}</Text> },
     { title: t("components.single-cell.cohort.patients"), dataIndex: "nPatients", width: 90, sorter: (a, b) => a.nPatients - b.nPatients },
-    ...summaries.map((s, k) => ({
-      title: <span style={{ color: patientColor(k) }}>{s.caseReportId}</span>,
+    ...summaries.map((s) => ({
+      title: s.caseReportId,
       key: s.caseReportId,
       width: 130,
       render: (_, r) => {
@@ -69,9 +67,9 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
         if (!p) return <Text type="secondary">–</Text>;
         const c = clonalityOf(p.fraction);
         return (
-          <Tag color={CLONALITY_COLORS[c]} style={{ cursor: "pointer" }} onClick={() => onEvent && onEvent(p.summary, p.event)}>
-            {`${t(`components.single-cell.cohort.conv-${c}`)} ${pct(p.fraction)}`}
-          </Tag>
+          <button type="button" className="sc-text-button" onClick={() => onEvent && onEvent(p.summary, p.event)}>
+            <Text strong={c === "clonal"} type={c === "rare" ? "secondary" : undefined}>{`${t(`components.single-cell.cohort.conv-${c}`)} ${pct(p.fraction)}`}</Text>
+          </button>
         );
       },
     })),
