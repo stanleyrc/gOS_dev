@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux";
 import { Button, Col, Progress, Row, Select, Space, Switch, Tooltip, Typography } from "antd";
 import FigureCanvas, { fitText } from "./figureCanvas";
-import { textRole } from "./figureKit";
+import { PanelHead, textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
 import useTreeView from "../useTreeView";
 import useWalks from "../ecdna/useWalks";
@@ -22,12 +22,14 @@ import { defaultFocusWalk } from "../../../helpers/singleCell/walkPanels";
 import { selectMode } from "./cellSelection";
 
 const { Text } = Typography;
-const STRIP = 9;
+const STRIP = 10;
 const GAP = 6;
-const GENE_ROW = 26;
-const TRACK_H = 12;
-const AXIS_H = 18;
-const IDEO_H = 26;
+const HEAD_H = 74; // header: rotated strip titles, legends, genes, focused-variant track
+const GENE_ROW = HEAD_H - 22; // gene marker baseline
+const TRACK_H = 14;
+const AXIS_H = 16;
+const IDEO_H = 40;
+const MAX_BARS = 4;
 const RETAINED = "#2e7d32";
 const LOST = "#c62828";
 const ACCENT = "#1677ff";
@@ -113,7 +115,12 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const width = Math.max(760, measuredW);
 
   // ---- focused ecDNA family / variant
-  const shownWalks = useMemo(() => family.slice().sort((a, b) => (b.stats?.ncells ?? b.ncells ?? 0) - (a.stats?.ncells ?? a.ncells ?? 0)).slice(0, 6), [family]);
+  const shownWalks = useMemo(() => {
+    const byCells = family.slice().sort((a, b) => (b.stats?.ncells ?? b.ncells ?? 0) - (a.stats?.ncells ?? a.ncells ?? 0));
+    const carriers = (w) => Object.values(w.cells || {}).filter((v) => Number(v) >= 1).length;
+    const rest = byCells.filter((w) => w.id !== focusWalk?.id && carriers(w) >= 3);
+    return (focusWalk ? [focusWalk, ...rest] : rest).slice(0, MAX_BARS);
+  }, [family, focusWalk]);
   const baseDomains = useMemo(() => walkDomains(family, chromoBins), [family, chromoBins]);
   const [view, setView] = useState(null); // zoomed genome windows (null = the family's region)
   useEffect(() => setView(null), [focusWalk?.id, patient]);
@@ -171,15 +178,27 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     });
   }, [treeLayout, focusWalk, measured, cellById]);
 
+  // lineages that lost the variant: below a node with p >= 0.5, every node with p < 0.5 (nodes come parents first)
+  const lostBelow = useMemo(() => {
+    if (!anc || !treeLayout) return null;
+    const out = new Uint8Array(treeLayout.nodes.length);
+    treeLayout.nodes.forEach((nd, i) => {
+      const par = nd.parent;
+      if (par < 0 || !(anc.p[i] < 0.5)) return;
+      if (anc.p[par] >= 0.5 || out[par]) out[i] = 1;
+    });
+    return out;
+  }, [anc, treeLayout]);
+
   // ---- columns
   const L = useMemo(() => {
-    const treeW = treeLayout ? Math.round(Math.max(150, Math.min(280, width * 0.18))) : 0;
+    const treeW = treeLayout ? Math.round(Math.max(170, Math.min(330, width * 0.21))) : 0;
     const clade = treeW + 6;
-    const state = clade + STRIP + 2;
-    const data0 = state + STRIP + GAP + 4;
-    const barsW = shownWalks.length ? Math.max(54 * shownWalks.length, Math.min(84 * shownWalks.length, width * 0.24)) : 0;
+    const state = clade + STRIP + 5;
+    const data0 = state + STRIP + GAP + 2;
+    const barsW = shownWalks.length ? Math.max(58 * shownWalks.length, Math.min(90 * shownWalks.length, width * 0.2)) : 0;
     const rest = width - data0 - barsW - (shownWalks.length ? GAP * 2 : 0) - 4;
-    const snvW = packed ? Math.round(rest * 0.24) : 0;
+    const snvW = packed ? Math.round(rest * 0.3) : 0;
     const ecW = ecSites.length ? Math.round(Math.min(rest * 0.14, Math.max(40, ecSites.length * 6))) : 0;
     const cnW = rest - snvW - ecW - (snvW ? GAP : 0) - (ecW ? GAP : 0);
     const snvX = data0;
@@ -189,8 +208,10 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     const barW = shownWalks.length ? (barsW - GAP * (shownWalks.length - 1)) / shownWalks.length : 0;
     return { treeW, clade, state, data0, snvX, snvW, ecX, ecW, cnX, cnW, barsX, barW };
   }, [treeLayout, width, shownWalks.length, packed, ecSites.length]);
-  const TOP = GENE_ROW + shownWalks.length * TRACK_H + 6;
-  const height = TOP + plotH + AXIS_H + IDEO_H + 22;
+  const TOP = HEAD_H + TRACK_H + 4;
+  // bar labels are written vertically under the bars
+  const barLabH = shownWalks.length ? Math.min(130, 18 + 7.4 * Math.max(...shownWalks.map((w) => `${w.label || w.name || w.id}`.length))) : 0;
+  const height = TOP + plotH + Math.max(AXIS_H + IDEO_H + 24, barLabH + 18);
 
   // ---- prebuilt images (all rows; zoomed rows are a source crop)
   const snvImg = useMemo(() => {
@@ -258,6 +279,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       }),
     [shownWalks, order, n]
   );
+  const barMax = useMemo(() => Math.max(1, ...bars.map((b) => b.max)), [bars]);
   const geneMarks = useMemo(() => {
     if (!cnGeo) return [];
     const amp = new Set(shownWalks.flatMap((w) => w.driver_genes || []));
@@ -290,6 +312,9 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const draw = useCallback(
     (ctx, c) => {
       ctx.imageSmoothingEnabled = false;
+      const ink = c.dark ? "rgba(230,230,230,0.85)" : "rgba(30,30,30,0.85)";
+      const lostInk = c.dark ? "#ef6f6c" : LOST;
+      const keepInk = c.dark ? "#66bb6a" : RETAINED;
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, TOP, width, plotH);
@@ -302,8 +327,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         const allSel = (nd) => selected.size && pre[nd.lastLeaf + 1] - pre[nd.firstLeaf] === nd.lastLeaf - nd.firstLeaf + 1;
         const stroke = (filter, color, w) => {
           ctx.beginPath();
-          nodePx.forEach(({ nd, x, y }) => {
-            if (nd.parent < 0 || !inWin(nd) || (filter && !filter(nd))) return;
+          nodePx.forEach(({ nd, x, y }, i) => {
+            if (nd.parent < 0 || !inWin(nd) || (filter && !filter(nd, i))) return;
             const p = nodePx[nd.parent];
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x, y);
@@ -313,30 +338,37 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           ctx.lineWidth = w;
           ctx.stroke();
         };
-        stroke(null, c.dark ? "rgba(225,225,225,0.8)" : "rgba(35,35,35,0.8)", rh >= 3 ? 1 : 0.8);
+        const lw = rh >= 3 ? 1.1 : 0.85;
+        stroke(null, ink, lw);
+        // lineages that lost the focused variant, in red (as in the paper's "Long status")
+        if (showAnc && lostBelow) stroke((nd, i) => lostBelow[i], lostInk, lw + 0.3);
         if (selected.size) stroke(allSel, c.dark ? "#69b1ff" : ACCENT, 1.8);
-        // ancestral state of the focused variant: retained (green) / lost (red, where the parent had it)
+        // ancestral state on every internal node: filled = present, red = lost; radius = likelihood of the call
         if (showAnc && anc) {
           nodePx.forEach(({ nd, x, y }, i) => {
             if (nd.isLeaf || !inWin(nd) || nd.lastLeaf - nd.firstLeaf < 1) return;
             const p = anc.p[i];
             if (!Number.isFinite(p)) return;
+            const present = p >= 0.5;
+            if (!present && !(lostBelow && lostBelow[i])) return; // never had it: no glyph
             const pp = nd.parent >= 0 ? anc.p[nd.parent] : NaN;
-            const lost = p < 0.5 && pp >= 0.5;
-            const gained = p >= 0.5 && !(pp >= 0.5);
-            const unsure = p > 0.1 && p < 0.9;
-            // only nodes that say something: where the variant is gained or lost, or the state is uncertain
-            if (!lost && !gained && !unsure) return;
+            const change = present !== pp >= 0.5 && nd.parent >= 0;
             const like = Math.max(p, 1 - p);
+            // small dots everywhere (size = likelihood, as in the paper), larger rings where the state changes
+            const r = (0.9 + 2.2 * (like - 0.5)) * Math.min(1, 0.6 + rh / 5) + (change ? 1.4 : 0);
             ctx.beginPath();
-            ctx.arc(x, y, 1.6 + 3.2 * (like - 0.5) * 2, 0, 2 * Math.PI);
-            ctx.fillStyle = lost ? LOST : RETAINED;
-            ctx.globalAlpha = 0.9;
+            ctx.arc(x, y, r, 0, 2 * Math.PI);
+            ctx.fillStyle = present ? keepInk : lostInk;
             ctx.fill();
-            ctx.globalAlpha = 1;
-            ctx.lineWidth = 0.8;
-            ctx.strokeStyle = c.panel;
-            ctx.stroke();
+            if (change) {
+              ctx.lineWidth = 1;
+              ctx.strokeStyle = c.panel;
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(x, y, r + 1.6, 0, 2 * Math.PI);
+              ctx.strokeStyle = present ? keepInk : lostInk;
+              ctx.stroke();
+            }
           });
         }
       }
@@ -355,17 +387,17 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       blit(snvImg?.canvas, L.snvX, L.snvW);
       blit(ecImg, L.ecX, L.ecW);
       blit(cnImg, L.cnX, L.cnW);
-      // per-variant copies
-      bars.forEach(({ w, vals, max }, k) => {
+      // per-variant copies (shared scale, light column background, faint 50-copy guides)
+      bars.forEach(({ w, vals }, k) => {
         const x0 = L.barsX + k * (L.barW + GAP);
-        ctx.fillStyle = c.dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.025)";
+        ctx.fillStyle = c.dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.022)";
         ctx.fillRect(x0, TOP, L.barW, plotH);
         ctx.fillStyle = colorOf(w.id);
-        const bh = Math.max(1, rh * 0.8);
+        const bh = Math.max(1, rh * 0.82);
         for (let r = r0; r < r1; r += 1) {
           const v = vals[r];
           if (!(v > 0)) continue;
-          ctx.fillRect(x0, TOP + (r - r0) * rh + (rh - bh) / 2, Math.max(1, (v / max) * (L.barW - 2)), bh);
+          ctx.fillRect(x0, TOP + (r - r0) * rh + (rh - bh) / 2, Math.max(1, (v / barMax) * (L.barW - 2)), bh);
         }
       });
       // selection shading + hover line
@@ -393,23 +425,85 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       }
       ctx.restore();
       // frames
-      ctx.strokeStyle = c.grid;
+      ctx.strokeStyle = c.dark ? "#8c8c8c" : "#262626";
+      ctx.lineWidth = 0.8;
       [[L.snvX, L.snvW], [L.ecX, L.ecW]].forEach(([x, w]) => w && ctx.strokeRect(x + 0.5, TOP + 0.5, w - 1, plotH - 1));
       cnGeo?.ext.forEach(([a, b]) => ctx.strokeRect(L.cnX + a + 0.5, TOP + 0.5, b - a - 1, plotH - 1));
-      // header: walk structures over the CN columns, then gene markers
+      bars.forEach((_, k) => ctx.strokeRect(L.barsX + k * (L.barW + GAP) + 0.5, TOP + 0.5, L.barW - 1, plotH - 1));
+      ctx.lineWidth = 1;
+
+      // ---- header
+      // rotated strip titles
+      const vtext = (txt, x, yBottom, role = "head", inkName = "text") => {
+        ctx.save();
+        ctx.translate(x, yBottom);
+        ctx.rotate(-Math.PI / 2);
+        textRole(ctx, c, role, inkName);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(txt, 0, 0);
+        ctx.restore();
+      };
+      vtext("Clade", L.clade + STRIP / 2, TOP - 4);
+      vtext("Cell state", L.state + STRIP / 2, TOP - 4);
+      // legend ramps: VAF over the SNV panels, CN over the heatmap's left edge
+      const ramp = (x, y, w, stops, labels, title) => {
+        textRole(ctx, c, "label", "text");
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(title, x, y - 2);
+        const g = ctx.createLinearGradient(x, 0, x + w, 0);
+        stops.forEach(([t, col]) => g.addColorStop(t, col));
+        ctx.fillStyle = g;
+        ctx.fillRect(x, y, w, 7);
+        ctx.strokeStyle = c.grid;
+        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, 6);
+        textRole(ctx, c, "tick");
+        ctx.textBaseline = "top";
+        labels.forEach(([t, txt]) => {
+          ctx.textAlign = t <= 0 ? "left" : t >= 1 ? "right" : "center";
+          ctx.fillText(txt, x + t * w, y + 9);
+        });
+        ctx.textBaseline = "middle";
+      };
+      if (snvImg || ecImg) {
+        const rx = snvImg ? L.snvX : L.ecX;
+        ramp(rx, 16, Math.min(120, (snvImg ? L.snvW : L.ecW) - 4), [[0, c.dark ? "#2a2a2a" : "#ffffff"], [1, c.dark ? "#f0f0f0" : "#141414"]], [[0, "0"], [0.5, "0.5"], [1, "1"]], "Variant allele frequency");
+      }
+      if (cnGeo) {
+        const stops = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), ampliconCss(v)]);
+        const labs = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), `${v}`]);
+        ramp(L.cnX, 16, Math.min(180, L.cnW * 0.4), stops, labs, "Copy number");
+      }
+      if (bars.length) {
+        textRole(ctx, c, "label", "text");
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText("Amplicon copies", L.barsX + (bars.length * (L.barW + GAP) - GAP) / 2, TOP - 18);
+        textRole(ctx, c, "tick");
+        ctx.textBaseline = "bottom";
+        bars.forEach((_, k) => {
+          const x0 = L.barsX + k * (L.barW + GAP);
+          ctx.textAlign = "left";
+          ctx.fillText("0", x0, TOP - 3);
+          ctx.textAlign = "right";
+          ctx.fillText(`${Math.round(barMax)}`, x0 + L.barW, TOP - 3);
+        });
+      }
+      // focused-variant track over the CN columns, then gene markers
       if (cnGeo) {
         const gx = (g) => {
           const e = cnGeo.ext.find(([, , d]) => g >= d[0] && g <= d[1]);
           return e ? L.cnX + e[0] + ((g - e[2][0]) / (e[2][1] - e[2][0])) * (e[1] - e[0]) : null;
         };
-        shownWalks.forEach((w, k) => {
-          const y = GENE_ROW + k * TRACK_H + TRACK_H / 2;
-          const focus = w.id === focusWalk?.id;
-          ctx.strokeStyle = c.grid;
-          ctx.beginPath();
-          ctx.moveTo(L.cnX, y + 0.5);
-          ctx.lineTo(L.cnX + L.cnW, y + 0.5);
-          ctx.stroke();
+        const w = focusWalk;
+        const y = HEAD_H + TRACK_H / 2;
+        ctx.strokeStyle = c.grid;
+        ctx.beginPath();
+        ctx.moveTo(L.cnX, y + 0.5);
+        ctx.lineTo(L.cnX + L.cnW, y + 0.5);
+        ctx.stroke();
+        if (w) {
           ctx.fillStyle = colorOf(w.id);
           (w.nodes || []).forEach((nd) => {
             const chr = `${nd.chromosome}`.replace(/^chr/, "");
@@ -419,20 +513,24 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             if (a == null && b == null) return;
             const xa = a ?? L.cnX;
             const xb = b ?? L.cnX + L.cnW;
-            ctx.fillRect(xa, y - (focus ? 4 : 3), Math.max(1.5, xb - xa), focus ? 8 : 6);
+            ctx.fillRect(xa, y - 4, Math.max(1.5, xb - xa), 8);
           });
-          textRole(ctx, c, "tick", focus ? "text" : "textSecondary");
+          textRole(ctx, c, "label", "text");
+          ctx.fillStyle = colorOf(w.id);
+          ctx.font = ctx.font.replace(/^(\d+ )?/, "600 ");
           ctx.textAlign = "right";
-          ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, Math.max(40, L.cnX - L.data0 - 6)), L.cnX - 4, y);
-        });
+          ctx.textBaseline = "middle";
+          const room = L.cnX - (L.ecW ? L.ecX : L.snvW ? L.snvX + L.snvW : L.data0) - 6;
+          if (room > 30) ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, room), L.cnX - 4, y);
+        }
       }
       const placed = [];
       geneMarks.forEach(({ gene, x, amp }) => {
         ctx.fillStyle = amp ? c.text : c.muted;
         ctx.beginPath();
-        ctx.moveTo(x - 4, GENE_ROW - 8);
-        ctx.lineTo(x + 4, GENE_ROW - 8);
-        ctx.lineTo(x, GENE_ROW - 2);
+        ctx.moveTo(x - 4, GENE_ROW + 6);
+        ctx.lineTo(x + 4, GENE_ROW + 6);
+        ctx.lineTo(x, GENE_ROW + 12);
         ctx.closePath();
         ctx.fill();
         textRole(ctx, c, "label", amp ? "text" : "textSecondary");
@@ -442,20 +540,17 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         if (placed.some(([l, r]) => box[0] < r && box[1] > l)) return;
         placed.push(box);
         ctx.textAlign = "center";
-        ctx.fillText(gene, x, GENE_ROW - 15);
+        ctx.textBaseline = "middle";
+        ctx.fillText(gene, x, GENE_ROW);
       });
-      // bottom: titles, genome axis, ideogram
+
+      // ---- bottom: panel titles, genome axis, ideogram with a zoom funnel, bar labels
       const yb = TOP + plotH + 3;
-      textRole(ctx, c, "tick");
+      textRole(ctx, c, "head", "text");
       ctx.textBaseline = "top";
       ctx.textAlign = "center";
-      ctx.fillText("C", L.clade + STRIP / 2, yb);
-      ctx.fillText("S", L.state + STRIP / 2, yb);
-      textRole(ctx, c, "head");
-      ctx.textBaseline = "top";
-      ctx.textAlign = "center";
-      if (snvImg) ctx.fillText(fitText(ctx, `Whole-genome SNVs (${snvImg.nSites.toLocaleString()})`, L.snvW), L.snvX + L.snvW / 2, yb + 2);
-      if (ecImg) ctx.fillText(fitText(ctx, `ecDNA SNVs (${ecSites.length})`, L.ecW + 20), L.ecX + L.ecW / 2, yb + 2);
+      if (snvImg) ctx.fillText(fitText(ctx, `Whole-genome SNVs (${snvImg.nSites.toLocaleString()})`, L.snvW), L.snvX + L.snvW / 2, yb + 3);
+      if (ecImg) ctx.fillText(fitText(ctx, `ecDNA SNVs (${ecSites.length})`, L.ecW + 24), L.ecX + L.ecW / 2, yb + 3);
       if (cnGeo) {
         cnGeo.ext.forEach(([a, b, d]) => {
           const p0 = chromOf(chromoBins, d[0]);
@@ -467,58 +562,61 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           ctx.fillText(`${(p0.pos / 1e6).toFixed(1)}`, L.cnX + a + 1, yb);
           ctx.textAlign = "right";
           if (p1) ctx.fillText(`${(p1.pos / 1e6).toFixed(1)} Mb`, L.cnX + b - 1, yb);
-          // ideogram of the chromosome with the window marked
+          textRole(ctx, c, "head", "text");
+          ctx.textAlign = "center";
+          ctx.fillText(`chr${p0.chr}: ${(p0.pos / 1e6).toFixed(1)}–${p1 ? (p1.pos / 1e6).toFixed(1) : "?"} Mb`, L.cnX + (a + b) / 2, yb);
+          // ideogram of the chromosome with the window marked, joined to the heatmap by a funnel
           const bands = cytobands.filter((cb) => `${cb.chromosome}`.replace(/^chr/, "") === p0.chr);
           const bin = chromoBins[p0.chr];
-          const iy = yb + AXIS_H;
-          const ix0 = L.cnX + a;
-          const iw = b - a;
+          const iy = yb + AXIS_H + 14;
+          const iw = Math.min(b - a, 360);
+          const ix0 = L.cnX + (a + b) / 2 - iw / 2;
           const len = bin.endPoint || bin.endPlace - bin.startPlace;
+          const wa = ix0 + (p0.pos / len) * iw;
+          const wb = p1 ? ix0 + (p1.pos / len) * iw : wa + 2;
+          ctx.fillStyle = c.dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+          ctx.beginPath();
+          ctx.moveTo(L.cnX + a, yb + AXIS_H - 2);
+          ctx.lineTo(L.cnX + b, yb + AXIS_H - 2);
+          ctx.lineTo(wb + 1, iy - 1);
+          ctx.lineTo(wa - 1, iy - 1);
+          ctx.closePath();
+          ctx.fill();
           bands.forEach((cb) => {
             ctx.fillStyle = STAIN[cb.stain] || "#dcdcdc";
             const xa = ix0 + (Number(cb.startPoint) / len) * iw;
             const xb = ix0 + (Number(cb.endPoint) / len) * iw;
-            ctx.fillRect(xa, iy, Math.max(0.5, xb - xa), 8);
+            ctx.fillRect(xa, iy, Math.max(0.5, xb - xa), 9);
           });
-          ctx.strokeStyle = c.muted;
-          ctx.strokeRect(ix0 + 0.5, iy + 0.5, iw - 1, 8);
+          ctx.strokeStyle = c.dark ? "#8c8c8c" : "#595959";
+          ctx.strokeRect(ix0 + 0.5, iy + 0.5, iw - 1, 9);
           ctx.strokeStyle = "#e53935";
           ctx.lineWidth = 1.6;
-          const wa = ix0 + (p0.pos / len) * iw;
-          const wb = p1 ? ix0 + (p1.pos / len) * iw : wa + 2;
-          ctx.strokeRect(wa - 0.5, iy - 2, Math.max(2, wb - wa + 1), 12);
+          ctx.strokeRect(wa - 0.5, iy - 2, Math.max(2, wb - wa + 1), 13);
           ctx.lineWidth = 1;
-          textRole(ctx, c, "head");
+          textRole(ctx, c, "head", "text");
           ctx.textBaseline = "top";
           ctx.textAlign = "center";
-          ctx.fillText(`chr${p0.chr}`, ix0 + iw / 2, iy + 11);
+          ctx.fillText(`chr${p0.chr}`, ix0 + iw / 2, iy + 13);
         });
       }
-      bars.forEach(({ w, max }, k) => {
+      bars.forEach(({ w }, k) => {
         const x0 = L.barsX + k * (L.barW + GAP);
-        textRole(ctx, c, "tick");
-        ctx.textBaseline = "top";
-        ctx.textAlign = "left";
-        ctx.fillText("0", x0 + 1, yb);
-        ctx.textAlign = "right";
-        ctx.fillText(`${Math.round(max)}`, x0 + L.barW, yb);
+        ctx.save();
+        ctx.translate(x0 + L.barW / 2, yb + 3);
+        ctx.rotate(-Math.PI / 2);
         textRole(ctx, c, "label", "text");
         ctx.fillStyle = colorOf(w.id);
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
         ctx.font = ctx.font.replace(/^(\d+ )?/, w.id === focusWalk?.id ? "700 " : "500 ");
-        ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, L.barW + GAP - 2), x0 + L.barW / 2, yb + 14);
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, barLabH - 6), 0, 0);
+        ctx.restore();
       });
-      if (bars.length) {
-        textRole(ctx, c, "caption");
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillText("copies per cell", L.barsX + (bars.length * (L.barW + GAP) - GAP) / 2, yb + 30);
-      }
       ctx.textBaseline = "middle";
       return [];
     },
-    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, cellById, sc.cloneColors, stateColors, L, snvImg, ecImg, cnImg, bars, colorOf, hoverRow, cnGeo, shownWalks, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
+    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, cellById, sc.cloneColors, stateColors, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
   );
 
   // ---- interaction
@@ -527,13 +625,17 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     return y >= TOP && y < TOP + plotH && r >= r0 && r < r1 ? r : -1;
   };
   const hitTest = (x, y) => {
-    if (y < GENE_ROW) {
-      const m = geneMarks.find((g) => Math.abs(g.x - x) < 14);
-      return m ? { kind: "gene", m } : null;
-    }
     if (y < TOP) {
-      const k = Math.floor((y - GENE_ROW) / TRACK_H);
-      return k >= 0 && k < shownWalks.length && x >= L.data0 ? { kind: "walk", w: shownWalks[k] } : null;
+      if (y >= GENE_ROW - 10 && y < HEAD_H && x >= L.cnX && x < L.cnX + L.cnW) {
+        const m = geneMarks.find((g) => Math.abs(g.x - x) < 14);
+        return m ? { kind: "gene", m } : null;
+      }
+      if (y >= HEAD_H && focusWalk && x >= L.cnX - 140 && x < L.cnX + L.cnW) return { kind: "walk", w: focusWalk };
+      if (x >= L.barsX && bars.length) {
+        const k = Math.floor((x - L.barsX) / (L.barW + GAP));
+        return k >= 0 && k < bars.length ? { kind: "walk", w: bars[k].w } : null;
+      }
+      return null;
     }
     if (y >= TOP + plotH) {
       const k = Math.floor((x - L.barsX) / (L.barW + GAP));
@@ -641,7 +743,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const familyOptions = families.map((f) => ({ label: f.map((w) => w.label || w.name || w.id).slice(0, 3).join(" · ") + (f.length > 3 ? ` +${f.length - 3}` : ""), options: f.map((w) => ({ value: w.id, label: `${w.label || w.name || `walk ${w.id}`} (${order.filter((id) => (Number(w.cells?.[id]) || 0) >= 1).length} cells)` })) }));
   return (
     <div ref={ref}>
-      <Space size={10} wrap style={{ marginBottom: 6 }}>
+      <Space size={10} wrap align="center" style={{ marginBottom: 4 }}>
+        <span className="sc-fig-patient">{patient}</span>
         <Text type="secondary">ecDNA variant</Text>
         <Select size="small" style={{ width: 260 }} value={focusWalk?.id} options={familyOptions} onChange={(v) => onFocusWalk?.(v)} placeholder="No ecDNA walks" />
         <Space size={4}>
@@ -655,8 +758,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             Reset zoom
           </Button>
         )}
-        <Text type="secondary" style={{ fontSize: 12 }}>Scroll over the heatmap to zoom the genome, over the tree to zoom the rows; double-click a node to zoom to its clade, elsewhere to reset.</Text>
       </Space>
+      <PanelHead letter="A" title="Clonal structure of the amplicon" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" />
       <FigureCanvas
         width={width}
         height={height}
@@ -759,9 +862,9 @@ export function PatientVariants({ patient, events = [], focusWalkId, onFocusWalk
   const { order, colorOf, focusWalk, family } = useFocusFamily(focusWalkId);
   if (!ready || !family.length) return null;
   return (
-    <Row gutter={[24, 12]} style={{ marginTop: 14 }}>
+    <Row gutter={[24, 12]} className="sc-fig-block">
       <Col xs={24} xl={14}>
-        <div className="sc-fig-subtitle">ecDNA variants <span>Fig 4C · how the walks derive from one another · click a variant</span></div>
+        <PanelHead letter="B" title="ecDNA variants" fig="Fig 4C" hint="how the walks derive from one another · click a variant to focus it" />
         <VariantTree
           family={family}
           order={order}
@@ -776,7 +879,7 @@ export function PatientVariants({ patient, events = [], focusWalkId, onFocusWalk
         />
       </Col>
       <Col xs={24} xl={10}>
-        <div className="sc-fig-subtitle">Structure of the focused variant <span>the report&apos;s walk diagram</span></div>
+        <PanelHead letter="C" title={`Structure of ${focusWalk?.label || "the focused variant"}`} hint="the report's walk diagram" />
         {focusWalk && <WalkDiagram walk={focusWalk} colorOf={colorOf} cellIds={order} />}
       </Col>
     </Row>
@@ -821,13 +924,13 @@ export function PatientProfiles({ patient, focusWalkId, domains = [], events = [
   }, [events, focusWalk, chromoBins]);
   if (!ready || !domains.length) return null;
   return (
-    <Row gutter={[24, 12]} style={{ marginTop: 14 }}>
+    <Row gutter={[24, 12]} className="sc-fig-block">
       <Col xs={24} xl={13}>
-        <div className="sc-fig-subtitle">Cell copy-number profiles <span>Fig 4E · selected cells (up to 3), else carriers and a non-carrier · follows the figure&apos;s zoom</span></div>
+        <PanelHead letter="D" title="Single-cell copy-number profiles" fig="Fig 4E" hint="selected cells (up to 3), else carriers and a non-carrier · follows A's zoom" />
         <CellProfiles order={order} focusWalk={focusWalk} domains={domains} cellById={cellById} />
       </Col>
       <Col xs={24} xl={11}>
-        <div className="sc-fig-subtitle">Segment co-variation <span>Fig 5C · {sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumour cells (down)</span></div>
+        <PanelHead letter="E" title="Segment co-variation" fig="Fig 5C" hint={`${sel.length >= 3 ? "selected cells" : `${focusWalk?.label || "variant"} carriers`} (up) vs other tumour cells (down)`} />
         <TriangleCorrelation order={order} cnById={cnById} domains={domains} groupA={groupA} groupB={groupB} labelA={sel.length >= 3 ? "Selected cells" : `${focusWalk?.label || "variant"} carriers`} labelB="Other tumour cells" walk={focusWalk} colorOf={colorOf} genes={genes} />
       </Col>
     </Row>

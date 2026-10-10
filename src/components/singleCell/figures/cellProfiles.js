@@ -95,7 +95,8 @@ export default function CellProfiles({ order = [], focusWalk, domains = [], cell
         const alts = (raw?.connections || [])
           .filter((c) => c.type === "ALT")
           .map((c) => ({ c, s: breakend(intervals, c.source, true, chromoBins), e: breakend(intervals, c.sink, false, chromoBins) }))
-          .filter(({ s, e }) => (s != null && gx(s) != null) || (e != null && gx(e) != null));
+          // both breakends in view (one-sided junctions leave the region: they would only add clutter)
+          .filter(({ s, e }) => s != null && e != null && gx(s) != null && gx(e) != null);
         const cov = t?.cov?.status === "ok" ? t.cov.data : null;
         const pts = [];
         if (cov) {
@@ -144,22 +145,21 @@ export default function CellProfiles({ order = [], focusWalk, domains = [], cell
           ctx.strokeRect(a + 0.5, y0 + 0.5, b - a - 1, y1 - y0 - 1);
         });
         // coverage dots
-        ctx.fillStyle = c.dark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.32)";
+        ctx.fillStyle = c.dark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.6)";
         p.pts.forEach(([g, v]) => {
           const x = gx(g);
-          if (x != null) ctx.fillRect(x - 0.7, sy(Math.max(0, v)) - 0.7, 1.4, 1.4);
+          if (x != null) ctx.fillRect(x - 0.8, sy(Math.max(0, v)) - 0.8, 1.6, 1.6);
         });
-        // segments
-        ctx.strokeStyle = c.text;
-        ctx.lineWidth = 2.4;
+        // segments: grey boxes at their copy number (gGnome style, as in the paper)
+        ctx.lineWidth = 0.8;
         p.segs.forEach(({ a, b, y }) => {
           const xa = gx(Math.max(a, ext[0]?.[2][0] ?? a)) ?? gx(a);
           const xb = gx(Math.min(b, ext[ext.length - 1]?.[2][1] ?? b)) ?? gx(b);
           if (xa == null || xb == null) return;
-          ctx.beginPath();
-          ctx.moveTo(xa, sy(y));
-          ctx.lineTo(xb, sy(y));
-          ctx.stroke();
+          ctx.fillStyle = c.dark ? "#8c8c8c" : "#cfcfcf";
+          ctx.fillRect(xa, sy(y) - 2.5, Math.max(1, xb - xa), 5);
+          ctx.strokeStyle = c.dark ? "#d9d9d9" : "#595959";
+          ctx.strokeRect(xa + 0.5, sy(y) - 2, Math.max(1, xb - xa - 1), 4.5);
           hits.push({ x0: xa, x1: xb, y0: sy(y) - 4, y1: sy(y) + 4, kind: "seg", p, y, a, b });
         });
         ctx.lineWidth = 1;
@@ -167,8 +167,8 @@ export default function CellProfiles({ order = [], focusWalk, domains = [], cell
         p.alts.forEach(({ c: con, s, e }) => {
           const xs = s != null ? gx(s) : null;
           const xe = e != null ? gx(e) : null;
-          ctx.strokeStyle = "#d32f2f";
-          ctx.lineWidth = 1.3;
+          ctx.strokeStyle = c.dark ? "rgba(239,111,108,0.8)" : "rgba(198,40,40,0.7)";
+          ctx.lineWidth = 1.1;
           ctx.beginPath();
           if (xs != null && xe != null) {
             // arc above the plot, height growing with the span (kept under the title)
@@ -211,7 +211,7 @@ export default function CellProfiles({ order = [], focusWalk, domains = [], cell
         onClick={(h) => h.kind === "title" && dispatch(singleCellActions.updateSelection([h.p.id]))}
       />
       <Space size={12} className="sc-fig-keys">
-        <span className="sc-fig-key"><span className="sc-fig-swatch" style={{ background: "#262626", height: 3 }} />JaBbA segment CN</span>
+        <span className="sc-fig-key"><span className="sc-fig-swatch" style={{ background: "#cfcfcf", border: "1px solid #595959", height: 6, width: 14 }} />JaBbA segment CN</span>
         <span className="sc-fig-key"><span className="sc-fig-swatch" style={{ background: "rgba(0,0,0,0.35)", width: 4, height: 4 }} />read depth (CN units)</span>
         <span className="sc-fig-key"><span className="sc-fig-swatch" style={{ background: "#d32f2f", height: 2 }} />ALT junction</span>
       </Space>

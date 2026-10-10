@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, Col, Collapse, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Typography } from "antd";
-import { ApartmentOutlined, BarChartOutlined, BranchesOutlined, NodeIndexOutlined } from "@ant-design/icons";
+import { BarChartOutlined, BranchesOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { groupCombinations, subclonalFindings, walkGroups } from "../../../helpers/singleCell/figures";
@@ -11,6 +11,7 @@ import SubclonalFindingsTable from "./subclonalFindingsTable";
 import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
 import { useFigureStyleName } from "./figureCanvas";
+import { PanelHead } from "./figureKit";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
 import PatientFigure, { PatientCladeStates, PatientProfiles, PatientVariants } from "./patientFigure";
@@ -222,20 +223,20 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
 
   return (
     <div ref={rootDiv}>
-      <div className="sc-fig-selbar-wrap">
-        <SelectionBar />
+      <div className="sc-fig-selbar-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+        <div style={{ flex: "1 1 420px" }}>
+          <SelectionBar />
+        </div>
+        <Space size={6}>
+          <Text type="secondary">Figure style</Text>
+          <Segmented size="small" value={styleName || DEFAULT_FIGURE_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figureStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
+        </Space>
       </div>
       <Row gutter={[16, 16]}>
         <Col span={24}>
-          <Space size={8} wrap>
-            <Text type="secondary">Figure style</Text>
-            <Segmented size="small" value={styleName || DEFAULT_FIGURE_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figureStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
-          </Space>
-        </Col>
-        <Col span={24}>
           <Card
             size="small"
-            title={<Space><BranchesOutlined />Amplicon landscape <Provenance id="figLandscape" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3A–B</Text></Space>}
+            title={<Space><BranchesOutlined />Figure 3 · Amplicons across the cohort <Provenance id="figLandscape" /></Space>}
             extra={
               <Space wrap size={10}>
                 <Space size={4}><Switch size="small" checked={curatedOnly} onChange={setCuratedOnly} /><Text>Curated walks</Text></Space>
@@ -248,8 +249,9 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             {!withAmps.length ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No ecDNA walks pass the filters" />
             ) : (
-              <Row gutter={16}>
-                <Col xs={24} xl={13}>
+              <Row gutter={[24, 8]}>
+                <Col xs={24} xl={14}>
+                  <PanelHead letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row to open the patient below" />
                   <AmpliconViolins
                     per={withAmps}
                     selected={selectedViolin}
@@ -258,7 +260,8 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                     onSelect={({ patient: p, key }, event) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key), mode: event?.shiftKey ? "add" : "replace" })}
                   />
                 </Col>
-                <Col xs={24} xl={11}>
+                <Col xs={24} xl={10}>
+                  <PanelHead letter="B" title="Amplicon combinations per cell" fig="Fig 3B" hint="click a row to select those cells" />
                   <AmpliconUpset
                     per={withAmps}
                     selected={null}
@@ -267,35 +270,34 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 </Col>
               </Row>
             )}
-          </Card>
-        </Col>
-        <Col xs={24} xxl={11}>
-          <Card size="small" title={<Space><NodeIndexOutlined />Inherited or redrawn? <Provenance id="figPhyloSignal" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 3E, every amplicon</Text></Space>}>
-            <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
-            <div className="sc-fig-caption">
-              Above the dashed line, copies follow the tree: cells inherit their parent&apos;s load (as for EGFR ecDNA in BWH70). Near the controls, copies are redrawn at each division. Click a walk to open it below.
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} xxl={13}>
-          <Card size="small" title={<Space><ApartmentOutlined />Subclonal findings <Provenance id="figSubclonal" /> <Text type="secondary" style={{ fontWeight: 400 }}>· new: driver events and amplicons in part of a tumour, following the tree</Text></Space>}>
-            <SubclonalFindingsTable
-              findings={findings}
-              cloneColors={cloneColors}
-              selectedKey={regionKey?.startsWith("f:") ? regionKey.slice(2) : null}
-              onSelect={(f) => focus(f.patient, { region: `f:${f.key}`, marked: { cells: f.carriers, label: `${f.label} carriers`, key: `f:${f.key}` } })}
-            />
+            <Row gutter={[24, 8]} className="sc-fig-block">
+              <Col xs={24} xxl={11}>
+                <PanelHead letter="C" title="Inherited or redrawn at each division?" fig="Fig 3E" hint="click a walk to open it below" />
+                <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+                <div className="sc-fig-caption">
+                  Above the dashed line, copies follow the tree: cells inherit their parent&apos;s load (as for EGFR ecDNA in BWH70). Near the controls, copies are redrawn at each division.
+                </div>
+              </Col>
+              <Col xs={24} xxl={13}>
+                <PanelHead letter="D" title="Subclonal findings" hint="driver events and amplicons in part of a tumour, following the tree · click a row" extra={<Provenance id="figSubclonal" />} />
+                <SubclonalFindingsTable
+                  findings={findings}
+                  cloneColors={cloneColors}
+                  selectedKey={regionKey?.startsWith("f:") ? regionKey.slice(2) : null}
+                  onSelect={(f) => focus(f.patient, { region: `f:${f.key}`, marked: { cells: f.carriers, label: `${f.label} carriers`, key: `f:${f.key}` } })}
+                />
+              </Col>
+            </Row>
           </Card>
         </Col>
         <Col span={24}>
           <div ref={patientRef} style={{ scrollMarginTop: 12 }} />
           <Card
             size="small"
-            title={<Space><BarChartOutlined />Clonal amplicon figure <Provenance id="figClonalAmplicon" /> <Text type="secondary" style={{ fontWeight: 400 }}>· Fig 4B–C / 5D · live: the patient&apos;s tree, cells and walks</Text></Space>}
+            title={<Space><BarChartOutlined />Figures 4–5 · Clonal amplicon figure <Provenance id="figClonalAmplicon" /></Space>}
             extra={
               <Space wrap size={8}>
                 <Segmented size="small" value={current?.patient} onChange={(p) => { setPatient(p); setRegionKey(null); }} options={per.map((p) => ({ value: p.patient, label: p.patient }))} />
-                <Select size="small" showSearch style={{ width: 220 }} value={region.key || undefined} placeholder="Region" options={regionOptions} onChange={(v) => setRegionKey(v)} />
               </Space>
             }
           >
@@ -319,17 +321,17 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
               />
             )}
             {current && <PatientProfiles patient={current.patient} focusWalkId={focusWalkId} domains={figDomains} events={current.events} />}
-            <Row gutter={[24, 16]} style={{ marginTop: 14 }}>
+            <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={9}>
-                <div className="sc-fig-subtitle">Copies of one amplicon against another <span>Fig 5E · lasso to select</span></div>
+                <PanelHead letter="F" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select" />
                 {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={7}>
-                <div className="sc-fig-subtitle">Carriers per clade <span>Fig 4F · click a bar</span></div>
+                <PanelHead letter="G" title="Carriers per clade" fig="Fig 4F" hint="click a bar" />
                 {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={8}>
-                <div className="sc-fig-subtitle">Amplicon state per clade <span>Fig 5F · of the focused variant · click a clade</span></div>
+                <PanelHead letter="H" title="Amplicon state per clade" fig="Fig 5F" hint="focused variant · click a clade" />
                 {current && <PatientCladeStates patient={current.patient} focusWalkId={focusWalkId} onSelectCells={(ids, label) => select(current.patient, ids, { label })} />}
               </Col>
             </Row>
@@ -341,7 +343,12 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
               items={[
                 {
                   key: "live",
-                  label: <Text type="secondary">Live report panels for {current?.patient}: zoomable heatmap, walk copies along the tree, walk structures and co-occurrence</Text>,
+                  label: (
+                    <Space size={8} wrap>
+                      <Text type="secondary">Live report panels for {current?.patient}: zoomable heatmap, walk copies along the tree, walk structures and co-occurrence</Text>
+                      <Select size="small" showSearch style={{ width: 220 }} value={region.key || undefined} placeholder="Region" options={regionOptions} onChange={(v) => setRegionKey(v)} onClick={(e) => e.stopPropagation()} />
+                    </Space>
+                  ),
                   children: showLive.includes("live") && current ? <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={marked} /> : null,
                 },
               ]}
