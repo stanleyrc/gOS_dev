@@ -2410,6 +2410,7 @@
         "no-co-events": "No other event differs between the groups",
         "event": "Event",
         "expr-title": "Expression: carriers vs comparator",
+        "pick-gene": "Click a gene on the volcano or in the table to see its expression per cell (Shift-click or drag a lasso to compare up to 6 genes).",
         "expr-hint": "Wilcoxon test within each plate holding both groups, combined across plates (weighted Stouffer), so a plate effect cannot pass as a driver effect. Genes are labelled near the driver (locus), explained by their own copy-number difference (CN) or neither (trans: candidate downstream effects).",
         "too-few-rna": "Too few cells with RNA to compare ({{a}} carriers, {{b}} comparator; 3 of each needed).",
         "pooled": "No plate holds both groups, so cells were compared without stratifying: plate and driver effects cannot be separated.",
