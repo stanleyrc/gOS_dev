@@ -51,6 +51,7 @@ import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import CohortFiguresPanel from "./figures/cohortFiguresPanel";
+import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
 import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
@@ -500,6 +501,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 if (s) dispatch(datasetsActions.openCaseReport(s.record.datasetId, cellId));
               }}
             />
+          </Col>
+        )}
+        {view === "cnexpr" && (
+          <Col span={24}>
+            <CohortCnExpressionPanel summaries={summaries} files={files} datasets={datasets} cnRows={rows} />
           </Col>
         )}
         {view === "treeshape" && (
