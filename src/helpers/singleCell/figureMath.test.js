@@ -1,4 +1,4 @@
-import { ancestralBinary, packStoreSnv, variantNesting, walkDomains, compressLongBranches, contourSegments, countBy, figureRows, fitLine, kde2d, leavesUnder, logKde, niceLogDomain, niceTicks, pointInPolygon, pruneLayout } from "./figureMath";
+import { mannWhitney, pStars, ancestralBinary, packStoreSnv, variantNesting, walkDomains, compressLongBranches, contourSegments, countBy, figureRows, fitLine, kde2d, leavesUnder, logKde, niceLogDomain, niceTicks, pointInPolygon, pruneLayout } from "./figureMath";
 import { layoutTree, parseNewick } from "./newick";
 
 describe("figure math", () => {
@@ -116,5 +116,24 @@ describe("figure math", () => {
 
   it("counts levels", () => {
     expect(countBy([{ s: "AC" }, { s: "AC" }, { s: "MES" }, {}], "s")).toEqual([["AC", 2], ["MES", 1], ["NA", 1]]);
+  });
+});
+
+describe("rank-sum test", () => {
+  it("separates shifted samples and not identical ones", () => {
+    const a = Array.from({ length: 30 }, (_, i) => i);
+    const b = Array.from({ length: 30 }, (_, i) => i + 25);
+    expect(mannWhitney(a, b).p).toBeLessThan(1e-4);
+    expect(mannWhitney(a, a.slice()).p).toBeGreaterThan(0.9);
+    expect(Number.isNaN(mannWhitney([1], [2, 3]).p)).toBe(true);
+  });
+  it("matches R's wilcox.test (normal approx) on a small example", () => {
+    // wilcox.test(c(1.83,0.50,1.62,2.48,1.68,1.88,1.55,3.06,1.30), c(0.878,0.647,0.598,2.05,1.06,1.29,1.06,3.14,1.29), exact=FALSE)$p.value ~ 0.1329
+    const { p } = mannWhitney([1.83, 0.5, 1.62, 2.48, 1.68, 1.88, 1.55, 3.06, 1.3], [0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29]);
+    expect(p).toBeGreaterThan(0.12);
+    expect(p).toBeLessThan(0.15);
+  });
+  it("gives stars", () => {
+    expect([1e-5, 5e-4, 5e-3, 0.03, 0.2].map(pStars)).toEqual(["****", "***", "**", "*", "ns"]);
   });
 });
