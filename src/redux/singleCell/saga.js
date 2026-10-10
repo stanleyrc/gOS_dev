@@ -11,7 +11,8 @@ import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders"
 import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
-import { parseNewick, treeForCells } from "../../helpers/singleCell/newick";
+import { parseNewick, rotateByLeafRank, treeForCells } from "../../helpers/singleCell/newick";
+import { linkAppliesTo, readDeepLink, readViewLink } from "../../helpers/singleCell/deepLink";
 import { cloneColorMap, defaultCellOrder } from "../../helpers/singleCell/matrix";
 import {
   allelicRowFromAllelic,
@@ -60,11 +61,13 @@ function* manifestRecords(dataset) {
 }
 
 /** Tree from the patient's tree.nwk, else inferred from SNVs, else from copy number. */
-function buildTree(treeFile, cellIds, snv, cn, genomeLength) {
+function buildTree(treeFile, cellIds, snv, cn, genomeLength, rankOf = null) {
   if (treeFile.status === "ok") {
     try {
       // Keep the parsed tree (source) so views can re-prune it, e.g. to hide clones.
-      const source = parseNewick(treeFile.data);
+      // A link's ?cloneorder= rotates it so those clones are drawn first.
+      const parsed = parseNewick(treeFile.data);
+      const source = rankOf ? rotateByLeafRank(parsed, rankOf) : parsed;
       const built = treeForCells(source, cellIds);
       if (built.layout) return { ...ok({ ...built, source }), method: "file" };
     } catch (error) {
@@ -194,7 +197,11 @@ function* fetchSingleCellData(action = {}) {
     const snv =
       snvRaw.status === "ok" && snvRaw.data.variants.length === 0 ? missing() : snvRaw;
 
-    const tree = buildTree(treeFile, cellIds, snv, cn, genomeLength);
+    const viewLink = linkAppliesTo(readDeepLink(), `${id}`) ? readViewLink() : null;
+    const cloneRank = new Map((viewLink?.cloneOrder || []).map((c, i) => [c, i]));
+    const cloneOfCell = new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id]));
+    const rankOf = cloneRank.size ? (name) => cloneRank.get(cloneOfCell.get(`${name}`)) : null;
+    const tree = buildTree(treeFile, cellIds, snv, cn, genomeLength, rankOf);
     let order = defaultCellOrder(cells);
     if (tree.status === "ok") {
       const unplaced = new Set(tree.data.unplaced);

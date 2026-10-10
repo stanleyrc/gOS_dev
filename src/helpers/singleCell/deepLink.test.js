@@ -97,3 +97,16 @@ describe("withCloneOverrides", () => {
     expect(withCloneOverrides({ A: "#000000", B: "#111111" }, { B: "#222222", C: "#333333" })).toEqual({ A: "#000000", B: "#222222" });
   });
 });
+
+describe("readViewLink tree / layout params", () => {
+  it("parses tree marks, clone order, walk view and figure switches", () => {
+    const l = readViewLink("?treemark=Lost:B2182B,Kept:%231B7837,bad&cloneorder=Clone2,Clone1&walkview=heatmap&figsel=0&figlayout=slide&yscale=individual");
+    expect(l.treeMarks).toEqual([{ group: "Lost", color: "#B2182B" }, { group: "Kept", color: "#1B7837" }]);
+    expect(l.cloneOrder).toEqual(["Clone2", "Clone1"]);
+    expect(l.walkView).toBe("heatmap");
+    expect(l.figSelect).toBe(false);
+    expect(l.figLayout).toBe("slide");
+    expect(l.yScale).toBe("individual");
+    expect(readViewLink("").figSelect).toBe(true);
+  });
+});
