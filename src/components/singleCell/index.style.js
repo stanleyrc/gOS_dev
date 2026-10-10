@@ -232,6 +232,71 @@ const Wrapper = styled.div`
     color: var(--sc-muted, #666);
     margin-left: 6px;
   }
+  .sc-fig-phead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+    margin: 2px 0 6px;
+    line-height: 1.35;
+  }
+  .sc-fig-letter {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--sc-text, #1f1f1f);
+    min-width: 14px;
+  }
+  .sc-fig-ptitle {
+    font-size: var(--sc-fs-label, 12.5px);
+    font-weight: 600;
+    color: var(--sc-text, #1f1f1f);
+  }
+  .sc-fig-pfig {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-text-secondary, #434343);
+    border: 1px solid var(--sc-border, #d9d9d9);
+    border-radius: 3px;
+    padding: 0 4px;
+    line-height: 16px;
+  }
+  .sc-fig-phint {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+  }
+  .sc-fig-pextra {
+    margin-left: auto;
+  }
+  .sc-fig-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 2px 0 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--sc-border-soft, #f0f0f0);
+  }
+  .sc-fig-section h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    color: var(--sc-text, #1f1f1f);
+  }
+  .sc-fig-section .sc-fig-section-sub {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+  }
+  .sc-fig-patient {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--sc-text, #1f1f1f);
+    margin-right: 6px;
+  }
+  .sc-fig-block {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--sc-border-soft, #f0f0f0);
+  }
   .sc-fig-empty {
     display: flex;
     align-items: center;

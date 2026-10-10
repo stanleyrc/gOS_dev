@@ -7,6 +7,7 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { columnCorrelations } from "../../../helpers/singleCell/figures";
 
 const K = 96; // positions across the windows
+const MIN_GROUP = 8; // fewer cells than this: no correlation drawn
 
 /**
  * Fig 5C, live: correlation of log copy number between positions across the
@@ -33,24 +34,39 @@ export default function TriangleCorrelation({ order = [], cnById, domains = [], 
       const rows = ids.map((id) => cnById.get(id)).filter(Boolean);
       const k = positions.length;
       const M = new Float32Array(rows.length * k);
-      rows.forEach((row, i) =>
+      rows.forEach((row, i) => {
+        let sum = 0;
         positions.forEach(({ g }, j) => {
           const b = binAt(row.binIndex, g);
           M[i * k + j] = b >= 0 ? Math.log1p(Math.max(0, row.values[b])) : 0;
-        })
-      );
+          sum += M[i * k + j];
+        });
+        // centre each cell on its own mean: removes cell-wide scaling (ploidy, depth), so only segments that move together stay correlated
+        const mean = sum / Math.max(1, k);
+        for (let j = 0; j < k; j += 1) M[i * k + j] -= mean;
+      });
       return { C: columnCorrelations(M, rows.length, k), n: rows.length };
     },
     [cnById, positions]
   );
   const up = useMemo(() => corr(groupA), [corr, groupA]);
   const low = useMemo(() => corr(groupB), [corr, groupB]);
+  const showLow = groupB.length >= MIN_GROUP;
   const k = positions.length;
+  const spans = useMemo(() => {
+    const out = [];
+    positions.forEach((p, i) => {
+      if (!out.length || positions[i - 1].d !== p.d) out.push([i, i]);
+      else out[out.length - 1][1] = i;
+    });
+    return out;
+  }, [positions]);
   const cw = (width - 20) / Math.max(1, k);
-  const half = (k * cw) / 2;
   const AXIS = 34;
-  const height = Math.round(2 * half + AXIS + 8);
-  const ax = height / 2; // axis line y
+  const maxSpan = Math.max(1, ...spans.map(([a, b]) => b - a + 1));
+  const half = (maxSpan * cw) / 2; // tallest window triangle
+  const height = Math.round(half + AXIS + 26 + (groupB.length >= MIN_GROUP ? half : 50));
+  const ax = 26 + half + AXIS / 2; // axis line y
   const x0 = 10;
 
   const draw = useCallback(
@@ -59,8 +75,9 @@ export default function TriangleCorrelation({ order = [], cnById, domains = [], 
       const tri = (C, dir) => {
         for (let i = 0; i < k; i += 1) {
           for (let j = i + 1; j < k; j += 1) {
+            if (positions[i].d !== positions[j].d) break; // one triangle per window, as in the paper
             const r = C[i * k + j];
-            const t = Number.isFinite(r) ? Math.max(0, Math.min(1, (r - 0.4) / 0.6)) : 0;
+            const t = Number.isFinite(r) ? Math.max(0, Math.min(1, (r - 0.5) / 0.5)) : 0;
             if (t <= 0.02) continue;
             const cx = x0 + ((i + j + 1) / 2) * cw;
             const cy = ax - dir * (AXIS / 2 + ((j - i) / 2) * cw);
@@ -74,23 +91,52 @@ export default function TriangleCorrelation({ order = [], cnById, domains = [], 
             ctx.fill();
           }
         }
-        // outline of the triangle
-        ctx.strokeStyle = c.grid;
-        ctx.beginPath();
-        ctx.moveTo(x0, ax - (dir * AXIS) / 2);
-        ctx.lineTo(x0 + half, ax - dir * (AXIS / 2 + half));
-        ctx.lineTo(x0 + 2 * half, ax - (dir * AXIS) / 2);
-        ctx.stroke();
+        // outline of each window's triangle
+        ctx.strokeStyle = c.dark ? "#8c8c8c" : "#595959";
+        ctx.lineWidth = 0.8;
+        spans.forEach(([a, b]) => {
+          const xa = x0 + a * cw;
+          const xb = x0 + (b + 1) * cw;
+          ctx.beginPath();
+          ctx.moveTo(xa, ax - (dir * AXIS) / 2);
+          ctx.lineTo((xa + xb) / 2, ax - dir * (AXIS / 2 + (xb - xa) / 2));
+          ctx.lineTo(xb, ax - (dir * AXIS) / 2);
+          ctx.closePath();
+          ctx.stroke();
+        });
+        ctx.lineWidth = 1;
       };
       tri(up.C, 1);
-      tri(low.C, -1);
+      if (showLow) tri(low.C, -1);
+      else {
+        textRole(ctx, c, "caption");
+        ctx.textAlign = "center";
+        ctx.fillText(`Only ${groupB.length} other tumour cell${groupB.length === 1 ? "" : "s"}: too few to correlate. Select a clade to compare it with the rest.`, x0 + (k * cw) / 2, ax + AXIS / 2 + 30);
+      }
+      // colour key
+      const kx = width - 96;
+      const g = ctx.createLinearGradient(kx, 0, kx + 80, 0);
+      g.addColorStop(0, "rgba(200,16,30,0)");
+      g.addColorStop(1, "rgba(200,16,30,1)");
+      ctx.fillStyle = g;
+      ctx.fillRect(kx, 18, 80, 7);
+      ctx.strokeStyle = c.grid;
+      ctx.strokeRect(kx + 0.5, 18.5, 79, 6);
+      textRole(ctx, c, "tick");
+      ctx.textAlign = "left";
+      ctx.fillText("0.5", kx, 32);
+      ctx.textAlign = "right";
+      ctx.fillText("1", kx + 80, 32);
+      textRole(ctx, c, "label", "text");
+      ctx.textAlign = "right";
+      ctx.fillText("Segment CN correlation (r)", kx + 80, 10);
       // axis band: windows, walk segments, genes
       const gx = (g) => {
         for (let j = 0; j < k - 1; j += 1) if (positions[j].g <= g && positions[j + 1].g >= g && positions[j].d === positions[j + 1].d) return x0 + (j + 0.5 + (g - positions[j].g) / (positions[j + 1].g - positions[j].g)) * cw;
         return null;
       };
       ctx.fillStyle = c.dark ? "#5a5a5a" : "#d0d0d0";
-      ctx.fillRect(x0, ax - 2, 2 * half, 4);
+      ctx.fillRect(x0, ax - 2, k * cw, 4);
       if (walk) {
         ctx.fillStyle = colorOf ? colorOf(walk.id) : "#2e7d32";
         (walk.nodes || []).forEach((nd) => {
@@ -112,7 +158,7 @@ export default function TriangleCorrelation({ order = [], cnById, domains = [], 
       textRole(ctx, c, "label", "text");
       ctx.textAlign = "left";
       ctx.fillText(`${labelA} (${up.n})`, x0, 10);
-      ctx.fillText(`${labelB} (${low.n})`, x0, height - 10);
+      if (showLow) ctx.fillText(`${labelB} (${low.n})`, x0, height - 10);
       // coarse hit grid
       const hits = [];
       const step = Math.max(1, Math.floor(k / 24));
@@ -121,13 +167,14 @@ export default function TriangleCorrelation({ order = [], cnById, domains = [], 
           [1, -1].forEach((dir) => {
             const cx = x0 + ((i + j + 1) / 2) * cw;
             const cy = ax - dir * (AXIS / 2 + ((j - i) / 2) * cw);
+            if (positions[i].d !== positions[j].d || (dir < 0 && !showLow)) return;
             hits.push({ x0: cx - step * cw * 0.5, x1: cx + step * cw * 0.5, y0: cy - step * cw * 0.5, y1: cy + step * cw * 0.5, i, j, dir });
           });
         }
       }
       return hits;
     },
-    [k, cw, ax, up, low, half, positions, walk, colorOf, chromoBins, genes, labelA, labelB, height]
+    [k, cw, ax, up, low, spans, showLow, groupB.length, width, positions, walk, colorOf, chromoBins, genes, labelA, labelB, height]
   );
   if (!domains.length || !groupA.length) return <div ref={ref} className="sc-fig-empty">Select cells (or focus a variant) to compare their co-variation with the rest.</div>;
   const pos = (g) => {
