@@ -84,8 +84,9 @@ export class ListView extends Component {
     super(props);
     this.state = {
       isChatOpen: false,
+      // ?scview=<view> deep-links into the Single-Cell Cohort tab (the panel reads the view itself)
       activeTab:
-        peekHelpTarget()?.scope === "cohort"
+        peekHelpTarget()?.scope === "cohort" || new URLSearchParams(window.location.search).get("scview")
           ? "singleCellCohort"
           : props.listViewTarget?.tab || "cases",
       favoriteModalOpen: false,
