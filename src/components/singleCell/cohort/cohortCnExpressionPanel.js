@@ -15,6 +15,7 @@ import { formatP } from "../../../helpers/singleCell/tests";
 import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { FONT, YAxis } from "./charts";
 import { loadRna } from "./cohortRnaPanel";
+import { loadGmt } from "../rna/geneSets";
 import HintLine from "../hintLine";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
@@ -24,6 +25,43 @@ const DEFAULT_GENES = ["EGFR", "SOX4", "SEC61G", "GAP43", "HSP90B1", "MRAS", "ST
 const GENE_INK = ["#6A3D9A", "#283593", "#1B7837", "#B35806"];
 const STATES = ["MES", "AC", "OPC", "NPC"];
 const STATE_INK = { MES: "#D7262B", AC: "#D18A2C", OPC: "#1B8A3A", NPC: "#3446A0" };
+// gene modules of the deck figure that exist in the app's MSigDB collections
+// (Weissman ER stress, Core UPR and the chromosomal-instability signature are
+// not in them; UPR uses the Hallmark set)
+const MODULES = [
+  { label: "DNA REPAIR", file: "hallmark.gmt", term: "HALLMARK_DNA_REPAIR" },
+  { label: "ATR IN RESPONSE TO REPLICATION STRESS", file: "reactome.gmt", term: "REACTOME_ACTIVATION_OF_ATR_IN_RESPONSE_TO_REPLICATION_STRESS" },
+  { label: "PI3K AKT MTOR SIGNALING", file: "hallmark.gmt", term: "HALLMARK_PI3K_AKT_MTOR_SIGNALING" },
+  { label: "HYPOXIA", file: "hallmark.gmt", term: "HALLMARK_HYPOXIA" },
+  { label: "REACTIVE OXYGEN SPECIES PATHWAY", file: "hallmark.gmt", term: "HALLMARK_REACTIVE_OXYGEN_SPECIES_PATHWAY" },
+  { label: "UNFOLDED PROTEIN RESPONSE (Hallmark)", file: "hallmark.gmt", term: "HALLMARK_UNFOLDED_PROTEIN_RESPONSE" },
+  { label: "MITOTIC SPINDLE", file: "hallmark.gmt", term: "HALLMARK_MITOTIC_SPINDLE" },
+];
+
+/** Module score per cell: mean over the set's genes of each gene's z-score within the patient. */
+function moduleScores(summary, matrix, genes) {
+  const n = summary.cells.length;
+  const out = new Float64Array(n);
+  let used = 0;
+  genes.forEach((g) => {
+    const gi = summary.geneIndex.get(g);
+    if (gi == null) return;
+    const v = geneValues(matrix, n, gi);
+    let m = 0;
+    for (let i = 0; i < n; i += 1) m += v[i];
+    m /= n;
+    let sd = 0;
+    for (let i = 0; i < n; i += 1) sd += (v[i] - m) ** 2;
+    sd = Math.sqrt(sd / Math.max(1, n - 1));
+    if (!(sd > 0)) return;
+    for (let i = 0; i < n; i += 1) out[i] += (v[i] - m) / sd;
+    used += 1;
+  });
+  if (!used) return null;
+  for (let i = 0; i < n; i += 1) out[i] /= used;
+  return out;
+}
+
 const fmtRho = (r) => (Number.isFinite(r) ? r.toFixed(2) : "–");
 
 /** Patients carrying an ecDNA walk that contains `gene` (walk gene set or nodes over the locus). */
@@ -99,7 +137,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380 }) {
 function StoufferDots({ rows, width, title }) {
   const ROW = 24;
   const groups = [...new Set(rows.map((r) => r.group))];
-  const M = { top: 34, right: 90, bottom: 44, left: 120 };
+  const M = { top: 34, right: 90, bottom: 44, left: 270 };
   const height = M.top + rows.length * ROW + (groups.length - 1) * 12 + M.bottom;
   const vals = rows.map((r) => r.score).filter(Number.isFinite);
   const CAP = 12;
@@ -168,6 +206,23 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
   const [shown, setShown] = useState("pooled");
   const [data, setData] = useState({});
   const [progress, setProgress] = useState(null);
+  const [moduleSets, setModuleSets] = useState({});
+  useEffect(() => {
+    let active = true;
+    Promise.all([...new Set(MODULES.map((m) => m.file))].map((f) => loadGmt(f).then((sets) => [f, sets]).catch(() => [f, []]))).then((loaded) => {
+      if (!active) return;
+      const byFile = Object.fromEntries(loaded);
+      const out = {};
+      MODULES.forEach((m) => {
+        const hit = (byFile[m.file] || []).find((x) => x.term === m.term);
+        if (hit) out[m.label] = hit.genes;
+      });
+      setModuleSets(out);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const ecdnaPatients = useMemo(() => patientsWithEcdna(summaries, files, cnGene), [summaries, files, cnGene]);
   const patients = scope === "ecdna" ? ecdnaPatients : summaries.map((s) => s.caseReportId);
@@ -222,6 +277,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
           return [g, gi == null ? null : geneValues(matrix, summary.cells.length, gi)];
         })
       );
+      const mods = Object.fromEntries(Object.entries(moduleSets).map(([label, set]) => [label, moduleScores(summary, matrix, set)]));
       summary.cells.forEach((c, k) => {
         const row = c.cell_id && rowOf.get(c.cell_id);
         if (!row) return;
@@ -232,22 +288,28 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
         genes.forEach((g) => (e[g] = expr[g] ? expr[g][k] : NaN));
         const state = `${c.state || ""}`.replace(/-like$/i, "");
         STATES.forEach((st) => (e[`state:${st}`] = c.state == null ? NaN : state === st ? 1 : 0));
+        Object.entries(mods).forEach(([label, sc]) => (e[`mod:${label}`] = sc ? sc[k] : NaN));
         out.push({ patient: p, cellId: c.cell_id, cn, state, expr: e });
       });
     });
     return out;
-  }, [ready.join(","), data, genes, locus?.start, tumorOnly, cnRows]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready.join(","), data, genes, locus?.start, tumorOnly, cnRows, moduleSets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const withData = [...new Set(records.map((r) => r.patient))];
-  const keys = [...genes, ...STATES.map((s) => `state:${s}`)];
+  const moduleLabels = MODULES.map((m) => m.label).filter((l) => moduleSets[l]);
+  const keys = [...genes, ...STATES.map((s) => `state:${s}`), ...moduleLabels.map((l) => `mod:${l}`)];
   const stats = useMemo(() => cnExpressionStats(records, keys, withData), [records, withData.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const boxGenes = genes.slice(0, 2);
   const shownRecords = useMemo(() => scaleExpression(shown === "pooled" ? records : records.filter((r) => r.patient === shown), boxGenes), [records, shown, boxGenes.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const shownStats = shown === "pooled" ? stats.pooled : stats.perPatient[shown];
   const dotRows = [
     ...genes.map((g) => ({ key: g, label: g, group: "Gene", ...stats.combined[g] })),
-    ...STATES.map((s) => ({ key: s, label: `${s}-like`, group: "Cell state", color: STATE_INK[s], ...stats.combined[`state:${s}`] })),
-  ].map((r) => ({ ...r, score: Number.isFinite(r.p) ? -Math.log10(Math.max(r.p, 1e-300)) * Math.sign(r.z || r.rho) : NaN }));
+    ...STATES.map((s) => ({ key: s, label: `${s}-like`, group: "Cell State", color: STATE_INK[s], ...stats.combined[`state:${s}`] })),
+    ...moduleLabels.map((l) => ({ key: `mod:${l}`, label: l, group: "Module", ...stats.combined[`mod:${l}`] })),
+  ].map((r) => ({ ...r, score: Number.isFinite(r.p) ? -Math.log10(Math.max(r.p, 1e-300)) * Math.sign(r.z || r.rho) : NaN }))
+    // within each block, strongest positive association first (as on the deck slide)
+    .map((r, i) => ({ ...r, i }))
+    .sort((a, b) => (a.group === b.group ? (Number.isFinite(b.score) ? b.score : -1e9) - (Number.isFinite(a.score) ? a.score : -1e9) : a.i - b.i));
 
   const tableRows = [
     ...withData.map((p) => ({ key: p, patient: p, n: records.filter((r) => r.patient === p).length, medianCn: d3.median(records.filter((r) => r.patient === p), (r) => r.cn), res: stats.perPatient[p] || {} })),
@@ -310,7 +372,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
                 { title: "ρ MES-like", key: "mes", render: (v, r) => cell(r.res["state:MES"]) },
               ]}
             />
-            <HintLine text={`Each point is a tumor cell with matched DNA and RNA. x: ${cnGene} total copy number from the cell's own genome graph (width-weighted over the gene), not walk copies. Expression: Seurat log-normalized, scaled 0–1 for the box plots. Spearman per patient and pooled; Stouffer combines patients (weights √n), dot size = n-weighted mean rho. Cell states enter as 0/1 indicators.`} />
+            <HintLine text={`Each point is a tumor cell with matched DNA and RNA. x: ${cnGene} total copy number from the cell's own genome graph (width-weighted over the gene), not walk copies. Expression: Seurat log-normalized, scaled 0–1 for the box plots. Spearman per patient and pooled; Stouffer combines patients (weights √n), dot size = n-weighted mean rho. Cell states enter as 0/1 indicators; modules are the mean per-gene z-score (within patient) of MSigDB Hallmark / Reactome sets.`} />
           </>
         )}
       </div>

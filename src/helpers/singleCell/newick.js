@@ -329,3 +329,25 @@ export function clipLongBranches(layout, cap) {
   const maxX = nodes.reduce((m, n) => Math.max(m, n.x), 0);
   return { ...layout, nodes, maxX };
 }
+
+/**
+ * Copy of a tree whose children are ordered by the best (lowest) rank of
+ * their leaves, e.g. rank = position of the leaf's clone in a wanted clone
+ * order, so those clones are drawn first (top). Ties keep the input order.
+ */
+export function rotateByLeafRank(root, rankOf) {
+  const best = new Map();
+  const visit = (n) => {
+    if (!n.children || !n.children.length) {
+      const r = rankOf(n.name);
+      best.set(n, Number.isFinite(r) ? r : Infinity);
+      return n;
+    }
+    const kids = n.children.map(visit);
+    const order = kids.map((c, i) => [c, i]).sort((a, b) => best.get(a[0]) - best.get(b[0]) || a[1] - b[1]).map((x) => x[0]);
+    const out = { ...n, children: order };
+    best.set(out, Math.min(...order.map((c) => best.get(c))));
+    return out;
+  };
+  return visit(root);
+}
