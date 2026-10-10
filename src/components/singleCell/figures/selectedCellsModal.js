@@ -15,10 +15,10 @@ const LOG_TICKS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
 const ACCENT = "#1677ff";
 
 /**
- * Selected vs other tumour cells, per amplicon: upper half-violin = selected
+ * Selected vs other tumor cells, per amplicon: upper half-violin = selected
  * (accent), lower = the rest (grey), medians marked, carrier % at the right.
  */
-function CompareViolins({ groups, selected, tumour, minCn = 1 }) {
+function CompareViolins({ groups, selected, tumor, minCn = 1 }) {
   const [ref, measured] = useContainerWidth(600);
   const width = Math.max(360, measured);
   const ROW = 44;
@@ -31,12 +31,12 @@ function CompareViolins({ groups, selected, tumour, minCn = 1 }) {
         const sel = [];
         const oth = [];
         g.cellIds.forEach((id, i) => {
-          if (!tumour.has(id)) return;
+          if (!tumor.has(id)) return;
           (selected.has(id) ? sel : oth).push(g.cn[i]);
         });
         return { g, sel, oth };
       }),
-    [groups, selected, tumour]
+    [groups, selected, tumor]
   );
   const [LO, HI] = useMemo(() => niceLogDomain(rows.flatMap((r) => [...r.sel, ...r.oth])), [rows]);
   const height = TOP + rows.length * ROW + 34;
@@ -96,7 +96,7 @@ function CompareViolins({ groups, selected, tumour, minCn = 1 }) {
   if (!rows.length) return <div ref={ref} />;
   return (
     <div ref={ref}>
-      <FigureCanvas width={width} height={height} draw={draw} ariaLabel="Amplicon copies in the selected cells against the other tumour cells" />
+      <FigureCanvas width={width} height={height} draw={draw} ariaLabel="Amplicon copies in the selected cells against the other tumor cells" />
     </div>
   );
 }
@@ -104,13 +104,13 @@ function CompareViolins({ groups, selected, tumour, minCn = 1 }) {
 /**
  * Popup for the current selection: who the cells are (clones, states), the
  * clone figure restricted to them, their amplicon copies against the other
- * tumour cells, and a table of the cells (copy ids, open a cell's report).
+ * tumor cells, and a table of the cells (copy ids, open a cell's report).
  */
 export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, cloneColors = {}, domains = [], genes = [], onOpenCell, getContainer }) {
   const { selection, open, setOpen, select } = useCellSelection();
   const p = selection ? per.find((x) => x.patient === selection.patient) : null;
   const selCells = useMemo(() => (p && selection ? p.cells.filter((c) => selection.cells.has(c.cell_id)) : []), [p, selection]);
-  const tumour = useMemo(() => new Set((p?.cells || []).filter((c) => !isNormalClone(c.clone_id)).map((c) => c.cell_id)), [p]);
+  const tumor = useMemo(() => new Set((p?.cells || []).filter((c) => !isNormalClone(c.clone_id)).map((c) => c.cell_id)), [p]);
   const stateColors = useMemo(() => annotationColors((p?.cells || []).map((c) => c.state).filter((s) => s != null && s !== "")), [p]);
   const tableRows = useMemo(() => {
     if (!p) return [];
@@ -185,9 +185,9 @@ export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, clone
             Copy ids
           </Button>
         </Tooltip>
-        {selection.cells.size < tumour.size && (
-          <Button size="small" onClick={() => select(p.patient, [...tumour].filter((id) => !selection.cells.has(id)), { label: `tumour cells not in (${selection.label})` })}>
-            Invert (tumour cells)
+        {selection.cells.size < tumor.size && (
+          <Button size="small" onClick={() => select(p.patient, [...tumor].filter((id) => !selection.cells.has(id)), { label: `tumor cells not in (${selection.label})` })}>
+            Invert (tumor cells)
           </Button>
         )}
       </Space>
@@ -208,8 +208,8 @@ export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, clone
       />
       <Row gutter={16} style={{ marginTop: 12 }}>
         <Col xs={24} xl={11}>
-          <div className="sc-fig-subtitle">Amplicon copies <span>selected (up) vs other tumour cells (down)</span></div>
-          <CompareViolins groups={p.groups} selected={selection.cells} tumour={tumour} />
+          <div className="sc-fig-subtitle">Amplicon copies <span>selected (up) vs other tumor cells (down)</span></div>
+          <CompareViolins groups={p.groups} selected={selection.cells} tumor={tumor} />
         </Col>
         <Col xs={24} xl={13}>
           <div className="sc-fig-subtitle">Cells <span>click a name to open its report</span></div>

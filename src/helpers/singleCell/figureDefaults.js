@@ -127,7 +127,7 @@ export function variantGrouping(patient, walks = [], config = PAPER_VARIANT_GROU
   return { nameOf, groupOf, groups };
 }
 
-/** Main-amplicon thresholds: carried (>= 1 copy) by at least 15 % of tumour cells, at a median of >= 8 copies in its carriers. */
+/** Main-amplicon thresholds: carried (>= 1 copy) by at least 15 % of tumor cells, at a median of >= 8 copies in its carriers. */
 export const MAIN_AMPLICON = { minFrac: 0.15, minMedianCn: 8, pad: 0.15, minPad: 3e5 };
 
 const median = (v) => {
@@ -154,15 +154,15 @@ function walkSpans(w) {
 /**
  * The patient's amplicons: walks grouped by their driver-gene set (walks
  * without driver genes are left out); `main` when the group (copies summed
- * over its walks per cell) is carried by >= minFrac of the tumour cells at a
+ * over its walks per cell) is carried by >= minFrac of the tumor cells at a
  * median of >= minMedianCn copies. Main ones first, each block sorted by
  * summed copies (dominant first). Each: { key, label, walks, dominant, windows:
  * [[chr, start, end]] (the dominant walk's span per chromosome, padded),
  * carriers, frac, medianCn, total }.
  */
-export function mainAmplicons(walks = [], tumourIds = [], opts = {}) {
+export function mainAmplicons(walks = [], tumorIds = [], opts = {}) {
   const { minFrac, minMedianCn, pad, minPad } = { ...MAIN_AMPLICON, ...opts };
-  const ids = tumourIds.length ? tumourIds : [...new Set(walks.flatMap((w) => Object.keys(w.cells || {})))];
+  const ids = tumorIds.length ? tumorIds : [...new Set(walks.flatMap((w) => Object.keys(w.cells || {})))];
   const groups = new Map();
   walks.forEach((w) => {
     const d = driverList(w);
