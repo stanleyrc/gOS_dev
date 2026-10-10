@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Col, Empty, InputNumber, Progress, Row, Segmented, Slider, Space, Statistic, Switch, Table, Tabs, Tooltip, Typography } from "antd";
-import { ApartmentOutlined } from "@ant-design/icons";
+import { Button, Card, Col, Empty, InputNumber, Progress, Row, Segmented, Slider, Space, Switch, Tabs, Tooltip, Typography } from "antd";
 import axios from "axios";
 import HeatmapCanvas from "./heatmapCanvas";
 import usePixelRatio from "./usePixelRatio";
@@ -24,7 +23,6 @@ import {
   cnColorer,
   domainExtents,
   genomicColumnLookup,
-  naturalCompare,
   panDomain,
   wheelZoomFactor,
   zoomDomain,
@@ -41,7 +39,11 @@ import CohortQcPanel from "./cohort/cohortQcPanel";
 import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
 import PatientReportCard from "./patientReportCard";
 import CohortGenePanel from "./cohort/cohortGenePanel";
-import PatientCards from "./cohort/patientCards";
+import PatientSummaryTable from "./cohort/patientCards";
+import CohortHeadline from "./cohort/cohortHeadline";
+import { buildPatientReport } from "../../helpers/singleCell/patientReport";
+import { ecdnaWalks } from "../../helpers/singleCell/cohortHeadline";
+import { COHORT_VIEWS, resolveCohortView, startsGroup } from "../../helpers/singleCell/cohortViews";
 import CohortCircosPanel from "./cohort/cohortCircosPanel";
 import CohortEventsTable from "./cohort/cohortEventsTable";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
@@ -49,6 +51,7 @@ import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import CohortFiguresPanel from "./figures/cohortFiguresPanel";
+import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
 import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
@@ -66,27 +69,6 @@ const ROW_HEIGHT = 18;
 const MAX_CELLS_PER_PATIENT = 2000;
 // Per-cell rows shrink to keep the heatmap under ~900px tall.
 const MAX_CELL_ROWS_HEIGHT = 900;
-const PATIENT_PALETTE = ["#4E79A7", "#A0CBE8", "#F28E2B", "#FFBE7D", "#59A14F", "#8CD17D", "#B6992D", "#F1CE63", "#499894", "#86BCB6"];
-
-function CloneBar({ counts, colors, width = 140 }) {
-  const entries = Object.entries(counts).sort(([a], [b]) => naturalCompare(a, b));
-  const total = entries.reduce((s, [, n]) => s + n, 0);
-  let x = 0;
-  return (
-    <svg width={width} height={12} role="img">
-      {entries.map(([clone, n]) => {
-        const w = total ? (n / total) * width : 0;
-        const rect = (
-          <rect key={clone} x={x} y={0} width={Math.max(0, w - 0.5)} height={12} fill={colors[clone] || "#d9d9d9"}>
-            <title>{`${clone}: ${n} (${Math.round((100 * n) / (total || 1))}%)`}</title>
-          </rect>
-        );
-        x += w;
-        return rect;
-      })}
-    </svg>
-  );
-}
 
 /** Each cell's total CN from its own complex.json, plus the patient's median consensus. */
 async function loadPatientCells(dataset, summary, records, chromoBins, genomeLength, cancelToken) {
@@ -146,14 +128,14 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   // help-center target first, then ?scview=<key> (deep link, e.g. ?scview=qc), else the overview
   const [view, setView] = useState(() => {
     const help = peekHelpTarget();
-    if (help?.scope === "cohort" && help.view) return help.view;
+    if (help?.scope === "cohort" && help.view) return resolveCohortView(help.view);
     try {
-      return new URLSearchParams(window.location.search).get("scview") || "overview";
+      return resolveCohortView(new URLSearchParams(window.location.search).get("scview"));
     } catch (error) {
       return "overview";
     }
   });
-  useEffect(() => subscribeHelpTarget((target) => target?.scope === "cohort" && target.view && setView(target.view)), []);
+  useEffect(() => subscribeHelpTarget((target) => target?.scope === "cohort" && target.view && setView(resolveCohortView(target.view))), []);
   const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
   const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
   // Clade F1 filter: drop alterations whose carrier cells do not sit in one clade of the
@@ -178,8 +160,25 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     });
     return out;
   }, [cohortFiles.files, cladeFilterOn, minCladeF1]);
-  // RNA key findings of every patient (Key findings cards and reports only: loads the matrices)
-  const cohortRna = useCohortRnaFindings({ summaries, files, datafiles, datasets, enabled: view === "overview" || view === "reports" });
+  // RNA key findings of every patient (Key findings and the RNA view only: loads the matrices)
+  const cohortRna = useCohortRnaFindings({ summaries, files, datafiles, datasets, enabled: view === "reports" || view === "rna" });
+  // per-patient report (truncal / subclonal drivers) + ecDNA oncogenes: Overview headline and table
+  const patientRows = useMemo(
+    () =>
+      summaries
+        .filter((s) => files[s.caseReportId])
+        .map((s) => {
+          const f = files[s.caseReportId];
+          return {
+            s,
+            id: s.caseReportId,
+            report: f.events ? buildPatientReport({ patient: s.caseReportId, events: f.events, cells: cellsForPatient(datafiles, s.patientKey), variants: f.variants || [], signatures: f.signatures }) : null,
+            walks: f.walks,
+            ecdna: f.walks ? [...new Set(ecdnaWalks(f.walks).flatMap((w) => `${w.driver_genes ?? ""}`.split(/[,;+]/).map((g) => g.trim()).filter((g) => g && g !== "NA")))] : null,
+          };
+        }),
+    [summaries, files, datafiles]
+  );
   const nDropped = useMemo(() => Object.entries(cohortFiles.files).reduce((n, [id, f]) => n + ((f?.events?.length || 0) - (files[id]?.events?.length || 0)), 0), [cohortFiles.files, files]);
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
@@ -355,61 +354,6 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   }
 
   const totalCells = summaries.reduce((s, r) => s + r.nCells, 0);
-  const columns = [
-    {
-      title: t("components.single-cell.cohort.patient"),
-      dataIndex: "caseReportId",
-      key: "patient",
-      sorter: (a, b) => naturalCompare(a.caseReportId, b.caseReportId),
-      render: (id, summary) => (
-        <Button type="link" size="small" onClick={() => openPatient(summary)} style={{ padding: 0 }}>
-          {id}
-        </Button>
-      ),
-    },
-    {
-      title: t("components.single-cell.cohort.tumor-type"),
-      key: "tumor_type",
-      render: (_, s) => s.record.tumor_type || s.record.disease || "",
-    },
-    {
-      title: t("components.single-cell.cohort.dataset"),
-      key: "dataset",
-      render: (_, s) => datasetOf(s)?.title || s.record.datasetId,
-    },
-    {
-      title: t("components.single-cell.cohort.cells"),
-      dataIndex: "nCells",
-      key: "cells",
-      sorter: (a, b) => a.nCells - b.nCells,
-    },
-    {
-      title: t("components.single-cell.cohort.clones"),
-      dataIndex: "nClones",
-      key: "clones",
-      sorter: (a, b) => a.nClones - b.nClones,
-    },
-    {
-      title: t("components.single-cell.cohort.composition"),
-      key: "composition",
-      render: (_, s) => <CloneBar counts={s.cloneCounts} colors={cloneColors} />,
-    },
-    {
-      title: t("components.single-cell.cohort.cells-read"),
-      key: "cells-read",
-      render: (_, s) => {
-        const entry = rows[s.caseReportId];
-        if (!entry) return <Text type="secondary">…</Text>;
-        return (
-          <Text type={entry.cellRows.length ? undefined : "secondary"}>
-            {entry.cellRows.length}
-            {entry.truncated ? ` (${t("components.single-cell.cohort.capped", { count: MAX_CELLS_PER_PATIENT })})` : ""}
-          </Text>
-        );
-      },
-    },
-  ];
-
   const rowHeight =
     rowMode === "patients" || rowMode === "clones"
       ? ROW_HEIGHT * rowScale * (rowMode === "clones" ? 0.75 : 1)
@@ -417,29 +361,21 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const height = Math.max(ROW_HEIGHT, heatRows.length * rowHeight);
 
   const openCell = (cell) => cell?._patient && dispatch(datasetsActions.openCaseReport(cell._patient.record.datasetId, cell.cell_id));
-  const analysisTabs = [
-    { key: "overview", label: t("components.single-cell.cohort.view-overview") },
-    { key: "reports", label: t("components.single-cell.cohort.view-reports") },
-    { key: "story", label: t("components.single-cell.cohort.view-story") },
-    { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
-    { key: "amplicons", label: t("components.single-cell.cohort.view-amplicons") },
-    { key: "figures", label: t("components.single-cell.cohort.view-figures") },
-    { key: "events", label: t("components.single-cell.cohort.view-events") },
-    { key: "rna", label: t("components.single-cell.cohort.view-rna") },
-    { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
-    { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
-    { key: "qc", label: t("components.single-cell.cohort.view-qc") },
-    { key: "treeshape", label: t("components.single-cell.cohort.view-treeshape") },
-  ];
+  const analysisTabs = COHORT_VIEWS.map((v) => ({
+    key: v.key,
+    label: <span className={startsGroup(v.key) ? "sc-tab-group-start-label" : undefined} title={t(`components.single-cell.cohort.group-${v.group}`)}>{t(`components.single-cell.cohort.view-${v.key}`)}</span>,
+  }));
 
   return (
     <Wrapper>
       <Row gutter={SC_GUTTER}>
         <Col span={24}>
-          <Space size="large" wrap>
-            <Statistic title={t("components.single-cell.cohort.patients")} value={summaries.length} />
-            <Statistic title={t("components.single-cell.cohort.cells")} value={totalCells} />
-            {cohortFiles.progress < 100 && <Progress percent={cohortFiles.progress} size="small" style={{ width: 160 }} />}
+          <div className="sc-cohort-bar">
+            <Space size={12} wrap>
+              <Text type="secondary">{t("components.single-cell.cohort.headline-scope", { patients: summaries.length, cells: totalCells.toLocaleString() })}</Text>
+              {cohortFiles.progress < 100 && <Progress percent={cohortFiles.progress} size="small" style={{ width: 160 }} />}
+            </Space>
+            <Space size={12} wrap>
             <Tooltip title={t("components.single-cell.cohort.clade-filter-help")}>
               <Space size={6}>
                 <Switch size="small" checked={cladeFilterOn} onChange={setCladeFilterOn} />
@@ -449,8 +385,10 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               </Space>
             </Tooltip>
             <HelpDrawer />
-          </Space>
-          <Tabs size="small" activeKey={view} onChange={setView} items={analysisTabs} />
+            </Space>
+          </div>
+          <Tabs size="small" className="sc-cohort-tabs" activeKey={view} onChange={setView} items={analysisTabs} />
+          <div className="sc-view-purpose">{t(`components.single-cell.cohort.purpose-${view}`)}</div>
         </Col>
         {view === "story" && (
           <Col span={24}>
@@ -497,10 +435,20 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "overview" && (
           <>
             <Col span={24}>
-              <CohortRnaHighlights cohortRna={cohortRna} />
+              <CohortHeadline
+                patients={patientRows}
+                nPatients={summaries.length}
+                nCells={totalCells}
+                loading={cohortFiles.progress < 100}
+                onView={setView}
+                onPatient={(id) => {
+                  const s = summaries.find((x) => x.caseReportId === id);
+                  if (s) openPatient(s);
+                }}
+              />
             </Col>
             <Col span={24}>
-              <PatientCards summaries={summaries} files={files} datafiles={datafiles} cloneColors={cloneColors} onOpen={openPatient} rnaOf={cohortRna.of} />
+              <PatientSummaryTable patients={patientRows.filter((p) => p.report)} cloneColors={cloneColors} onOpen={openPatient} />
             </Col>
           </>
         )}
@@ -513,6 +461,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               <CohortSignaturesPanel summaries={summaries} files={files} />
             </Col>
           </>
+        )}
+        {view === "rna" && (
+          <Col span={24}>
+            <CohortRnaHighlights cohortRna={cohortRna} />
+          </Col>
         )}
         {view === "rna" && (
           <Col span={24}>
@@ -550,6 +503,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             />
           </Col>
         )}
+        {view === "cnexpr" && (
+          <Col span={24}>
+            <CohortCnExpressionPanel summaries={summaries} files={files} datasets={datasets} cnRows={rows} />
+          </Col>
+        )}
         {view === "treeshape" && (
           <Col span={24}>
             <CohortTreeShapePanel summaries={summaries} files={files} datafiles={datafiles} />
@@ -559,19 +517,6 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           <Col span={24}>
             <CohortQcPanel summaries={summaries} datafiles={datafiles} onOpenCell={openCell} />
           </Col>
-        )}
-        {view === "overview" && (
-        <Col span={24}>
-          <Card size="small" title={<Space><ApartmentOutlined />{t("components.single-cell.cohort.table-title")}<Provenance id="cohortOverview" /></Space>}>
-            <Table
-              size="small"
-              rowKey="caseReportId"
-              columns={columns}
-              dataSource={summaries}
-              pagination={{ pageSize: 20, hideOnSinglePage: true }}
-            />
-          </Card>
-        </Col>
         )}
         {view === "overview" && (
         <Col span={24}>
@@ -610,7 +555,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                         style={{
                           height: b.count * rowHeight,
                           cursor: "pointer",
-                          borderRight: `4px solid ${PATIENT_PALETTE[b.patientIndex % PATIENT_PALETTE.length]}`,
+                          borderRight: "2px solid var(--sc-border)",
+                          borderBottom: "1px solid var(--sc-border-soft)",
                           paddingRight: 4,
                         }}
                         onClick={() => openPatient(b.summary)}
