@@ -226,3 +226,14 @@ describe("clonality", () => {
     expect(clonality(cells.map((x, i) => ({ ...x, alt: i < 20 ? 1 : 0 })), 0.7).fraction).toBeCloseTo(20 / 70, 5);
   });
 });
+
+describe("site sources", () => {
+  test("filtered-event SNVs rank below curated hotspots", () => {
+    const ev = { ...calls, sites: [...calls.sites, { ...calls.sites[0], id: "chr1:5:C>T", chrom: "chr1", pos: 5, name: "GENE p.X", gene: "GENE", source: "filtered events tier 3", alt_tumor: 60, dp_tumor: 80 }], dna: { ...calls.dna, "chr1:5:C>T": calls.dna[TERT] } };
+    const r = rankFindings(ev, evidence);
+    expect(r.findings[0].id).toBe(TERT);
+    const f = r.all.find((x) => x.id === "chr1:5:C>T");
+    expect(f.hotspot).toBe(false);
+    expect(f.eventTier).toBe(3);
+  });
+});

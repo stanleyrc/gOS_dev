@@ -56,6 +56,11 @@ export default function MutationEvidencePanel({ siteId: siteProp = null, onSiteC
               hotspot
             </Tag>
           )}
+          {!f.hotspot && f.eventTier && (
+            <Tooltip title="SNV from the patient's filtered events, genotyped in every cell">
+              <Tag style={{ marginLeft: 6 }}>tier {f.eventTier} event</Tag>
+            </Tooltip>
+          )}
           <br />
           <Text type="secondary" style={{ fontSize: 12 }}>
             {f.chrom}:{Number(f.pos).toLocaleString()} {f.ref}&gt;{f.alt}
