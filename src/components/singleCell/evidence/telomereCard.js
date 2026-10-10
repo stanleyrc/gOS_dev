@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { Card, Col, Row, Space, Table, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Row, Space, Table, Tooltip, Typography } from "antd";
 import useRnaData from "../rna/useRnaData";
 import { hotspotGenotypes, normaliseTelomeres } from "../../../helpers/singleCell/precompute";
 import { expressionByCell } from "../../../helpers/singleCell/staticRna";
@@ -24,7 +24,7 @@ const fmt = (x, d = 2) => (x == null ? "–" : x.toFixed(d));
  * DNA BAM, TERT expression from RNA, ATRX status from the patient's events, and
  * an ALT-like flag (high telomere content plus variant repeats).
  */
-export default function TelomereCard() {
+export default function TelomereCard({ onOpenSite } = {}) {
   const { cells, cloneColors, precompute } = useSelector((s) => s.SingleCell);
   const telRaw = pcFile(precompute, "telomeres");
   const tel = useMemo(() => (telRaw.ok ? { ...telRaw, data: normaliseTelomeres(telRaw.data) } : telRaw), [telRaw.ok, telRaw.data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -35,6 +35,7 @@ export default function TelomereCard() {
     const g = hotspotGenotypes(calls.data);
     return Object.keys(g).filter((k) => /^TERT/i.test(k)).map((k) => [k, g[k]]);
   }, [calls.data]);
+  const siteIdOf = (name) => (calls.data?.sites || []).find((x) => (x.name || x.id) === name)?.id;
   // TERT expression keyed by display id (the gOS cell id for cells with DNA)
   const tertExpr = useMemo(() => (rna && matrix ? expressionByCell(rna, matrix, "TERT")?.values || null : null), [rna, matrix]);
   const atrx = useMemo(() => cells.filter((c) => Object.keys(c).some((k) => /^ATRX/i.test(k) && c[k] && c[k] !== "wild type")).length, [cells]);
@@ -91,9 +92,14 @@ export default function TelomereCard() {
             { title: "Cells", dataIndex: "n", width: 60 },
             ...tertSites.map(([name]) => ({
               title: (
-                <Tooltip title="mutant / wild type / no call (no or too little coverage: the GC-rich promoter often drops out under PTA)">
-                  {name}
-                </Tooltip>
+                <span>
+                  <Tooltip title="mutant / wild type / no call (no or too little coverage: the GC-rich promoter often drops out under PTA)">{name}</Tooltip>
+                  {onOpenSite && siteIdOf(name) && (
+                    <Button type="link" size="small" style={{ padding: "0 4px", height: "auto" }} onClick={() => onOpenSite(siteIdOf(name))}>
+                      evidence ›
+                    </Button>
+                  )}
+                </span>
               ),
               key: name,
               render: (_, r) => {

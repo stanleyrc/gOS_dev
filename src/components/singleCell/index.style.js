@@ -624,6 +624,13 @@ const Wrapper = styled.div`
     border: 1.5px solid var(--sc-axis, #8c8c8c) !important;
     border-radius: 50% !important;
   }
+  /* Evidence tab: the chosen row of a findings / preset table */
+  .ant-table-tbody > tr.sc-row-active > td {
+    background: var(--sc-select-fill, rgba(22, 119, 255, 0.14));
+  }
+  .sc-site-head .ant-statistic-content {
+    font-size: 20px;
+  }
 `;
 
 export default Wrapper;
