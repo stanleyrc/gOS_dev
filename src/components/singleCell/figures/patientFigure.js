@@ -20,6 +20,7 @@ import { ancestralBinary, packStoreSnv, walkDomains } from "../../../helpers/sin
 import { walkFamilies } from "../../../helpers/singleCell/walks";
 import { defaultFocusWalk } from "../../../helpers/singleCell/walkPanels";
 import { selectMode } from "./cellSelection";
+import { isDark, onAppThemeChange } from "../../../helpers/appTheme";
 
 const { Text } = Typography;
 const STRIP = 10;
@@ -46,11 +47,20 @@ const toCanvas = (cols, rows, fill) => {
   ctx.putImageData(img, 0, 0);
   return cv;
 };
-const gray = (vaf) => {
-  const v = Math.round(255 - (Math.min(250, vaf) / 250) * 235);
+// VAF (0-250 scale) to grey: white -> black in light mode, dark -> light in dark mode
+const gray = (vaf, dark) => {
+  const t = Math.min(250, vaf) / 250;
+  const v = Math.round(dark ? 38 + t * 200 : 255 - t * 235);
   return ((255 << 24) | (v << 16) | (v << 8) | v) >>> 0;
 };
 const WHITE = 0xffffffff;
+const DARK_BG = 0xff262626;
+/** Current app theme (light / dark), following theme switches. */
+function useDarkTheme() {
+  const [dark, setDark] = useState(isDark());
+  useEffect(() => onAppThemeChange((t) => setDark(t === "dark")), []);
+  return dark;
+}
 const NO_CN = 0xffeeeeee;
 const STAIN = { gneg: "#ffffff", gpos25: "#c8c8c8", gpos50: "#969696", gpos75: "#5a5a5a", gpos100: "#1e1e1e", acen: "#d65c5c", gvar: "#dcdcdc", stalk: "#a0a0a0" };
 const chromOf = (chromoBins, g) => {
@@ -113,6 +123,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const { order, treeLayout, cellById, colorOf, measured, families, focusWalk, family } = useFocusFamily(focusWalkId);
   const [ref, measuredW] = useContainerWidth(1200);
   const width = Math.max(760, measuredW);
+  const dark = useDarkTheme();
 
   // ---- focused ecDNA family / variant
   const shownWalks = useMemo(() => {
@@ -221,8 +232,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     if (!cols0.length) return null;
     const cols = Math.max(4, Math.min(Math.floor(L.snvW), cols0.length));
     const m = binSnvMatrix(packed, order, cols0, cols);
-    return { canvas: toCanvas(cols, n, (px) => px.forEach((_, k) => (px[k] = m[k] < 0 ? WHITE : gray(m[k])))), nSites: cols0.length };
-  }, [packed, snvData, order, n, L.snvW]);
+    return { canvas: toCanvas(cols, n, (px) => px.forEach((_, k) => (px[k] = m[k] < 0 ? (dark ? DARK_BG : WHITE) : gray(m[k], dark)))), nSites: cols0.length };
+  }, [packed, snvData, order, n, L.snvW, dark]);
   const ecImg = useMemo(() => {
     if (!snvData || !ecSites.length) return null;
     const rows = rowMap(order, snvData.cells);
@@ -231,11 +242,11 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         const sr = rows[r];
         ecSites.forEach((v, c) => {
           const d = sr == null ? NaN : snvData.depth[sr][v.index];
-          px[r * ecSites.length + c] = d > 0 ? gray((250 * (snvData.alt[sr][v.index] || 0)) / d) : WHITE;
+          px[r * ecSites.length + c] = d > 0 ? gray((250 * (snvData.alt[sr][v.index] || 0)) / d, dark) : dark ? DARK_BG : WHITE;
         });
       });
     });
-  }, [snvData, ecSites, order, n]);
+  }, [snvData, ecSites, order, n, dark]);
   const cnGeo = useMemo(() => {
     const cols = Math.max(0, Math.floor(L.cnW));
     if (!cols || !domains.length) return null;
@@ -352,7 +363,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             const present = p >= 0.5;
             if (!present && !(lostBelow && lostBelow[i])) return; // never had it: no glyph
             const pp = nd.parent >= 0 ? anc.p[nd.parent] : NaN;
-            const change = present !== pp >= 0.5 && nd.parent >= 0;
+            const change = present !== (pp >= 0.5) && nd.parent >= 0;
             const like = Math.max(p, 1 - p);
             // small dots everywhere (size = likelihood, as in the paper), larger rings where the state changes
             const r = (0.9 + 2.2 * (like - 0.5)) * Math.min(1, 0.6 + rh / 5) + (change ? 1.4 : 0);
@@ -826,23 +837,13 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         </span>
         {showAnc && focusWalk && (
           <span className="sc-fig-key">
-            <b>{`${focusWalk.label || "variant"} on nodes`}</b>
-            <span><span className="sc-fig-swatch" style={{ background: RETAINED, borderRadius: 5 }} />retained</span>
-            <span><span className="sc-fig-swatch" style={{ background: LOST, borderRadius: 5 }} />lost</span>
+            <b>{`${focusWalk.label || "variant"} status`}</b>
+            <span><span className="sc-fig-swatch" style={{ background: RETAINED, borderRadius: 5 }} />present</span>
+            <span><span className="sc-fig-swatch" style={{ background: LOST, borderRadius: 5 }} />lost (red lineage)</span>
+            <span><span className="sc-fig-swatch" style={{ background: "transparent", border: `1.5px solid ${RETAINED}`, borderRadius: 6 }} />ringed: state changes here</span>
+            <span>dot size = likelihood</span>
           </span>
         )}
-        {(snvImg || ecImg) && (
-          <span className="sc-fig-key">
-            <b>VAF</b>
-            <span className="sc-fig-ramp" style={{ background: "linear-gradient(90deg,#fff,#141414)" }} />
-            <span>0 – 1</span>
-          </span>
-        )}
-        <span className="sc-fig-key">
-          <b>CN</b>
-          <span className="sc-fig-ramp" style={{ background: `linear-gradient(90deg,${AMP_LEGEND.map((v, k) => `${ampliconCss(v)} ${(100 * k) / (AMP_LEGEND.length - 1)}%`).join(",")})` }} />
-          <span>{AMP_LEGEND.join(" · ")}</span>
-        </span>
         {!snvData && <span className="sc-fig-key">No SNV matrix for this patient: SNV panels left out.</span>}
       </div>
       {siteDrawer && snvData && (
