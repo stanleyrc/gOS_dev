@@ -663,9 +663,20 @@ const Wrapper = styled.div`
   .sc-headline-sep {
     color: var(--sc-faint);
   }
+  .sc-headline-patient {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--sc-muted);
+    font-size: var(--sc-fs-tick, 11.5px);
+  }
+  .sc-headline-patient:hover {
+    color: var(--sc-accent);
+  }
   .sc-cohort-tabs .ant-tabs-tab:has(.sc-tab-group-start-label) {
-    margin-left: 14px;
-    padding-left: 14px;
+    margin-left: 10px;
+    padding-left: 10px;
     border-left: 1px solid var(--sc-border);
   }
   .sc-view-purpose {
@@ -679,6 +690,16 @@ const Wrapper = styled.div`
     align-items: center;
     justify-content: space-between;
     gap: 6px 16px;
+  }
+  .sc-text-button {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+  .sc-text-button:hover .ant-typography {
+    text-decoration: underline;
   }
 `;
 

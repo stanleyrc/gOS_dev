@@ -14,7 +14,6 @@ import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
-const CHR_COLORS = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3]);
 
 const parseLoc = (s) => {
   const m = `${s || ""}`.match(/^(\w+):(\d+)-(\d+)/);
@@ -96,7 +95,7 @@ export default function CohortCircosPanel({ summaries, files }) {
               const mid = (a0 + a1) / 2;
               return (
                 <g key={chr}>
-                  <path d={arc(a0, a1, ideo[0], ideo[1])} fill={CHR_COLORS(i)} fillOpacity={0.85} stroke={INK.panel} strokeWidth={0.8} />
+                  <path d={arc(a0, a1, ideo[0], ideo[1])} fill={i % 2 ? INK.border : INK.empty} stroke={INK.panel} strokeWidth={0.8} />
                   <text x={Math.cos(mid) * (R - 5)} y={Math.sin(mid) * (R - 5)} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={600} fill={INK.text} transform={`rotate(${(mid * 180) / Math.PI + 90} ${Math.cos(mid) * (R - 5)} ${Math.sin(mid) * (R - 5)})`}>{chr}</text>
                 </g>
               );
@@ -105,8 +104,8 @@ export default function CohortCircosPanel({ summaries, files }) {
               const [r0, r1] = ringR(k);
               return (
                 <g key={s.caseReportId}>
-                  <circle r={(r0 + r1) / 2} fill="none" stroke={patientColor(k)} strokeWidth={r1 - r0} strokeOpacity={0.1} />
-                  <text x={0} y={-(r0 + r1) / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.micro} fill={patientColor(k)}>{s.caseReportId}</text>
+                  <path d={arc(0, 2 * Math.PI - 1e-6, r0, r1)} fill={k % 2 ? INK.panelAlt : INK.panel} stroke={INK.empty} strokeWidth={0.5} />
+                  <text x={0} y={-(r0 + r1) / 2} dy="0.35em" textAnchor="middle" fontSize={TYPE.micro} fill={INK.muted}>{s.caseReportId}</text>
                 </g>
               );
             })}
