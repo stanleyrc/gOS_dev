@@ -153,8 +153,10 @@ export function annotateSite(site, ev) {
     alt: site.alt,
     name,
     gene,
-    hotspot: !!(site.hotspot || ann),
-    configured: !!site.hotspot,
+    // curated hotspot (region-set config or the annotation table) vs an SNV carried over from the filtered events
+    hotspot: !!((site.hotspot && (!site.source || site.source === "config")) || ann),
+    configured: !!site.hotspot && (!site.source || site.source === "config"),
+    eventTier: /tier\s*(\d)/i.test(`${site.source || ""}`) ? +`${site.source}`.match(/tier\s*(\d)/i)[1] : null,
     where: ann?.where || null,
     note: ann?.note || null,
     gbmGene: gene ? GBM_GENES.has(gene) : false,
@@ -496,14 +498,14 @@ export function rankFindings(calls, evidenceDoc, cloneOf = new Map()) {
     const verdict = siteVerdict(stats);
     const signal = Math.min(60, -stats.log10pError || 0);
     // configured hotspots (genotyped in every cell) lead, then other known hotspots, then GBM genes
-    const score = (6 - verdict.rank) * 100 + (ann.configured ? 70 : ann.hotspot ? 40 : 0) + (ann.gbmGene ? 20 : 0) + signal;
+    const score = (6 - verdict.rank) * 100 + (ann.configured ? 70 : ann.hotspot ? 50 : ann.eventTier ? 45 - 5 * ann.eventTier : 0) + (ann.gbmGene ? 20 : 0) + signal;
     out.push({ ...ann, site, stats, verdict, score });
   });
   out.sort((a, b) => b.score - a.score);
   const isCall = (f) => ["supported", "weak", "artefact", "germline"].includes(f.verdict.level);
   return {
     findings: out.filter(isCall),
-    negativeHotspots: out.filter((f) => !isCall(f) && f.configured),
+    negativeHotspots: out.filter((f) => !isCall(f) && (f.configured || f.eventTier)),
     all: out,
   };
 }
