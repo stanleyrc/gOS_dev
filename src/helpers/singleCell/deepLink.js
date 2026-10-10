@@ -72,3 +72,53 @@ export function singleCellStillLoading(singleCell) {
   if (singleCell.loading) return true;
   return singleCell.patient == null && !singleCell.missing && singleCell.error == null;
 }
+
+// View settings carried by a link (committee / figure links), read once on load:
+//   cnpal=<preset>                CN heatmap palette preset (e.g. deck: 0..100+)
+//   clonecolors=<clone>:<hex>,..  clone colours (hex with or without #)
+//   clonelabels=<clone>:<label>,..  display names in figure panels (e.g. Clone 4:CI)
+//   tracks=total,coverage,..      cell tracks shown for selected cells
+//   figpatient / figwalk / figgenes  Paper figures: patient, walk whose
+//                                 carriers are marked, gene pair for CN vs CN
+//   comp=<field>&compby=<clone|groups|field>&compcount=1  RNA composition card
+//   cngene=<GENE>&exprgenes=<G1,G2>  cohort CN-vs-expression view
+const HEX = /^#?([0-9a-f]{6})$/i;
+
+export function readViewLink(search = window.location.search) {
+  const params = new URLSearchParams(search);
+  const cloneColors = {};
+  list(params.get("clonecolors")).forEach((pair) => {
+    const at = pair.lastIndexOf(":");
+    if (at <= 0) return;
+    const m = HEX.exec(pair.slice(at + 1).trim());
+    if (m) cloneColors[pair.slice(0, at).trim()] = `#${m[1].toUpperCase()}`;
+  });
+  const cloneLabels = {};
+  list(params.get("clonelabels")).forEach((pair) => {
+    const at = pair.lastIndexOf(":");
+    if (at > 0 && pair.slice(at + 1).trim()) cloneLabels[pair.slice(0, at).trim()] = pair.slice(at + 1).trim();
+  });
+  return {
+    cnPalette: params.get("cnpal") || null,
+    cloneColors,
+    cloneLabels,
+    tracks: list(params.get("tracks")),
+    figPatient: params.get("figpatient") || null,
+    figWalk: params.get("figwalk") || null,
+    figGenes: list(params.get("figgenes")).slice(0, 2),
+    composition: params.get("comp") || null,
+    compositionBy: params.get("compby") || null,
+    compositionCounts: params.get("compcount") === "1",
+    cnGene: params.get("cngene") || null,
+    exprGenes: list(params.get("exprgenes")),
+  };
+}
+
+/** Clone colours with link overrides applied (unknown clones ignored). */
+export function withCloneOverrides(colors = {}, overrides = {}) {
+  const out = { ...colors };
+  Object.entries(overrides).forEach(([clone, hex]) => {
+    if (clone in out) out[clone] = hex;
+  });
+  return out;
+}
