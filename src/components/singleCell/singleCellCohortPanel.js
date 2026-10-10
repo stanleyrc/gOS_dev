@@ -49,6 +49,7 @@ import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import CohortFiguresPanel from "./figures/cohortFiguresPanel";
+import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
 import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
@@ -424,6 +425,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "drivers", label: t("components.single-cell.cohort.view-drivers") },
     { key: "amplicons", label: t("components.single-cell.cohort.view-amplicons") },
     { key: "figures", label: t("components.single-cell.cohort.view-figures") },
+    { key: "cnexpr", label: t("components.single-cell.cohort.view-cnexpr") },
     { key: "events", label: t("components.single-cell.cohort.view-events") },
     { key: "rna", label: t("components.single-cell.cohort.view-rna") },
     { key: "mutations", label: t("components.single-cell.cohort.view-mutations") },
@@ -548,6 +550,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 if (s) dispatch(datasetsActions.openCaseReport(s.record.datasetId, cellId));
               }}
             />
+          </Col>
+        )}
+        {view === "cnexpr" && (
+          <Col span={24}>
+            <CohortCnExpressionPanel summaries={summaries} files={files} datasets={datasets} cnRows={rows} />
           </Col>
         )}
         {view === "treeshape" && (
