@@ -166,3 +166,11 @@ export function splitLead(text) {
   if (!m) return { lead: "", rest: s };
   return { lead: m[1], rest: s.slice(m[0].length) };
 }
+
+/** Finding text as shown next to its category tag: drop a leading "Truncal " / "Subclonal " that repeats the tag. */
+export function displayText(finding) {
+  const t = `${finding?.text || ""}`;
+  if (finding?.category === "truncal") return t.replace(/^Truncal\s+/, "");
+  if (finding?.category === "subclonal") return t.replace(/^Subclonal\s+/, "");
+  return t;
+}

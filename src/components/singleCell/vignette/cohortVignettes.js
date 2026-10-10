@@ -2,7 +2,7 @@ import React from "react";
 import { useDispatch } from "react-redux";
 import { Button, Empty, Skeleton, Space, Typography } from "antd";
 import settingsActions from "../../../redux/settings/actions";
-import { cohortVignetteRows, splitLead } from "../../../helpers/singleCell/vignettes";
+import { cohortVignetteRows, displayText, splitLead } from "../../../helpers/singleCell/vignettes";
 import { requestEvidence } from "../../../helpers/singleCell/evidenceFocus";
 import useVignettes from "./useVignettes";
 import VignetteWrapper from "./vignette.style";
@@ -35,7 +35,7 @@ function CohortRow({ id, vignette, summary, cloneColors, onOpen, runInPlace }) {
       </Space>
       <ol>
         {vignette.findings.map((f, i) => {
-          const { lead, rest } = splitLead(f.text);
+          const { lead, rest } = splitLead(displayText(f));
           return (
             <li key={f.id} className={i < 3 && f.category !== "phenotype" ? "major" : undefined}>
               <Text type="secondary" className="sc-vignette-cat">{CATEGORY_LABEL[f.category]}</Text>
@@ -45,7 +45,7 @@ function CohortRow({ id, vignette, summary, cloneColors, onOpen, runInPlace }) {
                   <Text>{rest}</Text>
                 </>
               ) : (
-                <Text strong={i < 3}>{f.text}</Text>
+                <Text strong={i < 3}>{displayText(f)}</Text>
               )}
               <div style={{ margin: "2px 0 4px" }}>
                 <EvidenceChips finding={f} vignette={vignette} onRun={(action, title, k) => onRun(f, k)(action, title)} />
