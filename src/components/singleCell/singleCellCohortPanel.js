@@ -39,6 +39,8 @@ import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
 import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
+import CohortAlignedTreesPanel from "./cohort/cohortAlignedTreesPanel";
+import CohortAssociationsPanel from "./cohort/cohortAssociationsPanel";
 import PatientReportCard from "./patientReportCard";
 import CohortGenePanel from "./cohort/cohortGenePanel";
 import PatientCards from "./cohort/patientCards";
@@ -430,6 +432,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     { key: "scatter", label: t("components.single-cell.cohort.view-scatter") },
     { key: "qc", label: t("components.single-cell.cohort.view-qc") },
     { key: "treeshape", label: t("components.single-cell.cohort.view-treeshape") },
+    { key: "aligned", label: t("components.single-cell.cohort.view-aligned", "Aligned trees") },
+    { key: "associations", label: t("components.single-cell.cohort.view-associations", "Associations") },
   ];
 
   return (
@@ -553,6 +557,15 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "treeshape" && (
           <Col span={24}>
             <CohortTreeShapePanel summaries={summaries} files={files} datafiles={datafiles} />
+          </Col>
+        )}
+        {(view === "aligned" || view === "associations") && (
+          <Col span={24}>
+            {view === "aligned" ? (
+              <CohortAlignedTreesPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} onOpen={openPatient} />
+            ) : (
+              <CohortAssociationsPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} onOpen={openPatient} />
+            )}
           </Col>
         )}
         {view === "qc" && (
