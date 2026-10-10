@@ -157,6 +157,8 @@ export const SVG_REMAP = {
     grid: ["#f0f0f0", "#f5f5f5", "#eee", "#eeeeee", "#e8e8e8", "#ebebeb", "#efefef", "#fafafa"],
     border: ["#d9d9d9", "#ddd", "#dddddd", "#e0e0e0", "#ccc", "#cccccc", "#bfbfbf"],
     axis: ["#8c8c8c", "#999", "#999999", "#aaa"],
+    // INK.text used as a stroke (medians, picked-point rings) follows the text ink
+    text: ["#1f1f1f", "#141414"],
     textSecondary: ["#000", "#000000", "black", "#262626", "#333", "#434343", "#595959", "#666"],
   },
 };

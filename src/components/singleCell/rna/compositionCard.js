@@ -10,7 +10,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { chiSquareUpper } from "../../../helpers/singleCell/tests";
-import { FONT, Swatches, XBandLabels } from "../cohort/charts";
+import { FONT, Swatches, XBandLabels, YAxis } from "../cohort/charts";
 import HintLine, { Provenance } from "../hintLine";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
@@ -83,12 +83,7 @@ export default function CompositionCard({ summary }) {
     >
       <div ref={ref}>
         <svg width={width - 24} height={HEIGHT}>
-          {y.ticks(5).map((v) => (
-            <g key={v} transform={`translate(0,${y(v)})`}>
-              <line x1={M.left} x2={width - 24 - M.right} stroke={INK.grid} />
-              <text x={M.left - 6} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format(".0%")(v)}</text>
-            </g>
-          ))}
+          <YAxis scale={y} x0={M.left} x1={width - 24 - M.right} ticks={5} format={d3.format(".0%")} />
           {data.keys.map((k) => {
             const g = data.groups.get(k);
             let acc = 0;
@@ -106,7 +101,7 @@ export default function CompositionCard({ summary }) {
                   );
                 })}
                 <rect x={x(k)} y={HEIGHT - M.bottom + 2} width={x.bandwidth()} height={5} fill={groupColors[k] || INK.faint} />
-                <text x={x(k) + x.bandwidth() / 2} y={M.top - 2} textAnchor="middle" fontSize={11} fill={INK.muted}>{`n=${g.total}`}</text>
+                <text x={x(k) + x.bandwidth() / 2} y={M.top - 2} textAnchor="middle" fontSize={FONT.axis} fill={INK.muted}>{`n=${g.total}`}</text>
               </g>
             );
           })}

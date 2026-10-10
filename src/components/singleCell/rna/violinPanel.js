@@ -10,7 +10,8 @@ import { geneValues, searchGeneNames } from "../../../helpers/singleCell/staticR
 import { kernelDensity, quartiles } from "../../../helpers/singleCell/rnaStats";
 import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { geneSetIndex, loadGmt, prettyTerm } from "./geneSets";
-import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { INK } from "../../../helpers/singleCell/plotTheme";
+import { XBaseline, YAxis, useChartText } from "../cohort/charts";
 import { Provenance } from "../hintLine";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
@@ -76,13 +77,15 @@ function GeneViolins({ gene, values, groups, width, test }) {
   // Each violin is scaled to its own width (Seurat's VlnPlot default), so a
   // group that is mostly zeros doesn't flatten the others.
   const half = Math.min(band.bandwidth() / 2, 70);
+  const txt = useChartText();
+  const base = ROW_HEIGHT - M.bottom;
   return (
     <svg width={width} height={ROW_HEIGHT} role="img" aria-label={`${gene} violin plot`}>
-      <text x={M.left} y={14} fontSize="15" fontWeight="600" fill={INK.text}>
+      <text x={M.left} y={14} {...txt.title}>
         {gene}
       </text>
       {test && (
-        <text x={M.left + plotW} y={14} textAnchor="end" fontSize={TYPE.label} fill={test.p < 0.05 ? "#cf1322" : "#8c8c8c"}>
+        <text x={M.left + plotW} y={14} textAnchor="end" fontSize={txt.label.fontSize} fill={test.p < 0.05 ? INK.danger : INK.muted}>
           {`${test.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(test.p)}`}
           <title>
             {test.pairs.length
@@ -91,14 +94,7 @@ function GeneViolins({ gene, values, groups, width, test }) {
           </title>
         </text>
       )}
-      {y.ticks(4).map((tk) => (
-        <g key={tk}>
-          <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke={INK.grid} />
-          <text x={M.left - 6} y={y(tk) + 4} textAnchor="end" fontSize={TYPE.label} fill={INK.textSecondary}>
-            {tk}
-          </text>
-        </g>
-      ))}
+      <YAxis scale={y} x0={M.left} x1={M.left + plotW} ticks={4} title="log-normalized" />
       {shapes.map(({ g, v, density, stats, pct }) => {
         const cx = band(g.key) + band.bandwidth() / 2;
         const dmax = d3.max(density) || 1;
@@ -110,28 +106,26 @@ function GeneViolins({ gene, values, groups, width, test }) {
           .curve(d3.curveBasis);
         return (
           <g key={g.key}>
-            <rect x={cx - band.bandwidth() / 2} y={M.top} width={band.bandwidth()} height={ROW_HEIGHT - M.top - M.bottom} fill={INK.panelAlt} rx={4} />
-            <path d={area(grid.map((x, i) => ({ x, d: density[i] })))} fill={g.color} fillOpacity={0.35} stroke={g.color} strokeWidth={1.5} />
+            {txt.st.bands && <rect x={cx - band.bandwidth() / 2} y={M.top} width={band.bandwidth()} height={base - M.top} fill={INK.panelAlt} rx={4} />}
+            <path d={area(grid.map((x, i) => ({ x, d: density[i] })))} fill={g.color} fillOpacity={0.35} stroke={g.color} strokeWidth={1.25} />
             {v.map((val, k) => {
               // Spread points by the density at their value so they fill the violin.
               const at = density[Math.max(0, Math.min(grid.length - 1, Math.round((val / grid[grid.length - 1]) * (grid.length - 1))))] / dmax;
               return <circle key={k} cx={cx + jitter(k + 1) * half * 1.7 * at} cy={y(val)} r={1.7} fill={g.color} fillOpacity={0.75} />;
             })}
-            <rect x={cx - 3} y={y(stats.q3)} width={6} height={Math.max(1, y(stats.q1) - y(stats.q3))} fill="#262626" fillOpacity={0.6} />
-            <line x1={cx - 8} x2={cx + 8} y1={y(stats.median)} y2={y(stats.median)} stroke={INK.text} strokeWidth={2} />
+            <line x1={cx} x2={cx} y1={y(stats.q1)} y2={y(stats.q3)} stroke={INK.text} strokeWidth={3} strokeOpacity={0.7} />
+            <circle cx={cx} cy={y(stats.median)} r={3.2} fill={INK.panel} stroke={INK.text} />
             <title>{`${g.label}: n=${v.length}, median ${stats.median.toFixed(2)}, ${Math.round(pct * 100)}% expressing`}</title>
-            <text x={cx} y={ROW_HEIGHT - M.bottom + 18} textAnchor="middle" fontSize={TYPE.body} fontWeight="500" fill={INK.text}>
+            <text x={cx} y={base + 18} textAnchor="middle" {...txt.label} fill={INK.text}>
               {g.label.length > 22 ? `${g.label.slice(0, 21)}…` : g.label}
             </text>
-            <text x={cx} y={ROW_HEIGHT - M.bottom + 36} textAnchor="middle" fontSize={TYPE.label} fill={INK.muted}>
+            <text x={cx} y={base + 34} textAnchor="middle" {...txt.caption}>
               {`n=${v.length} · ${Math.round(pct * 100)}%`}
             </text>
           </g>
         );
       })}
-      <text transform={`translate(14 ${(M.top + ROW_HEIGHT - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
-        log-normalized
-      </text>
+      <XBaseline x0={M.left} x1={M.left + plotW} y={base} />
     </svg>
   );
 }
