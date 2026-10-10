@@ -5,6 +5,8 @@
 // differ between patients). Group-level PSI is computed here, in the front
 // end, by pooling the counts of the cells in each group. d3-free.
 
+import { normalizeSpliceFindings } from "./rnaHeadlineFindings";
+
 export const RNA_ONLY_GROUP = "RNA only (no DNA)";
 export const NA_GROUP = "NA";
 
@@ -26,6 +28,8 @@ export function normalizeSplicing(json) {
     clusters: (json.clusters || []).map((c) => ({ ...c, junctions: c.junctions || [], cells: c.cells || {} })),
     cellMap: json.cell_map || {},
     spliceReads: json.splice_reads || {},
+    // ranked findings (known variants, patient-specific junctions, clone-differential clusters); [] in older files
+    findings: normalizeSpliceFindings(json.findings),
   };
 }
 
@@ -170,7 +174,11 @@ export function filterClusters(clusters, query = "", { minPatients = 0 } = {}) {
 /** Patients with any read in a cohort cluster. */
 export const patientsWithReads = (cluster) => Object.values(cluster?.usage || {}).filter((u) => num(u?.total) > 0 || sum(u?.counts || []) > 0).length;
 
-/** Cohort table rows (one per cluster), most significant first. */
+/**
+ * Cohort table rows (one per cluster): the back end's rank (ΔPSI x read
+ * support, then p; chi-square p ties at 0 for most strong clusters) when
+ * present, else q then ΔPSI.
+ */
 export function cohortClusterRows(cohort) {
   return (cohort?.clusters || [])
     .map((c) => ({
@@ -181,11 +189,18 @@ export function cohortClusterRows(cohort) {
       p: Number(c.p),
       q: Number(c.q),
       max_dpsi: Number(c.max_dpsi),
+      rank: Number.isFinite(Number(c.rank)) && c.rank != null ? Number(c.rank) : Infinity,
+      rankScore: Number.isFinite(Number(c.rank_score)) && c.rank_score != null ? Number(c.rank_score) : NaN,
       nJunctions: (c.junctions || []).length,
       nPatients: patientsWithReads(c),
       cluster: c,
     }))
-    .sort((a, b) => (Number.isFinite(a.q) ? a.q : 1) - (Number.isFinite(b.q) ? b.q : 1) || (b.max_dpsi || 0) - (a.max_dpsi || 0));
+    .sort(
+      (a, b) =>
+        (a.rank === b.rank ? 0 : a.rank < b.rank ? -1 : 1) ||
+        (Number.isFinite(a.q) ? a.q : 1) - (Number.isFinite(b.q) ? b.q : 1) ||
+        (b.max_dpsi || 0) - (a.max_dpsi || 0)
+    );
 }
 
 /** Junction x patient PSI of a cohort cluster: { patients, psi: [junction][patient], totals: [patient] }. */

@@ -7,6 +7,7 @@ import actions, {
 import caseReportActions from "../caseReport/actions";
 import { DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
 import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups";
+import { cellsOfGroups, linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
 import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
 
 // Saved cell groups shared through the URL join the stored ones.
@@ -72,6 +73,7 @@ const initState = {
   layout: storedLayout(),
   plotInsets: { left: 0, right: 0 },
   igv: null, // { cellIds, chromosome, position, label }
+  driverFocus: null, // driverKey of the driver open in the Drivers tab
   perCell: {}, // { [cellId]: { [track]: { status, data, error } } }
 };
 
@@ -105,7 +107,14 @@ export default function appReducer(state = initState, action) {
       };
     case actions.FETCH_SINGLE_CELL_DATA_PROGRESS:
       return { ...state, loadingPercentage: action.loadingPercentage };
-    case actions.FETCH_SINGLE_CELL_DATA_SUCCESS:
+    case actions.FETCH_SINGLE_CELL_DATA_SUCCESS: {
+      // a deep link (?scsel=, ?heatmap=) opens the patient on that selection / heatmap
+      const link = readDeepLink();
+      const linked = linkAppliesTo(link, action.patient?.caseReportId);
+      const linkedCells = linked
+        ? cellsOfGroups(state.layout.savedGroups?.[action.patient?.caseReportId] || [], link.groups, action.order || [])
+        : [];
+      const defaultHeatmap = action.cn.status === "ok" ? "cn" : action.snv.status === "ok" ? "snv" : "junctions";
       return {
         ...state,
         loading: false,
@@ -129,15 +138,11 @@ export default function appReducer(state = initState, action) {
         rnaSplicing: action.rnaSplicing || emptySource,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
-        selectedCellIds: action.selectedCellIds,
-        heatmapType:
-          action.cn.status === "ok"
-            ? "cn"
-            : action.snv.status === "ok"
-            ? "snv"
-            : "junctions",
+        selectedCellIds: linkedCells.length ? linkedCells : action.selectedCellIds,
+        heatmapType: linked && link.heatmap && action[link.heatmap]?.status === "ok" ? link.heatmap : defaultHeatmap,
         perCell: {},
       };
+    }
     case actions.FETCH_SINGLE_CELL_DATA_MISSING:
       return { ...initState, ...preferences(state), missing: true };
     case actions.FETCH_SINGLE_CELL_DATA_FAILED:
@@ -205,6 +210,8 @@ export default function appReducer(state = initState, action) {
         : { ...state, plotInsets: action.insets };
     case actions.SC_IGV_OPENED:
       return { ...state, igv: action.view };
+    case actions.SC_DRIVER_FOCUS_UPDATED:
+      return { ...state, driverFocus: action.key ?? null };
     case actions.SC_IGV_CLOSED:
       return { ...state, igv: null };
     case actions.SC_HOVER_UPDATED:
