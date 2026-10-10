@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button, ColorPicker, Popover, Select, Space, Tooltip, Typography } from "antd";
 import { BgColorsOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
-import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
+import { CN_PALETTE_PRESETS, LONG_PALETTE_TICKS } from "../../helpers/singleCell/matrix";
 import { THEMES } from "../../helpers/singleCell/themes";
 import { DEFAULT_FIGURE_STYLE, FIGURE_STYLES } from "../../helpers/singleCell/figureStyle";
 
@@ -68,9 +68,11 @@ export default function PaletteEditor() {
   const applyPreset = (preset) =>
     dispatch(singleCellActions.updatePalette({ preset, ...CN_PALETTE_PRESETS[preset] }));
 
+  // long per-state palettes (deck, 0..100) are edited at their legend ticks only
+  const editable = (key) => (palette[key].length > 16 ? LONG_PALETTE_TICKS.filter((k) => k < palette[key].length) : palette[key].map((c, k) => k));
   const row = (key) => (
     <Space size={2} wrap>
-      {palette[key].map((color, k) => (
+      {editable(key).map((k) => [palette[key][k], k]).map(([color, k]) => (
         <Space key={k} direction="vertical" size={0} align="center">
           <ColorPicker
             size="small"
