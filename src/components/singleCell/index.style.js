@@ -297,6 +297,38 @@ const Wrapper = styled.div`
     margin-top: 12px;
     border-top: 1px solid var(--sc-border-soft, #f0f0f0);
   }
+  .sc-fig-amps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin: 2px 0 6px;
+    font-size: var(--sc-fs-tick, 11.5px);
+  }
+  .sc-fig-amp {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--sc-border, #d9d9d9);
+    border-radius: 12px;
+    padding: 0 2px 0 8px;
+    opacity: 0.6;
+  }
+  .sc-fig-amp.is-on {
+    opacity: 1;
+  }
+  .sc-fig-amp.is-main {
+    border-color: var(--sc-text-secondary, #8c8c8c);
+  }
+  .sc-fig-amp .ant-btn {
+    padding: 0 4px;
+    height: 20px;
+    min-width: 0;
+  }
+  .sc-fig-amp-n {
+    color: var(--sc-muted, #666);
+    margin-left: 4px;
+    font-weight: 400;
+  }
   .sc-fig-empty {
     display: flex;
     align-items: center;
