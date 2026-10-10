@@ -107,12 +107,18 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
   React.useEffect(() => {
     if (linkedWalk.current || !link.figWalk || !current || current.patient !== link.figPatient || !allWalks.length) return;
     linkedWalk.current = true;
-    const [id] = walkIdsForLabels(allWalks, [link.figWalk]);
-    const w = allWalks.find((x) => `${x.id}` === `${id}`);
+    // figwalk=<label>|<label>: show these walks, mark carriers of the first
+    const ids = walkIdsForLabels(allWalks, link.figWalk.split("|").map((x) => x.trim()).filter(Boolean));
+    const w = allWalks.find((x) => `${x.id}` === `${ids[0]}`);
     if (!w) return;
-    setRegionKey(`w:${w.id}`);
+    setRegionKey(`w:${ids.join("+")}`);
     setMarked({ cells: new Set(current.cellIds.filter((c) => (Number(w.cells?.[c]) || 0) >= minCn)), label: `${w.label} carriers`, key: `w:${current.patient}:${w.id}` });
   }, [current, allWalks, link, minCn]);
+  React.useEffect(() => {
+    if (!link.figPatient) return undefined;
+    const t = setTimeout(() => patientRef.current?.scrollIntoView({ block: "start" }), 1500);
+    return () => clearTimeout(t);
+  }, [link.figPatient]);
 
   const genePositions = useMemo(() => {
     const m = new Map();
@@ -128,8 +134,9 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
     if (!current) return { domains: [], label: "" };
     const key = regionKey && current.groups.some((g) => `g:${g.key}` === regionKey) ? regionKey : regionKey?.startsWith("gene:") || regionKey?.startsWith("f:") ? regionKey : current.groups[0] ? `g:${current.groups[0].key}` : null;
     if (regionKey?.startsWith("w:")) {
-      const w = allWalks.find((x) => `w:${x.id}` === regionKey);
-      if (w) return { key: regionKey, domains: lociDomains(walkLoci([w]), chromoBins), label: `${w.label} walk`, group: { key: w.label, walks: [w], cellIds: current.cellIds, cn: Float32Array.from(current.cellIds, (c) => Number(w.cells?.[c]) || 0) } };
+      const ws = regionKey.slice(2).split("+").map((id) => allWalks.find((x) => `${x.id}` === id)).filter(Boolean);
+      const w = ws[0];
+      if (w) return { key: regionKey, domains: lociDomains(walkLoci(ws), chromoBins), label: ws.map((x) => x.label).join(" + "), group: { key: w.label, walks: ws, cellIds: current.cellIds, cn: Float32Array.from(current.cellIds, (c) => Number(w.cells?.[c]) || 0) } };
     }
     if (key?.startsWith("g:")) {
       const g = current.groups.find((x) => `g:${x.key}` === key);
@@ -264,7 +271,7 @@ export default function CohortFiguresPanel({ summaries, files, datafiles, cnRows
               </Space>
             }
           >
-            {current && <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={marked} />}
+            {current && <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={marked} select={link.figSelect} layout={link.figLayout} />}
             <Row gutter={16} style={{ marginTop: 8 }}>
               <Col xs={24} xl={12}>
                 <Tooltip title="Pearson correlation of log copy number between positions across the region(s), in the marked cells (upper triangle) and the other tumor cells (lower). Red blocks off the diagonal = segments that rise and fall together, i.e. carried on the same molecule.">
