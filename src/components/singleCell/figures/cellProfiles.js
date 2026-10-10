@@ -27,7 +27,7 @@ function breakend(intervals, signed, isSource, chromoBins) {
  * Fig 4E, live: copy-number profiles of a few cells across the figure's
  * region: read-depth dots (coverage), the cell's JaBbA segments and its ALT
  * junctions as arcs. Shows the selected cells (up to 3), else a high and a
- * median carrier of the focused variant and a tumour non-carrier.
+ * median carrier of the focused variant and a tumor non-carrier.
  */
 export default function CellProfiles({ order = [], focusWalk, domains = [], cellById }) {
   const dispatch = useDispatch();

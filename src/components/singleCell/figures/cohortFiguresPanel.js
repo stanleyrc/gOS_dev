@@ -21,6 +21,8 @@ import GenePairScatter from "./genePairScatter";
 import CladeCarrierBars from "./cladeCarrierBars";
 import SelectedCellsModal from "./selectedCellsModal";
 import { CellSelectionProvider, SelectionBar, useCellSelection } from "./cellSelection";
+import { readViewLink, walkIdsForLabels, withCloneOverrides } from "../../../helpers/singleCell/deepLink";
+import GeneCnScatter from "./geneCnScatter";
 
 const { Text } = Typography;
 const PAD = 1.5e6;
@@ -127,7 +129,10 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   );
 
   // patient view selection
-  const [patient, setPatient] = useState(null);
+  // ?figpatient=&figwalk=&figgenes= (committee deep links) open a patient, focus a walk (its carriers selected) and a gene pair
+  const link = useMemo(() => readViewLink(), []);
+  const [patient, setPatient] = useState(link.figPatient || null);
+  const [pairGenes, setPairGenes] = useState(link.figGenes.length === 2 ? link.figGenes : null);
   const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "gene:<name>" | "f:<finding key>"
   // default: the patient with the most ecDNA walks among those with an SNV matrix (BWH70 in the paper's Fig 4)
   const richest = useMemo(() => [...withAmps].sort((a, b) => (b.nVariants > 0) - (a.nVariants > 0) || b.groups.reduce((s, g) => s + g.walks.length, 0) - a.groups.reduce((s, g) => s + g.walks.length, 0))[0], [withAmps]);
@@ -135,6 +140,19 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const [focusWalkId, setFocusWalkId] = useState(null);
   const [figDomains, setFigDomains] = useState([]);
   useEffect(() => setFocusWalkId(null), [current?.patient]);
+  const linkedWalk = useRef(false);
+  useEffect(() => {
+    const walks = files[current?.patient]?.walks?.walks || [];
+    if (linkedWalk.current || !link.figWalk || !current || current.patient !== link.figPatient || !walks.length) return;
+    linkedWalk.current = true;
+    const [id] = walkIdsForLabels(walks, [link.figWalk]);
+    const w = walks.find((x) => `${x.id}` === `${id}`);
+    if (!w) return;
+    setTimeout(() => setFocusWalkId(`${w.id}`), 0);
+    select(current.patient, current.cellIds.filter((c) => (Number(w.cells?.[c]) || 0) >= minCn), { label: `${w.label} carriers` });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, files, link, minCn]);
+  const linkColors = useMemo(() => withCloneOverrides(cloneColors, link.cloneColors), [cloneColors, link]);
   // the cohort selection drives the loaded patient's selection (tree, heatmap, report side panels)
   const storePatient = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const storeSelection = useSelector((s) => s.SingleCell.selectedCellIds);
@@ -214,10 +232,11 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const selectedHere = selection && selection.patient === current?.patient ? selection.cells : null;
 
 
+  const genePair = pairGenes?.length === 2 ? pairGenes : region.group?.genes?.length >= 2 ? region.group.genes.slice(0, 2) : null;
   if (!per.length) return <Empty />;
   const regionOptions = [
     ...(current?.groups || []).map((g) => ({ value: `g:${g.key}`, label: `ec${g.key} (${g.walks.length} walk${g.walks.length === 1 ? "" : "s"})` })),
-    ...(regionKey?.startsWith("f:") ? [{ value: regionKey, label: region.label }] : []),
+    ...(regionKey?.startsWith("f:") || regionKey?.startsWith("w:") ? [{ value: regionKey, label: region.label }] : []),
     ...[...genePositions.keys()].sort().map((g) => ({ value: `gene:${g}`, label: g })),
   ];
   const selectedViolin = region.group ? { patient: current?.patient, key: region.group.key } : null;
@@ -236,6 +255,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Card
+            id="sc-fig-landscape"
             size="small"
             title={<Space><BranchesOutlined />Figure 3 · Amplicons across the cohort <Provenance id="figLandscape" /></Space>}
             extra={
@@ -280,7 +300,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 </div>
               </Col>
               <Col xs={24} xxl={13}>
-                <PanelHead letter="D" title="Subclonal findings" hint="driver events and amplicons in part of a tumour, following the tree · click a row" extra={<Provenance id="figSubclonal" />} />
+                <PanelHead letter="D" title="Subclonal findings" hint="driver events and amplicons in part of a tumor, following the tree · click a row" extra={<Provenance id="figSubclonal" />} />
                 <SubclonalFindingsTable
                   findings={findings}
                   cloneColors={cloneColors}
@@ -294,6 +314,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
         <Col span={24}>
           <div ref={patientRef} style={{ scrollMarginTop: 12 }} />
           <Card
+            id="sc-fig-patient"
             size="small"
             title={<Space><BarChartOutlined />Figures 4–5 · Clonal amplicon figure <Provenance id="figClonalAmplicon" /></Space>}
             extra={
@@ -324,15 +345,25 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={9}>
                 <PanelHead letter="E" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select" />
-                {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
+                {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={linkColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={7}>
                 <PanelHead letter="F" title="Carriers per clade" fig="Fig 4F" hint="click a bar" />
-                {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={cloneColors} selected={selectedHere} onSelect={selectHere} />}
+                {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={linkColors} selected={selectedHere} onSelect={selectHere} />}
               </Col>
               <Col xs={24} xl={8}>
                 <PanelHead letter="G" title="Amplicon state per clade" fig="Fig 5F" hint="focused variant · click a clade" />
                 {current && <PatientCladeStates patient={current.patient} focusWalkId={focusWalkId} onSelectCells={(ids, label) => select(current.patient, ids, { label })} />}
+              </Col>
+            </Row>
+            <Row gutter={[24, 16]} className="sc-fig-block">
+              <Col xs={24} xl={12} id="sc-fig-genepair">
+                <PanelHead letter="H" title="Gene vs gene copy number per clone" fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} />} />
+                {genePair ? (
+                  <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={genePair} cloneColors={linkColors} cloneLabels={link.cloneLabels} width={520} />
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>Pick two genes on one amplicon (e.g. CDK4 and MDM2).</Text>
+                )}
               </Col>
             </Row>
             <Collapse

@@ -84,7 +84,7 @@ describe("mainAmplicons", () => {
   ];
   const all = mainAmplicons(ws, ids);
   const amps = all.filter((a) => a.main);
-  it("keeps driver groups carried by >= 15% of tumour cells at median >= 8 copies, dominant first", () => {
+  it("keeps driver groups carried by >= 15% of tumor cells at median >= 8 copies, dominant first", () => {
     expect(amps.map((a) => a.key)).toEqual(["MYCN", "EGFR", "CDK4"]);
     expect(amps[0].dominant.id).toBe("m1");
     expect(amps[0].walks.map((w) => w.id)).toEqual(["m1", "m2"]);

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Checkbox, Space, Typography } from "antd";
-import GenesPanel from "../../genesPanel";
+import GenesPlot from "../../genesPlotHiglass";
 import WalksPlot from "../ecdna/walksPlot";
 import { TrackPlot } from "../cellTracksPanel";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
@@ -11,13 +11,14 @@ const { Text } = Typography;
 
 // Geometry of the gOS panels, so their genome axis sits exactly over the
 // figure's CN heatmap columns [cnX, cnX + cnW):
-//  - GenesPanel / GenomePanel / ScatterPlotPanel: card border 1 + body
-//    padding 12, then a 50 px plot margin each side (GenomePanel's plot is
-//    27 px narrower than its card body; Genes' is not, hence +1 on the right).
+//  - GenomePanel / ScatterPlotPanel: card border 1 + body padding 12, then
+//    a 50 px plot margin each side (the plot is 27 px narrower than the card).
+//  - GenesPlot (higlass): a bare plot with 50 px margins.
 //  - WalksPlot: genome starts at labelWidth + 50 + 10 and is
 //    width - labelWidth - rightWidth - 100 wide.
 const CARD_LEFT = 63;
 const CARD_EXTRA = 127;
+const GENES_H = 110;
 const TRACKS = [
   { value: "genes", label: "Genes" },
   { value: "walks", label: "ecDNA walks" },
@@ -37,6 +38,7 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
   const dataset = useSelector((s) => s.Settings.dataset);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const domains = useSelector((s) => s.Settings.domains);
+  const genesList = useSelector((s) => s.Genes?.list || []);
   // display names for the walk lanes (the paper's names where mapped)
   const lanes = useMemo(() => walks.map((w) => ({ ...w, label: nameOf ? nameOf(w) : w.label })), [walks, nameOf]);
   const families = useMemo(() => walkFamilies(lanes), [lanes]);
@@ -74,9 +76,10 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
         <Checkbox.Group value={tracks} onChange={setTracks} options={TRACKS} />
         {cellNote && <Text type="secondary" style={{ fontSize: 12 }}>{cellNote}</Text>}
       </Space>
-      {tracks.includes("genes") && (
-        <div style={cardStyle}>
-          <GenesPanel />
+      {tracks.includes("genes") && genesList.length > 0 && domains?.length > 0 && (
+        // the report's gene track (50 px plot margins, like the heatmap's genomic columns)
+        <div style={{ marginLeft: Math.max(0, cnX - 50), width: cnW + 100, height: GENES_H, position: "relative" }}>
+          <GenesPlot {...{ width: cnW + 100, height: GENES_H, domains, genesList }} />
         </div>
       )}
       {tracks.includes("walks") && lanes.length > 0 && (
