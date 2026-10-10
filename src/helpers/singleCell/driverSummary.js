@@ -418,7 +418,8 @@ export function effectWord(lfc, p, { alpha = 0.05, minLfc = 0.5 } = {}) {
 export function driverOneLiner(s) {
   if (!s) return "";
   const parts = [`${s.label} (${KIND_LABEL[s.kind].toLowerCase()}) in ${s.n} of ${s.total} tumor cells (${pct(s.fraction)}${s.fit != null && s.fit >= 0.8 ? ", one clade" : ""})`];
-  if (s.coTravellers?.length) parts.push(`travels with ${s.coTravellers.slice(0, 3).join(", ")}${s.coTravellers.length > 3 ? ` +${s.coTravellers.length - 3}` : ""}`);
+  const co = [...(s.keyCoTravellers || []).map((k) => k.label), ...(s.coTravellers || []).filter((l) => !(s.keyCoTravellers || []).some((k) => k.label === l))];
+  if (co.length) parts.push(`travels with ${co.slice(0, 3).join(", ")}${co.length > 3 ? ` +${co.length - 3}` : ""}`);
   (s.dosage || []).slice(0, 2).forEach((g) => parts.push(`${g.gene} RNA ${effectWord(g.log2fc, g.p)}`));
   const prog = (s.programs || []).find((p) => p.q < 0.1);
   if (prog) parts.push(`${prog.name} program ${prog.d > 0 ? "up" : "down"} (d ${prog.d.toFixed(1)})`);
@@ -456,7 +457,7 @@ export function summarizeDriver(bundle, ctx) {
       const eff = expressionEffect(a, b);
       if (!eff) return null;
       const changed = eff.p <= 0.05 && Math.abs(eff.log2fc) >= 0.5;
-      return { gene: g, ...eff, expected: expDir, agrees: expDir !== 0 && changed && Math.sign(eff.log2fc) === expDir, changed };
+      return { gene: g, ...eff, expected: expDir, agrees: expDir !== 0 && changed && Math.sign(eff.log2fc) === expDir, opposite: expDir !== 0 && changed && Math.sign(eff.log2fc) === -expDir, changed };
     })
     .filter(Boolean);
   const programs = ctx.programScores
@@ -479,6 +480,13 @@ export function summarizeDriver(bundle, ctx) {
   }
   const evidence = evidenceStrength(d, { rnaSupport: kind === "fusion" || rnaSupport.dosageAgrees ? rnaSupport : null, confound });
   const coTravellers = bundle.members.slice(1).map((m) => m.label);
+  // co-travelling events in GBM driver / cancer genes, most notable first (e.g. EGFR AMP riding with MET AMP)
+  const keyCoTravellers = bundle.members
+    .slice(1)
+    .map((m) => ({ label: m.label, gbm: driverGenes(m.event).some((g) => GBM_GENES[g]?.kind === "driver"), cancer: Boolean(roleOf(m.event?.role)) || driverGenes(m.event).some((g) => PATHWAY_OF[g]) }))
+    .filter((m) => m.gbm || m.cancer)
+    .sort((a, b) => b.gbm - a.gbm)
+    .map((m) => ({ label: m.label, gbm: m.gbm }));
   const out = {
     key: d.key,
     label: d.label,
@@ -492,6 +500,7 @@ export function summarizeDriver(bundle, ctx) {
     fit: d.fit && Number.isFinite(d.fit.score) ? d.fit.score : null,
     fitDetail: d.fit || null,
     coTravellers,
+    keyCoTravellers,
     members: bundle.members,
     priority: d.priority || driverPriority(d),
     dosage,
@@ -549,7 +558,8 @@ export function describeCnRegions(regions, chromoBins, scna = [], { step = 1e6, 
       const hi = r.end + step / 2;
       const a = toLocalPosition(chromoBins, Math.max(lo, 0));
       const b = toLocalPosition(chromoBins, hi);
-      const genes = [...new Set(scna.filter((s) => s.global >= lo && s.global <= hi).map((s) => s.gene))].sort((x, y) => rank(x) - rank(y) || x.localeCompare(y));
+      // genes within one grid step of the edges (the grid samples the middle of each step)
+      const genes = [...new Set(scna.filter((s) => s.global >= lo - step && s.global <= hi + step).map((s) => s.gene))].sort((x, y) => rank(x) - rank(y) || x.localeCompare(y));
       return {
         ...r,
         lo,
@@ -559,6 +569,7 @@ export function describeCnRegions(regions, chromoBins, scna = [], { step = 1e6, 
         weight: Math.abs(r.diff) * Math.log2(2 + (hi - lo) / step),
       };
     })
+    .filter((r) => r.where !== "?")
     .sort((x, y) => y.weight - x.weight)
     .slice(0, max);
 }
