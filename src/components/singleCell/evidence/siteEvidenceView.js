@@ -99,7 +99,7 @@ export default function SiteEvidenceView({ siteId, calls, evidence }) {
               <Text type="secondary" copyable={{ text: `${site.chrom}:${site.pos}` }}>
                 {site.chrom}:{Number(site.pos).toLocaleString()} {site.ref}&gt;{site.alt}
               </Text>
-              {ann.configured ? <Tag>hotspot genotyped in every cell</Tag> : <Tag>discovered from pooled reads</Tag>}
+              {ann.configured ? <Tag>hotspot genotyped in every cell</Tag> : ann.eventTier ? <Tag>tier {ann.eventTier} filtered event, genotyped in every cell</Tag> : <Tag>discovered from pooled reads</Tag>}
             </Space>
             <Space size={6} wrap>
               <Text type="secondary">read filter</Text>
