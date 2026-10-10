@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Card, Col, Empty, Input, Row, Segmented, Space, Spin, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, Card, Col, Empty, Input, Row, Segmented, Space, Spin, Table, Tooltip, Typography } from "antd";
+import NeutralTag, { DataSwatch } from "../neutralTag";
 import { SwapOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import {
   ASE_CLASS,
   ASE_CLASS_FILL,
-  ASE_KIND_COLOR,
   aseHeadline,
   aseIgvView,
   aseSliceCount,
@@ -84,12 +84,12 @@ function AseFindingsList({ ase, patientId, picked, onPick }) {
         return (
           <div key={f.id} style={{ fontSize: TYPE.label, lineHeight: 1.6, opacity: isNotableAse(f) ? 1 : 0.78, background: picked === f.gene ? INK.selectFill : undefined, borderRadius: 4, padding: "0 4px" }} data-finding={f.id}>
             <Text type="secondary" style={{ fontSize: TYPE.tick, marginInlineEnd: 6 }}>{i + 1}.</Text>
-            <Tag color={f.severity === "high" ? "red" : f.severity === "moderate" ? "gold" : "default"} style={{ fontSize: TYPE.tick, marginInlineEnd: 4 }}>
+            <NeutralTag strong={f.severity === "high"} style={{ fontSize: TYPE.tick }}>
               {t(`${k}.severity-${f.severity}`)}
-            </Tag>
-            <Tag color={ASE_KIND_COLOR[f.kind] || "default"} bordered={false} style={{ fontSize: TYPE.tick, marginInlineEnd: 4 }}>
+            </NeutralTag>
+            <DataSwatch color={ASE_CLASS_FILL[f.kind] || ASE_CLASS_FILL.none} style={{ fontSize: TYPE.tick, marginInlineEnd: 6 }}>
               {t(`${k}.kind-${f.kind}`)}
-            </Tag>
+            </DataSwatch>
             <Link onClick={() => onPick(f.gene)} style={{ fontSize: TYPE.label }}>
               {f.text}
             </Link>
@@ -173,7 +173,7 @@ function AseScatter({ ase, width, picked, onPick }) {
               r={isPicked ? r(p.reads) + 2 : r(p.reads)}
               fill={ASE_CLASS_FILL[p.cls] || ASE_CLASS_FILL.none}
               fillOpacity={called ? 0.85 : 0.25}
-              stroke={isPicked ? INK.text : p.switch ? ASE_CLASS_FILL["minority-allele"] : "none"}
+              stroke={isPicked ? INK.text : p.switch ? ASE_CLASS_FILL["clone-switch"] : "none"}
               strokeWidth={isPicked ? 2 : 1.2}
               style={{ cursor: "pointer" }}
               onClick={() => onPick(p.gene)}
@@ -310,10 +310,10 @@ function AseGeneDetail({ ase, gene, width }) {
     <Space direction="vertical" size={6} style={{ width: "100%" }}>
       <Space wrap size={[8, 2]}>
         <Text strong style={{ fontSize: TYPE.title }}>{gene}</Text>
-        {cls && <Tag color={cls.color}>{cls.label}</Tag>}
-        {g.switch && <Tag color="purple">{t(`${k}.kind-clone-switch`)}</Tag>}
-        {(g.flags || []).map((f) => <Tag key={f} bordered={false}>{f}</Tag>)}
-        {g.cancer && <Tag color="red" bordered={false}>{t(`${k}.cancer-gene`)}</Tag>}
+        {cls && <DataSwatch color={ASE_CLASS_FILL[g.cls]}>{cls.label}</DataSwatch>}
+        {g.switch && <DataSwatch color={ASE_CLASS_FILL["clone-switch"]}>{t(`${k}.kind-clone-switch`)}</DataSwatch>}
+        {(g.flags || []).map((f) => <NeutralTag key={f}>{f}</NeutralTag>)}
+        {g.cancer && <NeutralTag strong>{t(`${k}.cancer-gene`)}</NeutralTag>}
         <Text type="secondary" style={{ fontSize: TYPE.label }}>
           {t(`${k}.gene-stats`, { rna: pctText(g.rna), dna: pctText(g.dna), q: qText(g.q), cells: g.cells, reads: g.reads, snps: g.snps })}
         </Text>
@@ -393,7 +393,7 @@ export default function AsePanel() {
   const detailW = wide ? width - scatterW - 24 : width;
   const columns = [
     { title: t(`${k}.col-gene`), dataIndex: "gene", key: "gene", width: 110, fixed: "left", render: (g) => <Link onClick={() => pick(g)} strong={g === picked}>{g}</Link> },
-    { title: t(`${k}.col-class`), key: "cls", width: 150, render: (_, g) => <Space size={2} wrap>{g.cls && <Tag color={ASE_CLASS[g.cls]?.color}>{ASE_CLASS[g.cls]?.label || g.cls}</Tag>}{g.switch && <Tag color="purple">switch</Tag>}</Space> },
+    { title: t(`${k}.col-class`), key: "cls", width: 150, render: (_, g) => <Space size={6} wrap>{g.cls && <DataSwatch color={ASE_CLASS_FILL[g.cls]}>{ASE_CLASS[g.cls]?.label || g.cls}</DataSwatch>}{g.switch && <DataSwatch color={ASE_CLASS_FILL["clone-switch"]}>switch</DataSwatch>}</Space> },
     { title: "RNA A", dataIndex: "rna", key: "rna", width: 70, render: pctText, sorter: (a, b) => a.rna - b.rna },
     { title: "DNA A", dataIndex: "dna", key: "dna", width: 70, render: pctText, sorter: (a, b) => (a.dna || 0) - (b.dna || 0) },
     { title: "Δ", dataIndex: "delta", key: "delta", width: 64, render: (v) => (Number.isFinite(v) ? v.toFixed(2) : "–"), sorter: (a, b) => Math.abs(a.delta || 0) - Math.abs(b.delta || 0) },
