@@ -6,7 +6,7 @@ import { columnCorrelations } from "../../../helpers/singleCell/figures";
 /**
  * Fig 5C: correlation of segment copy number across cells along the
  * amplicon region(s): upper triangle in the marked cells (e.g. carriers of
- * a recombined ecDNA), lower triangle in the other tumour cells. Blocks of
+ * a recombined ecDNA), lower triangle in the other tumor cells. Blocks of
  * high correlation between distant segments = segments carried together.
  */
 export function SegmentCorrelation({ width, cnEntry, domains, carriers, others, m = 90, chromoBins }) {
