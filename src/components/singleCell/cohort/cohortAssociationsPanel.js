@@ -34,7 +34,7 @@ const lineageColor = (() => {
 /** Phylogenetic signal of each state / program in each patient: z (colour only when p < 0.05) and the cross-patient summary. */
 function ConcordanceMatrix({ rows, patients, theme, focus, onCell }) {
   const labelW = 230;
-  const cellW = 54;
+  const cellW = 64;
   const sumW = 250;
   const rowH = 22;
   const headH = 22;
@@ -180,16 +180,16 @@ function AssocDetail({ focus, assoc, aligned, onOpen, theme, width }) {
 
 /** Lineage composition bars (state colours) of one patient. */
 function Composition({ comp, theme }) {
-  const W = 220;
+  const W = 240;
   return (
     <svg width={W} height={comp.length * 13} role="img">
       {comp.map((c, i) => {
-        let x = 64;
+        let x = 84;
         return (
           <g key={c.lineage}>
-            <text x={60} y={i * 13 + 6} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={theme.textSecondary}>{`${c.lineage.length > 9 ? `${c.lineage.slice(0, 8)}…` : c.lineage} (${c.n})`}</text>
+            <text x={80} y={i * 13 + 6} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={theme.textSecondary}>{`${c.lineage.length > 9 ? `${c.lineage.slice(0, 8)}…` : c.lineage} (${c.n})`}</text>
             {STATES.map((s) => {
-              const w = (c.counts[s] / Math.max(1, c.n)) * (W - 66);
+              const w = (c.counts[s] / Math.max(1, c.n)) * (W - 86);
               const r = <rect key={s} x={x} y={i * 13 + 1} width={Math.max(0, w - 0.5)} height={10} fill={STATE_COLORS[s]}><title>{`${c.lineage}: ${s} ${c.counts[s]}/${c.n}`}</title></rect>;
               x += w;
               return r;
@@ -293,7 +293,7 @@ export default function CohortAssociationsPanel({ dataset, summaries = [], onOpe
               dataSource={patients.map((P) => ({ patient: P, ...assoc.patients[P] }))}
               onRow={(r) => ({ onClick: () => r.cells && (setSelected(null), setFocus({ patients: [r.patient], title: `${r.patient}: lineage × state` })), style: { cursor: r.cells ? "pointer" : "default" } })}
               columns={[
-                { title: "Patient", dataIndex: "patient", render: (P, r) => <Space size={4}><Text strong>{P}</Text>{r.old_tree && <NeutralTag style={{ fontSize: TYPE.micro }}>older tree</NeutralTag>}</Space> },
+                { title: "Patient", dataIndex: "patient", width: 150, render: (P, r) => <Space size={4} style={{ whiteSpace: "nowrap" }}><Text strong>{P}</Text>{r.old_tree && <NeutralTag style={{ fontSize: TYPE.micro }}>older tree</NeutralTag>}</Space> },
                 { title: "Tumor cells with RNA", dataIndex: "n_rna", align: "right" },
                 { title: "Lineages from", dataIndex: "lineage_source", render: (x, r) => (r.skipped ? <Text type="secondary">{r.skipped}</Text> : x === "clone" ? "clone table" : "major tree clades") },
                 { title: "Composition", dataIndex: "composition", render: (c) => (c ? <Composition comp={c} theme={theme} /> : null) },
