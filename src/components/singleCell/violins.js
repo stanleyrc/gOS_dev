@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import useContainerWidth from "./useContainerWidth";
 import usePlotTheme from "./usePlotTheme";
-import { TYPE } from "../../helpers/singleCell/plotTheme";
+import { XBaseline, YAxis, linearScale, useChartText } from "./chartAxes";
 import { kernelDensity, quartiles } from "../../helpers/singleCell/rnaStats";
 
 const fmt = (v) => (Math.abs(v) >= 10 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(1) : v.toFixed(2));
@@ -18,13 +18,14 @@ const fmt = (v) => (Math.abs(v) >= 10 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFi
 export default function Violins({ groups, height = 240, domain = null, yTitle = "", maxPoints = 400, showDetected = false, onPick = null }) {
   const [ref, width] = useContainerWidth(600);
   const theme = usePlotTheme();
+  const txt = useChartText();
   const [hover, setHover] = useState(null);
-  const M = { left: 46, right: 8, top: 10, bottom: showDetected ? 54 : 40 };
+  const M = { left: 58, right: 8, top: 10, bottom: showDetected ? 54 : 40 };
   const plotH = height - M.top - M.bottom;
   const all = groups.flatMap((g) => g.values).filter(Number.isFinite);
   const lo = domain ? domain[0] : Math.min(0, ...all);
   const hi = domain ? domain[1] : Math.max(lo + 1e-9, ...all);
-  const y = (v) => M.top + plotH - ((Math.min(Math.max(v, lo), hi) - lo) / (hi - lo || 1)) * plotH;
+  const y = linearScale([lo, hi > lo ? hi : lo + 1], [M.top + plotH, M.top], { clamp: true });
   // horizontal layout: a gap between clusters
   const gaps = groups.reduce((acc, g, i) => acc + (i > 0 && g.cluster != null && g.cluster !== groups[i - 1].cluster ? 1 : 0), 0);
   const unit = (width - M.left - M.right) / Math.max(1, groups.length + gaps * 0.6);
@@ -37,7 +38,6 @@ export default function Violins({ groups, height = 240, domain = null, yTitle = 
   });
   const half = Math.min(unit * 0.42, 46);
   const pts = Array.from({ length: 48 }, (_, k) => lo + ((hi - lo) * k) / 47);
-  const ticks = Array.from({ length: 5 }, (_, k) => lo + ((hi - lo) * k) / 4);
   // cluster labels (patients) under their groups
   const clusterSpans = [];
   groups.forEach((g, i) => {
@@ -49,23 +49,14 @@ export default function Violins({ groups, height = 240, domain = null, yTitle = 
   return (
     <div ref={ref} style={{ width: "100%" }}>
       <svg width={width} height={height + (clusterSpans.length ? 16 : 0)} role="img" aria-label={yTitle}>
-        {ticks.map((v) => (
-          <g key={v}>
-            <line x1={M.left} x2={width - M.right} y1={y(v)} y2={y(v)} stroke={theme.grid} />
-            <text x={M.left - 6} y={y(v) + 4} textAnchor="end" fontSize={TYPE.tick} fill={theme.muted}>
-              {fmt(v)}
-            </text>
-          </g>
-        ))}
-        <text x={12} y={M.top + plotH / 2} transform={`rotate(-90 12 ${M.top + plotH / 2})`} textAnchor="middle" fontSize={TYPE.tick} fill={theme.textSecondary}>
-          {yTitle}
-        </text>
+        <YAxis scale={y} x0={M.left} x1={width - M.right} ticks={5} format={fmt} title={yTitle} />
+        <XBaseline x0={M.left} x1={width - M.right} y={M.top + plotH} />
         {groups.map((g, i) => {
           const v = g.values.filter(Number.isFinite);
           const cx = slots[i];
           if (!v.length) {
             return (
-              <text key={g.key} x={cx} y={M.top + plotH / 2} textAnchor="middle" fontSize={TYPE.tick} fill={theme.faint}>
+              <text key={g.key} x={cx} y={M.top + plotH / 2} textAnchor="middle" {...txt.tick} fill={theme.faint}>
                 –
               </text>
             );
@@ -96,14 +87,14 @@ export default function Violins({ groups, height = 240, domain = null, yTitle = 
                 ))}
               <line x1={cx} x2={cx} y1={y(q.q1)} y2={y(q.q3)} stroke={theme.text} strokeWidth={3} strokeOpacity={0.7} />
               <circle cx={cx} cy={y(q.median)} r={3} fill={theme.panel} stroke={theme.text} />
-              <text x={cx} y={height - M.bottom + 14} textAnchor="middle" fontSize={TYPE.tick} fill={theme.text}>
+              <text x={cx} y={height - M.bottom + 14} textAnchor="middle" {...txt.label} fill={theme.text}>
                 {`${g.label}`.length > 14 ? `${`${g.label}`.slice(0, 13)}…` : g.label}
               </text>
-              <text x={cx} y={height - M.bottom + 27} textAnchor="middle" fontSize={TYPE.tick} fill={theme.muted}>
+              <text x={cx} y={height - M.bottom + 27} textAnchor="middle" {...txt.caption}>
                 {`n=${v.length}`}
               </text>
               {showDetected && (
-                <text x={cx} y={height - M.bottom + 40} textAnchor="middle" fontSize={TYPE.tick} fill={theme.muted}>
+                <text x={cx} y={height - M.bottom + 40} textAnchor="middle" {...txt.caption}>
                   {`${Math.round(det * 100)}% >0`}
                 </text>
               )}
@@ -115,7 +106,7 @@ export default function Violins({ groups, height = 240, domain = null, yTitle = 
           clusterSpans.map((c) => (
             <g key={c.key}>
               <line x1={c.x0 - half * 0.8} x2={c.x1 + half * 0.8} y1={height + 2} y2={height + 2} stroke={theme.border} />
-              <text x={(c.x0 + c.x1) / 2} y={height + 14} textAnchor="middle" fontSize={TYPE.tick} fontWeight={600} fill={theme.textSecondary}>
+              <text x={(c.x0 + c.x1) / 2} y={height + 14} textAnchor="middle" {...txt.group}>
                 {c.key}
               </text>
             </g>
