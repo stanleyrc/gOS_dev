@@ -133,6 +133,8 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const link = useMemo(() => readViewLink(), []);
   const [patient, setPatient] = useState(link.figPatient || null);
   const [pairGenes, setPairGenes] = useState(link.figGenes.length === 2 ? link.figGenes : null);
+  const [linkMarked, setLinkMarked] = useState(null);
+  const linkMode = !!(link.figPatient && (link.figLayout || link.figWalk));
   const [regionKey, setRegionKey] = useState(null); // "g:<set>" | "gene:<name>" | "f:<finding key>"
   // default: the patient with the most ecDNA walks among those with an SNV matrix (BWH70 in the paper's Fig 4)
   const richest = useMemo(() => [...withAmps].sort((a, b) => (b.nVariants > 0) - (a.nVariants > 0) || b.groups.reduce((s, g) => s + g.walks.length, 0) - a.groups.reduce((s, g) => s + g.walks.length, 0))[0], [withAmps]);
@@ -145,13 +147,22 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     const walks = files[current?.patient]?.walks?.walks || [];
     if (linkedWalk.current || !link.figWalk || !current || current.patient !== link.figPatient || !walks.length) return;
     linkedWalk.current = true;
-    const [id] = walkIdsForLabels(walks, [link.figWalk]);
-    const w = walks.find((x) => `${x.id}` === `${id}`);
+    // figwalk=<label>|<label> (committee links): show these walks, mark the first one's carriers (figsel=0: marks without selecting)
+    const ids = walkIdsForLabels(walks, link.figWalk.split("|").map((x) => x.trim()).filter(Boolean));
+    const w = walks.find((x) => `${x.id}` === `${ids[0]}`);
     if (!w) return;
     setTimeout(() => setFocusWalkId(`${w.id}`), 0);
-    select(current.patient, current.cellIds.filter((c) => (Number(w.cells?.[c]) || 0) >= minCn), { label: `${w.label} carriers` });
+    setRegionKey(`w:${ids.join("+")}`);
+    const carriers = current.cellIds.filter((c) => (Number(w.cells?.[c]) || 0) >= minCn);
+    setLinkMarked({ cells: new Set(carriers), label: `${w.label} carriers`, key: `w:${current.patient}:${w.id}` });
+    if (link.figSelect) select(current.patient, carriers, { label: `${w.label} carriers` });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, files, link, minCn]);
+  useEffect(() => {
+    if (!link.figPatient) return undefined;
+    const t = setTimeout(() => patientRef.current?.scrollIntoView({ block: "start" }), 1500);
+    return () => clearTimeout(t);
+  }, [link.figPatient]);
   const linkColors = useMemo(() => withCloneOverrides(cloneColors, link.cloneColors), [cloneColors, link]);
   // the cohort selection drives the loaded patient's selection (tree, heatmap, report side panels)
   const storePatient = useSelector((s) => s.SingleCell.patient?.caseReportId);
@@ -165,6 +176,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   }, [selection, storePatient]);
   const marked = useMemo(() => (selection && selection.patient === current?.patient ? { cells: selection.cells, label: selection.label, key: `sel:${selection.label}` } : null), [selection, current]);
 
+  const allWalks = useMemo(() => files[current?.patient]?.walks?.walks || [], [files, current?.patient]);
   const genePositions = useMemo(() => {
     const m = new Map();
     (current?.events || []).forEach((e) => {
@@ -178,6 +190,11 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const region = useMemo(() => {
     if (!current) return { domains: [], label: "" };
     const key = regionKey && current.groups.some((g) => `g:${g.key}` === regionKey) ? regionKey : regionKey?.startsWith("gene:") || regionKey?.startsWith("f:") ? regionKey : current.groups.length ? `g:${current.groups[Math.max(0, dominantGroupIndex(current.groups, minCn))].key}` : null;
+    if (regionKey?.startsWith("w:")) {
+      const ws = regionKey.slice(2).split("+").map((id) => allWalks.find((x) => `${x.id}` === id)).filter(Boolean);
+      const w = ws[0];
+      if (w) return { key: regionKey, domains: lociDomains(walkLoci(ws), chromoBins), label: ws.map((x) => x.label).join(" + "), group: { key: w.label, walks: ws, cellIds: current.cellIds, cn: Float32Array.from(current.cellIds, (c) => Number(w.cells?.[c]) || 0) } };
+    }
     if (key?.startsWith("g:")) {
       const g = current.groups.find((x) => `g:${x.key}` === key);
       if (g) return { key, domains: lociDomains(walkLoci(g.walks), chromoBins), label: `ec${g.key} walks`, group: g };
@@ -195,7 +212,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     const amp = current.events.find((e) => e.vartype === "AMP");
     const loci = amp ? eventLoci(amp) : [["7", 55e6, 55.3e6]];
     return { key: null, domains: lociDomains(loci, chromoBins, 4e6), label: amp ? `${amp.gene} AMP` : "chr7" };
-  }, [current, regionKey, genePositions, chromoBins, findings, minCn]);
+  }, [current, regionKey, genePositions, chromoBins, findings, minCn, allWalks]);
   const domains = useMemo(() => region.domains.map(([a, b]) => [a, b]), [region]);
 
   const focus = (p, next = {}) => {
@@ -329,6 +346,12 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
               </Space>
             }
           >
+            {current && linkMode && (
+              // committee links (figlayout= / figwalk=): the report's own heatmap + walk copies view of the linked walks, as the frozen committee copy shows it
+              <div style={{ marginBottom: 12 }}>
+                <PatientEcdnaView patient={current.patient} domains={domains} walkIds={region.group?.walks.map((w) => w.id)} marked={linkMarked || marked} select={link.figSelect} layout={link.figLayout} />
+              </div>
+            )}
             {current && (
               <PatientFigure
                 patient={current.patient}
