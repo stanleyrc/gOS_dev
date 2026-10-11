@@ -31,7 +31,7 @@ import { shortLabel } from "../../helpers/singleCell/walkPlotState";
 import WalksLegend from "../../components/singleCell/ecdna/walksLegend";
 import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
-import { linkAppliesTo, readDeepLink, walkIdsForLabels } from "../../helpers/singleCell/deepLink";
+import { linkAppliesTo, readDeepLink, readViewLink, walkIdsForLabels } from "../../helpers/singleCell/deepLink";
 import { subscribeEvidence, takeEvidence } from "../../helpers/singleCell/evidenceFocus";
 
 const { Text } = Typography;
@@ -91,7 +91,8 @@ export default function SingleCellEcdnaTab() {
   const [pad, setPad] = useState(2.5e5);
   const [colorBy, setColorBy] = useState("walk");
   const [laneHeight, setLaneHeight] = useState(18);
-  const [yScaleMode, setYScaleMode] = useState("common");
+  // per-cell y-axis: amplified cells would otherwise flatten every other cell's CN
+  const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "individual");
   const [showTable, setShowTable] = useState(false);
   const [chipHover, setChipHover] = useState(null); // walk hovered among the chips, marked in the plot
   const [genesRef, genesWidth] = useContainerWidth(1200);
