@@ -336,17 +336,23 @@ export function clipLongBranches(layout, cap) {
  * order, so those clones are drawn first (top). Ties keep the input order.
  */
 export function rotateByLeafRank(root, rankOf) {
-  const best = new Map();
+  // mean rank of the ranked leaves below each node (a stray cell of an early
+  // clone inside a late clade should not pull the whole clade up)
+  const sum = new Map();
+  const cnt = new Map();
+  const mean = (n) => (cnt.get(n) ? sum.get(n) / cnt.get(n) : Infinity);
   const visit = (n) => {
     if (!n.children || !n.children.length) {
       const r = rankOf(n.name);
-      best.set(n, Number.isFinite(r) ? r : Infinity);
+      sum.set(n, Number.isFinite(r) ? r : 0);
+      cnt.set(n, Number.isFinite(r) ? 1 : 0);
       return n;
     }
     const kids = n.children.map(visit);
-    const order = kids.map((c, i) => [c, i]).sort((a, b) => best.get(a[0]) - best.get(b[0]) || a[1] - b[1]).map((x) => x[0]);
+    const order = kids.map((c, i) => [c, i]).sort((a, b) => mean(a[0]) - mean(b[0]) || a[1] - b[1]).map((x) => x[0]);
     const out = { ...n, children: order };
-    best.set(out, Math.min(...order.map((c) => best.get(c))));
+    sum.set(out, order.reduce((t, c) => t + sum.get(c), 0));
+    cnt.set(out, order.reduce((t, c) => t + cnt.get(c), 0));
     return out;
   };
   return visit(root);

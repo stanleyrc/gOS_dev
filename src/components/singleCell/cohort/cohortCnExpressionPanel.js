@@ -137,7 +137,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380 }) {
 function StoufferDots({ rows, width, title }) {
   const ROW = 24;
   const groups = [...new Set(rows.map((r) => r.group))];
-  const M = { top: 34, right: 90, bottom: 44, left: 270 };
+  const M = { top: 34, right: 90, bottom: 44, left: 330 };
   const height = M.top + rows.length * ROW + (groups.length - 1) * 12 + M.bottom;
   const vals = rows.map((r) => r.score).filter(Number.isFinite);
   const CAP = 12;
