@@ -226,6 +226,15 @@ export function rankCandidates(items) {
 /** Clade F1 at or above which the carriers count as one branch of the tree: a key finding. */
 export const KEY_FIT = 0.8;
 
+/** True when a driver ({ event }) hits a cancer gene: OncoKB tier 1-2, a curated role, or a GBM gene. */
+export function inCancerGene(d = {}) {
+  const e = d.event || {};
+  return Number(e.Tier) <= 2 || driverGenes(e).some((g) => {
+    const b = geneBrief(g, e);
+    return Boolean(b.role || b.gbm);
+  });
+}
+
 /** Clade F1 of a driver or bundle, or null. */
 export function cladeFit(x) {
   const d = (x && x.lead) || x || {};
