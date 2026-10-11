@@ -37,7 +37,7 @@ const { Text } = Typography;
 const PADS = [5e4, 1e5, 2.5e5, 5e5, 1e6, 2e6];
 const padLabel = (p) => (p >= 1e6 ? `${p / 1e6} Mb` : `${p / 1e3} kb`);
 const GENES_H = 76;
-const NAV_H = 190;
+const NAV_H = 236;
 // a ?location= in the URL the page was opened with on this tab wins over the walks' own regions
 const OPENED_WITH = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
 const linkedLocation = () => (OPENED_WITH.get("tab") === "14" && OPENED_WITH.get("location") ? OPENED_WITH.get("location") : null);
