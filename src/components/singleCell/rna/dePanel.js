@@ -36,6 +36,7 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { differentialExpression, overRepresentation } from "../../../helpers/singleCell/rnaStats";
 import { SC_GUTTER_INNER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { RefLine, XAxis, useChartText } from "../cohort/charts";
 import { Provenance } from "../hintLine";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 
@@ -136,6 +137,7 @@ function DotPlot({ genes, groups, summary, matrix, onGene, selectedGene }) {
 /** Horizontal bars of -log10 q for the top enriched sets. */
 function EnrichmentBars({ terms, onTerm }) {
   const [ref, width] = useContainerWidth(700);
+  const txt = useChartText();
   const top = terms.slice(0, 12);
   const labelW = Math.min(360, Math.max(180, width * 0.45));
   const barW = Math.max(120, width - labelW - 70);
@@ -144,25 +146,25 @@ function EnrichmentBars({ terms, onTerm }) {
   const rowH = 22;
   return (
     <div ref={ref}>
-      <svg width={width} height={top.length * rowH + 30} role="img" aria-label="Enrichment bars">
+      <svg width={width} height={top.length * rowH + 44} role="img" aria-label="Enrichment bars">
         {top.map((r, i) => {
           const v = -Math.log10(Math.max(r.q_val, 1e-300));
           return (
             <g key={r.term} transform={`translate(0 ${i * rowH})`} style={{ cursor: "pointer" }} onClick={() => onTerm(r)}>
-              <text x={labelW - 8} y={rowH / 2 + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.text}>
+              <text x={labelW - 8} y={rowH / 2 + 4} textAnchor="end" {...txt.label} fill={INK.text}>
                 {r.term.replace(/^HALLMARK_|^REACTOME_|^GOBP_/, "").replace(/_/g, " ").toLowerCase().slice(0, 52)}
               </text>
-              <rect x={labelW} y={4} width={Math.max(1, x(v))} height={rowH - 8} rx={2} fill={r.q_val < 0.05 ? "#722ED1" : "#D3ADF7"} />
-              <text x={labelW + x(v) + 6} y={rowH / 2 + 4} fontSize={11} fill={INK.muted}>
+              <rect x={labelW} y={4} width={Math.max(1, x(v))} height={rowH - 8} rx={txt.st.barRadius} fill={r.q_val < 0.05 ? "#722ED1" : "#D3ADF7"} />
+              <text x={labelW + x(v) + 6} y={rowH / 2 + 4} {...txt.caption}>
                 {`${r.overlap}/${r.size}`}
               </text>
             </g>
           );
         })}
-        <line x1={labelW + x(-Math.log10(0.05))} x2={labelW + x(-Math.log10(0.05))} y1={0} y2={top.length * rowH} stroke={INK.axis} strokeDasharray="4 4" />
-        <text x={labelW + barW / 2} y={top.length * rowH + 22} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>
-          −log10 q (dashed: q = 0.05)
-        </text>
+        <g transform={`translate(${labelW},0)`}>
+          <XAxis scale={x} y0={top.length * rowH} ticks={5} title="−log10 q (dashed: q = 0.05)" />
+          <RefLine x1={x(-Math.log10(0.05))} x2={x(-Math.log10(0.05))} y1={0} y2={top.length * rowH} />
+        </g>
       </svg>
     </div>
   );

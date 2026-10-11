@@ -786,6 +786,89 @@ const Wrapper = styled.div`
     border: 1.5px solid var(--sc-axis, #8c8c8c) !important;
     border-radius: 50% !important;
   }
+  /* ---- cohort: headline findings, tab groups, view purpose ---- */
+  .sc-headline-item {
+    border-left: 3px solid var(--sc-accent);
+    padding-left: 12px !important;
+  }
+  .sc-headline-number {
+    font-size: 30px;
+    line-height: 1.1;
+    font-weight: 600;
+    color: var(--sc-accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .sc-headline-total {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--sc-muted);
+  }
+  .sc-headline-text {
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--sc-text);
+    margin: 4px 0 2px;
+  }
+  .sc-headline-detail {
+    font-size: var(--sc-fs-label, 12.5px);
+    line-height: 1.45;
+    color: var(--sc-muted);
+  }
+  .sc-headline-foot {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 4px;
+  }
+  .sc-headline-sep {
+    color: var(--sc-faint);
+  }
+  .sc-headline-patient {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--sc-muted);
+    font-size: var(--sc-fs-tick, 11.5px);
+  }
+  .sc-headline-patient:hover {
+    color: var(--sc-accent);
+  }
+  .sc-cohort-tabs .ant-tabs-tab:has(.sc-tab-group-start-label) {
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid var(--sc-border);
+  }
+  .sc-view-purpose {
+    color: var(--sc-muted);
+    font-size: var(--sc-fs-body, 13.5px);
+    margin: -6px 0 6px;
+  }
+  .sc-cohort-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 16px;
+  }
+  .sc-text-button {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+  .sc-text-button:hover .ant-typography {
+    text-decoration: underline;
+  /* Evidence tab: the chosen row of a findings / preset table */
+  .ant-table-tbody > tr.sc-row-active > td {
+    background: var(--sc-select-fill, rgba(22, 119, 255, 0.14));
+  }
+  .sc-site-head .ant-statistic-content {
+    font-size: 20px;
+  }
 `;
 
 export default Wrapper;
