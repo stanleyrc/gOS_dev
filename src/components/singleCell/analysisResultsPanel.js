@@ -7,7 +7,8 @@ import { AiOutlineDownload } from "react-icons/ai";
 import scaActions from "../../redux/scAnalysis/actions";
 import genesActions from "../../redux/genes/actions";
 import useContainerWidth from "./useContainerWidth";
-import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import { INK } from "../../helpers/singleCell/plotTheme";
+import { XAxis, YAxis, useChartText } from "./cohort/charts";
 
 const { Text } = Typography;
 const SIG_Q = 0.05;
@@ -33,8 +34,9 @@ export function downloadTsv(filename, columns, rows) {
 
 export function Volcano({ genes, labels, selectedGene, onGene }) {
   const [ref, width] = useContainerWidth(700);
+  const txt = useChartText();
   const height = 320;
-  const m = { top: 16, right: 16, bottom: 40, left: 52 };
+  const m = { top: 16, right: 16, bottom: 42, left: 56 };
   const points = useMemo(
     () =>
       genes.map((g) => ({
@@ -57,29 +59,9 @@ export function Volcano({ genes, labels, selectedGene, onGene }) {
   return (
     <div ref={ref} style={{ width: "100%" }}>
       <svg width={width} height={height} role="img" aria-label="Volcano plot">
-        {x.ticks(7).map((tk) => (
-          <g key={`x${tk}`}>
-            <line x1={x(tk)} x2={x(tk)} y1={m.top} y2={height - m.bottom} stroke={INK.grid} />
-            <text x={x(tk)} y={height - m.bottom + 16} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>
-              {tk}
-            </text>
-          </g>
-        ))}
-        {y.ticks(5).map((tk) => (
-          <g key={`y${tk}`}>
-            <line x1={m.left} x2={width - m.right} y1={y(tk)} y2={y(tk)} stroke={INK.grid} />
-            <text x={m.left - 8} y={y(tk) + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>
-              {tk}
-            </text>
-          </g>
-        ))}
-        <line x1={x(0)} x2={x(0)} y1={m.top} y2={height - m.bottom} stroke={INK.axis} />
-        <text x={(m.left + width - m.right) / 2} y={height - 6} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
-          {`log2 fold change  (← higher in ${labels?.B || "B"} · higher in ${labels?.A || "A"} →)`}
-        </text>
-        <text transform={`translate(14 ${(m.top + height - m.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
-          −log10 p
-        </text>
+        <YAxis scale={y} x0={m.left} x1={width - m.right} ticks={5} title="−log10 p" />
+        <XAxis scale={x} y0={height - m.bottom} y1={m.top} ticks={7} title={`log2 fold change  (← higher in ${labels?.B || "B"} · higher in ${labels?.A || "A"} →)`} />
+        <line x1={x(0)} x2={x(0)} y1={m.top} y2={height - m.bottom} stroke={INK.axis} strokeWidth={txt.st.axisWidth} />
         {points.map((p) => (
           <circle
             key={p.gene}
@@ -88,7 +70,7 @@ export function Volcano({ genes, labels, selectedGene, onGene }) {
             r={p.gene === selectedGene ? 5 : p.sig ? 3 : 2}
             fill={colour(p)}
             fillOpacity={p.sig ? 0.85 : 0.5}
-            stroke={p.gene === selectedGene ? "#262626" : "none"}
+            stroke={p.gene === selectedGene ? INK.text : "none"}
             style={{ cursor: "pointer" }}
             onClick={() => onGene(p.gene)}
           >
@@ -101,8 +83,11 @@ export function Volcano({ genes, labels, selectedGene, onGene }) {
             x={x(p.x) + (p.x > 0 ? 6 : -6)}
             y={y(p.y) + 4}
             textAnchor={p.x > 0 ? "start" : "end"}
-            fontSize={TYPE.tick}
+            fontSize={txt.tick.fontSize}
             fill={INK.text}
+            stroke={INK.panel}
+            strokeWidth={3}
+            paintOrder="stroke"
             style={{ cursor: "pointer" }}
             onClick={() => onGene(p.gene)}
           >
