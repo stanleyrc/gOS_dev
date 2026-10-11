@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { AutoComplete, Button, Card, Col, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { AutoComplete, Button, Card, Col, Select, Space, Table, Tooltip, Typography } from "antd";
+import { DataSwatch } from "../neutralTag";
 import { EnvironmentOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
 import useContainerWidth from "../useContainerWidth";
@@ -534,7 +535,7 @@ export default function SpatialPanel() {
                         title: groupBy === "clone" ? tx("clone") : fieldLabel(groupBy),
                         dataIndex: "label",
                         render: (v) =>
-                          groupBy === "clone" && cloneColors[v] ? <Tag color={cloneColors[v]}>{v}</Tag> : v,
+                          groupBy === "clone" && cloneColors[v] ? <DataSwatch color={cloneColors[v]}>{v}</DataSwatch> : v,
                       },
                       { title: "Cells", dataIndex: "n", width: 60 },
                       { title: "Moran's I", dataIndex: "I", width: 90, render: r2 },
