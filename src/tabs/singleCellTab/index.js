@@ -6,6 +6,7 @@ import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
 import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
+import SpatialPanel from "../../components/singleCell/spatial/spatialPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
@@ -17,6 +18,7 @@ import SingleCellWrapper from "../../components/singleCell/index.style";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import Wrapper from "./index.style";
 import { SC_GUTTER } from "../../components/singleCell/density";
+import { readViewLink } from "../../helpers/singleCell/deepLink";
 
 const { Text } = Typography;
 
@@ -53,7 +55,7 @@ export default function SingleCellTab() {
   );
   const chromoBins = useSelector((state) => state.Settings.chromoBins);
   const genes = useSelector((state) => state.Genes);
-  const [yScaleMode, setYScaleMode] = useState("common");
+  const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "common"); // ?yscale=individual
   const [pinned, setPinned] = useState(false);
   const [dragNav, setDragNav] = useState(null);
   const headerHeight = usePinnedHeaderHeight();
@@ -179,6 +181,8 @@ export default function SingleCellTab() {
             <UmapPanel />
           </Col>
         )}
+        {/* Slide-tag patients: tissue positions (data/<patient>/spatial.json); renders nothing otherwise */}
+        <SpatialPanel />
         {layout.showCellTable && (
           <Col span={24}>
             <CellSelectionPanel />

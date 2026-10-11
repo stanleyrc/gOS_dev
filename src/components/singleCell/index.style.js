@@ -232,6 +232,103 @@ const Wrapper = styled.div`
     color: var(--sc-muted, #666);
     margin-left: 6px;
   }
+  .sc-fig-phead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+    margin: 2px 0 6px;
+    line-height: 1.35;
+  }
+  .sc-fig-letter {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--sc-text, #1f1f1f);
+    min-width: 14px;
+  }
+  .sc-fig-ptitle {
+    font-size: var(--sc-fs-label, 12.5px);
+    font-weight: 600;
+    color: var(--sc-text, #1f1f1f);
+  }
+  .sc-fig-pfig {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-text-secondary, #434343);
+    border: 1px solid var(--sc-border, #d9d9d9);
+    border-radius: 3px;
+    padding: 0 4px;
+    line-height: 16px;
+  }
+  .sc-fig-phint {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+  }
+  .sc-fig-pextra {
+    margin-left: auto;
+  }
+  .sc-fig-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 2px 0 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--sc-border-soft, #f0f0f0);
+  }
+  .sc-fig-section h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    color: var(--sc-text, #1f1f1f);
+  }
+  .sc-fig-section .sc-fig-section-sub {
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+  }
+  .sc-fig-patient {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--sc-text, #1f1f1f);
+    margin-right: 6px;
+  }
+  .sc-fig-block {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--sc-border-soft, #f0f0f0);
+  }
+  .sc-fig-amps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin: 2px 0 6px;
+    font-size: var(--sc-fs-tick, 11.5px);
+  }
+  .sc-fig-amp {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--sc-border, #d9d9d9);
+    border-radius: 12px;
+    padding: 0 2px 0 8px;
+    opacity: 0.6;
+  }
+  .sc-fig-amp.is-on {
+    opacity: 1;
+  }
+  .sc-fig-amp.is-main {
+    border-color: var(--sc-text-secondary, #8c8c8c);
+  }
+  .sc-fig-amp .ant-btn {
+    padding: 0 4px;
+    height: 20px;
+    min-width: 0;
+  }
+  .sc-fig-amp-n {
+    color: var(--sc-muted, #666);
+    margin-left: 4px;
+    font-weight: 400;
+  }
   .sc-fig-empty {
     display: flex;
     align-items: center;
@@ -250,6 +347,71 @@ const Wrapper = styled.div`
     color: var(--sc-muted, #666);
     margin-top: 4px;
     line-height: 1.5;
+  }
+  /* Paper figures: sticky cell-selection bar and compact legend keys */
+  .sc-fig-selbar-wrap {
+    margin-bottom: 10px;
+  }
+  /* while cells are selected the bar floats at the bottom of the screen */
+  .sc-fig-selbar.is-active {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 1001;
+    max-width: min(900px, 92vw);
+  }
+  .sc-fig-selbar {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 4px 12px;
+    border: 1px solid var(--sc-border-soft, #f0f0f0);
+    border-radius: 8px;
+    background: var(--sc-panel, #fff);
+    font-size: var(--sc-fs-tick, 11.5px);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .sc-fig-selbar.is-active {
+    border-color: rgba(22, 119, 255, 0.45);
+    box-shadow: 0 2px 10px rgba(22, 119, 255, 0.12);
+  }
+  .sc-fig-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 6px;
+    font-size: var(--sc-fs-tick, 11.5px);
+    color: var(--sc-muted, #666);
+  }
+  .sc-fig-key {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+  }
+  .sc-fig-key b {
+    font-weight: 600;
+    color: var(--sc-text, #262626);
+  }
+  .sc-fig-key > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sc-fig-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex: none;
+  }
+  .sc-fig-ramp {
+    display: inline-block;
+    width: 90px;
+    height: 9px;
+    border-radius: 2px;
+    border: 1px solid var(--sc-border-soft, #f0f0f0);
   }
   .sc-tooltip-key {
     color: var(--sc-muted, #666);

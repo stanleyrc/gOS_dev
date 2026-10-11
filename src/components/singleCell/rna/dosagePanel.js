@@ -12,10 +12,10 @@ import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import singleCellActions from "../../../redux/singleCell/actions";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
-import { FONT, YAxis } from "../cohort/charts";
+import { RefLine, XAxis, YAxis, useChartText } from "../cohort/charts";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
-import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const M = { top: 30, right: 16, bottom: 58, left: 66 };
@@ -26,6 +26,7 @@ const FALLBACK_GENES = ["EGFR", "CDK4", "MDM2", "PDGFRA", "CDKN2A", "PTEN"];
 /** One gene: CN (x, jittered) vs expression (y), coloured by clone; click selects, drag-box selects (Shift adds). */
 function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, selected, hovered, onSelect, onHover, badge }) {
   const svgRef = useRef(null);
+  const txt = useChartText();
   const [drag, setDrag] = useState(null);
   const w = width - M.left - M.right;
   const h = height - M.top - M.bottom;
@@ -78,30 +79,18 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
       style={{ cursor: "crosshair", userSelect: "none", display: "block" }}
     >
       <rect x={0} y={0} width={width} height={height} fill={INK.panel} rx={6} />
-      <text x={M.left} y={18} fontSize={16} fontWeight={600} fill={INK.text}>{gene}</text>
+      <text x={M.left} y={18} {...txt.title}>{gene}</text>
       {badge && (
-        <text x={M.left + gene.length * 10 + 10} y={18} fontSize={TYPE.label} fill={badge.color}>{badge.text}</text>
+        <text x={M.left + gene.length * txt.title.fontSize * 0.65 + 10} y={18} fontSize={txt.label.fontSize} fill={badge.color}>{badge.text}</text>
       )}
-      <text x={width - M.right} y={18} textAnchor="end" fontSize={TYPE.label} fill={sig ? "#cf1322" : "#8c8c8c"}>
+      <text x={width - M.right} y={18} textAnchor="end" fontSize={txt.label.fontSize} fill={sig ? INK.danger : INK.muted}>
         {Number.isFinite(result.rho) ? `ρ ${result.rho.toFixed(2)} · ${formatP(p)} · n ${points.length}` : `no variation to correlate · n ${points.length}`}
       </text>
       <g transform={`translate(${M.left},${M.top})`}>
-        <rect x={0} y={0} width={w} height={h} fill={INK.panelAlt} />
-        {x.ticks(5).map((v) => (
-          <g key={`x${v}`} transform={`translate(${x(v)},0)`}>
-            <line y1={0} y2={h} stroke={INK.grid} />
-            <text y={h + 16} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>{v}</text>
-          </g>
-        ))}
-        {y.ticks(4).map((v) => (
-          <g key={`y${v}`} transform={`translate(0,${y(v)})`}>
-            <line x1={0} x2={w} stroke={INK.grid} />
-            <text x={-8} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fill={INK.textSecondary}>{v}</text>
-          </g>
-        ))}
-        <text x={w / 2} y={h + 40} textAnchor="middle" fontSize={TYPE.body} fill={INK.textSecondary}>{`copy number at ${gene} (per cell)`}</text>
-        <text transform={`translate(${-48},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.body} fill={INK.textSecondary}>{`${gene} expression (log-normalized)`}</text>
-        {fit && <line x1={x(fit[0][0])} y1={y(Math.max(0, fit[0][1]))} x2={x(fit[1][0])} y2={y(Math.max(0, fit[1][1]))} stroke={INK.textSecondary} strokeDasharray="4 3" strokeOpacity={0.6} />}
+        {txt.st.bands && <rect x={0} y={0} width={w} height={h} fill={INK.panelAlt} />}
+        <YAxis scale={y} x0={0} x1={w} ticks={4} title={`${gene} expression (log-normalized)`} />
+        <XAxis scale={x} y0={h} y1={0} ticks={5} title={`copy number at ${gene} (per cell)`} />
+        {fit && <RefLine x1={x(fit[0][0])} y1={y(Math.max(0, fit[0][1]))} x2={x(fit[1][0])} y2={y(Math.max(0, fit[1][1]))} opacity={0.8} />}
         {points.map((pt) => {
           const clone = cloneOf.get(pt.id);
           const isSel = selected.has(pt.id);
@@ -114,7 +103,7 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
               r={isHov ? 6 : isSel ? 4.6 : 3.2}
               fill={(clone != null && cloneColors[clone]) || NO_CLONE}
               fillOpacity={selected.size && !isSel ? 0.3 : 0.85}
-              stroke={isSel || isHov ? "#000" : "#fff"}
+              stroke={isSel || isHov ? INK.text : INK.panel}
               strokeWidth={isHov ? 2 : 0.6}
               onClick={(e) => {
                 e.stopPropagation();
@@ -133,21 +122,18 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
 }
 
 /** Histogram of Spearman rho over the ranked genes. */
-function RhoHistogram({ ranking, width, height = 150 }) {
-  const Mm = { top: 10, right: 10, bottom: 34, left: 44 };
+function RhoHistogram({ ranking, width, height = 156 }) {
+  const Mm = { top: 10, right: 10, bottom: 40, left: 52 };
   const bins = d3.bin().domain([-1, 1]).thresholds(40)(ranking.map((r) => r.rho));
   const x = d3.scaleLinear().domain([-1, 1]).range([Mm.left, width - Mm.right]);
   const y = d3.scaleLinear().domain([0, d3.max(bins, (b) => b.length) || 1]).nice().range([height - Mm.bottom, Mm.top]);
   return (
     <svg width={width} height={height}>
-      <YAxis scale={y} x0={Mm.left} x1={width - Mm.right} ticks={3} format={d3.format("~s")} />
+      <YAxis scale={y} x0={Mm.left} x1={width - Mm.right} ticks={3} format={d3.format("~s")} title="genes" />
       {bins.map((b, i) => (
         <rect key={i} x={x(b.x0) + 0.5} y={y(b.length)} width={Math.max(0, x(b.x1) - x(b.x0) - 1)} height={y(0) - y(b.length)} fill={b.x0 >= 0.3 ? "#D7191C" : b.x1 <= -0.3 ? "#2C7BB6" : "#bfbfbf"} />
       ))}
-      {[-1, -0.5, 0, 0.5, 1].map((v) => (
-        <text key={v} x={x(v)} y={height - Mm.bottom + 14} textAnchor="middle" fontSize={FONT.axis - 1} fill={INK.textSecondary}>{v}</text>
-      ))}
-      <text x={(Mm.left + width - Mm.right) / 2} y={height - 4} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>Spearman ρ (CN vs expression) per gene</text>
+      <XAxis scale={x} y0={height - Mm.bottom} values={[-1, -0.5, 0, 0.5, 1]} title="Spearman ρ (CN vs expression) per gene" />
     </svg>
   );
 }
@@ -167,6 +153,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
   const genesState = useSelector((s) => s.Genes);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const [containerRef, width] = useContainerWidth(1100);
+  const txt = useChartText();
   const rankRef = useRef(null);
   // default genes: the patient's amplified / deleted tier 1-2 drivers, else common GBM genes
   const driverGenes = useMemo(() => {
@@ -337,17 +324,12 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                     const x = d3.scaleLinear().domain([0, 1]).range([40, w - 110]);
                     return (
                       <svg width={w} height={byChromosome.length * rowH + 24}>
-                        {[0, 0.25, 0.5, 0.75, 1].map((v) => (
-                          <g key={v} transform={`translate(${x(v)},0)`}>
-                            <line y1={0} y2={byChromosome.length * rowH} stroke={INK.grid} />
-                            <text y={byChromosome.length * rowH + 14} textAnchor="middle" fontSize={11} fill={INK.textSecondary}>{pct(v)}</text>
-                          </g>
-                        ))}
+                        <XAxis scale={x} y0={byChromosome.length * rowH} y1={0} values={[0, 0.25, 0.5, 0.75, 1]} format={pct} />
                         {byChromosome.map((c, i) => (
                           <g key={c.chromosome} transform={`translate(0,${i * rowH})`}>
-                            <text x={32} y={rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.text}>{c.chromosome}</text>
+                            <text x={32} y={rowH / 2} dy="0.35em" textAnchor="end" {...txt.tick} fill={INK.textSecondary}>{c.chromosome}</text>
                             <rect x={x(0)} y={2} width={x(c.fracSensitive) - x(0)} height={rowH - 4} fill={c.medianRho >= 0.3 ? "#D7191C" : "#4E79A7"} />
-                            <text x={w - 104} y={rowH / 2} dy="0.35em" fontSize={11} fill={INK.muted}>{`${pct(c.fracSensitive)} · median ρ ${c.medianRho.toFixed(2)} · n ${c.n}`}</text>
+                            <text x={w - 104} y={rowH / 2} dy="0.35em" {...txt.caption}>{`${pct(c.fracSensitive)} · median ρ ${c.medianRho.toFixed(2)} · n ${c.n}`}</text>
                             <title>{`chr${c.chromosome}: ${c.n} genes, median ρ ${c.medianRho.toFixed(2)}, ${pct(c.fracSensitive)} with ρ ≥ 0.3`}</title>
                           </g>
                         ))}

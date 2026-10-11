@@ -77,6 +77,13 @@ export function singleCellStillLoading(singleCell) {
 //   cnpal=<preset>                CN heatmap palette preset (e.g. deck: 0..100+)
 //   clonecolors=<clone>:<hex>,..  clone colours (hex with or without #)
 //   clonelabels=<clone>:<label>,..  display names in figure panels (e.g. Clone 4:CI)
+//   treemark=<group>:<hex>,<group>:<hex>  tree tip dots for saved groups; rings where
+//                                 the first vs second group changes state (parsimony)
+//   cloneorder=<clone>,<clone>    rotate the tree so these clones come first (top)
+//   walkview=bars|heatmap         ecDNA walk copies along the tree
+//   yscale=common|individual      y axis of the cell tracks
+//   figsel=0                      Paper figures: mark carriers without selecting them
+//   figlayout=slide               Paper figures: heatmap and walk copies side by side
 //   tracks=total,coverage,..      cell tracks shown for selected cells
 //   figpatient / figwalk / figgenes  Paper figures: patient, walk whose
 //                                 carriers are marked, gene pair for CN vs CN
@@ -98,7 +105,20 @@ export function readViewLink(search = window.location.search) {
     const at = pair.lastIndexOf(":");
     if (at > 0 && pair.slice(at + 1).trim()) cloneLabels[pair.slice(0, at).trim()] = pair.slice(at + 1).trim();
   });
+  const treeMarks = list(params.get("treemark"))
+    .map((pair) => {
+      const at = pair.lastIndexOf(":");
+      const m = at > 0 ? HEX.exec(pair.slice(at + 1).trim()) : null;
+      return m ? { group: pair.slice(0, at).trim(), color: `#${m[1].toUpperCase()}` } : null;
+    })
+    .filter(Boolean);
   return {
+    treeMarks,
+    cloneOrder: list(params.get("cloneorder")),
+    walkView: ["bars", "heatmap"].includes(params.get("walkview")) ? params.get("walkview") : null,
+    figSelect: params.get("figsel") !== "0",
+    figLayout: params.get("figlayout") || null,
+    yScale: ["common", "individual"].includes(params.get("yscale")) ? params.get("yscale") : null,
     cnPalette: params.get("cnpal") || null,
     cloneColors,
     cloneLabels,

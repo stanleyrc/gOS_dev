@@ -2,11 +2,13 @@ import React, { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
-import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { INK } from "../../../helpers/singleCell/plotTheme";
+import { ChartTooltip, RefLine, XAxis, YAxis, useChartText } from "../cohort/charts";
 
 export const COLOR_UP = "#C2185B";
 export const COLOR_DOWN = "#1F5FA8";
 const COLOR_NS = "#C9CED6";
+const COLOR_NS_DARK = "#5b6068";
 const M = { top: 28, right: 24, bottom: 46, left: 56 };
 const N_LABELS = 8;
 const MAX_SELECTED_LABELS = 25;
@@ -35,6 +37,8 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
   const [ref, width] = useContainerWidth(700);
   const [hover, setHover] = useState(null);
   const theme = usePlotTheme();
+  const txt = useChartText();
+  const nsFill = theme.mode === "dark" ? COLOR_NS_DARK : COLOR_NS;
   const [lasso, setLasso] = useState(null);
   const svgRef = useRef(null);
   const drag = useRef(null);
@@ -176,42 +180,20 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         }}
         style={{ fontFamily: "inherit", cursor: lasso ? "crosshair" : hover ? "pointer" : "default" }}
       >
-        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="#FCFCFD" stroke={INK.grid} />
-        {x.ticks(8).map((tk) => (
-          <g key={`x${tk}`}>
-            <line x1={x(tk)} x2={x(tk)} y1={M.top} y2={M.top + plotH} stroke={INK.grid} />
-            <text x={x(tk)} y={M.top + plotH + 16} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>
-              {tk}
-            </text>
-          </g>
-        ))}
-        {y.ticks(6).map((tk) => (
-          <g key={`y${tk}`}>
-            <line x1={M.left} x2={M.left + plotW} y1={y(tk)} y2={y(tk)} stroke={INK.grid} />
-            <text x={M.left - 8} y={y(tk) + 4} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>
-              {tk}
-            </text>
-          </g>
-        ))}
+        <YAxis scale={y} x0={M.left} x1={M.left + plotW} ticks={6} title="−log10 p" />
+        <XAxis scale={x} y0={M.top + plotH} y1={M.top} ticks={8} title="log2 fold change" />
         {[-lfcCut, lfcCut].map((v) => (
-          <line key={v} x1={x(v)} x2={x(v)} y1={M.top} y2={M.top + plotH} stroke={INK.axis} strokeDasharray="4 4" />
+          <RefLine key={v} x1={x(v)} x2={x(v)} y1={M.top} y2={M.top + plotH} />
         ))}
-        {pAtQ != null && (
-          <g>
-            <line x1={M.left} x2={M.left + plotW} y1={y(-Math.log10(pAtQ))} y2={y(-Math.log10(pAtQ))} stroke={INK.axis} strokeDasharray="4 4" />
-            <text x={M.left + plotW - 4} y={y(-Math.log10(pAtQ)) - 4} textAnchor="end" fontSize={11} fill={INK.muted}>
-              {`q = ${qCut}`}
-            </text>
-          </g>
-        )}
-        <text x={M.left + 6} y={M.top - 10} fontSize={TYPE.label} fill={COLOR_DOWN} fontWeight="600">
+        {pAtQ != null && <RefLine x1={M.left} x2={M.left + plotW} y1={y(-Math.log10(pAtQ))} y2={y(-Math.log10(pAtQ))} label={`q = ${qCut}`} />}
+        <text x={M.left + 6} y={M.top - 10} fontSize={txt.head.fontSize} fill={COLOR_DOWN} fontWeight="600">
           {`← higher in ${labels.B}`}
         </text>
-        <text x={M.left + plotW - 6} y={M.top - 10} fontSize={TYPE.label} fill={COLOR_UP} fontWeight="600" textAnchor="end">
+        <text x={M.left + plotW - 6} y={M.top - 10} fontSize={txt.head.fontSize} fill={COLOR_UP} fontWeight="600" textAnchor="end">
           {`higher in ${labels.A} →`}
         </text>
         {ns.map((p) => (
-          <circle key={p.gene} cx={x(p.x)} cy={y(p.y)} r={2} fill={COLOR_NS} />
+          <circle key={p.gene} cx={x(p.x)} cy={y(p.y)} r={2} fill={nsFill} />
         ))}
         {sig.map((p) => (
           <circle
@@ -230,8 +212,8 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
             cx={x(p.x)}
             cy={y(p.y)}
             r={4.5}
-            fill={colour(p) === COLOR_NS ? "#8C8C8C" : colour(p)}
-            stroke="#141414"
+            fill={colour(p) === COLOR_NS ? theme.faint : colour(p)}
+            stroke={theme.text}
             strokeWidth={1.5}
             style={{ cursor: "pointer" }}
           />
@@ -243,8 +225,8 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
               x={p.lx}
               y={p.ly}
               textAnchor={p.anchor}
-              fontSize={TYPE.tick}
-              fontWeight={picked.has(p.gene) ? 700 : 400}
+              fontSize={txt.tick.fontSize}
+              fontWeight={picked.has(p.gene) ? 700 : txt.label.fontWeight}
               fill={anySig || picked.has(p.gene) ? INK.text : INK.textSecondary}
               stroke={theme.panel}
               strokeWidth="3"
@@ -256,9 +238,9 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         ))}
         {focus && (
           <g pointerEvents="none">
-            <circle cx={x(focus.x)} cy={y(focus.y)} r={7} fill="none" stroke={INK.hover} strokeWidth={2} />
+            <circle cx={x(focus.x)} cy={y(focus.y)} r={7} fill="none" stroke={theme.hover} strokeWidth={2} />
             {!focusLabelled && (
-              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={TYPE.label} fontWeight="600" fill="#FA541C" stroke={theme.panel} strokeWidth="3" paintOrder="stroke">
+              <text x={x(focus.x)} y={y(focus.y) - 11} textAnchor="middle" fontSize={txt.label.fontSize} fontWeight="600" fill={theme.hover} stroke={theme.panel} strokeWidth="3" paintOrder="stroke">
                 {`${focus.gene}  log2FC ${focus.x.toFixed(2)}`}
               </text>
             )}
@@ -267,43 +249,21 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         {lasso && lasso.length > 1 && (
           <path
             d={`M${lasso.map((pt) => pt.join(",")).join("L")}Z`}
-            fill="rgba(22,119,255,0.08)"
-            stroke={INK.select}
+            fill={theme.selectFill}
+            stroke={theme.select}
             strokeDasharray="4 3"
             pointerEvents="none"
           />
         )}
-        <text x={M.left + plotW / 2} y={HEIGHT - 8} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
-          log2 fold change
-        </text>
-        <text transform={`translate(16 ${M.top + plotH / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>
-          −log10 p
-        </text>
       </svg>
       {hover && !lasso && (
-        <div
-          style={{
-            position: "absolute",
-            left: Math.min(x(hover.x) + 12, width - 230),
-            top: Math.max(y(hover.y) - 70, 0),
-            pointerEvents: "none",
-            background: theme.raised,
-            color: theme.text,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 4,
-            padding: "4px 8px",
-            fontSize: TYPE.tick,
-            lineHeight: 1.5,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <ChartTooltip x={Math.min(x(hover.x) + 12, width - 230)} y={Math.max(y(hover.y) - 70, 0)}>
           <div style={{ fontWeight: 600 }}>{hover.gene}</div>
           <div>{`log2 FC ${hover.x.toFixed(2)} (${hover.x > 0 ? labels.A : labels.B} higher)`}</div>
           <div>{`p ${fmtP(hover.p)} · q ${fmtP(hover.q)}`}</div>
           {Number.isFinite(hover.pct1) && Number.isFinite(hover.pct2) && <div>{`detected in ${Math.round(hover.pct1 * 100)}% vs ${Math.round(hover.pct2 * 100)}%`}</div>}
-          <div style={{ color: theme.muted }}>click to pick · shift-click to add</div>
-        </div>
+          <div className="sc-tooltip-key">click to pick · shift-click to add</div>
+        </ChartTooltip>
       )}
     </div>
   );

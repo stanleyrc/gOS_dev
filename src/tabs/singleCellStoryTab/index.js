@@ -7,6 +7,9 @@ import useStory from "../../components/singleCell/story/useStory";
 import StoryChapter from "../../components/singleCell/story/storyChapter";
 import { sentencesAbout, storyForPatient } from "../../helpers/singleCell/story";
 import { SC_GUTTER } from "../../components/singleCell/density";
+import PatientVignette from "../../components/singleCell/vignette/patientVignette";
+import VignetteWrapper from "../../components/singleCell/vignette/vignette.style";
+import ScEventModal from "../../components/singleCell/scEventModal";
 
 const { Title, Text } = Typography;
 
@@ -19,10 +22,24 @@ export default function SingleCellStoryTab() {
   const id = patient?.caseReportId;
   if (status === "loading") return <Skeleton active />;
   const { vignettes, chapters } = storyForPatient(story, id);
-  if (!vignettes.length && !chapters.length) return <Empty description={t("components.single-cell.story.none-patient")} />;
+  const brief = (
+    <VignetteWrapper>
+      <PatientVignette />
+    </VignetteWrapper>
+  );
+  if (!vignettes.length && !chapters.length)
+    return (
+      <SingleCellWrapper>
+        <ScEventModal />
+        {brief}
+        <Empty description={t("components.single-cell.story.none-patient")} />
+      </SingleCellWrapper>
+    );
   return (
     <SingleCellWrapper>
+      <ScEventModal />
       <Row gutter={SC_GUTTER}>
+        <Col span={24}>{brief}</Col>
         <Col span={24}>
           <Title level={4} style={{ marginBottom: 0 }}>{t("components.single-cell.story.patient-title", { patient: id })}</Title>
           <Text type="secondary">{t("components.single-cell.story.subtitle", { date: story?.generated || "" })}</Text>
