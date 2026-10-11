@@ -22,6 +22,7 @@ import SingleCellReportTab from "../../tabs/singleCellReportTab";
 import SingleCellEcdnaTab from "../../tabs/singleCellEcdnaTab";
 import SingleCellCircosTab from "../../tabs/singleCellCircosTab";
 import SingleCellEvidenceTab from "../../tabs/singleCellEvidenceTab";
+import VignetteActionRunner from "../../components/singleCell/vignette/vignetteActionRunner";
 import SingleCellStoryTab from "../../tabs/singleCellStoryTab";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import { singleCellStillLoading } from "../../helpers/singleCell/deepLink";
@@ -144,6 +145,7 @@ export class DetailView extends Component {
           </Affix>
           <div className="ant-home-content-container">
             <CellContextBanner />
+            <VignetteActionRunner />
             <Tabs
               defaultActiveKey="1"
               activeKey={tab.toString()}

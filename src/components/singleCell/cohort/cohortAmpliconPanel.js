@@ -8,14 +8,14 @@ import SvgExportButton from "../svgExportButton";
 import { binAt } from "../../../helpers/singleCell/matrix";
 import { spearman, walkStats } from "../../../helpers/singleCell/walks";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
-import { BoxStrips, Swatches, patientColor } from "./charts";
+import { BoxStrips } from "./charts";
+import usePlotTheme from "../usePlotTheme";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
-const GENE_PALETTE = d3.scaleOrdinal(d3.schemeTableau10);
 
 /** Walks of every patient (normalised) with per-patient stats over that patient's cells. */
 function useCohortWalks(summaries, files, { minCells, minMedianCn, curatedOnly }) {
@@ -42,6 +42,9 @@ function useCohortWalks(summaries, files, { minCells, minMedianCn, curatedOnly }
  */
 export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chromoBins }) {
   const { t } = useTranslation("common");
+  const theme = usePlotTheme();
+  // one neutral data colour: patients are labelled, so colour does not need to tell them apart
+  const ink = theme.textSecondary;
   const [ref, width] = useContainerWidth(1000);
   const [minCells, setMinCells] = useState(3);
   const [minMedianCn, setMinMedianCn] = useState(4);
@@ -57,7 +60,7 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
     groups: p.walks.slice(0, 6).map((wk) => ({
       key: `${p.patient}::${wk.id}`,
       label: wk.label,
-      color: patientColor(p.k),
+      color: ink,
       values: p.cellIds.map((id) => Number(wk.cells[id]) || 0).filter((v) => v > 0),
       ids: p.cellIds.filter((id) => (Number(wk.cells[id]) || 0) > 0),
       fraction: wk.stats.fraction,
@@ -151,14 +154,14 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                 const pw = Math.max(320, Math.min(w - 8, 110 + p.groups.length * 110));
                 return (
                   <div key={p.patient}>
-                    <Text strong style={{ color: patientColor(p.k), fontSize: 14 }}>{p.patient}</Text>
+                    <Text strong style={{ fontSize: 14 }}>{p.patient}</Text>
                     <BoxStrips groups={p.groups} width={pw} height={300} yTitle={t("components.single-cell.cohort.amp-y")} log />
                     <svg width={pw} height={64}>
                       {p.groups.map((g, i) => {
                         const bw = (pw - 76) / Math.max(1, p.groups.length);
                         return (
                           <g key={g.key} transform={`translate(${64 + i * bw},0)`}>
-                            <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={g.color} />
+                            <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={theme.faint} />
                             <text x={bw / 2} y={41 - g.fraction * 40} textAnchor="middle" fontSize={TYPE.label} fill={INK.text}>{d3.format(".0%")(g.fraction)}</text>
                             <title>{`${g.label}: ${g.ids.length} cells (${d3.format(".0%")(g.fraction)})`}</title>
                           </g>
@@ -189,11 +192,11 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
               return (
                 <svg width={Math.max(w / 2 - 24, LEFT + allSets.length * colW + barW + 40)} height={y + 90}>
                   {allSets.map((s, j) => (
-                    <text key={s} transform={`translate(${LEFT + (j + 0.5) * colW},${y + 6}) rotate(-60)`} fontSize={TYPE.label} fontWeight={600} fill={GENE_PALETTE(s)} textAnchor="end" dy="0.35em">{s}</text>
+                    <text key={s} transform={`translate(${LEFT + (j + 0.5) * colW},${y + 6}) rotate(-60)`} fontSize={TYPE.label} fontWeight={600} fill={theme.text} textAnchor="end" dy="0.35em">{s}</text>
                   ))}
                   {blocks.map((p) => (
                     <g key={p.patient} transform={`translate(0,${p.top})`}>
-                      <rect x={0} y={0} width={4} height={14 + Math.max(1, p.combos.length) * rowH} fill={patientColor(p.k)} />
+                      <rect x={0} y={0} width={4} height={14 + Math.max(1, p.combos.length) * rowH} fill={theme.border} />
                       <text x={10} y={10} dy="0.35em" fontSize={14} fontWeight={600} fill={INK.text}>{p.patient}</text>
                       {p.combos.map((c, i) => {
                         const cy = 20 + (i + 0.5) * rowH;
@@ -201,9 +204,9 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                         const frac = c.n / Math.max(1, p.cellIds.length);
                         return (
                           <g key={c.sets.join("|")}>
-                            {allSets.map((s, j) => <circle key={s} cx={LEFT + (j + 0.5) * colW} cy={cy} r={c.sets.includes(s) ? 5 : 2.5} fill={c.sets.includes(s) ? GENE_PALETTE(s) : "#e8e8e8"} />)}
+                            {allSets.map((s, j) => <circle key={s} cx={LEFT + (j + 0.5) * colW} cy={cy} r={c.sets.includes(s) ? 5 : 2.5} fill={c.sets.includes(s) ? theme.text : theme.empty} />)}
                             {idx.length > 1 && <line x1={LEFT + (Math.min(...idx) + 0.5) * colW} x2={LEFT + (Math.max(...idx) + 0.5) * colW} y1={cy} y2={cy} stroke={INK.text} strokeWidth={2} />}
-                            <rect x={LEFT + allSets.length * colW + 10} y={cy - 6} width={frac * barW} height={12} fill={c.sets.length === 1 ? GENE_PALETTE(c.sets[0]) : "#8c8c8c"} />
+                            <rect x={LEFT + allSets.length * colW + 10} y={cy - 6} width={frac * barW} height={12} fill={theme.muted} />
                             <text x={LEFT + allSets.length * colW + 14 + frac * barW} y={cy} dy="0.35em" fontSize={TYPE.label} fill={INK.text}>{`${d3.format(".0%")(frac)} (${c.n})`}</text>
                           </g>
                         );
@@ -231,16 +234,15 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {scatter.map((s) => (
                 <svg key={s.patient} width={sw} height={sh}>
-                  <text x={M.left} y={12} fontSize={TYPE.body} fontWeight={600} fill={patientColor(s.k)}>{`${s.patient} · ρ ${Number.isFinite(s.rho) ? s.rho.toFixed(2) : "–"} ${formatP(s.p)}`}</text>
+                  <text x={M.left} y={12} fontSize={TYPE.body} fontWeight={600} fill={theme.text}>{`${s.patient} · ρ ${Number.isFinite(s.rho) ? s.rho.toFixed(2) : "–"} ${formatP(s.p)}`}</text>
                   {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxX)).map((v) => <g key={`x${v}`}><line x1={xs(v)} x2={xs(v)} y1={M.top} y2={sh - M.bottom} stroke={INK.grid} /><text x={xs(v)} y={sh - M.bottom + 14} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{v}</text></g>)}
                   {[1, 2, 5, 10, 20, 50, 100, 200].filter((v) => v <= Math.max(2, maxY)).map((v) => <g key={`y${v}`}><line x1={M.left} x2={sw - M.right} y1={ys(v)} y2={ys(v)} stroke={INK.grid} /><text x={M.left - 6} y={ys(v)} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.textSecondary}>{v}</text></g>)}
-                  {s.pts.map((q) => <circle key={q.id} cx={xs(Math.max(1, q.x))} cy={ys(Math.max(1, q.y))} r={3.5} fill={patientColor(s.k)} fillOpacity={0.7}><title>{`${q.id}: ${gA} ${q.x.toFixed(1)} · ${gB} ${q.y.toFixed(1)}`}</title></circle>)}
+                  {s.pts.map((q) => <circle key={q.id} cx={xs(Math.max(1, q.x))} cy={ys(Math.max(1, q.y))} r={3.5} fill={ink} fillOpacity={0.55}><title>{`${q.id}: ${gA} ${q.x.toFixed(1)} · ${gB} ${q.y.toFixed(1)}`}</title></circle>)}
                   <text x={(M.left + sw - M.right) / 2} y={sh - 6} textAnchor="middle" fontSize={TYPE.body} fill={INK.text}>{`${gA} copies`}</text>
                   <text transform={`translate(14 ${(M.top + sh - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.body} fill={INK.text}>{`${gB} copies`}</text>
                 </svg>
               ))}
             </div>
-            <Swatches items={summaries.map((s, k) => ({ key: s.caseReportId, color: patientColor(k), label: s.caseReportId }))} />
             <HintLine text={t("components.single-cell.cohort.amp-scatter-help")} />
           </Card>
         </Col>
