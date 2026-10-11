@@ -23,7 +23,7 @@ import DriverPhenotypeCard from "./driverPhenotypeCard";
 import DriverEvidenceCard from "./driverEvidenceCard";
 import DriverSummaryBoard from "./driverSummaryBoard";
 import DriverEffectsCard from "./driverEffectsCard";
-import { KEY_FIT, isKnownDriver, keyFindingsFirst, rankCandidates } from "../../../helpers/singleCell/driverSummary";
+import { KEY_FIT, inCancerGene, keyFindingsFirst, rankCandidates } from "../../../helpers/singleCell/driverSummary";
 
 const { Text } = Typography;
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -133,7 +133,7 @@ export default function DriverContrastPanel() {
   }, [events, tumorIds, treeLayout]);
   // default: the top key finding in a cancer gene (what the board leads with)
   const driver =
-    drivers.find((d) => d.key === driverFocus) || drivers.find((d) => (d.fit?.score ?? 0) >= KEY_FIT && isKnownDriver(d)) || drivers[0] || null;
+    drivers.find((d) => d.key === driverFocus) || drivers.find((d) => (d.fit?.score ?? 0) >= KEY_FIT && inCancerGene(d)) || drivers[0] || null;
   useEffect(() => {
     if (driver && driver.key !== driverFocus) dispatch(singleCellActions.updateDriverFocus(driver.key));
   }, [driver, driverFocus, dispatch]);

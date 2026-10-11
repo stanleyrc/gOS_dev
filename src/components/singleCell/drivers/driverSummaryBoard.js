@@ -7,7 +7,7 @@ import HintLine from "../hintLine";
 import GeneInfoCard from "../rna/geneInfoCard";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { formatP } from "../../../helpers/singleCell/tests";
-import { KEY_FIT, KIND_LABEL, effectWord, isKnownDriver } from "../../../helpers/singleCell/driverSummary";
+import { KEY_FIT, KIND_LABEL, effectWord, inCancerGene, isKnownDriver } from "../../../helpers/singleCell/driverSummary";
 import useDriverSummaries from "./useDriverSummaries";
 import DriverEvidenceDrawer, { useDriverActions } from "./driverEvidenceDrawer";
 import { EvidenceTag, KIND_COLOR } from "./driverOneLine";
@@ -271,7 +271,8 @@ function CompactRow({ s, rank, focused, onFocus, onEvidence }) {
 export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
   const patient = useSelector((s) => s.SingleCell.patient);
   const [limit, setLimit] = useState(STEP);
-  const [showOthers, setShowOthers] = useState(false);
+  const [showBranchOther, setShowBranchOther] = useState(false);
+  const [showSpread, setShowSpread] = useState(false);
   const [knownOnly, setKnownOnly] = useState(true);
   const [drawer, setDrawer] = useState(null);
   const { summaries, bundles, tumorIds, programs, loading } = useDriverSummaries(rna, { limit, knownOnly });
@@ -284,8 +285,13 @@ export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
     const c = new Set(drawerSummary.members[0].carriers);
     return tumorIds.filter((id) => !c.has(id));
   }, [drawerSummary, tumorIds]);
-  const keyFindings = shown.filter((s) => s.fit != null && s.fit >= KEY_FIT);
-  const others = shown.filter((s) => !(s.fit != null && s.fit >= KEY_FIT));
+  // key findings: carriers form one branch AND the event hits a cancer gene (OncoKB tier 1-2, curated role or GBM gene);
+  // one-branch events in other genes and candidates spread over the tree are folded into compact rows
+  const cancerGene = (s) => inCancerGene(s.members[0]);
+  const oneBranch = (s) => s.fit != null && s.fit >= KEY_FIT;
+  const keyFindings = shown.filter((s) => oneBranch(s) && cancerGene(s));
+  const oneBranchOther = shown.filter((s) => oneBranch(s) && !cancerGene(s));
+  const others = shown.filter((s) => !oneBranch(s));
   const keyShown = keyFindings.slice(0, limit);
   const onEvidence = (x, tab) => setDrawer({ key: x.key, tab });
   if (!summaries.length) return null;
@@ -309,8 +315,8 @@ export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
       <div style={{ marginBottom: 8 }}>
         <Text strong style={{ fontSize: 15 }}>
           {keyFindings.length
-            ? `${keyFindings.length} key finding${keyFindings.length > 1 ? "s" : ""}: carriers form one branch of the tree (clade F1 ≥ ${KEY_FIT})`
-            : `No candidate's carriers form one branch of the tree (clade F1 ≥ ${KEY_FIT})`}
+            ? `${keyFindings.length} key finding${keyFindings.length > 1 ? "s" : ""}: cancer-gene events whose carriers form one branch of the tree (clade F1 ≥ ${KEY_FIT})`
+            : `No cancer-gene event whose carriers form one branch of the tree (clade F1 ≥ ${KEY_FIT})`}
         </Text>
         {keyFindings.length > 0 && (
           <div style={{ marginTop: 2 }}>
@@ -335,15 +341,29 @@ export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
         </Button>
       )}
       {!shown.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No candidate involves a known cancer gene; switch off “Cancer genes only”." />}
+      {oneBranchOther.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <Button size="small" type={showBranchOther ? "default" : "dashed"} onClick={() => setShowBranchOther(!showBranchOther)}>
+            {`${showBranchOther ? "Hide" : "Show"} ${oneBranchOther.length} other one-branch event${oneBranchOther.length > 1 ? "s" : ""} (clade F1 ≥ ${KEY_FIT}, no known cancer role)`}
+          </Button>
+          {showBranchOther && (
+            <div style={{ marginTop: 6 }}>
+              {oneBranchOther.map((s, i) => (
+                <CompactRow key={s.key} s={s} rank={keyFindings.length + i + 1} focused={s.key === focusKey} onFocus={onFocus} onEvidence={onEvidence} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {others.length > 0 && (
         <div style={{ marginTop: 10 }}>
-          <Button size="small" type={showOthers ? "default" : "dashed"} onClick={() => setShowOthers((v) => !v)}>
-            {`${showOthers ? "Hide" : "Show"} ${others.length} other candidate${others.length > 1 ? "s" : ""} (carriers spread over the tree, clade F1 < ${KEY_FIT})`}
+          <Button size="small" type={showSpread ? "default" : "dashed"} onClick={() => setShowSpread((v) => !v)}>
+            {`${showSpread ? "Hide" : "Show"} ${others.length} candidate${others.length > 1 ? "s" : ""} spread over the tree (clade F1 < ${KEY_FIT})`}
           </Button>
-          {showOthers && (
+          {showSpread && (
             <div style={{ marginTop: 6 }}>
               {others.map((s, i) => (
-                <CompactRow key={s.key} s={s} rank={keyFindings.length + i + 1} focused={s.key === focusKey} onFocus={onFocus} onEvidence={onEvidence} />
+                <CompactRow key={s.key} s={s} rank={keyFindings.length + oneBranchOther.length + i + 1} focused={s.key === focusKey} onFocus={onFocus} onEvidence={onEvidence} />
               ))}
             </div>
           )}
