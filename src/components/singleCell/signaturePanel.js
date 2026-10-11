@@ -14,7 +14,9 @@ import { rowMap } from "../../helpers/singleCell/matrix";
 import useContainerWidth from "./useContainerWidth";
 import signatureMetadata from "../../translations/en/signatures.json";
 import { SC_GUTTER_INNER } from "./density";
-import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import { INK, inkOn } from "../../helpers/singleCell/plotTheme";
+import usePlotTheme from "./usePlotTheme";
+import { YAxis, useChartText } from "./cohort/charts";
 import { Provenance } from "./hintLine";
 
 const { Text } = Typography;
@@ -73,6 +75,7 @@ export const setSignatureTheme = (theme) => {
 
 /** One stacked bar per set: each signature's share of the set's mutations. */
 export function ActivityBars({ rows, width }) {
+  const txt = useChartText();
   const labelWidth = 150;
   const barWidth = Math.max(80, width - labelWidth - 70);
   return (
@@ -82,7 +85,7 @@ export function ActivityBars({ rows, width }) {
         let x = labelWidth;
         return (
           <g key={row.name} transform={`translate(0, ${i * (BAR_HEIGHT + 6) + 2})`}>
-            <text x={labelWidth - 6} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.tick}>
+            <text x={labelWidth - 8} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" {...txt.label}>
               {row.name.length > 22 ? `${row.name.slice(0, 21)}…` : row.name}
             </text>
             {row.activities.map((a) => {
@@ -94,14 +97,14 @@ export function ActivityBars({ rows, width }) {
               );
               const label =
                 w > 34 ? (
-                  <text key={`${a.signature}-l`} x={x + w / 2} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">
+                  <text key={`${a.signature}-l`} x={x + w / 2} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="middle" fontSize={txt.tick.fontSize} fill={inkOn(signatureColor(a.signature))} pointerEvents="none">
                     {a.signature}
                   </text>
                 ) : null;
               x += w;
               return [rect, label];
             })}
-            <text x={labelWidth + barWidth + 6} y={BAR_HEIGHT / 2} dy="0.35em" fontSize={TYPE.tick} fill={INK.muted}>
+            <text x={labelWidth + barWidth + 8} y={BAR_HEIGHT / 2} dy="0.35em" {...txt.caption}>
               {`n=${row.n}`}
             </text>
           </g>
@@ -113,35 +116,35 @@ export function ActivityBars({ rows, width }) {
 
 /** 96-channel profile: observed counts as bars, the fitted reconstruction as dots. */
 export function Profile({ counts, reconstruction, width }) {
+  const txt = useChartText();
+  const theme = usePlotTheme();
   const max = Math.max(1, ...counts, ...reconstruction);
-  const left = 28;
+  const left = 34;
   const w = (width - left - 4) / 96;
-  const y = (v) => PROFILE_HEIGHT - 14 - (v / max) * (PROFILE_HEIGHT - 26);
+  const y = d3.scaleLinear().domain([0, max]).range([PROFILE_HEIGHT - 16, 14]);
   return (
     <svg width={width} height={PROFILE_HEIGHT}>
       {Object.entries(SBS_COLORS).map(([sub, color], k) => (
         <g key={sub}>
           <rect x={left + k * 16 * w} y={0} width={16 * w - 1} height={8} fill={color} />
-          <text x={left + (k + 0.5) * 16 * w} y={PROFILE_HEIGHT - 2} textAnchor="middle" fontSize={11}>
+          <text x={left + (k + 0.5) * 16 * w} y={PROFILE_HEIGHT - 2} textAnchor="middle" {...txt.tick} fill={INK.textSecondary}>
             {sub}
           </text>
         </g>
       ))}
-      <text x={left - 4} y={y(max)} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted}>
-        {Math.round(max)}
-      </text>
+      <YAxis scale={y} x0={left} x1={width - 4} ticks={3} format={d3.format("~s")} />
       {SBS96.map((ch, i) => (
         <g key={ch}>
           <rect
             x={left + i * w}
             y={y(counts[i])}
             width={Math.max(1, w - 1)}
-            height={PROFILE_HEIGHT - 14 - y(counts[i])}
+            height={Math.max(0, y(0) - y(counts[i]))}
             fill={SBS_COLORS[ch.slice(2, 5)]}
           >
             <title>{`${ch}: ${counts[i]} observed, ${reconstruction[i].toFixed(1)} fitted`}</title>
           </rect>
-          <circle cx={left + (i + 0.5) * w} cy={y(reconstruction[i])} r={1.6} fill="#262626" />
+          <circle cx={left + (i + 0.5) * w} cy={y(reconstruction[i])} r={1.6} fill={theme.text} />
         </g>
       ))}
     </svg>

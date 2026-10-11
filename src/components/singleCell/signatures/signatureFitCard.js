@@ -16,6 +16,7 @@ import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
+import { YAxis } from "../cohort/charts";
 
 const { Text } = Typography;
 
@@ -91,7 +92,7 @@ const RESIDUAL_HEIGHT = 210;
 /** Observed - fitted per SBS96 channel, bars from a zero line, coloured by substitution. */
 export function ResidualPlot({ evaluation, width }) {
   const pt = usePlotTheme();
-  const left = 44;
+  const left = 52;
   const right = 8;
   const top = 18;
   const bottom = 30;
@@ -106,20 +107,10 @@ export function ResidualPlot({ evaluation, width }) {
     .domain([-max, max])
     .range([RESIDUAL_HEIGHT - bottom, top])
     .nice();
-  const ticks = y.ticks(5);
   return (
     <svg width={width} height={RESIDUAL_HEIGHT} role="img" aria-label="SBS96 residuals (observed minus fitted)">
-      {ticks.map((v) => (
-        <g key={v}>
-          <line x1={left} x2={width - right} y1={y(v)} y2={y(v)} stroke={v === 0 ? pt.axis : pt.grid} strokeWidth={v === 0 ? 1 : 0.6} />
-          <text x={left - 4} y={y(v)} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={pt.muted}>
-            {d3.format("~s")(v)}
-          </text>
-        </g>
-      ))}
-      <text transform={`translate(11, ${(top + RESIDUAL_HEIGHT - bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.tick} fill={pt.textSecondary}>
-        observed − fitted
-      </text>
+      <YAxis scale={y} x0={left} x1={width - right} ticks={5} format={d3.format("~s")} title="observed − fitted" />
+      <line x1={left} x2={width - right} y1={y(0)} y2={y(0)} stroke={pt.axis} />
       {Object.entries(colors).map(([sub, color], k) => (
         <g key={sub}>
           <rect x={left + k * 16 * w} y={0} width={16 * w - 1} height={8} fill={color} stroke={outlined(sub) ? pt.axis : "none"} strokeWidth={0.6} />

@@ -1,7 +1,8 @@
 import React from "react";
 import * as d3 from "d3";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
-import { formatTick, styleFontSize, styleFontWeight } from "../../../helpers/singleCell/figureStyle";
+import { styleFontSize, styleFontWeight } from "../../../helpers/singleCell/figureStyle";
+import { XBaseline, YAxis } from "../chartAxes";
 import { useFigureStyle } from "../figures/figureCanvas";
 
 // Small SVG building blocks shared by the cohort panels; they follow the
@@ -11,56 +12,7 @@ export { PATIENT_PALETTE, patientColor } from "../../../helpers/singleCell/patie
 
 export const FONT = { axis: TYPE.tick, label: TYPE.label, title: TYPE.title - 1 };
 
-/** Linear (or log) y axis: grid lines / axis line / ticks per the chart style, and a title. */
-export function YAxis({ scale, x0, x1, title, ticks = 5, format = (v) => formatTick(v) }) {
-  const st = useFigureStyle();
-  // log scales: only powers of ten (and 2x / 5x when few decades)
-  const isLog = typeof scale.base === "function";
-  const [r0, r1] = scale.range();
-  // no more ticks than fit at ~22 px apart (small multiples are only ~70 px tall)
-  const fit = Math.max(2, Math.floor(Math.abs(r0 - r1) / 22));
-  let values = scale.ticks(Math.min(ticks, fit));
-  if (isLog) {
-    const [lo, hi] = scale.domain();
-    const decades = Math.log10(hi) - Math.log10(lo);
-    values = scale.ticks().filter((v) => {
-      const m = v / 10 ** Math.floor(Math.log10(v) + 1e-9);
-      return Math.abs(m - 1) < 1e-6 || (decades < 2.5 && decades * 3 <= fit && (Math.abs(m - 2) < 1e-6 || Math.abs(m - 5) < 1e-6));
-    });
-    // still crowded: every other power of ten
-    if (values.length > fit) values = values.filter((v, i) => (values.length - 1 - i) % 2 === 0);
-  }
-  const tickFs = styleFontSize(st, "tick");
-  const labels = values.map((v) => `${format(v)}`);
-  const labelW = Math.max(0, ...labels.map((l) => l.length)) * tickFs * 0.58;
-  const axisInk = INK[st.axisInk] || INK.axis;
-  return (
-    <g>
-      {values.map((v, k) => (
-        <g key={v} transform={`translate(0,${scale(v)})`}>
-          {st.grid !== "none" && <line x1={x0} x2={x1} stroke={INK.grid} strokeDasharray={st.gridDash ? st.gridDash.join(" ") : undefined} />}
-          {st.tickLen > 0 && st.axisLine && <line x1={x0 - st.tickLen} x2={x0} stroke={axisInk} />}
-          <text x={x0 - st.tickLen - 4} dy="0.35em" textAnchor="end" fontSize={tickFs} fontWeight={styleFontWeight(st, "tick")} fill={INK[st.tickInk] || INK.muted}>
-            {labels[k]}
-          </text>
-        </g>
-      ))}
-      {st.axisLine && st.grid === "none" && <line x1={x0 + 0.5} x2={x0 + 0.5} y1={r0} y2={r1} stroke={axisInk} strokeWidth={st.axisWidth} />}
-      {title && (
-        <text transform={`translate(${x0 - st.tickLen - labelW - 14},${(r0 + r1) / 2}) rotate(-90)`} textAnchor="middle" fontSize={styleFontSize(st, "head")} fontWeight={styleFontWeight(st, "head")} fill={INK.textSecondary}>
-          {title}
-        </text>
-      )}
-    </g>
-  );
-}
-
-/** Baseline under a plot area (x axis line), drawn when the chart style has axis lines. */
-export function XBaseline({ x0, x1, y }) {
-  const st = useFigureStyle();
-  if (!st.axisLine) return null;
-  return <line x1={x0} x2={x1} y1={Math.round(y) + 0.5} y2={Math.round(y) + 0.5} stroke={INK[st.axisInk] || INK.axis} strokeWidth={st.axisWidth} />;
-}
+export { ChartTooltip, RefLine, XAxis, XBaseline, YAxis, useChartStyle, useChartText } from "../chartAxes";
 
 /** Category labels under a band scale; rotated when crowded. */
 export function XBandLabels({ scale, y, rotate = false, onClick, labels = null, fontSize }) {
