@@ -23,7 +23,7 @@ const { Text } = Typography;
  * patient into the single-cell store, zooms the heatmap to `domains` and
  * selects the `marked` cells, so the figure is the live, interactive view.
  */
-export default function PatientEcdnaView({ patient, domains, walkIds, marked }) {
+export default function PatientEcdnaView({ patient, domains, walkIds, marked, select = true, layout = null }) {
   const dispatch = useDispatch();
   const loaded = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const loading = useSelector((s) => s.SingleCell.loading);
@@ -49,9 +49,9 @@ export default function PatientEcdnaView({ patient, domains, walkIds, marked }) 
 
   const markedKey = marked ? `${marked.key}:${marked.cells.size}` : "";
   useEffect(() => {
-    if (ready) dispatch(singleCellActions.updateSelection(marked ? [...marked.cells] : []));
+    if (ready) dispatch(singleCellActions.updateSelection(select && marked ? [...marked.cells] : []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, markedKey, dispatch]);
+  }, [ready, markedKey, select, dispatch]);
 
   const { order } = useTreeView();
   const cellIds = useMemo(() => (order.length ? order : cellsAll.map((c) => c.cell_id)), [order, cellsAll]);
@@ -75,14 +75,16 @@ export default function PatientEcdnaView({ patient, domains, walkIds, marked }) 
       </Space>
     );
   }
+  // layout "slide" (?figlayout=slide): heatmap and walk copies side by side, as on the deck slides
+  const side = layout === "slide";
   return (
     <Row gutter={SC_GUTTER}>
-      <Col span={24}>
+      <Col span={24} xl={side ? 15 : 24}>
         <CellHeatmapPanel />
       </Col>
       {status === "ok" && shown.length > 0 && (
         <>
-          <Col span={24}>
+          <Col span={24} xl={side ? 9 : 24}>
             <WalkTreeBars walks={shown} families={families} colorOf={colorOf} measured={measured} />
           </Col>
           <Col xs={24} xl={10}>
