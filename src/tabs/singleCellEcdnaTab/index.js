@@ -10,6 +10,7 @@ import ScEventModal from "../../components/singleCell/scEventModal";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import GenesPlot from "../../components/genesPlotHiglass";
 import HoverLine from "../../components/hoverLine";
+import TracksLegendPanel from "../../components/tracksLegendPanel";
 import useWalks from "../../components/singleCell/ecdna/useWalks";
 import WalkPicker from "../../components/singleCell/ecdna/walkPicker";
 import WalkTable from "../../components/singleCell/ecdna/walkTable";
@@ -36,6 +37,10 @@ const { Text } = Typography;
 const PADS = [5e4, 1e5, 2.5e5, 5e5, 1e6, 2e6];
 const padLabel = (p) => (p >= 1e6 ? `${p / 1e6} Mb` : `${p / 1e3} kb`);
 const GENES_H = 76;
+const NAV_H = 190;
+// a ?location= in the URL the page was opened with on this tab wins over the walks' own regions
+const OPENED_WITH = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+const linkedLocation = () => (OPENED_WITH.get("tab") === "14" && OPENED_WITH.get("location") ? OPENED_WITH.get("location") : null);
 
 /** Padded, merged genomic domains covering the given walks (at most six panels). */
 function walksDomains(walks, chromoBins, pad) {
@@ -76,7 +81,8 @@ export default function SingleCellEcdnaTab() {
   // nesting / co-occurrence / copies-vs-copies: folded away until the user opens them (remembered)
   const relationsOpen = useSelector((s) => !!s.SingleCell.layout?.walkRelationsOpen);
   const { chromoBins, domains } = useSelector((s) => s.Settings);
-  const genesList = useSelector((s) => s.Genes?.list || []);
+  const genes = useSelector((s) => s.Genes) || {};
+  const genesList = genes.list || [];
   const cellIds = useMemo(() => (order.length ? order : cellsAll.map((c) => c.cell_id)), [order, cellsAll]);
   const { status, all, measured, filtered, filters, setFilters, colorOf, byId, idMatch } = useWalks(cellIds);
   const [selected, setSelected] = useState([]);
@@ -149,7 +155,9 @@ export default function SingleCellEcdnaTab() {
   };
   useEffect(() => {
     if (!shown.length || !chromoBins || zoomedFor.current === patient) return;
+    const first = zoomedFor.current === null;
     zoomedFor.current = patient;
+    if (first && linkedLocation() && linkAppliesTo(readDeepLink(), patient)) return;
     zoomToShown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown.length, chromoBins, patient]);
@@ -187,6 +195,23 @@ export default function SingleCellEcdnaTab() {
                 </div>
               )}
             </Card>
+          </Col>
+          <Col span={24}>
+            {/* Genome View navigation: brush one or more regions on the chromosome strip (side-by-side
+                panels), type chr:start-end|chr:start-end, or locate genes; the walks and heatmap follow */}
+            <TracksLegendPanel
+              {...{
+                loading: genes.loading,
+                genesList,
+                error: genes.error,
+                chromoBins,
+                visible: true,
+                handleYscaleModeChange: () => {},
+                yScaleMode: "common",
+                plotInsets: { left: labelWidth, right: rightWidth },
+                plotHeight: NAV_H,
+              }}
+            />
           </Col>
           <Col span={24}>
             <Card
