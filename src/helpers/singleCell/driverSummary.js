@@ -223,6 +223,27 @@ export function rankCandidates(items) {
   return keyed.map((y) => y.x);
 }
 
+/** Clade F1 at or above which the carriers count as one branch of the tree: a key finding. */
+export const KEY_FIT = 0.8;
+
+/** Clade F1 of a driver or bundle, or null. */
+export function cladeFit(x) {
+  const d = (x && x.lead) || x || {};
+  return d.fit && Number.isFinite(d.fit.score) ? d.fit.score : null;
+}
+
+/**
+ * Key findings first: candidates whose carriers form one branch (clade F1 >=
+ * KEY_FIT), highest F1 first (0.05 steps, ties keep the given rank), then the
+ * rest in the given order.
+ */
+export function keyFindingsFirst(items, minFit = KEY_FIT) {
+  const keyed = items.map((x, i) => ({ x, i, f: cladeFit(x) }));
+  const key = keyed.filter((y) => y.f != null && y.f >= minFit).sort((a, b) => Math.round(b.f * 20) - Math.round(a.f * 20) || a.i - b.i);
+  const rest = keyed.filter((y) => !(y.f != null && y.f >= minFit));
+  return [...key, ...rest].map((y) => y.x);
+}
+
 /** Jaccard index of two id arrays. */
 export function jaccard(a, b) {
   const A = new Set(a);
