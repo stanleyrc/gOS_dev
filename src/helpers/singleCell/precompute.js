@@ -11,6 +11,7 @@ export const PRECOMPUTE_FILES = {
   telomeres: "precompute/telomeres.json",
   calls: "precompute/region_calls.json",
   mtdna: "precompute/mtdna.json",
+  siteEvidence: "precompute/site_evidence.json",
   slices: "slices/regions.json",
 };
 export const PRECOMPUTE_STATUS_FILE = "_precompute/status.json";
