@@ -1,13 +1,14 @@
 import actions, {
   SC_DEFAULT_LAYOUT,
   SC_DEFAULT_TRACKS,
+  SC_TRACKS,
   SC_LAYOUT_STORAGE_KEY,
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
 import caseReportActions from "../caseReport/actions";
-import { DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
+import { CN_PALETTE_PRESETS, DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
 import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups";
-import { cellsOfGroups, linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
+import { cellsOfGroups, linkAppliesTo, readDeepLink, readViewLink, withCloneOverrides } from "../../helpers/singleCell/deepLink";
 import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
 
 // Saved cell groups shared through the URL join the stored ones.
@@ -26,6 +27,13 @@ const storedLayout = () => {
 };
 
 const storedPalette = () => {
+  // ?cnpal=<preset> opens on that CN palette (not saved unless edited)
+  try {
+    const linked = readViewLink().cnPalette;
+    if (linked && CN_PALETTE_PRESETS[linked]) return { preset: linked, ...normalizePalette(CN_PALETTE_PRESETS[linked], linked) };
+  } catch (error) {
+    // no window: fall through to the stored palette
+  }
   try {
     const raw = window.localStorage.getItem(SC_PALETTE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -35,6 +43,16 @@ const storedPalette = () => {
     return { preset: DEFAULT_CN_PALETTE, ...normalizePalette(null) };
   }
 };
+
+// ?tracks=total,coverage opens the cell tracks with those layers
+function linkedTracks() {
+  try {
+    const tracks = readViewLink().tracks.filter((t) => SC_TRACKS.includes(t));
+    return tracks.length ? tracks : null;
+  } catch (error) {
+    return null;
+  }
+}
 
 const emptySource = { status: "idle", data: null, error: null };
 
@@ -62,7 +80,7 @@ const initState = {
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
   selectedCellIds: [],
-  visibleTracks: SC_DEFAULT_TRACKS,
+  visibleTracks: linkedTracks() || SC_DEFAULT_TRACKS,
   heatmapType: "cn",
   snvOrder: "tree",
   snvMetric: "vaf",
@@ -125,7 +143,10 @@ export default function appReducer(state = initState, action) {
         cells: action.cells,
         // dataset colours are kept as `cloneColorsFixed`; the shown ones follow the theme
         cloneColorsFixed: action.cloneColors,
-        cloneColors: cloneColorsForTheme(Object.keys(action.cloneColors || {}), state.layout.theme || DEFAULT_THEME, action.cloneColors),
+        cloneColors: withCloneOverrides(
+          cloneColorsForTheme(Object.keys(action.cloneColors || {}), state.layout.theme || DEFAULT_THEME, action.cloneColors),
+          linked ? readViewLink().cloneColors : {}
+        ),
         order: action.order,
         tree: action.tree,
         cn: action.cn,

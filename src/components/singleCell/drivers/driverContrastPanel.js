@@ -21,6 +21,9 @@ import DriverGenomeCard from "./driverGenomeCard";
 import DriverExpressionCard from "./driverExpressionCard";
 import DriverPhenotypeCard from "./driverPhenotypeCard";
 import DriverEvidenceCard from "./driverEvidenceCard";
+import DriverSummaryBoard from "./driverSummaryBoard";
+import DriverEffectsCard from "./driverEffectsCard";
+import { rankCandidates } from "../../../helpers/singleCell/driverSummary";
 
 const { Text } = Typography;
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -123,7 +126,11 @@ export default function DriverContrastPanel() {
   const cloneOfId = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id])), [cells]);
   const normalIds = useMemo(() => new Set(cells.filter((c) => isNormalClone(c.clone_id)).map((c) => `${c.cell_id}`)), [cells]);
 
-  const drivers = useMemo(() => subclonalDrivers(events || [], tumorIds, treeLayout), [events, tumorIds, treeLayout]);
+  // same order as the ranked board above (evidence level, then priority)
+  const drivers = useMemo(() => {
+    const list = subclonalDrivers(events || [], tumorIds, treeLayout);
+    return rankCandidates(list);
+  }, [events, tumorIds, treeLayout]);
   const driver = drivers.find((d) => d.key === driverFocus) || drivers[0] || null;
   useEffect(() => {
     if (driver && driver.key !== driverFocus) dispatch(singleCellActions.updateDriverFocus(driver.key));
@@ -215,15 +222,24 @@ export default function DriverContrastPanel() {
     { title: "p", dataIndex: "p", key: "p", width: 110, render: (p) => (Number.isFinite(p) ? formatP(p) : "–") },
   ];
 
+  const focusFromBoard = (s) => {
+    dispatch(singleCellActions.updateDriverFocus(s.key));
+    // after the deep dive re-renders on the new driver
+    setTimeout(() => document.getElementById("sc-driver-deep-dive")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+
   return (
     <Row gutter={SC_GUTTER}>
       <Col span={24}>
+        <DriverSummaryBoard rna={rna} focusKey={driver?.key} onFocus={focusFromBoard} />
+      </Col>
+      <Col span={24} id="sc-driver-deep-dive">
         <Card
           size="small"
           title={
             <Space>
               <NodeIndexOutlined />
-              <span>{t("components.single-cell.drivers.title")}</span>
+              <span>{`${t("components.single-cell.drivers.title")}${label ? `: ${label}` : ""}`}</span>
             </Space>
           }
         >
@@ -297,6 +313,9 @@ export default function DriverContrastPanel() {
       </Col>
       {driver && (
         <>
+          <Col span={24}>
+            <DriverEffectsCard driver={driver} carriers={carriers} others={others} rna={rna} />
+          </Col>
           <Col span={24}>
             <DriverGenomeCard driver={driver} carriers={carriers} others={others} />
           </Col>
