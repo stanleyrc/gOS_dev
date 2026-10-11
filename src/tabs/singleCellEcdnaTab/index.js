@@ -9,6 +9,7 @@ import ScErrorBoundary from "../../components/singleCell/errorBoundary";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
+import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import GenesPlot from "../../components/genesPlotHiglass";
 import HoverLine from "../../components/hoverLine";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
@@ -247,6 +248,10 @@ export default function SingleCellEcdnaTab() {
               <WalksLegend />
             </Card>
             {heatmap}
+          </Col>
+          <Col span={24}>
+            {/* reads of the selected cells, opened from the heatmap / event / SNV views (nothing until IGV is opened) */}
+            <CellIgvPanel />
           </Col>
           <Col span={24}>
             {/* cells clicked / brushed on the CN heatmap pop up here with their own graph, coverage and allelic tracks */}
