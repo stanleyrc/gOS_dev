@@ -59,7 +59,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
   const { cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((s) => s.SingleCell);
   const [mode, setMode] = useState("cells");
   const [k, setK] = useState(6);
-  const [view, setView] = useState(() => readViewLink().walkView || "bars"); // ?walkview=heatmap
+  const [view, setView] = useState(() => (readViewLink().walkView === "heatmap" ? "heat" : "bars")); // ?walkview=heatmap
   const [scaleMode, setScaleMode] = useState("column");
   const rareMax = useRareMax();
   const [hoverRange, setHoverRange] = useState(null);
