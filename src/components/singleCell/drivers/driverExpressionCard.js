@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Alert, Button, Card, Col, Empty, Progress, Row, Segmented, Space, Table, Tag, Typography } from "antd";
 import { AiOutlineDownload } from "react-icons/ai";
 import VolcanoPlot from "../rna/volcanoPlot";
+import GeneInfoCard from "../rna/geneInfoCard";
+import { geneBrief } from "../../../helpers/singleCell/driverSummary";
 import HintLine from "../hintLine";
 import { downloadTsv } from "../analysisResultsPanel";
 import { geneLocus, cnAtPosition } from "../../../helpers/singleCell/dosage";
@@ -36,7 +38,7 @@ export function driverLoci(event, chromoBins) {
 }
 
 /** Expression of one gene per cell, carriers vs comparator, jittered dots with the median; hover a dot for the cell. */
-function GeneDots({ gene, groups, row, labels }) {
+export function GeneDots({ gene, groups, row, showDetected = true }) {
   const [ref, width] = useContainerWidth(260);
   const theme = usePlotTheme();
   const [hover, setHover] = useState(null);
@@ -92,7 +94,7 @@ function GeneDots({ gene, groups, row, labels }) {
                 {g.label}
               </text>
               <text x={cx} y={H - 6} textAnchor="middle" fontSize={TYPE.tick} fill={theme.muted}>
-                {`${g.values.length} cells · ${Math.round(det * 100)}% > 0`}
+                {showDetected ? `${g.values.length} cells · ${Math.round(det * 100)}% > 0` : `${g.values.length} cells`}
               </text>
             </g>
           );
@@ -245,13 +247,14 @@ export default function DriverExpressionCard({ driver, carriers, others, rna }) 
               <Row gutter={[12, 8]}>
                 {dots.map((d) => (
                   <Col key={d.gene} xs={24} md={12} xl={8}>
-                    <GeneDots gene={d.gene} groups={d.groups} row={d.row} labels={labels} />
+                    <GeneDots gene={d.gene} groups={d.groups} row={d.row} />
                   </Col>
                 ))}
               </Row>
             ) : (
               <Text type="secondary">{t("components.single-cell.drivers.pick-gene")}</Text>
             )}
+            {gene && <GeneInfoCard gene={gene} row={rows.find((r) => r.gene === gene)} labels={labels} />}
             <Space wrap>
               <Segmented
                 size="small"
@@ -283,6 +286,15 @@ export default function DriverExpressionCard({ driver, carriers, others, rna }) 
               columns={[
                 { title: t("components.single-cell.drivers.gene"), dataIndex: "gene", key: "gene", render: (g) => <Text strong>{g}</Text> },
                 { title: "", dataIndex: "cls", key: "cls", render: (c) => <Tag color={CLASS_COLOR[c]}>{t(`components.single-cell.drivers.cls-${c}`)}</Tag> },
+                {
+                  title: "What it is",
+                  key: "role",
+                  render: (_, r) => {
+                    const b = geneBrief(r.gene);
+                    const bits = [b.gbm ? (b.gbm.kind === "driver" ? "GBM driver" : "GBM marker") : null, b.pathway, ...b.programs.map((p) => p.replace(" (Neftel)", ""))].filter(Boolean);
+                    return bits.length ? <Text type="secondary" style={{ fontSize: 12 }}>{bits.join(" · ")}</Text> : <Text type="secondary" style={{ fontSize: 12, opacity: 0.6 }}>click for gene card</Text>;
+                  },
+                },
                 { title: "log2 FC", dataIndex: "avg_log2FC", key: "fc", align: "right", render: (v) => v.toFixed(2) },
                 { title: `% ${labels.A}`, dataIndex: "pct_1", key: "p1", align: "right", render: pctFmt },
                 { title: `% ${labels.B}`, dataIndex: "pct_2", key: "p2", align: "right", render: pctFmt },
