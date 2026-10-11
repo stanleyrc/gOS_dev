@@ -61,6 +61,7 @@ export const LOCATIONS = {
   rnaFusions: [P(TAB.rna)],
   splicing: [P(TAB.rna)],
   dosage: [P(TAB.rnaCn), C("rna")],
+  ase: [P(TAB.rnaCn), C("rna")],
   signatureSets: [P(TAB.signatures)],
   signatureCompare: [P(TAB.signatures)],
   signatureTree: [P(TAB.signatures)],
@@ -293,7 +294,7 @@ export const METHODS = [
       ["Heritability", "Moran's I of per-cell state scores or genes on the tree with inverse patristic-distance weights (analytic z or permutations): high I = state inherited along the lineage, low = plastic."],
       ["Cohort", "Cohort UMAP: merged Seurat objects, Harmony on patient. Pooled DE merges matrices on gene names; per-patient DE combines p-values by Fisher's method. Cohort PCA: ≤ 1,500 cells, 1,000 most variable genes z-scored, top 10 PCs. Program score = mean per-gene z-score within a patient."],
     ],
-    related: ["de", "markers", "rnaComposition", "dosage", "violin", "geneExplorer", "phyloExpression", "heritability", "umap", "cohortRna", "rnaFindings", "rnaClone"],
+    related: ["de", "markers", "rnaComposition", "dosage", "ase", "violin", "geneExplorer", "phyloExpression", "heritability", "umap", "cohortRna", "rnaFindings", "rnaClone"],
   },
   {
     id: "m-fusions-splicing",
