@@ -24,6 +24,7 @@ import {
 } from "../../../helpers/singleCell/ase";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import useContainerWidth from "../useContainerWidth";
+import { RefLine, XAxis, YAxis, linearScale, useChartText } from "../chartAxes";
 import SvgExportButton from "../svgExportButton";
 import HintLine, { Provenance } from "../hintLine";
 import CellIgvPanel from "../cellIgvPanel";
@@ -124,44 +125,36 @@ function AseFindingsList({ ase, patientId, picked, onPick }) {
   );
 }
 
-const SM = { top: 18, right: 14, bottom: 46, left: 52 };
+const SM = { top: 18, right: 14, bottom: 50, left: 58 };
+const pctTick = (v) => `${Math.round(v * 100)}%`;
 
 /** Every informative gene: DNA share of the major haplotype (x) vs RNA share of it (y); click picks a gene. */
 function AseScatter({ ase, width, picked, onPick }) {
   const { t } = useTranslation("common");
+  const txt = useChartText();
   const pts = useMemo(() => scatterGenes(ase), [ase]);
   const height = Math.round(Math.min(380, Math.max(280, width * 0.82)));
   const w = width - SM.left - SM.right;
   const h = height - SM.top - SM.bottom;
-  const x = (v) => ((v - 0.5) / 0.5) * w;
-  const y = (v) => h - v * h;
+  const x = linearScale([0.5, 1], [0, w], { clamp: true });
+  const y = linearScale([0, 1], [h, 0], { clamp: true });
   const maxReads = Math.max(20, ...pts.map((p) => p.reads));
   const r = (n) => 2 + 4.5 * Math.sqrt(Math.log10(1 + n) / Math.log10(1 + maxReads));
   const labelled = new Set(ase.findings.filter(isNotableAse).slice(0, 8).map((f) => f.gene));
   if (picked) labelled.add(picked);
-  const drawn = [...pts].sort((a, b) => (a.cls === "none") - (b.cls === "none") || 0).reverse();
+  // called genes drawn last (on top)
+  const drawn = [...pts].sort((a, b) => (b.cls === "none") - (a.cls === "none"));
   return (
     <svg width={width} height={height} role="img" aria-label={t(`${k}.scatter-title`)} style={{ display: "block" }}>
-      <rect x={0} y={0} width={width} height={height} fill={INK.panel} />
       <g transform={`translate(${SM.left},${SM.top})`}>
-        <rect x={0} y={0} width={w} height={h} fill={INK.panelAlt} />
-        {[0.5, 0.6, 0.7, 0.8, 0.9, 1].map((v) => (
-          <g key={`x${v}`} transform={`translate(${x(v)},0)`}>
-            <line y1={0} y2={h} stroke={INK.grid} />
-            <text y={h + 15} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>{pctText(v)}</text>
-          </g>
-        ))}
-        {[0, 0.25, 0.5, 0.75, 1].map((v) => (
-          <g key={`y${v}`} transform={`translate(0,${y(v)})`}>
-            <line x1={0} x2={w} stroke={v === 0.5 ? INK.axis : INK.grid} strokeDasharray={v === 0.5 ? "2 3" : undefined} />
-            <text x={-6} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>{pctText(v)}</text>
-          </g>
-        ))}
+        <YAxis scale={y} x0={0} x1={w} ticks={5} format={pctTick} title={t(`${k}.scatter-y`)} />
+        <XAxis scale={x} y0={h} y1={0} values={[0.5, 0.6, 0.7, 0.8, 0.9, 1]} format={pctTick} title={t(`${k}.scatter-x`)} />
+        <RefLine x1={0} x2={w} y1={y(0.5)} y2={y(0.5)} opacity={0.6} />
         {/* RNA = DNA: imbalance explained by copy number */}
-        <line x1={x(0.5)} y1={y(0.5)} x2={x(1)} y2={y(1)} stroke={INK.textSecondary} strokeDasharray="5 4" strokeOpacity={0.7} />
-        <text x={x(0.97)} y={y(0.97) + 14} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>{t(`${k}.scatter-diagonal`)}</text>
-        <text x={4} y={12} fontSize={TYPE.tick} fill={INK.muted}>{t(`${k}.scatter-top`)}</text>
-        <text x={4} y={h - 6} fontSize={TYPE.tick} fill={INK.muted}>{t(`${k}.scatter-bottom`)}</text>
+        <RefLine x1={x(0.5)} x2={x(1)} y1={y(0.5)} y2={y(1)} />
+        <text x={x(0.97)} y={y(0.97) + 14} textAnchor="end" {...txt.caption}>{t(`${k}.scatter-diagonal`)}</text>
+        <text x={4} y={12} {...txt.caption}>{t(`${k}.scatter-top`)}</text>
+        <text x={4} y={h - 6} {...txt.caption}>{t(`${k}.scatter-bottom`)}</text>
         {drawn.map((p) => {
           const isPicked = p.gene === picked;
           const called = p.cls !== "none";
@@ -172,7 +165,7 @@ function AseScatter({ ase, width, picked, onPick }) {
               cy={y(p.y)}
               r={isPicked ? r(p.reads) + 2 : r(p.reads)}
               fill={ASE_CLASS_FILL[p.cls] || ASE_CLASS_FILL.none}
-              fillOpacity={called ? 0.85 : 0.25}
+              fillOpacity={called ? 0.85 : 0.22}
               stroke={isPicked ? INK.text : p.switch ? ASE_CLASS_FILL["clone-switch"] : "none"}
               strokeWidth={isPicked ? 2 : 1.2}
               style={{ cursor: "pointer" }}
@@ -185,18 +178,16 @@ function AseScatter({ ase, width, picked, onPick }) {
         {drawn
           .filter((p) => labelled.has(p.gene))
           .map((p) => (
-            <text key={`l${p.gene}`} x={x(p.x) + r(p.reads) + 3} y={y(p.y)} dy="0.35em" fontSize={TYPE.tick} fontWeight={p.gene === picked ? 700 : 500} fill={INK.text} style={{ paintOrder: "stroke", stroke: INK.labelBg, strokeWidth: 3, pointerEvents: "none" }}>
+            <text key={`l${p.gene}`} x={x(p.x) + r(p.reads) + 3} y={y(p.y)} dy="0.35em" {...txt.tick} fill={INK.text} fontWeight={p.gene === picked ? 700 : 500} style={{ paintOrder: "stroke", stroke: INK.labelBg, strokeWidth: 3, pointerEvents: "none" }}>
               {p.gene}
             </text>
           ))}
-        <text x={w / 2} y={h + 34} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>{t(`${k}.scatter-x`)}</text>
-        <text transform={`translate(${-38},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>{t(`${k}.scatter-y`)}</text>
       </g>
     </svg>
   );
 }
 
-const CM = { top: 26, right: 12, bottom: 40, left: 52 };
+const CM = { top: 30, right: 12, bottom: 44, left: 58 };
 
 /**
  * One gene, every cell: RNA share of haplotype A (dot, size = reads, colour =
@@ -206,8 +197,9 @@ const CM = { top: 26, right: 12, bottom: 40, left: 52 };
  */
 function AseCellPlot({ gene, cells, width, cloneColors, selected, hovered, onSelect, onHover }) {
   const { t } = useTranslation("common");
+  const txt = useChartText();
   const { order, groups } = useMemo(() => cellsByClone(cells), [cells]);
-  const height = 270;
+  const height = 280;
   const w = width - CM.left - CM.right;
   const h = height - CM.top - CM.bottom;
   const gap = 10;
@@ -217,29 +209,24 @@ function AseCellPlot({ gene, cells, width, cloneColors, selected, hovered, onSel
     for (let i = g.from; i <= g.to; i += 1) groupOf.set(i, gi);
   });
   const cx = (i) => i * step + (groupOf.get(i) || 0) * gap + step / 2;
-  const y = (v) => h - v * h;
+  const y = linearScale([0, 1], [h, 0], { clamp: true });
   const maxN = Math.max(4, ...cells.map((c) => c.n));
   const rad = (n) => 2 + 4 * Math.sqrt(n / maxN);
+  const yFmt = (v) => (v === 1 ? "A only" : v === 0 ? "B only" : pctTick(v));
   return (
     <svg width={width} height={height} role="img" aria-label={t(`${k}.cells-aria`, { gene })} style={{ display: "block" }}>
-      <rect x={0} y={0} width={width} height={height} fill={INK.panel} />
       <g transform={`translate(${CM.left},${CM.top})`}>
-        <rect x={0} y={0} width={w} height={h} fill={INK.panelAlt} />
-        {[0, 0.25, 0.5, 0.75, 1].map((v) => (
-          <g key={v} transform={`translate(0,${y(v)})`}>
-            <line x1={0} x2={w} stroke={v === 0.5 ? INK.axis : INK.grid} strokeDasharray={v === 0.5 ? "2 3" : undefined} />
-            <text x={-6} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>{v === 1 ? "A only" : v === 0 ? "B only" : pctText(v)}</text>
-          </g>
-        ))}
+        <YAxis scale={y} x0={0} x1={w} ticks={5} format={yFmt} title={t(`${k}.cells-y`)} />
+        <RefLine x1={0} x2={w} y1={y(0.5)} y2={y(0.5)} opacity={0.6} />
         {groups.map((g) => {
           const x0 = cx(g.from) - step / 2;
           const x1 = cx(g.to) + step / 2;
           const col = cloneColors[g.clone] || NO_CLONE;
           return (
             <g key={g.clone}>
-              <rect x={x0} y={-CM.top + 4} width={Math.max(2, x1 - x0)} height={5} fill={col} />
-              <text x={(x0 + x1) / 2} y={-CM.top + 20} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>
-                {x1 - x0 > 60 ? `${g.clone} · RNA ${pctText(g.rna)}${Number.isFinite(g.dna) ? ` / DNA ${pctText(g.dna)}` : ""}` : x1 - x0 > 24 ? g.clone.replace(/^Clone\s*/i, "C") : ""}
+              <rect x={x0} y={-CM.top + 4} width={Math.max(2, x1 - x0)} height={4} fill={col} />
+              <text x={(x0 + x1) / 2} y={-CM.top + 21} textAnchor="middle" {...txt.tick}>
+                {x1 - x0 > 110 ? `${g.clone} · RNA ${pctText(g.rna)}${Number.isFinite(g.dna) ? ` / DNA ${pctText(g.dna)}` : ""}` : x1 - x0 > 26 ? g.clone.replace(/^Clone\s*/i, "C") : ""}
                 <title>{`${g.clone}: ${g.cells} cells, ${g.a} A / ${g.b} B reads, RNA ${pctText(g.rna)} (95% CI ${pctText(g.ci[0])}–${pctText(g.ci[1])}), DNA ${pctText(g.dna)}`}</title>
               </text>
               {Number.isFinite(g.rna) && <line x1={x0} x2={x1} y1={y(g.rna)} y2={y(g.rna)} stroke={col} strokeWidth={2.5} strokeOpacity={0.9} />}
@@ -271,8 +258,7 @@ function AseCellPlot({ gene, cells, width, cloneColors, selected, hovered, onSel
             </g>
           );
         })}
-        <text x={w / 2} y={h + 18} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>{t(`${k}.cells-x`, { count: order.length })}</text>
-        <text transform={`translate(${-40},${h / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.label} fill={INK.textSecondary}>{t(`${k}.cells-y`)}</text>
+        <text x={w / 2} y={h + 22} textAnchor="middle" {...txt.head}>{t(`${k}.cells-x`, { count: order.length })}</text>
       </g>
     </svg>
   );
