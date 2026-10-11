@@ -23,7 +23,7 @@ import DriverPhenotypeCard from "./driverPhenotypeCard";
 import DriverEvidenceCard from "./driverEvidenceCard";
 import DriverSummaryBoard from "./driverSummaryBoard";
 import DriverEffectsCard from "./driverEffectsCard";
-import { rankCandidates } from "../../../helpers/singleCell/driverSummary";
+import { KEY_FIT, isKnownDriver, keyFindingsFirst, rankCandidates } from "../../../helpers/singleCell/driverSummary";
 
 const { Text } = Typography;
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -126,12 +126,14 @@ export default function DriverContrastPanel() {
   const cloneOfId = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id])), [cells]);
   const normalIds = useMemo(() => new Set(cells.filter((c) => isNormalClone(c.clone_id)).map((c) => `${c.cell_id}`)), [cells]);
 
-  // same order as the ranked board above (evidence level, then priority)
+  // same order as the ranked board above (one-branch candidates by clade F1, then evidence level and priority)
   const drivers = useMemo(() => {
     const list = subclonalDrivers(events || [], tumorIds, treeLayout);
-    return rankCandidates(list);
+    return keyFindingsFirst(rankCandidates(list));
   }, [events, tumorIds, treeLayout]);
-  const driver = drivers.find((d) => d.key === driverFocus) || drivers[0] || null;
+  // default: the top key finding in a cancer gene (what the board leads with)
+  const driver =
+    drivers.find((d) => d.key === driverFocus) || drivers.find((d) => (d.fit?.score ?? 0) >= KEY_FIT && isKnownDriver(d)) || drivers[0] || null;
   useEffect(() => {
     if (driver && driver.key !== driverFocus) dispatch(singleCellActions.updateDriverFocus(driver.key));
   }, [driver, driverFocus, dispatch]);

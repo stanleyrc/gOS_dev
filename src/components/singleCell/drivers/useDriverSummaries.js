@@ -6,7 +6,7 @@ import { GENE_SETS, geneSetScores } from "../../../helpers/singleCell/geneSets";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { eventGlobalPosition } from "../../../helpers/singleCell/eventDomains";
 import { balanceTable, chimericSupport, cnContrast, plateOf, subclonalDrivers } from "../../../helpers/singleCell/driverContrast";
-import { LANDMARK_GENES, alterationKind, bundleDrivers, describeCnRegions, driverPriority, isKnownDriver, linkedSpliceFindings, rankCandidates, summarizeDriver } from "../../../helpers/singleCell/driverSummary";
+import { LANDMARK_GENES, alterationKind, bundleDrivers, describeCnRegions, driverPriority, isKnownDriver, keyFindingsFirst, linkedSpliceFindings, rankCandidates, summarizeDriver } from "../../../helpers/singleCell/driverSummary";
 
 const STEP = 1e6;
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -61,7 +61,7 @@ export default function useDriverSummaries(rna, { limit = 8, knownOnly = false }
   const bundles = useMemo(() => {
     const drivers = subclonalDrivers(events || [], tumorIds, treeLayout);
     drivers.forEach((d) => (d.priority = driverPriority(d)));
-    return rankCandidates(bundleDrivers(drivers));
+    return keyFindingsFirst(rankCandidates(bundleDrivers(drivers)));
   }, [events, tumorIds, treeLayout]);
 
   const cnData = cn?.status === "ok" ? cn.data : null;
