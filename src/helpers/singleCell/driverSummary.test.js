@@ -209,6 +209,12 @@ describe("ranking candidates and merging regions", () => {
     const out = rankCandidates([{ lead: snv, members: [snv] }, { lead: fus, members: [fus, {}, {}] }]);
     expect(out[0].lead.key).toBe("fus");
   });
+  it("leads with candidates whose carriers form one branch, highest clade F1 first", () => {
+    const { keyFindingsFirst } = require("./driverSummary");
+    const mk = (key, score) => ({ lead: { key, fit: score == null ? null : { score } } });
+    const out = keyFindingsFirst([mk("a", 0.4), mk("b", 0.85), mk("c", null), mk("d", 0.99), mk("e", 0.97)]);
+    expect(out.map((x) => x.lead.key)).toEqual(["d", "e", "b", "a", "c"]);
+  });
   it("merges pieces of one amplicon and names GBM drivers first", () => {
     const chromoBins = { 12: { startPlace: 0, endPlace: 133e6 } };
     const out = describeCnRegions(
