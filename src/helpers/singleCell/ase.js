@@ -15,6 +15,7 @@ export const ASE_CLASS = {
   "beyond-dna": { label: "RNA beyond DNA", color: "orange" },
   buffered: { label: "dosage buffered", color: "cyan" },
   dosage: { label: "follows dosage", color: "blue" },
+  "phase-conflict": { label: "phase conflict", color: "default" },
 };
 
 export const ASE_KIND_COLOR = {
@@ -35,6 +36,7 @@ export const ASE_CLASS_FILL = {
   buffered: "#08979c",
   dosage: "#1d39c4",
   "clone-switch": "#722ed1",
+  "phase-conflict": "#bfbfbf",
   none: "#8c8c8c",
 };
 
