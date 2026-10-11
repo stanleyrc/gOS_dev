@@ -8,6 +8,7 @@ import HelpDrawer from "../../components/singleCell/helpDrawer";
 import ScErrorBoundary from "../../components/singleCell/errorBoundary";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
+import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import GenesPlot from "../../components/genesPlotHiglass";
 import HoverLine from "../../components/hoverLine";
 import TracksLegendPanel from "../../components/tracksLegendPanel";
@@ -90,6 +91,7 @@ export default function SingleCellEcdnaTab() {
   const [pad, setPad] = useState(2.5e5);
   const [colorBy, setColorBy] = useState("walk");
   const [laneHeight, setLaneHeight] = useState(18);
+  const [yScaleMode, setYScaleMode] = useState("common");
   const [showTable, setShowTable] = useState(false);
   const [chipHover, setChipHover] = useState(null); // walk hovered among the chips, marked in the plot
   const [genesRef, genesWidth] = useContainerWidth(1200);
@@ -206,8 +208,8 @@ export default function SingleCellEcdnaTab() {
                 error: genes.error,
                 chromoBins,
                 visible: true,
-                handleYscaleModeChange: () => {},
-                yScaleMode: "common",
+                handleYscaleModeChange: setYScaleMode,
+                yScaleMode,
                 plotInsets: { left: labelWidth, right: rightWidth },
                 plotHeight: NAV_H,
               }}
@@ -244,6 +246,10 @@ export default function SingleCellEcdnaTab() {
               <WalksLegend />
             </Card>
             {heatmap}
+          </Col>
+          <Col span={24}>
+            {/* cells clicked / brushed on the CN heatmap pop up here with their own graph, coverage and allelic tracks */}
+            <CellTracksPanel yScaleMode={yScaleMode} />
           </Col>
           <Col span={24}>
             <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} focus={activeFocus} />
