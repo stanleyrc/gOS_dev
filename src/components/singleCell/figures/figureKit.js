@@ -169,3 +169,19 @@ export function FigureLegend({ items, title, style }) {
     </div>
   );
 }
+
+/**
+ * Panel header in the paper's style: a bold panel letter, the panel title,
+ * the paper panel it mirrors and a short interaction hint (muted).
+ */
+export function PanelHead({ letter, title, fig, hint, extra }) {
+  return (
+    <div className="sc-fig-phead">
+      {letter && <span className="sc-fig-letter">{letter}</span>}
+      <span className="sc-fig-ptitle">{title}</span>
+      {fig && <span className="sc-fig-pfig">{fig}</span>}
+      {hint && <span className="sc-fig-phint">{hint}</span>}
+      {extra && <span className="sc-fig-pextra">{extra}</span>}
+    </div>
+  );
+}

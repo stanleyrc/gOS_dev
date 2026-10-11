@@ -5,6 +5,7 @@ import * as d3 from "d3";
 import { Card, Empty, Segmented, Slider, Space } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
+import { readViewLink } from "../../../helpers/singleCell/deepLink";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
 import useTreeView from "../useTreeView";
@@ -58,7 +59,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
   const { cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((s) => s.SingleCell);
   const [mode, setMode] = useState("cells");
   const [k, setK] = useState(6);
-  const [view, setView] = useState("bars");
+  const [view, setView] = useState(() => (readViewLink().walkView === "heatmap" ? "heat" : "bars")); // ?walkview=heatmap
   const [scaleMode, setScaleMode] = useState("column");
   const rareMax = useRareMax();
   const [hoverRange, setHoverRange] = useState(null);

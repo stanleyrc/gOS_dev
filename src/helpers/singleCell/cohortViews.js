@@ -12,6 +12,8 @@ export const COHORT_VIEWS = [
   { key: "drivers", group: "genome" },
   { key: "amplicons", group: "genome" },
   { key: "treeshape", group: "genome" },
+  { key: "aligned", group: "genome" },
+  { key: "associations", group: "genome" },
   { key: "mutations", group: "genome" },
   { key: "rna", group: "rna" },
   { key: "cnexpr", group: "rna" },
