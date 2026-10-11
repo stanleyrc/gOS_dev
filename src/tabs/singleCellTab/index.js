@@ -6,6 +6,7 @@ import CellHeatmapPanel from "../../components/singleCell/cellHeatmapPanel";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
 import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
+import SpatialPanel from "../../components/singleCell/spatial/spatialPanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
@@ -179,6 +180,8 @@ export default function SingleCellTab() {
             <UmapPanel />
           </Col>
         )}
+        {/* Slide-tag patients: tissue positions (data/<patient>/spatial.json); renders nothing otherwise */}
+        <SpatialPanel />
         {layout.showCellTable && (
           <Col span={24}>
             <CellSelectionPanel />
