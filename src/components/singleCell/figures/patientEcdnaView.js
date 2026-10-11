@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Col, Empty, Progress, Row, Space, Typography } from "antd";
 import CellHeatmapPanel from "../cellHeatmapPanel";
+import CellTracksPanel from "../cellTracksPanel";
 import useWalks from "../ecdna/useWalks";
 import WalkContainmentCard from "../ecdna/walkContainmentCard";
 import WalkTreeBars from "../ecdna/walkTreeBars";
@@ -83,10 +84,16 @@ export default function PatientEcdnaView({ patient, domains, walkIds, marked, se
         <CellHeatmapPanel />
       </Col>
       {status === "ok" && shown.length > 0 && (
+        <Col span={24} xl={side ? 9 : 24}>
+          <WalkTreeBars walks={shown} families={families} colorOf={colorOf} measured={measured} />
+        </Col>
+      )}
+      <Col span={24}>
+        {/* cells clicked on the heatmap pop up with their own graph and coverage, each on its own CN scale */}
+        <CellTracksPanel yScaleMode="individual" />
+      </Col>
+      {status === "ok" && shown.length > 0 && (
         <>
-          <Col span={24} xl={side ? 9 : 24}>
-            <WalkTreeBars walks={shown} families={families} colorOf={colorOf} measured={measured} />
-          </Col>
           <Col xs={24} xl={10}>
             <WalkContainmentCard walks={shown} colorOf={colorOf} cellIds={cellIds} focus={focused?.id} onFocus={setFocus} />
           </Col>
