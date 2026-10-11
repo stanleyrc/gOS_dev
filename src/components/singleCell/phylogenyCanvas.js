@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import { useSelector } from "react-redux";
 import { TYPE, fontCss } from "../../helpers/singleCell/plotTheme";
+import { readViewLink } from "../../helpers/singleCell/deepLink";
+import { treeMarks } from "../../helpers/singleCell/treeMarks";
 import usePlotTheme from "./usePlotTheme";
 
 const PAD_LEFT = 6;
@@ -34,6 +37,16 @@ export default function PhylogenyCanvas({
 }) {
   const ref = useRef(null);
   const pt = usePlotTheme();
+  // ?treemark=<group>:<hex>,..: saved groups as tip dots, rings where the state changes
+  const markSpec = useMemo(() => readViewLink().treeMarks, []);
+  const savedGroups = useSelector((s) => (markSpec.length ? s.SingleCell.layout.savedGroups?.[s.SingleCell.patient?.caseReportId] : null));
+  const marks = useMemo(() => {
+    if (!markSpec.length || !savedGroups || !layout) return null;
+    const groups = markSpec
+      .map((m) => ({ color: m.color, cells: new Set((savedGroups.find((g) => g.name === m.group)?.cells || []).map(String)) }))
+      .filter((g) => g.cells.size);
+    return groups.length ? treeMarks(layout, groups) : null;
+  }, [markSpec, savedGroups, layout]);
 
   const nodeClones = useMemo(() => {
     if (!layout) return [];
@@ -106,7 +119,7 @@ export default function PhylogenyCanvas({
       const color = nodeClones[k] != null ? cloneColors[nodeClones[k]] : null;
       const picked = nodeSelected && nodeSelected[k];
       const hovered = hoverRange && n.firstLeaf >= hoverRange[0] && n.lastLeaf <= hoverRange[1];
-      ctx.strokeStyle = hovered ? pt.hover : picked ? pt.select : color || pt.branch;
+      ctx.strokeStyle = hovered ? pt.hover : picked ? pt.select : (marks && marks.branch.get(k)) || color || pt.branch;
       ctx.lineWidth = hovered || picked ? 2.5 : lineWidth;
       if (n.parent >= 0) {
         const parent = layout.nodes[n.parent];
@@ -207,6 +220,28 @@ export default function PhylogenyCanvas({
       ctx.textAlign = "start";
     }
 
+    // Link tree marks: rings where the marked state changes, dots at marked tips.
+    if (marks) {
+      const rowH0 = height / nRows;
+      const r = Math.max(2, Math.min(4, rowH0 / 1.5));
+      marks.ring.forEach((color, k) => {
+        const n = layout.nodes[k];
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(px(n.x), py(n.y), r + 2.5, 0, 2 * Math.PI);
+        ctx.stroke();
+      });
+      marks.tip.forEach((color, k) => {
+        const n = layout.nodes[k];
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px(n.x), py(n.y), r, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+      ctx.lineWidth = lineWidth;
+    }
+
     // Selected and hovered leaves: a dot at the tip, plus a row band for hover.
     const leafX = new Map();
     layout.nodes.forEach((n) => n.isLeaf && leafX.set(n.firstLeaf, px(n.x)));
@@ -229,7 +264,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, pt.hover, dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, pt, showScaleBar]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, pt, showScaleBar, marks]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;
