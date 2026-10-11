@@ -7,7 +7,7 @@ import HintLine from "../hintLine";
 import GeneInfoCard from "../rna/geneInfoCard";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { formatP } from "../../../helpers/singleCell/tests";
-import { KIND_LABEL, effectWord, isKnownDriver } from "../../../helpers/singleCell/driverSummary";
+import { KEY_FIT, KIND_LABEL, effectWord, isKnownDriver } from "../../../helpers/singleCell/driverSummary";
 import useDriverSummaries from "./useDriverSummaries";
 import DriverEvidenceDrawer, { useDriverActions } from "./driverEvidenceDrawer";
 import { EvidenceTag, KIND_COLOR } from "./driverOneLine";
@@ -105,13 +105,7 @@ function DriverCard({ s, rank, focused, onEvidence, onFocus }) {
         <span style={{ marginLeft: 8 }}>
           <CarrierBar fraction={s.fraction} /> <Text>{`${s.n} of ${s.total} tumor cells (${pct(s.fraction)})`}</Text>
         </span>
-        {s.fit != null && (
-          <Tooltip title={`Best-matching branch of the tree holds ${s.fitDetail.inClade} carriers among its ${s.fitDetail.clade} cells. 1 = the carriers are exactly one branch; low values = calls spread over the tree.`}>
-            <Tag color={s.fit >= 0.8 ? "green" : s.fit < 0.5 ? "orange" : "default"} style={{ cursor: "help" }}>
-              {s.fit >= 0.8 ? `one branch (fit ${s.fit.toFixed(2)})` : s.fit < 0.5 ? `spread over the tree (fit ${s.fit.toFixed(2)})` : `mostly one branch (fit ${s.fit.toFixed(2)})`}
-            </Tag>
-          </Tooltip>
-        )}
+        <FitTag s={s} />
         <Button size="small" type={focused ? "primary" : "default"} icon={<NodeIndexOutlined />} onClick={() => onFocus(s)}>
           {focused ? "In the deep dive below" : "Deep dive"}
         </Button>
@@ -236,6 +230,38 @@ function DriverCard({ s, rank, focused, onEvidence, onFocus }) {
   );
 }
 
+/** Clade F1 as a tag: green when the carriers are one branch of the tree. */
+function FitTag({ s }) {
+  if (s.fit == null) return null;
+  const detail = s.fitDetail?.clade ? ` Best-matching branch holds ${s.fitDetail.inClade} carriers among its ${s.fitDetail.clade} cells.` : "";
+  return (
+    <Tooltip title={`Clade F1 ${s.fit.toFixed(2)}: how well the carriers match one branch of the tree (1 = exactly one branch; low = calls spread over the tree).${detail}`}>
+      <Tag color={s.fit >= KEY_FIT ? "green" : s.fit < 0.5 ? "orange" : "default"} style={{ cursor: "help", marginInlineEnd: 0 }}>
+        {`clade F1 ${s.fit.toFixed(2)}`}
+      </Tag>
+    </Tooltip>
+  );
+}
+
+/** A lower-priority candidate in one line: label, type, carriers, clade F1, deep dive. */
+function CompactRow({ s, rank, focused, onFocus, onEvidence }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "4px 10px 4px 12px", borderBottom: "1px solid var(--sc-border-soft, #f0f0f0)", background: focused ? "var(--sc-hover-fill, rgba(212,56,13,0.04))" : undefined }}>
+      <Text type="secondary" style={{ minWidth: 22 }}>{`${rank}.`}</Text>
+      <Text strong>{s.label}</Text>
+      <Tag color={KIND_COLOR[s.kind]} style={{ marginInlineEnd: 0 }}>{KIND_LABEL[s.kind]}</Tag>
+      <Text type="secondary" style={{ fontSize: TYPE.label }}>{`${s.n} of ${s.total} cells (${pct(s.fraction)})`}</Text>
+      <FitTag s={s} />
+      <span style={{ marginLeft: "auto" }}>
+        <Space size={4}>
+          <Button size="small" type="text" icon={<BarChartOutlined />} onClick={() => onEvidence(s, "expression")}>Evidence</Button>
+          <Button size="small" type={focused ? "primary" : "text"} icon={<NodeIndexOutlined />} onClick={() => onFocus(s)}>{focused ? "In deep dive" : "Deep dive"}</Button>
+        </Space>
+      </span>
+    </div>
+  );
+}
+
 /**
  * Ranked, plain-language list of the patient's subclonal drivers, leading the
  * Drivers tab: events carried by the same cells are grouped; each group says
@@ -245,6 +271,7 @@ function DriverCard({ s, rank, focused, onEvidence, onFocus }) {
 export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
   const patient = useSelector((s) => s.SingleCell.patient);
   const [limit, setLimit] = useState(STEP);
+  const [showOthers, setShowOthers] = useState(false);
   const [knownOnly, setKnownOnly] = useState(true);
   const [drawer, setDrawer] = useState(null);
   const { summaries, bundles, tumorIds, programs, loading } = useDriverSummaries(rna, { limit, knownOnly });
@@ -257,6 +284,10 @@ export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
     const c = new Set(drawerSummary.members[0].carriers);
     return tumorIds.filter((id) => !c.has(id));
   }, [drawerSummary, tumorIds]);
+  const keyFindings = shown.filter((s) => s.fit != null && s.fit >= KEY_FIT);
+  const others = shown.filter((s) => !(s.fit != null && s.fit >= KEY_FIT));
+  const keyShown = keyFindings.slice(0, limit);
+  const onEvidence = (x, tab) => setDrawer({ key: x.key, tab });
   if (!summaries.length) return null;
   return (
     <Card
@@ -264,7 +295,7 @@ export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
       title={
         <Space wrap>
           <NodeIndexOutlined />
-          <span>{`Candidate subclonal drivers${patient?.caseReportId ? ` of ${patient.caseReportId}` : ""}`}</span>
+          <span>{`Subclonal drivers${patient?.caseReportId ? ` of ${patient.caseReportId}` : ""}`}</span>
           {loading && <Spin size="small" />}
         </Space>
       }
@@ -275,25 +306,56 @@ export default function DriverSummaryBoard({ rna, focusKey, onFocus }) {
         </Space>
       }
     >
-      <HintLine
-        text={`${nEvents} events are carried by part of the tumor (5–95% of ${tumorIds.length} cells); events carried by the same cells are grouped, leaving ${summaries.length} candidates, ranked by OncoKB tier, cancer-gene role, SNV driver evidence and how cleanly the carriers form one branch of the tree. Effects compare carriers with every other tumor cell (▲ higher / ▼ lower in carriers; bold = large or as expected). Hover a chip for numbers; click a gene name for what it does.`}
-      />
-      {shown.slice(0, limit).map((s, i) => (
-        <DriverCard key={s.key} s={s} rank={i + 1} focused={s.key === focusKey} onEvidence={(x, tab) => setDrawer({ key: x.key, tab })} onFocus={onFocus} />
+      <div style={{ marginBottom: 8 }}>
+        <Text strong style={{ fontSize: 15 }}>
+          {keyFindings.length
+            ? `${keyFindings.length} key finding${keyFindings.length > 1 ? "s" : ""}: carriers form one branch of the tree (clade F1 ≥ ${KEY_FIT})`
+            : `No candidate's carriers form one branch of the tree (clade F1 ≥ ${KEY_FIT})`}
+        </Text>
+        {keyFindings.length > 0 && (
+          <div style={{ marginTop: 2 }}>
+            {keyFindings.slice(0, 4).map((s) => (
+              <Text key={s.key} style={{ marginRight: 14 }}>
+                <Typography.Link onClick={() => onFocus(s)}>{s.label}</Typography.Link>
+                <Text type="secondary">{` ${KIND_LABEL[s.kind].toLowerCase()} · ${pct(s.fraction)} of cells · F1 ${s.fit.toFixed(2)}`}</Text>
+              </Text>
+            ))}
+          </div>
+        )}
+        <HintLine
+          text={`${nEvents} events are carried by part of the tumor (5–95% of ${tumorIds.length} cells); events in the same cells are grouped (${summaries.length} candidates). Key findings lead, highest clade F1 first; the rest are folded below. Chips compare carriers with every other tumor cell (▲ higher / ▼ lower in carriers); hover for numbers.`}
+        />
+      </div>
+      {keyShown.map((s, i) => (
+        <DriverCard key={s.key} s={s} rank={i + 1} focused={s.key === focusKey} onEvidence={onEvidence} onFocus={onFocus} />
       ))}
+      {keyFindings.length > limit && (
+        <Button size="small" style={{ marginTop: 6 }} onClick={() => setLimit(limit + STEP)}>
+          {`Show ${Math.min(STEP, keyFindings.length - limit)} more key findings`}
+        </Button>
+      )}
       {!shown.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No candidate involves a known cancer gene; switch off “Cancer genes only”." />}
-      <Space style={{ marginTop: 8 }} wrap>
-        {shown.length > limit && (
-          <Button size="small" onClick={() => setLimit(limit + STEP)}>
-            {`Show ${Math.min(STEP, shown.length - limit)} more (${shown.length - limit} left)`}
+      {others.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <Button size="small" type={showOthers ? "default" : "dashed"} onClick={() => setShowOthers((v) => !v)}>
+            {`${showOthers ? "Hide" : "Show"} ${others.length} other candidate${others.length > 1 ? "s" : ""} (carriers spread over the tree, clade F1 < ${KEY_FIT})`}
           </Button>
-        )}
-        {knownOnly && hidden > 0 && (
+          {showOthers && (
+            <div style={{ marginTop: 6 }}>
+              {others.map((s, i) => (
+                <CompactRow key={s.key} s={s} rank={keyFindings.length + i + 1} focused={s.key === focusKey} onFocus={onFocus} onEvidence={onEvidence} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {knownOnly && hidden > 0 && (
+        <div style={{ marginTop: 6 }}>
           <Text type="secondary" style={{ fontSize: TYPE.label }}>
-            {`${hidden} lower-priority candidate${hidden > 1 ? "s" : ""} without a known cancer gene hidden.`}
+            {`${hidden} candidate${hidden > 1 ? "s" : ""} without a known cancer gene hidden (switch off “Cancer genes only”).`}
           </Text>
-        )}
-      </Space>
+        </div>
+      )}
       {drawerSummary && (
         <DriverEvidenceDrawer
           summary={drawerSummary}
