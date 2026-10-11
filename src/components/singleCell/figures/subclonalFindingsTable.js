@@ -26,7 +26,7 @@ function CloneBoxes({ clones, cloneColors }) {
 }
 
 /**
- * Driver events and amplicon gene sets carried by part of each tumour, whose
+ * Driver events and amplicon gene sets carried by part of each tumor, whose
  * carriers follow the tree (clade F1). Clicking a row marks the carriers in
  * the patient view.
  */
