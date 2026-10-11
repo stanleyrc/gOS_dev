@@ -215,6 +215,12 @@ describe("ranking candidates and merging regions", () => {
     const out = keyFindingsFirst([mk("a", 0.4), mk("b", 0.85), mk("c", null), mk("d", 0.99), mk("e", 0.97)]);
     expect(out.map((x) => x.lead.key)).toEqual(["d", "e", "b", "a", "c"]);
   });
+  it("counts tier 1-2, curated roles and GBM genes as cancer genes, not a bare passenger", () => {
+    const { inCancerGene } = require("./driverSummary");
+    expect(inCancerGene({ event: { gene: "CDK4", type: "AMP" } })).toBe(true);
+    expect(inCancerGene({ event: { gene: "TTN", type: "missense" } })).toBe(false);
+    expect(inCancerGene({ event: { gene: "TTN", Tier: 2 } })).toBe(true);
+  });
   it("merges pieces of one amplicon and names GBM drivers first", () => {
     const chromoBins = { 12: { startPlace: 0, endPlace: 133e6 } };
     const out = describeCnRegions(
