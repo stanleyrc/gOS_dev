@@ -27,13 +27,13 @@ export default function PhyloSignalPanel({ per, onSelect }) {
         .filter((p) => p.tree)
         .map((p) => {
           const rec = new Map(p.cells.map((c) => [c.cell_id, c]));
-          const tumour = p.cellIds.filter((id) => rec.has(id) && !isNormalClone(rec.get(id).clone_id));
+          const tumor = p.cellIds.filter((id) => rec.has(id) && !isNormalClone(rec.get(id).clone_id));
           const vars = [
             ...CONTROLS.map((v) => ({ key: v.key, color: v.color, value: (id) => Number(rec.get(id)?.[v.field]) })),
             // each walk on its own: summing a gene set's walks hides clade-specific variants (e.g. short vs long ecEGFR)
             ...p.groups.flatMap((g) => g.walks.map((w) => ({ key: w.label || w.name || `${w.id}`, color: geneSetColor(g.key), group: g, value: (id) => Math.log1p(Number(w.cells?.[id]) || 0) }))),
           ];
-          const stats = phyloSignal(p.tree, tumour, vars, { nPerm: 199 });
+          const stats = phyloSignal(p.tree, tumor, vars, { nPerm: 199 });
           return { p, rows: stats.map((s, k) => ({ ...s, color: vars[k].color, group: vars[k].group })).filter((s) => Number.isFinite(s.z)) };
         }),
     [per]
