@@ -218,7 +218,7 @@ export default function CohortAlignedTreesPanel({ dataset, summaries = [], onOpe
   };
 
   const cols = Math.max(1, Math.min(patients.length, Math.floor(width / 230)));
-  const treeW = Math.floor(width / cols) - 10;
+  const treeW = Math.floor(width / cols) - 22;
   const egfr = findPair(pairs, "+7", "EGFR amp");
 
   return (
