@@ -6,7 +6,7 @@ import { GENE_SETS, geneSetScores } from "../../../helpers/singleCell/geneSets";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { eventGlobalPosition } from "../../../helpers/singleCell/eventDomains";
 import { balanceTable, chimericSupport, cnContrast, plateOf, subclonalDrivers } from "../../../helpers/singleCell/driverContrast";
-import { LANDMARK_GENES, alterationKind, bundleDrivers, describeCnRegions, driverPriority, isKnownDriver, keyFindingsFirst, linkedSpliceFindings, rankCandidates, summarizeDriver } from "../../../helpers/singleCell/driverSummary";
+import { LANDMARK_GENES, alterationKind, bundleDrivers, describeCnRegions, driverPriority, KEY_FIT, inCancerGene, isKnownDriver, keyFindingsFirst, linkedSpliceFindings, rankCandidates, summarizeDriver } from "../../../helpers/singleCell/driverSummary";
 
 const STEP = 1e6;
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -108,7 +108,12 @@ export default function useDriverSummaries(rna, { limit = 8, knownOnly = false }
       ? (a, b) => balanceTable(rows(a), rows(b), [stateField], (r) => cellOf.get(r)?.[stateField] ?? null)[0]?.levels || null
       : null;
     const findings = splicing?.status === "ok" ? splicing.data.findings || [] : [];
-    const detailed = new Set(bundles.filter((b) => !knownOnly || isKnownDriver(b.lead)).slice(0, limit).map((b) => b.key));
+    // effects for every key finding (one branch, cancer gene) plus the first `limit` candidates
+    const isKey = (b) => (b.lead.fit?.score ?? 0) >= KEY_FIT && inCancerGene(b.lead);
+    const detailed = new Set([
+      ...bundles.filter(isKey).map((b) => b.key),
+      ...bundles.filter((b) => !knownOnly || isKnownDriver(b.lead)).slice(0, limit).map((b) => b.key),
+    ]);
     return bundles.map((bundle) => {
       const carriers = bundle.lead.carriers;
       const carrierSet = new Set(carriers);
