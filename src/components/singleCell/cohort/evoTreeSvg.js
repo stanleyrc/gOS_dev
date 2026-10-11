@@ -42,6 +42,9 @@ export default function EvoTreeSvg({
   const y = (r) => padT + (r / Math.max(1, t.n)) * plotH;
   const hasFocus = focus && focus.size > 0;
   const branch = theme.branch;
+  // stack labels of focused truncal events so they do not overprint on the trunk
+  const focusRank = new Map();
+  if (hasFocus) marks.filter((m) => m.truncal && focus.has(m.id)).forEach((m, k) => focusRank.set(m.id, k));
   const sorted = hasFocus ? [...marks].sort((a, b) => Number(focus.has(a.id)) - Number(focus.has(b.id))) : marks;
   return (
     <svg width={width} height={height} role="img" style={{ display: "block" }}>
@@ -76,7 +79,7 @@ export default function EvoTreeSvg({
           <g key={`m${m.id}`} opacity={faded ? 0.22 : 1} style={{ cursor: onEvent ? "pointer" : "default" }} onClick={onEvent ? () => onEvent(m.id) : undefined}>
             <rect x={cx - r} y={cy - r} width={2 * r} height={2 * r} rx={m.truncal ? 0 : r} fill={color} stroke={theme.panel} strokeWidth={1} />
             {on && showLabels && (
-              <text x={cx} y={cy - r - 3} textAnchor="middle" fontSize={TYPE.tick} fontWeight={600} fill={theme.text} stroke={theme.panel} strokeWidth={3} paintOrder="stroke">
+              <text x={cx} y={cy - r - 3 - (m.truncal ? 11 * (focusRank.get(m.id) || 0) : 0)} textAnchor="middle" fontSize={TYPE.tick} fontWeight={600} fill={theme.text} stroke={theme.panel} strokeWidth={3} paintOrder="stroke">
                 {m.label}
               </text>
             )}
@@ -102,7 +105,7 @@ export default function EvoTreeSvg({
           <line x1={x(-TRUNK)} x2={x(1)} y1={height - 14} y2={height - 14} stroke={theme.axis} />
           <text x={x(-TRUNK / 2)} y={height - 3} textAnchor="middle">trunk</text>
           <text x={x(0.5)} y={height - 3} textAnchor="middle">relative time</text>
-          <text x={x(1)} y={height - 3} textAnchor="end">cells</text>
+          <text x={x(1)} y={height - 3} textAnchor="end">tips</text>
         </g>
       )}
       {hasFocus &&
