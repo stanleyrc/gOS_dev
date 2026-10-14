@@ -3,6 +3,8 @@
 // the sites CellPhy built the tree from, only OncoKB driver sites, and a
 // minimum clade score (how cleanly the alt calls follow the mapped clade).
 
+import { hasAnnotFilter, matchesAnnotFilter } from "./snvAnnot";
+
 /** True when the SNV matrix carries per-site tree categories. */
 export const hasSiteCategories = (snv) => Boolean(snv?.variants?.some((v) => v.category));
 
@@ -16,12 +18,13 @@ export const cladeScoreDetail = (v) =>
     : `${v.cladeScore.toFixed(2)} (alt ${v.altInClade}/${v.altInClade + v.refInClade} in clade, ${v.altOutsideClade}/${v.altOutsideClade + v.refOutsideClade} outside)`;
 
 /** Filter column (variant) indices by the layout's SNV site filters. */
-export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, snvDriversOnly, snvSiteIds, snvMinCladeScore } = {}) {
+export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, snvDriversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot } = {}) {
   if (!snv) return columns;
+  const byAnnot = annot && hasAnnotFilter(snvAnnotFilter) ? snvAnnotFilter : null;
   const categories = hasSiteCategories(snv) && snvCategories?.length ? new Set(snvCategories) : null;
   const sites = snvSiteIds?.length ? new Set(snvSiteIds) : null;
   const minScore = snvMinCladeScore > 0 ? snvMinCladeScore : null;
-  if (!categories && !snvCellphyOnly && !snvDriversOnly && !sites && !minScore) return columns;
+  if (!categories && !snvCellphyOnly && !snvDriversOnly && !sites && !minScore && !byAnnot) return columns;
   return columns.filter((c) => {
     const v = snv.variants[c];
     return (
@@ -29,7 +32,8 @@ export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, 
       (!categories || categories.has(v.category || "unmapped")) &&
       (!snvCellphyOnly || v.cellphyInput === true) &&
       (!snvDriversOnly || v.driver === true) &&
-      (!minScore || (v.cladeScore != null && v.cladeScore >= minScore))
+      (!minScore || (v.cladeScore != null && v.cladeScore >= minScore)) &&
+      (!byAnnot || matchesAnnotFilter(annot, byAnnot, c))
     );
   });
 }
