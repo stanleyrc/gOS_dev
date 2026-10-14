@@ -38,16 +38,19 @@ export function ploidyDeviation(ploidy, modal) {
   return finite(ploidy) && finite(modal) ? ploidy - modal : null;
 }
 
-/** Hex colour for a deviation: grey within 0.25, blue below, red above, saturating at +-1.5. */
+/** Neutral for "at modal ploidy" and for the empty part of each bar's track. */
+export const PLOIDY_NEUTRAL = "#c3cbd4";
+export const PLOIDY_TRACK = "#eef1f4";
+
+/** Hex colour for a deviation: light neutral within 0.25, then blue below / red above, strong from the first step, saturating at +-1.5. */
 export function ploidyDeviationColor(dev) {
-  if (!finite(dev)) return "#bfbfbf";
+  if (!finite(dev)) return "#e0e0e0";
   const a = Math.abs(dev);
-  if (a < 0.25) return "#8c8c8c";
-  const s = Math.min(1, (a - 0.25) / 1.25);
+  if (a < 0.25) return PLOIDY_NEUTRAL;
+  const s = 0.5 + 0.5 * Math.min(1, (a - 0.25) / 1.25);
   const mix = (from, to) => Math.round(from + (to - from) * s);
-  return dev > 0
-    ? `#${[mix(222, 200), mix(150, 30), mix(130, 20)].map((x) => x.toString(16).padStart(2, "0")).join("")}`
-    : `#${[mix(150, 25), mix(190, 90), mix(235, 200)].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+  const hex = (rgb) => `#${rgb.map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+  return dev > 0 ? hex([mix(250, 200), mix(150, 20), mix(120, 10)]) : hex([mix(130, 10), mix(190, 80), mix(250, 190)]);
 }
 
 /** Pixel columns lit for a bar of `fraction` over `barPx` device pixels (at least 1 when fraction > 0). */

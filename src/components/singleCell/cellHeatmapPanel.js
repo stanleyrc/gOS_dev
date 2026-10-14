@@ -60,7 +60,7 @@ import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
 import { currentPlotTheme } from "../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
-import { barPixels, modalPloidy, ploidyAxisMax, ploidyBarFraction, ploidyDeviation, ploidyDeviationColor, ploidyTooltipLines } from "../../helpers/singleCell/ploidyBars";
+import { PLOIDY_TRACK, barPixels, modalPloidy, ploidyAxisMax, ploidyBarFraction, ploidyDeviation, ploidyDeviationColor, ploidyTooltipLines } from "../../helpers/singleCell/ploidyBars";
 import useDriverLayer from "./drivers/useDriverLayer";
 import DriverControls from "./drivers/driverControls";
 import DriverColumnHeader from "./drivers/driverColumnHeader";
@@ -235,7 +235,7 @@ export default function CellHeatmapPanel() {
   const showPloidy = Boolean(layout.ploidyBars) && hasPloidy;
   const modalPl = useMemo(() => modalPloidy(cells), [cells]);
   const ploidyMax = useMemo(() => ploidyAxisMax(cells, modalPl), [cells, modalPl]);
-  const annotationWidth = ANNOTATION_COLUMN * (nAnnotation + (showPloidy ? 2 : 0));
+  const annotationWidth = ANNOTATION_COLUMN * (nAnnotation + (showPloidy ? 3 : 0));
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
   const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
@@ -621,7 +621,7 @@ export default function CellHeatmapPanel() {
     if (!showPloidy) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
     // strips left of the ploidy column; the ploidy region is masked per row to the bar length
     const total = Math.floor(annotationWidth * pixelRatio);
-    const barPx = Math.round(ANNOTATION_COLUMN * 2 * pixelRatio);
+    const barPx = Math.round(ANNOTATION_COLUMN * 3 * pixelRatio);
     const stripPx = total - barPx;
     const base = discreteColumnLookup(nAnnotation, stripPx);
     return (r) => {
@@ -629,13 +629,15 @@ export default function CellHeatmapPanel() {
       out.set(base, 0);
       const cell = cellById.get(order[r]);
       const n = barPixels(ploidyBarFraction(cell?.ploidy, ploidyMax), barPx - 2);
-      for (let x = 0; x < n; x += 1) out[stripPx + 1 + x] = nAnnotation;
+      // lit bar (column nAnnotation) over a faint full-width track (nAnnotation + 1), so length reads against the axis
+      for (let x = 1; x < barPx - 1; x += 1) out[stripPx + x] = x <= n ? nAnnotation : nAnnotation + 1;
       return out;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nAnnotation, annotationWidth, pixelRatio, showPloidy, cellById, order, ploidyMax, ANNOTATION_COLUMN]);
   const annotationColor = useCallback(
     (r, c) => {
+      if (showPloidy && c === nAnnotation + 1) return packRGBA(hexToRgb(PLOIDY_TRACK));
       if (showPloidy && c === nAnnotation) {
         return packRGBA(hexToRgb(ploidyDeviationColor(ploidyDeviation(cellById.get(order[r])?.ploidy, modalPl))));
       }
@@ -1185,7 +1187,7 @@ export default function CellHeatmapPanel() {
                 t("components.single-cell.heatmap.strip-clone"),
                 ...annotationFields.map(fieldLabel),
                 ...(showExpression ? [expression.gene] : []),
-                ...(showPloidy ? [t("components.single-cell.heatmap.strip-ploidy"), ""] : []),
+                ...(showPloidy ? [t("components.single-cell.heatmap.strip-ploidy"), "", ""] : []),
               ]}
             />
             {heatmapType === "drivers" && active && (
