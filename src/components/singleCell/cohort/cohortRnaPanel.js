@@ -25,6 +25,7 @@ import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
+import { mergeCovariates } from "../../../helpers/singleCell/rnaCovariates";
 
 const { Text } = Typography;
 const rnaCache = new Map();
@@ -34,8 +35,8 @@ export async function loadRna(dataset, id) {
   if (!rnaCache.has(key)) {
     rnaCache.set(
       key,
-      Promise.all([tryGet(casePath(dataset, id, "rna/cells.json")), tryGet(casePath(dataset, id, "rna/genes.tsv"), { responseType: "text" }), tryGet(casePath(dataset, id, "rna/markers.json"))]).then(([cells, genes, markers]) => ({
-        summary: cells.status === "ok" ? parseRnaSummary(cells.data, genes.status === "ok" ? genes.data : "") : null,
+      Promise.all([tryGet(casePath(dataset, id, "rna/cells.json")), tryGet(casePath(dataset, id, "rna/genes.tsv"), { responseType: "text" }), tryGet(casePath(dataset, id, "rna/markers.json")), tryGet(casePath(dataset, id, "rna/covariates.json"))]).then(([cells, genes, markers, cov]) => ({
+        summary: cells.status === "ok" ? mergeCovariates(parseRnaSummary(cells.data, genes.status === "ok" ? genes.data : ""), cov.status === "ok" ? cov.data : null) : null,
         markers: markers.status === "ok" ? markers.data : null,
       }))
     );
