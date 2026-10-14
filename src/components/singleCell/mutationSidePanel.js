@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Space, Tooltip, Typography } from "antd";
 import { AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
+import { AnnotationStrips } from "./snvAnnotTracks";
 import {
   wheelZoomFactor,
   columnBins,
@@ -16,9 +17,6 @@ import {
 
 const { Text } = Typography;
 const MIN_SITES = 5;
-const CATEGORY_BAR = 10;
-const DRIVER_BAR = 4;
-const DRIVER_COLOR = "#cf1322";
 
 /** Where an SNV maps on the tree (variant.category), in legend order. */
 export const SNV_CATEGORIES = [
@@ -28,74 +26,6 @@ export const SNV_CATEGORIES = [
   { key: "outside_tumor", color: "var(--sc-muted)" },
   { key: "unmapped", color: "#d9d9d9" },
 ];
-const CATEGORY_COLOR = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.color]));
-
-/**
- * One-row bar of site categories over the SNV columns. Binned pixels show
- * their most common category; hovering names the category and its share.
- */
-function CategoryBar({ snv, columnOrder, bins, width, pixelRatio, t }) {
-  const ref = useRef(null);
-  const [title, setTitle] = useState("");
-  const deviceWidth = Math.floor(width * pixelRatio);
-  const summaryAt = useCallback(
-    (x) => {
-      const a = bins.binStart[x];
-      const b = bins.binEnd[x];
-      if (a < 0) return null;
-      const counts = {};
-      for (let i = a; i < b; i += 1) {
-        const k = snv.variants[columnOrder[i]]?.category || "unmapped";
-        counts[k] = (counts[k] || 0) + 1;
-      }
-      const top = Object.entries(counts).sort((p, q) => q[1] - p[1])[0];
-      const drivers = [];
-      for (let i = a; i < b; i += 1) {
-        const v = snv.variants[columnOrder[i]];
-        if (v?.driver) drivers.push(v);
-      }
-      return { top: top[0], counts, n: b - a, drivers };
-    },
-    [bins, snv, columnOrder]
-  );
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const driverH = Math.round(DRIVER_BAR * pixelRatio);
-    for (let x = 0; x < deviceWidth; x += 1) {
-      const s = summaryAt(x);
-      if (!s) continue;
-      ctx.fillStyle = CATEGORY_COLOR[s.top] || CATEGORY_COLOR.unmapped;
-      ctx.fillRect(x, driverH + 1, 1, canvas.height - driverH - 1);
-      if (s.drivers.length) {
-        // drivers are rare: widen the tick so a single site stays visible
-        ctx.fillStyle = DRIVER_COLOR;
-        ctx.fillRect(Math.max(0, x - pixelRatio), 0, 2 * pixelRatio + 1, driverH);
-      }
-    }
-  }, [deviceWidth, summaryAt, pixelRatio]);
-  const onMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const s = summaryAt(Math.floor((e.clientX - rect.left) * pixelRatio));
-    if (!s) return setTitle("");
-    const parts = Object.entries(s.counts).map(([k, n]) => `${t(`components.single-cell.snv.category-${k}`)}: ${n}`);
-    const drivers = s.drivers.map((v) => `${v.gene} ${v.protein || v.consequence || ""} (${v.oncogenic || v.oncokbLevel})`);
-    const text = s.n > 1 ? `${s.n} sites · ${parts.join(" · ")}` : parts[0].replace(/: 1$/, "");
-    return setTitle(drivers.length ? `${text}\nOncoKB: ${drivers.join(", ")}` : text);
-  };
-  return (
-    <canvas
-      ref={ref}
-      title={title}
-      width={deviceWidth}
-      height={Math.round((CATEGORY_BAR + DRIVER_BAR + 1) * pixelRatio)}
-      style={{ width, height: CATEGORY_BAR + DRIVER_BAR + 1, display: "block" }}
-      onMouseMove={onMove}
-    />
-  );
-}
 
 const clampRange = (start, span, total) => {
   const size = Math.max(Math.min(MIN_SITES, total), Math.min(total, Math.round(span)));
@@ -131,6 +61,10 @@ export default function MutationSidePanel({
   highlightRows = null,
   wheelNeedsModifier = true,
   categoryNode = null,
+  annot = null,
+  tracks = [],
+  onTrackClick = null,
+  trackLabelSide = "left",
 }) {
   const { t } = useTranslation("common");
   const total = columnOrder.length;
@@ -227,13 +161,13 @@ export default function MutationSidePanel({
 
   const [s, e] = range;
   const zoomed = e - s < total;
-  const hasCategories = useMemo(() => snv.variants.some((v) => v.category), [snv]);
   return (
     <div style={{ width }}>
       {categoryNode &&
-        hasCategories &&
+        annot &&
+        tracks.length > 0 &&
         createPortal(
-          <CategoryBar snv={snv} columnOrder={columnOrder} bins={bins} width={width} pixelRatio={pixelRatio} t={t} />,
+          <AnnotationStrips annot={annot} tracks={tracks} columnOrder={columnOrder} bins={bins} width={width} pixelRatio={pixelRatio} onTrackClick={onTrackClick} labelSide={trackLabelSide} />,
           categoryNode
         )}
       <div onDoubleClick={() => setRange([0, total])}>
