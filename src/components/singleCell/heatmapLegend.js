@@ -36,6 +36,7 @@ export default function HeatmapLegend({
   cloneColors = {},
   showClones = true,
   expression = null,
+  drivers = null,
 }) {
   const { t } = useTranslation("common");
   const groups = [];
@@ -60,6 +61,41 @@ export default function HeatmapLegend({
       title: t("components.single-cell.legend.junctions"),
       items: steps.map((v) => ({ color: junctionColor(v, top), label: `${v}` })),
     });
+  }
+  if (type === "drivers" && drivers) {
+    const c = drivers.colors;
+    const has = (cls) => drivers.entries.some((d) => d.cls === cls);
+    if (has("snv")) {
+      groups.push({
+        key: "d-snv",
+        title: "SNV / indel",
+        items: [
+          { color: c.mutant, label: "mutant" },
+          { color: c.wildtype, label: "wild type" },
+          { color: c.noCoverage, label: t("components.single-cell.side.no-reads") },
+        ],
+      });
+    }
+    if (has("amp") || has("homdel")) {
+      const p = normalizePalette(drivers.palette, drivers.palette?.preset);
+      groups.push({
+        key: "d-cn",
+        title: "Amp / del: copy number",
+        items: [0, 1, 2, 3, 4, 6, 8].filter((k) => k < p.total.length).map((k) => ({ color: p.total[k], label: k === p.total.length - 1 ? `${k}+` : `${k}` })),
+      });
+    }
+    if (has("fusion")) {
+      groups.push({
+        key: "d-fusion",
+        title: "SV fusion",
+        items: [
+          { color: c.dna, label: "DNA" },
+          { color: c.rna, label: "RNA only" },
+          { color: c.both, label: "DNA + RNA" },
+        ],
+      });
+    }
+    if (has("complex")) groups.push({ key: "d-complex", title: "Complex event", items: [{ color: c.complex, label: "carrier (DM / TIC / BFB, gGnome event classifier)" }] });
   }
   if (snvMetric) {
     const items =

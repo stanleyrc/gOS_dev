@@ -10,11 +10,19 @@ import { CN_PALETTE_PRESETS, DEFAULT_CN_PALETTE, normalizePalette } from "../../
 import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups";
 import { cellsOfGroups, linkAppliesTo, readDeepLink, readViewLink, withCloneOverrides } from "../../helpers/singleCell/deepLink";
 import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
+import { parseSelection } from "../../helpers/singleCell/driverLayer";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
   const incoming = groupsFromUrl();
-  return incoming ? { ...layout, savedGroups: mergeGroups(layout.savedGroups || {}, incoming) } : layout;
+  const withGroups = incoming ? { ...layout, savedGroups: mergeGroups(layout.savedGroups || {}, incoming) } : layout;
+  // ?drvpreset= / drvadd= / drvrm= / drvf= open the Drivers layer on that selection
+  try {
+    const drivers = parseSelection(window.location.search);
+    return drivers ? { ...withGroups, drivers } : withGroups;
+  } catch (error) {
+    return withGroups;
+  }
 };
 
 const storedLayout = () => {
@@ -92,7 +100,8 @@ const initState = {
   layout: storedLayout(),
   plotInsets: { left: 0, right: 0 },
   igv: null, // { cellIds, chromosome, position, label }
-  driverFocus: null, // driverKey of the driver open in the Drivers tab
+  driverFocus: null, // driverKey of the driver the driver drawer shows
+  driverDrawer: null, // driverKey of the open driver drawer (Drivers heatmap layer), null = closed
   perCell: {}, // { [cellId]: { [track]: { status, data, error } } }
 };
 
@@ -162,7 +171,8 @@ export default function appReducer(state = initState, action) {
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
         selectedCellIds: linkedCells.length ? linkedCells : action.selectedCellIds,
-        heatmapType: linked && link.heatmap && action[link.heatmap]?.status === "ok" ? link.heatmap : defaultHeatmap,
+        heatmapType: linked && link.heatmap && (link.heatmap === "drivers" || action[link.heatmap]?.status === "ok") ? link.heatmap : defaultHeatmap,
+        driverDrawer: linked && link.driverOpen ? link.driverOpen : null,
         perCell: {},
       };
     }
@@ -235,6 +245,8 @@ export default function appReducer(state = initState, action) {
       return { ...state, igv: action.view };
     case actions.SC_DRIVER_FOCUS_UPDATED:
       return { ...state, driverFocus: action.key ?? null };
+    case actions.SC_DRIVER_DRAWER_UPDATED:
+      return { ...state, driverDrawer: action.key ?? null, driverFocus: action.key ?? state.driverFocus };
     case actions.SC_IGV_CLOSED:
       return { ...state, igv: null };
     case actions.SC_HOVER_UPDATED:
