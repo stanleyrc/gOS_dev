@@ -86,7 +86,7 @@ describe("evidenceAction", () => {
     expect(act(amp, "tab")).toEqual({ type: "tab", tab: "8" });
     expect(act(amp, "splice")).toEqual({ type: "splice", findingId: "f1", gene: "TP53" });
     expect(act(amp, "cells")).toEqual({ type: "select", tab: "7", select: ["c3", "4"] });
-    expect(act(fusion, "driver")).toEqual({ type: "driver", tab: "17", key: "A::B|1:10-20" });
+    expect(act(fusion, "driver")).toEqual({ type: "driver", tab: "7", key: "A::B|1:10-20" });
     const igv = act(fusion, "igv");
     expect(igv.type).toBe("igv");
     expect(igv.view.cellIds).toEqual(["c3", "4"]);
