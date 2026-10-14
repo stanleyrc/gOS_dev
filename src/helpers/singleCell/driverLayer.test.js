@@ -146,3 +146,21 @@ describe("snvSiteIndex", () => {
     expect(snvSiteIndex(snv).get("17:7675088")).toBe(0);
   });
 });
+
+import { collapseColumns, recommendedOrder } from "./driverLayer";
+describe("collapseColumns / recommendedOrder", () => {
+  const mk = (gene, cls, extra = {}) => ({ key: gene, cls, genes: [gene], label: `${gene} del`, n: 5, subclonal: false, event: { seqnames: "17" }, ...extra });
+  it("collapses CN events with the same per-cell pattern, keeps different ones", () => {
+    const a = new Float32Array([0, 0, 0, 2, 2]);
+    const b = new Float32Array([0, 0, 0, 2, 2]);
+    const c = new Float32Array([2, 2, 0, 0, 0]);
+    const { columns, collapsed } = collapseColumns([mk("TP53", "homdel"), mk("FANCA", "homdel"), mk("PTEN", "homdel")], [a, b, c]);
+    expect(collapsed).toBe(1);
+    expect(columns.map((x) => x.label)).toEqual(["chr17 del (TP53, +1)", "PTEN del"]);
+    expect(columns[0].genes).toEqual(["TP53", "FANCA"]);
+  });
+  it("orders hotspot SNVs / fusions, then subclonal, then clonal", () => {
+    const e = [mk("A", "homdel"), mk("B", "amp", { subclonal: true }), mk("C", "fusion"), mk("D", "snv", { hotspot: true })];
+    expect(recommendedOrder(e).map((d) => d.key)).toEqual(["C", "D", "B", "A"]);
+  });
+});
