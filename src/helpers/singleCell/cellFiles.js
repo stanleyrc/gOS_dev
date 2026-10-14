@@ -430,6 +430,7 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
       altCells: v.alt_cells ?? null,
       // fit of the alt calls to the mapped clade (gos_sc_upload.R map step)
       cladeScore: v.clade_score ?? null,
+      sumLogodds: v.sum_logodds ?? null, // site QC score, when exported
       altInClade: v.alt_in_clade ?? null,
       refInClade: v.ref_in_clade ?? null,
       altOutsideClade: v.alt_outside_clade ?? null,

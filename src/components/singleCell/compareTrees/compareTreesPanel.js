@@ -33,7 +33,9 @@ import {
 } from "../../../helpers/singleCell/treeCompare";
 import { rowMap, snvColumnOrder, snvMetricMax, treeColumnOrder } from "../../../helpers/singleCell/matrix";
 import { filterSnvColumns, hasCladeScores } from "../../../helpers/singleCell/snvSites";
-import singleCellActions from "../../../redux/singleCell/actions";
+import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
+import CellIgvPanel from "../cellIgvPanel";
+import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks } from "../snvAnnotTracks";
 import MutationSidePanel, { SNV_CATEGORIES } from "../mutationSidePanel";
 import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
@@ -44,6 +46,7 @@ const { Text } = Typography;
 const DOT = 9; // width of a painted mutation column
 const TREE_MIN = 140;
 const UNKNOWN = "#999999";
+const NO_SCORES = new Map();
 
 /** Concordance of the SNVs with one tree, computed in the background. */
 function useConcordance(snvData, layout) {
@@ -121,6 +124,14 @@ export default function CompareTreesPanel() {
   const fullB = useMemo(() => (treeB.root ? layoutTree(treeB.root) : null), [treeB.root]);
   const concA = useConcordance(snvData, fullA);
   const concB = useConcordance(snvData, fullB);
+  // annotation tracks per matrix: tree fit is each side's own best-clade F1
+  const annotA = useSnvAnnot(snvCalls, concA ? concA.scores : NO_SCORES);
+  const annotB = useSnvAnnot(snvCalls, concB ? concB.scores : NO_SCORES);
+  const trackA = useSnvTracks(annotA);
+  const trackB = useSnvTracks(annotB);
+  const nTracks = trackA.tracks.length;
+  const hdrH = tracksHeight(nTracks);
+  const [igvOnClick, setIgvOnClick] = useState(true);
 
   // Drawn trees: optionally without normal cells / branch lengths, rotated to minimise crossings
   const prepared = useMemo(() => {
@@ -282,10 +293,10 @@ export default function CompareTreesPanel() {
     if (!on || !snvCalls || !layout) return null;
     const rows = rowMap(layout.leaves, snvCalls.cells);
     const all = snvOrder === "tree" ? treeColumnOrder(snvCalls, layout, rows) : snvColumnOrder(snvCalls, snvOrder);
-    return { rows, columns: filterSnvColumns(snvCalls, all, siteFilter) };
+    return { rows, columns: filterSnvColumns(snvCalls, all, { ...siteFilter, annot: layout === layoutA ? annotA : annotB }) };
   };
-  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
-  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
   const markedRows = (layout) => {
     const r = rowsOf(layout);
     const out = new Set();
@@ -295,6 +306,24 @@ export default function CompareTreesPanel() {
   };
   const hoverMatrix = (layout) => (row, lines, event) => setHover(row == null || row < 0 || !layout.leaves[row] ? null : { id: layout.leaves[row], x: event.clientX, y: event.clientY, lines });
   const paintSite = (_row, c) => setPainted((cur) => (cur.includes(`s:${c}`) ? cur : [...cur, `s:${c}`].slice(-MAX_PAINTED)));
+  // IGV at a site for the selected cells (the picked clade, else the clicked cell): carriers first, up to the IGV track limit
+  const openSiteIgv = (c, clickedId = null) => {
+    const v = snvData?.variants[c];
+    if (!v || !snvCalls) return;
+    const pool = pick ? [...pick.cells] : clickedId ? [clickedId] : [];
+    if (!pool.length) return;
+    const state = (id) => {
+      const p = cellIndex.get(`${id}`);
+      return p == null ? -1 : snvCalls.status[p][c];
+    };
+    const ranked = [...pool].sort((x, y) => Number(state(y) === 1) - Number(state(x) === 1));
+    const ids = (clickedId && !ranked.slice(0, SC_MAX_TRACK_CELLS).includes(clickedId) ? [clickedId, ...ranked] : ranked).slice(0, SC_MAX_TRACK_CELLS);
+    dispatch(singleCellActions.openIgv({ cellIds: ids, chromosome: v.chromosome, position: v.position, label: v.id }));
+  };
+  const siteClicked = (layout) => (row, c) => {
+    paintSite(row, c);
+    if (igvOnClick) openSiteIgv(c, layout.leaves[row]);
+  };
   const setLayout = (patch) => dispatch(singleCellActions.updateLayout(patch));
   const renderMatrix = (layout, mat, x0, hdrSet) =>
     mat && layout ? (
@@ -309,13 +338,14 @@ export default function CompareTreesPanel() {
         height={H}
         pixelRatio={pixelRatio}
         onRowClick={() => {}}
-        onSiteClick={paintSite}
+        onSiteClick={siteClicked(layout)}
         onHover={hoverMatrix(layout)}
         onLeave={() => setHover(null)}
         axisHeight={18}
         groupOf={null}
         highlightRows={markedRows(layout)}
         categoryNode={hdrSet}
+        {...(layout === layoutA ? trackA : trackB)}
       />
     ) : null;
 
@@ -364,6 +394,11 @@ export default function CompareTreesPanel() {
             <Radio.Group size="small" value={matrixMode} onChange={(e) => setMatrixMode(e.target.value)} optionType="button" options={[{ value: "both", label: "A and B" }, { value: "A", label: "Align to A" }, { value: "B", label: "Align to B" }]} />
           ) : null}
           {pick ? <Button size="small" onClick={() => setPick(null)}>{`Clear clade (${pick.cells.size} cells)`}</Button> : null}
+          {pick && paints.some((p) => p.kind === "snv") ? (
+            <Button size="small" type="primary" onClick={() => openSiteIgv(paints.filter((p) => p.kind === "snv").slice(-1)[0].vi)}>
+              {`Open IGV: ${Math.min(pick.cells.size, SC_MAX_TRACK_CELLS)} selected cells at ${paints.filter((p) => p.kind === "snv").slice(-1)[0].label}`}
+            </Button>
+          ) : null}
           {layoutA && layoutB && prepared ? <Text type="secondary">{`${nShared} shared cells, ${crossings.toLocaleString("en-US")} crossings (${prepared.before.toLocaleString("en-US")} before rotating)`}</Text> : null}
         </Space>
         {showMatrix && snvData ? (
@@ -395,7 +430,9 @@ export default function CompareTreesPanel() {
                 options={[0, 0.5, 0.7, 0.8, 0.9].map((value) => ({ value, label: value ? t("components.single-cell.snv.clade-score-min", { value }) : t("components.single-cell.snv.clade-score-any") }))}
               />
             ) : null}
+            <Tooltip title="Clicking a site in a matrix opens IGV there for the selected clade (or the clicked cell)"><span>IGV on site click <Switch size="small" checked={igvOnClick} onChange={setIgvOnClick} /></span></Tooltip>
             <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
+            <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} /></div>
           </Space>
         ) : null}
         <div style={{ marginBottom: 8 }}>
@@ -435,7 +472,7 @@ export default function CompareTreesPanel() {
             <Alert type="warning" showIcon message="One of the selected trees could not be loaded." />
           ) : null}
           {layoutA && layoutB ? (
-            <div style={{ position: "relative", width: totalW, height: H + 22, marginTop: 18, maxWidth: "100%" }}>
+            <div style={{ position: "relative", width: totalW, height: H + 22, marginTop: 18 + hdrH, maxWidth: "100%" }}>
             <svg ref={svgRef} width={totalW} height={H} viewBox={`0 0 ${totalW} ${H}`} style={{ background: theme.panel, display: "block", maxWidth: "100%" }} onMouseMove={onMove} onMouseLeave={() => setHover(null)} onClick={onClick}>
               {linkPaths
                 ? linkPaths.map(([key, d]) => {
@@ -459,13 +496,13 @@ export default function CompareTreesPanel() {
             </svg>
             {sides.includes("A") ? (
               <>
-                <div ref={setHdrA} style={{ position: "absolute", left: mA0, top: -16, width: mw, height: 15 }} />
+                <div ref={setHdrA} style={{ position: "absolute", left: mA0, top: -hdrH - 1, width: mw, height: hdrH }} />
                 <div style={{ position: "absolute", left: mA0, top: 0, width: mw }}>{renderMatrix(layoutA, matA, mA0, hdrA)}</div>
               </>
             ) : null}
             {sides.includes("B") ? (
               <>
-                <div ref={setHdrB} style={{ position: "absolute", left: mB0, top: -16, width: mw, height: 15 }} />
+                <div ref={setHdrB} style={{ position: "absolute", left: mB0, top: -hdrH - 1, width: mw, height: hdrH }} />
                 <div style={{ position: "absolute", left: mB0, top: 0, width: mw }}>{renderMatrix(layoutB, matB, mB0, hdrB)}</div>
               </>
             ) : null}
@@ -487,6 +524,7 @@ export default function CompareTreesPanel() {
           <span>{`B (mirrored): ${labelOf(b)}`}</span>
         </div>
       </Card>
+      <CellIgvPanel />
       <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
         {conc(concA, a, fullA)}
         {conc(concB, b, fullB)}
