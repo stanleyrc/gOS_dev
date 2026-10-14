@@ -7,9 +7,16 @@ describe("readDeepLink", () => {
       report: "BWH70",
       groups: ["Long only", "Short clade"],
       heatmap: "junctions",
+      driverOpen: null,
       walks: ["wEGFR", "sEGFR"],
       umap: { kind: "cn", gene: "EGFR" },
     });
+  });
+
+  it("opens the Drivers layer for heatmap=drivers and for an old tab=17 link", () => {
+    expect(readDeepLink("?heatmap=drivers").heatmap).toBe("drivers");
+    expect(readDeepLink("?report=P&tab=17").heatmap).toBe("drivers");
+    expect(readDeepLink("?tab=7").heatmap).toBeNull();
   });
 
   it("ignores unknown heatmap types and reads plain umap fields", () => {

@@ -57,6 +57,12 @@ import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
 import { currentPlotTheme } from "../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
+import useDriverLayer from "./drivers/useDriverLayer";
+import DriverControls from "./drivers/driverControls";
+import DriverColumnHeader from "./drivers/driverColumnHeader";
+import DriverLayerDrawer from "./drivers/driverLayerDrawer";
+import { driverColors } from "./drivers/driverColors";
+import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
 
 const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
@@ -74,6 +80,7 @@ const MIN_GENOME_RIGHT = GENOME_MARGIN + 24;
 const HANDLE_WIDTH = 10;
 const TREE_MIN = 80;
 const TREE_MAX = 900;
+const DRIVER_COL_MAX = 28; // px per driver column at most (few drivers stay compact)
 const AXIS_HEIGHT = 18;
 const TICK_HEIGHT = 16;
 const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
@@ -149,7 +156,9 @@ export default function CellHeatmapPanel() {
     : 0;
   const treeBlock = hasTree ? treeWidth + HANDLE_WIDTH : 0;
   const snvReady = snv.status === "ok";
-  const showSide = sidePanel && snvReady && heatmapType !== "snv";
+  const showSide = sidePanel && snvReady && heatmapType !== "snv" && heatmapType !== "drivers";
+  const driverLayer = useDriverLayer();
+  const driverEntries = driverLayer.shown;
   // Side panel widths: dragged (live), saved in the layout, or automatic.
   const [dragSide, setDragSide] = useState(null);
   const [dragGene, setDragGene] = useState(null);
@@ -424,6 +433,28 @@ export default function CellHeatmapPanel() {
     () => (snvsByBranch ? new Map([...snvsByBranch].map(([k, v]) => [k, v.length])) : null),
     [snvsByBranch]
   );
+  const [driverHover, setDriverHover] = useState(null);
+  // the Drivers layer and its selection live in the URL (heatmap=drivers&drvpreset=..&drvadd=..), so a link reopens the same view
+  useEffect(() => {
+    if (!sc.patient) return; // a deep link is read when the patient loads
+    try {
+      const url = new URL(window.location.href);
+      SELECTION_PARAMS.forEach((k) => url.searchParams.delete(k));
+      if (heatmapType === "drivers") {
+        url.searchParams.set("heatmap", "drivers");
+        Object.entries(serializeSelection(driverLayer.selection)).forEach(([k, v]) => url.searchParams.set(k, v));
+      } else if (url.searchParams.get("heatmap") === "drivers") url.searchParams.delete("heatmap");
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window / history: the selection still lives in redux
+    }
+  }, [heatmapType, driverLayer.selection, sc.patient]);
+  // Drivers layer: label of the driver(s) arising on each branch
+  const driverMarks = useMemo(() => {
+    if (heatmapType !== "drivers" || !layout.driverBranches || !treeLayout) return null;
+    const marks = driverBranchMarks(driverEntries, treeLayout);
+    return new Map([...marks].map(([k, v]) => [k, branchMarkText(v)]));
+  }, [heatmapType, layout.driverBranches, treeLayout, driverEntries]);
   const [branchNode, setBranchNode] = useState(null);
   const [siteDrawer, setSiteDrawer] = useState(null);
   useEffect(() => setBranchNode(null), [treeLayout]);
@@ -521,8 +552,50 @@ export default function CellHeatmapPanel() {
         },
       };
     }
+    if (heatmapType === "drivers" && driverEntries.length) {
+      const colors = {};
+      Object.entries(driverColors()).forEach(([k, hex]) => (colors[k] = packRGBA(hexToRgb(hex))));
+      const states = driverEntries.map((d) => entryStates(d, { order, snv: snvReady ? snv.data : null, snvRows, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins }));
+      const matrixWidth = Math.min(heatWidth, driverEntries.length * DRIVER_COL_MAX);
+      const colorAt = (r, c) => {
+        const d = driverEntries[c];
+        const v = states[c]?.[r];
+        if (!d) return stripBlank;
+        if (d.cls === "snv") return v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
+        if (d.cls === "amp" || d.cls === "homdel") return cnColor(v);
+        if (d.cls === "fusion") return v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : stripBlank;
+        return v ? colors.complex : stripBlank;
+      };
+      return {
+        cols: discreteColumnLookup(driverEntries.length, Math.floor(matrixWidth * pixelRatio)),
+        axis: { spans: [], separators: [] },
+        width: matrixWidth,
+        colorAt,
+        describe: (r, c) => {
+          const d = driverEntries[c];
+          if (!d || c < 0) return null;
+          const v = states[c][r];
+          const state =
+            d.cls === "snv"
+              ? v === 2 ? "mutant" : v === 1 ? "wild type" : "no coverage"
+              : d.cls === "amp" || d.cls === "homdel"
+              ? Number.isFinite(v) ? `copy number ${v}` : t("components.single-cell.no-file")
+              : d.cls === "fusion"
+              ? v === 3 ? "DNA + RNA" : v === 2 ? "RNA only" : v === 1 ? "DNA" : "not seen"
+              : v ? "carrier" : "no";
+          return [
+            ["Driver", d.label],
+            ["Class", classLabel(d)],
+            ...(d.tier != null ? [["Tier", d.tier]] : []),
+            ["Carriers", `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
+            ["This cell", state],
+          ];
+        },
+      };
+    }
     return null;
-  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverEntries, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(
     () => discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio),
@@ -653,6 +726,7 @@ export default function CellHeatmapPanel() {
       label: t("components.single-cell.heatmap.junctions"),
       disabled: junctions.status !== "ok",
     },
+    { value: "drivers", label: t("components.single-cell.heatmap.drivers"), disabled: !driverLayer.entries.length },
   ];
   const showSnvControls = snvReady && (heatmapType === "snv" || showSide);
 
@@ -704,7 +778,7 @@ export default function CellHeatmapPanel() {
         title={
           <Space wrap>
             <ApartmentOutlined />
-            <span>{t("components.single-cell.heatmap.title")}</span><Provenance id={heatmapType === "snv" ? "snvHeatmap" : heatmapType === "junctions" ? "junctionHeatmap" : "cnHeatmap"} />
+            <span>{t("components.single-cell.heatmap.title")}</span><Provenance id={heatmapType === "snv" ? "snvHeatmap" : heatmapType === "junctions" ? "junctionHeatmap" : heatmapType === "drivers" ? "driversHeatmap" : "cnHeatmap"} />
             <Text type="secondary">
               {t("components.single-cell.heatmap.cell-count", { count: nRows })}
             </Text>
@@ -915,7 +989,7 @@ export default function CellHeatmapPanel() {
               {t("components.single-cell.toolbar.genes-beside", { count: geneList.length })}
             </Checkbox>
           )}
-          {snvReady && heatmapType !== "snv" && (
+          {snvReady && heatmapType !== "snv" && heatmapType !== "drivers" && (
             <Checkbox
               checked={sidePanel}
               onChange={(e) => dispatch(singleCellActions.updateSidePanel(e.target.checked))}
@@ -925,6 +999,17 @@ export default function CellHeatmapPanel() {
           )}
             </Space>
           </div>
+          {heatmapType === "drivers" && (
+            <div className="sc-toolbar-row">
+              <Text strong className="sc-toolbar-row-label">Drivers</Text>
+              <DriverControls
+                driverLayer={driverLayer}
+                canBranches={hasTree}
+                branches={Boolean(layout.driverBranches)}
+                onBranches={(value) => dispatch(singleCellActions.updateLayout({ driverBranches: value }))}
+              />
+            </div>
+          )}
           {(showSnvControls || canShowBranchSnvs) && (
             <div className="sc-toolbar-row">
               <Text strong className="sc-toolbar-row-label">{t("components.single-cell.toolbar.row-snvs")}</Text>
@@ -1042,6 +1127,17 @@ export default function CellHeatmapPanel() {
                 ...(showExpression ? [expression.gene] : []),
               ]}
             />
+            {heatmapType === "drivers" && active && (
+              <div style={{ marginLeft: GAP, width: active.width, flex: "none" }}>
+                <DriverColumnHeader
+                  entries={driverEntries}
+                  width={active.width}
+                  hoverKey={driverHover}
+                  openKey={sc.driverDrawer}
+                  onOpen={(key) => dispatch(singleCellActions.updateDriverDrawer(key))}
+                />
+              </div>
+            )}
             {heatmapType === "snv" && hasCategories && (
               <div ref={setSnvHeader} style={{ marginLeft: GAP, width: heatWidth, flex: "none", paddingBottom: 2 }} />
             )}
@@ -1062,6 +1158,7 @@ export default function CellHeatmapPanel() {
                 hoverRow={hoverRow}
                 onSelectRange={handleTreeSelect}
                 branchCounts={branchCounts}
+                branchMarks={driverMarks}
                 onSelectNode={(k) => (snvsByBranch?.has(k) || treeLayout?.nodes[k]?.isLeaf === false) && setBranchNode(k)}
                 hoverRange={hoverRange}
                 onHoverNode={(node, event) => {
@@ -1125,14 +1222,18 @@ export default function CellHeatmapPanel() {
                   <div ref={wheelBox} style={{ overflow: "hidden", width: heatWidth }}>
                   <HeatmapCanvas
                     style={preview ? { transform: preview, transformOrigin: "0 0" } : undefined}
-                    width={heatWidth}
+                    width={active.width ?? heatWidth}
                     height={height}
                     nRows={nRows}
                     cols={active.cols}
                     colorAt={active.colorAt}
                     pixelRatio={pixelRatio}
                     separators={active.axis.separators}
-                    onClick={handleRowClick}
+                    onClick={(hit, event) => {
+                      handleRowClick(hit, event);
+                      // Drivers layer: a click on a cell also opens that driver's drawer
+                      if (heatmapType === "drivers" && hit.col >= 0 && driverEntries[hit.col]) dispatch(singleCellActions.updateDriverDrawer(driverEntries[hit.col].key));
+                    }}
                     onDrag={heatmapType === "cn" ? handlePan : heatmapType === "junctions" ? junctionDrag : undefined}
                     onDoubleClick={
                       heatmapType === "cn"
@@ -1141,8 +1242,14 @@ export default function CellHeatmapPanel() {
                         ? ({ x }) => junctionWheel({ x, deltaY: -500, deltaMode: 0 })
                         : undefined
                     }
-                    onHover={({ row, col }, event) => hoverCell(row, active.describe(row, col), event)}
-                    onLeave={clearHover}
+                    onHover={({ row, col }, event) => {
+                      if (heatmapType === "drivers") setDriverHover(driverEntries[col]?.key ?? null);
+                      hoverCell(row, active.describe(row, col), event);
+                    }}
+                    onLeave={() => {
+                      setDriverHover(null);
+                      clearHover();
+                    }}
                   />
                   </div>
                 ) : (
@@ -1154,7 +1261,7 @@ export default function CellHeatmapPanel() {
                     </Text>
                   </div>
                 )}
-                {active && (
+                {active && heatmapType !== "drivers" && (
                   <div className="sc-axis" style={{ width: heatWidth, height: axisHeight }}>
                     {ticks.map((tk, k) => (
                       <span key={`tick-${k}`} className="sc-axis-tick" style={{ left: tk.x, top: AXIS_HEIGHT - 2 }} title={`chr${tk.chromosome}:${tk.label}`}>
@@ -1282,6 +1389,7 @@ export default function CellHeatmapPanel() {
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}
               expression={showExpression ? expression : null}
+              drivers={heatmapType === "drivers" ? { colors: driverColors(), palette, entries: driverEntries } : null}
             />
             {annotationFields.map((f) => (
               <Space key={f} size={4} wrap className="sc-legend">
@@ -1309,6 +1417,13 @@ export default function CellHeatmapPanel() {
           node={branchNode}
           snv={snvsByBranch ? snv.data : null}
           variantIdx={snvsByBranch?.get(branchNode) || []}
+        />
+      )}
+      {sc.driverDrawer && driverLayer.entries.find((d) => d.key === sc.driverDrawer) && (
+        <DriverLayerDrawer
+          entry={driverLayer.entries.find((d) => d.key === sc.driverDrawer)}
+          driverLayer={driverLayer}
+          onClose={() => dispatch(singleCellActions.updateDriverDrawer(null))}
         />
       )}
       <GeneInfoDrawer gene={cardGene} onClose={() => setCardGene(null)} />
