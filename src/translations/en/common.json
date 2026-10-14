@@ -444,7 +444,6 @@
         "tab14": "Single-Cell ecDNA",
         "tab15": "Single-Cell Evidence",
         "tab16": "Single-Cell Story",
-        "tab17": "Single-Cell Drivers",
         "tab18": "Compare Trees"
       }
     },
@@ -1128,6 +1127,7 @@
         "cn": "Copy number",
         "snv": "SNVs",
         "junctions": "Junction CN",
+        "drivers": "Drivers",
         "whole-genome": "Show whole genome",
         "zoom-in": "Zoom in",
         "zoom-out": "Zoom out",
@@ -1149,6 +1149,7 @@
         "cn": "Copy number",
         "snv": "SNV",
         "junctions": "Junction CN",
+        "drivers": "Drivers",
         "clones": "Clones",
         "expression": "{{gene}} expression",
         "missing": "missing",

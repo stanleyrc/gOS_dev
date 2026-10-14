@@ -51,6 +51,12 @@ export const PROVENANCE = {
     calc: "VAF = alt / (ref + alt) per cell and site, binned to pixels in the browser; site categories (truncal / subclonal / private) come from the `map` step.",
     where: "both",
   },
+  driversHeatmap: {
+    title: "Drivers layer",
+    source: `${S.EVENTS}, ${S.SNV_MATRIX}, ${S.CELL_CN}, rna/fusions.json`,
+    calc: "One column per driver; carriers from cell_ids. SNV: site reads per cell; amp/del: CN at the gene; fusion: DNA / RNA support.",
+    where: "both",
+  },
   junctionHeatmap: {
     title: "Junction copy number",
     source: CELL_CN,
