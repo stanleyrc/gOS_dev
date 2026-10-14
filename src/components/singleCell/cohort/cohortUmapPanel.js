@@ -12,6 +12,8 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { Swatches, patientColor } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
+import useHideNa, { HideNaControl } from "../useHideNa";
+import { isNaValue, partitionNa } from "../../../helpers/singleCell/hideNa";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -32,6 +34,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   const [colorBy, setColorBy] = useState("patient");
   const [hidden, setHidden] = useState([]);
   const [tumorOnly, setTumorOnly] = useState(true);
+  const [hideNa, setHideNa] = useHideNa();
   // drag a box on the plot to select cells (Shift / Cmd adds to the selection)
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null);
@@ -54,12 +57,18 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   if (data === undefined) return <Text type="secondary">{t("components.single-cell.loading")}</Text>;
   if (!data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.umap-missing")} />;
   const patients = [...new Set(cells.map((c) => c.patient))].sort();
-  const shown = cells.filter((c) => !hidden.includes(c.patient) && Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
+  const placed = cells.filter((c) => !hidden.includes(c.patient) && Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
   const w = Math.max(400, width - 24);
   const x = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_1)).range([12, w - 12]);
   const y = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_2)).range([HEIGHT - 12, 12]);
   const byScore = colorBy === "__score" && overlay?.values;
   const scoreScale = byScore ? d3.scaleSequential(d3.interpolateViridis).domain(d3.extent([...overlay.values.values()].filter(Number.isFinite))) : null;
+  // NA = no value for the colour field (score overlay or metadata column)
+  const { shown, hidden: nHiddenNa } = partitionNa(
+    placed,
+    (c) => (byScore ? !Number.isFinite(overlay.values.get(`${c.patient}::${c.rna_id}`)) : colorBy !== "patient" && isNaValue(c[colorBy])),
+    hideNa
+  );
   const levels = colorBy === "patient" ? patients : [...new Set(cells.map((c) => c[colorBy]).filter((v) => v != null && v !== ""))].map(String).sort();
   const colors = colorBy === "patient" ? Object.fromEntries(patients.map((p, i) => [p, patientColor(i)])) : annotationColors(levels, themePalette(layout.theme));
   const open = (c) => {
@@ -95,6 +104,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
           <Select size="small" mode="multiple" allowClear placeholder={t("components.single-cell.toolbar.hide-placeholder")} style={{ minWidth: 160 }} value={hidden} onChange={setHidden} options={patients.map((p) => ({ value: p, label: p }))} maxTagCount="responsive" />
           <Switch size="small" checked={tumorOnly} onChange={setTumorOnly} />
           <Text>{t("components.single-cell.rna.tumor-only")}</Text>
+          <HideNaControl hide={hideNa} onChange={setHideNa} hidden={nHiddenNa} />
           {onSelect && nSelected > 0 && (
             <Tag color="blue" closable onClose={() => onSelect([], false)}>{t("components.single-cell.cohort.umap-selected", { count: nSelected })}</Tag>
           )}

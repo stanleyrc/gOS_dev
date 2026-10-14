@@ -10,6 +10,9 @@ import { eventClass } from "../../helpers/singleCell/cohortStats";
 import FilteredEventsListPanel from "../filteredEventsListPanel";
 import { EventsToHeatmapBar, isStrongEvent, selectEventColumn, useIsSingleCellPatient } from "./eventsToHeatmap";
 import { announceEvidenceSite, findingsByGene, rankFindings, recordGenes } from "../../helpers/singleCell/siteEvidence";
+import FusionSupportCell from "./rna/fusionSupportCell";
+import { compareSupport, fusionSupport, indexRnaFusions, supportText } from "../../helpers/singleCell/fusionSupport";
+import { dnaFusionGenes } from "../../helpers/singleCell/rnaFusions";
 import settingsActions from "../../redux/settings/actions";
 
 /**
@@ -62,6 +65,15 @@ export default function ScEventsPanel() {
     const cloneOf = new Map((scCells || []).map((c) => [`${c.cell_id}`, c.clone_id ?? "unassigned"]));
     return findingsByGene(rankFindings(calls, ev, cloneOf));
   }, [precompute, scCells]);
+  // RNA fusion calls (rna/fusions.json), indexed by gene pair, for the Support column of fusion events
+  const rnaFusions = useSelector((s) => s.SingleCell.rnaFusions);
+  const rnaIndex = useMemo(() => (rnaFusions?.status === "ok" ? indexRnaFusions(rnaFusions.data.fusions) : null), [rnaFusions]);
+  const supportOf = (record) => {
+    const genes = dnaFusionGenes(record);
+    if (!genes) return null;
+    const best = rnaIndex?.get([genes[0], genes[1]].sort().join("::"))?.[0] || null;
+    return fusionSupport({ dna: record, rna: best, rnaKnown: Boolean(rnaIndex) });
+  };
   const [picked, setPicked] = useState(new Map()); // uid -> event
   const toggle = (record, on) =>
     setPicked((prev) => {
@@ -184,6 +196,23 @@ export default function ScEventsPanel() {
         },
       ]
     : [];
+  const supportColumn = (records || []).some((r) => dnaFusionGenes(r))
+    ? [
+        {
+          title: (
+            <Tooltip title={t("components.single-cell.events.support-help")}>
+              <span style={{ whiteSpace: "nowrap" }}>{t("components.single-cell.events.support")}</span>
+            </Tooltip>
+          ),
+          key: "fusionSupport",
+          width: 230,
+          exportTitle: "fusion_support",
+          exportValue: (record) => (supportOf(record) ? supportText(supportOf(record)) : null),
+          sorter: (a, b) => compareSupport(supportOf(a) || { kind: "none" }, supportOf(b) || { kind: "none" }),
+          render: (_, record) => (supportOf(record) ? <FusionSupportCell support={supportOf(record)} /> : "–"),
+        },
+      ]
+    : [];
   const recordFilter = (record) => (!strongOnly || isStrongEvent(record)) && (!minClade || !treeLayout || !(cladeOf(record).score < minClade));
   return (
     <>
@@ -200,7 +229,7 @@ export default function ScEventsPanel() {
         )}
       </Space>
       <EventsToHeatmapBar picked={picked} onClear={() => setPicked(new Map())} />
-      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
+      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...supportColumn, ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
     </>
   );
 }

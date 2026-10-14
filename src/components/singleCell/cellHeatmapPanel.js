@@ -60,6 +60,7 @@ import Wrapper from "./index.style";
 import usePlotTheme from "./usePlotTheme";
 import { currentPlotTheme } from "../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
+import { barPixels, modalPloidy, ploidyAxisMax, ploidyBarFraction, ploidyDeviation, ploidyDeviationColor, ploidyTooltipLines } from "../../helpers/singleCell/ploidyBars";
 import useDriverLayer from "./drivers/useDriverLayer";
 import DriverControls from "./drivers/driverControls";
 import DriverColumnHeader from "./drivers/driverColumnHeader";
@@ -229,7 +230,12 @@ export default function CellHeatmapPanel() {
   );
   const nAnnotation = 2 + annotationFields.length + (showExpression ? 1 : 0);
   const ANNOTATION_COLUMN = layout.stripWidth || 14;
-  const annotationWidth = ANNOTATION_COLUMN * nAnnotation;
+  // optional ploidy bar column (two strips wide), after the other annotation strips
+  const hasPloidy = useMemo(() => cells.some((c) => Number.isFinite(c.ploidy)), [cells]);
+  const showPloidy = Boolean(layout.ploidyBars) && hasPloidy;
+  const modalPl = useMemo(() => modalPloidy(cells), [cells]);
+  const ploidyMax = useMemo(() => ploidyAxisMax(cells, modalPl), [cells, modalPl]);
+  const annotationWidth = ANNOTATION_COLUMN * (nAnnotation + (showPloidy ? 2 : 0));
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
   const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
@@ -611,12 +617,28 @@ export default function CellHeatmapPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverEntries, snv, snvRows, cn, stripBlank]);
 
-  const annotationCols = useMemo(
-    () => discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio),
-    [nAnnotation, annotationWidth, pixelRatio]
-  );
+  const annotationCols = useMemo(() => {
+    if (!showPloidy) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
+    // strips left of the ploidy column; the ploidy region is masked per row to the bar length
+    const total = Math.floor(annotationWidth * pixelRatio);
+    const barPx = Math.round(ANNOTATION_COLUMN * 2 * pixelRatio);
+    const stripPx = total - barPx;
+    const base = discreteColumnLookup(nAnnotation, stripPx);
+    return (r) => {
+      const out = new Int32Array(total).fill(-1);
+      out.set(base, 0);
+      const cell = cellById.get(order[r]);
+      const n = barPixels(ploidyBarFraction(cell?.ploidy, ploidyMax), barPx - 2);
+      for (let x = 0; x < n; x += 1) out[stripPx + 1 + x] = nAnnotation;
+      return out;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nAnnotation, annotationWidth, pixelRatio, showPloidy, cellById, order, ploidyMax, ANNOTATION_COLUMN]);
   const annotationColor = useCallback(
     (r, c) => {
+      if (showPloidy && c === nAnnotation) {
+        return packRGBA(hexToRgb(ploidyDeviationColor(ploidyDeviation(cellById.get(order[r])?.ploidy, modalPl))));
+      }
       if (c === 0) return selectedRows.has(r) ? SELECTED_RGBA : stripBlank;
       const cell = cellById.get(order[r]);
       if (c === 1) {
@@ -629,7 +651,7 @@ export default function CellHeatmapPanel() {
       return hex ? packRGBA(hexToRgb(hex)) : stripBlank;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank]
+    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank, showPloidy, nAnnotation, modalPl]
   );
 
   /* ---- groups for RNA comparisons from the current (tree / heatmap) selection ---- */
@@ -706,6 +728,7 @@ export default function CellHeatmapPanel() {
                 : expression.values[order[row]],
             ]]
           : []),
+        ...(showPloidy ? ploidyTooltipLines(cell, modalPl) : []),
         ...(extra || []),
       ],
     });
@@ -985,6 +1008,16 @@ export default function CellHeatmapPanel() {
               />
             </Space>
           )}
+          {hasPloidy && (
+            <Checkbox
+              checked={Boolean(layout.ploidyBars)}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ ploidyBars: e.target.checked }))}
+            >
+              <Tooltip title={t("components.single-cell.toolbar.ploidy-help")}>
+                {t("components.single-cell.toolbar.ploidy")}
+              </Tooltip>
+            </Checkbox>
+          )}
           {tree.status === "ok" && (
             <Checkbox
               checked={layout.clipBranches}
@@ -1152,6 +1185,7 @@ export default function CellHeatmapPanel() {
                 t("components.single-cell.heatmap.strip-clone"),
                 ...annotationFields.map(fieldLabel),
                 ...(showExpression ? [expression.gene] : []),
+                ...(showPloidy ? [t("components.single-cell.heatmap.strip-ploidy"), ""] : []),
               ]}
             />
             {heatmapType === "drivers" && active && (
@@ -1432,6 +1466,18 @@ export default function CellHeatmapPanel() {
                 ))}
               </Space>
             ))}
+            {showPloidy && modalPl != null && (
+              <Space size={4} wrap className="sc-legend">
+                <Text strong type="secondary">{t("components.single-cell.heatmap.strip-ploidy")}</Text>
+                {[[-1.5, "below"], [0, `mode ${modalPl.toFixed(2)}`], [1.5, "above"]].map(([dev, label]) => (
+                  <span key={label} className="sc-legend-item">
+                    <span className="sc-legend-swatch" style={{ background: ploidyDeviationColor(dev) }} />
+                    <Text type="secondary">{label}</Text>
+                  </span>
+                ))}
+                <Text type="secondary">{`bar = 0–${ploidyMax.toFixed(1)}`}</Text>
+              </Space>
+            )}
             <HintLine text={t("components.single-cell.heatmap.hint")} style={{ flex: "1 1 240px" }} />
           </div>
         </div>
