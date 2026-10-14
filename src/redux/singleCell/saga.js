@@ -115,7 +115,7 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile] = yield all([
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
@@ -127,6 +127,8 @@ function* fetchSingleCellData(action = {}) {
       // per-cell RNA fusions (STAR chimeric + Arriba) and splicing (regtools junctions, intron clusters); optional
       call(tryGet, casePath(dataset, id, "rna/fusions.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/splicing.json"), { cancelToken }),
+      // alternative phylogenies to compare with the current tree (srctools gos_sc_alt_trees.R); optional
+      call(tryGet, casePath(dataset, id, "trees/index.json"), { cancelToken }),
     ]);
     // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
     const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
@@ -224,6 +226,7 @@ function* fetchSingleCellData(action = {}) {
       walks: walksFile.status === "ok" ? walksFile : missing(),
       rnaFusions: rnaFusionsFile.status === "ok" ? attempt(() => normalizeFusions(rnaFusionsFile.data)) : missing(),
       rnaSplicing: rnaSplicingFile.status === "ok" ? attempt(() => normalizeSplicing(rnaSplicingFile.data)) : missing(),
+      altTrees: altTreesFile.status === "ok" ? altTreesFile : missing(),
       cellFiles,
       selectedCellIds: [],
     });

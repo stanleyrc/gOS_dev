@@ -12,3 +12,16 @@ describe("cladeFitScore", () => {
     expect(Number.isNaN(cladeFitScore([], layout).score)).toBe(true);
   });
 });
+
+describe("cladeFitFromRows", () => {
+  const layout = layoutTree(parseNewick("((a:1,b:1):1,(c:1,(d:1,e:1):1):1);"));
+  it("matches cladeFitScore for the same carriers", () => {
+    const { cladeFitFromRows } = require("./cladeFit");
+    ["d,e", "a,e", "a", "c,d,e", "a,b,c,d,e"].forEach((s) => {
+      const ids = s.split(",");
+      const rows = ids.map((id) => layout.leaves.indexOf(id)).sort((x, y) => x - y);
+      expect(cladeFitFromRows(rows, layout)).toEqual(cladeFitScore(ids, layout));
+    });
+    expect(Number.isNaN(cladeFitFromRows([], layout).score)).toBe(true);
+  });
+});
