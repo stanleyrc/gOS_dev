@@ -15,6 +15,7 @@ import SvgExportButton from "../svgExportButton";
 import { RefLine, XAxis, YAxis, useChartText } from "../cohort/charts";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
+import useHideNa, { HideNaControl } from "../useHideNa";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -24,7 +25,7 @@ const MAX_GENES = 12;
 const FALLBACK_GENES = ["EGFR", "CDK4", "MDM2", "PDGFRA", "CDKN2A", "PTEN"];
 
 /** One gene: CN (x, jittered) vs expression (y), coloured by clone; click selects, drag-box selects (Shift adds). */
-function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, selected, hovered, onSelect, onHover, badge }) {
+function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, selected, hovered, onSelect, onHover, badge, hideNa = false }) {
   const svgRef = useRef(null);
   const txt = useChartText();
   const [drag, setDrag] = useState(null);
@@ -91,7 +92,7 @@ function DosageScatter({ gene, result, width, height, cloneOf, cloneColors, sele
         <YAxis scale={y} x0={0} x1={w} ticks={4} title={`${gene} expression (log-normalized)`} />
         <XAxis scale={x} y0={h} y1={0} ticks={5} title={`copy number at ${gene} (per cell)`} />
         {fit && <RefLine x1={x(fit[0][0])} y1={y(Math.max(0, fit[0][1]))} x2={x(fit[1][0])} y2={y(Math.max(0, fit[1][1]))} opacity={0.8} />}
-        {points.map((pt) => {
+        {points.filter((pt) => !hideNa || cloneColors[cloneOf.get(pt.id)]).map((pt) => {
           const clone = cloneOf.get(pt.id);
           const isSel = selected.has(pt.id);
           const isHov = hovered === pt.id;
@@ -155,6 +156,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
   const [containerRef, width] = useContainerWidth(1100);
   const txt = useChartText();
   const rankRef = useRef(null);
+  const [hideNa, setHideNa] = useHideNa();
   // default genes: the patient's amplified / deleted tier 1-2 drivers, else common GBM genes
   const driverGenes = useMemo(() => {
     const cnEvents = (events || []).filter((e) => Number(e.Tier ?? 9) <= 2 && isStrongEvent(e) && ["amp", "homdel"].includes(eventClass(e)));
@@ -225,6 +227,8 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
   ];
   const clonesShown = [...new Set(results.flatMap((r) => (r.result ? r.result.points.map((p) => cloneOf.get(p.id)) : [])))].filter((c) => c != null);
 
+  // cells with no clone are grey; "hide NA" leaves them out of the plots (statistics keep them)
+  const nNoClone = new Set(results.flatMap((r) => (r.result ? r.result.points.filter((p) => !cloneColors[cloneOf.get(p.id)]).map((p) => p.id) : []))).size;
   return (
     <Row gutter={SC_GUTTER}>
       <Col span={24}>
@@ -241,6 +245,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
               {selectedCellIds.length > 0 && (
                 <Button size="small" type="text" onClick={() => dispatch(singleCellActions.updateSelection([]))}>{t("components.single-cell.selection.clear")}</Button>
               )}
+              <HideNaControl hide={hideNa} onChange={setHideNa} hidden={nNoClone} />
               <SvgExportButton containerRef={containerRef} name="dosage" />
             </Space>
           }
@@ -269,7 +274,7 @@ export default function DosagePanel({ summary, matrix, rowOfId }) {
                         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.dosage.no-gene", { gene })} />
                       ) : (
                         <div style={{ border: "1px solid var(--sc-border-soft)", borderRadius: 6 }}>
-                          <DosageScatter gene={gene} result={result} width={plotW - 2} height={plotH} cloneOf={cloneOf} cloneColors={cloneColors} selected={selected} hovered={hoveredCellId} onSelect={onSelect} onHover={onHover} badge={ev ? { text: `${eventClass(ev) === "amp" ? "amplified" : "deleted"} in ${ev.cells}`, color: eventClass(ev) === "amp" ? "#D7191C" : "#2C7BB6" } : null} />
+                          <DosageScatter hideNa={hideNa} gene={gene} result={result} width={plotW - 2} height={plotH} cloneOf={cloneOf} cloneColors={cloneColors} selected={selected} hovered={hoveredCellId} onSelect={onSelect} onHover={onHover} badge={ev ? { text: `${eventClass(ev) === "amp" ? "amplified" : "deleted"} in ${ev.cells}`, color: eventClass(ev) === "amp" ? "#D7191C" : "#2C7BB6" } : null} />
                         </div>
                       )}
                     </Col>

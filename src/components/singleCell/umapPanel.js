@@ -18,6 +18,8 @@ import usePlotTheme from "./usePlotTheme";
 import { Provenance } from "./hintLine";
 import { fieldLabel } from "../../helpers/singleCell/fieldLabels";
 import { layoutEmbedding } from "../../helpers/singleCell/umapLayout";
+import useHideNa, { HideNaControl } from "./useHideNa";
+import { partitionNa } from "../../helpers/singleCell/hideNa";
 import { linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
 
 const { Text } = Typography;
@@ -141,7 +143,7 @@ export default function UmapPanel() {
     }
   }, [summary, patientId, dispatch]);
 
-  const points = useMemo(() => {
+  const allPoints = useMemo(() => {
     if (!summary?.hasUmap) return [];
     const recomputed = view === "dna-umap" && summary.hasDnaUmap;
     const xKey = recomputed ? "umap_dna_1" : "umap_1";
@@ -161,7 +163,6 @@ export default function UmapPanel() {
       clipped: placed[i].clipped,
     }));
   }, [summary, width, height, inTree, view, clip]);
-  const nClipped = points.filter((p) => p.clipped).length;
 
   /* ---- colour scale ---- */
   const field = summary?.fields.find((f) => f.name === colorBy) || null;
@@ -207,7 +208,7 @@ export default function UmapPanel() {
       };
     }
     if (field && field.numeric) {
-      const values = points.map((p) => p.cell[field.name]).filter(Number.isFinite);
+      const values = allPoints.map((p) => p.cell[field.name]).filter(Number.isFinite);
       const lo = Math.min(...values);
       const hi = Math.max(...values);
       return {
@@ -241,7 +242,15 @@ export default function UmapPanel() {
       levels: cloneColors,
       title: t("components.single-cell.legend.clones"),
     };
-  }, [colorBy, geneReady, expression, field, points, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds, layout.theme]);
+  }, [colorBy, geneReady, expression, field, allPoints, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds, layout.theme]);
+
+  // cells with no value for the colour field are hidden instead of drawn grey
+  const [hideNa, setHideNa] = useHideNa();
+  const { shown: points, hidden: nHiddenNa } = useMemo(
+    () => partitionNa(allPoints, (p) => scale.color(p) === NO_DATA, hideNa),
+    [allPoints, scale, hideNa]
+  );
+  const nClipped = points.filter((p) => p.clipped).length;
 
   /* ---- drawing ---- */
   useEffect(() => {
@@ -430,6 +439,7 @@ export default function UmapPanel() {
             />
             <Text type="secondary">{t("components.single-cell.umap.color-by")}</Text>
             <Select size="small" style={{ width: 200 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch />
+            <HideNaControl hide={hideNa} onChange={setHideNa} hidden={nHiddenNa} />
             {colorBy === "cn" && (
               <AutoComplete
                 size="small"
