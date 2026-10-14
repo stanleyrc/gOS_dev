@@ -28,9 +28,9 @@ describe("fusion support", () => {
     expect(fusionSupport({ dna: ev, rnaKnown: false }).rnaCells).toBeNull();
     expect(fusionSupport({ dna: ev }).rnaCells).toBe(0);
   });
-  it("sorts both above DNA above RNA above upstream-only and formats text", () => {
+  it("sorts both above RNA above DNA above upstream-only and formats text", () => {
     const s = [fusionSupport({ dna: up }), fusionSupport({ rna }), fusionSupport({ dna: ev }), fusionSupport({ dna: ev, rna })];
-    expect([...s].sort(compareSupport).map((x) => x.kind)).toEqual(["dna-upstream", "rna", "dna", "both"]);
+    expect([...s].sort(compareSupport).map((x) => x.kind)).toEqual(["dna-upstream", "dna", "rna", "both"]);
     expect(supportText(s[3])).toBe("both · DNA 12 cells · RNA 30 cells, 1,200 reads");
     expect(supportText(s[0])).toContain("upstream-only DNA");
   });

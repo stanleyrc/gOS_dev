@@ -60,8 +60,8 @@ export function fusionSupport({ dna = null, rna = null, rnaKnown = true } = {}) 
   return { kind, upstreamOnly, dnaCells, rnaCells, rnaReads, hasDna, hasRna: Boolean(rna), rnaKnown };
 }
 
-const ORDER = { both: 4, dna: 3, rna: 2, "dna-upstream": 1, none: 0 };
-/** Numeric sort key: kind first (both > DNA > RNA > upstream-only DNA), then total supporting cells. */
+const ORDER = { both: 4, rna: 3, dna: 2, "dna-upstream": 1, none: 0 };
+/** Numeric sort key: kind first (both > RNA-only > DNA-only > upstream-only DNA), then total supporting cells. */
 export function supportSortValue(s) {
   return ORDER[s.kind] * 1e7 + (s.dnaCells || 0) + (s.rnaCells || 0);
 }
