@@ -6,7 +6,8 @@ import { pcFile } from "../evidence/notComputed";
 import { rankFindings } from "../../../helpers/singleCell/siteEvidence";
 import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { parseCancerGeneList } from "../../../helpers/singleCell/geneInfo";
-import { DEFAULT_SELECTION, buildDriverEntries, selectDrivers } from "../../../helpers/singleCell/driverLayer";
+import { rowMap } from "../../../helpers/singleCell/matrix";
+import { DEFAULT_SELECTION, buildDriverEntries, collapseColumns, entryStates, recommendedOrder, selectDrivers } from "../../../helpers/singleCell/driverLayer";
 
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
 
@@ -44,7 +45,8 @@ export function useCgcGenes() {
 export default function useDriverLayer() {
   const dispatch = useDispatch();
   const events = useSelector((s) => s.FilteredEvents.filteredEvents);
-  const { cells, snv, rnaFusions, precompute, layout } = useSelector((s) => s.SingleCell);
+  const { cells, snv, cn, rnaFusions, precompute, layout } = useSelector((s) => s.SingleCell);
+  const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const { order, treeLayout } = useTreeView();
   const cgc = useCgcGenes();
   const tumorIds = useMemo(() => {
@@ -83,7 +85,15 @@ export default function useDriverLayer() {
     [events, tumorIds, sites, cgc, rnaFusionCells, snvData]
   );
   const selection = layout.drivers || DEFAULT_SELECTION;
-  const shown = useMemo(() => selectDrivers(entries, selection), [entries, selection]);
+  const shown = useMemo(() => {
+    const list = selectDrivers(entries, selection);
+    return selection.preset === "recommended" ? recommendedOrder(list) : list;
+  }, [entries, selection]);
+  // per-cell states and display columns (redundant CN events collapsed)
+  const display = useMemo(() => {
+    const ctx = { order, snv: snvData, snvRows: snvData ? rowMap(order, snvData.cells) : null, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins };
+    return collapseColumns(shown, shown.map((d) => entryStates(d, ctx)));
+  }, [shown, order, snvData, cn, chromoBins]);
   const setSelection = useCallback((next) => dispatch(singleCellActions.updateLayout({ drivers: next })), [dispatch]);
-  return { entries, shown, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
+  return { entries, shown, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
 }

@@ -158,7 +158,7 @@ export default function CellHeatmapPanel() {
   const snvReady = snv.status === "ok";
   const showSide = sidePanel && snvReady && heatmapType !== "snv" && heatmapType !== "drivers";
   const driverLayer = useDriverLayer();
-  const driverEntries = driverLayer.shown;
+  const driverEntries = driverLayer.columns; // display columns (redundant CN events collapsed); .entry is the representative driver
   // Side panel widths: dragged (live), saved in the layout, or automatic.
   const [dragSide, setDragSide] = useState(null);
   const [dragGene, setDragGene] = useState(null);
@@ -452,9 +452,9 @@ export default function CellHeatmapPanel() {
   // Drivers layer: label of the driver(s) arising on each branch
   const driverMarks = useMemo(() => {
     if (heatmapType !== "drivers" || !layout.driverBranches || !treeLayout) return null;
-    const marks = driverBranchMarks(driverEntries, treeLayout);
+    const marks = driverBranchMarks(driverLayer.shown, treeLayout);
     return new Map([...marks].map(([k, v]) => [k, branchMarkText(v)]));
-  }, [heatmapType, layout.driverBranches, treeLayout, driverEntries]);
+  }, [heatmapType, layout.driverBranches, treeLayout, driverLayer.shown]);
   const [branchNode, setBranchNode] = useState(null);
   const [siteDrawer, setSiteDrawer] = useState(null);
   useEffect(() => setBranchNode(null), [treeLayout]);
@@ -555,10 +555,10 @@ export default function CellHeatmapPanel() {
     if (heatmapType === "drivers" && driverEntries.length) {
       const colors = {};
       Object.entries(driverColors()).forEach(([k, hex]) => (colors[k] = packRGBA(hexToRgb(hex))));
-      const states = driverEntries.map((d) => entryStates(d, { order, snv: snvReady ? snv.data : null, snvRows, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins }));
+      const states = driverEntries.map((c) => c.states);
       const matrixWidth = Math.min(heatWidth, driverEntries.length * DRIVER_COL_MAX);
       const colorAt = (r, c) => {
-        const d = driverEntries[c];
+        const d = driverEntries[c]?.entry;
         const v = states[c]?.[r];
         if (!d) return stripBlank;
         if (d.cls === "snv") return v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
@@ -572,7 +572,8 @@ export default function CellHeatmapPanel() {
         width: matrixWidth,
         colorAt,
         describe: (r, c) => {
-          const d = driverEntries[c];
+          const col = driverEntries[c];
+          const d = col?.entry;
           if (!d || c < 0) return null;
           const v = states[c][r];
           const state =
@@ -584,7 +585,8 @@ export default function CellHeatmapPanel() {
               ? v === 3 ? "DNA + RNA" : v === 2 ? "RNA only" : v === 1 ? "DNA" : "not seen"
               : v ? "carrier" : "no";
           return [
-            ["Driver", d.label],
+            ["Driver", col.label],
+            ...(col.members.length > 1 ? [["Same CN pattern", col.genes.join(", ")]] : []),
             ["Class", classLabel(d)],
             ...(d.tier != null ? [["Tier", d.tier]] : []),
             ["Carriers", `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
@@ -1389,7 +1391,7 @@ export default function CellHeatmapPanel() {
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}
               expression={showExpression ? expression : null}
-              drivers={heatmapType === "drivers" ? { colors: driverColors(), palette, entries: driverEntries } : null}
+              drivers={heatmapType === "drivers" ? { colors: driverColors(), palette, entries: driverEntries.map((c) => c.entry) } : null}
             />
             {annotationFields.map((f) => (
               <Space key={f} size={4} wrap className="sc-legend">

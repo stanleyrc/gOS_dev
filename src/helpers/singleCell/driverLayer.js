@@ -366,3 +366,57 @@ export function driverBranchMarks(entries, layout, { minFit = 0.5 } = {}) {
 
 /** Label drawn on the tree for the entries of one branch ("EGFR amp", "EGFR amp +2"). */
 export const branchMarkText = (marks) => (marks.length > 1 ? `${marks[0].label} +${marks.length - 1}` : marks[0].label);
+
+/* ---- display columns: ordering and collapsing of redundant CN events ---- */
+
+/** Recommended order: hotspot SNVs and fusions, then subclonal events, then clonal copy number / the rest. */
+export function recommendedOrder(entries) {
+  const rank = (d) => (d.cls === "fusion" || (d.cls === "snv" && d.hotspot) ? 0 : d.subclonal ? 1 : 2);
+  return entries.map((d, i) => [d, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
+}
+
+const samePattern = (a, b, minSame) => {
+  let same = 0;
+  let n = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    const x = a[i];
+    const y = b[i];
+    if (Number.isNaN(x) && Number.isNaN(y)) continue; // both without CN: not evidence either way
+    n += 1;
+    if (x === y) same += 1;
+  }
+  return n > 0 && same / n >= minSame;
+};
+
+/**
+ * One column per entry, except that amp / del entries of the same class whose per-cell pattern is
+ * at least `minSame` identical (the same segment or arm) become one column
+ * ("chr17 del (TP53, +4)"). `states` are the entries' entryStates, same order.
+ * @returns { columns: [{ key, label, cls, n, entry, members, states, upstreamOnly }], collapsed }
+ */
+export function collapseColumns(entries, states, { minSame = 0.95 } = {}) {
+  const columns = [];
+  entries.forEach((d, i) => {
+    if (d.cls === "amp" || d.cls === "homdel") {
+      const hit = columns.find((c) => c.cls === d.cls && c.mergeable && samePattern(c.states, states[i], minSame));
+      if (hit) {
+        hit.members.push(d);
+        return;
+      }
+    }
+    columns.push({ key: d.key, cls: d.cls, entry: d, members: [d], states: states[i], mergeable: d.cls === "amp" || d.cls === "homdel", upstreamOnly: d.upstreamOnly });
+  });
+  columns.forEach((c) => {
+    const d = c.entry;
+    c.n = Math.max(...c.members.map((m) => m.n));
+    if (c.members.length > 1) {
+      const chrom = `${d.event.seqnames || `${d.event.Genome_Location || ""}`.split(":")[0]}`.replace(/^chr/i, "");
+      c.label = `chr${chrom} ${d.cls === "amp" ? "amp" : "del"} (${d.genes[0]}, +${c.members.length - 1})`;
+      c.genes = c.members.flatMap((m) => m.genes);
+    } else {
+      c.label = d.label;
+      c.genes = d.genes;
+    }
+  });
+  return { columns, collapsed: entries.length - columns.length };
+}
