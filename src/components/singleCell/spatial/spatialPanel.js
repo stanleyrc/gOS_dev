@@ -12,6 +12,8 @@ import Wrapper from "../index.style";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { cnAtPosition, geneLocus } from "../../../helpers/singleCell/dosage";
+import useHideNa, { HideNaControl } from "../useHideNa";
+import { partitionNa } from "../../../helpers/singleCell/hideNa";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 import {
   distanceProfile,
@@ -243,6 +245,13 @@ export default function SpatialPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorBy, points, cnOfCell, cnLocus, cnGene, selected, data, layout.theme, cloneOf, cloneColors, t]);
 
+  // spots with no value for the colour field are hidden instead of drawn grey (statistics keep every spot)
+  const [hideNa, setHideNa] = useHideNa();
+  const { shown: drawPoints, hidden: nHiddenNa } = useMemo(
+    () => partitionNa(points, (p) => scale.color(p) === NO_DATA, hideNa),
+    [points, scale, hideNa]
+  );
+
   /* ---- drawing ---- */
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -274,9 +283,9 @@ export default function SpatialPanel() {
         ctx.stroke();
       }
     };
-    points.forEach((p) => !selected.has(p.id) && draw(p, false));
-    points.forEach((p) => selected.has(p.id) && draw(p, true));
-    const hovered = points.find((p) => p.id === `${hoveredCellId}`);
+    drawPoints.forEach((p) => !selected.has(p.id) && draw(p, false));
+    drawPoints.forEach((p) => selected.has(p.id) && draw(p, true));
+    const hovered = drawPoints.find((p) => p.id === `${hoveredCellId}`);
     if (hovered) {
       ctx.strokeStyle = pt.hover;
       ctx.lineWidth = 2;
@@ -294,7 +303,7 @@ export default function SpatialPanel() {
       ctx.fill();
       ctx.stroke();
     }
-  }, [points, scale, selected, hoveredCellId, lasso, plotWidth, plotHeight, pixelRatio, pt]);
+  }, [drawPoints, scale, selected, hoveredCellId, lasso, plotWidth, plotHeight, pixelRatio, pt]);
 
   /* ---- interaction ---- */
   const local = (event) => {
@@ -304,7 +313,7 @@ export default function SpatialPanel() {
   const nearest = (x, y) => {
     let best = null;
     let bestD = HIT_RADIUS;
-    points.forEach((p) => {
+    drawPoints.forEach((p) => {
       const d = Math.hypot(p.px - x, p.py - y);
       if (d < bestD) {
         bestD = d;
@@ -365,7 +374,7 @@ export default function SpatialPanel() {
     const drag = dragRef.current;
     dragRef.current = null;
     if (drag?.moved && drag.path.length > 2) {
-      const ids = points.filter((p) => p.linked && insidePolygon(p.px, p.py, drag.path)).map((p) => p.id);
+      const ids = drawPoints.filter((p) => p.linked && insidePolygon(p.px, p.py, drag.path)).map((p) => p.id);
       setLasso(null);
       select(ids, event);
       return;
@@ -420,6 +429,7 @@ export default function SpatialPanel() {
             <Space wrap>
               <Text type="secondary">{tx("color-by")}</Text>
               <Select size="small" style={{ width: 190 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch data-testid="spatial-color" />
+              <HideNaControl hide={hideNa} onChange={setHideNa} hidden={nHiddenNa} noun="spots" />
               {colorBy === "cn" && (
                 <AutoComplete
                   size="small"

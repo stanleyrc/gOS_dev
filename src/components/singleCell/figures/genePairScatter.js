@@ -6,6 +6,7 @@ import useContainerWidth from "../useContainerWidth";
 import { binAt } from "../../../helpers/singleCell/matrix";
 import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { contourSegments, fitLine, kde2d, niceTicks, pointInPolygon } from "../../../helpers/singleCell/figureMath";
+import useHideNa, { HideNaControl } from "../useHideNa";
 import { selectMode } from "./cellSelection";
 
 const { Text } = Typography;
@@ -63,6 +64,7 @@ export default function GenePairScatter({ patient, cells, groups = [], cnEntry, 
   const xKey = options.some((o) => o.value === pick.x) ? pick.x : defaults[0];
   const yKey = options.some((o) => o.value === pick.y) ? pick.y : defaults[1];
   const [contours, setContours] = useState(true);
+  const [hideNa, setHideNa] = useHideNa();
   // colour / group by clone, or the selected cells against the rest (e.g. an integrated clade vs ecDNA clades, Fig 5E)
   const [groupBy, setGroupBy] = useState("clone");
   const bySel = groupBy === "selection" && selected?.size > 0;
@@ -75,7 +77,8 @@ export default function GenePairScatter({ patient, cells, groups = [], cnEntry, 
     const xs = valuesOf(xKey, ctx);
     const ys = valuesOf(yKey, ctx);
     const pts = [];
-    cellIds.forEach((id, i) => Number.isFinite(xs[i]) && Number.isFinite(ys[i]) && pts.push({ id, x: xs[i], y: ys[i], clone: bySel ? (selected.has(id) ? "Selected" : "Other cells") : cloneOf.get(id) }));
+    let nNoClone = 0;
+    cellIds.forEach((id, i) => Number.isFinite(xs[i]) && Number.isFinite(ys[i]) && (!hideNa || bySel || cloneColors[cloneOf.get(id)] ? true : ((nNoClone += 1), false)) && pts.push({ id, x: xs[i], y: ys[i], clone: bySel ? (selected.has(id) ? "Selected" : "Other cells") : cloneOf.get(id) }));
     const mx = Math.max(1, ...pts.map((p) => p.x));
     const my = Math.max(1, ...pts.map((p) => p.y));
     const xt = niceTicks(0, mx * 1.05, 5);
@@ -102,8 +105,8 @@ export default function GenePairScatter({ patient, cells, groups = [], cnEntry, 
       .sort((a, b) => b.list.length - a.list.length);
     // contours for the largest clones only (readable, and cheap)
     clones.forEach((k, i) => (k.grid = i < 4 && k.list.length >= (bySel ? 5 : 12) ? kde2d(k.list.map((p) => [p.x, p.y]), { x0: 0, x1: X1, y0: 0, y1: Y1, gx: 56, gy: 56 }) : null));
-    return { pts, xt, yt, X1, Y1, clones, all: fitLine(pts.map((p) => p.x), pts.map((p) => p.y)) };
-  }, [cellIds, groups, cnById, genePos, xKey, yKey, cloneOf, bySel, selected]);
+    return { nNoClone, pts, xt, yt, X1, Y1, clones, all: fitLine(pts.map((p) => p.x), pts.map((p) => p.y)) };
+  }, [cellIds, groups, cnById, genePos, xKey, yKey, cloneOf, bySel, selected, hideNa, cloneColors]);
 
   const plot = { x0: PAD.left, x1: width - PAD.right, y0: PAD.top, y1: height - PAD.bottom };
   const sx = useCallback((v) => plot.x0 + (v / data.X1) * (plot.x1 - plot.x0), [plot.x0, plot.x1, data.X1]);
@@ -245,6 +248,7 @@ export default function GenePairScatter({ patient, cells, groups = [], cnEntry, 
           <Switch size="small" checked={contours} onChange={setContours} />
           <Text type="secondary">Contours</Text>
         </Space>
+        <HideNaControl hide={hideNa} onChange={setHideNa} hidden={data.nNoClone} />
         <Segmented size="small" value={groupBy} onChange={setGroupBy} options={[{ value: "clone", label: "By clone" }, { value: "selection", label: "Selected vs rest", disabled: !selected?.size }]} />
       </Space>
       <FigureCanvas

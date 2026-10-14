@@ -1121,6 +1121,7 @@
       "heatmap": {
         "strip-selected": "Selected",
         "strip-clone": "Clone",
+        "strip-ploidy": "Ploidy",
         "title": "Phylogeny & heatmap",
         "cell-count": "{{count}} cell",
         "cell-count_plural": "{{count}} cells",
@@ -1560,6 +1561,11 @@
         "major": "Major",
         "minor": "Minor"
       },
+      "hide-na": {
+        "label": "Hide NA cells",
+        "help": "Cells with no value for the plotted or colour field are left out instead of drawn grey. One setting for every scatterplot (link: ?hidena=1).",
+        "note": "hidden {{count}} NA {{noun}}"
+      },
       "toolbar": {
         "copy-number": "Copy number",
         "side-panel": "Mutations beside",
@@ -1572,6 +1578,8 @@
         "hide-placeholder": "clones…",
         "clip": "Shorten long branches",
         "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //",
+        "ploidy": "Ploidy bars",
+        "ploidy-help": "Per-cell ploidy as a bar (length = ploidy), coloured by deviation from the patient's modal ploidy (blue below, red above). Hover for ploidy, purity and fit QC.",
         "genes-beside": "Genes beside ({{count}})",
         "pin": "Pin",
         "pin-placeholder": "genes…",
@@ -1617,6 +1625,8 @@
         "theme-help": "Colours for clones, groups, UMAP fields, violins, signatures and saved groups. The heatmap copy-number colours are set separately below."
       },
       "events": {
+        "support": "Support",
+        "support-help": "Fusion events: DNA ✓ (cells carrying the event), RNA ✓ (cells and reads of the matching RNA fusion, from the RNA fusion calls) or both; dashed grey is upstream-only DNA. Sortable.",
         "segment": "Segment",
         "segment-help": "Median width (Mb) of the copy-number segment behind a deletion / amplification in its carrier cells; red when most carriers have a segment under 1 Mb.",
         "segment-detail": "{{narrow}}/{{n}} carriers with a segment under 1 Mb · flanking copy number {{flank}}",
@@ -2249,6 +2259,8 @@
         "col-cells": "Cells",
         "col-cells-dna": "With DNA",
         "col-reads": "Reads",
+        "col-support": "Support",
+        "support-col-help": "DNA ✓: a DNA fusion event of this gene pair (cells carrying it); RNA ✓: cells with the fusion in RNA and total reads; both when each supports it. Dashed grey: upstream-only DNA (only the upstream flank of a partner is joined). Sort to put fusions seen in both first.",
         "col-dna": "DNA",
         "col-type": "Type",
         "col-strip": "Carrier cells (tree order)",

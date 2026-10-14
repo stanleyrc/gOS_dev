@@ -10,6 +10,8 @@ import CellStripCanvas from "./cellStripCanvas";
 import RnaFusionModal, { FusionLabel, FusionTierTag } from "./rnaFusionModal";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
 import { compareFusions, filterFusions, fusionStrip, fusionTier, groupFusions, isNonProductive, matchDnaEvent, rnaCellMaps } from "../../../helpers/singleCell/rnaFusions";
+import FusionSupportCell from "./fusionSupportCell";
+import { compareSupport, fusionPairKeys, fusionSupport, indexDnaEvents } from "../../../helpers/singleCell/fusionSupport";
 import { NO_READS_COLOR, NO_RNA_COLOR, readsColor } from "../../../helpers/singleCell/rnaColors";
 import { tierColor } from "../../../helpers/utility";
 
@@ -75,6 +77,8 @@ export default function RnaFusionsCard({ summary }) {
     shown.forEach((f) => (c[fusionTier(f)] += 1));
     return c;
   }, [shown]);
+  const dnaIndex = useMemo(() => indexDnaEvents(events), [events]);
+  const supportCache = useMemo(() => new WeakMap(), [dnaIndex]);
   const hasCohort = useMemo(() => (data?.fusions || []).some((f) => f.n_patients != null), [data]);
   const stripW = Math.max(160, Math.min(420, Math.round(width * 0.3)));
 
@@ -97,6 +101,14 @@ export default function RnaFusionsCard({ summary }) {
     );
   }
 
+  // DNA ✓ / RNA ✓ / both per row (DNA event cells from filtered.events.json, RNA cells and reads from this file)
+  const supportOf = (f) => {
+    if (!supportCache.has(f)) {
+      const dna = fusionPairKeys(f).map((key) => dnaIndex.get(key)).find(Boolean) || null;
+      supportCache.set(f, fusionSupport({ dna, rna: f }));
+    }
+    return supportCache.get(f);
+  };
   const openDna = (fusion) => {
     const record = matchDnaEvent(fusion, events);
     if (record) dispatch(filteredEventsActions.selectFilteredEvent(record, "reads"));
@@ -154,6 +166,18 @@ export default function RnaFusionsCard({ summary }) {
     { title: t(`${k}.col-cells`), dataIndex: "n_cells", align: "right", sorter: (a, b) => a.n_cells - b.n_cells || a.reads - b.reads },
     { title: t(`${k}.col-cells-dna`), dataIndex: "n_cells_dna", align: "right", sorter: (a, b) => a.n_cells_dna - b.n_cells_dna },
     { title: t(`${k}.col-reads`), dataIndex: "reads", align: "right", sorter: (a, b) => a.reads - b.reads },
+    {
+      title: (
+        <Space size={4}>
+          {t(`${k}.col-support`)}
+          <HintLine inline text={t(`${k}.support-col-help`)} />
+        </Space>
+      ),
+      key: "support",
+      width: 230,
+      sorter: (a, b) => compareSupport(supportOf(a), supportOf(b)),
+      render: (_, f) => <FusionSupportCell support={supportOf(f)} />,
+    },
     {
       title: t(`${k}.col-dna`),
       key: "dna",
