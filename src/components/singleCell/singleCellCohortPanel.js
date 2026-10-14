@@ -41,6 +41,7 @@ import CohortCladesPanel from "./cohort/cohortCladesPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
 import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
 import CohortAlignedTreesPanel from "./cohort/cohortAlignedTreesPanel";
+import CohortEcdnaPlasticityPanel from "./cohort/cohortEcdnaPlasticityPanel";
 import CohortAssociationsPanel from "./cohort/cohortAssociationsPanel";
 import CohortGenePanel from "./cohort/cohortGenePanel";
 import PatientSummaryTable from "./cohort/patientCards";
@@ -484,6 +485,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "amplicons" && (
           <Col span={24}>
             <CohortAmpliconPanel summaries={summaries} files={files} cnRows={rows} chromoBins={chromoBins} />
+          </Col>
+        )}
+        {view === "ecplast" && (
+          <Col span={24}>
+            <CohortEcdnaPlasticityPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} />
           </Col>
         )}
         {view === "figures" && (
