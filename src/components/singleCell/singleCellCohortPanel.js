@@ -35,6 +35,7 @@ import TmbPanel from "./cohort/tmbPanel";
 import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
+import CohortCladesPanel from "./cohort/cohortCladesPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
 import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
 import CohortAlignedTreesPanel from "./cohort/cohortAlignedTreesPanel";
@@ -516,6 +517,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             ) : (
               <CohortAssociationsPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} onOpen={openPatient} />
             )}
+          </Col>
+        )}
+        {view === "clades" && (
+          <Col span={24}>
+            <CohortCladesPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} />
           </Col>
         )}
         {view === "qc" && (
