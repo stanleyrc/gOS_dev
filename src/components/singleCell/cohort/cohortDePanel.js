@@ -17,6 +17,8 @@ import { benjaminiHochberg, differentialExpression, overRepresentation, pcaAsync
 import { fisherCombined, geneVariances, mergeRnaMatrices, subsetCells } from "../../../helpers/singleCell/rnaMerge";
 import { chiSquareUpper, compareGroups, formatP } from "../../../helpers/singleCell/tests";
 import { GENE_SETS } from "../../../helpers/singleCell/geneSets";
+import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
+import { groupedFieldOptions, strataUnits } from "../../../helpers/singleCell/rnaCovariates";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { themePalette } from "../../../helpers/singleCell/themes";
 import { BoxStrips, Swatches, patientColor } from "./charts";
@@ -46,7 +48,7 @@ const useIndexedCells = (loaded, rna, cellsOf) =>
     [loaded, rna, cellsOf]
   );
 
-function GroupEditor({ label, color, group, onChange, patients, fields, levelsOf, umapSelection, count, t, allowOthers }) {
+function GroupEditor({ label, color, group, onChange, patients, fields, fieldOptions, levelsOf, umapSelection, count, t, allowOthers }) {
   const modes = [{ value: "rules", label: t("components.single-cell.cohort.de-mode-rules") }, { value: "umap", label: t("components.single-cell.cohort.de-mode-umap") }, ...(allowOthers ? [{ value: OTHERS, label: t("components.single-cell.cohort.de-mode-others") }] : [])];
   return (
     <div style={{ border: `1px solid ${color}`, borderRadius: 6, padding: 8 }}>
@@ -58,7 +60,7 @@ function GroupEditor({ label, color, group, onChange, patients, fields, levelsOf
       {group.mode === "rules" && (
         <Space wrap size={[8, 6]}>
           <Select size="small" mode="multiple" allowClear placeholder={t("components.single-cell.cohort.de-all-patients")} style={{ minWidth: 180 }} value={group.patients} onChange={(v) => onChange({ ...group, patients: v })} options={patients.map((p) => ({ value: p, label: p }))} maxTagCount="responsive" />
-          <Select size="small" allowClear placeholder={t("components.single-cell.cohort.de-any-field")} style={{ width: 150 }} value={group.field} onChange={(f) => onChange({ ...group, field: f || null, levels: [] })} options={fields.map((f) => ({ value: f, label: f }))} />
+          <Select size="small" allowClear placeholder={t("components.single-cell.cohort.de-any-field")} style={{ width: 200 }} value={group.field} onChange={(f) => onChange({ ...group, field: f || null, levels: [] })} options={fieldOptions} showSearch optionFilterProp="label" />
           {group.field && <Select size="small" mode="multiple" allowClear placeholder={t("components.single-cell.cohort.de-all-levels")} style={{ minWidth: 180 }} value={group.levels} onChange={(v) => onChange({ ...group, levels: v })} options={levelsOf(group.field).map((l) => ({ value: l, label: l }))} maxTagCount="responsive" />}
         </Space>
       )}
@@ -86,10 +88,13 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
   const [ref, width] = useContainerWidth(1000);
   const indexed = useIndexedCells(loaded, rna, cellsOf);
   const patients = indexed.map((p) => p.patient);
+  const fieldGroups = useMemo(() => Object.assign({}, ...loaded.map((s) => rna[s.caseReportId]?.summary?.fieldGroups || {})), [loaded, rna]);
+  const fieldOptions = useMemo(() => groupedFieldOptions(fields, fieldGroups, fieldLabel), [fields, fieldGroups]);
   const levelsOf = (field) => [...new Set(indexed.flatMap((p) => p.rows.map((r) => r.cell[field]).filter((v) => v != null && v !== "")))].map(String).sort();
   const [groupA, setGroupA] = useState(() => ({ ...emptyGroup("rules"), field: fields.includes("state") ? "state" : null }));
   const [groupB, setGroupB] = useState(() => emptyGroup(OTHERS));
   const [deMode, setDeMode] = useState("pooled");
+  const [strataField, setStrataField] = useState(null); // covariate to stratify by (meta mode)
   const [minPct, setMinPct] = useState(0.1);
   const [qCut, setQCut] = useState(0.05);
   const [lfcCut, setLfcCut] = useState(0.5);
@@ -174,19 +179,20 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
         rows = await differentialExpression(merged.matrix, merged.genes, merged.nCells, idxA, idxB, { minPct, onProgress: setProgress });
         perPatient = involved.map((m) => ({ patient: m.patient, nA: m.idxA.length, nB: m.idxB.length }));
       } else {
-        const usable = involved.filter((m) => m.idxA.length >= 3 && m.idxB.length >= 3);
+        // one unit per patient, or per patient x level of the stratifying covariate
+        const usable = involved.flatMap((m) => strataUnits(m, m.summaryData.cells, strataField)).filter((u) => u.idxA.length >= 3 && u.idxB.length >= 3).map((u) => ({ ...involved.find((m) => m.patient === u.patient), ...u }));
         const byGene = new Map();
         for (let k = 0; k < usable.length; k += 1) {
           const m = usable[k];
           // eslint-disable-next-line no-await-in-loop
-          const matrix = await matrixFor(m);
+          const matrix = await matrixFor({ ...m, patient: m.patient });
           // eslint-disable-next-line no-await-in-loop
           const res = await differentialExpression(matrix, m.summaryData.genes, m.summaryData.cells.length, m.idxA, m.idxB, { minPct, onProgress: (f) => setProgress((k + f) / usable.length) });
           res.forEach((r) => {
             if (!byGene.has(r.gene)) byGene.set(r.gene, []);
-            byGene.get(r.gene).push({ patient: m.patient, ...r });
+            byGene.get(r.gene).push({ ...r, patient: m.label });
           });
-          perPatient.push({ patient: m.patient, nA: m.idxA.length, nB: m.idxB.length });
+          perPatient.push({ patient: m.label, nA: m.idxA.length, nB: m.idxB.length });
         }
         const minPatients = Math.min(2, usable.length);
         rows = [...byGene.entries()]
@@ -345,16 +351,17 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
       <div ref={ref}>
         <Row gutter={SC_GUTTER_INNER}>
           <Col xs={24} xl={12}>
-            <GroupEditor label="A" color={COLOR_UP} group={groupA} onChange={setGroupA} patients={patients} fields={fields} levelsOf={levelsOf} umapSelection={umapSelection} count={nA} t={t} allowOthers={false} />
+            <GroupEditor label="A" color={COLOR_UP} group={groupA} onChange={setGroupA} patients={patients} fields={fields} fieldOptions={fieldOptions} levelsOf={levelsOf} umapSelection={umapSelection} count={nA} t={t} allowOthers={false} />
           </Col>
           <Col xs={24} xl={12}>
-            <GroupEditor label="B" color={COLOR_DOWN} group={groupB} onChange={setGroupB} patients={patients} fields={fields} levelsOf={levelsOf} umapSelection={umapSelection} count={nB} t={t} allowOthers />
+            <GroupEditor label="B" color={COLOR_DOWN} group={groupB} onChange={setGroupB} patients={patients} fields={fields} fieldOptions={fieldOptions} levelsOf={levelsOf} umapSelection={umapSelection} count={nB} t={t} allowOthers />
           </Col>
           <Col span={24}>
             <Space wrap>
               {section === "de" && (
                 <>
                   <Segmented size="small" value={deMode} onChange={setDeMode} options={[{ value: "pooled", label: t("components.single-cell.cohort.de-pooled") }, { value: "meta", label: t("components.single-cell.cohort.de-meta") }]} />
+                  <Select size="small" allowClear showSearch optionFilterProp="label" disabled={deMode !== "meta"} placeholder={t("components.single-cell.cohort.de-stratify")} style={{ width: 200 }} value={strataField} onChange={(v) => setStrataField(v || null)} options={fieldOptions} title={t("components.single-cell.cohort.de-stratify-help")} />
                   <Text type="secondary">min pct</Text>
                   <InputNumber size="small" min={0} max={1} step={0.05} value={minPct} onChange={(v) => setMinPct(v ?? 0.1)} style={{ width: 70 }} />
                   <Text type="secondary">q &lt;</Text>
