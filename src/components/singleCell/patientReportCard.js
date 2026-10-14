@@ -225,8 +225,9 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   // the same popup as a row of the Filtered Events table (alteration, plots with cell tracks, variant QC)
   const onDetails = (d) => dispatch(filteredEventsActions.selectFilteredEvent(d.event, "plots"));
   const onDeepDive = (d) => {
-    dispatch(singleCellActions.updateDriverFocus(driverKey(d.event)));
-    dispatch(settingsActions.updateTab("17"));
+    dispatch(singleCellActions.updateHeatmapType("drivers"));
+    dispatch(singleCellActions.updateDriverDrawer(driverKey(d.event)));
+    dispatch(settingsActions.updateTab("7"));
   };
   const rowProps = { cloneColors, interactive, onSelect, onZoom, onIgv, onSites, onDetails, onDeepDive };
   const row = (d) => <DriverRow key={d.label} d={d} fit={fitOf.get(d.label)} noise={noiseOf.get(d.label)} {...rowProps} />;

@@ -1,12 +1,13 @@
 // Deep-link parameters that open a single-cell patient on an exact view.
 // Each is read once, when the patient named by `report` loads:
 //   scsel=<name>[,<name>]   select the cells of these saved groups (scgroups)
-//   heatmap=cn|snv|junctions  heatmap shown in the Single-Cell tab
+//   heatmap=cn|snv|junctions|drivers  heatmap shown in the Single-Cell tab
+//     (an old tab=17 link opens the Drivers layer; drvpreset / drvadd / drvrm / drvf carry its selection)
 //   walk=<label>[,<label>]  ecDNA tab: draw these walks, highlight the first
 //   umap=cn:<GENE> | gene:<GENE> | <field>  UMAP colouring
 // `tab` and `location` are handled by the settings reducer.
 
-const HEATMAP_TYPES = ["cn", "snv", "junctions"];
+const HEATMAP_TYPES = ["cn", "snv", "junctions", "drivers"];
 
 const list = (value) =>
   (value || "")
@@ -16,7 +17,8 @@ const list = (value) =>
 
 export function readDeepLink(search = window.location.search) {
   const params = new URLSearchParams(search);
-  const heatmap = params.get("heatmap");
+  // the retired Drivers tab (17) is now the Drivers layer of the Single-Cell tab
+  const heatmap = params.get("heatmap") || (params.get("tab") === "17" ? "drivers" : null);
   const umap = params.get("umap");
   let umapColor = null;
   if (umap) {
@@ -30,6 +32,7 @@ export function readDeepLink(search = window.location.search) {
     groups: list(params.get("scsel")),
     heatmap: HEATMAP_TYPES.includes(heatmap) ? heatmap : null,
     walks: list(params.get("walk")),
+    driverOpen: params.get("drvopen") || null, // key of the driver whose drawer opens (Drivers layer)
     umap: umapColor,
   };
 }
