@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, Empty, Skeleton, Space, Switch, Table, Tooltip, Typography } from "antd";
 import datasetsActions from "../../../redux/datasets/actions";
+import settingsActions from "../../../redux/settings/actions";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { cladeGroupName, cladeScatterPoints, cohortCladeRows, filterTrunks, splitDrivers, withCladeGroup } from "../../../helpers/singleCell/clades";
 import { patientColor } from "../../../helpers/singleCell/patientColors";
@@ -90,6 +91,7 @@ export default function CohortCladesPanel({ dataset, summaries }) {
     url.searchParams.set("tab", "7");
     window.history.replaceState(window.history.state, "", url.toString());
     dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+    dispatch(settingsActions.updateTab("7"));
   };
   const openById = (id) => {
     const row = rows.find((r) => r.clade === id);
