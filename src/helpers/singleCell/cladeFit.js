@@ -12,8 +12,16 @@ export function cladeFitScore(carrierIds, layout) {
   if (!layout || !layout.leaves?.length) return { score: NaN, node: null, clade: 0, inClade: 0, carriers: 0 };
   const row = new Map(layout.leaves.map((id, i) => [id, i]));
   const rows = [...new Set(carrierIds)].map((id) => row.get(id)).filter((r) => r != null).sort((a, b) => a - b);
+  return cladeFitFromRows(rows, layout);
+}
+
+/**
+ * Same score from carrier leaf rows (unique, ascending) instead of cell ids:
+ * no id lookups, for scoring many sites on one tree.
+ */
+export function cladeFitFromRows(rows, layout) {
   const carriers = rows.length;
-  if (!carriers) return { score: NaN, node: null, clade: 0, inClade: 0, carriers: 0 };
+  if (!carriers || !layout?.leaves?.length) return { score: NaN, node: null, clade: 0, inClade: 0, carriers: 0 };
   // prefix counts of carriers over leaf order: carriers in [a, b] = P[b+1] - P[a]
   const P = new Int32Array(layout.leaves.length + 1);
   let k = 0;
