@@ -58,7 +58,14 @@ function FusionRnaTab({ entry }) {
 export default function DriverLayerDrawer({ entry, driverLayer, onClose }) {
   const dispatch = useDispatch();
   const { treeLayout, entries, selection, setSelection, siteIds } = driverLayer;
-  const [tab, setTab] = useState("contrast");
+  // ?drvtab=site|rna opens the drawer on that section (links, screenshots)
+  const [tab, setTab] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("drvtab") || "contrast";
+    } catch (error) {
+      return "contrast";
+    }
+  });
   const driver = useMemo(
     () =>
       entry && {

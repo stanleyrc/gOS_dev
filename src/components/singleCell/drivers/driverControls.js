@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { driverColors } from "./driverColors";
 import { Button, Checkbox, InputNumber, Popover, Radio, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import {
@@ -33,6 +34,33 @@ const CLASS_NAMES = {
   fusion: "SV fusion",
   complex: "Complex (DM / TIC / BFB)",
 };
+
+const Sw = ({ c, label, tip }) => (
+  <Tooltip title={tip}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginRight: 6 }}>
+      <span style={{ width: 10, height: 10, background: c, display: "inline-block", border: "1px solid rgba(0,0,0,0.15)" }} />
+      <Text type="secondary" style={{ fontSize: 11 }}>{label}</Text>
+    </span>
+  </Tooltip>
+);
+
+/** Compact colour key of the layer, next to the presets. */
+function MiniLegend() {
+  const c = driverColors();
+  return (
+    <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center" }}>
+      <Sw c={c.mutant} label="mutant" />
+      <Sw c={c.wildtype} label="WT" />
+      <Sw c={c.noCoverage} label="no coverage" tip="SNV sites with no reads in the cell" />
+      <Sw c="#92C5DE" label="del" tip="Deletion / low copy number (CN heatmap palette: 0-1 copies)" />
+      <Sw c="#FDB863" label="amp" tip="Amplification; darker orange to black = higher copy number (CN heatmap palette, black = highest level)" />
+      <Sw c={c.dna} label="fusion DNA" />
+      <Sw c={c.rna} label="RNA" />
+      <Sw c={c.both} label="both" />
+      <Sw c={c.complex} label="complex" tip="Complex event present (DM / TIC / BFB, gGnome event classifier)" />
+    </span>
+  );
+}
 
 /** Filters of the Drivers layer in a popover. */
 function FilterPanel({ selection, onChange, hasCgc, hasRna }) {
@@ -102,7 +130,7 @@ const nFilters = (f) => {
  * reads the same selection.
  */
 export default function DriverControls({ driverLayer, branches, onBranches, canBranches }) {
-  const { entries, shown, selection, setSelection, hasCgc, hasRna } = driverLayer;
+  const { entries, shown, selection, setSelection, hasCgc, hasRna, collapsed } = driverLayer;
   const options = useMemo(
     () =>
       DRIVER_CLASSES.map((cls) => ({
@@ -135,6 +163,7 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
         onChange={(preset) => setSelection({ ...selection, preset, add: [], remove: [] })}
         options={Object.keys(PRESET_LABELS).map((value) => ({ value, label: <Tooltip title={PRESET_HELP[value]}>{PRESET_LABELS[value]}</Tooltip> }))}
       />
+      <MiniLegend />
       <Popover trigger="click" placement="bottomLeft" content={<FilterPanel selection={selection} onChange={setSelection} hasCgc={hasCgc} hasRna={hasRna} />}>
         <Button size="small" icon={<FilterOutlined />} type={nFilters(selection.filters) ? "primary" : "default"} ghost={Boolean(nFilters(selection.filters))}>
           {`Filters${nFilters(selection.filters) ? ` (${nFilters(selection.filters)})` : ""}`}
@@ -156,7 +185,7 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
           onChange={(keys) => setSelection(selectionForKeys(entries, selection, keys))}
         />
       </Space>
-      <Text type="secondary">{`${nShown} shown of ${entries.length}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>
+      <Text type="secondary">{`${nShown} shown of ${entries.length}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>
       {edited > 0 && (
         <Button size="small" type="link" onClick={() => setSelection({ ...selection, add: [], remove: [] })}>
           {`Back to preset (${nPreset})`}

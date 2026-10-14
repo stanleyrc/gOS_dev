@@ -23,7 +23,7 @@ export default function DriverColumnHeader({ entries, width, hoverKey, openKey, 
     <div style={{ position: "relative", width, height: height + 6, marginBottom: 2 }}>
       {named &&
         entries.map((d, i) => (
-          <Tooltip key={d.key} title={`${d.label} · ${classLabel(d)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}`}>
+          <Tooltip key={d.key} title={`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}>
             <span
               role="button"
               onClick={() => onOpen(d.key)}
