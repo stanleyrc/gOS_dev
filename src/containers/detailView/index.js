@@ -23,6 +23,7 @@ import SingleCellEcdnaTab from "../../tabs/singleCellEcdnaTab";
 import SingleCellCircosTab from "../../tabs/singleCellCircosTab";
 import SingleCellEvidenceTab from "../../tabs/singleCellEvidenceTab";
 import VignetteActionRunner from "../../components/singleCell/vignette/vignetteActionRunner";
+import SingleCellCompareTreesTab from "../../tabs/singleCellCompareTreesTab";
 import SingleCellStoryTab from "../../tabs/singleCellStoryTab";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import { singleCellStillLoading } from "../../helpers/singleCell/deepLink";
@@ -123,13 +124,14 @@ export class DetailView extends Component {
       15: <SingleCellEvidenceTab />,
       16: <SingleCellStoryTab />,
       17: <SingleCellDriversTab />,
+      18: <SingleCellCompareTreesTab />,
     };
     // The single-cell tab only exists for single-cell patient entries; it
     // leads the tab bar there and is hidden for ordinary cases.
     // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, ...[12, 16, 17, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
+        ? [7, ...[12, 16, 17, 18, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>

@@ -444,7 +444,8 @@
         "tab14": "Single-Cell ecDNA",
         "tab15": "Single-Cell Evidence",
         "tab16": "Single-Cell Story",
-        "tab17": "Single-Cell Drivers"
+        "tab17": "Single-Cell Drivers",
+        "tab18": "Compare Trees"
       }
     },
     "detail-error-view": {

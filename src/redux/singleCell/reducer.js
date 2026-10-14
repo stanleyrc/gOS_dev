@@ -76,6 +76,7 @@ const initState = {
   rnaFusions: emptySource, // rna/fusions.json, normalised: { patient, nCellsRna, fusions }
   rnaSplicing: emptySource, // rna/splicing.json, normalised: { variants, clusters, cellMap }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
+  altTrees: emptySource, // trees/index.json: [{ name, label, source_path, n_tips, n_matched }] (the files are fetched by the Compare Trees tab)
   precompute: {}, // { manifest, qc, sphase, telomeres, calls, slices }: each { status, data } (helpers/singleCell/precompute.js)
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
@@ -157,6 +158,7 @@ export default function appReducer(state = initState, action) {
         walks: action.walks || emptySource,
         rnaFusions: action.rnaFusions || emptySource,
         rnaSplicing: action.rnaSplicing || emptySource,
+        altTrees: action.altTrees || emptySource,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
         selectedCellIds: linkedCells.length ? linkedCells : action.selectedCellIds,
