@@ -130,6 +130,14 @@ export function cladeCells(layout, nodeId) {
   return n ? layout.leaves.slice(n.firstLeaf, n.lastLeaf + 1) : [];
 }
 
+/**
+ * Per-cell x site calls: the PL genotype calls (1 alt, 0 ref, -1 none) when the
+ * matrix has them, else the read-based status. The genotype calls are what the
+ * QC analysis (consistency_tree.py) scores; read-based status calls any single
+ * alt read an alt, which makes far more (noisier) carriers.
+ */
+export const callMatrix = (snv) => snv?.gt || snv?.status;
+
 /** Lookup of cell id -> row of the SNV matrix. */
 export const snvCellIndex = (snv) => new Map((snv?.cells || []).map((id, i) => [`${id}`, i]));
 
@@ -172,7 +180,7 @@ export function calledCladeFit(altRows, calledRows, layout) {
 export function snvLeafStates(snv, leaves, variantIndex, cellIndex = snvCellIndex(snv)) {
   return Int8Array.from(leaves, (id) => {
     const p = cellIndex.get(`${id}`);
-    return p == null ? -1 : snv.status[p][variantIndex];
+    return p == null ? -1 : callMatrix(snv)[p][variantIndex];
   });
 }
 
@@ -250,7 +258,7 @@ export async function treeConcordance(snv, layout, { minCarriers = MIN_CARRIERS,
   const counts = new Int32Array(nV);
   for (let p = 0; p < snv.cells.length; p += 1) {
     if (cellRow[p] >= 0) {
-      const s = snv.status[p];
+      const s = callMatrix(snv)[p];
       for (let c = 0; c < nV; c += 1) if (s[c] === 1) counts[c] += 1;
     }
     if (p % 200 === 199) {
@@ -274,7 +282,7 @@ export async function treeConcordance(snv, layout, { minCarriers = MIN_CARRIERS,
     const called = chunk.map(() => new Uint8Array(layout.leaves.length));
     for (let p = 0; p < snv.cells.length; p += 1) {
       if (cellRow[p] < 0) continue;
-      const s = snv.status[p];
+      const s = callMatrix(snv)[p];
       for (let k = 0; k < chunk.length; k += 1) {
         const st = s[chunk[k]];
         if (st === 1) lists[k].push(cellRow[p]);
@@ -299,7 +307,7 @@ export function snvConcordance(snv, layout, variantIndex) {
   snv.cells.forEach((id, p) => {
     const r = row.get(`${id}`);
     if (r == null) return;
-    const st = snv.status[p][variantIndex];
+    const st = callMatrix(snv)[p][variantIndex];
     if (st === 1) rows.push(r);
     if (st === 1 || st === 0) called[r] = 1;
   });
