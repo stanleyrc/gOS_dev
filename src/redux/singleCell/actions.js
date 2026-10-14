@@ -44,6 +44,8 @@ export const SC_DEFAULT_LAYOUT = {
   sideWidth: null, // px of the mutation panel beside the CN heatmap (null = auto)
   geneWidth: null, // px of the gene expression panel (null = auto)
   snvCategories: null, // SNV sites shown, by where they map on the tree (null = all)
+  snvTracks: null, // annotation tracks over the SNV columns (helpers/singleCell/snvAnnot.js); null = default (tree site + driver)
+  snvAnnotFilter: null, // site filter set by clicking track values: { track: { values } | { min, max } }
   snvCellphyOnly: false, // only the sites CellPhy built the tree from
   snvDriversOnly: false, // only OncoKB driver sites
   stripWidth: 14, // px per annotation strip beside the heatmaps (clone, state, region, ...)
