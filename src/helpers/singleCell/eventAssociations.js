@@ -58,9 +58,10 @@ export function forestDomain(rows, clip = 8) {
 export function describeRow(row) {
   if (!row) return "";
   const dir = row.effect > 0 ? "higher" : "lower";
-  const what = row.measure === "log odds ratio" ? `${row.outcome} is ${row.effect > 0 ? "more" : "less"} likely` : `${row.outcome} is ${dir}`;
+  const name = /score$/i.test(row.outcome) ? row.outcome : `${row.outcome} score`;
+  const what = row.measure === "log odds ratio" ? `${row.outcome} is ${row.effect > 0 ? "more" : "less"} likely` : `the ${name} is ${dir}`;
   const kk = `${row.k_up} of ${row.k} patients point up`;
-  return `${what} in carriers of ${row.label} than in non-carriers of the same patient (${measureOf(row)} ${row.effect >= 0 ? "+" : ""}${row.effect.toFixed(2)}, combined p ${fmtP(row.p)}, q ${fmtP(row.bestQ ?? row.q)}; ${kk}).`;
+  return `${what} in carriers of ${row.label} than in non-carriers of the same patient (${measureOf(row)} ${row.effect >= 0 ? "+" : ""}${row.effect.toFixed(2)}, random-effects p ${fmtP(row.p)}; Stouffer z ${Number.isFinite(row.stouffer_z) ? row.stouffer_z.toFixed(1) : "n/a"}, best q ${fmtP(row.bestQ ?? row.q)}; ${kk}).`;
 }
 
 export function fmtP(p) {
