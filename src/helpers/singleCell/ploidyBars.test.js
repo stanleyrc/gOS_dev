@@ -18,9 +18,10 @@ describe("ploidy bars", () => {
     expect(barPixels(0.5, 20)).toBe(10);
   });
   it("colours by deviation", () => {
-    expect(ploidyDeviationColor(0)).toBe("#8c8c8c");
+    expect(ploidyDeviationColor(0)).toBe("#c3cbd4");
+    expect(ploidyDeviationColor(0.5)).not.toBe(ploidyDeviationColor(0));
     expect(ploidyDeviationColor(1.5)).not.toBe(ploidyDeviationColor(-1.5));
-    expect(ploidyDeviationColor(null)).toBe("#bfbfbf");
+    expect(ploidyDeviationColor(null)).toBe("#e0e0e0");
   });
   it("describes the fit on hover", () => {
     const l = ploidyTooltipLines({ ploidy: 3.9, purity: 0.8, [PC_FIELDS.cnResid]: 0.1, [PC_FIELDS.qcFlags]: "cn_inconsistent" }, 2);

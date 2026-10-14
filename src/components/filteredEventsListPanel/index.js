@@ -526,9 +526,11 @@ export class FilteredEventsListPanel extends Component {
       filteredEventDetailsModalPresented,
     } = this.state;
 
-    let recordsHash = d3.group(filteredEvents, (d) => d.eventType);
+    // optional pre-filter whose result also drives the category counts (single-cell: upstream-only fusions)
+    const countedEvents = this.props.countFilter ? filteredEvents.filter(this.props.countFilter) : filteredEvents;
+    let recordsHash = d3.group(countedEvents, (d) => d.eventType);
     let records =
-      (eventType === "all" ? filteredEvents : recordsHash.get(eventType)) || [];
+      (eventType === "all" ? countedEvents : recordsHash.get(eventType)) || [];
     // optional row filter from the page (e.g. single-cell "strong events only")
     if (this.props.recordFilter) records = records.filter(this.props.recordFilter);
 
@@ -702,7 +704,7 @@ export class FilteredEventsListPanel extends Component {
                                     `components.filtered-events-panel.event-types.${d}`
                                   ),
                                   count: (d === "all"
-                                    ? filteredEvents
+                                    ? countedEvents
                                     : recordsHash.get(d) || []
                                   ).length,
                                 }
@@ -713,7 +715,7 @@ export class FilteredEventsListPanel extends Component {
                         value: d,
                         disabled:
                           (d === "all"
-                            ? filteredEvents
+                            ? countedEvents
                             : recordsHash.get(d) || []
                           ).length === 0,
                       };

@@ -30,6 +30,8 @@ export default function ScEventsPanel() {
   const singleCell = useIsSingleCellPatient();
   const [strongOnly, setStrongOnly] = useState(true);
   const [minClade, setMinClade] = useState(0);
+  // fusions that only join the upstream flank of a partner: hidden (and not counted) unless revealed
+  const [showUpstream, setShowUpstream] = useState(false);
   const { treeLayout } = useTreeView();
   // clade fit of each event's carriers on the displayed tree (memo per event by cell_ids)
   const cladeCache = useRef(new Map());
@@ -213,6 +215,9 @@ export default function ScEventsPanel() {
         },
       ]
     : [];
+  const isUpstreamOnly = (r) => r.upstream_only === true || `${r.upstream_only}` === "true";
+  const nUpstream = (records || []).filter(isUpstreamOnly).length;
+  const countFilter = (r) => showUpstream || !isUpstreamOnly(r);
   const recordFilter = (record) => (!strongOnly || isStrongEvent(record)) && (!minClade || !treeLayout || !(cladeOf(record).score < minClade));
   return (
     <>
@@ -221,6 +226,13 @@ export default function ScEventsPanel() {
         <Tooltip title={t("components.single-cell.events.strong-help")}>
           <Typography.Text>{t("components.single-cell.events.strong-only")}</Typography.Text>
         </Tooltip>
+        {nUpstream > 0 && (
+          <Tooltip title={t("components.single-cell.events.upstream-help")}>
+            <Typography.Link onClick={() => setShowUpstream(!showUpstream)} data-testid="upstream-only-toggle">
+              {showUpstream ? t("components.single-cell.events.upstream-shown", { count: nUpstream }) : t("components.single-cell.events.upstream-hidden", { count: nUpstream })}
+            </Typography.Link>
+          </Tooltip>
+        )}
         {treeLayout && (
           <>
             <Typography.Text type="secondary">{t("components.single-cell.events.clade-score")}</Typography.Text>
@@ -229,7 +241,7 @@ export default function ScEventsPanel() {
         )}
       </Space>
       <EventsToHeatmapBar picked={picked} onClear={() => setPicked(new Map())} />
-      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...supportColumn, ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} />
+      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...supportColumn, ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} countFilter={countFilter} />
     </>
   );
 }
