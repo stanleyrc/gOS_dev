@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Alert, Button, Card, Select, Space, Spin, Statistic, Switch, Tag, Typography } from "antd";
-import { layoutTree } from "../../../helpers/singleCell/newick";
+import { useTranslation } from "react-i18next";
+import { Alert, Button, Card, Select, Space, Spin, Statistic, Switch, Tag, Tooltip, Typography } from "antd";
+import { clipLongBranches, layoutTree, longBranchCap, pruneTree } from "../../../helpers/singleCell/newick";
+import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import {
   CURRENT_TREE,
@@ -9,13 +11,12 @@ import {
   branchPaths,
   cladeAt,
   cladeCells,
-  countCrossings,
   defaultPair,
   eventChoices,
   eventLeafStates,
   fmtF1,
   nodeCloneKeys,
-  orientToReference,
+  optimizeRotation,
   paintColors,
   rowRuns,
   rowsOf,
@@ -25,6 +26,7 @@ import {
   snvLabel,
   snvLeafStates,
   sharedCells,
+  stripLengths,
   tanglegramLinks,
   treeConcordance,
   usableTrees,
@@ -56,6 +58,7 @@ function useConcordance(snvData, layout) {
 }
 
 export default function CompareTreesPanel() {
+  const { t } = useTranslation();
   const theme = usePlotTheme();
   const index = useSelector((s) => s.SingleCell.altTrees?.data);
   const cells = useSelector((s) => s.SingleCell.cells);
@@ -71,6 +74,9 @@ export default function CompareTreesPanel() {
   const treeA = useAltTree(a);
   const treeB = useAltTree(b);
   const [showLinks, setShowLinks] = useState(true);
+  const [hideNormal, setHideNormal] = useState(true);
+  const [clip, setClip] = useState(true);
+  const [cladogram, setCladogram] = useState(false);
   const [painted, setPainted] = useState([]); // keys "s:<variant index>" / "e:<event key>"
   const [search, setSearch] = useState("");
   const [hover, setHover] = useState(null); // cell id
@@ -86,17 +92,35 @@ export default function CompareTreesPanel() {
   const cellIndex = useMemo(() => snvCellIndex(snvData), [snvData]);
   const eventList = useMemo(() => eventChoices(events), [events]);
 
-  // layouts: A as given, B rotated toward A's row order
-  const layoutA = useMemo(() => (treeA.root ? layoutTree(treeA.root) : null), [treeA.root]);
-  const layoutB = useMemo(() => {
-    if (!treeB.root) return null;
-    return layoutTree(layoutA ? orientToReference(treeB.root, layoutA) : treeB.root);
-  }, [treeB.root, layoutA]);
+  // Full layouts (all cells, branch lengths): concordance is scored on these, as in analysis/qc_bwh69/consistency_tree.py.
+  const fullA = useMemo(() => (treeA.root ? layoutTree(treeA.root) : null), [treeA.root]);
+  const fullB = useMemo(() => (treeB.root ? layoutTree(treeB.root) : null), [treeB.root]);
+  const concA = useConcordance(snvData, fullA);
+  const concB = useConcordance(snvData, fullB);
+
+  // Drawn trees: optionally without normal cells / branch lengths, rotated to minimise crossings
+  const prepared = useMemo(() => {
+    if (!treeA.root || !treeB.root) return null;
+    const keep = hideNormal ? new Set(cells.filter((c) => !isNormalClone(c.clone_id)).map((c) => `${c.cell_id}`)) : null;
+    const prep = (r) => {
+      const pr = keep ? pruneTree(r, keep) : r;
+      return pr && cladogram ? stripLengths(pr) : pr;
+    };
+    const ra = prep(treeA.root);
+    const rb = prep(treeB.root);
+    if (!ra || !rb) return null;
+    return optimizeRotation(ra, rb);
+  }, [treeA.root, treeB.root, hideNormal, cladogram, cells]);
+  const finish = (root) => {
+    if (!root) return null;
+    const l = layoutTree(root);
+    return clip && !cladogram ? clipLongBranches(l, longBranchCap(l)) : l;
+  };
+  const layoutA = useMemo(() => finish(prepared?.rootA), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
+  const layoutB = useMemo(() => finish(prepared?.rootB), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
   const links = useMemo(() => tanglegramLinks(layoutA, layoutB), [layoutA, layoutB]);
-  const crossings = useMemo(() => countCrossings(links), [links]);
+  const crossings = prepared ? prepared.after : 0;
   const nShared = useMemo(() => sharedCells(layoutA, layoutB).size, [layoutA, layoutB]);
-  const concA = useConcordance(snvData, layoutA);
-  const concB = useConcordance(snvData, layoutB);
 
   const paints = useMemo(
     () =>
@@ -116,8 +140,9 @@ export default function CompareTreesPanel() {
 
   const colors = paintColors(theme.mode);
   const nP = paints.length;
-  const treeW = Math.max(TREE_MIN, Math.floor((width - 2 * (nP * DOT + 8) - 150) / 2));
+  const treeW = Math.max(TREE_MIN, Math.floor((width - 2 * (nP * DOT + 8) - 120) / 2));
   const midW = Math.max(60, width - 2 * (treeW + nP * DOT + 8));
+  // (the link band takes what the two trees leave)
   const nRows = Math.max(layoutA?.leaves.length || 0, layoutB?.leaves.length || 0, 1);
   const H = Math.min(900, Math.max(320, nRows * 4));
   const pad = 6;
@@ -152,7 +177,10 @@ export default function CompareTreesPanel() {
     if (!layout || !g) return null;
     const ck = nodeCloneKeys(layout, cloneOf);
     const paths = branchPaths(layout, g.px, g.py, (id) => colorOfClone(ck[id]) || theme.branch);
-    return [...paths.entries()].map(([color, d]) => <path key={`${side}${color}`} d={d} stroke={color === UNKNOWN ? theme.branch : color} strokeWidth={1} fill="none" opacity={highlight ? 0.55 : 0.95} />);
+    const edge = side === "A" ? xA1 - 2 : xB1 + 2;
+    const guide = layout.nodes.filter((n) => n.isLeaf && Math.abs(g.px(n.x) - edge) > 1.5).map((n) => `M${Math.round(g.px(n.x) * 10) / 10} ${Math.round(g.py(n.y + 0.5) * 10) / 10}H${edge}`).join("");
+    const guidePath = guide ? <path key={`${side}guide`} d={guide} stroke={theme.grid} strokeWidth={0.5} fill="none" /> : null;
+    return [guidePath, ...[...paths.entries()].map(([color, d]) => <path key={`${side}${color}`} d={d} stroke={color === UNKNOWN ? theme.branch : color} strokeWidth={1} fill="none" opacity={highlight ? 0.55 : 0.95} />)];
   };
 
   const leafStates = (layout, p) => {
@@ -257,8 +285,11 @@ export default function CompareTreesPanel() {
           <span>Tree A <Select style={{ width: 210 }} value={a} options={treeOpts} onChange={(v) => { setNameA(v); setPick(null); }} /></span>
           <span>Tree B <Select style={{ width: 210 }} value={b} options={treeOpts} onChange={(v) => { setNameB(v); setPick(null); }} /></span>
           <span>Lines <Switch checked={showLinks} onChange={setShowLinks} /></span>
+          <span>Hide normal cells <Switch checked={hideNormal} onChange={setHideNormal} /></span>
+          <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
+          <span>Cladogram <Switch checked={cladogram} onChange={setCladogram} /></span>
           {pick ? <Button size="small" onClick={() => setPick(null)}>{`Clear clade (${pick.cells.size} cells)`}</Button> : null}
-          {layoutA && layoutB ? <Text type="secondary">{`${nShared} shared cells, ${crossings.toLocaleString("en-US")} crossings after rotating B`}</Text> : null}
+          {layoutA && layoutB && prepared ? <Text type="secondary">{`${nShared} shared cells, ${crossings.toLocaleString("en-US")} crossings (${prepared.before.toLocaleString("en-US")} before rotating)`}</Text> : null}
         </Space>
         <div style={{ marginBottom: 8 }}>
           <Select
@@ -278,11 +309,11 @@ export default function CompareTreesPanel() {
             <span style={{ color: colors.alt }}>alt</span> / <span style={{ color: colors.ref }}>ref</span> / no coverage; columns follow the order selected. Click a branch to highlight its clade in both trees.
           </Text>
         </div>
-        {paints.some((p) => p.kind === "snv") && layoutA && layoutB ? (
+        {paints.some((p) => p.kind === "snv") && fullA && fullB ? (
           <div style={{ marginBottom: 8, fontSize: TYPE.tick }}>
             {paints.filter((p) => p.kind === "snv").map((p) => {
-              const fa = snvConcordance(snvData, layoutA, p.vi);
-              const fb = snvConcordance(snvData, layoutB, p.vi);
+              const fa = snvConcordance(snvData, fullA, p.vi);
+              const fb = snvConcordance(snvData, fullB, p.vi);
               return (
                 <Tag key={p.key} style={{ marginBottom: 2 }}>
                   {p.label}: F1 {fmtF1(fa.score)} ({fa.carriers} alt) vs {fmtF1(fb.score)} ({fb.carriers} alt)
@@ -335,8 +366,8 @@ export default function CompareTreesPanel() {
         </div>
       </Card>
       <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-        {conc(concA, a, layoutA)}
-        {conc(concB, b, layoutB)}
+        {conc(concA, a, fullA)}
+        {conc(concB, b, fullB)}
       </div>
     </div>
   );
