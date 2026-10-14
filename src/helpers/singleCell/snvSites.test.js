@@ -36,3 +36,19 @@ describe("clade score filter", () => {
     expect(filterSnvColumns(snv, [0, 1, 2], { snvMinCladeScore: null })).toEqual([0, 1, 2]);
   });
 });
+
+describe("filterSnvColumns with annotation tracks", () => {
+  const { siteAnnotations, toggleValue } = require("./snvAnnot");
+  const snv = {
+    variants: [{ id: "a", consequence: "intron_variant" }, { id: "b", consequence: "intergenic_region" }, { id: "c", consequence: "intergenic_region" }],
+    status: [Int8Array.from([1, 0, 1])],
+    depth: [Float32Array.from([3, 4, 5])],
+  };
+  it("keeps only sites matching a clicked track value, combined with the other filters", () => {
+    const annot = siteAnnotations(snv);
+    const filter = toggleValue(null, "region", "intergenic");
+    expect(filterSnvColumns(snv, [0, 1, 2], { snvAnnotFilter: filter, annot })).toEqual([1, 2]);
+    expect(filterSnvColumns(snv, [0, 1, 2], { snvAnnotFilter: filter, annot, snvSiteIds: ["c"] })).toEqual([2]);
+    expect(filterSnvColumns(snv, [0, 1, 2], { snvAnnotFilter: filter })).toEqual([0, 1, 2]);
+  });
+});
