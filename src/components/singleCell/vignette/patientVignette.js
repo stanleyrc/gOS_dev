@@ -49,7 +49,8 @@ export function useEvidenceRunner(patientId) {
         requestEvidence({ kind: "walks", patient: pid, walks: action.walks });
         dispatch(settingsActions.updateTab(action.tab));
       } else if (action.type === "driver") {
-        dispatch(singleCellActions.updateDriverFocus(action.key));
+        dispatch(singleCellActions.updateHeatmapType("drivers"));
+        dispatch(singleCellActions.updateDriverDrawer(action.key));
         dispatch(settingsActions.updateTab(action.tab));
       } else if (action.type === "tab") {
         dispatch(settingsActions.updateTab(action.tab));

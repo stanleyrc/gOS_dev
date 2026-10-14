@@ -33,6 +33,7 @@ export default function PhylogenyCanvas({
   onSelectNode,
   onHoverNode,
   branchCounts = null,
+  branchMarks = null,
   showScaleBar = true,
 }) {
   const ref = useRef(null);
@@ -175,6 +176,25 @@ export default function PhylogenyCanvas({
       ctx.textAlign = "start";
     }
 
+    // Drivers on the tree: the label of each shown driver, right-aligned at the node it arises on.
+    if (branchMarks && branchMarks.size) {
+      const rowH = height / nRows;
+      ctx.font = fontCss(TYPE.micro);
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      branchMarks.forEach((text, k) => {
+        const n = layout.nodes[k];
+        if (!n || n.parent < 0 || (n.isLeaf && rowH < 9)) return;
+        const x1 = px(n.x);
+        const tw = ctx.measureText(text).width;
+        ctx.fillStyle = pt.labelBg;
+        ctx.fillRect(x1 - tw - 3, py(n.y) - 12, tw + 4, 11);
+        ctx.fillStyle = "#cf1322";
+        ctx.fillText(text, x1 - 1, py(n.y) - 1);
+      });
+      ctx.textAlign = "start";
+    }
+
     if (geometry.showLabels) {
       ctx.font = fontCss(geometry.fontSize);
       ctx.textBaseline = "middle";
@@ -264,7 +284,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, pt.hover, dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, pt, showScaleBar, marks]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, branchMarks, pt, showScaleBar, marks]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;
