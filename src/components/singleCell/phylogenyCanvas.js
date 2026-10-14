@@ -33,6 +33,7 @@ export default function PhylogenyCanvas({
   onSelectNode,
   onHoverNode,
   branchCounts = null,
+  cladeLabels = null,
   showScaleBar = true,
 }) {
   const ref = useRef(null);
@@ -175,6 +176,29 @@ export default function PhylogenyCanvas({
       ctx.textAlign = "start";
     }
 
+    // Called clades (gos_sc_clades.R): a ring on the clade's node and its private-SNV count.
+    if (cladeLabels && cladeLabels.size) {
+      ctx.font = fontCss(TYPE.micro);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      cladeLabels.forEach(({ label }, k) => {
+        const n = layout.nodes[k];
+        if (!n) return;
+        ctx.strokeStyle = pt.select;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(px(n.x), py(n.y), 4, 0, Math.PI * 2);
+        ctx.stroke();
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = pt.labelBg;
+        ctx.fillRect(px(n.x) + 5, py(n.y) - 12, tw + 2, 11);
+        ctx.fillStyle = pt.select;
+        ctx.fillText(label, px(n.x) + 6, py(n.y) - 1);
+      });
+      ctx.lineWidth = 1;
+      ctx.textAlign = "start";
+    }
+
     if (geometry.showLabels) {
       ctx.font = fontCss(geometry.fontSize);
       ctx.textBaseline = "middle";
@@ -264,7 +288,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, pt.hover, dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, pt, showScaleBar, marks]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, cladeLabels, pt, showScaleBar, marks]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;
