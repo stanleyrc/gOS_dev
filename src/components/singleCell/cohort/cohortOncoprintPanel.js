@@ -84,7 +84,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
   };
 
   const cellW = Math.max(34, Math.min(62, (width - GENE_W - 90) / Math.max(1, patients.length)));
-  const top = 78;
+  const top = 112;
   const right = 80;
   const svgW = GENE_W + cellW * patients.length + right;
   const svgH = top + CELL_H * rows.length + 8;
@@ -165,9 +165,9 @@ export default function CohortOncoprintPanel({ summaries, files }) {
               const h = (burden[p] / barMax) * 26;
               return (
                 <g key={p}>
-                  <rect x={x + 3} y={32 - h} width={cellW - 6} height={h} fill={INK.empty} />
-                  <text x={x + cellW / 2} y={30 - h - 2} textAnchor="middle" fontSize={TYPE.micro} fill={INK.textSecondary}>{burden[p]}</text>
-                  <text x={x + cellW / 2} y={top - 8} textAnchor="end" fontSize={FONT.label} fontWeight="600" fill={INK.text} transform={`rotate(-45 ${x + cellW / 2} ${top - 8})`}>{p}</text>
+                  <rect x={x + 3} y={top - 4 - h} width={cellW - 6} height={h} fill={INK.empty} />
+                  <text x={x + cellW / 2} y={top - 6 - h} textAnchor="middle" fontSize={TYPE.micro} fill={INK.textSecondary}>{burden[p]}</text>
+                  <text x={x + cellW / 2 - 4} y={top - 38} textAnchor="start" fontSize={FONT.label} fontWeight="600" fill={INK.text} transform={`rotate(-55 ${x + cellW / 2 - 4} ${top - 38})`}>{p}</text>
                 </g>
               );
             })}
