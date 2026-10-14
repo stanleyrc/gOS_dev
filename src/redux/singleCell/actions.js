@@ -1,3 +1,5 @@
+import { DEFAULT_SELECTION as DEFAULT_DRIVER_SELECTION } from "../../helpers/singleCell/driverLayer";
+
 // Tracks shown for each selected cell. Coverage and total CN are on by
 // default; the others are toggles. All come from the cell's own case folder.
 export const SC_TRACKS = ["total", "coverage", "allelic", "hetsnps", "mutations"];
@@ -49,6 +51,8 @@ export const SC_DEFAULT_LAYOUT = {
   showSignatures: true, // SBS signature panel below the heatmap
   theme: "tableau", // categorical colour theme (helpers/singleCell/themes.js)
   branchSnvs: false, // SNV counts on the tree branches
+  drivers: DEFAULT_DRIVER_SELECTION, // Drivers heatmap layer: { preset, add, remove, filters } (helpers/singleCell/driverLayer.js); shared with the Report tab
+  driverBranches: false, // mark the branch where each shown driver arises
 };
 
 const actions = {
@@ -81,11 +85,14 @@ const actions = {
   SC_PER_CELL_TRACK_MISSING: "SC_PER_CELL_TRACK_MISSING",
   SC_PER_CELL_TRACK_FAILED: "SC_PER_CELL_TRACK_FAILED",
   SC_DRIVER_FOCUS_UPDATED: "SC_DRIVER_FOCUS_UPDATED",
+  SC_DRIVER_DRAWER_UPDATED: "SC_DRIVER_DRAWER_UPDATED",
 
   // caseReportId: load another patient than the open case report (cohort figures)
   fetchSingleCellData: (caseReportId) => ({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST, caseReportId }),
   /** Driver opened in the Drivers tab: driverKey(event) from helpers/singleCell/driverContrast, or null. */
   updateDriverFocus: (key) => ({ type: actions.SC_DRIVER_FOCUS_UPDATED, key }),
+  /** Open (key) or close (null) the driver drawer on the Drivers heatmap layer. */
+  updateDriverDrawer: (key) => ({ type: actions.SC_DRIVER_DRAWER_UPDATED, key }),
   updateSelection: (cellIds) => ({
     type: actions.SC_SELECTION_UPDATED,
     cellIds,

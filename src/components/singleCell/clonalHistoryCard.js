@@ -2,17 +2,18 @@ import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Checkbox, Empty, InputNumber, Slider, Space, Typography } from "antd";
+import { Button, Card, Checkbox, Empty, InputNumber, Slider, Space, Typography } from "antd";
 import { HistoryOutlined } from "@ant-design/icons";
 import useContainerWidth from "./useContainerWidth";
 import useTreeView from "./useTreeView";
 import SvgExportButton from "./svgExportButton";
 import useSignatureModel from "./signatures/useSignatureModel";
+import useDriverLayer from "./drivers/useDriverLayer";
+import settingsActions from "../../redux/settings/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { eventClass, eventTooltipLines } from "../../helpers/singleCell/cohortStats";
-import { isStrongEvent } from "../../helpers/singleCell/strongEvents";
 import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
@@ -56,7 +57,8 @@ export default function ClonalHistoryCard() {
   const [ref, width] = useContainerWidth(1000);
   const { order, treeLayout, cellById } = useTreeView();
   const { snv, cloneColors, selectedCellIds, layout } = useSelector((s) => s.SingleCell);
-  const eventsState = useSelector((s) => s.FilteredEvents.filteredEvents);
+  // the drivers placed are the Single-Cell tab's Drivers layer selection (shared redux state), not a fixed list
+  const driverLayer = useDriverLayer();
   const model = useSignatureModel();
   const [minFit, setMinFit] = useState(0.5);
   const [showSigs, setShowSigs] = useState(true);
@@ -69,15 +71,15 @@ export default function ClonalHistoryCard() {
 
   const placed = useMemo(() => {
     if (!treeLayout) return [];
-    return (eventsState || [])
-      .filter((e) => Number(e.Tier ?? 9) <= 2 && isStrongEvent(e))
+    return driverLayer.shown
+      .map((d) => d.event)
       .map((e) => {
         const carriers = `${e.cell_ids || ""}`.split(",").filter(Boolean);
         const fit = cladeFitScore(carriers, treeLayout);
         return { event: e, label: shortLabel(e), cls: eventClass(e), fit, fraction: Number(e.cell_fraction) || 0 };
       })
       .filter((d) => Number.isFinite(d.fit.score) && d.fit.score >= minFit && d.fit.node != null);
-  }, [eventsState, treeLayout, minFit]);
+  }, [driverLayer.shown, treeLayout, minFit]);
 
   // SNVs and signature shift per drawn branch
   const branchInfo = useMemo(() => {
@@ -261,6 +263,19 @@ export default function ClonalHistoryCard() {
           ))}
         </svg>
         <Swatches style={{ marginTop: 6 }} items={Object.entries(CLASS_COLORS).filter(([k]) => k !== "other" && placed.some((d) => d.cls === k)).map(([k, c]) => ({ key: k, color: c, label: t(`components.single-cell.cohort.class-${k}`) }))} />
+        <Space wrap size={8} style={{ marginTop: 4 }}>
+          <Text type="secondary">{`Drivers: ${driverLayer.shown.length} selected in the Drivers layer (preset ${driverLayer.selection.preset}${driverLayer.selection.add?.length || driverLayer.selection.remove?.length ? ", edited" : ""}); ${placed.length} placed.`}</Text>
+          <Button
+            size="small"
+            type="link"
+            onClick={() => {
+              dispatch(singleCellActions.updateHeatmapType("drivers"));
+              dispatch(settingsActions.updateTab("7"));
+            }}
+          >
+            Change the selection in the Single-Cell tab
+          </Button>
+        </Space>
         <HintLine text={t("components.single-cell.history.help", { count: placed.length, min: minClade })} />
       </div>
     </Card>

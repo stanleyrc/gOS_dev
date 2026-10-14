@@ -109,7 +109,7 @@ function TreeStrip({ leaves, groupOf, clade, groupLabel, cloneOf, onSelect }) {
  * else differs between them (DNA), expression tested within plates, cell
  * phenotypes and, for fusions, the RNA evidence of the driver itself.
  */
-export default function DriverContrastPanel() {
+export default function DriverContrastPanel({ forceDriver = null, showBoard = true }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const events = useSelector((s) => s.FilteredEvents.filteredEvents);
@@ -133,10 +133,11 @@ export default function DriverContrastPanel() {
   }, [events, tumorIds, treeLayout]);
   // default: the top key finding in a cancer gene (what the board leads with)
   const driver =
+    forceDriver ||
     drivers.find((d) => d.key === driverFocus) || drivers.find((d) => (d.fit?.score ?? 0) >= KEY_FIT && inCancerGene(d)) || drivers[0] || null;
   useEffect(() => {
-    if (driver && driver.key !== driverFocus) dispatch(singleCellActions.updateDriverFocus(driver.key));
-  }, [driver, driverFocus, dispatch]);
+    if (!forceDriver && driver && driver.key !== driverFocus) dispatch(singleCellActions.updateDriverFocus(driver.key));
+  }, [driver, driverFocus, dispatch, forceDriver]);
 
   const comparator = useMemo(
     () => (driver ? comparatorCells(mode, driver.carriers, tumorIds, treeLayout, { minCells: Math.min(10, Math.max(5, Math.round(driver.carriers.length / 2))) }) : null),
@@ -164,7 +165,7 @@ export default function DriverContrastPanel() {
   const plateRow = balance.find((b) => b.attr === "plate");
   const carrierOnlyPlates = plateRow?.onlyA || [];
 
-  if (!drivers.length) {
+  if (!drivers.length && !forceDriver) {
     return <Empty description={t("components.single-cell.drivers.none")} />;
   }
 
@@ -232,9 +233,11 @@ export default function DriverContrastPanel() {
 
   return (
     <Row gutter={SC_GUTTER}>
-      <Col span={24}>
-        <DriverSummaryBoard rna={rna} focusKey={driver?.key} onFocus={focusFromBoard} />
-      </Col>
+      {showBoard && (
+        <Col span={24}>
+          <DriverSummaryBoard rna={rna} focusKey={driver?.key} onFocus={focusFromBoard} />
+        </Col>
+      )}
       <Col span={24} id="sc-driver-deep-dive">
         <Card
           size="small"
@@ -248,15 +251,17 @@ export default function DriverContrastPanel() {
           <Space direction="vertical" size={8} style={{ width: "100%" }}>
             <HintLine text={t("components.single-cell.drivers.hint")} />
             <Space wrap size={[12, 8]} align="center">
-              <Text>{t("components.single-cell.drivers.driver")}</Text>
-              <Select
-                showSearch
-                style={{ minWidth: 420 }}
-                value={driver?.key}
-                options={driverOptions}
-                optionFilterProp="search"
-                onChange={(k) => dispatch(singleCellActions.updateDriverFocus(k))}
-              />
+              {!forceDriver && <Text>{t("components.single-cell.drivers.driver")}</Text>}
+              {!forceDriver && (
+                <Select
+                  showSearch
+                  style={{ minWidth: 420 }}
+                  value={driver?.key}
+                  options={driverOptions}
+                  optionFilterProp="search"
+                  onChange={(k) => dispatch(singleCellActions.updateDriverFocus(k))}
+                />
+              )}
               <Text>{t("components.single-cell.drivers.compare-with")}</Text>
               <Segmented
                 value={mode}

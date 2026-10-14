@@ -28,6 +28,7 @@ const C = (view, anchor) => ({ scope: "cohort", view, anchor });
 export const LOCATIONS = {
   cnHeatmap: [P(TAB.singleCell), P(TAB.ecdna)],
   snvHeatmap: [P(TAB.singleCell)],
+  driversHeatmap: [P(TAB.singleCell)],
   junctionHeatmap: [P(TAB.singleCell)],
   phylogeny: [P(TAB.singleCell)],
   umap: [P(TAB.singleCell), P(TAB.rna)],
