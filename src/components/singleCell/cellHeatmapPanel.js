@@ -20,6 +20,7 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
+import { SnvTrackControls, useSnvAnnot, useSnvTracks } from "./snvAnnotTracks";
 import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
@@ -412,12 +413,15 @@ export default function CellHeatmapPanel() {
   const snvCn = useMemo(() => (snvReady && cn.status === "ok" ? snvCopyNumber(snv.data, cn.data, { allelic: allelic.status === "ok" ? allelic.data : null }) : null), [snvReady, snv, cn, allelic]);
   const nAmplified = useMemo(() => (snvCn ? snvCn.filter((x) => x?.amplified).length : 0), [snvCn]);
   const amplifiedOnly = Boolean(layout.snvAmplifiedOnly);
+  const snvAnnot = useSnvAnnot(snvReady ? snv.data : null);
+  const snvTrackProps = useSnvTracks(snvAnnot);
+  const snvAnnotFilter = layout.snvAnnotFilter;
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
-    const filtered = filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore });
+    const filtered = filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot: snvAnnot });
     return amplifiedOnly && snvCn ? filtered.filter((c) => snvCn[c]?.amplified) : filtered;
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvMinCladeScore, amplifiedOnly, snvCn]);
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvMinCladeScore, amplifiedOnly, snvCn, snvAnnotFilter, snvAnnot]);
   const [snvHeader, setSnvHeader] = useState(null);
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
@@ -1124,6 +1128,9 @@ export default function CellHeatmapPanel() {
                       {t("components.single-cell.snv.drivers-only", { count: nDrivers })}
                     </Checkbox>
                   )}
+                  <div style={{ width: "100%" }}>
+                    <SnvTrackControls annot={snvAnnot} />
+                  </div>
                 </>
               )}
             </>)}
@@ -1158,7 +1165,7 @@ export default function CellHeatmapPanel() {
                 />
               </div>
             )}
-            {heatmapType === "snv" && hasCategories && (
+            {heatmapType === "snv" && snvTrackProps.tracks.length > 0 && (
               <div ref={setSnvHeader} style={{ marginLeft: GAP, width: heatWidth, flex: "none", paddingBottom: 2 }} />
             )}
           </div>
@@ -1234,6 +1241,8 @@ export default function CellHeatmapPanel() {
               <MutationSidePanel
                 {...sideProps}
                 categoryNode={snvHeader}
+                {...snvTrackProps}
+                trackLabelSide="right"
                 width={heatWidth}
                 groupOf={snvOrder === "genomic" ? chromosomeOfVariant : null}
               />
