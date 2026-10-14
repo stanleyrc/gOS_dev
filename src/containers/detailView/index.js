@@ -16,7 +16,6 @@ import SingleCellTab from "../../tabs/singleCellTab";
 import SingleCellRnaTab from "../../tabs/singleCellRnaTab";
 import SingleCellSignaturesTab from "../../tabs/singleCellSignaturesTab";
 import SingleCellRnaCnTab from "../../tabs/singleCellRnaCnTab";
-import SingleCellDriversTab from "../../tabs/singleCellDriversTab";
 import SingleCellQcTab from "../../tabs/singleCellQcTab";
 import SingleCellReportTab from "../../tabs/singleCellReportTab";
 import SingleCellEcdnaTab from "../../tabs/singleCellEcdnaTab";
@@ -27,6 +26,8 @@ import SingleCellStoryTab from "../../tabs/singleCellStoryTab";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import { singleCellStillLoading } from "../../helpers/singleCell/deepLink";
 import settingsActions from "../../redux/settings/actions";
+import singleCellActions from "../../redux/singleCell/actions";
+import { LEGACY_DRIVERS_TAB_KEY } from "../../helpers/detailTabAvailability";
 import {
   firstEnabledDetailTab,
   getDetailTabAvailability,
@@ -71,8 +72,14 @@ export class DetailView extends Component {
   }
 
   redirectDisabledTab = () => {
-    const { tab, tabAvailability, updateTab, singleCellLoading } = this.props;
+    const { tab, tabAvailability, updateTab, singleCellLoading, openDriversLayer } = this.props;
     const activeTab = tab.toString();
+    // the retired Drivers tab: an old tab=17 link opens the Single-Cell tab with the Drivers layer on
+    if (activeTab === LEGACY_DRIVERS_TAB_KEY) {
+      openDriversLayer();
+      updateTab("7");
+      return;
+    }
     if (tabAvailability[activeTab] !== false) return;
     // a linked single-cell tab (RNA, ecDNA, ...) is unavailable until the patient's files load
     if (Number(activeTab) >= 7 && singleCellLoading) return;
@@ -122,14 +129,13 @@ export class DetailView extends Component {
       14: <SingleCellEcdnaTab />,
       15: <SingleCellEvidenceTab />,
       16: <SingleCellStoryTab />,
-      17: <SingleCellDriversTab />,
     };
     // The single-cell tab only exists for single-cell patient entries; it
     // leads the tab bar there and is hidden for ordinary cases.
     // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, ...[12, 16, 17, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
+        ? [7, ...[12, 16, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>
@@ -168,6 +174,17 @@ DetailView.defaultProps = {};
 const mapDispatchToProps = (dispatch) => ({
   updateCaseReport: (report) => dispatch(updateCaseReport(report)),
   updateTab: (tab) => dispatch(updateTab(tab)),
+  openDriversLayer: () => {
+    // the single-cell files may still be loading: leave heatmap=drivers in the URL for the deep-link reader
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("heatmap", "drivers");
+      window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window: the redux update below is enough
+    }
+    dispatch(singleCellActions.updateHeatmapType("drivers"));
+  },
   updateDomains: (domains) => dispatch(updateDomains(domains)),
 });
 const mapStateToProps = (state) => ({

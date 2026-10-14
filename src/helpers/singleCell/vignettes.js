@@ -81,7 +81,7 @@ export function groupCells(vignette, ref) {
  *   { type: "select", tab: "7", select }            tree / heatmap with the cells selected
  *   { type: "walks", tab: "14", walks }             ecDNA tab with these walks drawn, first highlighted
  *   { type: "igv", view }                           in-place IGV of carrier reads (drawer)
- *   { type: "driver", tab: "17", key }              Drivers tab on this driver
+ *   { type: "driver", tab: "7", key }               Single-Cell tab, Drivers layer, drawer on this driver
  *   { type: "event", key }                          the event's detail popup (filtered-event modal)
  *   { type: "plot", plot }                          in-place expression plot (drawer)
  *   { type: "splice", findingId, gene }             in-place IGV of RNA reads at the junction (drawer)
@@ -106,7 +106,7 @@ export function evidenceAction(evidence, finding, vignette) {
       return { type: "igv", view: { cellIds, chromosome: `${evidence.chromosome}`, position: Number(evidence.position), loci: loci.length > 1 ? loci : undefined, label: finding?.short || evidence.label } };
     }
     case "driver":
-      return { type: "driver", tab: "17", key: evidence.key };
+      return { type: "driver", tab: "7", key: evidence.key };
     case "event":
       return { type: "event", key: evidence.key };
     case "expr":

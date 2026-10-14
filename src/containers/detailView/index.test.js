@@ -35,7 +35,6 @@ jest.mock("../../tabs/singleCellStoryTab", () => "SingleCellStoryTab");
 jest.mock("../../tabs/singleCellCircosTab", () => "SingleCellCircosTab");
 jest.mock("../../tabs/singleCellEcdnaTab", () => "SingleCellEcdnaTab");
 jest.mock("../../tabs/singleCellEvidenceTab", () => "SingleCellEvidenceTab");
-jest.mock("../../tabs/singleCellDriversTab", () => "SingleCellDriversTab");
 jest.mock("../../components/singleCell/cellContextBanner", () => "CellContextBanner");
 jest.mock("../../components/singleCell/vignette/vignetteActionRunner", () => "VignetteActionRunner");
 jest.mock("./index.style", () => "Wrapper");
