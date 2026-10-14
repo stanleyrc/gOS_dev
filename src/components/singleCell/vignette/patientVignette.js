@@ -83,12 +83,14 @@ export function EvidenceChips({ finding, vignette, onRun, size = "small" }) {
         const action = evidenceAction(e, finding, vignette);
         if (!action) return null;
         const Icon = ICONS[e.kind] || FileSearchOutlined;
+        // vignettes.json written before tab 17 was retired still says "Drivers tab"
+        const label = e.kind === "driver" && e.label === "Drivers tab" ? "Driver details" : e.label;
         const n = e.cells ? groupCells(vignette, e.cells).length : 0;
-        const help = { cn: "CN heatmap zoomed to the region, carriers selected", cells: "Select these cells on the tree and heatmap", walk: "ecDNA tab with these walks drawn and highlighted", igv: "Reads of up to 6 carrier cells (opens here)", driver: "Drivers tab: carriers vs matched non-carriers", event: "The event's detail popup (variant, cells, QC)", expr: "Expression plot behind the numbers (opens here)", splice: "RNA reads at the junction (opens here)", tab: "Open the tab" }[e.kind];
+        const help = { cn: "CN heatmap zoomed to the region, carriers selected", cells: "Select these cells on the tree and heatmap", walk: "ecDNA tab with these walks drawn and highlighted", igv: "Reads of up to 6 carrier cells (opens here)", driver: "Driver drawer on the Single-Cell tab: carriers vs matched non-carriers", event: "The event's detail popup (variant, cells, QC)", expr: "Expression plot behind the numbers (opens here)", splice: "RNA reads at the junction (opens here)", tab: "Open the tab" }[e.kind];
         return (
           <Tooltip key={`${e.kind}${k}`} title={`${help}${n ? ` · ${n} cells` : ""}`}>
-            <Button size={size} className="sc-evidence-chip" icon={<Icon />} onClick={() => onRun(action, `${finding.short || finding.genes[0] || ""} · ${e.label}`, k)}>
-              {e.label}
+            <Button size={size} className="sc-evidence-chip" icon={<Icon />} onClick={() => onRun(action, `${finding.short || finding.genes[0] || ""} · ${label}`, k)}>
+              {label}
             </Button>
           </Tooltip>
         );
