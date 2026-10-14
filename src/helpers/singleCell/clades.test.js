@@ -1,4 +1,4 @@
-import { cladeGroupName, cladeNodeLabels, cladeScatterPoints, cohortCladeRows, sortCladeRows, withCladeGroup } from "./clades";
+import { filterTrunks, splitDrivers, cladeGroupName, cladeNodeLabels, cladeScatterPoints, cohortCladeRows, sortCladeRows, withCladeGroup } from "./clades";
 
 const layout = {
   leaves: ["a", "b", "c", "d", "e"],
@@ -44,4 +44,14 @@ test("withCladeGroup replaces an earlier copy", () => {
   const g = withCladeGroup([{ name: cladeGroupName("P1_n7"), cells: ["x"] }, { name: "other", cells: [] }], rows[0]);
   expect(g).toHaveLength(2);
   expect(g.find((x) => x.name === "clade P1_n7").cells).toEqual(["a", "b", "c"]);
+});
+
+test("filterTrunks hides trunks by default and splitDrivers caps at three", () => {
+  const r = [{ clade: "a", is_trunk: true }, { clade: "b", is_trunk: false }];
+  expect(filterTrunks(r, false).map((x) => x.clade)).toEqual(["b"]);
+  expect(filterTrunks(r, true)).toHaveLength(2);
+  const d = splitDrivers("A; B; C; D; E");
+  expect(d.shown).toEqual(["A", "B", "C"]);
+  expect(d.rest).toEqual(["D", "E"]);
+  expect(splitDrivers("").shown).toEqual([]);
 });
