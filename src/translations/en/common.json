@@ -1372,6 +1372,8 @@
         "view-overview": "Overview",
         "view-drivers": "Drivers",
         "view-oncoprint": "Oncoprint",
+        "de-stratify": "Stratify by covariate",
+        "de-stratify-help": "Per-patient mode only: test inside each patient and level of this covariate (plate, region, driver carrier status, copy number ...), then combine, so the covariate cannot drive the difference.",
         "view-eventassoc": "Events × state",
         "view-mutations": "SNVs & signatures",
         "view-scatter": "Scatter",
