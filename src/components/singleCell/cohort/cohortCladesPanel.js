@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Empty, Skeleton, Space, Table, Tooltip, Typography } from "antd";
+import { Card, Empty, Skeleton, Space, Switch, Table, Tooltip, Typography } from "antd";
 import datasetsActions from "../../../redux/datasets/actions";
 import singleCellActions from "../../../redux/singleCell/actions";
-import { cladeGroupName, cladeScatterPoints, cohortCladeRows, withCladeGroup } from "../../../helpers/singleCell/clades";
+import { cladeGroupName, cladeScatterPoints, cohortCladeRows, filterTrunks, splitDrivers, withCladeGroup } from "../../../helpers/singleCell/clades";
 import { patientColor } from "../../../helpers/singleCell/patientColors";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import useContainerWidth from "../useContainerWidth";
@@ -45,10 +45,11 @@ function CladeScatter({ points, patients, width, theme, onPick }) {
           cx={px(p.x)}
           cy={py(p.y)}
           r={hover === p.id ? 7 : 5}
-          fill={patientColor(patients.indexOf(p.patient))}
+          fill={p.trunk ? "none" : patientColor(patients.indexOf(p.patient))}
           fillOpacity={0.8}
-          stroke={theme.text}
-          strokeOpacity={hover === p.id ? 1 : 0.25}
+          stroke={p.trunk ? patientColor(patients.indexOf(p.patient)) : theme.text}
+          strokeWidth={p.trunk ? 2 : 1}
+          strokeOpacity={hover === p.id || p.trunk ? 1 : 0.25}
           style={{ cursor: "pointer" }}
           onMouseEnter={() => setHover(p.id)}
           onMouseLeave={() => setHover(null)}
@@ -72,8 +73,10 @@ export default function CohortCladesPanel({ dataset, summaries }) {
   const [ref, width] = useContainerWidth(800);
   const { status, data } = useCohortExport(dataset, "clades.json");
   const layout = useSelector((s) => s.SingleCell.layout);
-  const rows = useMemo(() => cohortCladeRows(data), [data]);
-  const patients = useMemo(() => [...new Set(rows.map((r) => r.patient))].sort(), [rows]);
+  const [showTrunks, setShowTrunks] = useState(false);
+  const allRows = useMemo(() => cohortCladeRows(data), [data]);
+  const rows = useMemo(() => filterTrunks(allRows, showTrunks), [allRows, showTrunks]);
+  const patients = useMemo(() => [...new Set(allRows.map((r) => r.patient))].sort(), [allRows]);
   const points = useMemo(() => cladeScatterPoints(rows), [rows]);
 
   const open = (row) => {
@@ -94,7 +97,7 @@ export default function CohortCladesPanel({ dataset, summaries }) {
   };
 
   if (status === "loading") return <Skeleton active />;
-  if (!rows.length) return <Empty description="Clades are not computed yet (_cohort/clades.json; srctools gos_sc_clades.R)." />;
+  if (!allRows.length) return <Empty description="Clades are not computed yet (_cohort/clades.json; srctools gos_sc_clades.R)." />;
   const num = (key) => (a, b) => (a[key] ?? -Infinity) - (b[key] ?? -Infinity);
   const columns = [
     { title: "Patient", dataIndex: "patient", sorter: (a, b) => a.patient.localeCompare(b.patient), filters: patients.map((p) => ({ text: p, value: p })), onFilter: (v, r) => r.patient === v },
@@ -104,12 +107,17 @@ export default function CohortCladesPanel({ dataset, summaries }) {
     { title: "Burden", dataIndex: "burden", sorter: num("burden"), defaultSortOrder: "descend", align: "right", render: (v) => (v == null ? "n/a" : v.toFixed(2)),
       onHeaderCell: () => ({ title: "private SNVs per 1000 genotyped sites" }) },
     { title: "Signature", dataIndex: "top_signature", sorter: (a, b) => `${a.top_signature || ""}`.localeCompare(`${b.top_signature || ""}`), render: (v) => v || "n/a" },
+    { title: "vs patient", dataIndex: "burden_rel", sorter: num("burden_rel"), align: "right", render: (v) => (v == null ? "n/a" : `${v.toFixed(1)}x`),
+      onHeaderCell: () => ({ title: "private SNVs per site relative to the patient's median clade" }) },
     { title: "Clone", dataIndex: "clone_id" },
-    { title: "Drivers / events", dataIndex: "key_drivers", ellipsis: true, render: (v) => <Tooltip title={v}>{v}</Tooltip> },
+    { title: "Drivers / events (tier 1-2)", dataIndex: "key_drivers", render: (v) => {
+      const { shown, rest } = splitDrivers(v);
+      return <Tooltip title={rest.length ? rest.join("; ") : undefined}>{shown.join("; ")}{rest.length ? ` +${rest.length}` : ""}</Tooltip>;
+    } },
   ];
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Card size="small" title="Clade size vs mutation burden">
+      <Card size="small" title="Clade size vs mutation burden" extra={<Space size={6}><Switch size="small" checked={showTrunks} onChange={setShowTrunks} /><Text type="secondary">show trunk clades (hollow)</Text></Space>}>
         <div ref={ref}>
           <CladeScatter points={points} patients={patients} width={width} theme={theme} onPick={openById} />
         </div>
@@ -122,7 +130,7 @@ export default function CohortCladesPanel({ dataset, summaries }) {
           ))}
         </Space>
       </Card>
-      <Card size="small" title={`Called clades (${rows.length})`} extra={<Text type="secondary">Click a row to select the clade's cells in the patient's Single-Cell tab.</Text>}>
+      <Card size="small" title={`Called clades (${rows.length}${showTrunks ? "" : ", trunks hidden"})`} extra={<Text type="secondary">Click a row to select the clade's cells in the patient's Single-Cell tab.</Text>}>
         <Table size="small" rowKey="clade" dataSource={rows} columns={columns} pagination={{ pageSize: 15, showSizeChanger: false }}
           onRow={(row) => ({ onClick: () => open(row), style: { cursor: "pointer" } })} />
       </Card>

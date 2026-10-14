@@ -14,8 +14,22 @@ export function cohortCladeRows(json) {
       n_private_snv: r.n_private_snv == null ? null : Number(r.n_private_snv),
       burden: r.burden == null ? null : Number(r.burden),
       top_signature: r.top_signature || null,
+      is_trunk: Boolean(r.is_trunk),
+      depth: r.depth == null ? null : Number(r.depth),
+      burden_rel: r.burden_rel == null ? null : Number(r.burden_rel),
       cells: Array.isArray(r.cells) ? r.cells : [],
     }));
+}
+
+/** Rows to show: subclonal clades only unless trunks are included. */
+export function filterTrunks(rows, showTrunks) {
+  return showTrunks ? rows : rows.filter((r) => !r.is_trunk);
+}
+
+/** Driver labels of a row split into the first `cap` and the rest (for a tooltip). */
+export function splitDrivers(text, cap = 3) {
+  const all = `${text || ""}`.split("; ").map((x) => x.trim()).filter(Boolean);
+  return { shown: all.slice(0, cap), rest: all.slice(cap) };
 }
 
 /** Stable sort by a column; nulls last in either direction. */
@@ -43,7 +57,8 @@ export function cladeScatterPoints(rows) {
       color: patients.indexOf(r.patient),
       x: r.n_cells,
       y: r.burden,
-      tip: `${r.clade}: ${r.n_cells} cells, ${r.n_private_snv ?? "?"} private SNVs, ${r.burden} per 1000 sites, signature ${r.top_signature || "n/a"}`,
+      trunk: Boolean(r.is_trunk),
+      tip: `${r.clade}: ${r.n_cells} cells, ${r.n_private_snv ?? "?"} private SNVs, ${r.burden} per 1000 sites${r.burden_rel != null ? ` (${r.burden_rel}x the patient median)` : ""}${r.is_trunk ? ", trunk" : ""}, signature ${r.top_signature || "n/a"}`,
     }));
 }
 
