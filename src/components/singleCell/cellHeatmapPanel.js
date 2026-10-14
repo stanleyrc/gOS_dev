@@ -13,6 +13,8 @@ import GeneInfoDrawer from "./rna/geneInfoDrawer";
 import SnvSiteDrawer from "./snvSiteDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
+import { cladeNodeLabels } from "../../helpers/singleCell/clades";
+import usePatientClades from "./usePatientClades";
 import { themePalette } from "../../helpers/singleCell/themes";
 import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
@@ -423,6 +425,12 @@ export default function CellHeatmapPanel() {
   const branchCounts = useMemo(
     () => (snvsByBranch ? new Map([...snvsByBranch].map(([k, v]) => [k, v.length])) : null),
     [snvsByBranch]
+  );
+  const patientClades = usePatientClades();
+  const canShowClades = patientClades.status === "ok" && hasTree && patientClades.data.clades.length > 0;
+  const cladeLabels = useMemo(
+    () => (canShowClades && layout.cladeOverlay ? cladeNodeLabels(treeLayout, patientClades.data.clades) : null),
+    [canShowClades, layout.cladeOverlay, treeLayout, patientClades]
   );
   const [branchNode, setBranchNode] = useState(null);
   const [siteDrawer, setSiteDrawer] = useState(null);
@@ -925,10 +933,20 @@ export default function CellHeatmapPanel() {
           )}
             </Space>
           </div>
-          {(showSnvControls || canShowBranchSnvs) && (
+          {(showSnvControls || canShowBranchSnvs || canShowClades) && (
             <div className="sc-toolbar-row">
               <Text strong className="sc-toolbar-row-label">{t("components.single-cell.toolbar.row-snvs")}</Text>
               <Space wrap size={[12, 6]}>
+          {canShowClades && (
+            <Checkbox
+              checked={Boolean(layout.cladeOverlay)}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ cladeOverlay: e.target.checked }))}
+            >
+              <Tooltip title="Ring the clades called by gos_sc_clades.R and label each with its private-SNV count (clades.json).">
+                Called clades ({patientClades.data.clades.length})
+              </Tooltip>
+            </Checkbox>
+          )}
           {canShowBranchSnvs && (
             <Checkbox
               checked={Boolean(layout.branchSnvs)}
@@ -1062,6 +1080,7 @@ export default function CellHeatmapPanel() {
                 hoverRow={hoverRow}
                 onSelectRange={handleTreeSelect}
                 branchCounts={branchCounts}
+                cladeLabels={cladeLabels}
                 onSelectNode={(k) => (snvsByBranch?.has(k) || treeLayout?.nodes[k]?.isLeaf === false) && setBranchNode(k)}
                 hoverRange={hoverRange}
                 onHoverNode={(node, event) => {
