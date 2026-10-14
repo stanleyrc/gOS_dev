@@ -15,6 +15,7 @@ export const COHORT_VIEWS = [
   { key: "aligned", group: "genome" },
   { key: "associations", group: "genome" },
   { key: "mutations", group: "genome" },
+  { key: "clades", group: "genome" },
   { key: "rna", group: "rna" },
   { key: "cnexpr", group: "rna" },
   { key: "events", group: "explore" },
