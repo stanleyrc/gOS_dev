@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Select, Space, Spin, Statistic, Switch, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Radio, Select, Space, Spin, Statistic, Switch, Tag, Tooltip, Typography } from "antd";
 import { clipLongBranches, layoutTree, longBranchCap, pruneTree } from "../../../helpers/singleCell/newick";
 import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
@@ -31,6 +31,11 @@ import {
   treeConcordance,
   usableTrees,
 } from "../../../helpers/singleCell/treeCompare";
+import { rowMap, snvColumnOrder, snvMetricMax, treeColumnOrder } from "../../../helpers/singleCell/matrix";
+import { filterSnvColumns, hasCladeScores } from "../../../helpers/singleCell/snvSites";
+import singleCellActions from "../../../redux/singleCell/actions";
+import MutationSidePanel, { SNV_CATEGORIES } from "../mutationSidePanel";
+import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
@@ -58,12 +63,16 @@ function useConcordance(snvData, layout) {
 }
 
 export default function CompareTreesPanel() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("common");
+  const dispatch = useDispatch();
+  const pixelRatio = usePixelRatio();
   const theme = usePlotTheme();
   const index = useSelector((s) => s.SingleCell.altTrees?.data);
   const cells = useSelector((s) => s.SingleCell.cells);
   const cloneColors = useSelector((s) => s.SingleCell.cloneColors) || {};
   const snv = useSelector((s) => s.SingleCell.snv);
+  const snvOrder = useSelector((s) => s.SingleCell.snvOrder);
+  const siteFilter = useSelector((s) => s.SingleCell.layout) || {};
   const events = useSelector((s) => s.FilteredEvents?.filteredEvents);
   const trees = useMemo(() => usableTrees(index), [index]);
   const [defA, defB] = useMemo(() => defaultPair(trees), [trees]);
@@ -77,6 +86,11 @@ export default function CompareTreesPanel() {
   const [hideNormal, setHideNormal] = useState(true);
   const [clip, setClip] = useState(true);
   const [cladogram, setCladogram] = useState(false);
+  const [showMatrix, setShowMatrix] = useState(true);
+  const [matrixMode, setMatrixMode] = useState("both"); // "both" | "A" | "B": one matrix per tree, or one shared matrix in that tree's order
+  const [metric, setMetric] = useState(null); // null: genotype calls when the matrix has them
+  const [hdrA, setHdrA] = useState(null);
+  const [hdrB, setHdrB] = useState(null);
   const [painted, setPainted] = useState([]); // keys "s:<variant index>" / "e:<event key>"
   const [search, setSearch] = useState("");
   const [hover, setHover] = useState(null); // cell id
@@ -91,6 +105,16 @@ export default function CompareTreesPanel() {
   const variants = useMemo(() => (snvData ? snvData.variants.map((v, i) => ({ ...v, index: i })) : []), [snvData]);
   const cellIndex = useMemo(() => snvCellIndex(snvData), [snvData]);
   const eventList = useMemo(() => eventChoices(events), [events]);
+  // the matrix scored and drawn on genotype calls (as the concordance), not read-based status
+  const snvCalls = useMemo(() => (snvData ? { ...snvData, status: snvData.gt || snvData.status } : null), [snvData]);
+  const matrixMetric = metric || (snvData?.gt ? "gt" : "vaf");
+  const matrixMax = useMemo(() => (snvCalls ? snvMetricMax(snvCalls, matrixMetric) : 1), [snvCalls, matrixMetric]);
+  const nDrivers = useMemo(() => (snvData ? snvData.variants.filter((v) => v.driver).length : 0), [snvData]);
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    if (snvData) snvData.variants.forEach((v) => v.category && (counts[v.category] = (counts[v.category] || 0) + 1));
+    return counts;
+  }, [snvData]);
 
   // Full layouts (all cells, branch lengths): concordance is scored on these, as in analysis/qc_bwh69/consistency_tree.py.
   const fullA = useMemo(() => (treeA.root ? layoutTree(treeA.root) : null), [treeA.root]);
@@ -114,7 +138,7 @@ export default function CompareTreesPanel() {
   const finish = (root) => {
     if (!root) return null;
     const l = layoutTree(root);
-    return clip && !cladogram ? clipLongBranches(l, longBranchCap(l)) : l;
+    return clip && !cladogram ? clipLongBranches(l, longBranchCap(l, 1.5)) : l;
   };
   const layoutA = useMemo(() => finish(prepared?.rootA), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
   const layoutB = useMemo(() => finish(prepared?.rootB), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -140,18 +164,23 @@ export default function CompareTreesPanel() {
 
   const colors = paintColors(theme.mode);
   const nP = paints.length;
-  const treeW = Math.max(TREE_MIN, Math.floor((width - 2 * (nP * DOT + 8) - 120) / 2));
-  const midW = Math.max(60, width - 2 * (treeW + nP * DOT + 8));
-  // (the link band takes what the two trees leave)
+  const sides = showMatrix && snvCalls ? (matrixMode === "both" ? ["A", "B"] : [matrixMode]) : [];
+  const mw = Math.max(120, Math.min(360, Math.round(width * (sides.length > 1 ? 0.17 : 0.27))));
+  const mwA = sides.includes("A") ? mw : 0;
+  const mwB = sides.includes("B") ? mw : 0;
+  const midW = showLinks ? 100 : 14;
+  const treeW = Math.max(TREE_MIN, Math.floor((width - 2 * (nP * DOT + 8) - mwA - mwB - midW) / 2));
   const nRows = Math.max(layoutA?.leaves.length || 0, layoutB?.leaves.length || 0, 1);
   const H = Math.min(900, Math.max(320, nRows * 4));
-  const pad = 6;
+  const pad = sides.length ? 0 : 6; // rows must line up with the matrices
   const xA0 = 0;
   const xA1 = treeW; // tips of A
   const pA0 = xA1 + 4; // painted columns of A
-  const mid0 = pA0 + nP * DOT + 4;
+  const mA0 = pA0 + nP * DOT + 4; // matrix of A
+  const mid0 = mA0 + mwA;
   const mid1 = mid0 + midW;
-  const pB0 = mid1; // painted columns of B
+  const mB0 = mid1; // matrix of B
+  const pB0 = mB0 + mwB; // painted columns of B
   const xB1 = pB0 + nP * DOT + 4; // tips of B (mirrored: root at the far right)
   const totalW = xB1 + treeW;
   const rowY = (n) => (r) => pad + (r / n) * (H - 2 * pad);
@@ -206,8 +235,8 @@ export default function CompareTreesPanel() {
 
   const linkPaths = useMemo(() => {
     if (!showLinks || !gA || !gB) return null;
-    const x0 = xA1 + 4 + nP * DOT + 4;
-    const x1 = pB0 - 4 + 4;
+    const x0 = mid0;
+    const x1 = mid1;
     const by = new Map();
     links.forEach((l) => {
       const color = colorOfClone(cloneOf(l.id));
@@ -219,7 +248,7 @@ export default function CompareTreesPanel() {
       by.set(key, `${by.get(key) || ""}M${x0} ${Math.round(y0 * 10) / 10}C${m} ${Math.round(y0 * 10) / 10} ${m} ${Math.round(y1 * 10) / 10} ${x1} ${Math.round(y1 * 10) / 10}`);
     });
     return [...by.entries()];
-  }, [showLinks, links, gA, gB, highlight, cloneColors, cellById, nP, treeW]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showLinks, links, gA, gB, highlight, cloneColors, cellById, nP, treeW, mid0, mid1]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const svgRef = useRef(null);
   const locate = (e) => {
@@ -237,7 +266,7 @@ export default function CompareTreesPanel() {
   };
   const onMove = (e) => {
     const hit = locate(e);
-    setHover(hit ? { id: hit.id, x: e.clientX, y: e.clientY } : null);
+    setHover(hit ? { id: hit.id, x: e.clientX, y: e.clientY, lines: null } : null);
   };
   const onClick = (e) => {
     const hit = locate(e);
@@ -247,6 +276,48 @@ export default function CompareTreesPanel() {
     const ids = cladeCells(hit.layout, node);
     setPick((cur) => (cur && cur.side === hit.side && cur.node === node ? null : { side: hit.side, node, cells: new Set(ids) }));
   };
+
+  // matrix columns: same order and site filters as the Single-Cell tab (shared store), ordered on each matrix's own tree
+  const matrixColumns = (layout, on) => {
+    if (!on || !snvCalls || !layout) return null;
+    const rows = rowMap(layout.leaves, snvCalls.cells);
+    const all = snvOrder === "tree" ? treeColumnOrder(snvCalls, layout, rows) : snvColumnOrder(snvCalls, snvOrder);
+    return { rows, columns: filterSnvColumns(snvCalls, all, siteFilter) };
+  };
+  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const markedRows = (layout) => {
+    const r = rowsOf(layout);
+    const out = new Set();
+    if (pick) pick.cells.forEach((id) => r.has(id) && out.add(r.get(id)));
+    if (hover && r.has(hover.id)) out.add(r.get(hover.id));
+    return out;
+  };
+  const hoverMatrix = (layout) => (row, lines, event) => setHover(row == null || row < 0 || !layout.leaves[row] ? null : { id: layout.leaves[row], x: event.clientX, y: event.clientY, lines });
+  const paintSite = (_row, c) => setPainted((cur) => (cur.includes(`s:${c}`) ? cur : [...cur, `s:${c}`].slice(-MAX_PAINTED)));
+  const setLayout = (patch) => dispatch(singleCellActions.updateLayout(patch));
+  const renderMatrix = (layout, mat, x0, hdrSet) =>
+    mat && layout ? (
+      <MutationSidePanel
+        snv={snvCalls}
+        rows={mat.rows}
+        nRows={layout.leaves.length}
+        columnOrder={mat.columns}
+        metric={matrixMetric}
+        max={matrixMax}
+        width={mw}
+        height={H}
+        pixelRatio={pixelRatio}
+        onRowClick={() => {}}
+        onSiteClick={paintSite}
+        onHover={hoverMatrix(layout)}
+        onLeave={() => setHover(null)}
+        axisHeight={18}
+        groupOf={null}
+        highlightRows={markedRows(layout)}
+        categoryNode={hdrSet}
+      />
+    ) : null;
 
   const options = useMemo(() => {
     const snvHits = searchSnvs(variants, search).map((v) => ({ value: `s:${v.index}`, label: `${v.driver ? "[driver] " : ""}${snvLabel(v)}` }));
@@ -288,9 +359,45 @@ export default function CompareTreesPanel() {
           <span>Hide normal cells <Switch checked={hideNormal} onChange={setHideNormal} /></span>
           <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
           <span>Cladogram <Switch checked={cladogram} onChange={setCladogram} /></span>
+          <span>SNV matrix <Switch checked={showMatrix} onChange={setShowMatrix} disabled={!snvData} /></span>
+          {showMatrix && snvData ? (
+            <Radio.Group size="small" value={matrixMode} onChange={(e) => setMatrixMode(e.target.value)} optionType="button" options={[{ value: "both", label: "A and B" }, { value: "A", label: "Align to A" }, { value: "B", label: "Align to B" }]} />
+          ) : null}
           {pick ? <Button size="small" onClick={() => setPick(null)}>{`Clear clade (${pick.cells.size} cells)`}</Button> : null}
           {layoutA && layoutB && prepared ? <Text type="secondary">{`${nShared} shared cells, ${crossings.toLocaleString("en-US")} crossings (${prepared.before.toLocaleString("en-US")} before rotating)`}</Text> : null}
         </Space>
+        {showMatrix && snvData ? (
+          <Space wrap size="small" style={{ marginBottom: 8 }}>
+            <Text type="secondary">{t("components.single-cell.toolbar.metric")}</Text>
+            <Select size="small" style={{ width: 120 }} value={matrixMetric} onChange={setMetric} options={["vaf", "alt", "depth", ...(snvData.gt ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))} />
+            <Text type="secondary">{t("components.single-cell.toolbar.order")}</Text>
+            <Select size="small" style={{ width: 150 }} value={snvOrder} onChange={(value) => dispatch(singleCellActions.updateSnvOrder(value))} options={["tree", "genomic", "prevalence", "catalog"].map((value) => ({ value, label: t(`components.single-cell.snv.order-${value}`) }))} />
+            {Object.keys(categoryCounts).length ? (
+              <Select
+                size="small"
+                mode="multiple"
+                allowClear
+                style={{ minWidth: 190 }}
+                placeholder={t("components.single-cell.snv.all-sites")}
+                value={siteFilter.snvCategories || []}
+                onChange={(value) => setLayout({ snvCategories: value.length ? value : null })}
+                options={SNV_CATEGORIES.filter((c) => categoryCounts[c.key]).map((c) => ({ value: c.key, label: `${t(`components.single-cell.snv.category-${c.key}`)} (${categoryCounts[c.key]})` }))}
+              />
+            ) : null}
+            <Checkbox checked={Boolean(siteFilter.snvCellphyOnly)} onChange={(e) => setLayout({ snvCellphyOnly: e.target.checked })}>{t("components.single-cell.snv.cellphy-only")}</Checkbox>
+            <Checkbox checked={Boolean(siteFilter.snvDriversOnly)} onChange={(e) => setLayout({ snvDriversOnly: e.target.checked })}>{t("components.single-cell.snv.drivers-only", { count: nDrivers })}</Checkbox>
+            {hasCladeScores(snvData) ? (
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                value={siteFilter.snvMinCladeScore || 0}
+                onChange={(value) => setLayout({ snvMinCladeScore: value || null })}
+                options={[0, 0.5, 0.7, 0.8, 0.9].map((value) => ({ value, label: value ? t("components.single-cell.snv.clade-score-min", { value }) : t("components.single-cell.snv.clade-score-any") }))}
+              />
+            ) : null}
+            <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
+          </Space>
+        ) : null}
         <div style={{ marginBottom: 8 }}>
           <Select
             mode="multiple"
@@ -328,6 +435,7 @@ export default function CompareTreesPanel() {
             <Alert type="warning" showIcon message="One of the selected trees could not be loaded." />
           ) : null}
           {layoutA && layoutB ? (
+            <div style={{ position: "relative", width: totalW, height: H + 22, marginTop: 18, maxWidth: "100%" }}>
             <svg ref={svgRef} width={totalW} height={H} viewBox={`0 0 ${totalW} ${H}`} style={{ background: theme.panel, display: "block", maxWidth: "100%" }} onMouseMove={onMove} onMouseLeave={() => setHover(null)} onClick={onClick}>
               {linkPaths
                 ? linkPaths.map(([key, d]) => {
@@ -344,15 +452,29 @@ export default function CompareTreesPanel() {
                   {layoutA.leaves.includes(hover.id) ? <line x1={xA0} x2={pA0 + nP * DOT} y1={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} y2={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.5} /> : null}
                   {layoutB.leaves.includes(hover.id) ? <line x1={pB0} x2={totalW} y1={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} y2={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.5} /> : null}
                   {layoutA.leaves.includes(hover.id) && layoutB.leaves.includes(hover.id) ? (
-                    <line x1={pA0 + nP * DOT + 4} x2={pB0} y1={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} y2={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.8} />
+                    <line x1={mid0} x2={mid1} y1={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} y2={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.8} />
                   ) : null}
                 </>
               ) : null}
             </svg>
+            {sides.includes("A") ? (
+              <>
+                <div ref={setHdrA} style={{ position: "absolute", left: mA0, top: -16, width: mw, height: 15 }} />
+                <div style={{ position: "absolute", left: mA0, top: 0, width: mw }}>{renderMatrix(layoutA, matA, mA0, hdrA)}</div>
+              </>
+            ) : null}
+            {sides.includes("B") ? (
+              <>
+                <div ref={setHdrB} style={{ position: "absolute", left: mB0, top: -16, width: mw, height: 15 }} />
+                <div style={{ position: "absolute", left: mB0, top: 0, width: mw }}>{renderMatrix(layoutB, matB, mB0, hdrB)}</div>
+              </>
+            ) : null}
+            </div>
           ) : null}
           {hover && hovCell !== undefined ? (
             <div style={{ position: "fixed", left: hover.x + 12, top: hover.y + 12, background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, padding: "4px 8px", fontSize: TYPE.tick, pointerEvents: "none", zIndex: 1000, borderRadius: 4 }}>
               <div><b>{hover.id}</b>{hovCell?.clone_id != null ? ` (clone ${hovCell.clone_id})` : ""}</div>
+              {(hover.lines || []).map(([k, v]) => <div key={k}>{k}: {`${v}`}</div>)}
               {paints.map((p) => {
                 const st = p.kind === "snv" ? snvLeafStates(snvData, [hover.id], p.vi, cellIndex)[0] : eventLeafStates(p.event, [hover.id])[0];
                 return <div key={p.key}>{p.label}: {st === 1 ? "alt" : st === 0 ? "ref" : "no coverage"}</div>;
