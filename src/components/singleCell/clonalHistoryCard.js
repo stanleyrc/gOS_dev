@@ -34,11 +34,14 @@ const chipWidth = (s, font = CHIP_FONT) => s.length * font * 0.6 + 12;
 
 const shortLabel = (e) => {
   const cls = eventClass(e);
-  const gene = e.fusion_genes || e.gene || "?";
+  const gene = e.fusion_genes || e.gene || "";
+  const variant = e.Variant && e.Variant !== "None" ? e.Variant : "";
+  // complex SVs (gGnome event classifier: DM = double minute / ecDNA, TIC, BFB ...) carry no gene
+  if (!gene) return variant || cls || "event";
   if (cls === "amp") return `${gene} amp`;
   if (cls === "homdel") return `${gene} del`;
   if (cls === "fusion") return `${gene}`;
-  return `${gene}${e.Variant && e.Variant !== "None" ? ` ${e.Variant}` : ""}`;
+  return `${gene}${variant ? ` ${variant}` : ""}`;
 };
 
 /**
