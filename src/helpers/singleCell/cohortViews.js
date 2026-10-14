@@ -10,6 +10,7 @@ export const COHORT_VIEWS = [
   { key: "story", group: "findings" },
   { key: "figures", group: "findings" },
   { key: "drivers", group: "genome" },
+  { key: "oncoprint", group: "genome" },
   { key: "amplicons", group: "genome" },
   { key: "treeshape", group: "genome" },
   { key: "aligned", group: "genome" },

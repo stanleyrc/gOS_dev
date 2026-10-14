@@ -10,6 +10,7 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import useCohortExport from "./useCohortExport";
+import useMultiSort from "./multiSort";
 
 const { Text } = Typography;
 const H = 300;
@@ -98,18 +99,15 @@ export default function CohortCladesPanel({ dataset, summaries }) {
     if (row) open(row);
   };
 
-  if (status === "loading") return <Skeleton active />;
-  if (!allRows.length) return <Empty description="Clades are not computed yet (_cohort/clades.json; srctools gos_sc_clades.R)." />;
-  const num = (key) => (a, b) => (a[key] ?? -Infinity) - (b[key] ?? -Infinity);
-  const columns = [
-    { title: "Patient", dataIndex: "patient", sorter: (a, b) => a.patient.localeCompare(b.patient), filters: patients.map((p) => ({ text: p, value: p })), onFilter: (v, r) => r.patient === v },
+  const baseColumns = [
+    { title: "Patient", dataIndex: "patient", sortable: true, filters: patients.map((p) => ({ text: p, value: p })), onFilter: (v, r) => r.patient === v },
     { title: "Clade", dataIndex: "clade", render: (v) => v.replace(/^.*_/, "") },
-    { title: "Cells", dataIndex: "n_cells", sorter: num("n_cells"), align: "right" },
-    { title: "Private SNVs", dataIndex: "n_private_snv", sorter: num("n_private_snv"), align: "right", render: (v) => v ?? "n/a" },
-    { title: "Burden", dataIndex: "burden", sorter: num("burden"), defaultSortOrder: "descend", align: "right", render: (v) => (v == null ? "n/a" : v.toFixed(2)),
+    { title: "Cells", dataIndex: "n_cells", sortable: true, firstDir: "desc", align: "right" },
+    { title: "Private SNVs", dataIndex: "n_private_snv", sortable: true, align: "right", render: (v) => v ?? "n/a" },
+    { title: "Burden", dataIndex: "burden", sortable: true, firstDir: "desc", align: "right", render: (v) => (v == null ? "n/a" : v.toFixed(2)),
       onHeaderCell: () => ({ title: "private SNVs per 1000 genotyped sites" }) },
-    { title: "Signature", dataIndex: "top_signature", sorter: (a, b) => `${a.top_signature || ""}`.localeCompare(`${b.top_signature || ""}`), render: (v) => v || "n/a" },
-    { title: "vs patient", dataIndex: "burden_rel", sorter: num("burden_rel"), align: "right", render: (v) => (v == null ? "n/a" : `${v.toFixed(1)}x`),
+    { title: "Signature", dataIndex: "top_signature", sortable: true, render: (v) => v || "n/a" },
+    { title: "vs patient", dataIndex: "burden_rel", sortable: true, align: "right", render: (v) => (v == null ? "n/a" : `${v.toFixed(1)}x`),
       onHeaderCell: () => ({ title: "private SNVs per site relative to the patient's median clade" }) },
     { title: "Clone", dataIndex: "clone_id" },
     { title: "Drivers / events (tier 1-2)", dataIndex: "key_drivers", render: (v) => {
@@ -117,6 +115,9 @@ export default function CohortCladesPanel({ dataset, summaries }) {
       return <Tooltip title={rest.length ? rest.join("; ") : undefined}>{shown.join("; ")}{rest.length ? ` +${rest.length}` : ""}</Tooltip>;
     } },
   ];
+  const sort = useMultiSort(baseColumns, rows, [{ key: "burden", dir: "desc" }]);
+  if (status === "loading") return <Skeleton active />;
+  if (!allRows.length) return <Empty description="Clades are not computed yet (_cohort/clades.json; srctools gos_sc_clades.R)." />;
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
       <Card size="small" title="Clade size vs mutation burden" extra={<Space size={6}><Switch size="small" checked={showTrunks} onChange={setShowTrunks} /><Text type="secondary">show trunk clades (hollow)</Text></Space>}>
@@ -133,7 +134,8 @@ export default function CohortCladesPanel({ dataset, summaries }) {
         </Space>
       </Card>
       <Card size="small" title={`Called clades (${rows.length}${showTrunks ? "" : ", trunks hidden"})`} extra={<Text type="secondary">Click a row to select the clade's cells in the patient's Single-Cell tab.</Text>}>
-        <Table size="small" rowKey="clade" dataSource={rows} columns={columns} pagination={{ pageSize: 15, showSizeChanger: false }}
+        {sort.hint}
+        <Table size="small" rowKey="clade" dataSource={sort.rows} columns={sort.columns} pagination={{ pageSize: 15, showSizeChanger: false }}
           onRow={(row) => ({ onClick: () => open(row), style: { cursor: "pointer" } })} />
       </Card>
     </Space>
