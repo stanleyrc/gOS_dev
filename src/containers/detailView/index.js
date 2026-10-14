@@ -23,12 +23,11 @@ import SingleCellCircosTab from "../../tabs/singleCellCircosTab";
 import SingleCellEvidenceTab from "../../tabs/singleCellEvidenceTab";
 import VignetteActionRunner from "../../components/singleCell/vignette/vignetteActionRunner";
 import SingleCellCompareTreesTab from "../../tabs/singleCellCompareTreesTab";
-import SingleCellStoryTab from "../../tabs/singleCellStoryTab";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import { singleCellStillLoading } from "../../helpers/singleCell/deepLink";
 import settingsActions from "../../redux/settings/actions";
 import singleCellActions from "../../redux/singleCell/actions";
-import { LEGACY_DRIVERS_TAB_KEY } from "../../helpers/detailTabAvailability";
+import { LEGACY_DRIVERS_TAB_KEY, LEGACY_STORY_TAB_KEY } from "../../helpers/detailTabAvailability";
 import {
   firstEnabledDetailTab,
   getDetailTabAvailability,
@@ -81,6 +80,11 @@ export class DetailView extends Component {
       updateTab("7");
       return;
     }
+    // the retired Story tab was merged into the Summary tab (12)
+    if (activeTab === LEGACY_STORY_TAB_KEY) {
+      updateTab("12");
+      return;
+    }
     if (tabAvailability[activeTab] !== false) return;
     // a linked single-cell tab (RNA, ecDNA, ...) is unavailable until the patient's files load
     if (Number(activeTab) >= 7 && singleCellLoading) return;
@@ -129,7 +133,6 @@ export class DetailView extends Component {
       13: <SingleCellCircosTab />,
       14: <SingleCellEcdnaTab />,
       15: <SingleCellEvidenceTab />,
-      16: <SingleCellStoryTab />,
       18: <SingleCellCompareTreesTab />,
     };
     // The single-cell tab only exists for single-cell patient entries; it
@@ -137,7 +140,7 @@ export class DetailView extends Component {
     // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, ...[12, 16, 18, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
+        ? [7, ...[12, 18, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>

@@ -1,6 +1,7 @@
 // Deep-link parameters that open a single-cell patient on an exact view.
 // Each is read once, when the patient named by `report` loads:
 //   scsel=<name>[,<name>]   select the cells of these saved groups (scgroups)
+//   (an old tab=16 Story link opens the Summary tab, 12)
 //   heatmap=cn|snv|junctions|drivers  heatmap shown in the Single-Cell tab
 //     (an old tab=17 link opens the Drivers layer; drvpreset / drvadd / drvrm / drvf carry its selection)
 //   walk=<label>[,<label>]  ecDNA tab: draw these walks, highlight the first
