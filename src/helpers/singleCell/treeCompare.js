@@ -6,7 +6,6 @@
 // gos_sc_alt_trees.R), tips already renamed to the gOS cell IDs; the current
 // pipeline tree is the one of the single-cell store.
 import { layoutTree, leafNames, parseNewick, pruneTree, rotateByLeafRank } from "./newick";
-import { cladeFitFromRows } from "./cladeFit";
 import { yieldToBrowser } from "./rnaStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 
@@ -135,6 +134,38 @@ export function cladeCells(layout, nodeId) {
 export const snvCellIndex = (snv) => new Map((snv?.cells || []).map((id, i) => [`${id}`, i]));
 
 /**
+ * Best-clade F1 of carriers against internal clades, counting only cells with a
+ * call (alt or ref) as clade members: F1 = 2 tp / (carriers + called cells in the
+ * clade). No-coverage cells do not count against a clade; clades holding under
+ * half the carriers are skipped. This is the metric of
+ * analysis/qc_bwh69/consistency_tree.py (cladeFit.js divides by the whole clade
+ * size, so no-coverage cells lower it).
+ * @param altRows ascending leaf rows of the carriers; calledRows Uint8Array(nLeaves), 1 = alt or ref call
+ */
+export function calledCladeFit(altRows, calledRows, layout) {
+  const k = altRows.length;
+  const nL = layout?.leaves?.length || 0;
+  if (!k || !nL) return { score: NaN, node: null, clade: 0, inClade: 0, carriers: 0 };
+  const A = new Int32Array(nL + 1);
+  const C = new Int32Array(nL + 1);
+  let j = 0;
+  for (let i = 0; i < nL; i += 1) {
+    if (j < k && altRows[j] === i) j += 1;
+    A[i + 1] = j;
+    C[i + 1] = C[i] + (calledRows[i] ? 1 : 0);
+  }
+  let best = { score: 0, node: null, clade: 0, inClade: 0 };
+  layout.nodes.forEach((n, id) => {
+    if (n.isLeaf) return;
+    const tp = A[n.lastLeaf + 1] - A[n.firstLeaf];
+    if (tp < k * 0.5) return;
+    const f1 = (2 * tp) / (k + C[n.lastLeaf + 1] - C[n.firstLeaf]);
+    if (f1 > best.score) best = { score: f1, node: id, clade: n.lastLeaf - n.firstLeaf + 1, inClade: tp };
+  });
+  return { ...best, carriers: k };
+}
+
+/**
  * Per-leaf status of one SNV: 1 alt, 0 ref, -1 no coverage (the heatmap's
  * convention); cells the matrix does not have are -1.
  */
@@ -240,14 +271,19 @@ export async function treeConcordance(snv, layout, { minCarriers = MIN_CARRIERS,
   for (let i = 0; i < sites.length; i += CHUNK) {
     const chunk = sites.slice(i, i + CHUNK);
     const lists = chunk.map(() => []);
+    const called = chunk.map(() => new Uint8Array(layout.leaves.length));
     for (let p = 0; p < snv.cells.length; p += 1) {
       if (cellRow[p] < 0) continue;
       const s = snv.status[p];
-      for (let k = 0; k < chunk.length; k += 1) if (s[chunk[k]] === 1) lists[k].push(cellRow[p]);
+      for (let k = 0; k < chunk.length; k += 1) {
+        const st = s[chunk[k]];
+        if (st === 1) lists[k].push(cellRow[p]);
+        if (st === 1 || st === 0) called[k][cellRow[p]] = 1;
+      }
     }
     chunk.forEach((c, k) => {
       lists[k].sort((a, b) => a - b);
-      scores.set(c, cladeFitFromRows(lists[k], layout).score);
+      scores.set(c, calledCladeFit(lists[k], called[k], layout).score);
     });
     await yieldToBrowser();
     if (cancelled?.()) return null;
@@ -255,16 +291,20 @@ export async function treeConcordance(snv, layout, { minCarriers = MIN_CARRIERS,
   return { scores, median: median([...scores.values()]), n: scores.size, eligible, sampled };
 }
 
-/** Best-clade F1 of one SNV on a tree layout: { score, carriers, clade, node } (carriers = alt cells in the tree). */
+/** Best-clade F1 of one SNV on a tree layout (same metric as treeConcordance): { score, carriers, clade, node }. */
 export function snvConcordance(snv, layout, variantIndex) {
   const row = rowsOf(layout);
   const rows = [];
+  const called = new Uint8Array(layout.leaves.length);
   snv.cells.forEach((id, p) => {
     const r = row.get(`${id}`);
-    if (r != null && snv.status[p][variantIndex] === 1) rows.push(r);
+    if (r == null) return;
+    const st = snv.status[p][variantIndex];
+    if (st === 1) rows.push(r);
+    if (st === 1 || st === 0) called[r] = 1;
   });
   rows.sort((a, b) => a - b);
-  return cladeFitFromRows(rows, layout);
+  return calledCladeFit(rows, called, layout);
 }
 
 /** "0.84" / "n/a" */
@@ -327,4 +367,37 @@ export function branchPaths(layout, px, py, colorOf) {
     }
   });
   return parts;
+}
+
+/** Copy of a tree without branch lengths (a cladogram: tips align at the right). */
+export function stripLengths(root) {
+  const copy = (n) => ({ ...n, length: null, children: (n.children || []).map(copy) });
+  return copy(root);
+}
+
+/**
+ * Rotate both trees to minimise tanglegram crossings: alternately order B by
+ * the barycentre of A's rows and A by B's, several sweeps, keeping the best
+ * pair seen (the original orientation included).
+ * @returns { rootA, rootB, before, after } crossings of the original / best orientation
+ */
+export function optimizeRotation(rootA, rootB, sweeps = 8) {
+  const cross = (la, lb) => countCrossings(tanglegramLinks(la, lb));
+  let la = layoutTree(rootA);
+  let lb = layoutTree(rootB);
+  const before = cross(la, lb);
+  let best = { rootA, rootB, c: before };
+  let a = rootA;
+  let b = rootB;
+  for (let i = 0; i < sweeps && best.c > 0; i += 1) {
+    b = orientToReference(b, la);
+    lb = layoutTree(b);
+    let c = cross(la, lb);
+    if (c < best.c) best = { rootA: a, rootB: b, c };
+    a = orientToReference(a, lb);
+    la = layoutTree(a);
+    c = cross(la, lb);
+    if (c < best.c) best = { rootA: a, rootB: b, c };
+  }
+  return { rootA: best.rootA, rootB: best.rootB, before, after: best.c };
 }
