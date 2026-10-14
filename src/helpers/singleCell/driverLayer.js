@@ -15,6 +15,10 @@ import { binAt } from "./matrix";
 import { eventGlobalPosition } from "./eventDomains";
 
 export const DRIVER_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
+/** Readable names of gGnome event-classifier classes (raw vartype values such as "Cpxdm"). */
+const COMPLEX_NAMES = { cpxdm: "complex DM", tyfonas: "tyfonas", pyrgo: "pyrgo", rigma: "rigma", qrp: "QRP", chromoplexy: "chromoplexy", chromothripsis: "chromothripsis" };
+export const complexName = (v) => (v ? COMPLEX_NAMES[`${v}`.toLowerCase()] || `${v}` : "complex");
+
 export const DRIVER_CLASSES = ["snv", "amp", "homdel", "fusion", "complex"];
 export const DRIVER_GENE_LISTS = ["oncokb", "cgc", "gbm"];
 export const FUSION_SUPPORT = ["any", "dna", "rna", "both"];
@@ -65,7 +69,7 @@ export function snvSiteIndex(snv) {
 /** Plain-language class label. */
 export function classLabel(entry) {
   const v = `${entry.event?.vartype || ""}`;
-  if (entry.cls === "complex") return /^dm$/i.test(v) ? DM_HELP : `${v || "Complex event"} (gGnome event classifier)`;
+  if (entry.cls === "complex") return /^dm$/i.test(v) ? DM_HELP : /^cpxdm$/i.test(v) ? "complex DM: double minute (ecDNA) with complex structure (gGnome event classifier)" : `${v || "Complex event"} (gGnome event classifier)`;
   return { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "SV fusion" }[entry.cls] || entry.cls;
 }
 
@@ -78,7 +82,7 @@ export function entryLabel(entry) {
   }
   if (entry.cls === "amp") return `${e.gene || "?"} amp`;
   if (entry.cls === "homdel") return `${e.gene || "?"} del`;
-  if (entry.cls === "complex") return `${e.vartype || "complex"}${e.gene ? ` ${e.gene}` : ""} ${e.Genome_Location ? `chr${`${e.Genome_Location}`.split(":")[0]}` : ""}`.trim();
+  if (entry.cls === "complex") return `${complexName(e.vartype)}${e.gene ? ` ${e.gene}` : ""} ${e.Genome_Location ? `chr${`${e.Genome_Location}`.split(":")[0]}` : ""}`.trim();
   return driverLabel(e);
 }
 
