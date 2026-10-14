@@ -15,6 +15,7 @@ export const COHORT_VIEWS = [
   { key: "treeshape", group: "genome" },
   { key: "aligned", group: "genome" },
   { key: "associations", group: "genome" },
+  { key: "eventassoc", group: "genome" },
   { key: "mutations", group: "genome" },
   { key: "clades", group: "genome" },
   { key: "rna", group: "rna" },
