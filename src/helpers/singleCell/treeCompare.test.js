@@ -1,6 +1,9 @@
 import { parseNewick, layoutTree, leafNames } from "./newick";
 import {
   alignTipNames,
+  calledCladeFit,
+  optimizeRotation,
+  stripLengths,
   cladeAt,
   cladeCells,
   countCrossings,
@@ -155,5 +158,60 @@ describe("drawing helpers", () => {
     expect([...paths.keys()].sort()).toEqual(["mixed", "x", "y"]);
     expect(paths.get("y")).toBe("M10 14H20");
     expect(paintColors("dark").alt).not.toBe(paintColors("light").alt);
+  });
+});
+
+describe("called-aware concordance", () => {
+  const L = lay("(((c1:1,c2:1):1,(c3:1,c4:1):1):1,((c5:1,c6:1):1,(c7:1,c8:1):1):1);");
+  it("ignores no-coverage cells inside the clade", () => {
+    const called = new Uint8Array(8).fill(1);
+    expect(calledCladeFit([0, 1, 2, 3], called, L).score).toBe(1);
+    called[3] = 0; // c4 has no call but carriers are c1-c3
+    const r = calledCladeFit([0, 1, 2], called, L);
+    expect(r.score).toBe(1);
+    expect(r.clade).toBe(4);
+  });
+  it("penalises ref calls in the clade and skips tiny clades", () => {
+    const called = new Uint8Array(8).fill(1);
+    expect(calledCladeFit([0, 1, 2], called, L).score).toBeCloseTo((2 * 3) / (3 + 4), 5);
+    expect(Number.isNaN(calledCladeFit([], called, L).score)).toBe(true);
+  });
+  it("scores on genotype calls when the matrix has them", () => {
+    const rows = [[1, 1, 1, 1, 0, 0, 0, 0]];
+    const snv = mat(rows);
+    // read-based status calls scattered cells alt; the genotype calls are clean
+    snv.status = CELLS.map((_, p) => Int8Array.from([p === 5 || p < 4 ? 1 : 0]));
+    snv.gt = CELLS.map((_, p) => Int8Array.from([p < 4 ? 1 : 0]));
+    expect(snvConcordance(snv, L, 0).score).toBe(1);
+    expect(snvConcordance({ ...snv, gt: null }, L, 0).score).toBeLessThan(1);
+    expect(Array.from(snvLeafStates(snv, ["c1", "c6"], 0))).toEqual([1, 0]);
+  });
+});
+
+describe("rotation and cladograms", () => {
+  it("strips branch lengths without touching the input", () => {
+    const root = parseNewick("((a:1,b:2):3,c:4);");
+    const out = stripLengths(root);
+    const lengths = [];
+    const walk = (n) => { lengths.push(n.length); (n.children || []).forEach(walk); };
+    walk(out);
+    expect(lengths.every((x) => x == null)).toBe(true);
+    expect(root.children[1].length).toBe(4);
+    expect(leafNames(out)).toEqual(["a", "b", "c"]);
+  });
+  it("never increases crossings and fixes a simple inversion", () => {
+    const a = parseNewick("(((a:1,b:1):1,(c:1,d:1):1):1,((e:1,f:1):1,(g:1,h:1):1):1);");
+    const b = parseNewick("(((h:1,g:1):1,(f:1,e:1):1):1,((d:1,c:1):1,(b:1,a:1):1):1);");
+    const out = optimizeRotation(a, b);
+    expect(out.after).toBeLessThanOrEqual(out.before);
+    expect(out.after).toBe(0);
+    expect(leafNames(out.rootA).sort()).toEqual(leafNames(a).sort());
+    const same = optimizeRotation(a, a);
+    expect(same.after).toBe(0);
+  });
+  it("keeps the original when no sweep improves", () => {
+    const a = parseNewick("((a:1,b:1):1,(c:1,d:1):1);");
+    const out = optimizeRotation(a, parseNewick("((a:1,c:1):1,(b:1,d:1):1);"));
+    expect(out.after).toBeLessThanOrEqual(out.before);
   });
 });
