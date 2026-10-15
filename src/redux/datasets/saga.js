@@ -10,6 +10,7 @@ import {
   isAllDatasetsBrowseScope,
 } from "../../helpers/browseScope";
 import { getPatientLevelViewOptions } from "../../helpers/patientLevelView";
+import { caseReportUrl, getOpenInNewTab, isCohortMounted } from "../../helpers/singleCell/openInNewTab";
 
 export const normalizeDataset = (dataset, settings) => {
   const reference = dataset.reference || "hg19";
@@ -131,6 +132,12 @@ export function* openCaseReport(action) {
       type: actions.SELECT_DATASET_FAILED,
       error: new Error("SOURCE_DATASET_NOT_AVAILABLE"),
     });
+    return;
+  }
+
+  // from the single-cell cohort view, open the report in a new browser tab (user preference) so the cohort view keeps its state
+  if (!currentState.Settings.report && isCohortMounted() && getOpenInNewTab()) {
+    window.open(caseReportUrl(window.location.href, dataset.id, action.caseReportId), "_blank", "noopener");
     return;
   }
 

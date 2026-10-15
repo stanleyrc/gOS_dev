@@ -9,6 +9,7 @@ import HeatmapLegend from "./heatmapLegend";
 import PhylogenyCanvas from "./phylogenyCanvas";
 import useContainerWidth from "./useContainerWidth";
 import datasetsActions from "../../redux/datasets/actions";
+import { getOpenInNewTab, setCohortMounted, setOpenInNewTab } from "../../helpers/singleCell/openInNewTab";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import {
   cellsForPatient,
@@ -241,6 +242,16 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     [summaries]
   );
 
+  // open patients / cells in a new browser tab (default) so this view keeps its state; see helpers/singleCell/openInNewTab
+  const [newTab, setNewTab] = useState(getOpenInNewTab);
+  useEffect(() => {
+    setCohortMounted(true);
+    return () => setCohortMounted(false);
+  }, []);
+  const toggleNewTab = (on) => {
+    setNewTab(on);
+    setOpenInNewTab(on);
+  };
   const openPatient = (summary) =>
     dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
 
@@ -402,6 +413,12 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 <Text>{t("components.single-cell.cohort.clade-filter")}</Text>
                 <InputNumber size="small" min={0} max={1} step={0.05} value={minCladeF1} disabled={!cladeFilterOn} onChange={(v) => setMinCladeF1(v ?? 0)} style={{ width: 70 }} />
                 {cladeFilterOn && nDropped > 0 && <Text type="secondary">{t("components.single-cell.cohort.clade-filter-dropped", { count: nDropped })}</Text>}
+              </Space>
+            </Tooltip>
+            <Tooltip title="Open patients and cells in a new browser tab, so this cohort view keeps its tab, filters and scroll position.">
+              <Space size={6}>
+                <Switch size="small" checked={newTab} onChange={toggleNewTab} />
+                <Text>Open patients in new tab</Text>
               </Space>
             </Tooltip>
             <HelpDrawer />
