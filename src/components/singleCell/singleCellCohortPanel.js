@@ -144,6 +144,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
   const cohortFiles = useCohortFiles(summaries, datasets);
+  const hotspotRescue = useHotspotRescue(datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null);
   // help-center target first, then ?scview=<key> (deep link, e.g. ?scview=qc), else the overview
   const [view, setView] = useState(() => {
     const help = peekHelpTarget();
@@ -410,7 +411,6 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   }));
 
   const geneDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
-  const hotspotRescue = useHotspotRescue(geneDataset);
   const quickLook = {
     dataset: geneDataset,
     summaries,
