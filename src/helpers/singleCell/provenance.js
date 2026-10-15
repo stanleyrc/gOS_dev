@@ -192,6 +192,12 @@ export const PROVENANCE = {
     calc: "Share of each level (e.g. state) per group; chi-square test of independence, in the browser.",
     where: "browser",
   },
+  cladeCompare: {
+    title: "Clade comparison",
+    source: "rna/cells.json (Phase, S_Score, G2M_Score, state); precompute/sphase.json (replication-timing rt_cor, DNA S-phase call); clades.json (private SNVs); cell ploidy",
+    calc: "Phase and state: chi-square (Fisher for 2 levels). Scores and rt_cor: Wilcoxon with Cliff's delta. S fractions: Fisher.",
+    where: "browser",
+  },
   de: {
     title: "Differential expression",
     source: RNA,

@@ -92,6 +92,8 @@ export function singleCellStillLoading(singleCell) {
 //   figpatient / figwalk / figgenes  Paper figures: patient, walk whose
 //                                 carriers are marked, gene pair for CN vs CN
 //   comp=<field>&compby=<clone|groups|field>&compcount=1  RNA composition card
+//   cmpA=<spec>&cmpB=<spec>      Single-Cell tab Clade comparison; spec = clade:<id> | node:<k> | sister:<spec> |
+//                                 rest:<spec> | clone:<name> | group:<name> (helpers/singleCell/cladeCompare.js)
 //   cngene=<GENE>&exprgenes=<G1,G2>  cohort CN-vs-expression view
 const HEX = /^#?([0-9a-f]{6})$/i;
 
@@ -133,6 +135,8 @@ export function readViewLink(search = window.location.search) {
     composition: params.get("comp") || null,
     compositionBy: params.get("compby") || null,
     compositionCounts: params.get("compcount") === "1",
+    compareA: params.get("cmpA") || null,
+    compareB: params.get("cmpB") || null,
     cnGene: params.get("cngene") || null,
     exprGenes: list(params.get("exprgenes")),
   };
