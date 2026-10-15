@@ -34,6 +34,10 @@ const Wrapper = styled.div`
   .ant-home-content-container > .ant-tabs > .ant-tabs-nav .ant-tabs-tab + .ant-tabs-tab {
     margin-left: 20px;
   }
+  /* slimmer tab bar (default tab padding is 12px) */
+  .ant-home-content-container > .ant-tabs > .ant-tabs-nav .ant-tabs-tab {
+    padding: 8px 0;
+  }
   .ant-home-content-container .ant-tabs-tab-btn:focus,
   .ant-home-content-container .ant-tabs-tab-btn:focus-visible {
     outline: none;

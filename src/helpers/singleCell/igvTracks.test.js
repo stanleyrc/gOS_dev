@@ -1,0 +1,36 @@
+import { altFirstSort, buildIgvTracks, sortBrowserAltFirst } from "./igvTracks";
+
+describe("altFirstSort", () => {
+  it("sorts ascending by base so the alt (most common mismatch, most negative score) is first", () => {
+    expect(altFirstSort("5", 112839000)).toEqual({ chr: "chr5", position: 112839000, option: "BASE", direction: "ASC" });
+    expect(altFirstSort("chr5", 10).chr).toBe("chr5");
+  });
+  it("returns undefined without a usable position", () => {
+    expect(altFirstSort("5", NaN)).toBeUndefined();
+    expect(altFirstSort(null, 5)).toBeUndefined();
+  });
+});
+
+describe("buildIgvTracks sort", () => {
+  it("gives every DNA track its own sort object (igv.js mutates position)", () => {
+    const tr = buildIgvTracks({ dnaCellIds: ["a", "b", "c"], pathFor: (f, n) => `${f}/${n}`, sortAt: { chromosome: "1", position: 100 } });
+    expect(tr.map((t) => t.sort.position)).toEqual([100, 100, 100]);
+    expect(new Set(tr.map((t) => t.sort)).size).toBe(3);
+    expect(tr[0].sort.direction).toBe("ASC");
+  });
+  it("does not sort RNA tracks", () => {
+    const tr = buildIgvTracks({ rnaTracks: [{ rna_id: "r1", bam: "x.bam", patientId: "P" }], pathFor: (f, n) => `${f}/${n}` });
+    expect(tr[0].sort).toBeUndefined();
+  });
+});
+
+describe("sortBrowserAltFirst", () => {
+  it("re-sorts DNA tracks only", () => {
+    const calls = [];
+    const mk = (name) => ({ name, sort: (o) => calls.push([name, o]) });
+    const browser = { findTracks: () => [mk("cell1"), mk("RNA · r1"), mk("cell2")] };
+    expect(sortBrowserAltFirst(browser, "2", 50)).toBe(2);
+    expect(calls.map((c) => c[0])).toEqual(["cell1", "cell2"]);
+    expect(calls[0][1]).not.toBe(calls[1][1]);
+  });
+});

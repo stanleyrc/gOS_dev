@@ -6,6 +6,7 @@ import igv from "../../../../node_modules/igv/dist/igv.esm.min.js";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { casePath } from "../../../redux/singleCell/loaders";
 import { siteCloneSummary, siteEvidence } from "../../../helpers/singleCell/precompute";
+import { altFirstSort } from "../../../helpers/singleCell/igvTracks";
 import NotComputed, { pcFile } from "./notComputed";
 import { Provenance } from "../hintLine";
 import ColorTag from "../colorTag";
@@ -136,7 +137,7 @@ export default function ReadSlicePanel() {
           filter: (al) => keep.has(al.tags().RG),
           ...(groupByCell ? { groupBy: "tag:RG" } : {}),
           showSoftClips: true,
-          ...(opt.loci.length === 1 ? { sort: { chr: chr(opt.loci[0].chrom), position: opt.loci[0].pos, option: "BASE", direction: "DESC" } } : {}),
+          ...(opt.loci.length === 1 ? { sort: altFirstSort(opt.loci[0].chrom, opt.loci[0].pos) } : {}),
         });
       });
     };
