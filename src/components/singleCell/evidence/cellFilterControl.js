@@ -19,7 +19,10 @@ export default function CellFilterControl() {
   const rules = layout.qcExcludeRules || NONE;
   const manual = layout.excludedCells || NONE;
   const ids = new Set(cells.map((c) => `${c.cell_id}`));
-  const excluded = useMemo(() => excludedCellIds(cells, rules, manual), [cells, rules, manual]);
+  const excluded = useMemo(
+    () => excludedCellIds(cells, rules, manual, { on: layout.hideLowQc, thresholds: layout.covQcThresholds }),
+    [cells, rules, manual, layout.hideLowQc, layout.covQcThresholds]
+  );
   const nHere = [...excluded].filter((id) => ids.has(id)).length;
   const manualHere = manual.filter((id) => ids.has(`${id}`));
   const hasQc = cells.some((c) => c.pc_qc_flags != null || c["DNA cycle"] != null);

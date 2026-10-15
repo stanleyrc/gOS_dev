@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
+import { useHiddenCellIds } from "../useCovQc";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { CURRENT_TREE, treeFromNewick, alignTipNames } from "../../../helpers/singleCell/treeCompare";
 
@@ -15,7 +16,8 @@ export default function useAltTree(name) {
   const patient = useSelector((s) => s.SingleCell.patient);
   const tree = useSelector((s) => s.SingleCell.tree);
   const cells = useSelector((s) => s.SingleCell.cells);
-  const ids = useMemo(() => cells.map((c) => `${c.cell_id}`), [cells]);
+  const hidden = useHiddenCellIds(); // global cell filter, incl. "Hide low-QC cells"
+  const ids = useMemo(() => cells.map((c) => `${c.cell_id}`).filter((id) => !hidden.has(id)), [cells, hidden]);
   const [file, setFile] = useState({ name: null, status: "idle", text: null });
 
   useEffect(() => {
