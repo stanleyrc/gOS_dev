@@ -15,7 +15,7 @@ import { cnColorer } from "../../helpers/singleCell/matrix";
 import { medianCnRow } from "../../helpers/singleCell/cellFiles";
 import HintLine, { Provenance } from "./hintLine";
 import usePlotTheme from "./usePlotTheme";
-import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import { INK, TYPE, isDarkLike } from "../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const genomeCache = new Map();
@@ -231,7 +231,7 @@ export default function CircosPanel() {
             <defs>
               <radialGradient id="circos-bg" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor={pt.panel} stopOpacity={0} />
-                <stop offset="100%" stopColor={pt.empty} stopOpacity={pt.mode === "dark" ? 0.35 : 0.6} />
+                <stop offset="100%" stopColor={pt.empty} stopOpacity={isDarkLike(pt.mode) ? 0.35 : 0.6} />
               </radialGradient>
             </defs>
             <g transform={`translate(${R},${R})`}>
