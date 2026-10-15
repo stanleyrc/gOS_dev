@@ -893,7 +893,7 @@ export default function CellHeatmapPanel() {
           </Space>
         }
       >
-        <div className="sc-toolbar-sticky">
+        <div className={heatmapType === "snv" ? undefined : "sc-toolbar-sticky"}>
         <SavedGroupsBar />
         {selectedCellIds.length > 0 && (
           <Space wrap size={[8, 4]} className="sc-group-bar">
