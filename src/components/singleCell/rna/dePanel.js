@@ -397,6 +397,12 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
   const [progress, setProgress] = useState(null);
   const [result, setResult] = useState(null);
   const [query, setQuery] = useState("");
+  // the gene filter box is controlled and applied after a short pause, so fast typing is not lost to table re-renders
+  const [queryInput, setQueryInput] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(queryInput), 200);
+    return () => clearTimeout(id);
+  }, [queryInput]);
   const [dotGroupBy, setDotGroupBy] = useState("clone");
   const [nDot, setNDot] = useState(10);
   const [sets, setSets] = useState([]);
@@ -737,7 +743,8 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
                     size="small"
                     placeholder={t("components.single-cell.results.filter")}
                     style={{ width: 200 }}
-                    onChange={(e) => setQuery(e.target.value)}
+                    value={queryInput}
+                    onChange={(e) => setQueryInput(e.target.value)}
                   />
                   <Text type="secondary">p &lt;</Text>
                   <InputNumber size="small" min={0} max={1} step={0.01} value={pCut} onChange={(v) => setPCut(v ?? 1)} style={{ width: 80 }} />
