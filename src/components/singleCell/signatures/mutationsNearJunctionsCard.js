@@ -24,6 +24,7 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import CellIgvPanel from "../cellIgvPanel";
 import HintLine from "../hintLine";
 import MutJunctionBinChart from "./mutJunctionBinChart";
+import MutJunctionFocalSection from "./mutJunctionFocalSection";
 
 const { Text, Paragraph } = Typography;
 const IGV_CELLS = 6;
@@ -74,6 +75,7 @@ export default function MutationsNearJunctionsCard() {
   const [maxDist, setMaxDist] = useState(1e6);
   const [kMode, setKMode] = useState("strict");
   const [igv, setIgv] = useState(null);
+  const [view, setView] = useState("focal");
 
   const series = useMemo(() => binSeries(data, def), [data, def]);
   const rows = useMemo(() => adjacentRows(data, { def, maxDist }), [data, def, maxDist]);
@@ -130,16 +132,28 @@ export default function MutationsNearJunctionsCard() {
       size="small"
       title={title}
       extra={
-        <Space size={8}>
-          <Segmented size="small" value={near} onChange={setNear} options={NEAR_OPTIONS} />
-          <Segmented size="small" value={def} onChange={setDef} options={[{ value: "tcw", label: "TCW motif" }, { value: "sbs", label: "SBS2/13" }]} />
-        </Space>
+        <Segmented
+          size="small"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "focal", label: "Focal: cis vs trans (5 kb)" },
+            { value: "broad", label: "Broad window (1 Mb)" },
+          ]}
+        />
       }
     >
       <Space direction="vertical" size={10} style={{ width: "100%" }}>
         {patientId === "BWH69" && (
           <Alert type="warning" showIcon message="BWH69 SNV set is noisy (55,055 sites); a rebuild is pending, so treat these numbers as provisional." />
         )}
+        {view === "focal" && <MutJunctionFocalSection data={data} onPaint={paint} />}
+        {view === "broad" && (
+        <>
+        <Space size={8}>
+          <Segmented size="small" value={near} onChange={setNear} options={NEAR_OPTIONS} />
+          <Segmented size="small" value={def} onChange={setDef} options={[{ value: "tcw", label: "TCW motif" }, { value: "sbs", label: "SBS2/13" }]} />
+        </Space>
         {!data.snv_source.apobec_signature_in_fit && (
           <Alert
             type="info"
@@ -229,6 +243,8 @@ export default function MutationsNearJunctionsCard() {
           <Paragraph style={{ marginBottom: 0 }}>{cooccurrenceText(data, near)}</Paragraph>
           <HintLine text={`Carrier F1 compares the cells carrying the SNV (${data.cooccurrence?.carrier_definition}) with the cells carrying the nearest junction, over ${data.cooccurrence?.universe_cells} tumour cells with a graph. F1 near 1 means the same carrier cells (same branch), as expected if APOBEC acted at the time of the rearrangement.`} />
         </div>
+        </>
+        )}
 
         {igv && (
           <div>
