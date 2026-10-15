@@ -34,6 +34,7 @@ import Wrapper from "./index.style";
 import useCohortFiles from "./cohort/useCohortFiles";
 import TmbPanel from "./cohort/tmbPanel";
 import CohortTmbPanel from "./cohort/cohortTmbPanel";
+import CohortTmbAssocPanel from "./cohort/cohortTmbAssocPanel";
 import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
 import CohortJointSignatures from "./cohort/cohortJointSignatures";
 import OncoprintPanel from "./cohort/oncoprintPanel";
@@ -491,6 +492,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
             <Col span={24}>
               <TmbPanel summaries={summaries} files={files} datafiles={datafiles} onOpen={openPatient} />
+            </Col>
+            <Col span={24}>
+              <CohortTmbAssocPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} onGene={openRnaGene} />
             </Col>
             <Col span={24}>
               <CohortSignaturesPanel summaries={summaries} files={files} />
