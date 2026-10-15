@@ -14,6 +14,10 @@ import { useCgcGenes } from "../drivers/useDriverLayer";
 // snv_matrix.json (per-cell genotype at the driver SNV sites) and the site-evidence precompute (hotspots, QC verdicts).
 // Loaded lazily, one patient at a time, and reduced to the driver SNV columns so nine patients stay light.
 const baseCache = new Map();
+const PENDING = { snv: null, sites: { hotspots: null, verdicts: null }, notes: {}, pending: true };
+const keyOf = (s) => `${s.record.datasetId}/${s.caseReportId}`;
+// HEAD sizes of snv_matrix.json, cached
+const sizeCache = new Map();
 
 const isNormal = (clone) => /^normal$/i.test(`${clone || ""}`);
 
@@ -61,7 +65,7 @@ async function loadBase(dataset, summary, file, cloneOf, chromoBins, cancelToken
  * @param rawFiles cohort files before the clade filter (every driver SNV column is kept), files: after it
  * @param rows cohort CN rows { patientId: { cellRows: [{ cellId, clone, row }] } }
  */
-export default function useCohortDriverData({ summaries, datasets, files, rawFiles, rows, datafiles, chromoBins, enabled = true }) {
+export default function useCohortDriverData({ summaries, datasets, files, rawFiles, rows, datafiles, chromoBins, enabled = true, loadSnv = false }) {
   const [base, setBase] = useState({});
   const started = useRef(new Set());
   const cgc = useCgcGenes();
@@ -80,7 +84,7 @@ export default function useCohortDriverData({ summaries, datasets, files, rawFil
   }, [summariesKey]);
   const ready = summaries.filter((s) => rawFiles[s.caseReportId]?.tree && rawFiles[s.caseReportId]?.events).map((s) => s.caseReportId).join("|");
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !loadSnv) return undefined;
     let active = true;
     const source = axios.CancelToken.source();
     (async () => {
@@ -106,7 +110,7 @@ export default function useCohortDriverData({ summaries, datasets, files, rawFil
       source.cancel("cohort drivers view closed");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ready, datasets, summariesKey, chromoBins]);
+  }, [enabled, loadSnv, ready, datasets, summariesKey, chromoBins]);
 
   const cache = useRef(new Map());
   const data = useMemo(() => {
@@ -114,8 +118,8 @@ export default function useCohortDriverData({ summaries, datasets, files, rawFil
     summaries.forEach((s) => {
       const id = s.caseReportId;
       const f = files[id];
-      const b = base[id];
-      if (!f?.tree || !f?.events || !b) return;
+      const b = base[id] || baseCache.get(keyOf(s)) || PENDING;
+      if (!f?.tree || !f?.events) return;
       const entry = rows[id];
       const hit = cache.current.get(id);
       if (hit && hit.b === b && hit.f === f && hit.entry === entry && hit.cgc === cgc && hit.bins === chromoBins) {
@@ -143,14 +147,38 @@ export default function useCohortDriverData({ summaries, datasets, files, rawFil
       if (!entry) notes.cn = "per-cell copy number is still loading";
       else if (!cn) notes.cn = "no per-cell complex.json could be read";
       if (!rnaList) notes.rna = "rna/fusions.json not exported (fusion rows show DNA support only)";
-      const value = { order, tree: f.tree, leafClones, entries, states, notes, nCn: cellRows.length, cnTruncated: Boolean(entry?.truncated) };
+      const value = { snvPending: Boolean(b.pending), order, tree: f.tree, leafClones, entries, states, notes, nCn: cellRows.length, cnTruncated: Boolean(entry?.truncated) };
       cache.current.set(id, { b, f, entry, cgc, bins: chromoBins, value });
       out[id] = value;
     });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaries, files, base, rows, cgc, cloneInfo, chromoBins]);
+  const [sizes, setSizes] = useState(null); // { bytes, known, total } of the snv_matrix.json files not yet loaded
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let live = true;
+    (async () => {
+      let bytes = 0;
+      let known = 0;
+      for (const s of summaries) {
+        const dataset = datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
+        if (!dataset || baseCache.has(keyOf(s))) continue;
+        const url = casePath(dataset, s.caseReportId, "snv_matrix.json");
+        if (!sizeCache.has(url)) sizeCache.set(url, axios.head(url).then((r) => Number(r.headers["content-length"]) || null).catch(() => null));
+        const n = await sizeCache.get(url);
+        if (n) {
+          bytes += n;
+          known += 1;
+        }
+      }
+      if (live) setSizes({ bytes, known });
+    })();
+    return () => {
+      live = false;
+    };
+  }, [enabled, summariesKey, datasets]);
   const total = summaries.length;
-  const loaded = summaries.filter((s) => base[s.caseReportId]).length;
-  return { data, loaded, total, hasCgc: cgc != null };
+  const loaded = summaries.filter((s) => base[s.caseReportId] || baseCache.has(keyOf(s))).length;
+  return { data, loaded, total, sizes, hasCgc: cgc != null };
 }

@@ -109,6 +109,8 @@ describe("cohort driver trees: URL and geometry", () => {
     const plain = ev({ gene: "ZZZ", Tier: 3, type: "missense", cell_ids: A.slice(0, 5).join(",") });
     const e = buildDriverEntries([dmg, plain], { tumorIds: A });
     expect(selectSharedColumns({ a: e }, { preset: "all" }).columns.map((c) => c.key)).toEqual(["snv|KRAS"]);
+    expect(selectSharedColumns({ a: e }, { preset: "recommended" }).columns.map((c) => c.key)).toEqual(["snv|KRAS"]);
+    expect(selectSharedColumns({ a: e }, { preset: "recommended", maxTier: 3 }).columns).toHaveLength(0);
     expect(parseCdt("?cdtt=2d").maxTier).toBe("2d");
     expect(serializeCdt({ maxTier: 2 }).cdtt).toBe("2");
   });

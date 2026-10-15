@@ -31,6 +31,7 @@ import {
 
 const { Text } = Typography;
 const TREE_W = 84;
+const EMPTY = {};
 const EXPANDED_H = 520;
 const CLASS_LABELS = { amp: "Amplification", homdel: "Deletion", fusion: "Fusion", trunc: "Truncating", splice: "Splice", missense: "Missense", complex: "Complex SV", other: "Other" };
 
@@ -95,7 +96,7 @@ function BlockHeat({ aligned, nRows, width, height, pixelRatio, palette, onHover
   );
 }
 
-function PatientBlock({ summary, info, aligned, state, colPx, expanded, onExpand, onOpen, onColumn, onEvent, openKey, cloneColors, palette, pixelRatio, nShared }) {
+function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expanded, onExpand, onOpen, onColumn, onEvent, openKey, cloneColors, palette, pixelRatio, nShared }) {
   const [hover, setHover] = useState(null);
   const height = expanded ? EXPANDED_H : CDT_HEIGHTS[state.height];
   const width = Math.max(1, aligned.length * colPx);
@@ -113,13 +114,14 @@ function PatientBlock({ summary, info, aligned, state, colPx, expanded, onExpand
     entry: a.entry || { cls: a.column.cls, event: {} },
   }));
   const notes = Object.values(info.notes);
+  const pendingCols = info.snvPending ? aligned.filter((a) => a.entry?.cls === "snv").length : 0;
   const tip = hover && hover.row >= 0 ? aligned[hover.col] : null;
   const cellId = hover && hover.row >= 0 ? info.order[hover.row] : null;
   return (
     <div style={{ display: "inline-block", verticalAlign: "top", margin: "0 18px 14px 0", position: "relative" }} data-cohort-driver-block={summary.caseReportId}>
       <Space size={6} style={{ marginBottom: 2 }} wrap>
         <Button type="link" size="small" style={{ padding: 0, fontWeight: 600 }} onClick={() => onOpen(summary)}>{summary.caseReportId}</Button>
-        <Text type="secondary" style={{ fontSize: 12 }}>{`${nRows} cells · ${present}/${nShared} columns`}</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>{`${nRows} cells · ${present}/${nShared} columns`}{pendingCols ? ` · ${pendingCols} SNV not loaded` : ""}</Text>
         {notes.length > 0 && (
           <Tooltip title={<div>{notes.map((x) => <div key={x}>{`not available (${x})`}</div>)}</div>}>
             <InfoCircleOutlined style={{ color: "#d48806" }} />
@@ -152,7 +154,7 @@ function PatientBlock({ summary, info, aligned, state, colPx, expanded, onExpand
           <div style={{ position: "absolute", left: TREE_W + Math.min(hover.x + 12, Math.max(0, width - 200)), top: Math.min(hover.y + 12, height - 60), zIndex: 5, pointerEvents: "none", background: "rgba(30,30,30,0.92)", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, whiteSpace: "nowrap" }}>
             <div><b>{summary.caseReportId}</b>{` · ${cellId}`}</div>
             <div>{`clone ${info.leafClones[hover.row] ?? "unassigned"}`}</div>
-            <div>{`${tip.column.label}: ${tip.entry ? cellStatus(tip.entry, tip.states?.[hover.row]).status : "no such event in this patient"}`}</div>
+            <div>{`${tip.column.label}: ${tip.pending ? pendingText : tip.entry ? cellStatus(tip.entry, tip.states?.[hover.row]).status : "no such event in this patient"}`}</div>
           </div>
         )}
       </div>
@@ -172,7 +174,19 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
   const patch = (o) => setState((s) => ({ ...s, ...o }));
   const [expanded, setExpanded] = useState({});
   const [openKey, setOpenKey] = useState(null);
-  const { data, loaded, total } = useCohortDriverData({ summaries, datasets, files, rawFiles: rawFiles || files, rows, datafiles, chromoBins });
+  const wrapRef = useRef(null);
+  const [visible, setVisible] = useState(typeof IntersectionObserver === "undefined");
+  const [loadSnv, setLoadSnv] = useState(false);
+  useEffect(() => {
+    if (visible || !wrapRef.current) return undefined;
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setVisible(true), { rootMargin: "200px" });
+    io.observe(wrapRef.current);
+    return () => io.disconnect();
+  }, [visible]);
+  const { data: dataAll, loaded, total, sizes } = useCohortDriverData({ summaries, datasets, files, rawFiles: rawFiles || files, rows, datafiles, chromoBins, enabled: visible, loadSnv });
+  const data = visible ? dataAll : EMPTY;
+  const mb = sizes?.known ? `~${Math.round(sizes.bytes / 1e6)} MB${sizes.known < summaries.length ? " for the patients with a known size" : ""}` : "size unknown";
+  const pendingText = `click "Load SNV evidence" to fetch snv_matrix.json (${mb})`;
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
@@ -187,7 +201,13 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
   const { columns, ranked } = useMemo(() => selectSharedColumns(perPatient, state), [perPatient, state]);
   const choices = useMemo(() => geneChoices(ranked), [ranked]);
   const shownGenes = state.genes && state.genes.length ? state.genes : [...new Set(columns.flatMap((c) => c.genes))];
-  const aligned = useMemo(() => Object.fromEntries(Object.entries(data).map(([id, d]) => [id, alignPatient(columns, d.entries, d.states)])), [data, columns]);
+  const aligned = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(data).map(([id, d]) => [id, alignPatient(columns, d.entries, d.states).map((a) => (d.snvPending && a.entry?.cls === "snv" ? { ...a, states: null, pending: true } : a))])
+      ),
+    [data, columns]
+  );
   const selected = columns.find((c) => c.key === openKey) || null;
 
   const statusOf = (s) => {
@@ -211,6 +231,7 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
   ];
 
   return (
+    <div ref={wrapRef}>
     <Card
       size="small"
       title={<Space><ApartmentOutlined />Drivers on each patient&apos;s tree<Provenance id="oncoprint" /></Space>}
@@ -259,7 +280,10 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
         <Text type="secondary">Column width</Text>
         <InputNumber size="small" min={CDT_COL_PX[0]} max={CDT_COL_PX[1]} value={state.colPx} onChange={(v) => patch({ colPx: v || 14 })} style={{ width: 60 }} addonAfter="px" />
         <Segmented size="small" value={state.height} onChange={(v) => patch({ height: v })} options={[{ value: "compact", label: "Compact" }, { value: "normal", label: "Normal" }, { value: "tall", label: "Tall" }]} />
-        {loaded < total && (
+        {loaded < total && !loadSnv && (
+          <Button size="small" type="primary" loading={!visible} onClick={() => setLoadSnv(true)}>{`Load SNV evidence (${mb})`}</Button>
+        )}
+        {loaded < total && loadSnv && (
           <Space size={6}>
             <Progress percent={Math.round((100 * loaded) / Math.max(1, total))} size="small" style={{ width: 120 }} />
             <Text type="secondary">{`loading genotypes ${loaded}/${total}`}</Text>
@@ -316,6 +340,7 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
                 palette={palette}
                 pixelRatio={pixelRatio}
                 nShared={columns.length}
+                pendingText={pendingText}
               />
             );
           })}
@@ -324,5 +349,6 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
       <Swatches items={legend} style={{ marginTop: 4 }} />
       <HintLine text="Same columns in every block: a hatched column means the patient has no filtered event of that gene and class. Amp / del columns use the total copy-number colours of the patient view. Tree on the left (branches coloured by clone), cells in tree order. Click a patient name to open the patient, a column name for the gene card and per-patient events, a cell for that patient's event drawer. Settings are in the URL (cdt* parameters). Per-cell copy number covers up to 2000 cells per patient, like the cohort heatmap." />
     </Card>
+    </div>
   );
 }
