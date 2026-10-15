@@ -2756,6 +2756,7 @@
     "appearance": "Theme",
     "light": "Light",
     "dark": "Dark",
+    "cyberpunk": "Cyberpunk",
     "heatmap-palette": "Copy-number heatmap palette",
     "heatmap-palette-help": "Colours of the CN heatmaps and circos rings; individual states can be edited from the heatmap's palette button.",
     "clear": "Clear site settings",

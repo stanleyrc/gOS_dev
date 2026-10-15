@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import { Space, Table, Tooltip, Typography } from "antd";
 import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
-import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { TYPE, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { STORY_SERIES, headerCase, matrixExtent, stackRows } from "../../../helpers/singleCell/story";
 
@@ -25,7 +25,7 @@ export function StoryBars({ figure }) {
   const [ref, width] = useContainerWidth(600);
   const rows = useMemo(() => stackRows(figure), [figure]);
   const cats = figure.categories || [];
-  const colors = figure.colorKey === "state" ? annotationColors(cats) : Object.fromEntries(cats.map((c, k) => [c, STORY_SERIES[theme.mode === "dark" ? "dark" : "light"][k % 8]]));
+  const colors = figure.colorKey === "state" ? annotationColors(cats) : Object.fromEntries(cats.map((c, k) => [c, STORY_SERIES[isDarkLike(theme.mode) ? "dark" : "light"][k % 8]]));
   const left = 96;
   const right = 48;
   const barH = 16;
@@ -70,7 +70,7 @@ export function StoryScatter({ figure, groupColors = {} }) {
   const keep = new Set([...sizes.entries()].sort((a, b) => b[1] - a[1]).slice(0, sizes.size > 8 ? 7 : 8).map(([g]) => g));
   const pts = raw.map((p) => (keep.has(p.group) ? p : { ...p, group: "Other" }));
   const groups = [...new Set(pts.map((p) => p.group))].sort((a, b) => (a === "Other") - (b === "Other") || `${a}`.localeCompare(`${b}`, undefined, { numeric: true }));
-  const series = STORY_SERIES[theme.mode === "dark" ? "dark" : "light"];
+  const series = STORY_SERIES[isDarkLike(theme.mode) ? "dark" : "light"];
   const color = (g) => (g === "Other" ? theme.faint : groupColors[g] || series[groups.indexOf(g) % 8]);
   const m = { l: 44, r: 12, t: 8, b: 34 };
   const W = Math.min(560, Math.max(260, width));
@@ -111,7 +111,7 @@ export function StoryDots({ figure }) {
   const w = Math.max(160, Math.min(420, width - left - 70));
   const x = d3.scaleLinear().domain([Math.min(-0.2, d3.min(rows, (r) => r.null) ?? 0), Math.max(0.8, d3.max(rows, (r) => r.observed) ?? 1)]).nice().range([0, w]);
   const rowH = 18;
-  const accent = STORY_SERIES[theme.mode === "dark" ? "dark" : "light"][0];
+  const accent = STORY_SERIES[isDarkLike(theme.mode) ? "dark" : "light"][0];
   return (
     <div ref={ref}>
       <div style={{ marginBottom: 4 }}>
@@ -152,7 +152,7 @@ export function StoryMatrix({ figure }) {
   const cols = figure.cols || [];
   const vals = figure.values || [];
   const ext = matrixExtent(vals);
-  const pal = STORY_SERIES[theme.mode === "dark" ? "dark" : "light"];
+  const pal = STORY_SERIES[isDarkLike(theme.mode) ? "dark" : "light"];
   const color = (v) => {
     if (!Number.isFinite(v)) return theme.panelAlt;
     const t = Math.max(-1, Math.min(1, v / ext));
