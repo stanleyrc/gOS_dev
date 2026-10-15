@@ -11,6 +11,7 @@ import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups
 import { cellsOfGroups, linkAppliesTo, readDeepLink, readViewLink, withCloneOverrides } from "../../helpers/singleCell/deepLink";
 import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
 import { parseSelection } from "../../helpers/singleCell/driverLayer";
+import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
@@ -19,7 +20,15 @@ const withUrlGroups = (layout) => {
   // ?drvpreset= / drvadd= / drvrm= / drvf= open the Drivers layer on that selection
   try {
     const drivers = parseSelection(window.location.search);
-    return drivers ? { ...withGroups, drivers } : withGroups;
+    const withDrivers = drivers ? { ...withGroups, drivers } : withGroups;
+    // ?hidelowqc=1 / ?qcthr=mapd:0.2 open with the low-QC cells hidden (coverage QC)
+    const hide = hideLowQcFromSearch(window.location.search);
+    const thr = thresholdsFromSearch(window.location.search);
+    return {
+      ...withDrivers,
+      ...(hide != null ? { hideLowQc: hide } : {}),
+      ...(thr ? { covQcThresholds: { ...(withDrivers.covQcThresholds || {}), ...thr } } : {}),
+    };
   } catch (error) {
     return withGroups;
   }
