@@ -5,6 +5,7 @@ import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import SnvFilterBar from "./snvFilterBar";
 import { treeSiteFit } from "../../helpers/singleCell/snvPhyloFit";
+import SigFitControl from "./signatures/sigFitControl";
 import { assignByTreeSet } from "../../helpers/singleCell/snvSigByTree";
 import useSignatureModel from "./signatures/useSignatureModel";
 import {
@@ -30,6 +31,17 @@ import {
 } from "../../helpers/singleCell/snvAnnot";
 
 const { Text } = Typography;
+
+/** Which signature fit the Signature track uses, with the shared Fit control. */
+function SigFitLegend() {
+  const fit = useSelector((s) => s.SingleCell.signatures?.data);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <Text type="secondary">{fit?.fit === "joint" ? `fit: joint (patient set${fit.candidatesIncluded ? " + candidates" : ""})` : "fit: independent (legacy)"}</Text>
+      <SigFitControl size="small" />
+    </span>
+  );
+}
 export const TRACK_H = 9;
 export const TRACK_GAP = 1;
 const LABEL_W = 84;
@@ -339,6 +351,7 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null, fitBu
             return (
               <span key={key} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <b>{def.label}</b>
+                {key === "signature" && <SigFitLegend />}
                 {catLegend(annot, key).map((e) => (
                   <span
                     key={e.value}

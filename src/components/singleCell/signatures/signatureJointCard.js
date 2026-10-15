@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Alert, Card, Empty, Select, Segmented, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { useSelector } from "react-redux";
+import { Alert, Card, Empty, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { ExperimentOutlined } from "@ant-design/icons";
-import singleCellActions from "../../../redux/singleCell/actions";
+import SigFitControl from "./sigFitControl";
 import { AetiologyLegend, signatureColorOf } from "../signaturePanel";
 import useContainerWidth from "../useContainerWidth";
 import {
-  FIT_JOINT,
-  FIT_LEGACY,
   contrastRows,
   contrastsOf,
   droppedSignatures,
@@ -16,7 +14,7 @@ import {
   fmtP,
   jointSetNames,
   patientSet,
-  sigFitMode,
+  candidateSignatures,
 } from "../../../helpers/singleCell/signatureJoint";
 
 const { Text } = Typography;
@@ -58,10 +56,8 @@ function ExposureWhiskers({ bars, width }) {
  * chosen here (redux `signatures`).
  */
 export default function SignatureJointCard() {
-  const dispatch = useDispatch();
-  const { signaturesJoint, layout } = useSelector((s) => s.SingleCell);
+  const { signaturesJoint } = useSelector((s) => s.SingleCell);
   const joint = signaturesJoint?.status === "ok" ? signaturesJoint.data : null;
-  const mode = sigFitMode(layout, Boolean(joint));
   const [ref, width] = useContainerWidth(900);
   const [setName, setSetName] = useState("subclonal");
   const [contrastIdx, setContrastIdx] = useState(0);
@@ -71,6 +67,7 @@ export default function SignatureJointCard() {
   const set = (joint?.sets || []).find((s) => s.name === shown);
   const members = useMemo(() => patientSet(joint), [joint]);
   const dropped = useMemo(() => droppedSignatures(joint), [joint]);
+  const candidates = useMemo(() => candidateSignatures(joint), [joint]);
   const contrasts = contrastsOf(joint);
   const contrast = contrasts[Math.min(contrastIdx, Math.max(0, contrasts.length - 1))];
   const rows = useMemo(() => contrastRows(contrast).map((r) => ({ key: r.signature, ...r })), [contrast]);
@@ -94,16 +91,7 @@ export default function SignatureJointCard() {
     <Card
       size="small"
       title={<Space><ExperimentOutlined />Joint signature fit (patient signature set)</Space>}
-      extra={
-        <Tooltip title="Joint: every site set is refit by NNLS on one signature set chosen for the patient. Independent (legacy): each set was fit alone against all of COSMIC, so small sets can pick spurious signatures. The other cards on this tab use the fit chosen here.">
-          <Segmented
-            size="small"
-            value={mode}
-            onChange={(v) => dispatch(singleCellActions.updateLayout({ sigFit: v }))}
-            options={[{ value: FIT_JOINT, label: "Fit: joint (patient set)" }, { value: FIT_LEGACY, label: "independent (legacy)" }]}
-          />
-        </Tooltip>
-      }
+      extra={<SigFitControl />}
     >
       <div ref={ref}>
         <Space wrap size={[4, 6]} style={{ marginBottom: 8 }}>
@@ -118,16 +106,44 @@ export default function SignatureJointCard() {
           type="info"
           showIcon
           style={{ marginBottom: 8 }}
-          message={
-            <span>
-              The set starts from the SigProfilerAssignment fit of all sites and adds a signature only when one subset (truncal, subclonal, private, a
-              clone or a clade) supports it by a likelihood-ratio test (Bonferroni over candidates) and the same signature is selected in at least
-              80% of {joint.n_boot_select} bootstrap resamples of that subset, takes at least 5% of the exposure and raises the cosine of the
-              reconstruction by at least 0.02. Every set is then refit by NNLS on this set only; intervals are {joint.n_boot} mutation-resampling
-              bootstraps.
-            </span>
+          message="How the signature set is chosen (these thresholds drive the result)"
+          description={
+            <div>
+              Start from the SigProfilerAssignment fit of all sites. A signature is added from a subset (truncal, subclonal, private, a clone or a clade) only if ALL hold:
+              <ul style={{ margin: "4px 0 4px 18px" }}>
+                <li>likelihood-ratio test passes Bonferroni over the candidate signatures (alpha 0.05 / ~80);</li>
+                <li>it takes at least 5% of the subset's exposure;</li>
+                <li>it raises the cosine of the reconstruction by at least 0.02;</li>
+                <li>it is selected in at least 80% of {joint.n_boot_select} bootstrap resamples of the subset.</li>
+              </ul>
+              Every set is then refit by NNLS on this set only; intervals are {joint.n_boot} mutation-resampling bootstraps. Signatures that pass the likelihood-ratio test
+              but miss the other thresholds are listed below as candidates (below threshold).
+            </div>
           }
         />
+        {candidates.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <Text strong>Candidate signatures (below threshold)</Text>
+            <Table
+              size="small"
+              pagination={false}
+              rowKey={(r) => `${r.signature}|${r.set}`}
+              dataSource={candidates}
+              columns={[
+                { title: "Signature", dataIndex: "signature", render: (v) => <Tag color="gold">{v} (below threshold)</Tag> },
+                { title: "Set", dataIndex: "set" },
+                { title: "Fraction if added [95% CI]", render: (_, r) => `${pct1(r.frac)} [${pct1(r.lo)}, ${pct1(r.hi)}]` },
+                { title: "delta logL / p", render: (_, r) => `${r.delta_loglik} / ${fmtP(r.p)}` },
+                { title: "Cosine gain", dataIndex: "cosine_gain", render: (v) => v.toFixed(3) },
+                { title: "Bootstrap support (>=5%)", dataIndex: "support", render: pct },
+                { title: "Fails", render: (_, r) => [r.frac < 0.05 && "<5% exposure", r.cosine_gain < 0.02 && "cosine gain < 0.02", r.support < 0.8 && "bootstrap < 80%"].filter(Boolean).join(", ") || "-" },
+              ]}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Not in the patient set, so not in the exposure bars or tests. Tick "include candidates" in the Fit control to let them take part in the per-site Signature track and Isolate.
+            </Text>
+          </div>
+        )}
         {dropped.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <Text strong>Reported by the independent (legacy) fits but not in the patient set</Text>

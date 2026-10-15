@@ -142,3 +142,14 @@ describe("url round trip", () => {
     expect(rampColor(NaN)).toMatch(/^rgb\(/);
   });
 });
+
+describe("signature fit in the site URL state", () => {
+  it("round-trips sigfit and sigcand", () => {
+    // eslint-disable-next-line global-require
+    const { serializeSiteState, parseSiteState } = require("./snvAnnot");
+    const params = serializeSiteState({ sigFit: "legacy", sigCandidates: true });
+    expect(params).toMatchObject({ sigfit: "legacy", sigcand: "1" });
+    expect(parseSiteState("?sigfit=legacy&sigcand=1")).toMatchObject({ sigFit: "legacy", sigCandidates: true });
+    expect(serializeSiteState({})).toEqual({});
+  });
+});
