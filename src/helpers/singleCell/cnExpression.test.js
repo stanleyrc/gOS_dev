@@ -1,4 +1,4 @@
-import { binOf, boxStats, cnBins, cnExpressionStats, locusCn, normalQuantile, normalUpper, scaleExpression, stouffer } from "./cnExpression";
+import { binOf, boxStats, cnBins, cnExpressionStats, cnFor, locusCn, normalQuantile, normalUpper, scaleExpression, stouffer } from "./cnExpression";
 
 const row = (segs) => ({
   binIndex: { gStart: Float64Array.from(segs.map((s) => s[0])), gEnd: Float64Array.from(segs.map((s) => s[1])) },
@@ -64,5 +64,20 @@ describe("scaleExpression / boxStats", () => {
     const b = boxStats([1, 2, 3, 4, 100]);
     expect(b.median).toBe(3);
     expect(b.whiskerHi).toBe(4);
+  });
+});
+
+describe("cnExpressionStats with per-gene CN (all-genes source)", () => {
+  it("uses cnBy[gene] for that gene and r.cn for the rest", () => {
+    const recs = Array.from({ length: 12 }, (_, i) => ({ patient: "P", cn: 12 - i, cnBy: { A: i + 1 }, expr: { A: i, B: i } }));
+    expect(cnFor(recs[0], "A")).toBe(1);
+    expect(cnFor(recs[0], "B")).toBe(12);
+    const st = cnExpressionStats(recs, ["A", "B"], ["P"]);
+    expect(st.pooled.A.rho).toBeCloseTo(1);
+    expect(st.pooled.B.rho).toBeCloseTo(-1);
+  });
+  it("skips cells whose own-locus CN is missing", () => {
+    const recs = Array.from({ length: 12 }, (_, i) => ({ patient: "P", cn: i, cnBy: { A: i < 2 ? NaN : i }, expr: { A: i } }));
+    expect(cnExpressionStats(recs, ["A"], ["P"]).pooled.A.n).toBe(10);
   });
 });
