@@ -214,8 +214,9 @@ export const linkCarrierDnaCells = (link, cellMap = {}) => (link?.carriers || []
 
 
 export const READS_DEFAULT_USING = 4;
-export const READS_DEFAULT_CONTROLS = 1;
+export const READS_DEFAULT_CONTROLS = 2;
 export const READS_MAX_USING = 8;
+export const READS_MAX_CONTROLS = 3;
 
 /**
  * IGV view of an event's raw reads: the cells using the junction (most reads first) and, for comparison,
@@ -235,7 +236,7 @@ export function spliceReadsView(event, { spliceReads = {}, patientId = null, nUs
     rna_id: r.id,
     bam: spliceReads[r.id],
     patientId,
-    label: r.role === "control" ? `${r.id} (control)` : `${r.id} (${r.k} reads)`,
+    label: r.role === "control" ? `comparator: ${r.id} (event ${r.k} / canonical ${Math.max(0, r.n - r.k)} reads)` : `${r.id} (event ${r.k} / canonical ${Math.max(0, r.n - r.k)} reads)`,
   }));
   return {
     available: true,
