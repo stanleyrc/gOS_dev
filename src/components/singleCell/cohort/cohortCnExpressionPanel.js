@@ -333,6 +333,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
   return (
     <Card
       size="small"
+      styles={{ header: { flexWrap: "wrap", padding: "6px 12px" }, title: { flex: "0 0 auto", whiteSpace: "nowrap", paddingRight: 12 } }}
       title={<Space><BoxPlotOutlined />{own ? "CN vs expression" : "CN vs expression"}</Space>}
       extra={
         <Space wrap size={10}>
