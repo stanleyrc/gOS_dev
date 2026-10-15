@@ -2,13 +2,14 @@
 // spliced junction with a plain-language summary, explicit units and links to nearby SNVs.
 // d3-free so it can be tested without a DOM.
 
-export const EVENT_TYPES = ["exon_skip", "alt_5", "alt_3", "novel_junction", "annotated_alt"];
+export const EVENT_TYPES = ["exon_skip", "alt_5", "alt_3", "novel_junction", "annotated_alt", "intron_retention"];
 export const EVENT_TYPE_LABEL = {
   exon_skip: "Exon skip",
   alt_5: "Alt 5' (donor)",
   alt_3: "Alt 3' (acceptor)",
   novel_junction: "Novel junction",
   annotated_alt: "Annotated alternative",
+  intron_retention: "Intron retention",
 };
 export const FRAME_LABEL = { in_frame: "in frame", frameshift: "frameshift", unknown: "n/a" };
 export const REGION_LABEL = {
@@ -61,10 +62,11 @@ function normalizeLink(l) {
 /** Events of a splicing.json (validated; [] in older files). */
 export function normalizeSpliceEvents(list) {
   return arr(list)
-    .filter((e) => e && e.id && e.cluster_id)
+    // an intron retention event may have no sashimi cluster (its intron is below the exporter's junction filters): listed, not clickable
+    .filter((e) => e && e.id && (e.cluster_id || e.event_type === "intron_retention"))
     .map((e) => ({
       id: `${e.id}`,
-      clusterId: `${e.cluster_id}`,
+      clusterId: e.cluster_id ? `${e.cluster_id}` : null,
       gene: e.gene || "",
       chromosome: `${e.chromosome ?? ""}`.replace(/^chr/, ""),
       strand: e.strand || "+",

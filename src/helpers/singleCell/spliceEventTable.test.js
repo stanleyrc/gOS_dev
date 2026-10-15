@@ -78,6 +78,13 @@ describe("spliceEventTable", () => {
     expect(eventCounts(ev)).toEqual({ all: 2, recommended: 1, linked: 1 });
   });
 
+  test("intron retention events are kept without a sashimi cluster", () => {
+    const ev = normalizeSpliceEvents([raw({ id: "ev:ir:1", cluster_id: null, event_type: "intron_retention", type: "intron_retention" }), raw({ id: "ev:x", cluster_id: null })]);
+    expect(ev).toHaveLength(1);
+    expect(ev[0].eventType).toBe("intron_retention");
+    expect(ev[0].clusterId).toBeNull();
+  });
+
   test("sorts findings first, then clone-enriched, then reads", () => {
     const ev = normalizeSpliceEvents([
       raw({ id: "ev:a", finding_score: 0, clone: null, reads: 50 }),
