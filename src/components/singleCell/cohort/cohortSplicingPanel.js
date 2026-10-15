@@ -15,6 +15,7 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { normalizeSpliceFindings, pageOf } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import SpliceFindingsList from "../rna/spliceFindingsList";
 import { clusterEvents, clusterTranscripts, eventPsi } from "../../../helpers/singleCell/spliceEvents";
+import CohortSpliceReads from "./cohortSpliceReads";
 import CohortSpliceEvent, { useSpliceExons } from "./cohortSpliceEvent";
 
 const { Text } = Typography;
@@ -331,6 +332,7 @@ export default function CohortSplicingPanel({ dataset }) {
                 </Space>
               )}
               <CohortSpliceEvent dataset={dataset} patients={patients} cluster={row.cluster} event={event} />
+              <CohortSpliceReads dataset={dataset} patients={patients} cluster={row.cluster} />
               <Text strong>{t(`${k}.cohort-heatmap`)}</Text>
               <div style={{ overflowX: "auto" }}>
                 <PsiHeatmap junctions={row.cluster.junctions} columns={matrix.patients} psi={matrix.psi} totals={matrix.totals} chromosome={row.cluster.chromosome} />
