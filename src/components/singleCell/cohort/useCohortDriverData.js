@@ -7,6 +7,7 @@ import { rankFindings } from "../../../helpers/singleCell/siteEvidence";
 import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import { buildDriverEntries, entryStates } from "../../../helpers/singleCell/driverLayer";
+import { attachCalls, secondHitMap } from "../../../helpers/singleCell/twoHit";
 import { eventSnvColumns, slimSnv } from "../../../helpers/singleCell/cohortDriverTrees";
 import { useCgcGenes } from "../drivers/useDriverLayer";
 
@@ -65,7 +66,7 @@ async function loadBase(dataset, summary, file, cloneOf, chromoBins, cancelToken
  * @param rawFiles cohort files before the clade filter (every driver SNV column is kept), files: after it
  * @param rows cohort CN rows { patientId: { cellRows: [{ cellId, clone, row }] } }
  */
-export default function useCohortDriverData({ summaries, datasets, files, rawFiles, rows, datafiles, chromoBins, enabled = true, loadSnv = false }) {
+export default function useCohortDriverData({ summaries, datasets, files, rawFiles, rows, datafiles, chromoBins, enabled = true, loadSnv = false, tsgCalls = null }) {
   const [base, setBase] = useState({});
   const started = useRef(new Set());
   const cgc = useCgcGenes();
@@ -122,7 +123,8 @@ export default function useCohortDriverData({ summaries, datasets, files, rawFil
       if (!f?.tree || !f?.events) return;
       const entry = rows[id];
       const hit = cache.current.get(id);
-      if (hit && hit.b === b && hit.f === f && hit.entry === entry && hit.cgc === cgc && hit.bins === chromoBins) {
+      const calls = tsgCalls?.[id] || null;
+      if (hit && hit.b === b && hit.f === f && hit.entry === entry && hit.cgc === cgc && hit.bins === chromoBins && hit.calls === calls) {
         out[id] = hit.value;
         return;
       }
@@ -141,19 +143,20 @@ export default function useCohortDriverData({ summaries, datasets, files, rawFil
       const entries = buildDriverEntries(f.events, { tumorIds, hotspots: b.sites.hotspots, verdicts: b.sites.verdicts, cgc, rnaFusionCells, snv: b.snv });
       const cellRows = entry?.cellRows || [];
       const cn = cellRows.length ? { cells: cellRows.map((c) => c.cellId), rows: cellRows.map((c) => c.row) } : null;
-      const ctx = { order, snv: b.snv, snvRows: b.snv ? rowMap(order, b.snv.cells) : null, cn, cnRows: cn ? rowMap(order, cn.cells) : null, chromoBins };
+      if (calls) attachCalls(entries, calls);
+      const ctx = { order, snv: b.snv, snvRows: b.snv ? rowMap(order, b.snv.cells) : null, cn, cnRows: cn ? rowMap(order, cn.cells) : null, chromoBins, twoHit: calls ? secondHitMap(calls) : null };
       const states = new Map(entries.map((d) => [d.key, entryStates(d, ctx)]));
       const notes = { ...b.notes };
       if (!entry) notes.cn = "per-cell copy number is still loading";
       else if (!cn) notes.cn = "no per-cell complex.json could be read";
       if (!rnaList) notes.rna = "rna/fusions.json not exported (fusion rows show DNA support only)";
       const value = { snvPending: Boolean(b.pending), order, tree: f.tree, leafClones, entries, states, notes, nCn: cellRows.length, cnTruncated: Boolean(entry?.truncated) };
-      cache.current.set(id, { b, f, entry, cgc, bins: chromoBins, value });
+      cache.current.set(id, { b, f, entry, cgc, bins: chromoBins, calls, value });
       out[id] = value;
     });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaries, files, base, rows, cgc, cloneInfo, chromoBins]);
+  }, [summaries, files, base, rows, cgc, cloneInfo, chromoBins, tsgCalls]);
   const [sizes, setSizes] = useState(null); // { bytes, known, total } of the snv_matrix.json files not yet loaded
   useEffect(() => {
     if (!enabled) return undefined;

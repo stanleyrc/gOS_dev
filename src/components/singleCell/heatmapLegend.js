@@ -73,6 +73,7 @@ export default function HeatmapLegend({
           { color: c.mutant, label: "mutant" },
           { color: c.wildtype, label: "wild type" },
           { color: c.noCoverage, label: t("components.single-cell.side.no-reads") },
+          ...(drivers.entries.some((d) => d.cls === "snv" && d.twoHit) ? [{ color: c.loss, label: "loss only (TSG second hit)" }, { color: c.bothHit, label: "SNV + loss (biallelic)" }] : []),
         ],
       });
     }

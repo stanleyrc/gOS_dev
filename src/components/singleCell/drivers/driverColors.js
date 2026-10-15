@@ -9,6 +9,9 @@ export const driverColors = () => ({
   rna: "#E08A00",
   both: "#6A3D9A",
   complex: "#0B7285",
+  // tumour-suppressor two-hit columns (twoHit.js): second hit only / SNV + second hit
+  loss: "#E6A100",
+  bothHit: "#3F007D",
 });
 
 /** Header label colour of a driver class. */
