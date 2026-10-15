@@ -10,12 +10,28 @@ import { ADJUSTMENTS, MEASURES, covariateNames, fmtP, forestRows, geneTable, mod
 
 const { Text, Paragraph } = Typography;
 
+// instant hover label over an svg (native <title> tooltips are slow and hard to hit on small dots)
+function useHoverTip() {
+  const [tip, setTip] = useState(null);
+  const bind = (text) => ({
+    onMouseEnter: (e) => setTip({ text, x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }),
+    onMouseMove: (e) => setTip({ text, x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }),
+    onMouseLeave: () => setTip(null),
+  });
+  const node = tip ? (
+    <div style={{ position: "absolute", left: tip.x + 12, top: tip.y + 12, background: "rgba(0,0,0,0.8)", color: "#fff", padding: "2px 6px", borderRadius: 3, fontSize: 12, pointerEvents: "none", whiteSpace: "nowrap", zIndex: 5 }}>{tip.text}</div>
+  ) : null;
+  return [bind, node];
+}
+
 function Forest({ rows, patients, selected, onSelect, width }) {
   const rowH = 20;
   const M = { top: 22, right: 170, bottom: 8, left: 260 };
   const h = M.top + M.bottom + rows.length * rowH;
   const x = d3.scaleLinear().domain([-0.6, 0.6]).range([M.left, width - M.right]);
+  const [bind, tipNode] = useHoverTip();
   return (
+    <div style={{ position: "relative" }}>
     <svg width={width} height={h}>
       <line x1={x(0)} x2={x(0)} y1={M.top - 6} y2={h - M.bottom} stroke={INK.grid || "#ccc"} />
       {[-0.4, -0.2, 0.2, 0.4].map((t) => (
@@ -30,9 +46,10 @@ function Forest({ rows, patients, selected, onSelect, width }) {
             {selected === r.covariate && <rect x={0} y={y - rowH / 2} width={width} height={rowH} fill="#eef3fb" />}
             <text x={M.left - 8} y={y + 4} textAnchor="end" fontSize={FONT.axis} fontWeight={sig ? 700 : 400} fill={INK.text}>{r.covariate.length > 34 ? `${r.covariate.slice(0, 33)}…` : r.covariate}</text>
             {r.dots.map((d) => (
-              <circle key={d.patient} cx={x(Math.max(-0.6, Math.min(0.6, d.r)))} cy={y} r={3.2} fill={patientColor(patients.indexOf(d.patient))} fillOpacity={0.8} stroke={d.noisy ? "#d4380d" : "none"}>
-                <title>{`${d.patient}: partial rho ${d.r.toFixed(2)}, p ${fmtP(d.p)}, n ${d.n}${d.noisy ? " (noisy)" : ""}`}</title>
-              </circle>
+              <g key={d.patient} {...bind(`${d.patient}: partial rho ${d.r.toFixed(2)}, p ${fmtP(d.p)}, n ${d.n}${d.noisy ? " (noisy)" : ""}`)}>
+                <circle cx={x(Math.max(-0.6, Math.min(0.6, d.r)))} cy={y} r={7} fill="transparent" />
+                <circle cx={x(Math.max(-0.6, Math.min(0.6, d.r)))} cy={y} r={3.6} fill={patientColor(patients.indexOf(d.patient))} fillOpacity={0.85} stroke={d.noisy ? "#d4380d" : "none"} />
+              </g>
             ))}
             <rect x={x(Math.max(-0.6, Math.min(0.6, r.comb.mean_r))) - 3} y={y - 6} width={6} height={12} fill={sig ? "#222" : "#999"}>
               <title>{`combined: mean rho ${r.comb.mean_r.toFixed(2)}, Stouffer z ${r.comb.z.toFixed(2)}, p ${fmtP(r.comb.p)}`}</title>
@@ -42,16 +59,21 @@ function Forest({ rows, patients, selected, onSelect, width }) {
         );
       })}
     </svg>
+    {tipNode}
+    </div>
   );
 }
 
 function Scatter({ points, patients, width, xTitle, yTitle }) {
+  const [bind, tipNode] = useHoverTip();
   const H = 300;
   const M = { top: 10, right: 12, bottom: 40, left: 60 };
   if (!points.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no linked cells with this covariate)" />;
-  const x = d3.scaleLinear().domain(d3.extent(points, (p) => p.x)).nice().range([M.left, width - M.right]);
-  const y = d3.scaleLinear().domain(d3.extent(points, (p) => p.y)).nice().range([H - M.bottom, M.top]);
+  // TMB (p.y) on the x axis, the selected covariate (p.x) on the y axis
+  const x = d3.scaleLinear().domain(d3.extent(points, (p) => p.y)).nice().range([M.left, width - M.right]);
+  const y = d3.scaleLinear().domain(d3.extent(points, (p) => p.x)).nice().range([H - M.bottom, M.top]);
   return (
+    <div style={{ position: "relative" }}>
     <svg width={width} height={H}>
       <g transform={`translate(0,${H - M.bottom})`}>
         <line x1={M.left} x2={width - M.right} stroke="#999" />
@@ -61,11 +83,11 @@ function Scatter({ points, patients, width, xTitle, yTitle }) {
       {y.ticks(5).map((t) => <text key={t} x={M.left - 6} y={y(t) + 4} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
       <text transform={`translate(12,${(M.top + H - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>{yTitle}</text>
       {points.map((p, i) => (
-        <circle key={i} cx={x(p.x)} cy={y(p.y)} r={2.6} fill={patientColor(patients.indexOf(p.patient))} fillOpacity={0.55}>
-          <title>{`${p.patient} ${p.cell || ""}${p.state ? ` · ${p.state}` : ""}`}</title>
-        </circle>
+        <circle key={i} cx={x(p.y)} cy={y(p.x)} r={3} fill={patientColor(patients.indexOf(p.patient))} fillOpacity={0.55} {...bind(`${p.patient}${p.cell ? ` · ${p.cell}` : ""}${p.state ? ` · ${p.state}` : ""} · TMB ${d3.format(".3~g")(p.y)} · ${d3.format(".3~g")(p.x)}`)} />
       ))}
     </svg>
+    {tipNode}
+    </div>
   );
 }
 
@@ -138,7 +160,7 @@ export default function CohortTmbAssocPanel({ dataset, onGene = null }) {
             <Select size="small" showSearch value={cov} onChange={setCov} style={{ width: 320 }} options={covariateNames(data).map((c) => ({ value: c, label: c }))} />
             {patients.map((p, i) => <Tag key={p} color={patientColor(i)}>{p}</Tag>)}
           </Space>
-          <Scatter points={points} patients={patients} width={width} xTitle={cov} yTitle={`${measure} TMB (corrected, per Mb)`} />
+          <Scatter points={points} patients={patients} width={width} xTitle={`${measure} TMB (corrected, per Mb)`} yTitle={cov} />
         </div>
         <div style={{ marginTop: 12 }}>
           <Space wrap style={{ marginBottom: 6 }}>
