@@ -83,7 +83,7 @@ function CurvePanel({ panel, patients, binned, width, height = 230, xTitle, yTit
   const x = d3.scaleLinear().domain(d3.extent(xs)).nice().range([M.left, width - M.right]);
   const y = d3.scaleLinear().domain(d3.extent(ys)).nice().range([height - M.bottom, M.top]);
   const color = (p) => (panel.pooled ? patientColor(patients.indexOf(p)) : patientColor(patients.indexOf(panel.patient)));
-  const label = `${panel.patient} · n ${panel.n} · rho ${Number.isFinite(panel.rho) ? panel.rho.toFixed(2) : "n/a"}${partial != null ? ` (partial ${partial.toFixed(2)})` : ""}`;
+  const label = `${panel.pooled ? "Pooled" : panel.patient} · n ${panel.n} · rho ${Number.isFinite(panel.rho) ? panel.rho.toFixed(2) : "n/a"}${partial != null ? ` (partial ${partial.toFixed(2)})` : ""}`;
   const area = d3.area().x((t) => x(t.x)).y0((t) => y(t.lo)).y1((t) => y(t.hi));
   const line = d3.line().x((t) => x(t.x)).y((t) => y(t.y));
   return (
