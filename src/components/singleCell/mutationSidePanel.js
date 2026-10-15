@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import singleCellActions from "../../redux/singleCell/actions";
+import { carrierRows } from "../../helpers/singleCell/snvIsolate";
+import { columnPick, dragPick } from "../../helpers/singleCell/snvSelection";
 import { Button, Space, Tooltip, Typography } from "antd";
 import { AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
@@ -96,7 +99,28 @@ export default function MutationSidePanel({
   const naMode = layoutState.snvNaColor === "white" ? "white" : "grey";
   setSnvNaMode(naMode); // module setting read by the colour functions and the legend
   const labelMode = layoutState.snvLabel || "protein";
+  const dispatch = useDispatch();
   const total = columnOrder.length;
+  // mutation selection (layout.snvSelected, variant ids): click / Cmd-click / Shift-click / drag on the column strip
+  const selectedIds = layoutState.snvSelected;
+  const orderIds = useMemo(() => columnOrder.map((c) => snv.variants[c].id), [columnOrder, snv]);
+  const selectedSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
+  const selectedIdx = useMemo(() => orderIds.reduce((acc, id, k) => (selectedSet.has(id) ? (acc.push(k), acc) : acc), []), [orderIds, selectedSet]);
+  const selectedCols = useMemo(() => selectedIdx.map((k) => columnOrder[k]), [selectedIdx, columnOrder]);
+  const selectionCarriers = useMemo(
+    () => (selectedCols.length ? carrierRows(snv, selectedCols, rows) : null),
+    [selectedCols, snv, rows]
+  );
+  // carriers of the selected mutations are outlined (when they are a minority of the cells), with any rows the parent marks
+  const outlined = useMemo(() => {
+    if (!selectionCarriers || selectionCarriers.size >= 0.5 * nRows) return highlightRows;
+    return highlightRows ? new Set([...highlightRows, ...selectionCarriers]) : selectionCarriers;
+  }, [selectionCarriers, highlightRows, nRows]);
+  const anchorRef = useRef(null);
+  const stripRef = useRef(null);
+  const [dragSel, setDragSel] = useState(null); // [i0, i1] while dragging on the strip
+  const [stripHover, setStripHover] = useState(null);
+  const setSelected = (ids) => dispatch(singleCellActions.updateLayout({ snvSelected: ids }));
   const [range, setRange] = useState([0, total]);
   useEffect(() => setRange([0, total]), [columnOrder, total]);
   const rangeRef = useRef(range);
@@ -200,6 +224,59 @@ export default function MutationSidePanel({
 
   const [s, e] = range;
   const zoomed = e - s < total;
+
+  /* ---- column strip: where the mutation selection is made ---- */
+  const sitesPerPx = (e - s) / Math.max(1, width);
+  const columnAtX = (clientX) => {
+    const box = stripRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(width - 1, clientX - box.left));
+    const lo = Math.min(total - 1, s + Math.floor(x * sitesPerPx));
+    return { lo, hi: Math.min(total - 1, Math.max(lo, s + Math.ceil((x + 1) * sitesPerPx) - 1)) }; // binned: all sites under the pixel
+  };
+  const onStripDown = (event) => {
+    if (event.button !== 0 || !total) return;
+    event.preventDefault();
+    const start = columnAtX(event.clientX);
+    const base = selectedIds || [];
+    const startX = event.clientX;
+    const additive = event.metaKey || event.ctrlKey;
+    let dragged = false;
+    const move = (ev) => {
+      if (!dragged && Math.abs(ev.clientX - startX) < 4) return;
+      dragged = true;
+      const cur = columnAtX(ev.clientX);
+      setDragSel([Math.min(start.lo, cur.lo), Math.max(start.hi, cur.hi)]);
+    };
+    const up = (ev) => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      setDragSel(null);
+      if (dragged) {
+        const cur = columnAtX(ev.clientX);
+        const [i0, i1] = [Math.min(start.lo, cur.lo), Math.max(start.hi, cur.hi)];
+        setSelected(dragPick(base, orderIds, i0, i1, additive));
+        anchorRef.current = orderIds[i0];
+        return;
+      }
+      const pick = columnPick(base, orderIds, { ...start, anchorId: anchorRef.current, shift: ev.shiftKey, multi: additive });
+      anchorRef.current = pick.anchorId;
+      setSelected(pick.selected);
+      // a plain click on one site also opens its evidence, as a click in the matrix does
+      if (!ev.shiftKey && !additive && start.lo === start.hi && onSiteClick) onSiteClick(null, columnOrder[start.lo], ev);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  const xOf = (k) => ((k - s) / (e - s)) * width;
+  const bandStyle = (k0, k1) => {
+    const x0 = Math.max(0, xOf(k0));
+    const x1 = Math.min(width, xOf(k1 + 1));
+    return x1 > x0 ? { left: x0, width: Math.max(2, x1 - x0) } : null;
+  };
+  const bands = selectedIdx.map((k) => ({ k, style: bandStyle(k, k) })).filter((b) => b.style);
+  const dragBand = dragSel ? bandStyle(dragSel[0], dragSel[1]) : null;
+  const hoverSite = stripHover != null && stripHover < total ? snv.variants[columnOrder[stripHover]] : null;
+  const hoverBinned = sitesPerPx > 1;
   return (
     <div style={{ width }}>
       {categoryNode &&
@@ -209,7 +286,7 @@ export default function MutationSidePanel({
           <AnnotationStrips annot={annot} tracks={tracks} columnOrder={columnOrder} bins={bins} width={width} pixelRatio={pixelRatio} onTrackClick={onTrackClick} labelSide={trackLabelSide} />,
           categoryNode
         )}
-      <div onDoubleClick={() => setRange([0, total])}>
+      <div onDoubleClick={() => setRange([0, total])} style={{ position: "relative" }}>
         <HeatmapCanvas
           width={width}
           height={height}
@@ -218,7 +295,7 @@ export default function MutationSidePanel({
           colorAt={colorAt}
           pixelRatio={pixelRatio}
           separators={groups.separators}
-          highlightRows={highlightRows}
+          highlightRows={outlined}
           onClick={(hit, event) => {
             const a = bins.binStart[hit.col];
             const b = bins.binEnd[hit.col];
@@ -235,6 +312,23 @@ export default function MutationSidePanel({
           onHover={({ row, col }, event) => onHover(row, col < 0 ? [] : describe(row, col), event)}
           onLeave={onLeave}
         />
+        {bands.map((b) => (
+          <div key={b.k} className="sc-snv-selected-col" style={{ position: "absolute", top: 0, height, pointerEvents: "none", background: "rgba(24,144,255,0.18)", borderLeft: "1px solid #1890ff", borderRight: "1px solid #1890ff", ...b.style }} />
+        ))}
+      </div>
+      <div
+        ref={stripRef}
+        className="sc-snv-selstrip"
+        title={hoverSite ? `${siteLabel(hoverSite, "protein")} (${hoverSite.id})${hoverBinned ? " and neighbours under this pixel" : ""}. Click selects; Cmd/Ctrl-click adds or removes; Shift-click selects a range; drag selects a range.` : "Click a column to select that mutation; Cmd/Ctrl-click adds or removes; Shift-click selects a range; drag across to select a range"}
+        style={{ position: "relative", width, height: 12, cursor: "pointer", background: "var(--sc-strip-bg, rgba(128,128,128,0.12))", borderTop: "1px solid rgba(128,128,128,0.3)", userSelect: "none" }}
+        onMouseDown={onStripDown}
+        onMouseMove={(ev) => total && setStripHover(columnAtX(ev.clientX).lo)}
+        onMouseLeave={() => setStripHover(null)}
+      >
+        {bands.map((b) => (
+          <div key={b.k} style={{ position: "absolute", top: 0, bottom: 0, background: "#1890ff", ...b.style }} />
+        ))}
+        {dragBand && <div style={{ position: "absolute", top: 0, bottom: 0, background: "rgba(24,144,255,0.45)", ...dragBand }} />}
       </div>
       {groupOf && (
         <div className="sc-axis" style={{ width, height: axisHeight }}>

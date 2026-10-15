@@ -14,6 +14,8 @@ import SnvSiteDrawer from "./snvSiteDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
 import { carrierRows } from "../../helpers/singleCell/snvIsolate";
+import SnvSelectionBar from "./snvSelectionBar";
+import { idsToColumns, knownIds, parseSnsel, serializeSnsel, SNSEL_PARAM } from "../../helpers/singleCell/snvSelection";
 import SnvIsolatePanel from "./snvIsolatePanel";
 import { cladeNodeLabels } from "../../helpers/singleCell/clades";
 import usePatientClades from "./usePatientClades";
@@ -418,7 +420,7 @@ export default function CellHeatmapPanel() {
   const snvRows = useMemo(() => (snvReady ? rowMap(order, snv.data.cells) : null), [snvReady, order, snv]);
   // Which sites to show (shared with the signature panel through the layout):
   // by where they map on the tree, CellPhy input only, OncoKB drivers only.
-  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore } = layout;
+  const { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore, snvSelected, snvSelectedOnly } = layout;
   const setSnvCategories = (value) => dispatch(singleCellActions.updateLayout({ snvCategories: value }));
   const setCellphyOnly = (value) => dispatch(singleCellActions.updateLayout({ snvCellphyOnly: value }));
   const setDriversOnly = (value) => dispatch(singleCellActions.updateLayout({ snvDriversOnly: value }));
@@ -445,18 +447,45 @@ export default function CellHeatmapPanel() {
   const snvColumns = useMemo(() => {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
-    const filtered = filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot: snvAnnot });
+    const filtered = filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot: snvAnnot, snvSelected, snvSelectedOnly });
     return amplifiedOnly && snvCn ? filtered.filter((c) => snvCn[c]?.amplified) : filtered;
-  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvMinCladeScore, amplifiedOnly, snvCn, snvAnnotFilter, snvAnnot]);
+  }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvSelected, snvSelectedOnly, snvMinCladeScore, amplifiedOnly, snvCn, snvAnnotFilter, snvAnnot]);
   const [snvHeader, setSnvHeader] = useState(null);
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
   const canShowBranchSnvs = Boolean(fullTreeLayout && hasTree && snvReady && hasAnchors(snv.data));
   const showBranchSnvs = canShowBranchSnvs && Boolean(layout.branchSnvs);
+  // "Paint on tree" from the selection bar counts only the selected mutations on the branches
+  const paintSelected = Boolean(layout.snvPaintSelected) && snvSelected?.length > 0;
+  const branchColumns = useMemo(() => (paintSelected && snvReady ? idsToColumns(snv.data, snvSelected) : snvColumns), [paintSelected, snvReady, snv, snvSelected, snvColumns]);
   const snvsByBranch = useMemo(
-    () => (showBranchSnvs ? branchVariants(snv.data, snvColumns, treeLayout, fullTreeLayout) : null),
-    [showBranchSnvs, snv, snvColumns, treeLayout, fullTreeLayout]
+    () => (showBranchSnvs ? branchVariants(snv.data, branchColumns, treeLayout, fullTreeLayout) : null),
+    [showBranchSnvs, snv, branchColumns, treeLayout, fullTreeLayout]
   );
+  // the selection is part of the URL (snsel=<site ids>): read once when the matrix loads, then kept in step
+  const snselRead = useRef(false);
+  useEffect(() => {
+    if (!snvReady || snselRead.current) return;
+    snselRead.current = true;
+    try {
+      const ids = knownIds(snv.data, parseSnsel(new URL(window.location.href).searchParams.get(SNSEL_PARAM)));
+      if (ids.length) dispatch(singleCellActions.updateLayout({ snvSelected: ids }));
+    } catch (error) {
+      // no window: nothing to read
+    }
+  }, [snvReady, snv, dispatch]);
+  useEffect(() => {
+    if (!snselRead.current || !sc.patient) return;
+    try {
+      const url = new URL(window.location.href);
+      const value = serializeSnsel(snvSelected);
+      if (value) url.searchParams.set(SNSEL_PARAM, value);
+      else url.searchParams.delete(SNSEL_PARAM);
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window / history: the selection still lives in redux
+    }
+  }, [snvSelected, sc.patient]);
   const branchCounts = useMemo(
     () => (snvsByBranch ? new Map([...snvsByBranch].map(([k, v]) => [k, v.length])) : null),
     [snvsByBranch]
@@ -826,6 +855,14 @@ export default function CellHeatmapPanel() {
     if (on && canShowBranchSnvs) patch.branchSnvs = true; // counts of the isolated sites on the tree branches
     dispatch(singleCellActions.updateLayout(patch));
     if (on && snvOrder !== "tree" && hasTree) dispatch(singleCellActions.updateSnvOrder("tree")); // columns grouped by best clade
+  };
+  const isolateSelected = () => {
+    dispatch(singleCellActions.updateLayout({ snvSelectedOnly: true }));
+    setIsolate(true);
+  };
+  const paintSelectedOnTree = () => {
+    if (!canShowBranchSnvs) return;
+    dispatch(singleCellActions.updateLayout({ branchSnvs: true, snvPaintSelected: !layout.snvPaintSelected }));
   };
   const sideProps = {
     highlightRows: isolateRows && isolateRows.size < 0.5 * nRows ? isolateRows : null, // outlines only when carriers are a minority
@@ -1212,6 +1249,9 @@ export default function CellHeatmapPanel() {
                   )}
                   <div style={{ width: "100%" }}>
                     <SnvTrackControls annot={snvAnnot} nShown={snvColumns.length} onIsolate={setIsolate} fitBusy={snvFitBusy} />
+                  </div>
+                  <div style={{ width: "100%" }}>
+                    <SnvSelectionBar snv={snv.data} annot={snvAnnot} patient={sc.patient?.caseReportId || ""} onIsolate={isolateSelected} onPaint={canShowBranchSnvs ? paintSelectedOnTree : null} painted={showBranchSnvs && paintSelected} />
                   </div>
                 </>
               )}

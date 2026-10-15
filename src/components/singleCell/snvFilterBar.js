@@ -147,8 +147,9 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null, fitBusy 
   if (layout.snvDriversOnly) chips.push({ id: "drv", text: "Drivers only", remove: () => update({ snvDriversOnly: false }) });
   if (layout.snvCellphyOnly) chips.push({ id: "cp", text: "CellPhy input only", remove: () => update({ snvCellphyOnly: false }) });
   if (layout.snvMinCladeScore > 0) chips.push({ id: "f1min", text: `Clade score >= ${layout.snvMinCladeScore}`, remove: () => update({ snvMinCladeScore: null }) });
+  if (layout.snvSelectedOnly && layout.snvSelected?.length) chips.push({ id: "selonly", text: `Selected only (${layout.snvSelected.length})`, remove: () => update({ snvSelectedOnly: false }) });
   const active = chips.length > 0;
-  const clearAll = () => update({ snvAnnotFilter: null, snvCategories: null, snvDriversOnly: false, snvCellphyOnly: false, snvMinCladeScore: null, snvIsolate: false });
+  const clearAll = () => update({ snvSelectedOnly: false, snvAnnotFilter: null, snvCategories: null, snvDriversOnly: false, snvCellphyOnly: false, snvMinCladeScore: null, snvIsolate: false });
 
   const inputs = (
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, width: 680, maxWidth: "80vw" }}>
