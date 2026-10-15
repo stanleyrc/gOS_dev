@@ -1,3 +1,4 @@
+import { cladeFitScore } from "../../../helpers/singleCell/cladeFit";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Alert, Button, Card, Empty, InputNumber, Progress, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
@@ -156,6 +157,7 @@ function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expan
             <div><b>{summary.caseReportId}</b>{` · ${cellId}`}</div>
             <div>{`clone ${info.leafClones[hover.row] ?? "unassigned"}`}</div>
             {tip.entry?.rescued && <div>{`${tip.entry.label}: ${tip.entry.rescue.covered} of ${tip.entry.rescue.nTumour} tumour cells covered (${Math.round(100 * (tip.entry.rescue.coverage || 0))}%)`}</div>}
+            {tip.entry && !tip.entry.rescued && Array.isArray(tip.entry.carriers) && <div>{`Clade F1 ${cladeFitScore(tip.entry.carriers, info.tree).score.toFixed(2)} (carriers on this patient's tree)`}</div>}
             <div>{`${tip.column.label}: ${tip.pending ? `${tip.states?.[hover.row] === 2 ? "carrier (filtered events)" : "not a carrier in the filtered events"}; per-cell wild type / no coverage: ${pendingText}` : tip.entry ? cellStatus(tip.entry, tip.states?.[hover.row]).status : "no such event in this patient"}`}</div>
           </div>
         )}

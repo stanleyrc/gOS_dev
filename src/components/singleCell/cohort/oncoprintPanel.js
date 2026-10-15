@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import { Card, Empty, InputNumber, Select, Space, Switch, Typography } from "antd";
 import { TableOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
-import { EVENT_CLASS_ORDER, TIER_OPTIONS, groupOncoprintRows, oncoprintEventFilter, oncoprintMatrix, oncoprintRole, oncoprintRowNote } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS, isRescued, groupOncoprintRows, oncoprintEventFilter, oncoprintMatrix, oncoprintRole, oncoprintRowNote } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -12,6 +12,8 @@ import HintLine, { Provenance } from "../hintLine";
 import { GeneQuickLookText } from "./geneQuickLook";
 import { linkGenes } from "../../../helpers/singleCell/externalLinks";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { useCladeF1Filter } from "./cladeF1Chip";
+import { f1Of, f1Tooltip } from "../../../helpers/singleCell/cladeF1View";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
@@ -26,6 +28,7 @@ const GENE_W = 150;
  */
 export default function OncoprintPanel({ summaries, files, onOpen, onEvent = null }) {
   const { t } = useTranslation("common");
+  const f1Filter = useCladeF1Filter();
   const [ref, width] = useContainerWidth(900);
   const [maxTier, setMaxTier] = useState("2d"); // tiers 1-2 plus damaging tier-3 missense
   const [strongOnly, setStrongOnly] = useState(true);
@@ -50,6 +53,12 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
   const top = 70;
   const svgH = top + CELL_H * rows.length + 8;
   const alpha = d3.scaleLinear().domain([0, 1]).range([0.18, 1]);
+  // " · Clade F1 0.83" for an event of patient p (nothing for rescued hotspots or without a tree)
+  const f1Text = (event, p) => {
+    if (!event || isRescued(event)) return "";
+    const v = f1Of(event, files[p]?.tree);
+    return v == null ? "" : ` · Clade F1 ${v.toFixed(2)}`;
+  };
   const summaryOf = (p) => summaries.find((s) => s.caseReportId === p);
   // per-patient count of altered genes shown, as a header bar
   const perPatient = Object.fromEntries(patients.map((p) => [p, matrix.genes.filter((g) => g.cells[p]).length]));
@@ -158,7 +167,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                       <rect x={x + 2} y={y + 2} width={cellW - 4} height={CELL_H - 4} fill={INK.panelAlt} rx={2} />
                       {cell && (
                         <title>
-                          {[`${p} · ${g.gene}`, ...cell.all.slice(0, 6).map((a) => `${a.class}: ${a.event?.Variant && a.event.Variant !== "None" ? a.event.Variant : a.event?.type || ""}${a.event?.Tier ? ` · tier ${a.event.Tier}` : ""}${a.fraction != null ? ` · ${d3.format(".0%")(a.fraction)} of tumor cells` : ""}${a.event?.effect && a.event.effect !== "Unknown" ? ` · ${a.event.effect}` : ""}`), "click for the event details"].join("\n")}
+                          {[`${p} · ${g.gene}`, ...cell.all.slice(0, 6).map((a) => `${a.class}: ${a.event?.Variant && a.event.Variant !== "None" ? a.event.Variant : a.event?.type || ""}${a.event?.Tier ? ` · tier ${a.event.Tier}` : ""}${a.fraction != null ? ` · ${d3.format(".0%")(a.fraction)} of tumor cells` : ""}${a.event?.effect && a.event.effect !== "Unknown" ? ` · ${a.event.effect}` : ""}${f1Text(a.event, p)}`), "click for the event details", ...(f1Filter ? [f1Tooltip(null, f1Filter).replace(/^[^.]*\.\s*/, "")] : [])].join("\n")}
                         </title>
                       )}
                       {classes.map((c, k) => {
@@ -176,7 +185,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                       {cell && (
                         <title>
                           {cell.all
-                            .map((e) => `${e.event.type || e.class}${e.event.Variant ? ` ${e.event.Variant}` : ""}: ${e.cells || ""}${e.fraction != null ? ` (${d3.format(".0%")(e.fraction)})` : ""}${e.rescued ? ` [rescued from site evidence: carriers / covered tumour cells${e.event.low_coverage ? ", low coverage" : ""}; ${e.event.covered_tumour_cells}/${e.event.tumour_cells} tumour cells covered]` : ""}`)
+                            .map((e) => `${e.event.type || e.class}${e.event.Variant ? ` ${e.event.Variant}` : ""}: ${e.cells || ""}${e.fraction != null ? ` (${d3.format(".0%")(e.fraction)})` : ""}${e.rescued ? ` [rescued from site evidence: carriers / covered tumour cells${e.event.low_coverage ? ", low coverage" : ""}; ${e.event.covered_tumour_cells}/${e.event.tumour_cells} tumour cells covered]` : ""}${f1Text(e.event, p)}`)
                             .join("\n")}
                         </title>
                       )}
@@ -192,6 +201,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
           items={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ key: c, color: CLASS_COLORS[c], label: t(`components.single-cell.cohort.class-${c}`) }))}
         />
         <HintLine text={t("components.single-cell.cohort.oncoprint-help")} />
+        <HintLine text={f1Filter ? `Hover a cell for the Clade F1 of each event (how well its carrier cells form one clade of the patient tree). ${f1Tooltip(null, f1Filter).replace(/^[^.]*\.\s*/, "")}` : "Hover a cell for the Clade F1 of each event."} />
         <HintLine text="Row labels: click a gene for its card (OncoKB role, drugs, cohort evidence, cBioPortal); OG / TSG = OncoKB oncogene / tumour suppressor. Structural rows: DM = double minute / ecDNA, TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; numbers in brackets are chromosomes (hover a label for its meaning). Hover a cell for the alterations behind it." />
       </div>
     </Card>

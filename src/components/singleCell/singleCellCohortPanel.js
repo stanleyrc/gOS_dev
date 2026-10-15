@@ -40,6 +40,7 @@ import CohortJointSignatures from "./cohort/cohortJointSignatures";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortOncoprintPanel from "./cohort/cohortOncoprintPanel";
 import CohortEventAssocPanel from "./cohort/cohortEventAssocPanel";
+import { CladeF1Context } from "./cohort/cladeF1Chip";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortCladesPanel from "./cohort/cohortCladesPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
@@ -214,6 +215,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     [summaries, files, datafiles]
   );
   const nDropped = useMemo(() => Object.entries(cohortFiles.files).reduce((n, [id, f]) => n + ((f?.events?.length || 0) - (files[id]?.events?.length || 0)), 0), [cohortFiles.files, files]);
+  // header Clade F1 filter state, for the "hidden by the Clade F1 filter" tooltips of the F1 values in every cohort list
+  const f1Filter = useMemo(() => ({ on: cladeFilterOn, min: minCladeF1, hidden: nDropped }), [cladeFilterOn, minCladeF1, nDropped]);
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
 
@@ -434,6 +437,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   return (
     <GeneQuickLookContext.Provider value={quickLook}>
+    <CladeF1Context.Provider value={f1Filter}>
     <Wrapper>
       <Row gutter={SC_GUTTER}>
         <Col span={24}>
@@ -478,6 +482,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             <CohortVignettes
               dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null}
               summaries={summaries}
+              files={cohortFiles.files}
               cloneColors={cloneColors}
               onOpen={openPatient}
               onOpenCovariateDe={openCovariateDe}
@@ -638,7 +643,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "eventassoc" && (
           <Col span={24}>
-            <CohortEventAssocPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} />
+            <CohortEventAssocPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} datasets={datasets} rawFiles={cohortFiles.files} cnRows={rows} />
           </Col>
         )}
         {view === "clades" && (
@@ -793,6 +798,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         patientFiles={eventDrawer ? cohortFiles.files[eventDrawer.summary.caseReportId] || null : null}
       />
     </Wrapper>
+    </CladeF1Context.Provider>
     </GeneQuickLookContext.Provider>
   );
 }
