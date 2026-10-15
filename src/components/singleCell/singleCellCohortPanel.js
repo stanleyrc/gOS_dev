@@ -66,6 +66,8 @@ import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
 import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
+import { passesCladeFilter } from "../../helpers/singleCell/subclonalDrivers";
+import CohortSubclonalPanel, { SubclonalHeadlineCard } from "./cohort/cohortSubclonalPanel";
 import { SC_GUTTER } from "./density";
 import { useCohortRnaFindings } from "./rna/useRnaFindings";
 import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
@@ -183,8 +185,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       out[id] = {
         ...f,
         events: f.events.filter((e) => {
+          // SNVs are exempt: sparse per-cell reads keep even clonal SNV carriers below F1 0.5 (site QC judges SNVs)
           const fit = cladeFitScore(`${e.cell_ids || ""}`.split(",").filter(Boolean), f.tree);
-          return !Number.isFinite(fit.score) || fit.score >= minCladeF1;
+          return passesCladeFilter(e, fit.score, minCladeF1);
         }),
       };
     });
@@ -469,8 +472,16 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             />
           </Col>
         )}
+        {view === "subclonal" && (
+          <Col span={24}>
+            <CohortSubclonalPanel dataset={geneDataset} />
+          </Col>
+        )}
         {view === "reports" && (
           <Col span={24}>
+            <div style={{ marginBottom: 12 }}>
+              <SubclonalHeadlineCard dataset={geneDataset} onView={setView} />
+            </div>
             <CohortVignettes
               dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null}
               summaries={summaries}
@@ -482,6 +493,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "drivers" && (
           <>
+            <Col span={24}>
+              <SubclonalHeadlineCard dataset={geneDataset} onView={setView} />
+            </Col>
             <Col span={24}>
               <CohortGenePanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
@@ -512,6 +526,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "overview" && (
           <>
+            <Col span={24}>
+              <SubclonalHeadlineCard dataset={geneDataset} onView={setView} />
+            </Col>
             <Col span={24}>
               <CohortHeadline
                 patients={patientRows}
