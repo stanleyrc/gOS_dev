@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Button, Divider, Popconfirm, Popover, Segmented, Select, Space, Tooltip, Typography } from "antd";
-import { BulbFilled, BulbOutlined, ClearOutlined, SettingOutlined } from "@ant-design/icons";
+import { BulbFilled, BulbOutlined, ClearOutlined, ThunderboltFilled, SettingOutlined } from "@ant-design/icons";
 import { getAppTheme, onAppThemeChange, setAppTheme } from "../../helpers/appTheme";
 import { THEMES } from "../../helpers/singleCell/themes";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
@@ -42,6 +42,7 @@ export default function SettingsMenu() {
             options={[
               { value: "light", label: <Space size={4}><BulbOutlined />{t("settings.light")}</Space> },
               { value: "dark", label: <Space size={4}><BulbFilled />{t("settings.dark")}</Space> },
+              { value: "cyberpunk", label: <Space size={4}><ThunderboltFilled />{t("settings.cyberpunk")}</Space> },
             ]}
           />
         </div>
