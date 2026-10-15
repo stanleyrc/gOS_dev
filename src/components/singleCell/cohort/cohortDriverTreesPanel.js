@@ -11,7 +11,7 @@ import { GeneQuickLookText } from "./geneQuickLook";
 import { Swatches } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
 import useCohortDriverData from "./useCohortDriverData";
-import { EVENT_CLASS_ORDER } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS } from "../../../helpers/singleCell/cohortStats";
 import { columnEdge } from "../../../helpers/singleCell/driverColumns";
 import { cnColorer, hexToRgb, packRGBA } from "../../../helpers/singleCell/matrix";
 import {
@@ -218,7 +218,7 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
         <Space wrap>
           <Select size="small" value={state.preset} onChange={(v) => patch({ preset: v })} style={{ width: 150 }} options={CDT_PRESETS.map((p) => ({ value: p, label: CDT_PRESET_LABELS[p] }))} />
           <Text type="secondary">Tier</Text>
-          <Select size="small" value={state.maxTier} onChange={(v) => patch({ maxTier: v })} style={{ width: 70 }} options={[1, 2, 3].map((v) => ({ value: v, label: `≤ ${v}` }))} />
+          <Select size="small" value={state.maxTier} onChange={(v) => patch({ maxTier: v })} style={{ width: 200 }} options={TIER_OPTIONS} popupMatchSelectWidth={false} />
           <Text type="secondary">Types</Text>
           <Select
             size="small"
