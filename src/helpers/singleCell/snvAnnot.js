@@ -61,6 +61,12 @@ export const SNV_TRACKS = [
   { key: "outside", kind: "num", label: "Outside-clade carriers", help: "Carriers outside the best clade (leakage count)", fit: "outside" },
   { key: "changes", kind: "num", label: "Parsimony changes", help: "Fitch parsimony: minimum gains + losses on the tree (1 = perfectly compatible)", fit: "changes" },
   { key: "ci", kind: "num", label: "Consistency index", help: "1 / parsimony changes: 1 = compatible with the tree", range: [0, 1], fit: "ci" },
+  // site QC fields (snv_qc.json), filter-only
+  { key: "qnalt", kind: "num", label: "QC n_alt", help: "Site QC: cells with alt evidence", filterOnly: true, qcField: "qcNAlt" },
+  { key: "qncov", kind: "num", label: "QC n_cov", help: "Site QC: cells with coverage", filterOnly: true, qcField: "qcNCov" },
+  { key: "qfrac", kind: "num", label: "QC frac_informative", help: "Site QC: fraction of covered cells that are informative (0 to 1)", filterOnly: true, qcField: "qcFracInformative", range: [0, 1] },
+  { key: "qvaf", kind: "num", label: "QC pooled alt VAF", help: "Site QC: pooled alt allele fraction (0 to 1)", filterOnly: true, qcField: "qcPooledVaf", range: [0, 1] },
+  { key: "qcohq", kind: "num", label: "QC coh_q", help: "Site QC: cohort q-value (low = distinctive site)", filterOnly: true, qcField: "qcCohQ", range: [0, 1] },
   // filter-only keys (not drawn as tracks): set from the filter bar
   { key: "gene", kind: "cat", label: "Gene", help: "Gene symbol", filterOnly: true },
   { key: "carriers", kind: "num", label: "Alt cells (count)", help: "Number of cells carrying the alt allele", filterOnly: true },
@@ -149,6 +155,10 @@ export function siteAnnotations(snv, { signatures = null, phylo = null, fit = nu
     gene: snv.variants.map((v) => (v.gene && !/^ENSG/.test(v.gene) ? v.gene : null)),
   };
   const num = { depth: base.depth, vaf: base.vaf, phylo: hasPhylo ? phyloArr : null, qc: hasQc ? qc : null, carriers: base.alt };
+  SNV_TRACKS.filter((t) => t.qcField).forEach((t) => {
+    const arr = Float32Array.from(snv.variants, (v) => (Number.isFinite(v[t.qcField]) ? v[t.qcField] : NaN));
+    num[t.key] = arr.some((x) => Number.isFinite(x)) ? arr : null;
+  });
   SNV_TRACKS.filter((t) => t.fit).forEach((t) => {
     num[t.key] = fit?.[t.fit] && fit.n ? fit[t.fit] : null;
   });
@@ -418,7 +428,9 @@ export function parseTracks(search) {
       else if (/^-?[\d.]+\.\.-?[\d.]+$/.test(rest)) {
         const [lo, hi] = rest.split("..").map(Number);
         filter[key] = { min: lo, max: hi };
-      } else if (rest.startsWith(">=") && Number.isFinite(Number(rest.slice(2)))) filter[key] = { min: Number(rest.slice(2)) };
+      } else if (rest.startsWith(">=") && Number.isFinite(Number(rest.replace(/x$/, "").slice(2)))) {
+        filter[key] = { min: Number(rest.replace(/x$/, "").slice(2)), ...(rest.endsWith("x") ? { exclude: true } : {}) };
+      }
       else if (rest.startsWith("<=") && Number.isFinite(Number(rest.slice(2)))) filter[key] = { max: Number(rest.slice(2)) };
     });
   return { tracks: tracks.length ? tracks : null, filter: Object.keys(filter).length ? filter : null };
@@ -483,4 +495,31 @@ export function parseSiteState(search) {
   if (params.get("snhide") === "1") patch.snvFiltersHidden = true;
   if (params.get("snleg") === "0") patch.snvLegendHidden = true;
   return patch;
+}
+
+/** Threshold a click at fraction f (0..1) along a ramp over [lo, hi] selects: the value rounded to 3 significant digits. */
+export function valueAtFraction(range, f) {
+  const [lo, hi] = range || [0, 1];
+  const x = lo + Math.max(0, Math.min(1, f)) * (hi - lo);
+  return Number(x.toPrecision(3));
+}
+
+/** Fraction along a ramp over [lo, hi] of a threshold (for the marker). */
+export const fractionOfValue = (range, x) => {
+  const [lo, hi] = range || [0, 1];
+  return hi > lo ? Math.max(0, Math.min(1, (x - lo) / (hi - lo))) : 0;
+};
+
+/** Finite [min, max] of a numeric array (null when none). */
+export function finiteRange(arr) {
+  if (!arr) return null;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < arr.length; i += 1) {
+    const x = arr[i];
+    if (!Number.isFinite(x)) continue;
+    if (x < lo) lo = x;
+    if (x > hi) hi = x;
+  }
+  return Number.isFinite(lo) ? [lo, hi] : null;
 }
