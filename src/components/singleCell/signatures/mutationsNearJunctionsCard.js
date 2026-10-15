@@ -124,7 +124,7 @@ export default function MutationsNearJunctionsCard() {
   }
   const j = data.junction_source;
   const tests = testsFor(data, near);
-  const nearPerm = tests?.[def]?.perm?.callable;
+  const nearPerm = tests?.[def]?.perm?.shift || tests?.[def]?.perm?.callable;
   return (
     <Card
       size="small"
@@ -150,23 +150,26 @@ export default function MutationsNearJunctionsCard() {
         <Paragraph style={{ marginBottom: 0 }}>{headline(data, def, near)}</Paragraph>
         <MutJunctionBinChart series={series} />
         <HintLine
-          text={`Junctions: ${j.n_junctions_recurrent} ALT edges present in at least ${j.recurrent_min_cells} tumour cells (of ${j.n_junctions_any} in any cell; per-cell JaBbA graphs, ${j.n_tumor_cells_with_graph}/${j.n_tumor_cells} cells with a graph), matched at 1 kb as in the Junction CN view. Distance is to the nearest breakpoint on the same chromosome; sites on chromosomes without a breakpoint count as far. Background: ${data.background.n ? `${data.background.n.toLocaleString()} genotyped candidate sites` : "not available"}. Test: Fisher (<= ${fmtDist(tests.near_bp)} vs > 1 Mb), logistic on log10 distance, and a permutation that shuffles breakpoints within each chromosome (uniform, and among callable sites) and scores the standardised APOBEC excess among the near sites.`}
+          text={`Junctions: ${j.n_junctions_recurrent} ALT edges present in at least ${j.recurrent_min_cells} tumour cells (of ${j.n_junctions_any} in any cell; per-cell JaBbA graphs, ${j.n_tumor_cells_with_graph}/${j.n_tumor_cells} cells with a graph), matched at 1 kb as in the Junction CN view. Distance is to the nearest breakpoint on the same chromosome; sites on chromosomes without a breakpoint count as far. Background: ${data.background.n ? `${data.background.n.toLocaleString()} genotyped candidate sites` : "not available"}. Test: Fisher (<= ${fmtDist(tests.near_bp)} vs > 1 Mb), logistic on log10 distance, and a permutation that shuffles breakpoints within each chromosome (uniform, among callable sites, or shifting all breakpoints of a chromosome together to keep their clustering) and scores the standardised APOBEC excess among the near sites.`}
         />
         <Space size={16} wrap style={{ fontSize: TYPE.body }}>
-          {["uniform", "callable"].map((m) => {
+          {["shift", "uniform", "callable"].map((m) => {
             const p = tests[def]?.perm?.[m];
             return p ? (
               <Text key={m}>
-                junction shuffle ({m}): observed excess z={p.obs.toFixed(2)} vs null {p.null_mean.toFixed(2)} +/- {p.null_sd.toFixed(2)}, p={fmtP(p.p_one_sided)} (one-sided)
+                junction {m === "shift" ? "shift (clusters kept)" : `shuffle (${m})`}: observed excess z={p.obs.toFixed(2)} vs null {p.null_mean.toFixed(2)} +/- {p.null_sd.toFixed(2)}, p={fmtP(p.p_one_sided)} (one-sided)
               </Text>
             ) : null;
           })}
+          {tests[def]?.chrom_stratified && (
+            <Text>chromosome-stratified (Mantel-Haenszel, {tests[def].chrom_stratified.n_chromosomes} chromosomes) OR {fmtOr(tests[def].chrom_stratified)}, p={fmtP(tests[def].chrom_stratified.p)}</Text>
+          )}
           {tests[def]?.logistic_log10_distance && (
             <Text>logistic: OR per 10x distance {fmtOr(tests[def].logistic_log10_distance)}, p={fmtP(tests[def].logistic_log10_distance.p)}</Text>
           )}
           {nearPerm && nearPerm.n_near_obs != null && (
             <Text>
-              sites within {fmtDist(tests.near_bp)}: {nearPerm.n_near_obs} observed vs {nearPerm.n_near_null_mean.toFixed(0)} expected for shuffled junctions (depletion p={fmtP(nearPerm.p_n_near_depleted)}); breakpoints sit where few sites are callable
+              sites within {fmtDist(tests.near_bp)}: {nearPerm.n_near_obs} observed vs {nearPerm.n_near_null_mean.toFixed(0)} expected for randomly placed junctions (depletion p={fmtP(nearPerm.p_n_near_depleted)}): breakpoint regions, often amplified, retain few callable sites
             </Text>
           )}
         </Space>

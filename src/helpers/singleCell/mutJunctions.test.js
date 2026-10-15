@@ -7,7 +7,7 @@ const data = {
   snv_source: { apobec_signature_in_fit: false, signatures_in_joint_fit: ["SBS5", "SBS1"] },
   tests: {
     near_bp: 100000,
-    tcw: { near: frac(3, 10), far: frac(20, 100), fisher: { or: 1.7, ci: [0.4, 6.1], p: 0.3 }, perm: { callable: { p_one_sided: 0.04 } } },
+    tcw: { near: frac(3, 10), far: frac(20, 100), fisher: { or: 1.7, ci: [0.4, 6.1], p: 0.3 }, perm: { shift: { p_one_sided: 0.04 } }, chrom_stratified: { or_: 2.5, ci: [1.1, 5.5], p: 0.03 } },
     sbs: {},
   },
   tests_1mb: {
@@ -45,8 +45,9 @@ describe("mutJunctions helpers", () => {
   it("states plainly when no APOBEC signature is in the fit", () => {
     expect(headline(data, "sbs")).toMatch(/No SBS2 or SBS13/);
     expect(headline(data, "tcw", 1e5)).toMatch(/OR 1.70/);
-    expect(headline(data, "tcw", 1e5)).toMatch(/permutation p=0.04/);
+    expect(headline(data, "tcw", 1e5)).toMatch(/junction-shift permutation p=0.04/);
     expect(headline(data, "tcw", 1e5)).toMatch(/Within 100 kb/);
+    expect(headline(data, "tcw", 1e5)).toMatch(/chromosome-stratified OR 2.50 \(1.10-5.50\), p=0.03/);
     expect(headline(data, "tcw", 1e6)).toMatch(/Within 1 Mb of a junction 22.5% of 40/);
     expect(testsFor(data, 1e6).near_bp).toBe(1000000);
     expect(cooccurrenceFor(data, 1e6).f1_near_tcw.median).toBe(0.15);

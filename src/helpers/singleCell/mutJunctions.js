@@ -81,12 +81,14 @@ export function headline(data, def = "tcw", near = 1e6) {
   if (!data.snv_source?.apobec_signature_in_fit && def === "sbs") {
     return `No SBS2 or SBS13 in this patient's joint signature fit (${(data.snv_source?.signatures_in_joint_fit || []).join(", ")}), so no site is assigned to APOBEC; the TCW motif result is the model-free readout.`;
   }
-  const perm = t.perm?.callable || t.perm?.uniform;
+  const perm = t.perm?.shift || t.perm?.callable || t.perm?.uniform;
   const parts = [
     `Within ${km()} of a junction ${fmtPct(t.near.frac)} of ${t.near.n} sites are ${def === "tcw" ? "TCW C>T/G" : "SBS2/13"} vs ${fmtPct(t.far.frac)} of ${t.far.n} far sites`,
     `OR ${fmtOr(t.fisher)}, Fisher p=${fmtP(t.fisher?.p)}`,
   ];
-  if (perm) parts.push(`junction-shuffle permutation p=${fmtP(perm.p_one_sided)}`);
+  const cs = t.chrom_stratified;
+  if (cs) parts.push(`chromosome-stratified OR ${fmtOr(cs)}, p=${fmtP(cs.p)}`);
+  if (perm) parts.push(`junction-shift permutation p=${fmtP(perm.p_one_sided)}`);
   return `${parts.join("; ")}.`;
 }
 
@@ -154,7 +156,8 @@ export function cohortRows(cohort, def = "tcw", near = 1e6) {
       near: b[def]?.near,
       far: b[def]?.far,
       or: b[def]?.fisher,
-      perm: b.tcw?.perm?.callable || b.tcw?.perm?.uniform || null,
+      perm: b.tcw?.perm?.shift || b.tcw?.perm?.callable || b.tcw?.perm?.uniform || null,
+      chromOr: b[def]?.chrom_stratified || null,
       apobecInFit: p.apobec_signature_in_fit,
       kataegisStrict: p.kataegis_strict,
       kataegisStrictSingle: p.kataegis_strict_single_branch,
@@ -170,6 +173,6 @@ export function cohortRows(cohort, def = "tcw", near = 1e6) {
   if (m.fixed) meta.push({ key: "fixed", label: "Fixed effect (inverse variance)", ...m.fixed });
   if (m.random) meta.push({ key: "random", label: "Random effects (DerSimonian-Laird)", ...m.random });
   if (m.mantel_haenszel && m.mantel_haenszel.or_ != null) meta.push({ key: "mh", label: "Mantel-Haenszel (patient strata)", ...m.mantel_haenszel });
-  if (m.stouffer_perm_callable) meta.push({ key: "stouffer", label: "Stouffer (junction-shuffle z per patient)", z: m.stouffer_perm_callable.z, p: m.stouffer_perm_callable.p_one_sided });
+  if (m.stouffer_perm_shift) meta.push({ key: "stouffer", label: "Stouffer (junction-shift permutation z per patient)", z: m.stouffer_perm_shift.z, p: m.stouffer_perm_shift.p_one_sided });
   return { patients, meta, heterogeneity: m.heterogeneity || null, nPatients: m.n_patients ?? 0 };
 }
