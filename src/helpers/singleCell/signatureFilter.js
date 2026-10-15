@@ -5,7 +5,7 @@
 import { filterSnvColumns } from "./snvSites";
 
 /** Layout key of the "Use SNV filters" toggle; on unless explicitly switched off. */
-export const useSnvFilters = (layout) => layout?.sigUseSnvFilters !== false;
+export const snvFiltersOn = (layout) => layout?.sigUseSnvFilters !== false;
 
 /**
  * Variant indices that pass the shared SNV site filters, or null when the
@@ -14,7 +14,7 @@ export const useSnvFilters = (layout) => layout?.sigUseSnvFilters !== false;
  */
 export function allowedSites(snv, layout, annot = null) {
   const m = snv?.variants?.length || 0;
-  if (!snv || !useSnvFilters(layout)) return { allowed: null, n: m, m, active: false };
+  if (!snv || !snvFiltersOn(layout)) return { allowed: null, n: m, m, active: false };
   const all = snv.variants.map((_, c) => c);
   const kept = filterSnvColumns(snv, all, { ...layout, annot });
   if (kept.length === m) return { allowed: null, n: m, m, active: false };
