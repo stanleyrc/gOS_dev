@@ -32,6 +32,7 @@ import { cnDistances, upgma } from "../../helpers/singleCell/phylogeny";
 import Wrapper from "./index.style";
 import useCohortFiles from "./cohort/useCohortFiles";
 import TmbPanel from "./cohort/tmbPanel";
+import CohortTmbPanel from "./cohort/cohortTmbPanel";
 import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortOncoprintPanel from "./cohort/cohortOncoprintPanel";
@@ -466,6 +467,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "mutations" && (
           <>
+            <Col span={24}>
+              <CohortTmbPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} onOpen={openPatient} onView={setView} />
+            </Col>
             <Col span={24}>
               <TmbPanel summaries={summaries} files={files} datafiles={datafiles} onOpen={openPatient} />
             </Col>
