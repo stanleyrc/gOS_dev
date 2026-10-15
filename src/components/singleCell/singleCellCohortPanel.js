@@ -740,6 +740,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         dataset={eventDrawer ? datasetOf(eventDrawer.summary) : null}
         cells={eventDrawer ? cellsForPatient(datafiles, eventDrawer.summary.patientKey) : []}
         cloneColors={cloneColors}
+        patientFiles={eventDrawer ? cohortFiles.files[eventDrawer.summary.caseReportId] || null : null}
       />
     </Wrapper>
   );
