@@ -5,6 +5,7 @@ import useCohortExport from "./useCohortExport";
 import CovariateDeViolins from "./covariateDeViolins";
 import CladeTopExplainer from "./cladeTopExplainer";
 import VolcanoPlot from "../rna/volcanoPlot";
+import GeneQuickLook from "./geneQuickLook";
 import ScErrorBoundary from "../errorBoundary";
 import HintLine from "../hintLine";
 import { FAMILIES, FAMILY_LABELS, describeTest, sensitivityOnlyTerms, sensitivityProblems, sharedPrograms, formatQ, isRobust, looselyAdjusted, perPatientLfc, testRows, volcanoRows } from "../../../helpers/singleCell/covariateDe";
@@ -42,14 +43,22 @@ function EnrichmentList({ title, items }) {
  * test, the top genes with their per-patient fold changes, and gene-set / program enrichment. `onGene` opens a gene in the
  * cohort expression plot; `focusTest` preselects a test (from a Key findings card).
  */
-export default function CohortCovariateDePanel({ dataset, focusTest = null, onGene = null, summaries = [], datasets = [] }) {
+export default function CohortCovariateDePanel({ dataset, focusTest = null, focusGene = null, onGene = null, summaries = [], datasets = [] }) {
   const { status, data } = useCohortExport(dataset, "rna_covariate_de.json");
   const [family, setFamily] = useState("all");
   const [query, setQuery] = useState("");
   const [combinableOnly, setCombinableOnly] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedGene, setSelectedGene] = useState(null);
-  const rows = useMemo(() => testRows(data, { family, query, combinableOnly }), [data, family, query, combinableOnly]);
+  const [geneFilter, setGeneFilter] = useState(focusGene?.gene || null); // tests listing this gene (q < 0.05) among their top genes
+  useEffect(() => {
+    if (!focusGene?.gene) return;
+    setGeneFilter(focusGene.gene);
+    setFamily("all");
+    setQuery("");
+    setSelectedId(null);
+  }, [focusGene]);
+  const rows = useMemo(() => testRows(data, { family, query, combinableOnly, gene: geneFilter }), [data, family, query, combinableOnly, geneFilter]);
   useEffect(() => {
     if (focusTest?.id) {
       setSelectedId(focusTest.id);
@@ -76,7 +85,12 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
     { title: "Top lower in A", dataIndex: "top_down", render: (v) => (v || []).slice(0, 4).join(", ") },
   ];
   const geneColumns = [
-    { title: "Gene", dataIndex: "gene", width: 100, render: (g) => <Text strong style={{ cursor: "pointer", color: selectedGene === g ? "#fa541c" : undefined }} onClick={() => setSelectedGene(g)}>{g}</Text> },
+    { title: "Gene", dataIndex: "gene", width: 100, render: (g) => (
+      <Space size={2}>
+        <Text strong style={{ cursor: "pointer", color: selectedGene === g ? "#fa541c" : undefined }} onClick={() => setSelectedGene(g)}>{g}</Text>
+        <GeneQuickLook gene={g} icon />
+      </Space>
+    ) },
     { title: "log2FC", dataIndex: "avg_log2FC", width: 76, align: "right", render: (v) => v.toFixed(2) },
     { title: "z", dataIndex: "z", width: 64, align: "right", render: (v) => v.toFixed(1) },
     { title: "q", dataIndex: "q_val", width: 76, align: "right", render: formatQ },
@@ -95,6 +109,7 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
         <Space wrap size={[12, 6]} style={{ marginBottom: 8 }}>
           <Segmented size="small" value={family} onChange={setFamily} options={[{ value: "all", label: "All" }, ...FAMILIES.map((f) => ({ value: f, label: FAMILY_LABELS[f] }))]} />
           <Input.Search size="small" allowClear placeholder="search tests or genes" style={{ width: 200 }} value={query} onChange={(e) => setQuery(e.target.value)} />
+          {geneFilter && <Tag closable color="blue" onClose={() => setGeneFilter(null)}>{`tests with ${geneFilter}`}</Tag>}
           <Space size={4}><Switch size="small" checked={combinableOnly} onChange={setCombinableOnly} /><Text type="secondary">2+ patients only</Text></Space>
         </Space>
         {shared.length > 0 && <Alert type="info" showIcon style={{ marginBottom: 8 }} message={`Shared by most driver tests: ${shared.slice(0, 4).map((x) => `${x.pretty} ${x.direction}`).join(", ")} (${shared[0].n} of ${shared[0].of}). Carriers of different drivers share clades, so read these as a tumour-wide / clade effect, not per-driver biology; they are left out of the per-test sentences.`} />}
