@@ -36,7 +36,10 @@ import { filterSnvColumns, hasCladeScores } from "../../../helpers/singleCell/sn
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
 import CellIgvPanel from "../cellIgvPanel";
 import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks } from "../snvAnnotTracks";
-import MutationSidePanel, { SNV_CATEGORIES } from "../mutationSidePanel";
+import SnvIsolatePanel from "../snvIsolatePanel";
+import HeatmapLegend from "../heatmapLegend";
+import { carrierRows, subsetLeafStates } from "../../../helpers/singleCell/snvIsolate";
+import MutationSidePanel, { LABEL_H, SNV_CATEGORIES } from "../mutationSidePanel";
 import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
@@ -157,9 +160,15 @@ export default function CompareTreesPanel() {
   const crossings = prepared ? prepared.after : 0;
   const nShared = useMemo(() => sharedCells(layoutA, layoutB).size, [layoutA, layoutB]);
 
+  const isolating = Boolean(siteFilter.snvIsolate) && showMatrix && Boolean(snvData);
+  const isolateColumns = useMemo(
+    () => (isolating ? filterSnvColumns(snvCalls, snvCalls.variants.map((_, i) => i), { ...siteFilter, annot: annotA }) : []),
+    [isolating, snvCalls, siteFilter, annotA]
+  );
   const paints = useMemo(
-    () =>
-      painted
+    () => [
+      ...(isolating && isolateColumns.length ? [{ key: "isolate", label: `Isolated (${isolateColumns.length} sites)`, kind: "subset", columns: isolateColumns }] : []),
+      ...painted
         .map((key) => {
           if (key.startsWith("s:")) {
             const vi = Number(key.slice(2));
@@ -170,7 +179,8 @@ export default function CompareTreesPanel() {
           return ev ? { key, label: ev.label, kind: "event", event: ev.event } : null;
         })
         .filter(Boolean),
-    [painted, variants, eventList]
+    ],
+    [painted, variants, eventList, isolating, isolateColumns]
   );
 
   const colors = paintColors(theme.mode);
@@ -225,6 +235,7 @@ export default function CompareTreesPanel() {
 
   const leafStates = (layout, p) => {
     if (!layout) return null;
+    if (p.kind === "subset") return subsetLeafStates(snvCalls, layout.leaves, p.columns, cellIndex);
     if (p.kind === "snv") return snvLeafStates(snvData, layout.leaves, p.vi, cellIndex);
     return eventLeafStates(p.event, layout.leaves);
   };
@@ -297,9 +308,11 @@ export default function CompareTreesPanel() {
   };
   const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
   const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
-  const markedRows = (layout) => {
+  const isolateCarriers = (layout, mat) => (isolating && mat && isolateColumns.length ? carrierRows(snvCalls, isolateColumns, mat.rows) : null);
+  const markedRows = (layout, mat = null) => {
     const r = rowsOf(layout);
-    const out = new Set();
+    const carriers = isolateCarriers(layout, mat);
+    const out = new Set(carriers && carriers.size < 0.5 * layout.leaves.length ? carriers : []);
     if (pick) pick.cells.forEach((id) => r.has(id) && out.add(r.get(id)));
     if (hover && r.has(hover.id)) out.add(r.get(hover.id));
     return out;
@@ -325,6 +338,15 @@ export default function CompareTreesPanel() {
     if (igvOnClick) openSiteIgv(c, layout.leaves[row]);
   };
   const setLayout = (patch) => dispatch(singleCellActions.updateLayout(patch));
+  const setIsolate = (on) => {
+    setLayout({ snvIsolate: on });
+    if (on && snvOrder !== "tree") dispatch(singleCellActions.updateSnvOrder("tree"));
+  };
+  // sites passing the shared filters (the same count the Single-Cell tab shows)
+  const isolateCount = useMemo(
+    () => (snvCalls && annotA ? filterSnvColumns(snvCalls, snvCalls.variants.map((_, i) => i), { ...siteFilter, annot: annotA }).length : 0),
+    [snvCalls, siteFilter, annotA]
+  );
   const renderMatrix = (layout, mat, x0, hdrSet) =>
     mat && layout ? (
       <MutationSidePanel
@@ -343,7 +365,7 @@ export default function CompareTreesPanel() {
         onLeave={() => setHover(null)}
         axisHeight={18}
         groupOf={null}
-        highlightRows={markedRows(layout)}
+        highlightRows={markedRows(layout, mat)}
         categoryNode={hdrSet}
         {...(layout === layoutA ? trackA : trackB)}
       />
@@ -354,7 +376,7 @@ export default function CompareTreesPanel() {
     const q = search.trim().toLowerCase();
     const evHits = eventList.filter((e) => !q || e.label.toLowerCase().includes(q)).slice(0, 60).map((e) => ({ value: `e:${e.key}`, label: `${e.label}${e.tier ? ` (tier ${e.tier})` : ""}` }));
     const have = new Set([...snvHits, ...evHits].map((o) => o.value));
-    const extra = paints.filter((p) => !have.has(p.key)).map((p) => ({ value: p.key, label: p.label }));
+    const extra = paints.filter((p) => p.kind !== "subset" && !have.has(p.key)).map((p) => ({ value: p.key, label: p.label }));
     return [
       ...(evHits.length ? [{ label: "Filtered events / drivers", options: evHits }] : []),
       ...(snvHits.length ? [{ label: "SNVs (drivers first)", options: snvHits }] : []),
@@ -432,7 +454,8 @@ export default function CompareTreesPanel() {
             ) : null}
             <Tooltip title="Clicking a site in a matrix opens IGV there for the selected clade (or the clicked cell)"><span>IGV on site click <Switch size="small" checked={igvOnClick} onChange={setIgvOnClick} /></span></Tooltip>
             <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
-            <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} /></div>
+            <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} nShown={isolateCount} onIsolate={setIsolate} /></div>
+            <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} /></div>
           </Space>
         ) : null}
         <div style={{ marginBottom: 8 }}>
@@ -472,7 +495,7 @@ export default function CompareTreesPanel() {
             <Alert type="warning" showIcon message="One of the selected trees could not be loaded." />
           ) : null}
           {layoutA && layoutB ? (
-            <div style={{ position: "relative", width: totalW, height: H + 22, marginTop: 18 + hdrH, maxWidth: "100%" }}>
+            <div style={{ position: "relative", width: totalW, height: H + 22 + (siteFilter.snvLabel === "none" ? 0 : LABEL_H), marginTop: 18 + hdrH, maxWidth: "100%" }}>
             <svg ref={svgRef} width={totalW} height={H} viewBox={`0 0 ${totalW} ${H}`} style={{ background: theme.panel, display: "block", maxWidth: "100%" }} onMouseMove={onMove} onMouseLeave={() => setHover(null)} onClick={onClick}>
               {linkPaths
                 ? linkPaths.map(([key, d]) => {
@@ -513,7 +536,7 @@ export default function CompareTreesPanel() {
               <div><b>{hover.id}</b>{hovCell?.clone_id != null ? ` (clone ${hovCell.clone_id})` : ""}</div>
               {(hover.lines || []).map(([k, v]) => <div key={k}>{k}: {`${v}`}</div>)}
               {paints.map((p) => {
-                const st = p.kind === "snv" ? snvLeafStates(snvData, [hover.id], p.vi, cellIndex)[0] : eventLeafStates(p.event, [hover.id])[0];
+                const st = p.kind === "subset" ? subsetLeafStates(snvCalls, [hover.id], p.columns, cellIndex)[0] : p.kind === "snv" ? snvLeafStates(snvData, [hover.id], p.vi, cellIndex)[0] : eventLeafStates(p.event, [hover.id])[0];
                 return <div key={p.key}>{p.label}: {st === 1 ? "alt" : st === 0 ? "ref" : "no coverage"}</div>;
               })}
             </div>
@@ -524,6 +547,7 @@ export default function CompareTreesPanel() {
           <span>{`B (mirrored): ${labelOf(b)}`}</span>
         </div>
       </Card>
+      {isolating && isolateColumns.length > 0 && <SnvIsolatePanel snv={snvCalls} columns={isolateColumns} annot={annotA} carrierCount={layoutA ? carrierRows(snvCalls, isolateColumns, rowMap(layoutA.leaves, snvCalls.cells)).size : null} patient="compare" />}
       <CellIgvPanel />
       <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
         {conc(concA, a, fullA)}
