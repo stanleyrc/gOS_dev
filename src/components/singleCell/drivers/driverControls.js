@@ -3,7 +3,10 @@ import { driverColors } from "./driverColors";
 import { Button, Checkbox, InputNumber, Popover, Radio, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import {
+  CLADE_F1_CHOICES,
   DEFAULT_FILTERS,
+  f1HiddenCount,
+  noF1Keys,
   DM_HELP,
   DRIVER_CLASSES,
   classLabel,
@@ -102,6 +105,18 @@ function FilterPanel({ selection, onChange, hasCgc, hasRna }) {
         <InputNumber size="small" min={1} value={f.minCells} onChange={(v) => set({ minCells: v || 1 })} />
       </div>
       <div style={row}>
+        <Tooltip title="Best F1 between an event's carrier cells and one clade of the patient tree (same score as the Clade F1 column of Filtered Events). Events with no carrier cells have no score and stay visible.">
+          <Text type="secondary">Clade F1</Text>
+        </Tooltip>
+        <Select
+          size="small"
+          style={{ width: 120 }}
+          value={f.minF1 || 0}
+          onChange={(v) => set({ minF1: v })}
+          options={CLADE_F1_CHOICES.map((v) => ({ value: v, label: v ? `≥ ${v}` : "Any" }))}
+        />
+      </div>
+      <div style={row}>
         <Text type="secondary">Fusion support</Text>
         <Radio.Group
           size="small"
@@ -120,7 +135,7 @@ function FilterPanel({ selection, onChange, hasCgc, hasRna }) {
 
 const nFilters = (f) => {
   const x = { ...DEFAULT_FILTERS, ...f };
-  return [x.tiers?.length, x.lists?.length, x.genes?.length, x.classes?.length, x.clonality !== "any", x.minCells > 1, x.fusionSupport !== "any"].filter(Boolean).length;
+  return [x.tiers?.length, x.lists?.length, x.genes?.length, x.classes?.length, x.clonality !== "any", x.minCells > 1, x.fusionSupport !== "any", x.minF1 > 0].filter(Boolean).length;
 };
 
 /**
@@ -130,7 +145,7 @@ const nFilters = (f) => {
  * reads the same selection.
  */
 export default function DriverControls({ driverLayer, branches, onBranches, canBranches }) {
-  const { entries, shown, selection, setSelection, hasCgc, hasRna, collapsed } = driverLayer;
+  const { entries, shown, fits, selection, setSelection, hasCgc, hasRna, collapsed } = driverLayer;
   const options = useMemo(
     () =>
       DRIVER_CLASSES.map((cls) => ({
@@ -153,7 +168,9 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
     [entries]
   );
   const nShown = shown.length;
-  const nPreset = useMemo(() => selectDrivers(entries, { ...selection, add: [], remove: [] }).length, [entries, selection]);
+  const nPreset = useMemo(() => selectDrivers(entries, { ...selection, add: [], remove: [] }, fits).length, [entries, selection, fits]);
+  const nF1Hidden = useMemo(() => f1HiddenCount(entries, selection, fits), [entries, selection, fits]);
+  const noF1 = useMemo(() => noF1Keys(shown, fits), [shown, fits]);
   const edited = (selection.add?.length || 0) + (selection.remove?.length || 0);
   return (
     <Space wrap size={[12, 6]}>
@@ -182,10 +199,16 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
           value={shown.map((d) => d.key)}
           options={options}
           optionFilterProp="search"
-          onChange={(keys) => setSelection(selectionForKeys(entries, selection, keys))}
+          onChange={(keys) => setSelection(selectionForKeys(entries, selection, keys, fits))}
         />
       </Space>
       <Text type="secondary">{`${nShown} shown of ${entries.length}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>
+      {nF1Hidden > 0 && <Text type="secondary">{`· ${nF1Hidden} hidden by Clade F1 ≥ ${selection.filters.minF1}`}</Text>}
+      {selection.filters?.minF1 > 0 && noF1.size > 0 && (
+        <Tooltip title={`No carrier cells on the tree, so no Clade F1 score: ${shown.filter((d) => noF1.has(d.key)).map((d) => d.label).join(", ")}`}>
+          <Tag style={{ marginInlineEnd: 0 }}>{`${noF1.size} no F1`}</Tag>
+        </Tooltip>
+      )}
       {edited > 0 && (
         <Button size="small" type="link" onClick={() => setSelection({ ...selection, add: [], remove: [] })}>
           {`Back to preset (${nPreset})`}
