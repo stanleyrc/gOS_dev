@@ -1,5 +1,5 @@
 import { buildDriverEntries, entryStates } from "./driverLayer";
-import { alignPatient, cellStatus, eventSnvColumns, parseCdt, patientColumnMap, rowAtY, selectSharedColumns, serializeCdt, sharedKeyOf, slimSnv } from "./cohortDriverTrees";
+import { markSnvPending, alignPatient, cellStatus, eventSnvColumns, parseCdt, patientColumnMap, rowAtY, selectSharedColumns, serializeCdt, sharedKeyOf, slimSnv } from "./cohortDriverTrees";
 
 const ev = (o) => ({ Tier: 1, vartype: "SNV", type: "missense", Genome_Location: "7:1", n_cells: 20, cell_fraction: 0.5, ...o });
 const ids = (n, p) => Array.from({ length: n }, (_, i) => `${p}${i}`);
@@ -118,5 +118,40 @@ describe("cohort driver trees: URL and geometry", () => {
     expect(rowAtY(0, 100, 1000)).toBe(0);
     expect(rowAtY(99.9, 100, 1000)).toBe(999);
     expect(rowAtY(50, 100, 0)).toBe(-1);
+  });
+});
+
+describe("regression: Types = missense only never yields columns absent in every patient", () => {
+  const P = ["p1", "p2", "p3"].map((p) => ({ p, ids: ids(12, p) }));
+  const mk = (list, genes) =>
+    buildDriverEntries(
+      genes.map(([gene, prot, k, n]) => ev({ gene, Variant: prot, type: "missense", seqnames: "7", start: 100 + k, Genome_Location: `7:${100 + k}`, cell_ids: list.slice(0, n).join(",") })),
+      { tumorIds: list }
+    );
+  const per = {
+    p1: mk(P[0].ids, [["EGFR", "A289V", 1, 8], ["TP53", "R175H", 2, 5], ["PIK3CA", "E545K", 3, 4]]),
+    p2: mk(P[1].ids, [["EGFR", "G598V", 4, 6], ["TP53", "R248Q", 5, 7]]),
+    p3: mk(P[2].ids, [["TP53", "R273H", 6, 9], ["NF1", "Q1K", 7, 4]]),
+  };
+  test.each(["recommended", "all", "subclonal"])("preset %s: every column is present in at least one patient, keyed like the entries", (preset) => {
+    const { columns } = selectSharedColumns(per, { preset, classes: ["missense"], maxCols: 20 });
+    expect(columns.length).toBeGreaterThan(0);
+    columns.forEach((c) => {
+      const present = Object.entries(per).filter(([, e]) => alignPatient([c], e, new Map())[0].entry);
+      expect(present.length).toBeGreaterThan(0);
+      expect(c.nPatients).toBe(present.length);
+    });
+    if (preset === "all") expect(columns.map((c) => c.key)).toEqual(expect.arrayContaining(["snv|EGFR", "snv|TP53", "snv|PIK3CA", "snv|NF1"]));
+  });
+  test("before SNV evidence loads, carriers still show (pending keeps the carrier states)", () => {
+    const e = per.p1.find((x) => x.event.gene === "EGFR");
+    const states = new Map([[e.key, entryStates(e, { order: P[0].ids })]]);
+    const { columns } = selectSharedColumns(per, { preset: "all", classes: ["missense"] });
+    const al = markSnvPending(alignPatient(columns, per.p1, states), true);
+    const col = al.find((a) => a.column.key === "snv|EGFR");
+    expect(col.pending).toBe(true);
+    expect(col.states).not.toBeNull();
+    expect([...col.states].filter((v) => v === 2)).toHaveLength(8);
+    expect(markSnvPending(al, false)).toBe(al);
   });
 });
