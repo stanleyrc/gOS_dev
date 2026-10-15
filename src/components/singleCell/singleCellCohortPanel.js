@@ -33,6 +33,7 @@ import Wrapper from "./index.style";
 import useCohortFiles from "./cohort/useCohortFiles";
 import TmbPanel from "./cohort/tmbPanel";
 import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
+import CohortJointSignatures from "./cohort/cohortJointSignatures";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortOncoprintPanel from "./cohort/cohortOncoprintPanel";
 import CohortEventAssocPanel from "./cohort/cohortEventAssocPanel";
@@ -471,6 +472,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
             <Col span={24}>
               <CohortSignaturesPanel summaries={summaries} files={files} />
+            </Col>
+            <Col span={24}>
+              <CohortJointSignatures dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} />
             </Col>
           </>
         )}

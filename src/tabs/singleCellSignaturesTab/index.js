@@ -2,6 +2,7 @@ import React from "react";
 import { useSelector } from "react-redux";
 import { Col, Row } from "antd";
 import SignatureSetsCard from "../../components/singleCell/signatures/signatureSetsCard";
+import SignatureJointCard from "../../components/singleCell/signatures/signatureJointCard";
 import SignatureComparisonCard from "../../components/singleCell/signatures/signatureComparisonCard";
 import SignatureFitCard from "../../components/singleCell/signatures/signatureFitCard";
 import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
@@ -21,6 +22,9 @@ export default function SingleCellSignaturesTab() {
     <SingleCellWrapper>
       <SigFilterBar />
       <Row gutter={SC_GUTTER}>
+        <Col span={24}>
+          <SignatureJointCard />
+        </Col>
         <Col span={24}>
           <SignatureComparisonCard />
         </Col>

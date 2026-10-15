@@ -12,6 +12,7 @@ import { cellsOfGroups, linkAppliesTo, readDeepLink, readViewLink, withCloneOver
 import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
 import { parseSelection } from "../../helpers/singleCell/driverLayer";
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
+import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
@@ -89,7 +90,9 @@ const initState = {
   junctions: emptySource,
   allelic: emptySource, // { cells, rows: [{ binIndex, major, minor } | null] }, loaded on demand
   rna: emptySource, // static rna/ summary: { cells, genes, fields, hasUmap }
-  signatures: emptySource, // signatures.json: { cosmic_version, genome, sets: [{ name, n, activities }] }
+  signatures: emptySource, // the fit the tabs read: signatures.json (legacy) or signatures_joint.json, per layout.sigFit
+  signaturesLegacy: emptySource, // signatures.json: { cosmic_version, genome, sets: [{ name, n, activities }] }
+  signaturesJoint: emptySource, // signatures_joint.json: patient signature set, bootstrap CIs, contrasts
   rnaFusions: emptySource, // rna/fusions.json, normalised: { patient, nCellsRna, fusions }
   rnaSplicing: emptySource, // rna/splicing.json, normalised: { variants, clusters, cellMap }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
@@ -172,7 +175,13 @@ export default function appReducer(state = initState, action) {
         snv: action.snv,
         junctions: action.junctions,
         rna: action.rna || emptySource,
-        signatures: action.signatures || emptySource,
+        signatures: effectiveSignatures(
+          action.signatures || emptySource,
+          action.signaturesJoint || emptySource,
+          sigFitMode(state.layout, action.signaturesJoint?.status === "ok")
+        ),
+        signaturesLegacy: action.signatures || emptySource,
+        signaturesJoint: action.signaturesJoint || emptySource,
         walks: action.walks || emptySource,
         rnaFusions: action.rnaFusions || emptySource,
         rnaSplicing: action.rnaSplicing || emptySource,
@@ -244,6 +253,11 @@ export default function appReducer(state = initState, action) {
         action.patch.theme && action.patch.theme !== state.layout.theme
           ? cloneColorsForTheme(Object.keys(state.cloneColors || {}), action.patch.theme, state.cloneColorsFixed || {})
           : state.cloneColors;
+      // the Signatures fit switch (layout.sigFit) decides which file the tabs read as `signatures`
+      if ("sigFit" in action.patch && state.signaturesLegacy) {
+        const signatures = effectiveSignatures(state.signaturesLegacy, state.signaturesJoint, sigFitMode(layout, state.signaturesJoint?.status === "ok"));
+        return { ...state, layout, cloneColors, signatures };
+      }
       return { ...state, layout, cloneColors };
     }
     case actions.SC_PLOT_INSETS_UPDATED:
