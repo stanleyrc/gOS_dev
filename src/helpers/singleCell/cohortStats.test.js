@@ -88,3 +88,21 @@ describe("oncoprintEventFilter", () => {
     expect(none(amp)).toBe(false);
   });
 });
+
+describe("damaging tier-3 missense", () => {
+  const { isDamagingMissense, passesTier } = require("./cohortStats");
+  const dmg = { Tier: "3", type: "Missense", driver_evidence: "SIFT deleterious (0.01); PolyPhen probably damaging (0.99)" };
+  const half = { Tier: "3", type: "Missense", driver_evidence: "SIFT deleterious (0.01); PolyPhen benign (0.1)" };
+  const t2 = { Tier: "2", type: "SCNA" };
+  it("needs both SIFT and PolyPhen damaging on a tier-3 missense", () => {
+    expect(isDamagingMissense(dmg)).toBe(true);
+    expect(isDamagingMissense(half)).toBe(false);
+    expect(isDamagingMissense({ ...dmg, Tier: "2" })).toBe(false);
+    expect(isDamagingMissense({ ...dmg, type: "Splice" })).toBe(false);
+  });
+  it("tier option 2d keeps tiers 1-2 and damaging tier-3 missense", () => {
+    expect([dmg, half, t2].map((e) => passesTier(e, "2d"))).toEqual([true, false, true]);
+    expect([dmg, half, t2].map((e) => passesTier(e, 2))).toEqual([false, false, true]);
+    expect(passesTier(half, 3)).toBe(true);
+  });
+});

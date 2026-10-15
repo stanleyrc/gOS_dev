@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import { Card, Empty, InputNumber, Select, Space, Switch, Typography } from "antd";
 import { TableOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
-import { EVENT_CLASS_ORDER, oncoprintEventFilter, oncoprintMatrix } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS, oncoprintEventFilter, oncoprintMatrix } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -25,7 +25,7 @@ const GENE_W = 120;
 export default function OncoprintPanel({ summaries, files, onOpen, onEvent = null }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(900);
-  const [maxTier, setMaxTier] = useState(2);
+  const [maxTier, setMaxTier] = useState("2d"); // tiers 1-2 plus damaging tier-3 missense
   const [strongOnly, setStrongOnly] = useState(true);
   const [maxGenes, setMaxGenes] = useState(40);
   const [classes, setClasses] = useState(EVENT_CLASS_ORDER); // event classes shown (amp, homdel, fusion, ..., complex SV)
@@ -57,7 +57,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
       extra={
         <Space wrap>
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-tier")}</Text>
-          <Select size="small" value={maxTier} onChange={setMaxTier} style={{ width: 90 }} options={[1, 2, 3].map((v) => ({ value: v, label: `≤ ${v}` }))} />
+          <Select size="small" value={maxTier} onChange={setMaxTier} style={{ width: 200 }} options={TIER_OPTIONS} popupMatchSelectWidth={false} />
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-genes")}</Text>
           <InputNumber size="small" min={5} max={200} value={maxGenes} onChange={(v) => setMaxGenes(v || 40)} style={{ width: 70 }} />
           <Text type="secondary">Types</Text>
