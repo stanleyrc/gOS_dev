@@ -12,8 +12,8 @@ export default function useTreeView() {
   const { order: fullOrder, cells, tree, layout } = useSelector((state) => state.SingleCell);
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const excluded = useMemo(
-    () => excludedCellIds(cells, layout.qcExcludeRules, layout.excludedCells),
-    [cells, layout.qcExcludeRules, layout.excludedCells]
+    () => excludedCellIds(cells, layout.qcExcludeRules, layout.excludedCells, { on: layout.hideLowQc, thresholds: layout.covQcThresholds }),
+    [cells, layout.qcExcludeRules, layout.excludedCells, layout.hideLowQc, layout.covQcThresholds]
   );
   const hiddenKey = `${(layout.hiddenClones || []).join("|")}#${[...excluded].join("|")}`;
   return useMemo(() => {
