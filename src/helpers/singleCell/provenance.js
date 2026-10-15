@@ -303,6 +303,12 @@ export const PROVENANCE = {
     calc: "CellPhy-input sites counted by tree category per patient; per Mb uses median breadth x 3,100 Mb. In the browser.",
     where: "both",
   },
+  tmbCalls: {
+    title: "Tumour mutational burden (callable Mb)",
+    source: "data/<patient>/tmb.json, data/_cohort/tmb.json: srctools gos_sc_tmb.R; callable bases from truncal-site depth, checked against mosdepth on the CRAMs",
+    calc: "Alt calls at tree sites / callable Mb, divided by truncal-site sensitivity (dropout). Clade: sites / (Mb x power for alt reads in 2+ cells).",
+    where: "backend",
+  },
   cohortSignatures: {
     title: "Cohort signatures",
     source: SIGS,
