@@ -236,7 +236,7 @@ describe("splice events table", () => {
   });
 });
 
-describe("synthetic fusions.json", () => {
+describe("large synthetic fusions.json", () => {
   it("renders the 802-fusion table quickly with the default filters", () => {
     const real = require("../../../helpers/singleCell/__fixtures__/rnaFusions.synthetic_large.json");
     const RnaFusionsCard = require("./rnaFusionsCard").default;
