@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Divider, Popover, Segmented, Select, Space, Tooltip, Typography } from "antd";
-import { BulbFilled, BulbOutlined, SettingOutlined } from "@ant-design/icons";
+import { Button, Divider, Popconfirm, Popover, Segmented, Select, Space, Tooltip, Typography } from "antd";
+import { BulbFilled, BulbOutlined, ClearOutlined, SettingOutlined } from "@ant-design/icons";
 import { getAppTheme, onAppThemeChange, setAppTheme } from "../../helpers/appTheme";
 import { THEMES } from "../../helpers/singleCell/themes";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
 import singleCellActions from "../../redux/singleCell/actions";
+import { clearSiteSettings } from "../../helpers/clearSiteSettings";
 
 const { Text } = Typography;
 
@@ -65,6 +66,20 @@ export default function SettingsMenu() {
           options={Object.keys(CN_PALETTE_PRESETS).map((value) => ({ value, label: <span>{swatches(CN_PALETTE_PRESETS[value].total)}{t(`components.single-cell.palette.presets.${value}`)}</span> }))}
         />
         <Text type="secondary" style={{ fontSize: 12 }}>{t("settings.heatmap-palette-help")}</Text>
+      </div>
+      <Divider style={{ margin: "4px 0" }} />
+      <div>
+        <Popconfirm
+          placement="left"
+          title={t("settings.clear-title")}
+          description={<div style={{ maxWidth: 280 }}>{t("settings.clear-confirm")}</div>}
+          okText={t("settings.clear-ok")}
+          cancelText={t("settings.clear-cancel")}
+          onConfirm={() => clearSiteSettings()}
+        >
+          <Button icon={<ClearOutlined />} block>{t("settings.clear")}</Button>
+        </Popconfirm>
+        <Text type="secondary" style={{ fontSize: 12 }}>{t("settings.clear-help")}</Text>
       </div>
     </Space>
   );
