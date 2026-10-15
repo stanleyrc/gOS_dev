@@ -30,7 +30,7 @@ import {
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
 const PAGE_SIZE = 10;
-const TYPE_COLOR = { exon_skip: "volcano", alt_5: "purple", alt_3: "purple", novel_junction: "magenta", annotated_alt: "default" };
+const TYPE_COLOR = { exon_skip: "volcano", alt_5: "purple", alt_3: "purple", novel_junction: "magenta", annotated_alt: "default", intron_retention: "cyan" };
 const pct = (p) => (Number.isFinite(p) ? `${Math.round(100 * p)}%` : "–");
 
 /** Column title with a help tooltip. */
@@ -118,9 +118,13 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
       width: 380,
       render: (_, e) => (
         <div style={{ whiteSpace: "normal" }}>
-          <Typography.Link onClick={() => onSashimi(e)} style={{ fontSize: 13 }}>
-            {e.summary}
-          </Typography.Link>
+          {e.clusterId ? (
+            <Typography.Link onClick={() => onSashimi(e)} style={{ fontSize: 13 }}>
+              {e.summary}
+            </Typography.Link>
+          ) : (
+            <Text style={{ fontSize: 13 }}>{e.summary}</Text>
+          )}
           {e.flags.length > 0 && (
             <div>
               <Text type="warning" style={{ fontSize: 11.5 }}>{`${t(`${k}.ev-flags`)}: ${e.flags.join("; ")}`}</Text>
@@ -260,9 +264,11 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
                 <Button size="small" type="primary" onClick={toTree}>
                   {t(`${k}.ev-snv-paint`)}
                 </Button>
-                <Button size="small" onClick={() => onSashimi(activeEvent)}>
-                  {t(`${k}.ev-open-sashimi`)}
-                </Button>
+                {activeEvent.clusterId && (
+                  <Button size="small" onClick={() => onSashimi(activeEvent)}>
+                    {t(`${k}.ev-open-sashimi`)}
+                  </Button>
+                )}
               </Space>
             }
           />
