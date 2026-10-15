@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Select, Tag, Tooltip, Typography } from "antd";
+import { Select, Tooltip, Typography } from "antd";
 import singleCellActions from "../../redux/singleCell/actions";
+import SnvFilterBar from "./snvFilterBar";
+import { assignByTreeSet } from "../../helpers/singleCell/snvSigByTree";
 import useSignatureModel from "./signatures/useSignatureModel";
 import {
   DEFAULT_SNV_TRACKS,
@@ -11,13 +13,11 @@ import {
   catColor,
   catLegend,
   clickThreshold,
-  describeFilter,
-  hasAnnotFilter,
   numFraction,
-  parseTracks,
+  SITE_URL_PARAMS,
+  parseSiteState,
+  serializeSiteState,
   rampColor,
-  removeFilterKey,
-  serializeTracks,
   siteAnnotations,
   toggleMin,
   toggleValue,
@@ -36,7 +36,13 @@ export const tracksHeight = (n) => (n ? n * (TRACK_H + TRACK_GAP) + 2 : 0);
 /** Per-site annotations of the loaded SNV matrix (signature from the patient's joint fit). */
 export function useSnvAnnot(snv, phylo = null) {
   const model = useSignatureModel();
-  const assignment = model.ready ? model.assignment : null;
+  const sigSets = useSelector((s) => s.SingleCell.signatures);
+  // per-site signature from the fit of the site's own tree-site set (truncal / subclonal / private), else the joint fit
+  const assignment = useMemo(() => {
+    if (!model.ready) return null;
+    const sets = sigSets?.status === "ok" ? sigSets.data?.sets : null;
+    return sets && snv ? assignByTreeSet(snv.variants, model.reference, sets, model.assignment) : model.assignment;
+  }, [model, sigSets, snv]);
   return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo }) : null), [snv, assignment, phylo]);
 }
 
@@ -184,7 +190,7 @@ const fmt = (x) => (Number.isFinite(x) ? (Math.abs(x) >= 100 ? x.toFixed(0) : Nu
  * Track picker (stored in the layout and the URL as sntracks / snfilter),
  * per-track legends (click a swatch to filter to it) and the active filters.
  */
-export function SnvTrackControls({ annot }) {
+export function SnvTrackControls({ annot, nShown = null, onIsolate = null }) {
   const dispatch = useDispatch();
   const layout = useSelector((s) => s.SingleCell.layout) || {};
   const patient = useSelector((s) => s.SingleCell.patient);
@@ -197,10 +203,7 @@ export function SnvTrackControls({ annot }) {
     if (urlRead || !patient) return;
     setUrlRead(true);
     try {
-      const link = parseTracks(window.location.search);
-      const patch = {};
-      if (link.tracks) patch.snvTracks = link.tracks;
-      if (link.filter) patch.snvAnnotFilter = link.filter;
+      const patch = parseSiteState(window.location.search);
       if (Object.keys(patch).length) dispatch(singleCellActions.updateLayout(patch));
     } catch (e) {
       // no window
@@ -210,13 +213,13 @@ export function SnvTrackControls({ annot }) {
     if (!urlRead) return;
     try {
       const url = new URL(window.location.href);
-      ["sntracks", "snfilter"].forEach((k) => url.searchParams.delete(k));
-      Object.entries(serializeTracks(layout.snvTracks, layout.snvAnnotFilter)).forEach(([k, v]) => url.searchParams.set(k, v));
+      SITE_URL_PARAMS.forEach((k) => url.searchParams.delete(k));
+      Object.entries(serializeSiteState(layout)).forEach(([k, v]) => url.searchParams.set(k, v));
       if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
     } catch (e) {
       // no history
     }
-  }, [urlRead, layout.snvTracks, layout.snvAnnotFilter]);
+  }, [urlRead, layout]);
 
   if (!annot) return null;
   const options = SNV_TRACKS.filter((d) => annot.available.includes(d.key)).map((d) => ({ value: d.key, label: d.label, title: d.help }));
@@ -241,15 +244,8 @@ export function SnvTrackControls({ annot }) {
           options={options}
           onChange={(value) => dispatch(singleCellActions.updateLayout({ snvTracks: value.length ? value : [] }))}
         />
-        {Object.entries(filter || {}).map(([key, f]) => (
-          <Tag key={key} closable color="blue" onClose={() => setFilter(removeFilterKey(filter, key))}>
-            {describeFilter(annot, key, f)}
-          </Tag>
-        ))}
-        {hasAnnotFilter(filter) && (
-          <Button type="link" size="small" onClick={() => setFilter(null)}>clear track filters</Button>
-        )}
       </div>
+      <SnvFilterBar annot={annot} nShown={nShown ?? annot.n} onIsolate={onIsolate} />
       {tracks.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 2, fontSize: 11 }}>
           {tracks.map((key) => {
