@@ -120,6 +120,13 @@ export function alignPatient(columns, entries, states) {
   });
 }
 
+/**
+ * Before the SNV matrix is loaded an SNV column is still PRESENT (its carriers come from filtered.events cell_ids, via
+ * entryStates' carrier fallback); only the per-cell wild-type / no-coverage evidence waits. Marks those columns pending
+ * and keeps their states (carrier = 2, otherwise 0).
+ */
+export const markSnvPending = (aligned, snvPending) => (snvPending ? aligned.map((a) => (a.entry?.cls === "snv" ? { ...a, pending: true } : a)) : aligned);
+
 /** Keep only the SNV columns `cols` (indices of snv.variants) and their statuses; ids are preserved so site lookups still work. */
 export function slimSnv(snv, cols) {
   const keep = [...new Set(cols)].sort((a, b) => a - b);
