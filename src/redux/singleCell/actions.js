@@ -57,6 +57,9 @@ export const SC_DEFAULT_LAYOUT = {
   theme: "tableau", // categorical colour theme (helpers/singleCell/themes.js)
   branchSnvs: false, // SNV counts on the tree branches
   drivers: DEFAULT_DRIVER_SELECTION, // Drivers heatmap layer: { preset, add, remove, filters } (helpers/singleCell/driverLayer.js); shared with the Report tab
+  spMap: "beside", // slide-tag tissue map: beside the heatmap or below (helpers/singleCell/spatialLayout.js)
+  spWidth: 480, // px of the tissue map column when beside
+  spHidden: null, // collapsed spatial-tab sections; null = compact when beside, none when below
   driverBranches: false, // mark the branch where each shown driver arises
 };
 
