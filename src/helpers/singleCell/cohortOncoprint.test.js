@@ -83,3 +83,15 @@ describe("drvOpenParams", () => {
     expect(drvOpenParams("A", d)).toMatchObject({ report: "A", tab: "7", heatmap: "drivers", drvopen: d.key });
   });
 });
+
+describe("addedGeneGaps", () => {
+  const { addedGeneGaps } = require("./cohortOncoprint");
+  it("explains why an added gene has no row", () => {
+    const e = (gene, cls, fraction) => ({ key: `${gene}-${cls}`, genes: [gene], label: gene, cls, fraction, upstreamOnly: false });
+    const byP = { P1: [e("GA", "snv", 0.2)], P2: [e("GB", "amp", 0.9)] };
+    const gaps = addedGeneGaps(byP, { addGenes: ["GA", "GZ", "GB"], classes: ["amp"], minFraction: 0 }, [{ gene: "GB" }]);
+    expect(gaps.map((g) => g.gene)).toEqual(["GA", "GZ"]);
+    expect(gaps[0].reason).toMatch(/not in Types/);
+    expect(gaps[1].reason).toMatch(/no filtered event/);
+  });
+});

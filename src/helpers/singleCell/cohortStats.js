@@ -44,6 +44,66 @@ export function eventLabel(e = {}) {
   return e.gene || e.fusion_genes || e.name || (eventClass(e) === "complex" ? e.Variant || e.vartype : "") || "";
 }
 
+/** Plain-language meaning of complex / structural row labels in the oncoprint ("DM (7)", "TIC (6,8)", "rDup (6,7)"); null for genes. */
+const ROW_TERMS = [
+  [/^DM\b/i, "DM: double minute / ecDNA (gGnome event classifier)"],
+  [/^cpxdm/i, "complex DM: ecDNA with a complex junction structure (gGnome)"],
+  [/^TIC\b/i, "TIC: templated insertion chain, segments copied and inserted in a chain (gGnome)"],
+  [/^rDup\b/i, "rDup: reciprocal duplication pair (gGnome)"],
+  [/^rDel\b/i, "rDel: reciprocal deletion pair (gGnome)"],
+  [/^BFB\b/i, "BFB: breakage-fusion-bridge cycles (gGnome)"],
+  [/^chromothripsis/i, "chromothripsis: shattering and random re-joining of a chromosome region"],
+  [/^chromoplexy/i, "chromoplexy: chained rearrangements across several chromosomes"],
+  [/^tyfonas/i, "tyfonas: high-copy, junction-dense amplification (gGnome)"],
+  [/^pyrgo/i, "pyrgo: stacked low-level tandem duplications (gGnome)"],
+  [/^rigma/i, "rigma: clustered deletions, often at fragile sites (gGnome)"],
+  [/^qrp/i, "QRP: quasi-reciprocal pair (gGnome)"],
+];
+export function oncoprintRowNote(label) {
+  const l = `${label || ""}`.trim();
+  const hit = ROW_TERMS.find(([re]) => re.test(l));
+  if (!hit) return null;
+  const chr = l.match(/\(([^)]*)\)/);
+  return `${hit[1]}${chr ? `; chromosome(s) ${chr[1]}` : ""}`;
+}
+
+/** Most common non-empty role (OncoKB role in the events: Oncogene / Tumor Suppressor) across a gene's oncoprint cells. */
+export function oncoprintRole(cells) {
+  const counts = {};
+  Object.values(cells || {}).forEach((c) => (c.all || c.entries || [c]).forEach((e) => {
+    const r = `${e.event?.role || ""}`;
+    if (r && r !== "None" && r !== "NA") counts[r] = (counts[r] || 0) + 1;
+  }));
+  const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : null;
+}
+
+/** Role group of an oncoprint row: structural / ecDNA labels, then OncoKB role. */
+export function oncoprintRoleGroup(g) {
+  if (oncoprintRowNote(g.gene)) return "Structural / ecDNA events";
+  const r = `${oncoprintRole(g.cells) || ""}`;
+  const og = /oncogene/i.test(r);
+  const tsg = /suppressor/i.test(r);
+  if (og && tsg) return "Oncogene and tumour suppressor";
+  if (og) return "Oncogenes";
+  if (tsg) return "Tumour suppressors";
+  return /::/.test(g.gene) ? "Fusions" : "Other / unannotated";
+}
+const ROLE_GROUP_ORDER = ["Oncogenes", "Tumour suppressors", "Oncogene and tumour suppressor", "Fusions", "Structural / ecDNA events", "Other / unannotated"];
+/** Oncoprint rows, optionally grouped by role: [{ header, n } | { gene }], genes keep their order inside each group. */
+export function groupOncoprintRows(genes, groupBy = "role") {
+  if (groupBy !== "role") return (genes || []).map((g) => ({ gene: g }));
+  const by = new Map(ROLE_GROUP_ORDER.map((k) => [k, []]));
+  (genes || []).forEach((g) => by.get(oncoprintRoleGroup(g)).push(g));
+  const out = [];
+  by.forEach((list, k) => {
+    if (!list.length) return;
+    out.push({ header: k, n: list.length });
+    list.forEach((g) => out.push({ gene: g }));
+  });
+  return out;
+}
+
 export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", "missense", "complex", "other"];
 
 /**

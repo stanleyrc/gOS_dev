@@ -181,3 +181,24 @@ export function drvOpenParams(patient, entry) {
 
 /** Class glyph key for drawing: shape names used by the panel. */
 export const GLYPH = { snv: "square", amp: "up", homdel: "down", fusion: "diamond", complex: "circle" };
+
+/** Added genes without a row in the grid and why: not in any patient's filtered events, removed, or every entry filtered (class / min fraction / upstream-only). */
+export function addedGeneGaps(entriesByPatient = {}, selection = DEFAULT_ONCOPRINT, rows = []) {
+  const sel = { ...DEFAULT_ONCOPRINT, ...(selection || {}) };
+  const shown = new Set(rows.map((r) => upper(r.gene)));
+  const remove = new Set((sel.removeGenes || []).map(upper));
+  const all = Object.values(entriesByPatient).flat();
+  return (sel.addGenes || [])
+    .filter((g) => !shown.has(upper(g)))
+    .map((g) => {
+      const G = upper(g);
+      const hits = all.filter((d) => upper(rowOf(d)) === G || d.genes.some((x) => upper(x) === G));
+      if (!hits.length) return { gene: g, reason: "no filtered event in any patient (check the Clade F1 filter at the top)" };
+      if (remove.has(G)) return { gene: g, reason: "removed from the rows" };
+      const classes = sel.classes && sel.classes.length ? sel.classes : null;
+      if (classes && !hits.some((d) => classes.includes(d.cls))) return { gene: g, reason: `its classes (${[...new Set(hits.map((d) => d.cls))].join(", ")}) are not in Types` };
+      if (!hits.some((d) => d.fraction >= sel.minFraction)) return { gene: g, reason: `every event is below the min fraction ${Math.round(sel.minFraction * 100)}%` };
+      if (hits.every((d) => d.upstreamOnly)) return { gene: g, reason: "only upstream-of-gene fusions" };
+      return { gene: g, reason: "filtered by the current selection" };
+    });
+}
