@@ -56,9 +56,9 @@ export default function CohortSpliceReads({ dataset, patients = [], cluster }) {
       .flatMap((p) =>
         (files[p]?.events || [])
           .filter((e) => e.clusterId === clusterId)
-          .map((e) => ({ p, e, ok: spliceReadsView(e, { spliceReads: files[p].spliceReads }).available }))
+          .map((e) => ({ p, e, ok: spliceReadsView(e, { spliceReads: files[p].spliceReads }).available, cmp: Math.min(2, e.readCells.filter((r) => r.role === "control").length) }))
       )
-      .sort((a, b) => Number(b.ok) - Number(a.ok) || b.e.reads - a.e.reads)
+      .sort((a, b) => Number(b.ok) - Number(a.ok) || b.cmp - a.cmp || b.e.reads - a.e.reads)
       .map((o) => ({ value: `${o.p}|${o.e.id}`, label: `${o.p} · ${o.e.summary}${o.ok ? "" : ` [${t(`${k}.ev-reads-none`)}]`}`, ...o }));
   }, [files, patients, clusterId, t]);
   useEffect(() => {

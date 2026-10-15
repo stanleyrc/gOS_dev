@@ -1,6 +1,7 @@
 // Event-level splicing (rna/splicing.json `events`, skilift sc_splice_events): one row per
 // spliced junction with a plain-language summary, explicit units and links to nearby SNVs.
 // d3-free so it can be tested without a DOM.
+import { passesGeneFilter } from "./spliceGeneFilter";
 
 export const EVENT_TYPES = ["exon_skip", "alt_5", "alt_3", "novel_junction", "annotated_alt", "intron_retention"];
 export const EVENT_TYPE_LABEL = {
@@ -106,6 +107,10 @@ export function normalizeSpliceEvents(list) {
         .filter((r) => r && r.id)
         .map((r) => ({ id: `${r.id}`, role: r.role === "control" ? "control" : "using", k: num(r.k, 0), n: num(r.n, 0) })),
       snvLinks: arr(e.snv_links).map(normalizeLink),
+      // exon context (srctools gos_sc_splice_exon_annot.py); exonKnown false in older files
+      exonKnown: "n_exons" in e,
+      nExons: num(e.n_exons),
+      intronOverlap: e.intron_overlap == null ? null : !!e.intron_overlap,
     }));
 }
 
@@ -155,7 +160,7 @@ export function linkText(l) {
  * Rows of the table. mode "recommended" keeps recommended events; "all" keeps every event.
  * Optional filters: query (gene), eventType, linkedOnly (has a linked SNV), novelOnly.
  */
-export function filterSpliceEvents(events, { mode = "recommended", query = "", eventType = "all", linkedOnly = false, novelOnly = false } = {}) {
+export function filterSpliceEvents(events, { mode = "recommended", query = "", eventType = "all", linkedOnly = false, novelOnly = false, geneFilter = null } = {}) {
   const q = `${query}`.trim().toLowerCase();
   return events.filter(
     (e) =>
@@ -163,7 +168,8 @@ export function filterSpliceEvents(events, { mode = "recommended", query = "", e
       (!q || e.gene.toLowerCase().includes(q) || e.summary.toLowerCase().includes(q)) &&
       (eventType === "all" || e.eventType === eventType) &&
       (!linkedOnly || e.snvLinks.length > 0) &&
-      (!novelOnly || !e.annotated)
+      (!novelOnly || !e.annotated) &&
+      (!geneFilter || passesGeneFilter(e, geneFilter))
   );
 }
 
@@ -214,8 +220,9 @@ export const linkCarrierDnaCells = (link, cellMap = {}) => (link?.carriers || []
 
 
 export const READS_DEFAULT_USING = 4;
-export const READS_DEFAULT_CONTROLS = 1;
+export const READS_DEFAULT_CONTROLS = 2;
 export const READS_MAX_USING = 8;
+export const READS_MAX_CONTROLS = 3;
 
 /**
  * IGV view of an event's raw reads: the cells using the junction (most reads first) and, for comparison,
@@ -235,7 +242,7 @@ export function spliceReadsView(event, { spliceReads = {}, patientId = null, nUs
     rna_id: r.id,
     bam: spliceReads[r.id],
     patientId,
-    label: r.role === "control" ? `${r.id} (control)` : `${r.id} (${r.k} reads)`,
+    label: `${r.role === "control" ? "comparator " : ""}${patientId && r.id.startsWith(`${patientId}_`) ? r.id.slice(patientId.length + 1) : r.id}: ev ${r.k} / can ${Math.max(0, r.n - r.k)}`,
   }));
   return {
     available: true,

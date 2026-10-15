@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Button, Segmented, Space, Tag, Typography } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import CellIgvPanel from "../cellIgvPanel";
-import { READS_DEFAULT_CONTROLS, READS_DEFAULT_USING, READS_MAX_USING, spliceReadsView } from "../../../helpers/singleCell/spliceEventTable";
+import { READS_DEFAULT_CONTROLS, READS_DEFAULT_USING, READS_MAX_CONTROLS, READS_MAX_USING, spliceReadsView } from "../../../helpers/singleCell/spliceEventTable";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -19,7 +19,7 @@ export default function SpliceReadsPanel({ event, spliceReads = {}, patientId = 
   const { t } = useTranslation("common");
   const [all, setAll] = useState(false);
   const r = useMemo(
-    () => spliceReadsView(event, { spliceReads, patientId, nUsing: all ? READS_MAX_USING : READS_DEFAULT_USING, nControl: all ? 2 : READS_DEFAULT_CONTROLS }),
+    () => spliceReadsView(event, { spliceReads, patientId, nUsing: all ? READS_MAX_USING : READS_DEFAULT_USING, nControl: all ? READS_MAX_CONTROLS : READS_DEFAULT_CONTROLS }),
     [event, spliceReads, patientId, all]
   );
   if (!event) return null;
@@ -62,14 +62,21 @@ export default function SpliceReadsPanel({ event, spliceReads = {}, patientId = 
           />
         )}
       </Space>
-      <div>
-        {r.shown.map((c) => (
-          <Tag key={c.id} color={c.role === "control" ? "default" : "blue"} bordered={false} style={{ marginBottom: 2 }}>
-            {c.role === "control" ? t(`${k}.reads-tag-control`, { id: c.id, n: c.n }) : t(`${k}.reads-tag-using`, { id: c.id, k: c.k, n: c.n })}
-          </Tag>
-        ))}
-      </div>
-      {r.nControl === 0 && <Text type="secondary" style={{ fontSize: 12 }}>{t(`${k}.reads-no-control`)}</Text>}
+      {["using", "control"].map((role) => {
+        const cells = r.shown.filter((c) => c.role === role);
+        if (!cells.length) return null;
+        return (
+          <div key={role}>
+            <Text strong style={{ fontSize: 12.5, marginRight: 6 }}>{t(`${k}.reads-group-${role}`)}</Text>
+            {cells.map((c) => (
+              <Tag key={c.id} color={role === "control" ? "gold" : "blue"} bordered={false} style={{ marginBottom: 2 }}>
+                {t(`${k}.reads-tag`, { id: c.id, k: c.k, rest: Math.max(0, c.n - c.k) })}
+              </Tag>
+            ))}
+          </div>
+        );
+      })}
+      {r.nControl < 2 && <Text type="secondary" style={{ fontSize: 12 }}>{t(`${k}.reads-no-control`)}</Text>}
       <CellIgvPanel view={r.view} embedded />
       <Text type="secondary" style={{ fontSize: 12 }}>{t(`${k}.reads-note`)}</Text>
     </Space>
