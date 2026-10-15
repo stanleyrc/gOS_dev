@@ -62,6 +62,7 @@ export class HeaderPanel extends Component {
     this.state = {
       cbioportalModalVisible: false,
       clinicalTrialsModalVisible: false,
+      detailsOpen: false,
     };
   }
 
@@ -370,7 +371,7 @@ export class HeaderPanel extends Component {
     return (
       <Wrapper>
         <PageHeader
-          className="site-page-header"
+          className={`site-page-header${compactHeader ? " is-compact" : ""}`}
           title={
             <Space size="small" wrap>
               {this.renderTitle()}
@@ -478,7 +479,11 @@ export class HeaderPanel extends Component {
                           {tumor_type}
                         </Avatar>
                       ) : null}
-                      <div className="case-metadata-fields">
+                      <div
+                        className={`case-metadata-fields${isSingleCellPatient ? " is-clamped" : ""}${this.state.detailsOpen ? " is-open" : ""}`}
+                        onClick={isSingleCellPatient ? () => this.setState((st) => ({ detailsOpen: !st.detailsOpen })) : undefined}
+                        title={isSingleCellPatient ? (this.state.detailsOpen ? undefined : "Click to expand") : undefined}
+                      >
                         <div className="case-metadata-line">
                           {disease != null && <span>{disease}</span>}
                           {isMyeloSeqReportStyle(dataset) ? (
