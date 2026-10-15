@@ -709,7 +709,7 @@ export default function CellHeatmapPanel() {
       const d = driverVisible[c]?.entry;
       const v = states[c]?.[r];
       if (!d) return stripBlank;
-      if (d.cls === "snv") return v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
+      if (d.cls === "snv") return v === 4 ? colors.bothHit : v === 3 ? colors.loss : v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
       if (d.cls === "amp" || d.cls === "homdel") return driverCnColor(v);
       if (d.cls === "fusion") return v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : stripBlank;
       return v ? colors.complex : stripBlank;
@@ -738,6 +738,7 @@ export default function CellHeatmapPanel() {
           ["Class", classLabel(d)],
           ...(d.tier != null ? [["Tier", d.tier]] : []),
           ["Carriers", d.rescued ? `${d.n} of ${d.rescue.covered} covered tumour cells (${d.rescue.nTumour ? `${Math.round(100 * (d.rescue.coverage || 0))}% of ${d.rescue.nTumour} tumour cells covered` : "coverage n/a"})` : `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
+          ...(d.twoHit ? [["Two hits", d.twoHit.text]] : []),
           ...(d.rescued ? [["Evidence", rescueText(d)]] : []),
           ["This cell", state],
         ];

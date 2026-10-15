@@ -57,6 +57,8 @@ function MiniLegend() {
       <Sw c={c.mutant} label="mutant" />
       <Sw c={c.wildtype} label="WT" tip="Wild type. For hotspots rescued from site evidence (TERT promoter ...): the cell has reads at the site but no alt read (allele dropout is common, so not proven wild type)" />
       <Sw c={c.noCoverage} label="no coverage" tip="SNV sites with no reads in the cell" />
+      <Sw c={c.loss} label="loss only" tip="Tumour-suppressor SNV column with a second hit (LOH or deletion at the gene, per-cell allelic CN): the cell has the loss but no SNV read" />
+      <Sw c={c.bothHit} label="SNV + loss" tip="Both hits in the cell: the SNV and LOH / deletion of the other copy (biallelic)" />
       <Sw c="#92C5DE" label="del" tip="Deletion / low copy number (CN heatmap palette: 0-1 copies)" />
       <Sw c="#FDB863" label="amp" tip="Amplification; darker orange to black = higher copy number (CN heatmap palette, black = highest level)" />
       <Sw c={c.dna} label="fusion DNA" />

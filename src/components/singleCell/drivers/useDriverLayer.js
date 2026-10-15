@@ -7,6 +7,7 @@ import { rankFindings } from "../../../helpers/singleCell/siteEvidence";
 import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { parseCancerGeneList } from "../../../helpers/singleCell/geneInfo";
 import { rowMap } from "../../../helpers/singleCell/matrix";
+import usePatientTsg from "./usePatientTsg";
 import { DEFAULT_SELECTION, buildDriverEntries, collapseColumns, entryFits, entryStates, recommendedOrder, selectDrivers } from "../../../helpers/singleCell/driverLayer";
 
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -84,6 +85,7 @@ export default function useDriverLayer() {
     () => buildDriverEntries(events || [], { tumorIds, hotspots: sites.hotspots, verdicts: sites.verdicts, cgc, rnaFusionCells, snv: snvData }),
     [events, tumorIds, sites, cgc, rnaFusionCells, snvData]
   );
+  const tsg = usePatientTsg(entries, tumorIds);
   const selection = layout.drivers || DEFAULT_SELECTION;
   const fits = useMemo(() => entryFits(entries, treeLayout), [entries, treeLayout]);
   const shown = useMemo(() => {
@@ -92,9 +94,9 @@ export default function useDriverLayer() {
   }, [entries, selection, fits]);
   // per-cell states and display columns (redundant CN events collapsed)
   const display = useMemo(() => {
-    const ctx = { order, snv: snvData, snvRows: snvData ? rowMap(order, snvData.cells) : null, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins };
+    const ctx = { order, snv: snvData, snvRows: snvData ? rowMap(order, snvData.cells) : null, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins, twoHit: tsg.secondHits };
     return collapseColumns(shown, shown.map((d) => entryStates(d, ctx)));
-  }, [shown, order, snvData, cn, chromoBins]);
+  }, [shown, order, snvData, cn, chromoBins, tsg.secondHits]);
   const setSelection = useCallback((next) => dispatch(singleCellActions.updateLayout({ drivers: next })), [dispatch]);
-  return { entries, shown, fits, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
+  return { tsg, entries, shown, fits, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
 }
