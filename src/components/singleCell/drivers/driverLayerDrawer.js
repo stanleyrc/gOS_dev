@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Alert, Button, Drawer, Space, Tabs, Tag, Tooltip, Typography } from "antd";
+import ExternalLinksRow from "../externalLinksRow";
+import { linkGenes } from "../../../helpers/singleCell/externalLinks";
 import { AimOutlined, MinusCircleOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
@@ -119,6 +121,9 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
         </Space>
       }
     >
+      {(entry.genes?.length ? entry.genes : linkGenes(entry.label)).slice(0, 2).map((g, i, arr) => (
+        <ExternalLinksRow key={g} gene={g} protein={arr.length === 1 && entry.cls === "snv" ? entry.event?.Variant : null} style={{ marginBottom: 6, display: "flex" }} />
+      ))}
       {entry.cls === "snv" && sigText && (
         <div style={{ marginBottom: 8 }} data-driver-signature>
           <Text strong>Signature: </Text>

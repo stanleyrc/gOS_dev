@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { Button, Popover, Skeleton, Space, Tag, Tooltip, Typography } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import GeneInfoCard from "../rna/geneInfoCard";
+import ExternalLinksRow from "../externalLinksRow";
 import useCohortExport from "./useCohortExport";
 import { ONCOKB_URL, covariateHits, driverEventsForGene, patientEventsForGene, parseBiomarkerDrugs, parseCuratedGenes, tmbHits } from "../../../helpers/singleCell/geneQuickLook";
 import { fmtP } from "../../../helpers/singleCell/tmbAssoc";
@@ -140,6 +141,7 @@ export function GeneQuickLookBody({ gene, onClose }) {
         {a.covde && <Button size="small" onClick={go(a.covde)}>Covariate DE</Button>}
       </Space>
       {section("OncoKB", <OncoKbSection gene={gene} tables={tables} />)}
+      {section("Elsewhere", <ExternalLinksRow gene={gene} />)}
       {ctx ? <CohortSection gene={gene} ctx={ctx} /> : <PatientSection gene={gene} />}
       <GeneInfoCard gene={gene} />
     </div>

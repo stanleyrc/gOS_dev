@@ -19,6 +19,7 @@ import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { setPendingEvent } from "../pendingEventOpener";
 import ColorTag from "../colorTag";
 import GeneInfoCard from "../rna/geneInfoCard";
+import ExternalLinksRow from "../externalLinksRow";
 import { eventGenes, parseSite, pickIgvCells } from "../../../helpers/singleCell/eventDrawerHelpers";
 
 const { Text, Paragraph } = Typography;
@@ -154,7 +155,12 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
           {text(event.variant_summary) && <Paragraph type="secondary" style={{ marginBottom: 0 }}>{text(event.variant_summary)}</Paragraph>}
           {text(event.therapeutics) && <Paragraph style={{ marginBottom: 0 }}><Text strong>Therapeutics: </Text>{text(event.therapeutics)}</Paragraph>}
           {genes.length > 0 ? (
-            genes.map((g) => <GeneInfoCard key={g} gene={g} />)
+            genes.map((g) => (
+              <div key={g}>
+                <ExternalLinksRow gene={g} protein={genes.length === 1 ? event.Variant : null} style={{ marginBottom: 4 }} />
+                <GeneInfoCard gene={g} />
+              </div>
+            ))
           ) : (
             <Text type="secondary">Gene card: not available (this event has no single gene)</Text>
           )}
