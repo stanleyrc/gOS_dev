@@ -73,6 +73,7 @@ export function describeTest(test, { shared = null } = {}) {
   const up = test.robust_up?.length ? test.robust_up : test.top_up;
   const down = test.robust_down?.length ? test.robust_down : test.top_down;
   const parts = [];
+  if (test.id === "clade:top") parts.push("in each patient the hypermutated subclone (most private SNVs) vs its sister clade, tumour cells only");
   if (test.combinable) parts.push(`${test.n_robust} gene${test.n_robust === 1 ? "" : "s"} move the same way in all ${k} patients (q < 0.05, |log2FC| >= 0.5)`);
   else parts.push(`${test.n_sig_q05} gene${test.n_sig_q05 === 1 ? "" : "s"} at q < 0.05 in ${where}`);
   if (up?.length) parts.push(`higher in ${test.group_a}: ${list(up, 4)}`);
@@ -184,3 +185,53 @@ export function headlineFindings(data, { max = 5, minRobust = 1, minPatients = 2
   }
   return out;
 }
+
+/**
+ * Violin groups of one gene: per patient, group A then group B, from the exported cell indices of the test.
+ * @param perPatient [{ patient, values: number[] | null (expression per row of the patient's cells.json), a: number[], b: number[], reason?: string }]
+ * @returns { groups: [{ key, label, sublabel, color, values, cluster }], unavailable: [{ patient, reason }] }
+ */
+export function violinGroups(perPatient, { colorA = "#C2185B", colorB = "#1F5FA8", labelA = "A", labelB = "B" } = {}) {
+  const groups = [];
+  const unavailable = [];
+  (perPatient || []).forEach((p) => {
+    if (!p.values || !Array.isArray(p.a) || !Array.isArray(p.b)) {
+      unavailable.push({ patient: p.patient, reason: p.reason || "expression not loaded" });
+      return;
+    }
+    const pick = (idx) => idx.map((i) => p.values[i]).filter((v) => Number.isFinite(v));
+    groups.push({ key: `${p.patient} A`, label: labelA, sublabel: "", color: colorA, values: pick(p.a), cluster: p.patient });
+    groups.push({ key: `${p.patient} B`, label: labelB, sublabel: "", color: colorB, values: pick(p.b), cluster: p.patient });
+  });
+  return { groups, unavailable };
+}
+
+/** "<id>" without the patient prefix, e.g. MGH303_n209 -> n209. */
+export const shortClade = (id) => `${id || ""}`.replace(/^.*_/, "");
+
+/** Specs for the Clade comparison card (?cmpA / ?cmpB): the clade and its sister clade(s). */
+export const cladeCompareSpecs = (cladeId) => ({ a: `clade:${cladeId}`, b: `sister:clade:${cladeId}` });
+
+/** Rows of the per-patient table of the hardened highest-burden clade test (test.clade_info joined with test.patients). */
+export function cladeTopRows(test) {
+  const per = new Map((test?.patients || []).map((p) => [p.patient, p]));
+  return (test?.clade_info || []).map((i) => {
+    const p = per.get(i.patient) || {};
+    return {
+      key: i.patient, patient: i.patient, included: Boolean(i.included), reason: i.reason, clade: i.clade || null, burden_rel: i.burden_rel ?? null,
+      n_private_snv: i.n_private_snv ?? null, top_signature: i.top_signature || null, n_a: p.n_a ?? i.n_a ?? null, n_b: p.n_b ?? i.n_b ?? null,
+      adjust: p.adjust || null, d_mt: p.d_mt ?? null, d_lib: p.d_lib ?? null,
+    };
+  });
+}
+
+/** Flag for the leading genes of a test: "mito", "ribo" or "" when at least 3 of the first 8 lead genes are of that kind. */
+export function leadFlag(genes) {
+  const lead = (genes || []).slice(0, 8);
+  if (lead.filter((g) => MITO.test(g)).length >= 3) return "mito";
+  if (lead.filter((g) => RIBO.test(g)).length >= 3) return "ribo";
+  return "";
+}
+
+/** Signed difference text: "+0.12" / "-1.4" or "–" when missing. */
+export const fmtDiff = (v, digits = 2) => (Number.isFinite(v) ? `${v > 0 ? "+" : ""}${v.toFixed(digits)}` : "–");
