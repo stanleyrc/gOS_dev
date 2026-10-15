@@ -29,6 +29,7 @@ import {
 } from "../../../helpers/singleCell/spatial";
 import useSpatial from "./useSpatial";
 import { SpatialSection, useSpatialLayout } from "./spatialLayoutContext";
+import { useHiddenCellIds } from "../useCovQc";
 
 const { Text } = Typography;
 const LEGEND_WIDTH = 240;
@@ -127,6 +128,7 @@ export default function SpatialPanel({ bare = false }) {
   const dragRef = useRef(null);
   const hoveredRef = useRef(null);
 
+  const hiddenCells = useHiddenCellIds(); // "Hide low-QC cells" and the global cell filter
   const data = spatial.status === "ok" ? spatial.data : null;
   const cloneOf = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id])), [cells]);
   const inPatient = useMemo(() => new Set(cells.map((c) => `${c.cell_id}`)), [cells]);
@@ -139,8 +141,8 @@ export default function SpatialPanel({ bare = false }) {
 
   // points: linked = the cell is one of the patient's DNA cells (in the tree / heatmap)
   const basePoints = useMemo(
-    () => (data ? data.points.map((p) => ({ ...p, linked: inPatient.has(p.id) })) : []),
-    [data, inPatient]
+    () => (data ? data.points.filter((p) => !hiddenCells.has(`${p.id}`)).map((p) => ({ ...p, linked: inPatient.has(p.id) })) : []),
+    [data, inPatient, hiddenCells]
   );
   const plotWidth = beside ? Math.max(240, containerWidth - 4) : Math.max(260, Math.min(720, containerWidth - LEGEND_WIDTH - 22));
   const plotHeight = useMemo(() => {

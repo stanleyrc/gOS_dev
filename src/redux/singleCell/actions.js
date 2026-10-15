@@ -34,6 +34,8 @@ export const SC_DEFAULT_LAYOUT = {
   hiddenClones: [],
   qcExcludeRules: [], // global cell filter: QC flags whose cells every view drops (helpers/singleCell/precompute.js)
   excludedCells: [], // manually excluded cell ids (global cell filter)
+  hideLowQc: false, // hide cells failing the coverage QC thresholds in every view (helpers/singleCell/cellQc.js; ?hidelowqc=1)
+  covQcThresholds: null, // edited coverage QC thresholds { mapd, zero, cn0, segs }; null = defaults (?qcthr=)
   igvSync: true,
   heatmapHeight: null, // px; null = from rowHeight
   navHeight: 240, // px of the gene + cytoband tracks above the heatmap
