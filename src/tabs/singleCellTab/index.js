@@ -63,7 +63,7 @@ export default function SingleCellTab() {
   const spatialLayout = useSpatialLayoutState(spatialData.status === "ok" && Boolean(spatialData.data?.points?.length));
   const chromoBins = useSelector((state) => state.Settings.chromoBins);
   const genes = useSelector((state) => state.Genes);
-  const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "common"); // ?yscale=individual
+  const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "cell"); // ?yscale=common|individual
   const [pinned, setPinned] = useState(false);
   const [dragNav, setDragNav] = useState(null);
   const headerHeight = usePinnedHeaderHeight();
@@ -158,6 +158,7 @@ export default function SingleCellTab() {
                 chromoBins,
                 visible: true,
                 handleYscaleModeChange: setYScaleMode,
+                cellYscaleOption: true,
                 yScaleMode,
                 compact: pinned,
                 plotInsets,

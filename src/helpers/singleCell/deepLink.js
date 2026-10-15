@@ -85,7 +85,8 @@ export function singleCellStillLoading(singleCell) {
 //                                 the first vs second group changes state (parsimony)
 //   cloneorder=<clone>,<clone>    rotate the tree so these clones come first (top)
 //   walkview=bars|heatmap         ecDNA walk copies along the tree
-//   yscale=common|individual      y axis of the cell tracks
+//   yscale=cell|common|individual y axis of the cell tracks (default cell: one CN range per cell)
+//   ymax=<cell>:<max>,..          manual y-max (CN) of those cells' tracks
 //   figsel=0                      Paper figures: mark carriers without selecting them
 //   figlayout=slide               Paper figures: heatmap and walk copies side by side
 //   tracks=total,coverage,..      cell tracks shown for selected cells
@@ -125,7 +126,8 @@ export function readViewLink(search = window.location.search) {
     walkView: ["bars", "heatmap"].includes(params.get("walkview")) ? params.get("walkview") : null,
     figSelect: params.get("figsel") !== "0",
     figLayout: params.get("figlayout") || null,
-    yScale: ["common", "individual"].includes(params.get("yscale")) ? params.get("yscale") : null,
+    yScale: ["cell", "common", "individual"].includes(params.get("yscale")) ? params.get("yscale") : null,
+    yMax: params.get("ymax") || null,
     cnPalette: params.get("cnpal") || null,
     cloneColors,
     cloneLabels,

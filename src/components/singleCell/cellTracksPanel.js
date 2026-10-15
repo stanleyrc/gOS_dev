@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Col, Empty, Row, Segmented, Space, Typography } from "antd";
-import { CloseOutlined, ExportOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Checkbox, Col, Empty, InputNumber, Row, Segmented, Space, Typography } from "antd";
+import { CloseOutlined, ExportOutlined, MinusOutlined, PlusOutlined, UndoOutlined } from "@ant-design/icons";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import MutationsPanel from "../mutationsPanel";
@@ -11,6 +11,8 @@ import singleCellActions, { SC_FETCHED_TRACKS, SC_MAX_TRACK_CELLS, SC_TRACKS } f
 import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
 import { effectiveTracks, HET_MODES, storedTrack } from "../../helpers/singleCell/hetTracks";
+import { cellCnRange, coverageInView, effectiveRange, formatYMax, graphMaxInView, parseYMax } from "../../helpers/singleCell/cellYScale";
+import { readViewLink } from "../../helpers/singleCell/deepLink";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
 import ColorTag from "./colorTag";
@@ -140,6 +142,22 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
   );
 }
 
+/** y-max of one cell's CN tracks: number input with -/+ and "reset to auto". */
+function YMaxControl({ range, manual, onChange, label, resetLabel }) {
+  const top = range ? range[1] : null;
+  if (top == null) return null;
+  const step = Math.max(0.5, Math.round(top * 0.1 * 2) / 2);
+  const round = (v) => Math.round(v * 100) / 100;
+  return (
+    <Space.Compact size="small" className="sc-ymax" title={label}>
+      <Button size="small" icon={<MinusOutlined />} aria-label={`${label} -`} onClick={() => onChange(Math.max(0.5, round(top - step)))} />
+      <InputNumber size="small" controls={false} min={0.5} value={round(top)} style={{ width: 62 }} onChange={(v) => v > 0 && onChange(v)} aria-label={label} />
+      <Button size="small" icon={<PlusOutlined />} aria-label={`${label} +`} onClick={() => onChange(round(top + step))} />
+      <Button size="small" icon={<UndoOutlined />} disabled={!manual} title={resetLabel} aria-label={resetLabel} onClick={() => onChange(0)} />
+    </Space.Compact>
+  );
+}
+
 /**
  * Stacked tracks for the selected cells. Coverage and total CN show by
  * default; allelic CN, het SNPs and SNVs are toggles. Every track comes from
@@ -152,7 +170,7 @@ const TRACK_NESTING = { left: 35, right: 21 };
  * carrying a filtered event); `embedded` drops the heatmap alignment padding
  * and pinned genes for use inside a modal; `onRemove` replaces "deselect".
  */
-export default function CellTracksPanel({ yScaleMode = "common", cellIds = null, embedded = false, onRemove = null, title = null }) {
+export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, embedded = false, onRemove = null, title = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
@@ -221,6 +239,43 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   }, [yScaleMode, totals, domains]);
   const commonRangeY = useMemo(() => (commonMax ? [0, commonMax] : null), [commonMax]);
 
+  // Per cell (default): one CN range per cell, shared by its total CN, allelic CN and coverage tracks.
+  // A manual y-max per cell (layout.cellYMax, ?ymax=cell:max) replaces the auto top.
+  const linkedYMax = useMemo(() => parseYMax(readViewLink().yMax), []);
+  const yMaxByCell = useMemo(() => ({ ...linkedYMax, ...(sc.layout.cellYMax || {}) }), [linkedYMax, sc.layout.cellYMax]);
+  const setYMax = (cellId, top) => {
+    const next = { ...yMaxByCell };
+    if (top > 0) next[cellId] = top;
+    else delete next[cellId];
+    dispatch(singleCellActions.updateLayout({ cellYMax: next }));
+    if (!embedded) {
+      try {
+        const url = new URL(window.location.href);
+        const text = formatYMax(next);
+        if (text) url.searchParams.set("ymax", text);
+        else url.searchParams.delete("ymax");
+        window.history.replaceState(window.history.state, "", url);
+      } catch (e) {
+        // no history access: the layout still keeps it
+      }
+    }
+  };
+  const autoRanges = useMemo(() => {
+    if (yScaleMode !== "cell") return {};
+    return Object.fromEntries(
+      shown.map((id) => {
+        const cov = perCell[id]?.coverage?.data;
+        const coverage = cov?.hasFit ? coverageInView(cov.dataPointsX, cov.dataPointsY1, domains) : null;
+        return [id, cellCnRange({ graphMax: graphMaxInView(totals[id]?.intervals, domains), coverage })];
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yScaleMode, shown.join("|"), totals, perCell, domains]);
+  const cellRanges = useMemo(
+    () => Object.fromEntries(Object.entries(autoRanges).map(([id, auto]) => [id, effectiveRange(auto, yMaxByCell[id])])),
+    [autoRanges, yMaxByCell]
+  );
+
   const openCell = (cellId) =>
     patient && dispatch(datasetsActions.openCaseReport(patient.datasetId, cellId));
   const removeCell = (cellId) =>
@@ -228,10 +283,13 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
 
   const height = embedded ? COMPACT_PLOT_HEIGHT : PLOT_HEIGHT;
   const renderTrack = (cellId, track) => {
-    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
-    if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
+    // CN tracks of a cell share its range in "per cell" mode; SNVs and het SNPs are not CN, so they stay auto.
+    const perCellMode = yScaleMode === "cell";
+    const cnRange = perCellMode ? cellRanges[cellId] || null : commonRangeY;
+    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={cnRange} height={height} />;
+    if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={perCellMode ? null : commonRangeY} height={height} />;
     const entry = perCell[cellId]?.[storedTrack(track, hetMode)];
-    return <TrackPlot cellId={cellId} track={storedTrack(track, hetMode)} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
+    return <TrackPlot cellId={cellId} track={storedTrack(track, hetMode)} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={cnRange} height={height} />;
   };
   const orderedTracks = SC_TRACKS.filter((track) => visibleTracks.includes(track));
 
@@ -292,6 +350,15 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
                     <Text strong>{cellId}</Text>
                     {clone != null && <ColorTag color={cloneColors[clone]}>{clone}</ColorTag>}
                     <Space size={4}>
+                      {yScaleMode === "cell" && !embedded && (
+                        <YMaxControl
+                          range={cellRanges[cellId]}
+                          manual={yMaxByCell[cellId] > 0}
+                          onChange={(top) => setYMax(cellId, top)}
+                          label={t("components.single-cell.tracks.ymax")}
+                          resetLabel={t("components.single-cell.tracks.ymax-reset")}
+                        />
+                      )}
                       <Button size="small" icon={<ExportOutlined />} onClick={() => openCell(cellId)}>
                         {t("components.single-cell.tracks.open-cell")}
                       </Button>
