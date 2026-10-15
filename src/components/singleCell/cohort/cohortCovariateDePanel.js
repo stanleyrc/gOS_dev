@@ -7,7 +7,7 @@ import CladeTopExplainer from "./cladeTopExplainer";
 import VolcanoPlot from "../rna/volcanoPlot";
 import ScErrorBoundary from "../errorBoundary";
 import HintLine from "../hintLine";
-import { FAMILIES, FAMILY_LABELS, describeTest, sharedPrograms, formatQ, isRobust, looselyAdjusted, perPatientLfc, testRows, volcanoRows } from "../../../helpers/singleCell/covariateDe";
+import { FAMILIES, FAMILY_LABELS, describeTest, sensitivityOnlyTerms, sensitivityProblems, sharedPrograms, formatQ, isRobust, looselyAdjusted, perPatientLfc, testRows, volcanoRows } from "../../../helpers/singleCell/covariateDe";
 
 const { Text } = Typography;
 const Q_CUT = 0.05;
@@ -110,7 +110,7 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
             {!selected.combinable && <Alert type="warning" showIcon style={{ marginTop: 6 }} message="One patient only, so this cannot be called a cross-patient finding." />}
             {loose.length > 0 && <Alert type="info" showIcon style={{ marginTop: 6 }} message={`Less adjustment in ${loose.map((p) => `${p} (${ADJUST_NAME[selected.patients.find((x) => x.patient === p)?.adjust] || "?"})`).join(", ")}: the groups sit on different plates, so plate and group cannot be separated there (library quality is still controlled where listed).`} />}
             {selected.id === "clade:top" && <CladeTopExplainer test={selected} summaries={summaries} />}
-            {selected.sensitivity && <Alert type="warning" showIcon style={{ marginTop: 6 }} message="Sensitivity row: the first, unrestricted version of the highest-burden clade test (any patient, 5+ cells per side, burden 0 allowed). Kept for comparison with the hardened test; do not read it as a finding." />}
+            {selected.sensitivity && <Alert type="warning" showIcon style={{ marginTop: 6 }} message="Sensitivity row: the first, unrestricted version of the highest-burden clade test (any patient, 5+ cells per side, burden 0 allowed). Kept for comparison with the hardened test; do not read it as a finding." description={<SensitivityDetail test={selected} reference={(data?.tests || []).find((t) => t.id === "clade:top")} />} />}
             {selected.self_gene && <Text type="secondary" style={{ display: "block", marginTop: 4 }}>{`${selected.self_gene.gene} itself: log2FC ${selected.self_gene.avg_log2FC.toFixed(2)}, q ${formatQ(selected.self_gene.q_val)} (dosage positive control).`}</Text>}
             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
               <Col xs={24} xl={12}>
@@ -146,5 +146,19 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
         <Card size="small" title="Caveats"><ul style={{ margin: 0, paddingLeft: 18 }}>{data.caveats.map((c) => <li key={c}><Text type="secondary">{c}</Text></li>)}</ul></Card>
       )}
     </Space>
+  );
+}
+
+/** Names the patients that make the unrestricted burden-clade test unreliable, and the gene sets only it reports, from the data. */
+function SensitivityDetail({ test, reference }) {
+  const { noBurden, small } = sensitivityProblems(test);
+  const only = sensitivityOnlyTerms(test, reference);
+  if (!noBurden.length && !small.length && !only.length) return null;
+  return (
+    <>
+      {noBurden.length > 0 && <div>{`No SNV-based burden in ${noBurden.join(", ")}: their "highest-burden" clade was not chosen by burden, yet they still count in the combined score.`}</div>}
+      {small.length > 0 && <div>{`Fewer than 15 cells on a side: ${small.join(", ")}.`}</div>}
+      {only.length > 0 && <div>{`Not in the hardened test, so not supported: ${only.map((o) => `${o.term} (${o.direction})`).join(", ")}.`}</div>}
+    </>
   );
 }

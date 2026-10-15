@@ -137,3 +137,27 @@ describe("covariateDe", () => {
     expect(formatQ(NaN)).toBe("–");
   });
 });
+
+describe("sensitivityProblems", () => {
+  it("lists patients without SNV burden and small comparisons", () => {
+    const { sensitivityProblems } = require("./covariateDe");
+    const test = { patients: [
+      { patient: "P1", n_a: 6, n_b: 84, burden_rel: 4.9 },
+      { patient: "P2", n_a: 64, n_b: 58, burden_rel: 6.4 },
+      { patient: "P3", n_a: 203, n_b: 40, burden_rel: 0 },
+      { patient: "P4", n_a: 5, n_b: 412 },
+    ] };
+    expect(sensitivityProblems(test)).toEqual({ noBurden: ["P3", "P4"], small: ["P1 (6 vs 84)"] });
+    expect(sensitivityProblems(null)).toEqual({ noBurden: [], small: [] });
+  });
+});
+
+describe("sensitivityOnlyTerms", () => {
+  it("keeps top terms missing from the reference test", () => {
+    const { sensitivityOnlyTerms } = require("./covariateDe");
+    const test = { enrichment: { up: [{ term: "SET_A", q: 0.001 }, { term: "SET_B", q: 0.01 }], down: [{ term: "SET_C", q: 0.2 }] } };
+    const ref = { enrichment: { up: [{ term: "SET_B", q: 0.01 }], down: [] } };
+    expect(sensitivityOnlyTerms(test, ref)).toEqual([{ term: "SET_A", direction: "up" }]);
+    expect(sensitivityOnlyTerms(test, null)).toEqual([{ term: "SET_A", direction: "up" }, { term: "SET_B", direction: "up" }]);
+  });
+});

@@ -225,6 +225,33 @@ export function cladeTopRows(test) {
   });
 }
 
+/**
+ * Why a sensitivity (unrestricted) test cannot be read as a finding: patients whose
+ * "highest-burden" clade has no SNV-based burden (burden_rel 0 or missing, so the clade
+ * was not chosen by burden) and patients with fewer than minCells cells on a side.
+ */
+export function sensitivityProblems(test, minCells = 15) {
+  const noBurden = [];
+  const small = [];
+  (test?.patients || []).forEach((p) => {
+    if (p.burden_rel == null || p.burden_rel === 0) noBurden.push(p.patient);
+    else if ((p.n_a ?? 0) < minCells || (p.n_b ?? 0) < minCells) small.push(`${p.patient} (${p.n_a} vs ${p.n_b})`);
+  });
+  return { noBurden, small };
+}
+
+/** Leading enrichment terms (q <= maxQ, first `top` per direction) of `test` that the hardened `reference` test does not report in the same direction. */
+export function sensitivityOnlyTerms(test, reference, { top = 3, maxQ = 0.05 } = {}) {
+  const out = [];
+  ["up", "down"].forEach((d) => {
+    const ref = new Set((reference?.enrichment?.[d] || []).map((e) => e.term));
+    (test?.enrichment?.[d] || []).filter((e) => e.q == null || e.q <= maxQ).slice(0, top).forEach((e) => {
+      if (!ref.has(e.term)) out.push({ term: e.term, direction: d });
+    });
+  });
+  return out;
+}
+
 /** Flag for the leading genes of a test: "mito", "ribo" or "" when at least 3 of the first 8 lead genes are of that kind. */
 export function leadFlag(genes) {
   const lead = (genes || []).slice(0, 8);
