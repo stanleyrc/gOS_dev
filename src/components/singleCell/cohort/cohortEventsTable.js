@@ -9,6 +9,7 @@ import { INK } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
 import { DataSwatch } from "../neutralTag";
 import { eventQuality } from "../../../helpers/singleCell/eventQuality";
+import GeneQuickLook from "./geneQuickLook";
 import useMultiSort from "./multiSort";
 import { activeCount, decodeFilters, distinctValues, emptyFilters, encodeFilters, filterRows, setColumnFilter } from "../../../helpers/singleCell/eventFilters";
 
@@ -73,7 +74,7 @@ function TextDropdown({ value, onChange, placeholder }) {
  * class, variant, tier, role, effect, and the carrier cells as a bar.
  * Filters by tier / class / strong events / text; click a row for the popup.
  */
-export default function CohortEventsTable({ summaries, files, onEvent }) {
+export default function CohortEventsTable({ summaries, files, onEvent, focusGene = null }) {
   const { t } = useTranslation("common");
   const [maxTier, setMaxTier] = useState(2);
   const [classes, setClasses] = useState([]);
@@ -87,6 +88,14 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
     else url.searchParams.delete(EVF_PARAM);
     if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
   }, [colFilters]);
+  // opened from a gene quick look: show every event naming the gene (all tiers, not only strong ones)
+  useEffect(() => {
+    if (!focusGene?.labels?.length) return;
+    setColFilters((f) => setColumnFilter(f, "cat", "gene", focusGene.labels));
+    setMaxTier(3);
+    setStrongOnly(false);
+    setQuery("");
+  }, [focusGene]);
   const [chosen, setChosen] = useState(loadCols);
   const setColumns = (keys) => {
     setChosen(keys);
@@ -164,7 +173,7 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
   };
   const baseColumns = [
     { title: t("components.single-cell.cohort.patient"), dataIndex: "patient", width: 110, sortable: true, ...catFilter("patient"), render: (p) => <Text strong>{p}</Text> },
-    { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 150, sortable: true, ...catFilter("gene"), render: (g) => <Text strong>{g}</Text> },
+    { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 150, sortable: true, ...catFilter("gene"), render: (g) => (/^[A-Za-z0-9.-]+$/.test(g) ? <GeneQuickLook gene={g}><Text strong>{g}</Text></GeneQuickLook> : <Text strong>{g}</Text>) },
     { title: t("components.single-cell.cohort.ev-class"), dataIndex: "cls", width: 160, sortable: true, ...catFilter("cls", (c) => t(`components.single-cell.cohort.class-${c}`, { defaultValue: c })), sortValue: (r) => EVENT_CLASS_ORDER.indexOf(r.cls), render: (c) => <DataSwatch color={CLASS_COLORS[c]}>{t(`components.single-cell.cohort.class-${c}`, { defaultValue: c })}</DataSwatch> },
     { title: t("components.single-cell.cohort.ev-variant"), dataIndex: "variant", ellipsis: true, sortable: true, ...textFilter("variant", "Variant contains…"), render: (v) => <Text type="secondary" style={{ fontSize: 13 }}>{v}</Text> },
     { title: "Tier", dataIndex: "tier", width: 64, sortable: true, ...catFilter("tier", (v) => (Number(v) <= 3 ? v : "–")), render: (v) => (v <= 3 ? v : "–") },
