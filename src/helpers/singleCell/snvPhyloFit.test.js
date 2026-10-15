@@ -47,8 +47,8 @@ test("treeSiteFit over a matrix and the preset", async () => {
   expect(Array.from(fit.changes)).toEqual([1, 2, 2]);
   expect(Array.from(fit.outside)).toEqual([0, 1, 1]);
   const rate = presetPassRate(fit);
-  expect(rate.pass).toBe(1);
-  expect(rate.fraction).toBeCloseTo(1 / 3);
+  expect(rate.pass).toBe(2); // the leaky site (1 outside, 2 changes, F1 0.8) passes the relaxed rule, the homoplasy site fails on F1
+  expect(rate.fraction).toBeCloseTo(2 / 3);
   expect(isPhyloPreset(PHYLO_PRESET)).toBe(true);
 });
 
