@@ -68,7 +68,7 @@ function BlockHeat({ aligned, nRows, width, height, pixelRatio, palette, onHover
           if (!a.entry || !a.states) col = ((x + y) >> 2) & 1 ? hatch : blank; // no such event in this patient
           else {
             const v = a.states[r];
-            if (a.entry.cls === "snv") col = v === 2 ? colors.mutant : a.pending ? blank : v === 1 ? colors.wildtype : colors.noCoverage; // pending: carriers from filtered events only
+            if (a.entry.cls === "snv") col = v === 4 ? colors.bothHit : v === 3 ? colors.loss : v === 2 ? colors.mutant : a.pending ? blank : v === 1 ? colors.wildtype : colors.noCoverage; // pending: carriers from filtered events only
             else if (a.entry.cls === "amp" || a.entry.cls === "homdel") col = cn(v);
             else if (a.entry.cls === "fusion") col = v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : blank;
             else col = v ? colors.complex : blank;
@@ -168,7 +168,7 @@ function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expan
  * multiples. The columns are shared: the same gene / event class is in the same column order in every block; a patient
  * without that event shows a hatched column. Cell states come from driverLayer.entryStates, the patient layer's helper.
  */
-export default function CohortDriverTreesPanel({ summaries, files, rawFiles = null, rows, datasets, datafiles, chromoBins, cloneColors, onOpen, onEvent }) {
+export default function CohortDriverTreesPanel({ summaries, files, rawFiles = null, rows, datasets, datafiles, chromoBins, cloneColors, onOpen, onEvent, tsgCalls = null }) {
   const palette = useSelector((s) => s.SingleCell.palette);
   const pixelRatio = usePixelRatio();
   const [state, setState] = useState(() => parseCdt(typeof window === "undefined" ? "" : window.location.search));
@@ -184,7 +184,7 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
     io.observe(wrapRef.current);
     return () => io.disconnect();
   }, [visible]);
-  const { data: dataAll, loaded, total, sizes } = useCohortDriverData({ summaries, datasets, files, rawFiles: rawFiles || files, rows, datafiles, chromoBins, enabled: visible, loadSnv });
+  const { data: dataAll, loaded, total, sizes } = useCohortDriverData({ summaries, datasets, files, rawFiles: rawFiles || files, rows, datafiles, chromoBins, enabled: visible, loadSnv, tsgCalls });
   const data = visible ? dataAll : EMPTY;
   const mb = sizes?.known ? `~${Math.round(sizes.bytes / 1e6)} MB${sizes.known < summaries.length ? " for the patients with a known size" : ""}` : "size unknown";
   const pendingText = `click "Load SNV evidence" to fetch snv_matrix.json (${mb})`;

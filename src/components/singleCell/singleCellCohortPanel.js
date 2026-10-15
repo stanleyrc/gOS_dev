@@ -52,6 +52,7 @@ import CohortGenePanel from "./cohort/cohortGenePanel";
 import CohortDriverTreesPanel from "./cohort/cohortDriverTreesPanel";
 import PatientSummaryTable from "./cohort/patientCards";
 import CohortHeadline from "./cohort/cohortHeadline";
+import useCohortTsg from "./cohort/useCohortTsg";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { ecdnaWalks } from "../../helpers/singleCell/cohortHeadline";
 import { COHORT_VIEWS, resolveCohortView, startsGroup } from "../../helpers/singleCell/cohortViews";
@@ -142,6 +143,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
   const cohortFiles = useCohortFiles(summaries, datasets);
+  const tsgDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
   // help-center target first, then ?scview=<key> (deep link, e.g. ?scview=qc), else the overview
   const [view, setView] = useState(() => {
     const help = peekHelpTarget();
@@ -190,6 +192,8 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     });
     return out;
   }, [cohortFiles.files, cladeFilterOn, minCladeF1]);
+  // tumour-suppressor two hits (SNV + LOH / deletion) per patient: oncoprints, driver trees, headline
+  const tsg = useCohortTsg({ dataset: tsgDataset, summaries, files });
   // RNA key findings of every patient (RNA view only: loads the matrices; Key findings now uses vignettes.json)
   const cohortRna = useCohortRnaFindings({ summaries, files, datafiles, datasets, enabled: view === "rna" });
   // per-patient report (truncal / subclonal drivers) + ecDNA oncogenes: Overview headline and table
@@ -486,7 +490,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               <CohortGenePanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} />
             </Col>
             <Col span={24}>
-              <OncoprintPanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} />
+              <OncoprintPanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} tsg={tsg} />
             </Col>
             <Col span={24}>
               <CohortDriverTreesPanel
@@ -500,6 +504,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 cloneColors={cloneColors}
                 onOpen={openPatient}
                 onEvent={openEvent}
+                tsgCalls={tsg.callsByPatient}
               />
             </Col>
             <Col span={24}>
@@ -518,6 +523,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 nPatients={summaries.length}
                 nCells={totalCells}
                 loading={cohortFiles.progress < 100}
+                tsg={tsg}
                 onView={setView}
                 onPatient={(id) => {
                   const s = summaries.find((x) => x.caseReportId === id);
@@ -628,7 +634,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "oncoprint" && (
           <Col span={24}>
-            <CohortOncoprintPanel summaries={summaries} files={files} />
+            <CohortOncoprintPanel summaries={summaries} files={files} tsg={tsg} />
           </Col>
         )}
         {view === "eventassoc" && (

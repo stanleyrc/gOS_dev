@@ -27,6 +27,8 @@ import { groupOncoprintRows, oncoprintRole, oncoprintRowNote } from "../../../he
 import { GeneQuickLookText } from "./geneQuickLook";
 import { linkGenes } from "../../../helpers/singleCell/externalLinks";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { biallelicOnlyRows } from "../../../helpers/singleCell/twoHit";
+import { BiallelicSwitch, TwoHitCell, TwoHitLegend } from "./twoHitGlyph";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", snv: "#1B9E77", complex: "#E66101" };
@@ -52,13 +54,14 @@ function Glyph({ shape, cx, cy, r, fill }) {
  * fraction filters, gene picker, row and column sorting. Click a cell: that patient's Single-Cell tab opens
  * on the Drivers layer with the event's drawer.
  */
-export default function CohortOncoprintPanel({ summaries, files }) {
+export default function CohortOncoprintPanel({ summaries, files, tsg = null }) {
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(900);
   const [sel, setSel] = useState(DEFAULT_ONCOPRINT);
   const [colSort, setColSort] = useState("exclusivity");
   const [rowSort, setRowSort] = useState("role");
   const [showFractions, setShowFractions] = useState(true);
+  const [biOnly, setBiOnly] = useState(false); // only tumour-suppressor cells with two hits (biallelic or homozygous deletion)
   const patch = (o) => setSel((s) => ({ ...s, ...o }));
 
   const entriesByPatient = useMemo(
@@ -68,10 +71,11 @@ export default function CohortOncoprintPanel({ summaries, files }) {
   const choices = useMemo(() => geneChoices(entriesByPatient), [entriesByPatient]);
   const grid = useMemo(() => oncoprintGrid(entriesByPatient, sel), [entriesByPatient, sel]);
   const rows = useMemo(() => {
-    if (rowSort === "name") return [...grid.rows].sort((a, b) => a.gene.localeCompare(b.gene));
-    if (rowSort === "fraction") return [...grid.rows].sort((a, b) => b.maxFraction - a.maxFraction || b.nPatients - a.nPatients);
-    return sortRowsByFrequency(grid.rows);
-  }, [grid, rowSort]);
+    const base = biOnly && tsg ? biallelicOnlyRows(grid.rows, tsg.index) : grid.rows;
+    if (rowSort === "name") return [...base].sort((a, b) => a.gene.localeCompare(b.gene));
+    if (rowSort === "fraction") return [...base].sort((a, b) => b.maxFraction - a.maxFraction || b.nPatients - a.nPatients);
+    return sortRowsByFrequency(base);
+  }, [grid, rowSort, biOnly, tsg]);
   // display rows: role groups (oncogenes, tumour suppressors, ...) with header rows, each group in frequency order
   const displayRows = useMemo(() => (rowSort === "role" ? groupOncoprintRows(rows, "role") : rows.map((g) => ({ gene: g }))), [rows, rowSort]);
   const patients = useMemo(() => sortColumns({ ...grid, rows }, colSort), [grid, rows, colSort]);
@@ -152,6 +156,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
             <Switch size="small" checked={showFractions} onChange={setShowFractions} />
             <Text>Fractions</Text>
           </Space>
+          <BiallelicSwitch checked={biOnly} onChange={setBiOnly} disabled={!tsg || !tsg.hasLoss} note={tsg && tsg.hasLoss ? "Keep only genes and patients where a tumour suppressor has two hits in the same cells (SNV + LOH / deletion) or both copies deleted" : "not available (_cohort/tsg_loss.json not found: per-cell allelic LOH calls)"} />
           {missingAdded.length > 0 && (
             <Alert
               type="warning"
@@ -229,6 +234,8 @@ export default function CohortOncoprintPanel({ summaries, files }) {
                     const x = GENE_W + j * cellW;
                     const cell = r.cells[p];
                     const classes = cell ? cell.classes : [];
+                    const call = cell && tsg ? tsg.index.get(`${p}|${r.gene}`) : null;
+                    const biallelic = call && call.state === "biallelic";
                     const stripeH = classes.length ? (CELL_H - 4) / classes.length : 0;
                     return (
                       <g key={p} style={{ cursor: cell ? "pointer" : undefined }} onClick={() => cell && open(p, cell.best)}>
@@ -246,6 +253,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
                             </g>
                           );
                         })}
+                        {biallelic && <TwoHitCell x={x} y={y} w={cellW} h={CELL_H} opacity={alpha(cell.fraction)} label={showFractions && cellW >= 40 ? pct(cell.fraction) : null} />}
                         {cell && (
                           <rect x={x + 2.5} y={y + 2.5} width={cellW - 5} height={CELL_H - 5} fill="none" stroke={INK.text} strokeWidth={cell.clonal ? 1.6 : 1} strokeDasharray={cell.clonal ? undefined : "3 2"} rx={2} pointerEvents="none" />
                         )}
@@ -253,6 +261,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
                           <title>
                             {`${r.gene} in ${p}\n` +
                               cell.entries.map((d) => `${classLabel(d)}${d.event.Variant && d.event.Variant !== "None" ? ` ${d.event.Variant}` : ""}: ${d.n} cells (${pct(d.fraction)}, ${d.subclonal ? "subclonal" : "clonal"}${d.tier ? `, tier ${d.tier}` : ""})`).join("\n") +
+                              (call ? `\nTwo-hit check: ${call.text}${call.state === "monoallelic" ? `\n(loss data: ${call.lossSource})` : ""}` : tsg && tsg.hasLoss && /suppressor/i.test(`${cell.best?.event?.role || ""}`) ? "\nTwo-hit check: no second hit in the allelic CN" : "") +
                               "\nClick to open the patient on this event."}
                           </title>
                         )}
@@ -263,6 +272,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
               );
             })}
           </svg>
+          {tsg && tsg.hasLoss && <TwoHitLegend style={{ marginTop: 6, marginRight: 12 }} />}
           <Swatches style={{ marginTop: 6 }} items={ONCOPRINT_CLASSES.map((c) => ({ key: c, color: CLASS_COLORS[c], label: `${CLASS_NAMES[c]} (${GLYPH[c]})` }))} />
           <HintLine text="Click a gene name for its card (OncoKB role and drugs, cohort evidence, cBioPortal); × hides a row. OG / TSG = OncoKB oncogene / tumour suppressor; rows are grouped by role (switch with Rows). Structural rows: DM = double minute / ecDNA, TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; bracketed numbers are chromosomes." />
           <HintLine text="Fill intensity is the fraction of tumour cells that carry the event; the number is that fraction. Solid outline = clonal (more than 95% of cells), dashed = subclonal. Several event classes of one gene stack as stripes. Bars on top count rows altered per patient; the right column counts patients per row. Click a cell to open that patient's Single-Cell tab on the Drivers layer at the event; click a gene name to hide the row." />

@@ -12,6 +12,8 @@ import HintLine, { Provenance } from "../hintLine";
 import { GeneQuickLookText } from "./geneQuickLook";
 import { linkGenes } from "../../../helpers/singleCell/externalLinks";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { biallelicOnlyRows } from "../../../helpers/singleCell/twoHit";
+import { BiallelicSwitch, TwoHitCell, TwoHitLegend } from "./twoHitGlyph";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
@@ -24,11 +26,12 @@ const GENE_W = 150;
  * fraction of tumor cells carrying the strongest alteration, coloured by
  * its class. Several classes in one gene/patient draw as stacked stripes.
  */
-export default function OncoprintPanel({ summaries, files, onOpen, onEvent = null }) {
+export default function OncoprintPanel({ summaries, files, onOpen, onEvent = null, tsg = null }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(900);
   const [maxTier, setMaxTier] = useState("2d"); // tiers 1-2 plus damaging tier-3 missense
   const [strongOnly, setStrongOnly] = useState(true);
+  const [biOnly, setBiOnly] = useState(false); // only tumour-suppressor cells with two hits
   const [maxGenes, setMaxGenes] = useState(40);
   const [classes, setClasses] = useState(EVENT_CLASS_ORDER);
   const [groupBy, setGroupBy] = useState("role"); // "none" | "role": oncogenes, tumour suppressors, both, structural / ecDNA, other // event classes shown (amp, homdel, fusion, ..., complex SV)
@@ -44,7 +47,8 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
 
   const patients = matrix.patients;
   // rows: genes, optionally grouped by role (each group keeps the oncoprint order: patients carrying, then max fraction)
-  const rows = groupOncoprintRows(matrix.genes, groupBy);
+  const geneRows = biOnly && tsg ? biallelicOnlyRows(matrix.genes, tsg.index) : matrix.genes;
+  const rows = groupOncoprintRows(geneRows, groupBy);
   const cellW = Math.max(40, Math.min(CELL_W, (width - GENE_W - 24) / Math.max(1, patients.length)));
   const svgW = GENE_W + cellW * patients.length + 12;
   const top = 70;
@@ -80,6 +84,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
           />
           <Switch size="small" checked={strongOnly} onChange={setStrongOnly} />
           <Text>{t("components.single-cell.events.strong-only")}</Text>
+          <BiallelicSwitch checked={biOnly} onChange={setBiOnly} disabled={!tsg || !tsg.hasLoss} note={tsg && tsg.hasLoss ? "Keep only genes and patients where a tumour suppressor has two hits in the same cells (SNV + LOH / deletion) or both copies deleted" : "not available (_cohort/tsg_loss.json not found: per-cell allelic LOH calls)"} />
         </Space>
       }
     >
@@ -144,6 +149,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                   const cell = g.cells[p];
                   const classes = cell ? [...new Set(cell.all.map((e) => e.class))].sort((a, b) => EVENT_CLASS_ORDER.indexOf(a) - EVENT_CLASS_ORDER.indexOf(b)) : [];
                   const stripeH = classes.length ? (CELL_H - 4) / classes.length : 0;
+                  const call = cell && tsg ? tsg.index.get(`${p}|${g.gene}`) : null;
                   return (
                     <g
                       key={p}
@@ -167,7 +173,8 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                           <rect key={c} x={x + 2} y={y + 2 + k * stripeH} width={cellW - 4} height={stripeH} fill={CLASS_COLORS[c]} fillOpacity={alpha(e.fraction ?? 1)} rx={classes.length === 1 ? 2 : 0} />
                         );
                       })}
-                      {cell && cell.fraction != null && (
+                      {call && call.state === "biallelic" && <TwoHitCell x={x} y={y} w={cellW} h={CELL_H} opacity={alpha(cell.fraction ?? 1)} label={cell.fraction != null ? d3.format(".0%")(cell.fraction) : null} />}
+                      {cell && cell.fraction != null && !(call && call.state === "biallelic") && (
                         <text x={x + cellW / 2} y={y + CELL_H / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill={cell.fraction > 0.5 ? "#fff" : "#262626"} pointerEvents="none">
                           {d3.format(".0%")(cell.fraction)}
                         </text>
@@ -176,6 +183,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                         <title>
                           {cell.all
                             .map((e) => `${e.event.type || e.class}${e.event.Variant ? ` ${e.event.Variant}` : ""}: ${e.cells || ""}${e.fraction != null ? ` (${d3.format(".0%")(e.fraction)})` : ""}`)
+                            .concat(call ? [`Two-hit check: ${call.text}`] : tsg && tsg.hasLoss && /suppressor/i.test(`${cell.event?.role || ""}`) ? ["Two-hit check: no second hit in the allelic CN"] : [])
                             .join("\n")}
                         </title>
                       )}
@@ -186,6 +194,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
             );
           })}
         </svg>
+        {tsg && tsg.hasLoss && <TwoHitLegend style={{ marginTop: 6, marginRight: 12 }} />}
         <Swatches
           style={{ marginTop: 6 }}
           items={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ key: c, color: CLASS_COLORS[c], label: t(`components.single-cell.cohort.class-${c}`) }))}
