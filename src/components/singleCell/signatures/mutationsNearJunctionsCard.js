@@ -71,7 +71,7 @@ export default function MutationsNearJunctionsCard() {
   const snvData = snv.status === "ok" ? snv.data : null;
   const [def, setDef] = useState("tcw");
   const [near, setNear] = useState(1e6);
-  const [maxDist, setMaxDist] = useState(1e5);
+  const [maxDist, setMaxDist] = useState(1e6);
   const [kMode, setKMode] = useState("strict");
   const [igv, setIgv] = useState(null);
 
