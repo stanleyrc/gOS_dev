@@ -12,9 +12,8 @@
 //
 // Per-cell hit count: snv 1 + sv 1 + (loh | cnloh) 1, homdel 2. A cell with >= 2 is biallelic.
 // Gene class over the tumour cells:
-//   biallelic    >= MIN_HIT_CELLS cells with two hits (and at least as many as homdel cells)
-//   homdel       >= MIN_HIT_CELLS cells with both copies deleted
-//   monoallelic  one kind of hit in >= MIN_HIT_CELLS cells
+//   biallelic    >= max(MIN_HIT_CELLS, BIALLELIC_MIN_FRACTION of the tumour cells) with two hits (a biallelic subclone counts)
+//   else the larger of: homdel (cells with both copies deleted) / monoallelic (cells with one hit), needing MIN_HIT_CELLS
 //   none         otherwise
 // A truncal-looking SNV with VAF >= VAF_LOH and no LOH call is flagged `vafSuggestsLoh` (supporting
 // evidence only: it does not make the gene biallelic).
@@ -23,6 +22,8 @@ import { splitIds } from "./driverContrast";
 
 export const MIN_HIT_CELLS = 3;
 export const VAF_LOH = 0.9;
+export const BIALLELIC_MIN_FRACTION = 0.05;
+export const SUMMARY_MIN_FRACTION = 0.1; // headline: a biallelic / homdel call must cover this fraction of the tumour cells
 
 export const LOSS_CODE = { UNKNOWN: -1, BALANCED: 0, LOSS_KEPT: 1, LOH: 2, CNLOH: 3, HOMDEL: 4 };
 
@@ -77,7 +78,8 @@ function tsgGenesOf(entry, tsgSet) {
 export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes = GBM_TSG } = {}) {
   const geneSet = new Set(genes.map((g) => g.toUpperCase()));
   const isTsg = (g, role) => Boolean(g) && (geneSet.has(`${g}`.toUpperCase()) || roleIsTsg(role));
-  const tumor = tumorIds && tumorIds.length ? new Set(tumorIds.map(String)) : null;
+  let tumor = tumorIds && tumorIds.length ? new Set(tumorIds.map(String)) : null;
+  if (!tumor && loss?.normal) tumor = new Set((loss.cells || []).filter((_, i) => !loss.normal[i]).map(String)); // tsg_loss.json flags normal cells
   const keep = (id) => !tumor || tumor.has(id);
   const lossCells = loss?.cells || [];
   const byGene = new Map();
@@ -166,19 +168,22 @@ function classify(s, tumorN, hasLoss) {
   const cells = new Set([...sets.snv, ...sets.sv, ...sets.loss, ...sets.homdel]);
   let biallelicCells = 0;
   let homdelCells = 0;
+  let monoCells = 0;
   let snvAndLoss = 0;
   cells.forEach((id) => {
     const score = (sets.snv.has(id) ? 1 : 0) + (sets.sv.has(id) ? 1 : 0) + (sets.loss.has(id) ? 1 : 0) + (sets.homdel.has(id) ? 2 : 0);
     per.set(id, score);
     if (sets.homdel.has(id)) homdelCells += 1;
     else if (score >= 2) biallelicCells += 1;
+    else monoCells += 1;
     if (sets.snv.has(id) && (sets.loss.has(id) || sets.homdel.has(id))) snvAndLoss += 1;
   });
-  const anyCells = Math.max(...s.hits.map((h) => h.n));
+  // the class is the one that covers the most cells (ties: biallelic, homdel, monoallelic); a small
+  // deleted subclone on a mostly LOH gene stays monoallelic and shows up in the hit list
   let state = "none";
-  if (biallelicCells >= MIN_HIT_CELLS && biallelicCells >= homdelCells) state = "biallelic";
-  else if (homdelCells >= MIN_HIT_CELLS) state = "homdel";
-  else if (anyCells >= MIN_HIT_CELLS) state = "monoallelic";
+  const top = Math.max(homdelCells, monoCells);
+  if (biallelicCells >= Math.max(MIN_HIT_CELLS, BIALLELIC_MIN_FRACTION * tumorN)) state = "biallelic"; // a biallelic subclone counts
+  else if (top >= MIN_HIT_CELLS) state = homdelCells === top ? "homdel" : "monoallelic";
   const snvHits = s.hits.filter((h) => h.kind === "snv");
   const topSnv = [...snvHits].sort((a, b) => b.n - a.n)[0];
   const hasLossCall = s.hits.some((h) => h.kind === "loh" || h.kind === "cnloh" || h.kind === "homdel");
@@ -190,6 +195,7 @@ function classify(s, tumorN, hasLoss) {
     tumorN,
     biallelicCells,
     homdelCells,
+    monoCells,
     snvCells: sets.snv.size,
     snvAndLossCells: snvAndLoss,
     vafSuggestsLoh,
@@ -282,6 +288,7 @@ export function biallelicSummary(callsByPatient = {}) {
   Object.entries(callsByPatient).forEach(([patient, calls]) => {
     (calls || []).forEach((c) => {
       if (c.state !== "biallelic" && c.state !== "homdel") return;
+      if ((c.state === "homdel" ? c.homdelCells : c.biallelicCells) < SUMMARY_MIN_FRACTION * c.tumorN) return;
       const kinds = [...new Set(c.hits.filter((h) => h.n >= MIN_HIT_CELLS).map((h) => h.kind))];
       const cells = c.state === "homdel" ? c.homdelCells : c.biallelicCells;
       if (!byGene.has(c.gene)) byGene.set(c.gene, []);
