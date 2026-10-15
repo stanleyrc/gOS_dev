@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Select, Tooltip, Typography } from "antd";
+import { Button, Select, Tag, Tooltip, Typography } from "antd";
 import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import SnvFilterBar from "./snvFilterBar";
@@ -17,6 +17,9 @@ import {
   clickThreshold,
   numFraction,
   SITE_URL_PARAMS,
+  fractionOfValue,
+  removeFilterKey,
+  valueAtFraction,
   parseSiteState,
   serializeSiteState,
   rampColor,
@@ -206,6 +209,52 @@ function TrackCanvas({ annot, trackKey, deviceWidth, width, pixelRatio, summaryA
 
 const fmt = (x) => (Number.isFinite(x) ? (Math.abs(x) >= 100 ? x.toFixed(0) : Number(x.toPrecision(3)).toString()) : "n/a");
 
+
+/**
+ * Legend of a numeric track: the colour ramp is a clickable scale. Click a
+ * point to keep sites at or above that value; the active threshold is drawn
+ * as a marker with a clear button.
+ */
+function NumericLegend({ annot, def, filter, setFilter }) {
+  const key = def.key;
+  const range = annot.ranges[key] || [0, 1];
+  const [lo, hi] = range;
+  const active = filter?.[key]?.min;
+  const W = 120;
+  const onClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = valueAtFraction(range, (e.clientX - rect.left) / rect.width);
+    setFilter(toggleMin(filter, key, x));
+  };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      <b>{def.label}</b>
+      <Text type="secondary">{"\u2265"}</Text>
+      {fmt(lo)}
+      <Tooltip title={`Click to keep sites at or above that ${def.label} value`}>
+        <span
+          role="button"
+          aria-label={`Filter ${def.label} at or above a value`}
+          onClick={onClick}
+          style={{ position: "relative", display: "inline-block", width: W, height: 12, cursor: "pointer", background: `linear-gradient(to right, ${rampColor(0)}, ${rampColor(0.5)}, ${rampColor(1)})`, border: "1px solid rgba(0,0,0,.25)", borderRadius: 2 }}
+        >
+          {active != null && (
+            <span style={{ position: "absolute", left: `${fractionOfValue(range, active) * 100}%`, top: -3, bottom: -3, width: 2, marginLeft: -1, background: "#1677ff", boxShadow: "0 0 0 1px #fff" }} />
+          )}
+        </span>
+      </Tooltip>
+      {fmt(hi)}
+      {active != null ? (
+        <Tag closable color="blue" style={{ marginInlineEnd: 0, fontSize: 10, lineHeight: "14px" }} onClose={() => setFilter(removeFilterKey(filter, key))}>
+          {"\u2265"} {fmt(active)}
+        </Tag>
+      ) : (
+        <Text type="secondary">(click the bar)</Text>
+      )}
+    </span>
+  );
+}
+
 /**
  * Track picker (stored in the layout and the URL as sntracks / snfilter),
  * per-track legends (click a swatch to filter to it) and the active filters.
@@ -285,15 +334,7 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null, fitBu
           {tracks.map((key) => {
             const def = trackDef(key);
             if (def.kind === "num") {
-              const [lo, hi] = annot.ranges[key];
-              return (
-                <span key={key} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <b>{def.label}</b> {fmt(lo)}
-                  <span style={{ display: "inline-block", width: 64, height: 8, background: `linear-gradient(to right, ${rampColor(0)}, ${rampColor(0.5)}, ${rampColor(1)})`, border: "1px solid rgba(0,0,0,.2)" }} />
-                  {fmt(hi)}
-                  <Text type="secondary">(click a value to keep sites at or above it)</Text>
-                </span>
-              );
+              return <NumericLegend key={key} annot={annot} def={def} filter={filter} setFilter={setFilter} />;
             }
             return (
               <span key={key} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
