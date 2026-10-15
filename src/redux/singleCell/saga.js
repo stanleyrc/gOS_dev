@@ -116,7 +116,7 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile] = yield all([
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile, signaturesJointFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
@@ -132,6 +132,8 @@ function* fetchSingleCellData(action = {}) {
       call(tryGet, casePath(dataset, id, "trees/index.json"), { cancelToken }),
       // per-site QC scores for the SNV Site QC track (srctools gos_sc_site_qc.py); optional
       call(tryGet, casePath(dataset, id, "snv_qc.json"), { cancelToken }),
+      // joint (patient signature set) refit with bootstrap CIs and subclonal-vs-truncal tests (skilift sc_refit_signatures_joint); optional
+      call(tryGet, casePath(dataset, id, "signatures_joint.json"), { cancelToken }),
     ]);
     // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
     const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
@@ -227,6 +229,7 @@ function* fetchSingleCellData(action = {}) {
       junctions,
       rna,
       signatures: signaturesFile.status === "ok" ? signaturesFile : missing(),
+      signaturesJoint: signaturesJointFile.status === "ok" ? signaturesJointFile : missing(),
       walks: walksFile.status === "ok" ? walksFile : missing(),
       rnaFusions: rnaFusionsFile.status === "ok" ? attempt(() => normalizeFusions(rnaFusionsFile.data)) : missing(),
       rnaSplicing: rnaSplicingFile.status === "ok" ? attempt(() => normalizeSplicing(rnaSplicingFile.data)) : missing(),
