@@ -10,6 +10,7 @@ import { useIsSingleCellPatient } from "./eventsToHeatmap";
 import { SC_GUTTER_INNER } from "./density";
 import useRnaFindings from "./rna/useRnaFindings";
 import { Provenance } from "./hintLine";
+import TmbCard from "./tmbCard";
 
 /**
  * Single-cell summary on the patient's Overall tab: the same card as the
@@ -40,6 +41,7 @@ export default function ScPatientOverview() {
     cloneCounts[k] = (cloneCounts[k] || 0) + 1;
   });
   return (
+    <>
     <Card
       size="small"
       style={{ marginBottom: 16 }}
@@ -74,5 +76,7 @@ export default function ScPatientOverview() {
         </Col>
       </Row>
     </Card>
+    <TmbCard />
+    </>
   );
 }

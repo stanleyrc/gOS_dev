@@ -17,6 +17,8 @@ import { carrierRows } from "../../helpers/singleCell/snvIsolate";
 import SnvIsolatePanel from "./snvIsolatePanel";
 import { cladeNodeLabels } from "../../helpers/singleCell/clades";
 import usePatientClades from "./usePatientClades";
+import usePatientTmb from "./usePatientTmb";
+import { TMB_TRACK, cellTmbMap, fmtTmb, tmbAxisMax, tmbBarColor, tmbBarFraction, tmbTooltipLines } from "../../helpers/singleCell/tmb";
 import { themePalette } from "../../helpers/singleCell/themes";
 import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
@@ -241,7 +243,13 @@ export default function CellHeatmapPanel() {
   const showPloidy = Boolean(layout.ploidyBars) && hasPloidy;
   const modalPl = useMemo(() => modalPloidy(cells), [cells]);
   const ploidyMax = useMemo(() => ploidyAxisMax(cells, modalPl), [cells, modalPl]);
-  const annotationWidth = ANNOTATION_COLUMN * (nAnnotation + (showPloidy ? 3 : 0));
+  // optional TMB bar column (three strips wide) after the ploidy bars: per-cell dropout-corrected mutations per callable Mb
+  const patientTmb = usePatientTmb();
+  const hasTmb = patientTmb.status === "ok";
+  const showTmb = Boolean(layout.tmbBars) && hasTmb;
+  const tmbMap = useMemo(() => cellTmbMap(patientTmb.data), [patientTmb]);
+  const tmbMax = useMemo(() => tmbAxisMax([...tmbMap.values()]), [tmbMap]);
+  const annotationWidth = ANNOTATION_COLUMN * (nAnnotation + (showPloidy ? 3 : 0) + (showTmb ? 3 : 0));
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
   const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
@@ -626,25 +634,34 @@ export default function CellHeatmapPanel() {
   }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverEntries, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(() => {
-    if (!showPloidy) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
-    // strips left of the ploidy column; the ploidy region is masked per row to the bar length
+    if (!showPloidy && !showTmb) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
+    // strips left of the bar columns; each bar region is masked per row to the bar length
     const total = Math.floor(annotationWidth * pixelRatio);
     const barPx = Math.round(ANNOTATION_COLUMN * 3 * pixelRatio);
-    const stripPx = total - barPx;
+    const stripPx = total - (showPloidy ? barPx : 0) - (showTmb ? barPx : 0);
     const base = discreteColumnLookup(nAnnotation, stripPx);
     return (r) => {
       const out = new Int32Array(total).fill(-1);
       out.set(base, 0);
       const cell = cellById.get(order[r]);
-      const n = barPixels(ploidyBarFraction(cell?.ploidy, ploidyMax), barPx - 2);
-      // lit bar (column nAnnotation) over a faint full-width track (nAnnotation + 1), so length reads against the axis
-      for (let x = 1; x < barPx - 1; x += 1) out[stripPx + x] = x <= n ? nAnnotation : nAnnotation + 1;
+      // lit bar (column nAnnotation / nAnnotation + 2) over a faint full-width track (+ 1 / + 3), so length reads against the axis
+      if (showPloidy) {
+        const n = barPixels(ploidyBarFraction(cell?.ploidy, ploidyMax), barPx - 2);
+        for (let x = 1; x < barPx - 1; x += 1) out[stripPx + x] = x <= n ? nAnnotation : nAnnotation + 1;
+      }
+      if (showTmb) {
+        const n = barPixels(tmbBarFraction(tmbMap.get(order[r])?.tmb_corrected, tmbMax), barPx - 2);
+        const x0 = stripPx + (showPloidy ? barPx : 0);
+        for (let x = 1; x < barPx - 1; x += 1) out[x0 + x] = x <= n ? nAnnotation + 2 : nAnnotation + 3;
+      }
       return out;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nAnnotation, annotationWidth, pixelRatio, showPloidy, cellById, order, ploidyMax, ANNOTATION_COLUMN]);
+  }, [nAnnotation, annotationWidth, pixelRatio, showPloidy, showTmb, cellById, order, ploidyMax, tmbMap, tmbMax, ANNOTATION_COLUMN]);
   const annotationColor = useCallback(
     (r, c) => {
+      if (showTmb && c === nAnnotation + 3) return packRGBA(hexToRgb(TMB_TRACK));
+      if (showTmb && c === nAnnotation + 2) return packRGBA(hexToRgb(tmbBarColor(tmbMap.get(order[r]))));
       if (showPloidy && c === nAnnotation + 1) return packRGBA(hexToRgb(PLOIDY_TRACK));
       if (showPloidy && c === nAnnotation) {
         return packRGBA(hexToRgb(ploidyDeviationColor(ploidyDeviation(cellById.get(order[r])?.ploidy, modalPl))));
@@ -661,7 +678,7 @@ export default function CellHeatmapPanel() {
       return hex ? packRGBA(hexToRgb(hex)) : stripBlank;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank, showPloidy, nAnnotation, modalPl]
+    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank, showPloidy, showTmb, tmbMap, nAnnotation, modalPl]
   );
 
   /* ---- groups for RNA comparisons from the current (tree / heatmap) selection ---- */
@@ -739,6 +756,7 @@ export default function CellHeatmapPanel() {
             ]]
           : []),
         ...(showPloidy ? ploidyTooltipLines(cell, modalPl) : []),
+        ...(showTmb ? tmbTooltipLines(tmbMap.get(order[row])) : []),
         ...(extra || []),
       ],
     });
@@ -1039,6 +1057,16 @@ export default function CellHeatmapPanel() {
               </Tooltip>
             </Checkbox>
           )}
+          {hasTmb && (
+            <Checkbox
+              checked={Boolean(layout.tmbBars)}
+              onChange={(e) => dispatch(singleCellActions.updateLayout({ tmbBars: e.target.checked }))}
+            >
+              <Tooltip title={t("components.single-cell.toolbar.tmb-help")}>
+                {t("components.single-cell.toolbar.tmb")}
+              </Tooltip>
+            </Checkbox>
+          )}
           {tree.status === "ok" && (
             <Checkbox
               checked={layout.clipBranches}
@@ -1207,6 +1235,7 @@ export default function CellHeatmapPanel() {
                 ...annotationFields.map(fieldLabel),
                 ...(showExpression ? [expression.gene] : []),
                 ...(showPloidy ? [t("components.single-cell.heatmap.strip-ploidy"), "", ""] : []),
+                ...(showTmb ? [t("components.single-cell.heatmap.strip-tmb"), "", ""] : []),
               ]}
             />
             {heatmapType === "drivers" && active && (
@@ -1497,6 +1526,20 @@ export default function CellHeatmapPanel() {
                   </span>
                 ))}
                 <Text type="secondary">{`bar = 0–${ploidyMax.toFixed(1)}`}</Text>
+              </Space>
+            )}
+            {showTmb && tmbMax != null && (
+              <Space size={4} wrap className="sc-legend">
+                <Text strong type="secondary">{t("components.single-cell.heatmap.strip-tmb")}</Text>
+                <span className="sc-legend-item">
+                  <span className="sc-legend-swatch" style={{ background: tmbBarColor({ sensitivity: 1 }) }} />
+                  <Text type="secondary">{t("components.single-cell.heatmap.tmb-legend-ok")}</Text>
+                </span>
+                <span className="sc-legend-item">
+                  <span className="sc-legend-swatch" style={{ background: tmbBarColor(null) }} />
+                  <Text type="secondary">{t("components.single-cell.heatmap.tmb-legend-nosens")}</Text>
+                </span>
+                <Text type="secondary">{`bar = 0–${fmtTmb(tmbMax)} mut/Mb`}</Text>
               </Space>
             )}
             <HintLine text={t("components.single-cell.heatmap.hint")} style={{ flex: "1 1 240px" }} />

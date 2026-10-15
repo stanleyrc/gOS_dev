@@ -78,6 +78,7 @@ export const LOCATIONS = {
   cohortHeatmap: [C("overview")],
   oncoprint: [C("drivers")],
   tmb: [C("mutations")],
+  tmbCalls: [C("mutations")],
   cohortSignatures: [C("mutations")],
   cohortAmplicons: [C("amplicons")],
   cohortEvents: [C("events")],
