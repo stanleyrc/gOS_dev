@@ -128,7 +128,7 @@ describe("spliceEventTable", () => {
       expect(r).toMatchObject({ totalUsing: 3, totalControl: 2, nUsing: 2, nControl: 1 });
       expect(r.view.rnaTracks.map((t) => t.rna_id)).toEqual(["u1", "u2", "c1"]);
       expect(r.view.rnaTracks[0]).toMatchObject({ bam: "rna/splice_reads/u1.bam", patientId: "P1" });
-      expect(r.view.rnaTracks[2].label).toMatch(/^comparator: c1 \(event 0 \/ canonical 80/);
+      expect(r.view.rnaTracks[2].label).toBe("comparator c1: ev 0 / can 80");
       expect(r.view.loci).toHaveLength(2);
     });
 
