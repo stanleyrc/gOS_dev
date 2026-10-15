@@ -12,6 +12,7 @@ import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups
 import { cellsOfGroups, linkAppliesTo, readDeepLink, readViewLink, withCloneOverrides } from "../../helpers/singleCell/deepLink";
 import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/themes";
 import { parseSelection } from "../../helpers/singleCell/driverLayer";
+import { driverLayoutFromSearch } from "../../helpers/singleCell/driverColumns";
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 
@@ -22,7 +23,8 @@ const withUrlGroups = (layout) => {
   // ?drvpreset= / drvadd= / drvrm= / drvf= open the Drivers layer on that selection
   try {
     const drivers = parseSelection(window.location.search);
-    const withDrivers = drivers ? { ...withGroups, drivers } : withGroups;
+    const drvLayout = driverLayoutFromSearch(window.location.search);
+    const withDrivers = { ...withGroups, ...(drivers ? { drivers } : {}), ...(drvLayout || {}) };
     // ?hidelowqc=1 / ?qcthr=mapd:0.2 open with the low-QC cells hidden (coverage QC)
     const hide = hideLowQcFromSearch(window.location.search);
     const thr = thresholdsFromSearch(window.location.search);
