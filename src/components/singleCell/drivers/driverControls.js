@@ -12,7 +12,9 @@ import {
   classLabel,
   selectDrivers,
   selectionForKeys,
+  effectiveMaxTier,
 } from "../../../helpers/singleCell/driverLayer";
+import { TIER_OPTIONS } from "../../../helpers/singleCell/cohortStats";
 
 const { Text } = Typography;
 
@@ -25,7 +27,7 @@ export const PRESET_LABELS = {
 export const PRESET_HELP = {
   recommended:
     "OncoKB tier 1-2 events in a cancer gene (OncoKB, GBM gene or COSMIC CGC) that pass QC: at least 3 carrier cells, no 'upstream of GENE' fusion, site evidence not artefact- or germline-like. " +
-    `Complex events (${DM_HELP}, BFB, TIC) have no tier and are included when 3 or more cells carry them.`,
+    `Complex events (${DM_HELP}, BFB, TIC) have no tier and are included when 3 or more cells carry them. Also tier-3 missense predicted damaging by SIFT and PolyPhen, in any gene, if they pass QC (Tier limit in Filters).`,
   subclonal: "Tier 1-2 drivers carried by 95% of the tumor cells or fewer, passing QC.",
   hotspots: "Point mutations at known hotspot sites (site evidence) or OncoKB-flagged driver sites, passing QC.",
   all: "Every driver event of the patient, including 'upstream of GENE' fusions and tier 3 events.",
@@ -75,6 +77,18 @@ function FilterPanel({ selection, onChange, hasCgc, hasRna }) {
       <div style={row}>
         <Text type="secondary">QC tier</Text>
         <Checkbox.Group value={f.tiers || []} onChange={(v) => set({ tiers: v.length ? v : null })} options={[1, 2, 3].map((x) => ({ value: x, label: `Tier ${x}` }))} />
+      </div>
+      <div style={row}>
+        <Tooltip title="Highest OncoKB tier shown. With the default (≤ 2 + damaging missense) the Recommended preset also includes tier-3 missense predicted deleterious by SIFT and probably / possibly damaging by PolyPhen, in any gene, if they pass QC. The other presets are not limited unless you pick a tier.">
+          <Text type="secondary">Tier limit</Text>
+        </Tooltip>
+        <Select
+          size="small"
+          style={{ width: 220 }}
+          value={f.maxTier ?? (selection.preset === "recommended" ? effectiveMaxTier(f) : "any")}
+          onChange={(v) => set({ maxTier: v === "any" || (selection.preset === "recommended" && v === "2d") ? null : v })}
+          options={[...(selection.preset === "recommended" ? [] : [{ value: "any", label: "No limit" }]), ...TIER_OPTIONS]}
+        />
       </div>
       <div style={row}>
         <Text type="secondary">Gene list</Text>
@@ -135,7 +149,7 @@ function FilterPanel({ selection, onChange, hasCgc, hasRna }) {
 
 const nFilters = (f) => {
   const x = { ...DEFAULT_FILTERS, ...f };
-  return [x.tiers?.length, x.lists?.length, x.genes?.length, x.classes?.length, x.clonality !== "any", x.minCells > 1, x.fusionSupport !== "any", x.minF1 > 0].filter(Boolean).length;
+  return [x.tiers?.length, x.maxTier != null, x.lists?.length, x.genes?.length, x.classes?.length, x.clonality !== "any", x.minCells > 1, x.fusionSupport !== "any", x.minF1 > 0].filter(Boolean).length;
 };
 
 /**

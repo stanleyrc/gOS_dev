@@ -62,7 +62,7 @@ export function cohortEntryFilter(entries, { preset = "recommended", maxTier = "
     if (typed && !typed.has(eventClass(d.event))) return false;
     return true;
   });
-  const chosen = new Set(selectDrivers(base, { preset, add: [], remove: [], filters: DEFAULT_FILTERS }).map((d) => d.key));
+  const chosen = new Set(selectDrivers(base, { preset, add: [], remove: [], filters: { ...DEFAULT_FILTERS, maxTier: preset === "recommended" ? 2 : null } }).map((d) => d.key));
   // Recommended + tier "2d": damaging tier-3 missense join, as in the oncoprint
   if (preset === "recommended" && maxTier === "2d") base.forEach((d) => d.cls === "snv" && isDamagingMissense(d.event) && d.qc?.pass && !d.upstreamOnly && chosen.add(d.key));
   return base.filter((d) => chosen.has(d.key));

@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass } from "./cohortStats";
+import { eventClass, isDamagingMissense, passesTier } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { driverGenes, roleOf } from "./driverSummary";
 import { GBM_GENES } from "./geneInfo";
@@ -33,6 +33,7 @@ export const MIN_QC_CELLS = 3;
 
 export const DEFAULT_FILTERS = {
   tiers: null, // [1, 2, 3] allowed tiers; null = any
+  maxTier: null, // 1 | 2 | "2d" (<= 2 + damaging missense) | 3 (TIER_OPTIONS); null = preset default ("2d" for Recommended, no limit otherwise)
   lists: null, // any of "oncokb" | "cgc" | "gbm"; null = no restriction
   genes: [], // custom gene list (any of); [] = none
   classes: null, // subset of DRIVER_CLASSES; null = all
@@ -182,8 +183,19 @@ export const isCancerGene = (entry) => entry.inOncoKB || entry.inGbm || entry.in
 /** DM / BFB / TIC calls have no OncoKB tier: they count as tier 2 for the presets when they have enough cells. */
 const complexOk = (entry) => entry.cls === "complex" && entry.tier == null && entry.n >= MIN_QC_CELLS;
 
+/**
+ * Recommended also takes tier-3 SNVs allowed by the tier selector: with the default ("2d") the SIFT-deleterious AND
+ * PolyPhen-damaging missense, in any gene (cancer gene or not); with "3" every tier-3 SNV. They still have to pass QC.
+ */
+export const effectiveMaxTier = (f) => f?.maxTier ?? "2d";
+const tier3Ok = (d, f) => {
+  const mt = effectiveMaxTier(f);
+  if (d.cls !== "snv" || d.tier == null || d.tier <= 2) return false;
+  return mt === "2d" ? isDamagingMissense(d.event) : passesTier(d.event, mt);
+};
+
 const PRESET_TEST = {
-  recommended: (d) => (complexOk(d) || (d.tier != null && d.tier <= 2 && isCancerGene(d))) && d.qc.pass && !d.upstreamOnly,
+  recommended: (d, f) => (complexOk(d) || (d.tier != null && d.tier <= 2 && isCancerGene(d)) || tier3Ok(d, f)) && d.qc.pass && !d.upstreamOnly,
   subclonal: (d) => d.subclonal && (complexOk(d) || (d.tier != null && d.tier <= 2)) && d.qc.pass && !d.upstreamOnly,
   hotspots: (d) => d.cls === "snv" && d.hotspot && d.qc.pass,
   all: () => true,
@@ -194,6 +206,7 @@ export function passesFilters(d, f = DEFAULT_FILTERS, fits = null) {
   const filters = { ...DEFAULT_FILTERS, ...(f || {}) };
   if (failsF1(d, filters, fits)) return false;
   if (filters.tiers && filters.tiers.length && !filters.tiers.includes(d.tier ?? 9)) return false;
+  if (filters.maxTier != null && !(d.cls === "complex" && d.tier == null) && !passesTier(d.event || { Tier: d.tier ?? 9 }, filters.maxTier)) return false;
   if (filters.classes && filters.classes.length && !filters.classes.includes(d.cls)) return false;
   if (filters.clonality === "clonal" && d.subclonal) return false;
   if (filters.clonality === "subclonal" && !d.subclonal) return false;
@@ -221,7 +234,8 @@ export function passesFilters(d, f = DEFAULT_FILTERS, fits = null) {
 /** The preset's entries that pass the filters (before add / remove). */
 export function presetEntries(entries, selection = DEFAULT_SELECTION, fits = null) {
   const test = PRESET_TEST[selection.preset] || PRESET_TEST.recommended;
-  return entries.filter((d) => test(d) && passesFilters(d, selection.filters, fits));
+  const filters = { ...DEFAULT_FILTERS, ...(selection.filters || {}) };
+  return entries.filter((d) => test(d, filters) && passesFilters(d, filters, fits));
 }
 
 /** Entries shown: preset + filters, plus the added ones, minus the removed ones. */
@@ -278,6 +292,7 @@ export function serializeSelection(selection = DEFAULT_SELECTION) {
   const f = { ...DEFAULT_FILTERS, ...(selection.filters || {}) };
   const parts = [];
   if (f.tiers?.length) parts.push(`tier:${f.tiers.join(",")}`);
+  if (f.maxTier != null) parts.push(`maxtier:${f.maxTier}`);
   if (f.lists?.length) parts.push(`lists:${f.lists.join(",")}`);
   if (f.genes?.length) parts.push(`genes:${f.genes.join(",")}`);
   if (f.classes?.length) parts.push(`class:${f.classes.join(",")}`);
@@ -303,6 +318,7 @@ export function parseSelection(search = "") {
     const v = part.slice(at + 1);
     const list = v.split(",").filter(Boolean);
     if (k === "tier") filters.tiers = list.map(Number).filter(Number.isFinite);
+    else if (k === "maxtier" && ["1", "2", "3", "2d"].includes(v)) filters.maxTier = v === "2d" ? "2d" : Number(v);
     else if (k === "lists") filters.lists = list.filter((x) => DRIVER_GENE_LISTS.includes(x));
     else if (k === "genes") filters.genes = list;
     else if (k === "class") filters.classes = list.filter((x) => DRIVER_CLASSES.includes(x));

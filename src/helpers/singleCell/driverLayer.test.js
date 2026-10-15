@@ -204,3 +204,47 @@ describe("Clade F1 filter", () => {
     expect(selectDrivers(entries, next, fits).map((d) => d.key)).toEqual(["tight", "none", "scatter"].sort((a, b) => entries.findIndex((e) => e.key === a) - entries.findIndex((e) => e.key === b)));
   });
 });
+
+describe("site-evidence warn passes driverQc", () => {
+  it("weak and artefact verdicts differ: only artefact / germline fail QC", () => {
+    const mk = (verdict) =>
+      buildDriverEntries([ev({ gene: "PRKDC", vartype: "SNV", type: "Nonsense", Variant: "p.Y779*", Tier: 2, role: "Tumor Suppressor", seqnames: "8", start: "47927276", end: "47927276", Genome_Location: "8:47927276-47927276", cell_ids: "c1,c2,c3" })], {
+        tumorIds: cells,
+        verdicts: new Map([["8:47927276", verdict]]),
+      })[0];
+    expect(mk("weak").qc.pass).toBe(true);
+    expect(mk("artefact").qc.pass).toBe(false);
+    expect(mk("germline").qc.pass).toBe(false);
+  });
+});
+
+describe("tier limit: <= 2 + damaging missense", () => {
+  const dmg = "SIFT deleterious (0.01); PolyPhen probably damaging (0.99)";
+  const snvEv = (gene, extra) => ev({ gene, vartype: "SNV", type: "Missense", Tier: 3, seqnames: "3", start: "5000", end: "5000", Genome_Location: "3:5000-5000", cell_ids: "c1,c2,c3", ...extra });
+  const entries = (verdict) =>
+    buildDriverEntries(
+      [snvEv("ZZZ3", { driver_evidence: dmg }), snvEv("YYY1", { start: "6000", end: "6000", driver_evidence: "SIFT tolerated; PolyPhen benign" }), snvEv("QQQ2", { start: "7000", end: "7000", driver_evidence: dmg, cell_ids: "c1" })],
+      { tumorIds: cells, verdicts: verdict ? new Map([["3:5000", verdict]]) : null }
+    );
+  const rec = (e, filters) => selectDrivers(e, { ...DEFAULT_SELECTION, filters: { ...DEFAULT_SELECTION.filters, ...filters } }).map((d) => d.genes[0]);
+  it("Recommended includes damaging tier-3 missense in non-cancer genes if they pass QC", () => {
+    expect(rec(entries(null))).toEqual(["ZZZ3"]); // YYY1 not damaging, QQQ2 only 1 cell
+    expect(rec(entries("weak"))).toEqual(["ZZZ3"]);
+    expect(rec(entries("artefact"))).toEqual([]);
+  });
+  it("tier limit options: <= 2 drops them, <= 3 adds every tier-3 SNV that passes QC, other presets unaffected", () => {
+    const e = entries(null);
+    expect(rec(e, { maxTier: 2 })).toEqual([]);
+    expect(rec(e, { maxTier: 3 }).sort()).toEqual(["YYY1", "ZZZ3"]);
+    expect(selectDrivers(e, { ...DEFAULT_SELECTION, preset: "all" })).toHaveLength(3);
+    expect(selectDrivers(e, { ...DEFAULT_SELECTION, preset: "all", filters: { ...DEFAULT_SELECTION.filters, maxTier: 2 } })).toHaveLength(0);
+  });
+  it("URL round trip, default not serialized", () => {
+    expect(serializeSelection(DEFAULT_SELECTION)).toEqual({});
+    const sel = { ...DEFAULT_SELECTION, filters: { ...DEFAULT_SELECTION.filters, maxTier: "2d" } };
+    const q = serializeSelection(sel);
+    expect(q.drvf).toBe("maxtier:2d");
+    expect(parseSelection(`?drvf=${q.drvf}`).filters.maxTier).toBe("2d");
+    expect(parseSelection("?drvf=maxtier:3").filters.maxTier).toBe(3);
+  });
+});
