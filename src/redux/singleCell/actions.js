@@ -46,6 +46,9 @@ export const SC_DEFAULT_LAYOUT = {
   snvCategories: null, // SNV sites shown, by where they map on the tree (null = all)
   snvTracks: null, // annotation tracks over the SNV columns (helpers/singleCell/snvAnnot.js); null = default (tree site + driver)
   snvAnnotFilter: null, // site filter set by clicking track values: { track: { values } | { min, max } }
+  snvLabel: null, // column labels of the mutation matrices: gene | protein | position | none (null = protein)
+  snvNaColor: null, // "Missing (no coverage)" colour of the mutation matrices: null/"grey" or "white"
+  snvIsolate: false, // isolate the filtered sites: where they sit (branch counts, carrier cells), table and fit
   snvCellphyOnly: false, // only the sites CellPhy built the tree from
   snvDriversOnly: false, // only OncoKB driver sites
   stripWidth: 14, // px per annotation strip beside the heatmaps (clone, state, region, ...)
