@@ -15,6 +15,7 @@ import { EVENT_CLASS_ORDER, TIER_OPTIONS } from "../../../helpers/singleCell/coh
 import { columnEdge } from "../../../helpers/singleCell/driverColumns";
 import { cnColorer, hexToRgb, packRGBA } from "../../../helpers/singleCell/matrix";
 import {
+  markSnvPending,
   CDT_COL_PX,
   CDT_HEIGHTS,
   CDT_PARAMS,
@@ -67,7 +68,7 @@ function BlockHeat({ aligned, nRows, width, height, pixelRatio, palette, onHover
           if (!a.entry || !a.states) col = ((x + y) >> 2) & 1 ? hatch : blank; // no such event in this patient
           else {
             const v = a.states[r];
-            if (a.entry.cls === "snv") col = v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
+            if (a.entry.cls === "snv") col = v === 2 ? colors.mutant : a.pending ? blank : v === 1 ? colors.wildtype : colors.noCoverage; // pending: carriers from filtered events only
             else if (a.entry.cls === "amp" || a.entry.cls === "homdel") col = cn(v);
             else if (a.entry.cls === "fusion") col = v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : blank;
             else col = v ? colors.complex : blank;
@@ -121,7 +122,7 @@ function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expan
     <div style={{ display: "inline-block", verticalAlign: "top", margin: "0 18px 14px 0", position: "relative" }} data-cohort-driver-block={summary.caseReportId}>
       <Space size={6} style={{ marginBottom: 2 }} wrap>
         <Button type="link" size="small" style={{ padding: 0, fontWeight: 600 }} onClick={() => onOpen(summary)}>{summary.caseReportId}</Button>
-        <Text type="secondary" style={{ fontSize: 12 }}>{`${nRows} cells · ${present}/${nShared} columns`}{pendingCols ? ` · ${pendingCols} SNV not loaded` : ""}</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>{`${nRows} cells · ${present}/${nShared} columns`}{pendingCols ? ` · ${pendingCols} SNV genotypes not loaded (carriers shown)` : ""}</Text>
         {notes.length > 0 && (
           <Tooltip title={<div>{notes.map((x) => <div key={x}>{`not available (${x})`}</div>)}</div>}>
             <InfoCircleOutlined style={{ color: "#d48806" }} />
@@ -154,7 +155,7 @@ function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expan
           <div style={{ position: "absolute", left: TREE_W + Math.min(hover.x + 12, Math.max(0, width - 200)), top: Math.min(hover.y + 12, height - 60), zIndex: 5, pointerEvents: "none", background: "rgba(30,30,30,0.92)", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, whiteSpace: "nowrap" }}>
             <div><b>{summary.caseReportId}</b>{` · ${cellId}`}</div>
             <div>{`clone ${info.leafClones[hover.row] ?? "unassigned"}`}</div>
-            <div>{`${tip.column.label}: ${tip.pending ? pendingText : tip.entry ? cellStatus(tip.entry, tip.states?.[hover.row]).status : "no such event in this patient"}`}</div>
+            <div>{`${tip.column.label}: ${tip.pending ? `${tip.states?.[hover.row] === 2 ? "carrier (filtered events)" : "not a carrier in the filtered events"}; per-cell wild type / no coverage: ${pendingText}` : tip.entry ? cellStatus(tip.entry, tip.states?.[hover.row]).status : "no such event in this patient"}`}</div>
           </div>
         )}
       </div>
@@ -204,7 +205,7 @@ export default function CohortDriverTreesPanel({ summaries, files, rawFiles = nu
   const aligned = useMemo(
     () =>
       Object.fromEntries(
-        Object.entries(data).map(([id, d]) => [id, alignPatient(columns, d.entries, d.states).map((a) => (d.snvPending && a.entry?.cls === "snv" ? { ...a, states: null, pending: true } : a))])
+        Object.entries(data).map(([id, d]) => [id, markSnvPending(alignPatient(columns, d.entries, d.states), d.snvPending)])
       ),
     [data, columns]
   );
