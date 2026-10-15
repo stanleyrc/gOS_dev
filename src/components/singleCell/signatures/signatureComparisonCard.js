@@ -8,6 +8,8 @@ import useContainerWidth from "../useContainerWidth";
 import { ActivityBars, AetiologyLegend, loadCosmic } from "../signaturePanel";
 import { fitSignatures, nnls } from "../../../helpers/singleCell/signatures";
 import { profileSimilarity, setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
+import { restrictSets } from "../../../helpers/singleCell/signatureFilter";
+import useSigSiteFilter from "./useSigSiteFilter";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 import usePlotTheme from "../usePlotTheme";
@@ -27,7 +29,8 @@ export default function SignatureComparisonCard() {
   const { snv, signatures, cells, selectedCellIds, layout } = useSelector((state) => state.SingleCell);
   const [ref, width] = useContainerWidth(900);
   const snvData = snv.status === "ok" ? snv.data : null;
-  const sets = useMemo(() => signatureSiteSets(snvData, { cells, selectedCellIds, layout }), [snvData, cells, selectedCellIds, layout]);
+  const { allowed, active } = useSigSiteFilter();
+  const sets = useMemo(() => restrictSets(signatureSiteSets(snvData, { cells, selectedCellIds, layout }), allowed), [snvData, cells, selectedCellIds, layout, allowed]);
   const profiles = useMemo(() => (snvData ? sets.map((s) => ({ key: s.key, name: s.name, ...setProfile(snvData, s.columns) })) : []), [snvData, sets]);
   const backend = useMemo(() => (signatures.status === "ok" ? signatures.data.sets || [] : []), [signatures]);
   const [mode, setMode] = useState("fraction");
@@ -69,7 +72,7 @@ export default function SignatureComparisonCard() {
           const activities = b?.activities?.length ? b.activities.map((a) => ({ signature: a.signature, activity: Number(a.activity) || 0 })) : fits[p.key];
           if (!activities?.length) return null;
           const total = activities.reduce((s, a) => s + a.activity, 0) || 1;
-          return { name: `${p.name}${b ? "" : " *"}`, n: p.used, activities: mode === "fraction" ? activities.map((a) => ({ ...a, activity: (100 * a.activity) / total })) : activities };
+          return { name: `${p.name}${b ? (active ? " †" : "") : " *"}`, n: p.used, activities: mode === "fraction" ? activities.map((a) => ({ ...a, activity: (100 * a.activity) / total })) : activities };
         })
         .filter(Boolean),
     [profiles, backend, fits, mode]

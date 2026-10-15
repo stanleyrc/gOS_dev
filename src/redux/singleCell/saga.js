@@ -1,3 +1,4 @@
+import { mergeSiteQc } from "../../helpers/singleCell/siteQc";
 import { all, call, put, select, takeEvery, takeLatest } from "redux-saga/effects";
 import axios from "axios";
 import actions, {
@@ -115,7 +116,7 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile] = yield all([
+    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
@@ -129,6 +130,8 @@ function* fetchSingleCellData(action = {}) {
       call(tryGet, casePath(dataset, id, "rna/splicing.json"), { cancelToken }),
       // alternative phylogenies to compare with the current tree (srctools gos_sc_alt_trees.R); optional
       call(tryGet, casePath(dataset, id, "trees/index.json"), { cancelToken }),
+      // per-site QC scores for the SNV Site QC track (srctools gos_sc_site_qc.py); optional
+      call(tryGet, casePath(dataset, id, "snv_qc.json"), { cancelToken }),
     ]);
     // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
     const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
@@ -188,7 +191,7 @@ function* fetchSingleCellData(action = {}) {
         : junctionsRaw;
     const snvRaw =
       snvMatrixFile.status === "ok"
-        ? attempt(() => snvFromSparse(snvMatrixFile.data, cellIds, chromoBins))
+        ? attempt(() => snvFromSparse(mergeSiteQc(snvMatrixFile.data, siteQcFile.status === "ok" ? siteQcFile.data : null), cellIds, chromoBins))
         : anyMutations
         ? attempt(() => snvFromMutations(cellIds, mutations, chromoBins))
         : missing();

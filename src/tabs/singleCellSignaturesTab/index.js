@@ -5,6 +5,7 @@ import SignatureSetsCard from "../../components/singleCell/signatures/signatureS
 import SignatureComparisonCard from "../../components/singleCell/signatures/signatureComparisonCard";
 import SignatureFitCard from "../../components/singleCell/signatures/signatureFitCard";
 import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
+import SigFilterBar from "../../components/singleCell/signatures/sigFilterBar";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import { SC_GUTTER } from "../../components/singleCell/density";
 
@@ -18,6 +19,7 @@ export default function SingleCellSignaturesTab() {
   const hasTree = useSelector((state) => state.SingleCell.tree.status === "ok");
   return (
     <SingleCellWrapper>
+      <SigFilterBar />
       <Row gutter={SC_GUTTER}>
         <Col span={24}>
           <SignatureComparisonCard />
