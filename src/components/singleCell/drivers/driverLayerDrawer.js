@@ -11,6 +11,7 @@ import { cladeFitScore } from "../../../helpers/singleCell/cladeFit";
 import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { classLabel, toggleKey } from "../../../helpers/singleCell/driverLayer";
 import DriverContrastPanel from "./driverContrastPanel";
+import TwoHitBlock from "./twoHitBlock";
 import MutationEvidencePanel from "../evidence/mutationEvidencePanel";
 import RnaFusionModal, { FusionLabel, FusionTierTag } from "../rna/rnaFusionModal";
 
@@ -124,6 +125,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
       {(entry.genes?.length ? entry.genes : linkGenes(entry.label)).slice(0, 2).map((g, i, arr) => (
         <ExternalLinksRow key={g} gene={g} protein={arr.length === 1 && entry.cls === "snv" ? entry.event?.Variant : null} style={{ marginBottom: 6, display: "flex" }} />
       ))}
+      <TwoHitBlock call={entry.twoHit} />
       {entry.cls === "snv" && sigText && (
         <div style={{ marginBottom: 8 }} data-driver-signature>
           <Text strong>Signature: </Text>

@@ -8,6 +8,7 @@
 // - driverBranchMarks: the tree branch where each driver arises
 import { eventClass, isDamagingMissense, passesTier } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
+import { twoHitStates } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
 import { GBM_GENES } from "./geneInfo";
 import { cladeFitScore } from "./cladeFit";
@@ -340,15 +341,17 @@ export const sameSelection = (a, b) => same(serializeSelection(a), serializeSele
 
 /* ---- per-cell states ---- */
 
-export const STATE = { NONE: 0, WT: 1, MUT: 2 };
+// LOSS / BOTH only appear in SNV columns of a tumour suppressor with a second hit (twoHit.js): loss only / SNV + loss
+export const STATE = { NONE: 0, WT: 1, MUT: 2, LOSS: 3, BOTH: 4 };
 
 /**
  * Per-cell state of one entry, aligned to `order`.
- *   snv: 0 no coverage, 1 WT, 2 mutant (carrier fallback when the site is not in snv_matrix)
+ *   snv: 0 no coverage, 1 WT, 2 mutant (carrier fallback when the site is not in snv_matrix);
+ *        with ctx.twoHit (Map entry key -> Set of cells with the second hit) 3 = second hit only, 4 = SNV + second hit
  *   amp / homdel: total copy number at the event (NaN = no CN)
  *   fusion: bit 1 = DNA (carrier), bit 2 = RNA call
  *   complex: 1 carrier
- * @param ctx { order, snv, snvRows (Int32Array aligned to order), cn, cnRows (Int32Array), chromoBins }
+ * @param ctx { order, snv, snvRows (Int32Array aligned to order), cn, cnRows (Int32Array), chromoBins, twoHit }
  */
 export function entryStates(entry, ctx) {
   const { order } = ctx;
@@ -364,6 +367,8 @@ export function entryStates(entry, ctx) {
         out[i] = s === 1 ? STATE.MUT : s === 0 ? STATE.WT : STATE.NONE;
       } else out[i] = carriers.has(id) ? STATE.MUT : STATE.NONE;
     });
+    const second = ctx.twoHit && ctx.twoHit.get(entry.key);
+    if (second && second.size) return twoHitStates(out, order, second);
   } else if (entry.cls === "amp" || entry.cls === "homdel") {
     const g = eventGlobalPosition(entry.event, ctx.chromoBins);
     order.forEach((id, i) => {

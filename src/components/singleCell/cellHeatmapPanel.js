@@ -92,6 +92,7 @@ import DriverLayerDrawer from "./drivers/driverLayerDrawer";
 import { DEFAULT_SNV_TRACKS } from "../../helpers/singleCell/snvAnnot";
 import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitToSearch, splitWidths } from "../../helpers/singleCell/panelSplit";
 import { driverColors } from "./drivers/driverColors";
+import { twoHitStatus } from "../../helpers/singleCell/twoHit";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
 import useCellLabels from "./useCellLabels";
 
@@ -709,7 +710,7 @@ export default function CellHeatmapPanel() {
       const d = driverVisible[c]?.entry;
       const v = states[c]?.[r];
       if (!d) return stripBlank;
-      if (d.cls === "snv") return v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
+      if (d.cls === "snv") return v === 4 ? colors.bothHit : v === 3 ? colors.loss : v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
       if (d.cls === "amp" || d.cls === "homdel") return driverCnColor(v);
       if (d.cls === "fusion") return v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : stripBlank;
       return v ? colors.complex : stripBlank;
@@ -726,7 +727,7 @@ export default function CellHeatmapPanel() {
         const v = states[c][r];
         const state =
           d.cls === "snv"
-            ? v === 2 ? "mutant" : v === 1 ? "wild type" : "no coverage"
+            ? twoHitStatus(v)
             : d.cls === "amp" || d.cls === "homdel"
             ? Number.isFinite(v) ? `copy number ${v}` : t("components.single-cell.no-file")
             : d.cls === "fusion"
@@ -738,6 +739,7 @@ export default function CellHeatmapPanel() {
           ["Class", classLabel(d)],
           ...(d.tier != null ? [["Tier", d.tier]] : []),
           ["Carriers", `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
+          ...(d.twoHit ? [["Two hits", d.twoHit.text]] : []),
           ["This cell", state],
         ];
       },

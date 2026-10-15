@@ -141,6 +141,7 @@ export function eventSnvColumns(entries) {
 /** Hover text of one cell: { status, kind } with kind = mutant | wildtype | none | cn | dna | rna | both | carrier. */
 export function cellStatus(entry, value) {
   if (!entry) return { kind: "absent", status: "no such event in this patient" };
+  if (entry.cls === "snv" && (value === STATE.LOSS || value === STATE.BOTH)) return { kind: value === STATE.BOTH ? "both" : "loss", status: value === STATE.BOTH ? "SNV + loss: both hits (biallelic)" : "loss only (LOH / deletion at the gene, no SNV read)" };
   if (entry.cls === "snv") return value === STATE.MUT ? { kind: "mutant", status: "mutant" } : value === STATE.WT ? { kind: "wildtype", status: "wild type" } : { kind: "none", status: "no coverage" };
   if (entry.cls === "amp" || entry.cls === "homdel") return Number.isFinite(value) ? { kind: "cn", status: `total copy number ${value}` } : { kind: "none", status: "no copy-number data" };
   if (entry.cls === "fusion") {

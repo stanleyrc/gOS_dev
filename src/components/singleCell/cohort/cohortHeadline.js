@@ -15,7 +15,7 @@ const { Text } = Typography;
  * each linking to the view that shows the evidence. Per-patient findings
  * live in Key findings; this card only states the cross-patient pattern.
  */
-export default function CohortHeadline({ patients, nPatients, nCells, loading = false, onView, onPatient }) {
+export default function CohortHeadline({ patients, nPatients, nCells, loading = false, onView, onPatient, tsg = null }) {
   const { t } = useTranslation("common");
   const k = (key, opts) => t(`components.single-cell.cohort.${key}`, opts);
   const items = useMemo(() => cohortHeadline(patients), [patients]);
@@ -64,6 +64,32 @@ export default function CohortHeadline({ patients, nPatients, nCells, loading = 
             </Col>
           ))}
         </Row>
+      )}
+      {tsg && (
+        <div className="sc-headline-tsg" style={{ marginTop: 12, paddingTop: 8, borderTop: "1px solid rgba(128,128,128,0.25)" }} data-tsg-headline>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            Biallelic tumour-suppressor inactivation
+            <Text type="secondary" style={{ fontWeight: 400, marginLeft: 8, fontSize: TYPE.label }}>
+              {tsg.hasLoss ? "SNV / indel + LOH or deletion of the other copy in the same cells (per-cell allelic CN), or both copies deleted" : "not available (_cohort/tsg_loss.json: per-cell allelic LOH calls not exported)"}
+            </Text>
+          </div>
+          {tsg.hasLoss && !tsg.summary.length && <Text type="secondary">{loading ? "loading" : "no gene meets two hits in at least 3 cells"}</Text>}
+          {tsg.hasLoss &&
+            tsg.summary.map((g) => (
+              <div key={g.gene} style={{ fontSize: TYPE.label, lineHeight: 1.7 }}>
+                <b>{g.gene}</b>
+                <span style={{ margin: "0 6px" }}>{`${g.patients.length}/${nPatients}`}</span>
+                {g.patients.map((p, i) => (
+                  <React.Fragment key={p.patient}>
+                    {i > 0 && <span className="sc-headline-sep">·</span>}
+                    <button type="button" className="sc-headline-patient" title={p.text} onClick={() => onPatient(p.patient)}>
+                      {`${p.patient}: ${p.combo || "?"}${p.state === "homdel" ? " (both copies lost)" : ""} ${Math.round(p.fraction * 100)}%`}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            ))}
+        </div>
       )}
     </Card>
   );
