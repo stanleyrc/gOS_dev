@@ -23,6 +23,7 @@ const { Text } = Typography;
 const ROW_H = 20;
 const LABEL_W = 70;
 const pct = (x) => `${(100 * x).toFixed(0)}%`;
+const pct1 = (x) => `${(100 * x).toFixed(1)}%`;
 
 /** Exposure fractions of one set with bootstrap 95% CI whiskers. */
 function ExposureWhiskers({ bars, width }) {
@@ -138,7 +139,7 @@ export default function SignatureJointCard() {
               columns={[
                 { title: "Signature", dataIndex: "signature" },
                 { title: "Set", dataIndex: "set" },
-                { title: "Fraction if added [95% CI]", render: (_, r) => (r.frac == null ? "–" : `${pct(r.frac)} [${pct(r.lo)}, ${pct(r.hi)}]`) },
+                { title: "Fraction if added [95% CI]", render: (_, r) => (r.frac == null ? "–" : `${pct1(r.frac)} [${pct1(r.lo)}, ${pct1(r.hi)}]`) },
                 { title: "delta logL / p", render: (_, r) => (r.frac == null ? "–" : `${r.delta_loglik} / ${fmtP(r.p)}`) },
                 { title: "Cosine gain", dataIndex: "cosine_gain", render: (v) => (v == null ? "–" : v.toFixed(3)) },
                 { title: "Bootstrap support (>=5%)", dataIndex: "support", render: (v) => (v == null ? "–" : pct(v)) },
