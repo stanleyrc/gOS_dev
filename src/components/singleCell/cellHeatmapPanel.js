@@ -74,8 +74,10 @@ import useDriverLayer from "./drivers/useDriverLayer";
 import DriverControls from "./drivers/driverControls";
 import DriverColumnHeader from "./drivers/driverColumnHeader";
 import DriverWidthControl from "./drivers/driverWidthControl";
-import { DRIVER_COL_PX_MIN, clampColPx, DRIVER_AUTO_COL, DRIVER_AUTO_COL_BESIDE, DRIVER_LAYOUT_PARAMS, driverLayoutToSearch, driverView, panRange, zoomRange } from "../../helpers/singleCell/driverColumns";
+import { DRIVER_AUTO_COL, DRIVER_AUTO_COL_BESIDE, DRIVER_LAYOUT_PARAMS, driverLayoutToSearch, driverView, panRange, zoomRange } from "../../helpers/singleCell/driverColumns";
 import DriverLayerDrawer from "./drivers/driverLayerDrawer";
+import { DEFAULT_SNV_TRACKS } from "../../helpers/singleCell/snvAnnot";
+import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitToSearch, splitWidths } from "../../helpers/singleCell/panelSplit";
 import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
 
@@ -83,6 +85,7 @@ const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
 const NOT_ANNOTATIONS = new Set(["pair", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
+const TRACK_LABEL_ROOM = 92; // px kept free right of the beside-SNV annotation strips for their track names
 // Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
 // and 50 px between regions; the heatmap uses the same so they line up.
 const GENOME_MARGIN = 50;
@@ -180,15 +183,14 @@ export default function CellHeatmapPanel() {
   useEffect(() => setDriverRange(null), [driverLayer.shown]);
   const showCnDrivers = heatmapType === "cn" && Boolean(layout.cnDrivers) && driverEntries.length > 0;
   const driverBesideMax = Math.round(Math.max(120, Math.min(420, containerWidth * 0.28)));
-  const driverBeside = showCnDrivers
+  const driverBesideAuto = showCnDrivers
     ? driverView({ n: driverEntries.length, range: driverRange, colPx: layout.driverColPx, maxWidth: driverBesideMax, autoCol: DRIVER_AUTO_COL_BESIDE })
     : null;
   // Side panel widths: dragged (live), saved in the layout, or automatic.
-  const [dragSide, setDragSide] = useState(null);
   const [dragGene, setDragGene] = useState(null);
   const maxSide = Math.max(120, containerWidth * 0.6);
-  const sideWidth = showSide
-    ? Math.round(Math.max(100, Math.min(maxSide, dragSide ?? layout.sideWidth ?? sidePanelWidth(containerWidth))))
+  const sideAutoWidth = showSide
+    ? Math.round(Math.max(100, Math.min(maxSide, layout.sideWidth ?? sidePanelWidth(containerWidth))))
     : 0;
   const showGenes = Boolean(layout.showGenePanel) && geneList.length > 0 && sc.rna.status === "ok";
   const geneWidth = showGenes
@@ -267,11 +269,59 @@ export default function CellHeatmapPanel() {
   // the heatmap canvas starts after the annotation strips, a gap, the strip drag handle and another gap
   const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + STRIP_HANDLE + 2 * GAP));
   const genomeLeft = leftPad + treeBlock + annotationWidth + STRIP_HANDLE + 2 * GAP;
+  // Panels right of the strips: CN heatmap | drivers | SNVs beside. Widths are the automatic ones, or the split the
+  // user dragged (fractions layout.cnw / drvbw / snbw, URL cnw / drvbw / snbw; live while a splitter moves).
+  const [dragSplit, setDragSplit] = useState(null);
+  const panelsPresent = ["cn", ...(driverBesideAuto ? ["drv"] : []), ...(showSide ? ["snv"] : [])];
+  const storedSplit = dragSplit || layoutFractions(layout);
+  const panelSplit =
+    panelsPresent.length > 1
+      ? splitWidths({
+          // room right of the SNV strips for their track names
+          total: containerWidth - genomeLeft - (showGenes ? geneWidth + GAP : 0) - (panelsPresent.length - 1) * GAP - (showSide && (layout.snvTracks || DEFAULT_SNV_TRACKS).length > 0 && !showGenes ? TRACK_LABEL_ROOM : 0),
+          present: panelsPresent,
+          fractions: storedSplit,
+          auto: { drv: driverBesideAuto?.width, snv: sideAutoWidth },
+        })
+      : null;
+  const splitStored = Boolean(panelSplit && panelsPresent.every((k) => storedSplit?.[k]));
+  const sideWidth = panelSplit?.snv ?? sideAutoWidth;
+  const driverBeside = driverBesideAuto
+    ? driverView({
+        n: driverEntries.length,
+        range: driverRange,
+        colPx: splitStored ? null : layout.driverColPx,
+        maxWidth: panelSplit.drv,
+        autoCol: splitStored ? panelSplit.drv / Math.max(1, driverEntries.length) : DRIVER_AUTO_COL_BESIDE,
+      })
+    : null;
   const rightSpace = Math.max(
     MIN_GENOME_RIGHT,
     (showSide ? sideWidth + GAP : 0) + (showGenes ? geneWidth + GAP : 0) + (driverBeside ? driverBeside.width + GAP : 0)
   );
-  const heatWidth = Math.max(200, containerWidth - genomeLeft - rightSpace);
+  const heatWidth = panelSplit ? Math.max(40, panelSplit.cn) : Math.max(200, containerWidth - genomeLeft - rightSpace);
+  // splitter between panel `left` and the next one: drag moves px between the two; double-click resets the split
+  const startSplitDrag = (left) => (event) => {
+    event.preventDefault();
+    if (!panelSplit) return;
+    const x0 = event.clientX;
+    const w0 = { ...panelSplit };
+    let latest = null;
+    const move = (e) => {
+      latest = dragSplitter({ widths: w0, present: panelsPresent, left, dx: e.clientX - x0 });
+      setDragSplit(latest);
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      if (latest) dispatch(singleCellActions.updateLayout(fractionsToLayout(latest)));
+      setDragSplit(null);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  const resetSplit = () => dispatch(singleCellActions.updateLayout({ ...fractionsToLayout(null), driverColPx: null, sideWidth: null }));
+  const splitTitle = "Drag to resize the panels (copy number | drivers | SNVs); double-click to reset";
   // visible driver columns and their block width (standalone: the heatmap width; beside CN: its own block)
   const driverViewNow = heatmapType === "drivers" ? driverView({ n: driverEntries.length, range: driverRange, colPx: layout.driverColPx, maxWidth: heatWidth, autoCol: DRIVER_AUTO_COL }) : driverBeside;
   const driverVisible = useMemo(
@@ -469,6 +519,7 @@ export default function CellHeatmapPanel() {
     return amplifiedOnly && snvCn ? filtered.filter((c) => snvCn[c]?.amplified) : filtered;
   }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvSelected, snvSelectedOnly, snvMinCladeScore, amplifiedOnly, snvCn, snvAnnotFilter, snvAnnot]);
   const [snvHeader, setSnvHeader] = useState(null);
+  const [besideHeader, setBesideHeader] = useState(null); // annotation strips above the SNV matrix beside the heatmap
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
   const canShowBranchSnvs = Boolean(fullTreeLayout && hasTree && snvReady && hasAnchors(snv.data));
@@ -516,6 +567,8 @@ export default function CellHeatmapPanel() {
       const url = new URL(window.location.href);
       SELECTION_PARAMS.forEach((k) => url.searchParams.delete(k));
       DRIVER_LAYOUT_PARAMS.forEach((k) => url.searchParams.delete(k));
+      SPLIT_PARAMS.forEach((k) => url.searchParams.delete(k));
+      Object.entries(splitToSearch(layout, panelsPresent)).forEach(([k, v]) => url.searchParams.set(k, v));
       if (heatmapType === "drivers" || showCnDrivers) {
         if (heatmapType === "drivers") url.searchParams.set("heatmap", "drivers");
         else if (url.searchParams.get("heatmap") === "drivers") url.searchParams.delete("heatmap");
@@ -527,7 +580,7 @@ export default function CellHeatmapPanel() {
     } catch (error) {
       // no window / history: the selection still lives in redux
     }
-  }, [heatmapType, showCnDrivers, layout.driverColPx, driverLayer.selection, sc.patient]);
+  }, [heatmapType, showCnDrivers, layout.driverColPx, layout.cnw, layout.drvbw, layout.snbw, panelsPresent.join(), driverLayer.selection, sc.patient]);
   // Drivers layer: label of the driver(s) arising on each branch
   const driverMarks = useMemo(() => {
     if (!(heatmapType === "drivers" || showCnDrivers) || !layout.driverBranches || !treeLayout) return null;
@@ -587,20 +640,6 @@ export default function CellHeatmapPanel() {
     setDriverRange(panRange([driverViewNow.start, driverViewNow.end], driverEntries.length, dx, driverViewNow.width));
   };
   // drag the left edge of the block beside CN: moving left widens it (a fixed px per column)
-  const startDriverWidthDrag = (event) => {
-    event.preventDefault();
-    if (!driverBeside?.count) return;
-    const x0 = event.clientX;
-    const w0 = driverBeside.width;
-    const n = driverBeside.count;
-    const move = (e) => dispatch(singleCellActions.updateLayout({ driverColPx: clampColPx((w0 - (e.clientX - x0)) / n) || DRIVER_COL_PX_MIN }));
-    const up = () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  };
   const driverWheelRef = useRef(null);
   driverWheelRef.current = driverWheel;
   const detachDriverWheel = useRef(null);
@@ -936,6 +975,13 @@ export default function CellHeatmapPanel() {
     if (!canShowBranchSnvs) return;
     dispatch(singleCellActions.updateLayout({ branchSnvs: true, snvPaintSelected: !layout.snvPaintSelected }));
   };
+  // signature of an SNV driver (context-only posterior from the shown fit), for the header tooltip and the drawer
+  const driverSigText = (entry) => {
+    if (!entry || entry.cls !== "snv") return null;
+    if (entry.snvColumn == null || !snvAnnot?.sigText) return "not available (site is not in the SNV matrix, or no signature fit)";
+    return snvAnnot.sigText(entry.snvColumn);
+  };
+  const driverHeaderShown = Boolean((heatmapType === "drivers" ? active : driverMatrix && showCnDrivers) && driverViewNow);
   const sideProps = {
     highlightRows: isolateRows && isolateRows.size < 0.5 * nRows ? isolateRows : null, // outlines only when carriers are a minority
     snv: snv.data,
@@ -1220,7 +1266,7 @@ export default function CellHeatmapPanel() {
               <DriverWidthControl
                 view={driverViewNow}
                 colPx={layout.driverColPx}
-                onColPx={(v) => dispatch(singleCellActions.updateLayout({ driverColPx: v }))}
+                onColPx={(v) => dispatch(singleCellActions.updateLayout({ driverColPx: v, ...(showCnDrivers ? fractionsToLayout(null) : {}) }))}
                 onZoom={(factor) => driverZoomAt(0.5, factor)}
                 onResetZoom={() => setDriverRange(null)}
               />
@@ -1367,10 +1413,11 @@ export default function CellHeatmapPanel() {
                 ...(showTmb ? [t("components.single-cell.heatmap.strip-tmb"), "", ""] : []),
               ]}
             />
-            {(heatmapType === "drivers" ? active : driverMatrix && showCnDrivers) && driverViewNow && (
+            {driverHeaderShown && (
               // the canvas row: strips, GAP, drag handle, GAP, then the heatmap (beside CN: after the CN heatmap and a GAP)
               <div style={{ marginLeft: STRIP_HANDLE + 2 * GAP + (showCnDrivers ? heatWidth + GAP : 0), width: driverViewNow.width, flex: "none" }}>
                 <DriverColumnHeader
+                  sigText={driverSigText}
                   entries={driverVisible}
                   width={driverViewNow.width}
                   pixelRatio={pixelRatio}
@@ -1379,6 +1426,18 @@ export default function CellHeatmapPanel() {
                   onOpen={(key) => dispatch(singleCellActions.updateDriverDrawer(key))}
                 />
               </div>
+            )}
+            {showSide && snvTrackProps.tracks.length > 0 && (
+              // beside the CN heatmap: after the CN heatmap (and the drivers header, when drawn) and a GAP
+              <div
+                ref={setBesideHeader}
+                style={{
+                  marginLeft: driverHeaderShown ? GAP : STRIP_HANDLE + 2 * GAP + heatWidth + GAP,
+                  width: sideWidth,
+                  flex: "none",
+                  paddingBottom: 2,
+                }}
+              />
             )}
             {heatmapType === "snv" && snvTrackProps.tracks.length > 0 && (
               <div ref={setSnvHeader} style={{ marginLeft: GAP, width: heatWidth, flex: "none", paddingBottom: 2 }} />
@@ -1545,9 +1604,9 @@ export default function CellHeatmapPanel() {
               <div style={{ position: "relative", width: driverBeside.width, flex: "none" }}>
                 <div
                   className="sc-width-handle"
-                  title="Drag to change the driver column width; double-click for auto fit"
-                  onMouseDown={startDriverWidthDrag}
-                  onDoubleClick={() => dispatch(singleCellActions.updateLayout({ driverColPx: null }))}
+                  title={splitTitle}
+                  onMouseDown={startSplitDrag("cn")}
+                  onDoubleClick={resetSplit}
                 />
                 <div ref={driverWheelBox} style={{ overflow: "hidden", width: driverBeside.width }}>
                   <HeatmapCanvas
@@ -1579,11 +1638,11 @@ export default function CellHeatmapPanel() {
               <div style={{ position: "relative" }}>
                 <div
                   className="sc-width-handle"
-                  title={t("components.single-cell.heatmap.resize-panel")}
-                  onMouseDown={startWidthDrag(sideWidth, setDragSide, "sideWidth")}
-                  onDoubleClick={() => dispatch(singleCellActions.updateLayout({ sideWidth: null }))}
+                  title={splitTitle}
+                  onMouseDown={startSplitDrag(driverBeside ? "drv" : "cn")}
+                  onDoubleClick={resetSplit}
                 />
-                <MutationSidePanel {...sideProps} width={sideWidth} />
+                <MutationSidePanel {...sideProps} width={sideWidth} categoryNode={besideHeader} {...snvTrackProps} trackLabelSide="right" />
               </div>
             )}
             {showGenes && (
@@ -1729,6 +1788,7 @@ export default function CellHeatmapPanel() {
       )}
       {sc.driverDrawer && driverLayer.entries.find((d) => d.key === sc.driverDrawer) && (
         <DriverLayerDrawer
+          sigText={driverSigText}
           entry={driverLayer.entries.find((d) => d.key === sc.driverDrawer)}
           driverLayer={driverLayer}
           onClose={() => dispatch(singleCellActions.updateDriverDrawer(null))}

@@ -11,6 +11,9 @@ import {
   toggleKey,
   classLabel,
   DM_HELP,
+  entryFits,
+  f1HiddenCount,
+  noF1Keys,
 } from "./driverLayer";
 
 const cells = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"];
@@ -162,5 +165,42 @@ describe("collapseColumns / recommendedOrder", () => {
   it("orders hotspot SNVs / fusions, then subclonal, then clonal", () => {
     const e = [mk("A", "homdel"), mk("B", "amp", { subclonal: true }), mk("C", "fusion"), mk("D", "snv", { hotspot: true })];
     expect(recommendedOrder(e).map((d) => d.key)).toEqual(["C", "D", "B", "A"]);
+  });
+});
+
+describe("Clade F1 filter", () => {
+  // leaves a..h; clade nodes: root, left half (a-d), right half (e-h)
+  const mk = (first, last, parent) => ({ firstLeaf: first, lastLeaf: last, parent });
+  const layout = { nodes: [mk(0, 7, -1), mk(0, 3, 0), mk(4, 7, 0), ...cells.map((_, i) => mk(i, i, i < 4 ? 1 : 2))], leaves: cells };
+  const entries = [
+    { key: "tight", cls: "snv", genes: ["A"], n: 4, tier: 1, carriers: ["c1", "c2", "c3", "c4"] }, // exactly the left clade: F1 = 1
+    { key: "scatter", cls: "snv", genes: ["B"], n: 4, tier: 1, carriers: ["c1", "c3", "c5", "c7"] }, // best clade is the root: F1 = 2*4/(8+4) = 2/3
+    { key: "none", cls: "snv", genes: ["C"], n: 1, tier: 1, carriers: [] }, // no score
+  ];
+  const fits = entryFits(entries, layout);
+  const sel = (minF1) => ({ preset: "all", add: [], remove: [], filters: { ...DEFAULT_SELECTION.filters, minF1 } });
+  it("scores entries and leaves carrier-less ones without a score", () => {
+    expect(fits.get("tight")).toBeCloseTo(1);
+    expect(fits.get("scatter")).toBeCloseTo(2 / 3);
+    expect(Number.isNaN(fits.get("none"))).toBe(true);
+    expect([...noF1Keys(entries, fits)]).toEqual(["none"]);
+  });
+  it("is off by default and keeps unscored entries when on", () => {
+    expect(selectDrivers(entries, sel(0), fits).map((d) => d.key)).toEqual(["tight", "scatter", "none"]);
+    expect(selectDrivers(entries, sel(0.8), fits).map((d) => d.key)).toEqual(["tight", "none"]);
+    expect(selectDrivers(entries, sel(0.6), fits).map((d) => d.key)).toEqual(["tight", "scatter", "none"]);
+    expect(selectDrivers(entries, sel(0.8), null).length).toBe(3);
+  });
+  it("counts what only the F1 filter hides and round-trips in the URL", () => {
+    expect(f1HiddenCount(entries, sel(0), fits)).toBe(0);
+    expect(f1HiddenCount(entries, sel(0.9), fits)).toBe(1);
+    expect(serializeSelection(sel(0)).drvf).toBeUndefined();
+    const q = new URLSearchParams(serializeSelection(sel(0.8))).toString();
+    expect(q).toContain("f1%3A0.8");
+    expect(parseSelection(`?drvpreset=all&${q}`).filters.minF1).toBe(0.8);
+  });
+  it("toggleKey respects the filter", () => {
+    const next = toggleKey(entries, sel(0.8), "scatter", fits);
+    expect(selectDrivers(entries, next, fits).map((d) => d.key)).toEqual(["tight", "none", "scatter"].sort((a, b) => entries.findIndex((e) => e.key === a) - entries.findIndex((e) => e.key === b)));
   });
 });

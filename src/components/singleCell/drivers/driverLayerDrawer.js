@@ -4,6 +4,7 @@ import { Alert, Button, Drawer, Space, Tabs, Tag, Tooltip, Typography } from "an
 import { AimOutlined, MinusCircleOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
+import { SIGNATURE_METHOD_HINT } from "../../../helpers/singleCell/siteSignature";
 import { cladeFitScore } from "../../../helpers/singleCell/cladeFit";
 import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { classLabel, toggleKey } from "../../../helpers/singleCell/driverLayer";
@@ -55,9 +56,9 @@ function FusionRnaTab({ entry }) {
  * evidence), the Evidence tab's mutation site evidence and reads (SNVs) and
  * the RNA tab's fusion popup (fusions).
  */
-export default function DriverLayerDrawer({ entry, driverLayer, onClose }) {
+export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText = null }) {
   const dispatch = useDispatch();
-  const { treeLayout, entries, selection, setSelection, siteIds } = driverLayer;
+  const { treeLayout, entries, selection, setSelection, siteIds, fits } = driverLayer;
   // ?drvtab=site|rna opens the drawer on that section (links, screenshots)
   const [tab, setTab] = useState(() => {
     try {
@@ -112,12 +113,19 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose }) {
           <Button size="small" onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(entry.event, "plots"))}>
             Event details
           </Button>
-          <Button size="small" icon={shown ? <MinusCircleOutlined /> : <PlusCircleOutlined />} onClick={() => setSelection(toggleKey(entries, selection, entry.key))}>
+          <Button size="small" icon={shown ? <MinusCircleOutlined /> : <PlusCircleOutlined />} onClick={() => setSelection(toggleKey(entries, selection, entry.key, fits))}>
             {shown ? "Remove from layer" : "Add to layer"}
           </Button>
         </Space>
       }
     >
+      {entry.cls === "snv" && sigText && (
+        <div style={{ marginBottom: 8 }} data-driver-signature>
+          <Text strong>Signature: </Text>
+          <Text>{sigText(entry)}</Text>
+          <div><Text type="secondary" style={{ fontSize: 11 }}>{SIGNATURE_METHOD_HINT()}</Text></div>
+        </div>
+      )}
       <Tabs activeKey={items.some((i) => i.key === tab) ? tab : "contrast"} onChange={setTab} items={items} destroyInactiveTabPane />
     </Drawer>
   );
