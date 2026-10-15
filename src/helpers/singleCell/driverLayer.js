@@ -66,7 +66,7 @@ export const DEFAULT_SELECTION = { preset: "recommended", add: [], remove: [], f
 /** snv | amp | homdel | fusion | complex, or null for events the layer does not draw. */
 export function driverClassOf(event) {
   const c = eventClass(event);
-  if (c === "trunc" || c === "splice" || c === "missense") return "snv";
+  if (c === "trunc" || c === "splice" || c === "missense" || c === "promoter") return "snv";
   return DRIVER_CLASSES.includes(c) ? c : null;
 }
 
