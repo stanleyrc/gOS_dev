@@ -3,6 +3,7 @@ import axios from "axios";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { layoutTree, parseNewick } from "../../../helpers/singleCell/newick";
 import { packSnvCells } from "../../../helpers/singleCell/figures";
+import { normalizeFusions } from "../../../helpers/singleCell/rnaFusions";
 
 // Patient-level files of every single-cell patient, for the cohort views:
 // SNV sites (with tree categories), SBS signature fits and filtered events.
@@ -12,13 +13,15 @@ async function loadPatient(dataset, summary, cancelToken) {
   const key = `${dataset.id}/${summary.caseReportId}`;
   if (cache.has(key)) return cache.get(key);
   const get = (file) => tryGet(casePath(dataset, summary.caseReportId, file), { cancelToken });
-  const [snv, signatures, events, tree, walks] = await Promise.all([
+  const [snv, signatures, events, tree, walks, rnaFusions] = await Promise.all([
     get("snv_matrix.json"),
     get("signatures.json"),
     get("filtered.events.json"),
     tryGet(casePath(dataset, summary.caseReportId, "tree.nwk"), { cancelToken, responseType: "text" }),
     // ecDNA / amplicon walks with per-cell copies (skilift sc_export_walks), optional
     get("walks.json"),
+    // RNA fusion calls (optional): DNA / RNA support of fusion events
+    get("rna/fusions.json"),
   ]);
   let treeLayout = null;
   if (tree.status === "ok") {
@@ -36,6 +39,14 @@ async function loadPatient(dataset, summary, cancelToken) {
     events: events.status === "ok" ? (Array.isArray(events.data) ? events.data : []) : null,
     tree: treeLayout,
     walks: walks.status === "ok" ? walks.data : null,
+    rnaFusions: (() => {
+      if (rnaFusions.status !== "ok") return null;
+      try {
+        return normalizeFusions(rnaFusions.data).fusions;
+      } catch (error) {
+        return null;
+      }
+    })(),
   };
   cache.set(key, out);
   return out;

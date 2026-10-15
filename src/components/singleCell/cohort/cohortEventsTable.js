@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Button, Card, Input, InputNumber, Select, Space, Switch, Table, Typography } from "antd";
-import { FilterFilled, SearchOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Button, Card, Checkbox, Input, InputNumber, Popover, Select, Space, Switch, Table, Tag, Typography } from "antd";
+import { FilterFilled, SearchOutlined, SettingOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { EVENT_CLASS_ORDER, eventClass, eventLabel } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
 import { DataSwatch } from "../neutralTag";
+import { eventQuality } from "../../../helpers/singleCell/eventQuality";
 import useMultiSort from "./multiSort";
 import { activeCount, decodeFilters, distinctValues, emptyFilters, encodeFilters, filterRows, setColumnFilter } from "../../../helpers/singleCell/eventFilters";
 
@@ -15,6 +16,30 @@ const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
 const pct = d3.format(".0%");
 const EVF_PARAM = "evf";
+const CHOOSER_KEY = "gos-cohort-events-columns";
+// optional quality columns: key -> label; shown by default unless listed in OFF_BY_DEFAULT
+const QUALITY_COLS = [
+  ["clonality", "Clonality"],
+  ["cladeF1", "Clade F1"],
+  ["driverClass", "Driver evidence"],
+  ["spanMb", "CN span (Mb)"],
+  ["support", "Fusion support"],
+  ["dnaCells", "DNA cells"],
+  ["rnaCells", "RNA cells"],
+  ["rnaReads", "RNA reads"],
+  ["upstream", "Upstream-only"],
+];
+const OFF_BY_DEFAULT = ["spanMb", "dnaCells", "rnaCells", "rnaReads", "upstream"];
+const QUALITY_CAT = ["clonality", "driverClass", "support", "upstream"];
+const EVIDENCE_COLORS = { likely: "volcano", possible: "gold", unlikely: "default" };
+const loadCols = () => {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(CHOOSER_KEY));
+    return Array.isArray(v) ? v : null;
+  } catch (e) {
+    return null;
+  }
+};
 const stop = (e) => e.stopPropagation();
 
 // header dropdown: min / max range (scale converts the stored value to what the user types, e.g. 100 for percent)
@@ -62,6 +87,17 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
     else url.searchParams.delete(EVF_PARAM);
     if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
   }, [colFilters]);
+  const [chosen, setChosen] = useState(loadCols);
+  const setColumns = (keys) => {
+    setChosen(keys);
+    try {
+      window.localStorage.setItem(CHOOSER_KEY, JSON.stringify(keys));
+    } catch (e) {
+      /* storage unavailable: the choice lasts for this page only */
+    }
+  };
+  // a column with an active filter is always shown, so the filter stays visible
+  const visible = new Set([...(chosen || QUALITY_COLS.map(([k]) => k).filter((k) => !OFF_BY_DEFAULT.includes(k))), ...Object.keys(colFilters.cat), ...Object.keys(colFilters.num)]);
   const setCat = (col, vals) => setColFilters((f) => setColumnFilter(f, "cat", col, vals));
   const setNum = (col, v) => setColFilters((f) => setColumnFilter(f, "num", col, v));
   const setText = (col, v) => setColFilters((f) => setColumnFilter(f, "text", col, v));
@@ -84,6 +120,7 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
           fraction: Number(e.cell_fraction) || 0,
           cells: e.cells || "",
           strong: isStrongEvent(e),
+          ...eventQuality(e, eventClass(e), { tree: files[s.caseReportId]?.tree, rnaFusions: files[s.caseReportId]?.rnaFusions, fraction: Number(e.cell_fraction) || 0 }),
         }))
       ),
     [summaries, files]
@@ -103,6 +140,28 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
     filterDropdown: () => <TextDropdown value={colFilters.text[col]} onChange={(v) => setText(col, v)} placeholder={placeholder} />,
     filterIcon: () => <FilterFilled style={{ color: colFilters.text[col] ? "#1677ff" : undefined }} />,
   });
+  const numCol = (key, title, { unit = "", scale = 1, fmt = (v) => v, tip } = {}) => ({
+    title: tip ? <span title={tip}>{title}</span> : title,
+    dataIndex: key,
+    width: 100,
+    sortable: true,
+    firstDir: "desc",
+    filterDropdown: () => <RangeDropdown label={title} unit={unit} scale={scale} value={colFilters.num[key]} onChange={(v) => setNum(key, v)} />,
+    filterIcon: () => <FilterFilled style={{ color: colFilters.num[key] ? "#1677ff" : undefined }} />,
+    render: (v) => (v == null ? "–" : fmt(v)),
+  });
+  const catCol = (key, title, render, width = 120) => ({ title, dataIndex: key, width, sortable: true, ...catFilter(key), render: (v) => (v == null || v === "" ? "–" : render ? render(v) : v) });
+  const qualityDefs = {
+    clonality: catCol("clonality", "Clonality", (v) => <Text type={v === "clonal" ? undefined : "secondary"}>{v}</Text>),
+    cladeF1: numCol("cladeF1", "Clade F1", { fmt: (v) => <span style={{ color: v < 0.5 ? "#cf1322" : v >= 0.8 ? "#237804" : undefined, fontWeight: v >= 0.8 ? 600 : 400 }}>{v.toFixed(2)}</span>, tip: "Best F1 between the carrier cells and one clade of the patient's tree (same as the patient Filtered Events column)" }),
+    driverClass: catCol("driverClass", "Driver evidence", (v) => <Tag color={EVIDENCE_COLORS[v]}>{v}</Tag>, 130),
+    spanMb: numCol("spanMb", "CN span (Mb)", { fmt: (v) => v.toFixed(v < 1 ? 2 : 1), tip: "Event start-end of amplifications / deletions (not the per-cell segment width of the patient table, which needs per-cell copy number)" }),
+    support: catCol("support", "Fusion support", null, 130),
+    dnaCells: numCol("dnaCells", "DNA cells", { fmt: (v) => v.toLocaleString("en-US") }),
+    rnaCells: numCol("rnaCells", "RNA cells", { fmt: (v) => v.toLocaleString("en-US") }),
+    rnaReads: numCol("rnaReads", "RNA reads", { fmt: (v) => v.toLocaleString("en-US") }),
+    upstream: catCol("upstream", "Upstream-only", null, 120),
+  };
   const baseColumns = [
     { title: t("components.single-cell.cohort.patient"), dataIndex: "patient", width: 110, sortable: true, ...catFilter("patient"), render: (p) => <Text strong>{p}</Text> },
     { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 150, sortable: true, ...catFilter("gene"), render: (g) => <Text strong>{g}</Text> },
@@ -135,6 +194,7 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
       ),
     },
   ];
+  QUALITY_COLS.forEach(([k]) => visible.has(k) && baseColumns.push(qualityDefs[k]));
   const sort = useMultiSort(baseColumns, shown, [{ key: "fraction", dir: "desc" }]);
   return (
     <Card
@@ -148,6 +208,20 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
           <Select size="small" mode="multiple" allowClear placeholder={t("components.single-cell.cohort.ev-class")} style={{ minWidth: 180 }} value={classes} onChange={setClasses} options={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ value: c, label: t(`components.single-cell.cohort.class-${c}`) }))} maxTagCount="responsive" />
           <Switch size="small" checked={strongOnly} onChange={setStrongOnly} />
           <Text>{t("components.single-cell.events.strong-only")}</Text>
+          <Popover
+            trigger="click"
+            placement="bottomRight"
+            title="Quality columns"
+            content={
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {QUALITY_COLS.map(([k, label]) => (
+                  <Checkbox key={k} checked={visible.has(k)} disabled={Boolean(colFilters.cat[k] || colFilters.num[k])} onChange={(ev) => setColumns(ev.target.checked ? [...visible, k] : [...visible].filter((x) => x !== k))}>{label}</Checkbox>
+                ))}
+              </div>
+            }
+          >
+            <Button size="small" icon={<SettingOutlined />}>Columns</Button>
+          </Popover>
           <Button size="small" disabled={!nFilters} onClick={() => setColFilters(emptyFilters())}>{nFilters ? `Clear filters (${nFilters})` : "Clear filters"}</Button>
         </Space>
       }
@@ -164,14 +238,14 @@ export default function CohortEventsTable({ summaries, files, onEvent }) {
         onChange={(_p, filters) =>
           setColFilters((f) => {
             let next = f;
-            ["patient", "gene", "cls", "tier", "role", "effect"].forEach((col) => {
+            ["patient", "gene", "cls", "tier", "role", "effect", ...QUALITY_CAT].forEach((col) => {
               if (col in filters) next = setColumnFilter(next, "cat", col, filters[col] || []);
             });
             return next;
           })
         }
         onRow={(r) => ({ onClick: () => onEvent(r.summary, r.event), style: { cursor: "pointer" } })}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1100 + 110 * (sort.columns.length - 8) }}
       />
     </Card>
   );
