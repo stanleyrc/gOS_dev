@@ -89,6 +89,7 @@ export function singleCellStillLoading(singleCell) {
 //   figsel=0                      Paper figures: mark carriers without selecting them
 //   figlayout=slide               Paper figures: heatmap and walk copies side by side
 //   tracks=total,coverage,..      cell tracks shown for selected cells
+//   hets=blocks                   Het SNPs track as allelic-segment blocks (default: SNP points)
 //   figpatient / figwalk / figgenes  Paper figures: patient, walk whose
 //                                 carriers are marked, gene pair for CN vs CN
 //   comp=<field>&compby=<clone|groups|field>&compcount=1  RNA composition card
@@ -129,6 +130,7 @@ export function readViewLink(search = window.location.search) {
     cloneColors,
     cloneLabels,
     tracks: list(params.get("tracks")),
+    hets: params.get("hets") || null,
     figPatient: params.get("figpatient") || null,
     figWalk: params.get("figwalk") || null,
     figGenes: list(params.get("figgenes")).slice(0, 2),

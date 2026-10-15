@@ -11,6 +11,8 @@ export const SC_FETCHED_TRACKS = {
   coverage: "coverage.arrow",
   allelic: "allelic.json",
   hetsnps: "hetsnps.arrow",
+  // het SNPs aggregated per allelic-CN segment; shown instead of hetsnps in block mode (not a toggle of its own)
+  hetblocks: "hetblocks.json",
 };
 // Each coverage/het-SNP plot is its own WebGL canvas; browsers cap live contexts.
 export const SC_MAX_TRACK_CELLS = 6;
@@ -76,6 +78,7 @@ const actions = {
 
   SC_SELECTION_UPDATED: "SC_SELECTION_UPDATED",
   SC_VISIBLE_TRACKS_UPDATED: "SC_VISIBLE_TRACKS_UPDATED",
+  SC_HET_MODE_UPDATED: "SC_HET_MODE_UPDATED",
   SC_HEATMAP_TYPE_UPDATED: "SC_HEATMAP_TYPE_UPDATED",
   SC_SNV_ORDER_UPDATED: "SC_SNV_ORDER_UPDATED",
   SC_SNV_METRIC_UPDATED: "SC_SNV_METRIC_UPDATED",
@@ -113,6 +116,8 @@ const actions = {
     type: actions.SC_VISIBLE_TRACKS_UPDATED,
     tracks,
   }),
+  /** "snps" | "blocks": how the Het SNPs track is drawn. */
+  updateHetMode: (hetMode) => ({ type: actions.SC_HET_MODE_UPDATED, hetMode }),
   updateHeatmapType: (heatmapType) => ({
     type: actions.SC_HEATMAP_TYPE_UPDATED,
     heatmapType,

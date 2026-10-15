@@ -5,6 +5,7 @@ import actions, {
   SC_LAYOUT_STORAGE_KEY,
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
+import { parseHetMode } from "../../helpers/singleCell/hetTracks";
 import caseReportActions from "../caseReport/actions";
 import { CN_PALETTE_PRESETS, DEFAULT_CN_PALETTE, normalizePalette } from "../../helpers/singleCell/matrix";
 import { groupsFromUrl, mergeGroups } from "../../helpers/singleCell/savedGroups";
@@ -72,6 +73,14 @@ function linkedTracks() {
   }
 }
 
+function linkedHetMode() {
+  try {
+    return parseHetMode(readViewLink().hets);
+  } catch (error) {
+    return "snps";
+  }
+}
+
 const emptySource = { status: "idle", data: null, error: null };
 
 const initState = {
@@ -102,6 +111,7 @@ const initState = {
   cellFiles: {}, // { [cellId]: { genome, mutations } }
   selectedCellIds: [],
   visibleTracks: linkedTracks() || SC_DEFAULT_TRACKS,
+  hetMode: linkedHetMode(), // ?hets=blocks
   heatmapType: "cn",
   snvOrder: "tree",
   snvMetric: "vaf",
@@ -120,6 +130,7 @@ const initState = {
 // View preferences that survive switching patients.
 const preferences = (state) => ({
   visibleTracks: state.visibleTracks,
+  hetMode: state.hetMode,
   snvMetric: state.snvMetric,
   palette: state.palette,
   sidePanel: state.sidePanel,
@@ -206,6 +217,8 @@ export default function appReducer(state = initState, action) {
     }
     case actions.SC_VISIBLE_TRACKS_UPDATED:
       return { ...state, visibleTracks: [...(action.tracks || [])] };
+    case actions.SC_HET_MODE_UPDATED:
+      return { ...state, hetMode: parseHetMode(action.hetMode) };
     case actions.SC_HEATMAP_TYPE_UPDATED:
       return { ...state, heatmapType: action.heatmapType };
     case actions.SC_SNV_ORDER_UPDATED:

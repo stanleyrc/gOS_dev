@@ -8,6 +8,7 @@ import actions, {
   SC_LAYOUT_STORAGE_KEY,
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
+import { effectiveTracks, hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
 import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
@@ -248,7 +249,7 @@ function* ensurePerCellTracks() {
   const { SingleCell } = yield select(getState);
   if (SingleCell.loading || SingleCell.missing) return;
   const cells = SingleCell.selectedCellIds.slice(0, SC_MAX_TRACK_CELLS);
-  const tracks = SingleCell.visibleTracks.filter((t) => SC_FETCHED_TRACKS[t]);
+  const tracks = effectiveTracks(SingleCell.visibleTracks, SingleCell.hetMode).filter((t) => SC_FETCHED_TRACKS[t]);
   const requests = [];
   cells.forEach((cellId) =>
     tracks.forEach((track) => {
@@ -305,7 +306,7 @@ function* fetchPerCellTrack(action) {
       data = arrowScatter(res.data, Number(slope), Number(intercept));
     } else {
       const raw = res.data || { settings: {}, intervals: [], connections: [] };
-      data = dataToGenome(allelicToGenome(raw), chromoBins);
+      data = track === "hetblocks" ? dataToGenome(hetBlocksToGraph(raw), chromoBins) : dataToGenome(allelicToGenome(raw), chromoBins);
     }
     yield done(actions.SC_PER_CELL_TRACK_SUCCESS, { data });
   } catch (error) {
@@ -371,6 +372,7 @@ function* actionWatcher() {
       actions.FETCH_SINGLE_CELL_DATA_SUCCESS,
       actions.SC_SELECTION_UPDATED,
       actions.SC_VISIBLE_TRACKS_UPDATED,
+      actions.SC_HET_MODE_UPDATED,
     ],
     ensurePerCellTracks
   );
