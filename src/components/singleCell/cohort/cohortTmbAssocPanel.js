@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import * as d3 from "d3";
 import { Alert, Button, Card, Empty, Radio, Segmented, Select, Skeleton, Space, Switch, Table, Tag, Typography } from "antd";
 import { ExperimentOutlined } from "@ant-design/icons";
@@ -6,7 +6,12 @@ import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "./useCohortExport";
 import { patientColor, FONT } from "./charts";
 import { INK } from "../../../helpers/singleCell/plotTheme";
-import { ADJUSTMENTS, MEASURES, covariateNames, fmtP, forestRows, geneTable, moduleSummary, scatterPoints } from "../../../helpers/singleCell/tmbAssoc";
+import { ADJUSTMENTS, MEASURES, covariateNames, fmtP, forestRows, geneTable, moduleSummary } from "../../../helpers/singleCell/tmbAssoc";
+import { curvePanels, partialRhoLookup } from "../../../helpers/singleCell/tmbCurve";
+import { loadRna } from "./cohortRnaPanel";
+import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
+import { geneValues } from "../../../helpers/singleCell/staticRna";
+import GeneQuickLook from "./geneQuickLook";
 
 const { Text, Paragraph } = Typography;
 
@@ -64,31 +69,115 @@ function Forest({ rows, patients, selected, onSelect, width }) {
   );
 }
 
-function Scatter({ points, patients, width, xTitle, yTitle }) {
+const fmt3 = d3.format(".3~g");
+
+/** One small-multiple panel: y against TMB for a patient (raw axes) or all patients (z within patient). */
+function CurvePanel({ panel, patients, binned, width, height = 230, xTitle, yTitle, partial }) {
   const [bind, tipNode] = useHoverTip();
-  const H = 300;
-  const M = { top: 10, right: 12, bottom: 40, left: 60 };
-  if (!points.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no linked cells with this covariate)" />;
-  // TMB (p.y) on the x axis, the selected covariate (p.x) on the y axis
-  const x = d3.scaleLinear().domain(d3.extent(points, (p) => p.y)).nice().range([M.left, width - M.right]);
-  const y = d3.scaleLinear().domain(d3.extent(points, (p) => p.x)).nice().range([H - M.bottom, M.top]);
+  const M = { top: 26, right: 10, bottom: 34, left: 44 };
+  const pts = panel.points;
+  const lines = panel.pooled ? panel.byPatient.filter((b) => b.bins.length) : panel.bins.length ? [{ patient: panel.patient, bins: panel.bins }] : [];
+  const xs = binned ? lines.flatMap((l) => l.bins.map((b) => b.x)) : pts.map((p) => p.x);
+  const ys = binned ? lines.flatMap((l) => l.bins.flatMap((b) => [b.lo, b.hi])) : [...pts.map((p) => p.y), ...panel.trend.flatMap((t) => [t.lo, t.hi])];
+  if (!xs.length || !ys.length) return <div style={{ width }}><Text strong>{panel.patient}</Text><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (too few cells)" /></div>;
+  const x = d3.scaleLinear().domain(d3.extent(xs)).nice().range([M.left, width - M.right]);
+  const y = d3.scaleLinear().domain(d3.extent(ys)).nice().range([height - M.bottom, M.top]);
+  const color = (p) => (panel.pooled ? patientColor(patients.indexOf(p)) : patientColor(patients.indexOf(panel.patient)));
+  const label = `${panel.patient} · n ${panel.n} · rho ${Number.isFinite(panel.rho) ? panel.rho.toFixed(2) : "n/a"}${partial != null ? ` (partial ${partial.toFixed(2)})` : ""}`;
+  const area = d3.area().x((t) => x(t.x)).y0((t) => y(t.lo)).y1((t) => y(t.hi));
+  const line = d3.line().x((t) => x(t.x)).y((t) => y(t.y));
   return (
-    <div style={{ position: "relative" }}>
-    <svg width={width} height={H}>
-      <g transform={`translate(0,${H - M.bottom})`}>
-        <line x1={M.left} x2={width - M.right} stroke="#999" />
-        {x.ticks(6).map((t) => <text key={t} x={x(t)} y={14} textAnchor="middle" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
-        <text x={(M.left + width - M.right) / 2} y={32} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>{xTitle}</text>
-      </g>
-      {y.ticks(5).map((t) => <text key={t} x={M.left - 6} y={y(t) + 4} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
-      <text transform={`translate(12,${(M.top + H - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>{yTitle}</text>
-      {points.map((p, i) => (
-        <circle key={i} cx={x(p.y)} cy={y(p.x)} r={3} fill={patientColor(patients.indexOf(p.patient))} fillOpacity={0.55} {...bind(`${p.patient}${p.cell ? ` · ${p.cell}` : ""}${p.state ? ` · ${p.state}` : ""} · TMB ${d3.format(".3~g")(p.y)} · ${d3.format(".3~g")(p.x)}`)} />
-      ))}
-    </svg>
-    {tipNode}
+    <div style={{ position: "relative", width }}>
+      <svg width={width} height={height}>
+        <text x={M.left} y={14} fontSize={FONT.label} fontWeight={600} fill={INK.text}>{label}</text>
+        <line x1={M.left} x2={width - M.right} y1={height - M.bottom} y2={height - M.bottom} stroke="#999" />
+        <line x1={M.left} x2={M.left} y1={M.top} y2={height - M.bottom} stroke="#ddd" />
+        {x.ticks(4).map((t) => <text key={t} x={x(t)} y={height - M.bottom + 13} textAnchor="middle" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
+        {y.ticks(4).map((t) => <text key={t} x={M.left - 5} y={y(t) + 4} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
+        <text x={(M.left + width - M.right) / 2} y={height - 4} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>{panel.pooled ? `${xTitle} (z within patient)` : xTitle}</text>
+        <text transform={`translate(11,${(M.top + height - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>{panel.pooled ? `${yTitle} (z)` : yTitle}</text>
+        {!binned && (
+          <>
+            {pts.map((p, i) => (
+              <circle key={i} cx={x(p.x)} cy={y(p.y)} r={2.8} fill={color(p.patient)} fillOpacity={0.5} {...bind(`${p.patient}${p.cell ? ` · ${p.cell}` : ""}${p.state ? ` · ${p.state}` : ""} · TMB ${fmt3(p.rawX ?? p.x)} · ${fmt3(p.rawY ?? p.y)}`)} />
+            ))}
+            {panel.trend.length > 1 && (
+              <g {...bind(`${panel.patient}: running median (40% of cells) with 25-75% band`)}>
+                <path d={area(panel.trend)} fill="#444" fillOpacity={0.12} />
+                <path d={line(panel.trend)} fill="none" stroke="#111" strokeWidth={2} />
+              </g>
+            )}
+          </>
+        )}
+        {binned && lines.map((l) => (
+          <g key={l.patient} {...bind(`${l.patient}: ${l.bins.length} TMB quantile bins, mean ± 95% CI`)}>
+            <path d={line(l.bins)} fill="none" stroke={color(l.patient)} strokeWidth={2} />
+            {l.bins.map((b) => (
+              <g key={b.bin} {...bind(`${l.patient} · TMB bin ${b.bin}/${l.bins.length} (n ${b.n}) · mean ${fmt3(b.y)} [${fmt3(b.lo)}, ${fmt3(b.hi)}]`)}>
+                <line x1={x(b.x)} x2={x(b.x)} y1={y(b.lo)} y2={y(b.hi)} stroke={color(l.patient)} />
+                <circle cx={x(b.x)} cy={y(b.y)} r={4} fill={color(l.patient)} />
+              </g>
+            ))}
+          </g>
+        ))}
+      </svg>
+      {tipNode}
     </div>
   );
+}
+
+/**
+ * Y against TMB, continuous: one panel per patient plus a pooled panel (both axes z-scored within patient), each with a running-median
+ * trend and band and the Spearman rho (raw) / partial rho (exported); or, in binned mode, mean +- 95% CI per TMB quantile bin, one line per patient.
+ */
+function TmbCurves({ result, patients, binned, width, xTitle, yTitle, partialPer, status }) {
+  if (status === "loading") return <Skeleton active paragraph={{ rows: 3 }} />;
+  if (status && status !== "ok") return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`not available (${status})`} />;
+  const all = [...(result.pooled ? [result.pooled] : []), ...result.panels];
+  if (!all.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no linked cells with this variable)" />;
+  const cols = width >= 1000 ? 4 : width >= 700 ? 3 : 2;
+  const w = Math.floor((width - 8) / cols) - 6;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {all.map((panel) => <CurvePanel key={panel.patient} panel={panel} patients={patients} binned={binned} width={w} xTitle={xTitle} yTitle={yTitle} partial={partialPer?.[panel.patient]} />)}
+    </div>
+  );
+}
+
+/** Expression of one gene per DNA-RNA linked cell, read from the RNA matrices the RNA views use: { status, byPatient: { patient: { cellId: value } } }. */
+function useGeneExpression(gene, patients, dataset) {
+  const [state, setState] = useState({ status: "ok", byPatient: {} });
+  const key = patients.join(",");
+  useEffect(() => {
+    if (!gene) return undefined;
+    if (!dataset) {
+      setState({ status: "RNA matrices need the cohort dataset", byPatient: {} });
+      return undefined;
+    }
+    let live = true;
+    setState({ status: "loading", byPatient: {} });
+    Promise.all(
+      patients.map(async (p) => {
+        try {
+          const [rna, matrix] = await Promise.all([loadRna(dataset, p), loadRnaMatrix(dataset, p)]);
+          const gi = rna?.summary?.geneIndex.get(gene) ?? rna?.summary?.geneIndex.get(gene.toUpperCase());
+          if (gi == null) return [p, null];
+          const v = geneValues(matrix, rna.summary.cells.length, gi);
+          return [p, Object.fromEntries(rna.summary.cells.map((c, k) => [c.cell_id, v[k]]))];
+        } catch (e) {
+          return [p, null];
+        }
+      })
+    ).then((pairs) => {
+      if (!live) return;
+      const byPatient = Object.fromEntries(pairs.filter(([, v]) => v));
+      setState(Object.keys(byPatient).length ? { status: "ok", byPatient } : { status: `${gene} is not in the RNA matrices`, byPatient: {} });
+    });
+    return () => {
+      live = false;
+    };
+  }, [gene, key, dataset]); // eslint-disable-line react-hooks/exhaustive-deps
+  return state;
 }
 
 const rDot = (v) => (v == null ? "n/a" : v.toFixed(2));
@@ -97,7 +186,7 @@ const rDot = (v) => (v == null ? "n/a" : v.toFixed(2));
  * Cohort TMB associations (SNVs & signatures): per-cell TMB (total / subclonal / private) against RNA programs, cell cycle, copy number,
  * drivers and genes, partial Spearman per patient and Stouffer-combined (_cohort/tmb_associations.json, srctools gos_sc_tmb_assoc.py).
  */
-export default function CohortTmbAssocPanel({ dataset, onGene = null }) {
+export default function CohortTmbAssocPanel({ dataset, onGene = null }) { // onGene kept for callers; gene names now open the quick look
   const { status, data } = useCohortExport(dataset, "tmb_associations.json");
   const [ref, width] = useContainerWidth(900);
   const [measure, setMeasure] = useState("subclonal");
@@ -107,16 +196,28 @@ export default function CohortTmbAssocPanel({ dataset, onGene = null }) {
   const [dir, setDir] = useState("up");
   const patients = useMemo(() => Object.keys(data?.patients || {}), [data]);
   const rows = useMemo(() => forestRows(data, measure, adjust, noNoisy), [data, measure, adjust, noNoisy]);
-  const points = useMemo(() => scatterPoints(data, cov, measure, noNoisy), [data, cov, measure, noNoisy]);
+  const [geneVariant, setGeneVariant] = useState("qc_clone_region");
+  const [plotGene, setPlotGene] = useState(null); // a gene from the table plotted instead of the covariate
+  const [binned, setBinned] = useState(false);
+  const expr = useGeneExpression(plotGene, patients, dataset);
+  const curves = useMemo(
+    () => curvePanels(data, measure, plotGene ? { yByPatient: expr.byPatient, excludeNoisy: noNoisy } : { covariate: cov, excludeNoisy: noNoisy }),
+    [data, measure, plotGene, expr.byPatient, cov, noNoisy]
+  );
+  const partialPer = useMemo(() => partialRhoLookup(data, { gene: plotGene, covariate: cov, measure, adjust: plotGene ? geneVariant : adjust })?.per, [data, plotGene, cov, measure, adjust, geneVariant]);
   const genes = useMemo(() => geneTable(data, measure, adjust === "qc_clone_region" ? "qc_clone_region" : "qc_clone_region", dir, noNoisy), [data, measure, adjust, dir, noNoisy]);
   const genesCycle = useMemo(() => geneTable(data, measure, "qc_clone_region_cycle", dir, noNoisy), [data, measure, dir, noNoisy]);
-  const [geneVariant, setGeneVariant] = useState("qc_clone_region");
   const mod = useMemo(() => moduleSummary(data), [data]);
   if (status === "loading") return <Skeleton active />;
   if (!data) return <Card size="small" title="TMB associations"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (_cohort/tmb_associations.json not exported; srctools gos_sc_tmb_assoc.py)" /></Card>;
   const gt = geneVariant === "qc_clone_region" ? genes : genesCycle;
   const geneCols = [
-    { title: "Gene", dataIndex: "gene", render: (g) => (onGene ? <a onClick={() => onGene(g)}>{g}</a> : g) },
+    { title: "Gene", dataIndex: "gene", render: (g) => (
+      <Space size={2}>
+        <a style={{ fontWeight: plotGene === g ? 700 : 400 }} title="plot against TMB" onClick={() => setPlotGene(g)}>{g}</a>
+        <GeneQuickLook gene={g} icon />
+      </Space>
+    ) },
     { title: "Mean rho", dataIndex: "mean_r", align: "right", render: rDot },
     { title: "z", dataIndex: "z", align: "right", render: (v) => v.toFixed(2) },
     { title: "q", dataIndex: "q", align: "right", render: fmtP },
@@ -153,14 +254,18 @@ export default function CohortTmbAssocPanel({ dataset, onGene = null }) {
         <Paragraph type="secondary" style={{ marginBottom: 4 }}>
           Partial Spearman of per-cell {measure} TMB (dropout-corrected, per callable Mb) with each covariate in DNA-RNA linked tumour cells; dots are patients, the black bar is the weighted mean, text gives the Stouffer p and sign concordance. Click a row for its scatter.
         </Paragraph>
-        {rows.length ? <Forest rows={rows} patients={patients} selected={cov} onSelect={setCov} width={width} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no tests for this measure / adjustment)" />}
+        {rows.length ? <Forest rows={rows} patients={patients} selected={cov} onSelect={(c) => { setCov(c); setPlotGene(null); }} width={width} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no tests for this measure / adjustment)" />}
         <div style={{ marginTop: 12 }}>
           <Space wrap>
-            <Text strong>Scatter</Text>
-            <Select size="small" showSearch value={cov} onChange={setCov} style={{ width: 320 }} options={covariateNames(data).map((c) => ({ value: c, label: c }))} />
+            <Text strong>{plotGene ? `${plotGene} vs TMB` : "Covariate vs TMB"}</Text>
+            <Segmented size="small" value={binned ? "binned" : "cells"} onChange={(v) => setBinned(v === "binned")} options={[{ value: "cells", label: "Cells + trend" }, { value: "binned", label: "Binned (quintiles)" }]} />
+            {plotGene && <Tag closable onClose={() => setPlotGene(null)}>{plotGene}</Tag>}
+            <Select size="small" showSearch value={plotGene ? null : cov} placeholder={plotGene ? `gene ${plotGene}` : undefined} onChange={(c) => { setCov(c); setPlotGene(null); }} style={{ width: 320 }} options={covariateNames(data).map((c) => ({ value: c, label: c }))} />
             {patients.map((p, i) => <Tag key={p} color={patientColor(i)}>{p}</Tag>)}
           </Space>
-          <Scatter points={points} patients={patients} width={width} xTitle={`${measure} TMB (corrected, per Mb)`} yTitle={cov} />
+          <TmbCurves result={curves} patients={patients} binned={binned} width={width} status={plotGene ? expr.status : "ok"} partialPer={partialPer}
+            xTitle={`${measure} TMB (per Mb)`} yTitle={plotGene ? `${plotGene} expression` : cov} />
+          <Text type="secondary" style={{ fontSize: 12 }}>{`One panel per patient plus the pooled panel (both axes z-scored within patient). Black line: running median over TMB-ordered cells (40% window) with the 25-75% band; rho is Spearman on the plotted cells, partial is the exported covariate-adjusted value. Binned: cells split into TMB quintiles within each patient, mean ± 95% CI. Gene expression is Seurat log-normalised from the RNA matrices (linked tumour cells only). Hover names the patient and cell.`}</Text>
         </div>
         <div style={{ marginTop: 12 }}>
           <Space wrap style={{ marginBottom: 6 }}>
