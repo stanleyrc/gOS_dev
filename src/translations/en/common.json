@@ -1441,6 +1441,7 @@
         "class-trunc": "Truncating",
         "class-splice": "Splice",
         "class-missense": "Missense",
+        "class-promoter": "Promoter hotspot",
         "class-complex": "Complex SV",
         "class-other": "Other",
         "scatter-title": "Patients compared",

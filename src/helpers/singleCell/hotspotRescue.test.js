@@ -21,7 +21,7 @@ describe("rescued hotspot entries", () => {
 
   it("is an SNV hotspot driver with the covered-cell fraction and no clonality call", () => {
     expect(isRescued(tert())).toBe(true);
-    expect(eventClass(tert())).toBe("missense");
+    expect(eventClass(tert())).toBe("promoter");
     expect(d).toMatchObject({ cls: "snv", rescued: true, hotspot: true, n: 4, subclonal: false, verdict: "supported", snvColumn: null });
     expect(d.fraction).toBeCloseTo(0.667, 3);
     expect(d.label).toBe("TERT C228T (rescued)");
