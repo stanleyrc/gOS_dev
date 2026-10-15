@@ -10,7 +10,7 @@ import settingsActions from "../../redux/settings/actions";
 import { casePath } from "../../redux/singleCell/loaders";
 import { domainToLoci, lociToDomains } from "../../helpers/igvUtil";
 import { toGlobal } from "../../helpers/singleCell/matrix";
-import { buildIgvTracks, DNA_READS_FILE, lociString } from "../../helpers/singleCell/igvTracks";
+import { buildIgvTracks, DNA_READS_FILE, lociString, sortBrowserAltFirst } from "../../helpers/singleCell/igvTracks";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
 
@@ -176,6 +176,8 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
         const fresh = tracks.filter((tr) => !loaded.includes(tr.id));
         if (fresh.length) await browser.loadTrackList(fresh);
         await browser.search(locus);
+        // the locus changed within this panel: re-sort so alt-carrying reads stay on top
+        sortBrowserAltFirst(browser, view.chromosome, view.position);
       } catch (e) {
         if (!cancelled) setError(e?.message || `${e}`);
       }

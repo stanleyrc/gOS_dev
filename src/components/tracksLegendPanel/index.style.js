@@ -6,6 +6,10 @@ const Wrapper = styled.div`
     padding: 0px;
     height: 240px;
   }
+  /* pinned (compact) strip: tight card padding */
+  .tracks-legend-compact.ant-card-small > .ant-card-body {
+    padding: 4px 12px;
+  }
   .ant-wrapper-legend {
     background: white;
     padding: 0px;
