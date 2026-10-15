@@ -8,6 +8,8 @@ import settingsActions from "../../../redux/settings/actions";
 import CellIgvPanel from "../cellIgvPanel";
 import HintLine from "../hintLine";
 import SpliceReadsPanel from "./spliceReadsPanel";
+import SpliceGeneFilter, { useSpliceGeneFilter } from "./spliceGeneFilter";
+import { EXON_CONTEXT_LABEL, exonContext } from "../../../helpers/singleCell/spliceGeneFilter";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABEL,
@@ -92,10 +94,11 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
   const [linkedOnly, setLinkedOnly] = useState(false);
   const [novelOnly, setNovelOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [geneFilter, setGeneFilter, geneText, setGeneText] = useSpliceGeneFilter();
   const [active, setActive] = useState(null); // { eventId, variantId }
   const [readsId, setReadsId] = useState(null); // event whose raw reads are open
   const counts = useMemo(() => eventCounts(events), [events]);
-  const rows = useMemo(() => sortSpliceEvents(filterSpliceEvents(events, { mode, query, eventType, linkedOnly, novelOnly })), [events, mode, query, eventType, linkedOnly, novelOnly]);
+  const rows = useMemo(() => sortSpliceEvents(filterSpliceEvents(events, { mode, query, eventType, linkedOnly, novelOnly, geneFilter })), [events, mode, query, eventType, linkedOnly, novelOnly, geneFilter]);
   const activeEvent = events.find((e) => e.id === active?.eventId);
   const activeLink = activeEvent?.snvLinks.find((l) => l.variantId === active?.variantId);
   const igvView = useMemo(() => (activeEvent && activeLink ? snvLinkIgvView(activeEvent, activeLink, { cellMap, spliceReads, patientId }) : null), [activeEvent, activeLink, cellMap, spliceReads, patientId]);
@@ -182,6 +185,25 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
       render: (v, e) => (v ? <Tag color="gold">{e.gene}</Tag> : <Text type="secondary">–</Text>),
     },
     {
+      title: <Th label={t(`${k}.ev-col-exons`)} help={t(`${k}.ev-col-exons-help`)} />,
+      key: "exons",
+      align: "right",
+      sorter: (a, b) => (a.nExons ?? -1) - (b.nExons ?? -1),
+      render: (_, e) => {
+        const c = exonContext(e);
+        return (
+          <span>
+            {e.exonKnown && e.nExons != null ? e.nExons : "–"}
+            {["single_exon", "no_gene", "no_intron"].includes(c) && (
+              <Tag color="orange" bordered={false} style={{ marginInlineStart: 4 }} title={EXON_CONTEXT_LABEL[c]}>
+                {t(`${k}.gf-ctx-${c}`)}
+              </Tag>
+            )}
+          </span>
+        );
+      },
+    },
+    {
       title: <Th label={t(`${k}.ev-col-recur`)} help={t(`${k}.ev-col-recur-help`)} />,
       key: "recur",
       render: (_, e) => <Text style={{ fontSize: 12.5 }}>{recurrenceText(e)}</Text>,
@@ -260,6 +282,7 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
         <Switch size="small" checked={linkedOnly} onChange={reset(setLinkedOnly)} />
         <Text>{t(`${k}.events-linked-only`)}</Text>
       </Space>
+      <SpliceGeneFilter filter={geneFilter} onChange={(p) => { setGeneFilter(p); setPage(1); }} text={geneText} onText={setGeneText} lists={["all", "gbm", "cancer", "custom"]} />
       <Text type="secondary" style={{ fontSize: 12 }}>
         {t(`${k}.events-counts`, { shown: rows.length, all: counts.all, recommended: counts.recommended, linked: counts.linked })}
       </Text>
