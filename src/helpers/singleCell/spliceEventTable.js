@@ -1,6 +1,7 @@
 // Event-level splicing (rna/splicing.json `events`, skilift sc_splice_events): one row per
 // spliced junction with a plain-language summary, explicit units and links to nearby SNVs.
 // d3-free so it can be tested without a DOM.
+import { passesGeneFilter } from "./spliceGeneFilter";
 
 export const EVENT_TYPES = ["exon_skip", "alt_5", "alt_3", "novel_junction", "annotated_alt", "intron_retention"];
 export const EVENT_TYPE_LABEL = {
@@ -106,6 +107,10 @@ export function normalizeSpliceEvents(list) {
         .filter((r) => r && r.id)
         .map((r) => ({ id: `${r.id}`, role: r.role === "control" ? "control" : "using", k: num(r.k, 0), n: num(r.n, 0) })),
       snvLinks: arr(e.snv_links).map(normalizeLink),
+      // exon context (srctools gos_sc_splice_exon_annot.py); exonKnown false in older files
+      exonKnown: "n_exons" in e,
+      nExons: num(e.n_exons),
+      intronOverlap: e.intron_overlap == null ? null : !!e.intron_overlap,
     }));
 }
 
@@ -155,7 +160,7 @@ export function linkText(l) {
  * Rows of the table. mode "recommended" keeps recommended events; "all" keeps every event.
  * Optional filters: query (gene), eventType, linkedOnly (has a linked SNV), novelOnly.
  */
-export function filterSpliceEvents(events, { mode = "recommended", query = "", eventType = "all", linkedOnly = false, novelOnly = false } = {}) {
+export function filterSpliceEvents(events, { mode = "recommended", query = "", eventType = "all", linkedOnly = false, novelOnly = false, geneFilter = null } = {}) {
   const q = `${query}`.trim().toLowerCase();
   return events.filter(
     (e) =>
@@ -163,7 +168,8 @@ export function filterSpliceEvents(events, { mode = "recommended", query = "", e
       (!q || e.gene.toLowerCase().includes(q) || e.summary.toLowerCase().includes(q)) &&
       (eventType === "all" || e.eventType === eventType) &&
       (!linkedOnly || e.snvLinks.length > 0) &&
-      (!novelOnly || !e.annotated)
+      (!novelOnly || !e.annotated) &&
+      (!geneFilter || passesGeneFilter(e, geneFilter))
   );
 }
 

@@ -45,6 +45,9 @@ export function normalizeSpliceFindings(list) {
         note: f.note || null,
         numbers: f.numbers || {},
         cells: arr(f.cells).map(String),
+        exonKnown: "n_exons" in f,
+        nExons: f.n_exons == null ? null : Number(f.n_exons),
+        intronOverlap: f.intron_overlap == null ? null : !!f.intron_overlap,
         loci: arr(f.loci)
           .map((l) => ({ chromosome: `${l?.chromosome ?? ""}`.replace(/^chr/, ""), position: num(l?.position) }))
           .filter((l) => l.chromosome && Number.isFinite(l.position)),
