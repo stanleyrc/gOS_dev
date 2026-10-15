@@ -22,6 +22,7 @@ import HintLine, { Provenance } from "./hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "./density";
 import { INK } from "../../helpers/singleCell/plotTheme";
 import ColorTag from "./colorTag";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 
@@ -60,6 +61,7 @@ const SECTIONS = ["cn", "calls", "library", "precompute", "rna"];
  */
 export default function QcPanel() {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(1000);
   const plotsRef = useRef(null);
@@ -253,7 +255,7 @@ ${labelOf(b)}: ${d3.format("~g")(p.y)}`}</title>
               dataSource={flaggedRows}
               pagination={{ pageSize: 10, size: "small" }}
               columns={[
-                { title: t("components.single-cell.tooltip.cell"), dataIndex: "cell_id", render: (id) => <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openCell(id)}>{id}</Button> },
+                { title: t("components.single-cell.tooltip.cell"), dataIndex: "cell_id", render: (id) => <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openCell(id)} title={cellLabels.full(id)}>{cellLabels.label(id)}</Button> },
                 { title: t("components.single-cell.tooltip.clone"), dataIndex: "clone_id", render: (c) => (c ? <ColorTag color={cloneColors[c]}>{c}</ColorTag> : "–") },
                 { title: t("components.single-cell.qc.flags"), dataIndex: "cell_id", key: "flags", render: (id) => (flags.get(id) || []).join(", ") },
                 { title: "Ploidy", dataIndex: "ploidy", render: (v) => fmt(v) },

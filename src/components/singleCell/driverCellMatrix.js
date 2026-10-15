@@ -17,6 +17,7 @@ import { bufferedColumns, carrierMasks, clampView, drawMatrix, isFullView, matri
 import { Swatches } from "./cohort/charts";
 import HintLine, { Provenance } from "./hintLine";
 import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
@@ -47,6 +48,7 @@ export default function DriverCellMatrix({ drivers }) {
   const { order, treeLayout, cellById } = useTreeView();
   const { cloneColors, selectedCellIds, hoveredCellId, layout } = useSelector((s) => s.SingleCell);
   const [hoverRange, setHoverRange] = useState(null);
+  const cellLabels = useCellLabels();
   const [view, setView] = useState(null); // committed [v0, v1) column window, null = every cell
   const [zoomOnClick, setZoomOnClick] = useState(true);
   const plotRef = useRef(null); // wraps svg + canvas: the wheel target
@@ -214,7 +216,7 @@ export default function DriverCellMatrix({ drivers }) {
       tip.style.display = "none";
       return;
     }
-    tip.textContent = `${order[hit.col]}\n${rows[hit.row].label}`;
+    tip.textContent = `${cellLabels.full(order[hit.col])}\n${rows[hit.row].label}`;
     tip.style.display = "block";
     tip.style.left = `${LABEL_W + Math.min(hit.x + 12, matW - 160)}px`;
     tip.style.top = `${top + hit.y + 14}px`;

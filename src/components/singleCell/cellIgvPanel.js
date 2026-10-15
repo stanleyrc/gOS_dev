@@ -13,6 +13,7 @@ import { toGlobal } from "../../helpers/singleCell/matrix";
 import { buildIgvTracks, DNA_READS_FILE, lociString, sortBrowserAltFirst } from "../../helpers/singleCell/igvTracks";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const WINDOW = 60; // bp either side of the clicked site
@@ -51,6 +52,7 @@ const sameDomain = (a, b, tolerance = 2) =>
  */
 export default function CellIgvPanel({ view: viewProp = null, embedded = false, dataset: datasetProp = null }) {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const storeView = useSelector((state) => state.SingleCell.igv);
   const view = viewProp || storeView;
@@ -115,6 +117,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
       pathFor: (folder, file) => casePath(dataset, folder, file),
       sortAt: { chromosome: view.chromosome, position: view.position },
       dnaHeight: rnaTracks.length ? 200 : 260,
+      labelFor: cellLabels.label,
     });
     const ids = tracks.map((tr) => tr.id);
     const run = async () => {
@@ -171,8 +174,17 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
           return;
         }
         const browser = browserRef.current;
-        const loaded = (browser.findTracks ? browser.findTracks("type", "alignment") : []).map((tr) => tr.id);
-        loaded.filter((id) => !ids.includes(id)).forEach((id) => browser.removeTrackByName(id));
+        const loadedTracks = browser.findTracks ? browser.findTracks("type", "alignment") : [];
+        const loaded = loadedTracks.map((tr) => tr.id);
+        loadedTracks.filter((tr) => !ids.includes(tr.id)).forEach((tr) => browser.removeTrackByName(tr.name));
+        // names follow the cell-label setting (id stays the pair id)
+        loadedTracks.forEach((tr) => {
+          const want = tracks.find((x) => x.id === tr.id);
+          if (want && tr.name !== want.name) {
+            tr.name = want.name;
+            try { tr.trackView?.repaintViews?.(); } catch (e) { /* label repaints on the next draw */ }
+          }
+        });
         const fresh = tracks.filter((tr) => !loaded.includes(tr.id));
         if (fresh.length) await browser.loadTrackList(fresh);
         await browser.search(locus);
@@ -187,7 +199,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, locus, view != null]);
+  }, [key, locus, view != null, cellLabels.mode, cellLabels.map]);
 
   // Tear the browser down when the panel closes.
   useEffect(() => {
@@ -225,7 +237,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
           <Space wrap>
             <span>{t("components.single-cell.igv.title")}</span><Provenance id="reads" />
             <Text type="secondary">
-              {view.label} · {cellIds.join(", ")}
+              {view.label} · {cellIds.map(cellLabels.label).join(", ")}
             </Text>
           </Space>
         }

@@ -26,6 +26,7 @@ import useRnaFindings from "./rna/useRnaFindings";
 import RnaFindingsList, { CloneRnaLine, rnaSummarySentence } from "./rna/rnaFindingsList";
 import { SC_GUTTER } from "./density";
 import ColorTag from "./colorTag";
+import useCellLabels from "./useCellLabels";
 
 const { Text, Paragraph, Title } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
@@ -162,6 +163,7 @@ function SignatureBar({ items, width = 320 }) {
  * patient) or are computed here from `dataset` (default: the open dataset).
  */
 export default function PatientReportCard({ patient, events, cells, variants, signatures, cloneColors = {}, interactive = false, onOpen = null, treeLayout: treeProp = null, rna = null, dataset = null, selectedUids = null }) {
+  const cellLabels = useCellLabels();
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [allClones, setAllClones] = useState(false);
@@ -267,7 +269,7 @@ export default function PatientReportCard({ patient, events, cells, variants, si
         {text(e.prognoses) && <Paragraph style={{ marginBottom: 4 }}><Text strong>Prognosis: </Text>{text(e.prognoses)}</Paragraph>}
         <Paragraph style={{ marginBottom: 0 }}>
           <Text strong>{t("components.single-cell.report.col-cells")}: </Text>
-          <Text type="secondary" style={{ fontSize: 13 }}>{`${e.cell_ids || ""}`.split(",").filter(Boolean).join(", ")}</Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>{`${e.cell_ids || ""}`.split(",").filter(Boolean).map((c) => cellLabels.label(c.trim())).join(", ")}</Text>
         </Paragraph>
         {interactive && (
           <Space>

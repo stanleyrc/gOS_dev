@@ -16,6 +16,7 @@ import { readViewLink } from "../../helpers/singleCell/deepLink";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
 import ColorTag from "./colorTag";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const PLOT_HEIGHT = 160;
@@ -77,6 +78,7 @@ function TrackNote({ status, error, label }) {
  */
 export function TrackPlot({ cellId, track, data, status = "ok", error = null, chromoBins, commonRangeY = null, height = PLOT_HEIGHT }) {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const label = t(`components.single-cell.tracks.${track}`);
   if (status !== "ok" || !data) return <TrackNote status={status === "ok" ? "missing" : status} error={error} label={label} />;
   if (track === "total" || track === "mutations") {
@@ -91,7 +93,7 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
           genome,
           error: null,
           filename: track === "total" ? "complex.json" : "mutations.json",
-          title: `${label} · ${cellId}`,
+          title: `${label} · ${cellLabels.label(cellId)}`,
           yAxisTitle: track === "total" ? t("components.tracks-modal.genome-y-axis-title") : t("components.tracks-modal.mutations-plot-y-axis-title"),
           chromoBins,
           visible: true,
@@ -105,14 +107,14 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
   if (track === "allelic") {
     return (
       <GenomePanel
-        {...{ loading: false, genome: data, error: null, filename: "allelic.json", title: `${label} · ${cellId}`, yAxisTitle: t("components.tracks-modal.allelic-plot-y-axis-title"), chromoBins, visible: true, index: 0, height, commonRangeY }}
+        {...{ loading: false, genome: data, error: null, filename: "allelic.json", title: `${label} · ${cellLabels.label(cellId)}`, yAxisTitle: t("components.tracks-modal.allelic-plot-y-axis-title"), chromoBins, visible: true, index: 0, height, commonRangeY }}
       />
     );
   }
   if (track === "hetblocks") {
     return (
       <GenomePanel
-        {...{ loading: false, genome: data, error: null, filename: "hetblocks.json", title: `${label} · ${cellId}`, yAxisTitle: t("components.single-cell.tracks.hetblocks-y"), chromoBins, visible: true, index: 0, height, commonRangeY: HET_BLOCKS_RANGE }}
+        {...{ loading: false, genome: data, error: null, filename: "hetblocks.json", title: `${label} · ${cellLabels.label(cellId)}`, yAxisTitle: t("components.single-cell.tracks.hetblocks-y"), chromoBins, visible: true, index: 0, height, commonRangeY: HET_BLOCKS_RANGE }}
       />
     );
   }
@@ -129,7 +131,7 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
         dataPointsColor: data.dataPointsColor,
         error: null,
         filename: track === "coverage" ? "coverage.arrow" : "hetsnps.arrow",
-        title: `${label} · ${cellId}`,
+        title: `${label} · ${cellLabels.label(cellId)}`,
         notification: isHets ? noNotification : data.hasFit ? noNotification : { status: "warning", heading: t("components.tracks-modal.missing-counts-axis"), messages: [t("components.single-cell.tracks.no-fit")] },
         chromoBins,
         visible: true,
@@ -172,6 +174,7 @@ const TRACK_NESTING = { left: 35, right: 21 };
  */
 export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, embedded = false, onRemove = null, title = null }) {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
   const { chromoBins, domains } = useSelector((state) => state.Settings);
@@ -347,7 +350,7 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
                   style={{ borderLeftColor: clone != null ? cloneColors[clone] : undefined }}
                 >
                   <div className="sc-cell-title">
-                    <Text strong>{cellId}</Text>
+                    <Text strong title={cellLabels.full(cellId)}>{cellLabels.label(cellId)}</Text>
                     {clone != null && <ColorTag color={cloneColors[clone]}>{clone}</ColorTag>}
                     <Space size={4}>
                       {yScaleMode === "cell" && !embedded && (
