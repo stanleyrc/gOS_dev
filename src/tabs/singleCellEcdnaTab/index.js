@@ -21,6 +21,7 @@ import WalkDiagram from "../../components/singleCell/ecdna/walkDiagram";
 import WalkContainmentCard from "../../components/singleCell/ecdna/walkContainmentCard";
 import WalkTreeBars from "../../components/singleCell/ecdna/walkTreeBars";
 import WalkCooccurrence from "../../components/singleCell/ecdna/walkCooccurrence";
+import CnStateCard from "../../components/singleCell/ecdna/cnStateCard";
 import DisplayMenu from "../../components/singleCell/ecdna/displayMenu";
 import singleCellActions from "../../redux/singleCell/actions";
 import useTreeView from "../../components/singleCell/useTreeView";
@@ -259,6 +260,9 @@ export default function SingleCellEcdnaTab() {
           </Col>
           <Col span={24}>
             <WalkTreeBars walks={shown} families={shownFamilies} colorOf={colorOf} measured={measured} focus={activeFocus} />
+          </Col>
+          <Col span={24}>
+            <CnStateCard />
           </Col>
           <Col span={24}>
             <WalkDiagram walk={focused} colorOf={colorOf} cellIds={cellIds} />
