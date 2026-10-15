@@ -25,6 +25,9 @@ export function shannonDiversity(counts = {}) {
 }
 
 /** Alteration class of a filtered event, for oncoprint colours. */
+/** Hotspot recovered from read-level site evidence (exporter step gos_sc_hotspot_rescue), not from the SNV calls. */
+export const isRescued = (e) => Boolean(e) && (e.rescued === true || `${e.rescued}` === "true");
+
 export function eventClass(event = {}) {
   const vt = `${event.vartype || ""}`.toLowerCase();
   const ty = `${event.type || ""}`.toLowerCase();
@@ -36,6 +39,8 @@ export function eventClass(event = {}) {
   if (/trunc|nonsense|frameshift/.test(ty)) return "trunc";
   if (/splice/.test(ty)) return "splice";
   if (/missense|inframe/.test(ty) || vt === "snv") return "missense";
+  // TERT promoter hotspots (rescued from site evidence) count as point mutations ("SNV" colour class)
+  if (/promoter/.test(ty) || vt === "hotspot") return "missense";
   return "other";
 }
 
@@ -151,7 +156,7 @@ export function oncoprintMatrix(eventsByPatient = {}, { maxTier = 2, filter = nu
       if (!gene) return;
       const fraction = Number(e.cell_fraction);
       const n = Number(e.n_cells);
-      const entry = { class: eventClass(e), fraction: Number.isFinite(fraction) ? fraction : null, nCells: n, cells: e.cells, event: e };
+      const entry = { class: eventClass(e), fraction: Number.isFinite(fraction) ? fraction : null, nCells: n, cells: e.cells, event: e, rescued: isRescued(e) };
       if (!byGene.has(gene)) byGene.set(gene, {});
       const cell = byGene.get(gene);
       // keep every class carried, and the strongest one first

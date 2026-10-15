@@ -37,13 +37,14 @@ const isTrue = (v) => v === true || `${v}` === "true";
 /** True when an event's role marks the gene a tumour suppressor. */
 export const roleIsTsg = (role) => /tumou?r suppressor/i.test(`${role ?? ""}`);
 
-/** Truncating, splice, or missense with a loss-of-function / tier 1-2 call. */
+/** Truncating, splice, or missense with a loss-of-function / tier 1-2 call (or rescued from site evidence in a TSG). */
 export function damagingSnv(event = {}) {
   const c = eventClass(event);
   if (c === "trunc" || c === "splice") return true;
   if (c === "missense") {
     const tier = Number(event.Tier);
-    return /loss/i.test(`${event.effect || ""}`) || (Number.isFinite(tier) && tier <= 2);
+    // rescued driver-gene missense (site evidence) counts: the rescue only keeps sites in curated driver genes
+    return /loss/i.test(`${event.effect || ""}`) || (Number.isFinite(tier) && tier <= 2) || /site evidence/i.test(`${event.source || ""}`);
   }
   return false;
 }

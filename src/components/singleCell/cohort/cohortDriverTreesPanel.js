@@ -155,6 +155,7 @@ function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expan
           <div style={{ position: "absolute", left: TREE_W + Math.min(hover.x + 12, Math.max(0, width - 200)), top: Math.min(hover.y + 12, height - 60), zIndex: 5, pointerEvents: "none", background: "rgba(30,30,30,0.92)", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, whiteSpace: "nowrap" }}>
             <div><b>{summary.caseReportId}</b>{` · ${cellId}`}</div>
             <div>{`clone ${info.leafClones[hover.row] ?? "unassigned"}`}</div>
+            {tip.entry?.rescued && <div>{`${tip.entry.label}: ${tip.entry.rescue.covered} of ${tip.entry.rescue.nTumour} tumour cells covered (${Math.round(100 * (tip.entry.rescue.coverage || 0))}%)`}</div>}
             <div>{`${tip.column.label}: ${tip.pending ? `${tip.states?.[hover.row] === 2 ? "carrier (filtered events)" : "not a carrier in the filtered events"}; per-cell wild type / no coverage: ${pendingText}` : tip.entry ? cellStatus(tip.entry, tip.states?.[hover.row]).status : "no such event in this patient"}`}</div>
           </div>
         )}

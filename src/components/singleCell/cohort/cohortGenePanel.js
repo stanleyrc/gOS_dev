@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, Segmented, Select, Space, Switch, Table, Typography } from "antd";
+import { Card, Empty, Segmented, Select, Space, Switch, Table, Tooltip, Typography } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
-import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, passesTier } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -46,7 +46,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
         const byP = out.get(gene);
         if (!byP.has(s.caseReportId)) byP.set(s.caseReportId, {});
         const cur = byP.get(s.caseReportId)[cls];
-        if (!cur || f > cur.fraction) byP.get(s.caseReportId)[cls] = { cells: n, fraction: f, event: e };
+        if (!cur || f > cur.fraction) byP.get(s.caseReportId)[cls] = { cells: n, fraction: f, event: e, rescued: isRescued(e) };
       });
     });
     return out;
@@ -94,6 +94,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
               <span key={cls} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13 }}>
                 <span style={{ width: 8, height: 8, background: CLASS_COLORS[cls], borderRadius: 2 }} />
                 {`${c.cells} (${pct(c.fraction)})`}
+                {c.rescued && <Tooltip title={`Rescued from site evidence (not in the SNV calls): carriers / covered tumour cells; ${c.event.covered_tumour_cells} of ${c.event.tumour_cells} tumour cells covered`}><span>†</span></Tooltip>}
               </span>
             ))}
           </Space>
@@ -156,7 +157,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                       acc += v;
                       return (
                         <rect key={cls} x={x1(p)} y={yTop} width={x1.bandwidth()} height={Math.max(0, h)} fill={CLASS_COLORS[cls]} stroke={INK.panel} strokeWidth={0.5}>
-                          <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})`}</title>
+                          <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})${byClass[cls].rescued ? ` - rescued from site evidence: carriers of ${byClass[cls].event.covered_tumour_cells} covered tumour cells (${byClass[cls].event.tumour_cells} total)` : ""}`}</title>
                         </rect>
                       );
                     })}

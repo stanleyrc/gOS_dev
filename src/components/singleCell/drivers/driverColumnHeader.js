@@ -1,6 +1,6 @@
 import React from "react";
 import { Tooltip } from "antd";
-import { classLabel } from "../../../helpers/singleCell/driverLayer";
+import { classLabel, rescueText } from "../../../helpers/singleCell/driverLayer";
 import { columnSpan } from "../../../helpers/singleCell/driverColumns";
 import { SIGNATURE_METHOD_HINT } from "../../../helpers/singleCell/siteSignature";
 import { CLASS_TEXT } from "./driverColors";
@@ -11,6 +11,8 @@ const short = (s) => (s.length > MAX_CHARS ? `${s.slice(0, MAX_CHARS - 1)}…` :
 const DriverTip = ({ d, sig }) => (
   <div>
     <div>{`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}</div>
+    {d.entry?.rescued && <div style={{ marginTop: 4 }}>{rescueText(d.entry)}</div>}
+    {d.entry?.rescued && <div style={{ opacity: 0.7, fontSize: 11 }}>Cells: mutant / no alt read (covered) / no coverage (grey); coverage is sparse, so no alt read is not wild type.</div>}
     {sig && <div style={{ marginTop: 4 }}>{`Signature: ${sig}`}</div>}
     {sig && <div style={{ opacity: 0.7, fontSize: 11 }}>{SIGNATURE_METHOD_HINT()}</div>}
   </div>
@@ -69,7 +71,7 @@ export default function DriverColumnHeader({ sigText = null, entries, width, pix
         {entries.map((d, i) => (
           <div
             key={d.key}
-            title={d.label}
+            title={d.entry?.rescued ? `${d.label}: ${rescueText(d.entry)}` : d.label}
             data-driver-bar={d.key}
             onClick={() => onOpen(d.key)}
             style={{
@@ -78,7 +80,7 @@ export default function DriverColumnHeader({ sigText = null, entries, width, pix
               width: Math.max(1, spans[i].width - (cw > 4 ? 1 : 0)),
               top: 0,
               bottom: 0,
-              background: CLASS_TEXT[d.cls],
+              background: d.entry?.rescued ? `repeating-linear-gradient(45deg, ${CLASS_TEXT[d.cls]} 0 2px, transparent 2px 4px)` : CLASS_TEXT[d.cls],
               cursor: "pointer",
               opacity: d.key === hoverKey || d.key === openKey ? 1 : 0.55,
             }}
