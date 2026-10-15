@@ -18,6 +18,8 @@ import { padDomains } from "../../../helpers/singleCell/eventDomains";
 import { eventClass } from "../../../helpers/singleCell/cohortStats";
 import { setPendingEvent } from "../pendingEventOpener";
 import ColorTag from "../colorTag";
+import GeneInfoCard from "../rna/geneInfoCard";
+import { eventGenes, parseSite, pickIgvCells } from "../../../helpers/singleCell/eventDrawerHelpers";
 
 const { Text, Paragraph } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: "#8c8c8c" };
@@ -29,7 +31,7 @@ const text = (v) => (v == null || v === "" || v === "None" ? null : `${v}`.repla
  * the locus, and reads in IGV — all fetched from the patient's data folder
  * without opening the patient.
  */
-export default function CohortEventDrawer({ open, onClose, summary, event, dataset, cells = [], cloneColors = {} }) {
+export default function CohortEventDrawer({ open, onClose, summary, event, dataset, cells = [], cloneColors = {}, patientFiles = null }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength, domains } = useSelector((s) => s.Settings);
@@ -43,12 +45,25 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   const cls = event ? eventClass(event) : "other";
   const pct = d3.format(".0%");
+  const genes = useMemo(() => eventGenes(event), [event]);
 
-  // zoom the (shared) genome domains to the event, pick the first carriers
+  // point mutations (Variant_g "chr:pos ref>alt", not a fusion): the site IGV opens on
+  const snvSite = useMemo(() => {
+    if (!event || `${event.fusion_gene_coords || ""}`.includes(":")) return null;
+    const site = parseSite(event.Variant_g);
+    return site && site.ref ? site : null;
+  }, [event]);
+  const pickInfo = useMemo(
+    () => pickIgvCells({ site: snvSite, variants: patientFiles?.variants, snvCells: patientFiles?.snvCells, carriers, cloneOf, max: 2 }),
+    [snvSite, patientFiles, carriers, cloneOf]
+  );
+
+  // zoom the (shared) genome domains to the event; pick carriers (point mutations: tumour cells
+  // with alt reads) and open IGV straight away on a point mutation
   useEffect(() => {
     if (!event) return;
-    setPicked(carriers.slice(0, 2));
-    setShowIgv(false);
+    setPicked(pickInfo.cells);
+    setShowIgv(Boolean(snvSite));
     const loc = event.Genome_Location || `${event.seqnames}:${event.start}-${event.end}`;
     try {
       const domains = padDomains(locationToDomains(chromoBins, loc, { clampRanges: true }), 2.5e5, genomeLength);
@@ -56,7 +71,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
     } catch (error) {
       // bad coordinates: keep the current view
     }
-  }, [event, carriers, chromoBins, genomeLength, dispatch]);
+  }, [event, pickInfo, snvSite, chromoBins, genomeLength, dispatch]);
 
   useEffect(() => {
     if (!dataset) return undefined;
@@ -138,12 +153,24 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
           {text(event.effect_description) && <Paragraph style={{ marginBottom: 0 }}>{text(event.effect_description)}</Paragraph>}
           {text(event.variant_summary) && <Paragraph type="secondary" style={{ marginBottom: 0 }}>{text(event.variant_summary)}</Paragraph>}
           {text(event.therapeutics) && <Paragraph style={{ marginBottom: 0 }}><Text strong>Therapeutics: </Text>{text(event.therapeutics)}</Paragraph>}
+          {genes.length > 0 ? (
+            genes.map((g) => <GeneInfoCard key={g} gene={g} />)
+          ) : (
+            <Text type="secondary">Gene card: not available (this event has no single gene)</Text>
+          )}
           <Space wrap>
             <Text type="secondary">{t("components.single-cell.cohort.ev-cells")}</Text>
             <Select size="small" mode="multiple" maxCount={4} style={{ minWidth: 320 }} value={picked} onChange={setPicked} options={carriers.map((id) => ({ value: id, label: `${id}${cloneOf.get(id) ? ` · ${cloneOf.get(id)}` : ""}` }))} showSearch maxTagCount="responsive" />
             <Switch size="small" checked={showIgv} onChange={setShowIgv} />
             <Text>{t("components.single-cell.event-cells.igv")}</Text>
           </Space>
+          {snvSite && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {pickInfo.basis === "alt-reads"
+                ? `IGV cells: tumour carriers with alt reads at ${snvSite.chromosome}:${snvSite.position} (highest VAF first).`
+                : `IGV cells: first tumour carriers (alt reads not verified: ${pickInfo.reason}).`}
+            </Text>
+          )}
           <Checkbox.Group value={tracks} onChange={setTracks} options={SC_TRACKS.map((track) => ({ value: track, label: t(`components.single-cell.tracks.${track}`) }))} />
           {genesList.length > 0 && (
             <div style={{ position: "relative", height: 130 }}>
