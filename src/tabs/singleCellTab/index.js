@@ -11,6 +11,7 @@ import SpatialBeside, { SpatialToolbar } from "../../components/singleCell/spati
 import useSpatial from "../../components/singleCell/spatial/useSpatial";
 import { SpatialLayoutProvider, SpatialSection, useSpatialLayoutState } from "../../components/singleCell/spatial/spatialLayoutContext";
 import CladeComparisonCard from "../../components/singleCell/cladeComparisonCard";
+import ConvergencePanel from "../../components/singleCell/convergencePanel";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
@@ -190,6 +191,9 @@ export default function SingleCellTab() {
         </Col>
         <Col span={24}>
           <CladeComparisonCard />
+        </Col>
+        <Col span={24}>
+          <ConvergencePanel />
         </Col>
         <SpatialSection k="igv" col>
           <CellIgvPanel />
