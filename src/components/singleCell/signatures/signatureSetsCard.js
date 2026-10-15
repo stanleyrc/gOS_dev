@@ -10,6 +10,8 @@ import { FitEvaluation } from "./signatureFitCard";
 import { evaluateFit } from "../../../helpers/singleCell/signatureFit";
 import { bootstrapShares, decomposeFit, fitSignatures } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
+import { restrictSets, siteCountNote } from "../../../helpers/singleCell/signatureFilter";
+import useSigSiteFilter from "./useSigSiteFilter";
 import { SC_GUTTER } from "../density";
 import { Provenance } from "../hintLine";
 
@@ -26,7 +28,8 @@ export default function SignatureSetsCard() {
   const { snv, signatures, cells, selectedCellIds, layout } = useSelector((state) => state.SingleCell);
   const [ref, width] = useContainerWidth(900);
   const snvData = snv.status === "ok" ? snv.data : null;
-  const sets = useMemo(() => signatureSiteSets(snvData, { cells, selectedCellIds, layout }), [snvData, cells, selectedCellIds, layout]);
+  const { allowed, active } = useSigSiteFilter();
+  const sets = useMemo(() => restrictSets(signatureSiteSets(snvData, { cells, selectedCellIds, layout }), allowed), [snvData, cells, selectedCellIds, layout, allowed]);
   const [key, setKey] = useState("all");
   const set = sets.find((s) => s.key === key) || sets[0];
   const profile = useMemo(() => (snvData && set ? setProfile(snvData, set.columns) : null), [snvData, set]);
@@ -63,7 +66,7 @@ export default function SignatureSetsCard() {
 
   if (!snvData || !sets.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.no-contexts")} />;
   const plotWidth = Math.max(320, width - 24);
-  const backendRow = backend?.activities?.length ? [{ name: `${t("components.single-cell.signatures.backend-short")} · ${set.name}`, n: backend.n, activities: backend.activities.map((a) => ({ signature: a.signature, activity: Number(a.activity) || 0 })) }] : [];
+  const backendRow = backend?.activities?.length ? [{ name: `${t("components.single-cell.signatures.backend-short")} · ${set.name}${active ? ` (${t("components.single-cell.signatures.fitted-all")})` : ""}`, n: backend.n, activities: backend.activities.map((a) => ({ signature: a.signature, activity: Number(a.activity) || 0 })) }] : [];
   const fitRow = fit ? [{ name: `${t("components.single-cell.signatures.browser-short")} · ${set.name}`, n: fit.used, activities: fit.activities }] : [];
   const total = fit ? fit.activities.reduce((s, a) => s + a.activity, 0) || 1 : 1;
 
@@ -79,7 +82,7 @@ export default function SignatureSetsCard() {
             style={{ width: 240 }}
             value={set.key}
             onChange={setKey}
-            options={sets.map((s) => ({ value: s.key, label: `${s.name} (${s.columns.length})` }))}
+            options={sets.map((s) => ({ value: s.key, label: active ? `${s.name} (${siteCountNote(s)})` : `${s.name} (${s.columns.length})` }))}
           />
           <Button size="small" type="primary" loading={busy} disabled={!profile || profile.used < 10} onClick={runFit}>
             {t("components.single-cell.signatures.fit", { count: profile?.used ?? 0 })}
