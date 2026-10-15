@@ -6,6 +6,7 @@
 // end, by pooling the counts of the cells in each group. d3-free.
 
 import { normalizeSpliceFindings } from "./rnaHeadlineFindings";
+import { normalizeSpliceEvents } from "./spliceEventTable";
 
 export const RNA_ONLY_GROUP = "RNA only (no DNA)";
 export const NA_GROUP = "NA";
@@ -30,6 +31,9 @@ export function normalizeSplicing(json) {
     spliceReads: json.splice_reads || {},
     // ranked findings (known variants, patient-specific junctions, clone-differential clusters); [] in older files
     findings: normalizeSpliceFindings(json.findings),
+    // one row per spliced junction with summary, units, SNV links; [] in files written before 2026-10-14
+    events: normalizeSpliceEvents(json.events),
+    eventParams: json.event_params || null,
   };
 }
 
