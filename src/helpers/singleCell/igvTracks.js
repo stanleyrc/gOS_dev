@@ -9,6 +9,38 @@ export const RNA_TRACK_PREFIX = "RNA · ";
 
 const chr = (c) => (`${c}`.startsWith("chr") ? `${c}` : `chr${c}`);
 
+/**
+ * igv.js alignment-track sort that puts reads carrying a non-reference base at
+ * the variant on top. igv.js scores each read at the position (reference base
+ * +4, a mismatch -(count of that mismatch base at the site), a deletion
+ * -(deletion count)) and direction "ASC" sorts ascending, so the most common
+ * mismatch (the alt allele) comes first. "DESC" would put the reference
+ * reads first, the alt reads last. Always a fresh object: igv.js mutates the
+ * options it is given (position is made 0-based), so tracks must not share one.
+ */
+export function altFirstSort(chromosome, position) {
+  if (chromosome == null || !Number.isFinite(Number(position))) return undefined;
+  return { chr: chr(chromosome), position: Number(position), option: "BASE", direction: "ASC" };
+}
+
+/** Re-sort every loaded DNA alignment track of an igv browser at a site (RNA slices are skipped: igv.js throws sorting spliced reads). */
+export function sortBrowserAltFirst(browser, chromosome, position) {
+  if (!browser || !browser.findTracks) return 0;
+  let n = 0;
+  browser.findTracks("type", "alignment").forEach((tr) => {
+    if (isRnaTrackName(tr.name)) return;
+    const sort = altFirstSort(chromosome, position);
+    if (!sort || typeof tr.sort !== "function") return;
+    try {
+      tr.sort(sort);
+      n += 1;
+    } catch (e) {
+      // track not rendered yet: its initial sort applies on load
+    }
+  });
+  return n;
+}
+
 /** Track name (igv.js removes tracks by name, so it doubles as the id) of a cell's RNA slice. */
 export const rnaTrackName = (rnaId) => `${RNA_TRACK_PREFIX}${rnaId}`;
 export const isRnaTrackName = (name) => `${name || ""}`.startsWith(RNA_TRACK_PREFIX);
@@ -21,7 +53,6 @@ export const isRnaTrackName = (name) => `${name || ""}`.startsWith(RNA_TRACK_PRE
  * ZF tag so the fusion-supporting reads (ZF:1) form their own block.
  */
 export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortAt = null, dnaHeight = 260, rnaHeight = 200 }) {
-  const sort = sortAt && Number.isFinite(sortAt.position) ? { chr: chr(sortAt.chromosome), position: sortAt.position, option: "BASE", direction: "ASC" } : undefined;
   const dna = dnaCellIds.map((cellId) => ({
     id: cellId,
     name: cellId,
@@ -30,7 +61,7 @@ export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortA
     format: "bam",
     type: "alignment",
     height: dnaHeight,
-    ...(sort ? { sort } : {}),
+    ...(sortAt ? { sort: altFirstSort(sortAt.chromosome, sortAt.position) } : {}),
   }));
   const rna = rnaTracks
     .filter((r) => r && r.bam && r.patientId)
