@@ -4,7 +4,7 @@ import { KIND_LABEL } from "../../../helpers/singleCell/driverSummary";
 
 const { Text, Link } = Typography;
 
-export const KIND_COLOR = { amp: "red", homdel: "blue", fusion: "purple", trunc: "default", splice: "gold", missense: "green", other: "default" };
+export const KIND_COLOR = { amp: "red", homdel: "blue", fusion: "purple", trunc: "default", splice: "gold", missense: "green", promoter: "cyan", other: "default" };
 export const LEVEL_COLOR = { strong: "green", moderate: "gold", weak: "default" };
 
 /** Evidence level tag with the reasons and cautions in its tooltip. */

@@ -53,6 +53,8 @@ import CohortDriverTreesPanel from "./cohort/cohortDriverTreesPanel";
 import PatientSummaryTable from "./cohort/patientCards";
 import CohortHeadline from "./cohort/cohortHeadline";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
+import { isRescued } from "../../helpers/singleCell/cohortStats";
+import useHotspotRescue from "./cohort/useHotspotRescue";
 import { ecdnaWalks } from "../../helpers/singleCell/cohortHeadline";
 import { COHORT_VIEWS, resolveCohortView, startsGroup } from "../../helpers/singleCell/cohortViews";
 import CohortCircosPanel from "./cohort/cohortCircosPanel";
@@ -183,6 +185,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       out[id] = {
         ...f,
         events: f.events.filter((e) => {
+          if (isRescued(e)) return true; // rescued hotspots: carriers are the few covered cells, clade fit is not meaningful
           const fit = cladeFitScore(`${e.cell_ids || ""}`.split(",").filter(Boolean), f.tree);
           return !Number.isFinite(fit.score) || fit.score >= minCladeF1;
         }),
@@ -407,6 +410,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   }));
 
   const geneDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
+  const hotspotRescue = useHotspotRescue(geneDataset);
   const quickLook = {
     dataset: geneDataset,
     summaries,
@@ -518,6 +522,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 nPatients={summaries.length}
                 nCells={totalCells}
                 loading={cohortFiles.progress < 100}
+                hotspots={hotspotRescue.doc}
                 onView={setView}
                 onPatient={(id) => {
                   const s = summaries.find((x) => x.caseReportId === id);

@@ -79,7 +79,7 @@ import DriverLayerDrawer from "./drivers/driverLayerDrawer";
 import { DEFAULT_SNV_TRACKS } from "../../helpers/singleCell/snvAnnot";
 import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitToSearch, splitWidths } from "../../helpers/singleCell/panelSplit";
 import { driverColors } from "./drivers/driverColors";
-import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
+import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, rescueText, serializeSelection, snvStateLabel } from "../../helpers/singleCell/driverLayer";
 import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
@@ -688,7 +688,7 @@ export default function CellHeatmapPanel() {
         const v = states[c][r];
         const state =
           d.cls === "snv"
-            ? v === 2 ? "mutant" : v === 1 ? "wild type" : "no coverage"
+            ? snvStateLabel(d, v)
             : d.cls === "amp" || d.cls === "homdel"
             ? Number.isFinite(v) ? `copy number ${v}` : t("components.single-cell.no-file")
             : d.cls === "fusion"
@@ -699,7 +699,8 @@ export default function CellHeatmapPanel() {
           ...(col.members.length > 1 ? [["Same CN pattern", col.genes.join(", ")]] : []),
           ["Class", classLabel(d)],
           ...(d.tier != null ? [["Tier", d.tier]] : []),
-          ["Carriers", `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
+          ["Carriers", d.rescued ? `${d.n} of ${d.rescue.covered} covered tumour cells (${d.rescue.nTumour ? `${Math.round(100 * (d.rescue.coverage || 0))}% of ${d.rescue.nTumour} tumour cells covered` : "coverage n/a"})` : `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
+          ...(d.rescued ? [["Evidence", rescueText(d)]] : []),
           ["This cell", state],
         ];
       },
