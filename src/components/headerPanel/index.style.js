@@ -37,6 +37,33 @@ const Wrapper = styled.div`
     .detail-title-current {
       color: inherit;
     }
+    /* Pinned on a single-cell patient page: one slim title row (the 48px
+       bottom padding only reserves room for the tab bar overlap at rest). */
+    &.is-compact {
+      padding: 4px 0 4px;
+    }
+    &.is-compact .ant-page-header-heading {
+      min-height: 32px;
+    }
+    /* Tumour details: one truncated line, click to expand */
+    .case-metadata-fields.is-clamped {
+      cursor: pointer;
+    }
+    .case-metadata-fields.is-clamped:not(.is-open) {
+      max-height: 22px;
+      overflow: hidden;
+      gap: 0;
+    }
+    .case-metadata-fields.is-clamped:not(.is-open) .case-metadata-line {
+      flex-wrap: nowrap;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+    .case-metadata-fields.is-clamped:not(.is-open) .case-metadata-line > span + span {
+      margin-left: 8px;
+    }
     .ant-page-header-heading,
     .ant-page-header-heading-left,
     .ant-page-header-heading-title {
