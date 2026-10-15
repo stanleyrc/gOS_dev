@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Alert, Button, Col, Drawer, Empty, Row, Space, Tabs, Tag, Typography } from "antd";
-import { AimOutlined, FileSearchOutlined, NodeIndexOutlined, SelectOutlined } from "@ant-design/icons";
+import { AimOutlined, BranchesOutlined, FileSearchOutlined, NodeIndexOutlined, SelectOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
 import settingsActions from "../../../redux/settings/actions";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
@@ -9,6 +9,7 @@ import { formatP } from "../../../helpers/singleCell/tests";
 import { padDomains } from "../../../helpers/singleCell/eventDomains";
 import { locationToDomains } from "../../../helpers/utility";
 import { KIND_LABEL } from "../../../helpers/singleCell/driverSummary";
+import { announceConvergence, eventConvKey } from "../../../helpers/singleCell/convergenceEvidence";
 import GeneInfoCard from "../rna/geneInfoCard";
 import SplicingCard from "../rna/splicingCard";
 import RnaFusionModal from "../rna/rnaFusionModal";
@@ -58,6 +59,10 @@ export function useDriverActions() {
       }
     },
     select: (s) => dispatch(singleCellActions.updateSelection(s.members[0].carriers)),
+    convergence: (s) => {
+      announceConvergence(`ev:${eventConvKey(s.members[0].event)}`);
+      dispatch(settingsActions.updateTab("7"));
+    },
     deepDive: (s) => dispatch(singleCellActions.updateDriverFocus(s.key)),
   };
 }
@@ -220,6 +225,16 @@ export default function DriverEvidenceDrawer({ summary, tab, onTab, onClose, rna
           </Button>
           <Button size="small" icon={<SelectOutlined />} onClick={() => actions.select(summary)}>
             Select carriers
+          </Button>
+          <Button
+            size="small"
+            icon={<BranchesOutlined />}
+            onClick={() => {
+              actions.convergence(summary);
+              onClose();
+            }}
+          >
+            Convergence
           </Button>
           <Button
             size="small"
