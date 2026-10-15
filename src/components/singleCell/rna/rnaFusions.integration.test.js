@@ -38,7 +38,7 @@ jest.mock("../../hoverLine", () => () => <div />);
 const { normalizeFusions } = require("../../../helpers/singleCell/rnaFusions");
 const { normalizeSplicing } = require("../../../helpers/singleCell/splicing");
 
-function makeStore({ fusions = true, splicing = false, fusionsJson = fixture } = {}) {
+function makeStore({ fusions = true, splicing = false, fusionsJson = fixture, splicingJson = splicingFixture } = {}) {
   const reducers = require("../../../redux/reducers").default;
   const actions = require("../../../redux/singleCell/actions").default;
   const store = createStore(combineReducers(reducers));
@@ -57,7 +57,7 @@ function makeStore({ fusions = true, splicing = false, fusionsJson = fixture } =
       junctions: missing,
       rna: missing,
       rnaFusions: fusions ? ok(normalizeFusions(fusionsJson)) : missing,
-      rnaSplicing: splicing ? ok(normalizeSplicing(splicingFixture)) : missing,
+      rnaSplicing: splicing ? ok(normalizeSplicing(splicingJson)) : missing,
       cellFiles: {},
       selectedCellIds: [],
     });
@@ -172,7 +172,7 @@ describe("splicing card", () => {
       </Provider>
     );
     expect(screen.getAllByText("EGFRvIII").length).toBeGreaterThan(0);
-    expect(screen.getByText("components.single-cell.splicing.clusters-title")).toBeTruthy();
+    expect(screen.getByText("components.single-cell.splicing.events-clusters-title")).toBeTruthy();
     // one sashimi panel per clone group (1, 2, RNA-only) of clu_1
     expect(screen.getAllByRole("img").length).toBeGreaterThanOrEqual(3);
   });
@@ -190,6 +190,49 @@ describe("splicing card", () => {
     expect(screen.queryByText(/^PTPRZ1 · /)).toBeNull();
     fireEvent.click(line);
     expect(await screen.findByText(/^PTPRZ1 · /)).toBeTruthy();
+  });
+});
+
+describe("splice events table", () => {
+  const ev = (over) => ({
+    id: "ev:clu_2:10-20", cluster_id: "clu_2", gene: "PTPRZ1", chromosome: "7", strand: "+", start: 10, end: 20, type: "novel_acceptor", event_type: "alt_3", annotated: false,
+    summary: "Novel acceptor 3 bp into intron 4 of PTPRZ1; used by 64% of reads in 12 of 20 cells; in frame", reads: 40, cluster_reads: 60, psi: 0.64, psi_lo: 0.5, psi_hi: 0.8,
+    cells_using: 12, cells_covering: 20, frame: "in_frame", cancer_gene: true, n_patients: 1, other_patients: [], flags: [], recommended: true, reasons: ["novel in cancer gene"],
+    cells: ["r1"], snv_links: [{ variant_id: "chr7_12_G_A", variant_index: 3, chromosome: "7", position: 12, ref: "G", alt: "A", site: "donor", offset: 3, distance: 3, region: "motif",
+      n_carriers: 4, n_noncarriers: 9, psi_carriers: 0.9, psi_noncarriers: 0.2, p: 0.004, q: 0.03, carriers: ["r1", "r2"] }],
+    ...over,
+  });
+  const json = { ...splicingFixture, splice_reads: { r1: "rna/splice_reads/r1.bam" }, events: [ev(), ev({ id: "ev:x", gene: "NOISE", summary: "Novel junction in NOISE", recommended: false, snv_links: [] })] };
+  const summary = { cells: [{ rna_id: "r1", cell_id: "c1" }, { rna_id: "r2", cell_id: "c3" }, { rna_id: "r3", cell_id: "c2" }], fields: [] };
+
+  it("shows Recommended events by default and all of them on request", () => {
+    const SplicingCard = require("./splicingCard").default;
+    render(
+      <Provider store={makeStore({ splicing: true, splicingJson: json })}>
+        <SplicingCard summary={summary} />
+      </Provider>
+    );
+    expect(screen.getByText(/Novel acceptor 3 bp into intron 4 of PTPRZ1/)).toBeTruthy();
+    expect(screen.queryByText(/Novel junction in NOISE/)).toBeNull();
+    fireEvent.click(screen.getByText(/components.single-cell.splicing.events-mode-all/));
+    expect(screen.getByText(/Novel junction in NOISE/)).toBeTruthy();
+  });
+
+  it("paints a linked SNV on the tree, selects its carriers and opens IGV at the SNV", async () => {
+    igvViews.splice(0);
+    const SplicingCard = require("./splicingCard").default;
+    const store = makeStore({ splicing: true, splicingJson: json });
+    render(
+      <Provider store={store}>
+        <SplicingCard summary={summary} />
+      </Provider>
+    );
+    fireEvent.click(screen.getByText("chr7:12 G>A"));
+    expect(store.getState().SingleCell.layout.snvSiteIds).toEqual(["chr7_12_G_A"]);
+    expect(store.getState().SingleCell.selectedCellIds).toEqual(["c1", "c3"]);
+    const view = igvViews[igvViews.length - 1];
+    expect(view.position).toBe(12);
+    expect(view.rnaTracks.map((r) => r.rna_id)).toEqual(["r1"]);
   });
 });
 
