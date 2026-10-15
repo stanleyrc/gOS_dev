@@ -6,6 +6,7 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import HintLine from "../hintLine";
 import MutJunctionBinChart from "../signatures/mutJunctionBinChart";
 import useCohortExport from "./useCohortExport";
+import CohortMutJunctionFocal from "./cohortMutJunctionFocal";
 
 const { Text, Paragraph } = Typography;
 
@@ -18,6 +19,7 @@ export default function CohortMutJunctionsPanel({ dataset, onOpen = null }) {
   const { status, data } = useCohortExport(dataset, "mut_junctions.json");
   const [def, setDef] = useState("tcw");
   const [near, setNear] = useState(1e6);
+  const [view, setView] = useState("focal");
   if (status === "loading") return <Card size="small" title="Mutations near junctions"><Skeleton active paragraph={{ rows: 3 }} /></Card>;
   const title = <Space><ThunderboltOutlined />Mutations near junctions</Space>;
   if (!data) {
@@ -42,8 +44,16 @@ export default function CohortMutJunctionsPanel({ dataset, onOpen = null }) {
   }));
   const noApobec = patients.filter((p) => p.available && !p.apobecInFit).map((p) => p.id);
   return (
-    <Card size="small" title={title} extra={<Space size={8}><Segmented size="small" value={near} onChange={setNear} options={NEAR_OPTIONS} /><Segmented size="small" value={def} onChange={setDef} options={[{ value: "tcw", label: "TCW motif" }, { value: "sbs", label: "SBS2/13" }]} /></Space>}>
+    <Card
+      size="small"
+      title={title}
+      extra={<Segmented size="small" value={view} onChange={setView} options={[{ value: "focal", label: "Focal: cis vs trans (5 kb)" }, { value: "broad", label: "Broad window (1 Mb)" }]} />}
+    >
+      {view === "focal" ? (
+        <CohortMutJunctionFocal data={data} onOpen={onOpen} />
+      ) : (
       <Space direction="vertical" size={10} style={{ width: "100%" }}>
+        <Space size={8}><Segmented size="small" value={near} onChange={setNear} options={NEAR_OPTIONS} /><Segmented size="small" value={def} onChange={setDef} options={[{ value: "tcw", label: "TCW motif" }, { value: "sbs", label: "SBS2/13" }]} /></Space>
         {def === "sbs" && noApobec.length > 0 && (
           <Alert type="info" showIcon message={`No SBS2 or SBS13 in the joint signature fit of ${noApobec.join(", ")}: no site is assigned to APOBEC by signature there.`} />
         )}
@@ -95,6 +105,7 @@ export default function CohortMutJunctionsPanel({ dataset, onOpen = null }) {
         <MutJunctionBinChart series={pooled} ariaLabel="Pooled APOBEC fraction by distance to nearest junction" />
         <HintLine text="Near = within 100 kb or 1 Mb (switch above) of a breakpoint of a junction seen in at least 2 tumour cells; far = more than 1 Mb or no junction on the chromosome. Odds ratios compare APOBEC-type sites near vs far (exact CI). The meta rows pool the patients: inverse-variance fixed and DerSimonian-Laird random effects on the log odds ratio, Mantel-Haenszel with patient strata, and Stouffer's z of the per-patient junction-shuffle permutation (weighted by the square root of near sites). Background diamonds are the APOBEC-motif fraction among the genotyped candidate sites in the same bin." />
       </Space>
+      )}
     </Card>
   );
 }
