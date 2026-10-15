@@ -4,7 +4,7 @@ import { Button, Popover, Skeleton, Space, Tag, Tooltip, Typography } from "antd
 import { InfoCircleOutlined } from "@ant-design/icons";
 import GeneInfoCard from "../rna/geneInfoCard";
 import useCohortExport from "./useCohortExport";
-import { ONCOKB_URL, covariateHits, driverEventsForGene, parseBiomarkerDrugs, parseCuratedGenes, tmbHits } from "../../../helpers/singleCell/geneQuickLook";
+import { ONCOKB_URL, covariateHits, driverEventsForGene, patientEventsForGene, parseBiomarkerDrugs, parseCuratedGenes, tmbHits } from "../../../helpers/singleCell/geneQuickLook";
 import { fmtP } from "../../../helpers/singleCell/tmbAssoc";
 
 const { Text, Link, Paragraph } = Typography;
@@ -109,6 +109,18 @@ function CohortSection({ gene, ctx }) {
   );
 }
 
+/** Patient pages (no cohort provider): this patient's filtered events naming the gene. */
+function PatientSection({ gene }) {
+  const events = useSelector((s) => s.FilteredEvents?.originalFilteredEvents || s.FilteredEvents?.filteredEvents || []);
+  const report = useSelector((s) => s.Settings?.report);
+  const hits = useMemo(() => patientEventsForGene(events, gene), [events, gene]);
+  return section(`${report || "This patient"}: filtered events`, hits.length ? (
+    <Space size={[4, 4]} wrap>
+      {hits.slice(0, 14).map((e, i) => <Tooltip key={i} title={`${e.label} ${e.variant} · tier ${e.tier}${e.fraction ? ` · ${Math.round(100 * e.fraction)}% of tumor cells` : ""}`}><Tag style={{ margin: 0 }} color={e.tier <= 1 ? "volcano" : "default"}>{`${e.cls} ${e.variant}`.trim()}</Tag></Tooltip>)}
+    </Space>
+  ) : <Text type="secondary">No filtered event in this patient names this gene.</Text>);
+}
+
 export function GeneQuickLookBody({ gene, onClose }) {
   const ctx = useContext(GeneQuickLookContext);
   const commonPath = useSelector((s) => s.Settings?.dataset?.commonPath) || "common/";
@@ -128,18 +140,19 @@ export function GeneQuickLookBody({ gene, onClose }) {
         {a.covde && <Button size="small" onClick={go(a.covde)}>Covariate DE</Button>}
       </Space>
       {section("OncoKB", <OncoKbSection gene={gene} tables={tables} />)}
-      {ctx && <CohortSection gene={gene} ctx={ctx} />}
+      {ctx ? <CohortSection gene={gene} ctx={ctx} /> : <PatientSection gene={gene} />}
       <GeneInfoCard gene={gene} />
     </div>
   );
 }
 
 /** A gene name that opens the quick look (gene card + OncoKB + what the cohort knows) on click. */
-export default function GeneQuickLook({ gene, children = null, icon = false, style }) {
+export default function GeneQuickLook({ gene, children = null, icon = false, style, standalone = false }) {
   const ctx = useContext(GeneQuickLookContext);
   const [open, setOpen] = useState(false);
   if (!gene) return null;
-  if (!ctx) return children || <span>{gene}</span>;
+  // standalone: patient pages, without the cohort provider (OncoKB, this patient's events, gene card)
+  if (!ctx && !standalone) return children || <span>{gene}</span>;
   const label = children || gene;
   return (
     <Popover trigger="click" open={open} onOpenChange={setOpen} destroyTooltipOnHide placement="rightTop" content={<GeneQuickLookBody gene={gene} onClose={() => setOpen(false)} />}>

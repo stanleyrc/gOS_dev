@@ -27,6 +27,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import settingsActions from "../../../redux/settings/actions";
 import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "./volcanoPlot";
 import GeneInfoCard from "./geneInfoCard";
+import GeneQuickLook from "../cohort/geneQuickLook";
 import { geneSetIndex, loadGmt } from "./geneSets";
 import useContainerWidth from "../useContainerWidth";
 import { useViolinGroups } from "./violinPanel";
@@ -519,9 +520,12 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
       dataIndex: "gene",
       key: "gene",
       render: (gene) => (
-        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => onGene(gene)}>
-          {gene}
-        </Button>
+        <span style={{ whiteSpace: "nowrap" }}>
+          <Button type="link" size="small" style={{ padding: 0 }} onClick={() => onGene(gene)}>
+            {gene}
+          </Button>
+          <GeneQuickLook gene={gene} icon standalone />
+        </span>
       ),
     },
     {
