@@ -132,12 +132,12 @@ export async function treeSiteFit(snv, layout, { maxSites = MAX_FIT_SITES, cance
   return out;
 }
 
-/** The "Phylogeny-consistent" preset: F1 >= 0.8, consistency index 1 (at most one gain or loss), <= 1 carrier outside the best clade. */
-export const PHYLO_PRESET = { phylo: { min: 0.8 }, ci: { min: 1 }, outside: { max: 1 } };
+/** The "Phylogeny-consistent" preset: F1 >= 0.8, at most 2 parsimony changes, at most 2 carriers outside the best clade (single-cell dropout makes CI = 1 too strict). */
+export const PHYLO_PRESET = { phylo: { min: 0.8 }, changes: { max: 2 }, outside: { max: 2 } };
 
 /** True when the filter is exactly the preset's keys with its values. */
 export const isPhyloPreset = (filter) =>
-  Boolean(filter) && filter.phylo?.min === 0.8 && filter.ci?.min === 1 && filter.outside?.max === 1;
+  Boolean(filter) && filter.phylo?.min === 0.8 && filter.changes?.max === 2 && filter.outside?.max === 2;
 
 /** Fraction of fitted sites passing the preset: { pass, n, fraction }. */
 export function presetPassRate(fit) {
@@ -147,7 +147,7 @@ export function presetPassRate(fit) {
   for (let c = 0; c < fit.f1.length; c += 1) {
     if (!Number.isFinite(fit.f1[c])) continue;
     n += 1;
-    if (fit.f1[c] >= 0.8 && fit.ci[c] >= 1 && fit.outside[c] <= 1) pass += 1;
+    if (fit.f1[c] >= 0.8 && fit.changes[c] <= 2 && fit.outside[c] <= 2) pass += 1;
   }
   return { pass, n, fraction: n ? pass / n : NaN };
 }
