@@ -2,17 +2,20 @@ import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Button, Card, Collapse, Input, Select, Space, Table, Tag, Typography } from "antd";
-import { ExportOutlined, SelectOutlined } from "@ant-design/icons";
+import { DownloadOutlined, ExportOutlined, SelectOutlined } from "@ant-design/icons";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../redux/singleCell/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import { naturalCompare, representativeCells } from "../../helpers/singleCell/matrix";
 import { snakeCaseToHumanReadable } from "../../helpers/utility";
+import { cellsTsv } from "../../helpers/singleCell/cellLabels";
 import ColorTag from "./colorTag";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const MAX_EXTRA_COLUMNS = 6;
 const HIDDEN_KEYS = new Set([
   "cell_id",
+  "well",
   "clone_id",
   "id",
   "pair",
@@ -35,6 +38,7 @@ const formatValue = (v) =>
 
 export default function CellSelectionPanel() {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const { cells, order, cloneColors, selectedCellIds, patient } = useSelector(
     (state) => state.SingleCell
@@ -73,12 +77,22 @@ export default function CellSelectionPanel() {
         (c) =>
           !q ||
           c.cell_id.toLowerCase().includes(q) ||
+          cellLabels.match(q, [c.cell_id]).length > 0 ||
           `${c.clone_id ?? ""}`.toLowerCase() === q ||
           extraKeys.some((k) => `${c[k] ?? ""}`.toLowerCase().includes(q))
       )
       .sort((a, b) => (rank.get(a.cell_id) ?? 0) - (rank.get(b.cell_id) ?? 0))
       .map((c) => ({ key: c.cell_id, ...c }));
-  }, [cells, order, query, extraKeys]);
+  }, [cells, order, query, extraKeys, cellLabels]);
+
+  const downloadTsv = () => {
+    const url = URL.createObjectURL(new Blob([cellsTsv(rows, cellLabels.map, [["clone_id", "clone"], ...extraKeys.map((k) => [k, k])])], { type: "text/tab-separated-values" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${patient?.caseReportId || "cells"}_cells.tsv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const cloneTag = (clone) =>
     clone == null ? (
@@ -94,8 +108,9 @@ export default function CellSelectionPanel() {
       title: t("components.single-cell.table.cell"),
       dataIndex: "cell_id",
       key: "cell_id",
-      sorter: (a, b) => naturalCompare(a.cell_id, b.cell_id),
+      sorter: (a, b) => naturalCompare(cellLabels.label(a.cell_id), cellLabels.label(b.cell_id)),
       ellipsis: true,
+      render: (id) => <span title={cellLabels.full(id)}>{cellLabels.label(id)}</span>,
     },
     {
       title: t("components.single-cell.table.clone"),
@@ -186,8 +201,9 @@ export default function CellSelectionPanel() {
                 e.preventDefault();
                 setSelection(selectedCellIds.filter((c) => c !== id));
               }}
+              title={cellLabels.full(id)}
             >
-              {id}
+              {cellLabels.label(id)}
             </Tag>
           );
         })}
@@ -221,6 +237,7 @@ export default function CellSelectionPanel() {
                   style={{ maxWidth: 320, marginBottom: 8 }}
                   onChange={(e) => setQuery(e.target.value)}
                 />
+                <Button size="small" icon={<DownloadOutlined />} style={{ marginLeft: 8 }} onClick={downloadTsv}>TSV</Button>
                 <Table
                   size="small"
                   columns={columns}

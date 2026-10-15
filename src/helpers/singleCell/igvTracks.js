@@ -52,10 +52,10 @@ export const isRnaTrackName = (name) => `${name || ""}`.startsWith(RNA_TRACK_PRE
  * relative to the patient folder. RNA reads are grouped and coloured by the
  * ZF tag so the fusion-supporting reads (ZF:1) form their own block.
  */
-export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortAt = null, dnaHeight = 260, rnaHeight = 200 }) {
+export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortAt = null, dnaHeight = 260, rnaHeight = 200, labelFor = null }) {
   const dna = dnaCellIds.map((cellId) => ({
-    id: cellId,
-    name: cellId,
+    id: cellId, // the pair id stays the key (folder, de-duplication); only the shown name follows labelFor
+    name: labelFor ? `${labelFor(cellId)}` : cellId,
     url: pathFor(cellId, DNA_READS_FILE),
     indexURL: pathFor(cellId, `${DNA_READS_FILE}.bai`),
     format: "bam",

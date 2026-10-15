@@ -34,3 +34,14 @@ describe("sortBrowserAltFirst", () => {
     expect(calls[0][1]).not.toBe(calls[1][1]);
   });
 });
+
+describe("buildIgvTracks labels", () => {
+  it("shows the well label as the track name while the id and URLs keep the pair id", () => {
+    const pathFor = (f, file) => `/d/${f}/${file}`;
+    const [t] = buildIgvTracks({ dnaCellIds: ["XX1_10"], pathFor, labelFor: (id) => (id === "XX1_10" ? "XX1_MR_1_pl1_3a" : id) });
+    expect(t.name).toBe("XX1_MR_1_pl1_3a");
+    expect(t.id).toBe("XX1_10");
+    expect(t.url).toBe("/d/XX1_10/reads.bam");
+    expect(buildIgvTracks({ dnaCellIds: ["XX1_10"], pathFor })[0].name).toBe("XX1_10");
+  });
+});

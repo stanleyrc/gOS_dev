@@ -10,6 +10,7 @@ import { altFirstSort } from "../../../helpers/singleCell/igvTracks";
 import NotComputed, { pcFile } from "./notComputed";
 import { Provenance } from "../hintLine";
 import ColorTag from "../colorTag";
+import useCellLabels from "../useCellLabels";
 
 const { Text } = Typography;
 const WINDOW = 60;
@@ -70,6 +71,7 @@ function siteOptions(calls, slices) {
  * show no alt reads at that depth ("not detected" is not "absent").
  */
 export default function ReadSlicePanel() {
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const { cells, cloneColors, order, patient, selectedCellIds, precompute } = useSelector((s) => s.SingleCell);
   const dataset = useSelector((s) => s.Settings.dataset);
@@ -201,8 +203,8 @@ export default function ReadSlicePanel() {
       fixed: "left",
       ellipsis: true,
       render: (id) => (
-        <Text style={{ fontSize: 13, whiteSpace: "nowrap" }} strong={selected.has(id)} title={id}>
-          {id}
+        <Text style={{ fontSize: 13, whiteSpace: "nowrap" }} strong={selected.has(id)} title={cellLabels.full(id)}>
+          {cellLabels.label(id)}
         </Text>
       ),
     },

@@ -7,6 +7,7 @@ import { getAppTheme, onAppThemeChange, setAppTheme } from "../../helpers/appThe
 import { THEMES } from "../../helpers/singleCell/themes";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
 import singleCellActions from "../../redux/singleCell/actions";
+import useCellLabels from "../singleCell/useCellLabels";
 import { clearSiteSettings } from "../../helpers/clearSiteSettings";
 
 const { Text } = Typography;
@@ -19,6 +20,7 @@ const { Text } = Typography;
 export default function SettingsMenu() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
+  const cellLabels = useCellLabels();
   const [mode, setMode] = useState(getAppTheme());
   useEffect(() => onAppThemeChange(setMode), []);
   const layout = useSelector((state) => state.SingleCell.layout);
@@ -46,6 +48,21 @@ export default function SettingsMenu() {
             ]}
           />
         </div>
+      </div>
+      <Divider style={{ margin: "4px 0" }} />
+      <div>
+        <Text strong>Cell labels</Text>
+        <div style={{ marginTop: 4 }}>
+          <Segmented
+            value={cellLabels.mode}
+            onChange={(v) => cellLabels.setMode(v)}
+            options={[
+              { value: "well", label: "Well name" },
+              { value: "id", label: "Pair id" },
+            ]}
+          />
+        </div>
+        <Text type="secondary" style={{ fontSize: 12 }}>Single cells are shown by well name (e.g. BWH75_MR_3_pl3_10a) or by their numeric pair id (BWH75_432). URLs, files and joins always use the pair id.</Text>
       </div>
       <Divider style={{ margin: "4px 0" }} />
       <div>

@@ -80,10 +80,11 @@ import { DEFAULT_SNV_TRACKS } from "../../helpers/singleCell/snvAnnot";
 import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitToSearch, splitWidths } from "../../helpers/singleCell/panelSplit";
 import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
-const NOT_ANNOTATIONS = new Set(["pair", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
+const NOT_ANNOTATIONS = new Set(["pair", "well", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
 const TRACK_LABEL_ROOM = 92; // px kept free right of the beside-SNV annotation strips for their track names
 // Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
@@ -126,6 +127,7 @@ export default function CellHeatmapPanel() {
   // annotation strips: "not selected" / "no value" cells take the panel tint, not white
   const stripBlank = useMemo(() => packRGBA(hexToRgb(pt.panelAlt)), [pt]);
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
   const { domains, chromoBins, defaultDomain, genomeLength, zoomedByCmd } = useSelector((state) => state.Settings);
@@ -884,7 +886,7 @@ export default function CellHeatmapPanel() {
       left: Math.min(left, (holder?.width || left) - 260),
       top: event.clientY - (holder?.top || 0) + 14,
       lines: [
-        [t("components.single-cell.tooltip.cell"), order[row]],
+        [t("components.single-cell.tooltip.cell"), cellLabels.full(order[row])],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
         ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
         ...(showExpression
