@@ -124,7 +124,22 @@ export default function ScEventsPanel() {
                 <Tooltip title={t("components.single-cell.events.clade-score-detail", { inClade: c.inClade, clade: c.clade, carriers: c.carriers })}>
                   <span style={{ color: c.score < 0.5 ? "#cf1322" : c.score >= 0.8 ? "#237804" : undefined, fontWeight: c.score >= 0.8 ? 600 : 400 }}>{c.score.toFixed(2)}</span>
                 </Tooltip>
-                {c.carriers >= 3 && (
+              </Space>
+            );
+          },
+        },
+        {
+          title: (
+            <Tooltip title="Open the convergence tool for this event: splits its carrier cells into groups on the tree and lists the SNVs that place each group with non-carriers (suggesting the event arose more than once) or shared only by the groups (one origin). Independent of Clade F1, which only measures how tightly the carriers sit in one clade.">
+              <span>Conv.</span>
+            </Tooltip>
+          ),
+          key: "convergence",
+          width: 56,
+          render: (_, record) => {
+            const c = cladeOf(record);
+            if (!(c.carriers >= 3)) return null;
+            return (
                   <Tooltip title="Convergence: carrier groups on the tree and the SNVs that show whether this event arose more than once (Single-Cell tab)">
                     <Typography.Link
                       data-testid="convergence-link"
@@ -137,8 +152,6 @@ export default function ScEventsPanel() {
                       <BranchesOutlined />
                     </Typography.Link>
                   </Tooltip>
-                )}
-              </Space>
             );
           },
         },

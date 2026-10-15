@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import * as d3 from "d3";
-import { Alert, Button, Card, Empty, InputNumber, Segmented, Select, Space, Switch, Tag, Typography } from "antd";
-import { TableOutlined } from "@ant-design/icons";
+import { Alert, Badge, Button, Card, Empty, Input, InputNumber, Popover, Segmented, Select, Slider, Space, Switch, Tag, Tooltip, Typography } from "antd";
+import { FilterOutlined, TableOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import datasetsActions from "../../../redux/datasets/actions";
@@ -15,12 +15,30 @@ import {
   cohortEntries,
   drvOpenParams,
   geneChoices,
-  oncoprintGrid,
   sortColumns,
   sortRowsByFrequency,
   addedGeneGaps,
 } from "../../../helpers/singleCell/cohortOncoprint";
 import { classLabel } from "../../../helpers/singleCell/driverLayer";
+import { TIER_OPTIONS } from "../../../helpers/singleCell/cohortStats";
+import {
+  CONSEQUENCE_CHOICES,
+  DEFAULT_OC_FILTERS,
+  GENE_LIST_CHOICES,
+  OC_URL_PARAMS,
+  ROLE_CHOICES,
+  VERDICT_CHOICES,
+  annotateEntries,
+  clearFilter,
+  countsLine,
+  filterChips,
+  filterOncoprint,
+  filteredAddedGenes,
+  parseGeneList,
+  parseOcState,
+  serializeOcState,
+} from "../../../helpers/singleCell/cohortOncoprintFilters";
+import { useCgcGenes } from "../drivers/useDriverLayer";
 import { FONT, Swatches } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
 import { groupOncoprintRows, oncoprintRole, oncoprintRowNote } from "../../../helpers/singleCell/cohortStats";
@@ -45,6 +63,69 @@ function Glyph({ shape, cx, cy, r, fill }) {
   return <rect x={cx - r * 0.8} y={cy - r * 0.8} width={r * 1.6} height={r * 1.6} fill={fill} />;
 }
 
+const FIELD = { display: "grid", gridTemplateColumns: "150px 1fr", alignItems: "center", gap: 8, marginBottom: 6 };
+function Field({ label, children, hint }) {
+  return (
+    <div style={FIELD}>
+      <Tooltip title={hint}><Text type="secondary">{label}</Text></Tooltip>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+/** The Filters popover: genes, events, rows / patients. */
+function FiltersForm({ filters: f, setFilter, reset, pasted, setPasted, patients, hasVerdicts, hasRna, hasCgc }) {
+  const sectionStyle = { fontWeight: 600, margin: "8px 0 6px" };
+  const multi = (key, options, placeholder = "any") => (
+    <Select size="small" mode="multiple" allowClear maxTagCount="responsive" placeholder={placeholder} style={{ width: "100%" }} value={f[key]} onChange={(v) => setFilter({ [key]: v })} options={options} />
+  );
+  return (
+    <div style={{ width: 520, maxHeight: "70vh", overflowY: "auto", paddingRight: 4 }}>
+      <div style={sectionStyle}>Genes</div>
+      <Field label="Gene role">{multi("roles", ROLE_CHOICES)}</Field>
+      <Field label="Gene lists" hint={hasCgc ? "Any of the chosen lists (OR); DNA repair lists are fixed symbol sets" : "COSMIC CGC is still loading or not available"}>
+        {multi("lists", GENE_LIST_CHOICES.map((c) => (c.value === "cgc" && !hasCgc ? { ...c, disabled: true, label: `${c.label} (not available)` } : c)))}
+      </Field>
+      <Field label="Pasted gene list" hint="Symbols separated by space, comma or semicolon; joined (OR) with the lists">
+        <Input.TextArea size="small" rows={2} placeholder="e.g. PRKDC, XRCC4, LIG4" value={pasted} onChange={(e) => { setPasted(e.target.value); setFilter({ custom: parseGeneList(e.target.value) }); }} />
+      </Field>
+      <Field label="Search"><Input size="small" allowClear placeholder="row label or gene contains" value={f.search} onChange={(e) => setFilter({ search: e.target.value })} /></Field>
+      <div style={sectionStyle}>Events</div>
+      <Field label="Consequence">{multi("consequences", CONSEQUENCE_CHOICES)}</Field>
+      <Field label="Tier" hint="Highest tier allowed; '≤ 2 + damaging missense' adds tier-3 missense predicted damaging by SIFT and PolyPhen">
+        <Select size="small" allowClear placeholder="any" style={{ width: "100%" }} value={f.maxTier} onChange={(v) => setFilter({ maxTier: v ?? null })} options={TIER_OPTIONS} />
+      </Field>
+      <Field label="Clonality"><Segmented size="small" value={f.clonality} onChange={(v) => setFilter({ clonality: v })} options={[{ value: "any", label: "Both" }, { value: "clonal", label: "Clonal" }, { value: "subclonal", label: "Subclonal" }]} /></Field>
+      <Field label="Min carrier cells" hint="Events carried by fewer cells are dropped (default 3)">
+        <InputNumber size="small" min={1} max={1000} value={f.minCells} onChange={(v) => setFilter({ minCells: v || 1 })} style={{ width: 80 }} />
+      </Field>
+      <Field label="Tumour-cell fraction" hint="Share of tumour cells that carry the event">
+        <Slider range min={0} max={100} step={1} value={[Math.round(f.minFrac * 100), Math.round(f.maxFrac * 100)]} onChange={([a, b]) => setFilter({ minFrac: a / 100, maxFrac: b / 100 })} tooltip={{ formatter: (v) => `${v}%` }} />
+      </Field>
+      <Field label="Clade F1" hint="How well the carrier cells form one clade of the patient's tree (events without a score stay)">
+        <Slider range min={0} max={1} step={0.05} value={[f.minF1, f.maxF1]} onChange={([a, b]) => setFilter({ minF1: a, maxF1: b })} />
+      </Field>
+      <Field label="Site-QC verdict" hint={hasVerdicts ? "Only events that have site evidence are filtered" : "not available (site evidence is not loaded in the cohort view; open the patient's Drivers layer)"}>
+        <Select size="small" mode="multiple" allowClear disabled={!hasVerdicts} maxTagCount="responsive" placeholder={hasVerdicts ? "any" : "not available (no site evidence loaded)"} style={{ width: "100%" }} value={f.verdicts} onChange={(v) => setFilter({ verdicts: v })} options={VERDICT_CHOICES} />
+      </Field>
+      <Field label="Fusion support" hint={hasRna ? "DNA = cell carriers; RNA = a matching RNA fusion call" : "RNA fusion calls are not exported for these patients: RNA / both would hide every fusion"}>
+        <Segmented size="small" value={f.fusionSupport} onChange={(v) => setFilter({ fusionSupport: v })} options={[{ value: "any", label: "Any" }, { value: "dna", label: "DNA" }, { value: "rna", label: "RNA", disabled: !hasRna }, { value: "both", label: "DNA + RNA", disabled: !hasRna }]} />
+      </Field>
+      <Field label="Upstream-only fusions"><Switch size="small" checked={f.noUpstream} onChange={(v) => setFilter({ noUpstream: v })} /> <Text type="secondary">exclude</Text></Field>
+      <div style={sectionStyle}>Rows and patients</div>
+      <Field label="Min patients per row" hint="2 or more shows recurrence only">
+        <InputNumber size="small" min={1} max={100} value={f.minPatients} onChange={(v) => setFilter({ minPatients: v || 1 })} style={{ width: 80 }} />
+      </Field>
+      <Field label="Max rows" hint="Most recurrent rows first; 0 = all">
+        <InputNumber size="small" min={0} max={500} value={f.maxRows} onChange={(v) => setFilter({ maxRows: v || 0 })} style={{ width: 80 }} />
+      </Field>
+      <Field label="Patients">{multi("patients", patients.map((p) => ({ value: p, label: p })), "all patients")}</Field>
+      <Field label="Hide empty patients"><Switch size="small" checked={f.hideEmpty} onChange={(v) => setFilter({ hideEmpty: v })} /></Field>
+      <Button size="small" onClick={reset}>Reset all filters</Button>
+    </div>
+  );
+}
+
 /**
  * Cross-patient oncoprint: genes x patients from every patient's filtered events. Each cell draws the
  * event-class glyph on a fill whose intensity is the fraction of tumour cells carrying it; clonal calls
@@ -55,18 +136,55 @@ function Glyph({ shape, cx, cy, r, fill }) {
 export default function CohortOncoprintPanel({ summaries, files }) {
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(900);
-  const [sel, setSel] = useState(DEFAULT_ONCOPRINT);
+  const [sel, setSel] = useState(() => parseOcState(typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("ocs"), DEFAULT_ONCOPRINT));
+  const [filters, setFilters] = useState(() => parseOcState(typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("ocf"), DEFAULT_OC_FILTERS));
+  const [pasted, setPasted] = useState(() => (filters.custom || []).join(" "));
+  const cgc = useCgcGenes();
+  const setFilter = (o) => setFilters((f) => ({ ...f, ...o }));
+  // selection + filters live in the URL (ocs / ocf: only what differs from the default)
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const vals = { ocs: serializeOcState(sel, DEFAULT_ONCOPRINT), ocf: serializeOcState(filters, DEFAULT_OC_FILTERS) };
+      OC_URL_PARAMS.forEach((k) => (vals[k] ? url.searchParams.set(k, vals[k]) : url.searchParams.delete(k)));
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (e) {
+      // no history
+    }
+  }, [sel, filters]);
+  useEffect(
+    () => () => {
+      try {
+        const url = new URL(window.location.href);
+        OC_URL_PARAMS.forEach((k) => url.searchParams.delete(k));
+        window.history.replaceState(window.history.state, "", url.toString());
+      } catch (e) {
+        // no history
+      }
+    },
+    []
+  );
   const [colSort, setColSort] = useState("exclusivity");
   const [rowSort, setRowSort] = useState("role");
   const [showFractions, setShowFractions] = useState(true);
   const patch = (o) => setSel((s) => ({ ...s, ...o }));
 
-  const entriesByPatient = useMemo(
-    () => Object.fromEntries(summaries.filter((s) => files[s.caseReportId]?.events).map((s) => [s.caseReportId, cohortEntries(files[s.caseReportId].events)])),
-    [summaries, files]
+  const allEntries = useMemo(
+    () =>
+      Object.fromEntries(
+        summaries
+          .filter((s) => files[s.caseReportId]?.events)
+          .map((s) => [s.caseReportId, annotateEntries(cohortEntries(files[s.caseReportId].events), { tree: files[s.caseReportId].tree, rnaFusions: files[s.caseReportId].rnaFusions, cgc })])
+      ),
+    [summaries, files, cgc]
   );
-  const choices = useMemo(() => geneChoices(entriesByPatient), [entriesByPatient]);
-  const grid = useMemo(() => oncoprintGrid(entriesByPatient, sel), [entriesByPatient, sel]);
+  const result = useMemo(() => filterOncoprint(allEntries, sel, filters), [allEntries, sel, filters]);
+  const entriesByPatient = result.entriesByPatient;
+  const grid = result.grid;
+  const choices = useMemo(() => geneChoices(allEntries), [allEntries]);
+  const chips = useMemo(() => filterChips(filters, result.hidden), [filters, result.hidden]);
+  const hasVerdicts = useMemo(() => Object.values(allEntries).some((l) => l.some((d) => d.verdict != null)), [allEntries]);
+  const hasRna = useMemo(() => Object.values(allEntries).some((l) => l.some((d) => d.rnaKnown)), [allEntries]);
   const rows = useMemo(() => {
     if (rowSort === "name") return [...grid.rows].sort((a, b) => a.gene.localeCompare(b.gene));
     if (rowSort === "fraction") return [...grid.rows].sort((a, b) => b.maxFraction - a.maxFraction || b.nPatients - a.nPatients);
@@ -75,10 +193,14 @@ export default function CohortOncoprintPanel({ summaries, files }) {
   // display rows: role groups (oncogenes, tumour suppressors, ...) with header rows, each group in frequency order
   const displayRows = useMemo(() => (rowSort === "role" ? groupOncoprintRows(rows, "role") : rows.map((g) => ({ gene: g }))), [rows, rowSort]);
   const patients = useMemo(() => sortColumns({ ...grid, rows }, colSort), [grid, rows, colSort]);
+  const allPatients = useMemo(() => Object.keys(allEntries), [allEntries]);
   // added genes that still have no row, with the reason (filters drop every entry of that gene)
-  const missingAdded = useMemo(() => addedGeneGaps(entriesByPatient, sel, grid.rows), [entriesByPatient, sel, grid]);
+  const missingAdded = useMemo(() => {
+    const byFilter = new Map(filteredAddedGenes(allEntries, sel.addGenes, filters).map((m) => [m.gene, m.reason]));
+    return addedGeneGaps(entriesByPatient, sel, grid.rows).map((m) => (byFilter.has(m.gene) ? { ...m, reason: byFilter.get(m.gene) } : m));
+  }, [allEntries, entriesByPatient, sel, filters, grid]);
 
-  if (!grid.patients.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No filtered events loaded yet." />;
+  if (!allPatients.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No filtered events loaded yet." />;
 
   const open = (patient, entry) => {
     const summary = summaries.find((s) => s.caseReportId === patient);
@@ -104,7 +226,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
   return (
     <Card
       size="small"
-      title={<Space><TableOutlined />{`Cross-patient oncoprint (${rows.length} rows x ${patients.length} patients)`}<Provenance id="oncoprint" /></Space>}
+      title={<Space><TableOutlined />{`Cross-patient oncoprint (${countsLine({ rows, patients }, result.hidden)})`}<Provenance id="oncoprint" /></Space>}
       extra={<SvgExportButton containerRef={ref} name="cohort-oncoprint" />}
     >
       <Space direction="vertical" size={8} style={{ width: "100%" }}>
@@ -138,6 +260,40 @@ export default function CohortOncoprintPanel({ summaries, files }) {
               filterOption={(input, o) => `${o.label}`.toUpperCase().includes(input.toUpperCase())}
             />
           </Space>
+        </Space>
+        <Space wrap size={[8, 6]}>
+          <Popover
+            trigger="click"
+            placement="bottomLeft"
+            title="Oncoprint filters (all combined with AND)"
+            content={
+              <FiltersForm
+                filters={filters}
+                setFilter={setFilter}
+                reset={() => {
+                  setFilters(DEFAULT_OC_FILTERS);
+                  setPasted("");
+                }}
+                pasted={pasted}
+                setPasted={setPasted}
+                patients={allPatients}
+                hasVerdicts={hasVerdicts}
+                hasRna={hasRna}
+                hasCgc={cgc != null}
+              />
+            }
+          >
+            <Badge count={chips.length} size="small">
+              <Button size="small" icon={<FilterOutlined />}>Filters</Button>
+            </Badge>
+          </Popover>
+          {chips.map((c) => (
+            <Tooltip key={c.key} title={c.tip}>
+              <Tag closable color="blue" onClose={() => setFilters((f) => clearFilter(f, c.key))} style={{ marginInlineEnd: 0 }}>{c.label}</Tag>
+            </Tooltip>
+          ))}
+          {chips.length > 0 && <Button size="small" type="link" onClick={() => { setFilters(DEFAULT_OC_FILTERS); setPasted(""); }}>Reset filters</Button>}
+          <Text type="secondary">{countsLine({ rows, patients }, result.hidden)}</Text>
         </Space>
         <Space wrap size={[12, 6]}>
           <Space size={4}>
