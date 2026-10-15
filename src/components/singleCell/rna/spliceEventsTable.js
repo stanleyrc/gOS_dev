@@ -7,6 +7,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import settingsActions from "../../../redux/settings/actions";
 import CellIgvPanel from "../cellIgvPanel";
 import HintLine from "../hintLine";
+import SpliceReadsPanel from "./spliceReadsPanel";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABEL,
@@ -24,6 +25,7 @@ import {
   recurrenceText,
   snvLinkIgvView,
   sortSpliceEvents,
+  spliceReadsView,
   usageText,
 } from "../../../helpers/singleCell/spliceEventTable";
 
@@ -91,12 +93,14 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
   const [novelOnly, setNovelOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [active, setActive] = useState(null); // { eventId, variantId }
+  const [readsId, setReadsId] = useState(null); // event whose raw reads are open
   const counts = useMemo(() => eventCounts(events), [events]);
   const rows = useMemo(() => sortSpliceEvents(filterSpliceEvents(events, { mode, query, eventType, linkedOnly, novelOnly })), [events, mode, query, eventType, linkedOnly, novelOnly]);
   const activeEvent = events.find((e) => e.id === active?.eventId);
   const activeLink = activeEvent?.snvLinks.find((l) => l.variantId === active?.variantId);
   const igvView = useMemo(() => (activeEvent && activeLink ? snvLinkIgvView(activeEvent, activeLink, { cellMap, spliceReads, patientId }) : null), [activeEvent, activeLink, cellMap, spliceReads, patientId]);
 
+  const readsEvent = events.find((e) => e.id === readsId) || null;
   const pickLink = (event, link) => {
     setActive({ eventId: event.id, variantId: link.variantId });
     // the existing SNV paint / selection: the site on the heatmap and the carriers selected
@@ -211,6 +215,23 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
         );
       },
     },
+    {
+      title: <Th label={t(`${k}.ev-col-reads`)} help={t(`${k}.ev-col-reads-help`)} />,
+      key: "reads",
+      fixed: "right",
+      render: (_, e) => {
+        const ok = spliceReadsView(e, { spliceReads }).available;
+        return ok ? (
+          <Button size="small" type={readsId === e.id ? "primary" : "default"} onClick={() => setReadsId((id) => (id === e.id ? null : e.id))}>
+            {t(`${k}.ev-reads`)}
+          </Button>
+        ) : (
+          <Tooltip title={t(`${k}.ev-reads-none-help`)}>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t(`${k}.ev-reads-none`)}</Text>
+          </Tooltip>
+        );
+      },
+    },
   ];
   return (
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
@@ -250,8 +271,9 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
         pagination={{ pageSize: PAGE_SIZE, size: "small", showSizeChanger: false, current: page, onChange: setPage }}
         scroll={{ x: "max-content" }}
         columns={columns}
-        rowClassName={(e) => (active?.eventId === e.id ? "ant-table-row-selected" : "")}
+        rowClassName={(e) => (active?.eventId === e.id || readsId === e.id ? "ant-table-row-selected" : "")}
       />
+      {readsEvent && <SpliceReadsPanel event={readsEvent} spliceReads={spliceReads} patientId={patientId} onSashimi={onSashimi} onClose={() => setReadsId(null)} />}
       {activeEvent && activeLink && (
         <Space direction="vertical" size={6} style={{ width: "100%" }}>
           <Alert
