@@ -96,9 +96,9 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null, fitBusy 
   }, [annot]);
   const presetCount = useMemo(() => {
     const n = annot?.num;
-    if (!n?.ci || !n.phylo || !n.outside) return null;
+    if (!n?.changes || !n.phylo || !n.outside) return null;
     let k = 0;
-    for (let c = 0; c < annot.n; c += 1) if (n.phylo[c] >= 0.8 && n.ci[c] >= 1 && n.outside[c] <= 1) k += 1;
+    for (let c = 0; c < annot.n; c += 1) if (n.phylo[c] >= 0.8 && n.changes[c] <= 2 && n.outside[c] <= 2) k += 1;
     return k;
   }, [annot]);
   const qcRange = useMemo(() => finiteRange(annot?.num.qc), [annot]);
@@ -112,7 +112,7 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null, fitBusy 
     } else setFilter({ ...(filter || {}), ...PHYLO_PRESET });
   };
   const presetButton = (
-    <Tooltip title="Sites that obey the tree: best-clade F1 >= 0.8, consistency index 1 (one gain or loss at most) and at most 1 carrier outside the best clade. Computed from called genotypes on the current tree.">
+    <Tooltip title="Sites that obey the tree: rule: best-clade F1 >= 0.8 AND parsimony changes <= 2 AND outside-clade carriers <= 2. Computed from called genotypes on the current tree.">
       <Button size="small" type={presetOn ? "primary" : "default"} loading={fitBusy && presetCount == null} disabled={presetCount == null} onClick={togglePreset}>
         {presetCount == null ? "Phylogeny-consistent" : `Phylogeny-consistent (${presetCount})`}
       </Button>
