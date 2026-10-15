@@ -41,3 +41,18 @@ export function cnRowsForLeaves(leaves, payloadCells, payloadRows) {
   });
   return { map, missing };
 }
+
+/** Vertical padding of the tree figure: none when a heatmap/matrix sits beside the trees, so rows line up. */
+export const figurePad = (hasBesideLayer) => (hasBesideLayer ? 0 : 6);
+
+/** [top, bottom] pixel band of row `row` of `n` in a figure of `height` with `pad` above and below (as the tree rows and the heatmap rows). */
+export function rowBand(row, n, height, pad = 0) {
+  const span = height - 2 * pad;
+  return [pad + (row / n) * span, pad + ((row + 1) / n) * span];
+}
+
+/** Width of each CN heatmap: the chosen px, capped so the trees keep at least `minTrees` px each. */
+export function cnWidth(choice, total, used, minTrees = 140) {
+  const room = Math.floor((total - used - 2 * minTrees) / 2);
+  return Math.max(60, Math.min(choice, room));
+}

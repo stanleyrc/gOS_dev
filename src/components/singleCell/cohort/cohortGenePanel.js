@@ -5,7 +5,7 @@ import { Card, Empty, Segmented, Select, Space, Switch, Table, Typography } from
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
-import { EVENT_CLASS_ORDER, eventClass } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, passesTier } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -27,7 +27,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const [ref, width] = useContainerWidth(1000);
   const [mode, setMode] = useState("fraction");
   const [strongOnly, setStrongOnly] = useState(true);
-  const [maxTier, setMaxTier] = useState(2);
+  const [maxTier, setMaxTier] = useState("2d"); // tiers 1-2 plus damaging tier-3 missense
   const [picked, setPicked] = useState(null);
 
   // gene -> patient -> class -> { cells, fraction } (strongest event per class)
@@ -35,7 +35,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
     const out = new Map();
     summaries.forEach((s) => {
       (files[s.caseReportId]?.events || []).forEach((e) => {
-        if (Number(e.Tier ?? 9) > maxTier) return;
+        if (!passesTier({ ...e, Tier: e.Tier ?? 9 }, maxTier)) return;
         if (strongOnly && !isStrongEvent(e)) return;
         const gene = e.gene || e.fusion_genes || e.name;
         if (!gene) return;
@@ -121,7 +121,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
           />
           <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "fraction", label: t("components.single-cell.cohort.genes-fraction") }, { value: "cells", label: t("components.single-cell.cohort.genes-cells") }]} />
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-tier")}</Text>
-          <Select size="small" value={maxTier} onChange={setMaxTier} style={{ width: 80 }} options={[1, 2, 3].map((v) => ({ value: v, label: `≤ ${v}` }))} />
+          <Select size="small" value={maxTier} onChange={setMaxTier} style={{ width: 200 }} options={TIER_OPTIONS} popupMatchSelectWidth={false} />
           <Switch size="small" checked={strongOnly} onChange={setStrongOnly} />
           <Text>{t("components.single-cell.events.strong-only")}</Text>
           <SvgExportButton containerRef={ref} name="cohort-genes" />
