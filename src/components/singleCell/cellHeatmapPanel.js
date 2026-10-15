@@ -53,7 +53,6 @@ import {
   genomicColumnLookup,
   genomicTicks,
   hexToRgb,
-  junctionColumnOrder,
   junctionRGBA,
   packRGBA,
   panDomain,
@@ -73,6 +72,20 @@ import { PLOIDY_TRACK, barPixels, modalPloidy, ploidyAxisMax, ploidyBarFraction,
 import useDriverLayer from "./drivers/useDriverLayer";
 import DriverControls from "./drivers/driverControls";
 import DriverColumnHeader from "./drivers/driverColumnHeader";
+import JunctionColumnHeader from "./junctionColumnHeader";
+import {
+  JUNCTION_FOCUS_PARAMS,
+  carrierRows as junctionCarrierRows,
+  effectiveFilter,
+  isZoomed,
+  junctionBreakends,
+  junctionColumns,
+  junctionFocusToSearch,
+  junctionLabel,
+  junctionStats,
+  junctionType,
+  walkOptions,
+} from "../../helpers/singleCell/junctionFocus";
 import DriverWidthControl from "./drivers/driverWidthControl";
 import { DRIVER_AUTO_COL, DRIVER_AUTO_COL_BESIDE, DRIVER_LAYOUT_PARAMS, driverLayoutToSearch, driverView, panRange, zoomRange } from "../../helpers/singleCell/driverColumns";
 import DriverLayerDrawer from "./drivers/driverLayerDrawer";
@@ -583,6 +596,18 @@ export default function CellHeatmapPanel() {
       // no window / history: the selection still lives in redux
     }
   }, [heatmapType, showCnDrivers, layout.driverColPx, layout.cnw, layout.drvbw, layout.snbw, panelsPresent.join(), driverLayer.selection, sc.patient]);
+  // Junction CN focus (filter + sort) lives in the URL (heatmap=junctions&jcf=all|view|walk:<id>&jsort=carriers)
+  useEffect(() => {
+    if (!sc.patient) return;
+    try {
+      const url = new URL(window.location.href);
+      JUNCTION_FOCUS_PARAMS.forEach((k) => url.searchParams.delete(k));
+      Object.entries(junctionFocusToSearch({ heatmapType, junctionFilter: layout.junctionFilter, junctionSort: layout.junctionSort })).forEach(([k, v]) => url.searchParams.set(k, v));
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window / history: the choice still lives in redux
+    }
+  }, [heatmapType, layout.junctionFilter, layout.junctionSort, sc.patient]);
   // Drivers layer: label of the driver(s) arising on each branch
   const driverMarks = useMemo(() => {
     if (!(heatmapType === "drivers" || showCnDrivers) || !layout.driverBranches || !treeLayout) return null;
@@ -607,8 +632,21 @@ export default function CellHeatmapPanel() {
 
   /* ---- junction columns can be zoomed (wheel/drag/double-click) like the mutation panel ---- */
   const [jRange, setJRange] = useState(null);
-  const nJunctions = junctions.status === "ok" ? junctions.data.junctions.length : 0;
-  useEffect(() => setJRange(null), [nJunctions]);
+  const jFilterChoice = layout.junctionFilter || null; // {mode, walkId} from the toolbar / ?jcf=; null = automatic
+  const jSort = layout.junctionSort === "carriers" ? "carriers" : "pos";
+  const walkList = sc.walks?.status === "ok" ? sc.walks.data.walks || [] : [];
+  const jWalkOptions = useMemo(() => walkOptions(walkList), [walkList]);
+  const jStats = useMemo(() => (junctions.status === "ok" ? junctionStats(junctions.data) : []), [junctions]);
+  const jZoomed = isZoomed(domains, defaultDomain);
+  const jChoiceOk = jFilterChoice && (jFilterChoice.mode !== "walk" || walkList.some((w) => `${w.id}` === `${jFilterChoice.walkId}`));
+  const jFilter = effectiveFilter(jChoiceOk ? jFilterChoice : null, jZoomed);
+  const jCols = useMemo(
+    () => (junctions.status === "ok" ? junctionColumns(junctions.data, { filter: jFilter, domains, walks: walkList, sort: jSort, stats: jStats }) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [junctions, jFilter.mode, jFilter.walkId, domains, sc.walks, jSort, jStats]
+  );
+  const nJunctions = jCols.length;
+  useEffect(() => setJRange(null), [nJunctions, jFilter.mode, jFilter.walkId, jSort]);
   const jRangeRef = useRef(null);
   jRangeRef.current = jRange || [0, nJunctions];
   const setJunctionRange = (start, span) => {
@@ -744,7 +782,7 @@ export default function CellHeatmapPanel() {
       const m = junctions.data;
       const map = rowMap(order, m.cells);
       const [js, je] = jRange || [0, m.junctions.length];
-      const columnOrder = junctionColumnOrder(m.junctions).slice(js, je);
+      const columnOrder = jCols.slice(js, je);
       const disc = discreteColumnLookup(columnOrder.length, devWidth);
       const cols = Int32Array.from(disc, (k) => (k < 0 ? -1 : columnOrder[k]));
       const axis = discreteGroups(columnOrder, (i) => m.junctions[i].chromosome1, heatWidth);
@@ -761,6 +799,7 @@ export default function CellHeatmapPanel() {
           const j = m.junctions[c];
           const value = m.cn[p][c];
           return [
+            ["Junction", `${junctionLabel(j)} · ${jStats[c]?.n ?? 0} cells · median CN ${Number.isFinite(jStats[c]?.median) ? jStats[c].median : "not available"}`],
             [
               t("components.single-cell.tooltip.breakpoints"),
               `${j.chromosome1}:${j.position1.toLocaleString()}${j.strand1} → ${j.chromosome2}:${j.position2.toLocaleString()}${j.strand2}`,
@@ -774,7 +813,7 @@ export default function CellHeatmapPanel() {
     if (heatmapType === "drivers" && driverMatrix) return driverMatrix;
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
+  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, jCols, jStats, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(() => {
     if (!showPloidy && !showTmb) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
@@ -1134,6 +1173,33 @@ export default function CellHeatmapPanel() {
               />
             </Space>
           )}
+          {heatmapType === "junctions" && junctions.status === "ok" && (
+            <Space size={4} wrap>
+              <Text type="secondary">Junctions</Text>
+              <Select
+                size="small"
+                style={{ width: 330 }}
+                data-junction-filter
+                value={jFilter.mode === "walk" ? `walk:${jFilter.walkId}` : jFilter.mode}
+                onChange={(v) => {
+                  const mode = v.startsWith("walk:") ? { mode: "walk", walkId: v.slice(5) } : { mode: v, walkId: null };
+                  dispatch(singleCellActions.updateLayout({ junctionFilter: mode }));
+                }}
+                options={[
+                  { value: "all", label: "All junctions" },
+                  { value: "view", label: "Touching the viewport (either breakend)" },
+                  ...(jWalkOptions.length ? [{ label: "Junctions of an ecDNA / amplicon walk", options: jWalkOptions.map((w) => ({ value: `walk:${w.id}`, label: w.label })) }] : []),
+                ]}
+              />
+              <Text type="secondary">{`${nJunctions} of ${junctions.data.junctions.length}`}</Text>
+              <Segmented
+                size="small"
+                value={jSort}
+                onChange={(v) => dispatch(singleCellActions.updateLayout({ junctionSort: v }))}
+                options={[{ value: "pos", label: "By position" }, { value: "carriers", label: "By carriers" }]}
+              />
+            </Space>
+          )}
           <Space size={4}>
             <Text type="secondary">{t("components.single-cell.toolbar.strip-width")}</Text>
             <Select
@@ -1427,6 +1493,24 @@ export default function CellHeatmapPanel() {
                   hoverKey={driverHover}
                   openKey={sc.driverDrawer}
                   onOpen={(key) => dispatch(singleCellActions.updateDriverDrawer(key))}
+                />
+              </div>
+            )}
+            {heatmapType === "junctions" && active && junctions.status === "ok" && (
+              <div style={{ marginLeft: STRIP_HANDLE + 2 * GAP, width: heatWidth, flex: "none" }}>
+                <JunctionColumnHeader
+                  columns={jCols.slice(...(jRange || [0, nJunctions])).map((k) => ({ j: junctions.data.junctions[k], ...jStats[k] }))}
+                  width={heatWidth}
+                  pixelRatio={pixelRatio}
+                  onClick={(d, e) => {
+                    const ids = junctionCarrierRows(junctions.data, d.j.index).map((r) => junctions.data.cells[r]);
+                    setSelection(ids);
+                    if (e.shiftKey && chromoBins) {
+                      const pad = Math.max(5e4, Math.abs(d.j.global2 - d.j.global1) * 0.1);
+                      const near = (g) => [Math.max(1, g - pad), g + pad];
+                      dispatch(settingsActions.updateDomains(d.j.global2 - d.j.global1 > 4 * pad ? [near(d.j.global1), near(d.j.global2)] : [[Math.max(1, d.j.global1 - pad), d.j.global2 + pad]]));
+                    }
+                  }}
                 />
               </div>
             )}
