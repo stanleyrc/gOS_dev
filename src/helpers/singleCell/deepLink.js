@@ -143,6 +143,7 @@ export function readViewLink(search = window.location.search) {
     compareB: params.get("cmpB") || null,
     cnGene: params.get("cngene") || null,
     exprGenes: list(params.get("exprgenes")),
+    cnSource: params.get("cnsrc") === "walks" ? "walks" : params.get("cnsrc") === "all" ? "all" : null,
   };
 }
 
