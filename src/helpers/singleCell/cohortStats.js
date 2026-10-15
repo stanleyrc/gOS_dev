@@ -52,6 +52,27 @@ export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", 
  * `eventsByPatient` is { patientId: [filtered event] }. Returns genes sorted
  * by how many patients carry them, then by the maximum fraction.
  */
+/** Tier-3 missense predicted damaging by both SIFT (deleterious) and PolyPhen (probably/possibly damaging), from driver_evidence. */
+export function isDamagingMissense(e = {}) {
+  if (Number(e.Tier ?? e.tier) !== 3 || !/missense/i.test(`${e.type || ""}`)) return false;
+  const ev = `${e.driver_evidence || ""}`;
+  return /SIFT deleterious/i.test(ev) && /PolyPhen (probably|possibly) damaging/i.test(ev);
+}
+
+/** Tier filter value: 1, 2, 3, or "2d" (tiers 1-2 plus damaging tier-3 missense, the Drivers tab default). */
+export const TIER_OPTIONS = [
+  { value: 1, label: "≤ 1" },
+  { value: 2, label: "≤ 2" },
+  { value: "2d", label: "≤ 2 + damaging missense" },
+  { value: 3, label: "≤ 3" },
+];
+export function passesTier(e, maxTier) {
+  const tier = Number(e?.Tier ?? e?.tier);
+  if (!Number.isFinite(tier)) return true;
+  if (maxTier === "2d") return tier <= 2 || isDamagingMissense(e);
+  return tier <= Number(maxTier);
+}
+
 /** Event filter for the oncoprint: optional base predicate (e.g. strong events only) and the event classes to keep (null/empty = all). */
 export function oncoprintEventFilter({ base = null, classes = null } = {}) {
   const keep = classes && classes.length ? new Set(classes) : null;
@@ -64,8 +85,7 @@ export function oncoprintMatrix(eventsByPatient = {}, { maxTier = 2, filter = nu
   const byGene = new Map();
   patients.forEach((p) => {
     (eventsByPatient[p] || []).forEach((e) => {
-      const tier = Number(e.Tier ?? e.tier);
-      if (Number.isFinite(tier) && tier > maxTier) return;
+      if (!passesTier(e, maxTier)) return;
       if (filter && !filter(e)) return;
       const gene = eventLabel(e);
       if (!gene) return;
