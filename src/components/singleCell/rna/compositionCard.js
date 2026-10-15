@@ -15,6 +15,8 @@ import HintLine, { Provenance } from "../hintLine";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 import { linkAppliesTo, readDeepLink, readViewLink } from "../../../helpers/singleCell/deepLink";
+import { selectionGroupMap, TREE_REST, TREE_SELECTION, TREE_SISTER } from "../../../helpers/singleCell/cladeCompare";
+import useTreeView from "../useTreeView";
 
 const { Text } = Typography;
 const HEIGHT = 260;
@@ -38,7 +40,8 @@ function chiSquareTable(table) {
 export default function CompositionCard({ summary }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const { cells, cloneColors, layout, patient } = useSelector((s) => s.SingleCell);
+  const { cells, cloneColors, layout, patient, selectedCellIds } = useSelector((s) => s.SingleCell);
+  const { treeLayout } = useTreeView();
   const [ref, width] = useContainerWidth(900);
   const fields = (summary?.fields || []).filter((f) => !f.numeric).map((f) => f.name);
   // ?comp=<field>&compby=<clone|groups|field>&compcount=1 (for this patient's link)
@@ -62,7 +65,21 @@ export default function CompositionCard({ summary }) {
     savedGroups.forEach((g) => g.cells.forEach((id) => m.set(`${id}`, [...(m.get(`${id}`) || []), g.name])));
     return m;
   }, [savedGroups]);
+  // the current tree / heatmap selection against the rest, or against its sister clade (follows the selection live)
+  const treeMode = groupBy === "treesel" ? "rest" : groupBy === "treesel_sister" ? "sister" : null;
+  const selectionMap = useMemo(() => {
+    if (!treeMode) return null;
+    const allIds = cells.map((c) => `${c.cell_id}`);
+    const tumorIds = cells.filter((c) => !/^normal$/i.test(`${c.clone_id || ""}`)).map((c) => `${c.cell_id}`);
+    return selectionGroupMap(treeMode, selectedCellIds || [], { allIds, tumorIds, layout: treeLayout });
+  }, [treeMode, selectedCellIds, cells, treeLayout]);
+  const rnaIds = useMemo(() => new Set((summary?.cells || []).map((c) => c.cell_id).filter(Boolean)), [summary]);
+  const nSelectedRna = useMemo(() => (selectedCellIds || []).filter((id) => rnaIds.has(`${id}`)).length, [selectedCellIds, rnaIds]);
   const groupsOf = (c) => {
+    if (selectionMap) {
+      const g = c.cell_id ? selectionMap.get(`${c.cell_id}`) : null;
+      return g ? [g] : [];
+    }
     if (groupBy === "groups") return c.cell_id ? groupsOfCell.get(c.cell_id) || [] : [];
     const g = groupBy === "clone" ? (c.cell_id ? cloneOf.get(c.cell_id) : null) : c[groupBy];
     return g == null || g === "" ? [] : [g];
@@ -85,7 +102,7 @@ export default function CompositionCard({ summary }) {
     const keys = [...groups.keys()].sort((a, b) => (order ? order.indexOf(a) - order.indexOf(b) : a.localeCompare(b, undefined, { numeric: true })));
     const p = keys.length >= 2 ? chiSquareTable(keys.map((k) => levels.map((l) => groups.get(k).counts[l]))) : NaN;
     return { levels, groups, keys, p };
-  }, [summary, field, groupBy, cloneOf, groupsOfCell]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [summary, field, groupBy, cloneOf, groupsOfCell, selectionMap]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!summary || !fields.length || !data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   // distinct colour per level (fixed annotation colours can collide, e.g. two "Non-Enhancing" regions)
   const levelColors = (() => {
@@ -99,7 +116,7 @@ export default function CompositionCard({ summary }) {
     });
     return out;
   })();
-  const groupColors = groupBy === "clone" ? cloneColors : annotationColors(data.keys, themePalette(layout.theme));
+  const groupColors = groupBy === "clone" ? cloneColors : treeMode ? { [TREE_SELECTION]: INK.danger, [TREE_REST]: INK.faint, [TREE_SISTER]: INK.muted } : annotationColors(data.keys, themePalette(layout.theme));
   const maxTotal = Math.max(1, ...data.keys.map((k) => data.groups.get(k).total));
   const rotateLabels = data.keys.length > 8;
   const M = { top: 14, right: 12, bottom: rotateLabels ? 60 : 32, left: 44 };
@@ -114,7 +131,7 @@ export default function CompositionCard({ summary }) {
         <Space wrap>
           <Select size="small" style={{ width: 160 }} value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
           <Text type="secondary">{t("components.single-cell.qc.group-by")}</Text>
-          <Select size="small" style={{ width: 160 }} value={groupBy} onChange={setGroupBy} options={[{ value: "clone", label: t("components.single-cell.umap.color-clone") }, ...(savedGroups.length ? [{ value: "groups", label: "Saved groups" }] : []), ...fields.filter((f) => f !== field).map((f) => ({ value: f, label: fieldLabel(f) }))]} />
+          <Select size="small" style={{ width: 230 }} value={groupBy} onChange={setGroupBy} options={[{ value: "clone", label: t("components.single-cell.umap.color-clone") }, ...(savedGroups.length ? [{ value: "groups", label: "Saved groups" }] : []), { value: "treesel", label: "Tree selection vs rest" }, { value: "treesel_sister", label: "Tree selection vs sister clade" }, ...fields.filter((f) => f !== field).map((f) => ({ value: f, label: fieldLabel(f) }))]} />
           <Segmented size="small" value={counts ? "n" : "pct"} onChange={(v) => setCounts(v === "n")} options={[{ value: "pct", label: "%" }, { value: "n", label: "Cells" }]} />
           <SvgExportButton containerRef={ref} name={`composition-${field}`} />
         </Space>
@@ -159,6 +176,13 @@ export default function CompositionCard({ summary }) {
             </Text>
           )}
         </div>
+        {treeMode && (
+          <Text style={{ fontSize: FONT.axis, color: INK.muted, display: "block", marginTop: 4 }}>
+            {(selectedCellIds || []).length
+              ? `${selectedCellIds.length} selected (${nSelectedRna} with RNA).${nSelectedRna ? "" : " None of the selected cells has RNA."} Click a clade on the Single-Cell tab tree to change the selection.`
+              : "Nothing selected: click a clade on the phylogeny (Single-Cell tab), or cells in the heatmap or UMAP, and this card follows the selection."}
+          </Text>
+        )}
         <HintLine text={t("components.single-cell.rna.composition-help")} />
       </div>
     </Card>

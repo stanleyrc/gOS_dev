@@ -37,6 +37,7 @@ export const LOCATIONS = {
   circos: [P(TAB.circos)],
   phyloBars: [P(TAB.singleCell), P(TAB.rnaCn)],
   branchDiff: [P(TAB.singleCell)],
+  cladeCompare: [P(TAB.singleCell)],
   keyFindings: [P(TAB.report), P(TAB.overall), C("reports")],
   cloneFraction: [P(TAB.report), C("reports")],
   cladeFit: [P(TAB.report), C("drivers")],

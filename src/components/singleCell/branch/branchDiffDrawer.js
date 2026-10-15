@@ -8,6 +8,11 @@ import { differentialExpression } from "../../../helpers/singleCell/rnaStats";
 import { cisTrans, cladeAndSister, cnaDiff, junctionDiff } from "../../../helpers/singleCell/branchDiff";
 import { Provenance } from "../hintLine";
 import ColorTag from "../colorTag";
+import usePatientClades from "../usePatientClades";
+import useTreeView from "../useTreeView";
+import scaActions from "../../../redux/scAnalysis/actions";
+import { cladeNodeLabels } from "../../../helpers/singleCell/clades";
+import { specForNode } from "../../../helpers/singleCell/cladeCompare";
 
 const { Text } = Typography;
 const WIDTH = 980;
@@ -38,6 +43,23 @@ export default function BranchDiffDrawer({ open, onClose, layout, node, snv, var
   }, [node]);
 
   const groups = useMemo(() => cladeAndSister(layout, node), [layout, node]);
+  // Set as A / B for the Clade comparison card (called clades keep their id in the link, other nodes use the node index)
+  const patientClades = usePatientClades();
+  const { order } = useTreeView();
+  const cladeNodes = useMemo(() => (patientClades.status === "ok" ? cladeNodeLabels(layout, patientClades.data.clades) : new Map()), [patientClades, layout]);
+  const caseId = useSelector((s) => s.SingleCell.patient?.caseReportId);
+  const spec = specForNode(node, cladeNodes);
+  const nodeLabel = cladeNodes.get(node)?.clade ? `clade ${`${cladeNodes.get(node).clade.id}`.replace(/^.*_n/, "n")}` : `node ${node}`;
+  const setSide = (side, ids, label, source) => {
+    const keep = new Set(ids.map(String));
+    dispatch(scaActions.setGroup(side, [{ patient: caseId, cells: order.filter((id) => keep.has(`${id}`)) }], label, source));
+    onClose();
+    try {
+      document.getElementById("sc-clade-comparison")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) {
+      // no DOM
+    }
+  };
   const cloneOf = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id ?? "unassigned"])), [cells]);
   const composition = (ids) => {
     const m = new Map();
@@ -266,6 +288,22 @@ export default function BranchDiffDrawer({ open, onClose, layout, node, snv, var
           <Comp ids={groups.sister} />
           <Button size="small" onClick={() => select(groups.sister)} disabled={!groups.sister.length}>
             select
+          </Button>
+        </Space>
+        <Space wrap>
+          <Text strong>Compare clades</Text>
+          <Button size="small" onClick={() => setSide("A", groups.clade, nodeLabel, spec)}>Set as A</Button>
+          <Button size="small" onClick={() => setSide("B", groups.clade, nodeLabel, spec)}>Set as B</Button>
+          <Button
+            size="small"
+            type="primary"
+            disabled={!groups.sister.length}
+            onClick={() => {
+              dispatch(scaActions.setGroup("A", [{ patient: caseId, cells: order.filter((id) => new Set(groups.clade).has(`${id}`)) }], nodeLabel, spec));
+              setSide("B", groups.sister, `sister of ${nodeLabel}`, `sister:${spec}`);
+            }}
+          >
+            A = this clade vs its sister
           </Button>
         </Space>
         <Tabs size="small" items={tabs} />
