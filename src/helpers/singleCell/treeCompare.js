@@ -162,13 +162,13 @@ export function calledCladeFit(altRows, calledRows, layout) {
     A[i + 1] = j;
     C[i + 1] = C[i] + (calledRows[i] ? 1 : 0);
   }
-  let best = { score: 0, node: null, clade: 0, inClade: 0 };
+  let best = { score: 0, node: null, clade: 0, inClade: 0, called: 0 };
   layout.nodes.forEach((n, id) => {
     if (n.isLeaf) return;
     const tp = A[n.lastLeaf + 1] - A[n.firstLeaf];
     if (tp < k * 0.5) return;
     const f1 = (2 * tp) / (k + C[n.lastLeaf + 1] - C[n.firstLeaf]);
-    if (f1 > best.score) best = { score: f1, node: id, clade: n.lastLeaf - n.firstLeaf + 1, inClade: tp };
+    if (f1 > best.score) best = { score: f1, node: id, clade: n.lastLeaf - n.firstLeaf + 1, inClade: tp, called: C[n.lastLeaf + 1] - C[n.firstLeaf] };
   });
   return { ...best, carriers: k };
 }

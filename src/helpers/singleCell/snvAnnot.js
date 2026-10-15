@@ -54,6 +54,13 @@ export const SNV_TRACKS = [
   { key: "phylo", kind: "num", label: "Tree fit", help: "Best-clade F1 of the site on the current tree", range: [0, 1] },
   { key: "cellphy", kind: "cat", label: "CellPhy input", any: "yes", help: "Site was used by CellPhy to build the tree" },
   { key: "qc", kind: "num", label: "Site QC", help: "Site QC score (sum of log-odds)" },
+  // per-site phylogeny fit on the current tree (helpers/singleCell/snvPhyloFit.js)
+  { key: "prec", kind: "num", label: "Clade precision", help: "Carriers inside the best clade / all carriers (low = leaks outside the clade)", range: [0, 1], fit: "precision" },
+  { key: "recall", kind: "num", label: "Clade recall", help: "Carriers / called cells in the best clade (low = ref calls inside the clade)", range: [0, 1], fit: "recall" },
+  { key: "dropout", kind: "num", label: "Dropout in clade", help: "Fraction of called cells in the best clade that are ref", range: [0, 1], fit: "dropout" },
+  { key: "outside", kind: "num", label: "Outside-clade carriers", help: "Carriers outside the best clade (leakage count)", fit: "outside" },
+  { key: "changes", kind: "num", label: "Parsimony changes", help: "Fitch parsimony: minimum gains + losses on the tree (1 = perfectly compatible)", fit: "changes" },
+  { key: "ci", kind: "num", label: "Consistency index", help: "1 / parsimony changes: 1 = compatible with the tree", range: [0, 1], fit: "ci" },
   // filter-only keys (not drawn as tracks): set from the filter bar
   { key: "gene", kind: "cat", label: "Gene", help: "Gene symbol", filterOnly: true },
   { key: "carriers", kind: "num", label: "Alt cells (count)", help: "Number of cells carrying the alt allele", filterOnly: true },
@@ -104,7 +111,7 @@ function baseArrays(snv) {
  * @param opts.signatures { signature: string|null per variant, prob } from assignSignatures
  * @param opts.phylo Map(variant index -> F1) on the current tree; falls back to the exported clade score
  */
-export function siteAnnotations(snv, { signatures = null, phylo = null } = {}) {
+export function siteAnnotations(snv, { signatures = null, phylo = null, fit = null } = {}) {
   if (!snv?.variants?.length) return null;
   const base = baseArrays(snv);
   const n = base.n;
@@ -123,6 +130,15 @@ export function siteAnnotations(snv, { signatures = null, phylo = null } = {}) {
       hasQc = true;
     }
   });
+  if (fit?.f1) {
+    // computed on the same tree and called genotypes as the other fit metrics; sites with too few carriers stay unscored
+    phyloArr.fill(NaN);
+    hasPhylo = false;
+    for (let c = 0; c < n; c += 1) if (Number.isFinite(fit.f1[c])) {
+      phyloArr[c] = fit.f1[c];
+      hasPhylo = true;
+    }
+  }
   const hasSig = Boolean(signatures?.signature?.some(Boolean));
   const cat = {
     category: snv.variants.map((v) => v.category || "unmapped"),
@@ -133,6 +149,9 @@ export function siteAnnotations(snv, { signatures = null, phylo = null } = {}) {
     gene: snv.variants.map((v) => (v.gene && !/^ENSG/.test(v.gene) ? v.gene : null)),
   };
   const num = { depth: base.depth, vaf: base.vaf, phylo: hasPhylo ? phyloArr : null, qc: hasQc ? qc : null, carriers: base.alt };
+  SNV_TRACKS.filter((t) => t.fit).forEach((t) => {
+    num[t.key] = fit?.[t.fit] && fit.n ? fit[t.fit] : null;
+  });
   const hasCat = snv.variants.some((v) => v.category);
   const hasCellphy = cat.cellphy.some(Boolean);
   const available = SNV_TRACKS.filter((t) => !t.filterOnly).filter((t) => {
@@ -270,6 +289,10 @@ export function siteDetail(annot, c) {
   if (annot.num.carriers) rows.push(["Carriers", `${annot.num.carriers[c]} cells with the alt allele`]);
   if (annot.num.vaf) rows.push(["Alt fraction", fmtNum(annot.num.vaf[c] * 100, 1) + "% of called cells"]);
   if (annot.num.phylo) rows.push(["Tree fit (F1)", fmtNum(annot.num.phylo[c])]);
+  if (annot.num.ci && Number.isFinite(annot.num.ci[c])) {
+    rows.push(["Parsimony", `${annot.num.changes ? fmtNum(annot.num.changes[c], 0) : "?"} change(s), consistency index ${fmtNum(annot.num.ci[c])}`]);
+    rows.push(["Clade precision / recall", `${fmtNum(annot.num.prec?.[c])} / ${fmtNum(annot.num.recall?.[c])} (${annot.num.outside ? fmtNum(annot.num.outside[c], 0) : "?"} carriers outside the clade, dropout ${fmtNum(annot.num.dropout?.[c])})`]);
+  }
   if (v.driver || v.oncogenic) rows.push(["OncoKB", [v.oncogenic, v.oncokbLevel].filter(Boolean).join(" · ") || "driver"]);
   if (annot.cat.cellphy[c]) rows.push(["CellPhy input", annot.cat.cellphy[c] === "yes" ? "yes" : "no"]);
   if (annot.num.qc) rows.push(["Site QC", fmtNum(annot.num.qc[c])]);
@@ -314,7 +337,8 @@ export function matchesAnnotFilter(annot, filter, c) {
     const arr = annot.num[key];
     if (!arr) return true;
     const x = arr[c];
-    return Number.isFinite(x) && (f.min == null || x >= f.min) && (f.max == null || x <= f.max);
+    if (!Number.isFinite(x)) return key === "phylo" && !f.exclude; // unscored sites are kept by default (set exclude to drop them)
+    return (f.min == null || x >= f.min) && (f.max == null || x <= f.max);
   });
 }
 
@@ -355,7 +379,7 @@ export function describeFilter(annot, key, f) {
   }
   const parts = [];
   if (f.min != null && f.max != null) return `${def.label} ${fmtNum(f.min)} to ${fmtNum(f.max)}`;
-  if (f.min != null) parts.push(`>= ${fmtNum(f.min)}`);
+  if (f.min != null) parts.push(`>= ${fmtNum(f.min)}${f.exclude ? " (unscored excluded)" : ""}`);
   if (f.max != null) parts.push(`<= ${fmtNum(f.max)}`);
   return `${def.label} ${parts.join(" and ")}`;
 }
@@ -370,7 +394,7 @@ export function serializeTracks(tracks, filter) {
     if (!f) return;
     if (f.values?.length) parts.push(`${key}:${f.values.join("|")}`);
     else if (f.min != null && f.max != null) parts.push(`${key}:${f.min}..${f.max}`);
-    else if (f.min != null) parts.push(`${key}:>=${f.min}`);
+    else if (f.min != null) parts.push(`${key}:>=${f.min}${f.exclude ? "x" : ""}`);
     else if (f.max != null) parts.push(`${key}:<=${f.max}`);
   });
   if (parts.length) params.snfilter = parts.join(";");
@@ -422,7 +446,7 @@ export function setValues(filter, key, values) {
 // ---- the whole site-filter state in the URL (tracks, track filters, tree-site,
 // drivers, CellPhy, clade score, label mode, missing colour, isolate)
 
-export const SITE_URL_PARAMS = ["sntracks", "snfilter", "sncat", "sndrv", "sncp", "snf1", "snlabel", "snna", "snisolate"];
+export const SITE_URL_PARAMS = ["sntracks", "snfilter", "sncat", "sndrv", "sncp", "snf1", "snlabel", "snna", "snisolate", "snhide", "snleg"];
 const LABEL_VALUES = ["gene", "protein", "position", "none"];
 
 export function serializeSiteState(layout) {
@@ -435,6 +459,8 @@ export function serializeSiteState(layout) {
   if (l.snvLabel && l.snvLabel !== "protein") params.snlabel = l.snvLabel;
   if (l.snvNaColor === "white") params.snna = "white";
   if (l.snvIsolate) params.snisolate = "1";
+  if (l.snvFiltersHidden) params.snhide = "1";
+  if (l.snvLegendHidden) params.snleg = "0";
   return params;
 }
 
@@ -454,5 +480,7 @@ export function parseSiteState(search) {
   if (LABEL_VALUES.includes(params.get("snlabel"))) patch.snvLabel = params.get("snlabel");
   if (params.get("snna") === "white") patch.snvNaColor = "white";
   if (params.get("snisolate") === "1") patch.snvIsolate = true;
+  if (params.get("snhide") === "1") patch.snvFiltersHidden = true;
+  if (params.get("snleg") === "0") patch.snvLegendHidden = true;
   return patch;
 }
