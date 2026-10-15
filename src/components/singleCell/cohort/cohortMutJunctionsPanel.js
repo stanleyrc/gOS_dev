@@ -57,7 +57,7 @@ export default function CohortMutJunctionsPanel({ dataset, onOpen = null }) {
           dataSource={patients}
           onRow={(r) => ({ onClick: () => onOpen && r.available && onOpen(r.id), style: { cursor: onOpen && r.available ? "pointer" : "default" } })}
           columns={[
-            { title: "Patient", dataIndex: "id", render: (v) => <Text strong>{v}</Text> },
+            { title: "Patient", dataIndex: "id", width: 90, render: (v) => <Text strong style={{ whiteSpace: "nowrap" }}>{v}</Text> },
             {
               title: `Near junction (${near >= 1e6 ? "<= 1 Mb" : "<= 100 kb"})`,
               key: "near",
