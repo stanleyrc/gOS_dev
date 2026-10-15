@@ -114,6 +114,7 @@ export class TracksLegendPanel extends Component {
       plotInsets = null,
       plotHeight = null,
       compactKeepsGenes = false,
+      cellYscaleOption = false,
     } = this.props;
     if (!visible) {
       return null;
@@ -172,6 +173,18 @@ export class TracksLegendPanel extends Component {
                 variant="borderless"
                 onChange={(d) => handleYscaleModeChange(d)}
                 options={[
+                  ...(cellYscaleOption
+                    ? [
+                        {
+                          value: "cell",
+                          label: (
+                            <Tooltip placement="leftTop" title={t("components.tracks-legend-panel.cellYscale-help")}>
+                              <Space>{t("components.tracks-legend-panel.cellYscale")}</Space>
+                            </Tooltip>
+                          ),
+                        },
+                      ]
+                    : []),
                   {
                     value: "common",
                     label: (

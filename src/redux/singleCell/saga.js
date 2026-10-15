@@ -303,7 +303,7 @@ function* fetchPerCellTrack(action) {
         track === "coverage"
           ? [meta.cov_slope, meta.cov_intercept]
           : [meta.hets_slope, meta.hets_intercept];
-      data = arrowScatter(res.data, Number(slope), Number(intercept));
+      data = arrowScatter(res.data, Number(slope), Number(intercept), track === "coverage");
     } else {
       const raw = res.data || { settings: {}, intervals: [], connections: [] };
       data = track === "hetblocks" ? dataToGenome(hetBlocksToGraph(raw), chromoBins) : dataToGenome(allelicToGenome(raw), chromoBins);

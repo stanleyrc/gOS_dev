@@ -94,7 +94,7 @@ export default function SingleCellEcdnaTab() {
   const [colorBy, setColorBy] = useState("walk");
   const [laneHeight, setLaneHeight] = useState(18);
   // per-cell y-axis: amplified cells would otherwise flatten every other cell's CN
-  const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "individual");
+  const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "cell");
   const [showTable, setShowTable] = useState(false);
   const [chipHover, setChipHover] = useState(null); // walk hovered among the chips, marked in the plot
   const [genesRef, genesWidth] = useContainerWidth(1200);
@@ -212,6 +212,7 @@ export default function SingleCellEcdnaTab() {
                 chromoBins,
                 visible: true,
                 handleYscaleModeChange: setYScaleMode,
+                cellYscaleOption: true,
                 yScaleMode,
                 plotInsets: { left: labelWidth, right: rightWidth },
                 plotHeight: NAV_H,

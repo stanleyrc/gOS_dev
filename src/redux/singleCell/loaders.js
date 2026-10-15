@@ -52,12 +52,13 @@ export async function loadCellHeatmapFiles(dataset, cellId, cancelToken) {
 /**
  * Coverage-style Arrow file (columns x, y, color) as ScatterPlotPanel inputs.
  * y is converted to copy number with slope/intercept when both are given,
- * exactly as the bulk coverage and het-SNP tracks do.
+ * exactly as the bulk coverage and het-SNP tracks do. inCn: the column is already copy number
+ * (coverage.arrow's y is the exporter's foregroundabs), so slope / intercept are not applied again.
  */
-export function arrowScatter(buffer, slope, intercept) {
+export function arrowScatter(buffer, slope, intercept, inCn = false) {
   const table = tableFromIPC(buffer);
   const counts = Array.from(table.getChild("y").toArray());
-  const hasFit = Number.isFinite(slope) && Number.isFinite(intercept);
+  const hasFit = inCn || (Number.isFinite(slope) && Number.isFinite(intercept));
   const dataPointsX = Array.from(table.getChild("x").toArray());
   const dataPointsXHigh = [];
   const dataPointsXLow = [];
@@ -70,7 +71,7 @@ export function arrowScatter(buffer, slope, intercept) {
     dataPointsX,
     dataPointsXHigh,
     dataPointsXLow,
-    dataPointsY1: hasFit ? counts.map((d) => d * slope + intercept) : counts,
+    dataPointsY1: hasFit && !inCn ? counts.map((d) => d * slope + intercept) : counts,
     dataPointsY2: counts,
     dataPointsColor: Array.from(table.getChild("color").toArray()),
     hasFit,
@@ -132,7 +133,7 @@ export async function loadCellTrack(dataset, cellId, track, chromoBins) {
         const meta = await tryGet(casePath(dataset, cellId, "metadata.json"));
         const record = meta.status === "ok" ? (Array.isArray(meta.data) ? meta.data[0] : meta.data) || {} : {};
         const [slope, intercept] = track === "coverage" ? [record.cov_slope, record.cov_intercept] : [record.hets_slope, record.hets_intercept];
-        return { status: "ok", data: arrowScatter(res.data, Number(slope), Number(intercept)) };
+        return { status: "ok", data: arrowScatter(res.data, Number(slope), Number(intercept), track === "coverage") };
       }
       if (track === "hetblocks") return { status: "ok", data: dataToGenome(hetBlocksToGraph(res.data), chromoBins) };
       return { status: "ok", data: dataToGenome(allelicToGenome(res.data || { settings: {}, intervals: [], connections: [] }), chromoBins) };
