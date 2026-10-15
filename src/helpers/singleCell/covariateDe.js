@@ -23,11 +23,12 @@ export const testCells = (test) => (test?.patients || []).reduce((s, p) => ({ a:
 export const looselyAdjusted = (test) => (test?.patients || []).filter((p) => !`${p.adjust}`.startsWith("plate+cycling")).map((p) => p.patient);
 
 /** Table rows of the tests, filtered by family and text, sorted by robust hits then significant genes. */
-export function testRows(data, { family = "all", query = "", combinableOnly = false } = {}) {
+export function testRows(data, { family = "all", query = "", combinableOnly = false, gene = null } = {}) {
   const needle = `${query || ""}`.trim().toLowerCase();
   return (data?.tests || [])
     .filter((t) => (family === "all" ? true : t.family === family))
     .filter((t) => (combinableOnly ? t.combinable : true))
+    .filter((t) => (gene ? (t.genes || []).some((g) => g.gene === gene && g.q_val < 0.05) : true))
     .filter((t) => (needle ? `${t.label} ${t.group_a} ${t.group_b} ${t.top_up?.join(" ")} ${t.top_down?.join(" ")}`.toLowerCase().includes(needle) : true))
     .map((t) => ({ ...t, key: t.id, cells: testCells(t), family_label: FAMILY_LABELS[t.family] || t.family }))
     .sort((a, b) => b.n_robust - a.n_robust || b.n_sig_q05 - a.n_sig_q05 || a.label.localeCompare(b.label));

@@ -17,6 +17,7 @@ import { FONT, YAxis } from "./charts";
 import { loadRna } from "./cohortRnaPanel";
 import { loadGmt } from "../rna/geneSets";
 import HintLine from "../hintLine";
+import GeneQuickLook, { GeneQuickLookText } from "./geneQuickLook";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -112,7 +113,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own =
             if (!last) return null;
             return (
               <g>
-                <text x={width - M.right + 8} y={y(last.median)} dy="0.35em" fontSize={TYPE.label + 2} fill={GENE_INK[gi % GENE_INK.length]}>{g}</text>
+                <GeneQuickLookText gene={g} x={width - M.right + 8} y={y(last.median)} dy="0.35em" fontSize={TYPE.label + 2} fill={GENE_INK[gi % GENE_INK.length]} />
                 {t && (
                   <text x={width - M.right - 4} y={M.top + 14 + gi * 34} textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={GENE_INK[gi % GENE_INK.length]}>
                     <tspan x={width - M.right - 4}>{`rho = ${fmtRho(t.rho)}`}</tspan>
@@ -159,7 +160,11 @@ function StoufferDots({ rows, width, title }) {
       <line x1={x(0)} x2={x(0)} y1={M.top} y2={yy} stroke={INK.text} strokeDasharray="4 3" />
       {placed.map((r) => (
         <g key={r.key}>
-          <text x={M.left - 8} y={r.y} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={INK.textSecondary}>{r.label}</text>
+          {r.group === "Gene" ? (
+            <GeneQuickLookText gene={r.key} x={M.left - 8} y={r.y} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={INK.textSecondary} />
+          ) : (
+            <text x={M.left - 8} y={r.y} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={INK.textSecondary}>{r.label}</text>
+          )}
           {Number.isFinite(r.score) && Math.abs(r.score) > lim && (
             <text x={x(Math.sign(r.score) * lim) + Math.sign(r.score) * 14} y={r.y} dy="0.35em" textAnchor={r.score > 0 ? "start" : "end"} fontSize={FONT.axis} fill={INK.textSecondary}>{`${r.score > 0 ? "→" : "←"} ${Math.abs(r.score).toFixed(0)}`}</text>
           )}
@@ -195,7 +200,7 @@ function StoufferDots({ rows, width, title }) {
  * box plots (pooled or one patient), Spearman per patient and pooled, and
  * Stouffer's combination across patients.
  */
-export default function CohortCnExpressionPanel({ summaries, files, datasets, cnRows = {} }) {
+export default function CohortCnExpressionPanel({ summaries, files, datasets, cnRows = {}, focusGene = null }) {
   const genesState = useSelector((s) => s.Genes);
   const link = useMemo(() => readViewLink(), []);
   const [ref, width] = useContainerWidth(1100);
@@ -211,6 +216,15 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
       window.history.replaceState(window.history.state, "", u.toString());
     } catch (e) { /* no URL access */ }
   }, [cnSource]);
+  // "CN vs expression" opened from a gene quick look: all-genes mode with that gene's CN, and the gene in the expression list
+  useEffect(() => {
+    if (!focusGene?.gene) return;
+    setCnSource("all");
+    setScope("all");
+    setShown("pooled");
+    setCnGene(focusGene.gene);
+    setGenes((g) => (g.includes(focusGene.gene) ? g : [focusGene.gene, ...g]));
+  }, [focusGene]);
   const [tumorOnly, setTumorOnly] = useState(true);
   const [shown, setShown] = useState("pooled");
   const [data, setData] = useState({});
@@ -338,6 +352,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
       extra={
         <Space wrap size={10}>
           <Segmented size="small" value={cnSource} onChange={(v) => { setCnSource(v); setScope(v === "walks" ? "ecdna" : "all"); setShown("pooled"); }} options={[{ value: "all", label: "CN source: all genes" }, { value: "walks", label: "walks/amplicons" }]} />
+          <GeneQuickLook gene={cnGene} icon />
           <Select size="small" showSearch style={{ width: 110 }} value={cnGene} onChange={(g) => { setCnGene(g); setShown("pooled"); }} options={[...new Set(["EGFR", "CDK4", "MDM2", "MYCN", "PDGFRA", "MET", ...(own ? (genesState?.optionsList || []).map((o) => o.label) : [])])].map((g) => ({ value: g, label: `${g} CN` }))} />
           <Select size="small" mode="tags" maxTagCount="responsive" style={{ minWidth: 260, maxWidth: 420 }} value={genes} onChange={(v) => v.length && setGenes(v)} />
           <Segmented size="small" value={scope} onChange={setScope} options={[{ value: "ecdna", label: `Patients with ${cnGene} ecDNA (${ecdnaPatients.length})` }, { value: "all", label: `All patients (${summaries.length})` }]} />
@@ -380,7 +395,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
                 { title: "Patient", dataIndex: "patient", key: "patient", render: (v, r) => <Text strong={!!r.combined || r.key === "_pooled"}>{v}</Text> },
                 { title: "Cells", dataIndex: "n", key: "n", align: "right" },
                 { title: own ? `Median ${cnGene} CN (states/modules)` : `Median ${cnGene} CN`, dataIndex: "medianCn", key: "cn", align: "right", render: (v) => (Number.isFinite(v) ? v.toFixed(0) : "") },
-                ...genes.slice(0, 4).map((g) => ({ title: `ρ ${g}`, key: g, render: (v, r) => {
+                ...genes.slice(0, 4).map((g) => ({ title: <span>ρ <GeneQuickLook gene={g} /></span>, key: g, render: (v, r) => {
                   const c = cell(r.res[g]);
                   if (c !== "–" || !own || r.combined) return c;
                   const cns = new Set(records.filter((x) => (r.key === "_pooled" || x.patient === r.key) && Number.isFinite(cnFor(x, g))).map((x) => Math.round(cnFor(x, g))));

@@ -70,6 +70,8 @@ import { useCohortRnaFindings } from "./rna/useRnaFindings";
 import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
 import CohortStory from "./story/cohortStory";
 import CohortVignettes from "./vignette/cohortVignettes";
+import { GeneQuickLookContext } from "./cohort/geneQuickLook";
+import { eventLabelsForGene } from "../../helpers/singleCell/geneQuickLook";
 import CohortCovariateDePanel from "./cohort/cohortCovariateDePanel";
 import { Provenance } from "./hintLine";
 
@@ -158,6 +160,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     setRnaGene({ gene, nonce: Date.now() });
     setView("rna");
   };
+  const [cnFocus, setCnFocus] = useState(null); // { gene, nonce }: CN vs expression with this gene's CN, all-genes mode
+  const [evFocus, setEvFocus] = useState(null); // { gene, labels, nonce }: All events filtered to this gene
+  const [deGene, setDeGene] = useState(null); // { gene, nonce }: Covariate DE tests listing this gene
   const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
   const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
   // Clade F1 filter: drop alterations whose carrier cells do not sit in one clade of the
@@ -398,7 +403,30 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     label: <span className={startsGroup(v.key) ? "sc-tab-group-start-label" : undefined} title={t(`components.single-cell.cohort.group-${v.group}`)}>{t(`components.single-cell.cohort.view-${v.key}`)}</span>,
   }));
 
+  const geneDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
+  const quickLook = {
+    dataset: geneDataset,
+    summaries,
+    files,
+    actions: {
+      expression: openRnaGene,
+      cnexpr: (gene) => {
+        setCnFocus({ gene, nonce: Date.now() });
+        setView("cnexpr");
+      },
+      events: (gene) => {
+        setEvFocus({ gene, labels: eventLabelsForGene(summaries, files, gene), nonce: Date.now() });
+        setView("events");
+      },
+      covde: (gene) => {
+        setDeGene({ gene, nonce: Date.now() });
+        setView("rnacovde");
+      },
+    },
+  };
+
   return (
+    <GeneQuickLookContext.Provider value={quickLook}>
     <Wrapper>
       <Row gutter={SC_GUTTER}>
         <Col span={24}>
@@ -494,7 +522,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               <TmbPanel summaries={summaries} files={files} datafiles={datafiles} onOpen={openPatient} />
             </Col>
             <Col span={24}>
-              <CohortTmbAssocPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} onGene={openRnaGene} />
+              <CohortTmbAssocPanel dataset={geneDataset} onGene={openRnaGene} />
             </Col>
             <Col span={24}>
               <CohortSignaturesPanel summaries={summaries} files={files} />
@@ -523,12 +551,12 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "rnacovde" && (
           <Col span={24}>
-            <CohortCovariateDePanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} focusTest={deFocus} onGene={openRnaGene} summaries={summaries} datasets={datasets} />
+            <CohortCovariateDePanel focusGene={deGene} dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} focusTest={deFocus} onGene={openRnaGene} summaries={summaries} datasets={datasets} />
           </Col>
         )}
         {view === "events" && (
           <Col span={24}>
-            <CohortEventsTable summaries={summaries} files={files} onEvent={openEvent} />
+            <CohortEventsTable focusGene={evFocus} summaries={summaries} files={files} onEvent={openEvent} />
           </Col>
         )}
         {view === "scatter" && (
@@ -564,7 +592,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "cnexpr" && (
           <Col span={24}>
-            <CohortCnExpressionPanel summaries={summaries} files={files} datasets={datasets} cnRows={rows} />
+            <CohortCnExpressionPanel focusGene={cnFocus} summaries={summaries} files={files} datasets={datasets} cnRows={rows} />
           </Col>
         )}
         {view === "treeshape" && (
@@ -743,5 +771,6 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         patientFiles={eventDrawer ? cohortFiles.files[eventDrawer.summary.caseReportId] || null : null}
       />
     </Wrapper>
+    </GeneQuickLookContext.Provider>
   );
 }
