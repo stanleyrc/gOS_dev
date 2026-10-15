@@ -11,6 +11,7 @@ import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import useCohortExport from "./useCohortExport";
 import useMultiSort from "./multiSort";
+import { cladeTmbIndex, fmtTmb } from "../../../helpers/singleCell/tmb";
 
 const { Text } = Typography;
 const H = 300;
@@ -76,7 +77,12 @@ export default function CohortCladesPanel({ dataset, summaries }) {
   const { status, data } = useCohortExport(dataset, "clades.json");
   const layout = useSelector((s) => s.SingleCell.layout);
   const [showTrunks, setShowTrunks] = useState(false);
-  const allRows = useMemo(() => cohortCladeRows(data), [data]);
+  const tmb = useCohortExport(dataset, "tmb.json");
+  const tmbIndex = useMemo(() => cladeTmbIndex(tmb.data), [tmb.data]);
+  const allRows = useMemo(
+    () => cohortCladeRows(data).map((r) => ({ ...r, tmb_raw: tmbIndex.get(r.clade)?.tmb_raw ?? null, tmb_corrected: tmbIndex.get(r.clade)?.tmb_corrected ?? null })),
+    [data, tmbIndex]
+  );
   const rows = useMemo(() => filterTrunks(allRows, showTrunks), [allRows, showTrunks]);
   const patients = useMemo(() => [...new Set(allRows.map((r) => r.patient))].sort(), [allRows]);
   const points = useMemo(() => cladeScatterPoints(rows), [rows]);
@@ -106,6 +112,8 @@ export default function CohortCladesPanel({ dataset, summaries }) {
     { title: "Private SNVs", dataIndex: "n_private_snv", sortable: true, align: "right", render: (v) => v ?? "n/a" },
     { title: "Burden", dataIndex: "burden", sortable: true, firstDir: "desc", align: "right", render: (v) => (v == null ? "n/a" : v.toFixed(2)),
       onHeaderCell: () => ({ title: "private SNVs per 1000 genotyped sites" }) },
+    { title: "TMB (mut/Mb)", dataIndex: "tmb_corrected", sortable: true, firstDir: "desc", align: "right", render: (v, r) => (v == null ? "n/a" : fmtTmb(v)),
+      onHeaderCell: () => ({ title: "clade-specific SNVs per callable Mb, corrected for dropout (tmb.json, srctools gos_sc_tmb.R)" }) },
     { title: "Signature", dataIndex: "top_signature", sortable: true, render: (v) => v || "n/a" },
     { title: "vs patient", dataIndex: "burden_rel", sortable: true, align: "right", render: (v) => (v == null ? "n/a" : `${v.toFixed(1)}x`),
       onHeaderCell: () => ({ title: "private SNVs per site relative to the patient's median clade" }) },
