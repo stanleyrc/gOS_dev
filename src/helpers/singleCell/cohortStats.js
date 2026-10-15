@@ -39,8 +39,8 @@ export function eventClass(event = {}) {
   if (/trunc|nonsense|frameshift/.test(ty)) return "trunc";
   if (/splice/.test(ty)) return "splice";
   if (/missense|inframe/.test(ty) || vt === "snv") return "missense";
-  // TERT promoter hotspots (rescued from site evidence) count as point mutations ("SNV" colour class)
-  if (/promoter/.test(ty) || vt === "hotspot") return "missense";
+  // TERT promoter hotspots (rescued from site evidence): their own class and colour
+  if (/promoter/.test(ty) || vt === "hotspot") return "promoter";
   return "other";
 }
 
@@ -109,7 +109,7 @@ export function groupOncoprintRows(genes, groupBy = "role") {
   return out;
 }
 
-export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", "missense", "complex", "other"];
+export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", "missense", "promoter", "complex", "other"];
 
 /**
  * Oncoprint matrix: for each gene (or fusion pair) and patient, the strongest

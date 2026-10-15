@@ -34,7 +34,7 @@ const { Text } = Typography;
 const TREE_W = 84;
 const EMPTY = {};
 const EXPANDED_H = 520;
-const CLASS_LABELS = { amp: "Amplification", homdel: "Deletion", fusion: "Fusion", trunc: "Truncating", splice: "Splice", missense: "Missense", complex: "Complex SV", other: "Other" };
+const CLASS_LABELS = { amp: "Amplification", homdel: "Deletion", fusion: "Fusion", trunc: "Truncating", splice: "Splice", promoter: "Promoter hotspot", missense: "Missense", complex: "Complex SV", other: "Other" };
 
 /** The heatmap of one block: shared columns x cells in tree order, drawn at device resolution. */
 function BlockHeat({ aligned, nRows, width, height, pixelRatio, palette, onHover, onClick }) {
