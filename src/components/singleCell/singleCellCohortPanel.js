@@ -42,6 +42,7 @@ import CohortCladesPanel from "./cohort/cohortCladesPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
 import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
 import CohortAlignedTreesPanel from "./cohort/cohortAlignedTreesPanel";
+import CohortMutJunctionsPanel from "./cohort/cohortMutJunctionsPanel";
 import CohortEcdnaPlasticityPanel from "./cohort/cohortEcdnaPlasticityPanel";
 import CohortAssociationsPanel from "./cohort/cohortAssociationsPanel";
 import CohortGenePanel from "./cohort/cohortGenePanel";
@@ -475,6 +476,13 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
             <Col span={24}>
               <CohortJointSignatures dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} />
+              <CohortMutJunctionsPanel
+                dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null}
+                onOpen={(id) => {
+                  const s = summaries.find((x) => x.caseReportId === id);
+                  if (s) openPatient(s);
+                }}
+              />
             </Col>
           </>
         )}

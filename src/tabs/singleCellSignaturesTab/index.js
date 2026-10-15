@@ -6,6 +6,7 @@ import SignatureJointCard from "../../components/singleCell/signatures/signature
 import SignatureComparisonCard from "../../components/singleCell/signatures/signatureComparisonCard";
 import SignatureFitCard from "../../components/singleCell/signatures/signatureFitCard";
 import SignatureTreeCard from "../../components/singleCell/signatures/signatureTreeCard";
+import MutationsNearJunctionsCard from "../../components/singleCell/signatures/mutationsNearJunctionsCard";
 import SigFilterBar from "../../components/singleCell/signatures/sigFilterBar";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import { SC_GUTTER } from "../../components/singleCell/density";
@@ -39,6 +40,9 @@ export default function SingleCellSignaturesTab() {
             <SignatureTreeCard />
           </Col>
         )}
+        <Col span={24}>
+          <MutationsNearJunctionsCard />
+        </Col>
       </Row>
     </SingleCellWrapper>
   );
