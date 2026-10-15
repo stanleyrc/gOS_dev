@@ -13,6 +13,7 @@ export const PRECOMPUTE_FILES = {
   telomeres: "precompute/telomeres.json",
   calls: "precompute/region_calls.json",
   mtdna: "precompute/mtdna.json",
+  covQc: "precompute/cell_qc.json", // coverage QC metrics per cell (analysis/cell_qc; helpers/singleCell/cellQc.js)
   siteEvidence: "precompute/site_evidence.json",
   slices: "slices/regions.json",
 };
@@ -127,16 +128,20 @@ export function normaliseTelomeres(doc) {
   };
 }
 
-export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls, mtdna } = {}) {
+export function mergePrecomputeIntoCells(cells = [], { qc, sphase, telomeres, calls, mtdna, covQc } = {}) {
   const q = byCell(qc);
   const s = byCell(sphase);
   const t = byCell(normaliseTelomeres(telomeres));
   const mt = byCell(mtdna);
+  const cq = byCell(covQc);
   const gts = hotspotGenotypes(calls, { minMut: 1 });
-  if (!q.size && !s.size && !t.size && !mt.size && !Object.keys(gts).length) return cells;
+  if (!q.size && !s.size && !t.size && !mt.size && !cq.size && !Object.keys(gts).length) return cells;
   return cells.map((c) => {
     const id = `${c.cell_id}`;
     const out = { ...c };
+    // coverage QC metrics (qc_* fields); the cell's own metadata wins when it already carries them
+    const cr = cq.get(id);
+    if (cr) Object.entries(cr).forEach(([k, v]) => k.startsWith("qc_") && out[k] == null && v != null && (out[k] = v));
     const qr = q.get(id);
     if (qr) {
       out[PC_FIELDS.qcFlag] = qcFlagLabel(qr);

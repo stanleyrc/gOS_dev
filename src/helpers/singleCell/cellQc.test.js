@@ -1,4 +1,4 @@
-import { excludedCellIds } from "./precompute";
+import { excludedCellIds, mergePrecomputeIntoCells } from "./precompute";
 import {
   DEFAULT_COV_QC,
   covQcCounts,
@@ -65,5 +65,14 @@ describe("coverage QC", () => {
     expect(withQcColumn(["state", "gone"], ["state", "QC"])).toEqual(["state", "QC"]);
     expect(withQcColumn(["QC"], ["QC"])).toEqual(["QC"]);
     expect(withQcColumn(["state"], ["state"])).toEqual(["state"]);
+  });
+  it("merges precompute/cell_qc.json rows into cells without overriding their own qc_ fields", () => {
+    const cells = [{ cell_id: "a", clone_id: "C1" }, { cell_id: "b", qc_mapd: 0.9 }, { cell_id: "z" }];
+    const covQc = { cells: [{ cell_id: "a", qc_mapd: 0.1, qc_pass: true, other: 1 }, { cell_id: "b", qc_mapd: 0.2 }] };
+    const out = mergePrecomputeIntoCells(cells, { covQc });
+    expect(out[0]).toMatchObject({ qc_mapd: 0.1, qc_pass: true });
+    expect(out[0].other).toBeUndefined();
+    expect(out[1].qc_mapd).toBe(0.9);
+    expect(out[2]).toEqual({ cell_id: "z" });
   });
 });
