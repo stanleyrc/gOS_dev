@@ -51,7 +51,7 @@ export async function loadRna(dataset, id) {
  * cell state, and any gene's expression per patient (matrices loaded on
  * demand).
  */
-export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files: filesProp = {} }) {
+export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files: filesProp = {}, focusGene = null }) {
   const { t } = useTranslation("common");
   const layout = useSelector((s) => s.SingleCell.layout);
   const [ref, width] = useContainerWidth(1000);
@@ -163,6 +163,17 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
     setGeneData(out);
     setGeneBusy(false);
   };
+
+  // a gene sent from another cohort view (Covariate DE): fill the gene explorer once the matrices' summaries are in
+  const doneFocus = useRef(null);
+  useEffect(() => {
+    if (!focusGene?.gene || !loaded.length || doneFocus.current === focusGene.nonce) return;
+    doneFocus.current = focusGene.nonce;
+    setGeneQuery(focusGene.gene);
+    runGene(focusGene.gene);
+    setTimeout(() => geneCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusGene, loaded.length]);
 
   if (!loaded.length) return progress < 100 ? <Progress percent={progress} size="small" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.rna-empty")} />;
   const levelColors = composition ? annotationColors(composition.levels, themePalette(layout.theme)) : {};
