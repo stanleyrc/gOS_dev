@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import GeneInfoCard from "../rna/geneInfoCard";
 import { Alert, Button, Card, Col, Empty, Input, Row, Segmented, Skeleton, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import useCohortExport from "./useCohortExport";
 import VolcanoPlot from "../rna/volcanoPlot";
@@ -116,6 +117,12 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
                 <Table size="small" rowKey="gene" dataSource={selected.genes} columns={geneColumns} pagination={{ pageSize: 10, showSizeChanger: false }} scroll={{ x: true }}
                   onRow={(r) => ({ style: { background: selectedGene === r.gene ? "rgba(250,84,28,0.08)" : undefined } })} />
               </Col>
+              {selectedGene && (
+                <Col xs={24}>
+                  {/* same gene card as the patient RNA DE panel: description, cancer roles, links */}
+                  <GeneInfoCard gene={selectedGene} row={selected.genes.find((g) => g.gene === selectedGene)} labels={{ A: selected.group_a, B: selected.group_b }} />
+                </Col>
+              )}
             </Row>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 12 }}>
               <EnrichmentList title={`Programs higher in ${selected.group_a}`} items={selected.enrichment?.up || []} />
