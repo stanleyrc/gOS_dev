@@ -45,8 +45,8 @@ import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
-import CnCompareHeatmaps from "./cnCompareHeatmaps";
-import { CMPHEAT_PARAM, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
+import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
+import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
 
 const { Text } = Typography;
 const DOT = 9; // width of a painted mutation column
@@ -116,6 +116,9 @@ export default function CompareTreesPanel() {
     }
   }, [heatMode]);
   const cnMode = useSelector((s) => s.SingleCell.cnMode);
+  const cnShared = useCnShared();
+  const [cnPx, setCnPx] = useState(220); // width of each CN heatmap; shrinks (never stacks below) when the page is narrow
+  const cnOn = showsCn(heatMode) && cnShared.ready;
   const [matrixMode, setMatrixMode] = useState("both"); // "both" | "A" | "B": one matrix per tree, or one shared matrix in that tree's order
   const [metric, setMetric] = useState(null); // null: genotype calls when the matrix has them
   const [hdrA, setHdrA] = useState(null);
@@ -220,17 +223,20 @@ export default function CompareTreesPanel() {
   const mwA = sides.includes("A") ? mw : 0;
   const mwB = sides.includes("B") ? mw : 0;
   const midW = showLinks ? 100 : 14;
-  const treeW = Math.max(TREE_MIN, Math.floor((width - 2 * (nP * DOT + 8) - mwA - mwB - midW) / 2));
+  const cw = cnOn ? cnWidth(cnPx, width, 2 * (nP * DOT + 8) + mwA + mwB + midW) : 0;
+  const treeW = Math.max(TREE_MIN, Math.floor((width - 2 * (nP * DOT + 8) - mwA - mwB - 2 * cw - midW) / 2));
   const nRows = Math.max(layoutA?.leaves.length || 0, layoutB?.leaves.length || 0, 1);
   const H = Math.min(900, Math.max(320, nRows * 4));
-  const pad = sides.length ? 0 : 6; // rows must line up with the matrices
+  const pad = figurePad(sides.length > 0 || cnOn); // rows must line up with the matrices
   const xA0 = 0;
   const xA1 = treeW; // tips of A
   const pA0 = xA1 + 4; // painted columns of A
   const mA0 = pA0 + nP * DOT + 4; // matrix of A
-  const mid0 = mA0 + mwA;
+  const cA0 = mA0 + mwA; // CN heatmap of A (right of its matrix)
+  const mid0 = cA0 + cw;
   const mid1 = mid0 + midW;
-  const mB0 = mid1; // matrix of B
+  const cB0 = mid1; // CN heatmap of B (left of its matrix, between the lines and tree B)
+  const mB0 = cB0 + cw; // matrix of B
   const pB0 = mB0 + mwB; // painted columns of B
   const xB1 = pB0 + nP * DOT + 4; // tips of B (mirrored: root at the far right)
   const totalW = xB1 + treeW;
@@ -436,6 +442,7 @@ export default function CompareTreesPanel() {
     </Card>
   );
 
+  const cnHover = (id, lines, event) => setHover(id == null ? null : { id, x: event.clientX, y: event.clientY, lines });
   const hovCell = hover ? cellById.get(hover.id) : null;
   return (
     <div>
@@ -448,6 +455,9 @@ export default function CompareTreesPanel() {
           <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
           <span>Cladogram <Switch checked={cladogram} onChange={setCladogram} /></span>
           <span>Heatmap <Radio.Group size="small" value={heatMode} onChange={(e) => setHeatMode(e.target.value)} optionType="button" options={[{ value: "snv", label: "SNVs" }, { value: "cn", label: "Copy number" }, { value: "both", label: "Both" }]} /></span>
+          {showsCn(heatMode) ? (
+            <span>CN width <Select size="small" style={{ width: 90 }} value={cnPx} onChange={setCnPx} options={[120, 180, 220, 300, 400].map((v) => ({ value: v, label: `${v} px` }))} /></span>
+          ) : null}
           {showsCn(heatMode) ? (
             <span>CN <Select size="small" style={{ width: 100 }} value={cnMode} onChange={(v) => dispatch(singleCellActions.updateCnMode(v))} options={["total", "major", "minor"].map((value) => ({ value, label: t(`components.single-cell.cn-mode.${value}`) }))} /></span>
           ) : null}
@@ -530,6 +540,7 @@ export default function CompareTreesPanel() {
             })}
           </div>
         ) : null}
+        {showsCn(heatMode) && cnShared.ready ? <div style={{ marginBottom: 6 }}><CnLegend cnMode={cnShared.cnMode} palette={cnShared.palette} /></div> : null}
         <div ref={wrapRef} style={{ position: "relative" }}>
           {loading ? <Spin /> : null}
           {treeA.status === "error" || treeB.status === "error" || treeA.status === "missing" || treeB.status === "missing" ? (
@@ -550,14 +561,20 @@ export default function CompareTreesPanel() {
               {drawPaint(layoutB, gB, pB0)}
               {hover && gA && gB ? (
                 <>
-                  {layoutA.leaves.includes(hover.id) ? <line x1={xA0} x2={pA0 + nP * DOT} y1={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} y2={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.5} /> : null}
-                  {layoutB.leaves.includes(hover.id) ? <line x1={pB0} x2={totalW} y1={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} y2={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.5} /> : null}
+                  {layoutA.leaves.includes(hover.id) ? <line x1={xA0} x2={cnOn ? mid0 : pA0 + nP * DOT} y1={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} y2={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.5} /> : null}
+                  {layoutB.leaves.includes(hover.id) ? <line x1={cnOn ? cB0 : pB0} x2={totalW} y1={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} y2={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.5} /> : null}
                   {layoutA.leaves.includes(hover.id) && layoutB.leaves.includes(hover.id) ? (
                     <line x1={mid0} x2={mid1} y1={gA.py(rowsOf(layoutA).get(hover.id) + 0.5)} y2={gB.py(rowsOf(layoutB).get(hover.id) + 0.5)} stroke={theme.hover} strokeWidth={1.8} />
                   ) : null}
                 </>
               ) : null}
             </svg>
+            {cnOn ? (
+              <>
+                <div style={{ position: "absolute", left: cA0, top: 0 }}><CnSide {...cnShared.props} title={`A: ${labelOf(a)}`} layout={layoutA} width={cw} height={H} hover={hover?.id ?? null} onHover={cnHover} onLeave={() => setHover(null)} /></div>
+                <div style={{ position: "absolute", left: cB0, top: 0 }}><CnSide {...cnShared.props} title={`B: ${labelOf(b)}`} layout={layoutB} width={cw} height={H} hover={hover?.id ?? null} onHover={cnHover} onLeave={() => setHover(null)} /></div>
+              </>
+            ) : null}
             {sides.includes("A") ? (
               <>
                 <div ref={setHdrA} style={{ position: "absolute", left: mA0, top: -hdrH - 1, width: mw, height: hdrH }} />
@@ -572,19 +589,7 @@ export default function CompareTreesPanel() {
             ) : null}
             </div>
           ) : null}
-          {showsCn(heatMode) && layoutA && layoutB ? (
-            <CnCompareHeatmaps
-              layoutA={layoutA}
-              layoutB={layoutB}
-              titleA={labelOf(a)}
-              titleB={labelOf(b)}
-              totalW={Math.min(totalW, width)}
-              height={Math.min(600, Math.max(240, H * 0.7))}
-              hover={hover?.id ?? null}
-              onHover={(id, lines, event) => setHover(id == null ? null : { id, x: event.clientX, y: event.clientY, lines })}
-              onLeave={() => setHover(null)}
-            />
-          ) : null}
+          {showsCn(heatMode) && !cnShared.ready && cnShared.message ? <Alert type="info" showIcon style={{ marginTop: 8 }} message={cnShared.message} /> : null}
           {hover && hovCell !== undefined ? (
             <div style={{ position: "fixed", left: hover.x + 12, top: hover.y + 12, background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, padding: "4px 8px", fontSize: TYPE.tick, pointerEvents: "none", zIndex: 1000, borderRadius: 4 }}>
               <div><b>{hover.id}</b>{hovCell?.clone_id != null ? ` (clone ${hovCell.clone_id})` : ""}</div>

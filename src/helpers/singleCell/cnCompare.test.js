@@ -41,3 +41,20 @@ describe("cnRowsForLeaves", () => {
     expect(x.missing).toBe(1);
   });
 });
+
+import { cnWidth, figurePad, rowBand } from "./cnCompare";
+
+describe("row alignment helpers", () => {
+  it("tree and heatmap rows share the same bands when there is no padding", () => {
+    expect(figurePad(true)).toBe(0);
+    expect(figurePad(false)).toBe(6);
+    expect(rowBand(0, 4, 400, 0)).toEqual([0, 100]);
+    expect(rowBand(3, 4, 400, 0)).toEqual([300, 400]);
+    expect(rowBand(1, 2, 100, 6)).toEqual([50, 94]);
+  });
+  it("shrinks the heatmaps before the trees", () => {
+    expect(cnWidth(300, 1600, 400)).toBe(300);
+    expect(cnWidth(300, 800, 400)).toBe(60);
+    expect(cnWidth(300, 1000, 300)).toBe(210);
+  });
+});
