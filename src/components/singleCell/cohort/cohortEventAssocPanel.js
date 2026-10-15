@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as d3 from "d3";
-import { Alert, Card, Empty, InputNumber, Segmented, Select, Skeleton, Space, Table, Typography } from "antd";
+import { Alert, Button, Card, Empty, InputNumber, Progress, Segmented, Select, Skeleton, Space, Table, Tag, Typography } from "antd";
+import { useSelector } from "react-redux";
 import { describeRow, forestDomain, forestOf, fmtP, measureOf, pickers, summaryRows, zMatrix } from "../../../helpers/singleCell/eventAssociations";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import useContainerWidth from "../useContainerWidth";
@@ -9,8 +10,15 @@ import SvgExportButton from "../svgExportButton";
 import useCohortExport from "./useCohortExport";
 import useMultiSort from "./multiSort";
 import HintLine from "../hintLine";
+import CohortEventDosageCard from "./cohortEventDosageCard";
+import CladeF1Chip from "./cladeF1Chip";
+import useEventDosage from "./useEventDosage";
+import { cnEvents, fmtRhoQ, rankByDosage } from "../../../helpers/singleCell/eventDosage";
+import { eventF1ByPatient, f1Summary } from "../../../helpers/singleCell/cladeF1View";
 
 const { Text } = Typography;
+// copy-number events shown as one-click examples (dosage of the event's own gene; CDKN2A homdel is the positive control)
+const EXAMPLES = ["SOX2 amp", "EGFR amp", "CDK4 amp", "CDKN2A homdel"];
 const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (DM / TIC / BFB)" };
 
 /** Forest plot: per-patient effect +- 95% CI and the combined estimate. */
@@ -96,7 +104,8 @@ function ZHeatmap({ matrix, width, theme, selected, onPick }) {
  * Events x state: for every recurrent driver / copy-number event, carriers vs non-carriers inside each patient
  * on cell state, cycling and RNA programs, combined across patients (random effects and Stouffer z).
  */
-export default function CohortEventAssocPanel({ dataset }) {
+export default function CohortEventAssocPanel({ dataset, summaries = [], datasets = [], rawFiles = {}, cnRows = {} }) {
+  const genesState = useSelector((st) => st.Genes);
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(900);
   const { status, data } = useCohortExport(dataset, "event_associations.json");
@@ -104,16 +113,41 @@ export default function CohortEventAssocPanel({ dataset }) {
   const [maxQ, setMaxQ] = useState(1);
   const [outcomes, setOutcomes] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [events, setEvents] = useState([]);
+  // deep link: ?evassoc=<event>[&evrank=dosage] opens Events x state on that event (e.g. "SOX2 amp") with its cis dosage
+  const link = useMemo(() => {
+    try {
+      const u = new URLSearchParams(window.location.search);
+      return { event: u.get("evassoc"), rank: u.get("evrank") };
+    } catch (e) {
+      return {};
+    }
+  }, []);
+  const [events, setEvents] = useState(link.event ? [link.event] : []);
   const [direction, setDirection] = useState("any");
   const [selected, setSelected] = useState(null);
   const opts = useMemo(() => pickers(data), [data]);
   const rows = useMemo(() => summaryRows(data, { minK, maxQ, outcomes, classes, events, direction }), [data, minK, maxQ, outcomes, classes, events, direction]);
   const matrix = useMemo(() => zMatrix(data, { minK }), [data, minK]);
-  const sel = rows.find((r) => r.key === selected) || rows[0] || null;
+  const [rankBy, setRankBy] = useState(link.rank === "dosage" ? "dosage" : "state");
+  const dosage = useEventDosage({ summaries, datasets, rawFiles, cnRows, genesState, events: data?.events, enabled: Boolean(data) && summaries.length > 0 });
+  const dosageOf = (r) => dosage.results.get(r.event) || null;
+  const rankedRows = useMemo(() => (rankBy === "dosage" ? rankByDosage(rows, (r) => dosageOf(r)) : rows), [rows, rankBy, dosage.results]); // eslint-disable-line react-hooks/exhaustive-deps
+  const f1Of = useMemo(() => {
+    const out = new Map();
+    (data?.events || []).forEach((e) => {
+      const s = f1Summary(eventF1ByPatient(rawFiles, e.patients, e.gene, e.cls).map((x) => x.f1));
+      if (s) out.set(e.event, s);
+    });
+    return out;
+  }, [data, rawFiles]);
+  const sel = rankedRows.find((r) => r.key === selected) || rankedRows[0] || null;
+  const [dosagePick, setDosagePick] = useState(link.event || null); // an example event, shown even when it has no association row (one patient)
+  const dosageEvent = dosagePick || sel?.event || null;
+  const selDosage = dosageEvent ? dosage.results.get(dosageEvent) || null : null;
+  const selIsCn = dosageEvent ? cnEvents(data?.events).some((e) => e.event === dosageEvent) : false;
   useEffect(() => {
-    if (selected && !rows.some((r) => r.key === selected)) setSelected(null);
-  }, [rows, selected]);
+    if (selected && !rankedRows.some((r) => r.key === selected)) setSelected(null);
+  }, [rankedRows, selected]);
   const headline = useMemo(() => summaryRows(data, { minK: 3, maxQ: 0.05 }).slice(0, 4), [data]);
 
   const baseColumns = [
@@ -127,8 +161,38 @@ export default function CohortEventAssocPanel({ dataset }) {
     { title: "Stouffer z", dataIndex: "stouffer_z", sortable: true, sortValue: (r) => Math.abs(r.stouffer_z), firstDir: "desc", align: "right", render: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}` },
     { title: "q (Stouffer)", dataIndex: "stouffer_q", sortable: true, align: "right", render: fmtP },
     { title: "I²", dataIndex: "i2", sortable: true, align: "right", render: (v) => `${Math.round((v || 0) * 100)}%` },
+    {
+      title: <span title="Dosage (cis): the event's own gene, per cell locus copy number vs that gene's expression, Spearman rho combined across patients (Stouffer), BH q across copy-number events. Amplification and deletion events only.">cis dosage ρ (q)</span>,
+      dataIndex: "dosageQ",
+      sortable: true,
+      sortValue: (r) => { const d = dosageOf(r); return Number.isFinite(d?.q) ? d.q : Infinity; },
+      align: "right",
+      render: (_, r) => {
+        const e = (data?.events || []).find((x) => x.event === r.event);
+        if (!e || !["amp", "gain", "homdel", "loss"].includes(e.cls)) return <Text type="secondary">–</Text>;
+        const d = dosageOf(r);
+        if (!d) return <Text type="secondary">{dosage.progress != null || dosage.loading ? "computing…" : "not available"}</Text>;
+        return fmtRhoQ(d.combined.rho, d.q) || <Text type="secondary">not available (no RNA)</Text>;
+      },
+    },
+    {
+      title: <span title="Clade F1 of the event's carriers on each patient's tree (median over the patients carrying it; range in the tooltip)">Clade F1</span>,
+      dataIndex: "cladeF1",
+      sortable: true,
+      firstDir: "desc",
+      sortValue: (r) => f1Of.get(r.event)?.median,
+      align: "right",
+      render: (_, r) => {
+        const s = f1Of.get(r.event);
+        return s ? <CladeF1Chip value={s.median} prefix="" tip={`Median over ${s.n} patient(s), range ${s.min.toFixed(2)}-${s.max.toFixed(2)}`} /> : <Text type="secondary">–</Text>;
+      },
+    },
   ];
-  const sort = useMultiSort(baseColumns, rows, [{ key: "q", dir: "asc" }]);
+  const sort = useMultiSort(baseColumns, rankedRows, [{ key: "q", dir: "asc" }]);
+  useEffect(() => {
+    if (rankBy === "dosage") sort.setKeys([{ key: "dosageQ", dir: "asc" }]);
+    else sort.setKeys([{ key: "q", dir: "asc" }]);
+  }, [rankBy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (status === "loading") return <Skeleton active />;
   if (!data) return <Empty description="Event associations are not computed yet (_cohort/event_associations.json; srctools gos_sc_cohort_event_assoc.py)." />;
@@ -151,6 +215,16 @@ export default function CohortEventAssocPanel({ dataset }) {
             <Select size="small" mode="multiple" allowClear maxTagCount="responsive" placeholder="outcomes (all)" style={{ minWidth: 180 }} value={outcomes} onChange={setOutcomes} options={opts.outcomes.map((o) => ({ value: o, label: o }))} />
             <Space size={4}><Text type="secondary">Min patients</Text><InputNumber size="small" min={2} max={9} value={minK} onChange={(v) => setMinK(v || 2)} style={{ width: 56 }} /></Space>
             <Space size={4}><Text type="secondary">Max q</Text><Select size="small" value={maxQ} onChange={setMaxQ} style={{ width: 80 }} options={[1, 0.25, 0.1, 0.05].map((v) => ({ value: v, label: v === 1 ? "any" : `${v}` }))} /></Space>
+            <Space size={4}>
+              <Text type="secondary">Rank by</Text>
+              <Segmented size="small" value={rankBy} onChange={setRankBy} options={[{ value: "state", label: "State association (trans)" }, { value: "dosage", label: "Cis dosage" }]} />
+            </Space>
+            <Space size={4}>
+              <Text type="secondary">Dosage examples</Text>
+              {EXAMPLES.filter((x) => opts.events.some((e) => e.event === x)).map((x) => (
+                <Button key={x} size="small" onClick={() => { setEvents([x]); setSelected(null); setDosagePick(x); }}>{x}</Button>
+              ))}
+            </Space>
             <Segmented size="small" value={direction} onChange={setDirection} options={[{ value: "any", label: "Any" }, { value: "up", label: "Higher in carriers" }, { value: "down", label: "Lower in carriers" }]} />
           </Space>
           {matrix.events.length > 0 && (
@@ -162,14 +236,16 @@ export default function CohortEventAssocPanel({ dataset }) {
         </div>
       </Card>
       {sel && (
-        <Card size="small" title={`${sel.label}: ${sel.outcome}`}>
+        <Card size="small" title={<span>{`${sel.label}: ${sel.outcome}`} <Tag style={{ marginLeft: 6 }}>state association (trans)</Tag></span>}>
           <Forest row={sel} width={Math.max(520, width)} theme={theme} />
           <Text type="secondary">{describeRow(sel)}</Text>
         </Card>
       )}
+      {selIsCn && <CohortEventDosageCard result={selDosage} loading={dosage.loading} progress={dosage.progress} />}
+      {dosage.progress != null && <Progress percent={dosage.progress} size="small" format={(p) => `cis dosage ${p}%`} />}
       <Card size="small" title={`Associations (${rows.length})`}>
         {sort.hint}
-        <Table size="small" rowKey="key" dataSource={sort.rows} columns={sort.columns} pagination={{ pageSize: 15, showSizeChanger: false }} scroll={{ x: true }} onRow={(r) => ({ onClick: () => setSelected(r.key), style: { cursor: "pointer", background: sel?.key === r.key ? theme.selectFill : undefined } })} />
+        <Table size="small" rowKey="key" dataSource={sort.rows} columns={sort.columns} pagination={{ pageSize: 15, showSizeChanger: false }} scroll={{ x: true }} onRow={(r) => ({ onClick: () => { setSelected(r.key); setDosagePick(null); }, style: { cursor: "pointer", background: sel?.key === r.key ? theme.selectFill : undefined } })} />
       </Card>
     </Space>
   );

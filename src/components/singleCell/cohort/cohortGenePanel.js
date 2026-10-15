@@ -11,6 +11,8 @@ import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import CladeF1Chip from "./cladeF1Chip";
+import { f1Of } from "../../../helpers/singleCell/cladeF1View";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#00838F", complex: "#E66101", other: "#8c8c8c" };
@@ -46,7 +48,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
         const byP = out.get(gene);
         if (!byP.has(s.caseReportId)) byP.set(s.caseReportId, {});
         const cur = byP.get(s.caseReportId)[cls];
-        if (!cur || f > cur.fraction) byP.get(s.caseReportId)[cls] = { cells: n, fraction: f, event: e, rescued: isRescued(e) };
+        if (!cur || f > cur.fraction) byP.get(s.caseReportId)[cls] = { cells: n, fraction: f, event: e, rescued: isRescued(e), f1: isRescued(e) ? null : f1Of(e, files[s.caseReportId]?.tree) };
       });
     });
     return out;
@@ -59,6 +61,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
           patients: byP.size,
           cells: d3.sum([...byP.values()], (c) => d3.max(Object.values(c), (x) => x.cells) || 0),
           maxFraction: d3.max([...byP.values()], (c) => d3.max(Object.values(c), (x) => x.fraction) || 0) || 0,
+          bestF1: d3.max([...byP.values()], (c) => d3.max(Object.values(c), (x) => x.f1)),
         }))
         .sort((a, b) => b.patients - a.patients || b.cells - a.cells),
     [agg]
@@ -81,6 +84,14 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
     { title: t("components.single-cell.results.gene"), dataIndex: "gene", key: "gene", fixed: "left", width: 150, render: (g) => <Text strong style={{ whiteSpace: "nowrap" }}>{g}</Text> },
     { title: t("components.single-cell.cohort.patients"), dataIndex: "patients", key: "patients", width: 80, sorter: (a, b) => a.patients - b.patients, defaultSortOrder: "descend" },
     { title: t("components.single-cell.cohort.cells"), dataIndex: "cells", key: "cells", width: 80, sorter: (a, b) => a.cells - b.cells },
+    {
+      title: <span title="Best Clade F1 over the patients' events of this gene: how well the carrier cells form one clade of the patient tree. The header Clade F1 filter hides events below its threshold here and in every cohort view.">Clade F1</span>,
+      dataIndex: "bestF1",
+      key: "bestF1",
+      width: 90,
+      sorter: (a, b) => (a.bestF1 ?? -1) - (b.bestF1 ?? -1),
+      render: (v) => (Number.isFinite(v) ? <CladeF1Chip value={v} prefix="" tip="Best over this gene's events" /> : <Text type="secondary">–</Text>),
+    },
     ...patients.map((p) => ({
       title: p,
       key: p,
@@ -94,6 +105,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
               <span key={cls} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13 }}>
                 <span style={{ width: 8, height: 8, background: CLASS_COLORS[cls], borderRadius: 2 }} />
                 {`${c.cells} (${pct(c.fraction)})`}
+                <CladeF1Chip value={c.f1} />
                 {c.rescued && <Tooltip title={`Rescued from site evidence (not in the SNV calls): carriers / covered tumour cells; ${c.event.covered_tumour_cells} of ${c.event.tumour_cells} tumour cells covered`}><span>†</span></Tooltip>}
               </span>
             ))}
