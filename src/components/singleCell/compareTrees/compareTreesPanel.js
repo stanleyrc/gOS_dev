@@ -45,6 +45,8 @@ import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
+import CnCompareHeatmaps from "./cnCompareHeatmaps";
+import { CMPHEAT_PARAM, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
 
 const { Text } = Typography;
 const DOT = 9; // width of a painted mutation column
@@ -94,6 +96,26 @@ export default function CompareTreesPanel() {
   const [clip, setClip] = useState(true);
   const [cladogram, setCladogram] = useState(false);
   const [showMatrix, setShowMatrix] = useState(true);
+  // heatmap layers under the trees: SNV matrices, copy number or both (URL: cmpheat=snv|cn|both)
+  const [heatMode, setHeatMode] = useState(() => {
+    try {
+      return parseCmpHeat(new URL(window.location.href).searchParams.get(CMPHEAT_PARAM));
+    } catch (error) {
+      return "snv";
+    }
+  });
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const value = serializeCmpHeat(heatMode);
+      if (value) url.searchParams.set(CMPHEAT_PARAM, value);
+      else url.searchParams.delete(CMPHEAT_PARAM);
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window / history: the choice still lives in state
+    }
+  }, [heatMode]);
+  const cnMode = useSelector((s) => s.SingleCell.cnMode);
   const [matrixMode, setMatrixMode] = useState("both"); // "both" | "A" | "B": one matrix per tree, or one shared matrix in that tree's order
   const [metric, setMetric] = useState(null); // null: genotype calls when the matrix has them
   const [hdrA, setHdrA] = useState(null);
@@ -193,7 +215,7 @@ export default function CompareTreesPanel() {
 
   const colors = paintColors(theme.mode);
   const nP = paints.length;
-  const sides = showMatrix && snvCalls ? (matrixMode === "both" ? ["A", "B"] : [matrixMode]) : [];
+  const sides = showMatrix && snvCalls && showsSnv(heatMode) ? (matrixMode === "both" ? ["A", "B"] : [matrixMode]) : [];
   const mw = Math.max(120, Math.min(360, Math.round(width * (sides.length > 1 ? 0.17 : 0.27))));
   const mwA = sides.includes("A") ? mw : 0;
   const mwB = sides.includes("B") ? mw : 0;
@@ -425,8 +447,12 @@ export default function CompareTreesPanel() {
           <span>Hide normal cells <Switch checked={hideNormal} onChange={setHideNormal} /></span>
           <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
           <span>Cladogram <Switch checked={cladogram} onChange={setCladogram} /></span>
+          <span>Heatmap <Radio.Group size="small" value={heatMode} onChange={(e) => setHeatMode(e.target.value)} optionType="button" options={[{ value: "snv", label: "SNVs" }, { value: "cn", label: "Copy number" }, { value: "both", label: "Both" }]} /></span>
+          {showsCn(heatMode) ? (
+            <span>CN <Select size="small" style={{ width: 100 }} value={cnMode} onChange={(v) => dispatch(singleCellActions.updateCnMode(v))} options={["total", "major", "minor"].map((value) => ({ value, label: t(`components.single-cell.cn-mode.${value}`) }))} /></span>
+          ) : null}
           <span>SNV matrix <Switch checked={showMatrix} onChange={setShowMatrix} disabled={!snvData} /></span>
-          {showMatrix && snvData ? (
+          {showMatrix && snvData && showsSnv(heatMode) ? (
             <Radio.Group size="small" value={matrixMode} onChange={(e) => setMatrixMode(e.target.value)} optionType="button" options={[{ value: "both", label: "A and B" }, { value: "A", label: "Align to A" }, { value: "B", label: "Align to B" }]} />
           ) : null}
           {pick ? <Button size="small" onClick={() => setPick(null)}>{`Clear clade (${pick.cells.size} cells)`}</Button> : null}
@@ -437,7 +463,7 @@ export default function CompareTreesPanel() {
           ) : null}
           {layoutA && layoutB && prepared ? <Text type="secondary">{`${nShared} shared cells, ${crossings.toLocaleString("en-US")} crossings (${prepared.before.toLocaleString("en-US")} before rotating)`}</Text> : null}
         </Space>
-        {showMatrix && snvData ? (
+        {showMatrix && snvData && showsSnv(heatMode) ? (
           <Space wrap size="small" style={{ marginBottom: 8 }}>
             <Text type="secondary">{t("components.single-cell.toolbar.metric")}</Text>
             <Select size="small" style={{ width: 120 }} value={matrixMetric} onChange={setMetric} options={["vaf", "alt", "depth", ...(snvData.gt ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))} />
@@ -545,6 +571,19 @@ export default function CompareTreesPanel() {
               </>
             ) : null}
             </div>
+          ) : null}
+          {showsCn(heatMode) && layoutA && layoutB ? (
+            <CnCompareHeatmaps
+              layoutA={layoutA}
+              layoutB={layoutB}
+              titleA={labelOf(a)}
+              titleB={labelOf(b)}
+              totalW={Math.min(totalW, width)}
+              height={Math.min(600, Math.max(240, H * 0.7))}
+              hover={hover?.id ?? null}
+              onHover={(id, lines, event) => setHover(id == null ? null : { id, x: event.clientX, y: event.clientY, lines })}
+              onLeave={() => setHover(null)}
+            />
           ) : null}
           {hover && hovCell !== undefined ? (
             <div style={{ position: "fixed", left: hover.x + 12, top: hover.y + 12, background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, padding: "4px 8px", fontSize: TYPE.tick, pointerEvents: "none", zIndex: 1000, borderRadius: 4 }}>
