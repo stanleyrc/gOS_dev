@@ -28,7 +28,14 @@ export function cnBins(step = 20, top = 200) {
   bins.push({ lo: top, hi: Infinity, label: `${top}+` });
   return bins;
 }
+/** Integer-scale bins for own-locus CN of ordinary genes: 0, 1, 2, 3, 4, 5, 6-8, 9-15, 16-40, 41+ (use binOf on the rounded CN). */
+export function intCnBins() {
+  const edges = [[-1, 0, "0"], [0, 1, "1"], [1, 2, "2"], [2, 3, "3"], [3, 4, "4"], [4, 5, "5"], [5, 8, "6–8"], [8, 15, "9–15"], [15, 40, "16–40"], [40, Infinity, "41+"]];
+  return edges.map(([lo, hi, label]) => ({ lo, hi, label }));
+}
 export const binOf = (bins, cn) => bins.findIndex((b) => cn <= b.hi && (cn > b.lo || b.lo === 0));
+/** Bin index of a CN value; integer bins round to the nearest copy first. */
+export const binOfCn = (bins, cn, integer) => binOf(bins, integer ? Math.round(cn) : cn);
 
 /** Standard normal upper tail and its inverse (Acklam), for Stouffer's method. */
 export function normalUpper(z) {
