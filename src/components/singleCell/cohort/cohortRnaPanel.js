@@ -211,7 +211,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           <Space wrap>
             {progress < 100 && <Progress percent={progress} size="small" style={{ width: 160 }} />}
             <Text type="secondary">{t("components.single-cell.cohort.rna-field")}</Text>
-            <Select size="small" style={{ width: 180 }} value={chosenField} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
+            <Select showSearch optionFilterProp="label" size="small" style={{ width: 180 }} value={chosenField} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
             <Select size="small" style={{ width: 170 }} value={tumorOnly ? "tumor" : "all"} onChange={(v) => setTumorOnly(v === "tumor")} options={[{ value: "tumor", label: t("components.single-cell.rna.tumor-only") }, { value: "all", label: t("components.single-cell.cohort.rna-all-cells") }]} />
             <Text type="secondary">{t("components.single-cell.cohort.rna-loaded", { count: loaded.length, cells: d3.sum(loaded, (s) => cellsOf(s).length) })}</Text>
           </Space>

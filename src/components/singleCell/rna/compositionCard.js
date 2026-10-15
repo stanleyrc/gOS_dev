@@ -129,7 +129,7 @@ export default function CompositionCard({ summary }) {
       title={<Space><PieChartOutlined />{t("components.single-cell.rna.composition-title")}<Provenance id="rnaComposition" /></Space>}
       extra={
         <Space wrap>
-          <Select size="small" style={{ width: 160 }} value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
+          <Select showSearch optionFilterProp="label" size="small" style={{ width: 160 }} value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
           <Text type="secondary">{t("components.single-cell.qc.group-by")}</Text>
           <Select size="small" style={{ width: 230 }} value={groupBy} onChange={setGroupBy} options={[{ value: "clone", label: t("components.single-cell.umap.color-clone") }, ...(savedGroups.length ? [{ value: "groups", label: "Saved groups" }] : []), { value: "treesel", label: "Tree selection vs rest" }, { value: "treesel_sister", label: "Tree selection vs sister clade" }, ...fields.filter((f) => f !== field).map((f) => ({ value: f, label: fieldLabel(f) }))]} />
           <Segmented size="small" value={counts ? "n" : "pct"} onChange={(v) => setCounts(v === "n")} options={[{ value: "pct", label: "%" }, { value: "n", label: "Cells" }]} />
