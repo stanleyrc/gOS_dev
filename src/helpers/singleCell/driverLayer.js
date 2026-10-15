@@ -69,7 +69,7 @@ export function driverClassOf(event) {
   return DRIVER_CLASSES.includes(c) ? c : null;
 }
 
-const posOfSnv = (event) => {
+export const posOfSnv = (event) => {
   const chrom = `${event.seqnames || `${event.Genome_Location || ""}`.split(":")[0]}`.replace(/^chr/i, "");
   const pos = Number(event.start);
   return chrom && Number.isFinite(pos) ? `${chrom}:${pos}` : null;

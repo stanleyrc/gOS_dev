@@ -116,8 +116,9 @@ function baseArrays(snv) {
  * @param snv { variants, status, depth }
  * @param opts.signatures { signature: string|null per variant, prob } from assignSignatures
  * @param opts.phylo Map(variant index -> F1) on the current tree; falls back to the exported clade score
+ * @param opts.sigText (variant index) -> "SBS13 (APOBEC) 0.72 · SBS2 0.20 …, set: subclonal, fit: joint" for the tooltip
  */
-export function siteAnnotations(snv, { signatures = null, phylo = null, fit = null } = {}) {
+export function siteAnnotations(snv, { signatures = null, phylo = null, fit = null, sigText = null } = {}) {
   if (!snv?.variants?.length) return null;
   const base = baseArrays(snv);
   const n = base.n;
@@ -193,7 +194,7 @@ export function siteAnnotations(snv, { signatures = null, phylo = null, fit = nu
     }
     ranges[k] = Number.isFinite(lo) ? [lo, hi] : [0, 1];
   });
-  return { n, cat, num, available, sigProb, sigOrder, ranges, variants: snv.variants };
+  return { n, cat, num, available, sigProb, sigOrder, ranges, variants: snv.variants, sigText };
 }
 
 /** Legend entries of a categorical track: [{ value, label, color, count }], commonest first for signatures. */
@@ -279,6 +280,13 @@ export function binSummary(annot, key, columnOrder, a, b) {
 
 const fmtNum = (x, digits = 2) => (Number.isFinite(x) ? (Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(digits)) : "n/a");
 
+/** Column (index into variants) of the first driver site in columnOrder[a, b), or -1. */
+export function firstDriverColumn(annot, columnOrder, a, b) {
+  if (!annot?.cat?.driver) return -1;
+  for (let i = a; i < b; i += 1) if (annot.cat.driver[columnOrder[i]] === "driver") return columnOrder[i];
+  return -1;
+}
+
 /** All annotations of one site as [label, text] rows (tooltip). */
 export function siteDetail(annot, c) {
   if (!annot) return [];
@@ -289,7 +297,8 @@ export function siteDetail(annot, c) {
   if (annot.cat.category) rows.push(["Tree site", `${lab("category", annot.cat.category[c])}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}`]);
   if (annot.cat.signature) {
     const s = annot.cat.signature[c];
-    rows.push(["Signature", s ? `${s}${annot.sigProb ? ` (p=${fmtNum(annot.sigProb[c])})` : ""}${v.context ? `, ${v.context}` : ""}` : "no context"]);
+    const full = annot.sigText ? annot.sigText(c) : null;
+    rows.push(["Signature", full ? `${full}${v.context ? `; ${v.context}` : ""}` : s ? `${s}${annot.sigProb ? ` (p=${fmtNum(annot.sigProb[c])})` : ""}${v.context ? `, ${v.context}` : ""}` : "no context"]);
   }
   if (annot.cat.region[c]) {
     const cls = annot.cat.region[c];
