@@ -75,6 +75,7 @@ import { GeneQuickLookContext } from "./cohort/geneQuickLook";
 import { eventLabelsForGene } from "../../helpers/singleCell/geneQuickLook";
 import CohortCovariateDePanel from "./cohort/cohortCovariateDePanel";
 import { Provenance } from "./hintLine";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
@@ -126,6 +127,7 @@ async function loadPatientCells(dataset, summary, records, chromoBins, genomeLen
 /** Cohort of single-cell patients: composition table and a patients x genome CN heatmap. */
 export default function SingleCellCohortPanel({ datafiles = [] }) {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const datasetRecords = useSelector((state) => state.Datasets.records);
   const datasets = useMemo(() => datasetRecords || [], [datasetRecords]);
@@ -725,7 +727,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                       lines: [
                         [t("components.single-cell.cohort.patient"), entry.summary.caseReportId],
                         ...(rowMode === "cells"
-                          ? [[t("components.single-cell.tooltip.cell"), entry.label]]
+                          ? [[t("components.single-cell.tooltip.cell"), cellLabels.full(entry.label)]]
                           : [[t("components.single-cell.tooltip.consensus"), t("components.single-cell.cohort.median-of", { count: entry.nCells || rows[entry.summary.caseReportId]?.cellRows.length || 0 })]]),
                         ...(entry.clone != null ? [[t("components.single-cell.tooltip.clone"), entry.clone]] : []),
                         [t("components.single-cell.tooltip.segment"), binLabel(entry.row.binIndex, col)],

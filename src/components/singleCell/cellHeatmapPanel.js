@@ -78,10 +78,11 @@ import { DRIVER_COL_PX_MIN, clampColPx, DRIVER_AUTO_COL, DRIVER_AUTO_COL_BESIDE,
 import DriverLayerDrawer from "./drivers/driverLayerDrawer";
 import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
-const NOT_ANNOTATIONS = new Set(["pair", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
+const NOT_ANNOTATIONS = new Set(["pair", "well", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
 // Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
 // and 50 px between regions; the heatmap uses the same so they line up.
@@ -123,6 +124,7 @@ export default function CellHeatmapPanel() {
   // annotation strips: "not selected" / "no value" cells take the panel tint, not white
   const stripBlank = useMemo(() => packRGBA(hexToRgb(pt.panelAlt)), [pt]);
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const sc = useSelector((state) => state.SingleCell);
   const { domains, chromoBins, defaultDomain, genomeLength, zoomedByCmd } = useSelector((state) => state.Settings);
@@ -845,7 +847,7 @@ export default function CellHeatmapPanel() {
       left: Math.min(left, (holder?.width || left) - 260),
       top: event.clientY - (holder?.top || 0) + 14,
       lines: [
-        [t("components.single-cell.tooltip.cell"), order[row]],
+        [t("components.single-cell.tooltip.cell"), cellLabels.full(order[row])],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
         ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
         ...(showExpression

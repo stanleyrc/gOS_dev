@@ -30,6 +30,7 @@ import {
 import useSpatial from "./useSpatial";
 import { SpatialSection, useSpatialLayout } from "./spatialLayoutContext";
 import { useHiddenCellIds } from "../useCovQc";
+import useCellLabels from "../useCellLabels";
 
 const { Text } = Typography;
 const LEGEND_WIDTH = 240;
@@ -106,6 +107,7 @@ function insidePolygon(x, y, polygon) {
  */
 export default function SpatialPanel({ bare = false }) {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const tx = (key, vars = {}) => t(`components.single-cell.spatial.${key}`, { defaultValue: TEXT[key], ...vars });
   const pt = usePlotTheme();
   const sp = useSpatialLayout();
@@ -368,7 +370,7 @@ export default function SpatialPanel({ bare = false }) {
       left: Math.min(x + 14, plotWidth - 200),
       top: y + 14,
       lines: [
-        [t("components.single-cell.tooltip.cell", { defaultValue: "Cell" }), p.id],
+        [t("components.single-cell.tooltip.cell", { defaultValue: "Cell" }), cellLabels.full(p.id)],
         ...(p.linked ? [[tx("clone"), cloneOf.get(p.id) ?? "–"]] : [[tx("no-dna"), p.fields.barcode ?? ""]]),
         ...(p.fields.cell_type ? [[fieldLabel("cell_type"), p.fields.cell_type]] : []),
         ...(value != null && value !== "" && colorBy !== "clone" ? [[scale.title, typeof value === "number" ? Math.round(value * 100) / 100 : value]] : []),

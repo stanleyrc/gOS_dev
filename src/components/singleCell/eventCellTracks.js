@@ -15,6 +15,7 @@ import { padDomains } from "../../helpers/singleCell/eventDomains";
 import { mergeLoci } from "../../helpers/singleCell/igvTracks";
 import HintLine from "./hintLine";
 import { RnaSupportSection, useRnaSupport } from "./rna/rnaSupport";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
@@ -43,6 +44,7 @@ function paddedEventDomains(chromoBins, location, pad, genomeLength) {
  * and `defaultPad` sets the initial padding.
  */
 export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = null, cellNotes = null, defaultPad = DEFAULT_PAD }) {
+  const cellLabels = useCellLabels();
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength, domains } = useSelector((state) => state.Settings);
@@ -75,7 +77,7 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
     label: (
       <span>
         {cloneOf.get(id) != null && <span className="sc-swatch" style={{ background: cloneColors[cloneOf.get(id)] }} />}
-        {id}
+        {cellLabels.label(id)}
         {cellNotes?.get(id) ? <Text type="secondary"> · {cellNotes.get(id)}</Text> : null}
       </span>
     ),
@@ -170,6 +172,7 @@ export function eventIgvView(record, cellIds, rnaTracks = [], rnaLoci = []) {
 
 /** Reads tab of the popup on a single-cell patient: IGV of the carrier cells at the event. */
 function SingleCellEventReads({ record }) {
+  const cellLabels = useCellLabels();
   const { t } = useTranslation("common");
   const { cells, cloneColors } = useSelector((state) => state.SingleCell);
   const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
@@ -190,7 +193,7 @@ function SingleCellEventReads({ record }) {
           style={{ minWidth: 360 }}
           value={picked}
           onChange={setPicked}
-          options={carriers.map((id) => ({ value: id, label: <span>{cloneOf.get(id) != null && <span className="sc-swatch" style={{ background: cloneColors[cloneOf.get(id)] }} />}{id}</span> }))}
+          options={carriers.map((id) => ({ value: id, label: <span>{cloneOf.get(id) != null && <span className="sc-swatch" style={{ background: cloneColors[cloneOf.get(id)] }} />}{cellLabels.label(id)}</span> }))}
           maxTagCount="responsive"
           showSearch
         />

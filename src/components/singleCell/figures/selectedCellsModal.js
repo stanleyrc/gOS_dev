@@ -9,6 +9,7 @@ import { annotationColors } from "../../../helpers/singleCell/matrix";
 import { geneSetColor, isNormalClone, quantiles } from "../../../helpers/singleCell/figures";
 import { countBy, logKde, niceLogDomain } from "../../../helpers/singleCell/figureMath";
 import { useCellSelection } from "./cellSelection";
+import useCellLabels from "../useCellLabels";
 
 const { Text } = Typography;
 const LOG_TICKS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
@@ -107,6 +108,7 @@ function CompareViolins({ groups, selected, tumor, minCn = 1 }) {
  * tumor cells, and a table of the cells (copy ids, open a cell's report).
  */
 export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, cloneColors = {}, domains = [], genes = [], onOpenCell, getContainer }) {
+  const cellLabels = useCellLabels();
   const { selection, open, setOpen, select } = useCellSelection();
   const p = selection ? per.find((x) => x.patient === selection.patient) : null;
   const selCells = useMemo(() => (p && selection ? p.cells.filter((c) => selection.cells.has(c.cell_id)) : []), [p, selection]);
@@ -131,7 +133,7 @@ export default function SelectedCellsModal({ per, cnRows = {}, chromoBins, clone
     );
   };
   const columns = [
-    { title: "Cell", dataIndex: "cell", key: "cell", sorter: (a, b) => a.cell.localeCompare(b.cell, undefined, { numeric: true }), render: (v) => (onOpenCell ? <Button type="link" size="small" style={{ padding: 0, height: "auto" }} onClick={() => { setOpen(false); onOpenCell(v); }}>{v}</Button> : v) },
+    { title: "Cell", dataIndex: "cell", key: "cell", sorter: (a, b) => a.cell.localeCompare(b.cell, undefined, { numeric: true }), render: (v) => (onOpenCell ? <Button type="link" size="small" style={{ padding: 0, height: "auto" }} onClick={() => { setOpen(false); onOpenCell(v); }} title={cellLabels.full(v)}>{cellLabels.label(v)}</Button> : cellLabels.label(v)) },
     { title: "Clone", dataIndex: "clone", key: "clone", width: 110, sorter: (a, b) => `${a.clone}`.localeCompare(`${b.clone}`, undefined, { numeric: true }), render: (v) => <Space size={4}><span className="sc-fig-swatch" style={{ background: cloneColors[v] || "#bfbfbf" }} />{v}</Space> },
     { title: "State", dataIndex: "state", key: "state", width: 100, sorter: (a, b) => `${a.state}`.localeCompare(`${b.state}`), render: (v) => <Space size={4}><span className="sc-fig-swatch" style={{ background: stateColors[v] || "#e0e0e0" }} />{v}</Space> },
     ...p.groups.slice(0, 5).map((g) => ({

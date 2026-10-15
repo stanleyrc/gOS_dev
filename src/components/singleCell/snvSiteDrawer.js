@@ -9,6 +9,7 @@ import { SNV_CATEGORIES } from "./mutationSidePanel";
 import useSignatureModel from "./signatures/useSignatureModel";
 import { signatureColorOf } from "./signaturePanel";
 import ColorTag from "./colorTag";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const IGV_MAX = 8;
@@ -21,6 +22,7 @@ const categoryColor = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.col
  */
 export default function SnvSiteDrawer({ open, onClose, variant, order, rows, clickedRow, cnInfo = null }) {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const { snv, cells, cloneColors } = useSelector((state) => state.SingleCell);
   const snvData = snv.status === "ok" ? snv.data : null;
@@ -119,7 +121,7 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
           pagination={{ pageSize: 12, size: "small" }}
           columns={[
             { title: "", key: "pick", width: 36, render: (_, r) => <Checkbox checked={chosen.includes(r.id)} onChange={(e) => toggle(r.id, e.target.checked)} /> },
-            { title: t("components.single-cell.tooltip.cell"), dataIndex: "id", render: (id, r) => <span style={{ fontWeight: r.carrier ? 600 : 400 }}>{id}</span> },
+            { title: t("components.single-cell.tooltip.cell"), dataIndex: "id", render: (id, r) => <span style={{ fontWeight: r.carrier ? 600 : 400 }}>{cellLabels.label(id)}</span> },
             { title: t("components.single-cell.tooltip.clone"), dataIndex: "clone", render: (cl) => (cl ? <ColorTag color={cloneColors[cl]}>{cl}</ColorTag> : "–") },
             { title: t("components.single-cell.metric.alt"), dataIndex: "alt", sorter: (a, b) => a.alt - b.alt },
             { title: t("components.single-cell.metric.depth"), dataIndex: "depth", sorter: (a, b) => a.depth - b.depth },
