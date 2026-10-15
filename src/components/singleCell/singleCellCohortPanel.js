@@ -49,6 +49,7 @@ import CohortMutJunctionsPanel from "./cohort/cohortMutJunctionsPanel";
 import CohortEcdnaPlasticityPanel from "./cohort/cohortEcdnaPlasticityPanel";
 import CohortAssociationsPanel from "./cohort/cohortAssociationsPanel";
 import CohortGenePanel from "./cohort/cohortGenePanel";
+import CohortDriverTreesPanel from "./cohort/cohortDriverTreesPanel";
 import PatientSummaryTable from "./cohort/patientCards";
 import CohortHeadline from "./cohort/cohortHeadline";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
@@ -484,6 +485,20 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
             <Col span={24}>
               <OncoprintPanel summaries={summaries} files={files} onOpen={openPatient} onEvent={openEvent} />
+            </Col>
+            <Col span={24}>
+              <CohortDriverTreesPanel
+                summaries={summaries}
+                files={files}
+                rawFiles={cohortFiles.files}
+                rows={rows}
+                datasets={datasets}
+                datafiles={datafiles}
+                chromoBins={chromoBins}
+                cloneColors={cloneColors}
+                onOpen={openPatient}
+                onEvent={openEvent}
+              />
             </Col>
             <Col span={24}>
               <CohortConvergencePanel summaries={summaries} files={files} onEvent={openEvent} />

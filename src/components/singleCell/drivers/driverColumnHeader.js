@@ -31,7 +31,7 @@ export default function DriverColumnHeader({ entries, width, pixelRatio = 1, hov
     <div style={{ position: "relative", width, height: height + 6, marginBottom: 2 }} data-driver-header>
       {named &&
         entries.map((d, i) => (
-          <Tooltip key={d.key} title={`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}>
+          <Tooltip key={d.key} title={d.absent ? `${d.label} · not in this patient (no filtered event)` : `${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}>
             <span
               role="button"
               data-driver-label={d.key}
@@ -50,7 +50,7 @@ export default function DriverColumnHeader({ entries, width, pixelRatio = 1, hov
                 color: CLASS_TEXT[d.cls],
                 fontWeight: d.key === hoverKey || d.key === openKey ? 700 : 400,
                 textDecoration: d.key === openKey ? "underline" : "none",
-                opacity: d.upstreamOnly ? 0.65 : 1,
+                opacity: d.absent ? 0.4 : d.upstreamOnly ? 0.65 : 1,
               }}
             >
               {short(d.label)}
