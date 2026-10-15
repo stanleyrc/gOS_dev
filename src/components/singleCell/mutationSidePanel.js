@@ -89,6 +89,7 @@ export default function MutationSidePanel({
   tracks = [],
   onTrackClick = null,
   trackLabelSide = "left",
+  detailExtra = null,
 }) {
   const { t } = useTranslation("common");
   const layoutState = useSelector((st) => st.SingleCell.layout) || {};
@@ -170,7 +171,7 @@ export default function MutationSidePanel({
       ["Cell ALT reads", altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : altN],
       ["Cell depth", snvMetricValue(snv, p, c, "depth") ?? noReads],
     ];
-    if (annot) return [["Mutation", siteLabel(v, "protein")], ...siteDetail(annot, c), ...cellRows];
+    if (annot) return [["Mutation", siteLabel(v, "protein")], ...siteDetail(annot, c), ...(detailExtra ? detailExtra(c) : []), ...cellRows];
     return [
       [t("components.single-cell.tooltip.variant"), v.id],
       ...(v.gene ? [[t("components.single-cell.tooltip.gene"), [v.gene, v.protein || v.consequence].filter(Boolean).join(" ")]] : []),

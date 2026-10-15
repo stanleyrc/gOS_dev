@@ -4,6 +4,7 @@ import { Button, Select, Tooltip, Typography } from "antd";
 import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import SnvFilterBar from "./snvFilterBar";
+import { treeSiteFit } from "../../helpers/singleCell/snvPhyloFit";
 import { assignByTreeSet } from "../../helpers/singleCell/snvSigByTree";
 import useSignatureModel from "./signatures/useSignatureModel";
 import {
@@ -35,7 +36,25 @@ const MISSING = "#f0f0f0";
 export const tracksHeight = (n) => (n ? n * (TRACK_H + TRACK_GAP) + 2 : 0);
 
 /** Per-site annotations of the loaded SNV matrix (signature from the patient's joint fit). */
-export function useSnvAnnot(snv, phylo = null) {
+/** Per-site phylogeny-fit metrics of the matrix on a tree layout, computed in the background: { fit, busy }. */
+export function useTreeSiteFit(snv, layout) {
+  const [state, setState] = useState({ fit: null, busy: false });
+  useEffect(() => {
+    setState({ fit: null, busy: false });
+    if (!snv?.variants?.length || !layout?.leaves?.length) return undefined;
+    let stop = false;
+    setState({ fit: null, busy: true });
+    treeSiteFit(snv, layout, { cancelled: () => stop }).then((fit) => {
+      if (!stop && fit) setState({ fit, busy: false });
+    });
+    return () => {
+      stop = true;
+    };
+  }, [snv, layout]);
+  return state;
+}
+
+export function useSnvAnnot(snv, phylo = null, fit = null) {
   const model = useSignatureModel();
   const sigSets = useSelector((s) => s.SingleCell.signatures);
   // per-site signature from the fit of the site's own tree-site set (truncal / subclonal / private), else the joint fit
@@ -44,7 +63,7 @@ export function useSnvAnnot(snv, phylo = null) {
     const sets = sigSets?.status === "ok" ? sigSets.data?.sets : null;
     return sets && snv ? assignByTreeSet(snv.variants, model.reference, sets, model.assignment) : model.assignment;
   }, [model, sigSets, snv]);
-  return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo }) : null), [snv, assignment, phylo]);
+  return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo, fit }) : null), [snv, assignment, phylo, fit]);
 }
 
 /** Selected tracks, the click-to-filter state and handler to pass to MutationSidePanel. */
@@ -191,7 +210,7 @@ const fmt = (x) => (Number.isFinite(x) ? (Math.abs(x) >= 100 ? x.toFixed(0) : Nu
  * Track picker (stored in the layout and the URL as sntracks / snfilter),
  * per-track legends (click a swatch to filter to it) and the active filters.
  */
-export function SnvTrackControls({ annot, nShown = null, onIsolate = null }) {
+export function SnvTrackControls({ annot, nShown = null, onIsolate = null, fitBusy = false }) {
   const dispatch = useDispatch();
   const layout = useSelector((s) => s.SingleCell.layout) || {};
   const patient = useSelector((s) => s.SingleCell.patient);
@@ -254,7 +273,7 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null }) {
           onChange={(value) => dispatch(singleCellActions.updateLayout({ snvTracks: value.length ? value : [] }))}
         />
       </div>
-      <SnvFilterBar annot={annot} nShown={nShown ?? annot.n} onIsolate={onIsolate} />
+      <SnvFilterBar annot={annot} nShown={nShown ?? annot.n} onIsolate={onIsolate} fitBusy={fitBusy} />
       {tracks.length > 0 && (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 4 }}>
           <Button type="text" size="small" style={{ height: 18, padding: "0 4px" }} aria-label={legendHidden ? "Show legend" : "Hide legend"} icon={legendHidden ? <RightOutlined /> : <DownOutlined />} onClick={() => dispatch(singleCellActions.updateLayout({ snvLegendHidden: !legendHidden }))} />
