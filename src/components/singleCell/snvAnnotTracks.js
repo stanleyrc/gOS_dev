@@ -17,12 +17,9 @@ import {
   catLegend,
   clickThreshold,
   numFraction,
-  SITE_URL_PARAMS,
   fractionOfValue,
   removeFilterKey,
   valueAtFraction,
-  parseSiteState,
-  serializeSiteState,
   rampColor,
   siteAnnotations,
   toggleMin,
@@ -274,10 +271,8 @@ function NumericLegend({ annot, def, filter, setFilter }) {
 export function SnvTrackControls({ annot, nShown = null, onIsolate = null, fitBusy = false }) {
   const dispatch = useDispatch();
   const layout = useSelector((s) => s.SingleCell.layout) || {};
-  const patient = useSelector((s) => s.SingleCell.patient);
   const { tracks, onTrackClick } = useSnvTracks(annot);
   const filter = layout.snvAnnotFilter || null;
-  const [urlRead, setUrlRead] = useState(false);
   const legendHidden = Boolean(layout.snvLegendHidden);
   const [legendOpen, setLegendOpen] = useState(false);
   const [legendOverflow, setLegendOverflow] = useState(false);
@@ -286,29 +281,6 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null, fitBu
     const el = legendRef.current;
     setLegendOverflow(Boolean(el && el.scrollHeight > 36));
   }, [annot, tracks, legendOpen, legendHidden, layout.snvAnnotFilter]);
-
-  // a link carries the tracks and filter; read once when the patient has loaded
-  useEffect(() => {
-    if (urlRead || !patient) return;
-    setUrlRead(true);
-    try {
-      const patch = parseSiteState(window.location.search);
-      if (Object.keys(patch).length) dispatch(singleCellActions.updateLayout(patch));
-    } catch (e) {
-      // no window
-    }
-  }, [urlRead, patient, dispatch]);
-  useEffect(() => {
-    if (!urlRead) return;
-    try {
-      const url = new URL(window.location.href);
-      SITE_URL_PARAMS.forEach((k) => url.searchParams.delete(k));
-      Object.entries(serializeSiteState(layout)).forEach(([k, v]) => url.searchParams.set(k, v));
-      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
-    } catch (e) {
-      // no history
-    }
-  }, [urlRead, layout]);
 
   if (!annot) return null;
   const options = SNV_TRACKS.filter((d) => annot.available.includes(d.key)).map((d) => ({ value: d.key, label: d.label, title: d.help }));

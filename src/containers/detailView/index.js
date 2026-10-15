@@ -23,6 +23,7 @@ import SingleCellCircosTab from "../../tabs/singleCellCircosTab";
 import SingleCellEvidenceTab from "../../tabs/singleCellEvidenceTab";
 import VignetteActionRunner from "../../components/singleCell/vignette/vignetteActionRunner";
 import SingleCellCompareTreesTab from "../../tabs/singleCellCompareTreesTab";
+import SiteUrlSync from "../../components/singleCell/siteUrlSync";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import { singleCellStillLoading } from "../../helpers/singleCell/deepLink";
 import settingsActions from "../../redux/settings/actions";
@@ -155,6 +156,7 @@ export class DetailView extends Component {
             </div>
           </Affix>
           <div className="ant-home-content-container">
+            <SiteUrlSync />
             <CellContextBanner />
             <VignetteActionRunner />
             <Tabs
