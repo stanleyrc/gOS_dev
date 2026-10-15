@@ -76,6 +76,7 @@ import DriverColumnHeader from "./drivers/driverColumnHeader";
 import DriverWidthControl from "./drivers/driverWidthControl";
 import { DRIVER_AUTO_COL, DRIVER_AUTO_COL_BESIDE, DRIVER_LAYOUT_PARAMS, driverLayoutToSearch, driverView, panRange, zoomRange } from "../../helpers/singleCell/driverColumns";
 import DriverLayerDrawer from "./drivers/driverLayerDrawer";
+import { DEFAULT_SNV_TRACKS } from "../../helpers/singleCell/snvAnnot";
 import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitToSearch, splitWidths } from "../../helpers/singleCell/panelSplit";
 import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
@@ -84,6 +85,7 @@ const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
 const NOT_ANNOTATIONS = new Set(["pair", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
+const TRACK_LABEL_ROOM = 92; // px kept free right of the beside-SNV annotation strips for their track names
 // Genome plots (navigation genes/cytobands, cell tracks) keep 50 px margins
 // and 50 px between regions; the heatmap uses the same so they line up.
 const GENOME_MARGIN = 50;
@@ -275,7 +277,8 @@ export default function CellHeatmapPanel() {
   const panelSplit =
     panelsPresent.length > 1
       ? splitWidths({
-          total: containerWidth - genomeLeft - (showGenes ? geneWidth + GAP : 0) - (panelsPresent.length - 1) * GAP,
+          // room right of the SNV strips for their track names
+          total: containerWidth - genomeLeft - (showGenes ? geneWidth + GAP : 0) - (panelsPresent.length - 1) * GAP - (showSide && (layout.snvTracks || DEFAULT_SNV_TRACKS).length > 0 && !showGenes ? TRACK_LABEL_ROOM : 0),
           present: panelsPresent,
           fractions: storedSplit,
           auto: { drv: driverBesideAuto?.width, snv: sideAutoWidth },
