@@ -128,3 +128,30 @@ describe("second hit map and biallelic-only rows", () => {
     expect(out[0].nPatients).toBe(1);
   });
 });
+
+describe("class follows the largest cell group", () => {
+  const cells = cellsOf(20);
+  it("LOH in most cells plus a small homdel subclone stays monoallelic", () => {
+    const loss = lossFile(cells, { PTEN: cells.map((_, i) => (i < 3 ? LOSS_CODE.HOMDEL : LOSS_CODE.LOH)) });
+    const [c] = twoHitCalls([], { loss, tumorIds: cells });
+    expect(c.state).toBe("monoallelic");
+    expect(c.homdelCells).toBe(3);
+  });
+  it("normal cells flagged in tsg_loss.json are left out", () => {
+    const all = [...cells, "n0", "n1", "n2"];
+    const loss = { cells: all, normal: all.map((id) => (id.startsWith("n") ? 1 : 0)), genes: { PTEN: all.map(() => LOSS_CODE.LOH) } };
+    const [c] = twoHitCalls([], { loss });
+    expect(c.tumorN).toBe(20);
+    expect(c.hits[0].n).toBe(20);
+  });
+  it("a biallelic subclone is still called; the headline ignores tiny calls", () => {
+    const many = cellsOf(40);
+    const sub = twoHitCalls([snvEntry("TP53", many.slice(0, 30))], { loss: lossFile(many, { TP53: many.map((_, i) => (i < 5 ? LOSS_CODE.LOH : LOSS_CODE.BALANCED)) }), tumorIds: many });
+    expect(sub[0].state).toBe("biallelic");
+    expect(sub[0].biallelicCells).toBe(5);
+    const loss = lossFile(many, { CDKN2A: many.map((_, i) => (i < 3 ? LOSS_CODE.HOMDEL : LOSS_CODE.BALANCED)), PTEN: many.map(() => LOSS_CODE.HOMDEL) });
+    const calls = twoHitCalls([], { loss, tumorIds: many });
+    expect(calls.find((c) => c.gene === "CDKN2A").state).toBe("homdel");
+    expect(biallelicSummary({ P: calls }).map((g) => g.gene)).toEqual(["PTEN"]);
+  });
+});

@@ -7,6 +7,8 @@ largest overlap on each allele track -> (major, minor).  State codes:
   0 balanced (minor >= 1, total >= round(ploidy))   1 loss, both alleles kept (minor >= 1, total < ploidy)
   2 LOH by loss (minor 0, total < ploidy)           3 copy-neutral LOH (minor 0, total >= ploidy)
   4 homozygous deletion (total 0)                   -1 no allelic data / gene not covered
+chrX / chrY are not called in allelic.json (both alleles 0 everywhere), so X-linked genes (ATRX) are left out.
+Per patient also `normal` (1 = cell metadata clone_id is Normal), so the viewer can exclude normal cells.
 Usage: export_tsg_loss.py <data dir> [out.json]
 """
 import json, os, re, sys
@@ -14,7 +16,7 @@ import json, os, re, sys
 TSG = {  # hg19 gene bodies
  "PTEN": ("10", 87863625, 87971930), "NF1": ("17", 31094927, 31382116), "TP53": ("17", 7661779, 7687550),
  "CDKN2A": ("9", 21967753, 21995301), "CDKN2B": ("9", 22002903, 22009312), "RB1": ("13", 48303726, 48599436),
- "ATRX": ("X", 76760356, 77041806), "PTPN2": ("18", 12785478, 12884294), "NF2": ("22", 29603556, 29698598),
+ "PTPN2": ("18", 12785478, 12884294), "NF2": ("22", 29603556, 29698598),
  "LZTR1": ("22", 20982269, 20999032), "SMARCB1": ("22", 23786931, 23838008), "CHEK2": ("22", 28687743, 28742422),
  "ARID1A": ("1", 26693236, 26782104), "ARID1B": ("6", 156776020, 157210779), "KMT2C": ("7", 152134922, 152436005),
  "KMT2D": ("12", 49018975, 49059774), "SETD2": ("3", 47016429, 47163967), "BRCA1": ("17", 43044295, 43170245),
@@ -83,7 +85,11 @@ def main():
             r = cell_state(os.path.join(root, c, "allelic.json"), None)
             if r is None: rows.append(None); ploidy.append(None); continue
             ploidy.append(r[0]); rows.append(r[1])
-        res["patients"][p] = {"cells": cells, "ploidy": ploidy, "genes": {g: [(r[g] if r else -1) for r in rows] for g in TSG}}
+        normal = []
+        for c in cells:
+            try: normal.append(1 if re.search("normal", str(json.load(open(os.path.join(root, c, "metadata.json")))[0].get("clone_id", "")), re.I) else 0)
+            except Exception: normal.append(0)
+        res["patients"][p] = {"cells": cells, "normal": normal, "ploidy": ploidy, "genes": {g: [(r[g] if r else -1) for r in rows] for g in TSG}}
         print(p, len(cells), flush=True)
     json.dump(res, open(outp, "w"), separators=(",", ":"))
 
