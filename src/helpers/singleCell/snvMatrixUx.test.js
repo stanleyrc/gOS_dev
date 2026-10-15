@@ -54,3 +54,41 @@ describe("filter bar keys", () => {
     expect([0, 1, 2].filter((c) => matchesAnnotFilter(annot, setRange(null, "carriers", 2, null), c))).toEqual([0]);
   });
 });
+
+describe("numeric legend click and QC / F1 filters", () => {
+  const { valueAtFraction, fractionOfValue, toggleMin, finiteRange, parseTracks, serializeTracks } = require("./snvAnnot");
+  test("click position maps to a threshold and back", () => {
+    expect(valueAtFraction([0, 40], 0.5)).toBe(20);
+    expect(valueAtFraction([-2, 30], 0)).toBe(-2);
+    expect(valueAtFraction([0, 1], 1.7)).toBe(1);
+    expect(fractionOfValue([0, 40], 10)).toBeCloseTo(0.25);
+    expect(finiteRange(Float32Array.from([NaN, 2, 9, 4]))).toEqual([2, 9]);
+    expect(finiteRange(null)).toBeNull();
+  });
+  test("a legend click sets the filter, applies to the sites and survives the URL", () => {
+    const snv = {
+      variants: [{ id: "a", sumLogodds: 1, qcNAlt: 3 }, { id: "b", sumLogodds: 8, qcNAlt: 9 }, { id: "c", sumLogodds: null }],
+      status: [Int8Array.from([1, 1, 0])],
+      depth: [Float32Array.from([5, 5, 5])],
+    };
+    const annot = siteAnnotations(snv);
+    expect(annot.ranges.qc).toEqual([1, 8]);
+    const filter = toggleMin(null, "qc", valueAtFraction(annot.ranges.qc, 0.5));
+    expect(filter).toEqual({ qc: { min: 4.5 } });
+    expect([0, 1, 2].filter((c) => matchesAnnotFilter(annot, filter, c))).toEqual([1]);
+    expect(toggleMin(filter, "qc", 4.5)).toBeNull(); // click again clears
+    const q = new URLSearchParams(serializeTracks(null, filter)).toString();
+    expect(parseTracks(`?${q}`).filter).toEqual(filter);
+    expect(Array.from(annot.num.qnalt).slice(0, 2)).toEqual([3, 9]);
+  });
+  test("F1 filter keeps unscored sites unless exclude is set", () => {
+    const snv = { variants: [{ id: "a" }, { id: "b" }, { id: "c" }], status: [Int8Array.from([1, 1, 1])], depth: [Float32Array.from([5, 5, 5])] };
+    const fit = { n: 2, f1: Float32Array.from([0.9, 0.3, NaN]), precision: new Float32Array(3), recall: new Float32Array(3), dropout: new Float32Array(3), outside: new Float32Array(3), changes: new Float32Array(3), ci: new Float32Array(3) };
+    const annot = siteAnnotations(snv, { fit });
+    const keep = { phylo: { min: 0.8 } };
+    expect([0, 1, 2].filter((c) => matchesAnnotFilter(annot, keep, c))).toEqual([0, 2]);
+    expect([0, 1, 2].filter((c) => matchesAnnotFilter(annot, { phylo: { min: 0.8, exclude: true } }, c))).toEqual([0]);
+    const q = new URLSearchParams(serializeTracks(null, { phylo: { min: 0.8, exclude: true } })).toString();
+    expect(parseTracks(`?${q}`).filter).toEqual({ phylo: { min: 0.8, exclude: true } });
+  });
+});
