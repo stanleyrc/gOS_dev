@@ -118,9 +118,12 @@ export function cnRowFromGenome(genome, chromoBins) {
 /* ----------------------------------------------------------------------- */
 
 /**
- * Breakpoints of a gGraph connection. Signs follow gGnome's JSON: a positive
- * source leaves from the interval's right end, a negative one from its left;
- * a positive sink enters at the left end, a negative one at the right.
+ * Breakpoints of a gGraph connection. Signs follow gGnome's JSON (and the
+ * genome view, helpers/connection.js): a positive source or sink touches the
+ * interval's right end (endPoint), a negative one its left end (startPoint);
+ * REF edges are exported as (source +i, sink -(i+1)). Strand here is "+" at an
+ * endPoint (lower-coordinate side fused, gGnome strand "-") and "-" at a
+ * startPoint (upper side fused, gGnome "+").
  */
 export function connectionBreakpoints(connection, intervalsById) {
   const src = intervalsById.get(Math.abs(connection.source));
@@ -134,8 +137,8 @@ export function connectionBreakpoints(connection, intervalsById) {
     },
     {
       chromosome: `${snk.chromosome}`,
-      position: connection.sink > 0 ? Number(snk.startPoint) : Number(snk.endPoint),
-      strand: connection.sink > 0 ? "-" : "+",
+      position: connection.sink > 0 ? Number(snk.endPoint) : Number(snk.startPoint),
+      strand: connection.sink > 0 ? "+" : "-",
     },
   ];
 }
