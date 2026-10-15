@@ -79,7 +79,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
     ["report", "tab", "heatmap", "drvopen", "drvpreset", "drvadd", "drvrm", "drvf"].forEach((k) => url.searchParams.delete(k));
     Object.entries(drvOpenParams(patient, entry)).forEach(([k, v]) => url.searchParams.set(k, v));
     window.history.replaceState(window.history.state, "", url.toString());
-    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
     dispatch(settingsActions.updateTab("7"));
   };
 
