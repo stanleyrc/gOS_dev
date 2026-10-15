@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import { Card, Empty, InputNumber, Select, Space, Switch, Typography } from "antd";
 import { TableOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
-import { EVENT_CLASS_ORDER, oncoprintMatrix } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, oncoprintEventFilter, oncoprintMatrix } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -28,13 +28,14 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
   const [maxTier, setMaxTier] = useState(2);
   const [strongOnly, setStrongOnly] = useState(true);
   const [maxGenes, setMaxGenes] = useState(40);
+  const [classes, setClasses] = useState(EVENT_CLASS_ORDER); // event classes shown (amp, homdel, fusion, ..., complex SV)
   const eventsByPatient = useMemo(
     () => Object.fromEntries(summaries.filter((s) => files[s.caseReportId]?.events).map((s) => [s.caseReportId, files[s.caseReportId].events])),
     [summaries, files]
   );
   const matrix = useMemo(
-    () => oncoprintMatrix(eventsByPatient, { maxTier, maxGenes, filter: strongOnly ? isStrongEvent : null }),
-    [eventsByPatient, maxTier, maxGenes, strongOnly]
+    () => oncoprintMatrix(eventsByPatient, { maxTier, maxGenes, filter: oncoprintEventFilter({ base: strongOnly ? isStrongEvent : null, classes: classes.length === EVENT_CLASS_ORDER.length ? null : classes }) }),
+    [eventsByPatient, maxTier, maxGenes, strongOnly, classes]
   );
   if (!matrix.patients.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.oncoprint-empty")} />;
 
@@ -59,6 +60,17 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
           <Select size="small" value={maxTier} onChange={setMaxTier} style={{ width: 90 }} options={[1, 2, 3].map((v) => ({ value: v, label: `≤ ${v}` }))} />
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-genes")}</Text>
           <InputNumber size="small" min={5} max={200} value={maxGenes} onChange={(v) => setMaxGenes(v || 40)} style={{ width: 70 }} />
+          <Text type="secondary">Types</Text>
+          <Select
+            size="small"
+            mode="multiple"
+            maxTagCount="responsive"
+            value={classes}
+            onChange={setClasses}
+            placeholder="none selected"
+            style={{ minWidth: 220 }}
+            options={EVENT_CLASS_ORDER.map((c) => ({ value: c, label: t(`components.single-cell.cohort.class-${c}`) }))}
+          />
           <Switch size="small" checked={strongOnly} onChange={setStrongOnly} />
           <Text>{t("components.single-cell.events.strong-only")}</Text>
         </Space>
