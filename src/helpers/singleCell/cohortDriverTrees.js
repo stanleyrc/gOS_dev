@@ -11,7 +11,7 @@
 // - serializeCdt / parseCdt: the settings in the URL (cdt* params)
 import { eventClass, EVENT_CLASS_ORDER, isDamagingMissense, passesTier } from "./cohortStats";
 import { isStrongEvent } from "./strongEvents";
-import { DEFAULT_FILTERS, STATE, complexName, selectDrivers } from "./driverLayer";
+import { DEFAULT_FILTERS, STATE, complexName, selectDrivers, snvStateLabel } from "./driverLayer";
 
 export const CDT_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
 export const CDT_PRESET_LABELS = { recommended: "Recommended", subclonal: "Subclonal only", hotspots: "Hotspots", all: "All" };
@@ -30,7 +30,7 @@ export function sharedKeyOf(entry) {
 
 /** Column name shared by all patients ("EGFR SNV / indel", "EGFR amp", "CDKN2A del", "EGFR::SEPT14", "cpxdm EGFR"). */
 export function sharedLabel(entry) {
-  if (entry.cls === "snv") return `${geneOf(entry)} SNV/indel`;
+  if (entry.cls === "snv") return entry.rescued && /promoter/i.test(`${entry.event?.type}`) ? `${geneOf(entry)} promoter (rescued)` : `${geneOf(entry)} SNV/indel`;
   if (entry.cls === "amp") return `${geneOf(entry)} amp`;
   if (entry.cls === "homdel") return `${geneOf(entry)} del`;
   if (entry.cls === "fusion") return [...(entry.genes || [])].join("::") || geneOf(entry);
@@ -125,7 +125,7 @@ export function alignPatient(columns, entries, states) {
  * entryStates' carrier fallback); only the per-cell wild-type / no-coverage evidence waits. Marks those columns pending
  * and keeps their states (carrier = 2, otherwise 0).
  */
-export const markSnvPending = (aligned, snvPending) => (snvPending ? aligned.map((a) => (a.entry?.cls === "snv" ? { ...a, pending: true } : a)) : aligned);
+export const markSnvPending = (aligned, snvPending) => (snvPending ? aligned.map((a) => (a.entry?.cls === "snv" && !a.entry.rescued ? { ...a, pending: true } : a)) : aligned); // rescued hotspots carry their own per-cell states
 
 /** Keep only the SNV columns `cols` (indices of snv.variants) and their statuses; ids are preserved so site lookups still work. */
 export function slimSnv(snv, cols) {
@@ -142,7 +142,7 @@ export function eventSnvColumns(entries) {
 export function cellStatus(entry, value) {
   if (!entry) return { kind: "absent", status: "no such event in this patient" };
   if (entry.cls === "snv" && (value === STATE.LOSS || value === STATE.BOTH)) return { kind: value === STATE.BOTH ? "both" : "loss", status: value === STATE.BOTH ? "SNV + loss: both hits (biallelic)" : "loss only (LOH / deletion at the gene, no SNV read)" };
-  if (entry.cls === "snv") return value === STATE.MUT ? { kind: "mutant", status: "mutant" } : value === STATE.WT ? { kind: "wildtype", status: "wild type" } : { kind: "none", status: "no coverage" };
+  if (entry.cls === "snv") return value === STATE.MUT ? { kind: "mutant", status: "mutant" } : value === STATE.WT ? { kind: "wildtype", status: snvStateLabel(entry, value) } : { kind: "none", status: "no coverage" };
   if (entry.cls === "amp" || entry.cls === "homdel") return Number.isFinite(value) ? { kind: "cn", status: `total copy number ${value}` } : { kind: "none", status: "no copy-number data" };
   if (entry.cls === "fusion") {
     return value === 3 ? { kind: "both", status: "fusion: DNA carrier and RNA call" } : value === 2 ? { kind: "rna", status: "fusion: RNA call only" } : value === 1 ? { kind: "dna", status: "fusion: DNA carrier" } : { kind: "none", status: "no fusion evidence" };

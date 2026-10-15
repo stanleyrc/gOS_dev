@@ -15,10 +15,10 @@ const { Text } = Typography;
  * each linking to the view that shows the evidence. Per-patient findings
  * live in Key findings; this card only states the cross-patient pattern.
  */
-export default function CohortHeadline({ patients, nPatients, nCells, loading = false, onView, onPatient, tsg = null }) {
+export default function CohortHeadline({ patients, nPatients, nCells, loading = false, hotspots = null, onView, onPatient, tsg = null }) {
   const { t } = useTranslation("common");
   const k = (key, opts) => t(`components.single-cell.cohort.${key}`, opts);
-  const items = useMemo(() => cohortHeadline(patients), [patients]);
+  const items = useMemo(() => cohortHeadline(patients, { hotspots }), [patients, hotspots]);
   return (
     <Card
       size="small"

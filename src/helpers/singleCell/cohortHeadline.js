@@ -68,11 +68,53 @@ const list = (items, max = 4) => (items.length > max ? `${items.slice(0, max).jo
 const and = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0] || "");
 
 /**
+ * TERT promoter headline from _cohort/hotspot_rescue.json (exporter gos_sc_hotspot_rescue): patients with a rescued
+ * TERT C228T / C250T call, with the read evidence. Patients whose site evidence was not computed are "not assessed".
+ * @param doc hotspot_rescue.json ({ patients: { id: { assessed, reason, sites: [{ name, called, tumor, tumour_cells, level, ... }] } } })
+ * @param ids patient ids of the cohort in view
+ */
+export function tertHeadline(doc, ids = []) {
+  const pts = doc?.patients;
+  if (!pts || !ids.length) return null;
+  const assessed = ids.filter((id) => pts[id]?.assessed);
+  const notAssessed = ids.filter((id) => !pts[id]?.assessed);
+  if (!assessed.length) return null;
+  const isTert = (s) => /^TERT /.test(`${s.name}`);
+  const calls = [];
+  const noSupport = [];
+  assessed.forEach((id) => {
+    const tert = (pts[id].sites || []).filter(isTert);
+    const hit = tert.filter((s) => s.called);
+    if (hit.length) hit.forEach((s) => calls.push({ id, site: s }));
+    else noSupport.push(id);
+  });
+  const variants = (name) => calls.filter((c) => c.site.name === name).map((c) => c.id);
+  const c228 = variants("TERT C228T");
+  const c250 = variants("TERT C250T");
+  const reads = (s) => `${s.tumor.alt_f + s.tumor.alt_r}/${s.tumor.alt_f + s.tumor.alt_r + s.tumor.ref_f + s.tumor.ref_r} reads, ${s.tumor.cells_alt}/${s.tumor.cells_cov} cells`;
+  const evidence = calls.map((c) => `${c.id} ${c.site.name.replace("TERT ", "")} ${reads(c.site)}${c.site.level === "weak" ? " (weak)" : ""}`);
+  const patientsHit = [...new Set(calls.map((c) => c.id))];
+  return {
+    key: "tert",
+    value: patientsHit.length,
+    total: ids.length,
+    title: `TERT promoter mutated in ${patientsHit.length} of ${ids.length} tumors: ${[c228.length ? `C228T in ${c228.length}` : "", c250.length ? `C250T in ${c250.length}` : ""].filter(Boolean).join(", ") || "none"}`,
+    detail: [
+      `Not in the SNV calls (GC-rich, low depth): recovered from read-level site evidence. Alt reads / all reads, cells with an alt read / covered cells: ${evidence.join("; ")}`,
+      noSupport.length ? `No alt reads: ${list(noSupport, 6)}` : "",
+      notAssessed.length ? `Not assessed (site evidence not computed): ${list(notAssessed, 6)}` : "",
+    ].filter(Boolean).join(". "),
+    patients: patientsHit,
+    view: "drivers",
+  };
+}
+
+/**
  * Headline findings, most important first:
  * [{ key, value, total, title, detail, patients, view }]
  *   value / total: the number shown large ("4 / 9"); view: cohort sub-view to open.
  */
-export function cohortHeadline(patients = []) {
+export function cohortHeadline(patients = [], { hotspots = null } = {}) {
   if (!patients.length) return [];
   const out = [];
   const withReport = patients.filter((p) => p.report);
@@ -108,6 +150,10 @@ export function cohortHeadline(patients = []) {
       });
     }
   }
+
+  // 1b. TERT promoter hotspot rescued from site evidence
+  const tert = tertHeadline(hotspots, patients.map((p) => p.id));
+  if (tert) out.push(tert);
 
   // 2. ecDNA prevalence, among tumors with amplicon reconstruction (walks.json)
   const ec = ecdnaPrevalence(patients);

@@ -20,6 +20,7 @@ describe("damagingSnv", () => {
     expect(damagingSnv({ type: "Missense", Tier: "3", effect: "Unknown" })).toBe(false);
     expect(damagingSnv({ type: "Missense", Tier: "2", effect: "Unknown" })).toBe(true);
     expect(damagingSnv({ type: "Missense", Tier: "3", effect: "Loss-of-function" })).toBe(true);
+    expect(damagingSnv({ type: "Missense", Tier: "3", effect: "Unknown", source: "site evidence (not in SNV calls)" })).toBe(true);
   });
 });
 
