@@ -74,7 +74,12 @@ export default function useRnaData() {
   // global cell filter (QC rules + manual exclusions) applies to RNA views too
   const qcRules = useSelector((state) => state.SingleCell.layout.qcExcludeRules);
   const manualExcluded = useSelector((state) => state.SingleCell.layout.excludedCells);
-  const qcExcluded = useMemo(() => excludedCellIds(cells, qcRules, manualExcluded), [cells, qcRules, manualExcluded]);
+  const hideLowQc = useSelector((state) => state.SingleCell.layout.hideLowQc);
+  const covQcThresholds = useSelector((state) => state.SingleCell.layout.covQcThresholds);
+  const qcExcluded = useMemo(
+    () => excludedCellIds(cells, qcRules, manualExcluded, { on: hideLowQc, thresholds: covQcThresholds }),
+    [cells, qcRules, manualExcluded, hideLowQc, covQcThresholds]
+  );
   const { summary, matrix, excluded } = useMemo(() => {
     if (!fullSummary) return { summary: null, matrix: null, excluded: 0 };
     if (!tumorOnly && !qcExcluded.size) return { summary: fullSummary, matrix: fullMatrix, excluded: 0 };
