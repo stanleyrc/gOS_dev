@@ -7,6 +7,7 @@ import HintLine from "../hintLine";
 import MutJunctionBinChart from "../signatures/mutJunctionBinChart";
 import useCohortExport from "./useCohortExport";
 import CohortMutJunctionFocal from "./cohortMutJunctionFocal";
+import MutJunctionContinuousSection from "../signatures/mutJunctionContinuousSection";
 
 const { Text, Paragraph } = Typography;
 
@@ -19,7 +20,7 @@ export default function CohortMutJunctionsPanel({ dataset, onOpen = null }) {
   const { status, data } = useCohortExport(dataset, "mut_junctions.json");
   const [def, setDef] = useState("tcw");
   const [near, setNear] = useState(1e6);
-  const [view, setView] = useState("focal");
+  const [view, setView] = useState("continuous");
   if (status === "loading") return <Card size="small" title="Mutations near junctions"><Skeleton active paragraph={{ rows: 3 }} /></Card>;
   const title = <Space><ThunderboltOutlined />Mutations near junctions</Space>;
   if (!data) {
@@ -47,11 +48,11 @@ export default function CohortMutJunctionsPanel({ dataset, onOpen = null }) {
     <Card
       size="small"
       title={title}
-      extra={<Segmented size="small" value={view} onChange={setView} options={[{ value: "focal", label: "Focal: cis vs trans (5 kb)" }, { value: "broad", label: "Broad window (1 Mb)" }]} />}
+      extra={<Segmented size="small" value={view} onChange={setView} options={[{ value: "continuous", label: "Cis vs trans: continuous" }, { value: "focal", label: "Fixed bins + tests" }, { value: "broad", label: "Broad window (1 Mb)" }]} />}
     >
-      {view === "focal" ? (
-        <CohortMutJunctionFocal data={data} onOpen={onOpen} />
-      ) : (
+      {view === "continuous" && <MutJunctionContinuousSection data={data} />}
+      {view === "focal" && <CohortMutJunctionFocal data={data} onOpen={onOpen} />}
+      {view === "broad" && (
       <Space direction="vertical" size={10} style={{ width: "100%" }}>
         <Space size={8}><Segmented size="small" value={near} onChange={setNear} options={NEAR_OPTIONS} /><Segmented size="small" value={def} onChange={setDef} options={[{ value: "tcw", label: "TCW motif" }, { value: "sbs", label: "SBS2/13" }]} /></Space>
         {def === "sbs" && noApobec.length > 0 && (

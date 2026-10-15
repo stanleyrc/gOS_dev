@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
-import { Alert, Button, Segmented, Select, Space, Table, Tag, Typography } from "antd";
+import { Button, Segmented, Select, Space, Table, Tag, Typography } from "antd";
 import singleCellActions from "../../../redux/singleCell/actions";
 import settingsActions from "../../../redux/settings/actions";
 import {
@@ -37,15 +37,16 @@ export default function MutJunctionFocalSection({ data, onPaint = null }) {
   const [territory, setTerritory] = useState("focal");
   const [filter, setFilter] = useState("all");
   const [subset, setSubset] = useState("all");
+  const [cn, setCn] = useState(true);
   const [picked, setPicked] = useState({ bin: "0-1 kb", side: null });
   const block = focalBlock(data, territory);
   const reason = focalUnavailable(data, territory);
   const filters = availableFilters(block);
   const f = filters.some((x) => x.value === filter) ? filter : "all";
-  const series = useMemo(() => focalSeries(block, f, subset), [block, f, subset]);
-  const prim = useMemo(() => focalPrimary(block, f, subset), [block, f, subset]);
+  const series = useMemo(() => focalSeries(block, f, subset, cn), [block, f, subset, cn]);
+  const prim = useMemo(() => focalPrimary(block, f, subset, cn), [block, f, subset, cn]);
   const pairs = useMemo(() => (picked ? pairsInBin(block, { bin: picked.bin, side: picked.side, filter: f, subset }) : []), [block, picked, f, subset]);
-  const strata = useMemo(() => strataRows(block, f), [block, f]);
+  const strata = useMemo(() => strataRows(block, f, cn), [block, f, cn]);
   const carriers = useMemo(() => carrierRows(block, f), [block, f]);
 
   const isolate = (ids) => {
@@ -60,6 +61,7 @@ export default function MutJunctionFocalSection({ data, onPaint = null }) {
       <Segmented size="small" value={territory} onChange={setTerritory} options={TERRITORIES} />
       <Select size="small" style={{ width: 140 }} value={f} onChange={setFilter} options={filters.length ? filters : [{ value: "all", label: "All tree sites" }]} />
       <Segmented size="small" value={subset} onChange={setSubset} options={FOCAL_SUBSETS} />
+      <Segmented size="small" value={cn ? "cn" : "raw"} onChange={(v) => setCn(v === "cn")} options={[{ value: "cn", label: "CN-adjusted" }, { value: "raw", label: "Raw" }]} />
     </Space>
   );
   if (!block) {
@@ -74,15 +76,15 @@ export default function MutJunctionFocalSection({ data, onPaint = null }) {
   return (
     <Space direction="vertical" size={10} style={{ width: "100%" }}>
       {controls}
-      <Paragraph style={{ marginBottom: 0 }}>{focalHeadline(block, f, subset)}</Paragraph>
+      <Paragraph style={{ marginBottom: 0 }}>{focalHeadline(block, f, subset, cn)}</Paragraph>
       <MutJunctionFocalChart series={series} picked={picked} onPick={setPicked} />
       <HintLine
-        text={`${block.n_breakends} breakends of junctions seen in >= 2 tumour cells (${block.n_breakends_callable_5kb} with callable bases within 5 kb of ${block.territory_label || "the territory"}). Cis = the side fused into the junction (gGnome strand '+' = higher coordinates, '-' = lower), trans = the other side of the same breakpoint. Rate = SNVs per callable Mb summed over breakends; ratio CIs exact (conditional binomial); background = SNV rate on the same chromosome > 50 kb from every breakend. Caveats: cis SNVs within a few hundred bp of the breakpoint can be mismatches from junction-spanning reads; for DEL/DUP-like junctions the two sides differ in copy number, so the INV/TRA-like strata below are the cleaner comparison.`}
+        text={`${block.n_breakends} breakends of junctions seen in >= 2 tumour cells (${block.n_breakends_callable_5kb} with callable bases within 5 kb; ${block.territory_label || ""}). Cis = the side fused into the junction (gGnome strand '+' = higher coordinates, '-' = lower), trans = the other side. Rate = SNVs per callable Mb (raw) or per diploid-equivalent Mb (CN-adjusted: callable x carrier CN / 2), summed over breakends; ratio CIs exact (conditional binomial); background = random windows matched by CN class. Caveat: cis SNVs within a few hundred bp of the breakpoint can be mismatches from junction-spanning reads.`}
       />
       {perm && (
         <Space size={16} wrap style={{ fontSize: TYPE.body }}>
           {perm.shift && <Text>junction shift (all breakends of a chromosome moved together): log ratio {perm.shift.obs.toFixed(2)} vs null {perm.shift.null_mean.toFixed(2)} +/- {perm.shift.null_sd.toFixed(2)}, p={fmtP(perm.shift.p_two_sided)}</Text>}
-          {perm.flip && <Text>orientation flip (cis/trans swapped at random per breakend): p={fmtP(perm.flip.p_two_sided)}</Text>}
+          {perm.flip && <Text>orientation flip (cis/trans swapped at random per breakend): p={fmtP(perm.flip.p_two_sided)}{perm.flip_cn ? `, CN-adjusted p=${fmtP(perm.flip_cn.p_two_sided)}` : ""}</Text>}
           {perm.shift_cis_count && <Text>cis SNVs within 5 kb {perm.shift_cis_count.obs} vs {perm.shift_cis_count.null_mean.toFixed(1)} at shifted positions (p={fmtP(perm.shift_cis_count.p_two_sided)})</Text>}
         </Space>
       )}
@@ -145,9 +147,7 @@ export default function MutJunctionFocalSection({ data, onPaint = null }) {
         />
         <HintLine text="F1 between the cells carrying the SNV (genotype call) and the cells carrying the junction, among tumour cells with a graph. A mutation that arose with the junction should have F1 near 1; the random-junction column is the same SNVs scored against another junction of this patient. Counts are SNV x breakend pairs within 50 kb (all SNVs, territory or not)." />
       </div>
-      {block.n_breakends_callable_5kb < block.n_breakends / 2 && territory === "focal" && (
-        <Alert type="info" showIcon message={`Only ${block.n_breakends_callable_5kb} of ${block.n_breakends} breakends have diploid callable bases within 5 kb (breakpoints often sit at copy-number changes). "All autosomal" counts them all.`} />
-      )}
+
     </Space>
   );
 }
