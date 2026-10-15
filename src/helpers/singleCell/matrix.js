@@ -667,7 +667,14 @@ export function snvMetricValue(snv, p, c, metric) {
 const SNV_DARK = { zero: 44, one: 200, missing: "#191919" };
 
 /** Colour of sites with no reads for the current theme. */
-export const snvMissingColor = () => (isDarkPlots() ? SNV_DARK.missing : SNV_MISSING_COLOR);
+let snvNaWhite = false;
+/** "Missing (no coverage)" colour mode for the mutation matrices: grey (default) or white. */
+export const setSnvNaMode = (mode) => {
+  snvNaWhite = mode === "white";
+};
+export const snvNaMode = () => (snvNaWhite ? "white" : "grey");
+export const SNV_NA_WHITE = "#ffffff";
+export const snvMissingColor = () => (snvNaWhite ? SNV_NA_WHITE : isDarkPlots() ? SNV_DARK.missing : SNV_MISSING_COLOR);
 
 /** [r, g, b] for a VAF / positive fraction: white (0) to black (1) as pgv draws it; dark theme: dark grey to light grey. */
 export function vafRGB(value) {
@@ -679,31 +686,57 @@ export function vafRGB(value) {
 
 export const vafRGBA = (value) => packRGBA(vafRGB(value));
 
-/** Read counts are right-skewed: log1p blue-to-red, scaled to the patient maximum. */
-export function countRGBA(value, max) {
-  if (value == null || !Number.isFinite(value)) return packRGBA(hexToRgb(snvMissingColor()));
+/** ALT read counts are small integers: discrete bins 0 / 1 / 2 / 3-5 / 6+ (light to dark blue). */
+export const ALT_BINS = [
+  { key: "0", label: "0", min: 0, max: 0, color: "#e3ebf5" },
+  { key: "1", label: "1", min: 1, max: 1, color: "#a6cee3" },
+  { key: "2", label: "2", min: 2, max: 2, color: "#5fa2d0" },
+  { key: "3-5", label: "3-5", min: 3, max: 5, color: "#1f6fb2" },
+  { key: "6+", label: "6+", min: 6, max: Infinity, color: "#08306b" },
+];
+export const altBin = (value) => (value == null || !Number.isFinite(value) ? null : ALT_BINS.find((b) => value >= b.min && value <= b.max) || ALT_BINS[ALT_BINS.length - 1]);
+
+/** Depth is right-skewed: log1p, light yellow to dark blue, scaled to a high percentile (not the maximum). */
+export const depthColor = (value, max) => {
   const top = Math.max(1, max || 1);
   const t = Math.log1p(Math.max(0, Math.min(top, value))) / Math.log1p(top);
-  return packRGBA([Math.round(255 * t), 128, Math.round(255 * (1 - t))]);
+  const a = [255, 255, 217];
+  const b = [65, 182, 196];
+  const c = [8, 29, 88];
+  const mix = (p, q, f) => Math.round(p + (q - p) * f);
+  const [lo, hi, f] = t < 0.5 ? [a, b, t * 2] : [b, c, (t - 0.5) * 2];
+  return [mix(lo[0], hi[0], f), mix(lo[1], hi[1], f), mix(lo[2], hi[2], f)];
+};
+
+/** Colour of a count metric: ALT reads in discrete bins, depth on a log ramp; missing = the NA colour. */
+export function countRGBA(value, max, metric = "depth") {
+  if (value == null || !Number.isFinite(value)) return packRGBA(hexToRgb(snvMissingColor()));
+  if (metric === "alt") return packRGBA(hexToRgb(altBin(value).color));
+  return packRGBA(depthColor(value, max));
 }
 
+/** Largest value shown at full colour: ALT reads are binned (6+); depth is clipped at the 99th percentile. */
 export function snvMetricMax(snv, metric) {
   if (metric === "vaf" || metric === "gt") return 1;
-  const source = metric === "alt" ? snv.alt : snv.depth;
-  let max = 1;
-  source.forEach((row) => row.forEach((v) => {
-    if (Number.isFinite(v) && v > max) max = v;
+  if (metric === "alt") return 6;
+  const values = [];
+  snv.depth.forEach((row) => row.forEach((v) => {
+    if (Number.isFinite(v)) values.push(v);
   }));
-  return max;
+  if (!values.length) return 1;
+  // sample large matrices so the percentile stays cheap
+  const step = Math.max(1, Math.floor(values.length / 200000));
+  const sample = values.filter((_, i) => i % step === 0).sort((a, b) => a - b);
+  return Math.max(1, Math.round(sample[Math.min(sample.length - 1, Math.floor(sample.length * 0.99))]));
 }
 
 export function snvMetricRGBA(value, metric, max) {
   if (metric === "gt") {
     if (value === 1) return packRGBA(hexToRgb(GT_COLORS.alt));
     if (value === 0) return packRGBA(hexToRgb(GT_COLORS.ref));
-    return packRGBA(hexToRgb(isDarkPlots() ? SNV_DARK.missing : GT_COLORS.nocall));
+    return packRGBA(hexToRgb(snvNaWhite ? SNV_NA_WHITE : isDarkPlots() ? SNV_DARK.missing : GT_COLORS.nocall));
   }
-  return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max);
+  return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max, metric);
 }
 
 /** Tick values for a count legend on the log1p scale. */
