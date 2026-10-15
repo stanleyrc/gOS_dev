@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { Layout, ConfigProvider, theme as antdTheme } from "antd";
-import { applyAppTheme, getAppTheme, onAppThemeChange } from "./helpers/appTheme";
+import { applyAppTheme, getAppTheme, isDarkLike, onAppThemeChange } from "./helpers/appTheme";
+import { cyberAntdTokens } from "./helpers/singleCell/plotTheme";
 import UpdateNotice from "./components/updateNotice";
 import singleCellActions from "./redux/singleCell/actions";
 import { CN_PALETTE_PRESETS } from "./helpers/singleCell/matrix";
@@ -37,7 +38,7 @@ function App() {
     applyAppTheme(mode);
     // the CN heatmap palette follows the theme between its light / dark pgv variants
     const preset = store.getState().SingleCell?.palette?.preset;
-    const want = mode === "dark" ? "pgvDark" : "pgv";
+    const want = isDarkLike(mode) ? "pgvDark" : "pgv";
     if ((preset === "pgv" || preset === "pgvDark") && preset !== want) {
       store.dispatch(singleCellActions.updatePalette({ preset: want, ...CN_PALETTE_PRESETS[want] }));
     } else if (preset === want) {
@@ -50,7 +51,7 @@ function App() {
     return onAppThemeChange(setMode);
   }, [mode]);
   return (
-    <ConfigProvider locale={en_US} theme={{ algorithm: mode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm, token: { fontFamily: APP_FONT_FAMILY } }}>
+    <ConfigProvider locale={en_US} theme={{ algorithm: isDarkLike(mode) ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm, token: { fontFamily: APP_FONT_FAMILY, ...cyberAntdTokens(mode) } }}>
       <Provider store={store}>
         <I18nextProvider i18n={i18n}>
           <Router history={history}>

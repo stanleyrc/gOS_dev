@@ -43,6 +43,10 @@ export const THEMES = {
     label: "Isle of Dogs",
     colors: ["#9986A5", "#79402E", "#CCBA72", "#0F0D0E", "#D9D0D3", "#8D8680", "#EAD3BF", "#AA9486", "#B6854D", "#39312F", "#1C1718"],
   },
+  neon: {
+    label: "Neon (for dark panels)",
+    colors: ["#00e5ff", "#ff2ec4", "#ffe600", "#39ff9c", "#b266ff", "#ff7a45", "#4d9bff", "#ff4d7d", "#a6ff4d", "#f2efff"],
+  },
 };
 
 export const DEFAULT_THEME = "tableau";

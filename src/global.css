@@ -613,3 +613,108 @@ html[data-theme="dark"] .sc-help-item {
 html[data-theme="dark"] .sc-help-mark {
   background: rgba(250, 173, 20, 0.3);
 }
+
+/* ---- cyberpunk skin (html[data-skin="cyberpunk"]; data-theme stays "dark" so every
+   dark rule above applies first). Chrome only: backgrounds, borders, accents, glow.
+   Data colours (CN heatmap, SNV, clones, signatures) are untouched. ---- */
+html[data-skin="cyberpunk"] body,
+html[data-skin="cyberpunk"] .ant-full-layout {
+  background: radial-gradient(1200px 600px at 85% -10%, rgba(255, 46, 196, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 0% 0%, rgba(0, 229, 255, 0.08), transparent 55%), var(--sc-page) !important;
+  background-attachment: fixed !important;
+}
+html[data-skin="cyberpunk"] h1,
+html[data-skin="cyberpunk"] h2,
+html[data-skin="cyberpunk"] .ant-page-header-heading-title,
+html[data-skin="cyberpunk"] .ant-card-head-title,
+html[data-skin="cyberpunk"] .ant-modal-title,
+html[data-skin="cyberpunk"] .ant-drawer-title,
+html[data-skin="cyberpunk"] .ant-popover-title {
+  font-family: "Orbitron", "Share Tech Mono", ui-monospace, monospace !important;
+  letter-spacing: 0.04em;
+}
+html[data-skin="cyberpunk"] .ant-card {
+  border-color: var(--sc-border) !important;
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.06), 0 0 18px rgba(255, 46, 196, 0.05);
+}
+html[data-skin="cyberpunk"] .ant-card .ant-card-head {
+  border-bottom: 1px solid rgba(255, 46, 196, 0.45) !important;
+}
+html[data-skin="cyberpunk"] .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--sc-accent) !important;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.55);
+}
+html[data-skin="cyberpunk"] .ant-tabs-ink-bar {
+  background: var(--sc-magenta) !important;
+  box-shadow: 0 0 10px rgba(255, 46, 196, 0.8);
+}
+html[data-skin="cyberpunk"] .ant-btn-primary {
+  background: var(--sc-accent) !important;
+  color: #08061a !important;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.45);
+}
+html[data-skin="cyberpunk"] .ant-btn-primary:hover {
+  background: #5cf2ff !important;
+}
+html[data-skin="cyberpunk"] .ant-btn-default:hover,
+html[data-skin="cyberpunk"] .ant-btn-default:focus-visible {
+  border-color: var(--sc-magenta) !important;
+  color: var(--sc-magenta) !important;
+  box-shadow: 0 0 8px rgba(255, 46, 196, 0.5);
+}
+html[data-skin="cyberpunk"] .ant-input:focus,
+html[data-skin="cyberpunk"] .ant-input-affix-wrapper-focused,
+html[data-skin="cyberpunk"] .ant-select-focused .ant-select-selector,
+html[data-skin="cyberpunk"] .ant-input-number-focused,
+html[data-skin="cyberpunk"] .ant-picker-focused {
+  border-color: var(--sc-accent) !important;
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.25), 0 0 10px rgba(0, 229, 255, 0.45) !important;
+}
+html[data-skin="cyberpunk"] .ant-segmented-item-selected {
+  background: var(--sc-accent-soft) !important;
+  color: var(--sc-yellow) !important;
+  box-shadow: 0 0 8px rgba(255, 230, 0, 0.45);
+}
+html[data-skin="cyberpunk"] .ant-checkbox-checked .ant-checkbox-inner,
+html[data-skin="cyberpunk"] .ant-switch-checked {
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+html[data-skin="cyberpunk"] .ant-popover-inner,
+html[data-skin="cyberpunk"] .ant-modal-content,
+html[data-skin="cyberpunk"] .ant-drawer-content,
+html[data-skin="cyberpunk"] .ant-dropdown-menu,
+html[data-skin="cyberpunk"] .ant-select-dropdown,
+html[data-skin="cyberpunk"] .sc-tooltip {
+  border: 1px solid var(--sc-border);
+  box-shadow: 0 0 22px rgba(255, 46, 196, 0.22), 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+}
+html[data-skin="cyberpunk"] .ant-tooltip-inner {
+  background: var(--sc-raised) !important;
+  color: var(--sc-text) !important;
+  border: 1px solid var(--sc-accent);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+html[data-skin="cyberpunk"] .ant-table-tbody > tr:hover > td {
+  background: rgba(0, 229, 255, 0.08) !important;
+}
+html[data-skin="cyberpunk"] a {
+  color: var(--sc-accent);
+}
+html[data-skin="cyberpunk"] .ant-pro-top-menu,
+html[data-skin="cyberpunk"] .ant-layout-header {
+  border-bottom: 1px solid rgba(255, 46, 196, 0.5) !important;
+  box-shadow: 0 2px 16px rgba(255, 46, 196, 0.18);
+}
+html[data-skin="cyberpunk"] .sc-light-island {
+  border-color: var(--sc-accent) !important;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35) !important;
+}
+html[data-skin="cyberpunk"] ::selection {
+  background: rgba(255, 46, 196, 0.45);
+  color: #fff;
+}
+html[data-skin="cyberpunk"] *:focus-visible {
+  outline: 2px solid var(--sc-yellow);
+  outline-offset: 1px;
+}

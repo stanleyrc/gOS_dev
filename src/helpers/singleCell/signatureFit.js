@@ -1,3 +1,4 @@
+import { isDarkLike } from "./plotTheme";
 // Goodness of fit of an SBS signature fit, as the bulk Signatures tab shows
 // it (observed vs reconstructed catalog, decomposed catalogs against their
 // reference profiles with cosine similarity) plus SigProfilerAssignment's
@@ -177,6 +178,6 @@ export function evaluateBackendSet(set, { channels = null, profileCounts = null,
  * stylesheet would re-tint (e.g. #d9d9d9 -> border grey).
  */
 export function sbsClassColors(mode, base) {
-  if (mode !== "dark") return { ...base };
+  if (!isDarkLike(mode)) return { ...base };
   return { ...base, "C>G": "#8a8f98", "T>A": "#d2d2d2" };
 }
