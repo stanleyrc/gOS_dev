@@ -458,7 +458,7 @@ export function setValues(filter, key, values) {
 // ---- the whole site-filter state in the URL (tracks, track filters, tree-site,
 // drivers, CellPhy, clade score, label mode, missing colour, isolate)
 
-export const SITE_URL_PARAMS = ["sntracks", "snfilter", "sncat", "sndrv", "sncp", "snf1", "snlabel", "snna", "snisolate", "snhide", "snleg"];
+export const SITE_URL_PARAMS = ["sntracks", "snfilter", "sncat", "sndrv", "sncp", "snf1", "snlabel", "snna", "snisolate", "snhide", "snleg", "sigfit", "sigcand"];
 const LABEL_VALUES = ["gene", "protein", "position", "none"];
 
 export function serializeSiteState(layout) {
@@ -473,6 +473,8 @@ export function serializeSiteState(layout) {
   if (l.snvIsolate) params.snisolate = "1";
   if (l.snvFiltersHidden) params.snhide = "1";
   if (l.snvLegendHidden) params.snleg = "0";
+  if (l.sigFit === "legacy" || l.sigFit === "joint") params.sigfit = l.sigFit; // the Signatures-tab fit switch, shared with the Signature track
+  if (l.sigCandidates) params.sigcand = "1";
   return params;
 }
 
@@ -494,6 +496,8 @@ export function parseSiteState(search) {
   if (params.get("snisolate") === "1") patch.snvIsolate = true;
   if (params.get("snhide") === "1") patch.snvFiltersHidden = true;
   if (params.get("snleg") === "0") patch.snvLegendHidden = true;
+  if (["joint", "legacy"].includes(params.get("sigfit"))) patch.sigFit = params.get("sigfit");
+  if (params.get("sigcand") === "1") patch.sigCandidates = true;
   return patch;
 }
 

@@ -1,6 +1,7 @@
 import {
   FIT_JOINT,
   FIT_LEGACY,
+  candidateSignatures,
   cohortDifferences,
   contrastRows,
   droppedSignatures,
@@ -72,5 +73,24 @@ describe("signatureJoint", () => {
     expect(out[0].patients.map((p) => p.patient)).toEqual(["A", "B"]);
     expect(out[0].direction).toBe("higher in the non-truncal set");
     expect(cohortDifferences(cohort, { onlySignificant: false })).toHaveLength(2);
+  });
+
+  it("finds below-threshold candidates and folds them into the per-site activities on request", () => {
+    const j = {
+      ...joint,
+      legacy_dropped: [
+        { signature: "SBS99", legacy_sets: ["subclonal"], checks: [{ set: "subclonal", frac: 0.047, lo: 0.04, hi: 0.053, delta_loglik: 156, p: 1e-70, cosine_gain: 0.0175, support: 0.19 }] },
+        { signature: "SBS26", legacy_sets: ["subclonal"], checks: [{ set: "subclonal", frac: 0, lo: 0, hi: 0.01, delta_loglik: 0, p: 1, cosine_gain: 0, support: 0 }] },
+      ],
+    };
+    expect(candidateSignatures(j).map((c) => c.signature)).toEqual(["SBS99"]);
+    const legacy = { status: "ok", data: { sets: [] } };
+    const off = effectiveSignatures(legacy, { status: "ok", data: j }, FIT_JOINT, false).data;
+    expect(off.sets.find((x) => x.name === "subclonal").activities).toHaveLength(2);
+    const on = effectiveSignatures(legacy, { status: "ok", data: j }, FIT_JOINT, true).data;
+    const acts = on.sets.find((x) => x.name === "subclonal").activities;
+    expect(on.candidatesIncluded).toBe(true);
+    expect(acts.find((a) => a.signature === "SBS99").activity).toBeCloseTo(0.047 * 100, 6);
+    expect(acts.reduce((t, a) => t + a.activity, 0)).toBeCloseTo(100, 6);
   });
 });

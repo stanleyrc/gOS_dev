@@ -178,7 +178,8 @@ export default function appReducer(state = initState, action) {
         signatures: effectiveSignatures(
           action.signatures || emptySource,
           action.signaturesJoint || emptySource,
-          sigFitMode(state.layout, action.signaturesJoint?.status === "ok")
+          sigFitMode(state.layout, action.signaturesJoint?.status === "ok"),
+          Boolean(state.layout.sigCandidates)
         ),
         signaturesLegacy: action.signatures || emptySource,
         signaturesJoint: action.signaturesJoint || emptySource,
@@ -254,8 +255,8 @@ export default function appReducer(state = initState, action) {
           ? cloneColorsForTheme(Object.keys(state.cloneColors || {}), action.patch.theme, state.cloneColorsFixed || {})
           : state.cloneColors;
       // the Signatures fit switch (layout.sigFit) decides which file the tabs read as `signatures`
-      if ("sigFit" in action.patch && state.signaturesLegacy) {
-        const signatures = effectiveSignatures(state.signaturesLegacy, state.signaturesJoint, sigFitMode(layout, state.signaturesJoint?.status === "ok"));
+      if (("sigFit" in action.patch || "sigCandidates" in action.patch) && state.signaturesLegacy) {
+        const signatures = effectiveSignatures(state.signaturesLegacy, state.signaturesJoint, sigFitMode(layout, state.signaturesJoint?.status === "ok"), Boolean(layout.sigCandidates));
         return { ...state, layout, cloneColors, signatures };
       }
       return { ...state, layout, cloneColors };

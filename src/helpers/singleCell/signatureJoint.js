@@ -19,9 +19,46 @@ const isOk = (src) => src?.status === "ok" && src.data && Array.isArray(src.data
  * joint mode (same sets / activities shape as signatures.json, plus CIs and a
  * `fit: "joint"` flag), else the legacy file.
  */
-export function effectiveSignatures(legacy, joint, mode) {
-  if (mode === FIT_JOINT && isOk(joint)) return { status: "ok", data: { ...joint.data, fit: FIT_JOINT } };
+export function effectiveSignatures(legacy, joint, mode, includeCandidates = false) {
+  if (mode === FIT_JOINT && isOk(joint)) {
+    const data = { ...joint.data, fit: FIT_JOINT };
+    if (includeCandidates) {
+      const cands = candidateSignatures(joint.data);
+      if (cands.length) {
+        data.candidatesIncluded = true;
+        data.sets = data.sets.map((set) => {
+          const mine = cands.filter((c) => c.set === set.name);
+          if (!mine.length) return set;
+          const total = (set.activities || []).reduce((acc, a) => acc + (Number(a.activity) || 0), 0);
+          const share = mine.reduce((acc, c) => acc + c.frac, 0);
+          // candidates take their fraction of the set; the patient-set exposures shrink to the rest
+          const scaled = (set.activities || []).map((a) => ({ ...a, activity: (Number(a.activity) || 0) * (1 - share) }));
+          const added = mine.map((c) => ({ signature: c.signature, activity: c.frac * total, candidate: true }));
+          return { ...set, activities: [...scaled, ...added] };
+        });
+      }
+    }
+    return { status: "ok", data };
+  }
   return legacy;
+}
+
+/** Likelihood-ratio threshold of a candidate signature: Bonferroni over the ~80 COSMIC signatures not in the set. */
+export const CANDIDATE_P = 0.05 / 80;
+
+/**
+ * Signatures the independent fits reported that pass the likelihood-ratio test on top of the patient set
+ * but fail the selection thresholds (>= 5% exposure, >= 0.02 cosine gain, >= 80% bootstrap support):
+ * [{ signature, set, frac, lo, hi, delta_loglik, p, cosine_gain, support }].
+ */
+export function candidateSignatures(joint) {
+  const out = [];
+  (joint?.legacy_dropped || []).forEach((d) =>
+    [].concat(d.checks || []).forEach((c) => {
+      if (c.p != null && Number(c.p) < CANDIDATE_P && Number(c.frac) > 0.01) out.push({ signature: d.signature, ...c });
+    })
+  );
+  return out.sort((a, b) => b.frac - a.frac);
 }
 
 /** [{ signature, source, set, detail, stability }] of the patient set, base signatures first. */
