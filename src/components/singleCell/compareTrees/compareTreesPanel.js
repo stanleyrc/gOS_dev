@@ -37,6 +37,7 @@ import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell
 import CellIgvPanel from "../cellIgvPanel";
 import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "../snvAnnotTracks";
 import SnvIsolatePanel from "../snvIsolatePanel";
+import SnvSelectionBar from "../snvSelectionBar";
 import HeatmapLegend from "../heatmapLegend";
 import { carrierRows, subsetLeafStates } from "../../../helpers/singleCell/snvIsolate";
 import MutationSidePanel, { LABEL_H, SNV_CATEGORIES } from "../mutationSidePanel";
@@ -313,8 +314,8 @@ export default function CompareTreesPanel() {
     const all = snvOrder === "tree" ? treeColumnOrder(snvCalls, layout, rows) : snvColumnOrder(snvCalls, snvOrder);
     return { rows, columns: filterSnvColumns(snvCalls, all, { ...siteFilter, annot: layout === layoutA ? annotA : annotB }) };
   };
-  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
-  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvSelected, siteFilter.snvSelectedOnly, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvSelected, siteFilter.snvSelectedOnly, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
   const isolateCarriers = (layout, mat) => (isolating && mat && isolateColumns.length ? carrierRows(snvCalls, isolateColumns, mat.rows) : null);
   const markedRows = (layout, mat = null) => {
     const r = rowsOf(layout);
@@ -349,6 +350,11 @@ export default function CompareTreesPanel() {
     setLayout({ snvIsolate: on });
     if (on && snvOrder !== "tree") dispatch(singleCellActions.updateSnvOrder("tree"));
   };
+  const isolateSelected = () => {
+    setLayout({ snvSelectedOnly: true });
+    setIsolate(true);
+  };
+  const paintSelectedSites = (columns) => setPainted((cur) => [...cur.filter((k) => !columns.some((c) => k === `s:${c}`)), ...columns.map((c) => `s:${c}`)].slice(-MAX_PAINTED));
   // sites passing the shared filters (the same count the Single-Cell tab shows)
   const isolateCount = useMemo(
     () => (snvCalls && annotA ? filterSnvColumns(snvCalls, snvCalls.variants.map((_, i) => i), { ...siteFilter, annot: annotA }).length : 0),
@@ -463,6 +469,7 @@ export default function CompareTreesPanel() {
             <Tooltip title="Clicking a site in a matrix opens IGV there for the selected clade (or the clicked cell)"><span>IGV on site click <Switch size="small" checked={igvOnClick} onChange={setIgvOnClick} /></span></Tooltip>
             <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
             <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} nShown={isolateCount} onIsolate={setIsolate} fitBusy={fitBusyA} /></div>
+            <div style={{ width: "100%" }}><SnvSelectionBar snv={snvCalls} annot={annotA} patient="compare" onIsolate={isolateSelected} onPaint={paintSelectedSites} /></div>
             <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} /></div>
           </Space>
         ) : null}

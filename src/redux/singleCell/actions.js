@@ -57,6 +57,11 @@ export const SC_DEFAULT_LAYOUT = {
   snvIsolate: false, // isolate the filtered sites: where they sit (branch counts, carrier cells), table and fit
   snvCellphyOnly: false, // only the sites CellPhy built the tree from
   snvDriversOnly: false, // only OncoKB driver sites
+  snvSelected: [], // mutations selected on the heatmap (variant ids; URL snsel=); helpers/singleCell/snvSelection.js
+  snvSelectedOnly: false, // show only the selected mutations (acts as a site filter)
+  snvPaintSelected: false, // branch SNV counts for the selected mutations only
+  snvCarrierMode: "any", // Show carriers: cells with any / all of the selected mutations
+  snvSets: {}, // named mutation sets per patient: { [patient]: [{ name, ids }] }
   stripWidth: 14, // px per annotation strip beside the heatmaps (clone, state, region, ...)
   snvSiteIds: null, // only these SNV sites (e.g. picked in Filtered Events); null = no restriction
   showSignatures: true, // SBS signature panel below the heatmap

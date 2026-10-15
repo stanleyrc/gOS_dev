@@ -18,17 +18,20 @@ export const cladeScoreDetail = (v) =>
     : `${v.cladeScore.toFixed(2)} (alt ${v.altInClade}/${v.altInClade + v.refInClade} in clade, ${v.altOutsideClade}/${v.altOutsideClade + v.refOutsideClade} outside)`;
 
 /** Filter column (variant) indices by the layout's SNV site filters. */
-export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, snvDriversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot } = {}) {
+export function filterSnvColumns(snv, columns, { snvCategories, snvCellphyOnly, snvDriversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot, snvSelected, snvSelectedOnly } = {}) {
   if (!snv) return columns;
   const byAnnot = annot && hasAnnotFilter(snvAnnotFilter) ? snvAnnotFilter : null;
   const categories = hasSiteCategories(snv) && snvCategories?.length ? new Set(snvCategories) : null;
   const sites = snvSiteIds?.length ? new Set(snvSiteIds) : null;
+  // "selected only": the mutations picked on the heatmap act as one more site filter
+  const picked = snvSelectedOnly && snvSelected?.length ? new Set(snvSelected) : null;
   const minScore = snvMinCladeScore > 0 ? snvMinCladeScore : null;
-  if (!categories && !snvCellphyOnly && !snvDriversOnly && !sites && !minScore && !byAnnot) return columns;
+  if (!categories && !snvCellphyOnly && !snvDriversOnly && !sites && !picked && !minScore && !byAnnot) return columns;
   return columns.filter((c) => {
     const v = snv.variants[c];
     return (
       (!sites || sites.has(v.id)) &&
+      (!picked || picked.has(v.id)) &&
       (!categories || categories.has(v.category || "unmapped")) &&
       (!snvCellphyOnly || v.cellphyInput === true) &&
       (!snvDriversOnly || v.driver === true) &&
