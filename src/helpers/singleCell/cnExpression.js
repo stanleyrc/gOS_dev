@@ -9,7 +9,15 @@ export function locusCn(row, gStart, gEnd) {
   const { gStart: s, gEnd: e } = row.binIndex;
   let sum = 0;
   let width = 0;
-  for (let b = 0; b < s.length; b += 1) {
+  // bins are sorted by position: binary-search the first bin that ends after gStart, stop at the first that starts at gEnd
+  let lo = 0;
+  let hi = s.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (e[mid] <= gStart) lo = mid + 1;
+    else hi = mid;
+  }
+  for (let b = lo; b < s.length && s[b] < gEnd; b += 1) {
     const a = Math.max(gStart, s[b]);
     const z = Math.min(gEnd, e[b]);
     const v = row.values[b];

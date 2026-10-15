@@ -20,6 +20,8 @@ import { setPendingEvent } from "../pendingEventOpener";
 import ColorTag from "../colorTag";
 import GeneInfoCard from "../rna/geneInfoCard";
 import ExternalLinksRow from "../externalLinksRow";
+import CladeF1Chip from "./cladeF1Chip";
+import { f1Of } from "../../../helpers/singleCell/cladeF1View";
 import { eventGenes, parseSite, pickIgvCells } from "../../../helpers/singleCell/eventDrawerHelpers";
 
 const { Text, Paragraph } = Typography;
@@ -107,6 +109,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
     [t("components.single-cell.report.col-role"), text(event.role)],
     [t("components.single-cell.cohort.ev-effect"), text(event.effect)],
     [t("components.single-cell.report.col-cells"), `${event.cells || ""} (${pct(Number(event.cell_fraction) || 0)})`],
+    ["Clade F1", Number.isFinite(f1Of(event, patientFiles?.tree)) ? <CladeF1Chip value={f1Of(event, patientFiles?.tree)} prefix="" style={{ fontSize: 14 }} /> : null],
     ["VAF", Number.isFinite(Number(event.VAF)) && Number(event.VAF) > 0 ? Number(event.VAF).toFixed(3) : null],
     [t("components.single-cell.cohort.ev-copies"), text(event.estimated_altered_copies) || text(event.fusion_cn)],
   ].filter(([, v]) => v);

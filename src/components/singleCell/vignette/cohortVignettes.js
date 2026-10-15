@@ -10,12 +10,14 @@ import { CloneLine, EvidenceChips, EvidenceDrawer, useEvidenceRunner } from "./p
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import useCohortExport from "../cohort/useCohortExport";
 import { headlineFindings } from "../../../helpers/singleCell/covariateDe";
+import CladeF1Chip from "../cohort/cladeF1Chip";
+import { findingF1 } from "../../../helpers/singleCell/cladeF1View";
 
 const { Text, Link } = Typography;
 const CATEGORY_LABEL = { truncal: "truncal", subclonal: "subclonal", rna: "RNA", phenotype: "phenotype" };
 const IN_PLACE = new Set(["plot", "igv", "splice"]);
 
-function CohortRow({ id, vignette, summary, cloneColors, onOpen, runInPlace }) {
+function CohortRow({ id, vignette, summary, cloneColors, onOpen, runInPlace, patientFiles = null }) {
   const dispatch = useDispatch();
   // in-place evidence opens here; jump-and-highlight evidence opens the patient, then runs there
   const onRun = (finding, index) => (action, title) => {
@@ -41,6 +43,7 @@ function CohortRow({ id, vignette, summary, cloneColors, onOpen, runInPlace }) {
           return (
             <li key={f.id} className={i < 3 && f.category !== "phenotype" ? "major" : undefined}>
               <Text type="secondary" className="sc-vignette-cat">{CATEGORY_LABEL[f.category]}</Text>
+              <CladeF1Chip value={findingF1(f, patientFiles?.events, patientFiles?.tree)} style={{ marginRight: 6 }} tip="Carriers of this finding's filtered events on the patient tree" />
               {lead ? (
                 <>
                   <Text strong={i < 3}>{`${lead}: `}</Text>
@@ -106,7 +109,7 @@ function CovariateHeadlines({ dataset, onOpen }) {
  * Evidence chips open plots / reads in place, or open the patient and jump
  * to the highlighted evidence there.
  */
-export default function CohortVignettes({ dataset, summaries = [], cloneColors = {}, onOpen, onOpenCovariateDe }) {
+export default function CohortVignettes({ dataset, summaries = [], files = {}, cloneColors = {}, onOpen, onOpenCovariateDe }) {
   const { status, vignettes } = useVignettes(dataset);
   const { run, drawer, closeDrawer } = useEvidenceRunner(null);
   if (status === "loading") return <Skeleton active />;
@@ -120,7 +123,7 @@ export default function CohortVignettes({ dataset, summaries = [], cloneColors =
         {`Ranked findings per patient from vignettes.json (${vignettes.generated || "undated"}). Chips: plots and reads open here; heatmap, tree, ecDNA and driver evidence opens the patient on that view.`}
       </Text>
       {rows.map(({ id, vignette }) => (
-        <CohortRow key={id} id={id} vignette={vignette} summary={byId.get(id)} cloneColors={cloneColors} onOpen={onOpen} runInPlace={run} />
+        <CohortRow key={id} id={id} vignette={vignette} summary={byId.get(id)} cloneColors={cloneColors} onOpen={onOpen} runInPlace={run} patientFiles={files[id] || null} />
       ))}
       <EvidenceDrawer drawer={drawer} onClose={closeDrawer} />
     </VignetteWrapper>
