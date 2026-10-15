@@ -140,7 +140,7 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
     const rescue = rescued ? rescueInfo(e, tumor) : null;
     const verdict = rescued ? rescue.verdict : site && verdicts ? verdicts.get(site) || null : null;
     const upstreamOnly = e.upstream_only === true || `${e.upstream_only}` === "true";
-    // rescued: carriers / covered tumour cells (a lower bound: allele dropout), clonality is not assessed
+    // rescued: carriers / covered tumour cells (a lower bound under allele dropout)
     const fraction = rescued ? rescue.fraction : carriers.length / total;
     const rnaCells = cls === "fusion" && rnaFusionCells ? rnaFusionCells(e) : null;
     const hotspot = cls === "snv" && Boolean(rescued || (site && hotspots && hotspots.has(site)) || variant?.driver);
@@ -153,7 +153,7 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
       carriers,
       n: carriers.length,
       fraction,
-      subclonal: rescued ? false : fraction <= CLONAL_FRACTION,
+      subclonal: rescued ? (rescue.lowCoverage ? false : fraction <= CLONAL_FRACTION) : fraction <= CLONAL_FRACTION, // low coverage: carriers / covered is a lower bound, clonality not assessed
       inOncoKB: Boolean(roleOf(e.role)) || (Number.isFinite(tier) && tier <= 2) || Boolean(variant?.driver),
       inGbm: genes.some((g) => GBM_GENES[g]),
       inCgc: cgc ? genes.some((g) => cgc.has(g)) : null,

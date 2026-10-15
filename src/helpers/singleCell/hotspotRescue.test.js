@@ -10,7 +10,7 @@ const tert = (o = {}) => ({
   id: "P", gene: "TERT", fusion_genes: "", vartype: "Hotspot", type: "Promoter", Variant: "C228T (promoter, -124 C>T)", Variant_g: "5:1295113-1295113 G>A",
   Tier: 1, role: "Oncogene", seqnames: "5", start: "1295113", end: "1295113", Genome_Location: "5:1295113-1295113",
   cell_ids: "c1,c2,c3,c4", n_cells: 4, cells: "4/6", cell_fraction: 0.667, source: "site evidence (not in SNV calls)", rescued: true,
-  covered_ref_cell_ids: "c5,c6", tumour_cells: 10, covered_tumour_cells: 6, coverage_fraction: 0.6, low_coverage: false,
+  covered_ref_cell_ids: "c5,c6", tumour_cells: 10, covered_tumour_cells: 6, coverage_fraction: 0.6, low_coverage: true,
   hotspot_evidence: { preset: "all", tumor: { alt_f: 5, alt_r: 3, ref_f: 2, ref_r: 1 }, normal: { alt_f: 0, alt_r: 0, ref_f: 1, ref_r: 0 }, verdict: { level: "supported", label: "Supported", reasons: [] } },
   ...o,
 });
@@ -61,6 +61,16 @@ describe("rescued hotspot entries", () => {
   it("an artefact-like verdict keeps it out of Recommended", () => {
     const bad = buildDriverEntries([tert({ hotspot_evidence: { tumor: {}, normal: {}, verdict: { level: "artefact" } } })], { tumorIds: cells });
     expect(selectDrivers(bad, DEFAULT_SELECTION)).toEqual([]);
+  });
+});
+
+describe("well covered rescued SNV (PTEN in a clonal tumour)", () => {
+  const pten = tert({ gene: "PTEN", vartype: "SNV", type: "Trunc", Variant: "p.R130*", cell_ids: cells.join(","), n_cells: 10, cells: "10/10", cell_fraction: 1, covered_ref_cell_ids: "", covered_tumour_cells: 10, coverage_fraction: 1, low_coverage: false });
+  it("is clonal and keeps the standard clonality call", () => {
+    const d = buildDriverEntries([pten], { tumorIds: cells })[0];
+    expect(d).toMatchObject({ rescued: true, subclonal: false, n: 10 });
+    const r = buildPatientReport({ patient: "P", events: [pten], cells: cells.map((id) => ({ cell_id: id, clone_id: "Clone 1" })) });
+    expect(r.clonal).toHaveLength(1);
   });
 });
 

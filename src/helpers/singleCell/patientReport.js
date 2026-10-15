@@ -92,6 +92,7 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
     .map((e) => {
       const fraction = num(e.cell_fraction) ?? 0;
       const rescued = isRescued(e);
+      const lowCoverage = rescued && (e.low_coverage === true || `${e.low_coverage}` === "true");
       const fractions = cloneFractions(e, cloneOf, cloneSizes);
       return {
         event: e,
@@ -106,9 +107,9 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
         cells: e.cells,
         // rescued hotspots: carriers / covered cells is a lower bound (allele dropout), so clonality is not assessed
         rescued,
-        clonality: rescued ? "unassessed" : fraction >= CLONAL_FRACTION ? "clonal" : fraction >= RARE_FRACTION ? "subclonal" : "rare",
-        fractions: rescued ? {} : fractions,
-        definingClones: rescued ? [] : definingClones(fractions, tumor.length),
+        clonality: rescued && lowCoverage ? "unassessed" : fraction >= CLONAL_FRACTION ? "clonal" : fraction >= RARE_FRACTION ? "subclonal" : "rare",
+        fractions: lowCoverage ? {} : fractions,
+        definingClones: lowCoverage ? [] : definingClones(fractions, tumor.length),
         unverified: eventClass(e) === "fusion",
       };
     })
@@ -128,7 +129,7 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
   const clonal = dedup.filter((d) => d.clonality === "clonal");
   const subclonal = dedup.filter((d) => d.clonality === "subclonal");
   const rare = dedup.filter((d) => d.clonality === "rare");
-  const rescued = dedup.filter((d) => d.rescued); // hotspots recovered from site evidence, shown apart from the clonal / subclonal split
+  const rescued = dedup.filter((d) => d.rescued); // rescued from site evidence (all of them; low-coverage ones are in no clonality bucket)
 
   const clones = Object.entries(cloneSizes)
     .sort((a, b) => b[1] - a[1])
