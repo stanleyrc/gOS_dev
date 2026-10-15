@@ -15,6 +15,7 @@ import { AetiologyLegend, signatureColorOf } from "../signaturePanel";
 import { signatureBurden } from "../../../helpers/singleCell/signatureAssign";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../../helpers/singleCell/snvSites";
+import useSigSiteFilter from "./useSigSiteFilter";
 import { cutTree, labelRuns } from "../../../helpers/singleCell/treeGroups";
 import { fisherExact } from "../../../helpers/singleCell/tests";
 import HintLine, { Provenance } from "../hintLine";
@@ -41,6 +42,7 @@ export default function SignatureTreeCard() {
   const [containerRef, width] = useContainerWidth(900);
   const pixelRatio = usePixelRatio();
   const model = useSignatureModel();
+  const { allowed } = useSigSiteFilter();
   const [mode, setMode] = useState("clones");
   const [k, setK] = useState(4);
   const [unit, setUnit] = useState("count");
@@ -67,7 +69,7 @@ export default function SignatureTreeCard() {
   const burdens = useMemo(() => {
     if (!snvData || !model.ready) return null;
     const rows = rowMap(order, snvData.cells);
-    const keep = (c) => siteSet === "all" || (siteSet === "subclonal" ? snvData.variants[c].category !== "truncal" : snvData.variants[c].category === siteSet);
+    const keep = (c) => (!allowed || allowed.has(c)) && (siteSet === "all" || (siteSet === "subclonal" ? snvData.variants[c].category !== "truncal" : snvData.variants[c].category === siteSet));
     const out = {};
     clades.forEach((c) => {
       const cellRows = d3.range(c.first, c.last + 1).map((r) => rows[r]).filter((r) => r >= 0);
@@ -75,7 +77,7 @@ export default function SignatureTreeCard() {
       out[c.key] = { ...signatureBurden(seen, model.assignment), sites: seen };
     });
     return out;
-  }, [snvData, model, order, clades, siteSet]);
+  }, [snvData, model, order, clades, siteSet, allowed]);
   const allSigs = useMemo(() => {
     if (!burdens) return [];
     const totals = {};
