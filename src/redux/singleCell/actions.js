@@ -48,6 +48,8 @@ export const SC_DEFAULT_LAYOUT = {
   snvAnnotFilter: null, // site filter set by clicking track values: { track: { values } | { min, max } }
   snvLabel: null, // column labels of the mutation matrices: gene | protein | position | none (null = protein)
   snvNaColor: null, // "Missing (no coverage)" colour of the mutation matrices: null/"grey" or "white"
+  snvFiltersHidden: false, // collapse the filter bar to a one-line stub (filters stay active)
+  snvLegendHidden: false, // hide the annotation-track legend rows
   snvIsolate: false, // isolate the filtered sites: where they sit (branch counts, carrier cells), table and fit
   snvCellphyOnly: false, // only the sites CellPhy built the tree from
   snvDriversOnly: false, // only OncoKB driver sites
