@@ -2,11 +2,19 @@ import React from "react";
 import { Tooltip } from "antd";
 import { classLabel } from "../../../helpers/singleCell/driverLayer";
 import { columnSpan } from "../../../helpers/singleCell/driverColumns";
+import { SIGNATURE_METHOD_HINT } from "../../../helpers/singleCell/siteSignature";
 import { CLASS_TEXT } from "./driverColors";
 
 const MAX_CHARS = 26;
 const LABEL_MIN_COL = 9; // px per column from which names are written
 const short = (s) => (s.length > MAX_CHARS ? `${s.slice(0, MAX_CHARS - 1)}…` : s);
+const DriverTip = ({ d, sig }) => (
+  <div>
+    <div>{`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}</div>
+    {sig && <div style={{ marginTop: 4 }}>{`Signature: ${sig}`}</div>}
+    {sig && <div style={{ opacity: 0.7, fontSize: 11 }}>{SIGNATURE_METHOD_HINT()}</div>}
+  </div>
+);
 const ANGLE = 60; // labels lean 60 degrees up to the right
 
 /**
@@ -16,7 +24,7 @@ const ANGLE = 60; // labels lean 60 degrees up to the right
  * same mapping the heatmap canvas uses, so each name sits on its column at any width,
  * zoom or pixel ratio. `entries` are the visible columns only (re-flows on zoom).
  */
-export default function DriverColumnHeader({ entries, width, pixelRatio = 1, hoverKey, openKey, onOpen }) {
+export default function DriverColumnHeader({ sigText = null, entries, width, pixelRatio = 1, hoverKey, openKey, onOpen }) {
   const n = entries.length || 1;
   const cw = width / n;
   const fs = Math.max(9, Math.min(12, cw - 2));
@@ -31,7 +39,7 @@ export default function DriverColumnHeader({ entries, width, pixelRatio = 1, hov
     <div style={{ position: "relative", width, height: height + 6, marginBottom: 2 }} data-driver-header>
       {named &&
         entries.map((d, i) => (
-          <Tooltip key={d.key} title={d.absent ? `${d.label} · not in this patient (no filtered event)` : `${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}>
+          <Tooltip key={d.key} title={d.absent ? `${d.label} · not in this patient (no filtered event)` : <DriverTip d={d} sig={sigText ? sigText(d.entry) : null} />}>
             <span
               role="button"
               data-driver-label={d.key}

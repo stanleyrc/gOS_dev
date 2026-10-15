@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Select, Tag, Tooltip, Typography } from "antd";
+import { Button, Checkbox, Select, Tag, Tooltip, Typography } from "antd";
 import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import SnvFilterBar from "./snvFilterBar";
 import { treeSiteFit } from "../../helpers/singleCell/snvPhyloFit";
 import SigFitControl from "./signatures/sigFitControl";
 import { assignByTreeSet } from "../../helpers/singleCell/snvSigByTree";
+import { SIGNATURE_METHOD_HINT, aetiologyTag, formatSiteSignature, siteSignatureModel } from "../../helpers/singleCell/siteSignature";
+import signatureMetadata from "../../translations/en/signatures.json";
 import useSignatureModel from "./signatures/useSignatureModel";
 import {
   DEFAULT_SNV_TRACKS,
@@ -16,6 +18,7 @@ import {
   catColor,
   catLegend,
   clickThreshold,
+  firstDriverColumn,
   numFraction,
   fractionOfValue,
   removeFilterKey,
@@ -75,7 +78,16 @@ export function useSnvAnnot(snv, phylo = null, fit = null) {
     const sets = sigSets?.status === "ok" ? sigSets.data?.sets : null;
     return sets && snv ? assignByTreeSet(snv.variants, model.reference, sets, model.assignment) : model.assignment;
   }, [model, sigSets, snv]);
-  return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo, fit }) : null), [snv, assignment, phylo, fit]);
+  // full posterior of a site (context only): exposures of the site's own tree-site set, else the all-sites fit
+  const sigText = useMemo(() => {
+    if (!model.ready || !snv) return null;
+    const sets = sigSets?.status === "ok" ? sigSets.data?.sets : null;
+    const fitName = sigSets?.status === "ok" ? (sigSets.data?.fit === "joint" ? "joint" : "independent (legacy)") : "browser fit";
+    const post = siteSignatureModel({ reference: model.reference, sets, jointActivities: model.activities, fitName });
+    const tagOf = (sig) => aetiologyTag(`${signatureMetadata.metadata[sig]?.full || ""}`.replace(/<[^>]+>/g, ""));
+    return (c) => formatSiteSignature(post.forVariant(snv.variants[c]), { tagOf });
+  }, [model, sigSets, snv]);
+  return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo, fit, sigText }) : null), [snv, assignment, phylo, fit, sigText]);
 }
 
 /** Selected tracks, the click-to-filter state and handler to pass to MutationSidePanel. */
@@ -115,6 +127,17 @@ export function useSnvTracks(annot) {
 export function AnnotationStrips({ annot, tracks, columnOrder, bins, width, pixelRatio, onTrackClick, labelSide = "left" }) {
   const deviceWidth = Math.floor(width * pixelRatio);
   const [tip, setTip] = useState(null);
+  const driverBySig = useSelector((s) => s.SingleCell.layout?.snvDriverBySig) !== false && Boolean(annot?.cat?.signature);
+  // colour of the driver tick in device column x: the assigned signature of the first driver site in the bin
+  const driverColorAt = useCallback(
+    (x) => {
+      if (!driverBySig) return "#cf1322";
+      const c = firstDriverColumn(annot, columnOrder, bins.binStart[x], bins.binEnd[x]);
+      const sig = c >= 0 ? annot.cat.signature[c] : null;
+      return sig ? catColor(annot, "signature", sig) : "#cf1322";
+    },
+    [annot, columnOrder, bins, driverBySig]
+  );
   const summaryAt = useCallback(
     (key, x) => {
       const a = bins.binStart[x];
@@ -145,6 +168,7 @@ export function AnnotationStrips({ annot, tracks, columnOrder, bins, width, pixe
               width={width}
               pixelRatio={pixelRatio}
               summaryAt={summaryAt}
+              driverColorAt={driverColorAt}
               onMove={(e) => {
                 const x = point(e);
                 const a = bins.binStart[x];
@@ -172,7 +196,7 @@ export function AnnotationStrips({ annot, tracks, columnOrder, bins, width, pixe
   );
 }
 
-function TrackCanvas({ annot, trackKey, deviceWidth, width, pixelRatio, summaryAt, onMove, onLeave, onClick }) {
+function TrackCanvas({ annot, trackKey, deviceWidth, width, pixelRatio, summaryAt, driverColorAt, onMove, onLeave, onClick }) {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -190,7 +214,7 @@ function TrackCanvas({ annot, trackKey, deviceWidth, width, pixelRatio, summaryA
         if (s.top == null) continue;
         if (trackKey === "driver") {
           if (s.top !== "driver") continue;
-          ctx.fillStyle = "#cf1322";
+          ctx.fillStyle = driverColorAt ? driverColorAt(x) : "#cf1322";
           ctx.fillRect(Math.max(0, x - pixelRatio), 0, 2 * pixelRatio + 1, h); // rare: widen the tick
           continue;
         }
@@ -202,7 +226,7 @@ function TrackCanvas({ annot, trackKey, deviceWidth, width, pixelRatio, summaryA
         ctx.fillRect(x, 0, 1, h);
       }
     }
-  }, [annot, trackKey, deviceWidth, pixelRatio, summaryAt]);
+  }, [annot, trackKey, deviceWidth, pixelRatio, summaryAt, driverColorAt]);
   return (
     <canvas
       ref={ref}
@@ -305,6 +329,13 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null, fitBu
           options={options}
           onChange={(value) => dispatch(singleCellActions.updateLayout({ snvTracks: value.length ? value : [] }))}
         />
+        {tracks.includes("driver") && annot.cat.signature && (
+          <Tooltip title={SIGNATURE_METHOD_HINT()}>
+            <Checkbox checked={layout.snvDriverBySig !== false} onChange={(e) => dispatch(singleCellActions.updateLayout({ snvDriverBySig: e.target.checked }))}>
+              Colour driver ticks by signature
+            </Checkbox>
+          </Tooltip>
+        )}
       </div>
       <SnvFilterBar annot={annot} nShown={nShown ?? annot.n} onIsolate={onIsolate} fitBusy={fitBusy} />
       {tracks.length > 0 && (

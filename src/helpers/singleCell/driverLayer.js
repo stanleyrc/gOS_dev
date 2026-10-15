@@ -39,7 +39,26 @@ export const DEFAULT_FILTERS = {
   clonality: "any", // "any" | "clonal" | "subclonal"
   minCells: 1,
   fusionSupport: "any", // "any" | "dna" | "rna" | "both" (fusion rows only)
+  minF1: 0, // Clade F1 >= this (0 = any); entries without a score always stay
 };
+
+/** Choices of the Clade F1 filter (the Filtered Events table's selector). */
+export const CLADE_F1_CHOICES = [0, 0.5, 0.8, 0.9];
+
+/** Clade F1 of every entry's carrier cells on the tree: Map(key -> score); NaN = no carrier cells / no tree. */
+export function entryFits(entries, layout) {
+  const out = new Map();
+  entries.forEach((d) => out.set(d.key, layout ? cladeFitScore(d.carriers || [], layout).score : NaN));
+  return out;
+}
+
+/** True when the Clade F1 filter removes this entry (entries without a score are never removed). */
+export function failsF1(d, f, fits) {
+  const min = Number(f?.minF1) || 0;
+  if (!min || !fits) return false;
+  const score = fits.get ? fits.get(d.key) : undefined;
+  return Number.isFinite(score) && score < min;
+}
 
 export const DEFAULT_SELECTION = { preset: "recommended", add: [], remove: [], filters: DEFAULT_FILTERS };
 
@@ -50,7 +69,7 @@ export function driverClassOf(event) {
   return DRIVER_CLASSES.includes(c) ? c : null;
 }
 
-const posOfSnv = (event) => {
+export const posOfSnv = (event) => {
   const chrom = `${event.seqnames || `${event.Genome_Location || ""}`.split(":")[0]}`.replace(/^chr/i, "");
   const pos = Number(event.start);
   return chrom && Number.isFinite(pos) ? `${chrom}:${pos}` : null;
@@ -171,8 +190,9 @@ const PRESET_TEST = {
 };
 
 /** Entries that pass the user's filters. */
-export function passesFilters(d, f = DEFAULT_FILTERS) {
+export function passesFilters(d, f = DEFAULT_FILTERS, fits = null) {
   const filters = { ...DEFAULT_FILTERS, ...(f || {}) };
+  if (failsF1(d, filters, fits)) return false;
   if (filters.tiers && filters.tiers.length && !filters.tiers.includes(d.tier ?? 9)) return false;
   if (filters.classes && filters.classes.length && !filters.classes.includes(d.cls)) return false;
   if (filters.clonality === "clonal" && d.subclonal) return false;
@@ -199,24 +219,33 @@ export function passesFilters(d, f = DEFAULT_FILTERS) {
 }
 
 /** The preset's entries that pass the filters (before add / remove). */
-export function presetEntries(entries, selection = DEFAULT_SELECTION) {
+export function presetEntries(entries, selection = DEFAULT_SELECTION, fits = null) {
   const test = PRESET_TEST[selection.preset] || PRESET_TEST.recommended;
-  return entries.filter((d) => test(d) && passesFilters(d, selection.filters));
+  return entries.filter((d) => test(d) && passesFilters(d, selection.filters, fits));
 }
 
 /** Entries shown: preset + filters, plus the added ones, minus the removed ones. */
-export function selectDrivers(entries, selection = DEFAULT_SELECTION) {
+export function selectDrivers(entries, selection = DEFAULT_SELECTION, fits = null) {
   const add = new Set(selection.add || []);
   const remove = new Set(selection.remove || []);
-  const base = new Set(presetEntries(entries, selection).map((d) => d.key));
+  const base = new Set(presetEntries(entries, selection, fits).map((d) => d.key));
   return entries.filter((d) => (base.has(d.key) || add.has(d.key)) && !remove.has(d.key));
 }
 
+/** How many entries only the Clade F1 filter hides (preset + other filters pass them). */
+export function f1HiddenCount(entries, selection = DEFAULT_SELECTION, fits = null) {
+  if (!(Number(selection.filters?.minF1) > 0)) return 0;
+  return presetEntries(entries, selection, null).length - presetEntries(entries, selection, fits).length;
+}
+
+/** Entries of the preset + filters that have no Clade F1 score (no carrier cells on the tree). */
+export const noF1Keys = (entries, fits) => new Set(entries.filter((d) => fits && !Number.isFinite(fits.get(d.key))).map((d) => d.key));
+
 /** A selection that shows exactly `keys` (picker change): the difference to the preset becomes add / remove. */
-export function selectionForKeys(entries, selection, keys) {
+export function selectionForKeys(entries, selection, keys, fits = null) {
   const want = new Set(keys);
   const known = new Set(entries.map((d) => d.key));
-  const base = new Set(presetEntries(entries, selection).map((d) => d.key));
+  const base = new Set(presetEntries(entries, selection, fits).map((d) => d.key));
   return {
     ...selection,
     add: [...want].filter((k) => known.has(k) && !base.has(k)),
@@ -225,11 +254,11 @@ export function selectionForKeys(entries, selection, keys) {
 }
 
 /** Toggle one entry (column header / drawer button). */
-export function toggleKey(entries, selection, key) {
-  const shown = new Set(selectDrivers(entries, selection).map((d) => d.key));
+export function toggleKey(entries, selection, key, fits = null) {
+  const shown = new Set(selectDrivers(entries, selection, fits).map((d) => d.key));
   if (shown.has(key)) shown.delete(key);
   else shown.add(key);
-  return selectionForKeys(entries, selection, [...shown]);
+  return selectionForKeys(entries, selection, [...shown], fits);
 }
 
 /* ---- URL ---- */
@@ -255,6 +284,7 @@ export function serializeSelection(selection = DEFAULT_SELECTION) {
   if (f.clonality !== "any") parts.push(`clonal:${f.clonality}`);
   if (f.minCells > 1) parts.push(`min:${f.minCells}`);
   if (f.fusionSupport !== "any") parts.push(`fusion:${f.fusionSupport}`);
+  if (f.minF1 > 0) parts.push(`f1:${f.minF1}`);
   if (parts.length) out.drvf = parts.join(";");
   return out;
 }
@@ -279,6 +309,7 @@ export function parseSelection(search = "") {
     else if (k === "clonal" && ["clonal", "subclonal"].includes(v)) filters.clonality = v;
     else if (k === "min" && Number(v) > 0) filters.minCells = Number(v);
     else if (k === "fusion" && FUSION_SUPPORT.includes(v)) filters.fusionSupport = v;
+    else if (k === "f1" && Number(v) > 0 && Number(v) <= 1) filters.minF1 = Number(v);
   });
   return {
     preset: DRIVER_PRESETS.includes(preset) ? preset : DEFAULT_SELECTION.preset,

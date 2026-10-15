@@ -13,6 +13,9 @@ import { announceEvidenceSite, findingsByGene, rankFindings, recordGenes } from 
 import FusionSupportCell from "./rna/fusionSupportCell";
 import { compareSupport, fusionSupport, indexRnaFusions, supportText } from "../../helpers/singleCell/fusionSupport";
 import { dnaFusionGenes } from "../../helpers/singleCell/rnaFusions";
+import { useSnvAnnot } from "./snvAnnotTracks";
+import { SIGNATURE_METHOD_HINT } from "../../helpers/singleCell/siteSignature";
+import { driverClassOf, posOfSnv, snvSiteIndex } from "../../helpers/singleCell/driverLayer";
 import settingsActions from "../../redux/settings/actions";
 
 /**
@@ -76,6 +79,18 @@ export default function ScEventsPanel() {
     const best = rnaIndex?.get([genes[0], genes[1]].sort().join("::"))?.[0] || null;
     return fusionSupport({ dna: record, rna: best, rnaKnown: Boolean(rnaIndex) });
   };
+  // Signature column (SNVs): context-only posterior from the patient's signature fit, via the SNV matrix site of the event
+  const snvState = useSelector((s) => s.SingleCell.snv);
+  const snvData = snvState?.status === "ok" ? snvState.data : null;
+  const sigAnnot = useSnvAnnot(snvData);
+  const sigSiteIndex = useMemo(() => (snvData ? snvSiteIndex(snvData) : null), [snvData]);
+  const signatureOf = (record) => {
+    if (driverClassOf(record) !== "snv") return null;
+    const site = posOfSnv(record);
+    const c = site && sigSiteIndex ? sigSiteIndex.get(site) : null;
+    if (c == null) return "not available (site is not in the SNV matrix)";
+    return sigAnnot?.sigText ? sigAnnot.sigText(c) : "not available (no signature fit)";
+  };
   const [picked, setPicked] = useState(new Map()); // uid -> event
   const toggle = (record, on) =>
     setPicked((prev) => {
@@ -105,6 +120,32 @@ export default function ScEventsPanel() {
             return (
               <Tooltip title={t("components.single-cell.events.clade-score-detail", { inClade: c.inClade, clade: c.clade, carriers: c.carriers })}>
                 <span style={{ color: c.score < 0.5 ? "#cf1322" : c.score >= 0.8 ? "#237804" : undefined, fontWeight: c.score >= 0.8 ? 600 : 400 }}>{c.score.toFixed(2)}</span>
+              </Tooltip>
+            );
+          },
+        },
+      ]
+    : [];
+  const signatureColumn = (records || []).some((r) => driverClassOf(r) === "snv")
+    ? [
+        {
+          title: (
+            <Tooltip title={SIGNATURE_METHOD_HINT()}>
+              <span>Signature</span>
+            </Tooltip>
+          ),
+          key: "signature",
+          width: 190,
+          exportTitle: "signature",
+          exportValue: (record) => signatureOf(record),
+          sorter: (a, b) => `${signatureOf(a) || ""}`.localeCompare(`${signatureOf(b) || ""}`),
+          render: (_, record) => {
+            const text = signatureOf(record);
+            if (!text) return "–";
+            const top = text.startsWith("not available") ? null : text.split(" · ")[0].split(",")[0];
+            return (
+              <Tooltip title={`${text}. ${SIGNATURE_METHOD_HINT()}`}>
+                <span style={{ color: top ? undefined : "#8c8c8c" }}>{top || "n/a"}</span>
               </Tooltip>
             );
           },
@@ -241,7 +282,7 @@ export default function ScEventsPanel() {
         )}
       </Space>
       <EventsToHeatmapBar picked={picked} onClear={() => setPicked(new Map())} />
-      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...supportColumn, ...evidenceColumn, ...cladeColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} countFilter={countFilter} />
+      <FilteredEventsListPanel additionalColumns={[...selectEventColumn(new Set(picked.keys()), toggle), ...siteColumn, ...supportColumn, ...evidenceColumn, ...cladeColumn, ...signatureColumn, ...segmentColumn]} recordFilter={strongOnly || minClade ? recordFilter : null} countFilter={countFilter} />
     </>
   );
 }
