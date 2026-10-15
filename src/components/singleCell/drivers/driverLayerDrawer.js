@@ -57,7 +57,7 @@ function FusionRnaTab({ entry }) {
  */
 export default function DriverLayerDrawer({ entry, driverLayer, onClose }) {
   const dispatch = useDispatch();
-  const { treeLayout, entries, selection, setSelection, siteIds } = driverLayer;
+  const { treeLayout, entries, selection, setSelection, siteIds, fits } = driverLayer;
   // ?drvtab=site|rna opens the drawer on that section (links, screenshots)
   const [tab, setTab] = useState(() => {
     try {
@@ -112,7 +112,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose }) {
           <Button size="small" onClick={() => dispatch(filteredEventsActions.selectFilteredEvent(entry.event, "plots"))}>
             Event details
           </Button>
-          <Button size="small" icon={shown ? <MinusCircleOutlined /> : <PlusCircleOutlined />} onClick={() => setSelection(toggleKey(entries, selection, entry.key))}>
+          <Button size="small" icon={shown ? <MinusCircleOutlined /> : <PlusCircleOutlined />} onClick={() => setSelection(toggleKey(entries, selection, entry.key, fits))}>
             {shown ? "Remove from layer" : "Add to layer"}
           </Button>
         </Space>
