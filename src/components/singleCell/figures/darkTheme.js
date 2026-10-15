@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { isDark, onAppThemeChange } from "../../../helpers/appTheme";
+import { isDark, isDarkLike, onAppThemeChange } from "../../../helpers/appTheme";
 
 /** Current app theme as a boolean (true = dark), following theme switches. */
 export function useDarkTheme() {
   const [dark, setDark] = useState(isDark());
-  useEffect(() => onAppThemeChange((t) => setDark(t === "dark")), []);
+  useEffect(() => onAppThemeChange((t) => setDark(isDarkLike(t))), []);
   return dark;
 }
 

@@ -13,7 +13,7 @@ import useSigSiteFilter from "./useSigSiteFilter";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 import usePlotTheme from "../usePlotTheme";
-import { inkOn } from "../../../helpers/singleCell/plotTheme";
+import { inkOn, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const pct = d3.format(".0%");
@@ -79,7 +79,7 @@ export default function SignatureComparisonCard() {
   );
   const sim = useMemo(() => profileSimilarity(profiles.filter((p) => p.used >= 10)), [profiles]);
   if (!snvData || !sets.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.no-contexts")} />;
-  const color = d3.scaleSequential(pt.mode === "dark" ? d3.interpolateRgb(pt.panelAlt, "#69b1ff") : d3.interpolateBlues).domain([0.5, 1]);
+  const color = d3.scaleSequential(isDarkLike(pt.mode) ? d3.interpolateRgb(pt.panelAlt, "#69b1ff") : d3.interpolateBlues).domain([0.5, 1]);
   const missing = profiles.filter((p) => p.used >= 10 && !backend.find((s) => s.name === p.name) && !fits[p.key]).length;
 
   return (

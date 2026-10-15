@@ -3,11 +3,11 @@ import { Button, Tooltip } from "antd";
 import { BulbFilled, BulbOutlined } from "@ant-design/icons";
 import { getAppTheme, onAppThemeChange, setAppTheme } from "../../helpers/appTheme";
 
-/** Floating light / dark switch (bottom-right). */
+/** Floating light / dark switch (cyberpunk counts as dark) (bottom-right). */
 export default function ThemeToggle({ inline = false }) {
   const [theme, setTheme] = useState(getAppTheme());
   useEffect(() => onAppThemeChange(setTheme), []);
-  const dark = theme === "dark";
+  const dark = theme !== "light";
   return (
     <Tooltip title={dark ? "Switch to light theme" : "Switch to dark theme"} placement="left">
       <Button

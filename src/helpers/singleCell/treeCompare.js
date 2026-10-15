@@ -1,3 +1,4 @@
+import { isDarkLike } from "./plotTheme";
 // Compare two phylogenies of the same cells (tab "Compare Trees"): tanglegram
 // geometry, clade picking, mutation painting and per-tree concordance of SNVs
 // with the tree. d3-free so it can be unit tested.
@@ -320,7 +321,7 @@ export const fmtF1 = (x) => (Number.isFinite(x) ? x.toFixed(2) : "n/a");
 
 /** Colours of the painted mutation columns (alt / ref / no coverage), as the SNV heatmap's present / absent / missing. */
 export function paintColors(mode = "light") {
-  return mode === "dark"
+  return isDarkLike(mode)
     ? { alt: "#ff7875", ref: "#2f4b6e", none: "#191919" }
     : { alt: "#B2182B", ref: "#C6DBEF", none: "#F5F5F5" };
 }
