@@ -14,6 +14,7 @@ import { DEFAULT_THEME, cloneColorsForTheme } from "../../helpers/singleCell/the
 import { parseSelection } from "../../helpers/singleCell/driverLayer";
 import { splitFromSearch } from "../../helpers/singleCell/panelSplit";
 import { driverLayoutFromSearch } from "../../helpers/singleCell/driverColumns";
+import { junctionFocusFromSearch } from "../../helpers/singleCell/junctionFocus";
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 
@@ -25,7 +26,7 @@ const withUrlGroups = (layout) => {
   try {
     const drivers = parseSelection(window.location.search);
     const drvLayout = driverLayoutFromSearch(window.location.search);
-    const withDrivers = { ...withGroups, ...(drivers ? { drivers } : {}), ...(drvLayout || {}), ...(splitFromSearch(window.location.search) || {}) };
+    const withDrivers = { ...withGroups, ...(drivers ? { drivers } : {}), ...(drvLayout || {}), ...(junctionFocusFromSearch(window.location.search) || {}), ...(splitFromSearch(window.location.search) || {}) };
     // ?hidelowqc=1 / ?qcthr=mapd:0.2 open with the low-QC cells hidden (coverage QC)
     const hide = hideLowQcFromSearch(window.location.search);
     const thr = thresholdsFromSearch(window.location.search);
