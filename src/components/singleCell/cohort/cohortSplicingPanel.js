@@ -15,6 +15,8 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { normalizeSpliceFindings, pageOf } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import SpliceFindingsList from "../rna/spliceFindingsList";
 import { clusterEvents, clusterTranscripts, eventPsi } from "../../../helpers/singleCell/spliceEvents";
+import SpliceGeneFilter, { useSpliceGeneFilter } from "../rna/spliceGeneFilter";
+import { EXON_CONTEXT_LABEL, exonContext, passesGeneFilter } from "../../../helpers/singleCell/spliceGeneFilter";
 import CohortSpliceReads from "./cohortSpliceReads";
 import CohortSpliceEvent, { useSpliceExons } from "./cohortSpliceEvent";
 
@@ -106,6 +108,7 @@ export default function CohortSplicingPanel({ dataset }) {
   const [queryText, setQueryText] = useState("");
   const [picked, setPicked] = useState(null);
   const [page, setPage] = useState(1);
+  const [geneFilter, setGeneFilter, geneText, setGeneText] = useSpliceGeneFilter();
   const pending = useRef(null);
   const detailRef = useRef(null);
   useEffect(() => {
@@ -117,7 +120,8 @@ export default function CohortSplicingPanel({ dataset }) {
     };
   }, [dataset]);
   const data = file?.status === "ok" ? file.data : null;
-  const findings = useMemo(() => normalizeSpliceFindings(data?.findings), [data]);
+  const allFindings = useMemo(() => normalizeSpliceFindings(data?.findings), [data]);
+  const findings = useMemo(() => allFindings.filter((f) => passesGeneFilter(f, geneFilter)), [allFindings, geneFilter]);
   // IGV slices of a finding: its patient's rna/splice_reads/<cell>.bam (written for every finding cell)
   const readsOf = (f) => Object.fromEntries(f.cells.map((id) => [id, `rna/splice_reads/${id}.bam`]));
   const scrollToDetail = () => setTimeout(() => detailRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }), 120);
@@ -133,7 +137,11 @@ export default function CohortSplicingPanel({ dataset }) {
     setQuery("");
     setQueryText("");
   };
-  const allRows = useMemo(() => (data ? cohortClusterRows(data) : []), [data]);
+  const allRowsRaw = useMemo(() => (data ? cohortClusterRows(data) : []), [data]);
+  const allRows = useMemo(
+    () => allRowsRaw.filter((r) => passesGeneFilter({ gene: r.gene, gbmGene: r.cluster.gbm_gene, exonKnown: "n_exons" in r.cluster, nExons: r.cluster.n_exons ?? null, intronOverlap: r.cluster.intron_overlap ?? null }, geneFilter)),
+    [allRowsRaw, geneFilter]
+  );
   const rows = useMemo(() => {
     if (!query) return allRows;
     const keep = new Set(filterClusters(allRows.map((r) => r.cluster), query).map((c) => c.id));
@@ -251,6 +259,7 @@ export default function CohortSplicingPanel({ dataset }) {
           )}
           <div>
             <Space wrap style={{ marginBottom: 8 }}>
+              <SpliceGeneFilter filter={geneFilter} onChange={(p) => { setGeneFilter(p); setPage(1); }} text={geneText} onText={setGeneText} lists={["all", "gbm", "custom"]} />
               <Input.Search
                 size="small"
                 allowClear
@@ -268,6 +277,7 @@ export default function CohortSplicingPanel({ dataset }) {
               />
               <Text type="secondary">
                 {rows.length} / {allRows.length}
+                {allRowsRaw.length > allRows.length ? ` · ${t(`${k}.gf-hidden`, { hidden: allRowsRaw.length - allRows.length })}` : ""}
               </Text>
             </Space>
             <Table
@@ -291,6 +301,21 @@ export default function CohortSplicingPanel({ dataset }) {
                   sorter: (a, b) => (a.rank === b.rank ? 0 : a.rank < b.rank ? -1 : 1),
                 },
                 { title: t(`${k}.col-gene`), dataIndex: "gene", sorter: (a, b) => a.gene.localeCompare(b.gene) },
+                {
+                  title: <span title={t(`${k}.ev-col-exons-help`)}>{t(`${k}.ev-col-exons`)}</span>,
+                  key: "exons",
+                  align: "right",
+                  sorter: (x, y) => (x.cluster.n_exons ?? -1) - (y.cluster.n_exons ?? -1),
+                  render: (_, r) => {
+                    const c = exonContext({ exonKnown: "n_exons" in r.cluster, nExons: r.cluster.n_exons ?? null, intronOverlap: r.cluster.intron_overlap ?? null });
+                    return (
+                      <span>
+                        {r.cluster.n_exons ?? "–"}
+                        {EXON_CONTEXT_LABEL[c] && <Text type="warning" style={{ fontSize: 11, marginInlineStart: 4 }}>{EXON_CONTEXT_LABEL[c]}</Text>}
+                      </span>
+                    );
+                  },
+                },
                 { title: t(`${k}.col-locus`), dataIndex: "locus" },
                 {
                   title: t(`${k}.col-types`),
