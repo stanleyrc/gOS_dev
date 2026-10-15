@@ -153,7 +153,7 @@ export default function CohortEcdnaPlasticityPanel({ dataset, summaries = [] }) 
       >
         <Text type="secondary">
           Per patient and oncogene amplified in at least {Math.round(100 * (data.min_frac ?? 0.1))}% of tumour cells. Heritability: nearest-relative correlation of CN on the DNA tree, permuted within clone.
-          Residual CN: copy number minus the leave-one-out clade mean. Effects are per SD of CN on a program score or state indicator, controlling clone and cycling; q is Benjamini-Hochberg across the cohort. Click a row or point to open the patient ecDNA tab on that gene.
+          Residual CN: copy number minus the leave-one-out clade mean. Effects are rank-based (outcome SD per SD of the CN rank, so one outlier cell cannot carry them) on a program score or state indicator, controlling clone and cycling; q is Benjamini-Hochberg across the cohort. Click a row or point to open the patient ecDNA tab on that gene.
         </Text>
         <Alert type="info" showIcon style={{ margin: "8px 0" }} message="Caveats" description={<ul style={{ margin: 0, paddingLeft: 18 }}>{(data.caveats || []).map((c) => <li key={c}>{c}</li>)}</ul>} />
         <PlasticityScatter points={points} patients={patients} theme={theme} onPick={open} focus={focus} />
