@@ -8,7 +8,7 @@ import SvgExportButton from "../svgExportButton";
 import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { geneLocus } from "../../../helpers/singleCell/dosage";
-import { binOf, boxStats, cnBins, cnExpressionStats, cnFor, locusCn, scaleExpression } from "../../../helpers/singleCell/cnExpression";
+import { binOf, boxStats, cnBins, intCnBins, binOfCn, cnExpressionStats, cnFor, locusCn, scaleExpression } from "../../../helpers/singleCell/cnExpression";
 import { walkGeneSet } from "../../../helpers/singleCell/figures";
 import { readViewLink } from "../../../helpers/singleCell/deepLink";
 import { formatP } from "../../../helpers/singleCell/tests";
@@ -74,12 +74,12 @@ export function patientsWithEcdna(summaries, files, gene) {
 
 /** Box plots of 0-1 scaled expression per copy-number bin, one box per gene, medians joined (deck slide 23, left). */
 function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own = false }) {
-  const bins = useMemo(() => cnBins(), []);
+  const bins = useMemo(() => (own ? intCnBins() : cnBins()), [own]);
   const M = { top: 24, right: 92, bottom: 70, left: 58 };
   const x = d3.scaleBand().domain(bins.map((b) => b.label)).range([M.left, width - M.right]).padding(0.18);
   const y = d3.scaleLinear().domain([0, 1]).range([height - M.bottom, M.top]);
   const sub = d3.scaleBand().domain(genes).range([0, x.bandwidth()]).padding(0.12);
-  const boxes = genes.map((g) => bins.map((b, k) => boxStats(records.filter((r) => binOf(bins, cnFor(r, g)) === k).map((r) => r.scaled[g]))));
+  const boxes = genes.map((g) => bins.map((b, k) => boxStats(records.filter((r) => binOfCn(bins, cnFor(r, g), own) === k).map((r) => r.scaled[g]))));
   return (
     <svg width={width} height={height} role="img" aria-label={`${genes.join(" and ")} expression by ${own ? "own-locus" : cnGene} copy number`}>
       <YAxis scale={y} x0={M.left} x1={width - M.right} title="Normalized expression" ticks={4} format={(v) => v.toFixed(2)} />
@@ -128,7 +128,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own =
         <text key={b.label} transform={`translate(${x(b.label) + x.bandwidth() / 2},${height - M.bottom + 12}) rotate(-45)`} textAnchor="end" fontSize={FONT.axis + 1} fill={INK.text}>{b.label}</text>
       ))}
       <line x1={M.left} x2={width - M.right} y1={height - M.bottom} y2={height - M.bottom} stroke={INK.axis} />
-      <text x={(M.left + width - M.right) / 2} y={height - 8} textAnchor="middle" fontSize={TYPE.label + 1} fill={INK.text}>{own ? "Copy number of each gene's own locus (all genes; total, each cell's genome graph)" : `${cnGene} copy number (total, each cell's genome graph)`}</text>
+      <text x={(M.left + width - M.right) / 2} y={height - 8} textAnchor="middle" fontSize={TYPE.label + 1} fill={INK.text}>{own ? "Copy number at each gene's own locus (rounded; total, each cell's genome graph)" : `${cnGene} copy number (total, each cell's genome graph)`}</text>
     </svg>
   );
 }
@@ -333,7 +333,7 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
   return (
     <Card
       size="small"
-      title={<Space><BoxPlotOutlined />{own ? "Gene copy number vs expression across patients (CN source: all genes)" : `${cnGene} copy number vs expression across patients (CN source: walks/amplicons)`}</Space>}
+      title={<Space><BoxPlotOutlined />{own ? "CN vs expression" : "CN vs expression"}</Space>}
       extra={
         <Space wrap size={10}>
           <Segmented size="small" value={cnSource} onChange={(v) => { setCnSource(v); setScope(v === "walks" ? "ecdna" : "all"); setShown("pooled"); }} options={[{ value: "all", label: "CN source: all genes" }, { value: "walks", label: "walks/amplicons" }]} />
@@ -378,8 +378,13 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
               columns={[
                 { title: "Patient", dataIndex: "patient", key: "patient", render: (v, r) => <Text strong={!!r.combined || r.key === "_pooled"}>{v}</Text> },
                 { title: "Cells", dataIndex: "n", key: "n", align: "right" },
-                { title: `Median ${cnGene} CN`, dataIndex: "medianCn", key: "cn", align: "right", render: (v) => (Number.isFinite(v) ? v.toFixed(0) : "") },
-                ...genes.slice(0, 4).map((g) => ({ title: `ρ ${g}`, key: g, render: (v, r) => cell(r.res[g]) })),
+                { title: own ? `Median ${cnGene} CN (states/modules)` : `Median ${cnGene} CN`, dataIndex: "medianCn", key: "cn", align: "right", render: (v) => (Number.isFinite(v) ? v.toFixed(0) : "") },
+                ...genes.slice(0, 4).map((g) => ({ title: `ρ ${g}`, key: g, render: (v, r) => {
+                  const c = cell(r.res[g]);
+                  if (c !== "–" || !own || r.combined) return c;
+                  const cns = new Set(records.filter((x) => (r.key === "_pooled" || x.patient === r.key) && Number.isFinite(cnFor(x, g))).map((x) => Math.round(cnFor(x, g))));
+                  return cns.size === 1 ? <span style={{ color: INK.muted }} title={`${g} CN is ${[...cns][0]} in every cell, so no correlation is defined`}>{`CN = ${[...cns][0]} in all cells`}</span> : c;
+                } })),
                 { title: "ρ NPC-like", key: "npc", render: (v, r) => cell(r.res["state:NPC"]) },
                 { title: "ρ MES-like", key: "mes", render: (v, r) => cell(r.res["state:MES"]) },
               ]}

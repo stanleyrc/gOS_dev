@@ -1,4 +1,4 @@
-import { binOf, boxStats, cnBins, cnExpressionStats, cnFor, locusCn, normalQuantile, normalUpper, scaleExpression, stouffer } from "./cnExpression";
+import { binOf, boxStats, cnBins, binOfCn, intCnBins, cnExpressionStats, cnFor, locusCn, normalQuantile, normalUpper, scaleExpression, stouffer } from "./cnExpression";
 
 const row = (segs) => ({
   binIndex: { gStart: Float64Array.from(segs.map((s) => s[0])), gEnd: Float64Array.from(segs.map((s) => s[1])) },
@@ -79,5 +79,20 @@ describe("cnExpressionStats with per-gene CN (all-genes source)", () => {
   it("skips cells whose own-locus CN is missing", () => {
     const recs = Array.from({ length: 12 }, (_, i) => ({ patient: "P", cn: i, cnBy: { A: i < 2 ? NaN : i }, expr: { A: i } }));
     expect(cnExpressionStats(recs, ["A"], ["P"]).pooled.A.n).toBe(10);
+  });
+});
+
+describe("intCnBins", () => {
+  it("bins ordinary-gene CN on the integer scale", () => {
+    const b = intCnBins();
+    expect(b.map((x) => x.label)).toEqual(["0", "1", "2", "3", "4", "5", "6–8", "9–15", "16–40", "41+"]);
+    const at = (cn) => b[binOfCn(b, cn, true)].label;
+    expect(at(0)).toBe("0");
+    expect(at(1.6)).toBe("2");
+    expect(at(2.4)).toBe("2");
+    expect(at(6)).toBe("6–8");
+    expect(at(9)).toBe("9–15");
+    expect(at(40)).toBe("16–40");
+    expect(at(41)).toBe("41+");
   });
 });
