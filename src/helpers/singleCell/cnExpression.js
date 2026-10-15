@@ -90,20 +90,23 @@ export function spearmanTest(x, y) {
 /**
  * Per-cell records [{ patient, cn, expr: { gene: value }, state }] ->
  * per patient and pooled Spearman tests for each gene, plus Stouffer.
+ * A record may carry cnBy: { gene: cn } (the gene's own locus CN, "all genes"
+ * source); that value replaces r.cn for that gene's test.
  */
+export const cnFor = (r, g) => (r.cnBy && g in r.cnBy ? r.cnBy[g] : r.cn);
 export function cnExpressionStats(records, genes, patients) {
   const out = { perPatient: {}, pooled: {}, combined: {} };
   genes.forEach((g) => {
     const tests = [];
     patients.forEach((p) => {
-      const rec = records.filter((r) => r.patient === p && Number.isFinite(r.expr[g]));
-      const t = spearmanTest(rec.map((r) => r.cn), rec.map((r) => r.expr[g]));
+      const rec = records.filter((r) => r.patient === p && Number.isFinite(r.expr[g]) && Number.isFinite(cnFor(r, g)));
+      const t = spearmanTest(rec.map((r) => cnFor(r, g)), rec.map((r) => r.expr[g]));
       if (!out.perPatient[p]) out.perPatient[p] = {};
       out.perPatient[p][g] = t;
       if (t) tests.push(t);
     });
-    const all = records.filter((r) => Number.isFinite(r.expr[g]));
-    out.pooled[g] = spearmanTest(all.map((r) => r.cn), all.map((r) => r.expr[g]));
+    const all = records.filter((r) => Number.isFinite(r.expr[g]) && Number.isFinite(cnFor(r, g)));
+    out.pooled[g] = spearmanTest(all.map((r) => cnFor(r, g)), all.map((r) => r.expr[g]));
     out.combined[g] = stouffer(tests);
   });
   return out;
