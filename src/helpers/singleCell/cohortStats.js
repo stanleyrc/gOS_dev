@@ -52,6 +52,13 @@ export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", 
  * `eventsByPatient` is { patientId: [filtered event] }. Returns genes sorted
  * by how many patients carry them, then by the maximum fraction.
  */
+/** Event filter for the oncoprint: optional base predicate (e.g. strong events only) and the event classes to keep (null/empty = all). */
+export function oncoprintEventFilter({ base = null, classes = null } = {}) {
+  const keep = classes && classes.length ? new Set(classes) : null;
+  if (!base && !keep) return null;
+  return (e) => (!base || base(e)) && (!keep || keep.has(eventClass(e)));
+}
+
 export function oncoprintMatrix(eventsByPatient = {}, { maxTier = 2, filter = null, maxGenes = 40 } = {}) {
   const patients = Object.keys(eventsByPatient);
   const byGene = new Map();

@@ -73,3 +73,18 @@ describe("eventTooltipLines", () => {
     expect(eventTooltipLines({ vartype: "SNV", Variant: "p.R132H", Variant_g: "2:1-1 G>A" })).toEqual(["SNV p.R132H", "2:1-1 G>A"]);
   });
 });
+
+describe("oncoprintEventFilter", () => {
+  const { oncoprintEventFilter } = require("./cohortStats");
+  it("keeps only the chosen classes and applies the base filter", () => {
+    const amp = { gene: "G1", type: "SCNA", Variant: "AMP", Tier: 2 };
+    const fus = { gene: "G2::G3", fusion_genes: "G2::G3", type: "Fusion", Tier: 2 };
+    const cls = (e) => eventClass(e);
+    expect(oncoprintEventFilter()).toBeNull();
+    const onlyAmp = oncoprintEventFilter({ classes: [cls(amp)] });
+    expect(onlyAmp(amp)).toBe(true);
+    expect(onlyAmp(fus)).toBe(false);
+    const none = oncoprintEventFilter({ base: () => false, classes: [cls(amp)] });
+    expect(none(amp)).toBe(false);
+  });
+});
