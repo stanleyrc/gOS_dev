@@ -26,7 +26,7 @@ export function openEcdnaGene(dispatch, summary, gene, source) {
   url.searchParams.set("cnsource", source);
   window.history.replaceState(window.history.state, "", url.toString());
   requestEvidence({ kind: "ecplast", patient: summary.caseReportId, gene, source });
-  dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+  dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
   dispatch(settingsActions.updateTab("14"));
 }
 

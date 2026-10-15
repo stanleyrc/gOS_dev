@@ -26,7 +26,7 @@ export default function CladeTopExplainer({ test, summaries = [] }) {
     url.searchParams.set("cmpB", b);
     url.searchParams.set("tab", "7");
     window.history.replaceState(window.history.state, "", url.toString());
-    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
     dispatch(settingsActions.updateTab("7"));
   };
   const flag = leadFlag([...(test.robust_up || []), ...(test.robust_down || [])]);

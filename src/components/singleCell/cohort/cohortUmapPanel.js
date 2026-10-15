@@ -73,7 +73,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   const colors = colorBy === "patient" ? Object.fromEntries(patients.map((p, i) => [p, patientColor(i)])) : annotationColors(levels, themePalette(layout.theme));
   const open = (c) => {
     const s = summaries.find((x) => x.caseReportId === c.patient);
-    if (s) dispatch(datasetsActions.openCaseReport(s.record.datasetId, s.caseReportId));
+    if (s) dispatch(datasetsActions.openCaseReport(s.record.datasetId, s.caseReportId, { allowNewTab: true }));
   };
   const keyOf = (c) => `${c.patient}::${c.rna_id}`;
   const local = (e) => {
