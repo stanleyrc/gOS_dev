@@ -20,7 +20,7 @@ export function isRobust(row, { q = ROBUST.q, lfc = ROBUST.lfc } = {}) {
 export const testCells = (test) => (test?.patients || []).reduce((s, p) => ({ a: s.a + (p.n_a || 0), b: s.b + (p.n_b || 0) }), { a: 0, b: 0 });
 
 /** Patients whose strata fell back from plate x cycling (less adjusted). */
-export const looselyAdjusted = (test) => (test?.patients || []).filter((p) => p.adjust !== "plate+cycling").map((p) => p.patient);
+export const looselyAdjusted = (test) => (test?.patients || []).filter((p) => !`${p.adjust}`.startsWith("plate+cycling")).map((p) => p.patient);
 
 /** Table rows of the tests, filtered by family and text, sorted by robust hits then significant genes. */
 export function testRows(data, { family = "all", query = "", combinableOnly = false } = {}) {
@@ -60,13 +60,13 @@ const list = (genes, n) => (genes || []).slice(0, n).join(", ");
 const pretty = (term) => `${term || ""}`.replace(/^HALLMARK_|^3CA_\d+_/, "").replace(/_/g, " ").toLowerCase();
 
 /** Strongest enrichment term of a test and direction ("up" | "down") that passes q, or null. */
-export function topProgram(test, direction, maxQ = 0.05) {
-  const hit = (test?.enrichment?.[direction] || []).find((e) => e.q <= maxQ);
+export function topProgram(test, direction, maxQ = 0.05, exclude = null) {
+  const hit = (test?.enrichment?.[direction] || []).find((e) => e.q <= maxQ && !(exclude && exclude.has(`${e.term}|${direction}`)));
   return hit ? { term: hit.term, collection: hit.collection, q: hit.q, pretty: pretty(hit.term) } : null;
 }
 
 /** One sentence reading a test, with its numbers. */
-export function describeTest(test) {
+export function describeTest(test, { shared = null } = {}) {
   if (!test) return "";
   const k = test.k_patients;
   const where = test.combinable ? `${k} patients` : "one patient";
@@ -77,8 +77,9 @@ export function describeTest(test) {
   else parts.push(`${test.n_sig_q05} gene${test.n_sig_q05 === 1 ? "" : "s"} at q < 0.05 in ${where}`);
   if (up?.length) parts.push(`higher in ${test.group_a}: ${list(up, 4)}`);
   if (down?.length) parts.push(`lower: ${list(down, 4)}`);
-  const pu = topProgram(test, "up");
-  const pd = topProgram(test, "down");
+  const skip = shared && shared.length ? new Set(shared.map((x) => `${x.term}|${x.direction}`)) : null;
+  const pu = topProgram(test, "up", 0.05, skip);
+  const pd = topProgram(test, "down", 0.05, skip);
   if (pu) parts.push(`up program: ${pu.pretty} (q ${formatQ(pu.q)})`);
   if (pd) parts.push(`down program: ${pd.pretty} (q ${formatQ(pd.q)})`);
   return parts.join("; ");
@@ -88,6 +89,32 @@ export function formatQ(q) {
   if (!Number.isFinite(q)) return "–";
   if (q <= 0) return "<1e-300";
   return q < 1e-3 ? q.toExponential(0) : q.toFixed(3);
+}
+
+/**
+ * Programs that lead most of the driver tests in the same direction: a tumour-wide or clade effect (cells of one clade
+ * carry many events at once), not a property of one driver. Counted over combinable driver tests with robust genes.
+ * @returns [{ term, direction, n, of, pretty }] most common first
+ */
+export function sharedPrograms(data, { minShare = 0.5, minTests = 4, top = 3, maxQ = 0.05 } = {}) {
+  const tests = (data?.tests || []).filter((t) => t.family === "driver" && t.combinable && t.n_robust > 0);
+  if (tests.length < minTests) return [];
+  const count = new Map();
+  tests.forEach((t) => {
+    ["up", "down"].forEach((d) => {
+      (t.enrichment?.[d] || []).filter((e) => e.q <= maxQ).slice(0, top).forEach((e) => {
+        const k = `${e.term}|${d}`;
+        count.set(k, (count.get(k) || 0) + 1);
+      });
+    });
+  });
+  return [...count.entries()]
+    .filter(([, n]) => n / tests.length >= minShare)
+    .map(([k, n]) => {
+      const [term, direction] = k.split("|");
+      return { term, direction, n, of: tests.length, pretty: pretty(term) };
+    })
+    .sort((a, b) => b.n - a.n);
 }
 
 const sign = (v) => (v > 0 ? "+" : "-");
@@ -124,9 +151,11 @@ export function qcNote(test) {
  * @returns [{ id, family, title, text, patients, nRobust, test, control, also: [labels], note }]
  */
 export function headlineFindings(data, { max = 5, minRobust = 1, minPatients = 2, overlap = 0.4 } = {}) {
+  const shared = sharedPrograms(data);
   const tests = (data?.tests || []).filter((t) => t.combinable && t.k_patients >= minPatients && t.n_robust >= minRobust);
   const scored = tests.map((t) => {
-    const prog = Math.max(topProgram(t, "up") ? 1 : 0, topProgram(t, "down") ? 1 : 0);
+    const skip = new Set(shared.map((x) => `${x.term}|${x.direction}`));
+    const prog = Math.max(topProgram(t, "up", 0.05, skip) ? 1 : 0, topProgram(t, "down", 0.05, skip) ? 1 : 0);
     const dosage = t.family === "cn" ? 0.5 : 1;
     return { t, score: dosage * (Math.min(t.n_robust, 200) + 25 * prog + 5 * t.k_patients) };
   });
@@ -140,9 +169,18 @@ export function headlineFindings(data, { max = 5, minRobust = 1, minPatients = 2
       return;
     }
     cards.push({
-      id: t.id, family: t.family, title: t.label, text: describeTest(t), patients: (t.patients || []).map((p) => p.patient),
+      id: t.id, family: t.family, title: t.label, text: describeTest(t, { shared }), patients: (t.patients || []).map((p) => p.patient),
       nRobust: t.n_robust, test: t, control: t.family === "cn", also: [], note: qcNote(t), sig,
     });
   });
-  return cards.slice(0, max).map(({ sig, ...c }) => c);
+  const out = cards.slice(0, shared.length ? Math.max(1, max - 1) : max).map(({ sig, ...c }) => c);
+  if (shared.length) {
+    const phrase = shared.slice(0, 4).map((x) => `${x.pretty} ${x.direction}`).join(", ");
+    out.unshift({
+      id: "shared", family: "shared", title: "Shared by most driver tests: a tumour-wide / clade effect",
+      text: `${phrase} lead ${shared[0].n} of ${shared[0].of} driver tests. Carriers of different drivers sit on the same clades, so this is shown once here and not credited to each driver.`,
+      patients: [], nRobust: 0, test: null, control: false, also: [], note: "",
+    });
+  }
+  return out;
 }
