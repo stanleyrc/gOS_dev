@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
-import { INK } from "../../../helpers/singleCell/plotTheme";
+import { INK, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 import { ChartTooltip, RefLine, XAxis, YAxis, useChartText } from "../cohort/charts";
 
 export const COLOR_UP = "#C2185B";
@@ -38,7 +38,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
   const [hover, setHover] = useState(null);
   const theme = usePlotTheme();
   const txt = useChartText();
-  const nsFill = theme.mode === "dark" ? COLOR_NS_DARK : COLOR_NS;
+  const nsFill = isDarkLike(theme.mode) ? COLOR_NS_DARK : COLOR_NS;
   const [lasso, setLasso] = useState(null);
   const svgRef = useRef(null);
   const drag = useRef(null);

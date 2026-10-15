@@ -49,6 +49,8 @@ const LIGHT = {
   separator: "rgba(0,0,0,0.35)", // chromosome separators drawn over heatmaps
   outline: "rgba(0,0,0,0.85)", // highlighted heatmap rows
   pinned: "#531dab",
+  magenta: "#c41d7f", // neon accents are cyberpunk-only; neutral stand-ins elsewhere
+  yellow: "#d48806",
 };
 
 const DARK = {
@@ -81,7 +83,46 @@ const DARK = {
   separator: "rgba(255,255,255,0.28)",
   outline: "rgba(255,255,255,0.9)",
   pinned: "#b37feb",
+  magenta: "#f759ab",
+  yellow: "#ffd666",
 };
+
+/** Cyberpunk: dark chrome with neon accents; data colours are shared with dark. */
+const CYBER = {
+  ...DARK,
+  mode: "cyberpunk",
+  page: "#0b0a1a",
+  panel: "#12102a",
+  panelAlt: "#181536",
+  raised: "#1c1840",
+  text: "#f2efff",
+  textSecondary: "#d6d0f5",
+  muted: "#b4abe0",
+  faint: "#7d74b0",
+  axis: "#8f86c4",
+  grid: "#2a2552",
+  border: "#3b3475",
+  borderSoft: "#262050",
+  empty: "#221e48",
+  hover: "#ffe600",
+  hoverFill: "rgba(255,230,0,0.14)",
+  select: "#00f0ff",
+  selectFill: "rgba(0,240,255,0.20)",
+  accent: "#00e5ff",
+  accentSoft: "#2a1450",
+  danger: "#ff4d7d",
+  warn: "#ffe600",
+  ok: "#39ff9c",
+  labelBg: "rgba(18,16,42,0.85)",
+  branch: "#b4abe0",
+  separator: "rgba(255,255,255,0.28)",
+  pinned: "#ff4fd8",
+  magenta: "#ff2ec4",
+  yellow: "#ffe600",
+};
+
+/** True for the modes that reuse dark-mode code paths ("dark", "cyberpunk"). */
+export const isDarkLike = (mode) => mode === "dark" || mode === "cyberpunk";
 
 /**
  * Alteration class colours (amp / homdel / fusion / truncating / splice /
@@ -89,7 +130,7 @@ const DARK = {
  * the grey "other" follow the theme's ink so they stay visible on dark.
  */
 export function alterationClassColors(theme) {
-  return { amp: "#D7191C", homdel: "#2C7BB6", fusion: theme.mode === "dark" ? "#a35fc4" : "#7B3294", trunc: theme.text, splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: theme.faint };
+  return { amp: "#D7191C", homdel: "#2C7BB6", fusion: isDarkLike(theme.mode) ? "#a35fc4" : "#7B3294", trunc: theme.text, splice: "#E6AB02", missense: "#1B9E77", complex: "#E66101", other: theme.faint };
 }
 
 /**
@@ -100,16 +141,37 @@ export function alterationClassColors(theme) {
  */
 export const INK = LIGHT;
 
+/** antd token overrides for a mode (cyberpunk: neon primary on the dark algorithm). */
+export function cyberAntdTokens(mode) {
+  if (mode !== "cyberpunk") return {};
+  return {
+    colorPrimary: CYBER.accent,
+    colorInfo: CYBER.accent,
+    colorSuccess: CYBER.ok,
+    colorWarning: CYBER.warn,
+    colorError: CYBER.danger,
+    colorBgBase: CYBER.page,
+    colorBgContainer: CYBER.panel,
+    colorBgElevated: CYBER.raised,
+    colorBorder: CYBER.border,
+    colorBorderSecondary: CYBER.borderSoft,
+    colorText: CYBER.text,
+    colorTextSecondary: CYBER.muted,
+    colorLink: CYBER.accent,
+  };
+}
+
 /** Resolved colour tokens for "light" / "dark". */
 export function plotTheme(mode) {
-  return mode === "dark" ? DARK : LIGHT;
+  return mode === "cyberpunk" ? CYBER : mode === "dark" ? DARK : LIGHT;
 }
 
 /** Theme of the page right now (html[data-theme]); light outside a browser. */
 export function currentMode() {
-  return typeof document !== "undefined" && document.documentElement?.getAttribute("data-theme") === "dark"
-    ? "dark"
-    : "light";
+  if (typeof document === "undefined") return "light";
+  const root = document.documentElement;
+  if (root?.getAttribute("data-skin") === "cyberpunk" && root.getAttribute("data-theme") === "dark") return "cyberpunk";
+  return root?.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
 
 export const currentPlotTheme = () => plotTheme(currentMode());
