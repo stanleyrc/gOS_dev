@@ -28,6 +28,7 @@ import {
   valueClustering,
 } from "../../../helpers/singleCell/spatial";
 import useSpatial from "./useSpatial";
+import { SpatialSection, useSpatialLayout } from "./spatialLayoutContext";
 
 const { Text } = Typography;
 const LEGEND_WIDTH = 240;
@@ -102,10 +103,12 @@ function insidePolygon(x, y, polygon) {
  * spatial statistics and a plain-language headline. Renders nothing for
  * patients without spatial.json.
  */
-export default function SpatialPanel() {
+export default function SpatialPanel({ bare = false }) {
   const { t } = useTranslation("common");
   const tx = (key, vars = {}) => t(`components.single-cell.spatial.${key}`, { defaultValue: TEXT[key], ...vars });
   const pt = usePlotTheme();
+  const sp = useSpatialLayout();
+  const beside = bare && sp.mode === "beside";
   const dispatch = useDispatch();
   const dataset = useSelector((s) => s.Settings.dataset);
   const { patient, cells, cloneColors, selectedCellIds, hoveredCellId, cn, tree, layout } = useSelector((s) => s.SingleCell);
@@ -139,14 +142,14 @@ export default function SpatialPanel() {
     () => (data ? data.points.map((p) => ({ ...p, linked: inPatient.has(p.id) })) : []),
     [data, inPatient]
   );
-  const plotWidth = Math.max(260, Math.min(720, containerWidth - LEGEND_WIDTH - 22));
+  const plotWidth = beside ? Math.max(240, containerWidth - 4) : Math.max(260, Math.min(720, containerWidth - LEGEND_WIDTH - 22));
   const plotHeight = useMemo(() => {
     if (!basePoints.length) return 360;
     const xs = basePoints.map((p) => p.x);
     const ys = basePoints.map((p) => p.y);
     const aspect = (Math.max(...ys) - Math.min(...ys) || 1) / (Math.max(...xs) - Math.min(...xs) || 1);
-    return Math.round(Math.max(300, Math.min(640, plotWidth * aspect)));
-  }, [basePoints, plotWidth]);
+    return Math.round(Math.max(300, Math.min(beside ? 900 : 640, plotWidth * aspect)));
+  }, [basePoints, plotWidth, beside]);
   const points = useMemo(() => {
     const placed = placeTissue(basePoints, plotWidth, plotHeight, PAD);
     return basePoints.map((p, i) => ({ ...p, px: placed[i].px, py: placed[i].py }));
@@ -409,23 +412,7 @@ export default function SpatialPanel() {
   ];
   const r2 = (v) => (Number.isFinite(v) ? (Math.round(v * 100) / 100).toFixed(2) : "–");
 
-  return (
-    <Col span={24}>
-      <Wrapper>
-        <Card
-          size="small"
-          className="sc-spatial"
-          title={
-            <Space wrap>
-              <EnvironmentOutlined />
-              <span>{tx("title")}</span>
-              <Tooltip title={`data/${patient?.caseReportId}/spatial.json · ${data.source || ""}`}>
-                <InfoCircleOutlined className="sc-hint-icon" />
-              </Tooltip>
-              <Text type="secondary">{tx("summary", { placed: points.length, dna: nLinked })}</Text>
-            </Space>
-          }
-          extra={
+  const controls = (
             <Space wrap>
               <Text type="secondary">{tx("color-by")}</Text>
               <Select size="small" style={{ width: 190 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch data-testid="spatial-color" />
@@ -454,9 +441,33 @@ export default function SpatialPanel() {
                 {tx("clear")}
               </Button>
             </Space>
+  );
+
+  const card = (
+      <Wrapper>
+        <Card
+          size="small"
+          className="sc-spatial"
+          title={
+            <Space wrap>
+              <EnvironmentOutlined />
+              <span>{tx("title")}</span>
+              <Tooltip title={`data/${patient?.caseReportId}/spatial.json · ${data.source || ""}`}>
+                <InfoCircleOutlined className="sc-hint-icon" />
+              </Tooltip>
+              <Text type="secondary">{tx("summary", { placed: points.length, dna: nLinked })}</Text>
+            </Space>
           }
+          extra={beside ? undefined : controls}
         >
+          {beside && <div style={{ marginBottom: 8 }}>{controls}</div>}
+          {nLinked === 0 && (
+            <div data-testid="spatial-no-dna" style={{ marginBottom: 8 }}>
+              <Text type="warning">{`None of the ${points.length} placed positions is a cell in this patient's DNA tree, so there is nothing to link to the phylogeny or heatmap; the map shows positions only (hollow). Hover and selection linking are unavailable.`}</Text>
+            </div>
+          )}
           {headlines.length > 0 && (
+            <SpatialSection k="headline">
             <div className="sc-spatial-headline" data-testid="spatial-headline" style={{ marginBottom: 10 }}>
               {headlines.slice(0, 4).map((h) => (
                 <div key={h.key}>
@@ -466,8 +477,9 @@ export default function SpatialPanel() {
                 </div>
               ))}
             </div>
+            </SpatialSection>
           )}
-          <div ref={containerRef} className="sc-umap">
+          <div ref={containerRef} className="sc-umap" style={beside ? { display: "block" } : undefined}>
             <div className="sc-umap-plot" style={{ width: plotWidth, height: plotHeight }}>
               <canvas
                 ref={canvasRef}
@@ -488,7 +500,8 @@ export default function SpatialPanel() {
                 </div>
               )}
             </div>
-            <div className="sc-umap-legend" style={{ width: LEGEND_WIDTH }}>
+            <SpatialSection k="legend">
+            <div className="sc-umap-legend" style={beside ? { width: "100%", marginTop: 8 } : { width: LEGEND_WIDTH }}>
               <Text strong type="secondary">
                 {scale.title}
               </Text>
@@ -521,8 +534,10 @@ export default function SpatialPanel() {
               </Text>
               {data.units && <Text type="secondary" className="sc-hint">{`Coordinates: ${data.units}`}</Text>}
             </div>
+            </SpatialSection>
           </div>
 
+          {["clustering", "enrichment", "niche", "mantel", "notes"].some((k) => !sp.hidden.includes(k)) && (
           <div style={{ marginTop: 12 }} data-testid="spatial-stats">
             <Text strong>{tx("stats-title")}</Text>
             <Tooltip title={tx("stats-method", { k, perm: 999 })}>
@@ -532,6 +547,7 @@ export default function SpatialPanel() {
               <Text type="secondary" className="sc-none">{tx("none-found")}</Text>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 6 }}>
+                <SpatialSection k="clustering">
                 <div style={{ flex: "1 1 320px", minWidth: 300 }}>
                   <Text type="secondary">{tx("clustering")}</Text>
                   <Table
@@ -554,7 +570,9 @@ export default function SpatialPanel() {
                   />
                   <Text type="secondary" className="sc-hint">{tx("click-row")}</Text>
                 </div>
+                </SpatialSection>
                 {enrichment && (
+                  <SpatialSection k="enrichment">
                   <div style={{ flex: "0 1 auto" }}>
                     <Text type="secondary">{tx("enrichment")}</Text>
                     <table className="sc-spatial-enrich" style={{ borderCollapse: "collapse", marginTop: 4, fontSize: 12 }}>
@@ -586,8 +604,10 @@ export default function SpatialPanel() {
                       </tbody>
                     </table>
                   </div>
+                  </SpatialSection>
                 )}
                 {niche.some((n) => n.rows.length) && (
+                  <SpatialSection k="niche">
                   <div style={{ flex: "1 1 320px", minWidth: 300 }}>
                     <Text type="secondary">{tx("niche")}</Text>
                     <Table
@@ -604,7 +624,9 @@ export default function SpatialPanel() {
                       ]}
                     />
                   </div>
+                  </SpatialSection>
                 )}
+                <SpatialSection k="mantel">
                 <div style={{ flex: "1 1 260px", minWidth: 240 }}>
                   <Text type="secondary">{tx("mantel")}</Text>
                   {mantelRes ? (
@@ -634,9 +656,11 @@ export default function SpatialPanel() {
                     <Text type="secondary" className="sc-none">{tx("mantel-none")}</Text>
                   )}
                 </div>
+                </SpatialSection>
               </div>
             )}
             {data.notes.length > 0 && (
+              <SpatialSection k="notes">
               <div style={{ marginTop: 8 }}>
                 {data.notes.map((n) => (
                   <Text key={n} type="secondary" className="sc-hint" style={{ display: "block" }}>
@@ -644,10 +668,12 @@ export default function SpatialPanel() {
                   </Text>
                 ))}
               </div>
+              </SpatialSection>
             )}
           </div>
+          )}
         </Card>
       </Wrapper>
-    </Col>
   );
+  return bare ? card : <Col span={24}>{card}</Col>;
 }
