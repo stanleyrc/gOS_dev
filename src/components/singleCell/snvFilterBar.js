@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Checkbox, InputNumber, Select, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Checkbox, InputNumber, Popover, Select, Space, Tag, Tooltip, Typography } from "antd";
+import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import { REGION_CLASSES, catLegend, describeFilter, removeFilterKey, setRange, setValues } from "../../helpers/singleCell/snvAnnot";
 import { LABEL_MODES } from "../../helpers/singleCell/snvLabels";
@@ -90,70 +91,84 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null }) {
   const active = chips.length > 0;
   const clearAll = () => update({ snvAnnotFilter: null, snvCategories: null, snvDriversOnly: false, snvCellphyOnly: false, snvMinCladeScore: null, snvIsolate: false });
 
-  return (
-    <div className="sc-filter-bar" style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 0" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-        <Text strong type="secondary">Filter sites</Text>
-        {multi("gene", geneOptions, "Gene (multi)", 130)}
-        {multi("region", regionOptions, "Consequence / region", 150)}
-        {multi("signature", sigOptions, "Signature", 110)}
-        <Select
-          size="small"
-          mode="multiple"
-          allowClear
-          maxTagCount="responsive"
-          style={{ minWidth: 120, maxWidth: 220 }}
-          placeholder="Tree site"
-          value={layout.snvCategories || []}
-          options={treeOptions}
-          onChange={(values) => update({ snvCategories: values.length ? values : null })}
-        />
-        {nDrivers > 0 && (
-          <Checkbox checked={Boolean(layout.snvDriversOnly)} onChange={(e) => update({ snvDriversOnly: e.target.checked })}>
-            driver only
-          </Checkbox>
-        )}
-        {(annot.cat.cellphy || []).some(Boolean) && (
-          <Checkbox checked={Boolean(layout.snvCellphyOnly)} onChange={(e) => update({ snvCellphyOnly: e.target.checked })}>
-            CellPhy input
-          </Checkbox>
-        )}
-        <RangeBox label="alt cells" title="Cells carrying the alt allele: min / max" filter={filter} field="carriers" onChange={setFilter} />
-        <RangeBox label="mean depth" title="Mean read depth over cells with reads: min / max" filter={filter} field="depth" onChange={setFilter} />
-        <RangeBox label="alt fraction" title="Fraction of called cells with the alt allele (0 to 1)" filter={filter} field="vaf" onChange={setFilter} step={0.05} max={1} />
-        {annot.num.phylo && <RangeBox label="clade F1" title="Best-clade F1 on the tree (0 to 1)" filter={filter} field="phylo" onChange={setFilter} step={0.05} max={1} />}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-        <Text strong style={{ fontSize: 12 }}>
-          {nShown} of {annot.n} sites
-        </Text>
-        {chips.map((c) => (
-          <Tag key={c.id} closable color="blue" style={{ marginInlineEnd: 0 }} onClose={c.remove}>
-            {c.text}
-          </Tag>
-        ))}
-        {active && (
-          <Button type="link" size="small" onClick={clearAll}>
-            clear all
-          </Button>
-        )}
-        <Tooltip title="Show where the filtered sites sit: counts on the tree branches, carrier cells highlighted, a table with the clade and signature fit">
-          <Button size="small" type={layout.snvIsolate ? "primary" : "default"} disabled={!active && !layout.snvIsolate} onClick={() => (onIsolate ? onIsolate(!layout.snvIsolate) : update({ snvIsolate: !layout.snvIsolate }))}>
-            {layout.snvIsolate ? "Isolating" : "Isolate"}
-          </Button>
+  const inputs = (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, width: 680, maxWidth: "80vw" }}>
+      {multi("gene", geneOptions, "Gene (multi)", 130)}
+      {multi("region", regionOptions, "Consequence / region", 150)}
+      {multi("signature", sigOptions, "Signature", 110)}
+      <Select
+        size="small"
+        mode="multiple"
+        allowClear
+        maxTagCount="responsive"
+        style={{ minWidth: 120, maxWidth: 220 }}
+        placeholder="Tree site"
+        value={layout.snvCategories || []}
+        options={treeOptions}
+        onChange={(values) => update({ snvCategories: values.length ? values : null })}
+      />
+      {nDrivers > 0 && (
+        <Checkbox checked={Boolean(layout.snvDriversOnly)} onChange={(e) => update({ snvDriversOnly: e.target.checked })}>
+          driver only
+        </Checkbox>
+      )}
+      {(annot.cat.cellphy || []).some(Boolean) && (
+        <Checkbox checked={Boolean(layout.snvCellphyOnly)} onChange={(e) => update({ snvCellphyOnly: e.target.checked })}>
+          CellPhy input
+        </Checkbox>
+      )}
+      <RangeBox label="alt cells" title="Cells carrying the alt allele: min / max" filter={filter} field="carriers" onChange={setFilter} />
+      <RangeBox label="mean depth" title="Mean read depth over cells with reads: min / max" filter={filter} field="depth" onChange={setFilter} />
+      <RangeBox label="alt fraction" title="Fraction of called cells with the alt allele (0 to 1)" filter={filter} field="vaf" onChange={setFilter} step={0.05} max={1} />
+      {annot.num.phylo && <RangeBox label="clade F1" title="Best-clade F1 on the tree (0 to 1)" filter={filter} field="phylo" onChange={setFilter} step={0.05} max={1} />}
+      <Space size={4}>
+        <Text type="secondary">Label</Text>
+        <Select size="small" style={{ width: 96 }} value={layout.snvLabel || "protein"} onChange={(v) => update({ snvLabel: v === "protein" ? null : v })} options={LABEL_MODES.map((m) => ({ value: m, label: m }))} />
+      </Space>
+      <Space size={4}>
+        <Tooltip title="Colour of sites with no reads in a cell, in every mutation matrix and its legend">
+          <Text type="secondary">Missing (no coverage)</Text>
         </Tooltip>
-        <Space size={4}>
-          <Text type="secondary">Label</Text>
-          <Select size="small" style={{ width: 96 }} value={layout.snvLabel || "protein"} onChange={(v) => update({ snvLabel: v === "protein" ? null : v })} options={LABEL_MODES.map((m) => ({ value: m, label: m }))} />
-        </Space>
-        <Space size={4}>
-          <Tooltip title="Colour of sites with no reads in a cell, in every mutation matrix and its legend">
-            <Text type="secondary">Missing (no coverage)</Text>
-          </Tooltip>
-          <Select size="small" style={{ width: 76 }} value={layout.snvNaColor === "white" ? "white" : "grey"} onChange={(v) => update({ snvNaColor: v === "white" ? "white" : null })} options={[{ value: "grey", label: "grey" }, { value: "white", label: "white" }]} />
-        </Space>
+        <Select size="small" style={{ width: 76 }} value={layout.snvNaColor === "white" ? "white" : "grey"} onChange={(v) => update({ snvNaColor: v === "white" ? "white" : null })} options={[{ value: "grey", label: "grey" }, { value: "white", label: "white" }]} />
+      </Space>
+    </div>
+  );
+  const hidden = Boolean(layout.snvFiltersHidden);
+  const toggle = (
+    <Button type="text" size="small" aria-label={hidden ? "Show filters" : "Hide filters"} icon={hidden ? <RightOutlined /> : <DownOutlined />} onClick={() => update({ snvFiltersHidden: !hidden })} />
+  );
+  if (hidden)
+    return (
+      <div className="sc-filter-bar" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {toggle}
+        <Text type="secondary">{`Filters (${chips.length} active)`}</Text>
+        {active && <Text style={{ fontSize: 12 }}>{`${nShown} of ${annot.n} sites`}</Text>}
       </div>
+    );
+  return (
+    <div className="sc-filter-bar" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "2px 0" }}>
+      {toggle}
+      <Popover trigger="click" placement="bottomLeft" title="Filter sites" content={inputs}>
+        <Button size="small">{`Filters (${chips.length})`}</Button>
+      </Popover>
+      {chips.map((c) => (
+        <Tag key={c.id} closable color="blue" style={{ marginInlineEnd: 0 }} onClose={c.remove}>
+          {c.text}
+        </Tag>
+      ))}
+      <Text strong style={{ fontSize: 12 }}>
+        {nShown} of {annot.n} sites
+      </Text>
+      <Tooltip title="Show where the filtered sites sit: counts on the tree branches, carrier cells highlighted, a table with the clade and signature fit">
+        <Button size="small" type={layout.snvIsolate ? "primary" : "default"} disabled={!active && !layout.snvIsolate} onClick={() => (onIsolate ? onIsolate(!layout.snvIsolate) : update({ snvIsolate: !layout.snvIsolate }))}>
+          {layout.snvIsolate ? "Isolating" : "Isolate"}
+        </Button>
+      </Tooltip>
+      {active && (
+        <Button type="link" size="small" onClick={clearAll}>
+          clear all
+        </Button>
+      )}
     </div>
   );
 }
-

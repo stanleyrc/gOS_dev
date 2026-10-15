@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Select, Tooltip, Typography } from "antd";
+import { Button, Select, Tooltip, Typography } from "antd";
+import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import SnvFilterBar from "./snvFilterBar";
 import { assignByTreeSet } from "../../helpers/singleCell/snvSigByTree";
@@ -197,6 +198,14 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null }) {
   const { tracks, onTrackClick } = useSnvTracks(annot);
   const filter = layout.snvAnnotFilter || null;
   const [urlRead, setUrlRead] = useState(false);
+  const legendHidden = Boolean(layout.snvLegendHidden);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [legendOverflow, setLegendOverflow] = useState(false);
+  const legendRef = useRef(null);
+  useEffect(() => {
+    const el = legendRef.current;
+    setLegendOverflow(Boolean(el && el.scrollHeight > 36));
+  }, [annot, tracks, legendOpen, legendHidden, layout.snvAnnotFilter]);
 
   // a link carries the tracks and filter; read once when the patient has loaded
   useEffect(() => {
@@ -247,7 +256,13 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null }) {
       </div>
       <SnvFilterBar annot={annot} nShown={nShown ?? annot.n} onIsolate={onIsolate} />
       {tracks.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 2, fontSize: 11 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 4 }}>
+          <Button type="text" size="small" style={{ height: 18, padding: "0 4px" }} aria-label={legendHidden ? "Show legend" : "Hide legend"} icon={legendHidden ? <RightOutlined /> : <DownOutlined />} onClick={() => dispatch(singleCellActions.updateLayout({ snvLegendHidden: !legendHidden }))} />
+          {legendHidden ? (
+            <Text type="secondary" style={{ fontSize: 11 }}>Track legend</Text>
+          ) : (
+        <>
+        <div ref={legendRef} style={{ flex: 1, display: "flex", flexWrap: "wrap", columnGap: 16, rowGap: 2, fontSize: 11, lineHeight: "16px", maxHeight: legendOpen ? "none" : 34, overflow: "hidden" }}>
           {tracks.map((key) => {
             const def = trackDef(key);
             if (def.kind === "num") {
@@ -278,6 +293,14 @@ export function SnvTrackControls({ annot, nShown = null, onIsolate = null }) {
               </span>
             );
           })}
+        </div>
+        {(legendOverflow || legendOpen) && (
+          <Button type="link" size="small" style={{ height: 18, padding: 0, fontSize: 11 }} onClick={() => setLegendOpen(!legendOpen)}>
+            {legendOpen ? "less" : "more"}
+          </Button>
+        )}
+        </>
+          )}
         </div>
       )}
     </div>
