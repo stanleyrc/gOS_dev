@@ -114,7 +114,7 @@ describe("cells and IGV", () => {
   });
 });
 
-describe("synthetic fusions.json (no BAM slices yet)", () => {
+describe("large synthetic fusions.json (no BAM slices)", () => {
   const real = require("./__fixtures__/rnaFusions.synthetic_large.json");
   const { geneDisplay, isNonProductive } = require("./rnaFusions");
   it("normalises 800 fusions quickly", () => {
@@ -122,21 +122,22 @@ describe("synthetic fusions.json (no BAM slices yet)", () => {
     const out = normalizeFusions(real);
     expect(out.fusions.length).toBe(802);
     expect(Date.now() - t0).toBeLessThan(500);
-    const mast = out.fusions.find((f) => f.gene1 === "GENEA");
-    expect(mast.label).toBe("GENEA::GENEB-DT");
-    expect(typeof mast.known).toBe("boolean");
+    const known = out.fusions.find((f) => f.gene1 === "SYN20");
+    expect(known.label).toBe("SYN20::SYN21");
+    expect(known.known).toBe(true);
+    expect(out.fusions.every((f) => typeof f.known === "boolean")).toBe(true);
   });
   it("splits intergenic gene strings for display", () => {
-    expect(geneDisplay("GENEB-DT(1000),ENSG00000000001(2000)")).toEqual({ name: "GENEB-DT", rest: ["ENSG00000285831(2166)"], full: "GENEB-DT(1000),ENSG00000000001(2000)", intergenic: true });
+    expect(geneDisplay("GENEB-DT(1000),ENSG00000000001(2000)")).toEqual({ name: "GENEB-DT", rest: ["ENSG00000000001(2000)"], full: "GENEB-DT(1000),ENSG00000000001(2000)", intergenic: true });
     expect(isNonProductive({ type: "inversion/3'-3'" })).toBe(true);
     expect(isNonProductive({ type: "translocation" })).toBe(false);
   });
   it("finds the RNA support of the DNA fusion events", () => {
     const out = normalizeFusions(real);
-    ["SYNA::SYNB", "SYNB::SYNA", "SYNC::SYND", "SYNE::SYNF"].forEach((gene) => {
+    ["SYN1::SYN2", "SYN2::SYN1", "SYN3::SYN4", "SYN5::SYN6"].forEach((gene) => {
       expect(matchRnaFusions({ gene, vartype: "fusion" }, out.fusions).length).toBeGreaterThan(0);
     });
-    expect(matchRnaFusions({ gene: "SYNG::SYNH", vartype: "fusion" }, out.fusions)).toEqual([]);
+    expect(matchRnaFusions({ gene: "SYN9001::SYN9002", vartype: "fusion" }, out.fusions)).toEqual([]);
   });
   it("keeps DNA-matched fusions below the cell threshold, hides read-through", () => {
     const out = normalizeFusions(real);
