@@ -9,6 +9,7 @@ import {
 } from "../../helpers/dataAvailability";
 import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utility";
 import { SC_FETCHED_TRACKS } from "./actions";
+import { hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 
 export const casePath = (dataset, caseReportId, filename) =>
@@ -133,6 +134,7 @@ export async function loadCellTrack(dataset, cellId, track, chromoBins) {
         const [slope, intercept] = track === "coverage" ? [record.cov_slope, record.cov_intercept] : [record.hets_slope, record.hets_intercept];
         return { status: "ok", data: arrowScatter(res.data, Number(slope), Number(intercept)) };
       }
+      if (track === "hetblocks") return { status: "ok", data: dataToGenome(hetBlocksToGraph(res.data), chromoBins) };
       return { status: "ok", data: dataToGenome(allelicToGenome(res.data || { settings: {}, intervals: [], connections: [] }), chromoBins) };
     })().catch((error) => ({ status: "error", error }));
     if (trackCache.size > 400) trackCache.clear();

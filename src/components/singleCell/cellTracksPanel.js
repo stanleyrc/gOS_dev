@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Col, Empty, Row, Space, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Col, Empty, Row, Segmented, Space, Typography } from "antd";
 import { CloseOutlined, ExportOutlined } from "@ant-design/icons";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
@@ -10,6 +10,7 @@ import PinnedGenesOverlay from "./pinnedGenesOverlay";
 import singleCellActions, { SC_FETCHED_TRACKS, SC_MAX_TRACK_CELLS, SC_TRACKS } from "../../redux/singleCell/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
+import { effectiveTracks, HET_MODES, storedTrack } from "../../helpers/singleCell/hetTracks";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
 import ColorTag from "./colorTag";
@@ -17,6 +18,8 @@ import ColorTag from "./colorTag";
 const { Text } = Typography;
 const PLOT_HEIGHT = 160;
 const COMPACT_PLOT_HEIGHT = 120; // embedded (popup) lanes
+const HET_BLOCKS_RANGE = [0, 0.5]; // minor allele fraction
+const HET_SNPS_RANGE = [0, 1]; // BAF = alt / depth
 const noNotification = { status: null, heading: null, messages: [] };
 
 // Converted genome graphs, keyed by the raw JSON object so panels get
@@ -104,6 +107,14 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
       />
     );
   }
+  if (track === "hetblocks") {
+    return (
+      <GenomePanel
+        {...{ loading: false, genome: data, error: null, filename: "hetblocks.json", title: `${label} · ${cellId}`, yAxisTitle: t("components.single-cell.tracks.hetblocks-y"), chromoBins, visible: true, index: 0, height, commonRangeY: HET_BLOCKS_RANGE }}
+      />
+    );
+  }
+  const isHets = track === "hetsnps";
   return (
     <ScatterPlotPanel
       {...{
@@ -117,13 +128,13 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
         error: null,
         filename: track === "coverage" ? "coverage.arrow" : "hetsnps.arrow",
         title: `${label} · ${cellId}`,
-        notification: data.hasFit ? noNotification : { status: "warning", heading: t("components.tracks-modal.missing-counts-axis"), messages: [t("components.single-cell.tracks.no-fit")] },
+        notification: isHets ? noNotification : data.hasFit ? noNotification : { status: "warning", heading: t("components.tracks-modal.missing-counts-axis"), messages: [t("components.single-cell.tracks.no-fit")] },
         chromoBins,
         visible: true,
         height,
-        yAxisTitle: data.hasFit ? t("components.tracks-modal.coverage-copy-number") : t("components.tracks-modal.coverage-count"),
+        yAxisTitle: isHets ? t("components.single-cell.tracks.hetsnps-y") : data.hasFit ? t("components.tracks-modal.coverage-copy-number") : t("components.tracks-modal.coverage-count"),
         yAxis2Title: t("components.tracks-modal.coverage-count"),
-        commonRangeY: track === "coverage" && data.hasFit ? commonRangeY : null,
+        commonRangeY: isHets ? HET_SNPS_RANGE : track === "coverage" && data.hasFit ? commonRangeY : null,
       }}
     />
   );
@@ -150,6 +161,7 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   // Embedded (event popup): its own track choice, CN graph + coverage first.
   const [localTracks, setLocalTracks] = React.useState(["total", "coverage"]);
   const visibleTracks = embedded ? localTracks : sc.visibleTracks;
+  const hetMode = sc.hetMode || "snps";
   const setTracks = (tracks) => (embedded ? setLocalTracks(tracks) : dispatch(singleCellActions.updateVisibleTracks(tracks)));
   // Pad the plots so their genomic area lines up with the heatmap's columns;
   // subtract this panel's own nesting (cell block border/padding, row
@@ -184,12 +196,12 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   useEffect(() => {
     if (!cellIds) return;
     shown.forEach((cellId) =>
-      visibleTracks
+      effectiveTracks(visibleTracks, hetMode)
         .filter((track) => SC_FETCHED_TRACKS[track] && !perCell[cellId]?.[track])
         .forEach((track) => dispatch(singleCellActions.requestPerCellTrack(cellId, track)))
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownKey, visibleTracks]);
+  }, [shownKey, visibleTracks, hetMode]);
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const label = (track) => t(`components.single-cell.tracks.${track}`);
 
@@ -218,8 +230,8 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
   const renderTrack = (cellId, track) => {
     if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
     if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
-    const entry = perCell[cellId]?.[track];
-    return <TrackPlot cellId={cellId} track={track} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
+    const entry = perCell[cellId]?.[storedTrack(track, hetMode)];
+    return <TrackPlot cellId={cellId} track={storedTrack(track, hetMode)} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} height={height} />;
   };
   const orderedTracks = SC_TRACKS.filter((track) => visibleTracks.includes(track));
 
@@ -237,6 +249,15 @@ export default function CellTracksPanel({ yScaleMode = "common", cellIds = null,
               onChange={setTracks}
               options={SC_TRACKS.map((track) => ({ value: track, label: label(track) }))}
             />
+            {visibleTracks.includes("hetsnps") && (
+              <Segmented
+                size="small"
+                className="sc-het-mode"
+                value={hetMode}
+                onChange={(mode) => dispatch(singleCellActions.updateHetMode(mode))}
+                options={HET_MODES.map((mode) => ({ value: mode, label: t(`components.single-cell.tracks.het-mode-${mode}`) }))}
+              />
+            )}
           </div>
         }
       >
