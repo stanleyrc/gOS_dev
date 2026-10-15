@@ -33,6 +33,7 @@ import { NO_READS_COLOR, junctionColor, psiColor, readsColor } from "../../../he
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 import { byNotability, clusterNotability, pageOf } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import SpliceFindingsList from "./spliceFindingsList";
+import SpliceEventsTable from "./spliceEventsTable";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -277,6 +278,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   const [queryText, setQueryText] = useState("");
   const [page, setPage] = useState(1);
   const pending = useRef(null);
+  const pendingJunction = useRef(null);
   const boxRef = useRef(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [picked, setPicked] = useState(null);
@@ -297,6 +299,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   // a finding picked above: clear the filters, then select its cluster, show its table page and scroll to the plots
   useEffect(() => {
     if (!request) return;
+    pendingJunction.current = request.junction ? { ...request.junction, id: request.id } : null;
     if (!query && typeFilter === "all" && tableRows.some((r) => r.id === request.id)) {
       setPicked(request.id);
       setPage(pageOf(tableRows, request.id, PAGE_SIZE));
@@ -320,7 +323,20 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
     }
     if (tableRows.length && !tableRows.some((r) => r.id === picked)) setPicked(tableRows[0].id);
   }, [tableRows, picked]);
-  useEffect(() => setHighlight(null), [picked]);
+  // an event picked above: highlight its junction in the sashimi plot (and show every junction of a small cluster)
+  useEffect(() => {
+    const jn = pendingJunction.current;
+    if (jn && jn.id !== picked) {
+      setHighlight(null);
+      return;
+    }
+    const c = clusters.find((x) => x.id === picked);
+    const j = jn && c ? c.junctions.findIndex((x) => Number(x.start) === jn.start && Number(x.end) === jn.end) : -1;
+    pendingJunction.current = null;
+    setHighlight(j >= 0 ? j : null);
+    if (j >= 0 && c.junctions.length <= 10) setFocus("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked, request]);
   const cluster = clusters.find((c) => c.id === picked);
   const groups = useMemo(() => (cluster ? clusterByGroup(cluster, groupOf) : []), [cluster, groupOf]);
   const usage = useMemo(() => (cluster ? cellUsageMatrix(cluster, rows) : null), [cluster, rows]);
@@ -436,8 +452,8 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   return (
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
       <Space wrap>
-        <Text strong>{t(`${k}.clusters-title`)}</Text>
-        <HintLine inline text={`${t(`${k}.rank-help`)} ${t(`${k}.notability-help`)}`} />
+        <Text strong>{t(`${k}.events-clusters-title`)}</Text>
+        <HintLine inline text={`${t(`${k}.events-clusters-help`)} ${t(`${k}.rank-help`)} ${t(`${k}.notability-help`)}`} />
         <Input.Search
           size="small"
           allowClear
@@ -651,6 +667,7 @@ export default function SplicingCard({ summary, focus = null }) {
   const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const data = source?.status === "ok" ? source.data : null;
   const findings = useMemo(() => data?.findings || [], [data]);
+  const openEvent = (e) => setClusterRequest({ id: e.clusterId, junction: { start: e.start, end: e.end }, at: Date.now() });
   const pickFinding = (f) => {
     if (!f) return;
     if (f.kind === "clone_differential" && field !== "clone") setField("clone");
@@ -718,6 +735,9 @@ export default function SplicingCard({ summary, focus = null }) {
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <SpliceFindingsList findings={findings} onPick={pickFinding} spliceReads={data.spliceReads} patientId={patientId} />
+          </Col>
+          <Col span={24}>
+            <SpliceEventsTable events={data.events} onSashimi={openEvent} cellMap={data.cellMap} spliceReads={data.spliceReads} patientId={patientId} />
           </Col>
           {data.variants.length > 0 && (
             <Col span={24}>
