@@ -1,4 +1,4 @@
-import { describeTest, geneSignature, qcNote, signatureOverlap, formatQ, headlineFindings, isRobust, looselyAdjusted, perPatientLfc, testCells, testRows, topProgram, volcanoRows } from "./covariateDe";
+import { sharedPrograms, describeTest, geneSignature, qcNote, signatureOverlap, formatQ, headlineFindings, isRobust, looselyAdjusted, perPatientLfc, testCells, testRows, topProgram, volcanoRows } from "./covariateDe";
 
 const gene = (over = {}) => ({ gene: "G1", avg_log2FC: 1, q_val: 0.01, p_val: 0.001, n_patients: 3, n_concordant: 3, per: { A: 1.2, B: 0.4, C: 0.9 }, ...over });
 const test = (over = {}) => ({
@@ -89,6 +89,20 @@ describe("covariateDe", () => {
     expect(signatureOverlap(new Set(), new Set(["a"]))).toBe(0);
     expect(qcNote(test({ robust_up: ["MT-CO1", "MT-CO2", "MT-ND1", "FOS"], robust_down: [] }))).toMatch(/mitochondrial/);
     expect(qcNote(test())).toBe("");
+  });
+
+  it("sharedPrograms finds programs leading most driver tests and headlines show them once", () => {
+    const mk = (id, genes) => test({ id, label: `${id}: carriers vs non-carriers`, genes, enrichment: { up: [{ term: "HALLMARK_MYC_TARGETS_V1", q: 0.001 }, { term: `P_${id}`, q: 0.001 }], down: [] } });
+    const d = { tests: ["a", "b", "c", "d"].map((i) => mk(i, [gene({ gene: `X${i}` })])) };
+    const sh = sharedPrograms(d);
+    expect(sh).toHaveLength(1);
+    expect(sh[0]).toMatchObject({ term: "HALLMARK_MYC_TARGETS_V1", direction: "up", n: 4, of: 4, pretty: "myc targets v1" });
+    expect(sharedPrograms({ tests: d.tests.slice(0, 2) })).toEqual([]);
+    const h = headlineFindings(d, { max: 3 });
+    expect(h[0].id).toBe("shared");
+    expect(h).toHaveLength(3);
+    expect(h[1].text).not.toContain("myc targets");
+    expect(h[1].text).toContain("up program: p a");
   });
 
   it("formatQ", () => {

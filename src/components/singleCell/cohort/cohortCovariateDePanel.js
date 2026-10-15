@@ -4,12 +4,12 @@ import useCohortExport from "./useCohortExport";
 import VolcanoPlot from "../rna/volcanoPlot";
 import ScErrorBoundary from "../errorBoundary";
 import HintLine from "../hintLine";
-import { FAMILIES, FAMILY_LABELS, describeTest, formatQ, isRobust, looselyAdjusted, perPatientLfc, testRows, volcanoRows } from "../../../helpers/singleCell/covariateDe";
+import { FAMILIES, FAMILY_LABELS, describeTest, sharedPrograms, formatQ, isRobust, looselyAdjusted, perPatientLfc, testRows, volcanoRows } from "../../../helpers/singleCell/covariateDe";
 
 const { Text } = Typography;
 const Q_CUT = 0.05;
 const LFC_CUT = 0.5;
-const ADJUST_NAME = { "plate+cycling": "plate x cycling", cycling: "cycling only", none: "unadjusted" };
+const ADJUST_NAME = { "plate+cycling+qc": "plate x cycling x library quality", "cycling+qc": "cycling x library quality (plates not separable)", "plate+cycling": "plate x cycling", cycling: "cycling only", none: "unadjusted" };
 
 function EnrichmentList({ title, items }) {
   return (
@@ -57,6 +57,7 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
   const selected = rows.find((r) => r.id === selectedId) || (rows.length && !selectedId ? rows[0] : null);
   useEffect(() => setSelectedGene(null), [selected?.id]);
   const volcano = useMemo(() => volcanoRows(selected), [selected]);
+  const shared = useMemo(() => sharedPrograms(data), [data]);
 
   if (status === "loading") return <Skeleton active />;
   if (!data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Covariate differential not computed yet (_cohort/rna_covariate_de.json; srctools gos_sc_rna_covariate_de.py)." />;
@@ -93,6 +94,8 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
           <Input.Search size="small" allowClear placeholder="search tests or genes" style={{ width: 200 }} value={query} onChange={(e) => setQuery(e.target.value)} />
           <Space size={4}><Switch size="small" checked={combinableOnly} onChange={setCombinableOnly} /><Text type="secondary">2+ patients only</Text></Space>
         </Space>
+        {shared.length > 0 && <Alert type="info" showIcon style={{ marginBottom: 8 }} message={`Shared by most driver tests: ${shared.slice(0, 4).map((x) => `${x.pretty} ${x.direction}`).join(", ")} (${shared[0].n} of ${shared[0].of}). Carriers of different drivers share clades, so read these as a tumour-wide / clade effect, not per-driver biology; they are left out of the per-test sentences.`} />}
+        {data.tumour_filter && <Text type="secondary" style={{ display: "block", marginBottom: 6, fontSize: 12 }}>{`Malignant tumour cells only. Dropped per patient (non-malignant or DNA Normal): ${Object.entries(data.tumour_filter).map(([p, v]) => `${p} ${v.cells_with_covariates - v.kept}`).join(", ")}.`}</Text>}
         <Table size="small" rowKey="id" dataSource={rows} columns={columns} pagination={{ pageSize: 10, showSizeChanger: false }} scroll={{ x: true }}
           onRow={(r) => ({ onClick: () => setSelectedId(r.id), style: { cursor: "pointer", background: selected?.id === r.id ? "rgba(22,119,255,0.08)" : undefined } })} />
         <HintLine text={`Each test is run inside every patient (Wilcoxon, stratified by plate x cycling so that region and S-phase copy-number inflation are not read as biology) and the signed z scores are combined across patients (Stouffer; Fisher shown too). Robust gene = q < ${Q_CUT}, |log2FC| >= ${LFC_CUT}, 2+ patients, same direction in every patient. Cells are not independent samples, so p values are optimistic; concordance across patients is the safer evidence. Created ${data.created || ""}.`} />
@@ -100,9 +103,9 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
       {selected && (
         <ScErrorBoundary resetKey={selected.id} title="Covariate DE view failed">
           <Card size="small" title={selected.label} extra={<Text type="secondary">{`${selected.cells.a} ${selected.group_a} vs ${selected.cells.b} ${selected.group_b} cells`}</Text>}>
-            <Text>{describeTest(selected)}</Text>
+            <Text>{describeTest(selected, { shared })}</Text>
             {!selected.combinable && <Alert type="warning" showIcon style={{ marginTop: 6 }} message="One patient only, so this cannot be called a cross-patient finding." />}
-            {loose.length > 0 && <Alert type="info" showIcon style={{ marginTop: 6 }} message={`Less adjustment in ${loose.map((p) => `${p} (${ADJUST_NAME[selected.patients.find((x) => x.patient === p)?.adjust] || "?"})`).join(", ")}: the groups sit on different plates, so plate and group cannot be separated there.`} />}
+            {loose.length > 0 && <Alert type="info" showIcon style={{ marginTop: 6 }} message={`Less adjustment in ${loose.map((p) => `${p} (${ADJUST_NAME[selected.patients.find((x) => x.patient === p)?.adjust] || "?"})`).join(", ")}: the groups sit on different plates, so plate and group cannot be separated there (library quality is still controlled where listed).`} />}
             {selected.self_gene && <Text type="secondary" style={{ display: "block", marginTop: 4 }}>{`${selected.self_gene.gene} itself: log2FC ${selected.self_gene.avg_log2FC.toFixed(2)}, q ${formatQ(selected.self_gene.q_val)} (dosage positive control).`}</Text>}
             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
               <Col xs={24} xl={12}>

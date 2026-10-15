@@ -81,12 +81,12 @@ function CovariateHeadlines({ dataset, onOpen }) {
     <div className="sc-cov-headlines" style={{ marginBottom: 12 }}>
       <Text strong style={{ display: "block", fontSize: TYPE.title, marginBottom: 4 }}>Cohort RNA differential: replicated findings</Text>
       <Text type="secondary" style={{ display: "block", fontSize: TYPE.label, marginBottom: 6 }}>
-        Genes that change the same way in every patient tested (2+ patients, q &lt; 0.05, |log2FC| &gt;= 0.5), with plate and cycling controlled inside each patient.
+        Genes that change the same way in every patient tested (2+ patients, q &lt; 0.05, |log2FC| &gt;= 0.5), malignant tumour cells only, with plate, cycling and library quality controlled inside each patient.
       </Text>
       <Space size={[10, 10]} wrap align="start">
         {cards.map((c) => (
-          <Card key={c.id} size="small" hoverable style={{ width: 340 }} onClick={() => onOpen && onOpen(c.id)}
-            title={<Space size={6}><Tag color={c.family === "driver" ? "volcano" : c.family === "clade" ? "geekblue" : "default"} style={{ margin: 0 }}>{c.family === "driver" ? "driver" : c.family === "clade" ? "clade" : "copy number"}</Tag><span style={{ fontSize: TYPE.label }}>{c.title}</span></Space>}>
+          <Card key={c.id} size="small" hoverable style={{ width: 340 }} onClick={() => onOpen && c.test && onOpen(c.id)}
+            title={<Space size={6}><Tag color={c.family === "driver" ? "volcano" : c.family === "clade" ? "geekblue" : c.family === "shared" ? "gold" : "default"} style={{ margin: 0 }}>{c.family === "driver" ? "driver" : c.family === "clade" ? "clade" : c.family === "shared" ? "shared" : "copy number"}</Tag><span style={{ fontSize: TYPE.label }}>{c.title}</span></Space>}>
             <Text style={{ fontSize: TYPE.label }}>{c.text}</Text>
             {c.also.length > 0 && <div style={{ marginTop: 4 }}><Text type="secondary" style={{ fontSize: TYPE.tick }}>{`Same genes also called by ${c.also.slice(0, 6).join(", ")}${c.also.length > 6 ? ` and ${c.also.length - 6} more` : ""} (carriers share a clade).`}</Text></div>}
             {c.note && <div style={{ marginTop: 4 }}><Text type="warning" style={{ fontSize: TYPE.tick }}>{c.note}</Text></div>}
