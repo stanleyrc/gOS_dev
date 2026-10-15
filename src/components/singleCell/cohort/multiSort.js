@@ -9,7 +9,7 @@ const { Text } = Typography;
  * (a key cycles ascending, descending, removed). Headers show an arrow and, with several keys, their order.
  * Columns marked `sortable: true` (key = dataIndex, or `sortValue(row)` for a computed value; `firstDir: "desc"`
  * for numeric columns that should start high-to-low) are sorted here, not by antd.
- * @returns { columns, rows, keys, clear, hint }
+ * @returns { columns, rows, keys, setKeys, clear, hint }
  */
 export default function useMultiSort(columns, rows, initialKeys = []) {
   const [keys, setKeys] = useState(initialKeys);
@@ -55,5 +55,5 @@ export default function useMultiSort(columns, rows, initialKeys = []) {
       {keys.length > 0 && <Button size="small" type="link" onClick={() => setKeys([])}>Clear sort</Button>}
     </Space>
   );
-  return { columns: cols, rows: sorted, keys, clear: () => setKeys([]), hint };
+  return { columns: cols, rows: sorted, keys, setKeys, clear: () => setKeys([]), hint };
 }
