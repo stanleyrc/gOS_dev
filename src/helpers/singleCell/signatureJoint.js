@@ -36,9 +36,17 @@ export function patientSet(joint) {
   return rows.sort((a, b) => (a.source === b.source ? 0 : a.source === "base" ? -1 : 1));
 }
 
-/** Signatures the legacy fits reported that the patient set does not contain: [{ signature, sets }]. */
+/**
+ * Signatures the legacy fits reported that the patient set does not contain:
+ * [{ signature, sets, checks: [{ set, frac, lo, hi, delta_loglik, p, cosine_gain, support }] }];
+ * checks = evidence for the signature when added to the patient set, in each set the legacy fit reported it.
+ */
 export function droppedSignatures(joint) {
-  return (joint?.legacy_dropped || []).map((d) => ({ signature: d.signature, sets: [].concat(d.legacy_sets || []) }));
+  return (joint?.legacy_dropped || []).map((d) => ({
+    signature: d.signature,
+    sets: [].concat(d.legacy_sets || []),
+    checks: [].concat(d.checks || []),
+  }));
 }
 
 /** Exposure bars of one set: [{ signature, fraction, lo, hi, count }] largest first (CI = bootstrap 95%). */

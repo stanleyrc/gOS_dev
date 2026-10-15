@@ -49,7 +49,7 @@ describe("signatureJoint", () => {
 
   it("lists the patient set, dropped signatures, bars and set order", () => {
     expect(patientSet(joint).map((r) => r.signature)).toEqual(["SBS5", "SBS13"]);
-    expect(droppedSignatures(joint)).toEqual([{ signature: "SBS86", sets: ["subclonal"] }]);
+    expect(droppedSignatures(joint)).toEqual([{ signature: "SBS86", sets: ["subclonal"], checks: [] }]);
     expect(exposureBars(joint, "subclonal")[0]).toMatchObject({ signature: "SBS5", lo: 0.6, hi: 0.8 });
     expect(jointSetNames(joint)).toEqual(["subclonal", "truncal", "clade: n1"]);
   });

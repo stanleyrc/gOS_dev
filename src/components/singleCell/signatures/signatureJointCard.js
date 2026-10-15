@@ -121,14 +121,34 @@ export default function SignatureJointCard() {
             <span>
               The set starts from the SigProfilerAssignment fit of all sites and adds a signature only when one subset (truncal, subclonal, private, a
               clone or a clade) supports it by a likelihood-ratio test (Bonferroni over candidates) and the same signature is selected in at least
-              80% of {joint.n_boot_select} bootstrap resamples of that subset. Every set is then refit by NNLS on this set only; intervals are
-              {" "}{joint.n_boot} mutation-resampling bootstraps.
-              {dropped.length > 0 && (
-                <> Independent fits reported {dropped.map((d) => `${d.signature} (${d.sets.join(", ")})`).join("; ")}, which the joint set does not keep.</>
-              )}
+              80% of {joint.n_boot_select} bootstrap resamples of that subset, takes at least 5% of the exposure and raises the cosine of the
+              reconstruction by at least 0.02. Every set is then refit by NNLS on this set only; intervals are {joint.n_boot} mutation-resampling
+              bootstraps.
             </span>
           }
         />
+        {dropped.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <Text strong>Reported by the independent (legacy) fits but not in the patient set</Text>
+            <Table
+              size="small"
+              pagination={false}
+              rowKey={(r) => `${r.signature}|${r.set}`}
+              dataSource={dropped.flatMap((d) => (d.checks.length ? d.checks.map((c) => ({ signature: d.signature, ...c })) : [{ signature: d.signature, set: d.sets.join(", ") }]))}
+              columns={[
+                { title: "Signature", dataIndex: "signature" },
+                { title: "Set", dataIndex: "set" },
+                { title: "Fraction if added [95% CI]", render: (_, r) => (r.frac == null ? "–" : `${pct(r.frac)} [${pct(r.lo)}, ${pct(r.hi)}]`) },
+                { title: "delta logL / p", render: (_, r) => (r.frac == null ? "–" : `${r.delta_loglik} / ${fmtP(r.p)}`) },
+                { title: "Cosine gain", dataIndex: "cosine_gain", render: (v) => (v == null ? "–" : v.toFixed(3)) },
+                { title: "Bootstrap support (>=5%)", dataIndex: "support", render: (v) => (v == null ? "–" : pct(v)) },
+              ]}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Evidence for each signature when it is added to the patient set and the set refit: a signature with a CI reaching 0, a cosine gain below 0.02 or support below 80% is not kept.
+            </Text>
+          </div>
+        )}
         <Space wrap style={{ marginBottom: 6 }}>
           <Text>Site set</Text>
           <Select size="small" value={shown} onChange={setSetName} style={{ minWidth: 230 }} options={names.map((n) => ({ value: n, label: n }))} />
