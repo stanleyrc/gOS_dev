@@ -274,6 +274,10 @@ export function siteStats(site, ev, cellRows = [], { preset = "caller" } = {}) {
     if (c.dp > 0) e.covered += 1;
     if (c.alt > 0) e.carriers += 1;
   });
+  // carrier cells only: a subclone's alt reads are diluted by the non-carrier tumour cells in the pooled VAF,
+  // so the normal-cell check compares normals against the cells that actually show the alt allele
+  const carrier = carriers.reduce((a, c) => ({ alt: a.alt + c.alt, dp: a.dp + c.dp }), { alt: 0, dp: 0 });
+  carrier.ref = Math.max(0, carrier.dp - carrier.alt);
   const tVaf = tumor.dp ? tumor.alt / tumor.dp : null;
   const nVaf = normal.dp ? normal.alt / normal.dp : null;
   return {
@@ -288,6 +292,9 @@ export function siteStats(site, ev, cellRows = [], { preset = "caller" } = {}) {
     cohort,
     log10pError: log10BinomUpper(tumor.alt, tumor.dp, errorRate),
     log10pNormal: log10FisherGreater([tumor.alt, tumor.ref], [normal.alt, normal.ref]),
+    carrier: { ...carrier, vaf: carrier.dp ? carrier.alt / carrier.dp : null },
+    // carrier cells vs normal cells (null without per-cell calls)
+    log10pCarrierNormal: carrier.dp ? log10FisherGreater([carrier.alt, carrier.ref], [normal.alt, normal.ref]) : null,
     // chance the normals would show this few alt reads if they carried the tumour's VAF
     log10pNormalsClean: tVaf != null && normal.dp ? log10BinomLower(normal.alt, normal.dp, tVaf) : null,
     strand: tumor.altF == null ? null : { f: tumor.altF, r: tumor.altR, refF: tumor.refF, refR: tumor.refR, log10p: log10StrandImbalance(tumor.altF, tumor.altR) },
@@ -339,7 +346,7 @@ export function log10BinomLower(k, n, p) {
 const CONCERN = {
   signal: "weak signal over the error rate",
   cells: "fewer than 3 carrier cells",
-  normal: "normal cells carry it at a similar rate",
+  normal: "normal cells carry it at a similar rate or carry stray alt reads",
   cohort: "recurs in patients without the mutation",
   strand: "alt reads on one strand",
   bq: "alt bases have low base quality",
@@ -401,11 +408,19 @@ export function siteVerdict(stats) {
   if (n.dp > 0) {
     const germ = s.nVaf >= 0.2 && n.alt >= 2;
     const similar = n.alt > 0 && s.log10pNormal > -1.3;
-    // no alt reads in a handful of normal reads is uninformative, not a warning
-    normalStatus = germ ? "germline" : similar ? "fail" : t.alt > 0 && s.log10pNormal > -1.3 ? "na" : "pass";
+    // A subclone's pooled VAF is diluted by the non-carrier tumour cells, so stray normal reads look "similar". Where the pooled
+    // test would fail, compare the normals with the carrier cells instead: a significant difference downgrades fail to warn. Only for sites
+    // already above the error model (p < 0.01) with >= 3 carrier cells (carriers are picked for having alt reads, which flatters weak sites).
+    const carrierSep = similar && !germ && nominal && s.carrierCells >= 3 && s.log10pCarrierNormal != null && s.log10pCarrierNormal < -1.3;
+    normalStatus = germ ? "germline" : carrierSep ? "warn" : similar ? "fail" : t.alt > 0 && s.log10pNormal > -1.3 ? "na" : "pass";
     normalText = `Normal cells: ${n.alt} alt of ${n.dp} reads${n.alt ? ` (VAF ${pct(s.nVaf)})` : ""} in ${s.coveredNormal} covered cells${
       t.alt ? ` — tumour > normal, Fisher p = ${fmtLog10P(s.log10pNormal)}` : ""
     }${normalStatus === "na" ? " (too few normal reads to separate)" : ""}`;
+    if (carrierSep)
+      normalText += `; carrier cells ${s.carrier.alt}/${s.carrier.dp} reads (VAF ${pct(s.carrier.vaf)}) > normals, Fisher p = ${fmtLog10P(s.log10pCarrierNormal)} — ${
+        n.alt === 1 ? "1 alt read in normal cells (possible misassigned tumour cell / index hopping)" : `${n.alt} alt reads in normal cells (possible misassigned tumour cells / index hopping)`
+      }`;
+    else if (similar && s.carrier?.dp) normalText += `; carrier cells ${s.carrier.alt}/${s.carrier.dp} reads (VAF ${pct(s.carrier.vaf)}), Fisher p = ${fmtLog10P(s.log10pCarrierNormal)}: not separable from normals`;
   }
   checks.push({ key: "normal", status: normalStatus === "germline" ? "fail" : normalStatus, text: normalText, germline: normalStatus === "germline" });
   // 4. other patients

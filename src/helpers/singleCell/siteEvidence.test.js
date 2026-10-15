@@ -237,3 +237,51 @@ describe("site sources", () => {
     expect(f.eventTier).toBe(3);
   });
 });
+
+describe("normal-cell check against carrier cells (subclonal sites)", () => {
+  // synthetic stand-ins for the MGH305 tier-2 subclonal drivers: a subclone's alt reads are diluted by deep non-carrier tumour cells
+  const build = ({ carriers, carrierAlt, carrierDp, nonCarriers, nonCarrierDp, normalAlt, normalDp }) => {
+    const rows = [];
+    for (let i = 0; i < carriers; i += 1) rows.push({ id: `k${i}`, clone: "Clone 2", alt: carrierAlt[i % carrierAlt.length], dp: carrierDp, call: "mut" });
+    for (let i = 0; i < nonCarriers; i += 1) rows.push({ id: `w${i}`, clone: "Clone 6", alt: 0, dp: nonCarrierDp, call: "wt" });
+    const altT = rows.reduce((s, r) => s + r.alt, 0);
+    const dpT = rows.reduce((s, r) => s + r.dp, 0);
+    const site = { id: "chr8:1:A>T", chrom: "chr8", pos: 1, ref: "A", alt: "T", alt_tumor: altT, dp_tumor: dpT, alt_normal: normalAlt, dp_normal: normalDp, error: 0.001 };
+    return siteVerdict(siteStats(site, null, rows));
+  };
+  const normalCheck = (v) => v.checks.find((c) => c.key === "normal");
+
+  test("PRKDC Y779*-like: 1 normal alt read vs a 8% VAF subclone is a warning, not an artefact", () => {
+    const v = build({ carriers: 33, carrierAlt: [1, 1, 2], carrierDp: 17, nonCarriers: 77, nonCarrierDp: 10, normalAlt: 1, normalDp: 67 });
+    expect(normalCheck(v).status).toBe("warn");
+    expect(normalCheck(v).text).toMatch(/1 alt read in normal cells \(possible misassigned tumour cell \/ index hopping\)/);
+    expect(v.level).toBe("weak");
+  });
+  test("PRKDC splice-like: 2 normal alt reads, carriers still separable (p < 0.05) -> weak", () => {
+    const v = build({ carriers: 13, carrierAlt: [1, 1, 2], carrierDp: 13, nonCarriers: 87, nonCarrierDp: 10, normalAlt: 2, normalDp: 70 });
+    expect(normalCheck(v).status).toBe("warn");
+    expect(v.level).toBe("weak");
+  });
+  test("ARID4A-like: 4-5 normal alt reads at ~4% VAF are not separable from 8% carriers -> stays artefact-like", () => {
+    const v = build({ carriers: 24, carrierAlt: [1, 1, 2], carrierDp: 15, nonCarriers: 76, nonCarrierDp: 10, normalAlt: 5, normalDp: 109 });
+    expect(normalCheck(v).status).toBe("fail");
+    expect(v.level).toBe("artefact");
+  });
+  test("clonal site is unchanged: clean normals support it, similar normals fail it, germline normals stay germline", () => {
+    const clonal = { carriers: 40, carrierAlt: [4, 5, 6], carrierDp: 10, nonCarriers: 0, nonCarrierDp: 0 };
+    expect(build({ ...clonal, normalAlt: 0, normalDp: 60 }).level).toBe("supported");
+    // 1 stray normal read at a clonal site: the pooled test is already significant, so it passes as before
+    const one = build({ ...clonal, normalAlt: 1, normalDp: 60 });
+    expect(normalCheck(one).status).toBe("pass");
+    expect(one.level).toBe("supported");
+    const similar = build({ carriers: 40, carrierAlt: [1], carrierDp: 10, nonCarriers: 0, nonCarrierDp: 0, normalAlt: 8, normalDp: 60 });
+    expect(normalCheck(similar).status).toBe("fail");
+    expect(similar.level).toBe("artefact");
+    expect(build({ ...clonal, normalAlt: 20, normalDp: 60 }).level).toBe("germline");
+  });
+  test("without per-cell rows the pooled test decides, as before", () => {
+    const site = { id: "chr8:1:A>T", chrom: "chr8", pos: 1, ref: "A", alt: "T", alt_tumor: 43, dp_tumor: 1366, alt_normal: 1, dp_normal: 67, error: 0.001 };
+    const v = siteVerdict(siteStats(site, null, []));
+    expect(normalCheck(v).status).toBe("fail");
+  });
+});
