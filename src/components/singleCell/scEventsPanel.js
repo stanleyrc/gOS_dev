@@ -17,6 +17,8 @@ import { useSnvAnnot } from "./snvAnnotTracks";
 import { SIGNATURE_METHOD_HINT } from "../../helpers/singleCell/siteSignature";
 import { driverClassOf, posOfSnv, snvSiteIndex } from "../../helpers/singleCell/driverLayer";
 import settingsActions from "../../redux/settings/actions";
+import { BranchesOutlined } from "@ant-design/icons";
+import { announceConvergence, eventConvKey } from "../../helpers/singleCell/convergenceEvidence";
 
 /**
  * The filtered events table with the single-cell extras (strong-events
@@ -110,7 +112,7 @@ export default function ScEventsPanel() {
             </Tooltip>
           ),
           key: "cladeScore",
-          width: 90,
+          width: 100,
           exportTitle: "clade_f1",
           exportValue: (record) => (Number.isFinite(cladeOf(record).score) ? cladeOf(record).score.toFixed(3) : null),
           sorter: (a, b) => (cladeOf(a).score || 0) - (cladeOf(b).score || 0),
@@ -118,9 +120,25 @@ export default function ScEventsPanel() {
             const c = cladeOf(record);
             if (!Number.isFinite(c.score)) return "–";
             return (
-              <Tooltip title={t("components.single-cell.events.clade-score-detail", { inClade: c.inClade, clade: c.clade, carriers: c.carriers })}>
-                <span style={{ color: c.score < 0.5 ? "#cf1322" : c.score >= 0.8 ? "#237804" : undefined, fontWeight: c.score >= 0.8 ? 600 : 400 }}>{c.score.toFixed(2)}</span>
-              </Tooltip>
+              <Space size={4} style={{ whiteSpace: "nowrap" }}>
+                <Tooltip title={t("components.single-cell.events.clade-score-detail", { inClade: c.inClade, clade: c.clade, carriers: c.carriers })}>
+                  <span style={{ color: c.score < 0.5 ? "#cf1322" : c.score >= 0.8 ? "#237804" : undefined, fontWeight: c.score >= 0.8 ? 600 : 400 }}>{c.score.toFixed(2)}</span>
+                </Tooltip>
+                {c.carriers >= 3 && (
+                  <Tooltip title="Convergence: carrier groups on the tree and the SNVs that show whether this event arose more than once (Single-Cell tab)">
+                    <Typography.Link
+                      data-testid="convergence-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        announceConvergence(`ev:${eventConvKey(record)}`);
+                        dispatch(settingsActions.updateTab("7"));
+                      }}
+                    >
+                      <BranchesOutlined />
+                    </Typography.Link>
+                  </Tooltip>
+                )}
+              </Space>
             );
           },
         },
