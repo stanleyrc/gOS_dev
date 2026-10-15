@@ -20,6 +20,7 @@ export const COHORT_VIEWS = [
   { key: "mutations", group: "genome" },
   { key: "clades", group: "genome" },
   { key: "rna", group: "rna" },
+  { key: "rnacovde", group: "rna" },
   { key: "cnexpr", group: "rna" },
   { key: "events", group: "explore" },
   { key: "scatter", group: "explore" },
