@@ -160,7 +160,7 @@ export default function MarkersCard({ summary, matrix }) {
       title={<Space><TagsOutlined />{t("components.single-cell.rna.markers-title")}<Provenance id="markers" /></Space>}
       extra={
         <Space wrap>
-          <Select size="small" style={{ width: 170 }} value={chosen} onChange={setField} options={fields.map((f) => ({ value: f, label: f === "clone" ? t("components.single-cell.umap.color-clone") : fieldLabel(f) }))} />
+          <Select showSearch optionFilterProp="label" size="small" style={{ width: 170 }} value={chosen} onChange={setField} options={fields.map((f) => ({ value: f, label: f === "clone" ? t("components.single-cell.umap.color-clone") : fieldLabel(f) }))} />
           <Text type="secondary">{t("components.single-cell.rna.markers-top")}</Text>
           <InputNumber size="small" min={2} max={20} value={topN} onChange={(v) => setTopN(v || 6)} style={{ width: 60 }} />
           {!backendField && (

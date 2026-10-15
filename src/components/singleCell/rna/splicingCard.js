@@ -727,7 +727,7 @@ export default function SplicingCard({ summary, focus = null }) {
       extra={
         <Space>
           <Text type="secondary">{t(`${k}.group-by`)}</Text>
-          <Select size="small" style={{ width: 170 }} value={field} onChange={setField} options={fields} />
+          <Select showSearch optionFilterProp="label" size="small" style={{ width: 170 }} value={field} onChange={setField} options={fields} />
         </Space>
       }
     >

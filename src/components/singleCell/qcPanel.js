@@ -160,7 +160,7 @@ export default function QcPanel() {
                   options={[{ value: "all", label: t("components.single-cell.qc.section-all") }, ...SECTIONS.filter((s) => metrics.some((m) => m[4] === s)).map((s) => ({ value: s, label: t(`components.single-cell.qc.section-${s}`) }))]}
                 />
                 <Text type="secondary">{t("components.single-cell.qc.group-by")}</Text>
-                <Select size="small" style={{ width: 160 }} value={groupBy} onChange={setGroupBy} options={groupFields.map((f) => ({ value: f, label: f === "clone_id" ? t("components.single-cell.umap.color-clone") : f }))} />
+                <Select showSearch optionFilterProp="label" size="small" style={{ width: 160 }} value={groupBy} onChange={setGroupBy} options={groupFields.map((f) => ({ value: f, label: f === "clone_id" ? t("components.single-cell.umap.color-clone") : f }))} />
                 <Switch size="small" checked={tumorOnly} onChange={setTumorOnly} />
                 <Text>{t("components.single-cell.qc.tumor-only")}</Text>
                 {flaggedRows.length > 0 && (

@@ -66,7 +66,7 @@ export default function CohortStateClonePanel({ groups, fields, defaultFill = "s
           <Text type="secondary">{t("components.single-cell.cohort.sc-rows")}</Text>
           <Select size="small" style={{ width: 150 }} value={rowF} onChange={setRowField} options={rowChoices.map((f) => ({ value: f, label: fieldLabel(f) }))} />
           <Text type="secondary">{t("components.single-cell.cohort.sc-fill")}</Text>
-          <Select size="small" style={{ width: 150 }} value={fillF} onChange={setFillField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
+          <Select showSearch optionFilterProp="label" size="small" style={{ width: 150 }} value={fillF} onChange={setFillField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
           <SvgExportButton containerRef={ref} name="cohort-state-by-clone" />
         </Space>
       }
