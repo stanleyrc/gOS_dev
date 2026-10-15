@@ -14,8 +14,8 @@ export const FOCAL_SUBSETS = [
   { value: "other", label: "Other contexts" },
 ];
 export const TERRITORIES = [
-  { value: "focal", label: "Diploid territory" },
-  { value: "focal_nonN", label: "All autosomal" },
+  { value: "focal", label: "All callable (CN-normalised)" },
+  { value: "focal_diploid", label: "Diploid territory only" },
 ];
 export const SIDES = ["cis", "trans"];
 
@@ -45,36 +45,44 @@ export function availableFilters(block) {
   return FOCAL_FILTERS.filter((f) => block?.results?.[f.value]);
 }
 
-const sideRow = (s) => ({ k: s?.k ?? 0, L: s?.L ?? 0, rate: num(s?.rate), lo: num(s?.ci?.[0]), hi: num(s?.ci?.[1]) });
+const sideRow = (s, cn = false) =>
+  cn
+    ? { k: s?.k ?? 0, L: s?.Lcn ?? 0, rate: num(s?.rate_cn), lo: num(s?.ci_cn?.[0]), hi: num(s?.ci_cn?.[1]), meanCn: num(s?.mean_cn) }
+    : { k: s?.k ?? 0, L: s?.L ?? 0, rate: num(s?.rate), lo: num(s?.ci?.[0]), hi: num(s?.ci?.[1]), meanCn: num(s?.mean_cn) };
 const rrRow = (r) => ({ rr: num(r?.rr), lo: num(r?.ci?.[0]), hi: num(r?.ci?.[1]), p: num(r?.p) });
 
-function binRow(b) {
+/** One bin; cn = true reads the copy-number adjusted rates and ratios (schemaVersion 4) when present. */
+function binRow(b, cn = false) {
+  const useCn = cn && b.cis?.rate_cn !== undefined;
   return {
     label: b.label,
     lo: b.lo,
     hi: b.hi,
-    cis: sideRow(b.cis),
-    trans: sideRow(b.trans),
-    bg: num(b.background?.rate),
-    expCis: num(b.background?.exp_cis),
-    expTrans: num(b.background?.exp_trans),
-    cisTrans: rrRow(b.rr_cis_trans),
-    cisBg: rrRow(b.rr_cis_bg),
-    transBg: rrRow(b.rr_trans_bg),
+    cn: useCn,
+    cis: sideRow(b.cis, useCn),
+    trans: sideRow(b.trans, useCn),
+    bg: num(useCn ? b.background?.rate_cn : b.background?.rate),
+    expCis: num(useCn ? b.background?.exp_cis_cn : b.background?.exp_cis),
+    expTrans: num(useCn ? b.background?.exp_trans_cn : b.background?.exp_trans),
+    cisTrans: rrRow(useCn ? b.rr_cis_trans_cn : b.rr_cis_trans),
+    cisTransRaw: rrRow(b.rr_cis_trans),
+    cisTransCn: b.rr_cis_trans_cn ? rrRow(b.rr_cis_trans_cn) : null,
+    cisBg: rrRow(useCn ? b.rr_cis_bg_cn : b.rr_cis_bg),
+    transBg: rrRow(useCn ? b.rr_trans_bg_cn : b.rr_trans_bg),
   };
 }
 
 /** Chart rows (one per distance bin) for a filter x subset. */
-export function focalSeries(block, filter = "all", subset = "all") {
+export function focalSeries(block, filter = "all", subset = "all", cn = false) {
   const r = block?.results?.[filter]?.[subset];
-  return (r?.bins || []).map(binRow);
+  return (r?.bins || []).map((b) => binRow(b, cn));
 }
 
 /** The primary 0-5 kb window row, with the permutation results. */
-export function focalPrimary(block, filter = "all", subset = "all") {
+export function focalPrimary(block, filter = "all", subset = "all", cn = false) {
   const r = block?.results?.[filter]?.[subset];
   if (!r?.primary) return null;
-  return { ...binRow(r.primary), perm: r.perm || null };
+  return { ...binRow(r.primary, cn), perm: r.perm || null };
 }
 
 /** "1.23 (0.45-3.10)" for a rate ratio row; open-ended CIs show as "inf". */
@@ -90,18 +98,20 @@ export const fmtRate = (x) => (x == null ? "n/a" : x >= 10 ? x.toFixed(0) : x.to
 const fmtPv = (p) => (p == null ? "n/a" : p >= 0.01 ? p.toFixed(2) : p.toExponential(1));
 
 /** One-sentence summary of the 0-5 kb window. */
-export function focalHeadline(block, filter = "all", subset = "all") {
-  const p = focalPrimary(block, filter, subset);
+export function focalHeadline(block, filter = "all", subset = "all", cn = false) {
+  const p = focalPrimary(block, filter, subset, cn);
   if (!p) return "Not available (no focal result for this filter).";
   const { cis, trans } = p;
+  const unit = p.cn ? "diploid-equivalent kb" : "callable kb";
   const parts = [
-    `Within 5 kb: ${cis.k} SNVs on the cis side (${fmtRate(cis.rate)}/Mb over ${(cis.L / 1e3).toFixed(0)} callable kb) vs ${trans.k} on the trans side (${fmtRate(trans.rate)}/Mb over ${(trans.L / 1e3).toFixed(0)} kb)`,
-    `cis/trans rate ratio ${fmtRr(p.cisTrans)}, exact p=${fmtPv(p.cisTrans.p)}`,
+    `Within 5 kb: ${cis.k} SNVs on the cis side (${fmtRate(cis.rate)}/Mb over ${(cis.L / 1e3).toFixed(0)} ${unit}${cis.meanCn != null ? `, mean CN ${cis.meanCn.toFixed(2)}` : ""}) vs ${trans.k} on the trans side (${fmtRate(trans.rate)}/Mb over ${(trans.L / 1e3).toFixed(0)} ${unit}${trans.meanCn != null ? `, CN ${trans.meanCn.toFixed(2)}` : ""})`,
+    `cis/trans rate ratio ${p.cisTransCn ? `raw ${fmtRr(p.cisTransRaw)}, CN-adjusted ${fmtRr(p.cisTransCn)}` : fmtRr(p.cisTrans)}`,
     p.bg != null ? `background ${fmtRate(p.bg)}/Mb; cis/background ${fmtRr(p.cisBg)}, trans/background ${fmtRr(p.transBg)}` : null,
   ];
   const sh = p.perm?.shift;
   const fl = p.perm?.flip;
-  if (sh || fl) parts.push(`permutation p (two-sided): junction shift ${fmtPv(sh?.p_two_sided)}, orientation flip ${fmtPv(fl?.p_two_sided)}`);
+  const flc = p.perm?.flip_cn;
+  if (sh || fl) parts.push(`permutation p (two-sided): ${sh ? `junction shift ${fmtPv(sh.p_two_sided)}, ` : ""}orientation flip ${fmtPv(fl?.p_two_sided)}${flc ? ` (CN-adjusted ${fmtPv(flc.p_two_sided)})` : ""}`);
   if (cis.k + trans.k < 10) parts.push("few SNVs, so the interval is wide");
   return `${parts.filter(Boolean).join("; ")}.`;
 }
@@ -140,7 +150,8 @@ export function rateTop(series) {
 }
 
 /** Forest rows: per patient cis/trans rate ratio in the 0-5 kb window, plus the Mantel-Haenszel pooled row. */
-export function forestRows(cohortBlock, filter = "all", subset = "all") {
+export function forestRows(cohortBlock, filter = "all", subset = "all", cn = false) {
+  const pick = (r, k) => (cn && r[`${k}_cn`] ? r[`${k}_cn`] : r[k]);
   const rows = (cohortBlock?.forest?.[filter]?.[subset] || []).map((r) => ({
     id: r.patient,
     nBreakends: r.n_breakends,
@@ -148,9 +159,9 @@ export function forestRows(cohortBlock, filter = "all", subset = "all") {
     kt: r.trans?.k ?? 0,
     cisRate: num(r.cis?.rate),
     transRate: num(r.trans?.rate),
-    ...rrRow(r.rr_cis_trans),
-    cisBg: rrRow(r.rr_cis_bg),
-    transBg: rrRow(r.rr_trans_bg),
+    ...rrRow(pick(r, "rr_cis_trans")),
+    cisBg: rrRow(pick(r, "rr_cis_bg")),
+    transBg: rrRow(pick(r, "rr_trans_bg")),
     pooled: false,
   }));
   const prim = cohortBlock?.results?.[filter]?.[subset]?.primary;
@@ -161,9 +172,9 @@ export function forestRows(cohortBlock, filter = "all", subset = "all") {
       kt: prim.trans?.k ?? 0,
       cisRate: num(prim.cis?.rate),
       transRate: num(prim.trans?.rate),
-      ...rrRow(prim.rr_cis_trans),
-      cisBg: rrRow(prim.rr_cis_bg),
-      transBg: rrRow(prim.rr_trans_bg),
+      ...rrRow(pick(prim, "rr_cis_trans")),
+      cisBg: rrRow(pick(prim, "rr_cis_bg")),
+      transBg: rrRow(pick(prim, "rr_trans_bg")),
       pooled: true,
     });
   }
@@ -179,7 +190,7 @@ export function logPos(v, { min = 0.05, max = 50, x0 = 0, x1 = 1 } = {}) {
 }
 
 /** Strata rows (junction class, clonality, fused side) for the 0-5 kb window. */
-export function strataRows(block, filter = "all") {
+export function strataRows(block, filter = "all", cn = false) {
   const st = block?.strata?.[filter] || {};
   const label = { cls: "Junction class", clonality: "Clonality", fused_side: "Fused side" };
   return Object.entries(st).flatMap(([key, groups]) =>
@@ -188,7 +199,7 @@ export function strataRows(block, filter = "all") {
       stratum: label[key] || key,
       group: g,
       nBreakends: b.n_breakends,
-      ...binRow({ ...b, label: g }),
+      ...binRow({ ...b, label: g }, cn),
     })),
   );
 }
