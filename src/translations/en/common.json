@@ -1736,7 +1736,7 @@
         "src-selected": "Sites seen in selected cells ({{count}})",
         "need-selection": "Select cells in the tree or heatmap first",
         "fit": "Fit {{count}} sites",
-        "filter-note": "Uses the SNV heatmap's site filter: {{filter}}",
+        "filter-note": "Spectra, per-clone and per-branch burdens use the filtered sites. Exposures from the SigProfiler fit († / backend rows) were fitted on all sites; the signature assigned to each mutation also comes from the all-site fit. The browser fit refits on the filtered spectrum.",
         "no-filter-note": "Uses every SNV site; filter sites in the SNV heatmap toolbar to narrow the set.",
         "no-contexts": "This patient's SNV matrix has no trinucleotide contexts; rerun the signatures step of gos_sc_upload.R.",
         "fit-summary": "{{n}} sites · NNLS with stepwise selection on COSMIC v3.4 GRCh38 · cosine similarity {{cosine}} (bars: observed, dots: fitted)",
@@ -1750,7 +1750,6 @@
         "filter-count": "{{n}} of {{m}} sites pass the SNV filters",
         "filter-off": "All {{m}} sites (filters not applied)",
         "fitted-all": "fitted on all sites",
-        "filter-note": "Spectra, per-clone and per-branch burdens use the filtered sites. Exposures from the SigProfiler fit († / backend rows) were fitted on all sites; the signature assigned to each mutation also comes from the all-site fit. The browser fit refits on the filtered spectrum.",
         "set": "Sites",
         "backend-short": "SigProfiler",
         "browser-short": "browser fit",
@@ -2758,6 +2757,12 @@
     "light": "Light",
     "dark": "Dark",
     "heatmap-palette": "Copy-number heatmap palette",
-    "heatmap-palette-help": "Colours of the CN heatmaps and circos rings; individual states can be edited from the heatmap's palette button."
+    "heatmap-palette-help": "Colours of the CN heatmaps and circos rings; individual states can be edited from the heatmap's palette button.",
+    "clear": "Clear site settings",
+    "clear-title": "Clear site settings?",
+    "clear-confirm": "Resets layout, palettes, theme, table columns, filters and tracks in the URL, and cached files in this browser, then reloads. Kept: event notes, saved searches and case interpretations.",
+    "clear-ok": "Clear and reload",
+    "clear-cancel": "Cancel",
+    "clear-help": "Use when a view looks stuck or out of date after an update."
   }
 }
