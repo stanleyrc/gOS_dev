@@ -29,6 +29,7 @@ const actions = {
     datasetId,
     caseReportId,
     keepBrowseFetch: options.keepBrowseFetch === true,
+    allowNewTab: options.allowNewTab === true, // cohort view patient links: may open in a new browser tab
   }),
 };
 

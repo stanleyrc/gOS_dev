@@ -135,8 +135,8 @@ export function* openCaseReport(action) {
     return;
   }
 
-  // from the single-cell cohort view, open the report in a new browser tab (user preference) so the cohort view keeps its state
-  if (!currentState.Settings.report && isCohortMounted() && getOpenInNewTab()) {
+  // patient links from the single-cell cohort view (not cells) open the report in a new browser tab (user preference) so the cohort view keeps its state
+  if (action.allowNewTab && !currentState.Settings.report && isCohortMounted() && getOpenInNewTab()) {
     window.open(caseReportUrl(window.location.href, dataset.id, action.caseReportId), "_blank", "noopener");
     return;
   }

@@ -113,7 +113,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
           size="small"
           onClick={() => {
             setPendingEvent(summary.caseReportId, event);
-            dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+            dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
           }}
         >
           {t("components.single-cell.cohort.ev-open-patient")}

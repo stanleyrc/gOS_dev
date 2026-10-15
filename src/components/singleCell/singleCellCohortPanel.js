@@ -253,7 +253,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     setOpenInNewTab(on);
   };
   const openPatient = (summary) =>
-    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
 
   const treeWidth = rowMode === "cells" ? TREE_WIDTH : 0;
   const heatWidth = Math.max(200, containerWidth - LABEL_WIDTH - treeWidth - 12);
@@ -415,7 +415,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 {cladeFilterOn && nDropped > 0 && <Text type="secondary">{t("components.single-cell.cohort.clade-filter-dropped", { count: nDropped })}</Text>}
               </Space>
             </Tooltip>
-            <Tooltip title="Open patients and cells in a new browser tab, so this cohort view keeps its tab, filters and scroll position.">
+            <Tooltip title="Open patients in a new browser tab, so this cohort view keeps its tab, filters and scroll position. Cells still open in this tab.">
               <Space size={6}>
                 <Switch size="small" checked={newTab} onChange={toggleNewTab} />
                 <Text>Open patients in new tab</Text>

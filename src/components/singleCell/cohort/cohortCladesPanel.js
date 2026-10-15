@@ -97,7 +97,7 @@ export default function CohortCladesPanel({ dataset, summaries }) {
     url.searchParams.set("scsel", cladeGroupName(row.clade));
     url.searchParams.set("tab", "7");
     window.history.replaceState(window.history.state, "", url.toString());
-    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId));
+    dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
     dispatch(settingsActions.updateTab("7"));
   };
   const openById = (id) => {
