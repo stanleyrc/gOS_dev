@@ -35,7 +35,7 @@ import { rowMap, snvColumnOrder, snvMetricMax, treeColumnOrder } from "../../../
 import { filterSnvColumns, hasCladeScores } from "../../../helpers/singleCell/snvSites";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
 import CellIgvPanel from "../cellIgvPanel";
-import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks } from "../snvAnnotTracks";
+import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "../snvAnnotTracks";
 import SnvIsolatePanel from "../snvIsolatePanel";
 import HeatmapLegend from "../heatmapLegend";
 import { carrierRows, subsetLeafStates } from "../../../helpers/singleCell/snvIsolate";
@@ -128,8 +128,15 @@ export default function CompareTreesPanel() {
   const concA = useConcordance(snvData, fullA);
   const concB = useConcordance(snvData, fullB);
   // annotation tracks per matrix: tree fit is each side's own best-clade F1
-  const annotA = useSnvAnnot(snvCalls, concA ? concA.scores : NO_SCORES);
-  const annotB = useSnvAnnot(snvCalls, concB ? concB.scores : NO_SCORES);
+  const { fit: fitA, busy: fitBusyA } = useTreeSiteFit(snvCalls, fullA);
+  const { fit: fitB } = useTreeSiteFit(snvCalls, fullB);
+  const annotA = useSnvAnnot(snvCalls, concA ? concA.scores : NO_SCORES, fitA);
+  const annotB = useSnvAnnot(snvCalls, concB ? concB.scores : NO_SCORES, fitB);
+  // tooltip lines with both trees' phylogeny-fit values (the filters apply to tree A)
+  const fitRows = (c) => {
+    const line = (f) => (f && Number.isFinite(f.f1[c]) ? `F1 ${f.f1[c].toFixed(2)}, ${f.changes[c]} change(s) (CI ${f.ci[c].toFixed(2)}), precision ${f.precision[c].toFixed(2)}, recall ${f.recall[c].toFixed(2)}, ${f.outside[c]} outside` : "n/a");
+    return [["Fit, tree A (filtered)", line(fitA)], ["Fit, tree B", line(fitB)]];
+  };
   const trackA = useSnvTracks(annotA);
   const trackB = useSnvTracks(annotB);
   const nTracks = trackA.tracks.length;
@@ -367,6 +374,7 @@ export default function CompareTreesPanel() {
         groupOf={null}
         highlightRows={markedRows(layout, mat)}
         categoryNode={hdrSet}
+        detailExtra={fitRows}
         {...(layout === layoutA ? trackA : trackB)}
       />
     ) : null;
@@ -454,7 +462,7 @@ export default function CompareTreesPanel() {
             ) : null}
             <Tooltip title="Clicking a site in a matrix opens IGV there for the selected clade (or the clicked cell)"><span>IGV on site click <Switch size="small" checked={igvOnClick} onChange={setIgvOnClick} /></span></Tooltip>
             <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
-            <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} nShown={isolateCount} onIsolate={setIsolate} /></div>
+            <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} nShown={isolateCount} onIsolate={setIsolate} fitBusy={fitBusyA} /></div>
             <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} /></div>
           </Space>
         ) : null}

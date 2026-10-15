@@ -22,7 +22,7 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
-import { SnvTrackControls, useSnvAnnot, useSnvTracks } from "./snvAnnotTracks";
+import { SnvTrackControls, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "./snvAnnotTracks";
 import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
 import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
@@ -425,7 +425,13 @@ export default function CellHeatmapPanel() {
   const snvCn = useMemo(() => (snvReady && cn.status === "ok" ? snvCopyNumber(snv.data, cn.data, { allelic: allelic.status === "ok" ? allelic.data : null }) : null), [snvReady, snv, cn, allelic]);
   const nAmplified = useMemo(() => (snvCn ? snvCn.filter((x) => x?.amplified).length : 0), [snvCn]);
   const amplifiedOnly = Boolean(layout.snvAmplifiedOnly);
-  const snvAnnot = useSnvAnnot(snvReady ? snv.data : null);
+  // the file tree (anchors for branch SNVs, and the tree the phylogeny-fit metrics are scored on)
+  const fullTreeLayout = useMemo(
+    () => (tree.status === "ok" && tree.method === "file" && tree.data?.source ? layoutTree(tree.data.source) : null),
+    [tree]
+  );
+  const { fit: snvFit, busy: snvFitBusy } = useTreeSiteFit(snvReady ? snv.data : null, fullTreeLayout || treeLayout);
+  const snvAnnot = useSnvAnnot(snvReady ? snv.data : null, null, snvFit);
   const snvTrackProps = useSnvTracks(snvAnnot);
   const snvAnnotFilter = layout.snvAnnotFilter;
   const snvColumns = useMemo(() => {
@@ -437,10 +443,6 @@ export default function CellHeatmapPanel() {
   const [snvHeader, setSnvHeader] = useState(null);
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
-  const fullTreeLayout = useMemo(
-    () => (tree.status === "ok" && tree.method === "file" && tree.data?.source ? layoutTree(tree.data.source) : null),
-    [tree]
-  );
   const canShowBranchSnvs = Boolean(fullTreeLayout && hasTree && snvReady && hasAnchors(snv.data));
   const showBranchSnvs = canShowBranchSnvs && Boolean(layout.branchSnvs);
   const snvsByBranch = useMemo(
@@ -897,7 +899,7 @@ export default function CellHeatmapPanel() {
           </Space>
         }
       >
-        <div className="sc-toolbar-sticky">
+        <div className={heatmapType === "snv" ? undefined : "sc-toolbar-sticky"}>
         <SavedGroupsBar />
         {selectedCellIds.length > 0 && (
           <Space wrap size={[8, 4]} className="sc-group-bar">
@@ -1181,7 +1183,7 @@ export default function CellHeatmapPanel() {
                     </Checkbox>
                   )}
                   <div style={{ width: "100%" }}>
-                    <SnvTrackControls annot={snvAnnot} nShown={snvColumns.length} onIsolate={setIsolate} />
+                    <SnvTrackControls annot={snvAnnot} nShown={snvColumns.length} onIsolate={setIsolate} fitBusy={snvFitBusy} />
                   </div>
                 </>
               )}
