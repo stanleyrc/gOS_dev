@@ -9,14 +9,14 @@
 // - slimSnv: keep only the SNV columns that driver events map to (cohort memory)
 // - cellStatus: hover text of one cell of one column
 // - serializeCdt / parseCdt: the settings in the URL (cdt* params)
-import { eventClass, EVENT_CLASS_ORDER } from "./cohortStats";
+import { eventClass, EVENT_CLASS_ORDER, passesTier } from "./cohortStats";
 import { isStrongEvent } from "./strongEvents";
 import { DEFAULT_FILTERS, STATE, complexName, selectDrivers } from "./driverLayer";
 
 export const CDT_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
 export const CDT_PRESET_LABELS = { recommended: "Recommended", subclonal: "Subclonal only", hotspots: "Hotspots", all: "All" };
 export const CDT_HEIGHTS = { compact: 120, normal: 220, tall: 360 };
-export const CDT_DEFAULTS = { preset: "recommended", maxTier: 2, strongOnly: true, classes: null, genes: null, maxCols: 12, colPx: 14, height: "compact" };
+export const CDT_DEFAULTS = { preset: "recommended", maxTier: "2d", strongOnly: true, classes: null, genes: null, maxCols: 12, colPx: 14, height: "compact" };
 export const CDT_COL_PX = [6, 30];
 
 const geneOf = (entry) => `${entry.event?.gene || entry.genes?.[0] || "?"}`;
@@ -54,10 +54,10 @@ export function patientColumnMap(entries = []) {
 }
 
 /** Entry kept for the cohort view: tier, strong, Types (event class) and the Drivers-layer preset. */
-export function cohortEntryFilter(entries, { preset = "recommended", maxTier = 2, strongOnly = true, classes = null } = {}) {
+export function cohortEntryFilter(entries, { preset = "recommended", maxTier = "2d", strongOnly = true, classes = null } = {}) {
   const typed = classes && classes.length < EVENT_CLASS_ORDER.length ? new Set(classes) : null;
   const base = entries.filter((d) => {
-    if (Number(d.event?.Tier ?? d.tier ?? 9) > maxTier && !(d.cls === "complex" && d.tier == null)) return false;
+    if (!(d.cls === "complex" && d.tier == null) && !passesTier(d.event || { Tier: d.tier ?? 9 }, maxTier)) return false;
     if (strongOnly && !isStrongEvent(d.event)) return false;
     if (typed && !typed.has(eventClass(d.event))) return false;
     return true;
@@ -166,7 +166,8 @@ export function parseCdt(search = "") {
   const p = new URLSearchParams(search);
   const out = { ...CDT_DEFAULTS };
   if (CDT_PRESETS.includes(p.get("cdtp"))) out.preset = p.get("cdtp");
-  if ([1, 2, 3].includes(Number(p.get("cdtt")))) out.maxTier = Number(p.get("cdtt"));
+  if (p.get("cdtt") === "2d") out.maxTier = "2d";
+  else if ([1, 2, 3].includes(Number(p.get("cdtt")))) out.maxTier = Number(p.get("cdtt"));
   if (p.get("cdts") === "0") out.strongOnly = false;
   if (p.get("cdtc")) {
     const list = p.get("cdtc").split(",").filter((c) => EVENT_CLASS_ORDER.includes(c));

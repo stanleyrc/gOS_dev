@@ -99,10 +99,18 @@ describe("cohort driver trees: URL and geometry", () => {
     expect(serializeCdt({})).toEqual({});
     const p = parseCdt("?cdtp=x&cdtt=9&cdtw=999&cdth=huge&cdtc=nope");
     expect(p.preset).toBe("recommended");
-    expect(p.maxTier).toBe(2);
+    expect(p.maxTier).toBe("2d");
     expect(p.colPx).toBe(30);
     expect(p.height).toBe("compact");
     expect(p.classes).toBeNull();
+  });
+  test("2d tier: tier-3 missense predicted damaging passes, others do not", () => {
+    const dmg = ev({ gene: "KRAS", Tier: 3, type: "missense", driver_evidence: "SIFT deleterious; PolyPhen probably damaging", cell_ids: A.slice(0, 5).join(",") });
+    const plain = ev({ gene: "ZZZ", Tier: 3, type: "missense", cell_ids: A.slice(0, 5).join(",") });
+    const e = buildDriverEntries([dmg, plain], { tumorIds: A });
+    expect(selectSharedColumns({ a: e }, { preset: "all" }).columns.map((c) => c.key)).toEqual(["snv|KRAS"]);
+    expect(parseCdt("?cdtt=2d").maxTier).toBe("2d");
+    expect(serializeCdt({ maxTier: 2 }).cdtt).toBe("2");
   });
   test("rowAtY maps pixels to cells", () => {
     expect(rowAtY(0, 100, 1000)).toBe(0);
