@@ -242,7 +242,7 @@ export function spliceReadsView(event, { spliceReads = {}, patientId = null, nUs
     rna_id: r.id,
     bam: spliceReads[r.id],
     patientId,
-    label: r.role === "control" ? `comparator: ${r.id} (event ${r.k} / canonical ${Math.max(0, r.n - r.k)} reads)` : `${r.id} (event ${r.k} / canonical ${Math.max(0, r.n - r.k)} reads)`,
+    label: `${r.role === "control" ? "comparator " : ""}${patientId && r.id.startsWith(`${patientId}_`) ? r.id.slice(patientId.length + 1) : r.id}: ev ${r.k} / can ${Math.max(0, r.n - r.k)}`,
   }));
   return {
     available: true,
