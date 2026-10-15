@@ -1,4 +1,4 @@
-import { covariateNames, forestRows, fmtP, geneTable, moduleSummary, scatterPoints } from "./tmbAssoc";
+import { VERDICTS, cladePoints, robustnessVerdict, covariateNames, forestRows, fmtP, geneTable, moduleSummary, scatterPoints } from "./tmbAssoc";
 
 // synthetic fixture only
 const doc = {
@@ -41,5 +41,29 @@ describe("tmbAssoc helpers", () => {
     expect(fmtP(0.0004)).toBe("4.0e-4");
     expect(fmtP(null)).toBe("n/a");
     expect(forestRows(null, "total", "qc")).toEqual([]);
+  });
+
+  describe("robustnessVerdict (synthetic rows)", () => {
+    const base = { clade: { r: 0.4, p: 0.001, q: 0.01 }, per_copy: { clade: { r: 0.3, p: 0.01 } }, permutation: { p: 0.01 }, overlap_free_applicable: true, overlap_free: { clade: { r: 0.3, p: 0.02 } } };
+    it("survives all when every check passes", () => expect(robustnessVerdict(base)).toBe(VERDICTS.all));
+    it("labels a lineage-level association when only the permutation fails (not a gate)", () => {
+      expect(robustnessVerdict({ ...base, permutation: { p: 0.4 } })).toBe(VERDICTS.lineage);
+      expect(robustnessVerdict({ ...base, permutation: null })).toBe(VERDICTS.lineage);
+    });
+    it("fails correction first, then DNA content, then overlap", () => {
+      expect(robustnessVerdict({ ...base, clade: { r: 0.4, p: 0.01, q: 0.2 } })).toBe(VERDICTS.corrected);
+      expect(robustnessVerdict({ ...base, clade: null })).toBe(VERDICTS.corrected);
+      expect(robustnessVerdict({ ...base, per_copy: { clade: { r: -0.1, p: 0.01 } } })).toBe(VERDICTS.dna);
+      expect(robustnessVerdict({ ...base, per_copy: { clade: { r: 0.3, p: 0.3 } } })).toBe(VERDICTS.dna);
+      expect(robustnessVerdict({ ...base, overlap_free: { clade: { r: 0.3, p: 0.3 } } })).toBe(VERDICTS.overlap);
+      expect(robustnessVerdict({ ...base, overlap_free_applicable: false, overlap_free: null })).toBe(VERDICTS.all);
+    });
+  });
+
+  it("returns one point per clade and honours the noisy switch", () => {
+    const d = { patients: { P1: { noisy: false }, P2: { noisy: true } }, clade_level_covariates: { rows: [{ covariate: "A", measure: "subclonal", per_patient: { P1: { points: [[1, 2], [3, 4]] }, P2: { points: [[5, 6]] } } }] } };
+    expect(cladePoints(d, "A", "subclonal")).toHaveLength(3);
+    expect(cladePoints(d, "A", "subclonal", true)).toEqual([{ patient: "P1", y: 1, x: 2 }, { patient: "P1", y: 3, x: 4 }]);
+    expect(cladePoints(d, "B", "subclonal")).toEqual([]);
   });
 });

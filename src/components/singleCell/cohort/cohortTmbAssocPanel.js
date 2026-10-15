@@ -6,7 +6,7 @@ import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "./useCohortExport";
 import { patientColor, FONT } from "./charts";
 import { INK } from "../../../helpers/singleCell/plotTheme";
-import { ADJUSTMENTS, MEASURES, covariateNames, fmtP, forestRows, geneTable, moduleSummary } from "../../../helpers/singleCell/tmbAssoc";
+import { ADJUSTMENTS, MEASURES, VERDICTS, cladePoints, covariateNames, fmtP, forestRows, geneTable, moduleSummary, robustnessVerdict } from "../../../helpers/singleCell/tmbAssoc";
 import { curvePanels, partialRhoLookup } from "../../../helpers/singleCell/tmbCurve";
 import { loadRna } from "./cohortRnaPanel";
 import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
@@ -29,9 +29,27 @@ function useHoverTip() {
   return [bind, node];
 }
 
+function CladeScatter({ points, patients, width, xTitle, yTitle }) {
+  const H = 260;
+  const M = { top: 10, right: 12, bottom: 40, left: 60 };
+  if (!points.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no leaf clades with this covariate)" />;
+  const x = d3.scaleLinear().domain(d3.extent(points, (p) => p.x)).nice().range([M.left, width - M.right]);
+  const y = d3.scaleLinear().domain(d3.extent(points, (p) => p.y)).nice().range([H - M.bottom, M.top]);
+  return (
+    <svg width={width} height={H}>
+      <line x1={M.left} x2={width - M.right} y1={H - M.bottom} y2={H - M.bottom} stroke="#999" />
+      {x.ticks(6).map((t) => <text key={t} x={x(t)} y={H - M.bottom + 14} textAnchor="middle" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
+      <text x={(M.left + width - M.right) / 2} y={H - 6} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>{xTitle}</text>
+      {y.ticks(5).map((t) => <text key={t} x={M.left - 6} y={y(t) + 4} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{d3.format("~g")(t)}</text>)}
+      <text transform={`translate(12,${(M.top + H - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" fontSize={FONT.label} fill={INK.text}>{yTitle}</text>
+      {points.map((p, i) => <circle key={i} cx={x(p.x)} cy={y(p.y)} r={4} fill={patientColor(patients.indexOf(p.patient))} fillOpacity={0.75}><title>{p.patient}</title></circle>)}
+    </svg>
+  );
+}
+
 function Forest({ rows, patients, selected, onSelect, width }) {
   const rowH = 20;
-  const M = { top: 22, right: 170, bottom: 8, left: 260 };
+  const M = { top: 22, right: 220, bottom: 8, left: 260 };
   const h = M.top + M.bottom + rows.length * rowH;
   const x = d3.scaleLinear().domain([-0.6, 0.6]).range([M.left, width - M.right]);
   const [bind, tipNode] = useHoverTip();
@@ -59,7 +77,7 @@ function Forest({ rows, patients, selected, onSelect, width }) {
             <rect x={x(Math.max(-0.6, Math.min(0.6, r.comb.mean_r))) - 3} y={y - 6} width={6} height={12} fill={sig ? "#222" : "#999"}>
               <title>{`combined: mean rho ${r.comb.mean_r.toFixed(2)}, Stouffer z ${r.comb.z.toFixed(2)}, p ${fmtP(r.comb.p)}`}</title>
             </rect>
-            <text x={width - M.right + 8} y={y + 4} fontSize={FONT.axis} fill={sig ? INK.text : INK.textSecondary}>{`p ${fmtP(r.comb.p)} · ${r.comb.n_concordant}/${r.comb.n_patients} same sign`}</text>
+            <text x={width - M.right + 8} y={y + 4} fontSize={FONT.axis} fill={sig ? INK.text : INK.textSecondary}>{`p ${fmtP(r.comb.p)} · q ${fmtP(r.comb.q)} · ${r.comb.n_concordant}/${r.comb.n_patients} same sign`}</text>
           </g>
         );
       })}
@@ -208,6 +226,7 @@ export default function CohortTmbAssocPanel({ dataset, onGene = null }) { // onG
   const genes = useMemo(() => geneTable(data, measure, adjust === "qc_clone_region" ? "qc_clone_region" : "qc_clone_region", dir, noNoisy), [data, measure, adjust, dir, noNoisy]);
   const genesCycle = useMemo(() => geneTable(data, measure, "qc_clone_region_cycle", dir, noNoisy), [data, measure, dir, noNoisy]);
   const mod = useMemo(() => moduleSummary(data), [data]);
+  const cpoints = useMemo(() => cladePoints(data, cov, measure, noNoisy), [data, cov, measure, noNoisy]);
   if (status === "loading") return <Skeleton active />;
   if (!data) return <Card size="small" title="TMB associations"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (_cohort/tmb_associations.json not exported; srctools gos_sc_tmb_assoc.py)" /></Card>;
   const gt = geneVariant === "qc_clone_region" ? genes : genesCycle;
@@ -279,6 +298,26 @@ export default function CohortTmbAssocPanel({ dataset, onGene = null }) { // onG
               <Table size="small" rowKey="gene" dataSource={gt.rows} columns={geneCols} pagination={{ pageSize: 10, size: "small" }} />
             </>
           ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no gene table for this measure)" />}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <Text strong>Clade level: one point per leaf clade (mean TMB vs mean covariate)</Text>
+          <CladeScatter points={cpoints} patients={patients} width={width} xTitle={`clade mean ${cov}`} yTitle={`clade mean ${measure} TMB`} />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <Text strong>Robustness (main readout: clade level, leaf clades only, subclonal TMB)</Text>
+          <Table size="small" pagination={false} rowKey="covariate" scroll={{ x: true }} dataSource={data.robustness || []}
+            columns={[
+              { title: "Covariate", dataIndex: "covariate", render: (c) => <a onClick={() => setCov(c)}>{c}</a> },
+              { title: "Clade-level rho (n clades)", align: "right", render: (_, r) => (r.clade ? `${rDot(r.clade.r)} (${r.clade.n_points})` : "n/a") },
+              { title: "p", align: "right", render: (_, r) => fmtP(r.clade?.p) },
+              { title: "q (BH)", align: "right", render: (_, r) => fmtP(r.clade?.q) },
+              { title: "Per copy rho / p", align: "right", render: (_, r) => (r.per_copy?.clade ? `${rDot(r.per_copy.clade.r)} / ${fmtP(r.per_copy.clade.p)}` : "n/a") },
+              { title: "Within-clade permutation p", align: "right", render: (_, r) => fmtP(r.permutation?.p) },
+              { title: "Overlap-free rho / p", align: "right", render: (_, r) => (r.overlap_free_applicable ? (r.overlap_free?.clade ? `${rDot(r.overlap_free.clade.r)} / ${fmtP(r.overlap_free.clade.p)}` : "n/a") : "n/a (not a gene set)") },
+              { title: "Cell level rho / p / q (QC+clone+region)", align: "right", render: (_, r) => (r.cell ? `${rDot(r.cell.r)} / ${fmtP(r.cell.p)} / ${fmtP(r.cell.q)}` : "n/a") },
+              { title: "Verdict", render: (_, r) => { const v = robustnessVerdict(r); return <Tag color={v === VERDICTS.all ? "green" : v === VERDICTS.lineage ? "blue" : "default"}>{v}</Tag>; } },
+            ]} />
+          <Text type="secondary">{`Shared genes removed for the overlap-free scores: ${Object.entries(data.module_shared_genes_removed || {}).map(([k, v]) => `${k} ${v.length}`).join("; ")} (lists in the export). Per-copy TMB divides by ploidy / 2. Spatial: ${data.spatial?.slidetag || ""}`}</Text>
         </div>
         <div style={{ marginTop: 12 }}>
           <Text strong>MTORC1 module vs per-cell TMB (does the highest-burden-clade signal hold within patient?)</Text>
