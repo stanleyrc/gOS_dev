@@ -250,7 +250,7 @@ const genomeA = {
     { iid: 4, chromosome: "Un", startPoint: 1, endPoint: 10, y: 9, type: "interval" },
   ],
   connections: [
-    { cid: 1, source: 1, sink: 2, type: "REF", weight: 2 },
+    { cid: 1, source: 1, sink: -2, type: "REF", weight: 2 },
     { cid: 2, source: 2, sink: -3, type: "ALT", weight: 3, title: "TRA-like" },
   ],
 };
@@ -274,7 +274,7 @@ describe("cell genome files", () => {
     const byId = new Map(genomeA.intervals.map((d) => [d.iid, d]));
     const [a, b] = connectionBreakpoints(genomeA.connections[1], byId);
     expect([a.chromosome, a.position, a.strand]).toEqual(["1", 1000, "+"]);
-    expect([b.chromosome, b.position, b.strand]).toEqual(["2", 1000, "+"]);
+    expect([b.chromosome, b.position, b.strand]).toEqual(["2", 1, "-"]);
   });
 
   it("matches junctions across cells and fills copy number", () => {
@@ -283,7 +283,7 @@ describe("cell genome files", () => {
     expect(j.maxCn).toBe(3);
     expect(Array.from(j.cn[0])).toEqual([3, 0]);
     expect(Number.isNaN(j.cn[2][0])).toBe(true);
-    expect(junctionColumnOrder(j.junctions)).toEqual([0, 1]);
+    expect(junctionColumnOrder(j.junctions)).toEqual([1, 0]); // genomeB (chr1:1) sorts before genomeA (chr1:1000)
   });
 
   it("builds a median consensus row on a genome grid", () => {
