@@ -41,3 +41,17 @@ describe("geneQuickLook", () => {
     expect(tmbHits(doc, "H")).toEqual([]);
   });
 });
+
+describe("patientEventsForGene", () => {
+  const { patientEventsForGene } = require("./geneQuickLook");
+  it("keeps events naming the gene, strongest tier first", () => {
+    const ev = [
+      { gene: "GENEA", type: "SCNA", Variant: "AMP", Tier: 2, cell_fraction: "0.5" },
+      { gene: "GENEB", type: "Missense", Variant: "p.X1Y", Tier: 1 },
+      { gene: "GENEA::GENEC", fusion_genes: "GENEA::GENEC", type: "Fusion", Tier: 1, cell_fraction: "0.2" },
+    ];
+    const out = patientEventsForGene(ev, "GENEA");
+    expect(out.map((e) => e.tier)).toEqual([1, 2]);
+    expect(patientEventsForGene(null, "GENEA")).toEqual([]);
+  });
+});

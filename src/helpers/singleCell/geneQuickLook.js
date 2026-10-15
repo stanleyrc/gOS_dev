@@ -80,6 +80,15 @@ export function driverEventsForGene(summaries, files, gene) {
   return out.sort((a, b) => a.tier - b.tier || b.fraction - a.fraction);
 }
 
+/** One patient's filtered events naming the gene: [{ label, cls, tier, variant, fraction }], strongest first. */
+export function patientEventsForGene(events, gene) {
+  return (events || [])
+    .map((e) => ({ e, label: eventLabel(e) }))
+    .filter(({ label }) => label && labelHasGene(label, gene))
+    .map(({ e, label }) => ({ label, cls: eventClass(e), tier: Number(e.Tier ?? e.tier ?? 9), variant: e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", fraction: Number(e.cell_fraction) || 0 }))
+    .sort((a, b) => a.tier - b.tier || b.fraction - a.fraction);
+}
+
 /** Distinct event labels containing the gene, for an exact categorical gene filter in the All events table. */
 export const eventLabelsForGene = (summaries, files, gene) => [...new Set(driverEventsForGene(summaries, files, gene).map((e) => e.label))];
 
