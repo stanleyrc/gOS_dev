@@ -9,12 +9,14 @@ import {
   patientKeyOf,
   patientRecordFor,
 } from "../../helpers/singleCell/cellFiles";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 
 /** Shown on a single cell's report: which patient it belongs to, with a way back. */
 export default function CellContextBanner() {
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const metadata = useSelector((state) => state.CaseReport.metadata) || {};
   const caseId = useSelector((state) => state.CaseReport.id);
@@ -49,6 +51,7 @@ export default function CellContextBanner() {
         <Space wrap>
           <Text>{t("components.single-cell.banner.cell-of")}</Text>
           <Text strong>{patientCaseId || t("components.single-cell.banner.unknown-patient")}</Text>
+          <Text code>{cellLabels.full(caseId)}</Text>
           {clone != null && clone !== "" && (
             <Tag>{t("components.single-cell.banner.clone", { clone })}</Tag>
           )}

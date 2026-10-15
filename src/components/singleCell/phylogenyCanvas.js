@@ -4,6 +4,7 @@ import { TYPE, fontCss } from "../../helpers/singleCell/plotTheme";
 import { readViewLink } from "../../helpers/singleCell/deepLink";
 import { treeMarks } from "../../helpers/singleCell/treeMarks";
 import usePlotTheme from "./usePlotTheme";
+import useCellLabels from "./useCellLabels";
 
 const PAD_LEFT = 6;
 const PAD_RIGHT = 4;
@@ -39,6 +40,7 @@ export default function PhylogenyCanvas({
 }) {
   const ref = useRef(null);
   const pt = usePlotTheme();
+  const { label: cellLabel } = useCellLabels();
   // ?treemark=<group>:<hex>,..: saved groups as tip dots, rings where the state changes
   const markSpec = useMemo(() => readViewLink().treeMarks, []);
   const savedGroups = useSelector((s) => (markSpec.length ? s.SingleCell.layout.savedGroups?.[s.SingleCell.patient?.caseReportId] : null));
@@ -228,7 +230,7 @@ export default function PhylogenyCanvas({
         ctx.moveTo(px(n.x) + 2, py(n.y));
         ctx.lineTo(geometry.labelX, py(n.y));
         ctx.stroke();
-        ctx.fillText(n.name, geometry.labelX + 2, py(n.y), width - geometry.labelX - 4);
+        ctx.fillText(cellLabel(n.name), geometry.labelX + 2, py(n.y), width - geometry.labelX - 4);
       });
     }
 
@@ -306,7 +308,7 @@ export default function PhylogenyCanvas({
       ctx.fillRect(0, hoverRow * rowH, width, Math.max(1, rowH));
       dot(hoverRow, pt.hover, dotR + 1);
     }
-  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, branchMarks, cladeLabels, pt, showScaleBar, marks]);
+  }, [layout, geometry, nodeClones, nodeSelected, cloneColors, width, height, nRows, selectedLeafRange, selectedRows, hoverRow, hoverRange, pixelRatio, branchCounts, branchMarks, cladeLabels, pt, showScaleBar, marks, cellLabel]);
 
   const nodeAt = (event) => {
     const canvas = ref.current;

@@ -47,6 +47,7 @@ import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
 import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
 import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
+import useCellLabels from "../useCellLabels";
 
 const { Text } = Typography;
 const DOT = 9; // width of a painted mutation column
@@ -74,6 +75,7 @@ function useConcordance(snvData, layout) {
 export default function CompareTreesPanel() {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
+  const cellLabels = useCellLabels();
   const pixelRatio = usePixelRatio();
   const theme = usePlotTheme();
   const index = useSelector((s) => s.SingleCell.altTrees?.data);
@@ -592,7 +594,7 @@ export default function CompareTreesPanel() {
           {showsCn(heatMode) && !cnShared.ready && cnShared.message ? <Alert type="info" showIcon style={{ marginTop: 8 }} message={cnShared.message} /> : null}
           {hover && hovCell !== undefined ? (
             <div style={{ position: "fixed", left: hover.x + 12, top: hover.y + 12, background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, padding: "4px 8px", fontSize: TYPE.tick, pointerEvents: "none", zIndex: 1000, borderRadius: 4 }}>
-              <div><b>{hover.id}</b>{hovCell?.clone_id != null ? ` (clone ${hovCell.clone_id})` : ""}</div>
+              <div><b>{cellLabels.full(hover.id)}</b>{hovCell?.clone_id != null ? ` (clone ${hovCell.clone_id})` : ""}</div>
               {(hover.lines || []).map(([k, v]) => <div key={k}>{k}: {`${v}`}</div>)}
               {paints.map((p) => {
                 const st = p.kind === "subset" ? subsetLeafStates(snvCalls, [hover.id], p.columns, cellIndex)[0] : p.kind === "snv" ? snvLeafStates(snvData, [hover.id], p.vi, cellIndex)[0] : eventLeafStates(p.event, [hover.id])[0];

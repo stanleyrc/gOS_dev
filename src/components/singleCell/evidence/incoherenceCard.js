@@ -5,6 +5,7 @@ import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { amplifiedSegments, ecdnaLike, segmentIncoherence } from "../../../helpers/singleCell/incoherence";
+import useCellLabels from "../useCellLabels";
 
 const { Text } = Typography;
 const mb = (x) => `${(x / 1e6).toFixed(2)} Mb`;
@@ -12,6 +13,7 @@ const fmt = (x, d = 2) => (Number.isFinite(x) ? x.toFixed(d) : "–");
 
 /** Per-cell copies of one segment in tree leaf order (bars), coloured by clone. */
 function CopyStrip({ ids, values, cloneOf, cloneColors, width }) {
+  const cellLabels = useCellLabels();
   const h = 110;
   const v = ids.map((id) => values.get(id));
   const max = Math.max(1, ...v.filter(Number.isFinite));
@@ -24,7 +26,7 @@ function CopyStrip({ ids, values, cloneOf, cloneColors, width }) {
         const bh = (x / max) * h;
         return (
           <rect key={id} x={i * w} y={h - bh} width={Math.max(1, w - 0.5)} height={bh} fill={cloneColors[cloneOf.get(id)] || "#888"}>
-            <title>{`${id}: CN ${x}`}</title>
+            <title>{`${cellLabels.full(id)}: CN ${x}`}</title>
           </rect>
         );
       })}

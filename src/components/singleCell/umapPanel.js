@@ -21,6 +21,7 @@ import { layoutEmbedding } from "../../helpers/singleCell/umapLayout";
 import useHideNa, { HideNaControl } from "./useHideNa";
 import { partitionNa } from "../../helpers/singleCell/hideNa";
 import { linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
+import useCellLabels from "./useCellLabels";
 
 const { Text } = Typography;
 const MIN_HEIGHT = 400;
@@ -62,6 +63,7 @@ function insidePolygon(x, y, polygon) {
 export default function UmapPanel() {
   const pt = usePlotTheme();
   const { t } = useTranslation("common");
+  const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const { rna, cells, order, cloneColors, selectedCellIds, hoveredCellId, cn, layout } = useSelector((s) => s.SingleCell);
   const genesState = useSelector((s) => s.Genes);
@@ -370,7 +372,7 @@ export default function UmapPanel() {
       left: Math.min(x + 14, width - 200),
       top: y + 14,
       lines: [
-        [t("components.single-cell.tooltip.cell"), p.id],
+        [t("components.single-cell.tooltip.cell"), cellLabels.full(p.id)],
         ...(p.linked ? [] : [[t("components.single-cell.umap.rna-only"), t("components.single-cell.umap.not-in-tree")]]),
         ...(value != null && value !== "" ? [[scale.title, typeof value === "number" ? Math.round(value * 1000) / 1000 : value]] : []),
       ],
