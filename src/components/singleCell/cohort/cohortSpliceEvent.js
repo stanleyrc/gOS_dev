@@ -29,7 +29,7 @@ export function useSpliceExons(dataset) {
   return model;
 }
 
-function loadPatientSplicing(dataset, patient) {
+export function loadPatientSplicing(dataset, patient) {
   const key = `${dataset.dataPath}${patient}`;
   if (!patientSplicingCache.has(key)) patientSplicingCache.set(key, tryGet(casePath(dataset, patient, "rna/splicing.json")).catch(() => ({ status: "missing" })));
   return patientSplicingCache.get(key);

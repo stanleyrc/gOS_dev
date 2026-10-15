@@ -100,6 +100,11 @@ export function normalizeSpliceEvents(list) {
         .map((l) => ({ chromosome: `${l?.chromosome ?? ""}`.replace(/^chr/, ""), position: num(l?.position) }))
         .filter((l) => l.chromosome && l.position != null),
       cells: arr(e.cells).map(String),
+      // cells whose RNA slice covers the event: most-supporting first ("using", k reads on the junction), then controls
+      // ("control": cover the cluster, no read on the junction; n = reads in the cluster). Absent before 2026-10-15.
+      readCells: arr(e.read_cells)
+        .filter((r) => r && r.id)
+        .map((r) => ({ id: `${r.id}`, role: r.role === "control" ? "control" : "using", k: num(r.k, 0), n: num(r.n, 0) })),
       snvLinks: arr(e.snv_links).map(normalizeLink),
     }));
 }
@@ -206,3 +211,39 @@ export function snvLinkIgvView(event, link, { cellMap = {}, spliceReads = {}, pa
 
 /** DNA cell ids of a link's carriers (for selecting them on the tree). */
 export const linkCarrierDnaCells = (link, cellMap = {}) => (link?.carriers || []).map((id) => cellMap?.[id]).filter(Boolean);
+
+
+export const READS_DEFAULT_USING = 4;
+export const READS_DEFAULT_CONTROLS = 1;
+export const READS_MAX_USING = 8;
+
+/**
+ * IGV view of an event's raw reads: the cells using the junction (most reads first) and, for comparison,
+ * control cells that cover the cluster but never use it (they show the canonical junction / no event).
+ * { available: true, view, shown: [{ id, role, k, n }], nUsing, nControl, totalUsing, totalControl } or
+ * { available: false, reason: "no-slice" | "no-locus" } - older files lack `readCells`, and a cell without a slice
+ * in `spliceReads` (rna_id -> bam path) is dropped.
+ */
+export function spliceReadsView(event, { spliceReads = {}, patientId = null, nUsing = READS_DEFAULT_USING, nControl = READS_DEFAULT_CONTROLS, window = 150 } = {}) {
+  if (!event || !event.loci?.length) return { available: false, reason: "no-locus" };
+  const have = (event.readCells || []).filter((r) => spliceReads?.[r.id]);
+  const using = have.filter((r) => r.role === "using").sort((a, b) => b.k - a.k);
+  const controls = have.filter((r) => r.role === "control").sort((a, b) => b.n - a.n);
+  if (!using.length && !controls.length) return { available: false, reason: "no-slice" };
+  const shown = [...using.slice(0, nUsing), ...controls.slice(0, nControl)];
+  const rnaTracks = shown.map((r) => ({
+    rna_id: r.id,
+    bam: spliceReads[r.id],
+    patientId,
+    label: r.role === "control" ? `${r.id} (control)` : `${r.id} (${r.k} reads)`,
+  }));
+  return {
+    available: true,
+    shown,
+    nUsing: Math.min(using.length, nUsing),
+    nControl: Math.min(controls.length, nControl),
+    totalUsing: using.length,
+    totalControl: controls.length,
+    view: { cellIds: [], rnaTracks, chromosome: event.loci[0].chromosome, position: event.loci[0].position, loci: event.loci, window, label: `${event.gene} ${EVENT_TYPE_LABEL[event.eventType] || event.eventType}` },
+  };
+}

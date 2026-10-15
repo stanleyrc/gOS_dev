@@ -10,6 +10,7 @@ import {
   recurrenceText,
   snvLinkIgvView,
   sortSpliceEvents,
+  spliceReadsView,
   usageText,
 } from "./spliceEventTable";
 
@@ -106,5 +107,36 @@ describe("spliceEventTable", () => {
     expect(view.position).toBe(7673839);
     expect(snvLinkIgvView(e, e.snvLinks[1], {})).toBeNull();
     expect(linkCarrierDnaCells(l, { r1: "dna1", r9: "dna9" })).toEqual(["dna1", "dna9"]);
+  });
+
+  describe("spliceReadsView", () => {
+    const rc = (id, role, k, n) => ({ id, role, k, n });
+    const ev = (readCells) => normalizeSpliceEvents([raw({ loci: [{ chromosome: "17", position: 7673840 }, { chromosome: "17", position: 7674181 }], read_cells: readCells })])[0];
+    const slices = { u1: "rna/splice_reads/u1.bam", u2: "rna/splice_reads/u2.bam", u3: "rna/splice_reads/u3.bam", c1: "rna/splice_reads/c1.bam", c2: "rna/splice_reads/c2.bam" };
+
+    it("is unavailable without read cells or slices", () => {
+      expect(spliceReadsView(ev([]), { spliceReads: slices })).toMatchObject({ available: false, reason: "no-slice" });
+      expect(spliceReadsView(ev([rc("zz", "using", 5, 9)]), { spliceReads: slices })).toMatchObject({ available: false, reason: "no-slice" });
+      expect(spliceReadsView(normalizeSpliceEvents([raw()])[0], { spliceReads: slices })).toMatchObject({ available: false });
+    });
+
+    it("shows the most supporting cells first, then the control, capped", () => {
+      const e = ev([rc("u2", "using", 30, 40), rc("u1", "using", 90, 100), rc("u3", "using", 5, 50), rc("c2", "control", 0, 20), rc("c1", "control", 0, 80)]);
+      const r = spliceReadsView(e, { spliceReads: slices, patientId: "P1", nUsing: 2, nControl: 1 });
+      expect(r.available).toBe(true);
+      expect(r.shown.map((x) => x.id)).toEqual(["u1", "u2", "c1"]);
+      expect(r).toMatchObject({ totalUsing: 3, totalControl: 2, nUsing: 2, nControl: 1 });
+      expect(r.view.rnaTracks.map((t) => t.rna_id)).toEqual(["u1", "u2", "c1"]);
+      expect(r.view.rnaTracks[0]).toMatchObject({ bam: "rna/splice_reads/u1.bam", patientId: "P1" });
+      expect(r.view.rnaTracks[2].label).toMatch(/control/);
+      expect(r.view.loci).toHaveLength(2);
+    });
+
+    it("drops cells without a slice and tolerates controls only", () => {
+      const e = ev([rc("nope", "using", 50, 60), rc("c1", "control", 0, 10)]);
+      const r = spliceReadsView(e, { spliceReads: slices });
+      expect(r.shown.map((x) => x.id)).toEqual(["c1"]);
+      expect(r.totalUsing).toBe(0);
+    });
   });
 });
