@@ -25,6 +25,7 @@ import CellIgvPanel from "../cellIgvPanel";
 import HintLine from "../hintLine";
 import MutJunctionBinChart from "./mutJunctionBinChart";
 import MutJunctionFocalSection from "./mutJunctionFocalSection";
+import MutJunctionContinuousSection from "./mutJunctionContinuousSection";
 
 const { Text, Paragraph } = Typography;
 const IGV_CELLS = 6;
@@ -75,7 +76,7 @@ export default function MutationsNearJunctionsCard() {
   const [maxDist, setMaxDist] = useState(1e6);
   const [kMode, setKMode] = useState("strict");
   const [igv, setIgv] = useState(null);
-  const [view, setView] = useState("focal");
+  const [view, setView] = useState("continuous");
 
   const series = useMemo(() => binSeries(data, def), [data, def]);
   const rows = useMemo(() => adjacentRows(data, { def, maxDist }), [data, def, maxDist]);
@@ -137,7 +138,8 @@ export default function MutationsNearJunctionsCard() {
           value={view}
           onChange={setView}
           options={[
-            { value: "focal", label: "Focal: cis vs trans (5 kb)" },
+            { value: "continuous", label: "Cis vs trans: continuous" },
+            { value: "focal", label: "Fixed bins + tests" },
             { value: "broad", label: "Broad window (1 Mb)" },
           ]}
         />
@@ -147,6 +149,7 @@ export default function MutationsNearJunctionsCard() {
         {patientId === "BWH69" && (
           <Alert type="warning" showIcon message="BWH69 SNV set is noisy (55,055 sites); a rebuild is pending, so treat these numbers as provisional." />
         )}
+        {view === "continuous" && <MutJunctionContinuousSection data={data} patientId={patientId} onPaint={paint} />}
         {view === "focal" && <MutJunctionFocalSection data={data} onPaint={paint} />}
         {view === "broad" && (
         <>
