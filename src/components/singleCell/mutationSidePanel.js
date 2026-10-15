@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 import { Button, Space, Tooltip, Typography } from "antd";
 import { AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
 import HeatmapCanvas from "./heatmapCanvas";
@@ -12,8 +13,31 @@ import {
   snvBinSummary,
   snvMetricRGBA,
   snvMetricValue,
+  setSnvNaMode,
   vafRGBA,
 } from "../../helpers/singleCell/matrix";
+import { siteDetail } from "../../helpers/singleCell/snvAnnot";
+import { placeLabels, siteLabel } from "../../helpers/singleCell/snvLabels";
+
+export const LABEL_H = 96;
+
+/** Rotated site labels under the matrix columns (drivers always, other sites when columns are wide enough). */
+function ColumnLabels({ labels, width, snv }) {
+  if (!labels.length) return null;
+  return (
+    <svg width={width} height={LABEL_H} style={{ display: "block", overflow: "hidden" }} className="sc-column-labels">
+      {labels.map((l) => (
+        <g key={l.c}>
+          <line x1={l.x} x2={l.x} y1={0} y2={4} stroke={l.driver ? "#cf1322" : "var(--sc-muted, #888)"} strokeWidth={1} />
+          <text transform={`translate(${l.x + 3.5},6) rotate(90)`} fontSize={10} fontWeight={l.driver ? 700 : 400} fill={l.driver ? "#cf1322" : "var(--sc-text, #333)"}>
+            {l.text}
+            <title>{`${snv.variants[l.c].id}`}</title>
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 const { Text } = Typography;
 const MIN_SITES = 5;
@@ -67,6 +91,10 @@ export default function MutationSidePanel({
   trackLabelSide = "left",
 }) {
   const { t } = useTranslation("common");
+  const layoutState = useSelector((st) => st.SingleCell.layout) || {};
+  const naMode = layoutState.snvNaColor === "white" ? "white" : "grey";
+  setSnvNaMode(naMode); // module setting read by the colour functions and the legend
+  const labelMode = layoutState.snvLabel || "protein";
   const total = columnOrder.length;
   const [range, setRange] = useState([0, total]);
   useEffect(() => setRange([0, total]), [columnOrder, total]);
@@ -95,6 +123,12 @@ export default function MutationSidePanel({
     return { spans, separators: spans.slice(1).map((sp) => sp.x0) };
   }, [groupOf, bins, columnOrder, deviceWidth, pixelRatio]);
 
+  const labels = useMemo(() => {
+    if (!total) return [];
+    const [s0, e0] = range;
+    return placeLabels(snv.variants, columnOrder, bins, { mode: labelMode, pixelRatio, columnPx: width / Math.max(1, e0 - s0) });
+  }, [snv, columnOrder, bins, labelMode, pixelRatio, width, range, total]);
+
   const colorAt = useCallback(
     (r, x) => {
       const p = rows[r];
@@ -106,7 +140,7 @@ export default function MutationSidePanel({
       }
       return snvMetricRGBA(snvMetricValue(snv, p, columnOrder[a], metric), metric, max);
     },
-    [rows, bins, snv, columnOrder, metric, max]
+    [rows, bins, snv, columnOrder, metric, max, naMode]
   );
 
   const describe = (r, x) => {
@@ -127,14 +161,20 @@ export default function MutationSidePanel({
     }
     const c = columnOrder[a];
     const v = snv.variants[c];
-    const fmt = (value) => (value == null ? t("components.single-cell.side.no-reads") : value);
     const vaf = snvMetricValue(snv, p, c, "vaf");
+    const altN = snvMetricValue(snv, p, c, "alt");
+    const noReads = t("components.single-cell.side.no-reads");
+    const covered = p >= 0 && snv.status[p][c] >= 0;
+    const cellRows = [
+      ["Cell VAF", vaf == null ? noReads : vaf.toFixed(3)],
+      ["Cell ALT reads", altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : altN],
+      ["Cell depth", snvMetricValue(snv, p, c, "depth") ?? noReads],
+    ];
+    if (annot) return [["Mutation", siteLabel(v, "protein")], ...siteDetail(annot, c), ...cellRows];
     return [
       [t("components.single-cell.tooltip.variant"), v.id],
       ...(v.gene ? [[t("components.single-cell.tooltip.gene"), [v.gene, v.protein || v.consequence].filter(Boolean).join(" ")]] : []),
-      ...(v.oncogenic || v.oncokbLevel
-        ? [["OncoKB", [v.oncogenic, v.oncokbLevel].filter(Boolean).join(" · ")]]
-        : []),
+      ...(v.oncogenic || v.oncokbLevel ? [["OncoKB", [v.oncogenic, v.oncokbLevel].filter(Boolean).join(" · ")]] : []),
       ...(v.category
         ? [[
             t("components.single-cell.snv.category"),
@@ -142,9 +182,7 @@ export default function MutationSidePanel({
           ]]
         : []),
       ...(v.cladeScore != null ? [[t("components.single-cell.snv.clade-score"), cladeScoreDetail(v)]] : []),
-      [t("components.single-cell.metric.vaf"), vaf == null ? fmt(null) : vaf.toFixed(3)],
-      [t("components.single-cell.metric.alt"), fmt(snvMetricValue(snv, p, c, "alt"))],
-      [t("components.single-cell.metric.depth"), fmt(snvMetricValue(snv, p, c, "depth"))],
+      ...cellRows,
     ];
   };
 
@@ -208,6 +246,7 @@ export default function MutationSidePanel({
             ))}
         </div>
       )}
+      <ColumnLabels labels={labels} width={width} snv={snv} />
       <div className="sc-side-axis" style={{ height: axisHeight }}>
         <Text type="secondary" className="sc-hint">
           {zoomed

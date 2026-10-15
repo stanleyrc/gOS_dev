@@ -47,13 +47,16 @@ const TREE_CATEGORIES = [
 export const SNV_TRACKS = [
   { key: "category", kind: "cat", label: "Tree site", help: "Where the SNV maps on the tree" },
   { key: "driver", kind: "cat", label: "Driver", any: "driver", help: "OncoKB driver site" },
-  { key: "signature", kind: "cat", label: "Signature", help: "Most probable SBS signature of the site's trinucleotide context" },
+  { key: "signature", kind: "cat", label: "Signature", help: "Most probable SBS signature of the site's trinucleotide context, from the fit of the site's tree-site set (truncal / subclonal / private) when available, else the joint fit" },
   { key: "region", kind: "cat", label: "Region", help: "Region class from the consequence annotation" },
   { key: "depth", kind: "num", label: "Mean depth", help: "Mean read depth over cells with reads" },
   { key: "vaf", kind: "num", label: "Alt cells", help: "Fraction of called cells that carry the alt allele", range: [0, 1] },
   { key: "phylo", kind: "num", label: "Tree fit", help: "Best-clade F1 of the site on the current tree", range: [0, 1] },
   { key: "cellphy", kind: "cat", label: "CellPhy input", any: "yes", help: "Site was used by CellPhy to build the tree" },
   { key: "qc", kind: "num", label: "Site QC", help: "Site QC score (sum of log-odds)" },
+  // filter-only keys (not drawn as tracks): set from the filter bar
+  { key: "gene", kind: "cat", label: "Gene", help: "Gene symbol", filterOnly: true },
+  { key: "carriers", kind: "num", label: "Alt cells (count)", help: "Number of cells carrying the alt allele", filterOnly: true },
 ];
 export const DEFAULT_SNV_TRACKS = ["category", "driver"];
 export const trackDef = (key) => SNV_TRACKS.find((t) => t.key === key) || null;
@@ -90,7 +93,7 @@ function baseArrays(snv) {
     depth[c] = depthN[c] ? depthSum[c] / depthN[c] : NaN;
     vaf[c] = called[c] ? alt[c] / called[c] : NaN;
   }
-  const out = { n, depth, vaf, region: snv.variants.map((v) => regionClass(v.consequence)) };
+  const out = { n, depth, vaf, alt: Float32Array.from(alt), region: snv.variants.map((v) => regionClass(v.consequence)) };
   if (key && typeof key === "object") ARRAY_CACHE.set(key, out);
   return out;
 }
@@ -127,11 +130,12 @@ export function siteAnnotations(snv, { signatures = null, phylo = null } = {}) {
     region: base.region,
     signature: hasSig ? signatures.signature : null,
     cellphy: snv.variants.map((v) => (v.cellphyInput === true ? "yes" : v.cellphyInput === false ? "no" : null)),
+    gene: snv.variants.map((v) => (v.gene && !/^ENSG/.test(v.gene) ? v.gene : null)),
   };
-  const num = { depth: base.depth, vaf: base.vaf, phylo: hasPhylo ? phyloArr : null, qc: hasQc ? qc : null };
+  const num = { depth: base.depth, vaf: base.vaf, phylo: hasPhylo ? phyloArr : null, qc: hasQc ? qc : null, carriers: base.alt };
   const hasCat = snv.variants.some((v) => v.category);
   const hasCellphy = cat.cellphy.some(Boolean);
-  const available = SNV_TRACKS.filter((t) => {
+  const available = SNV_TRACKS.filter((t) => !t.filterOnly).filter((t) => {
     if (t.key === "category") return hasCat;
     if (t.key === "cellphy") return hasCellphy;
     if (t.key === "region") return cat.region.some(Boolean);
@@ -263,7 +267,8 @@ export function siteDetail(annot, c) {
     rows.push(["Region", `${lab("region", cls)} (${inGeneBody(cls) ? "gene body" : "outside genes"})${v.consequence ? `; ${v.consequence}` : ""}`]);
   }
   if (annot.num.depth) rows.push(["Mean depth", fmtNum(annot.num.depth[c], 1)]);
-  if (annot.num.vaf) rows.push(["Alt cells", fmtNum(annot.num.vaf[c] * 100, 1) + "%"]);
+  if (annot.num.carriers) rows.push(["Carriers", `${annot.num.carriers[c]} cells with the alt allele`]);
+  if (annot.num.vaf) rows.push(["Alt fraction", fmtNum(annot.num.vaf[c] * 100, 1) + "% of called cells"]);
   if (annot.num.phylo) rows.push(["Tree fit (F1)", fmtNum(annot.num.phylo[c])]);
   if (v.driver || v.oncogenic) rows.push(["OncoKB", [v.oncogenic, v.oncokbLevel].filter(Boolean).join(" · ") || "driver"]);
   if (annot.cat.cellphy[c]) rows.push(["CellPhy input", annot.cat.cellphy[c] === "yes" ? "yes" : "no"]);
@@ -349,6 +354,7 @@ export function describeFilter(annot, key, f) {
     return `${def.label}: ${(f.values || []).map((v) => legend.find((e) => e.value === v)?.label || v).join(", ")}`;
   }
   const parts = [];
+  if (f.min != null && f.max != null) return `${def.label} ${fmtNum(f.min)} to ${fmtNum(f.max)}`;
   if (f.min != null) parts.push(`>= ${fmtNum(f.min)}`);
   if (f.max != null) parts.push(`<= ${fmtNum(f.max)}`);
   return `${def.label} ${parts.join(" and ")}`;
@@ -363,6 +369,7 @@ export function serializeTracks(tracks, filter) {
   Object.entries(filter || {}).forEach(([key, f]) => {
     if (!f) return;
     if (f.values?.length) parts.push(`${key}:${f.values.join("|")}`);
+    else if (f.min != null && f.max != null) parts.push(`${key}:${f.min}..${f.max}`);
     else if (f.min != null) parts.push(`${key}:>=${f.min}`);
     else if (f.max != null) parts.push(`${key}:<=${f.max}`);
   });
@@ -384,7 +391,10 @@ export function parseTracks(search) {
       if (!def || at < 0) return;
       const rest = part.slice(at + 1);
       if (def.kind === "cat") filter[key] = { values: rest.split("|").filter(Boolean) };
-      else if (rest.startsWith(">=") && Number.isFinite(Number(rest.slice(2)))) filter[key] = { min: Number(rest.slice(2)) };
+      else if (/^-?[\d.]+\.\.-?[\d.]+$/.test(rest)) {
+        const [lo, hi] = rest.split("..").map(Number);
+        filter[key] = { min: lo, max: hi };
+      } else if (rest.startsWith(">=") && Number.isFinite(Number(rest.slice(2)))) filter[key] = { min: Number(rest.slice(2)) };
       else if (rest.startsWith("<=") && Number.isFinite(Number(rest.slice(2)))) filter[key] = { max: Number(rest.slice(2)) };
     });
   return { tracks: tracks.length ? tracks : null, filter: Object.keys(filter).length ? filter : null };
@@ -392,3 +402,57 @@ export function parseTracks(search) {
 
 /** The numeric value a click on a numeric bin filters at (its mean, rounded for the label). */
 export const clickThreshold = (mean) => (Number.isFinite(mean) ? Number(mean.toPrecision(3)) : null);
+
+/** Set (or clear when both bounds are null) a numeric range filter. */
+export function setRange(filter, key, min, max) {
+  const next = { ...(filter || {}) };
+  if (min == null && max == null) delete next[key];
+  else next[key] = { ...(min != null ? { min } : {}), ...(max != null ? { max } : {}) };
+  return Object.keys(next).length ? next : null;
+}
+
+/** Replace the values of a categorical filter (empty clears it). */
+export function setValues(filter, key, values) {
+  const next = { ...(filter || {}) };
+  if (!values || !values.length) delete next[key];
+  else next[key] = { values };
+  return Object.keys(next).length ? next : null;
+}
+
+// ---- the whole site-filter state in the URL (tracks, track filters, tree-site,
+// drivers, CellPhy, clade score, label mode, missing colour, isolate)
+
+export const SITE_URL_PARAMS = ["sntracks", "snfilter", "sncat", "sndrv", "sncp", "snf1", "snlabel", "snna", "snisolate"];
+const LABEL_VALUES = ["gene", "protein", "position", "none"];
+
+export function serializeSiteState(layout) {
+  const l = layout || {};
+  const params = serializeTracks(l.snvTracks, l.snvAnnotFilter);
+  if (l.snvCategories?.length) params.sncat = l.snvCategories.join(",");
+  if (l.snvDriversOnly) params.sndrv = "1";
+  if (l.snvCellphyOnly) params.sncp = "1";
+  if (l.snvMinCladeScore > 0) params.snf1 = `${l.snvMinCladeScore}`;
+  if (l.snvLabel && l.snvLabel !== "protein") params.snlabel = l.snvLabel;
+  if (l.snvNaColor === "white") params.snna = "white";
+  if (l.snvIsolate) params.snisolate = "1";
+  return params;
+}
+
+/** Layout patch from a link's query string (only keys present). */
+export function parseSiteState(search) {
+  const params = new URLSearchParams(search);
+  const patch = {};
+  const link = parseTracks(search);
+  if (link.tracks) patch.snvTracks = link.tracks;
+  if (link.filter) patch.snvAnnotFilter = link.filter;
+  const cats = (params.get("sncat") || "").split(",").filter(Boolean);
+  if (cats.length) patch.snvCategories = cats;
+  if (params.get("sndrv") === "1") patch.snvDriversOnly = true;
+  if (params.get("sncp") === "1") patch.snvCellphyOnly = true;
+  const f1 = Number(params.get("snf1"));
+  if (f1 > 0) patch.snvMinCladeScore = f1;
+  if (LABEL_VALUES.includes(params.get("snlabel"))) patch.snvLabel = params.get("snlabel");
+  if (params.get("snna") === "white") patch.snvNaColor = "white";
+  if (params.get("snisolate") === "1") patch.snvIsolate = true;
+  return patch;
+}

@@ -8,6 +8,10 @@ import {
   LONG_PALETTE_TICKS,
   normalizePalette,
   snvMissingColor,
+  snvNaMode,
+  ALT_BINS,
+  GT_COLORS,
+  depthColor,
   vafRGB,
 } from "../../helpers/singleCell/matrix";
 
@@ -21,10 +25,6 @@ const Swatch = ({ color, label }) => (
 );
 
 const grey = (v) => `rgb(${vafRGB(v).join(",")})`;
-const countColor = (value, max) => {
-  const t = Math.log1p(Math.max(0, Math.min(max, value))) / Math.log1p(Math.max(1, max));
-  return `rgb(${Math.round(255 * t)},128,${Math.round(255 * (1 - t))})`;
-};
 
 export default function HeatmapLegend({
   type,
@@ -98,15 +98,30 @@ export default function HeatmapLegend({
     if (has("complex")) groups.push({ key: "d-complex", title: "Complex event", items: [{ color: c.complex, label: "carrier (DM / TIC / BFB, gGnome event classifier)" }] });
   }
   if (snvMetric) {
-    const items =
-      snvMetric === "vaf"
-        ? [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: `${v}` }))
-        : countTicks(snvMax).map((v) => ({ color: countColor(v, snvMax), label: `${v}` }));
+    const rgb = (c) => `rgb(${c.join(",")})`;
+    const naMode = snvNaMode();
+    let items;
+    let note = t("components.single-cell.legend.binned");
+    if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: `${v}` }));
+    else if (snvMetric === "gt") {
+      items = [
+        { color: GT_COLORS.alt, label: "alt" },
+        { color: GT_COLORS.ref, label: "ref" },
+      ];
+      note = null;
+    } else if (snvMetric === "alt") {
+      items = ALT_BINS.map((b) => ({ color: b.color, label: b.label }));
+      note = `zoomed in: ALT reads per cell in bins; zoomed out: grey = fraction of sites in the pixel with alt reads`;
+    } else {
+      const top = Math.max(1, Math.round(snvMax || 1));
+      items = countTicks(top).map((v) => ({ color: rgb(depthColor(v, top)), label: v === top ? `${v}+` : `${v}` }));
+      note = `zoomed in: read depth, log scale clipped at the 99th percentile; zoomed out: grey = fraction of sites with alt reads`;
+    }
     groups.push({
       key: "snv",
       title: t(`components.single-cell.metric.${snvMetric}`),
-      items: [...items, { color: snvMissingColor(), label: t("components.single-cell.side.no-reads") }],
-      note: t("components.single-cell.legend.binned"),
+      items: [...items, { color: snvMissingColor(), label: `${t("components.single-cell.side.no-reads")} (missing, ${naMode})` }],
+      note,
     });
   }
   const clones = Object.keys(cloneColors);

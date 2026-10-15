@@ -13,6 +13,8 @@ import GeneInfoDrawer from "./rna/geneInfoDrawer";
 import SnvSiteDrawer from "./snvSiteDrawer";
 import SavedGroupsBar from "./savedGroupsBar";
 import { branchVariants, hasAnchors } from "../../helpers/singleCell/branchSnvs";
+import { carrierRows } from "../../helpers/singleCell/snvIsolate";
+import SnvIsolatePanel from "./snvIsolatePanel";
 import { cladeNodeLabels } from "../../helpers/singleCell/clades";
 import usePatientClades from "./usePatientClades";
 import { themePalette } from "../../helpers/singleCell/themes";
@@ -792,7 +794,17 @@ export default function CellHeatmapPanel() {
   );
   const axisHeight = ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT;
 
+  const isolating = Boolean(layout.snvIsolate) && snvReady && heatmapType === "snv";
+  const isolateRows = useMemo(() => (isolating ? carrierRows(snv.data, snvColumns, snvRows) : null), [isolating, snv, snvColumns, snvRows]);
+  const isolateBranches = useMemo(() => (isolating && snvsByBranch ? { branches: snvsByBranch.size, sites: [...snvsByBranch.values()].reduce((n, v) => n + v.length, 0) } : null), [isolating, snvsByBranch]);
+  const setIsolate = (on) => {
+    const patch = { snvIsolate: on };
+    if (on && canShowBranchSnvs) patch.branchSnvs = true; // counts of the isolated sites on the tree branches
+    dispatch(singleCellActions.updateLayout(patch));
+    if (on && snvOrder !== "tree" && hasTree) dispatch(singleCellActions.updateSnvOrder("tree")); // columns grouped by best clade
+  };
   const sideProps = {
+    highlightRows: isolateRows && isolateRows.size < 0.5 * nRows ? isolateRows : null, // outlines only when carriers are a minority
     snv: snv.data,
     rows: snvRows,
     nRows,
@@ -1164,7 +1176,7 @@ export default function CellHeatmapPanel() {
                     </Checkbox>
                   )}
                   <div style={{ width: "100%" }}>
-                    <SnvTrackControls annot={snvAnnot} />
+                    <SnvTrackControls annot={snvAnnot} nShown={snvColumns.length} onIsolate={setIsolate} />
                   </div>
                 </>
               )}
@@ -1484,6 +1496,7 @@ export default function CellHeatmapPanel() {
           </div>
         </div>
       </Card>
+      {isolating && <SnvIsolatePanel snv={snv.data} columns={snvColumns} annot={snvAnnot} branchInfo={isolateBranches} carrierCount={isolateRows ? isolateRows.size : null} patient={sc.patient?.caseReportId || ""} />}
       {siteDrawer && snvReady && snv.data.variants[siteDrawer.c] && (
         <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} cnInfo={snvCn?.[siteDrawer.c] || null} />
       )}
