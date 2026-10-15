@@ -73,3 +73,38 @@ describe("INK (light SVG attribute tokens)", () => {
     expect(INK).toBe(theme("light"));
   });
 });
+
+describe("cyberpunk mode", () => {
+  const { isDarkLike, cyberAntdTokens } = require("./plotTheme");
+  const cyber = plotTheme("cyberpunk");
+  const dark = plotTheme("dark");
+
+  it("isDarkLike covers dark and cyberpunk only", () => {
+    expect(isDarkLike("dark")).toBe(true);
+    expect(isDarkLike("cyberpunk")).toBe(true);
+    expect(isDarkLike("light")).toBe(false);
+    expect(isDarkLike(undefined)).toBe(false);
+  });
+
+  it("has the same token names as dark", () => {
+    expect(Object.keys(cyber).sort()).toEqual(Object.keys(dark).sort());
+    expect(cyber.mode).toBe("cyberpunk");
+  });
+
+  it("keeps text at >= 4.5:1 on every surface and accents readable", () => {
+    ["page", "panel", "panelAlt", "raised"].forEach((bg) => {
+      expect(contrastRatio(cyber.text, cyber[bg])).toBeGreaterThanOrEqual(7);
+      expect(contrastRatio(cyber.textSecondary, cyber[bg])).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(cyber.muted, cyber[bg])).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(cyber.accent, cyber[bg])).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(cyber.magenta, cyber[bg])).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(cyber.yellow, cyber[bg])).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+
+  it("exports css vars and antd tokens only for cyberpunk", () => {
+    expect(cssVars("cyberpunk")["--sc-page"]).toBe(cyber.page);
+    expect(cyberAntdTokens("cyberpunk").colorPrimary).toBe(cyber.accent);
+    expect(cyberAntdTokens("dark")).toEqual({});
+  });
+});

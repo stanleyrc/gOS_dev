@@ -1,22 +1,28 @@
-// Light / dark theme for the whole app: stored in this browser, exposed on
+// Light / dark / cyberpunk theme for the whole app: stored in this browser, exposed on
 // <html data-theme> for CSS, and read by App for the antd algorithm.
 
-import { cssVars, svgRemapCss } from "./singleCell/plotTheme";
+import { cssVars, isDarkLike, svgRemapCss } from "./singleCell/plotTheme";
+
+export { isDarkLike };
 
 export const THEME_STORAGE_KEY = "gos-theme";
 const listeners = new Set();
 
 export function getAppTheme() {
   try {
-    return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
+    const v = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return v === "dark" || v === "cyberpunk" ? v : "light";
   } catch (error) {
     return "light";
   }
 }
 
 export function applyAppTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  document.documentElement.style.colorScheme = theme;
+  // cyberpunk reuses every dark code path: <html data-theme> stays "dark" and
+  // data-skin carries the real mode for the neon overrides
+  document.documentElement.setAttribute("data-theme", isDarkLike(theme) ? "dark" : "light");
+  document.documentElement.setAttribute("data-skin", theme);
+  document.documentElement.style.colorScheme = isDarkLike(theme) ? "dark" : "light";
   // colour / type tokens for CSS (var(--sc-text) etc.); plots read the same
   // values from helpers/singleCell/plotTheme
   const vars = cssVars(theme);
@@ -45,4 +51,4 @@ export function onAppThemeChange(fn) {
   return () => listeners.delete(fn);
 }
 
-export const isDark = () => getAppTheme() === "dark";
+export const isDark = () => isDarkLike(getAppTheme());

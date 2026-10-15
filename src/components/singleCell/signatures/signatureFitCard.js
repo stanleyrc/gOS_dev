@@ -10,7 +10,7 @@ import { SBS96, SBS_COLORS } from "../../../helpers/singleCell/signatures";
 import { setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
 import { evaluateBackendSet, fitClass, sbsClassColors } from "../../../helpers/singleCell/signatureFit";
 import { mutationFilterTypes, mutationsColorPalette, mutationsGroups } from "../../../helpers/utility";
-import { FONT_FAMILY, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { FONT_FAMILY, TYPE, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 import { aetiologyText, catalogPoints, loadCosmic, signatureColorOf } from "../signaturePanel";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
@@ -100,7 +100,7 @@ export function ResidualPlot({ evaluation, width }) {
   const values = SBS96.map((_, i) => evaluation.counts[i] - evaluation.reconstruction[i]);
   const colors = sbsClassColors(pt.mode, SBS_COLORS);
   // pale classes need an edge on the light panel
-  const outlined = (sub) => pt.mode !== "dark" && (sub === "T>G" || sub === "T>A");
+  const outlined = (sub) => !isDarkLike(pt.mode) && (sub === "T>G" || sub === "T>A");
   const max = Math.max(1, ...values.map(Math.abs));
   const y = d3
     .scaleLinear()

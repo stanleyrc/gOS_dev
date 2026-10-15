@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
-import { FONT_FAMILY, TYPE, currentPlotTheme, fontCss } from "../../../helpers/singleCell/plotTheme";
+import { FONT_FAMILY, TYPE, currentPlotTheme, fontCss, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 import { figureStyle } from "../../../helpers/singleCell/figureStyle";
 
 /**
@@ -11,7 +11,7 @@ import { figureStyle } from "../../../helpers/singleCell/figureStyle";
  */
 export function ink(styleName) {
   const pt = currentPlotTheme();
-  return { ...pt, dark: pt.mode === "dark", st: figureStyle(styleName) };
+  return { ...pt, dark: isDarkLike(pt.mode), st: figureStyle(styleName) };
 }
 
 /** The chart style chosen in the layout preferences (Paper figures and the shared SVG charts). */

@@ -1,3 +1,4 @@
+import { isDarkLike } from "./plotTheme";
 // Cohort "evolutionary oncoplot" (#19) and cross-patient associations (#21):
 // geometry and table helpers for _cohort/aligned_trees.json and
 // _cohort/associations.json (srctools gos_sc_cohort_evolution.py). d3-free
@@ -23,7 +24,7 @@ export const EVENT_CLASS_LABEL = {
 
 /** Event class colours: copy-number red / blue (focal darker), SNV green, ecDNA purple. */
 export function eventClassColor(cls, mode = "light") {
-  const dark = mode === "dark";
+  const dark = isDarkLike(mode);
   return (
     {
       gain: dark ? "#f4a5a0" : "#e8837c",
@@ -223,8 +224,8 @@ export function signalFill(cell, theme, alpha = 0.05) {
   if (!cell || !Number.isFinite(cell.z)) return theme.empty;
   if (!(cell.p < alpha) || cell.z <= 0) return theme.panelAlt;
   const f = Math.min(1, Math.max(0.25, (cell.z - 1) / 5));
-  const a = theme.mode === "dark" ? 0.25 + 0.6 * f : 0.18 + 0.7 * f;
-  return theme.mode === "dark" ? `rgba(64,150,255,${a.toFixed(2)})` : `rgba(22,119,255,${a.toFixed(2)})`;
+  const a = isDarkLike(theme.mode) ? 0.25 + 0.6 * f : 0.18 + 0.7 * f;
+  return isDarkLike(theme.mode) ? `rgba(64,150,255,${a.toFixed(2)})` : `rgba(22,119,255,${a.toFixed(2)})`;
 }
 
 /** Forest-plot rows of event x state associations (log OR with 95% CI), most significant first. */

@@ -3,7 +3,7 @@ import { Tooltip, Typography } from "antd";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import ColorTag from "../colorTag";
-import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { TYPE, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
 const LABEL_W = 132;
@@ -25,8 +25,8 @@ export default function CloneLanesPlot({ lanes, cloneColors = {}, selected = new
   const step = Math.min(10, plotW / maxN);
   const colW = Math.max(1, step - (step > 3 ? 1 : 0));
   const altColor = pt.danger;
-  const refColor = pt.mode === "dark" ? "#69b1ff" : "#1d39c4";
-  const stub = pt.mode === "dark" ? "#4a4a4a" : "#d0d0d0";
+  const refColor = isDarkLike(pt.mode) ? "#69b1ff" : "#1d39c4";
+  const stub = isDarkLike(pt.mode) ? "#4a4a4a" : "#d0d0d0";
 
   return (
     <div ref={ref} style={{ width: "100%" }}>
