@@ -1,4 +1,4 @@
-import { sharedPrograms, describeTest, geneSignature, qcNote, signatureOverlap, formatQ, headlineFindings, isRobust, looselyAdjusted, perPatientLfc, testCells, testRows, topProgram, volcanoRows } from "./covariateDe";
+import { cladeCompareSpecs, cladeTopRows, fmtDiff, leadFlag, shortClade, violinGroups, sharedPrograms, describeTest, geneSignature, qcNote, signatureOverlap, formatQ, headlineFindings, isRobust, looselyAdjusted, perPatientLfc, testCells, testRows, topProgram, volcanoRows } from "./covariateDe";
 
 const gene = (over = {}) => ({ gene: "G1", avg_log2FC: 1, q_val: 0.01, p_val: 0.001, n_patients: 3, n_concordant: 3, per: { A: 1.2, B: 0.4, C: 0.9 }, ...over });
 const test = (over = {}) => ({
@@ -103,6 +103,33 @@ describe("covariateDe", () => {
     expect(h).toHaveLength(3);
     expect(h[1].text).not.toContain("myc targets");
     expect(h[1].text).toContain("up program: p a");
+  });
+
+  it("violinGroups builds A/B pairs per patient and lists what could not load", () => {
+    const { groups, unavailable } = violinGroups([
+      { patient: "P1", values: [0, 1, 2, 3, NaN], a: [0, 1], b: [2, 3, 4] },
+      { patient: "P2", values: null, a: [0], b: [1], reason: "matrix missing" },
+      { patient: "P3", values: [1], a: [0], b: null },
+    ], { labelA: "carriers", labelB: "non-carriers" });
+    expect(groups.map((g) => g.key)).toEqual(["P1 A", "P1 B"]);
+    expect(groups[0].values).toEqual([0, 1]);
+    expect(groups[1].values).toEqual([2, 3]);
+    expect(groups[1]).toMatchObject({ cluster: "P1", label: "non-carriers" });
+    expect(unavailable).toEqual([{ patient: "P2", reason: "matrix missing" }, { patient: "P3", reason: "expression not loaded" }]);
+  });
+
+  it("clade helpers", () => {
+    expect(shortClade("MGH303_n209")).toBe("n209");
+    expect(cladeCompareSpecs("MGH303_n209")).toEqual({ a: "clade:MGH303_n209", b: "sister:clade:MGH303_n209" });
+    const rows = cladeTopRows({ patients: [{ patient: "A", n_a: 20, n_b: 30, adjust: "cycling", d_mt: 1.5, d_lib: -0.2 }], clade_info: [{ patient: "A", included: true, clade: "A_n1", burden_rel: 4, n_private_snv: 90, top_signature: "SBS8" }, { patient: "B", included: false, reason: "no SNV-based clade burden" }] });
+    expect(rows[0]).toMatchObject({ clade: "A_n1", n_a: 20, n_b: 30, adjust: "cycling", d_mt: 1.5, top_signature: "SBS8" });
+    expect(rows[1]).toMatchObject({ included: false, clade: null, n_a: null });
+    expect(cladeTopRows(null)).toEqual([]);
+    expect(leadFlag(["MT-CO1", "MT-CO2", "MT-ND1", "X"])).toBe("mito");
+    expect(leadFlag(["RPL3", "RPS4", "RPL5"])).toBe("ribo");
+    expect(leadFlag(["A", "B"])).toBe("");
+    expect(fmtDiff(0.123)).toBe("+0.12");
+    expect(fmtDiff(null)).toBe("–");
   });
 
   it("formatQ", () => {

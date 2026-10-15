@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import GeneInfoCard from "../rna/geneInfoCard";
 import { Alert, Button, Card, Col, Empty, Input, Row, Segmented, Skeleton, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import useCohortExport from "./useCohortExport";
+import CovariateDeViolins from "./covariateDeViolins";
+import CladeTopExplainer from "./cladeTopExplainer";
 import VolcanoPlot from "../rna/volcanoPlot";
 import ScErrorBoundary from "../errorBoundary";
 import HintLine from "../hintLine";
@@ -40,7 +42,7 @@ function EnrichmentList({ title, items }) {
  * test, the top genes with their per-patient fold changes, and gene-set / program enrichment. `onGene` opens a gene in the
  * cohort expression plot; `focusTest` preselects a test (from a Key findings card).
  */
-export default function CohortCovariateDePanel({ dataset, focusTest = null, onGene = null }) {
+export default function CohortCovariateDePanel({ dataset, focusTest = null, onGene = null, summaries = [], datasets = [] }) {
   const { status, data } = useCohortExport(dataset, "rna_covariate_de.json");
   const [family, setFamily] = useState("all");
   const [query, setQuery] = useState("");
@@ -107,6 +109,8 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
             <Text>{describeTest(selected, { shared })}</Text>
             {!selected.combinable && <Alert type="warning" showIcon style={{ marginTop: 6 }} message="One patient only, so this cannot be called a cross-patient finding." />}
             {loose.length > 0 && <Alert type="info" showIcon style={{ marginTop: 6 }} message={`Less adjustment in ${loose.map((p) => `${p} (${ADJUST_NAME[selected.patients.find((x) => x.patient === p)?.adjust] || "?"})`).join(", ")}: the groups sit on different plates, so plate and group cannot be separated there (library quality is still controlled where listed).`} />}
+            {selected.id === "clade:top" && <CladeTopExplainer test={selected} summaries={summaries} />}
+            {selected.sensitivity && <Alert type="warning" showIcon style={{ marginTop: 6 }} message="Sensitivity row: the first, unrestricted version of the highest-burden clade test (any patient, 5+ cells per side, burden 0 allowed). Kept for comparison with the hardened test; do not read it as a finding." />}
             {selected.self_gene && <Text type="secondary" style={{ display: "block", marginTop: 4 }}>{`${selected.self_gene.gene} itself: log2FC ${selected.self_gene.avg_log2FC.toFixed(2)}, q ${formatQ(selected.self_gene.q_val)} (dosage positive control).`}</Text>}
             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
               <Col xs={24} xl={12}>
@@ -121,6 +125,11 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, onGe
                 <Col xs={24}>
                   {/* same gene card as the patient RNA DE panel: description, cancer roles, links */}
                   <GeneInfoCard gene={selectedGene} row={selected.genes.find((g) => g.gene === selectedGene)} labels={{ A: selected.group_a, B: selected.group_b }} />
+                </Col>
+              )}
+              {selectedGene && (
+                <Col xs={24}>
+                  <CovariateDeViolins dataset={dataset} test={selected} gene={selectedGene} summaries={summaries} datasets={datasets} />
                 </Col>
               )}
             </Row>
