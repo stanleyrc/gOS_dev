@@ -7,6 +7,9 @@ import HelpDrawer from "../../components/singleCell/helpDrawer";
 import CellIgvPanel from "../../components/singleCell/cellIgvPanel";
 import UmapPanel from "../../components/singleCell/umapPanel";
 import SpatialPanel from "../../components/singleCell/spatial/spatialPanel";
+import SpatialBeside, { SpatialToolbar } from "../../components/singleCell/spatial/spatialBeside";
+import useSpatial from "../../components/singleCell/spatial/useSpatial";
+import { SpatialLayoutProvider, SpatialSection, useSpatialLayoutState } from "../../components/singleCell/spatial/spatialLayoutContext";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
@@ -53,6 +56,10 @@ export default function SingleCellTab() {
   const { loading, loadingPercentage, error, missing, cells, layout, plotInsets, rna } = useSelector(
     (state) => state.SingleCell
   );
+  const dataset = useSelector((state) => state.Settings.dataset);
+  const patient = useSelector((state) => state.SingleCell.patient);
+  const spatialData = useSpatial(dataset, patient?.caseReportId);
+  const spatialLayout = useSpatialLayoutState(spatialData.status === "ok" && Boolean(spatialData.data?.points?.length));
   const chromoBins = useSelector((state) => state.Settings.chromoBins);
   const genes = useSelector((state) => state.Genes);
   const [yScaleMode, setYScaleMode] = useState(() => readViewLink().yScale || "common"); // ?yscale=individual
@@ -105,6 +112,7 @@ export default function SingleCellTab() {
   const toggle = (key) => (checked) => dispatch(singleCellActions.updateLayout({ [key]: checked }));
 
   return (
+    <SpatialLayoutProvider value={spatialLayout}>
     <Wrapper style={{ "--sc-sticky-top": `${headerHeight + (pinned ? navHeight : 0)}px` }}>
       <PendingEventOpener />
       <ScEventModal />
@@ -130,9 +138,10 @@ export default function SingleCellTab() {
               <Switch size="small" checked={Boolean(layout.showTreeBars)} onChange={toggle("showTreeBars")} />
               <Text>{t("components.single-cell.toggles.tree-bars")}</Text>
             </Space>
+            <SpatialToolbar />
           </Space>
         </Col>
-        <Col span={24}>
+        <SpatialSection k="nav" col strip={false}>
           {/* Same navigation as the Genome View (chromosome brush strip for one or
               more side-by-side regions, location box, gene search), padded so
               its genome plots line up with the heatmap's genomic columns. While
@@ -169,34 +178,40 @@ export default function SingleCellTab() {
               onReset={() => dispatch(singleCellActions.updateLayout({ navHeight: 240 }))}
             />
           </SingleCellWrapper>
-        </Col>
+        </SpatialSection>
         <Col span={24}>
-          <CellHeatmapPanel />
+          {spatialLayout.active && spatialLayout.mode === "beside" ? (
+            <SpatialBeside heatmap={<CellHeatmapPanel />} map={<SpatialPanel bare />} />
+          ) : (
+            <CellHeatmapPanel />
+          )}
         </Col>
-        <Col span={24}>
+        <SpatialSection k="igv" col>
           <CellIgvPanel />
-        </Col>
+        </SpatialSection>
         {layout.showUmap && rna.status === "ok" && (
-          <Col span={24}>
+          <SpatialSection k="umap" col>
             <UmapPanel />
-          </Col>
+          </SpatialSection>
         )}
-        {/* Slide-tag patients: tissue positions (data/<patient>/spatial.json); renders nothing otherwise */}
-        <SpatialPanel />
+        {/* Slide-tag patients: tissue positions (data/<patient>/spatial.json); renders nothing otherwise.
+            Beside the heatmap (above) or, in the "below" layout, a card of its own. */}
+        {!(spatialLayout.active && spatialLayout.mode === "beside") && <SpatialPanel />}
         {layout.showCellTable && (
           <Col span={24}>
             <CellSelectionPanel />
           </Col>
         )}
         {layout.showTreeBars && (
-          <Col span={24}>
+          <SpatialSection k="treebars" col>
             <PhyloBarsCard defaultTracks={["snv_count"]} />
-          </Col>
+          </SpatialSection>
         )}
-        <Col span={24}>
+        <SpatialSection k="tracks" col>
           <CellTracksPanel yScaleMode={yScaleMode} />
-        </Col>
+        </SpatialSection>
       </Row>
     </Wrapper>
+    </SpatialLayoutProvider>
   );
 }
