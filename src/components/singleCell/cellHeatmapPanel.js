@@ -34,6 +34,9 @@ import singleCellActions from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
 import scaActions from "../../redux/scAnalysis/actions";
 import useTreeView from "./useTreeView";
+import HideLowQcControl from "./hideLowQcControl";
+import { useQcCells } from "./useCovQc";
+import { withQcColumn } from "../../helpers/singleCell/cellQc";
 import {
   MISSING_RGBA,
   binLabel,
@@ -129,7 +132,7 @@ export default function CellHeatmapPanel() {
   const canvasHolder = useRef(null);
 
   const {
-    cells,
+    cells: rawCells,
     cloneColors,
     tree,
     cn,
@@ -146,6 +149,7 @@ export default function CellHeatmapPanel() {
     selectedCellIds,
     layout,
   } = sc;
+  const cells = useQcCells(rawCells); // + live QC / QC reason annotation fields
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const cloneNames = useMemo(
     () => [...new Set(cells.map((c) => c.clone_id).filter((c) => c != null))].sort(),
@@ -224,7 +228,7 @@ export default function CellHeatmapPanel() {
       return values.size >= 2 && values.size <= 24 && [...values].every((v) => typeof v === "string");
     });
   }, [cells]);
-  const annotationFields = (layout.annotationFields || []).filter((f) => annotationOptions.includes(f));
+  const annotationFields = withQcColumn(layout.annotationFields, annotationOptions);
   const annotationLevels = useMemo(
     () => Object.fromEntries(annotationFields.map((f) => [f, annotationColors(cells.map((c) => c[f]).filter((v) => v != null && v !== ""), themePalette(layout.theme))])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1006,6 +1010,7 @@ export default function CellHeatmapPanel() {
               filterOption={(input, option) => option.value.toUpperCase().startsWith(input.toUpperCase())}
             />
           </Space>
+          <HideLowQcControl />
           {cloneNames.length > 1 && (
             <Space size={4}>
               <Text type="secondary">{t("components.single-cell.toolbar.hide")}</Text>

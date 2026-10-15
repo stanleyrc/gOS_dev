@@ -1,3 +1,5 @@
+import { covQcFailedIds } from "./cellQc";
+
 // Precomputed per-patient outputs (srctools inst/gos_single_cell/precompute):
 // data/<patient>/precompute/{manifest,qc,sphase,telomeres,region_calls}.json,
 // data/<patient>/slices/regions.json (+ RG-tagged slice BAMs) and the
@@ -315,8 +317,10 @@ export const QC_EXCLUDE_RULES = [
 ];
 
 /** Set of cell ids excluded by the rules and the manual list. */
-export function excludedCellIds(cells = [], rules = [], manual = []) {
+export function excludedCellIds(cells = [], rules = [], manual = [], covQc = null) {
   const out = new Set((manual || []).map(String));
+  // "Hide low-QC cells": coverage QC thresholds (helpers/singleCell/cellQc.js); covQc = { on, thresholds }
+  if (covQc?.on) covQcFailedIds(cells, covQc.thresholds).forEach((id) => out.add(id));
   if (!rules?.length) return out;
   const want = new Set(rules);
   cells.forEach((c) => {
