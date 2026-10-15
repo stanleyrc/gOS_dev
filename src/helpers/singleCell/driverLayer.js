@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass, isDamagingMissense, passesTier } from "./cohortStats";
+import { eventClass, isDamagingMissense, isRescued, passesTier } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { driverGenes, roleOf } from "./driverSummary";
 import { GBM_GENES } from "./geneInfo";
@@ -56,7 +56,7 @@ export function entryFits(entries, layout) {
 /** True when the Clade F1 filter removes this entry (entries without a score are never removed). */
 export function failsF1(d, f, fits) {
   const min = Number(f?.minF1) || 0;
-  if (!min || !fits) return false;
+  if (!min || !fits || d.rescued) return false; // rescued hotspots: sparse coverage, no meaningful clade fit
   const score = fits.get ? fits.get(d.key) : undefined;
   return Number.isFinite(score) && score < min;
 }
@@ -89,6 +89,7 @@ export function snvSiteIndex(snv) {
 /** Plain-language class label. */
 export function classLabel(entry) {
   const v = `${entry.event?.vartype || ""}`;
+  if (entry.cls === "snv" && entry.rescued) return "Hotspot rescued from site evidence (not in SNV calls)";
   if (entry.cls === "complex") return /^dm$/i.test(v) ? DM_HELP : /^cpxdm$/i.test(v) ? "complex DM: double minute (ecDNA) with complex structure (gGnome event classifier)" : `${v || "Complex event"} (gGnome event classifier)`;
   return { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "SV fusion" }[entry.cls] || entry.cls;
 }
@@ -98,6 +99,8 @@ export function entryLabel(entry) {
   const e = entry.event;
   if (entry.cls === "snv") {
     const prot = `${e.Variant || ""}`;
+    // rescued hotspots: "TERT C228T (rescued)" (the variant text carries a long description after the name)
+    if (isRescued(e)) return `${e.gene || "?"} ${prot.split(" ")[0]} (rescued)`;
     return `${e.gene || "?"}${prot && prot !== "None" ? ` ${prot}` : ""}`;
   }
   if (entry.cls === "amp") return `${e.gene || "?"} amp`;
@@ -130,13 +133,17 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
     const genes = driverGenes(e);
     const tier = Number(e.Tier);
     const site = cls === "snv" ? posOfSnv(e) : null;
-    const col = site && siteIndex ? siteIndex.get(site) ?? null : null;
+    const rescued = cls === "snv" && isRescued(e);
+    // rescued hotspots are not snv_matrix columns: their per-cell states come from the event itself (rescueInfo)
+    const col = !rescued && site && siteIndex ? siteIndex.get(site) ?? null : null;
     const variant = col != null ? snv.variants[col] : null;
-    const verdict = site && verdicts ? verdicts.get(site) || null : null;
+    const rescue = rescued ? rescueInfo(e, tumor) : null;
+    const verdict = rescued ? rescue.verdict : site && verdicts ? verdicts.get(site) || null : null;
     const upstreamOnly = e.upstream_only === true || `${e.upstream_only}` === "true";
-    const fraction = carriers.length / total;
+    // rescued: carriers / covered tumour cells (a lower bound: allele dropout), clonality is not assessed
+    const fraction = rescued ? rescue.fraction : carriers.length / total;
     const rnaCells = cls === "fusion" && rnaFusionCells ? rnaFusionCells(e) : null;
-    const hotspot = cls === "snv" && Boolean((site && hotspots && hotspots.has(site)) || variant?.driver);
+    const hotspot = cls === "snv" && Boolean(rescued || (site && hotspots && hotspots.has(site)) || variant?.driver);
     const entry = {
       key,
       cls,
@@ -146,7 +153,7 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
       carriers,
       n: carriers.length,
       fraction,
-      subclonal: fraction <= CLONAL_FRACTION,
+      subclonal: rescued ? false : fraction <= CLONAL_FRACTION,
       inOncoKB: Boolean(roleOf(e.role)) || (Number.isFinite(tier) && tier <= 2) || Boolean(variant?.driver),
       inGbm: genes.some((g) => GBM_GENES[g]),
       inCgc: cgc ? genes.some((g) => cgc.has(g)) : null,
@@ -156,12 +163,62 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
       snvColumn: col,
       siteId: site,
       rnaCells: rnaCells && rnaCells.size ? rnaCells : null,
+      rescued,
+      rescue,
     };
     entry.label = entryLabel(entry);
     entry.qc = driverQc(entry);
     byKey.set(key, entry);
   });
   return [...byKey.values()].sort(compareEntries);
+}
+
+/**
+ * Evidence of a rescued hotspot (filtered.events row written by gos_sc_hotspot_rescue): carriers (>= 1 alt read), covered tumour
+ * cells without an alt read (refCells; allele dropout is common, so "no alt read", not wild type), coverage of the tumour cells,
+ * pooled alt / ref reads per strand and the site-evidence verdict. Cells in neither set have no coverage.
+ */
+export function rescueInfo(e, tumor = new Set()) {
+  const ev = e.hotspot_evidence || {};
+  const t = ev.tumor || {};
+  const inTumor = (id) => !tumor.size || tumor.has(id);
+  const refCells = new Set(splitIds(e.covered_ref_cell_ids).filter(inTumor));
+  const carriers = splitIds(e.cell_ids).filter(inTumor);
+  const covered = Number(e.covered_tumour_cells) || carriers.length + refCells.size;
+  const nTumour = Number(e.tumour_cells) || tumor.size || 0;
+  const frac = Number(e.cell_fraction);
+  return {
+    refCells,
+    covered,
+    nTumour,
+    coverage: nTumour ? covered / nTumour : null,
+    lowCoverage: e.low_coverage === true || `${e.low_coverage}` === "true",
+    fraction: Number.isFinite(frac) ? frac : covered ? carriers.length / covered : 0,
+    reads: { altF: t.alt_f ?? null, altR: t.alt_r ?? null, refF: t.ref_f ?? null, refR: t.ref_r ?? null, normalAlt: ((ev.normal?.alt_f ?? 0) + (ev.normal?.alt_r ?? 0)), normalRef: ((ev.normal?.ref_f ?? 0) + (ev.normal?.ref_r ?? 0)) },
+    verdict: ev.verdict?.level || null,
+    verdictLabel: ev.verdict?.label || null,
+    verdictSummary: ev.verdict?.summary || null,
+    reasons: ev.verdict?.reasons || [],
+  };
+}
+
+/** One-line description of the evidence behind a rescued hotspot (tooltips, drawer). */
+export function rescueText(entry) {
+  const r = entry?.rescue;
+  if (!r) return "";
+  const { altF, altR, refF, refR } = r.reads;
+  const alt = (altF ?? 0) + (altR ?? 0);
+  const ref = (refF ?? 0) + (refR ?? 0);
+  return `Rescued from site evidence (not in the SNV calls): ${alt} alt / ${ref} ref reads (alt ${altF ?? 0} fwd / ${altR ?? 0} rev); ${entry.n} carrier cells (≥ 1 alt read) of ${r.covered} covered tumour cells${
+    r.nTumour ? `; coverage ${r.covered} of ${r.nTumour} tumour cells (${Math.round(100 * (r.coverage || 0))}%)${r.lowCoverage ? ", low" : ""}` : ""
+  }; normal cells ${r.reads.normalAlt} alt / ${r.reads.normalAlt + r.reads.normalRef} reads; verdict ${r.verdictLabel || r.verdict || "n/a"}${r.reasons.length ? ` (${r.reasons.join("; ")})` : ""}`;
+}
+
+/** Hover label of an SNV cell state; rescued hotspots separate "no alt read" (covered) from "no coverage". */
+export function snvStateLabel(entry, v) {
+  if (v === 2) return "mutant";
+  if (entry?.rescued) return v === 1 ? "no alt read (covered; may be allele dropout)" : "no coverage";
+  return v === 1 ? "wild type" : "no coverage";
 }
 
 /** QC of a driver call: enough cells, not an "upstream of GENE" fusion, site evidence not artefact / germline. */
@@ -344,7 +401,8 @@ export const STATE = { NONE: 0, WT: 1, MUT: 2 };
 
 /**
  * Per-cell state of one entry, aligned to `order`.
- *   snv: 0 no coverage, 1 WT, 2 mutant (carrier fallback when the site is not in snv_matrix)
+ *   snv: 0 no coverage, 1 WT, 2 mutant (carrier fallback when the site is not in snv_matrix;
+ *        rescued hotspots: 2 carrier, 1 covered without an alt read, 0 no coverage)
  *   amp / homdel: total copy number at the event (NaN = no CN)
  *   fusion: bit 1 = DNA (carrier), bit 2 = RNA call
  *   complex: 1 carrier
@@ -359,7 +417,8 @@ export function entryStates(entry, ctx) {
     const c = entry.snvColumn;
     order.forEach((id, i) => {
       const p = ctx.snvRows ? ctx.snvRows[i] : -1;
-      if (snv && c != null && p >= 0) {
+      if (entry.rescued) out[i] = carriers.has(id) ? STATE.MUT : entry.rescue?.refCells.has(id) ? STATE.WT : STATE.NONE;
+      else if (snv && c != null && p >= 0) {
         const s = snv.status[p][c];
         out[i] = s === 1 ? STATE.MUT : s === 0 ? STATE.WT : STATE.NONE;
       } else out[i] = carriers.has(id) ? STATE.MUT : STATE.NONE;

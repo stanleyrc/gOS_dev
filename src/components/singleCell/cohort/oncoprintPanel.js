@@ -125,6 +125,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                           <rect key={c} x={x + 2} y={y + 2 + k * stripeH} width={cellW - 4} height={stripeH} fill={CLASS_COLORS[c]} fillOpacity={alpha(e.fraction ?? 1)} rx={classes.length === 1 ? 2 : 0} />
                         );
                       })}
+                      {cell && cell.all.some((a) => a.rescued) && <polygon points={`${x + cellW - 2},${y + 2} ${x + cellW - 11},${y + 2} ${x + cellW - 2},${y + 11}`} fill="#fff" stroke="#262626" strokeWidth={0.8} pointerEvents="none" />}
                       {cell && cell.fraction != null && (
                         <text x={x + cellW / 2} y={y + CELL_H / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill={cell.fraction > 0.5 ? "#fff" : "#262626"} pointerEvents="none">
                           {d3.format(".0%")(cell.fraction)}
@@ -133,7 +134,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                       {cell && (
                         <title>
                           {cell.all
-                            .map((e) => `${e.event.type || e.class}${e.event.Variant ? ` ${e.event.Variant}` : ""}: ${e.cells || ""}${e.fraction != null ? ` (${d3.format(".0%")(e.fraction)})` : ""}`)
+                            .map((e) => `${e.event.type || e.class}${e.event.Variant ? ` ${e.event.Variant}` : ""}: ${e.cells || ""}${e.fraction != null ? ` (${d3.format(".0%")(e.fraction)})` : ""}${e.rescued ? ` [rescued from site evidence: carriers / covered tumour cells${e.event.low_coverage ? ", low coverage" : ""}; ${e.event.covered_tumour_cells}/${e.event.tumour_cells} tumour cells covered]` : ""}`)
                             .join("\n")}
                         </title>
                       )}

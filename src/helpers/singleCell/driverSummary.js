@@ -56,14 +56,15 @@ export function alterationKind(e = {}) {
   if (/fusion/.test(vt) || /fusion/.test(ty) || `${e.fusion_genes || ""}`.includes("::")) return "fusion";
   if (/trunc|nonsense|frameshift/.test(ty)) return "trunc";
   if (/splice/.test(ty)) return "splice";
-  if (/missense|inframe/.test(ty) || vt === "snv") return "missense";
+  if (/promoter/.test(ty)) return "promoter";
+  if (/missense|inframe/.test(ty) || vt === "snv" || vt === "hotspot") return "missense";
   return "other";
 }
 
 /** Point mutations: per-cell calls need reads at the site, so carriers are under-called. */
-export const isSnvKind = (kind) => ["trunc", "splice", "missense"].includes(kind);
+export const isSnvKind = (kind) => ["trunc", "splice", "missense", "promoter"].includes(kind);
 
-export const KIND_LABEL = { amp: "Amplification", homdel: "Deletion (both copies)", fusion: "Fusion", trunc: "Truncating mutation", splice: "Splice-site mutation", missense: "Missense mutation", other: "Alteration" };
+export const KIND_LABEL = { amp: "Amplification", homdel: "Deletion (both copies)", fusion: "Fusion", trunc: "Truncating mutation", splice: "Splice-site mutation", missense: "Missense mutation", promoter: "Promoter hotspot mutation", other: "Alteration" };
 
 /** Genes of an event (both partners of a fusion). */
 export const driverGenes = (e = {}) => (`${e.fusion_genes || ""}`.includes("::") ? `${e.fusion_genes}`.split("::") : [`${e.gene || ""}`]).filter(Boolean);
