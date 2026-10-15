@@ -4,6 +4,7 @@ import { Alert, Col, Row, Segmented, Space, Switch, Table, Tag, Typography } fro
 import igv from "../../../../node_modules/igv/dist/igv.esm.min.js";
 import { casePath } from "../../../redux/singleCell/loaders";
 import { readPasses } from "../../../helpers/singleCell/siteEvidence";
+import { altFirstSort } from "../../../helpers/singleCell/igvTracks";
 import ColorTag from "../colorTag";
 
 const { Text } = Typography;
@@ -84,7 +85,7 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
               al.mq >= minMq,
             colorBy: colorBy === "strand" ? "strand" : undefined,
             showSoftClips: false,
-            sort: { chr: chr(site.chrom), position: site.pos, option: "BASE", direction: "DESC" },
+            sort: altFirstSort(site.chrom, site.pos),
           };
         });
         browserRef.current = await igv.createBrowser(containerRef.current, {
