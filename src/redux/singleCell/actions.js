@@ -71,6 +71,8 @@ export const SC_DEFAULT_LAYOUT = {
   spMap: "beside", // slide-tag tissue map: beside the heatmap or below (helpers/singleCell/spatialLayout.js)
   spWidth: 480, // px of the tissue map column when beside
   spHidden: null, // collapsed spatial-tab sections; null = compact when beside, none when below
+  driverColPx: null, // Drivers layer: px per driver column (null = auto fit); URL drvw=
+  cnDrivers: false, // show the Drivers layer as a block beside the copy-number heatmap; URL cndrv=1
   driverBranches: false, // mark the branch where each shown driver arises
 };
 

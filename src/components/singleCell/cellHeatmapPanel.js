@@ -73,6 +73,8 @@ import { PLOIDY_TRACK, barPixels, modalPloidy, ploidyAxisMax, ploidyBarFraction,
 import useDriverLayer from "./drivers/useDriverLayer";
 import DriverControls from "./drivers/driverControls";
 import DriverColumnHeader from "./drivers/driverColumnHeader";
+import DriverWidthControl from "./drivers/driverWidthControl";
+import { DRIVER_COL_PX_MIN, clampColPx, DRIVER_AUTO_COL, DRIVER_AUTO_COL_BESIDE, DRIVER_LAYOUT_PARAMS, driverLayoutToSearch, driverView, panRange, zoomRange } from "../../helpers/singleCell/driverColumns";
 import DriverLayerDrawer from "./drivers/driverLayerDrawer";
 import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, serializeSelection } from "../../helpers/singleCell/driverLayer";
@@ -93,7 +95,7 @@ const MIN_GENOME_RIGHT = GENOME_MARGIN + 24;
 const HANDLE_WIDTH = 10;
 const TREE_MIN = 80;
 const TREE_MAX = 900;
-const DRIVER_COL_MAX = 28; // px per driver column at most (few drivers stay compact)
+const STRIP_HANDLE = 6; // drag handle between the annotation strips and the heatmap (the row adds a GAP on each side)
 const AXIS_HEIGHT = 18;
 const TICK_HEIGHT = 16;
 const SELECTED_RGBA = packRGBA(hexToRgb("#262626"));
@@ -173,6 +175,14 @@ export default function CellHeatmapPanel() {
   const showSide = sidePanel && snvReady && heatmapType !== "snv" && heatmapType !== "drivers";
   const driverLayer = useDriverLayer();
   const driverEntries = driverLayer.columns; // display columns (redundant CN events collapsed); .entry is the representative driver
+  // zoom range of the driver columns ([start, end) of driverEntries; null = all) and the block beside the CN heatmap
+  const [driverRange, setDriverRange] = useState(null);
+  useEffect(() => setDriverRange(null), [driverLayer.shown]);
+  const showCnDrivers = heatmapType === "cn" && Boolean(layout.cnDrivers) && driverEntries.length > 0;
+  const driverBesideMax = Math.round(Math.max(120, Math.min(420, containerWidth * 0.28)));
+  const driverBeside = showCnDrivers
+    ? driverView({ n: driverEntries.length, range: driverRange, colPx: layout.driverColPx, maxWidth: driverBesideMax, autoCol: DRIVER_AUTO_COL_BESIDE })
+    : null;
   // Side panel widths: dragged (live), saved in the layout, or automatic.
   const [dragSide, setDragSide] = useState(null);
   const [dragGene, setDragGene] = useState(null);
@@ -254,13 +264,21 @@ export default function CellHeatmapPanel() {
   const annotationWidth = ANNOTATION_COLUMN * (nAnnotation + (showPloidy ? 3 : 0) + (showTmb ? 3 : 0));
   // Genomic columns start at genomeLeft and leave rightSpace, wide enough for
   // the 50 px-margin genome plots (and the nested cell tracks) to be padded to match.
-  const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + GAP));
-  const genomeLeft = leftPad + treeBlock + annotationWidth + GAP;
+  // the heatmap canvas starts after the annotation strips, a gap, the strip drag handle and another gap
+  const leftPad = Math.max(0, MIN_GENOME_LEFT - (treeBlock + annotationWidth + STRIP_HANDLE + 2 * GAP));
+  const genomeLeft = leftPad + treeBlock + annotationWidth + STRIP_HANDLE + 2 * GAP;
   const rightSpace = Math.max(
     MIN_GENOME_RIGHT,
-    (showSide ? sideWidth + GAP : 0) + (showGenes ? geneWidth + GAP : 0)
+    (showSide ? sideWidth + GAP : 0) + (showGenes ? geneWidth + GAP : 0) + (driverBeside ? driverBeside.width + GAP : 0)
   );
   const heatWidth = Math.max(200, containerWidth - genomeLeft - rightSpace);
+  // visible driver columns and their block width (standalone: the heatmap width; beside CN: its own block)
+  const driverViewNow = heatmapType === "drivers" ? driverView({ n: driverEntries.length, range: driverRange, colPx: layout.driverColPx, maxWidth: heatWidth, autoCol: DRIVER_AUTO_COL }) : driverBeside;
+  const driverVisible = useMemo(
+    () => (driverViewNow ? driverEntries.slice(driverViewNow.start, driverViewNow.end) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [driverEntries, driverViewNow?.start, driverViewNow?.end]
+  );
   const [dragHeight, setDragHeight] = useState(null);
   const baseHeight = layout.heatmapHeight || heatmapHeight(nRows, layout.rowHeight);
   const height = dragHeight ?? baseHeight;
@@ -497,21 +515,25 @@ export default function CellHeatmapPanel() {
     try {
       const url = new URL(window.location.href);
       SELECTION_PARAMS.forEach((k) => url.searchParams.delete(k));
-      if (heatmapType === "drivers") {
-        url.searchParams.set("heatmap", "drivers");
+      DRIVER_LAYOUT_PARAMS.forEach((k) => url.searchParams.delete(k));
+      if (heatmapType === "drivers" || showCnDrivers) {
+        if (heatmapType === "drivers") url.searchParams.set("heatmap", "drivers");
+        else if (url.searchParams.get("heatmap") === "drivers") url.searchParams.delete("heatmap");
         Object.entries(serializeSelection(driverLayer.selection)).forEach(([k, v]) => url.searchParams.set(k, v));
+        // drvw=<px per driver column> (absent = auto fit); cndrv=1 = drivers beside the copy-number heatmap
+        Object.entries(driverLayoutToSearch({ heatmapType, driverColPx: layout.driverColPx, cnDrivers: showCnDrivers })).forEach(([k, v]) => url.searchParams.set(k, v));
       } else if (url.searchParams.get("heatmap") === "drivers") url.searchParams.delete("heatmap");
       if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
     } catch (error) {
       // no window / history: the selection still lives in redux
     }
-  }, [heatmapType, driverLayer.selection, sc.patient]);
+  }, [heatmapType, showCnDrivers, layout.driverColPx, driverLayer.selection, sc.patient]);
   // Drivers layer: label of the driver(s) arising on each branch
   const driverMarks = useMemo(() => {
-    if (heatmapType !== "drivers" || !layout.driverBranches || !treeLayout) return null;
+    if (!(heatmapType === "drivers" || showCnDrivers) || !layout.driverBranches || !treeLayout) return null;
     const marks = driverBranchMarks(driverLayer.shown, treeLayout);
     return new Map([...marks].map(([k, v]) => [k, branchMarkText(v)]));
-  }, [heatmapType, layout.driverBranches, treeLayout, driverLayer.shown]);
+  }, [heatmapType, showCnDrivers, layout.driverBranches, treeLayout, driverLayer.shown]);
   const patientClades = usePatientClades();
   const canShowClades = patientClades.status === "ok" && hasTree && patientClades.data.clades.length > 0;
   const cladeLabels = useMemo(
@@ -551,6 +573,98 @@ export default function CellHeatmapPanel() {
     setJunctionRange(s - (dx * (eEnd - s)) / heatWidth, eEnd - s);
   };
   wheelZoom.current = heatmapType === "cn" ? handleWheelZoom : heatmapType === "junctions" ? junctionWheel : null;
+
+  /* ---- driver columns: wheel / pinch zoom, drag to pan, reset (standalone layer and the block beside CN) ---- */
+  const driverZoomAt = (frac, factor) => {
+    if (!driverViewNow?.count) return;
+    const next = zoomRange([driverViewNow.start, driverViewNow.end], driverEntries.length, frac, factor);
+    setDriverRange(next);
+    if (layout.driverColPx) dispatch(singleCellActions.updateLayout({ driverColPx: null })); // zooming fits the view to the width
+  };
+  const driverWheel = (e) => driverZoomAt(e.x / Math.max(1, driverViewNow?.width || 1), wheelZoomFactor(e));
+  const driverDrag = ({ dx }) => {
+    if (!driverViewNow?.count) return;
+    setDriverRange(panRange([driverViewNow.start, driverViewNow.end], driverEntries.length, dx, driverViewNow.width));
+  };
+  // drag the left edge of the block beside CN: moving left widens it (a fixed px per column)
+  const startDriverWidthDrag = (event) => {
+    event.preventDefault();
+    if (!driverBeside?.count) return;
+    const x0 = event.clientX;
+    const w0 = driverBeside.width;
+    const n = driverBeside.count;
+    const move = (e) => dispatch(singleCellActions.updateLayout({ driverColPx: clampColPx((w0 - (e.clientX - x0)) / n) || DRIVER_COL_PX_MIN }));
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  const driverWheelRef = useRef(null);
+  driverWheelRef.current = driverWheel;
+  const detachDriverWheel = useRef(null);
+  const driverWheelBox = useCallback((el) => {
+    if (detachDriverWheel.current) detachDriverWheel.current();
+    detachDriverWheel.current = null;
+    if (!el) return;
+    const listener = (event) => {
+      if (wheelNeedsModifierRef.current && !(event.metaKey || event.ctrlKey || event.altKey)) return;
+      event.preventDefault();
+      const rect = el.getBoundingClientRect();
+      driverWheelRef.current({ x: event.clientX - rect.left, deltaY: event.deltaY, deltaMode: event.deltaMode, pinch: event.ctrlKey });
+    };
+    el.addEventListener("wheel", listener, { passive: false });
+    detachDriverWheel.current = () => el.removeEventListener("wheel", listener);
+  }, []);
+
+  /* ---- Drivers layer matrix (standalone, or beside the copy-number heatmap): the visible columns only ---- */
+  const driverCnColor = useMemo(() => cnColorer(palette, "total"), [palette]);
+  const driverMatrix = useMemo(() => {
+    if (!(heatmapType === "drivers" || showCnDrivers) || !driverVisible.length || !driverViewNow) return null;
+    const colors = {};
+    Object.entries(driverColors()).forEach(([k, hex]) => (colors[k] = packRGBA(hexToRgb(hex))));
+    const states = driverVisible.map((c) => c.states);
+    const matrixWidth = driverViewNow.width;
+    const colorAt = (r, c) => {
+      const d = driverVisible[c]?.entry;
+      const v = states[c]?.[r];
+      if (!d) return stripBlank;
+      if (d.cls === "snv") return v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
+      if (d.cls === "amp" || d.cls === "homdel") return driverCnColor(v);
+      if (d.cls === "fusion") return v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : stripBlank;
+      return v ? colors.complex : stripBlank;
+    };
+    return {
+      cols: discreteColumnLookup(driverVisible.length, Math.floor(matrixWidth * pixelRatio)),
+      axis: { spans: [], separators: [] },
+      width: matrixWidth,
+      colorAt,
+      describe: (r, c) => {
+        const col = driverVisible[c];
+        const d = col?.entry;
+        if (!d || c < 0) return null;
+        const v = states[c][r];
+        const state =
+          d.cls === "snv"
+            ? v === 2 ? "mutant" : v === 1 ? "wild type" : "no coverage"
+            : d.cls === "amp" || d.cls === "homdel"
+            ? Number.isFinite(v) ? `copy number ${v}` : t("components.single-cell.no-file")
+            : d.cls === "fusion"
+            ? v === 3 ? "DNA + RNA" : v === 2 ? "RNA only" : v === 1 ? "DNA" : "not seen"
+            : v ? "carrier" : "no";
+        return [
+          ["Driver", col.label],
+          ...(col.members.length > 1 ? [["Same CN pattern", col.genes.join(", ")]] : []),
+          ["Class", classLabel(d)],
+          ...(d.tier != null ? [["Tier", d.tier]] : []),
+          ["Carriers", `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
+          ["This cell", state],
+        ];
+      },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heatmapType, showCnDrivers, driverVisible, driverViewNow?.width, pixelRatio, t, snv, snvRows, cn, stripBlank, driverCnColor]);
 
   /* ---- active matrix (copy number or junctions): column lookup, colour, axis ---- */
   const active = useMemo(() => {
@@ -615,52 +729,10 @@ export default function CellHeatmapPanel() {
         },
       };
     }
-    if (heatmapType === "drivers" && driverEntries.length) {
-      const colors = {};
-      Object.entries(driverColors()).forEach(([k, hex]) => (colors[k] = packRGBA(hexToRgb(hex))));
-      const states = driverEntries.map((c) => c.states);
-      const matrixWidth = Math.min(heatWidth, driverEntries.length * DRIVER_COL_MAX);
-      const colorAt = (r, c) => {
-        const d = driverEntries[c]?.entry;
-        const v = states[c]?.[r];
-        if (!d) return stripBlank;
-        if (d.cls === "snv") return v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
-        if (d.cls === "amp" || d.cls === "homdel") return cnColor(v);
-        if (d.cls === "fusion") return v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : stripBlank;
-        return v ? colors.complex : stripBlank;
-      };
-      return {
-        cols: discreteColumnLookup(driverEntries.length, Math.floor(matrixWidth * pixelRatio)),
-        axis: { spans: [], separators: [] },
-        width: matrixWidth,
-        colorAt,
-        describe: (r, c) => {
-          const col = driverEntries[c];
-          const d = col?.entry;
-          if (!d || c < 0) return null;
-          const v = states[c][r];
-          const state =
-            d.cls === "snv"
-              ? v === 2 ? "mutant" : v === 1 ? "wild type" : "no coverage"
-              : d.cls === "amp" || d.cls === "homdel"
-              ? Number.isFinite(v) ? `copy number ${v}` : t("components.single-cell.no-file")
-              : d.cls === "fusion"
-              ? v === 3 ? "DNA + RNA" : v === 2 ? "RNA only" : v === 1 ? "DNA" : "not seen"
-              : v ? "carrier" : "no";
-          return [
-            ["Driver", col.label],
-            ...(col.members.length > 1 ? [["Same CN pattern", col.genes.join(", ")]] : []),
-            ["Class", classLabel(d)],
-            ...(d.tier != null ? [["Tier", d.tier]] : []),
-            ["Carriers", `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
-            ["This cell", state],
-          ];
-        },
-      };
-    }
+    if (heatmapType === "drivers" && driverMatrix) return driverMatrix;
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverEntries, snv, snvRows, cn, stripBlank]);
+  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(() => {
     if (!showPloidy && !showTmb) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
@@ -1122,6 +1194,16 @@ export default function CellHeatmapPanel() {
               {t("components.single-cell.toolbar.genes-beside", { count: geneList.length })}
             </Checkbox>
           )}
+          {heatmapType === "cn" && driverLayer.entries.length > 0 && (
+            <Tooltip title="Show the Drivers layer as a block of driver columns to the right of the copy-number heatmap (same cells, same filters and picker)">
+              <Checkbox
+                checked={Boolean(layout.cnDrivers)}
+                onChange={(e) => dispatch(singleCellActions.updateLayout({ cnDrivers: e.target.checked }))}
+              >
+                Show drivers
+              </Checkbox>
+            </Tooltip>
+          )}
           {snvReady && heatmapType !== "snv" && heatmapType !== "drivers" && (
             <Checkbox
               checked={sidePanel}
@@ -1132,9 +1214,16 @@ export default function CellHeatmapPanel() {
           )}
             </Space>
           </div>
-          {heatmapType === "drivers" && (
+          {(heatmapType === "drivers" || showCnDrivers) && (
             <div className="sc-toolbar-row">
               <Text strong className="sc-toolbar-row-label">Drivers</Text>
+              <DriverWidthControl
+                view={driverViewNow}
+                colPx={layout.driverColPx}
+                onColPx={(v) => dispatch(singleCellActions.updateLayout({ driverColPx: v }))}
+                onZoom={(factor) => driverZoomAt(0.5, factor)}
+                onResetZoom={() => setDriverRange(null)}
+              />
               <DriverControls
                 driverLayer={driverLayer}
                 canBranches={hasTree}
@@ -1278,11 +1367,13 @@ export default function CellHeatmapPanel() {
                 ...(showTmb ? [t("components.single-cell.heatmap.strip-tmb"), "", ""] : []),
               ]}
             />
-            {heatmapType === "drivers" && active && (
-              <div style={{ marginLeft: GAP, width: active.width, flex: "none" }}>
+            {(heatmapType === "drivers" ? active : driverMatrix && showCnDrivers) && driverViewNow && (
+              // the canvas row: strips, GAP, drag handle, GAP, then the heatmap (beside CN: after the CN heatmap and a GAP)
+              <div style={{ marginLeft: STRIP_HANDLE + 2 * GAP + (showCnDrivers ? heatWidth + GAP : 0), width: driverViewNow.width, flex: "none" }}>
                 <DriverColumnHeader
-                  entries={driverEntries}
-                  width={active.width}
+                  entries={driverVisible}
+                  width={driverViewNow.width}
+                  pixelRatio={pixelRatio}
                   hoverKey={driverHover}
                   openKey={sc.driverDrawer}
                   onOpen={(key) => dispatch(singleCellActions.updateDriverDrawer(key))}
@@ -1373,7 +1464,7 @@ export default function CellHeatmapPanel() {
             ) : (
               <div style={{ width: heatWidth }}>
                 {active ? (
-                  <div ref={wheelBox} style={{ overflow: "hidden", width: heatWidth }}>
+                  <div ref={heatmapType === "drivers" ? driverWheelBox : wheelBox} style={{ overflow: "hidden", width: heatWidth }}>
                   <HeatmapCanvas
                     style={preview ? { transform: preview, transformOrigin: "0 0" } : undefined}
                     width={active.width ?? heatWidth}
@@ -1386,18 +1477,20 @@ export default function CellHeatmapPanel() {
                     onClick={(hit, event) => {
                       handleRowClick(hit, event);
                       // Drivers layer: a click on a cell also opens that driver's drawer
-                      if (heatmapType === "drivers" && hit.col >= 0 && driverEntries[hit.col]) dispatch(singleCellActions.updateDriverDrawer(driverEntries[hit.col].key));
+                      if (heatmapType === "drivers" && hit.col >= 0 && driverVisible[hit.col]) dispatch(singleCellActions.updateDriverDrawer(driverVisible[hit.col].key));
                     }}
-                    onDrag={heatmapType === "cn" ? handlePan : heatmapType === "junctions" ? junctionDrag : undefined}
+                    onDrag={heatmapType === "cn" ? handlePan : heatmapType === "junctions" ? junctionDrag : heatmapType === "drivers" ? driverDrag : undefined}
                     onDoubleClick={
                       heatmapType === "cn"
                         ? ({ x }) => handleWheelZoom({ x, deltaY: -500, deltaMode: 0 })
                         : heatmapType === "junctions"
                         ? ({ x }) => junctionWheel({ x, deltaY: -500, deltaMode: 0 })
+                        : heatmapType === "drivers"
+                        ? ({ x }) => driverWheel({ x, deltaY: -500, deltaMode: 0 })
                         : undefined
                     }
                     onHover={({ row, col }, event) => {
-                      if (heatmapType === "drivers") setDriverHover(driverEntries[col]?.key ?? null);
+                      if (heatmapType === "drivers") setDriverHover(driverVisible[col]?.key ?? null);
                       hoverCell(row, active.describe(row, col), event);
                     }}
                     onLeave={() => {
@@ -1446,6 +1539,40 @@ export default function CellHeatmapPanel() {
                       ))}
                   </div>
                 )}
+              </div>
+            )}
+            {driverBeside && driverMatrix && (
+              <div style={{ position: "relative", width: driverBeside.width, flex: "none" }}>
+                <div
+                  className="sc-width-handle"
+                  title="Drag to change the driver column width; double-click for auto fit"
+                  onMouseDown={startDriverWidthDrag}
+                  onDoubleClick={() => dispatch(singleCellActions.updateLayout({ driverColPx: null }))}
+                />
+                <div ref={driverWheelBox} style={{ overflow: "hidden", width: driverBeside.width }}>
+                  <HeatmapCanvas
+                    width={driverMatrix.width}
+                    height={height}
+                    nRows={nRows}
+                    cols={driverMatrix.cols}
+                    colorAt={driverMatrix.colorAt}
+                    pixelRatio={pixelRatio}
+                    onClick={(hit, event) => {
+                      handleRowClick(hit, event);
+                      if (hit.col >= 0 && driverVisible[hit.col]) dispatch(singleCellActions.updateDriverDrawer(driverVisible[hit.col].key));
+                    }}
+                    onDrag={driverDrag}
+                    onDoubleClick={({ x }) => driverWheel({ x, deltaY: -500, deltaMode: 0 })}
+                    onHover={({ row, col }, event) => {
+                      setDriverHover(driverVisible[col]?.key ?? null);
+                      hoverCell(row, driverMatrix.describe(row, col), event);
+                    }}
+                    onLeave={() => {
+                      setDriverHover(null);
+                      clearHover();
+                    }}
+                  />
+                </div>
               </div>
             )}
             {showSide && (
