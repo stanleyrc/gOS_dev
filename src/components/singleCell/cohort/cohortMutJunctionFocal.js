@@ -30,18 +30,20 @@ export default function CohortMutJunctionFocal({ data, onOpen = null }) {
   const [territory, setTerritory] = useState("focal");
   const [filter, setFilter] = useState("all");
   const [subset, setSubset] = useState("all");
+  const [cn, setCn] = useState(true);
   const block = focalBlock(data, territory);
   const filters = availableFilters(block);
   const f = filters.some((x) => x.value === filter) ? filter : "all";
-  const rows = useMemo(() => forestRows(block, f, subset), [block, f, subset]);
-  const series = useMemo(() => focalSeries(block, f, subset), [block, f, subset]);
-  const strata = useMemo(() => strataRows(block, f), [block, f]);
+  const rows = useMemo(() => forestRows(block, f, subset, cn), [block, f, subset, cn]);
+  const series = useMemo(() => focalSeries(block, f, subset, cn), [block, f, subset, cn]);
+  const strata = useMemo(() => strataRows(block, f, cn), [block, f, cn]);
   const carriers = useMemo(() => carrierRows(block, f), [block, f]);
   const controls = (
     <Space size={8} wrap>
       <Segmented size="small" value={territory} onChange={setTerritory} options={TERRITORIES} />
       <Select size="small" style={{ width: 140 }} value={f} onChange={setFilter} options={filters.length ? filters : [{ value: "all", label: "All tree sites" }]} />
       <Segmented size="small" value={subset} onChange={setSubset} options={FOCAL_SUBSETS} />
+      <Segmented size="small" value={cn ? "cn" : "raw"} onChange={(v) => setCn(v === "cn")} options={[{ value: "cn", label: "CN-adjusted" }, { value: "raw", label: "Raw" }]} />
     </Space>
   );
   if (!block) {
@@ -57,7 +59,7 @@ export default function CohortMutJunctionFocal({ data, onOpen = null }) {
       {controls}
       <Paragraph style={{ marginBottom: 0 }}>
         {`Pooled over ${block.patients?.length ?? 0} patients. `}
-        {focalHeadline(block, f, subset).replace("cis/trans rate ratio", "Mantel-Haenszel cis/trans rate ratio")}
+        {focalHeadline(block, f, subset, cn).replace("cis/trans rate ratio", "Mantel-Haenszel cis/trans rate ratio")}
       </Paragraph>
       <Text strong>Cis/trans rate ratio within 5 kb, per patient</Text>
       <MutJunctionForest rows={rows} onOpen={onOpen} />
