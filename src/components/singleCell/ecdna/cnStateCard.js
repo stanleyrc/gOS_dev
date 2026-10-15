@@ -133,7 +133,7 @@ export default function CnStateCard() {
           description={
             <span>
               {gene} ({SRC_LABEL[src]}): CV {s.cv?.toFixed(2)}, tree heritability rho {s.heritability.rho.toFixed(2)} (within-clone permutation p {s.heritability.p_within_clone < 0.001 ? "<0.001" : s.heritability.p_within_clone.toFixed(3)}).
-              {out && <> {out.label}: CN effect {fmtEffect(out.beta, out.q)}; residual-CN effect {fmtEffect(out.beta_resid, out.q_resid)} (per SD, controlling clone and cycling; n = {out.n} RNA-linked cells).</>}
+              {out && <> {out.label}: CN effect {fmtEffect(out.beta, out.q)}; residual-CN effect {fmtEffect(out.beta_resid, out.q_resid)} (outcome SD per SD of CN rank, controlling clone and cycling; n = {out.n} RNA-linked cells).</>}
               {s.expr && <> Expression of {gene} vs CN: rho {s.expr.rho.toFixed(2)}.</>} S-phase cells carry inflated CN; cycling is controlled.
             </span>
           }
@@ -144,7 +144,7 @@ export default function CnStateCard() {
           <CnScatter points={points} theme={theme} colorOf={colorOf} xLabel={`${gene} ${SRC_LABEL[src]}${residual ? ", residual vs clade mean" : ""}`} yLabel={out ? out.label : ""} />
           <Space size={10} wrap style={{ marginTop: 4 }}>
             {clones.map((c) => (
-              <span key={c}><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 5, background: colorOf(c), marginRight: 4 }} /><Text type="secondary">clone {c}</Text></span>
+              <span key={c}><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 5, background: colorOf(c), marginRight: 4 }} /><Text type="secondary">{`${c}`.startsWith("Clone") ? c : `clone ${c}`}</Text></span>
             ))}
           </Space>
         </>
