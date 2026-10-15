@@ -1,4 +1,4 @@
-import { allowedSites, restrictSets, siteCountNote, useSnvFilters } from "./signatureFilter";
+import { allowedSites, restrictSets, siteCountNote, snvFiltersOn } from "./signatureFilter";
 
 const snv = {
   variants: [
@@ -12,8 +12,8 @@ const snv = {
 
 describe("signatureFilter", () => {
   it("toggle defaults to on", () => {
-    expect(useSnvFilters({})).toBe(true);
-    expect(useSnvFilters({ sigUseSnvFilters: false })).toBe(false);
+    expect(snvFiltersOn({})).toBe(true);
+    expect(snvFiltersOn({ sigUseSnvFilters: false })).toBe(false);
   });
   it("is inactive without filters or when switched off", () => {
     expect(allowedSites(snv, {}).active).toBe(false);
