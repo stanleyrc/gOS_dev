@@ -4,6 +4,8 @@ export const MEASURES = [
   ["total", "Total"],
   ["subclonal", "Subclonal"],
   ["private", "Private (lower bound)"],
+  ["subclonal_pc", "Subclonal per copy"],
+  ["private_pc", "Private per copy"],
 ];
 export const ADJUSTMENTS = [
   ["raw", "None"],
@@ -86,4 +88,41 @@ export function covariateNames(doc) {
   const seen = [];
   for (const r of doc?.numeric || []) if (!seen.includes(r.covariate)) seen.push(r.covariate);
   return seen;
+}
+
+export const VERDICTS = {
+  corrected: "not significant after correction",
+  dna: "explained by DNA content",
+  overlap: "not robust to gene-set overlap",
+  lineage: "lineage-level association (clade)",
+  all: "survives all",
+};
+
+/**
+ * Verdict derived only from the numbers of a robustness row (srctools gos_sc_tmb_assoc.py `robustness`).
+ * Main readout = clade-level test (one point per leaf clade). Order: BH q of the clade-level test, per-copy TMB (clade level,
+ * same sign and p < 0.05), overlap-free module score (clade level), then the within-clade permutation only separates
+ * "survives all" (also holds within clades) from a lineage-level association; it is not a gate.
+ */
+export function robustnessVerdict(row, alpha = 0.05) {
+  const c = row?.clade;
+  if (!c || !Number.isFinite(c.q) || c.q >= alpha) return VERDICTS.corrected;
+  const pc = row.per_copy?.clade;
+  if (!pc || !(pc.p < alpha) || Math.sign(pc.r) !== Math.sign(c.r)) return VERDICTS.dna;
+  if (row.overlap_free_applicable) {
+    const of = row.overlap_free?.clade;
+    if (!of || !(of.p < alpha) || Math.sign(of.r) !== Math.sign(c.r)) return VERDICTS.overlap;
+  }
+  return row.permutation && row.permutation.p < alpha ? VERDICTS.all : VERDICTS.lineage;
+}
+
+/** Leaf-clade scatter points of one covariate: { patient, x, y } (one point per clade). */
+export function cladePoints(doc, covariate, measure, excludeNoisy = false) {
+  const row = (doc?.clade_level_covariates?.rows || []).find((r) => r.covariate === covariate && r.measure === measure);
+  const out = [];
+  for (const [patient, t] of Object.entries(row?.per_patient || {})) {
+    if (excludeNoisy && doc.patients?.[patient]?.noisy) continue;
+    for (const [y, x] of t.points || []) out.push({ patient, x, y });
+  }
+  return out;
 }
