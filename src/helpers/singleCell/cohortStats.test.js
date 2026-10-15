@@ -106,3 +106,33 @@ describe("damaging tier-3 missense", () => {
     expect(passesTier(half, 3)).toBe(true);
   });
 });
+
+describe("oncoprint row notes", () => {
+  const { oncoprintRowNote, oncoprintRole } = require("./cohortStats");
+  it("explains complex labels and leaves genes alone", () => {
+    expect(oncoprintRowNote("DM (7)")).toMatch(/double minute.*chromosome\(s\) 7/);
+    expect(oncoprintRowNote("TIC (6,8)")).toMatch(/templated insertion chain/);
+    expect(oncoprintRowNote("GENEA")).toBeNull();
+  });
+  it("picks the most common role", () => {
+    const cells = { P1: { all: [{ event: { role: "Oncogene" } }] }, P2: { all: [{ event: { role: "Oncogene" } }, { event: { role: "None" } }] } };
+    expect(oncoprintRole(cells)).toBe("Oncogene");
+    expect(oncoprintRole({})).toBeNull();
+  });
+});
+
+describe("groupOncoprintRows", () => {
+  const { groupOncoprintRows } = require("./cohortStats");
+  it("groups by role with headers and keeps order within groups", () => {
+    const genes = [
+      { gene: "GA", cells: { P1: { all: [{ event: { role: "Oncogene" } }] } } },
+      { gene: "GB", cells: { P1: { all: [{ event: { role: "Tumor Suppressor" } }] } } },
+      { gene: "DM (7)", cells: {} },
+      { gene: "GC", cells: { P1: { all: [{ event: { role: "Oncogene" } }] } } },
+      { gene: "GD", cells: {} },
+    ];
+    const rows = groupOncoprintRows(genes, "role");
+    expect(rows.map((r) => r.header || r.gene.gene)).toEqual(["Oncogenes", "GA", "GC", "Tumour suppressors", "GB", "Structural / ecDNA events", "DM (7)", "Other / unannotated", "GD"]);
+    expect(groupOncoprintRows(genes, "none")).toHaveLength(5);
+  });
+});

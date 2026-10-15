@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import * as d3 from "d3";
-import { Button, Card, Empty, InputNumber, Segmented, Select, Space, Switch, Tag, Typography } from "antd";
+import { Alert, Button, Card, Empty, InputNumber, Segmented, Select, Space, Switch, Tag, Typography } from "antd";
 import { TableOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
@@ -18,10 +18,14 @@ import {
   oncoprintGrid,
   sortColumns,
   sortRowsByFrequency,
+  addedGeneGaps,
 } from "../../../helpers/singleCell/cohortOncoprint";
 import { classLabel } from "../../../helpers/singleCell/driverLayer";
 import { FONT, Swatches } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
+import { groupOncoprintRows, oncoprintRole, oncoprintRowNote } from "../../../helpers/singleCell/cohortStats";
+import { GeneQuickLookText } from "./geneQuickLook";
+import { linkGenes } from "../../../helpers/singleCell/externalLinks";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -29,7 +33,7 @@ const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", snv
 const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (DM / TIC / BFB)" };
 const PRESET_NAMES = { recommended: "Recommended", gbm: "GBM genes", oncokb: "OncoKB / CGC", all: "All" };
 const CELL_H = 24;
-const GENE_W = 130;
+const GENE_W = 170;
 const pct = d3.format(".0%");
 
 /** Glyph of an event class centred at (cx, cy), r = half size. */
@@ -53,7 +57,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
   const [ref, width] = useContainerWidth(900);
   const [sel, setSel] = useState(DEFAULT_ONCOPRINT);
   const [colSort, setColSort] = useState("exclusivity");
-  const [rowSort, setRowSort] = useState("frequency");
+  const [rowSort, setRowSort] = useState("role");
   const [showFractions, setShowFractions] = useState(true);
   const patch = (o) => setSel((s) => ({ ...s, ...o }));
 
@@ -68,7 +72,11 @@ export default function CohortOncoprintPanel({ summaries, files }) {
     if (rowSort === "fraction") return [...grid.rows].sort((a, b) => b.maxFraction - a.maxFraction || b.nPatients - a.nPatients);
     return sortRowsByFrequency(grid.rows);
   }, [grid, rowSort]);
+  // display rows: role groups (oncogenes, tumour suppressors, ...) with header rows, each group in frequency order
+  const displayRows = useMemo(() => (rowSort === "role" ? groupOncoprintRows(rows, "role") : rows.map((g) => ({ gene: g }))), [rows, rowSort]);
   const patients = useMemo(() => sortColumns({ ...grid, rows }, colSort), [grid, rows, colSort]);
+  // added genes that still have no row, with the reason (filters drop every entry of that gene)
+  const missingAdded = useMemo(() => addedGeneGaps(entriesByPatient, sel, grid.rows), [entriesByPatient, sel, grid]);
 
   if (!grid.patients.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No filtered events loaded yet." />;
 
@@ -87,7 +95,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
   const top = 112;
   const right = 80;
   const svgW = GENE_W + cellW * patients.length + right;
-  const svgH = top + CELL_H * rows.length + 8;
+  const svgH = top + CELL_H * displayRows.length + 8;
   const alpha = (f) => 0.28 + 0.72 * Math.max(0, Math.min(1, f));
   const burden = Object.fromEntries(patients.map((p) => [p, rows.filter((r) => r.cells[p]).length]));
   const barMax = Math.max(1, ...Object.values(burden));
@@ -125,7 +133,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
               placeholder="search genes"
               style={{ minWidth: 200, maxWidth: 380 }}
               value={sel.addGenes}
-              onChange={(v) => patch({ addGenes: v })}
+              onChange={(v) => patch({ addGenes: v, removeGenes: sel.removeGenes.filter((g) => !v.map((x) => `${x}`.toUpperCase()).includes(`${g}`.toUpperCase())) })}
               options={choices.map((c) => ({ value: c.gene, label: `${c.gene} (${c.nPatients} pt)` }))}
               filterOption={(input, o) => `${o.label}`.toUpperCase().includes(input.toUpperCase())}
             />
@@ -134,7 +142,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
         <Space wrap size={[12, 6]}>
           <Space size={4}>
             <Text type="secondary">Sort rows</Text>
-            <Segmented size="small" value={rowSort} onChange={setRowSort} options={[{ value: "frequency", label: "Frequency" }, { value: "fraction", label: "Cell fraction" }, { value: "name", label: "Name" }]} />
+            <Segmented size="small" value={rowSort} onChange={setRowSort} options={[{ value: "frequency", label: "Frequency" }, { value: "fraction", label: "Cell fraction" }, { value: "name", label: "Name" }, { value: "role", label: "Gene role groups" }]} />
           </Space>
           <Space size={4}>
             <Text type="secondary">Sort patients</Text>
@@ -144,6 +152,14 @@ export default function CohortOncoprintPanel({ summaries, files }) {
             <Switch size="small" checked={showFractions} onChange={setShowFractions} />
             <Text>Fractions</Text>
           </Space>
+          {missingAdded.length > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginTop: 6 }}
+              message={`Added but not shown: ${missingAdded.map((m) => `${m.gene} (${m.reason})`).join("; ")}`}
+            />
+          )}
           {sel.removeGenes.length > 0 && (
             <Space size={4} wrap>
               <Text type="secondary">Hidden</Text>
@@ -171,13 +187,40 @@ export default function CohortOncoprintPanel({ summaries, files }) {
                 </g>
               );
             })}
-            {rows.map((r, i) => {
+            {displayRows.map((dr, i) => {
               const y = top + i * CELL_H;
+              if (dr.header) {
+                return (
+                  <g key={`h-${dr.header}`}>
+                    <rect x={0} y={y + 2} width={GENE_W + cellW * patients.length} height={CELL_H - 4} fill={INK.empty} opacity={0.35} />
+                    <text x={6} y={y + CELL_H / 2} dy="0.35em" fontSize={FONT.axis} fontWeight={700} fill={INK.text}>{`${dr.header} (${dr.n})`}</text>
+                  </g>
+                );
+              }
+              const r = dr.gene;
+              const note = oncoprintRowNote(r.gene);
+              const role = oncoprintRole(r.cells);
+              const roleTag = role ? (/oncogene/i.test(role) && /suppressor/i.test(role) ? "OG/TSG" : /oncogene/i.test(role) ? "OG" : /suppressor/i.test(role) ? "TSG" : null) : null;
+              const genes = note ? [] : linkGenes(r.gene);
               return (
                 <g key={r.gene}>
-                  <text x={GENE_W - 8} y={y + CELL_H / 2} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.text} style={{ cursor: "pointer" }} onClick={() => patch({ removeGenes: [...sel.removeGenes, r.gene] })}>
-                    {fmtRowLabel(r.gene)}
-                    <title>{`${r.gene}: click to hide this row`}</title>
+                  {genes.length === 1 ? (
+                    <GeneQuickLookText gene={genes[0]} label={fmtRowLabel(r.gene)} x={GENE_W - 22} y={y + CELL_H / 2} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.text} />
+                  ) : (
+                    <text x={GENE_W - 22} y={y + CELL_H / 2} dy="0.35em" textAnchor="end" fontSize={FONT.axis} fill={INK.text} style={{ textDecoration: note ? "underline dotted" : "none", cursor: note ? "help" : undefined }}>
+                      {fmtRowLabel(r.gene)}
+                      <title>{note || r.gene}</title>
+                    </text>
+                  )}
+                  {roleTag && (
+                    <text x={4} y={y + CELL_H / 2} dy="0.35em" fontSize={10} fill={roleTag === "TSG" ? "#2C7BB6" : roleTag === "OG" ? "#D7191C" : "#8c8c8c"}>
+                      {roleTag}
+                      <title>{`OncoKB role: ${role}`}</title>
+                    </text>
+                  )}
+                  <text x={GENE_W - 8} y={y + CELL_H / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.muted} style={{ cursor: "pointer" }} onClick={() => patch({ removeGenes: [...sel.removeGenes, r.gene] })}>
+                    ×
+                    <title>{`Hide the ${r.gene} row`}</title>
                   </text>
                   <text x={GENE_W + cellW * patients.length + 8} y={y + CELL_H / 2} dy="0.35em" fontSize={TYPE.micro} fill={INK.muted}>
                     {`${r.nPatients}/${patients.length} (${pct(r.nPatients / patients.length)})`}
@@ -221,6 +264,7 @@ export default function CohortOncoprintPanel({ summaries, files }) {
             })}
           </svg>
           <Swatches style={{ marginTop: 6 }} items={ONCOPRINT_CLASSES.map((c) => ({ key: c, color: CLASS_COLORS[c], label: `${CLASS_NAMES[c]} (${GLYPH[c]})` }))} />
+          <HintLine text="Click a gene name for its card (OncoKB role and drugs, cohort evidence, cBioPortal); × hides a row. OG / TSG = OncoKB oncogene / tumour suppressor; rows are grouped by role (switch with Rows). Structural rows: DM = double minute / ecDNA, TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; bracketed numbers are chromosomes." />
           <HintLine text="Fill intensity is the fraction of tumour cells that carry the event; the number is that fraction. Solid outline = clonal (more than 95% of cells), dashed = subclonal. Several event classes of one gene stack as stripes. Bars on top count rows altered per patient; the right column counts patients per row. Click a cell to open that patient's Single-Cell tab on the Drivers layer at the event; click a gene name to hide the row." />
         </div>
       )}
