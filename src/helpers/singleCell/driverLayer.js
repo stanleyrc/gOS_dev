@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass, isDamagingMissense, isRescued, passesTier } from "./cohortStats";
+import { eventClass, isCalledNotTree, isDamagingMissense, isRescued, passesTier, rescueSourceText } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
@@ -90,7 +90,7 @@ export function snvSiteIndex(snv) {
 /** Plain-language class label. */
 export function classLabel(entry) {
   const v = `${entry.event?.vartype || ""}`;
-  if (entry.cls === "snv" && entry.rescued) return "Hotspot rescued from site evidence (not in SNV calls)";
+  if (entry.cls === "snv" && entry.rescued) return isCalledNotTree(entry.event) ? "SNV called in the joint calls, not a tree site (read-level evidence)" : "Hotspot rescued from site evidence (not in SNV calls)";
   if (entry.cls === "complex") return /^dm$/i.test(v) ? DM_HELP : /^cpxdm$/i.test(v) ? "complex DM: double minute (ecDNA) with complex structure (gGnome event classifier)" : `${v || "Complex event"} (gGnome event classifier)`;
   return { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "SV fusion" }[entry.cls] || entry.cls;
 }
@@ -101,6 +101,7 @@ export function entryLabel(entry) {
   if (entry.cls === "snv") {
     const prot = `${e.Variant || ""}`;
     // rescued hotspots: "TERT C228T (rescued)" (the variant text carries a long description after the name)
+    if (isCalledNotTree(e)) return `${e.gene || "?"}${prot && prot !== "None" ? ` ${prot}` : ""} (called)`;
     if (isRescued(e)) return `${e.gene || "?"} ${prot.split(" ")[0]} (rescued)`;
     return `${e.gene || "?"}${prot && prot !== "None" ? ` ${prot}` : ""}`;
   }
@@ -210,7 +211,7 @@ export function rescueText(entry) {
   const { altF, altR, refF, refR } = r.reads;
   const alt = (altF ?? 0) + (altR ?? 0);
   const ref = (refF ?? 0) + (refR ?? 0);
-  return `Rescued from site evidence (not in the SNV calls): ${alt} alt / ${ref} ref reads (alt ${altF ?? 0} fwd / ${altR ?? 0} rev); ${entry.n} carrier cells (≥ 1 alt read) of ${r.covered} covered tumour cells${
+  return `${rescueSourceText(entry.event)}: ${alt} alt / ${ref} ref reads (alt ${altF ?? 0} fwd / ${altR ?? 0} rev); ${entry.n} carrier cells (≥ 1 alt read) of ${r.covered} covered tumour cells${
     r.nTumour ? `; coverage ${r.covered} of ${r.nTumour} tumour cells (${Math.round(100 * (r.coverage || 0))}%)${r.lowCoverage ? ", low" : ""}` : ""
   }; normal cells ${r.reads.normalAlt} alt / ${r.reads.normalAlt + r.reads.normalRef} reads; verdict ${r.verdictLabel || r.verdict || "n/a"}${r.reasons.length ? ` (${r.reasons.join("; ")})` : ""}`;
 }

@@ -5,7 +5,7 @@ import { Card, Empty, Segmented, Select, Space, Switch, Table, Tooltip, Typograp
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
-import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier, rescueSourceText } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -110,7 +110,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                 <span style={{ width: 8, height: 8, background: CLASS_COLORS[cls], borderRadius: 2 }} />
                 {`${c.cells} (${pct(c.fraction)})`}
                 <CladeF1Chip value={c.f1} />
-                {c.rescued && <Tooltip title={`Rescued from site evidence (not in the SNV calls): carriers / covered tumour cells; ${c.event.covered_tumour_cells} of ${c.event.tumour_cells} tumour cells covered`}><span>†</span></Tooltip>}
+                {c.rescued && <Tooltip title={`${rescueSourceText(c.event)}: carriers / covered tumour cells; ${c.event.covered_tumour_cells} of ${c.event.tumour_cells} tumour cells covered`}><span>†</span></Tooltip>}
               </span>
             ))}
           </Space>
