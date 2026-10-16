@@ -32,3 +32,10 @@ test("cardTmb and cardVignette", () => {
   expect(cardVignette(v, "Q")).toBeNull();
   expect(cardVignette({ patients: { P: v.patients[0] } }, "P").nRna).toBe(5);
 });
+
+test("keyDrivers shows a TERT promoter rearrangement once, as TERT promoter SV, with its event", () => {
+  const sv = (g) => ({ gene: g, fusion_genes: g, vartype: "fusion", type: "Fusion", Tier: "1", tert_promoter_sv: true, cell_fraction: "0.97" });
+  const out = keyDrivers([sv("GENEA::TERT"), sv("GENEB::TERT"), { gene: "EGFR", vartype: "AMP", type: "SCNA", Tier: "1", cell_fraction: "0.5" }]);
+  expect(out.map((d) => `${d.label} ${d.cls}`)).toEqual(["TERT promoter SV", "EGFR amp"]);
+  expect(out[0].event.fusion_genes).toBe("GENEA::TERT");
+});

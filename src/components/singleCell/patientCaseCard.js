@@ -3,6 +3,7 @@ import { Card, Space, Tag, Tooltip, Typography } from "antd";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import useCohortExport from "./cohort/useCohortExport";
 import { cardTmb, cardVignette, keyDrivers, parseClones, treeSource, tumourClones } from "../../helpers/singleCell/patientCard";
+import { driverHref, linkClick } from "../../helpers/singleCell/driverLink";
 
 const { Text } = Typography;
 const eventsCache = new Map();
@@ -102,7 +103,13 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
         <div style={{ fontSize: 12, color: "var(--sc-muted, #8c8c8c)", textTransform: "uppercase", letterSpacing: 0.3 }}>Key drivers (tier 1)</div>
         {events === undefined ? null : drivers.length ? (
           <Space size={[4, 4]} wrap style={{ marginTop: 2 }}>
-            {drivers.map((d) => <Tooltip key={d.label} title={`${Math.round(100 * d.fraction)}% of tumour cells`}><Tag color="volcano" style={{ margin: 0, fontSize: 13 }}>{`${d.label} ${d.cls}`}</Tag></Tooltip>)}
+            {drivers.map((d) => (
+              <Tooltip key={`${d.label} ${d.cls}`} title={`${Math.round(100 * d.fraction)}% of tumour cells. Click to open it in ${pair} (Drivers layer); Cmd / Ctrl-click for a new tab.`}>
+                <a href={driverHref(pair, d.event)} onClick={linkClick}>
+                  <Tag color="volcano" style={{ margin: 0, fontSize: 13, cursor: "pointer" }}>{`${d.label} ${d.cls}`}</Tag>
+                </a>
+              </Tooltip>
+            ))}
           </Space>
         ) : (
           <div><NA why={events === null ? "filtered.events.json" : "no tier-1 event"} /></div>

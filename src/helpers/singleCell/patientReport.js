@@ -2,7 +2,7 @@
 // patient-level filtered events, the tree-mapped SNV sites, the SBS
 // signature fits and the cells' clone labels. Pure functions.
 
-import { eventClass, isRescued } from "./cohortStats";
+import { eventClass, isRescued, isTertPromoterSv } from "./cohortStats";
 import { isStrongEvent } from "./strongEvents";
 import { snvCategoryCounts } from "./cohortStats";
 import { fisherExact } from "./tests";
@@ -58,6 +58,7 @@ export function definingClones(fractions, tumorCells) {
 export function eventLabel(event) {
   const cls = eventClass(event);
   const gene = event.fusion_genes || event.gene || event.name || "?";
+  if (isTertPromoterSv(event)) return `TERT promoter rearrangement (${gene})`;
   if (cls === "amp") return `${gene} amplification`;
   if (cls === "homdel") return `${gene} homozygous deletion`;
   if (cls === "fusion") return `${gene} fusion`;

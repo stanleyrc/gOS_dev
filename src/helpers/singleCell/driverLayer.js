@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass, isCalledNotTree, isDamagingMissense, isRescued, passesTier, rescueSourceText } from "./cohortStats";
+import { eventClass, isCalledNotTree, isDamagingMissense, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
@@ -107,6 +107,7 @@ export function entryLabel(entry) {
   }
   if (entry.cls === "amp") return `${e.gene || "?"} amp`;
   if (entry.cls === "homdel") return `${e.gene || "?"} del`;
+  if (entry.cls === "fusion" && isTertPromoterSv(e)) return `${TERT_SV_LABEL} (${e.fusion_genes || e.gene})`;
   if (entry.cls === "complex") return `${complexName(e.vartype)}${e.gene ? ` ${e.gene}` : ""} ${e.Genome_Location ? `chr${`${e.Genome_Location}`.split(":")[0]}` : ""}`.trim();
   return driverLabel(e);
 }

@@ -108,3 +108,26 @@ export function cellsTsv(cells = [], labelMap = {}, extra = [["clone_id", "clone
   const lines = cells.map((c) => [clean(c.cell_id), clean(labelMap?.[`${c.cell_id}`] ?? ""), ...extra.map(([k]) => clean(c[k]))].join("\t"));
   return `${[head.join("\t"), ...lines].join("\n")}\n`;
 }
+
+// cell-record fields that are ids or nested UI state, not per-cell attributes worth exporting
+const EXPORT_HIDDEN = new Set(["cell_id", "well", "clone_id", "id", "pair", "caseReportId", "datasetId", "sourceDatasetTitle", "entry_type", "entryType", "patient_id", "visible", "summary", "tags", "visibleTags", "qcMetrics", "qcEvaluation"]);
+
+/** Scalar per-cell attributes that differ between cells, as [[key, header]] for cellsTsv (every one; no column cap). */
+export function cellExportColumns(cells = []) {
+  const keys = new Set();
+  cells.forEach((c) =>
+    Object.keys(c || {}).forEach((k) => {
+      const v = c[k];
+      if (!EXPORT_HIDDEN.has(k) && (typeof v === "number" || typeof v === "string" || typeof v === "boolean")) keys.add(k);
+    })
+  );
+  return [...keys].filter((k) => new Set(cells.map((c) => c?.[k])).size > 1).map((k) => [k, k]);
+}
+
+/** TSV of the selected cells, in selection order; ids without a cell record keep a row with the id only. */
+export function selectedCellsTsv(ids = [], cells = [], labelMap = {}) {
+  const byId = new Map(cells.map((c) => [`${c.cell_id}`, c]));
+  const rows = ids.map((id) => byId.get(`${id}`) || { cell_id: id });
+  const pool = rows.filter((r) => byId.has(`${r.cell_id}`));
+  return cellsTsv(rows, labelMap, [["clone_id", "clone"], ...cellExportColumns(pool.length > 1 ? pool : cells)]);
+}

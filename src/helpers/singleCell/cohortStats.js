@@ -34,6 +34,13 @@ export const isCalledNotTree = (e) => Boolean(e) && `${e.source}` === CALLED_SOU
 /** Where a rescued / evidence-only event comes from, for labels and tooltips. */
 export const rescueSourceText = (e) => (isCalledNotTree(e) ? "Called SNV, not a tree site" : "Rescued from site evidence (not in the SNV calls)");
 
+/**
+ * TERT promoter rearrangement (exporter gos_sc_tert_sv): a fusion with TERT as the 3' partner that keeps the whole TERT
+ * coding sequence behind another locus (enhancer hijacking); tier 1 like the C228T / C250T promoter hotspots.
+ */
+export const isTertPromoterSv = (e) => Boolean(e) && (e.tert_promoter_sv === true || `${e.tert_promoter_sv}` === "true");
+export const TERT_SV_LABEL = "TERT promoter SV";
+
 export function eventClass(event = {}) {
   const vt = `${event.vartype || ""}`.toLowerCase();
   const ty = `${event.type || ""}`.toLowerCase();
@@ -52,6 +59,7 @@ export function eventClass(event = {}) {
 
 /** Row label of an event: gene, fusion pair, or for complex SVs the class and chromosomes. */
 export function eventLabel(e = {}) {
+  if (isTertPromoterSv(e)) return "TERT"; // one TERT row with the promoter hotspots
   return e.gene || e.fusion_genes || e.name || (eventClass(e) === "complex" ? e.Variant || e.vartype : "") || "";
 }
 

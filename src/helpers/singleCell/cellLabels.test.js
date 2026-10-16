@@ -68,3 +68,22 @@ describe("cell labels", () => {
     expect(tsv).toBe("cell_id\twell\tclone\nXX1_10\tXX1_MR_1_pl1_3a\tA\nXX1_12\t\t\n");
   });
 });
+
+describe("selected-cell export", () => {
+  const { selectedCellsTsv, cellExportColumns } = require("./cellLabels");
+  const cells = [
+    { cell_id: "P_c1", clone_id: "A", reads: 10, plate: "p1", pair: "P_c1" },
+    { cell_id: "P_c2", clone_id: "B", reads: 20, plate: "p1", pair: "P_c2" },
+    { cell_id: "P_c3", clone_id: "B", reads: 30, plate: "p2", pair: "P_c3" },
+  ];
+  test("columns are the varying scalar attributes, ids left out", () => {
+    expect(cellExportColumns(cells).map(([k]) => k)).toEqual(["reads", "plate"]);
+  });
+  test("rows follow the selection order; unknown ids keep a bare row", () => {
+    const lines = selectedCellsTsv(["P_c3", "P_c1", "P_x"], cells, { P_c1: "A1" }).replace(/\n$/, "").split("\n");
+    expect(lines[0]).toBe("cell_id\twell\tclone\treads\tplate");
+    expect(lines[1]).toBe("P_c3\t\tB\t30\tp2");
+    expect(lines[2]).toBe("P_c1\tA1\tA\t10\tp1");
+    expect(lines[3]).toBe("P_x\t\t\t\t");
+  });
+});

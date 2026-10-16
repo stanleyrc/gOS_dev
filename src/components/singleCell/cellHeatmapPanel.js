@@ -94,6 +94,7 @@ import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitTo
 import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, rescueText, serializeSelection, snvStateLabel } from "../../helpers/singleCell/driverLayer";
 import useCellLabels from "./useCellLabels";
+import SelectionExport from "./selectionExport";
 
 const { Text } = Typography;
 const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
@@ -1142,6 +1143,7 @@ export default function CellHeatmapPanel() {
                 {t("components.single-cell.groups.compare")}
               </Button>
             )}
+            <SelectionExport />
             <Button size="small" type="text" onClick={() => dispatch(singleCellActions.updateSelection([]))}>
               {t("components.single-cell.selection.clear")}
             </Button>
