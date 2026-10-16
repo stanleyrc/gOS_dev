@@ -30,6 +30,7 @@ export const SC_DEFAULT_LAYOUT = {
   treeWidth: 220,
   figureStyle: "clean", // Paper figures drawing style (helpers/singleCell/figureStyle)
   rowHeight: "auto",
+  compactHeader: false, // thin patient header and gene / karyotype track (Single-Cell tab toggle "Compact header")
   showUmap: false,
   showCellTable: false,
   clipBranches: true,

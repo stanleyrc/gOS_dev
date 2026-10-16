@@ -11,6 +11,11 @@ const Wrapper = styled.div`
     margin: 12px;
     margin-top: -45.5px;
   }
+  /* "Compact header" (Single-Cell tab toggle): the header is already thin, so the
+     tabs follow it instead of sliding up under it */
+  &.gos-compact-header .ant-home-content-container {
+    margin-top: 0;
+  }
   .ant-panel-container {
     margin-top: 24px;
     margin-botton: 24px;

@@ -1134,7 +1134,7 @@
         "snv": "SNVs",
         "junctions": "Junction CN",
         "drivers": "Drivers",
-        "whole-genome": "Show whole genome",
+        "whole-genome": "Reset zoom to the whole genome",
         "zoom-in": "Zoom in",
         "zoom-out": "Zoom out",
         "download": "Download heatmap as PNG",

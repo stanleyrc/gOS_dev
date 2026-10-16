@@ -133,6 +133,10 @@ export default function SingleCellTab() {
               <Text>{t("components.single-cell.toggles.cell-table")}</Text>
             </Space>
             <Space size={6}>
+              <Switch size="small" checked={Boolean(layout.compactHeader)} onChange={toggle("compactHeader")} />
+              <Text title="Collapse the patient header and the karyotype / gene track into a thin bar">Compact header</Text>
+            </Space>
+            <Space size={6}>
               <Switch size="small" checked={Boolean(layout.keepGeneTrack)} onChange={toggle("keepGeneTrack")} />
               <Text>{t("components.single-cell.toggles.keep-genes")}</Text>
             </Space>
@@ -161,7 +165,7 @@ export default function SingleCellTab() {
                 handleYscaleModeChange: setYScaleMode,
                 cellYscaleOption: true,
                 yScaleMode,
-                compact: pinned,
+                compact: pinned || Boolean(layout.compactHeader),
                 plotInsets,
                 plotHeight: dragNav ?? layout.navHeight,
                 compactKeepsGenes: Boolean(layout.keepGeneTrack),
