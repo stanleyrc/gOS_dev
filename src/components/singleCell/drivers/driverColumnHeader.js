@@ -6,7 +6,7 @@ import { SIGNATURE_METHOD_HINT } from "../../../helpers/singleCell/siteSignature
 import { CLASS_TEXT } from "./driverColors";
 
 const MAX_CHARS = 26;
-const LABEL_MIN_COL = 9; // px per column from which names are written
+const LABEL_MIN_COL = 2.5; // px per column from which names are written (narrower than a line: every k-th name)
 const short = (s) => (s.length > MAX_CHARS ? `${s.slice(0, MAX_CHARS - 1)}…` : s);
 const DriverTip = ({ d, sig }) => (
   <div>
@@ -17,7 +17,8 @@ const DriverTip = ({ d, sig }) => (
     {sig && <div style={{ opacity: 0.7, fontSize: 11 }}>{SIGNATURE_METHOD_HINT()}</div>}
   </div>
 );
-const ANGLE = 60; // labels lean 60 degrees up to the right
+const LEAN_ANGLE = 60; // labels lean 60 degrees up to the right while columns are wide enough, else stand upright (90)
+const MIN_FONT = 11;
 
 /**
  * Column header of the Drivers layer: one rotated name per visible driver (when the
@@ -29,10 +30,13 @@ const ANGLE = 60; // labels lean 60 degrees up to the right
 export default function DriverColumnHeader({ sigText = null, entries, width, pixelRatio = 1, hoverKey, openKey, onOpen }) {
   const n = entries.length || 1;
   const cw = width / n;
-  const fs = Math.max(9, Math.min(12, cw - 2));
+  const fs = Math.max(MIN_FONT, Math.min(12, cw - 1.5));
+  const ANGLE = cw >= fs * 1.2 ? LEAN_ANGLE : 90;
+  // columns closer than one text line: write every k-th name (all stay reachable by hover on the bar)
+  const step = cw >= fs + 1 ? 1 : Math.ceil((fs + 1) / cw);
   const named = cw >= LABEL_MIN_COL;
   const longest = named ? Math.max(...entries.map((d) => short(d.label).length)) : 0;
-  const height = named ? Math.round(Math.min(150, longest * fs * 0.52 * 0.87 + fs * 1.2 + 6)) : 0;
+  const height = named ? Math.round(Math.min(150, longest * fs * 0.52 * Math.sin((ANGLE * Math.PI) / 180) + fs * 1.2 + 6)) : 0;
   const spans = entries.map((d, i) => columnSpan(i, entries.length, width, pixelRatio));
   // the text's mid-line starts at (column centre, bottom): rotate about the bottom-left corner and
   // shift right by half the line height measured across the lean
@@ -40,7 +44,7 @@ export default function DriverColumnHeader({ sigText = null, entries, width, pix
   return (
     <div style={{ position: "relative", width, height: height + 6, marginBottom: 2 }} data-driver-header>
       {named &&
-        entries.map((d, i) => (
+        entries.map((d, i) => (i % step ? null : (
           <Tooltip key={d.key} title={d.absent ? `${d.label} · not in this patient (no filtered event)` : <DriverTip d={d} sig={sigText ? sigText(d.entry) : null} />}>
             <span
               role="button"
@@ -66,7 +70,7 @@ export default function DriverColumnHeader({ sigText = null, entries, width, pix
               {short(d.label)}
             </span>
           </Tooltip>
-        ))}
+        )))}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 5 }}>
         {entries.map((d, i) => (
           <div
