@@ -149,12 +149,12 @@ export class DetailView extends Component {
         ? [7, ...[12, 18, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true)] // bulk-WGS tabs 0-6 are hidden for single-cell patients (they have no bulk data; code kept)
         : [0, 1, 2, 3, 4, 5, 6];
     return (
-      <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>
+      <Wrapper className={this.props.compactHeader ? "gos-compact-header" : undefined} style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>
         <Skeleton active loading={loading}>
           <Affix offsetTop={0} onChange={(affixed) => this.setState({ headerPinned: Boolean(affixed) })}>
             <div className="ant-home-header-container" ref={this.headerRef}>
               <HeaderPanel
-                compact={this.state.headerPinned}
+                compact={this.state.headerPinned || Boolean(this.props.compactHeader)}
                 canReturnToResults={canReturnToResults}
                 onBackToResults={this.handleBackToResults}
               />
@@ -208,6 +208,7 @@ const mapStateToProps = (state) => ({
   defaultDomain: state.Settings.defaultDomain,
   tabAvailability: getDetailTabAvailability(state),
   singleCellLoading: singleCellStillLoading(state.SingleCell),
+  compactHeader: Boolean(state.SingleCell.layout?.compactHeader) && state.SingleCell.patient != null && !state.SingleCell.missing,
 });
 export default connect(
   mapStateToProps,
