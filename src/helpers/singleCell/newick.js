@@ -234,7 +234,10 @@ export function layoutTree(root) {
     n.lastLeaf = last.lastLeaf;
     n.y = (first.y + last.y) / 2;
   }
-  nodes.forEach((n) => delete n.source);
+  nodes.forEach((n) => {
+    if (n.source && n.source.support) n.support = n.source.support; // bootstrap support (helpers/singleCell/treeSupport.js)
+    delete n.source;
+  });
   const maxX = nodes.reduce((m, n) => Math.max(m, n.x), 0);
   return { nodes, leaves, maxX };
 }

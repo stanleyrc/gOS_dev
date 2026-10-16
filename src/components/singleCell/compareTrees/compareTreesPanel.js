@@ -45,6 +45,8 @@ import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
+import useTreeSupport from "./useTreeSupport";
+import { SUPPORT_BINS, conflictSummary, labelSupport, supportBin, supportSummary } from "../../../helpers/singleCell/treeSupport";
 import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
 import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
 import useCellLabels from "../useCellLabels";
@@ -91,8 +93,10 @@ export default function CompareTreesPanel() {
   const [nameB, setNameB] = useState(null);
   const a = nameA || defA;
   const b = nameB || defB;
-  const treeA = useAltTree(a);
-  const treeB = useAltTree(b);
+  const supportFile = useTreeSupport();
+  const treeA = useAltTree(a, supportFile.data);
+  const treeB = useAltTree(b, supportFile.data);
+  const [showSupport, setShowSupport] = useState(true);
   const [showLinks, setShowLinks] = useState(true);
   const [hideNormal, setHideNormal] = useState(true);
   const [clip, setClip] = useState(true);
@@ -193,7 +197,12 @@ export default function CompareTreesPanel() {
   const layoutB = useMemo(() => finish(prepared?.rootB), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
   const links = useMemo(() => tanglegramLinks(layoutA, layoutB), [layoutA, layoutB]);
   const crossings = prepared ? prepared.after : 0;
-  const nShared = useMemo(() => sharedCells(layoutA, layoutB).size, [layoutA, layoutB]);
+  const commonCells = useMemo(() => sharedCells(layoutA, layoutB), [layoutA, layoutB]);
+  const nShared = commonCells.size;
+  const supportOn = showSupport && supportFile.status === "ok" && supportFile.data?.available === true;
+  const supA = useMemo(() => supportSummary(layoutA), [layoutA]);
+  const supB = useMemo(() => supportSummary(layoutB), [layoutB]);
+  const conflict = useMemo(() => (supportOn ? conflictSummary(layoutA, layoutB, commonCells) : null), [supportOn, layoutA, layoutB, commonCells]);
 
   const isolating = Boolean(siteFilter.snvIsolate) && showMatrix && Boolean(snvData);
   const isolateColumns = useMemo(
@@ -268,7 +277,35 @@ export default function CompareTreesPanel() {
     const edge = side === "A" ? xA1 - 2 : xB1 + 2;
     const guide = layout.nodes.filter((n) => n.isLeaf && Math.abs(g.px(n.x) - edge) > 1.5).map((n) => `M${Math.round(g.px(n.x) * 10) / 10} ${Math.round(g.py(n.y + 0.5) * 10) / 10}H${edge}`).join("");
     const guidePath = guide ? <path key={`${side}guide`} d={guide} stroke={theme.grid} strokeWidth={0.5} fill="none" /> : null;
-    return [guidePath, ...[...paths.entries()].map(([color, d]) => <path key={`${side}${color}`} d={d} stroke={color === UNKNOWN ? theme.branch : color} strokeWidth={1} fill="none" opacity={highlight ? 0.55 : 0.95} />)];
+    const marks = supportOn ? supportMarks(layout, g, side) : null;
+    return [guidePath, marks, ...[...paths.entries()].map(([color, d]) => <path key={`${side}${color}`} d={d} stroke={color === UNKNOWN ? theme.branch : color} strokeWidth={1} fill="none" opacity={highlight ? 0.55 : 0.95} />)];
+  };
+
+  // Bootstrap support: one dot per internal node coloured by bin; % printed when the tree is sparse;
+  // a dark ring marks clades the other tree lacks (on the shared cells).
+  const SUPPORT_COLORS = ["#d1495b", "#edae49", "#66a182", "#4a90d9"];
+  const supportMarks = (layout, g, side) => {
+    const uniq = conflict ? (side === "A" ? conflict.a : conflict.b).uniqueIds : new Set();
+    const nodes = layout.nodes.filter((n) => !n.isLeaf && n.parent >= 0 && n.support && Number.isFinite(n.support.fbp));
+    const label = labelSupport(nodes.length);
+    const dir = side === "A" ? 1 : -1;
+    return (
+      <g key={`${side}support`}>
+        {nodes.map((n) => {
+          const f = n.support.fbp;
+          const cx = g.px(n.x);
+          const cy = g.py(n.y + 0.5);
+          return (
+            <g key={n.id}>
+              <circle cx={cx} cy={cy} r={uniq.has(n.id) ? 3.6 : 2.4} fill={SUPPORT_COLORS[supportBin(f)]} stroke={uniq.has(n.id) ? theme.text : "none"} strokeWidth={1.2}>
+                <title>{`bootstrap support ${Math.round(f * 100)}%${Number.isFinite(n.support.tbe) ? `, TBE ${Math.round(n.support.tbe * 100)}%` : ""}${uniq.has(n.id) ? " (clade absent from the other tree)" : ""}`}</title>
+              </circle>
+              {label ? <text x={cx + dir * 4} y={cy - 3} fontSize={8} textAnchor={side === "A" ? "start" : "end"} fill={theme.muted}>{Math.round(f * 100)}</text> : null}
+            </g>
+          );
+        })}
+      </g>
+    );
   };
 
   const leafStates = (layout, p) => {
@@ -433,7 +470,7 @@ export default function CompareTreesPanel() {
   const loading = treeA.status === "loading" || treeB.status === "loading";
   const labelOf = (name) => trees.find((t) => t.name === name)?.label || name;
 
-  const conc = (c, name, layout) => (
+  const conc = (c, name, layout, sup) => (
     <Card size="small" style={{ flex: 1, minWidth: 200 }}>
       <Statistic
         title={`${labelOf(name)}: median best-clade F1 (SNVs, >=10 carriers)`}
@@ -441,8 +478,41 @@ export default function CompareTreesPanel() {
         suffix={c ? <span style={{ fontSize: TYPE.tick, color: theme.muted }}>{`n=${c.n}${c.sampled ? ` of ${c.eligible} (sampled)` : ""}`}</span> : null}
       />
       {layout ? <Text type="secondary" style={{ fontSize: TYPE.tick }}>{layout.leaves.length} cells in tree</Text> : null}
+      {supportOn && sup ? (
+        <div>
+          <Text style={{ fontSize: TYPE.tick }}>
+            {sup.n ? `Bootstrap support: median ${Math.round(sup.median * 100)}%, ${sup.nGe70} of ${sup.n} clades >= 70%` : "Bootstrap support: not available for this tree"}
+          </Text>
+        </div>
+      ) : null}
     </Card>
   );
+
+  const supportUnavailable = supportFile.status === "ok" && supportFile.data?.available !== true;
+  const supportAlert = (() => {
+    if (supportFile.status === "missing" || supportUnavailable) {
+      const why = supportUnavailable ? supportFile.data?.reason || "no bootstrap replicates" : "no bootstrap replicates";
+      return <Alert type="info" showIcon style={{ marginBottom: 6 }} message={`Bootstrap support not available for ${supportFile.patient || "this patient"} (${why})`} />;
+    }
+    if (!supportOn) return null;
+    const agree = supportFile.data.live_tree_split_agreement_with_source_search_tree;
+    const sel = (c, name) => (c ? `${labelOf(name)}: ${c.unique} of ${c.total} clades absent from the other tree (${c.uniqueLow} below 50% support, ${c.uniqueSupported} at 70% or more${c.uniqueNoValue ? `, ${c.uniqueNoValue} without a value` : ""})` : "");
+    return (
+      <div style={{ marginBottom: 6 }}>
+        <Space size="middle" wrap style={{ fontSize: TYPE.tick, color: theme.muted }}>
+          <span>Bootstrap support:</span>
+          {SUPPORT_BINS.map((bin, i) => (
+            <span key={bin.key}><svg width={10} height={10} style={{ verticalAlign: "middle" }}><circle cx={5} cy={5} r={4} fill={SUPPORT_COLORS[i]} /></svg> {bin.label}</span>
+          ))}
+          <span><svg width={12} height={12} style={{ verticalAlign: "middle" }}><circle cx={6} cy={6} r={4.5} fill="none" stroke={theme.text} strokeWidth={1.2} /></svg> clade absent from the other tree</span>
+        </Space>
+        {conflict ? <div style={{ fontSize: TYPE.tick }}>{`${sel(conflict.a, a)}. ${sel(conflict.b, b)}. Absent clades with support below 50% are weakly supported, so not firm conflicts.`}</div> : null}
+        <div style={{ fontSize: TYPE.tick, color: theme.muted }}>
+          {`${supportFile.data.n_replicates} CellPhy bootstrap replicates (${agree != null ? `the pipeline tree shares ${Math.round(agree * 100)}% of its clades with their search tree; ` : ""}other trees are scored against the same replicates, so their support is how often the replicates recover each of their clades).`}
+        </div>
+      </div>
+    );
+  })();
 
   const cnHover = (id, lines, event) => setHover(id == null ? null : { id, x: event.clientX, y: event.clientY, lines });
   const hovCell = hover ? cellById.get(hover.id) : null;
@@ -456,6 +526,7 @@ export default function CompareTreesPanel() {
           <span>Hide normal cells <Switch checked={hideNormal} onChange={setHideNormal} /></span>
           <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
           <span>Cladogram <Switch checked={cladogram} onChange={setCladogram} /></span>
+          <Tooltip title="Bootstrap proportion of each clade among the CellPhy bootstrap replicates (dot colour; rings mark clades the other tree lacks)"><span>Bootstrap support <Switch checked={showSupport && supportFile.status === "ok" && supportFile.data?.available === true} onChange={setShowSupport} disabled={!(supportFile.status === "ok" && supportFile.data?.available === true)} /></span></Tooltip>
           <span>Heatmap <Radio.Group size="small" value={heatMode} onChange={(e) => setHeatMode(e.target.value)} optionType="button" options={[{ value: "snv", label: "SNVs" }, { value: "cn", label: "Copy number" }, { value: "both", label: "Both" }]} /></span>
           {showsCn(heatMode) ? (
             <span>CN width <Select size="small" style={{ width: 90 }} value={cnPx} onChange={setCnPx} options={[120, 180, 220, 300, 400].map((v) => ({ value: v, label: `${v} px` }))} /></span>
@@ -542,6 +613,7 @@ export default function CompareTreesPanel() {
             })}
           </div>
         ) : null}
+        {supportAlert}
         {showsCn(heatMode) && cnShared.ready ? <div style={{ marginBottom: 6 }}><CnLegend cnMode={cnShared.cnMode} palette={cnShared.palette} /></div> : null}
         <div ref={wrapRef} style={{ position: "relative" }}>
           {loading ? <Spin /> : null}
@@ -611,8 +683,8 @@ export default function CompareTreesPanel() {
       {isolating && isolateColumns.length > 0 && <SnvIsolatePanel snv={snvCalls} columns={isolateColumns} annot={annotA} carrierCount={layoutA ? carrierRows(snvCalls, isolateColumns, rowMap(layoutA.leaves, snvCalls.cells)).size : null} patient="compare" />}
       <CellIgvPanel />
       <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-        {conc(concA, a, fullA)}
-        {conc(concB, b, fullB)}
+        {conc(concA, a, fullA, supA)}
+        {conc(concB, b, fullB, supB)}
       </div>
     </div>
   );
