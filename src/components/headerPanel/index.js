@@ -484,7 +484,7 @@ export class HeaderPanel extends Component {
                         onClick={isSingleCellPatient ? () => this.setState((st) => ({ detailsOpen: !st.detailsOpen })) : undefined}
                         title={isSingleCellPatient ? (this.state.detailsOpen ? undefined : "Click to expand") : undefined}
                       >
-                        <div className="case-metadata-line">
+                        <div className="case-metadata-line" style={{ display: "flex", flexWrap: "wrap", columnGap: 12 }}>
                           {disease != null && <span>{disease}</span>}
                           {isMyeloSeqReportStyle(dataset) ? (
                             <PrimarySiteSelect />

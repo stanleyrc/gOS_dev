@@ -74,6 +74,9 @@ const { SHOW_CHILD } = Cascader;
 const PATIENT_FILTER_OPTIONS_LIMIT = 100;
 
 const { Meta } = Card;
+// list-view tabs that only make sense for bulk-WGS case reports
+const SC_HIDDEN_LIST_TABS = ["aggregations", "cohorts", "parallelCoordinates"];
+const isSingleCellDataset = (datafiles) => (datafiles || []).length > 0 && (datafiles || []).every((r) => isPatientRecord(r) || isCellRecord(r));
 const { Option } = Select;
 const { Text, Paragraph } = Typography;
 const { Compact } = Space;
@@ -314,6 +317,7 @@ export class ListView extends Component {
   };
 
   handleTabChange = (key) => {
+    this.landedOnCohort = true;
     this.setState({ activeTab: key });
   };
 
@@ -367,6 +371,11 @@ export class ListView extends Component {
   };
 
   componentDidUpdate(prevProps) {
+    // single-cell datasets land on the Single-Cell Cohort tab (once, unless a deep link or the user chose a tab)
+    if (!this.landedOnCohort && !this.props.listViewTarget?.tab && this.state.activeTab === "cases" && isSingleCellDataset(this.props.datafiles) && (this.props.datafiles || []).some(isPatientRecord)) {
+      this.landedOnCohort = true;
+      this.setState({ activeTab: "singleCellCohort" });
+    }
     if (prevProps.searchFilters !== this.props.searchFilters) {
       this.formRef.current.setFieldsValue(this.props.searchFilters);
     }
@@ -673,6 +682,9 @@ export class ListView extends Component {
     const modalSearchFilters =
       editingFavoriteSearch?.searchFilters ||
       this.getCurrentSearchFiltersForFavorite();
+
+    // single-cell datasets (only patient / cell entries): bulk-only list tabs have no data, so they are hidden (code kept)
+    const isScDataset = isSingleCellDataset(datafiles);
 
     const initialValues = {
       ...searchFilters,
@@ -1501,7 +1513,7 @@ export class ListView extends Component {
                         />
                       ),
                     },
-                  ]}
+                  ].filter((item) => !(isScDataset && SC_HIDDEN_LIST_TABS.includes(item.key)))}
                 />
               </Col>
             </Row>
