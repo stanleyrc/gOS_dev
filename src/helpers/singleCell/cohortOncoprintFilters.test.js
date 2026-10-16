@@ -68,6 +68,24 @@ describe("entry filters", () => {
     expect(failedFilters({ ...fake, fit: NaN }, { minF1: 0.5 })).not.toContain("f1");
     expect(failedFilters({ ...fake, fit: 0.95 }, { maxF1: 0.9 })).toContain("f1");
   });
+  it("F1 >= threshold hides low-F1 events of every class incl. SNVs, keeps truncal events, and counts them", () => {
+    const tree = { leaves: ["c1", "c2", "c3", "c4"], nodes: [{ firstLeaf: 0, lastLeaf: 3 }, { firstLeaf: 0, lastLeaf: 1 }, { firstLeaf: 2, lastLeaf: 3 }, { firstLeaf: 0, lastLeaf: 0 }, { firstLeaf: 1, lastLeaf: 1 }, { firstLeaf: 2, lastLeaf: 2 }, { firstLeaf: 3, lastLeaf: 3 }] };
+    const events = [
+      ev({ gene: "EGFR", vartype: "AMP", type: "SCNA", Tier: 1, role: "Oncogene", cell_ids: "c1,c2,c3,c4", cell_fraction: "1", n_cells: "4", cells: "4/4" }), // truncal, F1 1
+      ev({ gene: "TP53", vartype: "SNV", type: "Missense", Variant: "p.R175H", Tier: 1, role: "Tumor Suppressor", Genome_Location: "17:7-7", cell_ids: "c1,c3", n_cells: "2", cells: "2/4" }), // scattered SNV
+      ev({ gene: "PTEN", vartype: "SNV", type: "Missense", Variant: "p.R130Q", Tier: 1, role: "Tumor Suppressor", Genome_Location: "10:9-9", cell_ids: "c1,c2", n_cells: "2", cells: "2/4" }), // one clade
+    ];
+    const entries = { P1: annotateEntries(cohortEntries(events), { tree }) };
+    const SEL = { ...DEFAULT_ONCOPRINT, preset: "all" };
+    const genesOf = (f) => filterOncoprint(entries, SEL, { ...DEFAULT_OC_FILTERS, minCells: 1, ...f }).grid.rows.map((r) => r.gene);
+    const base = genesOf({ minF1: 0 });
+    expect(base).toEqual(expect.arrayContaining(["EGFR", "TP53", "PTEN"]));
+    const r = filterOncoprint(entries, SEL, { ...DEFAULT_OC_FILTERS, minCells: 1, minF1: 0.8 });
+    const rows = r.grid.rows.map((x) => x.gene);
+    expect(rows).toEqual(expect.arrayContaining(["EGFR", "PTEN"]));
+    expect(rows).not.toContain("TP53");
+    expect(r.hidden.byFilter.f1).toBe(1);
+  });
   it("site-QC verdict and fusion support", () => {
     const snv = { ...cohortEntries(A)[1], verdict: "artefact" };
     expect(failedFilters(snv, { verdicts: ["supported", "weak"] })).toContain("verdict");
