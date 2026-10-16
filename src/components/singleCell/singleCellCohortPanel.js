@@ -35,6 +35,7 @@ import useCohortFiles from "./cohort/useCohortFiles";
 import TmbPanel from "./cohort/tmbPanel";
 import CohortTmbPanel from "./cohort/cohortTmbPanel";
 import CohortTmbAssocPanel from "./cohort/cohortTmbAssocPanel";
+import CohortCladeTmbPanel from "./cohort/cohortCladeTmbPanel";
 import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
 import CohortJointSignatures from "./cohort/cohortJointSignatures";
 import OncoprintPanel from "./cohort/oncoprintPanel";
@@ -577,6 +578,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             </Col>
             <Col span={24}>
               <TmbPanel summaries={summaries} files={files} datafiles={datafiles} onOpen={openPatient} />
+            </Col>
+            <Col span={24}>
+              <CohortCladeTmbPanel dataset={geneDataset} summaries={summaries} />
             </Col>
             <Col span={24}>
               <CohortTmbAssocPanel dataset={geneDataset} onGene={openRnaGene} />
