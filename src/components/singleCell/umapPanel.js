@@ -494,7 +494,7 @@ export default function UmapPanel() {
           <Text type="secondary">{t("components.single-cell.umap.no-umap")}</Text>
         ) : (
           <div ref={containerRef} className="sc-umap">
-            <div className="sc-umap-plot" style={{ width, height }}>
+            <div className="sc-umap-plot" style={{ width, height, position: "relative" }}>
               <canvas
                 ref={canvasRef}
                 style={{ width, height, display: "block", cursor: lasso ? "crosshair" : "default" }}
@@ -503,6 +503,7 @@ export default function UmapPanel() {
                 onMouseUp={onMouseUp}
                 onMouseLeave={onLeave}
               />
+              <div style={{ position: "absolute", left: 6, bottom: 4, fontSize: 11.5, color: "rgba(0,0,0,0.55)", pointerEvents: "none" }}>{view === "dna-umap" ? "DNA-cell UMAP 1 → · UMAP 2 ↑ (arbitrary units)" : "UMAP 1 → · UMAP 2 ↑ (arbitrary units)"}</div>
               {tip && (
                 <div className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
                   {tip.lines.map(([k, v]) => (
