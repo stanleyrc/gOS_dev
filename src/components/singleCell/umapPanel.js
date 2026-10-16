@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { AutoComplete, Button, Card, Select, Space, Switch, Tag, Typography } from "antd";
+import { AutoComplete, Button, Card, Checkbox, Select, Space, Switch, Tag, Typography } from "antd";
 import { DotChartOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import scaActions from "../../redux/scAnalysis/actions";
@@ -22,6 +22,23 @@ import useHideNa, { HideNaControl } from "./useHideNa";
 import { partitionNa } from "../../helpers/singleCell/hideNa";
 import { linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
 import useCellLabels from "./useCellLabels";
+import { ZERO_STYLE, themeKey, expressionModel, exprColor, exprDrawOrder, rampGradient } from "../../helpers/singleCell/exprColour";
+
+const readPref = (key, fallback) => {
+  try {
+    const v = window.localStorage.getItem(key);
+    return v == null ? fallback : v;
+  } catch (error) {
+    return fallback;
+  }
+};
+const writePref = (key, value) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    // storage unavailable: the choice still applies for this visit
+  }
+};
 
 const { Text } = Typography;
 const MIN_HEIGHT = 400;
@@ -91,6 +108,17 @@ export default function UmapPanel() {
   const [clustering, setClustering] = useState(false);
   // clip far-away cells to the plot edge so they do not squash the rest
   const [clip, setClip] = useState(true);
+  // gene colouring: cap at the 99th percentile of non-zero values or at the max; optionally hide zero cells
+  const [exprScale, setExprScaleState] = useState(() => (readPref("sc.umap.exprScale", "p99") === "max" ? "max" : "p99"));
+  const setExprScale = (v) => {
+    setExprScaleState(v);
+    writePref("sc.umap.exprScale", v);
+  };
+  const [hideZero, setHideZeroState] = useState(() => readPref("sc.umap.hideZero", "0") === "1");
+  const setHideZero = (v) => {
+    setHideZeroState(v);
+    writePref("sc.umap.hideZero", v ? "1" : "0");
+  };
   // Quick clustering: PCA (10 PCs) on the 2,000 most variable genes, then
   // k-means; the labels become a metadata field usable everywhere.
   const runClustering = () => {
@@ -198,14 +226,17 @@ export default function UmapPanel() {
       };
     }
     if (colorBy === "gene" && geneReady) {
+      const model = expressionModel(allPoints.map((p) => expression.values[p.id]), { scale: exprScale });
       return {
-        kind: "numeric",
+        kind: "expression",
+        model,
         color: (p) => {
           const v = expression.values[p.id];
-          return Number.isFinite(v) ? viridis(v / (expression.max || 1)) : NO_DATA;
+          return Number.isFinite(v) ? exprColor(v, model, pt.mode) : NO_DATA;
         },
         value: (p) => expression.values[p.id],
-        range: [0, expression.max],
+        isZero: (p) => !(expression.values[p.id] > 0),
+        range: [model.min, model.cap],
         title: expression.gene,
       };
     }
@@ -244,14 +275,21 @@ export default function UmapPanel() {
       levels: cloneColors,
       title: t("components.single-cell.legend.clones"),
     };
-  }, [colorBy, geneReady, expression, field, allPoints, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds, layout.theme]);
+  }, [colorBy, geneReady, expression, field, allPoints, cloneOf, cloneColors, t, cnOfCell, cnLocus, cnGene, selectedCellIds, layout.theme, exprScale, pt.mode]);
 
   // cells with no value for the colour field are hidden instead of drawn grey
   const [hideNa, setHideNa] = useHideNa();
-  const { shown: points, hidden: nHiddenNa } = useMemo(
+  const { shown: naShown, hidden: nHiddenNa } = useMemo(
     () => partitionNa(allPoints, (p) => scale.color(p) === NO_DATA, hideNa),
     [allPoints, scale, hideNa]
   );
+  // gene colouring: zero cells first (optionally hidden), expressing cells ascending so high cells stay on top
+  const isExpr = scale.kind === "expression";
+  const points = useMemo(() => {
+    if (!isExpr) return naShown;
+    const kept = hideZero ? naShown.filter((p) => !scale.isZero(p)) : naShown;
+    return exprDrawOrder(kept, scale.value);
+  }, [isExpr, naShown, hideZero, scale]);
   const nClipped = points.filter((p) => p.clipped).length;
 
   /* ---- drawing ---- */
@@ -265,9 +303,12 @@ export default function UmapPanel() {
     ctx.clearRect(0, 0, width, height);
     const r = points.length > 2000 ? 2.5 : 4;
     // Unselected first, then selected on top, then the hovered cell.
+    const zs = ZERO_STYLE[themeKey(pt.mode)];
     const draw = (p, emphasis) => {
+      const zero = isExpr && scale.isZero(p);
+      ctx.globalAlpha = zero && !emphasis ? zs.alpha : 1;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, emphasis ? r + 1 : r, 0, 2 * Math.PI);
+      ctx.arc(p.x, p.y, emphasis ? r + 1 : zero ? r * zs.radius : r, 0, 2 * Math.PI);
       if (p.linked) {
         ctx.fillStyle = scale.color(p);
         ctx.fill();
@@ -290,6 +331,7 @@ export default function UmapPanel() {
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
     };
     points.forEach((p) => !(p.linked && selected.has(p.cell.cell_id)) && draw(p, false));
     points.forEach((p) => p.linked && selected.has(p.cell.cell_id) && draw(p, true));
@@ -311,7 +353,7 @@ export default function UmapPanel() {
       ctx.fill();
       ctx.stroke();
     }
-  }, [points, scale, selected, hoveredCellId, lasso, width, height, pixelRatio, pt]);
+  }, [points, scale, isExpr, selected, hoveredCellId, lasso, width, height, pixelRatio, pt]);
 
   /* ---- interaction ---- */
   const local = (event) => {
@@ -442,6 +484,23 @@ export default function UmapPanel() {
             <Text type="secondary">{t("components.single-cell.umap.color-by")}</Text>
             <Select size="small" style={{ width: 200 }} value={colorBy} onChange={setColorBy} options={colorOptions} showSearch />
             <HideNaControl hide={hideNa} onChange={setHideNa} hidden={nHiddenNa} />
+            {colorBy === "gene" && geneReady && (
+              <>
+                <Select
+                  size="small"
+                  style={{ width: 215 }}
+                  value={exprScale}
+                  onChange={setExprScale}
+                  options={[
+                    { value: "p99", label: t("components.single-cell.umap.expr-scale-p99") },
+                    { value: "max", label: t("components.single-cell.umap.expr-scale-max") },
+                  ]}
+                />
+                <Checkbox checked={hideZero} onChange={(e) => setHideZero(e.target.checked)}>
+                  {t("components.single-cell.umap.expr-hide-zero")}
+                </Checkbox>
+              </>
+            )}
             {colorBy === "cn" && (
               <AutoComplete
                 size="small"
@@ -518,7 +577,33 @@ export default function UmapPanel() {
               <Text strong type="secondary">
                 {scale.title}
               </Text>
-              {scale.kind === "categorical" ? (
+              {scale.kind === "expression" ? (
+                <>
+                  <Text type="secondary" className="sc-hint">
+                    {t("components.single-cell.umap.expr-detected", { pct: scale.model.pctDetected.toFixed(1), n: scale.model.nDetected, total: scale.model.nTotal })}
+                  </Text>
+                  {scale.model.nDetected > 0 ? (
+                    <>
+                      <div className="sc-umap-ramp" style={{ background: rampGradient(pt.mode) }} />
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <Text type="secondary" className="sc-hint">{Math.round(scale.model.min * 100) / 100}</Text>
+                        <Text type="secondary" className="sc-hint">
+                          {scale.model.capped ? "≥ " : ""}{Math.round(scale.model.cap * 100) / 100}
+                        </Text>
+                      </div>
+                      <Text type="secondary" className="sc-hint">
+                        {t(scale.model.capped ? "components.single-cell.umap.expr-cap-p99" : "components.single-cell.umap.expr-cap-max", { max: Math.round(scale.model.max * 100) / 100 })}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text type="secondary" className="sc-hint">{t("components.single-cell.umap.expr-none")}</Text>
+                  )}
+                  <span className="sc-legend-item">
+                    <span className="sc-legend-swatch" style={{ background: ZERO_STYLE[themeKey(pt.mode)].color }} />
+                    <Text type="secondary">{t("components.single-cell.umap.expr-zero", { n: scale.model.nZero })}</Text>
+                  </span>
+                </>
+              ) : scale.kind === "categorical" ? (
                 Object.entries(scale.levels).map(([level, color]) => (
                   <span key={level} className="sc-legend-item">
                     <span className="sc-legend-swatch" style={{ background: color }} />
