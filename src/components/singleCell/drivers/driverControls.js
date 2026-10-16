@@ -161,7 +161,7 @@ const nFilters = (f) => {
  * redux (layout.drivers) and the URL, and the Report tab's clonal history
  * reads the same selection.
  */
-export default function DriverControls({ driverLayer, branches, onBranches, canBranches, snvView = "vaf", onSnvView }) {
+export default function DriverControls({ driverLayer, branches, onBranches, canBranches, snvView = "vaf", onSnvView, compact = false }) {
   const { entries, shown, fits, selection, setSelection, hasCgc, hasRna, collapsed } = driverLayer;
   const options = useMemo(
     () =>
@@ -197,13 +197,13 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
         onChange={(preset) => setSelection({ ...selection, preset, add: [], remove: [] })}
         options={Object.keys(PRESET_LABELS).map((value) => ({ value, label: <Tooltip title={PRESET_HELP[value]}>{PRESET_LABELS[value]}</Tooltip> }))}
       />
-      <MiniLegend />
+      {!compact && <MiniLegend />}
       <Popover trigger="click" placement="bottomLeft" content={<FilterPanel selection={selection} onChange={setSelection} hasCgc={hasCgc} hasRna={hasRna} />}>
         <Button size="small" icon={<FilterOutlined />} type={nFilters(selection.filters) ? "primary" : "default"} ghost={Boolean(nFilters(selection.filters))}>
           {`Filters${nFilters(selection.filters) ? ` (${nFilters(selection.filters)})` : ""}`}
         </Button>
       </Popover>
-      <Space size={4}>
+      {!compact && <Space size={4}>
         <Text type="secondary">Drivers</Text>
         <Select
           size="small"
@@ -218,15 +218,15 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
           optionFilterProp="search"
           onChange={(keys) => setSelection(selectionForKeys(entries, selection, keys, fits))}
         />
-      </Space>
-      <Text type="secondary">{`${nShown} shown of ${entries.length}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>
+      </Space>}
+      {!compact && <Text type="secondary">{`${nShown} shown of ${entries.length}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>}
       {nF1Hidden > 0 && <Text type="secondary">{`· ${nF1Hidden} hidden by Clade F1 ≥ ${selection.filters.minF1}`}</Text>}
       {selection.filters?.minF1 > 0 && noF1.size > 0 && (
         <Tooltip title={`No carrier cells on the tree, so no Clade F1 score: ${shown.filter((d) => noF1.has(d.key)).map((d) => d.label).join(", ")}`}>
           <Tag style={{ marginInlineEnd: 0 }}>{`${noF1.size} no F1`}</Tag>
         </Tooltip>
       )}
-      {edited > 0 && (
+      {edited > 0 && !compact && (
         <Button size="small" type="link" onClick={() => setSelection({ ...selection, add: [], remove: [] })}>
           {`Back to preset (${nPreset})`}
         </Button>
@@ -234,7 +234,7 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
       {onSnvView && (
         <Tooltip title="Colour of SNV columns. VAF: per-cell alt / depth (white 0 to black 1, grey = no coverage). Call: mutant / wild type / no coverage. Second-hit cells of tumour suppressors and called / rescued SNVs without per-cell counts always use call colours.">
           <Space size={4}>
-            <Text type="secondary">SNV cells</Text>
+            {!compact && <Text type="secondary">SNV cells</Text>}
             <Radio.Group size="small" optionType="button" value={snvView} onChange={(e) => onSnvView(e.target.value)} options={[{ value: "vaf", label: "VAF" }, { value: "call", label: "Call" }]} />
           </Space>
         </Tooltip>
