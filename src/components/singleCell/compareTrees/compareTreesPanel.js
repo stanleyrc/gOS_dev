@@ -126,7 +126,7 @@ export default function CompareTreesPanel() {
   const [cnPx, setCnPx] = useState(220); // width of each CN heatmap; shrinks (never stacks below) when the page is narrow
   const cnOn = showsCn(heatMode) && cnShared.ready;
   const [matrixMode, setMatrixMode] = useState("both"); // "both" | "A" | "B": one matrix per tree, or one shared matrix in that tree's order
-  const [metric, setMetric] = useState(null); // null: genotype calls when the matrix has them
+  const [metric, setMetric] = useState(null); // null: VAF (user 2026-10-16); genotype calls stay selectable
   const [hdrA, setHdrA] = useState(null);
   const [hdrB, setHdrB] = useState(null);
   const [painted, setPainted] = useState([]); // keys "s:<variant index>" / "e:<event key>"
@@ -145,7 +145,7 @@ export default function CompareTreesPanel() {
   const eventList = useMemo(() => eventChoices(events), [events]);
   // the matrix scored and drawn on genotype calls (as the concordance), not read-based status
   const snvCalls = useMemo(() => (snvData ? { ...snvData, status: snvData.gt || snvData.status } : null), [snvData]);
-  const matrixMetric = metric || (snvData?.gt ? "gt" : "vaf");
+  const matrixMetric = metric || "vaf";
   const matrixMax = useMemo(() => (snvCalls ? snvMetricMax(snvCalls, matrixMetric) : 1), [snvCalls, matrixMetric]);
   const nDrivers = useMemo(() => (snvData ? snvData.variants.filter((v) => v.driver).length : 0), [snvData]);
   const categoryCounts = useMemo(() => {
