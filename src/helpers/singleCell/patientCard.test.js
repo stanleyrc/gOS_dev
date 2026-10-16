@@ -30,4 +30,5 @@ test("cardTmb and cardVignette", () => {
   const v = { patients: [{ patient: "P", n_cells: 10, n_tumor: 8, n_normal: 2, n_rna_linked: 5, findings: [{ short: "S", text: "T" }] }] };
   expect(cardVignette(v, "P")).toMatchObject({ nTumor: 8, nRna: 5, headline: { short: "S" } });
   expect(cardVignette(v, "Q")).toBeNull();
+  expect(cardVignette({ patients: { P: v.patients[0] } }, "P").nRna).toBe(5);
 });

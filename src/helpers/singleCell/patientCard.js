@@ -47,7 +47,8 @@ export function cardTmb(tmbDoc, patient) {
 
 /** Vignette entry (cells, RNA-linked cells, top finding) for one patient, or null. */
 export function cardVignette(vignettes, patient) {
-  const p = (vignettes?.patients || []).find((x) => x.patient === patient);
+  const all = vignettes?.patients;
+  const p = Array.isArray(all) ? all.find((x) => x.patient === patient) : all?.[patient];
   if (!p) return null;
   const f = (p.findings || [])[0];
   return { nCells: p.n_cells, nTumor: p.n_tumor, nNormal: p.n_normal, nRna: p.n_rna_linked, headline: f ? { short: f.short, text: f.text } : null };
