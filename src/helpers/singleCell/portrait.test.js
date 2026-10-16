@@ -43,11 +43,18 @@ describe("portrait helpers", () => {
     expect(featureTally(matrix, "f3").counts.not_testable).toBe(3);
     expect(featureTally(null, "f1").text).toBe("not available");
   });
-  it("splits features into holds, fails and open", () => {
+  it("splits features into holds, mixed, fails and open", () => {
     const r = holdsOrNot(matrix);
     expect(r.holds.map((f) => f.key)).toEqual(["f1"]);
     expect(r.fails.map((f) => f.key)).toEqual(["f2"]);
     expect(r.open.map((f) => f.key)).toEqual(["f3"]);
+    const m2 = { patients: ["A", "B"], features: [{ key: "g" }], cells: { A: { g: { verdict: "consistent" } }, B: { g: { verdict: "inconsistent" } } } };
+    expect(holdsOrNot(m2).mixed.map((f) => f.key)).toEqual(["g"]);
+  });
+  it("lets the cohort-level link verdict decide for genotype-state links", () => {
+    const r = holdsOrNot(matrix, { f1: { verdict: "not_testable" }, f2: { verdict: "consistent" } });
+    expect(r.open.map((f) => f.key)).toEqual(["f1", "f3"]);
+    expect(r.holds.map((f) => f.key)).toEqual(["f2"]);
   });
   it("explains a missing portrait", () => {
     expect(portraitUnavailable(null, "P1")).toMatch(/not available/);

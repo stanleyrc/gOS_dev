@@ -11,7 +11,7 @@ export default function PortraitHeadlineCard({ dataset, onView }) {
   const { status, data } = useCohortExport(dataset, "portrait.json");
   if (status === "loading") return null;
   if (!data) return <Alert type="info" showIcon message="Patient portraits: not available (_cohort/portrait.json not exported; srctools gos_sc_portrait.py)" />;
-  const { holds, fails } = holdsOrNot(data.matrix);
+  const { holds, mixed, fails } = holdsOrNot(data.matrix, data.neftel_links);
   const novel = sortNovel(data.novel).filter((n) => n.status !== "exploratory").slice(0, 4);
   return (
     <Alert
@@ -22,7 +22,8 @@ export default function PortraitHeadlineCard({ dataset, onView }) {
       description={
         <div>
           {holds.length > 0 && <div><Text strong>Holds: </Text>{holds.map((f) => `${f.label} (${f.tally.text})`).join("; ")}.</div>}
-          {fails.length > 0 && <div><Text strong>Does not hold in most patients: </Text>{fails.map((f) => `${f.label} (${f.tally.text})`).join("; ")}.</div>}
+          {mixed.length > 0 && <div><Text strong>Mixed: </Text>{mixed.map((f) => `${f.label} (${f.tally.text})`).join("; ")}.</div>}
+          {fails.length > 0 && <div><Text strong>Does not hold: </Text>{fails.map((f) => `${f.label} (${f.tally.text})`).join("; ")}.</div>}
           {novel.length > 0 && <div><Text strong>Novel: </Text>{novel.map((n) => n.title).join("; ")}.</div>}
           {onView && (
             <Button size="small" type="link" style={{ paddingLeft: 0 }} onClick={() => onView("portrait")}>

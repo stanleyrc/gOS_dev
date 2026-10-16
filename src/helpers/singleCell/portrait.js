@@ -57,19 +57,26 @@ export function featureTally(matrix, key) {
   return { counts, applicable, text: parts.join(", ") || "not available" };
 }
 
-/** Canonical features split into those that hold (most applicable patients consistent) and those that do not. */
-export function holdsOrNot(matrix) {
-  const holds = [];
-  const fails = [];
-  const open = [];
+/**
+ * Canonical features split into those that hold, mixed, do not hold, and open. For the genotype-state links the
+ * cohort-level test decides (`links[key].verdict`); for the others the share of consistent among decidable patients
+ * (consistent + inconsistent): >= 2/3 holds, <= 1/3 fails, between is mixed; no decidable patient is open.
+ */
+export function holdsOrNot(matrix, links = null) {
+  const out = { holds: [], mixed: [], fails: [], open: [] };
   (matrix?.features || []).forEach((f) => {
-    const t = featureTally(matrix, f.key);
-    const known = t.counts.consistent + t.counts.inconsistent;
-    if (known === 0) open.push({ ...f, tally: t });
-    else if (t.counts.consistent >= t.counts.inconsistent && t.counts.consistent > 0) holds.push({ ...f, tally: t });
-    else fails.push({ ...f, tally: t });
+    const tally = featureTally(matrix, f.key);
+    const link = links?.[f.key];
+    let cat;
+    if (link) cat = link.verdict === "consistent" ? "holds" : link.verdict === "inconsistent" ? "fails" : "open";
+    else {
+      const decided = tally.counts.consistent + tally.counts.inconsistent;
+      const share = decided ? tally.counts.consistent / decided : null;
+      cat = share == null ? "open" : share >= 2 / 3 ? "holds" : share <= 1 / 3 ? "fails" : "mixed";
+    }
+    out[cat].push({ ...f, tally });
   });
-  return { holds, fails, open };
+  return out;
 }
 
 /** Section lines of a patient card; a missing portrait gives a reason instead of empty sections. */
