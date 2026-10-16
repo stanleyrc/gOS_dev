@@ -10,7 +10,7 @@ describe("cohort views", () => {
     expect(order).toEqual(COHORT_VIEW_GROUPS);
   });
   it("leads with the overview and the findings views", () => {
-    expect(COHORT_VIEWS.slice(0, 2).map((v) => v.key)).toEqual(["overview", "reports"]);
+    expect(COHORT_VIEWS.slice(0, 3).map((v) => v.key)).toEqual(["overview", "portrait", "reports"]);
   });
   it("resolves unknown keys to the overview", () => {
     expect(resolveCohortView("qc")).toBe("qc");

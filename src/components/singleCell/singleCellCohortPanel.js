@@ -76,6 +76,8 @@ import { SC_GUTTER } from "./density";
 import { useCohortRnaFindings } from "./rna/useRnaFindings";
 import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
 import CohortStory from "./story/cohortStory";
+import CohortPortraitPanel from "./cohort/cohortPortraitPanel";
+import PortraitHeadlineCard from "./cohort/portraitHeadlineCard";
 import CohortVignettes from "./vignette/cohortVignettes";
 import { GeneQuickLookContext } from "./cohort/geneQuickLook";
 import { eventLabelsForGene } from "../../helpers/singleCell/geneQuickLook";
@@ -541,6 +543,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "overview" && (
           <>
             <Col span={24}>
+              <PortraitHeadlineCard dataset={geneDataset} onView={setView} />
+            </Col>
+            <Col span={24}>
               <SubclonalHeadlineCard dataset={geneDataset} onView={setView} />
             </Col>
             <Col span={24}>
@@ -662,6 +667,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "oncoprint" && (
           <Col span={24}>
             <CohortOncoprintPanel summaries={summaries} files={files} tsg={tsg} />
+          </Col>
+        )}
+        {view === "portrait" && (
+          <Col span={24}>
+            <CohortPortraitPanel dataset={geneDataset} />
           </Col>
         )}
         {view === "eventassoc" && (
