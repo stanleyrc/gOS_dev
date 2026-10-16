@@ -8,7 +8,7 @@ import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { parseCancerGeneList } from "../../../helpers/singleCell/geneInfo";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import usePatientTsg from "./usePatientTsg";
-import { DEFAULT_SELECTION, buildDriverEntries, collapseColumns, entryFits, entryStates, recommendedOrder, selectDrivers } from "../../../helpers/singleCell/driverLayer";
+import { DEFAULT_SELECTION, buildDriverEntries, collapseColumns, entryFits, entryStates, entryVafs, recommendedOrder, selectDrivers } from "../../../helpers/singleCell/driverLayer";
 
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
 
@@ -95,7 +95,9 @@ export default function useDriverLayer() {
   // per-cell states and display columns (redundant CN events collapsed)
   const display = useMemo(() => {
     const ctx = { order, snv: snvData, snvRows: snvData ? rowMap(order, snvData.cells) : null, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins, twoHit: tsg.secondHits };
-    return collapseColumns(shown, shown.map((d) => entryStates(d, ctx)));
+    const out = collapseColumns(shown, shown.map((d) => entryStates(d, ctx)));
+    out.columns.forEach((c) => (c.vafs = entryVafs(c.entry, ctx))); // per-cell VAF of tree-site SNVs (null = call colours only)
+    return out;
   }, [shown, order, snvData, cn, chromoBins, tsg.secondHits]);
   const setSelection = useCallback((next) => dispatch(singleCellActions.updateLayout({ drivers: next })), [dispatch]);
   return { tsg, entries, shown, fits, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };

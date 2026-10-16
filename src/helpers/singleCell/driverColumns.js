@@ -92,18 +92,20 @@ export function driverLayoutFromSearch(search = "") {
   const p = new URLSearchParams(search);
   const out = {};
   if (p.has("drvw")) out.driverColPx = clampColPx(p.get("drvw"));
+  if (p.has("drvsnv")) out.driverSnvView = p.get("drvsnv") === "call" ? "call" : "vaf";
   if (p.has("cndrv")) out.cnDrivers = ["1", "true"].includes(p.get("cndrv"));
   return Object.keys(out).length ? out : null;
 }
 
-export const DRIVER_LAYOUT_PARAMS = ["drvw", "cndrv"];
+export const DRIVER_LAYOUT_PARAMS = ["drvw", "cndrv", "drvsnv"];
 
 /** Params to write for the layout in force: heatmapType "drivers" or "cn" (+ cnDrivers); {} otherwise. */
-export function driverLayoutToSearch({ heatmapType, driverColPx, cnDrivers } = {}) {
+export function driverLayoutToSearch({ heatmapType, driverColPx, cnDrivers, driverSnvView } = {}) {
   const shown = heatmapType === "drivers" || (heatmapType === "cn" && cnDrivers);
   if (!shown) return {};
   const out = {};
   if (clampColPx(driverColPx)) out.drvw = `${clampColPx(driverColPx)}`;
+  if (driverSnvView === "call") out.drvsnv = "call"; // "vaf" is the default
   if (heatmapType === "cn") out.cndrv = "1";
   return out;
 }

@@ -27,7 +27,8 @@ export const PRESET_LABELS = {
 export const PRESET_HELP = {
   recommended:
     "OncoKB tier 1-2 events in a cancer gene (OncoKB, GBM gene or COSMIC CGC) that pass QC: at least 3 carrier cells, no 'upstream of GENE' fusion, site evidence not artefact- or germline-like. " +
-    `Complex events (${DM_HELP}, BFB, TIC) have no tier and are included when 3 or more cells carry them. Also tier-3 missense predicted damaging by SIFT and PolyPhen, in any gene, if they pass QC (Tier limit in Filters).`,
+    `Complex events (${DM_HELP}, BFB, TIC) have no tier and are included when 3 or more cells carry them. Also tier-3 missense predicted damaging by SIFT and PolyPhen, in any gene, and tier-3 truncating SNVs (nonsense, frameshift, splice) in an OncoKB tumour suppressor, if they pass QC (Tier limit in Filters). ` +
+    "SNVs added by the all-SNV exporter (called in the joint calls, not a tree site) and hotspot-rescued SNVs already passed read-level QC in a driver-gene list, so they are included whenever they pass QC, whatever their tier or cancer-gene flag.",
   subclonal: "Tier 1-2 drivers carried by 95% of the tumor cells or fewer, passing QC.",
   hotspots: "Point mutations at known hotspot sites (site evidence) or OncoKB-flagged driver sites, passing QC.",
   all: "Every driver event of the patient, including 'upstream of GENE' fusions and tier 3 events.",
@@ -160,7 +161,7 @@ const nFilters = (f) => {
  * redux (layout.drivers) and the URL, and the Report tab's clonal history
  * reads the same selection.
  */
-export default function DriverControls({ driverLayer, branches, onBranches, canBranches }) {
+export default function DriverControls({ driverLayer, branches, onBranches, canBranches, snvView = "vaf", onSnvView }) {
   const { entries, shown, fits, selection, setSelection, hasCgc, hasRna, collapsed } = driverLayer;
   const options = useMemo(
     () =>
@@ -229,6 +230,14 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
         <Button size="small" type="link" onClick={() => setSelection({ ...selection, add: [], remove: [] })}>
           {`Back to preset (${nPreset})`}
         </Button>
+      )}
+      {onSnvView && (
+        <Tooltip title="Colour of SNV columns. VAF: per-cell alt / depth (white 0 to black 1, grey = no coverage). Call: mutant / wild type / no coverage. Second-hit cells of tumour suppressors and called / rescued SNVs without per-cell counts always use call colours.">
+          <Space size={4}>
+            <Text type="secondary">SNV cells</Text>
+            <Radio.Group size="small" optionType="button" value={snvView} onChange={(e) => onSnvView(e.target.value)} options={[{ value: "vaf", label: "VAF" }, { value: "call", label: "Call" }]} />
+          </Space>
+        </Tooltip>
       )}
       {canBranches && (
         <Tooltip title="Mark the tree branch where each shown driver arises: the clade its carrier cells fit best (fit 0.5 or more). Clonal drivers sit on the root stem and are not marked.">

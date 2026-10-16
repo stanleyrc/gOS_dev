@@ -59,6 +59,7 @@ import {
   rowMap,
   snvColumnOrder,
   snvMetricMax,
+  vafRGBA,
   treeColumnOrder,
   wheelZoomFactor,
   zoomDomain,
@@ -92,7 +93,7 @@ import DriverLayerDrawer from "./drivers/driverLayerDrawer";
 import { DEFAULT_SNV_TRACKS } from "../../helpers/singleCell/snvAnnot";
 import { SPLIT_PARAMS, dragSplitter, fractionsToLayout, layoutFractions, splitToSearch, splitWidths } from "../../helpers/singleCell/panelSplit";
 import { driverColors } from "./drivers/driverColors";
-import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, rescueText, serializeSelection, snvStateLabel } from "../../helpers/singleCell/driverLayer";
+import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, rescueText, serializeSelection, snvStateLabel, snvVafCell } from "../../helpers/singleCell/driverLayer";
 import useCellLabels from "./useCellLabels";
 import SelectionExport from "./selectionExport";
 
@@ -590,13 +591,13 @@ export default function CellHeatmapPanel() {
         else if (url.searchParams.get("heatmap") === "drivers") url.searchParams.delete("heatmap");
         Object.entries(serializeSelection(driverLayer.selection)).forEach(([k, v]) => url.searchParams.set(k, v));
         // drvw=<px per driver column> (absent = auto fit); cndrv=1 = drivers beside the copy-number heatmap
-        Object.entries(driverLayoutToSearch({ heatmapType, driverColPx: layout.driverColPx, cnDrivers: showCnDrivers })).forEach(([k, v]) => url.searchParams.set(k, v));
+        Object.entries(driverLayoutToSearch({ heatmapType, driverColPx: layout.driverColPx, cnDrivers: showCnDrivers, driverSnvView: layout.driverSnvView })).forEach(([k, v]) => url.searchParams.set(k, v));
       } else if (url.searchParams.get("heatmap") === "drivers") url.searchParams.delete("heatmap");
       if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
     } catch (error) {
       // no window / history: the selection still lives in redux
     }
-  }, [heatmapType, showCnDrivers, layout.driverColPx, layout.cnw, layout.drvbw, layout.snbw, panelsPresent.join(), driverLayer.selection, sc.patient]);
+  }, [heatmapType, showCnDrivers, layout.driverColPx, layout.driverSnvView, layout.cnw, layout.drvbw, layout.snbw, panelsPresent.join(), driverLayer.selection, sc.patient]);
   // Junction CN focus (filter + sort) lives in the URL (heatmap=junctions&jcf=all|view|walk:<id>&jsort=carriers)
   useEffect(() => {
     if (!sc.patient) return;
@@ -705,11 +706,18 @@ export default function CellHeatmapPanel() {
     const colors = {};
     Object.entries(driverColors()).forEach(([k, hex]) => (colors[k] = packRGBA(hexToRgb(hex))));
     const states = driverVisible.map((c) => c.states);
+    const snvView = layout.driverSnvView === "call" ? "call" : "vaf";
     const matrixWidth = driverViewNow.width;
     const colorAt = (r, c) => {
       const d = driverVisible[c]?.entry;
       const v = states[c]?.[r];
       if (!d) return stripBlank;
+      if (d.cls === "snv") {
+        const vaf = snvView === "vaf" ? driverVisible[c].vafs?.[r] : undefined;
+        const kind = snvVafCell(v, vaf);
+        if (kind === "vaf") return vafRGBA(vaf);
+        if (kind === "none" && snvView === "vaf") return colors.noCoverage;
+      }
       if (d.cls === "snv") return v === 4 ? colors.bothHit : v === 3 ? colors.loss : v === 2 ? colors.mutant : v === 1 ? colors.wildtype : colors.noCoverage;
       if (d.cls === "amp" || d.cls === "homdel") return driverCnColor(v);
       if (d.cls === "fusion") return v === 3 ? colors.both : v === 2 ? colors.rna : v === 1 ? colors.dna : stripBlank;
@@ -741,12 +749,14 @@ export default function CellHeatmapPanel() {
           ["Carriers", d.rescued ? `${d.n} of ${d.rescue.covered} covered tumour cells (${d.rescue.nTumour ? `${Math.round(100 * (d.rescue.coverage || 0))}% of ${d.rescue.nTumour} tumour cells covered` : "coverage n/a"})` : `${d.n} cells${d.subclonal ? " (subclonal)" : " (clonal)"}`],
           ...(d.twoHit ? [["Two hits", d.twoHit.text]] : []),
           ...(d.rescued ? [["Evidence", rescueText(d)]] : []),
+          ...(d.cls === "snv" && snvView === "vaf" && !col.vafs ? [["Colour", "call (no per-cell alt / depth counts for this row)"]] : []),
+          ...(d.cls === "snv" && col.vafs ? [["VAF", Number.isFinite(col.vafs[r]) ? col.vafs[r].toFixed(2) : "no coverage"]] : []),
           ["This cell", state],
         ];
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heatmapType, showCnDrivers, driverVisible, driverViewNow?.width, pixelRatio, t, snv, snvRows, cn, stripBlank, driverCnColor]);
+  }, [heatmapType, showCnDrivers, driverVisible, driverViewNow?.width, pixelRatio, t, snv, snvRows, cn, stripBlank, driverCnColor, layout.driverSnvView]);
 
   /* ---- active matrix (copy number or junctions): column lookup, colour, axis ---- */
   const active = useMemo(() => {
@@ -1344,6 +1354,8 @@ export default function CellHeatmapPanel() {
               />
               <DriverControls
                 driverLayer={driverLayer}
+                snvView={layout.driverSnvView === "call" ? "call" : "vaf"}
+                onSnvView={(value) => dispatch(singleCellActions.updateLayout({ driverSnvView: value }))}
                 canBranches={hasTree}
                 branches={Boolean(layout.driverBranches)}
                 onBranches={(value) => dispatch(singleCellActions.updateLayout({ driverBranches: value }))}
@@ -1819,7 +1831,7 @@ export default function CellHeatmapPanel() {
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}
               expression={showExpression ? expression : null}
-              drivers={heatmapType === "drivers" ? { colors: driverColors(), palette, entries: driverEntries.map((c) => c.entry) } : null}
+              drivers={heatmapType === "drivers" ? { snvView: layout.driverSnvView === "call" ? "call" : "vaf", colors: driverColors(), palette, entries: driverEntries.map((c) => c.entry), vafColumns: driverEntries.some((c) => c.vafs) } : null}
             />
             {annotationFields.map((f) => (
               <Space key={f} size={4} wrap className="sc-legend">
