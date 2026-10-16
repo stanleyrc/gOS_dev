@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
-import { ApartmentOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { AiOutlineDownload, AiOutlineFullscreen, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
+import { Alert, Button, Card, Checkbox, Popover, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
+import { ApartmentOutlined, ColumnWidthOutlined, CloseOutlined, ExpandOutlined, FullscreenExitOutlined, FullscreenOutlined, InfoCircleOutlined, SettingOutlined } from "@ant-design/icons";
+import { AiOutlineDownload, AiOutlineZoomIn, AiOutlineZoomOut } from "react-icons/ai";
+import { FOCUS_STORAGE_KEY, focusHeatmapHeight, initialFocus, isFocusToggleKey, searchWithFocus } from "../../helpers/singleCell/focusMode";
 import HeatmapCanvas from "./heatmapCanvas";
 import StripLabels from "./stripLabels";
 import HintLine, { Provenance } from "./hintLine";
@@ -153,6 +154,25 @@ export default function CellHeatmapPanel() {
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
   const [hover, setHover] = useState(null);
+  /* ---- focus mode: the card fills the viewport (button, `f` to toggle, Esc to leave, ?focus=1) ---- */
+  const [focus, setFocusState] = useState(() => {
+    let stored = null;
+    try { stored = window.sessionStorage.getItem(FOCUS_STORAGE_KEY); } catch (e) { /* no storage */ }
+    return initialFocus(window.location.search, stored);
+  });
+  const [browserFullscreen, setBrowserFullscreen] = useState(false);
+  const [focusHeight, setFocusHeight] = useState(null);
+  const focusBody = useRef(null);
+  const focusInner = useRef(null);
+  const setFocus = useCallback((on) => {
+    setFocusState(on);
+    try { window.sessionStorage.setItem(FOCUS_STORAGE_KEY, on ? "1" : "0"); } catch (e) { /* no storage */ }
+    try {
+      const next = searchWithFocus(window.location.search, on);
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${next}${window.location.hash}`);
+    } catch (e) { /* no history */ }
+    if (!on && typeof document !== "undefined" && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }, []);
   const [cardGene, setCardGene] = useState(null);   // gene label clicked in the RNA side panel
   const anchorRow = useRef(null);
   const canvasHolder = useRef(null);
@@ -347,9 +367,63 @@ export default function CellHeatmapPanel() {
     [driverEntries, driverViewNow?.start, driverViewNow?.end]
   );
   const [dragHeight, setDragHeight] = useState(null);
-  const baseHeight = layout.heatmapHeight || heatmapHeight(nRows, layout.rowHeight);
+  const fitToViewport = focus && layout.rowHeight === "auto" && focusHeight != null;
+  const baseHeight = layout.heatmapHeight || (fitToViewport ? focusHeight : heatmapHeight(nRows, layout.rowHeight));
   const height = dragHeight ?? baseHeight;
   const clampHeight = (h) => Math.round(Math.max(120, Math.min(6000, h)));
+  const heightNow = useRef(height);
+  heightNow.current = height;
+  // keys: `f` toggles focus (only for the card on screen), Esc leaves it unless a drawer / modal / dropdown is open
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === "Escape") {
+        if (!focus || event.defaultPrevented) return;
+        if (document.querySelector(".ant-drawer-open, .ant-modal-wrap:not([style*='display: none']), .ant-select-open, .ant-popover:not(.ant-popover-hidden), .ant-dropdown:not(.ant-dropdown-hidden)")) return;
+        setFocus(false);
+        return;
+      }
+      if (!isFocusToggleKey(event)) return;
+      const el = containerRef.current;
+      if (!focus && !(el && el.getClientRects().length > 0)) return; // card not on screen (another tab)
+      event.preventDefault();
+      setFocus(!focus);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focus, setFocus, containerRef]);
+  useEffect(() => {
+    const onChange = () => setBrowserFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleBrowserFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen && document.exitFullscreen().catch(() => {});
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+  };
+  // "Fit" row height in focus mode: the rows take what the viewport leaves after the header, axis and legend
+  useEffect(() => {
+    if (!focus) {
+      setFocusHeight(null);
+      return undefined;
+    }
+    const body = focusBody.current;
+    const inner = focusInner.current;
+    if (!body || !inner) return undefined;
+    const measure = () => {
+      const h = focusHeatmapHeight({ bodyClient: body.clientHeight, contentHeight: inner.offsetHeight, rowAreaHeight: heightNow.current, nRows });
+      if (h != null) setFocusHeight((prev) => (prev != null && Math.abs(prev - h) < 3 ? prev : h));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    if (typeof ResizeObserver === "undefined") return () => window.removeEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    observer.observe(inner);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, [focus, nRows]);
   useEffect(() => {
     dispatch(
       singleCellActions.updatePlotInsets({
@@ -1055,79 +1129,8 @@ export default function CellHeatmapPanel() {
     onLeave: clearHover,
   };
 
-  return (
-    <Wrapper>
-      <Card
-        size="small"
-        title={
-          <Space wrap>
-            <ApartmentOutlined />
-            <span>{t("components.single-cell.heatmap.title")}</span><Provenance id={heatmapType === "snv" ? "snvHeatmap" : heatmapType === "junctions" ? "junctionHeatmap" : heatmapType === "drivers" ? "driversHeatmap" : "cnHeatmap"} />
-            <Text type="secondary">
-              {t("components.single-cell.heatmap.cell-count", { count: nRows })}
-            </Text>
-            <Text type="secondary" className="sc-hint">
-              · <Provenance id="phylogeny">{treeNote}</Provenance>
-            </Text>
-            {missingGenomes > 0 && (
-              <span className="sc-note">
-                <InfoCircleOutlined />
-                {t(
-                  cnMode === "total"
-                    ? "components.single-cell.heatmap.missing-genomes"
-                    : "components.single-cell.heatmap.missing-allelic",
-                  { count: missingGenomes }
-                )}
-              </span>
-            )}
-          </Space>
-        }
-        extra={
-          <Space wrap>
-            {(heatmapType === "cn" || heatmapType === "junctions") && (
-              <Tooltip title={t("components.single-cell.heatmap.zoom-in")}>
-                <Button
-                  size="small"
-                  icon={<AiOutlineZoomIn />}
-                  onClick={() =>
-                    heatmapType === "cn" ? zoomAll(0.5) : junctionWheel({ x: heatWidth / 2, deltaY: -500, deltaMode: 0 })
-                  }
-                />
-              </Tooltip>
-            )}
-            {(heatmapType === "cn" || heatmapType === "junctions") && (
-              <Tooltip title={t("components.single-cell.heatmap.zoom-out")}>
-                <Button
-                  size="small"
-                  icon={<AiOutlineZoomOut />}
-                  onClick={() =>
-                    heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
-                  }
-                />
-              </Tooltip>
-            )}
-            {(heatmapType === "cn" || heatmapType === "junctions") && (
-              <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
-                <Button
-                  size="small"
-                  icon={<AiOutlineFullscreen />}
-                  onClick={() =>
-                    heatmapType === "cn"
-                      ? defaultDomain && dispatch(settingsActions.updateDomains([defaultDomain]))
-                      : setJRange(null)
-                  }
-                />
-              </Tooltip>
-            )}
-            <PaletteEditor />
-            <Tooltip title={t("components.single-cell.heatmap.download")}>
-              <Button size="small" icon={<AiOutlineDownload />} onClick={downloadPng} />
-            </Tooltip>
-          </Space>
-        }
-      >
-        <div className={heatmapType === "snv" ? undefined : "sc-toolbar-sticky"}>
-        <SavedGroupsBar />
+  const selectionBar = (
+    <>
         {selectedCellIds.length > 0 && (
           <Space wrap size={[8, 4]} className="sc-group-bar">
             <Text strong>{t("components.single-cell.groups.selected", { count: selectedCellIds.length })}</Text>
@@ -1159,6 +1162,9 @@ export default function CellHeatmapPanel() {
             </Button>
           </Space>
         )}
+    </>
+  );
+  const toolbarNode = (
         <div className="sc-toolbar">
           <div className="sc-toolbar-row">
             <Text strong className="sc-toolbar-row-label">{t("components.single-cell.toolbar.row-view")}</Text>
@@ -1479,6 +1485,244 @@ export default function CellHeatmapPanel() {
             </div>
           )}
         </div>
+  );
+
+  const normalTitle = (
+          <Space wrap>
+            <ApartmentOutlined />
+            <span>{t("components.single-cell.heatmap.title")}</span><Provenance id={heatmapType === "snv" ? "snvHeatmap" : heatmapType === "junctions" ? "junctionHeatmap" : heatmapType === "drivers" ? "driversHeatmap" : "cnHeatmap"} />
+            <Text type="secondary">
+              {t("components.single-cell.heatmap.cell-count", { count: nRows })}
+            </Text>
+            <Text type="secondary" className="sc-hint">
+              · <Provenance id="phylogeny">{treeNote}</Provenance>
+            </Text>
+            {missingGenomes > 0 && (
+              <span className="sc-note">
+                <InfoCircleOutlined />
+                {t(
+                  cnMode === "total"
+                    ? "components.single-cell.heatmap.missing-genomes"
+                    : "components.single-cell.heatmap.missing-allelic",
+                  { count: missingGenomes }
+                )}
+              </span>
+            )}
+          </Space>
+  );
+  const actionButtons = (
+    <>
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.zoom-in")}>
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomIn />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(0.5) : junctionWheel({ x: heatWidth / 2, deltaY: -500, deltaMode: 0 })
+                  }
+                />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.zoom-out")}>
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomOut />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
+                  }
+                />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
+                <Button
+                  size="small"
+                  icon={<ColumnWidthOutlined />}
+                  onClick={() =>
+                    heatmapType === "cn"
+                      ? defaultDomain && dispatch(settingsActions.updateDomains([defaultDomain]))
+                      : setJRange(null)
+                  }
+                />
+              </Tooltip>
+            )}
+            <PaletteEditor />
+            <Tooltip title={t("components.single-cell.heatmap.download")}>
+              <Button size="small" icon={<AiOutlineDownload />} onClick={downloadPng} />
+            </Tooltip>
+    </>
+  );
+  const normalExtra = (
+    <Space wrap>
+      <Tooltip title="Focus: fill the whole window with the phylogeny and heatmap (key f; Esc to leave)">
+        <Button size="small" icon={<ExpandOutlined />} onClick={() => setFocus(true)} data-focus-button>
+          Focus
+        </Button>
+      </Tooltip>
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.zoom-in")}>
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomIn />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(0.5) : junctionWheel({ x: heatWidth / 2, deltaY: -500, deltaMode: 0 })
+                  }
+                />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.zoom-out")}>
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomOut />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
+                  }
+                />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
+                <Button
+                  size="small"
+                  icon={<ColumnWidthOutlined />}
+                  onClick={() =>
+                    heatmapType === "cn"
+                      ? defaultDomain && dispatch(settingsActions.updateDomains([defaultDomain]))
+                      : setJRange(null)
+                  }
+                />
+              </Tooltip>
+            )}
+            <PaletteEditor />
+            <Tooltip title={t("components.single-cell.heatmap.download")}>
+              <Button size="small" icon={<AiOutlineDownload />} onClick={downloadPng} />
+            </Tooltip>
+    </Space>
+  );
+  const focusExtra = (
+    <Space size={6}>
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.zoom-in")}>
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomIn />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(0.5) : junctionWheel({ x: heatWidth / 2, deltaY: -500, deltaMode: 0 })
+                  }
+                />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.zoom-out")}>
+                <Button
+                  size="small"
+                  icon={<AiOutlineZoomOut />}
+                  onClick={() =>
+                    heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
+                  }
+                />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
+                <Button
+                  size="small"
+                  icon={<ColumnWidthOutlined />}
+                  onClick={() =>
+                    heatmapType === "cn"
+                      ? defaultDomain && dispatch(settingsActions.updateDomains([defaultDomain]))
+                      : setJRange(null)
+                  }
+                />
+              </Tooltip>
+            )}
+            <PaletteEditor />
+            <Tooltip title={t("components.single-cell.heatmap.download")}>
+              <Button size="small" icon={<AiOutlineDownload />} onClick={downloadPng} />
+            </Tooltip>
+      <Tooltip title={browserFullscreen ? "Leave browser full screen" : "Browser full screen (hides the browser bars)"}>
+        <Button size="small" icon={browserFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} onClick={toggleBrowserFullscreen} data-browser-fullscreen />
+      </Tooltip>
+      <Tooltip title="Leave focus mode (Esc or f)">
+        <Button size="small" icon={<CloseOutlined />} onClick={() => setFocus(false)} data-focus-exit>
+          Exit
+        </Button>
+      </Tooltip>
+    </Space>
+  );
+  const focusTitle = (
+    <Space size={[10, 4]} wrap className="sc-focus-head">
+      <ApartmentOutlined />
+      <Text strong>{sc.patient?.caseReportId}</Text>
+      <Text type="secondary">{t("components.single-cell.heatmap.cell-count", { count: nRows })}</Text>
+      <Segmented size="small" options={typeOptions} value={heatmapType} onChange={(value) => dispatch(singleCellActions.updateHeatmapType(value))} />
+      {heatmapType === "cn" && (
+        <Select
+          size="small"
+          style={{ width: 100 }}
+          value={cnMode}
+          loading={cnMode !== "total" && allelic.status === "loading"}
+          onChange={(value) => dispatch(singleCellActions.updateCnMode(value))}
+          options={["total", "major", "minor"].map((value) => ({ value, label: t(`components.single-cell.cn-mode.${value}`) }))}
+        />
+      )}
+      {heatmapType === "snv" && showSnvControls && (
+        <Select
+          size="small"
+          style={{ width: 110 }}
+          value={snvMetric}
+          onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
+          options={["vaf", "alt", "depth", ...(snv.data?.gt ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))}
+        />
+      )}
+      {heatmapType === "drivers" && (
+        <DriverControls
+          compact
+          driverLayer={driverLayer}
+          snvView={layout.driverSnvView === "call" ? "call" : "vaf"}
+          onSnvView={(value) => dispatch(singleCellActions.updateLayout({ driverSnvView: value }))}
+          canBranches={hasTree}
+          branches={Boolean(layout.driverBranches)}
+          onBranches={(value) => dispatch(singleCellActions.updateLayout({ driverBranches: value }))}
+        />
+      )}
+      <Tooltip title="Row height: Fit fills the window; or a fixed pixel height per cell">
+        <Select
+          size="small"
+          style={{ width: 82 }}
+          value={layout.rowHeight}
+          onChange={(value) => dispatch(singleCellActions.updateLayout({ rowHeight: value, heatmapHeight: null }))}
+          options={ROW_HEIGHTS.map((value) => ({ value, label: value === "auto" ? t("components.single-cell.toolbar.fit") : `${value} px` }))}
+        />
+      </Tooltip>
+      <Popover
+        trigger="click"
+        placement="bottomLeft"
+        destroyTooltipOnHide={false}
+        getPopupContainer={(node) => node.closest(".sc-focus-card") || document.body}
+        content={<div className="sc-focus-more-body"><SavedGroupsBar />{toolbarNode}</div>}
+      >
+        <Button size="small" icon={<SettingOutlined />} data-focus-more>More controls</Button>
+      </Popover>
+    </Space>
+  );
+
+  return (
+    <Wrapper>
+      <Card
+        size="small"
+        className={focus ? "sc-focus-card" : undefined}
+        title={focus ? focusTitle : normalTitle}
+        extra={focus ? focusExtra : normalExtra}
+      >
+        <div ref={focusBody} className={focus ? "sc-focus-body" : undefined}>
+        <div ref={focusInner}>
+        <div className={heatmapType === "snv" || focus ? undefined : "sc-toolbar-sticky"}>
+          {!focus && <SavedGroupsBar />}
+          {selectionBar}
+          {!focus && toolbarNode}
         </div>
         {alerts.map((a) => (
           <Alert key={a.key} type="warning" showIcon className="sc-alert" message={a.message} description={a.description} />
@@ -1812,7 +2056,7 @@ export default function CellHeatmapPanel() {
               </div>
             )}
           </div>
-          <HeightHandle
+          {!fitToViewport && <HeightHandle
             title={t("components.single-cell.heatmap.resize-height")}
             onResize={(dy) => setDragHeight(clampHeight(baseHeight + dy))}
             onCommit={(dy) => {
@@ -1820,7 +2064,7 @@ export default function CellHeatmapPanel() {
               setDragHeight(null);
             }}
             onReset={() => dispatch(singleCellActions.updateLayout({ heatmapHeight: null }))}
-          />
+          />}
           <div className="sc-heatmap-footer">
             <HeatmapLegend
               type={heatmapType}
@@ -1872,6 +2116,8 @@ export default function CellHeatmapPanel() {
             )}
             <HintLine text={t("components.single-cell.heatmap.hint")} style={{ flex: "1 1 240px" }} />
           </div>
+        </div>
+        </div>
         </div>
       </Card>
       {isolating && <SnvIsolatePanel snv={snv.data} columns={snvColumns} annot={snvAnnot} branchInfo={isolateBranches} carrierCount={isolateRows ? isolateRows.size : null} patient={sc.patient?.caseReportId || ""} />}

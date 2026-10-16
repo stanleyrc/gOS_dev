@@ -101,6 +101,48 @@ const Wrapper = styled.div`
     margin-bottom: 0;
     font-size: var(--sc-fs-body, 13.5px);
   }
+  /* focus mode: the heatmap card fills the viewport above the app chrome */
+  .ant-card.sc-focus-card {
+    position: fixed;
+    inset: 0;
+    z-index: 990;
+    margin: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--sc-panel, #fff);
+  }
+  .sc-focus-card > .ant-card-head {
+    flex: none;
+  }
+  .sc-focus-card > .ant-card-head .ant-card-head-wrapper {
+    flex-wrap: wrap;
+  }
+  .sc-focus-card > .ant-card-head .ant-card-head-title {
+    overflow: visible;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .sc-focus-card > .ant-card-head .ant-card-extra {
+    margin-left: auto;
+  }
+  .sc-focus-card > .ant-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 8px;
+  }
+  .sc-focus-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+  .sc-focus-more-body {
+    width: min(1100px, 90vw);
+    max-height: 70vh;
+    overflow: auto;
+  }
   .sc-heatmap-container {
     position: relative;
     width: 100%;
