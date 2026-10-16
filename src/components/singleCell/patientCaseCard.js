@@ -16,7 +16,7 @@ const loadEvents = (dataset, pair) => {
   return eventsCache.get(key);
 };
 
-const NA = ({ why }) => <Text type="secondary" style={{ fontSize: 13 }}>{`not available (${why})`}</Text>;
+const NA = ({ why }) => <Text type="secondary" style={{ fontSize: 13, fontWeight: 400 }}>{`not available (${why})`}</Text>;
 
 function Stat({ label, children, tip }) {
   return (
@@ -92,7 +92,7 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
           {tumour.length ? <span style={{ cursor: "help" }}>{tumour.length}</span> : <Text type="secondary" style={{ fontSize: 13, fontWeight: 400 }}>none called</Text>}
         </Stat>
         <Stat label="TMB" tip="Median per-cell mutations per Mb (single-cell, QC-corrected); _cohort/tmb.json">
-          {tmb ? <>{tmb.value.toFixed(2)}<Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}> /Mb{tmb.noisy ? " (noisy)" : ""}</Text></> : <NA why="tmb.json" />}
+          {tmb ? <>{tmb.value.toFixed(2)}<Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}> /Mb{tmb.noisy ? " (noisy)" : ""}</Text></> : <NA why="no SNV calls for this patient yet" />}
         </Stat>
         <Stat label="RNA cells" tip="Cells with matched single-cell RNA">
           {v?.nRna != null ? v.nRna : <NA why="vignettes.json" />}
