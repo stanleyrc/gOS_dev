@@ -2,16 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useHiddenCellIds } from "../useCovQc";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
-import { CURRENT_TREE, treeFromNewick, alignTipNames } from "../../../helpers/singleCell/treeCompare";
+import { CURRENT_TREE, alignTipNames } from "../../../helpers/singleCell/treeCompare";
+import { parseNewick } from "../../../helpers/singleCell/newick";
+import { annotateSupport } from "../../../helpers/singleCell/treeSupport";
 
 const cache = new Map();
 
 /**
  * A phylogeny of the open patient by name: "gos" is the current tree of the
  * single-cell store, the others are trees/<name>.nwk (tips already gOS cell ids).
+ * `support` is the parsed trees/support.json; when it has an entry for the tree its internal nodes carry `support: { fbp, tbe }`.
  * @returns { status: "idle" | "loading" | "ok" | "missing" | "error", root, matched, total }
  */
-export default function useAltTree(name) {
+export default function useAltTree(name, support = null) {
   const dataset = useSelector((s) => s.Settings.dataset);
   const patient = useSelector((s) => s.SingleCell.patient);
   const tree = useSelector((s) => s.SingleCell.tree);
@@ -43,16 +46,18 @@ export default function useAltTree(name) {
     if (name === CURRENT_TREE) {
       const source = tree?.status === "ok" ? tree.data?.source : null;
       if (!source) return { status: "missing", root: null, matched: 0, total: 0 };
-      const { root, matched, total } = alignTipNames(source, ids);
-      return { status: root ? "ok" : "missing", root, matched, total };
+      const ann = annotateSupport(source, support?.available ? support.trees?.[name] : null);
+      const { root, matched, total } = alignTipNames(ann.root, ids);
+      return { status: root ? "ok" : "missing", root, matched, total, supportMapped: ann.mapped, supportInternal: ann.internal };
     }
     if (file.name !== name || file.status === "loading" || file.status === "idle") return { status: "loading", root: null, matched: 0, total: 0 };
     if (file.status !== "ok") return { status: file.status, root: null, matched: 0, total: 0 };
     try {
-      const { root, matched, total } = treeFromNewick(file.text, ids);
-      return { status: root ? "ok" : "missing", root, matched, total };
+      const ann = annotateSupport(parseNewick(file.text), support?.available ? support.trees?.[name] : null);
+      const { root, matched, total } = alignTipNames(ann.root, ids);
+      return { status: root ? "ok" : "missing", root, matched, total, supportMapped: ann.mapped, supportInternal: ann.internal };
     } catch (error) {
       return { status: "error", root: null, matched: 0, total: 0 };
     }
-  }, [name, file, tree, ids]);
+  }, [name, file, tree, ids, support]);
 }
