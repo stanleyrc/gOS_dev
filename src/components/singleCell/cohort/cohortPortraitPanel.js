@@ -37,11 +37,12 @@ function Matrix({ data, onPatient }) {
 }
 
 function Summary({ data }) {
-  const { holds, fails, open } = holdsOrNot(data.matrix);
+  const { holds, mixed, fails, open } = holdsOrNot(data.matrix, data.neftel_links);
   const list = (items) => items.map((f) => `${f.label} (${f.tally.text})`).join("; ");
   const items = [];
   if (holds.length) items.push(<li key="h"><b>Holds:</b> {list(holds)}.</li>);
-  if (fails.length) items.push(<li key="f"><b>Does not hold in most patients:</b> {list(fails)}.</li>);
+  if (mixed.length) items.push(<li key="m"><b>Mixed (about half of the decidable patients):</b> {list(mixed)}.</li>);
+  if (fails.length) items.push(<li key="f"><b>Does not hold:</b> {list(fails)}.</li>);
   if (open.length) items.push(<li key="o"><b>Not decidable here (underpowered, not assessed, or absent):</b> {list(open)}.</li>);
   return <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYPE.body }}>{items}</ul>;
 }
