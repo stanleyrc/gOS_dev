@@ -8,9 +8,10 @@ import { CLASS_TEXT } from "./driverColors";
 const MAX_CHARS = 26;
 const LABEL_MIN_COL = 2.5; // px per column from which names are written (narrower than a line: every k-th name)
 const short = (s) => (s.length > MAX_CHARS ? `${s.slice(0, MAX_CHARS - 1)}…` : s);
-const DriverTip = ({ d, sig }) => (
+const DriverTip = ({ d, sig, f1 }) => (
   <div>
     <div>{`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}</div>
+    {f1 !== undefined && <div>{Number.isFinite(f1) ? `Clade F1 ${f1.toFixed(2)} (best-matching tree clade)` : "Clade F1: not available (no carrier cells on the tree)"}</div>}
     {d.entry?.rescued && <div style={{ marginTop: 4 }}>{rescueText(d.entry)}</div>}
     {d.entry?.rescued && <div style={{ opacity: 0.7, fontSize: 11 }}>Cells: mutant / no alt read (covered) / no coverage (grey); coverage is sparse, so no alt read is not wild type.</div>}
     {sig && <div style={{ marginTop: 4 }}>{`Signature: ${sig}`}</div>}
@@ -27,7 +28,7 @@ const MIN_FONT = 11;
  * same mapping the heatmap canvas uses, so each name sits on its column at any width,
  * zoom or pixel ratio. `entries` are the visible columns only (re-flows on zoom).
  */
-export default function DriverColumnHeader({ sigText = null, entries, width, pixelRatio = 1, hoverKey, openKey, onOpen }) {
+export default function DriverColumnHeader({ sigText = null, fits = null, entries, width, pixelRatio = 1, hoverKey, openKey, onOpen }) {
   const n = entries.length || 1;
   const cw = width / n;
   const fs = Math.max(MIN_FONT, Math.min(12, cw - 1.5));
@@ -45,7 +46,7 @@ export default function DriverColumnHeader({ sigText = null, entries, width, pix
     <div style={{ position: "relative", width, height: height + 6, marginBottom: 2 }} data-driver-header>
       {named &&
         entries.map((d, i) => (i % step ? null : (
-          <Tooltip key={d.key} title={d.absent ? `${d.label} · not in this patient (no filtered event)` : <DriverTip d={d} sig={sigText ? sigText(d.entry) : null} />}>
+          <Tooltip key={d.key} title={d.absent ? `${d.label} · not in this patient (no filtered event)` : <DriverTip d={d} sig={sigText ? sigText(d.entry) : null} f1={fits ? fits.get(d.key) : undefined} />}>
             <span
               role="button"
               data-driver-label={d.key}

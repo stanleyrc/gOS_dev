@@ -182,6 +182,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   // patient's tree (scattered carriers are mostly noise); applies to every cohort view.
   const [cladeFilterOn, setCladeFilterOn] = useState(true);
   const [minCladeF1, setMinCladeF1] = useState(0.5);
+  const [f1IncludeSnv, setF1IncludeSnv] = useState(false); // SNVs are exempt by default (sparse reads); the switch applies F1 to them too
   const files = useMemo(() => {
     if (!cladeFilterOn) return cohortFiles.files;
     const out = {};
@@ -194,14 +195,14 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         ...f,
         events: f.events.filter((e) => {
           if (isRescued(e)) return true; // rescued hotspots: carriers are the few covered cells, clade fit is not meaningful
-          // SNVs are exempt: sparse per-cell reads keep even clonal SNV carriers below F1 0.5 (site QC judges SNVs)
+          // SNVs are exempt unless the "incl. SNVs" switch is on: sparse per-cell reads keep even clonal SNV carriers below F1 0.5 (site QC judges SNVs)
           const fit = cladeFitScore(`${e.cell_ids || ""}`.split(",").filter(Boolean), f.tree);
-          return passesCladeFilter(e, fit.score, minCladeF1);
+          return passesCladeFilter(e, fit.score, minCladeF1, { includeSnv: f1IncludeSnv });
         }),
       };
     });
     return out;
-  }, [cohortFiles.files, cladeFilterOn, minCladeF1]);
+  }, [cohortFiles.files, cladeFilterOn, minCladeF1, f1IncludeSnv]);
   // tumour-suppressor two hits (SNV + LOH / deletion) per patient: oncoprints, driver trees, headline
   const tsg = useCohortTsg({ dataset: tsgDataset, summaries, files });
   // RNA key findings of every patient (RNA view only: loads the matrices; Key findings now uses vignettes.json)
@@ -462,6 +463,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 <Switch size="small" checked={cladeFilterOn} onChange={setCladeFilterOn} />
                 <Text>{t("components.single-cell.cohort.clade-filter")}</Text>
                 <InputNumber size="small" min={0} max={1} step={0.05} value={minCladeF1} disabled={!cladeFilterOn} onChange={(v) => setMinCladeF1(v ?? 0)} style={{ width: 70 }} />
+                <Tooltip title="Also apply the threshold to driver SNVs / indels. Off by default: with a few reads per cell most carriers of a real clonal SNV show no alt read, so SNV carriers look scattered; turn on to hide SNVs whose called carriers do not sit in one clade.">
+                  <span>
+                    <Switch size="small" checked={f1IncludeSnv} disabled={!cladeFilterOn} onChange={setF1IncludeSnv} /> <Text>incl. SNVs</Text>
+                  </span>
+                </Tooltip>
                 {cladeFilterOn && nDropped > 0 && <Text type="secondary">{t("components.single-cell.cohort.clade-filter-dropped", { count: nDropped })}</Text>}
               </Space>
             </Tooltip>

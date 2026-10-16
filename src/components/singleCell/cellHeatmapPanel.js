@@ -1502,6 +1502,7 @@ export default function CellHeatmapPanel() {
               <div style={{ marginLeft: STRIP_HANDLE + 2 * GAP + (showCnDrivers ? heatWidth + GAP : 0), width: driverViewNow.width, flex: "none" }}>
                 <DriverColumnHeader
                   sigText={driverSigText}
+                  fits={driverLayer.fits}
                   entries={driverVisible}
                   width={driverViewNow.width}
                   pixelRatio={pixelRatio}
