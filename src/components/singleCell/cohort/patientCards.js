@@ -8,13 +8,15 @@ import { signatureColorOf } from "../signaturePanel";
 import RnaFindingsList from "../rna/rnaFindingsList";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import { isTertPromoterSv, TERT_SV_LABEL } from "../../../helpers/singleCell/cohortStats";
+import { driverHref, linkClick } from "../../../helpers/singleCell/driverLink";
 
 const { Text } = Typography;
 
 const CLASS_SHORT = { amp: "amp", homdel: "del", fusion: "fusion", trunc: "trunc", splice: "splice", missense: "mis", complex: "SV", other: "" };
 // complex SVs have no gene: name them by their pattern (e.g. "TIC (19,20)", "DM (7)")
 const driverName = (d) => d.gene || (d.class === "complex" ? `${d.event?.Variant || d.event?.vartype || ""}`.trim() : "") || "?";
-const driverText = (d, withFraction = false) => `${driverName(d)}${CLASS_SHORT[d.class] && !(d.class === "complex" && !d.gene) ? ` ${CLASS_SHORT[d.class]}` : ""}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}`;
+const driverText = (d, withFraction = false) => isTertPromoterSv(d.event) ? `${TERT_SV_LABEL}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}` : `${driverName(d)}${CLASS_SHORT[d.class] && !(d.class === "complex" && !d.gene) ? ` ${CLASS_SHORT[d.class]}` : ""}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}`;
 
 function CloneBar({ counts, colors, width = 220 }) {
   const total = d3.sum(Object.values(counts)) || 1;
@@ -48,6 +50,17 @@ function SigBar({ items, width = 220 }) {
   );
 }
 
+/** A driver tag that links to the driver in its patient (Drivers layer); Cmd / Ctrl-click opens a new tab. */
+function DriverTag({ patient, d, withFraction = false, style }) {
+  const tag = <NeutralTag style={{ ...style, cursor: patient ? "pointer" : undefined }}>{driverText(d, withFraction)}</NeutralTag>;
+  if (!patient) return tag;
+  return (
+    <a href={driverHref(patient, d.event)} onClick={linkClick} title={`Open ${d.label} in ${patient}`}>
+      {tag}
+    </a>
+  );
+}
+
 /** Body of a patient card: cells, clone bar, clonal / subclonal drivers, signatures, burden, RNA. */
 export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }) {
   const { t } = useTranslation("common");
@@ -60,7 +73,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
         <div>
           {report.clonal.length ? (
             report.clonal.slice(0, 8).map((d) => (
-              <NeutralTag key={d.label} style={{ marginBottom: 2 }}>{driverText(d)}</NeutralTag>
+              <DriverTag key={d.label} patient={report.patient} d={d} style={{ marginBottom: 2 }} />
             ))
           ) : (
             <Text type="secondary">–</Text>
@@ -72,7 +85,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
         <Text type="secondary" style={{ fontSize: 13 }}>{t("components.single-cell.cohort.card-subclonal", { count: report.subclonal.length })}</Text>
         <div>
           {report.subclonal.slice(0, 8).map((d) => (
-            <NeutralTag key={d.label} style={{ marginBottom: 2 }}>{driverText(d, true)}</NeutralTag>
+            <DriverTag key={d.label} patient={report.patient} d={d} withFraction style={{ marginBottom: 2 }} />
           ))}
         </div>
       </div>
@@ -100,11 +113,11 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
   );
 }
 
-function DriverList({ items, max, withFraction = false }) {
+function DriverList({ items, max, withFraction = false, patient }) {
   if (!items.length) return <Text type="secondary">–</Text>;
   return (
     <span>
-      {items.slice(0, max).map((d) => <NeutralTag key={d.label}>{driverText(d, withFraction)}</NeutralTag>)}
+      {items.slice(0, max).map((d) => <DriverTag key={d.label} patient={patient} d={d} withFraction={withFraction} />)}
       {items.length > max && <Text type="secondary" style={{ fontSize: TYPE.tick }}>{`+${items.length - max}`}</Text>}
     </span>
   );
@@ -151,12 +164,12 @@ export default function PatientSummaryTable({ patients, cloneColors, onOpen }) {
         </Space>
       ),
     },
-    { title: k("col-truncal"), key: "truncal", render: (_, p) => <DriverList items={p.report.clonal} max={5} /> },
+    { title: k("col-truncal"), key: "truncal", render: (_, p) => <DriverList items={p.report.clonal} max={5} patient={p.s.caseReportId} /> },
     {
       title: k("col-subclonal"),
       key: "subclonal",
       sorter: (a, b) => a.report.subclonal.length - b.report.subclonal.length,
-      render: (_, p) => <DriverList items={p.report.subclonal} max={4} withFraction />,
+      render: (_, p) => <DriverList items={p.report.subclonal} max={4} withFraction patient={p.s.caseReportId} />,
     },
     {
       title: k("col-ecdna"),

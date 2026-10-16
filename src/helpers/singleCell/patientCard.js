@@ -1,5 +1,5 @@
 // Data joins for the compact single-cell patient card on the home page (d3-free).
-import { eventClass, eventLabel } from "./cohortStats";
+import { eventClass, eventLabel, isTertPromoterSv } from "./cohortStats";
 
 const NON_CLONE = /^(normal|unassigned)$/i;
 
@@ -31,10 +31,10 @@ export function keyDrivers(events, n = 3) {
   const seen = new Set();
   return (events || [])
     .filter((e) => Number(e.Tier ?? e.tier) === 1)
-    .map((e) => ({ label: eventLabel(e), cls: eventClass(e), fraction: Number(e.cell_fraction) || 0 }))
+    .map((e) => ({ event: e, label: eventLabel(e), cls: isTertPromoterSv(e) ? "promoter SV" : eventClass(e), fraction: Number(e.cell_fraction) || 0 }))
     .filter((e) => e.label)
     .sort((a, b) => b.fraction - a.fraction)
-    .filter((e) => (seen.has(e.label) ? false : (seen.add(e.label), true)))
+    .filter((e) => (seen.has(`${e.label} ${e.cls}`) ? false : (seen.add(`${e.label} ${e.cls}`), true)))
     .slice(0, n);
 }
 

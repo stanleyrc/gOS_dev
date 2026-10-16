@@ -10,6 +10,7 @@ import { snakeCaseToHumanReadable } from "../../helpers/utility";
 import { cellsTsv } from "../../helpers/singleCell/cellLabels";
 import ColorTag from "./colorTag";
 import useCellLabels from "./useCellLabels";
+import SelectionExport from "./selectionExport";
 
 const { Text } = Typography;
 const MAX_EXTRA_COLUMNS = 6;
@@ -180,6 +181,7 @@ export default function CellSelectionPanel() {
           <Button size="small" onClick={() => setSelection(representativeCells(cells, order, SC_MAX_TRACK_CELLS))}>
             {t("components.single-cell.selection.one-per-clone")}
           </Button>
+          <SelectionExport />
           <Button size="small" disabled={!selectedCellIds.length} onClick={() => setSelection([])}>
             {t("components.single-cell.selection.clear")}
           </Button>
