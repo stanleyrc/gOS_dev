@@ -2,7 +2,7 @@
 // labels and one-line purposes live in translations
 // (cohort.view-<key>, cohort.purpose-<key>, cohort.group-<group>). Pure data + helpers.
 
-export const COHORT_VIEW_GROUPS = ["findings", "genome", "rna", "explore"];
+export const COHORT_VIEW_GROUPS = ["findings", "genome", "evolution", "rna", "explore"];
 
 export const COHORT_VIEWS = [
   { key: "overview", group: "findings" },
@@ -14,12 +14,12 @@ export const COHORT_VIEWS = [
   { key: "oncoprint", group: "genome" },
   { key: "amplicons", group: "genome" },
   { key: "ecplast", group: "genome" },
-  { key: "treeshape", group: "genome" },
-  { key: "aligned", group: "genome" },
-  { key: "associations", group: "genome" },
-  { key: "eventassoc", group: "genome" },
   { key: "mutations", group: "genome" },
-  { key: "clades", group: "genome" },
+  { key: "treeshape", group: "evolution" },
+  { key: "aligned", group: "evolution" },
+  { key: "associations", group: "evolution" },
+  { key: "eventassoc", group: "evolution" },
+  { key: "clades", group: "evolution" },
   { key: "rna", group: "rna" },
   { key: "rnacovde", group: "rna" },
   { key: "cnexpr", group: "rna" },
@@ -45,3 +45,6 @@ export function startsGroup(key) {
   const k = COHORT_VIEWS.findIndex((v) => v.key === key);
   return k > 0 && COHORT_VIEWS[k - 1].group !== COHORT_VIEWS[k].group;
 }
+
+/** Views of one group, in tab order. */
+export const viewsInGroup = (group) => COHORT_VIEWS.filter((v) => v.group === group);

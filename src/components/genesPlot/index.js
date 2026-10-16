@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
+import { priorityGenesMemo } from "../../helpers/singleCell/priorityGenes";
 import { withTranslation } from "react-i18next";
 import Wrapper from "./index.style";
 import { humanize, measureText } from "../../helpers/utility";
@@ -350,8 +351,12 @@ class GenesPlot extends Component {
   }
 
   render() {
-    const { width, height, genes, defaultDomain, domains, genesData } =
+    const { width, height, genes, defaultDomain, domains, genesData, priorityGenes } =
       this.props;
+    // single-cell patients: GBM core genes and the patient's drivers are the red labels, and while zoomed out
+    // (> 15% of the genome in view) only those are labelled, instead of whichever genes come first
+    const priority = priorityGenes && priorityGenes.length ? new Set(priorityGenes) : null;
+    const genomeSpan = defaultDomain ? Math.abs(defaultDomain[1] - defaultDomain[0]) : 0;
     let {
       geneTypes,
       geneTitles,
@@ -384,7 +389,8 @@ class GenesPlot extends Component {
         if (
           genesStartPoint[i] <= xDomain[1] &&
           genesStartPoint[i] >= xDomain[0] &&
-          geneTypes[i] === "gene"
+          geneTypes[i] === "gene" &&
+          !(priority && genomeSpan && xDomain[1] - xDomain[0] > 0.15 * genomeSpan && !priority.has(geneTitles[i]))
         ) {
           let isGene = geneTypes[i] === "gene";
           let xPos = xScale(genesStartPoint[i]);
@@ -405,7 +411,7 @@ class GenesPlot extends Component {
                 fontFamily="Arial"
                 fontSize={10}
                 textAnchor="start"
-                className={genesWeight[i] > 1 ? "weighted" : ""}
+                className={(priority ? priority.has(geneTitles[i]) : genesWeight[i] > 1) ? "weighted" : ""}
                 clipPath="url(#clipping)"
                 style={{ cursor: "pointer" }}
                 onClick={(e) => {
@@ -668,6 +674,7 @@ const mapStateToProps = (state) => ({
   genesData: state.Genes,
   defaultDomain: state.Settings.defaultDomain,
   zoomedByCmd: state.Settings.zoomedByCmd,
+  priorityGenes: state.SingleCell?.patient != null ? priorityGenesMemo(state.FilteredEvents?.originalFilteredEvents || state.FilteredEvents?.filteredEvents) : null,
 });
 export default connect(
   mapStateToProps,

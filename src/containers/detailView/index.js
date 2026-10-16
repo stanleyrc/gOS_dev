@@ -86,6 +86,11 @@ export class DetailView extends Component {
       updateTab("12");
       return;
     }
+    // bulk-WGS tabs 0-6 are hidden for single-cell patients: old links to them open the Single-Cell tab
+    if (tabAvailability[7] === true && /^[0-6]$/.test(activeTab)) {
+      updateTab("7");
+      return;
+    }
     if (tabAvailability[activeTab] !== false) return;
     // a linked single-cell tab (RNA, ecDNA, ...) is unavailable until the patient's files load
     if (Number(activeTab) >= 7 && singleCellLoading) return;
@@ -141,7 +146,7 @@ export class DetailView extends Component {
     // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, ...[12, 18, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true), 0, 1, 2, 3, 4, 5, 6]
+        ? [7, ...[12, 18, 14, 8, 10, 9, 11, 15, 13].filter((k) => tabAvailability[k] === true)] // bulk-WGS tabs 0-6 are hidden for single-cell patients (they have no bulk data; code kept)
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>
