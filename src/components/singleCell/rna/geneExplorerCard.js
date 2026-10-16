@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { expressionModel, exprColor } from "../../../helpers/singleCell/exprColour";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
@@ -54,8 +55,8 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
   const pts = hasUmap ? summary.cells.map((c, k) => ({ c, k, x: c.umap_1, y: c.umap_2, v: values[k] })).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)) : [];
   const xs = d3.scaleLinear().domain(d3.extent(pts, (p) => p.x)).range([10, half - 10]);
   const ys = d3.scaleLinear().domain(d3.extent(pts, (p) => p.y)).range([UMAP_H - 10, 10]);
-  const vmax = d3.max(pts, (p) => p.v) || 1;
-  const col = d3.scaleSequential(d3.interpolateViridis).domain([0, vmax]);
+  const exprModel = expressionModel(pts.map((p) => p.v));
+  const themeMode = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
   const selected = new Set(selectedCellIds);
   const pctExpr = values ? values.filter((v) => v > 0).length / values.length : 0;
 
@@ -82,13 +83,13 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
                 <svg width={half} height={UMAP_H} style={{ display: "block" }} onMouseLeave={() => dispatch(singleCellActions.updateHover(null))}>
                   {pts
                     .slice()
-                    .sort((a, b) => a.v - b.v)
+                    .sort((a, b) => (a.v > 0 ? a.v : -1) - (b.v > 0 ? b.v : -1))
                     .map((p) => {
                       const id = p.c.cell_id || p.c.displayId;
                       const sel = selected.has(id);
                       const hov = hoveredCellId === id;
                       return (
-                        <circle key={p.k} cx={xs(p.x)} cy={ys(p.y)} r={hov ? 5 : sel ? 4 : 2.6} fill={p.v > 0 ? col(p.v) : "#e8e8e8"} stroke={sel || hov ? "#000" : "none"} style={{ cursor: "pointer" }} onClick={(e) => dispatch(singleCellActions.updateSelection(e.shiftKey ? [...selectedCellIds, id] : [id]))} onMouseEnter={() => dispatch(singleCellActions.updateHover(id))}>
+                        <circle key={p.k} cx={xs(p.x)} cy={ys(p.y)} r={hov ? 5 : sel ? 4 : p.v > 0 ? 2.6 : 2} fillOpacity={p.v > 0 || hov || sel ? 1 : 0.6} fill={exprColor(p.v, exprModel, themeMode)} stroke={sel || hov ? "#000" : "none"} style={{ cursor: "pointer" }} onClick={(e) => dispatch(singleCellActions.updateSelection(e.shiftKey ? [...selectedCellIds, id] : [id]))} onMouseEnter={() => dispatch(singleCellActions.updateHover(id))}>
                           <title>{`${id}\n${gene}: ${p.v.toFixed(2)}`}</title>
                         </circle>
                       );
