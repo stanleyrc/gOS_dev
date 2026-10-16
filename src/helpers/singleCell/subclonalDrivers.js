@@ -175,9 +175,10 @@ export function contrastRows(doc, { contrast = "subclonal vs truncal" } = {}) {
  * Cohort Clade F1 filter (singleCellCohortPanel): whether an event survives. SNVs are exempt: with a few reads
  * per cell at a site most carriers show no alt read, so even a clonal SNV cannot reach F1 0.5 against its
  * clade (sparse carriers look "scattered"); SNV quality is judged by the site-evidence verdict instead.
+ * `includeSnv` (the header's "incl. SNVs" switch) applies the threshold to SNVs too.
  */
-export function passesCladeFilter(event, score, minF1) {
-  if (isSnvEvent(event)) return true;
+export function passesCladeFilter(event, score, minF1, { includeSnv = false } = {}) {
+  if (isSnvEvent(event) && !includeSnv) return true;
   return !Number.isFinite(score) || score >= minF1;
 }
 

@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { Alert, Col, Row, Segmented, Space, Switch, Table, Tag, Typography } from "antd";
+import { Alert, Col, Row, Segmented, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import igv from "../../../../node_modules/igv/dist/igv.esm.min.js";
 import { casePath } from "../../../redux/singleCell/loaders";
 import { readPasses } from "../../../helpers/singleCell/siteEvidence";
 import { altFirstSort } from "../../../helpers/singleCell/igvTracks";
 import ColorTag from "../colorTag";
+import useContainerWidth from "../useContainerWidth";
 
 const { Text } = Typography;
 const WINDOW = 40;
+const SIDE_BY_SIDE_PX = 1400; // IGV and the reads table share a row only when the panel is at least this wide
 
 let genomeListPromise = null;
 const loadGenomeList = () => {
@@ -35,6 +37,8 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
   const containerRef = useRef(null);
   const browserRef = useRef(null);
   const [error, setError] = useState(null);
+  const [wrapRef, panelWidth] = useContainerWidth(900);
+  const sideBySide = panelWidth >= SIDE_BY_SIDE_PX;
 
   const groups = useMemo(() => {
     const normal = (c) => /^normal$/i.test(`${c.clone}`);
@@ -125,17 +129,18 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
   }, [reads, hideDup, minMq]);
 
   const columns = [
-    { title: "Cell", dataIndex: "cell", width: 150, ellipsis: true, render: (c) => c || <Text type="secondary">no RG</Text> },
+    { title: "Cell", dataIndex: "cell", width: 190, ellipsis: { showTitle: false }, render: (c) => (c ? <Tooltip title={c} placement="topLeft"><span>{c}</span></Tooltip> : <Text type="secondary">no RG</Text>) },
     { title: "Clone", dataIndex: "clone", width: 100, render: (c) => <ColorTag color={cloneColors[c]}>{c}</ColorTag> },
-    { title: "Allele", dataIndex: "allele", width: 70, render: (a) => <Tag color={ALLELE_COLOR[a]}>{a}</Tag> },
-    { title: "Strand", dataIndex: "strand", width: 64, align: "center" },
-    { title: "BQ", dataIndex: "bq", width: 56, sorter: (a, b) => a.bq - b.bq, render: (q, r) => (r.allele === "del" ? "–" : <Text type={q < 13 ? "danger" : undefined}>{q}</Text>) },
-    { title: "MAPQ", dataIndex: "mq", width: 64, sorter: (a, b) => a.mq - b.mq, render: (q) => <Text type={q < 20 ? "danger" : undefined}>{q}</Text> },
-    { title: "Dup", dataIndex: "dup", width: 52, render: (d) => (d ? <Tag color="warning">dup</Tag> : "") },
-    { title: "From end", dataIndex: "end", width: 76, sorter: (a, b) => a.end - b.end, render: (e, r) => (r.allele === "del" ? "–" : <Text type={e < 5 ? "warning" : undefined}>{e} bp</Text>) },
+    { title: "Allele", dataIndex: "allele", width: 76, render: (a) => <Tag color={ALLELE_COLOR[a]}>{a}</Tag> },
+    { title: "Strand", dataIndex: "strand", width: 80, align: "center" },
+    { title: "BQ", dataIndex: "bq", width: 70, sorter: (a, b) => a.bq - b.bq, render: (q, r) => (r.allele === "del" ? "–" : <Text type={q < 13 ? "danger" : undefined}>{q}</Text>) },
+    { title: "MAPQ", dataIndex: "mq", width: 80, sorter: (a, b) => a.mq - b.mq, render: (q) => <Text type={q < 20 ? "danger" : undefined}>{q}</Text> },
+    { title: "Dup", dataIndex: "dup", width: 64, render: (d) => (d ? <Tag color="warning">dup</Tag> : "") },
+    { title: "From end", dataIndex: "end", width: 96, sorter: (a, b) => a.end - b.end, render: (e, r) => (r.allele === "del" ? "–" : <Text type={e < 5 ? "warning" : undefined}>{e} bp</Text>) },
   ];
 
   return (
+    <div ref={wrapRef} style={{ width: "100%" }}>
     <Space direction="vertical" size="small" style={{ width: "100%" }}>
       <Space wrap size={[16, 6]}>
         <Space size={4}>
@@ -153,15 +158,16 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
         <Text type="secondary">Mismatched bases are shaded by base quality (faint = low).</Text>
       </Space>
       {error && <Alert type="error" showIcon message={`IGV: ${error}`} />}
-      <Row gutter={12}>
-        <Col xs={24} xxl={13}>
+      <Row gutter={[12, 12]}>
+        <Col span={24} xl={sideBySide ? 13 : 24}>
           {groups.length ? (
-            <div ref={containerRef} className="sc-light-island" style={{ minHeight: 200 }} />
+            // own row, full width, clipped so igv's toolbar cannot spill over the filter buttons below
+            <div ref={containerRef} className="sc-light-island" style={{ minHeight: 200, minWidth: 560, width: "100%", overflow: "hidden", position: "relative", isolation: "isolate" }} />
           ) : (
             <Text type="secondary">No cell has reads at this site.</Text>
           )}
         </Col>
-        <Col xs={24} xxl={11}>
+        <Col span={24} xl={sideBySide ? 11 : 24}>
           {reads?.length ? (
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
               <Space wrap size={[8, 4]}>
@@ -176,7 +182,7 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
                     { label: "all", value: "all" },
                   ]}
                 />
-                <Text type="secondary">reads overlapping the site, after the filters on the left</Text>
+                <Text type="secondary">reads overlapping the site, after the filters above</Text>
               </Space>
               <Table
                 size="small"
@@ -185,7 +191,7 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
                 dataSource={alleleFilter === "other" ? (reads || []).filter((r) => readPasses(r, { hideDup, minMq }) && (r.allele === "other" || r.allele === "del")) : shown}
                 columns={columns}
                 pagination={{ pageSize: 12, size: "small", hideOnSinglePage: true }}
-                scroll={{ x: 640 }}
+                scroll={{ x: 760 }}
               />
             </Space>
           ) : (
@@ -194,5 +200,6 @@ export default function SiteReadsPanel({ site, cellRows, reads, dataset, patient
         </Col>
       </Row>
     </Space>
+    </div>
   );
 }

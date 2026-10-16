@@ -198,6 +198,27 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
         options={Object.keys(PRESET_LABELS).map((value) => ({ value, label: <Tooltip title={PRESET_HELP[value]}>{PRESET_LABELS[value]}</Tooltip> }))}
       />
       <MiniLegend />
+      <Tooltip title="Hide drivers whose carrier cells do not sit in one clade of the patient tree: best F1 between the carriers and any clade (same score as the Clade F1 column of Filtered Events). 0 = off. Applies to every class (SNVs, fusions, amplifications, deletions, complex); rescued hotspots and drivers with no carrier cells on the tree stay.">
+        <Space size={4} data-driver-f1-control>
+          <Text type="secondary">Clade F1 ≥</Text>
+          <InputNumber
+            size="small"
+            min={0}
+            max={1}
+            step={0.05}
+            style={{ width: 66 }}
+            value={selection.filters?.minF1 || 0}
+            onChange={(v) => setSelection({ ...selection, filters: { ...selection.filters, minF1: Math.max(0, Math.min(1, Number(v) || 0)) } })}
+          />
+          <Segmented
+            size="small"
+            value={CLADE_F1_CHOICES.includes(selection.filters?.minF1 || 0) ? selection.filters?.minF1 || 0 : null}
+            onChange={(v) => setSelection({ ...selection, filters: { ...selection.filters, minF1: v } })}
+            options={CLADE_F1_CHOICES.map((v) => ({ value: v, label: v ? `${v}` : "off" }))}
+          />
+          <Text type="secondary" data-driver-f1-hidden>{selection.filters?.minF1 > 0 ? `hides ${nF1Hidden}` : ""}</Text>
+        </Space>
+      </Tooltip>
       <Popover trigger="click" placement="bottomLeft" content={<FilterPanel selection={selection} onChange={setSelection} hasCgc={hasCgc} hasRna={hasRna} />}>
         <Button size="small" icon={<FilterOutlined />} type={nFilters(selection.filters) ? "primary" : "default"} ghost={Boolean(nFilters(selection.filters))}>
           {`Filters${nFilters(selection.filters) ? ` (${nFilters(selection.filters)})` : ""}`}
@@ -220,7 +241,6 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
         />
       </Space>
       <Text type="secondary">{`${nShown} shown of ${entries.length}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>
-      {nF1Hidden > 0 && <Text type="secondary">{`· ${nF1Hidden} hidden by Clade F1 ≥ ${selection.filters.minF1}`}</Text>}
       {selection.filters?.minF1 > 0 && noF1.size > 0 && (
         <Tooltip title={`No carrier cells on the tree, so no Clade F1 score: ${shown.filter((d) => noF1.has(d.key)).map((d) => d.label).join(", ")}`}>
           <Tag style={{ marginInlineEnd: 0 }}>{`${noF1.size} no F1`}</Tag>
