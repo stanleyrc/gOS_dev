@@ -1,4 +1,4 @@
-import { cohortHeadline, ecdnaPrevalence, ecdnaWalks, recurrentDrivers } from "./cohortHeadline";
+import { cohortHeadline, ecdnaPrevalence, ecdnaWalks, recurrentDrivers, tertHeadline } from "./cohortHeadline";
 
 const drv = (gene, cls, clonality, fraction = clonality === "clonal" ? 0.95 : 0.4) => ({ gene, class: cls, clonality, fraction, label: `${gene} ${cls}` });
 const report = (clonal = [], subclonal = []) => ({ clonal, subclonal });
@@ -72,4 +72,16 @@ describe("cohortHeadline", () => {
     expect(cohortHeadline([])).toEqual([]);
     expect(cohortHeadline([{ id: "A", report: report(), walks: null }]).map((x) => x.key)).toEqual([]);
   });
+});
+
+test("tertHeadline counts a TERT promoter rearrangement as TERT activation", () => {
+  const site = (name, called) => ({ name, called, level: called ? "supported" : "absent", tumor: { alt_f: called ? 5 : 0, alt_r: called ? 5 : 0, ref_f: 10, ref_r: 10, cells_alt: called ? 4 : 0, cells_cov: 8 } });
+  const doc = { patients: { P1: { assessed: true, sites: [site("TERT C228T", true)] }, P2: { assessed: true, sites: [site("TERT C228T", false)] }, P3: { assessed: true, sites: [site("TERT C228T", false)] } } };
+  const h = tertHeadline(doc, ["P1", "P2", "P3"], [{ id: "P2", label: "GENEA::TERT", cells: "9/10" }]);
+  expect(h.value).toBe(2);
+  expect(h.title).toBe("TERT promoter activated in 2 of 3 tumors: C228T in 1, promoter rearrangement in 1");
+  expect(h.patients).toEqual(["P1", "P2"]);
+  expect(h.detail).toContain("P2 GENEA::TERT in 9/10 cells");
+  expect(h.detail).toContain("No alt reads: P3");
+  expect(h.detail).not.toContain("No alt reads: P2");
 });

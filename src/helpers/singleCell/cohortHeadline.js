@@ -2,6 +2,8 @@
 // (shared truncal drivers, ecDNA prevalence, subclonal drivers). Built from
 // each patient's buildPatientReport() output and walks.json. Pure functions.
 
+import { isTertPromoterSv } from "./cohortStats";
+
 const CLASS_WORD = { amp: "amplification", homdel: "deletion", fusion: "fusion", trunc: "truncating", splice: "splice", missense: "missense", complex: "complex SV", other: "alteration" };
 
 // ecDNA calls that count for prevalence: circular walk in >= 3 cells at median CN >= 4
@@ -72,10 +74,12 @@ const and = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and
  * TERT C228T / C250T call, with the read evidence. Patients whose site evidence was not computed are "not assessed".
  * @param doc hotspot_rescue.json ({ patients: { id: { assessed, reason, sites: [{ name, called, tumor, tumour_cells, level, ... }] } } })
  * @param ids patient ids of the cohort in view
+ * @param rearranged [{ id, label, cells }] patients with a TERT promoter rearrangement (gos_sc_tert_sv), TERT activated without a promoter mutation
  */
-export function tertHeadline(doc, ids = []) {
+export function tertHeadline(doc, ids = [], rearranged = []) {
   const pts = doc?.patients;
   if (!pts || !ids.length) return null;
+  const svIds = new Set(rearranged.map((r) => r.id));
   const assessed = ids.filter((id) => pts[id]?.assessed);
   const notAssessed = ids.filter((id) => !pts[id]?.assessed);
   if (!assessed.length) return null;
@@ -86,21 +90,24 @@ export function tertHeadline(doc, ids = []) {
     const tert = (pts[id].sites || []).filter(isTert);
     const hit = tert.filter((s) => s.called);
     if (hit.length) hit.forEach((s) => calls.push({ id, site: s }));
-    else noSupport.push(id);
+    else if (!svIds.has(id)) noSupport.push(id);
   });
   const variants = (name) => calls.filter((c) => c.site.name === name).map((c) => c.id);
   const c228 = variants("TERT C228T");
   const c250 = variants("TERT C250T");
   const reads = (s) => `${s.tumor.alt_f + s.tumor.alt_r}/${s.tumor.alt_f + s.tumor.alt_r + s.tumor.ref_f + s.tumor.ref_r} reads, ${s.tumor.cells_alt}/${s.tumor.cells_cov} cells`;
   const evidence = calls.map((c) => `${c.id} ${c.site.name.replace("TERT ", "")} ${reads(c.site)}${c.site.level === "weak" ? " (weak)" : ""}`);
-  const patientsHit = [...new Set(calls.map((c) => c.id))];
+  const sv = rearranged.filter((r) => ids.includes(r.id));
+  const patientsHit = [...new Set([...calls.map((c) => c.id), ...sv.map((r) => r.id)])];
+  const routes = [c228.length ? `C228T in ${c228.length}` : "", c250.length ? `C250T in ${c250.length}` : "", sv.length ? `promoter rearrangement in ${sv.length}` : ""].filter(Boolean);
   return {
     key: "tert",
     value: patientsHit.length,
     total: ids.length,
-    title: `TERT promoter mutated in ${patientsHit.length} of ${ids.length} tumors: ${[c228.length ? `C228T in ${c228.length}` : "", c250.length ? `C250T in ${c250.length}` : ""].filter(Boolean).join(", ") || "none"}`,
+    title: `TERT promoter ${sv.length ? "activated" : "mutated"} in ${patientsHit.length} of ${ids.length} tumors: ${routes.join(", ") || "none"}`,
     detail: [
-      `Not in the SNV calls (GC-rich, low depth): recovered from read-level site evidence. Alt reads / all reads, cells with an alt read / covered cells: ${evidence.join("; ")}`,
+      sv.length ? `Rearrangement (whole TERT coding sequence behind another locus, enhancer hijacking): ${sv.map((r) => `${r.id} ${r.label}${r.cells ? ` in ${r.cells} cells` : ""}`).join("; ")}` : "",
+      calls.length ? `Promoter mutations are not in the SNV calls (GC-rich, low depth): recovered from read-level site evidence. Alt reads / all reads, cells with an alt read / covered cells: ${evidence.join("; ")}` : "",
       noSupport.length ? `No alt reads: ${list(noSupport, 6)}` : "",
       notAssessed.length ? `Not assessed (site evidence not computed): ${list(notAssessed, 6)}` : "",
     ].filter(Boolean).join(". "),
@@ -152,7 +159,11 @@ export function cohortHeadline(patients = [], { hotspots = null } = {}) {
   }
 
   // 1b. TERT promoter hotspot rescued from site evidence
-  const tert = tertHeadline(hotspots, patients.map((p) => p.id));
+  const rearranged = withReport
+    .map((p) => ({ p, d: [...(p.report.clonal || []), ...(p.report.subclonal || []), ...(p.report.rare || [])].find((x) => isTertPromoterSv(x.event)) }))
+    .filter((x) => x.d)
+    .map(({ p, d }) => ({ id: p.id, label: d.event.fusion_genes || d.gene, cells: d.event.cells }));
+  const tert = tertHeadline(hotspots, patients.map((p) => p.id), rearranged);
   if (tert) out.push(tert);
 
   // 2. ecDNA prevalence, among tumors with amplicon reconstruction (walks.json)
