@@ -6,6 +6,7 @@ export const COHORT_VIEW_GROUPS = ["findings", "genome", "rna", "explore"];
 
 export const COHORT_VIEWS = [
   { key: "overview", group: "findings" },
+  { key: "portrait", group: "findings" },
   { key: "reports", group: "findings" },
   { key: "story", group: "findings" },
   { key: "figures", group: "findings" },

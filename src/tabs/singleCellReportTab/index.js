@@ -10,6 +10,9 @@ import AmpTimingCard from "../../components/singleCell/ampTimingCard";
 import BranchRatesCard from "../../components/singleCell/branchRatesCard";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
+import PortraitCard from "../../components/singleCell/portrait/portraitCard";
+import usePatientPortrait from "../../components/singleCell/portrait/usePatientPortrait";
+import useCohortExport from "../../components/singleCell/cohort/useCohortExport";
 import PatientVignette from "../../components/singleCell/vignette/patientVignette";
 import VignetteWrapper from "../../components/singleCell/vignette/vignette.style";
 import useStory from "../../components/singleCell/story/useStory";
@@ -32,6 +35,8 @@ export default function SingleCellSummaryTab() {
   const selectedUids = useSelector((state) => state.FilteredEvents.selectedEventUids);
   const { status, story } = useStory(dataset);
   const id = patient?.caseReportId;
+  const portrait = usePatientPortrait(dataset, id);
+  const portraitCohort = useCohortExport(dataset, "portrait.json");
   const { vignettes, cohort } = summaryStoryChapters(
     storyForPatient(story, id),
     id,
@@ -58,6 +63,11 @@ export default function SingleCellSummaryTab() {
         style={{ marginTop: 16 }}
         defaultActiveKey={SUMMARY_DEFAULT_OPEN}
         items={[
+          {
+            key: "portrait",
+            label: "Patient portrait: genotype, evolution, phenotype, canonical GBM biology vs novel",
+            children: portrait.status === "loading" ? <Skeleton active /> : <PortraitCard bare portrait={portrait.data} patient={id} features={portraitCohort.data?.matrix?.features} />,
+          },
           { key: "clonal-history", label: "Clonal history", children: <ClonalHistoryCard /> },
           {
             key: "timing-rates",
