@@ -32,7 +32,11 @@ export const isRescued = (e) => Boolean(e) && (e.rescued === true || `${e.rescue
 export const CALLED_SOURCE = "called SNV (not a tree site)";
 export const isCalledNotTree = (e) => Boolean(e) && `${e.source}` === CALLED_SOURCE;
 /** Where a rescued / evidence-only event comes from, for labels and tooltips. */
-export const rescueSourceText = (e) => (isCalledNotTree(e) ? "Called SNV, not a tree site" : "Rescued from site evidence (not in the SNV calls)");
+/** Driver found by the pooled driver scan (exporter gos_sc_pooled_drivers): reads of all cells pooled per patient; carriers per cell, depth pooled. */
+export const POOLED_SOURCE = "pooled driver scan";
+export const isPooledScan = (e) => Boolean(e) && `${e.source}` === POOLED_SOURCE;
+export const rescueSourceText = (e) =>
+  isCalledNotTree(e) ? "Called SNV, not a tree site" : isPooledScan(e) ? "Pooled driver scan (not in the per-cell SNV calls)" : "Rescued from site evidence (not in the SNV calls)";
 
 /**
  * TERT promoter rearrangement (exporter gos_sc_tert_sv): a fusion with TERT as the 3' partner that keeps the whole TERT

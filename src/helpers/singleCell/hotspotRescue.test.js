@@ -1,7 +1,7 @@
 // Hotspots rescued from site evidence (exporter gos_sc_hotspot_rescue): synthetic fixtures only.
 import { buildDriverEntries, classLabel, entryStates, selectDrivers, rescueText, snvStateLabel, STATE, DEFAULT_SELECTION } from "./driverLayer";
 import { cellStatus, markSnvPending, sharedLabel } from "./cohortDriverTrees";
-import { eventClass, isCalledNotTree, isRescued, oncoprintMatrix } from "./cohortStats";
+import { eventClass, isCalledNotTree, isRescued, oncoprintMatrix, rescueSourceText } from "./cohortStats";
 import { buildPatientReport } from "./patientReport";
 import { cohortHeadline, tertHeadline } from "./cohortHeadline";
 
@@ -137,5 +137,18 @@ describe("called SNVs that are not tree sites (exporter gos_sc_allsnv)", () => {
     expect(classLabel(d)).toMatch(/not a tree site/);
     expect(rescueText(d)).toMatch(/^Called SNV, not a tree site: 9 alt \/ 2 ref reads/);
     expect(rescueText(buildDriverEntries([tert()], { tumorIds: cells })[0])).toMatch(/^Rescued from site evidence/);
+  });
+});
+
+describe("pooled driver scan rows (exporter gos_sc_pooled_drivers)", () => {
+  const ev = { gene: "TP53", vartype: "SNV", type: "Splice", rescued: true, source: "pooled driver scan", cell_ids: "c1,c2" };
+  test("source text and non-carrier label say pooled scan, not site evidence or no coverage", () => {
+    expect(rescueSourceText(ev)).toMatch(/Pooled driver scan/);
+    expect(snvStateLabel({ rescued: true, event: ev }, 0)).toMatch(/pooled scan/);
+    expect(snvStateLabel({ rescued: true, event: ev }, 2)).toBe("mutant");
+    expect(isRescued(ev)).toBe(true);
+  });
+  test("TERT promoter row from the scan is a promoter event", () => {
+    expect(eventClass({ gene: "TERT", vartype: "Hotspot", type: "Promoter" })).toBe("promoter");
   });
 });

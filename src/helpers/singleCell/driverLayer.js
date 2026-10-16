@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass, isCalledNotTree, isDamagingMissense, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL } from "./cohortStats";
+import { eventClass, isCalledNotTree, isDamagingMissense, isPooledScan, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
@@ -221,6 +221,7 @@ export function rescueText(entry) {
 export function snvStateLabel(entry, v) {
   if (v === 4 || v === 3) return twoHitStatus(v);
   if (v === 2) return "mutant";
+  if (entry?.rescued && isPooledScan(entry.event)) return "no alt read (pooled scan keeps depth per patient, not per cell)";
   if (entry?.rescued) return v === 1 ? "no alt read (covered; may be allele dropout)" : "no coverage";
   return v === 1 ? "wild type" : "no coverage";
 }
