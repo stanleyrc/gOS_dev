@@ -2,7 +2,7 @@
 // patient-level filtered events, the tree-mapped SNV sites, the SBS
 // signature fits and the cells' clone labels. Pure functions.
 
-import { eventClass, isRescued, isTertPromoterSv } from "./cohortStats";
+import { eventClass, isCalledNotTree, isRescued, isTertPromoterSv } from "./cohortStats";
 import { isStrongEvent } from "./strongEvents";
 import { snvCategoryCounts } from "./cohortStats";
 import { fisherExact } from "./tests";
@@ -15,6 +15,16 @@ export const CLONE_DEFINING_OUT = 0.2; // fraction of the other tumor cells carr
 const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+};
+/**
+ * Rows added by the all-SNV exporter (called, not a tree site) and by hotspot rescue already passed read-level QC in a driver-gene
+ * list; they are findings whatever their tier, like the Recommended preset of the Drivers layer, when the same QC holds:
+ * at least 3 carrier cells and a site-evidence verdict that is not artefact / germline.
+ */
+export const isReadQcFinding = (e) => {
+  if (!(isCalledNotTree(e) || isRescued(e))) return false;
+  const verdict = e.hotspot_evidence?.verdict?.level;
+  return (num(e.n_cells) ?? 0) >= 3 && verdict !== "artefact" && verdict !== "germline";
 };
 const isNormal = (clone) => /^normal$/i.test(`${clone || ""}`);
 
@@ -89,7 +99,7 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
   const picked = Array.isArray(selectedUids) && selectedUids.length ? new Set(selectedUids) : null;
   const drivers = events
     // tier 1-2 events start out ticked, so they still need to be strong; tier 3 picks always count
-    .filter((e) => (tierOf(e) ?? 9) <= 2 ? isStrongEvent(e) && (!picked || picked.has(e.uid)) : Boolean(picked) && e.uid != null && picked.has(e.uid))
+    .filter((e) => (tierOf(e) ?? 9) <= 2 ? isStrongEvent(e) && (!picked || picked.has(e.uid)) : picked ? e.uid != null && picked.has(e.uid) : isReadQcFinding(e))
     .map((e) => {
       const fraction = num(e.cell_fraction) ?? 0;
       const rescued = isRescued(e);

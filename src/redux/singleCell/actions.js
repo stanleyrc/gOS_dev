@@ -73,6 +73,7 @@ export const SC_DEFAULT_LAYOUT = {
   spHidden: null, // collapsed spatial-tab sections; null = compact when beside, none when below
   driverColPx: null, // Drivers layer: px per driver column (null = auto fit); URL drvw=
   cnDrivers: false, // show the Drivers layer as a block beside the copy-number heatmap; URL cndrv=1
+  driverSnvView: "vaf", // Drivers layer SNV columns: "vaf" (per-cell alt / depth) or "call" (genotype call); URL drvsnv=call
   driverBranches: false, // mark the branch where each shown driver arises
 };
 

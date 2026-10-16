@@ -70,9 +70,11 @@ export default function HeatmapLegend({
         key: "d-snv",
         title: "SNV / indel",
         items: [
-          { color: c.mutant, label: "mutant" },
-          { color: c.wildtype, label: "wild type" },
+          ...(drivers.snvView === "vaf" && drivers.vafColumns
+            ? [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: `VAF ${v}` }))
+            : [{ color: c.mutant, label: "mutant" }, { color: c.wildtype, label: "wild type" }]),
           { color: c.noCoverage, label: t("components.single-cell.side.no-reads") },
+          ...(drivers.snvView === "vaf" && drivers.vafColumns && drivers.entries.some((d) => d.cls === "snv" && (d.rescued || d.snvColumn == null)) ? [{ color: c.mutant, label: "call (rows without per-cell counts: mutant)" }, { color: c.wildtype, label: "call: no alt read / wild type" }] : []),
           ...(drivers.entries.some((d) => d.cls === "snv" && d.twoHit) ? [{ color: c.loss, label: "loss only (TSG second hit)" }, { color: c.bothHit, label: "SNV + loss (biallelic)" }] : []),
         ],
       });

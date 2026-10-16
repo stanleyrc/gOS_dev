@@ -12,7 +12,7 @@ import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
 import { GBM_GENES } from "./geneInfo";
 import { cladeFitScore } from "./cladeFit";
-import { binAt } from "./matrix";
+import { binAt, snvMetricValue } from "./matrix";
 import { eventGlobalPosition } from "./eventDomains";
 
 export const DRIVER_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
@@ -252,11 +252,18 @@ export const effectiveMaxTier = (f) => f?.maxTier ?? "2d";
 const tier3Ok = (d, f) => {
   const mt = effectiveMaxTier(f);
   if (d.cls !== "snv" || d.tier == null || d.tier <= 2) return false;
+  if (mt === "2d" && isTruncatingTsg(d)) return true;
   return mt === "2d" ? isDamagingMissense(d.event) : passesTier(d.event, mt);
 };
 
+/** Tier-3 truncating SNV (nonsense, frameshift, splice) in a gene with an OncoKB tumour-suppressor role. */
+export const isTruncatingTsg = (d) => d.cls === "snv" && ["trunc", "splice"].includes(eventClass(d.event)) && /suppressor/.test(`${roleOf(d.event?.role) || ""}`);
+
+/** SNVs the all-SNV exporter added (called, not a tree site) or hotspot rescue added: already passed read-level QC in a driver-gene list. */
+export const isReadQcRow = (d) => d.cls === "snv" && Boolean(d.rescued || isCalledNotTree(d.event));
+
 const PRESET_TEST = {
-  recommended: (d, f) => (complexOk(d) || (d.tier != null && d.tier <= 2 && isCancerGene(d)) || tier3Ok(d, f)) && d.qc.pass && !d.upstreamOnly,
+  recommended: (d, f) => (complexOk(d) || (d.tier != null && d.tier <= 2 && isCancerGene(d)) || tier3Ok(d, f) || isReadQcRow(d)) && d.qc.pass && !d.upstreamOnly,
   subclonal: (d) => d.subclonal && (complexOk(d) || (d.tier != null && d.tier <= 2)) && d.qc.pass && !d.upstreamOnly,
   hotspots: (d) => d.cls === "snv" && d.hotspot && d.qc.pass,
   all: () => true,
@@ -453,6 +460,36 @@ export function entryStates(entry, ctx) {
     });
   }
   return out;
+}
+
+/** SNV driver columns: colour by per-cell VAF (default) or by genotype call. */
+export const SNV_VIEWS = ["vaf", "call"];
+export const DEFAULT_SNV_VIEW = "vaf";
+
+/**
+ * Per-cell VAF (alt / depth) of a tree-site SNV entry, aligned to `order`: NaN = no coverage, 0 = covered without alt reads.
+ * Null when the entry has no per-cell counts: rescued / called-not-tree rows (the event carries only call sets, no alt / depth per
+ * cell) and SNVs that are not a snv_matrix column; those keep the call colours.
+ */
+export function entryVafs(entry, ctx) {
+  const { order, snv } = ctx;
+  if (entry.cls !== "snv" || entry.rescued || entry.snvColumn == null || !snv || !ctx.snvRows) return null;
+  const out = new Float32Array(order.length);
+  order.forEach((id, i) => {
+    const p = ctx.snvRows[i];
+    const v = p >= 0 ? snvMetricValue(snv, p, entry.snvColumn, "vaf") : null;
+    out[i] = v == null ? NaN : v;
+  });
+  return out;
+}
+
+/**
+ * Colour class of one SNV cell in the VAF view: "vaf" (draw the VAF), "none" (no coverage) or "call" (use the call colour:
+ * second-hit cells, which keep their loss / biallelic colours, and columns without per-cell counts).
+ */
+export function snvVafCell(call, vaf) {
+  if (call === STATE.LOSS || call === STATE.BOTH || vaf === undefined || vaf === null) return "call";
+  return Number.isFinite(vaf) ? "vaf" : "none";
 }
 
 /** Cells a click on a column should select: the entry's carriers (CN calls: the cells with the event). */

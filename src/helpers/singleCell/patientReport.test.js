@@ -59,3 +59,15 @@ describe("patient report", () => {
     expect(r.candidates.map((c) => [c.gene, c.score])).toEqual([["NF1", 5]]);
   });
 });
+
+describe("called-not-tree SNVs in the findings", () => {
+  const called = { gene: "RELN", vartype: "SNV", type: "Trunc", Variant: "p.R2945*", Tier: 3, source: "called SNV (not a tree site)", rescued: true, n_cells: 12, cell_fraction: 0.5, cells: "a,b" };
+  const run = (e) => buildPatientReport({ patient: "P", events: [e], cells: [{ cell_id: "a", clone_id: "c1" }, { cell_id: "b", clone_id: "c1" }] });
+  it("lists a tier-3 called row that passes QC", () => {
+    expect(run(called).subclonal.map((d) => d.gene)).toEqual(["RELN"]);
+  });
+  it("leaves it out when QC fails", () => {
+    expect(run({ ...called, n_cells: 2 }).subclonal).toEqual([]);
+    expect(run({ ...called, hotspot_evidence: { verdict: { level: "artefact" } } }).subclonal).toEqual([]);
+  });
+});
