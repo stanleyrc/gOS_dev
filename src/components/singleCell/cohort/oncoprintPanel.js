@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Empty, InputNumber, Select, Space, Switch, Tooltip, Typography } from "antd";
+import { Card, Empty, InputNumber, Select, Space, Switch, Typography } from "antd";
 import { TableOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import { EVENT_CLASS_ORDER, TIER_OPTIONS, isRescued, groupOncoprintRows, oncoprintEventFilter, oncoprintMatrix, oncoprintRole, oncoprintRowNote } from "../../../helpers/singleCell/cohortStats";
@@ -15,7 +15,7 @@ import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { biallelicOnlyRows } from "../../../helpers/singleCell/twoHit";
 import { BiallelicSwitch, TwoHitCell, TwoHitLegend } from "./twoHitGlyph";
 import { useCladeF1Filter } from "./cladeF1Chip";
-import { f1Of, f1Tooltip, filterEventsByF1 } from "../../../helpers/singleCell/cladeF1View";
+import { f1Of, f1Tooltip } from "../../../helpers/singleCell/cladeF1View";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#00838F", complex: "#E66101", other: "#8c8c8c" };
@@ -36,25 +36,16 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
   const [strongOnly, setStrongOnly] = useState(true);
   const [biOnly, setBiOnly] = useState(false); // only tumour-suppressor cells with two hits
   const [maxGenes, setMaxGenes] = useState(40);
-  const [minF1, setMinF1] = useState(0); // per-event Clade F1 threshold of this Oncoprint (0 = off); applies to every class including SNVs
   const [classes, setClasses] = useState(EVENT_CLASS_ORDER);
   const [groupBy, setGroupBy] = useState("role"); // "none" | "role": oncogenes, tumour suppressors, both, structural / ecDNA, other // event classes shown (amp, homdel, fusion, ..., complex SV)
   const eventsByPatient = useMemo(
     () => Object.fromEntries(summaries.filter((s) => files[s.caseReportId]?.events).map((s) => [s.caseReportId, files[s.caseReportId].events])),
     [summaries, files]
   );
-  const trees = useMemo(() => Object.fromEntries(summaries.map((s) => [s.caseReportId, files[s.caseReportId]?.tree])), [summaries, files]);
-  const f1Split = useMemo(() => filterEventsByF1(eventsByPatient, trees, minF1), [eventsByPatient, trees, minF1]);
-  const mkFilter = oncoprintEventFilter({ base: strongOnly ? isStrongEvent : null, classes: classes.length === EVENT_CLASS_ORDER.length ? null : classes });
-  const matrix = useMemo(() => oncoprintMatrix(f1Split.events, { maxTier, maxGenes, filter: mkFilter }), [f1Split, maxTier, maxGenes, strongOnly, classes]); // eslint-disable-line react-hooks/exhaustive-deps
-  // patient x gene cells that the per-patient F1 threshold removes (same tier / genes / types, with vs without it)
-  const hiddenCells = useMemo(() => {
-    if (!(minF1 > 0)) return 0;
-    const count = (m) => m.genes.reduce((n, g) => n + Object.keys(g.cells).length, 0);
-    const all = oncoprintMatrix(eventsByPatient, { maxTier, maxGenes: 100000, filter: mkFilter });
-    const kept = oncoprintMatrix(f1Split.events, { maxTier, maxGenes: 100000, filter: mkFilter });
-    return count(all) - count(kept);
-  }, [eventsByPatient, f1Split, minF1, maxTier, strongOnly, classes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matrix = useMemo(
+    () => oncoprintMatrix(eventsByPatient, { maxTier, maxGenes, filter: oncoprintEventFilter({ base: strongOnly ? isStrongEvent : null, classes: classes.length === EVENT_CLASS_ORDER.length ? null : classes }) }),
+    [eventsByPatient, maxTier, maxGenes, strongOnly, classes]
+  );
   if (!matrix.patients.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.oncoprint-empty")} />;
 
   const patients = matrix.patients;
@@ -87,13 +78,6 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
           <Select size="small" value={maxTier} onChange={setMaxTier} style={{ width: 200 }} options={TIER_OPTIONS} popupMatchSelectWidth={false} />
           <Text type="secondary">{t("components.single-cell.cohort.oncoprint-genes")}</Text>
           <InputNumber size="small" min={5} max={200} value={maxGenes} onChange={(v) => setMaxGenes(v || 40)} style={{ width: 70 }} />
-          <Tooltip title="Hide every cell (patient x gene) whose event has a Clade F1 below this value in that patient's tree, for all classes including SNVs. Independent of the page header's filter (which exempts SNVs unless 'incl. SNVs' is on). Truncal events (F1 near 1) stay; rescued hotspots and events without a tree are never hidden. 0 = off.">
-            <Space size={4}>
-              <Text strong>Clade F1 &gt;=</Text>
-              <InputNumber size="small" min={0} max={1} step={0.05} value={minF1} onChange={(v) => setMinF1(v ?? 0)} style={{ width: 70 }} />
-              <Text type="secondary">{minF1 > 0 ? `in each patient (hides ${hiddenCells} cell${hiddenCells === 1 ? "" : "s"})` : "in each patient (off)"}</Text>
-            </Space>
-          </Tooltip>
           <Text type="secondary">Group</Text>
           <Select size="small" value={groupBy} onChange={setGroupBy} style={{ width: 150 }} options={[{ value: "role", label: "by gene role" }, { value: "none", label: "no grouping" }]} />
           <Text type="secondary">Types</Text>

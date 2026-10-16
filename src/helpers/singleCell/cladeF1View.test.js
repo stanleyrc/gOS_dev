@@ -1,4 +1,4 @@
-import { eventF1ByPatient, f1Style, f1Summary, f1Tooltip, filterEventsByF1, geneF1, hiddenByF1 } from "./cladeF1View";
+import { eventF1ByPatient, f1Style, f1Summary, f1Tooltip, geneF1, hiddenByF1 } from "./cladeF1View";
 
 // tree layout with 4 leaves: nodes cover leaf ranges
 const tree = { leaves: ["a", "b", "c", "d"], nodes: [{ firstLeaf: 0, lastLeaf: 3 }, { firstLeaf: 0, lastLeaf: 1 }, { firstLeaf: 2, lastLeaf: 3 }, { firstLeaf: 0, lastLeaf: 0 }, { firstLeaf: 1, lastLeaf: 1 }, { firstLeaf: 2, lastLeaf: 2 }, { firstLeaf: 3, lastLeaf: 3 }] };
@@ -29,21 +29,5 @@ describe("Clade F1 view helpers", () => {
     expect(f1Tooltip(0.4, { on: true, min: 0.5, hidden: 2 })).toMatch(/hidden in every cohort view \(2 hidden now\)/);
     expect(f1Tooltip(0.4, { on: false, min: 0.5, hidden: 0 })).toMatch(/no event is hidden/);
     expect(f1Tooltip(null)).toMatch(/not available/);
-  });
-  it("oncoprint per-event F1 filter hides low-F1 events of every class incl. SNVs, keeps truncal / rescued / treeless", () => {
-    const snv = { gene: "TP53", vartype: "SNV", type: "SNV", cell_ids: "a,c" }; // scattered
-    const truncal = { gene: "EGFR", vartype: "AMP", type: "SCNA", cell_ids: "a,b,c,d" }; // root, F1 1
-    const clade = ev("SOX2", "a,b");
-    const scattered = ev("MYC", "a,d");
-    const rescued = { gene: "TERT", vartype: "SNV", type: "SNV", cell_ids: "a,d", rescued: true };
-    const eventsByPatient = { P1: [snv, truncal, clade, scattered, rescued], P2: [snv] };
-    const r = filterEventsByF1(eventsByPatient, { P1: tree }, 0.7);
-    expect(r.events.P1).toEqual([truncal, clade, rescued]);
-    expect(r.events.P2).toEqual([snv]); // no tree for P2: nothing to judge by
-    expect(r.hidden).toBe(2);
-    expect(filterEventsByF1(eventsByPatient, { P1: tree }, 0.9).events.P1).toEqual([truncal, clade, rescued]);
-    const off = filterEventsByF1(eventsByPatient, { P1: tree }, 0);
-    expect(off.events).toBe(eventsByPatient);
-    expect(off.hidden).toBe(0);
   });
 });

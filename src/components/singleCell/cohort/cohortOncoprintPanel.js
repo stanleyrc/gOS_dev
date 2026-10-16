@@ -248,6 +248,13 @@ export default function CohortOncoprintPanel({ summaries, files, tsg = null }) {
             <Text type="secondary">Min cell fraction</Text>
             <InputNumber size="small" min={0} max={100} step={5} value={Math.round(sel.minFraction * 100)} formatter={(v) => `${v}%`} parser={(v) => `${v}`.replace("%", "")} onChange={(v) => patch({ minFraction: (v || 0) / 100 })} style={{ width: 72 }} />
           </Space>
+          <Tooltip title="Hide every cell (patient x event) whose event has a Clade F1 below this value in that patient's tree: how well its carrier cells form one clade. Applies to all event classes including SNVs; truncal events (F1 near 1) stay, and events with no score (no tree or no carrier cells) are never hidden. The page-header Clade F1 filter acts first (it exempts SNVs unless 'incl. SNVs' is on), so a value below the header's only shows what the header kept. This is the lower bound of the Clade F1 range under Filters. Hover a cell for each event's F1.">
+            <Space size={4} data-oncoprint-f1>
+              <Text strong>Clade F1 &gt;=</Text>
+              <InputNumber size="small" min={0} max={1} step={0.05} value={filters.minF1 || 0} onChange={(v) => setFilter({ minF1: Math.max(0, Math.min(1, Number(v) || 0)) })} style={{ width: 70 }} />
+              <Text type="secondary">{filters.minF1 > 0 ? `in each patient (hides ${result.hidden?.byFilter?.f1 || 0} event${(result.hidden?.byFilter?.f1 || 0) === 1 ? "" : "s"})` : "in each patient (off)"}</Text>
+            </Space>
+          </Tooltip>
           <Space size={4}>
             <Text type="secondary">Add genes</Text>
             <Select
@@ -416,7 +423,7 @@ export default function CohortOncoprintPanel({ summaries, files, tsg = null }) {
                         {cell && (
                           <title>
                             {`${r.gene} in ${p}\n` +
-                              cell.entries.map((d) => `${classLabel(d)}${d.event.Variant && d.event.Variant !== "None" ? ` ${d.event.Variant}` : ""}: ${d.n} cells (${pct(d.fraction)}, ${d.subclonal ? "subclonal" : "clonal"}${d.tier ? `, tier ${d.tier}` : ""})`).join("\n") +
+                              cell.entries.map((d) => `${classLabel(d)}${d.event.Variant && d.event.Variant !== "None" ? ` ${d.event.Variant}` : ""}: ${d.n} cells (${pct(d.fraction)}, ${d.subclonal ? "subclonal" : "clonal"}${d.tier ? `, tier ${d.tier}` : ""}${Number.isFinite(d.fit) ? `, Clade F1 ${d.fit.toFixed(2)}` : ", Clade F1 n/a"})`).join("\n") +
                               (call ? `\nTwo-hit check: ${call.text}${call.state === "monoallelic" ? `\n(loss data: ${call.lossSource})` : ""}` : tsg && tsg.hasLoss && /suppressor/i.test(`${cell.best?.event?.role || ""}`) ? "\nTwo-hit check: no second hit in the allelic CN" : "") +
                               "\nClick to open the patient on this event."}
                           </title>
