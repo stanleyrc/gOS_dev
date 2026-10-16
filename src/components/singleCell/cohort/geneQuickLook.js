@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Button, Popover, Skeleton, Space, Tag, Tooltip, Typography } from "antd";
+import { geneReadQcMap, readQcText } from "../../../helpers/singleCell/geneReadQc";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import GeneInfoCard from "../rna/geneInfoCard";
 import ExternalLinksRow from "../externalLinksRow";
@@ -38,6 +39,82 @@ function useOncoKbTables(commonPath) {
     };
   }, [commonPath]);
   return state;
+}
+
+
+/** Deep link into a patient tab: ?report=<P>&tab=<n>[&evsite=...]. */
+function patientHref(patient, tab, extra = {}) {
+  if (typeof window === "undefined") return "#";
+  const url = new URL(window.location.href);
+  ["scview", "evsite", "evview"].forEach((k) => url.searchParams.delete(k));
+  url.searchParams.set("report", patient);
+  url.searchParams.set("tab", `${tab}`);
+  Object.entries(extra).forEach(([k, v]) => url.searchParams.set(k, v));
+  return url.toString();
+}
+
+/** { status, doc, map } of the gene-level read-QC verdicts (cohort subclonal_drivers.json). */
+export function useGeneReadQc(datasetProp = null) {
+  const ctx = useContext(GeneQuickLookContext);
+  const settingsDataset = useSelector((s) => s.Settings?.dataset);
+  const dataset = datasetProp || ctx?.dataset || settingsDataset;
+  const { status, data } = useCohortExport(dataset?.dataPath ? dataset : null, "subclonal_drivers.json");
+  const map = useMemo(() => geneReadQcMap(data), [data]);
+  return { status, doc: data, map };
+}
+
+/** Red "read-QC flagged" tag for a gene whose subclonal driver hits are all read-level artefacts; nothing otherwise. */
+export function ReadQcBadge({ gene, dataset = null, partial = false }) {
+  const { map } = useGeneReadQc(dataset);
+  const g = map.get(gene);
+  if (!g || !(g.allFlagged || (partial && g.nFlagged))) return null;
+  return (
+    <Tooltip title={readQcText(g)}>
+      <Tag color="volcano" style={{ margin: 0, cursor: "help" }}>{g.allFlagged ? "read-QC flagged" : "some sites read-QC flagged"}</Tag>
+    </Tooltip>
+  );
+}
+
+function ReadQcSection({ gene }) {
+  const { doc, map } = useGeneReadQc();
+  const ctx = useContext(GeneQuickLookContext);
+  const g = map.get(gene);
+  if (!doc || !g || !g.nFlagged) return null;
+  const hits = (doc.hits || []).filter((h) => h.gene === gene && h.read_qc?.flags?.length);
+  return section(
+    "Read-level QC",
+    <div style={{ fontSize: 12 }}>
+      <Tag color="volcano">{g.allFlagged ? "read-QC flagged" : `${g.nFlagged} of ${g.nHits} hits flagged`}</Tag>
+      <div style={{ margin: "4px 0" }}>{readQcText(g)}</div>
+      <Space size={[6, 2]} wrap>
+        {hits.slice(0, 8).map((h) => <a key={`${h.patient}${h.site}`} href={patientHref(h.patient, 15, { evsite: h.site })} target="_blank" rel="noreferrer">{`${h.patient} ${h.site} evidence`}</a>)}
+        {ctx?.actions?.subclonal && <a onClick={() => ctx.actions.subclonal(gene)}>Subclonal view</a>}
+      </Space>
+    </div>
+  );
+}
+
+/** Compact hover summary: role, QC verdict, cohort counts, click hint. */
+function GeneHoverCard({ gene }) {
+  const ctx = useContext(GeneQuickLookContext);
+  const events = useSelector((s) => s.FilteredEvents?.originalFilteredEvents || s.FilteredEvents?.filteredEvents || []);
+  const commonPath = useSelector((s) => s.Settings?.dataset?.commonPath) || "common/";
+  const tables = useOncoKbTables(commonPath);
+  const curated = tables.genes?.ok?.get(gene);
+  const cohortEvents = useMemo(() => (ctx ? driverEventsForGene(ctx.summaries, ctx.files, gene) : patientEventsForGene(events, gene)), [ctx, events, gene]);
+  const nPatients = new Set(cohortEvents.map((e) => e.patient).filter(Boolean)).size;
+  return (
+    <div style={{ fontSize: 12, maxWidth: 340 }}>
+      <Text strong style={{ color: "inherit" }}>{gene}</Text>{" "}
+      {curated?.oncogene && <Tag color="volcano" style={{ margin: 0 }}>oncogene</Tag>}
+      {curated?.tsg && <Tag color="geekblue" style={{ margin: 0 }}>tumor suppressor</Tag>}
+      {tables.loading ? null : !curated && <span style={{ opacity: 0.7 }}> not in OncoKB curated genes</span>}
+      {curated?.summary && <div style={{ marginTop: 4, opacity: 0.9 }}>{curated.summary.length > 220 ? `${curated.summary.slice(0, 220)}...` : curated.summary}</div>}
+      <div style={{ marginTop: 4 }}>{ctx ? (cohortEvents.length ? `${cohortEvents.length} filtered events in ${nPatients} patients` : "No filtered event in this cohort") : (cohortEvents.length ? `${cohortEvents.length} filtered events in this patient` : "No filtered event in this patient")}</div>
+      <ReadQcBadge gene={gene} partial />
+      <div style={{ marginTop: 4, opacity: 0.7 }}>Click for the full gene card</div>
+    </div>
+  );
 }
 
 const NA = ({ why }) => <Text type="secondary">{`not available (${why})`}</Text>;
@@ -142,6 +219,7 @@ export function GeneQuickLookBody({ gene, onClose }) {
       </Space>
       {section("OncoKB", <OncoKbSection gene={gene} tables={tables} />)}
       {section("Elsewhere", <ExternalLinksRow gene={gene} />)}
+      <ReadQcSection gene={gene} />
       {ctx ? <CohortSection gene={gene} ctx={ctx} /> : <PatientSection gene={gene} />}
       <GeneInfoCard gene={gene} />
     </div>
@@ -158,20 +236,22 @@ export default function GeneQuickLook({ gene, children = null, icon = false, sty
   const label = children || gene;
   return (
     <Popover trigger="click" open={open} onOpenChange={setOpen} destroyTooltipOnHide placement="rightTop" content={<GeneQuickLookBody gene={gene} onClose={() => setOpen(false)} />}>
-      {icon ? <InfoCircleOutlined onClick={(e) => e.stopPropagation()} style={{ cursor: "pointer", color: "#1677ff", marginLeft: 4, ...style }} title={`${gene}: gene card, OncoKB, cohort evidence`} /> : <a style={style} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{label}</a>}
+      {icon ? <InfoCircleOutlined onClick={(e) => e.stopPropagation()} style={{ cursor: "pointer", color: "#1677ff", marginLeft: 4, ...style }} title={`${gene}: gene card, OncoKB, cohort evidence`} /> : <Tooltip title={open ? null : <GeneHoverCard gene={gene} />} mouseEnterDelay={0.35} color="#fff" overlayInnerStyle={{ color: "#262626" }}><a style={style} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{label}</a></Tooltip>}
     </Popover>
   );
 }
 
 /** SVG variant: a <text> gene label that opens the quick look. Extra props go to <text>. */
-export function GeneQuickLookText({ gene, label = null, ...textProps }) {
+export function GeneQuickLookText({ gene, label = null, standalone = false, ...textProps }) {
   const ctx = useContext(GeneQuickLookContext);
   const [open, setOpen] = useState(false);
   const text = label || gene;
-  if (!ctx) return <text {...textProps}>{text}</text>;
+  if (!ctx && !standalone) return <text {...textProps}>{text}</text>;
   return (
-    <Popover trigger="click" open={open} onOpenChange={setOpen} destroyTooltipOnHide placement="rightTop" content={<GeneQuickLookBody gene={gene} onClose={() => setOpen(false)} />}>
-      <text {...textProps} style={{ cursor: "pointer", textDecoration: "underline dotted", ...(textProps.style || {}) }}>{text}</text>
-    </Popover>
+    <Tooltip title={open ? null : <GeneHoverCard gene={gene} />} mouseEnterDelay={0.35} color="#fff" overlayInnerStyle={{ color: "#262626" }}>
+      <Popover trigger="click" open={open} onOpenChange={setOpen} destroyTooltipOnHide placement="rightTop" content={<GeneQuickLookBody gene={gene} onClose={() => setOpen(false)} />}>
+        <text {...textProps} style={{ cursor: "pointer", textDecoration: "underline dotted", ...(textProps.style || {}) }}>{text}</text>
+      </Popover>
+    </Tooltip>
   );
 }
