@@ -28,6 +28,12 @@ export function shannonDiversity(counts = {}) {
 /** Hotspot recovered from read-level site evidence (exporter step gos_sc_hotspot_rescue), not from the SNV calls. */
 export const isRescued = (e) => Boolean(e) && (e.rescued === true || `${e.rescued}` === "true");
 
+/** SNV of a driver gene that the joint calls made but that is not a tree site (exporter gos_sc_allsnv): read evidence, per-cell states from the event itself. */
+export const CALLED_SOURCE = "called SNV (not a tree site)";
+export const isCalledNotTree = (e) => Boolean(e) && `${e.source}` === CALLED_SOURCE;
+/** Where a rescued / evidence-only event comes from, for labels and tooltips. */
+export const rescueSourceText = (e) => (isCalledNotTree(e) ? "Called SNV, not a tree site" : "Rescued from site evidence (not in the SNV calls)");
+
 export function eventClass(event = {}) {
   const vt = `${event.vartype || ""}`.toLowerCase();
   const ty = `${event.type || ""}`.toLowerCase();

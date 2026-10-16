@@ -1,7 +1,7 @@
 // Hotspots rescued from site evidence (exporter gos_sc_hotspot_rescue): synthetic fixtures only.
-import { buildDriverEntries, entryStates, selectDrivers, rescueText, snvStateLabel, STATE, DEFAULT_SELECTION } from "./driverLayer";
+import { buildDriverEntries, classLabel, entryStates, selectDrivers, rescueText, snvStateLabel, STATE, DEFAULT_SELECTION } from "./driverLayer";
 import { cellStatus, markSnvPending, sharedLabel } from "./cohortDriverTrees";
-import { eventClass, isRescued, oncoprintMatrix } from "./cohortStats";
+import { eventClass, isCalledNotTree, isRescued, oncoprintMatrix } from "./cohortStats";
 import { buildPatientReport } from "./patientReport";
 import { cohortHeadline, tertHeadline } from "./cohortHeadline";
 
@@ -112,5 +112,30 @@ describe("tert headline", () => {
   it("is absent without the file and does not disturb the other findings", () => {
     expect(tertHeadline(null, ["A"])).toBeNull();
     expect(cohortHeadline([{ id: "A", report: { clonal: [], subclonal: [] } }]).map((x) => x.key)).not.toContain("tert");
+  });
+});
+
+describe("called SNVs that are not tree sites (exporter gos_sc_allsnv)", () => {
+  const called = (o = {}) => ({
+    id: "P", gene: "NF1", fusion_genes: "", vartype: "SNV", type: "Trunc", Variant: "p.Y1106*", Variant_g: "17:31204603-31204603 A>T",
+    Tier: 2, role: "Tumor Suppressor", seqnames: "17", start: "31204603", end: "31204603", Genome_Location: "17:31204603-31204603",
+    cell_ids: "c1,c2,c3,c4,c5", n_cells: 5, cells: "5/6", cell_fraction: 0.833, source: "called SNV (not a tree site)", rescued: true,
+    covered_ref_cell_ids: "c6", tumour_cells: 10, covered_tumour_cells: 6, coverage_fraction: 0.6, low_coverage: false, clonality: "subclonal",
+    hotspot_evidence: { preset: "caller", tumor: { alt_f: 5, alt_r: 4, ref_f: 1, ref_r: 1 }, normal: { alt_f: 0, alt_r: 0, ref_f: 3, ref_r: 2 }, verdict: { level: "supported", label: "Supported", reasons: [] } },
+    ...o,
+  });
+  const d = buildDriverEntries([called()], { tumorIds: cells })[0];
+
+  it("uses the per-cell states of the event and its own label", () => {
+    expect(isCalledNotTree(called())).toBe(true);
+    expect(isCalledNotTree(tert())).toBe(false);
+    expect(d).toMatchObject({ cls: "snv", rescued: true, n: 5, snvColumn: null, label: "NF1 p.Y1106* (called)" });
+    expect(Array.from(entryStates(d, { order: cells, snv: { variants: [], status: [] }, snvRows: null }))).toEqual([2, 2, 2, 2, 2, 1, 0, 0, 0, 0]);
+  });
+
+  it("is not described as a rescued hotspot", () => {
+    expect(classLabel(d)).toMatch(/not a tree site/);
+    expect(rescueText(d)).toMatch(/^Called SNV, not a tree site: 9 alt \/ 2 ref reads/);
+    expect(rescueText(buildDriverEntries([tert()], { tumorIds: cells })[0])).toMatch(/^Rescued from site evidence/);
   });
 });
