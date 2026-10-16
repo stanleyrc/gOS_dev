@@ -56,6 +56,7 @@ import {
 } from "../../helpers/browseScope";
 import { userAuthRepository } from "../../helpers/userAuth";
 import SingleCellCohortPanel from "../../components/singleCell/singleCellCohortPanel";
+import PatientCaseCard from "../../components/singleCell/patientCaseCard";
 import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import {
   isCellRecord,
@@ -1132,7 +1133,19 @@ export class ListView extends Component {
                           )}
 
                           <Row gutter={[16, 16]}>
-                            {records.map((d) => (
+                            {records.map((d) => isPatientRecord(d) ? (
+                              <Col
+                                key={sourceCaseIdentityKey(d) || d.pair}
+                                className="gutter-row"
+                                xs={24}
+                                md={12}
+                                xl={8}
+                                xxl={6}
+                                style={{ display: "flex", minWidth: 0 }}
+                              >
+                                <PatientCaseCard record={d} dataset={this.props.dataset} onClick={(e) => handleCardClick(e, d)} />
+                              </Col>
+                            ) : (
                               <Col
                                 key={sourceCaseIdentityKey(d) || d.pair}
                                 className="gutter-row"
