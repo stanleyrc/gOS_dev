@@ -440,8 +440,7 @@ export function siteVerdict(stats) {
   if (s.strand && t.alt > 0) {
     const { f, r } = s.strand;
     const oneStrand = t.alt >= 6 && Math.min(f, r) === 0;
-    // with tens of thousands of reads a 46/54 split is statistically "significant" but harmless: also require a real skew (minor strand < 20% of alt reads)
-    const biased = t.alt >= 6 && s.strand.log10p < -3 && Math.min(f, r) / (f + r) < 0.2;
+    const biased = t.alt >= 6 && s.strand.log10p < -3;
     checks.push({
       key: "strand",
       status: oneStrand ? "fail" : biased ? "warn" : "pass",
