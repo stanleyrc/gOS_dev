@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import * as d3 from "d3";
 import { connect } from "react-redux";
+import { priorityGenesMemo } from "../../helpers/singleCell/priorityGenes";
 import { withTranslation } from "react-i18next";
 import { throttle } from "lodash";
 import { filterGenesByOverlap, measureText } from "../../helpers/utility";
@@ -40,6 +41,8 @@ class GenesPlot extends Component {
     return (
       nextProps.domains.toString() !== this.props.domains.toString() ||
       nextProps.genesList !== this.props.genesList ||
+      nextProps.priorityGenes !== this.props.priorityGenes ||
+      nextProps.genesStore !== this.props.genesStore ||
       nextProps.width !== this.props.width ||
       nextProps.height !== this.props.height
     );
@@ -243,7 +246,22 @@ class GenesPlot extends Component {
   };
 
   render() {
-    const { width, height, domains, genesList, defaultDomain } = this.props;
+    const { width, height, domains, genesList, defaultDomain, priorityGenes, genesStore } = this.props;
+    // single-cell patients: GBM core genes + this patient's drivers get the label slots first (the tiles rank by
+    // citation count, which favours TNF / APOE / ACE); zoomed out (> 15% of the genome) only those are labelled
+    const priority = priorityGenes && priorityGenes.length ? new Set(priorityGenes) : null;
+    const genomeSpan = defaultDomain ? Math.abs(defaultDomain[1] - defaultDomain[0]) : 0;
+    // priority genes the tiles left out (zoomed out they hold only the best-cited genes): draw them from the gene table, without exons
+    const have = new Set(genesList.map((g) => g.title));
+    const extras = [];
+    if (priority && genesStore?.geneTitles) {
+      genesStore.geneTitles.forEach((title, k) => {
+        if (!priority.has(title) || have.has(title) || genesStore.geneTypes?.[k] !== "gene") return;
+        const color = genesStore.titlesColorMap?.[title];
+        extras.push({ title, id: `prio-${title}`, uid: `prio-${title}`, startPlace: genesStore.genesStartPoint[k], endPlace: genesStore.genesEndPoint[k], strand: genesStore.genesStrand[k], color, fillColor: color || "#888", exons: [], importance: 0 });
+        have.add(title);
+      });
+    }
     const { tooltip, selectedGene } = this.state;
 
     let stageWidth = width - 2 * margins.gapX;
@@ -257,10 +275,13 @@ class GenesPlot extends Component {
     domains.forEach((xDomain, index) => {
       let dataGenes = [];
       let xScale = d3.scaleLinear().domain(xDomain).range([0, panelWidth]);
-      genesList.forEach((gene, i) => {
-        if (gene.endPlace >= xDomain[0] && gene.startPlace <= xDomain[1]) {
+      [...genesList, ...extras].forEach((gene, i) => {
+        const isPriority = priority ? priority.has(gene.title) : false;
+        const zoomedOut = priority && genomeSpan && xDomain[1] - xDomain[0] > 0.15 * genomeSpan;
+        if (gene.endPlace >= xDomain[0] && gene.startPlace <= xDomain[1] && !(zoomedOut && !isPriority)) {
           dataGenes.push({
             ...gene,
+            importance: isPriority ? 1e12 + (gene.importance || 0) : gene.importance,
             y: gene.strand === "+" ? 2 : -2,
             textPosX:
               (d3.max([0, xScale(gene.startPlace)]) +
@@ -527,6 +548,8 @@ const mapStateToProps = (state) => ({
   hoveredLocation: state.Settings.hoveredLocation,
   hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
   zoomedByCmd: state.Settings.zoomedByCmd,
+  genesStore: state.SingleCell?.patient != null ? state.Genes : null,
+  priorityGenes: state.SingleCell?.patient != null ? priorityGenesMemo(state.FilteredEvents?.originalFilteredEvents || state.FilteredEvents?.filteredEvents) : null,
 });
 export default connect(
   mapStateToProps,

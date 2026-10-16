@@ -1543,6 +1543,7 @@
         "purpose-qc": "Per-cell quality metrics and outliers.",
         "group-findings": "Findings",
         "group-genome": "Genome",
+        "group-evolution": "Evolution",
         "group-rna": "Transcriptome",
         "group-explore": "Explore & QC",
         "headline-title": "Major findings",

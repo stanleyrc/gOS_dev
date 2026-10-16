@@ -59,9 +59,10 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   if (!data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.umap-missing")} />;
   const patients = [...new Set(cells.map((c) => c.patient))].sort();
   const placed = cells.filter((c) => !hidden.includes(c.patient) && Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
-  const w = Math.max(400, width - 24);
-  const x = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_1)).range([12, w - 12]);
-  const y = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_2)).range([HEIGHT - 12, 12]);
+  // square-ish plot (width <= 1.2 x height) with the legend beside it, never stretched across the page
+  const w = Math.min(Math.max(400, width - 24), Math.round(1.2 * HEIGHT));
+  const x = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_1)).range([40, w - 12]);
+  const y = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_2)).range([HEIGHT - 34, 12]);
   const byScore = colorBy === "__score" && overlay?.values;
   const scoreScale = byScore ? d3.scaleSequential(d3.interpolateViridis).domain(d3.extent([...overlay.values.values()].filter(Number.isFinite))) : null;
   // NA = no value for the colour field (score overlay or metadata column)
@@ -134,14 +135,15 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
         </Space>
       }
     >
-      <div ref={ref} style={{ position: "relative" }}>
+      <div ref={ref} style={{ position: "relative", display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
         <svg ref={svgRef} width={w} height={HEIGHT} style={{ display: "block", cursor: onSelect ? "crosshair" : undefined, userSelect: "none" }} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={() => { setDrag(null); setHover(null); }}>
           {shown.map((c, i) => (
             <circle key={`${c.patient}-${c.rna_id}-${i}`} cx={x(c.umap_1)} cy={y(c.umap_2)} r={selection?.has(keyOf(c)) ? 3.4 : 2.6} stroke={selection?.has(keyOf(c)) ? "#141414" : "none"} strokeWidth={1.2} fillOpacity={selection?.size && !selection.has(keyOf(c)) ? 0.35 : 0.85} fill={byScore ? (Number.isFinite(overlay.values.get(`${c.patient}::${c.rna_id}`)) ? scoreScale(overlay.values.get(`${c.patient}::${c.rna_id}`)) : "#d9d9d9") : colors[colorBy === "patient" ? c.patient : `${c[colorBy]}`] || "#d9d9d9"} style={{ cursor: "pointer" }} onClick={(e) => !drag && !e.shiftKey && open(c)}>
               <title>{`${c.patient} · ${c.rna_id}${c.state ? ` · ${c.state}` : ""}${c.Phase ? ` · ${c.Phase}` : ""}`}</title>
             </circle>
           ))}
-          <text x={w - 8} y={HEIGHT - 8} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>{data.method || "integrated UMAP"}</text>
+          <text x={(40 + w - 12) / 2} y={HEIGHT - 8} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>UMAP 1 (arbitrary units)</text>
+          <text transform={`translate(14,${(12 + HEIGHT - 34) / 2}) rotate(-90)`} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>UMAP 2 (arbitrary units)</text>
           {hover && !drag && <circle cx={x(hover.c.umap_1)} cy={y(hover.c.umap_2)} r={5} fill="none" stroke="#141414" strokeWidth={1.5} pointerEvents="none" />}
           {drag && <rect x={Math.min(drag.x0, drag.x1)} y={Math.min(drag.y0, drag.y1)} width={Math.abs(drag.x1 - drag.x0)} height={Math.abs(drag.y1 - drag.y0)} fill="rgba(22,119,255,0.08)" stroke={INK.select} strokeDasharray="4 3" pointerEvents="none" />}
         </svg>
@@ -151,6 +153,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
             <div style={{ opacity: 0.7 }}>click to open the patient</div>
           </div>
         )}
+        <div style={{ flex: "1 1 220px", minWidth: 200, maxWidth: 420 }}>
         {byScore ? (
           <Space size={4} style={{ fontSize: 12.5 }}>
             <span>{scoreScale.domain()[0].toFixed(2)}</span>
@@ -161,7 +164,9 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
         ) : (
           <Swatches items={levels.map((l) => ({ key: l, color: colors[l], label: l }))} />
         )}
+        <Text type="secondary" style={{ display: "block", fontSize: 12, marginTop: 6 }}>{data.method || "integrated UMAP"}</Text>
         <HintLine text={t("components.single-cell.cohort.umap-help")} />
+        </div>
       </div>
     </Card>
   );

@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { Button, Card, Empty, Popover, Space, Spin, Switch, Tag, Tooltip, Typography } from "antd";
-import { AimOutlined, BarChartOutlined, BranchesOutlined, FileSearchOutlined, InfoCircleOutlined, NodeIndexOutlined, TableOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { Button, Card, Empty, Space, Spin, Switch, Tag, Tooltip, Typography } from "antd";
+import { AimOutlined, BarChartOutlined, BranchesOutlined, FileSearchOutlined, NodeIndexOutlined, TableOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import usePlotTheme from "../usePlotTheme";
 import HintLine from "../hintLine";
-import GeneInfoCard from "../rna/geneInfoCard";
+import GeneQuickLook, { ReadQcBadge } from "../cohort/geneQuickLook";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { formatP } from "../../../helpers/singleCell/tests";
+import { driverGenes } from "../../../helpers/singleCell/driverSummary";
 import { KEY_FIT, KIND_LABEL, effectWord, inCancerGene, isKnownDriver } from "../../../helpers/singleCell/driverSummary";
 import useDriverSummaries from "./useDriverSummaries";
 import DriverEvidenceDrawer, { useDriverActions } from "./driverEvidenceDrawer";
@@ -57,15 +58,24 @@ function Effect({ dir = 0, strong = false, children, tip }) {
   );
 }
 
+/** Driver label whose gene opens the quick look (hover card + click) and carries the read-QC badge. */
+function SummaryLabel({ s, style }) {
+  const gene = driverGenes(s.members?.[0]?.event || {})[0];
+  if (!gene) return <Text strong style={style}>{s.label}</Text>;
+  return (
+    <Space size={4}>
+      <GeneQuickLook gene={gene} standalone><Text strong style={{ ...style, color: "#1677ff", cursor: "pointer" }}>{s.label}</Text></GeneQuickLook>
+      <ReadQcBadge gene={gene} />
+    </Space>
+  );
+}
+
 /** What each gene is: role, pathway, GBM note, OncoKB summary; the gene name opens the live gene card. */
 function GeneLines({ briefs }) {
   return briefs.map((b) => (
     <div key={b.gene} style={{ marginBottom: 2 }}>
-      <Popover trigger="click" placement="right" content={<div style={{ width: 460, maxHeight: 520, overflow: "auto" }}><GeneInfoCard gene={b.gene} /></div>}>
-        <Typography.Link strong style={{ marginRight: 6 }}>
-          {b.gene} <InfoCircleOutlined style={{ fontSize: 11 }} />
-        </Typography.Link>
-      </Popover>
+      <GeneQuickLook gene={b.gene} standalone><Typography.Link strong style={{ marginRight: 6 }}>{b.gene}</Typography.Link></GeneQuickLook>
+      <ReadQcBadge gene={b.gene} />{" "}
       {b.role && <Tag color={/oncogene and/.test(b.role) ? "magenta" : /oncogene/.test(b.role) ? "volcano" : "geekblue"} style={{ marginInlineEnd: 4 }}>{b.role}</Tag>}
       {b.gbm && (
         <Tooltip title={b.gbm.note}>
@@ -98,7 +108,7 @@ function DriverCard({ s, rank, focused, onEvidence, onFocus }) {
     >
       <Space size={8} wrap align="center" style={{ marginBottom: 4 }}>
         <Text type="secondary" style={{ fontSize: 15, minWidth: 22, display: "inline-block" }}>{`${rank}.`}</Text>
-        <Text strong style={{ fontSize: 16 }}>{s.label}</Text>
+        <SummaryLabel s={s} style={{ fontSize: 16 }} />
         <Tag color={KIND_COLOR[s.kind]}>{KIND_LABEL[s.kind]}</Tag>
         {Number(s.members[0].event.Tier) <= 2 && <Tag>{`OncoKB tier ${s.members[0].event.Tier}`}</Tag>}
         <EvidenceTag evidence={s.evidence} />
@@ -248,7 +258,7 @@ function CompactRow({ s, rank, focused, onFocus, onEvidence }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "4px 10px 4px 12px", borderBottom: "1px solid var(--sc-border-soft, #f0f0f0)", background: focused ? "var(--sc-hover-fill, rgba(212,56,13,0.04))" : undefined }}>
       <Text type="secondary" style={{ minWidth: 22 }}>{`${rank}.`}</Text>
-      <Text strong>{s.label}</Text>
+      <SummaryLabel s={s} />
       <Tag color={KIND_COLOR[s.kind]} style={{ marginInlineEnd: 0 }}>{KIND_LABEL[s.kind]}</Tag>
       <Text type="secondary" style={{ fontSize: TYPE.label }}>{`${s.n} of ${s.total} cells (${pct(s.fraction)})`}</Text>
       <FitTag s={s} />

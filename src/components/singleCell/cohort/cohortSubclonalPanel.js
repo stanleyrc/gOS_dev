@@ -1,3 +1,4 @@
+import GeneQuickLook, { ReadQcBadge } from "./geneQuickLook";
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Card, Col, Drawer, Empty, Row, Segmented, Select, Skeleton, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { BranchesOutlined, ExperimentOutlined, LinkOutlined } from "@ant-design/icons";
@@ -104,18 +105,29 @@ export function SubclonalHeadlineCard({ dataset, onView }) {
       type="warning"
       showIcon
       icon={<BranchesOutlined />}
-      message={<Text strong>Recurrent subclonal drivers</Text>}
+      message={<Text strong>Recurrent subclonal drivers (after read-level QC)</Text>}
       description={
         <div>
           {genes.length ? (
             <div>
+              {genes.some((g) => g.significant) ? null : <div><Text strong>No gene stays a significant recurrent subclonal driver after read-level QC.</Text></div>}
               {genes.map((g) => (
-                <span key={g.gene} style={{ marginRight: 16 }}>
-                  <Text strong>{g.gene}</Text> {g.hits} truncating hits in {g.patients.length} patients ({g.patients.join(", ")}); expected {g.expected.toFixed(3)}, q {fmtP(g.q)}
-                  {g.qNoBwh69 != null && g.patients.includes("BWH69") ? <Text type="secondary"> (q {fmtP(g.qNoBwh69)} without the noisy BWH69</Text> : <Text type="secondary"> (</Text>}
-                  {g.qQc != null ? <Text type="secondary">{g.patients.includes("BWH69") ? "; " : ""}q {fmtP(g.qQc)} with read-QC-flagged sites removed, {g.patientsQc} patients)</Text> : <Text type="secondary">)</Text>}
-                  {!g.significant && <Text type="secondary"> not significant</Text>}
-                </span>
+                <div key={g.gene} style={{ marginBottom: 2 }}>
+                  <GeneQuickLook gene={g.gene} standalone><Text strong>{g.gene}</Text></GeneQuickLook>{" "}
+                  {g.qcFailed ? (
+                    <>
+                      <ReadQcBadge gene={g.gene} dataset={dataset} />{" "}
+                      <Text type="secondary">{`${g.hits} truncating hits in ${g.patients.length} patients (${g.patients.join(", ")}): q ${fmtP(g.q)} before read-QC, ${fmtP(g.qQc)} after (${g.patientsQc} patients with an unflagged site). Not counted as a finding.`}</Text>
+                    </>
+                  ) : (
+                    <>
+                      {g.hits} truncating hits in {g.patients.length} patients ({g.patients.join(", ")}); expected {g.expected.toFixed(3)}, q {fmtP(g.q)}
+                      {g.qNoBwh69 != null && g.patients.includes("BWH69") ? <Text type="secondary"> (q {fmtP(g.qNoBwh69)} without the noisy BWH69</Text> : <Text type="secondary"> (</Text>}
+                      {g.qQc != null ? <Text type="secondary">{g.patients.includes("BWH69") ? "; " : ""}q {fmtP(g.qQc)} with read-QC-flagged sites removed, {g.patientsQc} patients)</Text> : <Text type="secondary">)</Text>}
+                      {!g.significant && <Text type="secondary"> not significant</Text>}
+                    </>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
@@ -251,7 +263,7 @@ function NoteBlock({ notes, hits, onIgv }) {
 function DriverGeneTable({ data, verdicts, onIgv }) {
   const rows = useMemo(() => driverGeneRows(data), [data]);
   const columns = [
-    { title: "Gene", dataIndex: "gene", render: (g, r) => <Text strong>{g}{r.notes.length ? " *" : ""}</Text> },
+    { title: "Gene", dataIndex: "gene", render: (g, r) => <Space size={4}><GeneQuickLook gene={g}><Text strong>{g}{r.notes.length ? " *" : ""}</Text></GeneQuickLook><ReadQcBadge gene={g} partial /></Space> },
     { title: "Patients with a subclonal hit", key: "ps", sorter: (a, b) => a.patients_subclonal.length - b.patients_subclonal.length, render: (_, r) => <span><Text strong>{r.patients_subclonal.length}</Text> <Text type="secondary">{r.patients_subclonal.join(", ")}</Text></span> },
     { title: "Patients (any)", key: "pa", render: (_, r) => r.patients.length },
     { title: "Independent hits", key: "h", render: (_, r) => <span>{r.n_hits}{r.multi_hit_patients.length ? <Tag color="purple" style={{ marginLeft: 6 }}>multi-hit: {r.multi_hit_patients.join(", ")}</Tag> : null}</span> },
