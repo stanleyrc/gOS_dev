@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { Card, Empty, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import { Card, Collapse, Empty, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { fmtLog10P, rankFindings, readEvidenceLink } from "../../../helpers/singleCell/siteEvidence";
 import NotComputed, { pcFile } from "./notComputed";
 import SiteEvidenceView from "./siteEvidenceView";
@@ -21,7 +21,12 @@ export default function MutationEvidencePanel({ siteId: siteProp = null, onSiteC
   const cloneOf = useMemo(() => new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id ?? "unassigned"])), [cells]);
   const ranked = useMemo(() => (calls.ok ? rankFindings(calls.data, evidence.data, cloneOf) : null), [calls.ok, calls.data, evidence.data, cloneOf]);
   const [siteLocal, setSiteLocal] = useState(siteProp);
-  const siteId = siteProp ?? siteLocal;
+  const [userSite, setUserSite] = useState(null); // a site picked from the list inside the drawer overrides the driver's own site
+  const siteId = userSite ?? siteProp ?? siteLocal;
+  const pickSite = (id) => {
+    setUserSite(id);
+    if (onSiteChange) onSiteChange(id);
+  };
   const setSiteId = (id) => {
     setSiteLocal(id);
     if (onSiteChange) onSiteChange(id);
@@ -78,12 +83,11 @@ export default function MutationEvidencePanel({ siteId: siteProp = null, onSiteC
       width: 150,
       render: (_, f) => (f.stats.cohort.carriers.length ? <Text>also in {f.stats.cohort.carriers.join(", ")}</Text> : f.stats.cohort.rows.length ? <Text type="secondary">none</Text> : "–"),
     },
-    { title: "Why", key: "w", ellipsis: true, render: (_, f) => <Tooltip title={f.verdict.summary}>{f.verdict.summary}</Tooltip> },
+    { title: "Why", key: "w", width: 360, ellipsis: { showTitle: false }, render: (_, f) => <Tooltip title={f.verdict.summary} placement="topLeft">{f.verdict.summary}</Tooltip> },
   ];
   const hidden = ranked.findings.length - Math.min(TOP, ranked.findings.length);
 
-  return (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+  const findings = (
       <Card
         size="small"
         title={
@@ -107,9 +111,9 @@ export default function MutationEvidencePanel({ siteId: siteProp = null, onSiteC
           dataSource={rows}
           columns={columns}
           pagination={showAll ? { pageSize: 15, size: "small" } : false}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 1300 }}
           rowClassName={(f) => (f.id === siteId ? "sc-row-active" : "")}
-          onRow={(f) => ({ onClick: () => setSiteId(f.id), style: { cursor: "pointer" } })}
+          onRow={(f) => ({ onClick: () => pickSite(f.id), style: { cursor: "pointer" } })}
         />
         <Space direction="vertical" size={2} style={{ marginTop: 8 }}>
           {!showAll && hidden > 0 && (
@@ -122,7 +126,7 @@ export default function MutationEvidencePanel({ siteId: siteProp = null, onSiteC
               <Text type="secondary">Hotspots genotyped and not detected: </Text>
               {ranked.negativeHotspots.map((f) => (
                 <Tooltip key={f.id} title={f.verdict.summary}>
-                  <Tag style={{ cursor: "pointer", marginBottom: 2 }} color={f.id === siteId ? "processing" : undefined} onClick={() => setSiteId(f.id)}>
+                  <Tag style={{ cursor: "pointer", marginBottom: 2 }} color={f.id === siteId ? "processing" : undefined} onClick={() => pickSite(f.id)}>
                     {f.name} · 0/{f.stats.tumor.dp}
                     {f.verdict.level === "uninformative" ? " (too few reads)" : ""}
                   </Tag>
@@ -138,7 +142,24 @@ export default function MutationEvidencePanel({ siteId: siteProp = null, onSiteC
           )}
         </Space>
       </Card>
-      {siteId && <SiteEvidenceView key={siteId} siteId={siteId} calls={calls.data} evidence={evidence.data} />}
+  );
+  const siteView = siteId && <SiteEvidenceView key={siteId} siteId={siteId} calls={calls.data} evidence={evidence.data} />;
+  // inside the driver drawer (site given) the selected site comes first and the patient-wide findings are a collapsed section at the bottom
+  if (siteProp != null) {
+    return (
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        {siteView}
+        <Collapse
+          size="small"
+          items={[{ key: "others", label: `Other sites in this patient (${ranked.all.length} genotyped, ${ranked.findings.length} with alt reads)`, children: findings }]}
+        />
+      </Space>
+    );
+  }
+  return (
+    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      {findings}
+      {siteView}
     </Space>
   );
 }

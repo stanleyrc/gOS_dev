@@ -137,6 +137,8 @@ test("contrastRows", () => {
 
 test("Clade F1 filter exempts SNVs", () => {
   expect(passesCladeFilter({ vartype: "SNV", type: "Trunc" }, 0.2, 0.5)).toBe(true);
+  expect(passesCladeFilter({ vartype: "SNV", type: "Trunc" }, 0.2, 0.5, { includeSnv: true })).toBe(false);
+  expect(passesCladeFilter({ vartype: "SNV", type: "Trunc" }, 0.7, 0.5, { includeSnv: true })).toBe(true);
   expect(passesCladeFilter({ vartype: "AMP", type: "SCNA" }, 0.2, 0.5)).toBe(false);
   expect(passesCladeFilter({ vartype: "AMP" }, 0.7, 0.5)).toBe(true);
   expect(passesCladeFilter({ vartype: "fusion" }, NaN, 0.5)).toBe(true);

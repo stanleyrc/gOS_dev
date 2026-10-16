@@ -11,6 +11,8 @@ import { cladeFitScore } from "../../../helpers/singleCell/cladeFit";
 import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { classLabel, toggleKey } from "../../../helpers/singleCell/driverLayer";
 import DriverContrastPanel from "./driverContrastPanel";
+import useRnaData from "../rna/useRnaData";
+import { useDriverGeneExpression, expressionLine } from "./driverGeneExpressionCard";
 import TwoHitBlock from "./twoHitBlock";
 import MutationEvidencePanel from "../evidence/mutationEvidencePanel";
 import RnaFusionModal, { FusionLabel, FusionTierTag } from "../rna/rnaFusionModal";
@@ -61,7 +63,8 @@ function FusionRnaTab({ entry }) {
  */
 export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText = null }) {
   const dispatch = useDispatch();
-  const { treeLayout, entries, selection, setSelection, siteIds, fits } = driverLayer;
+  const { treeLayout, entries, selection, setSelection, siteIds, fits, tumorIds } = driverLayer;
+  const rna = useRnaData();
   // ?drvtab=site|rna opens the drawer on that section (links, screenshots)
   const [tab, setTab] = useState(() => {
     try {
@@ -80,9 +83,17 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
         fraction: entry.fraction,
         tier: entry.tier ?? 9,
         fit: treeLayout ? cladeFitScore(entry.carriers, treeLayout) : null,
+        siteId: entry.siteId ? siteIds?.get(entry.siteId) || null : null,
       },
-    [entry, treeLayout]
+    [entry, treeLayout, siteIds]
   );
+  const nonCarriers = useMemo(() => {
+    const own = new Set(entry?.carriers || []);
+    return (tumorIds || []).filter((id) => !own.has(id));
+  }, [entry, tumorIds]);
+  const exprItems = useDriverGeneExpression(driver, entry?.carriers || [], nonCarriers, null, rna);
+  const exprLine = rna.summary ? (rna.matrix ? expressionLine(exprItems) : "Expression: loading RNA...") : "Expression: not available (no matched RNA for this patient)";
+  const f1 = entry ? fits?.get(entry.key) : undefined;
   if (!entry) return null;
   const shown = driverLayer.shown.some((d) => d.key === entry.key);
   const siteId = entry.siteId ? siteIds?.get(entry.siteId) : null;
@@ -106,6 +117,11 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
           {entry.tier != null && <Tag>{`tier ${entry.tier}`}</Tag>}
           {entry.upstreamOnly && <Tag color="orange">upstream of gene only</Tag>}
           <Text type="secondary">{`${entry.n} carrier cells · ${entry.subclonal ? "subclonal" : "clonal"}`}</Text>
+          <Tooltip title="Best F1 between the carrier cells and one clade of the patient tree (the Clade F1 filter's score)">
+            <Tag color={Number.isFinite(f1) ? (f1 >= 0.8 ? "green" : f1 < 0.5 ? "red" : "default") : "default"} data-driver-f1>
+              {Number.isFinite(f1) ? `clade F1 ${f1.toFixed(2)}` : "clade F1 n/a"}
+            </Tag>
+          </Tooltip>
         </Space>
       }
       extra={
@@ -125,6 +141,10 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
       {(entry.genes?.length ? entry.genes : linkGenes(entry.label)).slice(0, 2).map((g, i, arr) => (
         <ExternalLinksRow key={g} gene={g} protein={arr.length === 1 && entry.cls === "snv" ? entry.event?.Variant : null} style={{ marginBottom: 6, display: "flex" }} />
       ))}
+      <div style={{ marginBottom: 8 }} data-driver-expr-line>
+        <Text strong>{exprLine.split(":")[0]}:</Text>
+        <Text>{exprLine.slice(exprLine.indexOf(":") + 1)}</Text>
+      </div>
       <TwoHitBlock call={entry.twoHit} />
       {entry.cls === "snv" && sigText && (
         <div style={{ marginBottom: 8 }} data-driver-signature>

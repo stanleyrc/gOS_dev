@@ -17,6 +17,7 @@ import {
 import usePlotTheme from "../usePlotTheme";
 import CloneLanesPlot from "./cloneLanesPlot";
 import SiteReadsPanel from "./siteReadsPanel";
+import useContainerWidth from "../useContainerWidth";
 
 const { Text, Title, Paragraph } = Typography;
 const pct = (x) => (x == null ? "–" : `${Math.round(100 * x)}%`);
@@ -41,6 +42,8 @@ export default function SiteEvidenceView({ siteId, calls, evidence }) {
   const dataset = useSelector((s) => s.Settings.dataset);
   const [preset, setPreset] = useState("caller");
   const [copied, setCopied] = useState(false);
+  const [viewRef, viewWidth] = useContainerWidth(900);
+  const wide = viewWidth >= 1400;
 
   const site = (calls?.sites || []).find((s) => s.id === siteId);
   const ev = evidence?.sites?.[siteId] || null;
@@ -85,6 +88,7 @@ export default function SiteEvidenceView({ siteId, calls, evidence }) {
   };
 
   return (
+    <div ref={viewRef} style={{ width: "100%" }}>
     <Space direction="vertical" size="middle" style={{ width: "100%" }} className="sc-site-evidence">
       <Card size="small" className="sc-site-head">
         <Space direction="vertical" size={6} style={{ width: "100%" }}>
@@ -195,23 +199,24 @@ export default function SiteEvidenceView({ siteId, calls, evidence }) {
 
       <Card size="small" title="Pooled pseudo-bulk: tumour vs normal cells">
         <Row gutter={16}>
-          <Col xs={24} xl={15}>
+          <Col span={24} xl={wide ? 15 : 24}>
             <Table
               size="small"
+              className="sc-nowrap-head"
               rowKey="key"
               pagination={false}
               dataSource={presetRows}
               rowClassName={(r) => (r.key === preset ? "sc-row-active" : "")}
               onRow={(r) => ({ onClick: () => setPreset(r.key), style: { cursor: "pointer" } })}
-              scroll={{ x: 720 }}
+              scroll={{ x: 900 }}
               columns={[
-                { title: "Read filter", dataIndex: "key", width: 150, render: (k) => <Tooltip title={PRESET_LABELS[k]}>{k}</Tooltip> },
+                { title: "Read filter", dataIndex: "key", width: 110, render: (k) => <Tooltip title={PRESET_LABELS[k]}>{k}</Tooltip> },
                 { title: "Tumour alt / total", key: "t", render: (_, r) => `${r.tumor.alt} / ${r.tumor.dp} (${pct(r.tVaf)})` },
                 { title: "Alt fwd / rev", key: "s", render: (_, r) => (r.tumor.altF == null ? "–" : `${r.tumor.altF} / ${r.tumor.altR}`) },
                 { title: "Normal alt / total", key: "n", render: (_, r) => `${r.normal.alt} / ${r.normal.dp}` },
                 { title: "p vs error", key: "p", render: (_, r) => fmtLog10P(r.log10pError) },
                 { title: "p tumour > normal", key: "f", render: (_, r) => (r.normal.dp ? fmtLog10P(r.log10pNormal) : "–") },
-                { title: "Verdict", key: "v", render: (_, r) => <Tag color={r.verdict.color}>{r.verdict.label}</Tag> },
+                { title: "Verdict", key: "v", width: 110, render: (_, r) => <Tag color={r.verdict.color}>{r.verdict.label}</Tag> },
               ]}
             />
             <Text type="secondary" style={{ fontSize: 12.5 }}>
@@ -220,7 +225,7 @@ export default function SiteEvidenceView({ siteId, calls, evidence }) {
               test. Base quality: alt {stats.bqAlt ?? "–"} vs ref {stats.bqRef ?? "–"}.
             </Text>
           </Col>
-          <Col xs={24} xl={9}>
+          <Col span={24} xl={wide ? 9 : 24} style={wide ? undefined : { marginTop: 12 }}>
             <Text strong>Same site in the other patients</Text>
             {stats.cohort.rows.length ? (
               <Table
@@ -256,5 +261,6 @@ export default function SiteEvidenceView({ siteId, calls, evidence }) {
         />
       </Card>
     </Space>
+    </div>
   );
 }

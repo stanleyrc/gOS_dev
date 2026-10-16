@@ -19,6 +19,7 @@ import { COMPARATOR_MODES, balanceTable, comparatorCells, plateOf, subclonalDriv
 import { CARRIER_COLOR, COMPARATOR_COLOR, OTHER_COLOR } from "./useDriverEvidence";
 import DriverGenomeCard from "./driverGenomeCard";
 import DriverExpressionCard from "./driverExpressionCard";
+import DriverGeneExpressionCard from "./driverGeneExpressionCard";
 import DriverPhenotypeCard from "./driverPhenotypeCard";
 import DriverEvidenceCard from "./driverEvidenceCard";
 import DriverSummaryBoard from "./driverSummaryBoard";
@@ -145,6 +146,10 @@ export default function DriverContrastPanel({ forceDriver = null, showBoard = tr
   );
   const carriers = driver?.carriers || [];
   const others = comparator?.cells || [];
+  const nonCarriers = useMemo(() => {
+    const own = new Set(carriers);
+    return tumorIds.filter((id) => !own.has(id));
+  }, [carriers, tumorIds]);
 
   // per-cell attributes for the balance table: plate from the id, the rest from the RNA metadata
   const rnaCellOf = useMemo(() => {
@@ -238,6 +243,11 @@ export default function DriverContrastPanel({ forceDriver = null, showBoard = tr
           <DriverSummaryBoard rna={rna} focusKey={driver?.key} onFocus={focusFromBoard} />
         </Col>
       )}
+      {driver && forceDriver && (
+        <Col span={24}>
+            <DriverGeneExpressionCard driver={driver} carriers={carriers} nonCarriers={nonCarriers} comparator={mode === "all" ? null : others} rna={rna} siteId={driver.siteId || null} />
+        </Col>
+      )}
       <Col span={24} id="sc-driver-deep-dive">
         <Card
           size="small"
@@ -320,6 +330,11 @@ export default function DriverContrastPanel({ forceDriver = null, showBoard = tr
       </Col>
       {driver && (
         <>
+          {!forceDriver && (
+            <Col span={24}>
+            <DriverGeneExpressionCard driver={driver} carriers={carriers} nonCarriers={nonCarriers} comparator={mode === "all" ? null : others} rna={rna} siteId={driver.siteId || null} />
+            </Col>
+          )}
           <Col span={24}>
             <DriverEffectsCard driver={driver} carriers={carriers} others={others} rna={rna} />
           </Col>
