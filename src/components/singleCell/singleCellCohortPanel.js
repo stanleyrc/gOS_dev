@@ -618,7 +618,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "rnacovde" && (
           <Col span={24}>
-            <CohortCovariateDePanel focusGene={deGene} dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} focusTest={deFocus} onGene={openRnaGene} summaries={summaries} datasets={datasets} />
+            <CohortCovariateDePanel rawFiles={cohortFiles.files} focusGene={deGene} dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} focusTest={deFocus} onGene={openRnaGene} summaries={summaries} datasets={datasets} />
           </Col>
         )}
         {view === "events" && (
