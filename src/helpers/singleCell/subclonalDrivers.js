@@ -58,7 +58,11 @@ export function recurrenceRows(doc, set = "trunc", { limit = 50, minPatients = 1
 export function headlineGenes(doc, { qMax = 0.1, max = 5 } = {}) {
   const { rows } = recurrenceRows(doc, "trunc", { limit: 200 });
   const sig = rows.filter((r) => r.q_patients < qMax);
-  const pick = (sig.length ? sig : rows.filter((r) => r.patients >= 2)).slice(0, max);
+  // genes that stop being significant once read-QC-flagged sites are removed are demoted below the ones that pass
+  const qcFails = (r) => r.q_patients_read_qc_pass != null && r.q_patients_read_qc_pass >= qMax;
+  const sigPass = sig.filter((r) => !qcFails(r));
+  const base = sig.length ? sig : rows.filter((r) => r.patients >= 2);
+  const pick = [...base.filter((r) => !qcFails(r)), ...base.filter(qcFails)].slice(0, max);
   return pick.map((r) => ({
     gene: r.gene,
     patients: (r.per_patient || []).map((x) => x.patient),
@@ -69,7 +73,9 @@ export function headlineGenes(doc, { qMax = 0.1, max = 5 } = {}) {
     qNoBwh69: r.q_patients_no_bwh69,
     patientsQc: r.patients_read_qc_pass ?? null,
     qQc: r.q_patients_read_qc_pass ?? null,
-    significant: r.q_patients < qMax,
+    qcFailed: qcFails(r),
+    significant: r.q_patients < qMax && !qcFails(r),
+    nPassing: sigPass.length,
   }));
 }
 

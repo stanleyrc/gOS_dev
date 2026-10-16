@@ -7,10 +7,11 @@ import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
-import { FONT, Swatches, XBandLabels, YAxis } from "./charts";
+import { FONT, Swatches, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import GeneQuickLook, { GeneQuickLookText, ReadQcBadge, useGeneReadQc } from "./geneQuickLook";
 import CladeF1Chip from "./cladeF1Chip";
 import { f1Of } from "../../../helpers/singleCell/cladeF1View";
 
@@ -31,6 +32,8 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const [strongOnly, setStrongOnly] = useState(true);
   const [maxTier, setMaxTier] = useState("2d"); // tiers 1-2 plus damaging tier-3 missense
   const [picked, setPicked] = useState(null);
+  const { map: qcMap } = useGeneReadQc();
+  const isFlagged = (g) => !!qcMap.get(g)?.allFlagged;
 
   // gene -> patient -> class -> { cells, fraction } (strongest event per class)
   const agg = useMemo(() => {
@@ -66,11 +69,12 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
         .sort((a, b) => b.patients - a.patients || b.cells - a.cells),
     [agg]
   );
-  const genes = picked ?? ranked.slice(0, 8).map((r) => r.gene);
+  // genes whose every subclonal driver hit is read-QC flagged stay selectable but are not in the default set
+  const genes = picked ?? ranked.filter((r) => !isFlagged(r.gene)).slice(0, 8).map((r) => r.gene);
   const patients = summaries.map((s) => s.caseReportId);
   if (!ranked.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.oncoprint-empty")} />;
 
-  const M = { top: 16, right: 12, bottom: 82, left: 60 };
+  const M = { top: 16, right: 12, bottom: 106, left: 60 };
   const x0 = d3.scaleBand().domain(genes).range([M.left, width - M.right]).paddingInner(0.25);
   const x1 = d3.scaleBand().domain(patients).range([0, x0.bandwidth()]).padding(0.1);
   const valueOf = (c) => (mode === "fraction" ? c.fraction : c.cells);
@@ -81,7 +85,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const pct = d3.format(".0%");
 
   const columns = [
-    { title: t("components.single-cell.results.gene"), dataIndex: "gene", key: "gene", fixed: "left", width: 150, render: (g) => <Text strong style={{ whiteSpace: "nowrap" }}>{g}</Text> },
+    { title: t("components.single-cell.results.gene"), dataIndex: "gene", key: "gene", fixed: "left", width: 150, render: (g) => <Space size={4} style={{ whiteSpace: "nowrap" }}><GeneQuickLook gene={g}><Text strong>{g}</Text></GeneQuickLook><ReadQcBadge gene={g} /></Space> },
     { title: t("components.single-cell.cohort.patients"), dataIndex: "patients", key: "patients", width: 80, sorter: (a, b) => a.patients - b.patients, defaultSortOrder: "descend" },
     { title: t("components.single-cell.cohort.cells"), dataIndex: "cells", key: "cells", width: 80, sorter: (a, b) => a.cells - b.cells },
     {
@@ -129,7 +133,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
             style={{ minWidth: 300, maxWidth: 560 }}
             value={genes}
             onChange={(v) => setPicked(v)}
-            options={ranked.map((r) => ({ value: r.gene, label: `${r.gene} (${r.patients} pt · ${r.cells} cells)` }))}
+            options={ranked.map((r) => ({ value: r.gene, label: `${r.gene} (${r.patients} pt · ${r.cells} cells)${isFlagged(r.gene) ? " · read-QC flagged" : ""}` }))}
             filterOption={(input, o) => o.label.toUpperCase().includes(input.toUpperCase())}
           />
           <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "fraction", label: t("components.single-cell.cohort.genes-fraction") }, { value: "cells", label: t("components.single-cell.cohort.genes-cells") }]} />
@@ -173,16 +177,19 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                         </rect>
                       );
                     })}
-                    {x1.bandwidth() >= 7 && (
+                    {x1.bandwidth() >= 9 && (
                       // slanted patient names hang from the bar's foot (end-anchored), so neighbours do not collide
-                      <text x={x1(p) + x1.bandwidth() / 2} y={HEIGHT - M.bottom + 8} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted} transform={`rotate(-55 ${x1(p) + x1.bandwidth() / 2} ${HEIGHT - M.bottom + 8})`}>{p}</text>
+                      <text x={x1(p) + x1.bandwidth() / 2} y={HEIGHT - M.bottom + 8} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={INK.muted} transform={`rotate(${x1.bandwidth() < 14 ? -90 : -55} ${x1(p) + x1.bandwidth() / 2} ${HEIGHT - M.bottom + 8})`}>{p}</text>
                     )}
                   </g>
                 );
               })}
             </g>
           ))}
-          <XBandLabels scale={x0} y={HEIGHT - 8} />
+          {genes.map((g) => (
+            <GeneQuickLookText key={g} gene={g} label={isFlagged(g) ? `${g} \u2691` : g} x={x0(g) + x0.bandwidth() / 2} y={HEIGHT - 22} textAnchor="middle" fontSize={FONT.axis} fontWeight={600} fill={isFlagged(g) ? "#cf1322" : INK.textSecondary} />
+          ))}
+          <text x={(M.left + width - M.right) / 2} y={HEIGHT - 4} textAnchor="middle" fontSize={FONT.axis} fill={INK.muted}>{`Gene (one bar per patient, labelled below)${genes.some(isFlagged) ? "; \u2691 = all hits read-QC flagged" : ""}`}</text>
           <text x={width - M.right} y={M.top - 4} textAnchor="end" fontSize={FONT.axis} fill={INK.muted}>{t("components.single-cell.cohort.genes-note")}</text>
         </svg>
         <Swatches items={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ key: c, color: CLASS_COLORS[c], label: t(`components.single-cell.cohort.class-${c}`) }))} />

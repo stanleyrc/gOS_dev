@@ -427,6 +427,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     files,
     actions: {
       expression: openRnaGene,
+      subclonal: () => setView("subclonal"),
       cnexpr: (gene) => {
         setCnFocus({ gene, nonce: Date.now() });
         setView("cnexpr");

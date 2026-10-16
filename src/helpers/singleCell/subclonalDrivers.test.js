@@ -91,6 +91,17 @@ test("recurrenceRows and headlineGenes", () => {
   expect(h2[0].significant).toBe(false);
 });
 
+test("headlineGenes demotes genes whose q is lost after read-QC", () => {
+  const d = { recurrence: [{ set: "trunc", n_genes_tested: 10, rows: [
+    { gene: "BAD", patients: 3, hits: 5, q_patients: 0.001, q_patients_read_qc_pass: 1, per_patient: [] },
+    { gene: "OK", patients: 2, hits: 2, q_patients: 0.02, q_patients_read_qc_pass: 0.03, per_patient: [] },
+  ] }] };
+  const h = headlineGenes(d);
+  expect(h.map((x) => x.gene)).toEqual(["OK", "BAD"]);
+  expect(h[0].significant).toBe(true);
+  expect(h[1]).toMatchObject({ qcFailed: true, significant: false });
+});
+
 test("pathwayMatrix", () => {
   const m = pathwayMatrix(doc);
   expect(m.patients).toEqual(["PA", "PB", "PC"]);
