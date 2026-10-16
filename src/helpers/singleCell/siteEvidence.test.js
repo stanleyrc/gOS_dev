@@ -105,6 +105,18 @@ describe("statistics", () => {
     expect(log10StrandImbalance(5, 5)).toBe(0);
     expect(log10StrandImbalance(10, 0)).toBeLessThan(-2.5);
   });
+  test("balanced strands at very high depth are not flagged (BWH70 EGFR chr7:55165417 C>G: 13886 F / 16386 R)", () => {
+    const site = { chrom: "chr7", pos: 55165417, ref: "C", alt: "G", alt_tumor: 30272, dp_tumor: 60000, alt_normal: 0, dp_normal: 100 };
+    const st = {
+      ...siteStats(site, null, []),
+      strand: { f: 13886, r: 16386, refF: 15000, refR: 15000, log10p: log10StrandImbalance(13886, 16386) },
+    };
+    expect(st.strand.log10p).toBeLessThan(-3); // significant only because n is huge
+    const v = siteVerdict({ ...st, tumor: { ...st.tumor, alt: 30272, dp: 60000, altF: 13886, altR: 16386 } });
+    const c = v.checks.find((x) => x.key === "strand");
+    expect(c.status).toBe("pass");
+    expect(v.concerns || []).not.toContain("strand");
+  });
   test("p formatting", () => {
     expect(fmtLog10P(-12.3)).toBe("5.0e-13");
     expect(fmtLog10P(-0.5)).toBe("0.32");

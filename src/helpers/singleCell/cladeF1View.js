@@ -87,3 +87,25 @@ export function findingF1(finding, events, tree) {
   if (!classes || !gene) return null;
   return geneF1(events, tree, gene, classes);
 }
+
+/**
+ * Per-event Clade F1 filter of the cohort Oncoprint: { patient: events } -> events whose Clade F1 in their own patient's tree is
+ * >= minF1, for every class including SNVs. Kept regardless: rescued hotspots (carriers are the few covered cells), events without a
+ * tree or without carriers in it (F1 not defined: nothing to judge them by). Truncal events sit near F1 1 on the root and stay.
+ * Returns { events: { patient: events }, hidden: number of events dropped }.
+ */
+export function filterEventsByF1(eventsByPatient, trees, minF1) {
+  if (!(minF1 > 0)) return { events: eventsByPatient, hidden: 0 };
+  let hidden = 0;
+  const events = {};
+  Object.entries(eventsByPatient).forEach(([p, evs]) => {
+    events[p] = (evs || []).filter((e) => {
+      if (e && (e.rescued === true || `${e.rescued}` === "true")) return true;
+      const v = f1Of(e, trees?.[p]);
+      if (v == null || v >= minF1) return true;
+      hidden += 1;
+      return false;
+    });
+  });
+  return { events, hidden };
+}
