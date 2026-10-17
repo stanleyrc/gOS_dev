@@ -223,7 +223,7 @@ export function ClinicalOncoprint({ grid, header, bars, width, theme, hrefOf, on
 
 /** Horizontal stacked bars: rows [{ label, counts, total }] by recovery status. */
 export function StackedRows({ rows, width, theme, title }) {
-  const L = 120;
+  const L = 140;
   const rh = 22;
   const col = statusFill(theme);
   const max = Math.max(1, ...rows.map((r) => r.total));

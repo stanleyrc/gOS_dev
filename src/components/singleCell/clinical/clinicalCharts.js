@@ -13,7 +13,7 @@ export function AgreementScatter({ points, width, height = 300, xLabel, yLabel, 
   const f = (v) => (logAxes ? log(v) : v);
   const sx = (v) => M.l + ((f(v) - f(lo)) / (f(hi) - f(lo))) * (width - M.l - M.r);
   const sy = (v) => height - M.b - ((f(v) - f(lo)) / (f(hi) - f(lo))) * (height - M.t - M.b);
-  const ticks = logAxes ? [1, 3, 10, 30, 100, 300].filter((t) => t <= hi) : [0, 0.25, 0.5, 0.75, 1].map((t) => t * hi);
+  const ticks = logAxes ? [1, 3, 10, 30, 100, 300].filter((t) => t <= hi) : pct ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.25, 0.5, 0.75, 1].map((t) => t * hi);
   const fmt = (t) => (pct ? `${Math.round(t * 100)}%` : logAxes ? t : Math.round(t * 100) / 100);
   return (
     <svg width={width} height={height} style={{ display: "block", fontSize: TYPE.tick }} role="img" aria-label={`${yLabel} against ${xLabel}`}>
