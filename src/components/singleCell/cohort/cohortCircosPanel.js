@@ -6,14 +6,14 @@ import { Card, Empty, Select, Space, Switch, Typography } from "antd";
 import { RadarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
-import { eventClass } from "../../../helpers/singleCell/cohortStats";
+import { eventClass, driverGeneOf } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { Swatches, patientColor } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#00838F", complex: "#E66101", other: "#8c8c8c" };
+const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
 
 const parseLoc = (s) => {
   const m = `${s || ""}`.match(/^(\w+):(\d+)-(\d+)/);
@@ -40,7 +40,7 @@ export default function CohortCircosPanel({ summaries, files }) {
       summaries.flatMap((s, k) =>
         (files[s.caseReportId]?.events || [])
           .filter((e) => Number(e.Tier ?? 9) <= 2 && (!strongOnly || isStrongEvent(e)))
-          .map((e) => ({ patient: s.caseReportId, k, gene: e.gene || e.fusion_genes, cls: eventClass(e), fraction: Number(e.cell_fraction) || 0, cells: e.cells, loc: parseLoc(e.Genome_Location), fusion: `${e.fusion_gene_coords || ""}`.split(",").map(parseLoc).filter(Boolean), label: e.Variant || e.type }))
+          .map((e) => ({ patient: s.caseReportId, k, gene: driverGeneOf(e), cls: eventClass(e), fraction: Number(e.cell_fraction) || 0, cells: e.cells, loc: parseLoc(e.Genome_Location), fusion: `${e.fusion_gene_coords || ""}`.split(",").map(parseLoc).filter(Boolean), label: e.Variant || e.type }))
       ),
     [summaries, files, strongOnly]
   );

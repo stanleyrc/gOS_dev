@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Card, Select, Space, Switch, Table, Typography } from "antd";
 import { BranchesOutlined } from "@ant-design/icons";
-import { eventClass } from "../../../helpers/singleCell/cohortStats";
+import { eventClass, isTertPromoterSv } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import HintLine, { Provenance } from "../hintLine";
 import datasetsActions from "../../../redux/datasets/actions";
@@ -12,7 +12,7 @@ import settingsActions from "../../../redux/settings/actions";
 import { CONV_PARAM, rankEventCandidates } from "../../../helpers/singleCell/convergenceEvidence";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#00838F", complex: "#E66101", other: "#8c8c8c" };
+const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
 const clonalityOf = (f) => (f >= 0.85 ? "clonal" : f >= 0.1 ? "subclonal" : "rare");
 
 /**
@@ -31,7 +31,7 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
     summaries.forEach((s) => {
       (files[s.caseReportId]?.events || []).forEach((e) => {
         if (Number(e.Tier ?? 9) > maxTier || (strongOnly && !isStrongEvent(e))) return;
-        const gene = `${e.gene || e.fusion_genes || ""}`.split("::")[0];
+        const gene = isTertPromoterSv(e) ? "TERT" : `${e.gene || e.fusion_genes || ""}`.split("::")[0];
         if (!gene) return;
         const f = Number(e.cell_fraction) || 0;
         if (!byGene.has(gene)) byGene.set(gene, new Map());
