@@ -65,7 +65,7 @@ export default function CohortTsgHitsPanel({ tsg, dataset }) {
     <Card size="small" title="Tumour suppressor hits" data-tsg-hits-panel>
       <Space direction="vertical" size={10} style={{ width: "100%" }}>
         <Text type="secondary" style={{ fontSize: TYPE.label }}>
-          Which tumour suppressors have more than one hit, and whether the hits fall in the same cells. A cell reads ×N (distinct hits: each mutation, LOH, SV; a homozygous deletion is two), the hit types, the share of tumour cells carrying two hits in the same cell, and clonal (at least 90% of tumour cells) or subclonal.
+          Which tumour suppressors have more than one hit, and whether the hits fall in the same cells. A cell reads ×N (distinct hits: each mutation, LOH, SV; a homozygous deletion on its own is two, both copies), the hit types, the share of tumour cells carrying two hits in the same cell, and clonal (at least 80% of tumour cells, allowing for dropout) or subclonal.
           Two mutations count as two hits in one cell only when they are phased in trans from read fragments (_cohort/tsg_phase.json).
         </Text>
         {!tsg.hasLoss && <Alert type="warning" showIcon message="not available (_cohort/tsg_loss.json: per-cell allelic LOH calls not exported); LOH hits are missing" />}
