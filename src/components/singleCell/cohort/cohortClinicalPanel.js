@@ -39,7 +39,7 @@ function Legend({ theme }) {
 function cellTip(row, cell) {
   if (!cell) return `${row.label}: not in the clinical report of this patient`;
   const r = cell.row;
-  const bits = [`${row.label}: ${cell.raw.replace(/_/g, " ")}`, r.outcome ? `outcome: ${r.outcome}` : null, r.reason, r.note, r.clinical_raw ? `report: ${r.clinical_raw}` : null].filter(Boolean);
+  const bits = [`${row.label}: ${r.label || cell.raw.replace(/_/g, " ")}`, r.outcome ? `outcome: ${r.outcome}` : null, r.reason, r.note, r.clinical_raw ? `report: ${r.clinical_raw}` : null].filter(Boolean);
   return bits.join("\n");
 }
 
