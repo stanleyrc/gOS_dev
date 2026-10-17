@@ -29,6 +29,7 @@ export default function TwoHitBlock({ call }) {
       {call.snvCells > 0 && call.lossIds.size > 0 && (
         <div style={{ fontSize: TYPE.label }}>{`SNV carriers with the loss too: ${ov.both} of ${call.snvCells} (SNV only ${ov.snvOnly}, loss only ${ov.lossOnly}); dropout hides some SNV reads, so overlap is a lower bound.`}</div>
       )}
+      {call.phased && <div style={{ fontSize: TYPE.label }}>Two mutations in this gene are phased in trans (read fragments covering both sites, none with both alleles), so a cell with both has both copies hit.</div>}
       {call.vafSuggestsLoh && <div style={{ fontSize: TYPE.label }}>The SNV VAF is near 1, which is consistent with LOH of the wild-type copy, but no LOH was called from the allelic CN.</div>}
       <Text type="secondary" style={{ fontSize: TYPE.label }}>{`Loss source: ${call.lossSource}.`}</Text>
     </div>
