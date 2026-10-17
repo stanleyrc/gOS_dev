@@ -104,7 +104,7 @@ describe("URL", () => {
     expect(parseSelection("?tab=7")).toBeNull();
     const sel = { preset: "subclonal", add: ["EGFR amp|7:1-2"], remove: ["x|y"], filters: { ...DEFAULT_SELECTION.filters, tiers: [1, 2], lists: ["gbm"], genes: ["EGFR"], classes: ["snv", "amp"], clonality: "subclonal", minCells: 5, fusionSupport: "both" } };
     const q = new URLSearchParams(serializeSelection(sel)).toString();
-    expect(parseSelection(`?${q}`)).toEqual(sel);
+    expect(parseSelection(`?${q}`)).toEqual({ ...sel, clinical: true });
   });
 });
 
