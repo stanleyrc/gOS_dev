@@ -29,7 +29,7 @@ const STATE_COLORS = { MES: "#D55E00", AC: "#E69F00", NPC: "#0072B2", OPC: "#009
 function Panel({ letter, title, name, children, note }) {
   const ref = useRef(null);
   return (
-    <Card size="small" style={{ height: "100%" }} title={<Space size={8}><span style={{ fontWeight: 700, fontSize: 18 }}>{letter}</span><span>{title}</span></Space>} extra={<SvgExportButton containerRef={ref} name={`figure1-${name}`} />}>
+    <Card size="small" style={{ height: "100%", minWidth: 0 }} title={<Space size={8}><span style={{ fontWeight: 700, fontSize: 18 }}>{letter}</span><span>{title}</span></Space>} extra={<SvgExportButton containerRef={ref} name={`figure1-${name}`} />}>
       <div ref={ref}>{children}</div>
       {note && <HintLine text={note} />}
     </Card>
@@ -269,7 +269,7 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
           </>
         ) : <NA why="patient driver events not loaded yet" />}
       </Panel>
-      <div style={{ display: "grid", gridTemplateColumns: half ? "1fr 1fr" : "1fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: half ? "minmax(0,1fr) minmax(0,1fr)" : "minmax(0,1fr)", gap: 12 }}>
         <Panel letter="c" title="Example tumour tree" name="c-tree" note="Cell tree on the cohort time axis with placed events (_cohort/aligned_trees.json). The CN / SNV / BAF heatmap thumbnail is not available here: the per-cell matrices are loaded in the patient page (open it with the button).">
           {tp ? (
             <>
@@ -282,7 +282,7 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
             </>
           ) : <NA why={aligned.status === "loading" ? "loading" : "_cohort/aligned_trees.json not exported"} />}
         </Panel>
-        <Panel letter="d" title="Truncal vs subclonal mutations" name="d-truncal" note="Mutation sites on the trunk vs below it, per patient (tmb.json; sorted by subclonal count). Patients flagged noisy have private-site artefacts, so their subclonal count is an upper bound.">
+        <Panel letter="d" title="Truncal vs subclonal mutations" name="d-truncal" note={`Mutation sites on the trunk vs below it, per patient (tmb.json; sorted by subclonal count). Patients flagged noisy have private-site artefacts, so their subclonal count is an upper bound. ${ids.filter((p) => !trunc.find((t) => t.patient === p)).length ? `Not in tmb.json: ${ids.filter((p) => !trunc.find((t) => t.patient === p)).join(", ")}.` : ""}`}>
           {trunc.length ? <TruncalSvg rows={trunc} width={pw - 8} theme={theme} /> : <NA why={tmb.status === "loading" ? "loading" : "_cohort/tmb.json not exported"} />}
         </Panel>
       </div>
