@@ -130,8 +130,9 @@ export function cnPoints(recovery) {
   const pts = [];
   Object.entries(recovery?.patients || {}).forEach(([patient, rec]) => {
     (rec.cnv || []).forEach((r) => {
-      if (r.clinical_copies == null || r.median_cn == null) return;
-      pts.push({ patient, label: alterationLabel("cnv", r), x: r.clinical_copies, y: r.median_cn, yMean: r.mean_cn, yMax: r.max_cn, frac: r.frac_cells, status: gridStatus(r.status), row: r });
+      const y = r.carrier_median_cn ?? r.median_cn;
+      if (r.clinical_copies == null || y == null) return;
+      pts.push({ patient, label: alterationLabel("cnv", r), x: r.clinical_copies, y, yAll: r.median_cn, yMean: r.mean_cn, yMax: r.max_cn, frac: r.frac_cells, status: gridStatus(r.status), row: r });
     });
   });
   return pts;
