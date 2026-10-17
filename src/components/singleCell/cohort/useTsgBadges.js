@@ -12,12 +12,14 @@ import { patientBadges } from "../../../helpers/singleCell/tsgHits";
 export default function useTsgBadges(dataset, patientId, events) {
   const loss = useCohortExport(dataset, "tsg_loss.json");
   const phase = useCohortExport(dataset, "tsg_phase.json");
+  const broad = useCohortExport(dataset, "broad_cn0.json");
   const mine = loss.data?.patients?.[patientId] || null;
   const myPhase = phase.data?.patients?.[patientId] || null;
+  const myBroad = broad.data?.patients?.[patientId] || null;
   return useMemo(() => {
     if (events === undefined || loss.status === "loading" || phase.status === "loading") return { status: "loading", badges: [], hasLoss: false };
     if (!Array.isArray(events)) return { status: "none", badges: [], hasLoss: false };
-    const calls = twoHitCalls(cohortEntries(events), { loss: mine, phase: myPhase });
+    const calls = twoHitCalls(cohortEntries(events), { loss: mine, phase: myPhase, broadCn0: myBroad });
     return { status: "ok", badges: patientBadges(calls, patientId), hasLoss: Boolean(mine) };
-  }, [events, mine, myPhase, loss.status, phase.status, patientId]);
+  }, [events, mine, myPhase, myBroad, loss.status, phase.status, patientId]);
 }

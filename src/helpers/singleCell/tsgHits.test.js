@@ -143,3 +143,13 @@ describe("chromosome-scale CN-0 calls (broad_cn0)", () => {
     expect(c.state).toBe("homdel");
   });
 });
+
+describe("broad CN-0 cells from _cohort/broad_cn0.json", () => {
+  it("drop those cells' allelic HOMDEL calls even when the event itself is filtered out of the view", () => {
+    const entries = [snv("NF2", cells.slice(0, 4), 100)];
+    const loss = lossOf("NF2", code(14, LOSS_CODE.HOMDEL));
+    const [c] = twoHitCalls(entries, { tumorIds: cells, loss, broadCn0: { NF2: { mb: 50.8, cells: cells.slice(0, 12) } } });
+    expect(c.homdelCells).toBe(2); // 14 allelic HOMDEL cells minus the 12 broad ones
+    expect(c.excluded[0].label).toMatch(/50.8 Mb/);
+  });
+});
