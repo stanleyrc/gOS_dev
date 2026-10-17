@@ -6,6 +6,8 @@ import { cardTmb, cardVignette, keyDrivers, parseClones, treeSource, tumourClone
 import { driverHref, linkClick } from "../../helpers/singleCell/driverLink";
 import useTsgBadges from "./cohort/useTsgBadges";
 import TsgBadgeRow from "./cohort/tsgBadgeRow";
+import useClinicalAssays from "./clinical/useClinicalAssays";
+import ClinicalStrip from "./clinical/clinicalStrip";
 
 const { Text } = Typography;
 const eventsCache = new Map();
@@ -40,6 +42,7 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
   const pair = record.caseReportId || record.pair;
   const vig = useCohortExport(dataset, "vignettes.json");
   const tmbDoc = useCohortExport(dataset, "tmb.json");
+  const clinical = useClinicalAssays(dataset);
   const [events, setEvents] = useState(undefined);
   useEffect(() => {
     let live = true;
@@ -102,6 +105,7 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
           {v?.nRna != null ? v.nRna : <NA why="vignettes.json" />}
         </Stat>
       </div>
+      <ClinicalStrip assays={clinical.assays} recovery={clinical.recovery} patient={pair} status={clinical.status} compact />
       <div>
         <div style={{ fontSize: 12, color: "var(--sc-muted, #8c8c8c)", textTransform: "uppercase", letterSpacing: 0.3 }}>Key drivers (tier 1)</div>
         {events === undefined ? null : drivers.length ? (

@@ -1,13 +1,15 @@
 import React from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Collapse, Skeleton } from "antd";
+import { Card, Collapse, Skeleton } from "antd";
 import PatientReportCard from "../../components/singleCell/patientReportCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import ClonalHistoryCard from "../../components/singleCell/clonalHistoryCard";
 import AmpTimingCard from "../../components/singleCell/ampTimingCard";
 import BranchRatesCard from "../../components/singleCell/branchRatesCard";
+import useClinicalAssays from "../../components/singleCell/clinical/useClinicalAssays";
+import ClinicalStrip from "../../components/singleCell/clinical/clinicalStrip";
 import HelpDrawer from "../../components/singleCell/helpDrawer";
 import { selectMergedEvents } from "../../redux/interpretations/selectors";
 import PortraitCard from "../../components/singleCell/portrait/portraitCard";
@@ -37,6 +39,7 @@ export default function SingleCellSummaryTab() {
   const id = patient?.caseReportId;
   const portrait = usePatientPortrait(dataset, id);
   const portraitCohort = useCohortExport(dataset, "portrait.json");
+  const clinical = useClinicalAssays(dataset);
   const { vignettes, cohort } = summaryStoryChapters(
     storyForPatient(story, id),
     id,
@@ -55,6 +58,9 @@ export default function SingleCellSummaryTab() {
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <HelpDrawer />
       </div>
+      <Card size="small" title="Clinical assay (de-identified)" style={{ marginBottom: 12 }}>
+        <ClinicalStrip assays={clinical.assays} recovery={clinical.recovery} patient={id} status={clinical.status} />
+      </Card>
       <VignetteWrapper>
         <PatientVignette />
       </VignetteWrapper>
