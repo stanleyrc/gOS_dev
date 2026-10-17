@@ -41,6 +41,7 @@ import CohortJointSignatures from "./cohort/cohortJointSignatures";
 import OncoprintPanel from "./cohort/oncoprintPanel";
 import CohortOncoprintPanel from "./cohort/cohortOncoprintPanel";
 import CohortEventAssocPanel from "./cohort/cohortEventAssocPanel";
+import CohortClinicalPanel from "./cohort/cohortClinicalPanel";
 import { CladeF1Context } from "./cohort/cladeF1Chip";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortCladesPanel from "./cohort/cohortCladesPanel";
@@ -690,6 +691,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "portrait" && (
           <Col span={24}>
             <CohortPortraitPanel dataset={geneDataset} />
+          </Col>
+        )}
+        {view === "clinical" && (
+          <Col span={24}>
+            <CohortClinicalPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} rawFiles={cohortFiles.files} />
           </Col>
         )}
         {view === "eventassoc" && (

@@ -14,6 +14,7 @@ export const COHORT_VIEWS = [
   { key: "subclonal", group: "genome" },
   { key: "oncoprint", group: "genome" },
   { key: "tsghits", group: "genome" },
+  { key: "clinical", group: "genome" },
   { key: "amplicons", group: "genome" },
   { key: "ecplast", group: "genome" },
   { key: "mutations", group: "genome" },
