@@ -55,6 +55,7 @@ import CohortDriverTreesPanel from "./cohort/cohortDriverTreesPanel";
 import PatientSummaryTable from "./cohort/patientCards";
 import CohortHeadline from "./cohort/cohortHeadline";
 import useCohortTsg from "./cohort/useCohortTsg";
+import CohortTsgHitsPanel from "./cohort/cohortTsgHitsPanel";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { isRescued } from "../../helpers/singleCell/cohortStats";
 import useHotspotRescue from "./cohort/useHotspotRescue";
@@ -679,6 +680,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "oncoprint" && (
           <Col span={24}>
             <CohortOncoprintPanel summaries={summaries} files={files} tsg={tsg} />
+          </Col>
+        )}
+        {view === "tsghits" && (
+          <Col span={24}>
+            <CohortTsgHitsPanel tsg={tsg} dataset={tsgDataset} />
           </Col>
         )}
         {view === "portrait" && (
