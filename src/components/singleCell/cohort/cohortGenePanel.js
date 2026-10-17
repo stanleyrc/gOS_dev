@@ -5,7 +5,7 @@ import { Card, Empty, Segmented, Select, Space, Switch, Table, Tooltip, Typograp
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
-import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier, rescueSourceText } from "../../../helpers/singleCell/cohortStats";
+import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier, rescueSourceText, driverGeneOf } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { FONT, Swatches, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
@@ -16,7 +16,7 @@ import CladeF1Chip from "./cladeF1Chip";
 import { f1Of } from "../../../helpers/singleCell/cladeF1View";
 
 const { Text } = Typography;
-const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#00838F", complex: "#E66101", other: "#8c8c8c" };
+const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
 const HEIGHT = 336;
 
 /**
@@ -42,7 +42,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
       (files[s.caseReportId]?.events || []).forEach((e) => {
         if (!passesTier({ ...e, Tier: e.Tier ?? 9 }, maxTier)) return;
         if (strongOnly && !isStrongEvent(e)) return;
-        const gene = e.gene || e.fusion_genes || e.name;
+        const gene = driverGeneOf(e);
         if (!gene) return;
         const cls = eventClass(e);
         const n = Number(e.n_cells) || 0;

@@ -1,7 +1,7 @@
 // Hotspots rescued from site evidence (exporter gos_sc_hotspot_rescue): synthetic fixtures only.
 import { buildDriverEntries, classLabel, entryStates, selectDrivers, rescueText, snvStateLabel, STATE, DEFAULT_SELECTION } from "./driverLayer";
 import { cellStatus, markSnvPending, sharedLabel } from "./cohortDriverTrees";
-import { eventClass, isCalledNotTree, isRescued, oncoprintMatrix, rescueSourceText } from "./cohortStats";
+import { driverGeneOf, eventClass, isCalledNotTree, isRescued, oncoprintMatrix, rescueSourceText } from "./cohortStats";
 import { buildPatientReport } from "./patientReport";
 import { cohortHeadline, tertHeadline } from "./cohortHeadline";
 
@@ -151,4 +151,10 @@ describe("pooled driver scan rows (exporter gos_sc_pooled_drivers)", () => {
   test("TERT promoter row from the scan is a promoter event", () => {
     expect(eventClass({ gene: "TERT", vartype: "Hotspot", type: "Promoter" })).toBe("promoter");
   });
+});
+
+test("TERT promoter rearrangement counts toward TERT in per-gene cohort views", () => {
+  expect(driverGeneOf({ gene: "TENT4A::TERT", fusion_genes: "TENT4A::TERT", vartype: "fusion", tert_promoter_sv: true })).toBe("TERT");
+  expect(driverGeneOf({ gene: "EGFR", vartype: "SNV" })).toBe("EGFR");
+  expect(driverGeneOf({ fusion_genes: "A::B" })).toBe("A::B");
 });

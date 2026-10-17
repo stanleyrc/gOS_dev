@@ -44,6 +44,8 @@ export const rescueSourceText = (e) =>
  */
 export const isTertPromoterSv = (e) => Boolean(e) && (e.tert_promoter_sv === true || `${e.tert_promoter_sv}` === "true");
 export const TERT_SV_LABEL = "TERT promoter SV";
+/** Gene an event counts toward in per-gene cohort views: TERT for a TERT promoter rearrangement (its fusion partner is not the driver), else gene / fusion pair. */
+export const driverGeneOf = (e = {}) => (isTertPromoterSv(e) ? "TERT" : e.gene || e.fusion_genes || e.name || "");
 
 export function eventClass(event = {}) {
   const vt = `${event.vartype || ""}`.toLowerCase();
