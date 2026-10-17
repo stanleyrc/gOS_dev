@@ -14,6 +14,7 @@ import DriverContrastPanel from "./driverContrastPanel";
 import useRnaData from "../rna/useRnaData";
 import { useDriverGeneExpression, expressionLine } from "./driverGeneExpressionCard";
 import TwoHitBlock from "./twoHitBlock";
+import ClinicalTip from "./clinicalTip";
 import MutationEvidencePanel from "../evidence/mutationEvidencePanel";
 import RnaFusionModal, { FusionLabel, FusionTierTag } from "../rna/rnaFusionModal";
 
@@ -115,6 +116,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
             <Tag>{classLabel(entry)}</Tag>
           </Tooltip>
           {entry.tier != null && <Tag>{`tier ${entry.tier}`}</Tag>}
+          {entry.clinical && <Tag color={entry.germline ? "geekblue" : "gold"} data-driver-clinical>{entry.germline ? "clinical · germline-like" : "clinical"}</Tag>}
           {entry.upstreamOnly && <Tag color="orange">upstream of gene only</Tag>}
           <Text type="secondary">{`${entry.n} carrier cells · ${entry.subclonal ? "subclonal" : "clonal"}`}</Text>
           <Tooltip title="Best F1 between the carrier cells and one clade of the patient tree (the Clade F1 filter's score)">
@@ -141,6 +143,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
       {(entry.genes?.length ? entry.genes : linkGenes(entry.label)).slice(0, 2).map((g, i, arr) => (
         <ExternalLinksRow key={g} gene={g} protein={arr.length === 1 && entry.cls === "snv" ? entry.event?.Variant : null} style={{ marginBottom: 6, display: "flex" }} />
       ))}
+      {entry.clinical && <div style={{ marginBottom: 8 }}><ClinicalTip event={entry.event} /></div>}
       <div style={{ marginBottom: 8 }} data-driver-expr-line>
         <Text strong>{exprLine.split(":")[0]}:</Text>
         <Text>{exprLine.slice(exprLine.indexOf(":") + 1)}</Text>

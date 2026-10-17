@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useMergedEvents } from "./useClinicalEvents";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Button, Card, Col, Empty, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
@@ -113,7 +114,7 @@ function TreeStrip({ leaves, groupOf, clade, groupLabel, cloneOf, onSelect }) {
 export default function DriverContrastPanel({ forceDriver = null, showBoard = true }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
-  const events = useSelector((s) => s.FilteredEvents.filteredEvents);
+  const events = useMergedEvents();
   const { cells, patient, driverFocus } = useSelector((s) => s.SingleCell);
   const { treeLayout } = useTreeView();
   const rna = useRnaData();
