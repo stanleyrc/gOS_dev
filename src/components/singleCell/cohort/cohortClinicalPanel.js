@@ -26,7 +26,7 @@ const initialView = () => {
  * Clinical assay concordance: which alterations of the Oncopanel / Genexus reports the single-cell data recovers, how
  * clinical VAF / copy number / TMB compare, and (toggle) a candidate Figure 1 layout built from live data.
  */
-export default function CohortClinicalPanel({ dataset, rawFiles = {}, summaries = [], tsg = null, onOpenPatient = null }) {
+export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = null, summaries = [], tsg = null, onOpenPatient = null }) {
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(900);
   const ocRef = React.useRef(null);
@@ -81,7 +81,7 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, summaries 
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
       <Segmented value={view} onChange={setView} options={[{ value: "assays", label: "Clinical assays" }, { value: "fig1", label: "Figure 1 layout" }]} />
       {view === "fig1" ? (
-        <Figure1Layout dataset={dataset} assays={assays} recovery={recovery} summaries={summaries} rawFiles={rawFiles} tsg={tsg} onOpenPatient={onOpenPatient} />
+        <Figure1Layout dataset={dataset} assays={assays} recovery={recovery} summaries={summaries} rawFiles={files || rawFiles} tsg={tsg} onOpenPatient={onOpenPatient} />
       ) : (
         <>
           <Card size="small" title="Clinical assay concordance: Oncopanel / Genexus alterations vs the single-cell data" extra={<SvgExportButton containerRef={ocRef} name="clinical-concordance" />}>
