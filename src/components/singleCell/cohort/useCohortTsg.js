@@ -10,15 +10,16 @@ import { biallelicSummary, cohortCallIndex, twoHitCalls } from "../../../helpers
  */
 export default function useCohortTsg({ dataset, summaries, files }) {
   const loss = useCohortExport(dataset, "tsg_loss.json");
+  const phase = useCohortExport(dataset, "tsg_phase.json"); // cis / trans of SNV pairs (scripts/singleCell/export_tsg_phase.py); absent = unphased
   const callsByPatient = useMemo(() => {
     const out = {};
     summaries.forEach((s) => {
       const events = files[s.caseReportId]?.events;
       if (!events) return;
-      out[s.caseReportId] = twoHitCalls(cohortEntries(events), { loss: loss.data?.patients?.[s.caseReportId] || null });
+      out[s.caseReportId] = twoHitCalls(cohortEntries(events), { loss: loss.data?.patients?.[s.caseReportId] || null, phase: phase.data?.patients?.[s.caseReportId] || null });
     });
     return out;
-  }, [summaries, files, loss.data]);
+  }, [summaries, files, loss.data, phase.data]);
   const index = useMemo(() => cohortCallIndex(callsByPatient), [callsByPatient]);
   const summary = useMemo(() => biallelicSummary(callsByPatient), [callsByPatient]);
   return { status: loss.status, hasLoss: loss.status === "ok", callsByPatient, index, summary };

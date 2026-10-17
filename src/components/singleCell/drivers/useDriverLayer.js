@@ -8,6 +8,7 @@ import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { parseCancerGeneList } from "../../../helpers/singleCell/geneInfo";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import usePatientTsg from "./usePatientTsg";
+import { entryHitCount, groupMultiHitEntries } from "../../../helpers/singleCell/tsgHits";
 import { DEFAULT_SELECTION, buildDriverEntries, collapseColumns, entryFits, entryStates, entryVafs, recommendedOrder, selectDrivers } from "../../../helpers/singleCell/driverLayer";
 
 const isNormalClone = (clone) => /^normal$/i.test(`${clone || ""}`);
@@ -90,15 +91,20 @@ export default function useDriverLayer() {
   const fits = useMemo(() => entryFits(entries, treeLayout), [entries, treeLayout]);
   const shown = useMemo(() => {
     const list = selectDrivers(entries, selection, fits);
-    return selection.preset === "recommended" ? recommendedOrder(list) : list;
-  }, [entries, selection, fits]);
+    const ordered = selection.preset === "recommended" ? recommendedOrder(list) : list;
+    return groupMultiHitEntries(ordered, tsg.calls); // the entries of a tumour suppressor with 2+ hits sit together
+  }, [entries, selection, fits, tsg.calls]);
   // per-cell states and display columns (redundant CN events collapsed)
   const display = useMemo(() => {
     const ctx = { order, snv: snvData, snvRows: snvData ? rowMap(order, snvData.cells) : null, cn: cn.status === "ok" ? cn.data : null, cnRows: cn.status === "ok" ? rowMap(order, cn.data.cells) : null, chromoBins, twoHit: tsg.secondHits };
     const out = collapseColumns(shown, shown.map((d) => entryStates(d, ctx)));
+    out.columns.forEach((c) => {
+      const n = entryHitCount(c.entry, tsg.calls);
+      if (n >= 2) c.label = `${c.label} ×${n}`; // flag: this gene has n hits (see the Two hits row / drawer)
+    });
     out.columns.forEach((c) => (c.vafs = entryVafs(c.entry, ctx))); // per-cell VAF of tree-site SNVs (null = call colours only)
     return out;
-  }, [shown, order, snvData, cn, chromoBins, tsg.secondHits]);
+  }, [shown, order, snvData, cn, chromoBins, tsg.secondHits, tsg.calls]);
   const setSelection = useCallback((next) => dispatch(singleCellActions.updateLayout({ drivers: next })), [dispatch]);
   return { tsg, entries, shown, fits, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
 }
